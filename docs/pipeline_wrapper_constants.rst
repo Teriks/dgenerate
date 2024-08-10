@@ -190,3 +190,13 @@
     :annotation: = 1024
 
     Default output width for Stable Diffusion 3.
+
+.. data:: DEFAULT_FLUX_OUTPUT_HEIGHT
+    :annotation: = 1024
+
+    Default output height for Flux.
+
+.. data:: DEFAULT_FLUX_OUTPUT_WIDTH
+    :annotation: = 1024
+
+    Default output width for Flux.

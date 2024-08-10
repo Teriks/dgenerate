@@ -320,7 +320,7 @@ def estimate_pipeline_memory_use(
     )
 
     if transformer_uri:
-        parsed = _uris.SD3TransformerUri.parse(transformer_uri)
+        parsed = _uris.TransformerUri.parse(transformer_uri)
         usage += _hfutil.estimate_model_memory_use(
             repo_id=_hfutil.download_non_hf_model(parsed.model),
             revision=parsed.revision,
@@ -1142,7 +1142,7 @@ class TorchPipelineCreationResult(PipelineCreationResult):
     Parsed ImageEncoder URI if one was present
     """
 
-    parsed_transformer_uri: _uris.SD3TransformerUri | None
+    parsed_transformer_uri: _uris.TransformerUri | None
     """
     Parsed Transformer URI if one was present
     """
@@ -1150,7 +1150,7 @@ class TorchPipelineCreationResult(PipelineCreationResult):
     def __init__(self,
                  pipeline: diffusers.DiffusionPipeline,
                  parsed_unet_uri: _uris.UNetUri | None,
-                 parsed_transformer_uri: _uris.SD3TransformerUri | None,
+                 parsed_transformer_uri: _uris.TransformerUri | None,
                  parsed_vae_uri: _uris.VAEUri | None,
                  parsed_image_encoder_uri: _uris.ImageEncoderUri | None,
                  parsed_lora_uris: collections.abc.Sequence[_uris.LoRAUri],
@@ -1396,7 +1396,7 @@ def _torch_args_hasher(args):
 
     custom_hashes = {
         'unet_uri': _cache.uri_hash_with_parser(_uris.UNetUri.parse),
-        'transformer_uri': _cache.uri_hash_with_parser(_uris.SD3TransformerUri),
+        'transformer_uri': _cache.uri_hash_with_parser(_uris.TransformerUri),
         'vae_uri': _cache.uri_hash_with_parser(_uris.VAEUri.parse),
         'image_encoder_uri': _cache.uri_hash_with_parser(_uris.ImageEncoderUri),
         'lora_uris': _cache.uri_list_hash_with_parser(_uris.LoRAUri.parse),
@@ -1470,6 +1470,27 @@ def _create_torch_diffusion_pipeline(
         raise UnsupportedPipelineConfigError(
             'device" must be "cuda" (optionally with a device ordinal "cuda:N") or "cpu"')
 
+    # Flux model restrictions
+    if _enums.model_type_is_flux(model_type):
+        if controlnet_uris:
+            raise UnsupportedPipelineConfigError(
+                'Flux --model-type values are not compatible with --control-nets.')
+        if t2i_adapter_uris:
+            raise UnsupportedPipelineConfigError(
+                'Flux --model-type values are not compatible with --t2i-adapters.')
+        if ip_adapter_uris:
+            raise UnsupportedPipelineConfigError(
+                'Flux --model-type values are not compatible with --ip-adapters.')
+        if textual_inversion_uris:
+            raise UnsupportedPipelineConfigError(
+                'Flux --model-type values are not compatible with --textual-inversions.')
+        if vae_uri:
+            raise UnsupportedPipelineConfigError(
+                'Flux --model-type values are not compatible with --vae.')
+        if image_encoder_uri:
+            raise UnsupportedPipelineConfigError(
+                'Flux --model-type values are not compatible with --image-encoder.')
+
     # Deep Floyd model restrictions
     if _enums.model_type_is_floyd(model_type):
         if controlnet_uris:
@@ -1529,10 +1550,11 @@ def _create_torch_diffusion_pipeline(
         if image_encoder_uri:
             raise UnsupportedPipelineConfigError(
                 '--model-type torch-sd3 is not compatible with --image-encoder.')
-    else:
-        if transformer_uri:
+
+    if transformer_uri:
+        if not _enums.model_type_is_sd3(model_type) and not _enums.model_type_is_flux(model_type):
             raise UnsupportedPipelineConfigError(
-                '--transformer is only supported for --model-type torch-sd3.')
+                '--transformer is only supported for --model-type torch-sd3 and torch-flux.')
 
     # Incompatible combinations
     if controlnet_uris and t2i_adapter_uris:
@@ -1618,6 +1640,8 @@ def _create_torch_diffusion_pipeline(
                 pipeline_class = diffusers.StableCascadePriorPipeline
             elif model_type == _enums.ModelType.TORCH_S_CASCADE_DECODER:
                 pipeline_class = diffusers.StableCascadeDecoderPipeline
+            elif model_type == _enums.ModelType.TORCH_FLUX:
+                pipeline_class = diffusers.FluxPipeline
             elif model_type == _enums.ModelType.TORCH_SD3:
                 pipeline_class = (
                     diffusers.StableDiffusion3Pipeline
@@ -1673,13 +1697,16 @@ def _create_torch_diffusion_pipeline(
             elif model_type == _enums.ModelType.TORCH_S_CASCADE_DECODER:
                 raise UnsupportedPipelineConfigError(
                     'Stable Cascade decoder models do not support img2img.')
+            elif model_type == _enums.ModelType.TORCH_FLUX:
+                raise UnsupportedPipelineConfigError(
+                    'Flux model types do not support img2img.')
             elif model_type == _enums.ModelType.TORCH_SD3:
                 if controlnet_uris:
                     raise UnsupportedPipelineConfigError(
-                        '--model-type torch-sd3 does not currently support img2img mode with ControlNet models.')
+                        '--model-type torch-sd3 does not support img2img mode with ControlNet models.')
                 if lora_uris:
                     raise UnsupportedPipelineConfigError(
-                        '--model-type torch-sd3 does not currently support --loras in img2img mode.')
+                        '--model-type torch-sd3 does not support --loras in img2img mode.')
                 pipeline_class = diffusers.StableDiffusion3Img2ImgPipeline
             elif t2i_adapter_uris:
                 raise UnsupportedPipelineConfigError(
@@ -1703,10 +1730,13 @@ def _create_torch_diffusion_pipeline(
                     'Pix2Pix models only work in img2img mode and cannot work in inpaint mode (with a mask).')
             if _enums.model_type_is_s_cascade(model_type):
                 raise UnsupportedPipelineConfigError(
-                    'Stable Cascade model types do not currently support inpainting.')
+                    'Stable Cascade model types do not support inpainting.')
             if model_type == _enums.ModelType.TORCH_SD3:
                 raise UnsupportedPipelineConfigError(
-                    'Stable Diffusion 3 model types do not currently support inpainting.')
+                    'Stable Diffusion 3 model types do not support inpainting.')
+            if model_type == _enums.ModelType.TORCH_FLUX:
+                raise UnsupportedPipelineConfigError(
+                    'Flux model types do not support inpainting.')
 
             if model_type == _enums.ModelType.TORCH_IF:
                 pipeline_class = diffusers.IFInpaintingPipeline
@@ -1845,6 +1875,7 @@ def _create_torch_diffusion_pipeline(
     if text_encoder_uris:
         def load_text_encoder(uri):
             return uri.load(
+                variant_fallback=variant,
                 dtype_fallback=dtype,
                 use_auth_token=auth_token,
                 local_files_only=local_files_only,
@@ -1905,7 +1936,12 @@ def _create_torch_diffusion_pipeline(
                             f'Added Torch UNet: "{unet_uri}" to pipeline: "{pipeline_class.__name__}"')
 
     if transformer_uri is not None and not transformer_override:
-        parsed_transformer_uri = _uris.SD3TransformerUri.parse(transformer_uri)
+        parsed_transformer_uri = _uris.TransformerUri.parse(transformer_uri)
+
+        if _enums.model_type_is_sd3(model_type):
+            transformer_class = diffusers.SD3Transformer2DModel
+        elif _enums.model_type_is_flux(model_type):
+            transformer_class = diffusers.FluxTransformer2DModel
 
         creation_kwargs['transformer'] = \
             parsed_transformer_uri.load(
@@ -1914,10 +1950,11 @@ def _create_torch_diffusion_pipeline(
                 use_auth_token=auth_token,
                 local_files_only=local_files_only,
                 sequential_cpu_offload_member=sequential_cpu_offload,
-                model_cpu_offload_member=model_cpu_offload)
+                model_cpu_offload_member=model_cpu_offload,
+                transformer_class=transformer_class)
 
         _messages.debug_log(lambda:
-                            f'Added Torch SD3Transformer: "{transformer_uri}" to '
+                            f'Added Torch Transformer: "{transformer_uri}" to '
                             f'pipeline: "{pipeline_class.__name__}"')
 
     if image_encoder_uri is not None and not image_encoder_override:

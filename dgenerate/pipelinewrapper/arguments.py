@@ -123,32 +123,48 @@ class DiffusionArguments(_types.SetFromMixin):
     s_cascade_decoder_prompt: _types.OptionalPrompt = None
     """
     Primary prompt for the Stable Cascade decoder when a decoder URI is specified in the 
-    constructor of :py:class:`.DiffusionPipelineWrapper`. Usually the **prompt**
+    constructor of :py:class:`.DiffusionPipelineWrapper`. Usually the ``prompt``
     attribute of this object is used, unless you override it by giving this attribute
     a value.
     """
 
     sd3_max_sequence_length: _types.OptionalInteger = None
     """
-    Max number of prompt tokens that the T5EncoderModel (text encoder 3) of Stable Diffusion can handle.
+    Max number of prompt tokens that the T5EncoderModel (text encoder 3) of Stable Diffusion 3 can handle.
     
     This defaults to 256 when not specified, and the maximum value is 512 and the minimum value is 1.
     
     High values result in more resource usage and processing time.
     """
 
+    flux_max_sequence_length: _types.OptionalInteger = None
+    """
+    Max number of prompt tokens that the T5EncoderModel (text encoder 2) of Flux can handle.
+    
+    This defaults to 512 when not specified, and the maximum value is 512 and the minimum value is 1.
+    
+    High values result in more resource usage and processing time.
+    """
+
     sd3_second_prompt: _types.OptionalPrompt = None
     """
-    Secondary prompt for the SD3 main pipeline. Usually the **prompt**
+    Secondary prompt for the SD3 main pipeline. Usually the ``prompt``
     attribute of this object is used, unless you override it by giving 
     this attribute a value.
     """
 
     sd3_third_prompt: _types.OptionalPrompt = None
     """
-    Tertiary (T5) prompt for the SD3 main pipeline. Usually the **prompt**
+    Tertiary (T5) prompt for the SD3 main pipeline. Usually the ``prompt``
     attribute of this object is used, unless you override it by giving 
     this attribute a value.
+    """
+
+    flux_second_prompt: _types.OptionalPrompt = None
+    """
+    Secondary prompt for the Flux pipeline. Usually the ``prompt`` attribute
+    of this object is used, unless you override it by giving this attribute a
+    value.
     """
 
     sdxl_refiner_edit: _types.OptionalBoolean = None
@@ -159,7 +175,7 @@ class DiffusionArguments(_types.SetFromMixin):
     sdxl_second_prompt: _types.OptionalPrompt = None
     """
     Secondary prompt for the SDXL main pipeline when a refiner URI is specified in the 
-    constructor of :py:class:`.DiffusionPipelineWrapper`. Usually the **prompt**
+    constructor of :py:class:`.DiffusionPipelineWrapper`. Usually the ``prompt``
     attribute of this object is used, unless you override it by giving this attribute
     a value.
     """
@@ -167,7 +183,7 @@ class DiffusionArguments(_types.SetFromMixin):
     sdxl_refiner_prompt: _types.OptionalPrompt = None
     """
     Primary prompt for the SDXL refiner when a refiner URI is specified in the 
-    constructor of :py:class:`.DiffusionPipelineWrapper`. Usually the **prompt**
+    constructor of :py:class:`.DiffusionPipelineWrapper`. Usually the ``prompt``
     attribute of this object is used, unless you override it by giving this attribute
     a value.
     """
@@ -478,6 +494,11 @@ class DiffusionArguments(_types.SetFromMixin):
             prompt_format, self.sd3_third_prompt,
             "SD3 Third Prompt",
             "SD3 Third Negative Prompt")
+
+        DiffusionArguments._describe_prompt(
+            prompt_format, self.flux_second_prompt,
+            "Flux Second Prompt",
+            "Flux Second Negative Prompt")
 
         DiffusionArguments._describe_prompt(
             prompt_format, self.s_cascade_decoder_prompt,

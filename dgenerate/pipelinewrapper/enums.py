@@ -204,6 +204,11 @@ class ModelType(enum.Enum):
     Stable Diffusion 3
     """
 
+    TORCH_FLUX = 12
+    """
+    Flux pipeline
+    """
+
 
 def supported_model_type_strings():
     """
@@ -219,7 +224,8 @@ def supported_model_type_strings():
             'torch-ifs',
             'torch-ifs-img2img',
             'torch-s-cascade',
-            'torch-sd3']
+            'torch-sd3',
+            'torch-flux']
 
 
 def supported_model_type_enums() -> list[ModelType]:
@@ -254,7 +260,8 @@ def get_model_type_enum(id_str: ModelType | str) -> ModelType:
                 'torch-upscaler-x2': ModelType.TORCH_UPSCALER_X2,
                 'torch-upscaler-x4': ModelType.TORCH_UPSCALER_X4,
                 'torch-s-cascade': ModelType.TORCH_S_CASCADE,
-                'torch-sd3': ModelType.TORCH_SD3}[id_str.strip().lower()]
+                'torch-sd3': ModelType.TORCH_SD3,
+                'torch-flux': ModelType.TORCH_FLUX}[id_str.strip().lower()]
     except KeyError:
         raise ValueError('invalid ModelType string')
 
@@ -280,7 +287,8 @@ def get_model_type_string(model_type_enum: ModelType) -> str:
             ModelType.TORCH_UPSCALER_X4: 'torch-upscaler-x4',
             ModelType.TORCH_S_CASCADE: 'torch-s-cascade',
             ModelType.TORCH_S_CASCADE_DECODER: 'torch-s-cascade-decoder',
-            ModelType.TORCH_SD3: 'torch-sd3'}[model_type]
+            ModelType.TORCH_SD3: 'torch-sd3',
+            ModelType.TORCH_FLUX: 'torch-flux'}[model_type]
 
 
 def model_type_is_upscaler(model_type: ModelType | str) -> bool:
@@ -317,6 +325,18 @@ def model_type_is_sd3(model_type: ModelType | str) -> bool:
     model_type = get_model_type_string(model_type)
 
     return 'sd3' in model_type
+
+
+def model_type_is_flux(model_type: ModelType | str) -> bool:
+    """
+    Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent a Flux model?
+
+    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
+    :return: bool
+    """
+    model_type = get_model_type_string(model_type)
+
+    return 'flux' in model_type
 
 
 def model_type_is_s_cascade(model_type: ModelType | str) -> bool:

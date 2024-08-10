@@ -35,7 +35,7 @@ import dgenerate.promptweighters.promptweighter as _promptweighter
 class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
     r"""
     Implements prompt weighting syntax for Stable Diffusion 1/2, Stable Diffusion XL,
-    and Stable Diffusion 3 using sd_embed.
+    and Stable Diffusion 3, and Flux using sd_embed.
 
     sd_embed uses a Stable Diffusion Web UI compatible prompt syntax.
 
@@ -56,6 +56,7 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
     --model-type torch-sdxl
     --model-type torch-sdxl-pix2pix
     --model-type torch-sd3
+    --model-type torch-flux
 
     The secondary prompt option for SDXL --sdxl-second-prompts is supported by this prompt weighter
     implementation. However, --sdxl-refiner-second-prompts is not supported and will be ignored
@@ -76,7 +77,8 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
             _enums.ModelType.TORCH_UPSCALER_X4,
             _enums.ModelType.TORCH_SDXL,
             _enums.ModelType.TORCH_SDXL_PIX2PIX,
-            _enums.ModelType.TORCH_SD3
+            _enums.ModelType.TORCH_SD3,
+            _enums.ModelType.TORCH_FLUX
         }
 
         if self.model_type not in supported:
@@ -117,7 +119,8 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
 
         if not (pipeline.__class__.__name__.startswith('StableDiffusionXL')
                 or pipeline.__class__.__name__.startswith('StableDiffusion')
-                or pipeline.__class__.__name__.startswith('StableDiffusion3')):
+                or pipeline.__class__.__name__.startswith('StableDiffusion3')
+                or pipeline.__class__.__name__.startswith('Flux')):
             raise _exceptions.PromptWeightingUnsupported(
                 f'Prompt weighting not supported for --model-type: {_enums.get_model_type_string(self.model_type)}')
 
@@ -278,6 +281,14 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
                 neg_prompt=negative,
                 pad_last_block=False,
                 clip_skip=clip_skip,
+                device=device)
+
+        elif pipeline.__class__.__name__.startswith('Flux'):
+            pos_conditioning, \
+                neg_conditioning = _sd_embed.get_weighted_text_embeddings_flux1(
+                pipe=pipeline,
+                prompt=positive,
+                prompt2=positive_2,
                 device=device)
 
         self._tensors.append(pos_conditioning)
