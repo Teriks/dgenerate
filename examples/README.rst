@@ -2,7 +2,7 @@ You can use run.py to run all of the examples at once, or a specific folder, or 
 
 .. code-block:: bash
 
-    # Run every example (flax is ignored on windows)
+    # Run every example
     # Use python3 on linux
 
     # See python run.py --help

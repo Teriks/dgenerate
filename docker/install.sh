@@ -7,5 +7,4 @@ python3 -m build --outdir docker/dist
 latest_whl=$(realpath $(ls -t docker/dist/*.whl | head -n 1))
 
 
-pip3 install "${latest_whl}[flax]" --extra-index-url https://download.pytorch.org/whl/cu121/ \
--f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+pip3 install "${latest_whl}" --extra-index-url https://download.pytorch.org/whl/cu121/

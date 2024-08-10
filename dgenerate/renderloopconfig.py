@@ -866,47 +866,6 @@ class RenderLoopConfig(_types.SetFromMixin):
             raise RenderLoopConfigError(
                 f'{a_namer("s_cascade_decoder_guidance_scales")} may only be used with "torch-s-cascade"')
 
-        if _pipelinewrapper.model_type_is_flax(self.model_type):
-            if not _pipelinewrapper.have_jax_flax():
-                raise RenderLoopConfigError(
-                    f'Cannot use {a_namer("model_type")} flax because '
-                    f'flax and jax are not installed.')
-
-            if self.lora_uris:
-                raise RenderLoopConfigError(
-                    f'{a_namer("lora_uris")} is not supported for '
-                    f'flax, see: {a_namer("model_type")}.')
-
-            if self.guidance_rescales:
-                raise RenderLoopConfigError(
-                    f'{a_namer("guidance_rescales")} is not supported for '
-                    f'flax, see: {a_namer("model_type")}.')
-
-            if self.textual_inversion_uris:
-                raise RenderLoopConfigError(
-                    f'{a_namer("textual_inversion_uris")} is not supported for '
-                    f'flax, see: {a_namer("model_type")}.')
-
-            if self.vae_tiling or self.vae_slicing:
-                raise RenderLoopConfigError(
-                    f'{a_namer("vae_tiling")} and {a_namer("vae_slicing")} are not '
-                    f'supported for flax, see: {a_namer("model_type")}.')
-
-            if self.t2i_adapter_uris is not None:
-                raise RenderLoopConfigError(
-                    f'{a_namer("t2i_adapter_uris")} is not supported for '
-                    f'flax, see: {a_namer("model_type")}.')
-
-            if self.ip_adapter_uris is not None:
-                raise RenderLoopConfigError(
-                    f'{a_namer("ip_adapter_uris")} is not supported for '
-                    f'flax, see: {a_namer("model_type")}.')
-
-            if self.image_encoder_uri is not None:
-                raise RenderLoopConfigError(
-                    f'{a_namer("image_encoder_uri")} is not supported for '
-                    f'flax, see: {a_namer("model_type")}.')
-
         if self.model_path is None:
             raise RenderLoopConfigError(
                 f'{a_namer("model_path")} must be specified')
@@ -937,12 +896,7 @@ class RenderLoopConfig(_types.SetFromMixin):
             raise RenderLoopConfigError(
                 f'Cannot specify {a_namer("no_frames")} when {a_namer("animation_format")} is set to "frames"')
 
-        if self.batch_size is not None:
-            if _pipelinewrapper.model_type_is_flax(self.model_type):
-                raise RenderLoopConfigError(
-                    f'you cannot specify {a_namer("batch_size")} when using flax, '
-                    'use the environmental variable: CUDA_VISIBLE_DEVICES')
-        elif not _pipelinewrapper.model_type_is_flax(self.model_type):
+        if self.batch_size is None:
             self.batch_size = 1
 
         if self.clip_skips and not (self.model_type == _pipelinewrapper.ModelType.TORCH or
@@ -1315,11 +1269,6 @@ class RenderLoopConfig(_types.SetFromMixin):
         elif self.controlnet_uris:
             control_image_paths = parsed.get_control_image_paths()
             num_control_images = len(control_image_paths) if control_image_paths is not None else 0
-
-            if _pipelinewrapper.model_type_is_flax(self.model_type) and not parsed.is_single_spec:
-                raise RenderLoopConfigError(
-                    f'img2img and inpainting are not supported for flax when '
-                    f'{a_namer("controlnet_uris")} is specified.')
 
             if not parsed.is_single_spec and parsed.control_path is None:
                 raise RenderLoopConfigError(

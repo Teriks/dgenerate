@@ -27,22 +27,16 @@ import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.types as _types
 
-_TORCH_TEXT_ENCODER_CACHE = dict()
+_TEXT_ENCODER_CACHE = dict()
 """Global in memory cache for torch text encoders"""
 
-_FLAX_TEXT_ENCODER_CACHE = dict()
-"""Global in memory cache for flax text encoders"""
-
-_TORCH_PIPELINE_CACHE = dict()
+_PIPELINE_CACHE = dict()
 """Global in memory cache for torch diffusers pipelines"""
-
-_FLAX_PIPELINE_CACHE = dict()
-"""Global in memory cache for flax diffusers pipelines"""
 
 _PIPELINE_CACHE_SIZE = 0
 """Estimated memory consumption in bytes of all pipelines cached in memory"""
 
-_TORCH_CONTROLNET_CACHE = dict()
+_CONTROLNET_CACHE = dict()
 """Global in memory cache for torch ControlNet models"""
 
 _ADAPTER_CACHE = dict()
@@ -51,23 +45,14 @@ _ADAPTER_CACHE = dict()
 _ADAPTER_CACHE_SIZE = 0
 """Estimated memory consumption in bytes of all T2IAdapter models cached in memory"""
 
-_FLAX_CONTROLNET_CACHE = dict()
-"""Global in memory cache for flax ControlNet models"""
-
 _CONTROLNET_CACHE_SIZE = 0
 """Estimated memory consumption in bytes of all ControlNet models cached in memory"""
 
-_TORCH_VAE_CACHE = dict()
+_VAE_CACHE = dict()
 """Global in memory cache for torch VAE models"""
 
-_FLAX_VAE_CACHE = dict()
-"""Global in memory cache for flax VAE models"""
-
-_TORCH_UNET_CACHE = dict()
+_UNET_CACHE = dict()
 """Global in memory cache for torch UNet models"""
-
-_FLAX_UNET_CACHE = dict()
-"""Global in memory cache for flax UNet models"""
 
 _VAE_CACHE_SIZE = 0
 """Estimated memory consumption in bytes of all VAE models cached in memory"""
@@ -248,12 +233,10 @@ def clear_pipeline_cache(collect=True):
 
     :param collect: Call :py:func:`gc.collect` ?
     """
-    global _TORCH_PIPELINE_CACHE, \
-        _FLAX_PIPELINE_CACHE, \
+    global _PIPELINE_CACHE, \
         _PIPELINE_CACHE_SIZE
 
-    _TORCH_PIPELINE_CACHE.clear()
-    _FLAX_PIPELINE_CACHE.clear()
+    _PIPELINE_CACHE.clear()
     _PIPELINE_CACHE_SIZE = 0
 
     if collect:
@@ -269,12 +252,10 @@ def clear_controlnet_cache(collect=True):
 
     :param collect: Call :py:func:`gc.collect` ?
     """
-    global _TORCH_CONTROLNET_CACHE, \
-        _FLAX_CONTROLNET_CACHE, \
+    global _CONTROLNET_CACHE, \
         _CONTROLNET_CACHE_SIZE
 
-    _TORCH_CONTROLNET_CACHE.clear()
-    _FLAX_CONTROLNET_CACHE.clear()
+    _CONTROLNET_CACHE.clear()
 
     _CONTROLNET_CACHE_SIZE = 0
 
@@ -311,12 +292,10 @@ def clear_vae_cache(collect=True):
 
     :param collect: Call :py:func:`gc.collect` ?
     """
-    global _TORCH_VAE_CACHE, \
-        _FLAX_VAE_CACHE, \
+    global _VAE_CACHE, \
         _VAE_CACHE_SIZE
 
-    _TORCH_VAE_CACHE.clear()
-    _FLAX_VAE_CACHE.clear()
+    _VAE_CACHE.clear()
 
     _VAE_CACHE_SIZE = 0
 
@@ -333,12 +312,10 @@ def clear_text_encoder_cache(collect=True):
 
     :param collect: Call :py:func:`gc.collect` ?
     """
-    global _TORCH_TEXT_ENCODER_CACHE, \
-        _FLAX_TEXT_ENCODER_CACHE, \
+    global _TEXT_ENCODER_CACHE, \
         _TEXT_ENCODER_CACHE_SIZE
 
-    _TORCH_TEXT_ENCODER_CACHE.clear()
-    _FLAX_TEXT_ENCODER_CACHE.clear()
+    _TEXT_ENCODER_CACHE.clear()
 
     _TEXT_ENCODER_CACHE_SIZE = 0
 
@@ -355,12 +332,10 @@ def clear_unet_cache(collect=True):
 
     :param collect: Call :py:func:`gc.collect` ?
     """
-    global _TORCH_UNET_CACHE, \
-        _FLAX_UNET_CACHE, \
+    global _UNET_CACHE, \
         _UNET_CACHE_SIZE
 
-    _TORCH_UNET_CACHE.clear()
-    _FLAX_UNET_CACHE.clear()
+    _UNET_CACHE.clear()
 
     _UNET_CACHE_SIZE = 0
 
@@ -397,36 +372,26 @@ def clear_model_cache(collect=True):
     :param collect: Call :py:func:`gc.collect` ?
 
     """
-    global _TORCH_PIPELINE_CACHE, \
-        _FLAX_PIPELINE_CACHE, \
-        _TORCH_CONTROLNET_CACHE, \
-        _FLAX_CONTROLNET_CACHE, \
-        _TORCH_UNET_CACHE, \
-        _FLAX_UNET_CACHE, \
-        _TORCH_VAE_CACHE, \
-        _FLAX_VAE_CACHE, \
+    global _PIPELINE_CACHE, \
+        _CONTROLNET_CACHE, \
+        _UNET_CACHE, \
+        _VAE_CACHE, \
         _PIPELINE_CACHE_SIZE, \
         _CONTROLNET_CACHE_SIZE, \
         _UNET_CACHE_SIZE, \
         _VAE_CACHE_SIZE, \
-        _FLAX_TEXT_ENCODER_CACHE, \
-        _TORCH_TEXT_ENCODER_CACHE, \
+        _TEXT_ENCODER_CACHE, \
         _TEXT_ENCODER_CACHE_SIZE, \
         _ADAPTER_CACHE, \
         _ADAPTER_CACHE_SIZE, \
         _IMAGE_ENCODER_CACHE, \
         _IMAGE_ENCODER_CACHE_SIZE
 
-    _TORCH_PIPELINE_CACHE.clear()
-    _FLAX_PIPELINE_CACHE.clear()
-    _TORCH_CONTROLNET_CACHE.clear()
-    _FLAX_CONTROLNET_CACHE.clear()
-    _TORCH_UNET_CACHE.clear()
-    _FLAX_UNET_CACHE.clear()
-    _TORCH_VAE_CACHE.clear()
-    _FLAX_VAE_CACHE.clear()
-    _TORCH_TEXT_ENCODER_CACHE.clear()
-    _FLAX_TEXT_ENCODER_CACHE.clear()
+    _PIPELINE_CACHE.clear()
+    _CONTROLNET_CACHE.clear()
+    _UNET_CACHE.clear()
+    _VAE_CACHE.clear()
+    _TEXT_ENCODER_CACHE.clear()
     _ADAPTER_CACHE.clear()
     _IMAGE_ENCODER_CACHE.clear()
 
@@ -1049,7 +1014,7 @@ def adapter_to_cpu_update_cache_info(adapter: diffusers.T2IAdapter | diffusers.M
 
 
 def pipeline_off_cpu_update_cache_info(
-        pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusionPipeline):
+        pipeline: diffusers.DiffusionPipeline):
     """
     Update CPU side cache size information when a diffusers pipeline is moved to a device that is not the CPU
 

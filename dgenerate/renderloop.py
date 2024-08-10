@@ -497,9 +497,7 @@ class RenderLoop:
                                       generation_result: _pipelinewrapper.PipelineWrapperResult):
 
         if generation_result.image_count > 1:
-            if not _pipelinewrapper.model_type_is_flax(self.config.model_type):
-                # Batch size is controlled by CUDA_VISIBLE_DEVICES for flax
-                extra_opts_out.append(('--batch-size', self.config.batch_size))
+            extra_opts_out.append(('--batch-size', self.config.batch_size))
 
             if self.config.batch_grid_size is not None:
                 extra_opts_out.append(('--batch-grid-size',

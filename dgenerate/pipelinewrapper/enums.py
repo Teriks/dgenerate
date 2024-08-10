@@ -25,15 +25,6 @@ import torch
 
 import dgenerate.types as _types
 
-try:
-    import jax
-    import jaxlib
-    import jax.numpy as jnp
-except ImportError:
-    jax = None
-    flax = None
-    jnp = None
-
 
 class PipelineType(enum.Enum):
     """
@@ -198,22 +189,17 @@ class ModelType(enum.Enum):
     TORCH_UPSCALER_X4 = 8
     """Stable Diffusion X4 upscaler"""
 
-    FLAX = 9
-    """
-    Stable Diffusion, such as SD 1.0 - 2.x, with Flax / Jax parallelization.
-    """
-
-    TORCH_S_CASCADE = 10
+    TORCH_S_CASCADE = 9
     """
     Stable Cascade prior
     """
 
-    TORCH_S_CASCADE_DECODER = 11
+    TORCH_S_CASCADE_DECODER = 10
     """
     Stable Cascade decoder
     """
 
-    TORCH_SD3 = 12
+    TORCH_SD3 = 11
     """
     Stable Diffusion 3
     """
@@ -223,22 +209,17 @@ def supported_model_type_strings():
     """
     Return a list of supported ``--model-type`` strings
     """
-    base_set = ['torch',
-                'torch-pix2pix',
-                'torch-sdxl',
-                'torch-sdxl-pix2pix',
-                'torch-upscaler-x2',
-                'torch-upscaler-x4',
-                'torch-if',
-                'torch-ifs',
-                'torch-ifs-img2img',
-                'torch-s-cascade',
-                'torch-sd3']
-
-    if have_jax_flax():
-        return base_set + ['flax']
-    else:
-        return base_set
+    return ['torch',
+            'torch-pix2pix',
+            'torch-sdxl',
+            'torch-sdxl-pix2pix',
+            'torch-upscaler-x2',
+            'torch-upscaler-x4',
+            'torch-if',
+            'torch-ifs',
+            'torch-ifs-img2img',
+            'torch-s-cascade',
+            'torch-sd3']
 
 
 def supported_model_type_enums() -> list[ModelType]:
@@ -273,8 +254,7 @@ def get_model_type_enum(id_str: ModelType | str) -> ModelType:
                 'torch-upscaler-x2': ModelType.TORCH_UPSCALER_X2,
                 'torch-upscaler-x4': ModelType.TORCH_UPSCALER_X4,
                 'torch-s-cascade': ModelType.TORCH_S_CASCADE,
-                'torch-sd3': ModelType.TORCH_SD3,
-                'flax': ModelType.FLAX}[id_str.strip().lower()]
+                'torch-sd3': ModelType.TORCH_SD3}[id_str.strip().lower()]
     except KeyError:
         raise ValueError('invalid ModelType string')
 
@@ -300,8 +280,7 @@ def get_model_type_string(model_type_enum: ModelType) -> str:
             ModelType.TORCH_UPSCALER_X4: 'torch-upscaler-x4',
             ModelType.TORCH_S_CASCADE: 'torch-s-cascade',
             ModelType.TORCH_S_CASCADE_DECODER: 'torch-s-cascade-decoder',
-            ModelType.TORCH_SD3: 'torch-sd3',
-            ModelType.FLAX: 'flax'}[model_type]
+            ModelType.TORCH_SD3: 'torch-sd3'}[model_type]
 
 
 def model_type_is_upscaler(model_type: ModelType | str) -> bool:
@@ -364,18 +343,6 @@ def model_type_is_torch(model_type: ModelType | str) -> bool:
     return 'torch' in model_type
 
 
-def model_type_is_flax(model_type: ModelType | str) -> bool:
-    """
-    Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent an Flax model?
-
-    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
-    :return: bool
-    """
-    model_type = get_model_type_string(model_type)
-
-    return 'flax' in model_type
-
-
 def model_type_is_pix2pix(model_type: ModelType | str) -> bool:
     """
     Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent an pix2pix type model?
@@ -424,49 +391,6 @@ def model_type_is_floyd_ifs(model_type: ModelType | str) -> bool:
     model_type = get_model_type_enum(model_type)
 
     return model_type == ModelType.TORCH_IFS or model_type == ModelType.TORCH_IFS_IMG2IMG
-
-
-def have_jax_flax():
-    """
-    Do we have jax/flax support?
-
-    :return: bool
-    """
-    return jax is not None
-
-
-def get_flax_dtype(dtype: DataType | str | typing.Any | None):
-    """
-    Return a :py:class:`jax.numpy.dtype` datatype from a :py:class:`.DataType` value,
-    or a string, or a :py:class:`jax.numpy.dtype` datatype itself.
-
-    Passing ``None`` results in ``None`` being returned.
-
-    Passing 'auto' or :py:attr:`DataType.AUTO` results in ``None`` being returned.
-
-    :param dtype: :py:class:`.DataType`, string, :py:class:`jax.numpy.dtype`, ``None``
-
-    :raises ValueError: if an invalid string value (name) is passed
-
-    :return: :py:class:`jax.numpy.dtype`
-    """
-
-    if dtype is None:
-        return None
-
-    if isinstance(dtype, jnp.dtype):
-        return dtype
-
-    if isinstance(dtype, DataType):
-        dtype = get_data_type_string(dtype)
-
-    try:
-        return {'float16': jnp.bfloat16,
-                'float32': jnp.float32,
-                'float64': jnp.float64,
-                'auto': None}[dtype.lower()]
-    except KeyError:
-        raise ValueError('invalid DataType string')
 
 
 def get_torch_dtype(dtype: DataType | torch.dtype | str | None) -> torch.dtype | None:

@@ -42,20 +42,6 @@ import dgenerate.types as _types
 from dgenerate.pipelinewrapper.arguments import DiffusionArguments
 import dgenerate.pipelinewrapper.util as _util
 
-try:
-    import jax
-    import jaxlib
-    import jax.numpy as jnp
-    from flax.jax_utils import replicate as _flax_replicate
-    from flax.training.common_utils import shard as _flax_shard
-except ImportError:
-    jaxlib = None
-    jnp = None
-    _flax_replicate = None
-    _flax_shard = None
-    jax = None
-    flax = None
-
 
 class PipelineWrapperResult:
     """
@@ -469,42 +455,6 @@ class DiffusionPipelineWrapper:
                     'please use model_type "torch-s-cascade" if you are trying to load an Stable Cascade model.'
                 )
 
-        if model_type == _enums.ModelType.FLAX:
-            if not _enums.have_jax_flax():
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'flax and jax are not installed.'
-                )
-
-            if t2i_adapter_uris:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'T2IAdapters not supported for flax.'
-                )
-
-            if textual_inversion_uris:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'Textual inversion not supported for flax.'
-                )
-
-            if image_encoder_uri:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'ImageEncoder not supported for flax.'
-                )
-
-            if vae_tiling or vae_slicing:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'vae_tiling / vae_slicing not supported for flax.'
-                )
-
-            if lora_uris:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'LoRA loading is not implemented for flax.'
-                )
-
-            if ip_adapter_uris:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'IP Adapter loading is not implemented for flax.'
-                )
-
         if _enums.model_type_is_sd3(model_type):
             if image_encoder_uri:
                 raise _pipelines.UnsupportedPipelineConfigError(
@@ -559,7 +509,6 @@ class DiffusionPipelineWrapper:
         self._model_type = _enums.get_model_type_enum(model_type)
         self._model_path = model_path
         self._pipeline = None
-        self._flax_params = None
         self._revision = revision
         self._variant = variant
         self._dtype = _enums.get_data_type_enum(dtype)
@@ -1667,143 +1616,6 @@ class DiffusionPipelineWrapper:
                     raise _pipelines.UnsupportedPipelineConfigError(
                         f'{arg} may only be used with Stable Cascade models.')
 
-    def _call_flax_controlnet(self, positive_prompt, negative_prompt, pipeline_args, user_args: DiffusionArguments):
-        # Only works with txt2image
-
-        self._check_for_invalid_model_specific_opts(user_args)
-
-        if user_args.clip_skip is not None and user_args.clip_skip > 0:
-            raise _pipelines.UnsupportedPipelineConfigError('flax does not support clip skip.')
-
-        device_count = jax.device_count()
-
-        pipe: diffusers.FlaxStableDiffusionControlNetPipeline = self._pipeline
-
-        pipeline_args['prng_seed'] = \
-            jax.random.split(
-                jax.random.PRNGKey(
-                    _types.default(user_args.seed,
-                                   _constants.DEFAULT_SEED)),
-                device_count)
-
-        prompt_ids = pipe.prepare_text_inputs([positive_prompt] * device_count)
-
-        if negative_prompt is not None:
-            negative_prompt_ids = pipe.prepare_text_inputs([negative_prompt] * device_count)
-        else:
-            negative_prompt_ids = None
-
-        controlnet_image = pipeline_args.get('image')
-        if isinstance(controlnet_image, list):
-            controlnet_image = controlnet_image[0]
-
-        processed_image = pipe.prepare_image_inputs([controlnet_image] * device_count)
-        pipeline_args.pop('image')
-
-        p_params = _flax_replicate(self._flax_params)
-        prompt_ids = _flax_shard(prompt_ids)
-        negative_prompt_ids = _flax_shard(negative_prompt_ids)
-        processed_image = _flax_shard(processed_image)
-
-        pipeline_args.pop('width', None)
-        pipeline_args.pop('height', None)
-
-        images = _pipelines.call_pipeline(
-            pipeline=self._pipeline,
-            device=None,
-            prompt_weighter=self._prompt_weighter,
-            prompt_ids=prompt_ids,
-            image=processed_image,
-            params=p_params,
-            neg_prompt_ids=negative_prompt_ids,
-            controlnet_conditioning_scale=self._get_controlnet_conditioning_scale(),
-            jit=True, **pipeline_args)[0]
-
-        return PipelineWrapperResult(
-            self._pipeline.numpy_to_pil(images.reshape((images.shape[0],) + images.shape[-3:])))
-
-    def _flax_prepare_text_input(self, text):
-        tokenizer = self._pipeline.tokenizer
-        text_input = tokenizer(
-            text,
-            padding="max_length",
-            max_length=tokenizer.model_max_length,
-            truncation=True,
-            return_tensors="np",
-        )
-        return text_input.input_ids
-
-    def _call_flax(self, pipeline_args, user_args: DiffusionArguments):
-        self._check_for_invalid_model_specific_opts(user_args)
-
-        if user_args.clip_skip is not None and user_args.clip_skip > 0:
-            raise _pipelines.UnsupportedPipelineConfigError('flax does not support clip skip.')
-
-        if user_args.guidance_rescale is not None:
-            raise _pipelines.UnsupportedPipelineConfigError(
-                f'guidance_rescale is not supported when using flax.')
-
-        prompt: _prompt.Prompt() = _types.default(user_args.prompt, _prompt.Prompt())
-        positive_prompt = prompt.positive if prompt.positive else ''
-        negative_prompt = prompt.negative
-
-        if hasattr(self._pipeline, 'controlnet'):
-            return self._call_flax_controlnet(positive_prompt, negative_prompt,
-                                              pipeline_args, user_args)
-
-        device_count = jax.device_count()
-
-        pipeline_args['prng_seed'] = \
-            jax.random.split(
-                jax.random.PRNGKey(
-                    _types.default(user_args.seed, _constants.DEFAULT_SEED)),
-                device_count)
-
-        if negative_prompt is not None:
-            negative_prompt_ids = _flax_shard(
-                self._flax_prepare_text_input([negative_prompt] * device_count))
-        else:
-            negative_prompt_ids = None
-
-        if 'image' in pipeline_args:
-            if 'mask_image' in pipeline_args:
-
-                prompt_ids, processed_images, processed_masks = \
-                    self._pipeline.prepare_inputs(prompt=[positive_prompt] * device_count,
-                                                  image=[pipeline_args['image']] * device_count,
-                                                  mask=[pipeline_args['mask_image']] * device_count)
-
-                pipeline_args['masked_image'] = _flax_shard(processed_images)
-                pipeline_args['mask'] = _flax_shard(processed_masks)
-
-                # inpainting pipeline does not have a strength argument, simply ignore it
-                pipeline_args.pop('strength')
-
-                pipeline_args.pop('image')
-                pipeline_args.pop('mask_image')
-            else:
-                prompt_ids, processed_images = self._pipeline.prepare_inputs(
-                    prompt=[positive_prompt] * device_count,
-                    image=[pipeline_args['image']] * device_count)
-                pipeline_args['image'] = _flax_shard(processed_images)
-
-            pipeline_args['width'] = processed_images[0].shape[2]
-            pipeline_args['height'] = processed_images[0].shape[1]
-        else:
-            prompt_ids = self._pipeline.prepare_inputs([positive_prompt] * device_count)
-
-        images = _pipelines.call_pipeline(
-            pipeline=self._pipeline,
-            device=None,
-            prompt_weighter=self._prompt_weighter,
-            prompt_ids=_flax_shard(prompt_ids),
-            neg_prompt_ids=negative_prompt_ids,
-            params=_flax_replicate(self._flax_params),
-            **pipeline_args, jit=True)[0]
-
-        return PipelineWrapperResult(self._pipeline.numpy_to_pil(
-            images.reshape((images.shape[0],) + images.shape[-3:])))
-
     def _set_non_universal_pipeline_arg(self,
                                         pipeline,
                                         pipeline_args,
@@ -2255,34 +2067,7 @@ class DiffusionPipelineWrapper:
         self._recall_main_pipeline = None
         self._recall_refiner_pipeline = None
 
-        if self._model_type == _enums.ModelType.FLAX:
-
-            if self._pipeline_type != _enums.PipelineType.TXT2IMG and self._controlnet_uris:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'Inpaint and Img2Img not supported for flax with ControlNet.')
-
-            self._recall_main_pipeline = _pipelines.FlaxPipelineFactory(
-                model_path=self._model_path,
-                model_type=self._model_type,
-                pipeline_type=pipeline_type,
-                revision=self._revision,
-                dtype=self._dtype,
-                unet_uri=self._unet_uri,
-                vae_uri=self._vae_uri,
-                controlnet_uris=self._controlnet_uris,
-                text_encoder_uris=self._text_encoder_uris,
-                scheduler=self._scheduler,
-                safety_checker=self._safety_checker,
-                auth_token=self._auth_token,
-                local_files_only=self._local_files_only,
-                extra_modules=self._model_extra_modules)
-
-            creation_result = self._recall_main_pipeline()
-            self._pipeline = creation_result.pipeline
-            self._flax_params = creation_result.flax_params
-            self._parsed_controlnet_uris = creation_result.parsed_controlnet_uris
-
-        elif self._model_type == _enums.ModelType.TORCH_S_CASCADE:
+        if self._model_type == _enums.ModelType.TORCH_S_CASCADE:
 
             if self._s_cascade_decoder_uri is None:
                 raise _pipelines.UnsupportedPipelineConfigError(
@@ -2517,10 +2302,7 @@ class DiffusionPipelineWrapper:
         pipeline_args = \
             self._get_pipeline_defaults(user_args=copy_args)
 
-        if self._model_type == _enums.ModelType.FLAX:
-            result = self._call_flax(pipeline_args=pipeline_args,
-                                     user_args=copy_args)
-        elif self.model_type == _enums.ModelType.TORCH_S_CASCADE:
+        if self.model_type == _enums.ModelType.TORCH_S_CASCADE:
             result = self._call_torch_s_cascade(
                 pipeline_args=pipeline_args,
                 user_args=copy_args)

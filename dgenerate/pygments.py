@@ -139,11 +139,9 @@ _CLASS_KEYWORDS = sorted((
     "AsymmetricAutoencoderKL",
     "AutoencoderTiny",
     "ConsistencyDecoderVAE",
-    "FlaxAutoencoderKL",
     "CLIPTextModel",
     "CLIPTextModelWithProjection",
     "T5EncoderModel",
-    "FlaxCLIPTextModel"
 ), key=lambda s: len(s), reverse=True)
 
 _MODEL_TYPE_KEYWORDS = sorted((
@@ -158,7 +156,6 @@ _MODEL_TYPE_KEYWORDS = sorted((
     'torch-upscaler-x2',
     'torch-upscaler-x4',
     'torch-s-cascade',
-    'flax',
     'help',
     'helpargs',
 ), key=lambda s: len(s), reverse=True)

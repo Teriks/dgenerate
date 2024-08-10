@@ -19,8 +19,6 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import typing
-
 import diffusers
 import huggingface_hub
 
@@ -35,19 +33,19 @@ import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 
-_flax_unet_uri_parser = _textprocessing.ConceptUriParser('UNet',
-                                                         ['revision', 'subfolder', 'dtype'])
+_unet_uri_parser = _textprocessing.ConceptUriParser('UNet',
+                                                    ['revision', 'variant', 'subfolder', 'dtype'])
 
 
-class FlaxUNetUri:
+class UNetUri:
     """
-    Representation of ``--unet`` uri when ``--model-type`` flax*
+    Representation of ``--unet`` uri when ``--model-type`` torch*
     """
 
     @property
     def model(self) -> str:
         """
-        Model path, huggingface slug
+        Model path, huggingface slug, file path, or blob link
         """
         return self._model
 
@@ -57,6 +55,13 @@ class FlaxUNetUri:
         Model repo revision
         """
         return self._revision
+
+    @property
+    def variant(self) -> _types.OptionalString:
+        """
+        Model repo revision
+        """
+        return self._variant
 
     @property
     def subfolder(self) -> _types.OptionalPath:
@@ -74,26 +79,29 @@ class FlaxUNetUri:
 
     def __init__(self,
                  model: str,
-                 revision: _types.OptionalString,
-                 subfolder: _types.OptionalPath,
-                 dtype: _enums.DataType | None):
+                 revision: _types.OptionalString = None,
+                 variant: _types.OptionalString = None,
+                 subfolder: _types.OptionalString = None,
+                 dtype: _enums.DataType | str | None = None):
         """
         :param model: model path
         :param revision: model revision (branch name)
+        :param variant: model variant, for example ``fp16``
         :param subfolder: model subfolder
         :param dtype: model data type (precision)
 
-        :raises InvalidUNetUriError: If ``model`` points to a single file, single file loads are not supported, or
-            if ``dtype`` is passed an invalid string.
+        :raises InvalidUNetUriError: If ``model`` points to a single file,
+            single file loads are not supported. Or if ``dtype`` is passed an
+            invalid data type string.
         """
 
-        single_file_load_path = _hfutil.is_single_file_model_load(model)
-
-        if single_file_load_path:
-            raise _exceptions.InvalidUNetUriError('Loading a UNet from a single file is not supported.')
+        if _hfutil.is_single_file_model_load(model):
+            raise _exceptions.InvalidUNetUriError(
+                'Loading a UNet from a single file is not supported.')
 
         self._model = model
         self._revision = revision
+        self._variant = variant
 
         try:
             self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
@@ -104,23 +112,42 @@ class FlaxUNetUri:
         self._subfolder = subfolder
 
     def load(self,
+             variant_fallback: _types.OptionalString = None,
              dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
              use_auth_token: _types.OptionalString = None,
-             local_files_only: bool = False) -> tuple[diffusers.FlaxUNet2DConditionModel, typing.Any]:
+             local_files_only: bool = False,
+             sequential_cpu_offload_member: bool = False,
+             model_cpu_offload_member: bool = False,
+             unet_class=diffusers.UNet2DConditionModel):
         """
-        Load a :py:class:`diffusers.FlaxUNet2DConditionModel` UNet and its flax_params from this URI
+        Load a UNet of type :py:class:`diffusers.UNet2DConditionModel`
 
+        :param variant_fallback: If the URI does not specify a variant, use this variant.
         :param dtype_fallback: If the URI does not specify a dtype, use this dtype.
         :param use_auth_token: optional huggingface auth token.
         :param local_files_only: avoid downloading files and only look for cached files
             when the model path is a huggingface slug or blob link
 
+        :param sequential_cpu_offload_member: This model will be attached to
+            a pipeline which will have sequential cpu offload enabled?
+
+        :param model_cpu_offload_member: This model will be attached to a pipeline
+            which will have model cpu offload enabled?
+
+        :param unet_class: UNet class
+
         :raises ModelNotFoundError: If the model could not be found.
 
-        :return: tuple (:py:class:`diffusers.FlaxUNet2DConditionModel`, flax_unet_params)
+        :return: :py:class:`diffusers.UNet2DConditionModel`
         """
         try:
-            return self._load(dtype_fallback, use_auth_token, local_files_only)
+            return self._load(variant_fallback,
+                              dtype_fallback,
+                              use_auth_token,
+                              local_files_only,
+                              sequential_cpu_offload_member,
+                              model_cpu_offload_member,
+                              unet_class)
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _hfutil.ModelNotFoundError(e)
@@ -128,74 +155,91 @@ class FlaxUNetUri:
             raise _exceptions.UNetUriLoadError(
                 f'error loading unet "{self.model}": {e}')
 
-    @_memoize(_cache._FLAX_UNET_CACHE,
+    @_memoize(_cache._UNET_CACHE,
               exceptions={'local_files_only'},
               hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _d_memoize.struct_hasher}),
-              on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Flax UNet", key, hit[0]),
-              on_create=lambda key, new: _d_memoize.simple_cache_miss_debug("Flax UNet", key, new[0]))
+              on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Torch UNet", key, hit),
+              on_create=lambda key, new: _d_memoize.simple_cache_miss_debug("Torch UNet", key, new))
     def _load(self,
+              variant_fallback: _types.OptionalString = None,
               dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
               use_auth_token: _types.OptionalString = None,
-              local_files_only: bool = False) -> tuple[diffusers.FlaxUNet2DConditionModel, typing.Any]:
+              local_files_only: bool = False,
+              sequential_cpu_offload_member: bool = False,
+              model_cpu_offload_member: bool = False,
+              unet_class=diffusers.UNet2DConditionModel):
+
+        if sequential_cpu_offload_member and model_cpu_offload_member:
+            # these are used for cache differentiation only
+            raise ValueError('sequential_cpu_offload_member and model_cpu_offload_member cannot both be True.')
 
         if self.dtype is None:
-            flax_dtype = _enums.get_flax_dtype(dtype_fallback)
+            torch_dtype = _enums.get_torch_dtype(dtype_fallback)
         else:
-            flax_dtype = _enums.get_flax_dtype(self.dtype)
+            torch_dtype = _enums.get_torch_dtype(self.dtype)
+
+        if self.variant is None:
+            variant = variant_fallback
+        else:
+            variant = self.variant
+
+        path = self.model
 
         estimated_memory_use = _hfutil.estimate_model_memory_use(
-            repo_id=self.model,
+            repo_id=path,
             revision=self.revision,
+            variant=variant,
             subfolder=self.subfolder,
             local_files_only=local_files_only,
-            use_auth_token=use_auth_token,
-            flax=True
+            use_auth_token=use_auth_token
         )
 
         _cache.enforce_unet_cache_constraints(new_unet_size=estimated_memory_use)
 
-        unet = diffusers.FlaxUNet2DConditionModel.from_pretrained(
-            self.model,
+        unet = unet_class.from_pretrained(
+            path,
             revision=self.revision,
-            dtype=flax_dtype,
+            variant=variant,
+            torch_dtype=torch_dtype,
             subfolder=self.subfolder,
             token=use_auth_token,
             local_files_only=local_files_only)
 
-        _messages.debug_log('Estimated Flax UNet Memory Use:',
+        _messages.debug_log('Estimated Torch UNet Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_use))
 
-        _cache.unet_create_update_cache_info(unet=unet[0],
+        _cache.unet_create_update_cache_info(unet=unet,
                                              estimated_size=estimated_memory_use)
 
         return unet
 
     @staticmethod
-    def parse(uri: _types.Uri) -> 'FlaxUNetUri':
+    def parse(uri: _types.Uri) -> 'UNetUri':
         """
-        Parse a ``--model-type`` flax* ``--unet`` uri and return an object representing its constituents
+        Parse a ``--model-type`` torch* ``--unet`` uri and return an object representing its constituents
 
         :param uri: string with ``--unet`` uri syntax
 
         :raise InvalidUNetUriError:
 
-        :return: :py:class:`.FlaxUNetUri`
+        :return: :py:class:`.TorchUNetPath`
         """
         try:
-            r = _flax_unet_uri_parser.parse(uri)
+            r = _unet_uri_parser.parse(uri)
 
             dtype = r.args.get('dtype')
 
             supported_dtypes = _enums.supported_data_type_strings()
             if dtype is not None and dtype not in supported_dtypes:
                 raise _exceptions.InvalidUNetUriError(
-                    f'Flax UNet "dtype" must be {", ".join(supported_dtypes)}, '
+                    f'Torch UNet "dtype" must be {", ".join(supported_dtypes)}, '
                     f'or left undefined, received: {dtype}')
 
-            return FlaxUNetUri(
+            return UNetUri(
                 model=r.concept,
                 revision=r.args.get('revision', None),
-                dtype=_enums.get_flax_dtype(dtype),
+                variant=r.args.get('variant', None),
+                dtype=dtype,
                 subfolder=r.args.get('subfolder', None))
         except _textprocessing.ConceptUriParseError as e:
             raise _exceptions.InvalidUNetUriError(e)

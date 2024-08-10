@@ -24,10 +24,6 @@ import typing
 
 import diffusers
 import huggingface_hub
-import safetensors
-import safetensors.torch
-import torch
-
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.hfutil as _hfutil
 import dgenerate.textprocessing as _textprocessing

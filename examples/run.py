@@ -52,7 +52,6 @@ parser.add_argument('--subprocess-only', action='store_true', default=False,
                     help='Use a different subprocess for every example.')
 parser.add_argument('--skip-animations', action='store_true', default=False, help='Skip rendering animations.')
 parser.add_argument('--skip-library', action='store_true', default=False, help='Skip library usage examples.')
-parser.add_argument('--skip-flax', action='store_true', default=False, help='Skip flax examples on Linux.')
 parser.add_argument('--skip-deepfloyd', action='store_true', default=False, help='Skip deep floyd examples.')
 parser.add_argument('--skip-ncnn', action='store_true', default=False, help='Skip examples involving ncnn.')
 parser.add_argument('--short-animations', action='store_true', default=False,
@@ -192,13 +191,6 @@ def should_skip_config(config, known_args):
     if known_args.skip_animations and 'animation' in c:
         log(f'SKIPPING ANIMATION: {config}')
         return True
-    if 'flax' in c:
-        if os.name == 'nt':
-            log(f'SKIPPING FLAX ON WINDOWS: {config}')
-            return True
-        if known_args.skip_flax:
-            log(f'SKIPPING FLAX: {config}')
-            return True
     if 'deepfloyd' in c and known_args.skip_deepfloyd:
         log(f'SKIPPING DEEPFLOYD: {config}')
         return True
