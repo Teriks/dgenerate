@@ -360,6 +360,7 @@ def invoke_dgenerate_events(
         "vae_cache_memory_constraints": "_pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS",
         "controlnet_cache_memory_constraints": "_pipelinewrapper.CONTROLNET_CACHE_MEMORY_CONSTRAINTS",
         "adapter_cache_memory_constraints": "_pipelinewrapper.ADAPTER_CACHE_MEMORY_CONSTRAINTS",
+        "transformer_cache_memory_constraints": "_pipelinewrapper.TRANSFORMER_CACHE_MEMORY_CONSTRAINTS",
         "text_encoder_cache_memory_constraints": "_pipelinewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS",
         "image_encoder_cache_memory_constraints": "_pipelinewrapper.IMAGE_ENCODER_CACHE_MEMORY_CONSTRAINTS",
         "image_processor_memory_constraints": "_imageprocessors.IMAGE_PROCESSOR_MEMORY_CONSTRAINTS",

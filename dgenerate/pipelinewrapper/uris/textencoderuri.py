@@ -40,7 +40,7 @@ _text_encoder_uri_parser = _textprocessing.ConceptUriParser(
 
 class TextEncoderUri:
     """
-    Representation of ``--text-encoder*`` uri when ``--model-type`` torch*
+    Representation of ``--text-encoders*`` uri when ``--model-type`` torch*
     """
 
     @property
@@ -274,9 +274,9 @@ class TextEncoderUri:
     @staticmethod
     def parse(uri: _types.Uri) -> 'TextEncoderUri':
         """
-        Parse a ``--model-type`` torch* ``--text-encoder*`` uri and return an object representing its constituents
+        Parse a ``--model-type`` torch* ``--text-encoders*`` uri and return an object representing its constituents
 
-        :param uri: string with ``--text-encoder*`` uri syntax
+        :param uri: string with ``--text-encoders*`` uri syntax
 
         :raise InvalidTextEncoderUriError:
 

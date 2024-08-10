@@ -252,6 +252,7 @@ def estimate_pipeline_memory_use(
         variant: _types.OptionalName = None,
         subfolder: _types.OptionalPath = None,
         unet_uri: _types.OptionalUri = None,
+        transformer_uri: _types.OptionalUri = None,
         vae_uri: _types.OptionalUri = None,
         lora_uris: _types.OptionalUris = None,
         image_encoder_uri: _types.OptionalUri = None,
@@ -272,6 +273,8 @@ def estimate_pipeline_memory_use(
     :param variant: model file variant desired, for example "fp16"
     :param subfolder: huggingface repo subfolder if using a huggingface slug
     :param unet_uri: optional user specified ``--unet`` URI that will be loaded on to the pipeline
+    :param transformer_uri: optional user specified ``--transformer`` URI that will be loaded on to the pipeline,
+        this is currently only supported for Stable Diffusion 3 models.
     :param vae_uri: optional user specified ``--vae`` URI that will be loaded on to the pipeline
     :param lora_uris: optional user specified ``--loras`` URIs that will be loaded on to the pipeline
     :param image_encoder_uri: optional user specified ``--image-encoder`` URI that will be loaded on to the pipeline
@@ -315,6 +318,16 @@ def estimate_pipeline_memory_use(
         local_files_only=local_files_only,
         sentencepiece=_enums.model_type_is_floyd(model_type)
     )
+
+    if transformer_uri:
+        parsed = _uris.SD3TransformerUri.parse(transformer_uri)
+        usage += _hfutil.estimate_model_memory_use(
+            repo_id=_hfutil.download_non_hf_model(parsed.model),
+            revision=parsed.revision,
+            subfolder=parsed.subfolder,
+            use_auth_token=auth_token,
+            local_files_only=local_files_only
+        )
 
     if image_encoder_uri:
         parsed = _uris.ImageEncoderUri.parse(image_encoder_uri)
@@ -883,11 +896,11 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline,
         try:
             translated = prompt_weighter.translate_to_embeds(pipeline, device, kwargs)
         except _d_exceptions.TORCH_CUDA_OOM_EXCEPTIONS as e:
-                _d_exceptions.raise_if_not_cuda_oom(e)
-                _cleanup_prompt_weighter()
-                torch.cuda.empty_cache()
-                gc.collect()
-                raise _d_exceptions.OutOfMemoryError(e)
+            _d_exceptions.raise_if_not_cuda_oom(e)
+            _cleanup_prompt_weighter()
+            torch.cuda.empty_cache()
+            gc.collect()
+            raise _d_exceptions.OutOfMemoryError(e)
         except MemoryError:
             _cleanup_prompt_weighter()
             gc.collect()
@@ -1129,9 +1142,15 @@ class TorchPipelineCreationResult(PipelineCreationResult):
     Parsed ImageEncoder URI if one was present
     """
 
+    parsed_transformer_uri: _uris.SD3TransformerUri | None
+    """
+    Parsed Transformer URI if one was present
+    """
+
     def __init__(self,
                  pipeline: diffusers.DiffusionPipeline,
                  parsed_unet_uri: _uris.UNetUri | None,
+                 parsed_transformer_uri: _uris.SD3TransformerUri | None,
                  parsed_vae_uri: _uris.VAEUri | None,
                  parsed_image_encoder_uri: _uris.ImageEncoderUri | None,
                  parsed_lora_uris: collections.abc.Sequence[_uris.LoRAUri],
@@ -1148,6 +1167,7 @@ class TorchPipelineCreationResult(PipelineCreationResult):
         self.parsed_t2i_adapter_uris = parsed_t2i_adapter_uris
         self.parsed_ip_adapter_uris = parsed_ip_adapter_uris
         self.parsed_image_encoder_uri = parsed_image_encoder_uri
+        self.parsed_transformer_uri = parsed_transformer_uri
 
     def call(self,
              device: str | None = 'cuda',
@@ -1175,6 +1195,7 @@ def create_torch_diffusion_pipeline(model_path: str,
                                     subfolder: _types.OptionalString = None,
                                     dtype: _enums.DataType = _enums.DataType.AUTO,
                                     unet_uri: _types.OptionalUri = None,
+                                    transformer_uri: _types.OptionalUri = None,
                                     vae_uri: _types.OptionalUri = None,
                                     lora_uris: _types.OptionalUris = None,
                                     lora_fuse_scale: _types.OptionalFloat = None,
@@ -1203,6 +1224,8 @@ def create_torch_diffusion_pipeline(model_path: str,
     :param subfolder: huggingface repo subfolder if applicable
     :param dtype: Optional :py:class:`dgenerate.pipelinewrapper.DataType` enum value
     :param unet_uri: Optional ``--unet`` URI string for specifying a specific UNet
+    :param transformer_uri: Optional ``--transformer`` URI string for specifying a specific Transformer,
+        currently this is only supported for Stable Diffusion 3 models.
     :param vae_uri: Optional ``--vae`` URI string for specifying a specific VAE
     :param lora_uris: Optional ``--loras`` URI strings for specifying LoRA weights
     :param lora_fuse_scale: Optional ``--lora-fuse-scale`` global LoRA fuse scale value.
@@ -1264,6 +1287,7 @@ class TorchPipelineFactory:
                  subfolder: _types.OptionalString = None,
                  dtype: _enums.DataType = _enums.DataType.AUTO,
                  unet_uri: _types.OptionalUri = None,
+                 transformer_uri: _types.OptionalUri = None,
                  vae_uri: _types.OptionalUri = None,
                  lora_uris: _types.OptionalUris = None,
                  lora_fuse_scale: _types.OptionalFloat = None,
@@ -1372,6 +1396,7 @@ def _torch_args_hasher(args):
 
     custom_hashes = {
         'unet_uri': _cache.uri_hash_with_parser(_uris.UNetUri.parse),
+        'transformer_uri': _cache.uri_hash_with_parser(_uris.SD3TransformerUri),
         'vae_uri': _cache.uri_hash_with_parser(_uris.VAEUri.parse),
         'image_encoder_uri': _cache.uri_hash_with_parser(_uris.ImageEncoderUri),
         'lora_uris': _cache.uri_list_hash_with_parser(_uris.LoRAUri.parse),
@@ -1408,6 +1433,7 @@ def _create_torch_diffusion_pipeline(
         subfolder: _types.OptionalString = None,
         dtype: _enums.DataType = _enums.DataType.AUTO,
         unet_uri: _types.OptionalUri = None,
+        transformer_uri: _types.OptionalUri = None,
         vae_uri: _types.OptionalUri = None,
         lora_uris: _types.OptionalUris = None,
         lora_fuse_scale: _types.OptionalFloat = None,
@@ -1503,6 +1529,10 @@ def _create_torch_diffusion_pipeline(
         if image_encoder_uri:
             raise UnsupportedPipelineConfigError(
                 '--model-type torch-sd3 is not compatible with --image-encoder.')
+    else:
+        if transformer_uri:
+            raise UnsupportedPipelineConfigError(
+                '--transformer is only supported for --model-type torch-sd3.')
 
     # Incompatible combinations
     if controlnet_uris and t2i_adapter_uris:
@@ -1736,6 +1766,7 @@ def _create_torch_diffusion_pipeline(
     image_encoder_override = 'image_encoder' in extra_modules
     safety_checker_override = 'safety_checker' in extra_modules
     scheduler_override = 'scheduler' in extra_modules
+    transformer_override = 'transformer' in extra_modules
 
     if 'text_encoder' in extra_modules and text_encoder_count == 0:
         raise UnsupportedPipelineConfigError('To many text encoders specified.')
@@ -1777,6 +1808,7 @@ def _create_torch_diffusion_pipeline(
         variant=variant,
         subfolder=subfolder,
         unet_uri=unet_uri if not unet_override else None,
+        transformer_uri=transformer_uri if not transformer_override else None,
         vae_uri=vae_uri if not vae_override else None,
         lora_uris=lora_uris,
         image_encoder_uri=image_encoder_uri,
@@ -1808,87 +1840,100 @@ def _create_torch_diffusion_pipeline(
     parsed_image_encoder_uri = None
     parsed_unet_uri = None
     parsed_vae_uri = None
+    parsed_transformer_uri = None
 
-    if not scheduler_is_help(scheduler):
-        # prevent waiting on UNet/VAE load just to get the scheduler
-        # help message for the main model
+    if text_encoder_uris:
+        def load_text_encoder(uri):
+            return uri.load(
+                dtype_fallback=dtype,
+                use_auth_token=auth_token,
+                local_files_only=local_files_only,
+                sequential_cpu_offload_member=sequential_cpu_offload,
+                model_cpu_offload_member=model_cpu_offload)
 
-        if text_encoder_uris:
-            def load_text_encoder(uri):
-                return uri.load(
-                    dtype_fallback=dtype,
-                    use_auth_token=auth_token,
-                    local_files_only=local_files_only,
-                    sequential_cpu_offload_member=sequential_cpu_offload,
-                    model_cpu_offload_member=model_cpu_offload)
+        if not text_encoder_override and (len(text_encoder_uris) > 0) and \
+                _text_encoder_not_default(text_encoder_uris[0]):
+            creation_kwargs['text_encoder'] = load_text_encoder(
+                _uris.TextEncoderUri.parse(text_encoder_uris[0]))
+        if not text_encoder_2_override and (len(text_encoder_uris) > 1) and \
+                _text_encoder_not_default(text_encoder_uris[1]):
+            creation_kwargs['text_encoder_2'] = load_text_encoder(
+                _uris.TextEncoderUri.parse(text_encoder_uris[1]))
+        if not text_encoder_3_override and (len(text_encoder_uris) > 2) and \
+                _text_encoder_not_default(text_encoder_uris[2]):
+            creation_kwargs['text_encoder_3'] = load_text_encoder(
+                _uris.TextEncoderUri.parse(text_encoder_uris[2]))
 
-            if not text_encoder_override and (len(text_encoder_uris) > 0) and \
-                    _text_encoder_not_default(text_encoder_uris[0]):
-                creation_kwargs['text_encoder'] = load_text_encoder(
-                    _uris.TextEncoderUri.parse(text_encoder_uris[0]))
-            if not text_encoder_2_override and (len(text_encoder_uris) > 1) and \
-                    _text_encoder_not_default(text_encoder_uris[1]):
-                creation_kwargs['text_encoder_2'] = load_text_encoder(
-                    _uris.TextEncoderUri.parse(text_encoder_uris[1]))
-            if not text_encoder_3_override and (len(text_encoder_uris) > 2) and \
-                    _text_encoder_not_default(text_encoder_uris[2]):
-                creation_kwargs['text_encoder_3'] = load_text_encoder(
-                    _uris.TextEncoderUri.parse(text_encoder_uris[2]))
+    if vae_uri is not None and not vae_override:
+        parsed_vae_uri = _uris.VAEUri.parse(vae_uri)
 
-        if vae_uri is not None and not vae_override:
-            parsed_vae_uri = _uris.VAEUri.parse(vae_uri)
+        creation_kwargs['vae'] = \
+            parsed_vae_uri.load(
+                dtype_fallback=dtype,
+                use_auth_token=auth_token,
+                local_files_only=local_files_only,
+                sequential_cpu_offload_member=sequential_cpu_offload,
+                model_cpu_offload_member=model_cpu_offload)
 
-            creation_kwargs['vae'] = \
-                parsed_vae_uri.load(
-                    dtype_fallback=dtype,
-                    use_auth_token=auth_token,
-                    local_files_only=local_files_only,
-                    sequential_cpu_offload_member=sequential_cpu_offload,
-                    model_cpu_offload_member=model_cpu_offload)
+        _messages.debug_log(lambda:
+                            f'Added Torch VAE: "{vae_uri}" to pipeline: "{pipeline_class.__name__}"')
 
-            _messages.debug_log(lambda:
-                                f'Added Torch VAE: "{vae_uri}" to pipeline: "{pipeline_class.__name__}"')
+    if unet_uri is not None and not unet_override:
+        parsed_unet_uri = _uris.UNetUri.parse(unet_uri)
 
-        if unet_uri is not None and not unet_override:
-            parsed_unet_uri = _uris.UNetUri.parse(unet_uri)
+        unet_parameter = 'unet'
 
-            unet_parameter = 'unet'
+        if model_type == _enums.ModelType.TORCH_S_CASCADE:
+            unet_parameter = 'prior'
+        elif model_type == _enums.ModelType.TORCH_S_CASCADE_DECODER:
+            unet_parameter = 'decoder'
 
-            if model_type == _enums.ModelType.TORCH_S_CASCADE:
-                unet_parameter = 'prior'
-            elif model_type == _enums.ModelType.TORCH_S_CASCADE_DECODER:
-                unet_parameter = 'decoder'
+        unet_class = diffusers.UNet2DConditionModel if unet_parameter == 'unet' \
+            else diffusers.models.unets.StableCascadeUNet
 
-            unet_class = diffusers.UNet2DConditionModel if unet_parameter == 'unet' \
-                else diffusers.models.unets.StableCascadeUNet
-
-            creation_kwargs[unet_parameter] = \
-                parsed_unet_uri.load(
-                    variant_fallback=variant,
-                    dtype_fallback=dtype,
-                    use_auth_token=auth_token,
-                    local_files_only=local_files_only,
-                    sequential_cpu_offload_member=sequential_cpu_offload,
-                    model_cpu_offload_member=model_cpu_offload,
-                    unet_class=unet_class)
-
-            _messages.debug_log(lambda:
-                                f'Added Torch UNet: "{unet_uri}" to pipeline: "{pipeline_class.__name__}"')
-
-        if image_encoder_uri is not None and not image_encoder_override:
-            parsed_image_encoder_uri = _uris.ImageEncoderUri.parse(image_encoder_uri)
-
-            creation_kwargs['image_encoder'] = parsed_image_encoder_uri.load(
+        creation_kwargs[unet_parameter] = \
+            parsed_unet_uri.load(
+                variant_fallback=variant,
                 dtype_fallback=dtype,
                 use_auth_token=auth_token,
                 local_files_only=local_files_only,
                 sequential_cpu_offload_member=sequential_cpu_offload,
                 model_cpu_offload_member=model_cpu_offload,
-            )
+                unet_class=unet_class)
 
-            _messages.debug_log(lambda:
-                                f'Added Torch Image Encoder: "{image_encoder_uri}" to '
-                                f'pipeline: "{pipeline_class.__name__}"')
+        _messages.debug_log(lambda:
+                            f'Added Torch UNet: "{unet_uri}" to pipeline: "{pipeline_class.__name__}"')
+
+    if transformer_uri is not None and not transformer_override:
+        parsed_transformer_uri = _uris.SD3TransformerUri.parse(transformer_uri)
+
+        creation_kwargs['transformer'] = \
+            parsed_transformer_uri.load(
+                variant_fallback=variant,
+                dtype_fallback=dtype,
+                use_auth_token=auth_token,
+                local_files_only=local_files_only,
+                sequential_cpu_offload_member=sequential_cpu_offload,
+                model_cpu_offload_member=model_cpu_offload)
+
+        _messages.debug_log(lambda:
+                            f'Added Torch SD3Transformer: "{transformer_uri}" to '
+                            f'pipeline: "{pipeline_class.__name__}"')
+
+    if image_encoder_uri is not None and not image_encoder_override:
+        parsed_image_encoder_uri = _uris.ImageEncoderUri.parse(image_encoder_uri)
+
+        creation_kwargs['image_encoder'] = parsed_image_encoder_uri.load(
+            dtype_fallback=dtype,
+            use_auth_token=auth_token,
+            local_files_only=local_files_only,
+            sequential_cpu_offload_member=sequential_cpu_offload,
+            model_cpu_offload_member=model_cpu_offload,
+        )
+
+        _messages.debug_log(lambda:
+                            f'Added Torch Image Encoder: "{image_encoder_uri}" to '
+                            f'pipeline: "{pipeline_class.__name__}"')
 
     if t2i_adapter_uris and not adapter_override:
         t2i_adapters = None
@@ -2102,6 +2147,7 @@ def _create_torch_diffusion_pipeline(
     return TorchPipelineCreationResult(
         pipeline=pipeline,
         parsed_unet_uri=parsed_unet_uri,
+        parsed_transformer_uri=parsed_transformer_uri,
         parsed_vae_uri=parsed_vae_uri,
         parsed_lora_uris=parsed_lora_uris,
         parsed_image_encoder_uri=parsed_image_encoder_uri,

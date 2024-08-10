@@ -129,6 +129,7 @@ class DiffusionPipelineWrapper:
                  dtype: _enums.DataType | str = _enums.DataType.AUTO,
                  unet_uri: _types.OptionalUri = None,
                  second_unet_uri: _types.OptionalUri = None,
+                 transformer_uri: _types.OptionalUri = None,
                  vae_uri: _types.OptionalUri = None,
                  vae_tiling: bool = False,
                  vae_slicing: bool = False,
@@ -180,6 +181,8 @@ class DiffusionPipelineWrapper:
         :param dtype: main model dtype
         :param unet_uri: main model UNet URI string
         :param second_unet_uri: secondary model unet uri (SDXL Refiner, Stable Cascade decoder)
+        :param transformer_uri: Optional transformer URI string for specifying a specific Transformer,
+            currently this is only supported for Stable Diffusion 3 models.
         :param vae_uri: main model VAE URI string
         :param vae_tiling: use VAE tiling?
         :param vae_slicing: use VAE slicing?
@@ -239,6 +242,7 @@ class DiffusionPipelineWrapper:
             dtype: _enums.DataType = _enums.DataType.AUTO,
             unet_uri: _types.OptionalUri = None,
             second_unet_uri: _types.OptionalUri = None,
+            transformer_uri: _types.OptionalUri = None,
             vae_uri: _types.OptionalUri = None,
             vae_tiling: bool = False,
             vae_slicing: bool = False,
@@ -480,6 +484,11 @@ class DiffusionPipelineWrapper:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'Stable Diffusion 3 does not use a UNet model.'
                 )
+        else:
+            if transformer_uri:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'Transformer models are only supported for stable diffusion 3.'
+                )
 
         if _enums.model_type_is_pix2pix(model_type):
             if controlnet_uris:
@@ -514,8 +523,9 @@ class DiffusionPipelineWrapper:
         self._dtype = _enums.get_data_type_enum(dtype)
         self._device = device
         self._unet_uri = unet_uri
-        self._image_encoder_uri = image_encoder_uri
         self._second_unet_uri = second_unet_uri
+        self._transformer_uri = transformer_uri
+        self._image_encoder_uri = image_encoder_uri
         self._vae_uri = vae_uri
         self._vae_tiling = vae_tiling
         self._vae_slicing = vae_slicing
@@ -724,6 +734,13 @@ class DiffusionPipelineWrapper:
         Model URI for the Stable Cascade decoder or ``None``
         """
         return self._s_cascade_decoder_uri
+
+    @property
+    def transformer_uri(self) -> _types.OptionalUri:
+        """
+        Model URI for the SD3 Transformer or ``None``
+        """
+        return self._transformer_uri
 
     @property
     def model_type(self) -> _enums.ModelType:
@@ -988,6 +1005,9 @@ class DiffusionPipelineWrapper:
 
         if self._second_unet_uri is not None:
             opts.append(('--unet2', self._second_unet_uri))
+
+        if self._transformer_uri is not None:
+            opts.append(('--transformer', self._transformer_uri))
 
         if self._vae_uri is not None:
             opts.append(('--vae', self._vae_uri))
@@ -2224,6 +2244,7 @@ class DiffusionPipelineWrapper:
                 variant=self._variant,
                 dtype=self._dtype,
                 unet_uri=self._unet_uri,
+                transformer_uri=self._transformer_uri,
                 vae_uri=self._vae_uri,
                 lora_uris=self._lora_uris,
                 lora_fuse_scale=self._lora_fuse_scale,

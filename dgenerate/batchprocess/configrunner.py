@@ -204,6 +204,10 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                 _pipelinewrapper.clear_image_encoder_cache,
                 help_text='Clear all user specified ImageEncoder models from the in memory cache.'
             ),
+            'clear_transformer_cache': return_zero(
+                _pipelinewrapper.clear_transformer_cache,
+                help_text='Clear all user specified Transformer models from the in memory cache.'
+            ),
             'save_modules': self._save_modules_directive,
             'use_modules': self._use_modules_directive,
             'clear_modules': self._clear_modules_directive,

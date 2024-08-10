@@ -43,7 +43,9 @@ from .exceptions import (
     ImageEncoderUriLoadError,
     InvalidImageEncoderUriError,
     IPAdapterUriLoadError,
-    InvalidIPAdapterUriError
+    InvalidIPAdapterUriError,
+    InvalidSD3TransformerUriError,
+    SD3TransformerUriLoadError
 )
 
 from .lorauri import LoRAUri
@@ -57,5 +59,6 @@ from .vaeuri import VAEUri
 from .t2iadapteruri import T2IAdapterUri
 from .ipadapteruri import IPAdapterUri
 from .imageencoderuri import ImageEncoderUri
+from .sd3transformeruri import SD3TransformerUri
 
 __all__ = _types.module_all()

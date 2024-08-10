@@ -176,3 +176,17 @@ class ImageEncoderUriLoadError(ModelUriLoadError):
     Error while loading model file in ``--image-encoder`` uri
     """
     pass
+
+
+class InvalidSD3TransformerUriError(InvalidModelUriError):
+    """
+    Error while loading model file in ``--transformer`` uri
+    """
+    pass
+
+
+class SD3TransformerUriLoadError(ModelUriLoadError):
+    """
+    Error in ``--transformer`` uri
+    """
+    pass

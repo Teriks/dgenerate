@@ -797,6 +797,7 @@ class RenderLoop:
             subfolder=self.config.subfolder,
             unet_uri=self.config.unet_uri,
             second_unet_uri=self.config.second_unet_uri,
+            transformer_uri=self.config.transformer_uri,
             vae_uri=self.config.vae_uri,
             vae_tiling=self.config.vae_tiling,
             vae_slicing=self.config.vae_slicing,
