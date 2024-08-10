@@ -3550,7 +3550,7 @@ The syntax that ``sd-embed`` uses is the more wide spread prompt syntax used by 
 `Stable Diffusion Web UI <Stable_Diffusion_Web_UI_1_>`_ and `CivitAI <CivitAI_1_>`_
 
 
-Quite notably, the ``sd-embed`` prompt weighter supports Stable Diffusion 3, where
+Quite notably, the ``sd-embed`` prompt weighter supports Stable Diffusion 3 and Flux, where
 as the ``compel`` prompt weighter currently does not.
 
 
