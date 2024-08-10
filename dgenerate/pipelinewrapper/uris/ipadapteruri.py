@@ -149,10 +149,12 @@ class IPAdapterUri:
                 raise ValueError(
                     f'All IP Adapter URIs must have matching "revision" URI argument values.')
 
+            revision = revisions.pop()
+
             try:
                 pipeline.load_ip_adapter(models,
                                          subfolder=subfolders,
-                                         revision=revisions.pop(),
+                                         revision=revision,
                                          weight_name=weight_names,
                                          local_files_only=local_files_only,
                                          use_safetensors=True,
@@ -161,7 +163,7 @@ class IPAdapterUri:
                 # brute force, try for .bin files
                 pipeline.load_ip_adapter(models,
                                          subfolder=subfolders,
-                                         revision=revisions.pop(),
+                                         revision=revision,
                                          weight_name=weight_names,
                                          local_files_only=local_files_only,
                                          token=use_auth_token)

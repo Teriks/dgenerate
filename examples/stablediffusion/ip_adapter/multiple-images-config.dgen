@@ -1,0 +1,17 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 4.0.0
+
+# this uses two different IP Adapter input images with the IP Adapter h94/IP-Adapter
+
+runwayml/stable-diffusion-v1-5
+--dtype float16
+--variant fp16
+--inference-steps 30
+--guidance-scales 5
+--seeds 0
+--output-path multiple-images
+--image-seeds "adapter: https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/ip_adapter_diner.png + \
+               https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/ip_adapter_diner_2.png"
+--ip-adapters h94/IP-Adapter;subfolder=models;weight-name=ip-adapter_sd15.bin
+--output-size 512
+--prompts "a polar bear sitting in a chair drinking a milkshake; deformed, ugly, wrong proportion, low res, bad anatomy, worst quality, low quality"
