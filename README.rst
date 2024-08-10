@@ -274,7 +274,7 @@ Help Output
                             is specified when producing an animation then the image grid is used for the output
                             frames. During animation rendering each image in the batch will still be written to
                             the output directory along side the produced animation as either suffixed files or
-                            image grids depending on the options you choose. (Torch Default: 1)
+                            image grids depending on the options you choose. (Default: 1)
       -bgs SIZE, --batch-grid-size SIZE
                             Produce a single image containing a grid of images with the number of COLUMNSxROWS
                             given to this argument when --batch-size is greater than 1. If not specified with a
@@ -362,17 +362,17 @@ Help Output
                             loading syntax: --vae "AutoencoderKL;https://huggingface.co/UserName/repository-
                             name/blob/main/vae_model.safetensors", the "revision" argument may be used with this
                             syntax.
-      -vt, --vae-tiling     Enable VAE tiling (torch Stable Diffusion only). Assists in the generation of large
-                            images with lower memory overhead. The VAE will split the input tensor into tiles to
-                            compute decoding and encoding in several steps. This is useful for saving a large
-                            amount of memory and to allow processing larger images. Note that if you are using
-                            --control-nets you may still run into memory issues generating large images, or with
-                            --batch-size greater than 1.
-      -vs, --vae-slicing    Enable VAE slicing (torch Stable Diffusion models only). Assists in the generation
-                            of large images with lower memory overhead. The VAE will split the input tensor in
-                            slices to compute decoding in several steps. This is useful to save some memory,
-                            especially when --batch-size is greater than 1. Note that if you are using
-                            --control-nets you may still run into memory issues generating large images.
+      -vt, --vae-tiling     Enable VAE tiling. Assists in the generation of large images with lower memory
+                            overhead. The VAE will split the input tensor into tiles to compute decoding and
+                            encoding in several steps. This is useful for saving a large amount of memory and to
+                            allow processing larger images. Note that if you are using --control-nets you may
+                            still run into memory issues generating large images, or with --batch-size greater
+                            than 1.
+      -vs, --vae-slicing    Enable VAE slicing. Assists in the generation of large images with lower memory
+                            overhead. The VAE will split the input tensor in slices to compute decoding in
+                            several steps. This is useful to save some memory, especially when --batch-size is
+                            greater than 1. Note that if you are using --control-nets you may still run into
+                            memory issues generating large images.
       -lra LORA_URI [LORA_URI ...], --loras LORA_URI [LORA_URI ...]
                             Specify one or more LoRA models using URIs. These should be a huggingface repository
                             slug, path to model file on disk (for example, a .pt, .pth, .bin, .ckpt, or
@@ -855,7 +855,7 @@ Help Output
                             from CLIP while computing the prompt embeddings, it must be a value greater than or
                             equal to zero. A value of 1 means that the output of the pre-final layer will be
                             used for computing the prompt embeddings. This is only supported for --model-type
-                            values "torch" and "torch-sdxl", including with --control-nets.
+                            values "torch", "torch-sdxl", and "torch-sd3".
       -se SEED [SEED ...], --seeds SEED [SEED ...]
                             One or more seeds to try, define fixed seeds to achieve deterministic output. This
                             argument may not be used when --gse/--gen-seeds is used. (default: [randint(0,
@@ -1080,6 +1080,7 @@ Help Output
                             destroyed. Example, and default value: "processor_size > (available * 0.70)" For
                             Syntax See: [https://dgenerate.readthedocs.io/en/v4.0.0/dgenerate_submodules.html#dg
                             enerate.imageprocessors.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS]
+
 
 
 

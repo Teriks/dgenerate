@@ -496,7 +496,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                             producing an animation then the image grid is used for the output frames. During animation 
                             rendering each image in the batch will still be written to the output directory along 
                             side the produced animation as either suffixed files or image grids depending on the 
-                            options you choose. (Torch Default: 1)"""))
+                            options you choose. (Default: 1)"""))
 
     actions.append(
         parser.add_argument('-bgs', '--batch-grid-size', action='store', default=None, metavar="SIZE", type=_type_size,
@@ -641,7 +641,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument('-vt', '--vae-tiling', action='store_true', default=False,
-                            help="""Enable VAE tiling (torch Stable Diffusion only). Assists in the generation of
+                            help="""Enable VAE tiling. Assists in the generation of
                             large images with lower memory overhead. The VAE will split the input tensor 
                             into tiles to compute decoding and encoding in several steps. This is 
                             useful for saving a large amount of memory and to allow processing larger images. 
@@ -650,7 +650,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument('-vs', '--vae-slicing', action='store_true', default=False,
-                            help="""Enable VAE slicing (torch Stable Diffusion models only). Assists in the generation 
+                            help="""Enable VAE slicing. Assists in the generation 
                             of large images with lower memory overhead. The VAE will split the input tensor
                             in slices to compute decoding in several steps. This is useful to save some memory,
                             especially when --batch-size is greater than 1. Note that if you are using --control-nets
@@ -1434,7 +1434,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                             help="""One or more clip skip values to try. Clip skip is the number of layers to be skipped from CLIP 
                             while computing the prompt embeddings, it must be a value greater than or equal to zero. A value of 1 means 
                             that the output of the pre-final layer will be used for computing the prompt embeddings. This is only 
-                            supported for --model-type values "torch" and "torch-sdxl", including with --control-nets."""))
+                            supported for --model-type values "torch", "torch-sdxl", and "torch-sd3"."""))
 
     seed_options = parser.add_mutually_exclusive_group()
 
