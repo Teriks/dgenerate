@@ -190,7 +190,6 @@ def fetch_model_files_with_size(repo_id: str,
                                 use_auth_token: str | None = None,
                                 extensions: collections.abc.Iterable | None = None,
                                 local_files_only: bool = False,
-                                flax: bool = False,
                                 sentencepiece: bool = False,
                                 watermarker: bool = False) -> collections.abc.Iterator[tuple[str, int]]:
     """
@@ -212,8 +211,6 @@ def fetch_model_files_with_size(repo_id: str,
     :param local_files_only: utilize the huggingface API if necessary?
         if this is ``True``, and it is necessary to fetch info from the API, this function
         will simply yield nothing
-    :param flax: if ``False``, only look for torch diffusion weights.
-        If ``True``, only look for flax diffusion weights.
     :param sentencepiece: Forcibly include tokenizer/spiece.model for models with a unet?
     :param watermarker: Forcibly include watermarker/diffusion_pytorch_model.bin for models with a unet?
 
@@ -276,29 +273,20 @@ def fetch_model_files_with_size(repo_id: str,
                            os.path.basename(f)), os.path.getsize(f)
 
     def find_diffuser_weights(search_dir):
-        if flax:
+        found = _hf_try_to_load_from_cache(
+            repo_id=repo_id,
+            revision=revision,
+            filename=os.path.join(search_dir,
+                                  f'diffusion_pytorch_model{variant_part}safetensors')
+        )
+
+        if not isinstance(found, str):
             found = _hf_try_to_load_from_cache(
                 repo_id=repo_id,
                 revision=revision,
                 filename=os.path.join(search_dir,
-                                      f'diffusion_flax_model{variant_part}msgpack')
+                                      f'diffusion_pytorch_model{variant_part}bin')
             )
-        else:
-            found = _hf_try_to_load_from_cache(
-                repo_id=repo_id,
-                revision=revision,
-                filename=os.path.join(search_dir,
-                                      f'diffusion_pytorch_model{variant_part}safetensors')
-            )
-
-            if not isinstance(found, str):
-                found = _hf_try_to_load_from_cache(
-                    repo_id=repo_id,
-                    revision=revision,
-                    filename=os.path.join(search_dir,
-                                          f'diffusion_pytorch_model{variant_part}bin')
-                )
-
         return post_discover_check(found)
 
     if os.path.isfile(repo_id):
@@ -454,7 +442,6 @@ def estimate_model_memory_use(repo_id: str,
                               include_text_encoder_2: bool = True,
                               include_text_encoder_3: bool = True,
                               safetensors: bool = True,
-                              flax: bool = False,
                               sentencepiece: bool = False,
                               watermarker: bool = False,
                               use_auth_token: str | None = None,
@@ -479,7 +466,6 @@ def estimate_model_memory_use(repo_id: str,
     :param include_text_encoder_2: include the second text encoder model if it exists?
     :param include_text_encoder_3: include the third text encoder model if it exists?
     :param safetensors: Use safetensors if available?
-    :param flax: Only look for msgpack files?
     :param sentencepiece: Forcibly include tokenizer/spiece.model for models with a unet?
     :param watermarker: Forcibly include watermarker/diffusion_pytorch_model.bin for models with a unet?
     :param use_auth_token: optional huggingface auth token
@@ -506,10 +492,8 @@ def estimate_model_memory_use(repo_id: str,
                                                   weight_name=weight_name,
                                                   use_auth_token=use_auth_token,
                                                   local_files_only=local_files_only,
-                                                  extensions={'.msgpack',
-                                                              '.safetensors',
+                                                  extensions={'.safetensors',
                                                               '.bin'},
-                                                  flax=flax,
                                                   sentencepiece=sentencepiece,
                                                   watermarker=watermarker):
         d = os.path.dirname(file)
@@ -524,13 +508,10 @@ def estimate_model_memory_use(repo_id: str,
         else:
             directories[d] = {file: size}
 
-    if flax:
-        extensions = {'.msgpack'}
+    if safetensors:
+        extensions = {'.safetensors'}
     else:
-        if safetensors:
-            extensions = {'.safetensors'}
-        else:
-            extensions = {'.bin'}
+        extensions = {'.bin'}
 
     def estimate(forced_only=False):
         size_sum = 0
@@ -616,7 +597,7 @@ def estimate_model_memory_use(repo_id: str,
 
     e = estimate()
     if e == 0:
-        if not flax and not weight_name and safetensors:
+        if not weight_name and safetensors:
             extensions = {'.bin'}
             e = estimate()
 
@@ -648,7 +629,7 @@ def is_single_file_model_load(path):
     if not ext:
         return False
 
-    if ext in {'.pt', '.pth', '.bin', '.msgpack', '.ckpt', '.safetensors'}:
+    if ext in {'.pt', '.pth', '.bin', '.ckpt', '.safetensors'}:
         return True
 
     return False

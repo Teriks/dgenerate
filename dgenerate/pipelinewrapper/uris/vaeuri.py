@@ -35,18 +35,19 @@ import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 
-_flax_vae_uri_parser = _textprocessing.ConceptUriParser('VAE', ['model', 'revision', 'subfolder', 'dtype'])
+_vae_uri_parser = _textprocessing.ConceptUriParser('VAE',
+                                                   ['model', 'revision', 'variant', 'subfolder', 'dtype'])
 
 
-class FlaxVAEUri:
+class VAEUri:
     """
-    Representation of ``--vae`` uri when ``--model-type`` flax*
+    Representation of ``--vae`` uri when ``--model-type`` torch*
     """
 
     @property
     def encoder(self) -> str:
         """
-        Encoder class name, "FlaxAutoencoderKL"
+        Encoder class name such as "AutoencoderKL"
         """
         return self._encoder
 
@@ -65,6 +66,13 @@ class FlaxVAEUri:
         return self._revision
 
     @property
+    def variant(self) -> _types.OptionalString:
+        """
+        Model repo revision
+        """
+        return self._variant
+
+    @property
     def subfolder(self) -> _types.OptionalPath:
         """
         Model repo subfolder
@@ -79,48 +87,56 @@ class FlaxVAEUri:
         return self._dtype
 
     _encoders = {
-        'FlaxAutoencoderKL': diffusers.FlaxAutoencoderKL
+        'AutoencoderKL': diffusers.AutoencoderKL,
+        'AsymmetricAutoencoderKL': diffusers.AsymmetricAutoencoderKL,
+        'AutoencoderTiny': diffusers.AutoencoderTiny,
+        'ConsistencyDecoderVAE': diffusers.ConsistencyDecoderVAE
     }
+
+    @staticmethod
+    def supported_encoder_names() -> list[str]:
+        return list(VAEUri._encoders.keys())
 
     def __init__(self,
                  encoder: str,
                  model: str,
-                 revision: _types.OptionalString,
-                 subfolder: _types.OptionalPath,
-                 dtype: _enums.DataType | None):
+                 revision: _types.OptionalString = None,
+                 variant: _types.OptionalString = None,
+                 subfolder: _types.OptionalString = None,
+                 dtype: _enums.DataType | str | None = None):
         """
-        :param encoder: Encoder class name
+        :param encoder: encoder class name, for example ``AutoencoderKL``
         :param model: model path
         :param revision: model revision (branch name)
+        :param variant: model variant, for example ``fp16``
         :param subfolder: model subfolder
         :param dtype: model data type (precision)
 
-        :raises InvalidVaeUriError: If ``encoder != 'FlaxAutoencoderKL'``, or if the ``model``
-            path is a single file and that is not supported, or if ``dtype`` is passed an
-            invalid string.
+        :raises InvalidVaeUriError: If ``dtype`` is passed an invalid data type string, or if
+            ``model`` points to a single file and the specified ``encoder`` class name does not
+            support loading from a single file.
         """
 
         if encoder not in self._encoders:
             raise _exceptions.InvalidVaeUriError(
-                f'Unknown VAE flax encoder class {encoder}, '
-                f'must be one of: {_textprocessing.oxford_comma(self._encoders.keys(), "or")}')
+                f'Unknown VAE encoder class {encoder}, must be one of: {_textprocessing.oxford_comma(self._encoders.keys(), "or")}')
 
         can_single_file_load = hasattr(self._encoders[encoder], 'from_single_file')
         single_file_load_path = _hfutil.is_single_file_model_load(model)
 
         if single_file_load_path and not can_single_file_load:
-            raise _exceptions.InvalidVaeUriError(
-                f'{encoder} is not capable of loading from a single file, '
-                f'must be loaded from a huggingface repository slug or folder on disk.')
+            raise _exceptions.InvalidVaeUriError(f'{encoder} is not capable of loading from a single file, '
+                                                 f'must be loaded from a huggingface repository slug or folder on disk.')
 
         if single_file_load_path:
-            # in the future this will be supported?
             if subfolder is not None:
                 raise _exceptions.InvalidVaeUriError('Single file VAE loads do not support the subfolder option.')
 
         self._encoder = encoder
         self._model = model
         self._revision = revision
+        self._variant = variant
+        self._subfolder = subfolder
 
         try:
             self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
@@ -128,26 +144,44 @@ class FlaxVAEUri:
             raise _exceptions.InvalidVaeUriError(
                 f'invalid dtype string, must be one of: {_textprocessing.oxford_comma(_enums.supported_data_type_strings(), "or")}')
 
-        self._subfolder = subfolder
-
     def load(self,
              dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
              use_auth_token: _types.OptionalString = None,
-             local_files_only: bool = False) -> tuple[diffusers.FlaxAutoencoderKL, typing.Any]:
+             local_files_only: bool = False,
+             sequential_cpu_offload_member: bool = False,
+             model_cpu_offload_member: bool = False) -> \
+            typing.Union[
+                diffusers.AutoencoderKL,
+                diffusers.AsymmetricAutoencoderKL,
+                diffusers.AutoencoderTiny,
+                diffusers.ConsistencyDecoderVAE]:
         """
-        Load a :py:class:`diffusers.FlaxAutoencoderKL` VAE and its flax_params from this URI
+        Load a VAE of type :py:class:`diffusers.AutoencoderKL`, :py:class:`diffusers.AsymmetricAutoencoderKL`,
+        :py:class:`diffusers.AutoencoderKLTemporalDecoder`, or :py:class:`diffusers.AutoencoderTiny` from this URI
 
         :param dtype_fallback: If the URI does not specify a dtype, use this dtype.
         :param use_auth_token: optional huggingface auth token.
         :param local_files_only: avoid downloading files and only look for cached files
             when the model path is a huggingface slug or blob link
 
+        :param sequential_cpu_offload_member: This model will be attached to
+            a pipeline which will have sequential cpu offload enabled?
+
+        :param model_cpu_offload_member: This model will be attached to a pipeline
+            which will have model cpu offload enabled?
+
         :raises ModelNotFoundError: If the model could not be found.
 
-        :return: tuple (:py:class:`diffusers.FlaxAutoencoderKL`, flax_vae_params)
+        :return: :py:class:`diffusers.AutoencoderKL`, :py:class:`diffusers.AsymmetricAutoencoderKL`,
+            :py:class:`diffusers.AutoencoderKLTemporalDecoder`, or :py:class:`diffusers.AutoencoderTiny`
         """
         try:
-            return self._load(dtype_fallback, use_auth_token, local_files_only)
+            return self._load(dtype_fallback,
+                              use_auth_token,
+                              local_files_only,
+                              sequential_cpu_offload_member,
+                              model_cpu_offload_member)
+
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _hfutil.ModelNotFoundError(e)
@@ -155,20 +189,31 @@ class FlaxVAEUri:
             raise _exceptions.VAEUriLoadError(
                 f'error loading vae "{self.model}": {e}')
 
-    @_memoize(_cache._FLAX_VAE_CACHE,
+    @_memoize(_cache._VAE_CACHE,
               exceptions={'local_files_only'},
               hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _d_memoize.struct_hasher}),
-              on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Flax VAE", key, hit[0]),
-              on_create=lambda key, new: _d_memoize.simple_cache_miss_debug("Flax VAE", key, new[0]))
+              on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Torch VAE", key, hit),
+              on_create=lambda key, new: _d_memoize.simple_cache_miss_debug("Torch VAE", key, new))
     def _load(self,
               dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
               use_auth_token: _types.OptionalString = None,
-              local_files_only: bool = False) -> tuple[diffusers.FlaxAutoencoderKL, typing.Any]:
+              local_files_only: bool = False,
+              sequential_cpu_offload_member: bool = False,
+              model_cpu_offload_member: bool = False) -> \
+            typing.Union[
+                diffusers.AutoencoderKL,
+                diffusers.AsymmetricAutoencoderKL,
+                diffusers.AutoencoderTiny,
+                diffusers.ConsistencyDecoderVAE]:
+
+        if sequential_cpu_offload_member and model_cpu_offload_member:
+            # these are used for cache differentiation only
+            raise ValueError('sequential_cpu_offload_member and model_cpu_offload_member cannot both be True.')
 
         if self.dtype is None:
-            flax_dtype = _enums.get_flax_dtype(dtype_fallback)
+            torch_dtype = _enums.get_torch_dtype(dtype_fallback)
         else:
-            flax_dtype = _enums.get_flax_dtype(self.dtype)
+            torch_dtype = _enums.get_torch_dtype(self.dtype)
 
         encoder = self._encoders[self.encoder]
 
@@ -177,32 +222,38 @@ class FlaxVAEUri:
         single_file_load_path = _hfutil.is_single_file_model_load(model_path)
 
         if single_file_load_path:
-
             estimated_memory_use = _hfutil.estimate_model_memory_use(
                 repo_id=model_path,
                 revision=self.revision,
                 local_files_only=local_files_only,
-                use_auth_token=use_auth_token,
-                flax=True
+                use_auth_token=use_auth_token
             )
 
             _cache.enforce_vae_cache_constraints(new_vae_size=estimated_memory_use)
 
-            vae = encoder.from_single_file(
-                model_path,
-                revision=self.revision,
-                dtype=flax_dtype,
-                token=use_auth_token,
-                local_files_only=local_files_only)
+            if encoder is diffusers.AutoencoderKL:
+                # There is a bug in their cast
+                vae = encoder.from_single_file(model_path,
+                                               token=use_auth_token,
+                                               revision=self.revision,
+                                               local_files_only=local_files_only) \
+                    .to(dtype=torch_dtype, non_blocking=False)
+            else:
+                vae = encoder.from_single_file(model_path,
+                                               token=use_auth_token,
+                                               revision=self.revision,
+                                               torch_dtype=torch_dtype,
+                                               local_files_only=local_files_only)
+
         else:
 
             estimated_memory_use = _hfutil.estimate_model_memory_use(
                 repo_id=model_path,
                 revision=self.revision,
+                variant=self.variant,
                 subfolder=self.subfolder,
                 local_files_only=local_files_only,
-                use_auth_token=use_auth_token,
-                flax=True
+                use_auth_token=use_auth_token
             )
 
             _cache.enforce_vae_cache_constraints(new_vae_size=estimated_memory_use)
@@ -210,49 +261,51 @@ class FlaxVAEUri:
             vae = encoder.from_pretrained(
                 model_path,
                 revision=self.revision,
-                dtype=flax_dtype,
+                variant=self.variant,
+                torch_dtype=torch_dtype,
                 subfolder=self.subfolder,
                 token=use_auth_token,
                 local_files_only=local_files_only)
 
-        _messages.debug_log('Estimated Flax VAE Memory Use:',
+        _messages.debug_log('Estimated Torch VAE Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_use))
 
-        _cache.vae_create_update_cache_info(vae=vae[0],
+        _cache.vae_create_update_cache_info(vae=vae,
                                             estimated_size=estimated_memory_use)
 
         return vae
 
     @staticmethod
-    def parse(uri: _types.Uri) -> 'FlaxVAEUri':
+    def parse(uri: _types.Uri) -> 'VAEUri':
         """
-        Parse a ``--model-type`` flax* ``--vae`` uri and return an object representing its constituents
+        Parse a ``--model-type`` torch* ``--vae`` uri and return an object representing its constituents
 
         :param uri: string with ``--vae`` uri syntax
 
         :raise InvalidVaeUriError:
 
-        :return: :py:class:`.FlaxVAEUri`
+        :return: :py:class:`.TorchVAEPath`
         """
         try:
-            r = _flax_vae_uri_parser.parse(uri)
+            r = _vae_uri_parser.parse(uri)
 
             model = r.args.get('model')
             if model is None:
-                raise _exceptions.InvalidVaeUriError('model argument for flax VAE specification must be defined.')
+                raise _exceptions.InvalidVaeUriError('model argument for torch VAE specification must be defined.')
 
             dtype = r.args.get('dtype')
 
             supported_dtypes = _enums.supported_data_type_strings()
             if dtype is not None and dtype not in supported_dtypes:
                 raise _exceptions.InvalidVaeUriError(
-                    f'Flax VAE "dtype" must be {", ".join(supported_dtypes)}, '
+                    f'Torch VAE "dtype" must be {", ".join(supported_dtypes)}, '
                     f'or left undefined, received: {dtype}')
 
-            return FlaxVAEUri(encoder=r.concept,
-                              model=model,
-                              revision=r.args.get('revision', None),
-                              dtype=_enums.get_flax_dtype(dtype),
-                              subfolder=r.args.get('subfolder', None))
+            return VAEUri(encoder=r.concept,
+                          model=model,
+                          revision=r.args.get('revision', None),
+                          variant=r.args.get('variant', None),
+                          dtype=dtype,
+                          subfolder=r.args.get('subfolder', None))
         except _textprocessing.ConceptUriParseError as e:
             raise _exceptions.InvalidVaeUriError(e)

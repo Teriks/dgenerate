@@ -33,7 +33,7 @@ import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 
-_torch_t2i_adapter_uri_parser = _textprocessing.ConceptUriParser(
+_t2i_adapter_uri_parser = _textprocessing.ConceptUriParser(
     'T2IAdapter',
     ['scale', 'revision', 'variant', 'subfolder', 'dtype']
 )
@@ -246,7 +246,7 @@ class T2IAdapterUri:
         :return: :py:class:`.T2IAdapterUri`
         """
         try:
-            r = _torch_t2i_adapter_uri_parser.parse(uri)
+            r = _t2i_adapter_uri_parser.parse(uri)
 
             dtype = r.args.get('dtype')
             scale = r.args.get('scale', 1.0)

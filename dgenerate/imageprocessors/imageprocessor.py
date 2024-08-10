@@ -39,11 +39,6 @@ import dgenerate.pipelinewrapper.util as _util
 import dgenerate.plugin as _plugin
 import dgenerate.types
 
-try:
-    import jaxlib
-except ImportError:
-    jaxlib = None
-
 
 class ImageProcessor(_plugin.Plugin):
     """
@@ -239,49 +234,25 @@ class ImageProcessor(_plugin.Plugin):
 
         try:
             try_again = False
-            if jaxlib is not None:
-                try:
-                    return func(**args)
-                except jaxlib.xla_extension.XlaRuntimeError as e:
-                    _messages.log(
-                        'Flax encountered an OOM condition, if you are running interactively it is '
-                        'recommended that you restart the dgenerate process.', level=_messages.WARNING)
+            try:
+                return func(**args)
+            except _d_exceptions.TORCH_CUDA_OOM_EXCEPTIONS as e:
+                _d_exceptions.raise_if_not_cuda_oom(e)
+
+                if oom_attempt == 0:
+                    self.__flush_diffusion_pipeline_after_oom()
+                    try_again = True
+                else:
+                    _messages.debug_log(
+                        f'ImageProcessor "{self.__class__.__name__}" failed attempt at '
+                        f'OOM recovery in {dgenerate.types.fullname(func)}()')
+
+                    self.__to_cpu_ignore_error()
+                    self.__flush_mem_ignore_error()
                     raise_exc = _d_exceptions.OutOfMemoryError(e)
-                except _d_exceptions.TORCH_CUDA_OOM_EXCEPTIONS as e:
-                    _d_exceptions.raise_if_not_cuda_oom(e)
-
-                    if oom_attempt == 0:
-                        self.__flush_diffusion_pipeline_after_oom()
-                        try_again = True
-                    else:
-                        _messages.debug_log(
-                            f'ImageProcessor "{self.__class__.__name__}" failed attempt at '
-                            f'OOM recovery in {dgenerate.types.fullname(func)}()')
-
-                        self.__to_cpu_ignore_error()
-                        self.__flush_mem_ignore_error()
-                        raise_exc = _d_exceptions.OutOfMemoryError(e)
-            else:
-                try:
-                    return func(**args)
-                except _d_exceptions.TORCH_CUDA_OOM_EXCEPTIONS as e:
-                    _d_exceptions.raise_if_not_cuda_oom(e)
-
-                    if oom_attempt == 0:
-                        self.__flush_diffusion_pipeline_after_oom()
-                        try_again = True
-                    else:
-                        _messages.debug_log(
-                            f'ImageProcessor "{self.__class__.__name__}" failed attempt at '
-                            f'OOM recovery in {dgenerate.types.fullname(func)}()')
-
-                        self.__to_cpu_ignore_error()
-                        self.__flush_mem_ignore_error()
-                        raise_exc = _d_exceptions.OutOfMemoryError(e)
 
             if try_again:
                 return self.__with_memory_safety(func, args, oom_attempt=1)
-
         except MemoryError:
             gc.collect()
             raise _d_exceptions.OutOfMemoryError('cpu (system memory)')

@@ -46,15 +46,10 @@ import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 import dgenerate.pipelinewrapper.util as _util
 
-try:
-    import jaxlib
-except ImportError:
-    jaxlib = None
-
 
 class UnsupportedPipelineConfigError(Exception):
     """
-    Occurs when the a diffusers pipeline is requested to be
+    Occurs when a diffusers pipeline is requested to be
     configured in a way that is unsupported by that pipeline.
     """
     pass
@@ -167,7 +162,7 @@ def text_encoder_is_help(text_encoder_uris: _types.OptionalUris):
     return any(t == 'help' for t in text_encoder_uris)
 
 
-def load_scheduler(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusionPipeline,
+def load_scheduler(pipeline: diffusers.DiffusionPipeline,
                    scheduler_name=None, model_path: str | None = None):
     """
     Load a specific compatible scheduler class name onto a huggingface diffusers pipeline object.
@@ -287,7 +282,6 @@ def estimate_pipeline_memory_use(
         disables it if needed, so it usually considers the size of the safety checker model.
     :param auth_token: optional huggingface auth token to access restricted repositories that your account has access to.
     :param extra_args: ``extra_args`` as to be passed to :py:func:`.create_torch_diffusion_pipeline`
-        or :py:func:`.create_flax_diffusion_pipeline`
     :param local_files_only: Only ever attempt to look in the local huggingface cache? if ``False`` the huggingface
         API will be contacted when necessary.
     :return: size estimate in bytes.
@@ -319,7 +313,6 @@ def estimate_pipeline_memory_use(
         include_text_encoder_3=include_text_encoder_3,
         use_auth_token=auth_token,
         local_files_only=local_files_only,
-        flax=_enums.model_type_is_flax(model_type),
         sentencepiece=_enums.model_type_is_floyd(model_type)
     )
 
@@ -330,8 +323,7 @@ def estimate_pipeline_memory_use(
             revision=parsed.revision,
             subfolder=parsed.subfolder,
             use_auth_token=auth_token,
-            local_files_only=local_files_only,
-            flax=_enums.model_type_is_flax(model_type)
+            local_files_only=local_files_only
         )
 
     if lora_uris:
@@ -344,8 +336,7 @@ def estimate_pipeline_memory_use(
                 subfolder=parsed.subfolder,
                 weight_name=parsed.weight_name,
                 use_auth_token=auth_token,
-                local_files_only=local_files_only,
-                flax=_enums.model_type_is_flax(model_type)
+                local_files_only=local_files_only
             )
 
     if ip_adapter_uris:
@@ -358,8 +349,7 @@ def estimate_pipeline_memory_use(
                 subfolder=parsed.subfolder,
                 weight_name=parsed.weight_name,
                 use_auth_token=auth_token,
-                local_files_only=local_files_only,
-                flax=_enums.model_type_is_flax(model_type)
+                local_files_only=local_files_only
             )
 
     if textual_inversion_uris:
@@ -372,34 +362,27 @@ def estimate_pipeline_memory_use(
                 subfolder=parsed.subfolder,
                 weight_name=parsed.weight_name,
                 use_auth_token=auth_token,
-                local_files_only=local_files_only,
-                flax=_enums.model_type_is_flax(model_type)
+                local_files_only=local_files_only
             )
 
     if text_encoder_uris:
-        if _enums.model_type_is_torch(model_type):
-            uri_parser_class = _uris.TorchTextEncoderUri
-        else:
-            uri_parser_class = _uris.FlaxTextEncoderUri
-
         for text_encoder_uri in text_encoder_uris:
             if not _text_encoder_not_default(text_encoder_uri):
                 continue
 
-            parsed = uri_parser_class.parse(text_encoder_uri)
+            parsed = _uris.TextEncoderUri.parse(text_encoder_uri)
 
             usage += _hfutil.estimate_model_memory_use(
                 repo_id=parsed.model,
                 revision=parsed.revision,
                 subfolder=parsed.subfolder,
                 use_auth_token=auth_token,
-                local_files_only=local_files_only,
-                flax=_enums.model_type_is_flax(model_type))
+                local_files_only=local_files_only)
 
     return usage
 
 
-def set_vae_slicing_tiling(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusionPipeline,
+def set_vae_slicing_tiling(pipeline: diffusers.DiffusionPipeline,
                            vae_tiling: bool,
                            vae_slicing: bool):
     """
@@ -714,8 +697,6 @@ def pipeline_to(pipeline, device: torch.device | str | None):
     as well as the associated cache update functions for the pipelines individual
     components as needed.
 
-    If the pipeline does not possess the ``.to()`` method (such as with flax pipelines), this is a no-op.
-
     If ``device==None`` this is a no-op.
 
     Modules which are meta tensors will not be moved (sequentially offloaded modules)
@@ -809,7 +790,7 @@ def _warn_prompt_lengths(pipeline, **kwargs):
 _LAST_CALLED_PIPELINE = None
 
 
-def get_last_called_pipeline() -> diffusers.DiffusionPipeline | diffusers.FlaxDiffusionPipeline | None:
+def get_last_called_pipeline() -> diffusers.DiffusionPipeline | None:
     """
     Get a reference to the globally cached pipeline last called with :py:func:`call_pipeline`.
 
@@ -844,7 +825,7 @@ def destroy_last_called_pipeline(collect=True):
 
 # noinspection PyCallingNonCallable
 @torch.inference_mode()
-def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusionPipeline,
+def call_pipeline(pipeline: diffusers.DiffusionPipeline,
                   device: torch.device | str | None = 'cuda',
                   prompt_weighter: _promptweighters.PromptWeighter = None,
                   **kwargs):
@@ -858,8 +839,9 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
 
     :param device: The device to move the pipeline to before calling, it will be
         moved to this device if it is not already on the device. If the pipeline
-        does not support moving to a device, such as with flax pipelines, or
-        with sequentially offloaded or cpu offloaded models,this argument is ignored.
+        does not support moving to specific device, such as with sequentially offloaded
+        pipelines which cannot move at all, or cpu offloaded pipelines which can
+        only move to CPU, this argument is ignored.
 
     :param kwargs: diffusers pipeline keyword arguments
 
@@ -897,42 +879,23 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
 
     def _call_prompt_weighter():
         nonlocal enable_retry_pipe
-        # this is horrific
+
         try:
-            if jaxlib is not None:
-                try:
-                    translated = prompt_weighter.translate_to_embeds(pipeline, device, kwargs)
-                except jaxlib.xla_extension.XlaRuntimeError as e:
-                    enable_retry_pipe = False
-                    _messages.log(
-                        'Flax encountered an OOM condition, if you are running interactively it is '
-                        'recommended that you restart the dgenerate process.', level=_messages.WARNING)
-                    _cleanup_prompt_weighter()
-                    raise _d_exceptions.OutOfMemoryError(e)
-                except _d_exceptions.TORCH_CUDA_OOM_EXCEPTIONS as e:
-                    _d_exceptions.raise_if_not_cuda_oom(e)
-                    _cleanup_prompt_weighter()
-                    torch.cuda.empty_cache()
-                    gc.collect()
-                    raise _d_exceptions.OutOfMemoryError(e)
-            else:
-                try:
-                    translated = prompt_weighter.translate_to_embeds(pipeline, device, kwargs)
-                except _d_exceptions.TORCH_CUDA_OOM_EXCEPTIONS as e:
-                    _d_exceptions.raise_if_not_cuda_oom(e)
-                    _cleanup_prompt_weighter()
-                    torch.cuda.empty_cache()
-                    gc.collect()
-                    raise _d_exceptions.OutOfMemoryError(e)
+            translated = prompt_weighter.translate_to_embeds(pipeline, device, kwargs)
+        except _d_exceptions.TORCH_CUDA_OOM_EXCEPTIONS as e:
+                _d_exceptions.raise_if_not_cuda_oom(e)
+                _cleanup_prompt_weighter()
+                torch.cuda.empty_cache()
+                gc.collect()
+                raise _d_exceptions.OutOfMemoryError(e)
         except MemoryError:
             _cleanup_prompt_weighter()
             gc.collect()
             raise _d_exceptions.OutOfMemoryError('cpu (system memory)')
         except Exception as e:
-            if not isinstance(e, _d_exceptions.OutOfMemoryError):
-                _cleanup_prompt_weighter()
-                torch.cuda.empty_cache()
-                gc.collect()
+            _cleanup_prompt_weighter()
+            torch.cuda.empty_cache()
+            gc.collect()
             raise
 
         def _debug_string_func():
@@ -990,35 +953,17 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline | diffusers.FlaxDiffusio
     def _call_pipeline():
         nonlocal enable_retry_pipe
         try:
-            if jaxlib is not None:
-                try:
-                    return _call_pipeline_raw()
-                except _d_exceptions.TORCH_CUDA_OOM_EXCEPTIONS as e:
-                    _d_exceptions.raise_if_not_cuda_oom(e)
-                    _torch_oom_handler()
-                    raise _d_exceptions.OutOfMemoryError(e)
-                except jaxlib.xla_extension.XlaRuntimeError as e:
-                    enable_retry_pipe = False
-                    # nothing we can do for flax, the process
-                    # is left dirty by the library
-                    _messages.log(
-                        'Flax encountered an OOM condition, if you are running interactively it is '
-                        'recommended that you restart the dgenerate process.', level=_messages.WARNING)
-                    raise _d_exceptions.OutOfMemoryError(e)
-            else:
-                try:
-                    return _call_pipeline_raw()
-                except _d_exceptions.TORCH_CUDA_OOM_EXCEPTIONS as e:
-                    _d_exceptions.raise_if_not_cuda_oom(e)
-                    _torch_oom_handler()
-                    raise _d_exceptions.OutOfMemoryError(e)
+            return _call_pipeline_raw()
+        except _d_exceptions.TORCH_CUDA_OOM_EXCEPTIONS as e:
+            _d_exceptions.raise_if_not_cuda_oom(e)
+            _torch_oom_handler()
+            raise _d_exceptions.OutOfMemoryError(e)
         except MemoryError:
             gc.collect()
             raise _d_exceptions.OutOfMemoryError('cpu (system memory)')
         except Exception as e:
-            if not isinstance(e, _d_exceptions.OutOfMemoryError):
-                # same cleanup
-                _torch_oom_handler()
+            # same cleanup
+            _torch_oom_handler()
             raise
 
     if pipeline is _LAST_CALLED_PIPELINE:
@@ -1144,12 +1089,12 @@ class TorchPipelineCreationResult(PipelineCreationResult):
         """
         return super().pipeline
 
-    parsed_unet_uri: _uris.TorchUNetUri | None
+    parsed_unet_uri: _uris.UNetUri | None
     """
     Parsed UNet URI if one was present
     """
 
-    parsed_vae_uri: _uris.TorchVAEUri | None
+    parsed_vae_uri: _uris.VAEUri | None
     """
     Parsed VAE URI if one was present
     """
@@ -1169,7 +1114,7 @@ class TorchPipelineCreationResult(PipelineCreationResult):
     Parsed Textual Inversion URIs if any were present
     """
 
-    parsed_controlnet_uris: collections.abc.Sequence[_uris.TorchControlNetUri]
+    parsed_controlnet_uris: collections.abc.Sequence[_uris.ControlNetUri]
     """
     Parsed ControlNet URIs if any were present
     """
@@ -1186,13 +1131,13 @@ class TorchPipelineCreationResult(PipelineCreationResult):
 
     def __init__(self,
                  pipeline: diffusers.DiffusionPipeline,
-                 parsed_unet_uri: _uris.TorchUNetUri | None,
-                 parsed_vae_uri: _uris.TorchVAEUri | None,
+                 parsed_unet_uri: _uris.UNetUri | None,
+                 parsed_vae_uri: _uris.VAEUri | None,
                  parsed_image_encoder_uri: _uris.ImageEncoderUri | None,
                  parsed_lora_uris: collections.abc.Sequence[_uris.LoRAUri],
                  parsed_ip_adapter_uris: collections.abc.Sequence[_uris.IPAdapterUri],
                  parsed_textual_inversion_uris: collections.abc.Sequence[_uris.TextualInversionUri],
-                 parsed_controlnet_uris: collections.abc.Sequence[_uris.TorchControlNetUri],
+                 parsed_controlnet_uris: collections.abc.Sequence[_uris.ControlNetUri],
                  parsed_t2i_adapter_uris: collections.abc.Sequence[_uris.T2IAdapterUri]):
         super().__init__(pipeline)
         self.parsed_unet_uri = parsed_unet_uri
@@ -1423,17 +1368,17 @@ def _torch_args_hasher(args):
         if uri.strip() == 'null':
             return 'null'
 
-        return _uris.TorchTextEncoderUri.parse(uri)
+        return _uris.TextEncoderUri.parse(uri)
 
     custom_hashes = {
-        'unet_uri': _cache.uri_hash_with_parser(_uris.TorchUNetUri.parse),
-        'vae_uri': _cache.uri_hash_with_parser(_uris.TorchVAEUri.parse),
+        'unet_uri': _cache.uri_hash_with_parser(_uris.UNetUri.parse),
+        'vae_uri': _cache.uri_hash_with_parser(_uris.VAEUri.parse),
         'image_encoder_uri': _cache.uri_hash_with_parser(_uris.ImageEncoderUri),
         'lora_uris': _cache.uri_list_hash_with_parser(_uris.LoRAUri.parse),
         'ip_adapter_uris': _cache.uri_list_hash_with_parser(_uris.IPAdapterUri),
         'textual_inversion_uris': _cache.uri_list_hash_with_parser(_uris.TextualInversionUri.parse),
         'text_encoder_uris': _cache.uri_list_hash_with_parser(text_encoder_uri_parse),
-        'controlnet_uris': _cache.uri_list_hash_with_parser(_uris.TorchControlNetUri.parse,
+        'controlnet_uris': _cache.uri_list_hash_with_parser(_uris.ControlNetUri.parse,
                                                             exclude={'scale', 'start', 'end'}),
         't2i_adapter_uris': _cache.uri_list_hash_with_parser(_uris.T2IAdapterUri.parse,
                                                              exclude={'scale'})
@@ -1449,7 +1394,7 @@ def _torch_on_create(key, new):
     _d_memoize.simple_cache_miss_debug('Torch Pipeline', key, new.pipeline)
 
 
-@_memoize(_cache._TORCH_PIPELINE_CACHE,
+@_memoize(_cache._PIPELINE_CACHE,
           exceptions={'local_files_only'},
           hasher=_torch_args_hasher,
           on_hit=_torch_on_hit,
@@ -1880,18 +1825,18 @@ def _create_torch_diffusion_pipeline(
             if not text_encoder_override and (len(text_encoder_uris) > 0) and \
                     _text_encoder_not_default(text_encoder_uris[0]):
                 creation_kwargs['text_encoder'] = load_text_encoder(
-                    _uris.TorchTextEncoderUri.parse(text_encoder_uris[0]))
+                    _uris.TextEncoderUri.parse(text_encoder_uris[0]))
             if not text_encoder_2_override and (len(text_encoder_uris) > 1) and \
                     _text_encoder_not_default(text_encoder_uris[1]):
                 creation_kwargs['text_encoder_2'] = load_text_encoder(
-                    _uris.TorchTextEncoderUri.parse(text_encoder_uris[1]))
+                    _uris.TextEncoderUri.parse(text_encoder_uris[1]))
             if not text_encoder_3_override and (len(text_encoder_uris) > 2) and \
                     _text_encoder_not_default(text_encoder_uris[2]):
                 creation_kwargs['text_encoder_3'] = load_text_encoder(
-                    _uris.TorchTextEncoderUri.parse(text_encoder_uris[2]))
+                    _uris.TextEncoderUri.parse(text_encoder_uris[2]))
 
         if vae_uri is not None and not vae_override:
-            parsed_vae_uri = _uris.TorchVAEUri.parse(vae_uri)
+            parsed_vae_uri = _uris.VAEUri.parse(vae_uri)
 
             creation_kwargs['vae'] = \
                 parsed_vae_uri.load(
@@ -1905,7 +1850,7 @@ def _create_torch_diffusion_pipeline(
                                 f'Added Torch VAE: "{vae_uri}" to pipeline: "{pipeline_class.__name__}"')
 
         if unet_uri is not None and not unet_override:
-            parsed_unet_uri = _uris.TorchUNetUri.parse(unet_uri)
+            parsed_unet_uri = _uris.UNetUri.parse(unet_uri)
 
             unet_parameter = 'unet'
 
@@ -1984,7 +1929,7 @@ def _create_torch_diffusion_pipeline(
             _enums.model_type_is_sd3(model_type) else diffusers.SD3ControlNetModel
 
         for controlnet_uri in controlnet_uris:
-            parsed_controlnet_uri = _uris.TorchControlNetUri.parse(controlnet_uri)
+            parsed_controlnet_uri = _uris.ControlNetUri.parse(controlnet_uri)
 
             parsed_controlnet_uris.append(parsed_controlnet_uri)
 
@@ -2164,488 +2109,6 @@ def _create_torch_diffusion_pipeline(
         parsed_textual_inversion_uris=parsed_textual_inversion_uris,
         parsed_controlnet_uris=parsed_controlnet_uris,
         parsed_t2i_adapter_uris=parsed_t2i_adapter_uris
-    )
-
-
-class FlaxPipelineCreationResult(PipelineCreationResult):
-    @property
-    def pipeline(self) -> diffusers.FlaxDiffusionPipeline:
-        """
-        A created subclass of :py:class:`diffusers.FlaxDiffusionPipeline`
-        """
-        return super().pipeline
-
-    flax_params: dict[str, typing.Any]
-    """
-    Flax specific Pipeline params object
-    """
-
-    parsed_unet_uri: _uris.FlaxUNetUri | None
-    """
-    Parsed UNet URI if one was present
-    """
-
-    flax_unet_params: dict[str, typing.Any] | None
-    """
-    Flax specific UNet params object
-    """
-
-    parsed_vae_uri: _uris.FlaxVAEUri | None
-    """
-    Parsed VAE URI if one was present
-    """
-
-    flax_vae_params: dict[str, typing.Any] | None
-    """
-    Flax specific VAE params object
-    """
-
-    parsed_controlnet_uris: collections.abc.Sequence[_uris.FlaxControlNetUri]
-    """
-    Parsed ControlNet URIs if any were present
-    """
-
-    flax_controlnet_params: dict[str, typing.Any] | None
-    """
-    Flax specific ControlNet params object
-    """
-
-    def __init__(self,
-                 pipeline: diffusers.FlaxDiffusionPipeline,
-                 flax_params: dict[str, typing.Any],
-                 parsed_unet_uri: _uris.FlaxUNetUri | None,
-                 flax_unet_params: dict[str, typing.Any] | None,
-                 parsed_vae_uri: _uris.FlaxVAEUri | None,
-                 flax_vae_params: dict[str, typing.Any] | None,
-                 parsed_controlnet_uris: collections.abc.Sequence[_uris.FlaxControlNetUri],
-                 flax_controlnet_params: dict[str, typing.Any] | None):
-        super().__init__(pipeline)
-
-        self.flax_params = flax_params
-        self.parsed_controlnet_uris = parsed_controlnet_uris
-        self.parsed_unet_uri = parsed_unet_uri
-        self.flax_unet_params = flax_unet_params
-        self.parsed_vae_uri = parsed_vae_uri
-        self.flax_vae_params = flax_vae_params
-        self.flax_controlnet_params = flax_controlnet_params
-
-    def call(self,
-             prompt_weighter: _promptweighters.PromptWeighter | None = None,
-             **kwargs) -> diffusers.utils.BaseOutput:
-        """
-        Call **pipeline**, see: :py:func:`.call_pipeline`
-
-        :param prompt_weighter: Optional prompt weighter for weighted prompt syntaxes
-        :param kwargs: forward kwargs to pipeline
-        :return: A subclass of :py:class:`diffusers.utils.BaseOutput`
-        """
-        return call_pipeline(self.pipeline, None, prompt_weighter, **kwargs)
-
-
-def create_flax_diffusion_pipeline(
-        model_path: str,
-        model_type: _enums.ModelType = _enums.ModelType.FLAX,
-        pipeline_type: _enums.PipelineType = _enums.PipelineType.TXT2IMG,
-        revision: _types.OptionalString = None,
-        subfolder: _types.OptionalString = None,
-        dtype: _enums.DataType = _enums.DataType.AUTO,
-        unet_uri: _types.OptionalUri = None,
-        vae_uri: _types.OptionalUri = None,
-        controlnet_uris: _types.OptionalUris = None,
-        text_encoder_uris: _types.OptionalUris = None,
-        scheduler: _types.OptionalString = None,
-        safety_checker: bool = False,
-        auth_token: _types.OptionalString = None,
-        extra_modules: dict[str, typing.Any] | None = None,
-        local_files_only: bool = False) -> FlaxPipelineCreationResult:
-    """
-    Create a :py:class:`diffusers.FlaxDiffusionPipeline` in dgenerates in memory cacheing system.
-
-
-    :param model_path: huggingface slug, huggingface blob link, path to folder on disk, path to file on disk
-    :param model_type: Currently only accepts :py:attr:`dgenerate.pipelinewrapper.ModelType.FLAX`
-    :param pipeline_type: :py:class:`dgenerate.pipelinewrapper.PipelineType` enum value
-    :param revision: huggingface repo revision (branch)
-    :param subfolder: huggingface repo subfolder if applicable
-    :param dtype: Optional :py:class:`dgenerate.pipelinewrapper.DataType` enum value
-    :param unet_uri: Optional Flax specific ``--unet`` URI string for specifying a specific UNet
-    :param vae_uri: Optional Flax specific ``--vae`` URI string for specifying a specific VAE
-    :param controlnet_uris: Optional ``--control-nets`` URI strings for specifying ControlNet models
-    :param text_encoder_uris: Optional user specified ``--text-encoders`` URIs that will be loaded on to the
-        pipeline in order. A uri value of ``+`` or ``None`` indicates use default, a string value of ``null``
-        indicates to explicitly not load any encoder all
-    :param scheduler: Optional scheduler (sampler) class name, unqualified, or "help" to print supported values
-        to STDOUT and raise :py:exc:`dgenerate.pipelinewrapper.SchedulerHelpException`
-    :param safety_checker: Safety checker enabled? default is ``False``
-    :param auth_token: Optional huggingface API token for accessing repositories that are restricted to your account
-    :param extra_modules: Extra module arguments to pass directly into :py:meth:`diffusers.FlaxDiffusionPipeline.from_pretrained`
-    :param local_files_only: Only look in the huggingface cache and do not connect to download models?
-
-    :raises ModelNotFoundError:
-    :raises InvalidModelUriError:
-    :raises InvalidSchedulerNameError:
-    :raises UnsupportedPipelineConfigError:
-
-    :return: :py:class:`.FlaxPipelineCreationResult`
-    """
-    __locals = locals()
-
-    for name, value in __locals.items():
-        if name.endswith('_uris') and isinstance(value, str):
-            __locals[name] = [value]
-
-    try:
-        return _create_flax_diffusion_pipeline(**__locals)
-    except (huggingface_hub.utils.HFValidationError,
-            huggingface_hub.utils.HfHubHTTPError) as e:
-        raise _hfutil.ModelNotFoundError(e)
-
-
-class FlaxPipelineFactory:
-    """
-    Turns :py:func:`.create_flax_diffusion_pipeline` into a factory
-    that can recreate the same Flax pipeline over again, possibly from cache.
-    """
-
-    def __init__(self,
-                 model_path: str,
-                 model_type: _enums.ModelType = _enums.ModelType.FLAX,
-                 pipeline_type: _enums.PipelineType = _enums.PipelineType.TXT2IMG,
-                 revision: _types.OptionalString = None,
-                 subfolder: _types.OptionalString = None,
-                 dtype: _enums.DataType = _enums.DataType.AUTO,
-                 unet_uri: _types.OptionalUri = None,
-                 vae_uri: _types.OptionalUri = None,
-                 controlnet_uris: _types.OptionalUris = None,
-                 text_encoder_uris: _types.OptionalUris = None,
-                 scheduler: _types.OptionalString = None,
-                 safety_checker: bool = False,
-                 auth_token: _types.OptionalString = None,
-                 extra_modules: dict[str, typing.Any] | None = None,
-                 local_files_only: bool = False):
-        self._args = {k: v for k, v in _types.partial_deep_copy_container(locals()).items() if k not in {'self'}}
-
-    def __call__(self) -> FlaxPipelineCreationResult:
-        """
-        :raises ModelNotFoundError:
-        :raises InvalidModelUriError:
-        :raises InvalidSchedulerNameError:
-        :raises UnsupportedPipelineConfigError:
-
-        :return: :py:class:`.FlaxPipelineCreationResult`
-        """
-        return create_flax_diffusion_pipeline(**self._args)
-
-
-def _flax_args_hasher(args):
-    def text_encoder_uri_parse(uri):
-        if uri is None or uri.strip() == '+':
-            return None
-
-        if uri.strip() == 'help':
-            return 'help'
-
-        if uri.strip() == 'null':
-            return 'null'
-
-        return _uris.FlaxTextEncoderUri.parse(uri)
-
-    custom_hashes = {'unet_uri': _cache.uri_hash_with_parser(_uris.FlaxUNetUri.parse),
-                     'vae_uri': _cache.uri_hash_with_parser(_uris.FlaxVAEUri.parse),
-                     'controlnet_uris': _cache.uri_list_hash_with_parser(_uris.FlaxControlNetUri.parse),
-                     'text_encoder_uris': _cache.uri_list_hash_with_parser(text_encoder_uri_parse)}
-    return _d_memoize.args_cache_key(args, custom_hashes=custom_hashes)
-
-
-def _flax_on_hit(key, hit):
-    _d_memoize.simple_cache_hit_debug("Flax Pipeline", key, hit.pipeline)
-
-
-def _flax_on_create(key, new):
-    _d_memoize.simple_cache_miss_debug('Flax Pipeline', key, new.pipeline)
-
-
-@_memoize(_cache._FLAX_PIPELINE_CACHE,
-          exceptions={'local_files_only'},
-          hasher=_flax_args_hasher,
-          on_hit=_flax_on_hit,
-          on_create=_flax_on_create)
-def _create_flax_diffusion_pipeline(
-        model_path: str,
-        model_type: _enums.ModelType = _enums.ModelType.FLAX,
-        pipeline_type: _enums.PipelineType = _enums.PipelineType.TXT2IMG,
-        revision: _types.OptionalString = None,
-        subfolder: _types.OptionalString = None,
-        dtype: _enums.DataType = _enums.DataType.AUTO,
-        unet_uri: _types.OptionalUri = None,
-        vae_uri: _types.OptionalUri = None,
-        text_encoder_uris: _types.OptionalUris = None,
-        controlnet_uris: _types.OptionalUris = None,
-        scheduler: _types.OptionalString = None,
-        safety_checker: bool = False,
-        auth_token: _types.OptionalString = None,
-        extra_modules: dict[str, typing.Any] | None = None,
-        local_files_only: bool = False) -> FlaxPipelineCreationResult:
-    if not _enums.model_type_is_flax(model_type):
-        raise ValueError('model_type must be a FLAX ModelType enum value.')
-
-    has_controlnets = False
-    if controlnet_uris:
-        if len(controlnet_uris) > 1:
-            raise UnsupportedPipelineConfigError('Flax does not support multiple --control-nets.')
-        if len(controlnet_uris) == 1:
-            has_controlnets = True
-
-    if pipeline_type == _enums.PipelineType.TXT2IMG:
-        if has_controlnets:
-            pipeline_class = diffusers.FlaxStableDiffusionControlNetPipeline
-        else:
-            pipeline_class = diffusers.FlaxStableDiffusionPipeline
-    elif pipeline_type == _enums.PipelineType.IMG2IMG:
-        if has_controlnets:
-            raise UnsupportedPipelineConfigError('Flax does not support img2img mode with --control-nets.')
-        pipeline_class = diffusers.FlaxStableDiffusionImg2ImgPipeline
-    elif pipeline_type == _enums.PipelineType.INPAINT:
-        if has_controlnets:
-            raise UnsupportedPipelineConfigError('Flax does not support inpaint mode with --control-nets.')
-        pipeline_class = diffusers.FlaxStableDiffusionInpaintPipeline
-    else:
-        raise UnsupportedPipelineConfigError('Pipeline type not implemented.')
-
-    text_encoder_count = len(
-        [a for a in inspect.getfullargspec(pipeline_class.__init__).args if a.startswith('text_encoder')])
-
-    if not text_encoder_uris:
-        text_encoder_uris = []
-    elif text_encoder_is_help(text_encoder_uris):
-        _text_encoder_help(pipeline_class)
-
-    if len(text_encoder_uris) > text_encoder_count:
-        raise UnsupportedPipelineConfigError('To many text encoder URIs specified.')
-
-    if extra_modules is None:
-        extra_modules = dict()
-    else:
-        extra_modules = extra_modules.copy()
-
-    unet_override = 'unet' in extra_modules
-    vae_override = 'vae' in extra_modules
-    controlnet_override = 'controlnet' in extra_modules
-    safety_checker_override = 'safety_checker' in extra_modules
-    scheduler_override = 'scheduler' in extra_modules
-    feature_extractor_override = 'feature_extractor' in extra_modules
-
-    if 'text_encoder' in extra_modules and text_encoder_count == 0:
-        raise UnsupportedPipelineConfigError('To many text encoders specified.')
-
-    if 'text_encoder_2' in extra_modules and text_encoder_count < 2:
-        raise UnsupportedPipelineConfigError('To many text encoders specified.')
-
-    if 'text_encoder_3' in extra_modules and text_encoder_count < 3:
-        raise UnsupportedPipelineConfigError('To many text encoders specified.')
-
-    # noinspection PyTypeChecker
-    text_encoders: list[str] = list(text_encoder_uris)
-
-    if len(text_encoders) > 0 and _text_encoder_null(text_encoders[0]):
-        extra_modules['text_encoder'] = None
-    if len(text_encoders) > 1 and _text_encoder_null(text_encoders[1]):
-        extra_modules['text_encoder_2'] = None
-    if len(text_encoders) > 2 and _text_encoder_null(text_encoders[2]):
-        extra_modules['text_encoder_3'] = None
-
-    text_encoder_override = 'text_encoder' in extra_modules
-    text_encoder_2_override = 'text_encoder_2' in extra_modules
-    text_encoder_3_override = 'text_encoder_3' in extra_modules
-
-    if len(text_encoders) > 0 and text_encoder_override:
-        text_encoders[0] = None
-    if len(text_encoders) > 1 and text_encoder_2_override:
-        text_encoders[1] = None
-    if len(text_encoders) > 2 and text_encoder_3_override:
-        text_encoders[2] = None
-
-    estimated_memory_usage = estimate_pipeline_memory_use(
-        pipeline_type=pipeline_type,
-        model_type=model_type,
-        model_path=model_path,
-        revision=revision,
-        subfolder=subfolder,
-        unet_uri=unet_uri if not unet_override else None,
-        vae_uri=vae_uri if not vae_override else None,
-        text_encoder_uris=text_encoders,
-        safety_checker=safety_checker and not safety_checker_override,
-        auth_token=auth_token,
-        extra_args=extra_modules,
-        local_files_only=local_files_only
-    )
-
-    _messages.debug_log(
-        f'Creating Flax Pipeline: "{pipeline_class.__name__}", '
-        f'Estimated CPU Side Memory Use: {_memory.bytes_best_human_unit(estimated_memory_usage)}')
-
-    _cache.enforce_pipeline_cache_constraints(
-        new_pipeline_size=estimated_memory_usage)
-
-    creation_kwargs = {}
-    unet_params = None
-    vae_params = None
-    controlnet_params = None
-    text_encoder_params = None
-    text_encoder_2_params = None
-    text_encoder_3_params = None
-
-    flax_dtype = _enums.get_flax_dtype(dtype)
-
-    parsed_controlnet_uris = []
-    parsed_flax_vae_uri = None
-    parsed_flax_unet_uri = None
-
-    if not scheduler_is_help(scheduler):
-        # prevent waiting on UNet/VAE load just get the scheduler
-        # help message for the main model
-
-        if text_encoder_uris:
-            def load_text_encoder(uri):
-                return uri.load(
-                    dtype_fallback=dtype,
-                    use_auth_token=auth_token,
-                    local_files_only=local_files_only)
-
-            if not text_encoder_override and (len(text_encoder_uris) > 0) and \
-                    _text_encoder_not_default(text_encoder_uris[0]):
-                creation_kwargs['text_encoder'], text_encoder_params = load_text_encoder(
-                    _uris.FlaxTextEncoderUri.parse(text_encoder_uris[0]))
-            if not text_encoder_2_override and (len(text_encoder_uris) > 1) and \
-                    _text_encoder_not_default(text_encoder_uris[1]):
-                creation_kwargs['text_encoder_2'], text_encoder_2_params = load_text_encoder(
-                    _uris.FlaxTextEncoderUri.parse(text_encoder_uris[1]))
-            if not text_encoder_3_override and (len(text_encoder_uris) > 2) and \
-                    _text_encoder_not_default(text_encoder_uris[2]):
-                creation_kwargs['text_encoder_3'], text_encoder_3_params = load_text_encoder(
-                    _uris.FlaxTextEncoderUri.parse(text_encoder_uris[2]))
-
-        if vae_uri is not None and not vae_override:
-            parsed_flax_vae_uri = _uris.FlaxVAEUri.parse(vae_uri)
-
-            creation_kwargs['vae'], vae_params = parsed_flax_vae_uri.load(
-                dtype_fallback=dtype,
-                use_auth_token=auth_token,
-                local_files_only=local_files_only)
-            _messages.debug_log(lambda:
-                                f'Added Flax VAE: "{vae_uri}" to pipeline: "{pipeline_class.__name__}"')
-
-        if unet_uri is not None and not unet_override:
-            parsed_flax_unet_uri = _uris.FlaxUNetUri.parse(unet_uri)
-
-            creation_kwargs['unet'], unet_params = parsed_flax_unet_uri.load(
-                dtype_fallback=dtype,
-                use_auth_token=auth_token,
-                local_files_only=local_files_only)
-            _messages.debug_log(lambda:
-                                f'Added Flax UNet: "{unet_uri}" to pipeline: "{pipeline_class.__name__}"')
-
-    if controlnet_uris and not controlnet_override:
-        controlnet_uri = controlnet_uris[0]
-
-        parsed_flax_controlnet_uri = _uris.FlaxControlNetUri.parse(controlnet_uri)
-
-        parsed_controlnet_uris.append(parsed_flax_controlnet_uri)
-
-        controlnet, controlnet_params = parsed_flax_controlnet_uri \
-            .load(use_auth_token=auth_token,
-                  dtype_fallback=dtype,
-                  local_files_only=local_files_only)
-
-        _messages.debug_log(lambda:
-                            f'Added Flax ControlNet: "{controlnet_uri}" '
-                            f'to pipeline: "{pipeline_class.__name__}"')
-
-        creation_kwargs['controlnet'] = controlnet
-
-    creation_kwargs.update(extra_modules)
-
-    if not safety_checker and not safety_checker_override:
-        creation_kwargs['safety_checker'] = None
-
-    try:
-        pipeline, params = _pipeline_creation_args_debug(
-            backend='Flax',
-            cls=pipeline_class,
-            method=pipeline_class.from_pretrained,
-            model=model_path,
-            revision=revision,
-            dtype=flax_dtype,
-            subfolder=subfolder,
-            token=auth_token,
-            local_files_only=local_files_only,
-            **creation_kwargs)
-
-    except ValueError as e:
-        if 'feature_extractor' not in str(e):
-            raise e
-
-        # odd diffusers bug
-
-        if not feature_extractor_override:
-            creation_kwargs['feature_extractor'] = None
-
-        _messages.debug_log(
-            'Flax feature_extractor workaround triggered, '
-            'attempting to create pipeline again.')
-
-        pipeline, params = _pipeline_creation_args_debug(
-            backend='Flax',
-            cls=pipeline_class,
-            method=pipeline_class.from_pretrained,
-            model=model_path,
-            revision=revision,
-            dtype=flax_dtype,
-            subfolder=subfolder,
-            token=auth_token,
-            local_files_only=local_files_only,
-            **creation_kwargs)
-
-    if unet_params is not None:
-        params['unet'] = unet_params
-
-    if vae_params is not None:
-        params['vae'] = vae_params
-
-    if controlnet_params is not None:
-        params['controlnet'] = controlnet_params
-
-    if text_encoder_params is not None:
-        params['text_encoder'] = text_encoder_params
-
-    if text_encoder_2_params is not None:
-        params['text_encoder_2'] = text_encoder_2_params
-
-    if text_encoder_3_params is not None:
-        params['text_encoder_3'] = text_encoder_3_params
-
-    if not scheduler_override:
-        load_scheduler(pipeline=pipeline,
-                       model_path=model_path,
-                       scheduler_name=scheduler)
-
-    if not safety_checker and not safety_checker_override:
-        pipeline.safety_checker = None
-
-    _cache.pipeline_create_update_cache_info(pipeline=pipeline,
-                                             estimated_size=estimated_memory_usage)
-
-    _messages.debug_log(f'Finished Creating Flax Pipeline: "{pipeline_class.__name__}"')
-
-    return FlaxPipelineCreationResult(
-        pipeline=pipeline,
-        flax_params=params,
-        parsed_unet_uri=parsed_flax_unet_uri,
-        flax_unet_params=unet_params,
-        parsed_vae_uri=parsed_flax_vae_uri,
-        flax_vae_params=vae_params,
-        parsed_controlnet_uris=parsed_controlnet_uris,
-        flax_controlnet_params=controlnet_params
     )
 
 

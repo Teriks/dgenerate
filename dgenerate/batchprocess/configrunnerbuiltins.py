@@ -413,11 +413,10 @@ def have_feature(feature_name: str) -> bool:
     Currently accepted values are:
 
     NOWRAP!
-    "flax": Do we have flax/jax installed?
     "ncnn": Do we have ncnn installed?
     """
 
-    if feature_name not in {'flax', 'ncnn'}:
+    if feature_name not in {'ncnn'}:
         raise _batchprocessor.BatchProcessError(
             f'Feature "{feature_name}" is not a known feature flag.')
 

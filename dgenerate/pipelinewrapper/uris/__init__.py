@@ -46,18 +46,14 @@ from .exceptions import (
     InvalidIPAdapterUriError
 )
 
-from .flaxcontrolneturi import FlaxControlNetUri
-from .flaxtextencoderuri import FlaxTextEncoderUri
-from .flaxuneturi import FlaxUNetUri
-from .flaxvaeuri import FlaxVAEUri
 from .lorauri import LoRAUri
 from .scascadedecoderuri import SCascadeDecoderUri
 from .sdxlrefineruri import SDXLRefinerUri
 from .textualinversionuri import TextualInversionUri
-from .torchcontrolneturi import TorchControlNetUri
-from .torchtextencoderuri import TorchTextEncoderUri
-from .torchuneturi import TorchUNetUri
-from .torchvaeuri import TorchVAEUri
+from .controlneturi import ControlNetUri
+from .textencoderuri import TextEncoderUri
+from .uneturi import UNetUri
+from .vaeuri import VAEUri
 from .t2iadapteruri import T2IAdapterUri
 from .ipadapteruri import IPAdapterUri
 from .imageencoderuri import ImageEncoderUri

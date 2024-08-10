@@ -236,9 +236,6 @@ if __name__ != 'setup_as_library':
             # no cuda
             pyproject_requirements[idx] = requires.replace('+cu121', '')
 
-    lockfile_flax_requirements = [name + spec for name, spec in
-                                  get_poetry_lockfile_as_pip_requires(optionals=True).items()]
-
     setup(name='dgenerate',
           python_requires=python_requirement,
           author='Teriks',
@@ -261,7 +258,6 @@ if __name__ != 'setup_as_library':
           long_description=README,
           install_requires=pyproject_requirements,
           extras_require={
-              'flax': lockfile_flax_requirements,
               'ncnn': ['ncnn==1.0.20240410'],
               'dev': ['pandoc==2.3',
                       'pyinstaller==6.2.0',

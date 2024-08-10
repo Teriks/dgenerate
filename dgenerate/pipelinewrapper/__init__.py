@@ -139,14 +139,11 @@ from .enums import (
     model_type_is_upscaler,
     model_type_is_floyd_ifs,
     model_type_is_floyd,
-    model_type_is_flax,
     model_type_is_s_cascade,
     PipelineType,
     get_model_type_enum,
-    get_flax_dtype,
     get_torch_dtype,
     get_data_type_enum,
-    have_jax_flax,
     supported_data_type_enums,
     model_type_is_torch,
     get_data_type_string,
@@ -169,14 +166,11 @@ from .pipelines import (
     InvalidModelFileError,
     InvalidSchedulerNameError,
     TorchPipelineFactory,
-    FlaxPipelineCreationResult,
     TorchPipelineCreationResult,
     PipelineCreationResult,
-    FlaxPipelineFactory,
     ArgumentHelpException,
     SchedulerHelpException,
     TextEncodersHelpException,
-    create_flax_diffusion_pipeline,
     set_vae_slicing_tiling,
     create_torch_diffusion_pipeline,
     estimate_pipeline_memory_use,
@@ -202,8 +196,6 @@ from .uris import (
     InvalidModelUriError,
     LoRAUri,
     TextualInversionUri,
-    FlaxVAEUri,
-    FlaxControlNetUri,
     SDXLRefinerUri,
     ModelUriLoadError,
     InvalidControlNetUriError,
@@ -217,17 +209,15 @@ from .uris import (
     UNetUriLoadError,
     InvalidVaeUriError,
     VAEUriLoadError,
-    TorchControlNetUri,
-    TorchVAEUri,
-    TorchUNetUri,
-    FlaxUNetUri,
+    ControlNetUri,
+    VAEUri,
+    UNetUri,
     IPAdapterUri,
     T2IAdapterUri,
     T2IAdapterUriLoadError,
     InvalidT2IAdapterUriError,
     TextEncoderUriLoadError,
-    FlaxTextEncoderUri,
-    TorchTextEncoderUri,
+    TextEncoderUri,
     InvalidSCascadeDecoderUriError,
     InvalidTextEncoderUriError,
     SCascadeDecoderUri
@@ -252,7 +242,5 @@ huggingface diffusers pipeline wrapper / driver interface.
 All functionality needed from the diffusers library is behind this interface.
 """
 
-os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
-os.environ['XLA_PYTHON_CLIENT_ALLOCATOR'] = 'platform'
 
 __all__ = _types.module_all()

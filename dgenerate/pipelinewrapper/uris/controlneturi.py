@@ -33,13 +33,13 @@ import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 
-_torch_controlnet_uri_parser = _textprocessing.ConceptUriParser('ControlNet',
-                                                                ['scale', 'start', 'end', 'revision', 'variant',
+_controlnet_uri_parser = _textprocessing.ConceptUriParser('ControlNet',
+                                                          ['scale', 'start', 'end', 'revision', 'variant',
                                                                  'subfolder',
                                                                  'dtype'])
 
 
-class TorchControlNetUri:
+class ControlNetUri:
     """
     Representation of ``--control-nets`` uri when ``--model-type`` torch*
     """
@@ -187,7 +187,7 @@ class TorchControlNetUri:
             raise _exceptions.ControlNetUriLoadError(
                 f'error loading controlnet "{self.model}": {e}')
 
-    @_memoize(_cache._TORCH_CONTROLNET_CACHE,
+    @_memoize(_cache._CONTROLNET_CACHE,
               exceptions={'local_files_only'},
               hasher=lambda args: _d_memoize.args_cache_key(
                   args, {'self': lambda o: _d_memoize.struct_hasher(
@@ -265,7 +265,7 @@ class TorchControlNetUri:
         return new_net
 
     @staticmethod
-    def parse(uri: _types.Uri) -> 'TorchControlNetUri':
+    def parse(uri: _types.Uri) -> 'ControlNetUri':
         """
         Parse a ``--model-type`` torch* ``--control-nets`` uri specification and return an object representing its constituents
 
@@ -276,7 +276,7 @@ class TorchControlNetUri:
         :return: :py:class:`.TorchControlNetUri`
         """
         try:
-            r = _torch_controlnet_uri_parser.parse(uri)
+            r = _controlnet_uri_parser.parse(uri)
 
             dtype = r.args.get('dtype')
             scale = r.args.get('scale', 1.0)
@@ -311,7 +311,7 @@ class TorchControlNetUri:
                 raise _exceptions.InvalidControlNetUriError(
                     f'Torch ControlNet "start" must be less than or equal to "end".')
 
-            return TorchControlNetUri(
+            return ControlNetUri(
                 model=r.concept,
                 revision=r.args.get('revision', None),
                 variant=r.args.get('variant', None),

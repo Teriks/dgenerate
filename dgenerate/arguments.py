@@ -24,9 +24,6 @@ import collections.abc
 import sys
 import typing
 from argparse import Action
-
-import diffusers.schedulers
-
 import dgenerate
 import dgenerate.imageprocessors.constants as _imgp_constants
 import dgenerate.mediaoutput as _mediaoutput
@@ -476,7 +473,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument('-var', '--variant', action='store', default=None,
                             help="""If specified when loading from a huggingface repository or folder, load weights
                             from "variant" filename, e.g. "pytorch_model.<variant>.safetensors".
-                            Defaults to automatic selection. This option is ignored if using flax."""))
+                            Defaults to automatic selection."""))
 
     actions.append(
         parser.add_argument('-sbf', '--subfolder', action='store', default=None,
@@ -493,24 +490,18 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument('-bs', '--batch-size', action='store', default=None, metavar="INTEGER",
                             type=_type_batch_size,
                             help="""The number of image variations to produce per set of individual diffusion parameters
-                            in one rendering step simultaneously on a single GPU. When using flax, batch size
-                            is controlled by the environmental variable CUDA_VISIBLE_DEVICES which is a comma 
-                            separated list of GPU device numbers (as listed by nvidia-smi). Usage of this 
-                            argument with --model-type flax* will cause an error, diffusion with flax will 
-                            generate an image on every GPU that is visible to CUDA and this is currently 
-                            unchangeable. When generating animations with a --batch-size greater than one,
-                            a separate animation (with the filename suffix "animation_N") will be written to for 
-                            each image in the batch. If --batch-grid-size is specified when producing an animation 
-                            then the image grid is used for the output frames. During animation rendering each 
-                            image in the batch will still be written to the output directory along side the produced
-                            animation as either suffixed files or image grids depending on the options you choose. 
-                            (Torch Default: 1)"""))
+                            in one rendering step simultaneously on a single GPU. When generating animations with a 
+                            --batch-size greater than one, a separate animation (with the filename suffix "animation_N") 
+                            will be written to for each image in the batch. If --batch-grid-size is specified when 
+                            producing an animation then the image grid is used for the output frames. During animation 
+                            rendering each image in the batch will still be written to the output directory along 
+                            side the produced animation as either suffixed files or image grids depending on the 
+                            options you choose. (Torch Default: 1)"""))
 
     actions.append(
         parser.add_argument('-bgs', '--batch-grid-size', action='store', default=None, metavar="SIZE", type=_type_size,
                             help="""Produce a single image containing a grid of images with the number of COLUMNSxROWS 
-                            given to this argument when --batch-size is greater than 1, or when using flax with multiple 
-                            GPUs visible (via the environmental variable CUDA_VISIBLE_DEVICES). If not specified with a
+                            given to this argument when --batch-size is greater than 1. If not specified with a
                             --batch-size greater than 1, images will be written individually with an image number suffix
                             (image_N) in the filename signifying which image in the batch they are."""))
 
@@ -532,8 +523,6 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             "CLIPTextModelWithProjection;model=huggingface/text_encoder;revision=main", 
             "T5TextModel;model=text_encoder_folder_on_disk". 
             
-            Or for Flax: "FlaxCLIPTextModel;model=huggingface/text_encoder". 
-            
             For main models which require multiple text encoders, the + symbol may be used
             to indicate that a default value should be used for a particular text encoder,
             for example: --text-encoders + + huggingface/encoder3.  Any trailing text 
@@ -547,10 +536,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             The "revision" argument specifies the model revision to use for the Text Encoder
             when loading from huggingface repository, (The git branch / tag, default is "main").
             
-            The "variant" argument specifies the Text Encoder model variant, it is only supported for torch type models
-            it is not supported for flax. If "variant" is specified when loading from a huggingface repository or 
-            folder, weights will be loaded from "variant" filename, e.g. "pytorch_model.<variant>.safetensors. 
-            "variant" defaults to the value of --variant if it is not specified in the URI.
+            The "variant" argument specifies the Text Encoder model variant. If "variant" is specified 
+            when loading from a huggingface repository or folder, weights will be loaded from "variant" filename, 
+            e.g. "pytorch_model.<variant>.safetensors. For this argument, "variant" defaults to the value 
+            of --variant if it is not specified in the URI.
             
             The "subfolder" argument specifies the UNet model subfolder, if specified when loading from a 
             huggingface repository or folder, weights from the specified subfolder.
@@ -579,10 +568,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                             The "revision" argument specifies the model revision to use for the UNet when loading from 
                             huggingface repository or blob link, (The git branch / tag, default is "main").
                             
-                            The "variant" argument specifies the UNet model variant, it is only supported for torch type models
-                            it is not supported for flax. If "variant" is specified when loading from a huggingface repository or 
-                            folder, weights will be loaded from "variant" filename, e.g. "pytorch_model.<variant>.safetensors. 
-                            "variant" defaults to the value of --variant if it is not specified in the URI.
+                            The "variant" argument specifies the UNet model variant. If "variant" is specified 
+                            when loading from a huggingface repository or folder, weights will be loaded from "variant" filename, 
+                            e.g. "pytorch_model.<variant>.safetensors. For this argument, "variant" defaults to the value 
+                            of --variant if it is not specified in the URI.
                             
                             The "subfolder" argument specifies the UNet model subfolder, if specified when loading from a 
                             huggingface repository or folder, weights from the specified subfolder.
@@ -604,15 +593,12 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     actions.append(
         parser.add_argument('-vae', '--vae', action='store', default=None, metavar="VAE_URI", dest='vae_uri',
                             help=
-                            f"""Specify a VAE using a URI. When using torch models the URI syntax is: 
+                            f"""Specify a VAE using a URI, the URI syntax is: 
                             "AutoEncoderClass;model=(huggingface repository slug/blob link or file/folder path)".
                             
                             Examples: "AutoencoderKL;model=vae.pt", "AsymmetricAutoencoderKL;model=huggingface/vae",
                             "AutoencoderTiny;model=huggingface/vae", "ConsistencyDecoderVAE;model=huggingface/vae". 
-                            
-                            When using a Flax model, there is currently only one available 
-                            encoder class: "FlaxAutoencoderKL;model=huggingface/vae".
-                            
+  
                             The AutoencoderKL encoder class accepts huggingface repository slugs/blob links, 
                             .pt, .pth, .bin, .ckpt, and .safetensors files.
                              
@@ -624,7 +610,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                             downloaded to dgenerates web cache.
                             
                             Aside from the "model" argument, there are four other optional arguments that can be specified,
-                            these include "revision", "variant", "subfolder", "dtype".
+                            these are: "revision", "variant", "subfolder", "dtype".
                             
                             They can be specified as so in any order, they are not positional:
                             "AutoencoderKL;model=huggingface/vae;revision=main;variant=fp16;subfolder=sub_folder;dtype=float16".
@@ -632,11 +618,11 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                             The "revision" argument specifies the model revision to use for the VAE when loading from 
                             huggingface repository or blob link, (The git branch / tag, default is "main").
                             
-                            The "variant" argument specifies the VAE model variant, it is only supported for torch type models
-                            it is not supported for flax. If "variant" is specified when loading from a huggingface repository or 
-                            folder, weights will be loaded from "variant" filename, e.g. "pytorch_model.<variant>.safetensors. 
-                            "variant" in the case of --vae does not default to the value of --variant to prevent
-                            failures during common use cases.
+                            The "variant" argument specifies the VAE model variant. If "variant" is specified 
+                            when loading from a huggingface repository or folder, weights will be loaded from 
+                            "variant" filename, e.g. "pytorch_model.<variant>.safetensors. "variant" in the case 
+                            of --vae does not default to the value of --variant to prevent failures during 
+                            common use cases.
                             
                             The "subfolder" argument specifies the VAE model subfolder, if specified when loading from a 
                             huggingface repository or folder, weights from the specified subfolder.
@@ -674,7 +660,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument('-lra', '--loras', nargs='+', action='store', default=None, metavar="LORA_URI",
                             dest='lora_uris',
                             help=
-                            """Specify one or more LoRA models using URIs (flax not supported). These should be a
+                            """Specify one or more LoRA models using URIs. These should be a
                             huggingface repository slug, path to model file on disk (for example, a .pt, .pth, .bin,
                             .ckpt, or .safetensors file), or model folder containing model files.
                             
@@ -685,7 +671,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                             huggingface blob links are not supported, see "subfolder" and "weight-name" below instead.
                             
                             Optional arguments can be provided after a LoRA model specification, 
-                            these include: "scale", "revision", "subfolder", and "weight-name".
+                            these are: "scale", "revision", "subfolder", and "weight-name".
                             
                             They can be specified as so in any order, they are not positional:
                             "huggingface/lora;scale=1.0;revision=main;subfolder=repo_subfolder;weight-name=lora.safetensors".
@@ -729,9 +715,9 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                             The "revision" argument specifies the model revision to use for the Image Encoder when loading from 
                             huggingface repository or blob link, (The git branch / tag, default is "main").
                             
-                            The "variant" argument specifies the Image Encoder model variant, it is only supported for torch type models
-                            it is not supported for flax. If "variant" is specified when loading from a huggingface repository or 
-                            folder, weights will be loaded from "variant" filename, e.g. "pytorch_model.<variant>.safetensors. 
+                            The "variant" argument specifies the Image Encoder model variant. If "variant" is specified when 
+                            loading from a huggingface repository or folder, weights will be loaded from "variant" filename, 
+                            e.g. "pytorch_model.<variant>.safetensors. 
                             
                             Similar to --vae, "variant" does not default to the value of --variant in order to prevent 
                             errors with common use cases.
@@ -751,7 +737,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument('-ipa', '--ip-adapters', nargs='+', action='store', default=None, metavar="IP_ADAPTER_URI",
                             dest='ip_adapter_uris',
                             help=
-                            """Specify one or more IP Adapter models using URIs (flax not supported). These should be a
+                            """Specify one or more IP Adapter models using URIs. These should be a
                             huggingface repository slug, path to model file on disk (for example, a .pt, .pth, .bin,
                             .ckpt, or .safetensors file), or model folder containing model files.
                             
@@ -762,7 +748,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                             huggingface blob links are not supported, see "subfolder" and "weight-name" below instead.
                             
                             Optional arguments can be provided after an IP Adapter model specification, 
-                            these include: "scale", "revision", "subfolder", and "weight-name".
+                            these are: "scale", "revision", "subfolder", and "weight-name".
                             
                             They can be specified as so in any order, they are not positional:
                             "huggingface/ip-adapter;scale=1.0;revision=main;subfolder=repo_subfolder;weight-name=ip_adapter.safetensors".
@@ -787,7 +773,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                             metavar="URI",
                             dest='textual_inversion_uris',
                             help=
-                            """Specify one or more Textual Inversion models using URIs (flax and SDXL not supported). 
+                            """Specify one or more Textual Inversion models using URIs. 
                             These should be a huggingface repository slug, path to model file on disk 
                             (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or model folder 
                             containing model files.
@@ -799,7 +785,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                             huggingface blob links are not supported, see "subfolder" and "weight-name" below instead.
                             
                             Optional arguments can be provided after the Textual Inversion model specification, 
-                            these include: "token", "revision", "subfolder", and "weight-name".
+                            these are: "token", "revision", "subfolder", and "weight-name".
                             
                             They can be specified as so in any order, they are not positional:
                             "huggingface/ti_model;revision=main;subfolder=repo_subfolder;weight-name=ti_model.safetensors".
@@ -840,10 +826,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                             a raw download, you may provide an http/https link to it and it will be
                             downloaded to dgenerates web cache.
                             
-                            Optional arguments can be provided after the ControlNet model specification, for torch
-                            these include: "scale", "start", "end", "revision", "variant", "subfolder", and "dtype".
-                            
-                            For flax: "scale", "revision", "subfolder", "dtype", "from_torch" (bool)
+                            Optional arguments can be provided after the ControlNet model specification, 
+                            these are: "scale", "start", "end", "revision", "variant", "subfolder", and "dtype".
                             
                             They can be specified as so in any order, they are not positional:
                             "huggingface/controlnet;scale=1.0;start=0.0;end=1.0;revision=main;variant=fp16;subfolder=repo_subfolder;dtype=float16".
@@ -851,20 +835,20 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                             The "scale" argument specifies the scaling factor applied to the ControlNet model, 
                             the default value is 1.0.
                             
-                            The "start" (only for --model-type "torch*") argument specifies at what fraction of 
-                            the total inference steps to begin applying the ControlNet, defaults to 0.0, IE: the very beginning.
+                            The "start" argument specifies at what fraction of the total inference steps to begin applying 
+                            the ControlNet, defaults to 0.0, IE: the very beginning.
                             
-                            The "end" (only for --model-type "torch*") argument specifies at what fraction of 
-                            the total inference steps to stop applying the ControlNet, defaults to 1.0, IE: the very end.
+                            The "end"  argument specifies at what fraction of the total inference steps to stop applying 
+                            the ControlNet, defaults to 1.0, IE: the very end.
                             
                             The "revision" argument specifies the model revision to use for the ControlNet model
                             when loading from huggingface repository, (The git branch / tag, default is "main").
                             
-                            The "variant" (only for --model-type "torch*") argument specifies the ControlNet 
-                            model variant, if "variant" is specified when loading from a huggingface repository or folder, 
-                            weights will be loaded from "variant" filename, e.g. "pytorch_model.<variant>.safetensors. "variant" 
-                            defaults to automatic selection and is ignored if  using flax. "variant" in the case of 
-                            --control-nets does not default to the value of --variant to prevent failures during common use cases.
+                            The "variant" argument specifies the ControlNet model variant, if "variant" is specified 
+                            when loading from a huggingface repository or folder, weights will be loaded from "variant" 
+                            filename, e.g. "pytorch_model.<variant>.safetensors. "variant" defaults to automatic selection. 
+                            "variant" in the case of --control-nets does not default to the value of --variant to prevent 
+                            failures during common use cases.
                             
                             The "subfolder" argument specifies the ControlNet model subfolder, if specified 
                             when loading from a huggingface repository or folder, weights from the specified subfolder.
@@ -872,13 +856,11 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                             The "dtype" argument specifies the ControlNet model precision, it defaults to the value of -t/--dtype
                             and should be one of: {_SUPPORTED_DATA_TYPES_PRETTY}.
                             
-                            The "from_torch" (only for --model-type flax) this argument specifies that the ControlNet is to be 
-                            loaded and converted from a huggingface repository or file that is designed for pytorch. (Defaults to false)
                         
                             If you wish to load a weights file directly from disk, the simplest way is: 
                             --control-nets "my_controlnet.safetensors" or --control-nets "my_controlnet.safetensors;scale=1.0;dtype=float16", 
                             all other loading arguments aside from "scale", "start", "end", and "dtype" are unused in this case and may produce
-                            an error message if used ("from_torch" is available when using flax).
+                            an error message if used.
                             
                             If you wish to load a specific weight file from a huggingface repository, use the blob link
                             loading syntax: --control-nets 
@@ -901,8 +883,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                             a raw download, you may provide an http/https link to it and it will be
                             downloaded to dgenerates web cache.
                             
-                            Optional arguments can be provided after the T2IAdapter model specification, for torch
-                            these include: "scale", "revision", "variant", "subfolder", and "dtype".
+                            Optional arguments can be provided after the T2IAdapter model specification,
+                            these are: "scale", "revision", "variant", "subfolder", and "dtype".
 
                             They can be specified as so in any order, they are not positional:
                             "huggingface/t2iadapter;scale=1.0;revision=main;variant=fp16;subfolder=repo_subfolder;dtype=float16".
@@ -936,19 +918,13 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                             the "revision" argument may be used with this syntax.
                             """))
 
-    _flax_scheduler_help_part = \
-        f' Flax schedulers: ({", ".join(e.name for e in diffusers.schedulers.FlaxKarrasDiffusionSchedulers)})' \
-            if _pipelinewrapper.have_jax_flax() else ''
-
     actions.append(
         parser.add_argument('-sch', '--scheduler', action='store', default=None, metavar="SCHEDULER_URI",
                             help=
                             f'Specify a scheduler (sampler) by URI. Passing "help" to this argument '
                             f'will print the compatible schedulers for a model without generating any images. Passing "helpargs" '
                             f'will yield a help message with a list of overridable arguments for each scheduler and their typical defaults. '
-                            f'Arguments listed by "helpargs" can be overridden using the URI syntax typical to other dgenerate URI arguments. '
-                            f'Torch schedulers: ({", ".join(e.name for e in diffusers.schedulers.KarrasDiffusionSchedulers)}).'
-                            + _flax_scheduler_help_part))
+                            f'Arguments listed by "helpargs" can be overridden using the URI syntax typical to other dgenerate URI arguments.'))
 
     _model_offload_group = parser.add_mutually_exclusive_group()
 
@@ -975,7 +951,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                             folder containing model files. 
                             
                             Optional arguments can be provided after the decoder model specification, 
-                            these include: "revision", "variant", "subfolder", and "dtype".
+                            these are: "revision", "variant", "subfolder", and "dtype".
                             
                             They can be specified as so in any order, they are not positional:
                             "huggingface/decoder_model;revision=main;variant=fp16;subfolder=repo_subfolder;dtype=float16".
@@ -1062,7 +1038,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                             folder containing model files. 
                             
                             Optional arguments can be provided after the SDXL refiner model specification, 
-                            these include: "revision", "variant", "subfolder", and "dtype".
+                            these are: "revision", "variant", "subfolder", and "dtype".
                             
                             They can be specified as so in any order, they are not positional:
                             "huggingface/refiner_model_xl;revision=main;variant=fp16;subfolder=repo_subfolder;dtype=float16".
@@ -1325,10 +1301,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument('-d', '--device', action='store', default='cuda', type=_type_device,
-                            help="""cuda / cpu. (default: cuda). Use: cuda:0, cuda:1, cuda:2, etc. to specify a specific GPU.
-                                 This argument is ignored when using flax, for flax use the environmental variable
-                                 CUDA_VISIBLE_DEVICES to specify which GPUs are visible to cuda, flax will use every
-                                 visible GPU."""))
+                            help="""cuda / cpu. (default: cuda). Use: cuda:0, cuda:1, cuda:2, etc. to specify a specific GPU."""))
 
     actions.append(
         parser.add_argument('-t', '--dtype', action='store', default='auto', type=_type_dtype,

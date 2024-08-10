@@ -24,8 +24,6 @@ torch = { version = "2.4.0+cu121", source = "pytorch" }
 torchvision = {version = "0.19.0+cu121", source = "pytorch"}
 torchsde = "0.2.6"
 fake-useragent = "1.5.0"
-flax = { version = "0.8.5", optional = true }
-jax = { version = "0.4.31", optional = true, extras = ["cuda12_pip"] }
 opencv-python-headless = "^4.10.0.84"
 psutil = "^6.0.0"
 sentencepiece = "^0.2.0"
@@ -50,9 +48,6 @@ protobuf = "^5.27.1"
 compel = "^2.0.3"
 lark = "^1.1.9"
 controlnet_aux = "^0.0.9"
-
-[tool.poetry.extras]
-flax = ["flax", "jax"]
 
 [tool.poetry.scripts]
 dgenerate = 'dgenerate.__init__:main'

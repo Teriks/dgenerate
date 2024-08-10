@@ -105,8 +105,6 @@ class DiffusionArguments(_types.SetFromMixin):
     batch_size: _types.OptionalInteger = None
     """
     Number of images to produce in a single generation step on the same GPU.
-    
-    Invalid to use with FLAX ModeTypes.
     """
 
     s_cascade_decoder_inference_steps: _types.OptionalInteger = None

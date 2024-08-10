@@ -18,11 +18,10 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
 import typing
 
-import diffusers
 import huggingface_hub
+import transformers.models.clip
 
 import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
@@ -35,19 +34,19 @@ import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 
-_torch_vae_uri_parser = _textprocessing.ConceptUriParser('VAE',
-                                                         ['model', 'revision', 'variant', 'subfolder', 'dtype'])
+_text_encoder_uri_parser = _textprocessing.ConceptUriParser(
+    'TextEncoder', ['model', 'revision', 'variant', 'subfolder', 'dtype'])
 
 
-class TorchVAEUri:
+class TextEncoderUri:
     """
-    Representation of ``--vae`` uri when ``--model-type`` torch*
+    Representation of ``--text-encoder*`` uri when ``--model-type`` torch*
     """
 
     @property
     def encoder(self) -> str:
         """
-        Encoder class name such as "AutoencoderKL"
+        Encoder class name such as "CLIPTextModel"
         """
         return self._encoder
 
@@ -87,15 +86,14 @@ class TorchVAEUri:
         return self._dtype
 
     _encoders = {
-        'AutoencoderKL': diffusers.AutoencoderKL,
-        'AsymmetricAutoencoderKL': diffusers.AsymmetricAutoencoderKL,
-        'AutoencoderTiny': diffusers.AutoencoderTiny,
-        'ConsistencyDecoderVAE': diffusers.ConsistencyDecoderVAE
+        'CLIPTextModel': transformers.models.clip.CLIPTextModel,
+        'CLIPTextModelWithProjection': transformers.models.clip.CLIPTextModelWithProjection,
+        'T5EncoderModel': transformers.models.t5.T5EncoderModel
     }
 
     @staticmethod
     def supported_encoder_names() -> list[str]:
-        return list(TorchVAEUri._encoders.keys())
+        return list(TextEncoderUri._encoders.keys())
 
     def __init__(self,
                  encoder: str,
@@ -105,32 +103,34 @@ class TorchVAEUri:
                  subfolder: _types.OptionalString = None,
                  dtype: _enums.DataType | str | None = None):
         """
-        :param encoder: encoder class name, for example ``AutoencoderKL``
+        :param encoder: encoder class name, for example ``CLIPTextModel``
         :param model: model path
         :param revision: model revision (branch name)
         :param variant: model variant, for example ``fp16``
         :param subfolder: model subfolder
         :param dtype: model data type (precision)
 
-        :raises InvalidVaeUriError: If ``dtype`` is passed an invalid data type string, or if
+        :raises InvalidTextEncoderUriError: If ``dtype`` is passed an invalid data type string, or if
             ``model`` points to a single file and the specified ``encoder`` class name does not
             support loading from a single file.
         """
 
         if encoder not in self._encoders:
-            raise _exceptions.InvalidVaeUriError(
-                f'Unknown VAE encoder class {encoder}, must be one of: {_textprocessing.oxford_comma(self._encoders.keys(), "or")}')
+            raise _exceptions.InvalidTextEncoderUriError(
+                f'Unknown TextEncoder encoder class {encoder}, must be one of: {_textprocessing.oxford_comma(self._encoders.keys(), "or")}')
 
         can_single_file_load = hasattr(self._encoders[encoder], 'from_single_file')
         single_file_load_path = _hfutil.is_single_file_model_load(model)
 
         if single_file_load_path and not can_single_file_load:
-            raise _exceptions.InvalidVaeUriError(f'{encoder} is not capable of loading from a single file, '
-                                                 f'must be loaded from a huggingface repository slug or folder on disk.')
+            raise _exceptions.InvalidTextEncoderUriError(
+                f'{encoder} is not capable of loading from a single file, '
+                f'must be loaded from a huggingface repository slug or folder on disk.')
 
         if single_file_load_path:
             if subfolder is not None:
-                raise _exceptions.InvalidVaeUriError('Single file VAE loads do not support the subfolder option.')
+                raise _exceptions.InvalidTextEncoderUriError(
+                    'Single file TextEncoder loads do not support the subfolder option.')
 
         self._encoder = encoder
         self._model = model
@@ -141,7 +141,7 @@ class TorchVAEUri:
         try:
             self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
         except ValueError:
-            raise _exceptions.InvalidVaeUriError(
+            raise _exceptions.InvalidTextEncoderUriError(
                 f'invalid dtype string, must be one of: {_textprocessing.oxford_comma(_enums.supported_data_type_strings(), "or")}')
 
     def load(self,
@@ -151,13 +151,13 @@ class TorchVAEUri:
              sequential_cpu_offload_member: bool = False,
              model_cpu_offload_member: bool = False) -> \
             typing.Union[
-                diffusers.AutoencoderKL,
-                diffusers.AsymmetricAutoencoderKL,
-                diffusers.AutoencoderTiny,
-                diffusers.ConsistencyDecoderVAE]:
+                transformers.models.clip.CLIPTextModel,
+                transformers.models.clip.CLIPTextModelWithProjection,
+                transformers.models.t5.T5EncoderModel]:
         """
-        Load a VAE of type :py:class:`diffusers.AutoencoderKL`, :py:class:`diffusers.AsymmetricAutoencoderKL`,
-        :py:class:`diffusers.AutoencoderKLTemporalDecoder`, or :py:class:`diffusers.AutoencoderTiny` from this URI
+        Load a torch Text Encoder of type :py:class:`transformers.models.clip.CLIPTextModel`,
+        :py:class:`transformers.models.clip.CLIPTextModelWithProjection`, or
+        :py:class:`transformers.models.t5.T5EncoderModel` from this URI
 
         :param dtype_fallback: If the URI does not specify a dtype, use this dtype.
         :param use_auth_token: optional huggingface auth token.
@@ -172,9 +172,11 @@ class TorchVAEUri:
 
         :raises ModelNotFoundError: If the model could not be found.
 
-        :return: :py:class:`diffusers.AutoencoderKL`, :py:class:`diffusers.AsymmetricAutoencoderKL`,
-            :py:class:`diffusers.AutoencoderKLTemporalDecoder`, or :py:class:`diffusers.AutoencoderTiny`
+        :return: :py:class:`transformers.models.clip.CLIPTextModel`,
+            :py:class:`transformers.models.clip.CLIPTextModelWithProjection`, or
+            :py:class:`transformers.models.t5.T5EncoderModel`
         """
+
         try:
             return self._load(dtype_fallback,
                               use_auth_token,
@@ -186,14 +188,14 @@ class TorchVAEUri:
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _hfutil.ModelNotFoundError(e)
         except Exception as e:
-            raise _exceptions.VAEUriLoadError(
-                f'error loading vae "{self.model}": {e}')
+            raise _exceptions.TextEncoderUriLoadError(
+                f'error loading text encoder "{self.model}": {e}')
 
-    @_memoize(_cache._TORCH_VAE_CACHE,
+    @_memoize(_cache._TEXT_ENCODER_CACHE,
               exceptions={'local_files_only'},
               hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _d_memoize.struct_hasher}),
-              on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Torch VAE", key, hit),
-              on_create=lambda key, new: _d_memoize.simple_cache_miss_debug("Torch VAE", key, new))
+              on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Torch TextEncoder", key, hit),
+              on_create=lambda key, new: _d_memoize.simple_cache_miss_debug("Torch TextEncoder", key, new))
     def _load(self,
               dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
               use_auth_token: _types.OptionalString = None,
@@ -201,10 +203,9 @@ class TorchVAEUri:
               sequential_cpu_offload_member: bool = False,
               model_cpu_offload_member: bool = False) -> \
             typing.Union[
-                diffusers.AutoencoderKL,
-                diffusers.AsymmetricAutoencoderKL,
-                diffusers.AutoencoderTiny,
-                diffusers.ConsistencyDecoderVAE]:
+                transformers.models.clip.CLIPTextModel,
+                transformers.models.clip.CLIPTextModelWithProjection,
+                transformers.models.t5.T5EncoderModel]:
 
         if sequential_cpu_offload_member and model_cpu_offload_member:
             # these are used for cache differentiation only
@@ -229,21 +230,14 @@ class TorchVAEUri:
                 use_auth_token=use_auth_token
             )
 
-            _cache.enforce_vae_cache_constraints(new_vae_size=estimated_memory_use)
+            _cache.enforce_text_encoder_cache_constraints(
+                new_text_encoder_size=estimated_memory_use)
 
-            if encoder is diffusers.AutoencoderKL:
-                # There is a bug in their cast
-                vae = encoder.from_single_file(model_path,
-                                               token=use_auth_token,
-                                               revision=self.revision,
-                                               local_files_only=local_files_only) \
-                    .to(dtype=torch_dtype, non_blocking=False)
-            else:
-                vae = encoder.from_single_file(model_path,
-                                               token=use_auth_token,
-                                               revision=self.revision,
-                                               torch_dtype=torch_dtype,
-                                               local_files_only=local_files_only)
+            text_encoder = encoder.from_single_file(model_path,
+                                                    token=use_auth_token,
+                                                    revision=self.revision,
+                                                    torch_dtype=torch_dtype,
+                                                    local_files_only=local_files_only)
 
         else:
 
@@ -256,56 +250,59 @@ class TorchVAEUri:
                 use_auth_token=use_auth_token
             )
 
-            _cache.enforce_vae_cache_constraints(new_vae_size=estimated_memory_use)
+            _cache.enforce_text_encoder_cache_constraints(
+                new_text_encoder_size=estimated_memory_use)
 
-            vae = encoder.from_pretrained(
+            text_encoder = encoder.from_pretrained(
                 model_path,
                 revision=self.revision,
                 variant=self.variant,
                 torch_dtype=torch_dtype,
-                subfolder=self.subfolder,
+                subfolder=self.subfolder if self.subfolder else "",
                 token=use_auth_token,
                 local_files_only=local_files_only)
 
-        _messages.debug_log('Estimated Torch VAE Memory Use:',
+        _messages.debug_log('Estimated Torch TextEncoder Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_use))
 
-        _cache.vae_create_update_cache_info(vae=vae,
-                                            estimated_size=estimated_memory_use)
+        _cache.text_encoder_create_update_cache_info(
+            text_encoder=text_encoder,
+            estimated_size=estimated_memory_use)
 
-        return vae
+        return text_encoder
 
     @staticmethod
-    def parse(uri: _types.Uri) -> 'TorchVAEUri':
+    def parse(uri: _types.Uri) -> 'TextEncoderUri':
         """
-        Parse a ``--model-type`` torch* ``--vae`` uri and return an object representing its constituents
+        Parse a ``--model-type`` torch* ``--text-encoder*`` uri and return an object representing its constituents
 
-        :param uri: string with ``--vae`` uri syntax
+        :param uri: string with ``--text-encoder*`` uri syntax
 
-        :raise InvalidVaeUriError:
+        :raise InvalidTextEncoderUriError:
 
-        :return: :py:class:`.TorchVAEPath`
+        :return: :py:class:`.TorchTextEncoderUri`
         """
         try:
-            r = _torch_vae_uri_parser.parse(uri)
+            r = _text_encoder_uri_parser.parse(uri)
 
             model = r.args.get('model')
             if model is None:
-                raise _exceptions.InvalidVaeUriError('model argument for torch VAE specification must be defined.')
+                raise _exceptions.InvalidTextEncoderUriError(
+                    'model argument for torch TextEncoder specification must be defined.')
 
             dtype = r.args.get('dtype')
 
             supported_dtypes = _enums.supported_data_type_strings()
             if dtype is not None and dtype not in supported_dtypes:
-                raise _exceptions.InvalidVaeUriError(
-                    f'Torch VAE "dtype" must be {", ".join(supported_dtypes)}, '
+                raise _exceptions.InvalidTextEncoderUriError(
+                    f'Torch TextEncoder "dtype" must be {", ".join(supported_dtypes)}, '
                     f'or left undefined, received: {dtype}')
 
-            return TorchVAEUri(encoder=r.concept,
-                               model=model,
-                               revision=r.args.get('revision', None),
-                               variant=r.args.get('variant', None),
-                               dtype=dtype,
-                               subfolder=r.args.get('subfolder', None))
+            return TextEncoderUri(encoder=r.concept,
+                                  model=model,
+                                  revision=r.args.get('revision', None),
+                                  variant=r.args.get('variant', None),
+                                  dtype=dtype,
+                                  subfolder=r.args.get('subfolder', None))
         except _textprocessing.ConceptUriParseError as e:
-            raise _exceptions.InvalidVaeUriError(e)
+            raise _exceptions.InvalidTextEncoderUriError(e)
