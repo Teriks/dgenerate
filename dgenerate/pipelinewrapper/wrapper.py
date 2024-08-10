@@ -1791,7 +1791,7 @@ class DiffusionPipelineWrapper:
             pipeline=self._pipeline,
             device=self._device,
             prompt_weighter=self._prompt_weighter,
-            **pipeline_args))
+            **pipeline_args).images)
 
     def _call_torch_s_cascade(self, pipeline_args, user_args: DiffusionArguments):
         self._check_for_invalid_model_specific_opts(user_args)
