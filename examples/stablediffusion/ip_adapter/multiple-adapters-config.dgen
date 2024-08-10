@@ -1,0 +1,41 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 4.0.0
+
+# This example duplicates: https://huggingface.co/docs/diffusers/main/en/using-diffusers/ip_adapter#multi-ip-adapter
+
+
+# first download 10 images which will represent our image style
+
+\setp ziggy_style_images []
+
+{% for i in range(0, 11) %}
+    \download image "https://huggingface.co/datasets/YiYiXu/testing-images/resolve/main/style_ziggy/img{{i}}.png"
+    \setp ziggy_style_images ziggy_style_images + [image]
+{% endfor %} !END
+
+
+# join all the image paths together with +, and some space to create the
+# image group for --image-seeds
+
+\setp ziggy_style_images ' + '.join(ziggy_style_images)
+
+
+# Call SDXL with Two IP Adapter models with different scales
+# The first model gets the style images, the second model gets a face
+
+
+runwayml/stable-diffusion-v1-5
+--dtype float16
+--variant fp16
+--scheduler DDIMScheduler
+--inference-steps 30
+--guidance-scales 5
+--clip-skips 0
+--gen-seeds 1
+--output-path multiple-adapters
+--output-size 512
+--image-encoder h94/IP-Adapter;subfolder="models/image_encoder"
+--ip-adapters h94/IP-Adapter;subfolder=models;weight-name=ip-adapter-plus_sd15.safetensors;scale=0.7 \
+              h94/IP-Adapter;subfolder=models;weight-name=ip-adapter-plus-face_sd15.safetensors;scale=0.3
+--image-seeds "adapter: {{ ziggy_style_images }}, https://huggingface.co/datasets/YiYiXu/testing-images/resolve/main/women_input.png"
+--prompts "wonderwoman; monochrome, lowres, bad anatomy, worst quality, low quality"
