@@ -396,6 +396,32 @@ class DiffusionPipelineWrapper:
                     'StableCascade models do not use a VAE.'
                 )
 
+        if _enums.model_type_is_flux(model_type):
+            if vae_uri is not None:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'Flux model types do not use a VAE.'
+                )
+
+            if textual_inversion_uris:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'Textual Inversions not supported for Flux.'
+                )
+
+            if controlnet_uris:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'ControlNets not supported for Flux.'
+                )
+
+            if t2i_adapter_uris:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'T2IAdapters not supported for Flux.'
+                )
+
+            if image_encoder_uri:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'ImageEncoder not supported for Flux.'
+                )
+
         if _enums.model_type_is_floyd(model_type):
             if vae_uri is not None:
                 raise _pipelines.UnsupportedPipelineConfigError(
@@ -484,11 +510,11 @@ class DiffusionPipelineWrapper:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'Stable Diffusion 3 does not use a UNet model.'
                 )
-        else:
-            if transformer_uri:
+
+        if transformer_uri:
+            if not _enums.model_type_is_sd3(model_type) and not _enums.model_type_is_flux(model_type):
                 raise _pipelines.UnsupportedPipelineConfigError(
-                    'Transformer models are only supported for stable diffusion 3.'
-                )
+                    '--transformer is only supported for --model-type torch-sd3 and torch-flux.')
 
         if _enums.model_type_is_pix2pix(model_type):
             if controlnet_uris:
@@ -1550,6 +1576,9 @@ class DiffusionPipelineWrapper:
                 if not _image.is_aligned((args['width'], args['height']), 16):
                     raise _pipelines.UnsupportedPipelineConfigError(
                         'Stable Diffusion 3 requires an output dimension that is aligned by 16.')
+            elif self._model_type == _enums.ModelType.TORCH_FLUX:
+                args['height'] = _types.default(user_args.height, _constants.DEFAULT_FLUX_OUTPUT_HEIGHT)
+                args['width'] = _types.default(user_args.width, _constants.DEFAULT_FLUX_OUTPUT_WIDTH)
             else:
                 args['height'] = _types.default(user_args.height, _constants.DEFAULT_OUTPUT_HEIGHT)
                 args['width'] = _types.default(user_args.width, _constants.DEFAULT_OUTPUT_WIDTH)
@@ -1618,6 +1647,12 @@ class DiffusionPipelineWrapper:
             len(self._parsed_controlnet_uris) > 1 else self._parsed_controlnet_uris[0].end
 
     def _check_for_invalid_model_specific_opts(self, user_args: DiffusionArguments):
+        if not _enums.model_type_is_flux(self.model_type):
+            for arg, val in _types.get_public_attributes(user_args).items():
+                if arg.startswith('flux') and val is not None:
+                    raise _pipelines.UnsupportedPipelineConfigError(
+                        f'{arg} may only be used with Flux models.')
+
         if not _enums.model_type_is_sdxl(self.model_type):
             for arg, val in _types.get_public_attributes(user_args).items():
                 if arg.startswith('sdxl') and val is not None:
@@ -1720,6 +1755,43 @@ class DiffusionPipelineWrapper:
         pipeline_args.pop('negative_target_size', None)
         pipeline_args.pop('negative_original_size', None)
         pipeline_args.pop('negative_crops_coords_top_left', None)
+
+    def _call_torch_flux(self, pipeline_args, user_args: DiffusionArguments):
+        self._check_for_invalid_model_specific_opts(user_args)
+
+        if user_args.clip_skip is not None and user_args.clip_skip > 0:
+            raise _pipelines.UnsupportedPipelineConfigError('Flux does not support clip skip.')
+
+        prompt: _prompt.Prompt() = _types.default(user_args.prompt, _prompt.Prompt())
+        prompt_2: _prompt.Prompt() = _types.default(user_args.flux_second_prompt, _prompt.Prompt())
+
+        pipeline_args['prompt'] = prompt.positive if prompt.positive else ''
+        pipeline_args['prompt_2'] = prompt_2.positive if prompt.positive else ''
+
+        if user_args.flux_max_sequence_length is not None:
+            pipeline_args['max_sequence_length'] = user_args.flux_max_sequence_length
+
+        if prompt.negative:
+            _messages.log(
+                'Flux is ignoring the provided negative prompt as it '
+                'does not support negative prompting.', level=_messages.WARNING)
+
+        if prompt_2.negative:
+            _messages.log(
+                'Flux is ignoring the provided second negative prompt as it '
+                'does not support negative prompting.', level=_messages.WARNING)
+
+        pipeline_args['num_images_per_prompt'] = _types.default(user_args.batch_size, 1)
+
+        pipeline_args['generator'] = \
+            torch.Generator(device=self._device).manual_seed(
+                _types.default(user_args.seed, _constants.DEFAULT_SEED))
+
+        return PipelineWrapperResult(_pipelines.call_pipeline(
+            pipeline=self._pipeline,
+            device=self._device,
+            prompt_weighter=self._prompt_weighter,
+            **pipeline_args))
 
     def _call_torch_s_cascade(self, pipeline_args, user_args: DiffusionArguments):
         self._check_for_invalid_model_specific_opts(user_args)
@@ -2327,6 +2399,9 @@ class DiffusionPipelineWrapper:
             result = self._call_torch_s_cascade(
                 pipeline_args=pipeline_args,
                 user_args=copy_args)
+        elif self.model_type == _enums.ModelType.TORCH_FLUX:
+            result = self._call_torch_flux(pipeline_args=pipeline_args,
+                                           user_args=copy_args)
         else:
             result = self._call_torch(pipeline_args=pipeline_args,
                                       user_args=copy_args)

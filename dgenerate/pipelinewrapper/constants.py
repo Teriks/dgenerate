@@ -128,3 +128,13 @@ DEFAULT_SD3_OUTPUT_WIDTH = 1024
 """
 Default output width for Stable Diffusion 3.
 """
+
+DEFAULT_FLUX_OUTPUT_HEIGHT = 1024
+"""
+Default output height for Flux.
+"""
+
+DEFAULT_FLUX_OUTPUT_WIDTH = 1024
+"""
+Default output width for Flux.
+"""

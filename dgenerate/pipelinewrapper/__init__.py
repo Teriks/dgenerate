@@ -132,7 +132,9 @@ from .constants import (
     DEFAULT_S_CASCADE_OUTPUT_HEIGHT,
     DEFAULT_S_CASCADE_OUTPUT_WIDTH,
     DEFAULT_SD3_OUTPUT_WIDTH,
-    DEFAULT_SD3_OUTPUT_HEIGHT
+    DEFAULT_SD3_OUTPUT_HEIGHT,
+    DEFAULT_FLUX_OUTPUT_WIDTH,
+    DEFAULT_FLUX_OUTPUT_HEIGHT
 )
 
 # Enums
@@ -159,7 +161,8 @@ from .enums import (
     supported_model_type_enums,
     get_pipeline_type_string,
     get_pipeline_type_enum,
-    supported_model_type_strings
+    supported_model_type_strings,
+    model_type_is_flux
 )
 
 # HF Utility Errors

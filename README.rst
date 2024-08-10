@@ -1,3 +1,6 @@
+.. _optimum-quanto_library_1: https://github.com/huggingface/optimum-quanto
+.. _vermeer_canny_edged.png_1: https://raw.githubusercontent.com/Teriks/dgenerate/v4.0.0/examples/media/vermeer_canny_edged.png
+
 .. _spandrel_1: https://github.com/chaiNNer-org/spandrel
 .. _ncnn_1: https://github.com/Tencent/ncnn
 
@@ -78,7 +81,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v4.0.0/>`_.
     * `Specifying a VAE`_
     * `VAE Tiling and Slicing`_
     * `Specifying a UNet`_
-    * `Specifying an SD3 Transformer`_
+    * `Specifying a Transformer (SD3 and Flux)`_
     * `Specifying an SDXL Refiner`_
     * `Specifying a Stable Cascade Decoder`_
     * `Specifying LoRAs`_
@@ -2338,10 +2341,10 @@ UNet models which have a smaller memory footprint using ``--unet`` and ``--unet2
     --prompts "an image of a shiba inu, donning a spacesuit and helmet"
 
 
-Specifying an SD3 Transformer
-=============================
+Specifying a Transformer (SD3 and Flux)
+=======================================
 
-Stable Diffusion 3 does not use a UNet architecture, and instead uses a
+Stable Diffusion 3 and Flux do not use a UNet architecture, and instead use a
 Transformer model in place of a UNet.
 
 A specific transformer model can be specified using the ``--transformer`` argument.
@@ -2349,10 +2352,12 @@ A specific transformer model can be specified using the ``--transformer`` argume
 This argument is nearly identical to ``--unet``, however it can support single file loads
 from safetensors files or huggingface blob links if desired.
 
-There is currently not much reason to use this feature I believe, but in the future
-there could be uses for this feature as the SD3 implementation becomes more mature.
+In addition to the arguments that ``--unet`` supports, ``--transformer`` supports the ``quantize``
+boolean URI argument to enable weights quantization to ``bfloat8`` via the
+`optimum-quanto library <optimum-quanto_library_1_>`_, allowing for lower
+GPU memory usage.
 
-Example:
+SD3 Example:
 
 .. code-block:: bash
 
@@ -2361,18 +2366,40 @@ Example:
 
     # This just loads the default transformer out of the repo on huggingface
 
-    stabilityai/stable-diffusion-3-medium-diffusers
-    --model-type torch-sd3
-    --transformer stabilityai/stable-diffusion-3-medium-diffusers;subfolder=transformer
-    --variant fp16
-    --dtype float16
-    --inference-steps 30
-    --guidance-scales 5.00
-    --clip-skips 0
-    --gen-seeds 2
-    --output-path output
-    --model-sequential-offload
+    dgenerate stabilityai/stable-diffusion-3-medium-diffusers \
+    --model-type torch-sd3 \
+    --transformer stabilityai/stable-diffusion-3-medium-diffusers;subfolder=transformer \
+    --variant fp16 \
+    --dtype float16 \
+    --inference-steps 30 \
+    --guidance-scales 5.00 \
+    --clip-skips 0 \
+    --gen-seeds 2 \
+    --output-path output \
+    --model-sequential-offload \
     --prompts "Photo of a horse standing near the open door of a red barn, high resolution; artwork"
+
+Flux Example:
+
+.. code-block:: bash
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 4.0.0
+
+    # use Flux with quantized transformer and text encoder (bfloat8)
+
+    dgenerate black-forest-labs/FLUX.1-dev \
+    --model-type torch-flux \
+    --dtype bfloat16 \
+    --transformer https://huggingface.co/Kijai/flux-fp8/blob/main/flux1-dev-fp8.safetensors;quantize=True \
+    --text-encoders + T5EncoderModel;model=black-forest-labs/FLUX.1-dev;subfolder=text_encoder_2;quantize=True \
+    --model-cpu-offload \
+    --inference-steps 20 \
+    --guidance-scales 3.5 \
+    --gen-seeds 1 \
+    --output-path output \
+    --output-size 512x512 \
+    --prompts "Photo of a horse standing near the open door of a red barn, high resolution"
 
 
 Specifying an SDXL Refiner
@@ -2817,7 +2844,7 @@ at which the control net model stops applying guidance. It defaults to 1.0, mean
 stop at the last inference step.
 
 
-These examples use: `vermeer_canny_edged.png <https://raw.githubusercontent.com/Teriks/dgenerate/v4.0.0/examples/media/vermeer_canny_edged.png>`_
+These examples use: `vermeer_canny_edged.png <vermeer_canny_edged.png_1_>`_
 
 
 .. code-block:: bash
@@ -2953,7 +2980,7 @@ over the first half of the time-steps needed to generate the image.
 
 When using multiple T2I Adapters, this value applies to all T2I Adapter models mentioned.
 
-These examples use: `vermeer_canny_edged.png <https://raw.githubusercontent.com/Teriks/dgenerate/v4.0.0/examples/media/vermeer_canny_edged.png>`_
+These examples use: `vermeer_canny_edged.png <vermeer_canny_edged.png_1_>`_
 
 .. code-block:: bash
 
@@ -3196,11 +3223,15 @@ The syntax for specifying text encoders is similar to that of ``--vae``
 
 The URI syntax for ``--text-encoders`` is ``TextEncoderClass;model=(huggingface repository slug or folder path)``
 
-Loading arguments available when specifying a Text Encoder are: ``model``, ``revision``, ``variant``, ``subfolder``, and ``dtype``
+Loading arguments available when specifying a Text Encoder are: ``model``, ``revision``, ``variant``, ``subfolder``, ``dtype``, and ``quantize``
 
 The ``variant`` argument defaults to the value of ``--variant``
 
 The ``dtype`` argument defaults to the value of ``--dtype``
+
+The ``quantize`` boolean URI argument enables weights quantization to ``bfloat8``
+via the `optimum-quanto library <optimum-quanto_library_1_>`_, allowing for lower
+GPU memory usage. This is useful when generating with Flux models.
 
 The other named arguments are available when loading from a huggingface repository or folder
 that may or may not be a local git repository on disk.
@@ -3536,8 +3567,8 @@ as the ``compel`` prompt weighter currently does not.
 
     sd-embed:
 
-        Implements prompt weighting syntax for Stable Diffusion 1/2, Stable Diffusion XL, and Stable
-        Diffusion 3 using sd_embed.
+        Implements prompt weighting syntax for Stable Diffusion 1/2, Stable Diffusion XL, and Stable Diffusion 3,
+        and Flux using sd_embed.
 
         sd_embed uses a Stable Diffusion Web UI compatible prompt syntax.
 
@@ -3556,15 +3587,16 @@ as the ``compel`` prompt weighter currently does not.
         --model-type torch-sdxl
         --model-type torch-sdxl-pix2pix
         --model-type torch-sd3
+        --model-type torch-flux
 
         The secondary prompt option for SDXL --sdxl-second-prompts is supported by this prompt weighter
-        implementation. However, --sdxl-refiner-second-prompts is not supported and will be ignored with
-        a warning message.
+        implementation. However, --sdxl-refiner-second-prompts is not supported and will be ignored with a warning
+        message.
 
         The secondary prompt option for SD3 --sd3-second-prompts is not supported by this prompt weighter
         implementation.  Neither is --sd3-third-prompts. The prompts from these arguments will be ignored.
 
-    ====================================================================================================
+    ==============================================================================================================
 
 
 You can enable the ``sd-embed`` prompt weighter by specifying it with the ``--prompt-weighter`` argument.

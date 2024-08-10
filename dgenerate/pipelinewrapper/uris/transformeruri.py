@@ -31,12 +31,13 @@ import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
+import optimum.quanto
 
 _transformer_uri_parser = _textprocessing.ConceptUriParser(
-    'SD3Transformer', ['model', 'revision', 'variant', 'subfolder', 'dtype'])
+    'Transformer', ['model', 'revision', 'variant', 'subfolder', 'dtype', 'quantize'])
 
 
-class SD3TransformerUri:
+class TransformerUri:
     """
     Representation of ``--transformer`` uri when ``--model-type`` torch*
     """
@@ -76,32 +77,43 @@ class SD3TransformerUri:
         """
         return self._dtype
 
+    @property
+    def quantize(self) -> bool:
+        """
+        Quantize flag
+        """
+        return self._quantize
+
     def __init__(self,
                  model: str,
                  revision: _types.OptionalString = None,
                  variant: _types.OptionalString = None,
                  subfolder: _types.OptionalString = None,
-                 dtype: _enums.DataType | str | None = None):
+                 dtype: _enums.DataType | str | None = None,
+                 quantize: bool = False):
         """
         :param model: model path
         :param revision: model revision (branch name)
         :param variant: model variant, for example ``fp16``
         :param subfolder: model subfolder
         :param dtype: model data type (precision)
+        :param quantize: Quantize to qfloat8 with optimum-quanto?
 
-        :raises InvalidSD3TransformerUriError: If ``dtype`` is passed an invalid data type string.
+        :raises InvalidTransformerUriError: If ``dtype`` is passed an invalid data type string.
         """
 
         self._model = model
         self._revision = revision
         self._variant = variant
         self._subfolder = subfolder
+        self._quantize = quantize
 
         try:
             self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
         except ValueError:
-            raise _exceptions.InvalidSD3TransformerUriError(
-                f'invalid dtype string, must be one of: {_textprocessing.oxford_comma(_enums.supported_data_type_strings(), "or")}')
+            raise _exceptions.InvalidTransformerUriError(
+                f'invalid dtype string, must be one of: '
+                f'{_textprocessing.oxford_comma(_enums.supported_data_type_strings(), "or")}')
 
     def load(self,
              variant_fallback: _types.OptionalString = None,
@@ -109,9 +121,15 @@ class SD3TransformerUri:
              use_auth_token: _types.OptionalString = None,
              local_files_only: bool = False,
              sequential_cpu_offload_member: bool = False,
-             model_cpu_offload_member: bool = False) -> diffusers.SD3Transformer2DModel:
+             model_cpu_offload_member: bool = False,
+             transformer_class:
+             type[diffusers.SD3Transformer2DModel] |
+             type[
+                 diffusers.FluxTransformer2DModel] = diffusers.SD3Transformer2DModel) \
+            -> diffusers.SD3Transformer2DModel | diffusers.FluxTransformer2DModel:
         """
-        Load a torch :py:class:`diffusers.SD3Transformer2DModel` from a URI.
+        Load a torch :py:class:`diffusers.SD3Transformer2DModel` or
+        :py:class:`diffusers.FluxTransformer2DModel` from a URI.
 
         :param variant_fallback: If the URI does not specify a variant, use this variant.
         :param dtype_fallback: If the URI does not specify a dtype, use this dtype.
@@ -124,10 +142,12 @@ class SD3TransformerUri:
 
         :param model_cpu_offload_member: This model will be attached to a pipeline
             which will have model cpu offload enabled?
+            
+        :param transformer_class: Transformer class type.
 
         :raises ModelNotFoundError: If the model could not be found.
 
-        :return: :py:class:`diffusers.SD3Transformer2DModel`
+        :return: :py:class:`diffusers.SD3Transformer2DModel` or :py:class:`diffusers.FluxTransformer2DModel`
         """
 
         try:
@@ -136,27 +156,33 @@ class SD3TransformerUri:
                               use_auth_token,
                               local_files_only,
                               sequential_cpu_offload_member,
-                              model_cpu_offload_member)
+                              model_cpu_offload_member,
+                              transformer_class)
 
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _hfutil.ModelNotFoundError(e)
         except Exception as e:
-            raise _exceptions.SD3TransformerUriLoadError(
-                f'error loading sd3 transformer "{self.model}": {e}')
+            raise _exceptions.TransformerUriLoadError(
+                f'error loading transformer "{self.model}": {e}')
 
     @_memoize(_cache._TRANSFORMER_CACHE,
               exceptions={'local_files_only'},
               hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _d_memoize.struct_hasher}),
-              on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Torch SD3Transformer", key, hit),
-              on_create=lambda key, new: _d_memoize.simple_cache_miss_debug("Torch SD3Transformer", key, new))
+              on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Torch Transformer", key, hit),
+              on_create=lambda key, new: _d_memoize.simple_cache_miss_debug("Torch Transformer", key, new))
     def _load(self,
               variant_fallback: _types.OptionalString = None,
               dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
               use_auth_token: _types.OptionalString = None,
               local_files_only: bool = False,
               sequential_cpu_offload_member: bool = False,
-              model_cpu_offload_member: bool = False) -> diffusers.SD3Transformer2DModel:
+              model_cpu_offload_member: bool = False,
+              transformer_class:
+              type[diffusers.SD3Transformer2DModel] |
+              type[
+                  diffusers.FluxTransformer2DModel] = diffusers.SD3Transformer2DModel) \
+            -> diffusers.SD3Transformer2DModel | diffusers.FluxTransformer2DModel:
 
         if sequential_cpu_offload_member and model_cpu_offload_member:
             # these are used for cache differentiation only
@@ -187,7 +213,7 @@ class SD3TransformerUri:
             _cache.enforce_transformer_cache_constraints(
                 new_transformer_size=estimated_memory_use)
 
-            transformer = diffusers.SD3Transformer2DModel.from_single_file(
+            transformer = transformer_class.from_single_file(
                 model_path,
                 token=use_auth_token,
                 revision=self.revision,
@@ -208,7 +234,7 @@ class SD3TransformerUri:
             _cache.enforce_transformer_cache_constraints(
                 new_transformer_size=estimated_memory_use)
 
-            transformer = diffusers.SD3Transformer2DModel.from_pretrained(
+            transformer = transformer_class.from_pretrained(
                 model_path,
                 revision=self.revision,
                 variant=variant,
@@ -217,25 +243,29 @@ class SD3TransformerUri:
                 token=use_auth_token,
                 local_files_only=local_files_only)
 
-        _messages.debug_log('Estimated Torch SD3Transformer Memory Use:',
+        _messages.debug_log('Estimated Torch Transformer Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_use))
 
         _cache.transformer_create_update_cache_info(
             transformer=transformer,
             estimated_size=estimated_memory_use)
 
+        if self._quantize:
+            optimum.quanto.quantize(transformer, weights=optimum.quanto.qfloat8)
+            optimum.quanto.freeze(transformer)
+
         return transformer
 
     @staticmethod
-    def parse(uri: _types.Uri) -> 'SD3TransformerUri':
+    def parse(uri: _types.Uri) -> 'TransformerUri':
         """
         Parse a ``--model-type`` torch* ``--transformer`` uri and return an object representing its constituents
 
         :param uri: string with ``--transformer`` uri syntax
 
-        :raise InvalidSD3TransformerUriError:
+        :raise InvalidTransformerUriError:
 
-        :return: :py:class:`.TorchSD3TransformerUri`
+        :return: :py:class:`.TransformerUri`
         """
         try:
             r = _transformer_uri_parser.parse(uri)
@@ -244,14 +274,15 @@ class SD3TransformerUri:
 
             supported_dtypes = _enums.supported_data_type_strings()
             if dtype is not None and dtype not in supported_dtypes:
-                raise _exceptions.InvalidSD3TransformerUriError(
-                    f'Torch SD3Transformer "dtype" must be {", ".join(supported_dtypes)}, '
+                raise _exceptions.InvalidTransformerUriError(
+                    f'Torch Transformer "dtype" must be {", ".join(supported_dtypes)}, '
                     f'or left undefined, received: {dtype}')
 
-            return SD3TransformerUri(model=r.concept,
-                                     revision=r.args.get('revision', None),
-                                     variant=r.args.get('variant', None),
-                                     dtype=dtype,
-                                     subfolder=r.args.get('subfolder', None))
+            return TransformerUri(model=r.concept,
+                                  revision=r.args.get('revision', None),
+                                  variant=r.args.get('variant', None),
+                                  dtype=dtype,
+                                  subfolder=r.args.get('subfolder', None),
+                                  quantize=r.args.get('quantize', False))
         except _textprocessing.ConceptUriParseError as e:
-            raise _exceptions.InvalidSD3TransformerUriError(e)
+            raise _exceptions.InvalidTransformerUriError(e)

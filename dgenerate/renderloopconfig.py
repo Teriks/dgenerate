@@ -119,9 +119,18 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     sd3_max_sequence_length: _types.OptionalInteger = None
     """
-    Max number of prompt tokens that the T5EncoderModel (text encoder 3) of Stable Diffusion can handle.
+    Max number of prompt tokens that the T5EncoderModel (text encoder 3) of Stable Diffusion 3 can handle.
     
     This defaults to 256 when not specified, and the maximum value is 512 and the minimum value is 1.
+    
+    High values result in more resource usage and processing time.
+    """
+
+    flux_max_sequence_length: _types.OptionalInteger = None
+    """
+    Max number of prompt tokens that the T5EncoderModel (text encoder 2) of Flux can handle.
+    
+    This defaults to 512 when not specified, and the maximum value is 512 and the minimum value is 1.
     
     High values result in more resource usage and processing time.
     """
@@ -135,6 +144,12 @@ class RenderLoopConfig(_types.SetFromMixin):
     sd3_third_prompts: _types.OptionalPrompts = None
     """
     Optional list of SD3 tertiary prompts, this corresponds to the ``--sd3-third-prompts`` argument
+    of the dgenerate command line tool.
+    """
+
+    flux_second_prompts: _types.OptionalPrompts = None
+    """
+    Optional list of Flux secondary prompts, this corresponds to the ``--flux-second-prompts`` argument
     of the dgenerate command line tool.
     """
 
@@ -1038,6 +1053,47 @@ class RenderLoopConfig(_types.SetFromMixin):
             if invalid_self:
                 raise RenderLoopConfigError('\n'.join(invalid_self))
 
+        if self.transformer_uri:
+            if not _pipelinewrapper.model_type_is_sd3(self.model_type) \
+                    and not _pipelinewrapper.model_type_is_flux(self.model_type):
+                raise _pipelinewrapper.UnsupportedPipelineConfigError(
+                    f'{a_namer("transformer_uri")} is only supported for '
+                    f'{a_namer("model_type")} torch-sd3 and torch-flux.')
+
+        if not _pipelinewrapper.model_type_is_flux(self.model_type):
+            invalid_self = []
+            for flux_self in non_null_attr_that_start_with('flux'):
+                invalid_self.append(f'you cannot specify {a_namer(flux_self)} '
+                                    f'for a non Flux model type, see: {a_namer("model_type")}.')
+            if invalid_self:
+                raise RenderLoopConfigError('\n'.join(invalid_self))
+        else:
+            if self.flux_max_sequence_length is not None:
+                if self.flux_max_sequence_length < 1 or self.flux_max_sequence_length > 512:
+                    raise RenderLoopConfigError(
+                        f'{a_namer("flux_max_sequence_length")} must be greater than or equal '
+                        f'to 1 and less than or equal to 512.'
+                    )
+
+            if self.vae_uri is not None:
+                raise RenderLoopConfigError(
+                    f'Flux model types cannot use a {a_namer("vae_uri")} value.')
+            if self.textual_inversion_uris is not None:
+                raise RenderLoopConfigError(
+                    f'Flux model types do not support {a_namer("textual_inversion_uris")}.')
+            if self.controlnet_uris is not None:
+                raise RenderLoopConfigError(
+                    f'Flux model types do not support {a_namer("controlnet_uris")}.')
+            if self.t2i_adapter_uris is not None:
+                raise RenderLoopConfigError(
+                    f'Flux model types do not support {a_namer("t2i_adapter_uris")}.')
+            if self.ip_adapter_uris is not None:
+                raise RenderLoopConfigError(
+                    f'Flux model types do not support {a_namer("ip_adapter_uris")}.')
+            if self.image_encoder_uri is not None:
+                raise RenderLoopConfigError(
+                    f'Flux model types do not support {a_namer("image_encoder_uri")}.')
+
         if not _pipelinewrapper.model_type_is_sd3(self.model_type):
             invalid_self = []
             for sd3_self in non_null_attr_that_start_with('sd3'):
@@ -1045,11 +1101,6 @@ class RenderLoopConfig(_types.SetFromMixin):
                                     f'for a non SD3 model type, see: {a_namer("model_type")}.')
             if invalid_self:
                 raise RenderLoopConfigError('\n'.join(invalid_self))
-
-            if self.transformer_uri:
-                raise RenderLoopConfigError(
-                    f'You cannot specify {a_namer("transformer_uri")} '
-                    f'for a non SD3 model type, see: {a_namer("model_type")}.')
         else:
             if self.sd3_max_sequence_length is not None:
                 if self.controlnet_uris:
@@ -1171,6 +1222,11 @@ class RenderLoopConfig(_types.SetFromMixin):
         # ===
 
         if self.image_seeds:
+            if _pipelinewrapper.model_type_is_flux(self.model_type):
+                raise RenderLoopConfigError(
+                    f'{a_namer("image_seeds")} cannot be used with Flux models, flux models '
+                    f'currently do not support any type of image input.')
+
             no_seed_strength = (_pipelinewrapper.model_type_is_upscaler(self.model_type) or
                                 _pipelinewrapper.model_type_is_pix2pix(self.model_type) or
                                 _pipelinewrapper.model_type_is_s_cascade(self.model_type))
@@ -1379,6 +1435,7 @@ class RenderLoopConfig(_types.SetFromMixin):
             self.sdxl_refiner_second_prompts,
             self.sd3_second_prompts,
             self.sd3_third_prompts,
+            self.flux_second_prompts,
             self.image_guidance_scales,
             self.image_seeds,
             self.image_seed_strengths,
@@ -1440,6 +1497,10 @@ class RenderLoopConfig(_types.SetFromMixin):
                 if n.startswith('sd3'):
                     return None
 
+            if not _pipelinewrapper.model_type_is_flux(self.model_type):
+                if n.startswith('flux'):
+                    return None
+
             if n in overrides:
                 return overrides[n]
             return v
@@ -1453,10 +1514,13 @@ class RenderLoopConfig(_types.SetFromMixin):
             sdxl_refiner_second_prompt=ov('sdxl_refiner_second_prompt',
                                           self.sdxl_refiner_second_prompts),
             sd3_max_sequence_length=ov('sd3_max_sequence_length', [self.sd3_max_sequence_length]),
+            flux_max_sequence_length=ov('flux_max_sequence_length', [self.flux_max_sequence_length]),
             sd3_second_prompt=ov('sd3_second_prompt',
                                  self.sd3_second_prompts),
             sd3_third_prompt=ov('sd3_third_prompt',
                                 self.sd3_third_prompts),
+            flux_second_prompt=ov('flux_second_prompt',
+                                  self.flux_second_prompts),
             seed=ov('seed', self.seeds),
             clip_skip=ov('clip_skip', self.clip_skips),
             sdxl_refiner_clip_skip=ov('sdxl_refiner_clip_skip', self.sdxl_refiner_clip_skips),

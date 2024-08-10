@@ -99,7 +99,7 @@ def _type_prompt_weighter(uri):
     return uri
 
 
-def _sd3_max_sequence_length(val):
+def _max_sequence_length(val):
     try:
         val = int(val)
     except ValueError:
@@ -547,6 +547,9 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             The "dtype" argument specifies the Text Encoder model precision, it defaults to the value of -t/--dtype
             and should be one of: {_SUPPORTED_DATA_TYPES_PRETTY}.
             
+            The "quantize" argument specifies whether or not to use optimum-quanto to quantize the text encoder weights
+            to qfloat8, this can be utilized to run Flux models with much less GPU memory.
+            
             If you wish to load weights directly from a path on disk, you must point this argument at the folder
             they exist in, which should also contain the config.json file for the Text Encoder. 
             For example, a downloaded repository folder from huggingface."""))
@@ -594,7 +597,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument('-tf', '--transformer', action='store', default=None,
                             metavar="TRANSFORMER_URI", dest='transformer_uri',
                             help=
-                            f"""Specify a Stable Diffusion 3 Transformer model using a URI.
+                            f"""Specify a Stable Diffusion 3 or Flux Transformer model using a URI.
                             
                             Examples: "huggingface/transformer", "huggingface/transformer;revision=main", "transformer_folder_on_disk". 
                             
@@ -614,9 +617,13 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                             The "dtype" argument specifies the Transformer model precision, it defaults to the value of -t/--dtype
                             and should be one of: {_SUPPORTED_DATA_TYPES_PRETTY}.
                             
+                            The "quantize" argument specifies whether or not to use optimum-quanto to quantize the text encoder weights
+                            to qfloat8, this can be utilized to run Flux models with much less GPU memory.
+                            
                             If you wish to load a weights file directly from disk, the simplest
                             way is: --transformer "transformer.safetensors", or with a dtype "transformer.safetensors;dtype=float16". 
-                            All loading arguments except "dtype" are unused in this case and may produce an error message if used.
+                            All loading arguments except "dtype" and "quantize" are unused in this case and may produce an 
+                            error message if used.
                             
                             If you wish to load a specific weight file from a huggingface repository, use the blob link
                             loading syntax: --transformer "AutoencoderKL;https://huggingface.co/UserName/repository-name/blob/main/transformer.safetensors",
@@ -1436,7 +1443,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument('--sd3-max-sequence-length', action='store', metavar='INTEGER',
-                            default=None, type=_sd3_max_sequence_length,
+                            default=None, type=_max_sequence_length,
                             help="""The maximum amount of prompt tokens that the T5EncoderModel 
                             (third text encoder) of Stable Diffusion 3 can handle. This should be 
                             an integer value between 1 and 512 inclusive. The higher the value
@@ -1459,6 +1466,22 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                             tertiary (T5) text encoder. By default the model is passed the primary prompt for this value, 
                             this option allows you to choose a different prompt. The negative prompt component can be
                             specified with the same syntax as --prompts"""))
+
+    actions.append(
+        parser.add_argument('--flux-second-prompts', nargs='+', action='store', metavar="PROMPT",
+                            default=None,
+                            type=_type_prompts,
+                            help="""One or more secondary prompts to try using the torch-flux (Flux) 
+                            secondary (T5) text encoder. By default the model is passed the primary prompt for this value,
+                            this option allows you to choose a different prompt."""))
+
+    actions.append(
+        parser.add_argument('--flux-max-sequence-length', action='store', metavar='INTEGER',
+                            default=None, type=_max_sequence_length,
+                            help="""The maximum amount of prompt tokens that the T5EncoderModel 
+                            (second text encoder) of Flux can handle. This should be 
+                            an integer value between 1 and 512 inclusive. The higher the value
+                            the more resources and time are required for processing. (default: 512)"""))
 
     actions.append(
         parser.add_argument('-cs', '--clip-skips', nargs='+', action='store', metavar="INTEGER",

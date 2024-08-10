@@ -33,9 +33,10 @@ import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
+import optimum.quanto
 
 _text_encoder_uri_parser = _textprocessing.ConceptUriParser(
-    'TextEncoder', ['model', 'revision', 'variant', 'subfolder', 'dtype'])
+    'TextEncoder', ['model', 'revision', 'variant', 'subfolder', 'dtype', 'quantize'])
 
 
 class TextEncoderUri:
@@ -85,6 +86,13 @@ class TextEncoderUri:
         """
         return self._dtype
 
+    @property
+    def quantize(self) -> bool:
+        """
+        Quantize flag
+        """
+        return self._quantize
+
     _encoders = {
         'CLIPTextModel': transformers.models.clip.CLIPTextModel,
         'CLIPTextModelWithProjection': transformers.models.clip.CLIPTextModelWithProjection,
@@ -101,7 +109,8 @@ class TextEncoderUri:
                  revision: _types.OptionalString = None,
                  variant: _types.OptionalString = None,
                  subfolder: _types.OptionalString = None,
-                 dtype: _enums.DataType | str | None = None):
+                 dtype: _enums.DataType | str | None = None,
+                 quantize: bool = False):
         """
         :param encoder: encoder class name, for example ``CLIPTextModel``
         :param model: model path
@@ -109,6 +118,7 @@ class TextEncoderUri:
         :param variant: model variant, for example ``fp16``
         :param subfolder: model subfolder
         :param dtype: model data type (precision)
+        :param quantize: Quantize to qfloat8 with optimum-quanto?
 
         :raises InvalidTextEncoderUriError: If ``dtype`` is passed an invalid data type string, or if
             ``model`` points to a single file and the specified ``encoder`` class name does not
@@ -137,6 +147,7 @@ class TextEncoderUri:
         self._revision = revision
         self._variant = variant
         self._subfolder = subfolder
+        self._quantize = quantize
 
         try:
             self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
@@ -145,6 +156,7 @@ class TextEncoderUri:
                 f'invalid dtype string, must be one of: {_textprocessing.oxford_comma(_enums.supported_data_type_strings(), "or")}')
 
     def load(self,
+             variant_fallback: _types.OptionalString = None,
              dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
              use_auth_token: _types.OptionalString = None,
              local_files_only: bool = False,
@@ -159,6 +171,7 @@ class TextEncoderUri:
         :py:class:`transformers.models.clip.CLIPTextModelWithProjection`, or
         :py:class:`transformers.models.t5.T5EncoderModel` from this URI
 
+        :param variant_fallback: If the URI does not specify a variant, use this variant.
         :param dtype_fallback: If the URI does not specify a dtype, use this dtype.
         :param use_auth_token: optional huggingface auth token.
         :param local_files_only: avoid downloading files and only look for cached files
@@ -178,7 +191,8 @@ class TextEncoderUri:
         """
 
         try:
-            return self._load(dtype_fallback,
+            return self._load(variant_fallback,
+                              dtype_fallback,
                               use_auth_token,
                               local_files_only,
                               sequential_cpu_offload_member,
@@ -197,6 +211,7 @@ class TextEncoderUri:
               on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Torch TextEncoder", key, hit),
               on_create=lambda key, new: _d_memoize.simple_cache_miss_debug("Torch TextEncoder", key, new))
     def _load(self,
+              variant_fallback: _types.OptionalString = None,
               dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
               use_auth_token: _types.OptionalString = None,
               local_files_only: bool = False,
@@ -215,6 +230,11 @@ class TextEncoderUri:
             torch_dtype = _enums.get_torch_dtype(dtype_fallback)
         else:
             torch_dtype = _enums.get_torch_dtype(self.dtype)
+
+        if self.variant is None:
+            variant = variant_fallback
+        else:
+            variant = self.variant
 
         encoder = self._encoders[self.encoder]
 
@@ -244,7 +264,7 @@ class TextEncoderUri:
             estimated_memory_use = _hfutil.estimate_model_memory_use(
                 repo_id=model_path,
                 revision=self.revision,
-                variant=self.variant,
+                variant=variant,
                 subfolder=self.subfolder,
                 local_files_only=local_files_only,
                 use_auth_token=use_auth_token
@@ -256,7 +276,7 @@ class TextEncoderUri:
             text_encoder = encoder.from_pretrained(
                 model_path,
                 revision=self.revision,
-                variant=self.variant,
+                variant=variant,
                 torch_dtype=torch_dtype,
                 subfolder=self.subfolder if self.subfolder else "",
                 token=use_auth_token,
@@ -268,6 +288,10 @@ class TextEncoderUri:
         _cache.text_encoder_create_update_cache_info(
             text_encoder=text_encoder,
             estimated_size=estimated_memory_use)
+
+        if self._quantize:
+            optimum.quanto.quantize(text_encoder, weights=optimum.quanto.qfloat8)
+            optimum.quanto.freeze(text_encoder)
 
         return text_encoder
 
@@ -303,6 +327,7 @@ class TextEncoderUri:
                                   revision=r.args.get('revision', None),
                                   variant=r.args.get('variant', None),
                                   dtype=dtype,
-                                  subfolder=r.args.get('subfolder', None))
+                                  subfolder=r.args.get('subfolder', None),
+                                  quantize=r.args.get('quantize', False))
         except _textprocessing.ConceptUriParseError as e:
             raise _exceptions.InvalidTextEncoderUriError(e)
