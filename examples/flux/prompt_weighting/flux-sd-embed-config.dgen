@@ -16,7 +16,7 @@ black-forest-labs/FLUX.1-dev
 --inference-steps 50
 --guidance-scales 3.5
 --gen-seeds 1
---output-path flux-dev-quantize
+--output-path output
 --prompt-weighter sd-embed
 --output-size 512x512
 --prompts "((Photo)) of a (horse) standing near the open door of a (red barn), (high resolution:1.3)"
