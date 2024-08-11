@@ -397,11 +397,6 @@ class DiffusionPipelineWrapper:
                 )
 
         if _enums.model_type_is_flux(model_type):
-            if vae_uri is not None:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'Flux model types do not use a VAE.'
-                )
-
             if textual_inversion_uris:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'Textual Inversions not supported for Flux.'
