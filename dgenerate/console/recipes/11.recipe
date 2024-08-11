@@ -1,20 +1,28 @@
-title: Upscaling (Stable Diffusion x2)
+title: Flux (Dev)
 
-stabilityai/sd-x2-latent-upscaler
-@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "divider-after":true}]
---model-type torch-upscaler-x2
---dtype float16
-@file[{"label":"Input Image File", "arg":"--image-seeds", "optional":false, "mode":"input", "file-types":["images-in", "videos-in"]}]
-@imageprocessor[{"arg":"--seed-image-processors", "label":"Input Image Processor", "divider-after":true}]
-@switch[{"label":"VAE Tiling", "arg":"--vae-tiling"}]
+# Flux requires a huggingface auth token to access
+# you must request access to the repository
+
+\setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"
+
+\set auth_token {{ '--auth-token ' + quote(auth_token) if auth_token else '' }}
+
+@uri[{"label":"Model Path / HF Slug", "dir":true, "default": "black-forest-labs/FLUX.1-dev", "optional":false, "file-types":["models"]}]
+--model-type torch-flux {{ auth_token }}
+@dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["bfloat16", "float16", "float32"], "default":"bfloat16"}]
+@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "default":1, "divider-after":true}]
+@torchvae[{"label":"VAE Path / URI", "dir":true, "file-types":["models"]}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing", "divider-after":true}]
-@int[{"label":"Inference Steps", "arg":"--inference-steps", "default":30, "min":1}]
-@float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":5, "min":0}]
+@uriwithfloat[{"label":"LoRA Path / URI", "float-label":"LoRA Scale", "arg":"--loras", "float-arg":"scale", "dir":true, "file-types":["models"]}]
+@uri[{"label":"Transformer Path / URI", "dir":true, "arg":"--transformer", "file-types":["models"], "divider-after":true}]
+@int[{"label":"Inference Steps", "arg":"--inference-steps", "default":4, "min":1}]
+@float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":0, "min":0}]
 @seeds[{"label":"Seeds"}]
 @int[{"label":"Batch Size", "arg":"--batch-size", "default":"", "min":1}]
 @imagesize[{"label":"Batch Grid Size (CxR)", "arg":"--batch-grid-size", "default":"", "divider-after":true}]
 @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
-@imagesize[{"label":"Input Resize (WxH)", "arg":"--output-size", "default":""}]
+@imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"1024x1024"}]
+@dropdown[{"label":"Prompt Weighter", "arg":"--prompt-weighter", "options":["sd-embed"]}]
 @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
 @device[{}]
---prompts "your prompt here"
+--prompts "add your prompt here"

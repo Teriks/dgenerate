@@ -1484,9 +1484,6 @@ def _create_torch_diffusion_pipeline(
         if textual_inversion_uris:
             raise UnsupportedPipelineConfigError(
                 'Flux --model-type values are not compatible with --textual-inversions.')
-        if vae_uri:
-            raise UnsupportedPipelineConfigError(
-                'Flux --model-type values are not compatible with --vae.')
         if image_encoder_uri:
             raise UnsupportedPipelineConfigError(
                 'Flux --model-type values are not compatible with --image-encoder.')

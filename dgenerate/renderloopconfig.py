@@ -1075,9 +1075,6 @@ class RenderLoopConfig(_types.SetFromMixin):
                         f'to 1 and less than or equal to 512.'
                     )
 
-            if self.vae_uri is not None:
-                raise RenderLoopConfigError(
-                    f'Flux model types cannot use a {a_namer("vae_uri")} value.')
             if self.textual_inversion_uris is not None:
                 raise RenderLoopConfigError(
                     f'Flux model types do not support {a_namer("textual_inversion_uris")}.')
