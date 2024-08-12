@@ -138,11 +138,11 @@ Help Output
                      [-mt MODEL_TYPE] [-rev BRANCH] [-var VARIANT] [-sbf SUBFOLDER] [-atk TOKEN] [-bs INTEGER]
                      [-bgs SIZE] [-te TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]]
                      [-te2 TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]] [-un UNET_URI] [-un2 UNET_URI]
-                     [-vae VAE_URI] [-vt] [-vs] [-lra LORA_URI [LORA_URI ...]] [-lrfs LORA_FUSE_SCALE]
-                     [-ie IMAGE_ENCODER_URI] [-ipa IP_ADAPTER_URI [IP_ADAPTER_URI ...]] [-ti URI [URI ...]]
-                     [-cn CONTROLNET_URI [CONTROLNET_URI ...] | -t2i T2I_ADAPTER_URI [T2I_ADAPTER_URI ...]]
-                     [-sch SCHEDULER_URI] [-mqo | -mco] [--s-cascade-decoder MODEL_URI] [-dqo] [-dco]
-                     [--s-cascade-decoder-prompts PROMPT [PROMPT ...]]
+                     [-tf TRANSFORMER_URI] [-vae VAE_URI] [-vt] [-vs] [-lra LORA_URI [LORA_URI ...]]
+                     [-lrfs LORA_FUSE_SCALE] [-ie IMAGE_ENCODER_URI] [-ipa IP_ADAPTER_URI [IP_ADAPTER_URI ...]]
+                     [-ti URI [URI ...]] [-cn CONTROLNET_URI [CONTROLNET_URI ...] | -t2i T2I_ADAPTER_URI
+                     [T2I_ADAPTER_URI ...]] [-sch SCHEDULER_URI] [-mqo | -mco] [--s-cascade-decoder MODEL_URI]
+                     [-dqo] [-dco] [--s-cascade-decoder-prompts PROMPT [PROMPT ...]]
                      [--s-cascade-decoder-inference-steps INTEGER [INTEGER ...]]
                      [--s-cascade-decoder-guidance-scales INTEGER [INTEGER ...]]
                      [--s-cascade-decoder-scheduler SCHEDULER_URI] [--sdxl-refiner MODEL_URI] [-rqo] [-rco]
@@ -170,6 +170,7 @@ Help Output
                      [-pw PROMPT_WEIGHTER_URI] [--prompt-weighter-help [PROMPT_WEIGHTER_NAMES ...]]
                      [-p PROMPT [PROMPT ...]] [--sd3-max-sequence-length INTEGER]
                      [--sd3-second-prompts PROMPT [PROMPT ...]] [--sd3-third-prompts PROMPT [PROMPT ...]]
+                     [--flux-second-prompts PROMPT [PROMPT ...]] [--flux-max-sequence-length INTEGER]
                      [-cs INTEGER [INTEGER ...]] [-se SEED [SEED ...]] [-sei] [-gse COUNT] [-af FORMAT]
                      [-if FORMAT] [-nf] [-fs FRAME_NUMBER] [-fe FRAME_NUMBER] [-is SEED [SEED ...]]
                      [-sip PROCESSOR_URI [PROCESSOR_URI ...]] [-mip PROCESSOR_URI [PROCESSOR_URI ...]]
@@ -178,8 +179,8 @@ Help Output
                      [INTEGER ...]] [-gs FLOAT [FLOAT ...]] [-igs FLOAT [FLOAT ...]] [-gr FLOAT [FLOAT ...]]
                      [-ifs INTEGER [INTEGER ...]] [-mc EXPR [EXPR ...]] [-pmc EXPR [EXPR ...]]
                      [-umc EXPR [EXPR ...]] [-vmc EXPR [EXPR ...]] [-cmc EXPR [EXPR ...]] [-tmc EXPR [EXPR ...]]
-                     [-iemc EXPR [EXPR ...]] [-amc EXPR [EXPR ...]] [-ipmc EXPR [EXPR ...]]
-                     [-ipcc EXPR [EXPR ...]]
+                     [-iemc EXPR [EXPR ...]] [-amc EXPR [EXPR ...]] [-tfmc EXPR [EXPR ...]]
+                     [-ipmc EXPR [EXPR ...]] [-ipcc EXPR [EXPR ...]]
                      model_path
 
     Batch image generation and manipulation tool supporting Stable Diffusion and related techniques /
@@ -256,7 +257,8 @@ Help Output
       -mt MODEL_TYPE, --model-type MODEL_TYPE
                             Use when loading different model types. Currently supported: torch, torch-pix2pix,
                             torch-sdxl, torch-sdxl-pix2pix, torch-upscaler-x2, torch-upscaler-x4, torch-if,
-                            torch-ifs, torch-ifs-img2img, torch-s-cascade, or torch-sd3. (default: torch)
+                            torch-ifs, torch-ifs-img2img, torch-s-cascade, torch-sd3, or torch-flux. (default:
+                            torch)
       -rev BRANCH, --revision BRANCH
                             The model revision to use when loading from a huggingface repository, (The git
                             branch / tag, default is "main")
@@ -307,20 +309,22 @@ Help Output
                             specifies the UNet model subfolder, if specified when loading from a huggingface
                             repository or folder, weights from the specified subfolder. The "dtype" argument
                             specifies the Text Encoder model precision, it defaults to the value of -t/--dtype
-                            and should be one of: auto, bfloat16, float16, or float32. If you wish to load
-                            weights directly from a path on disk, you must point this argument at the folder
-                            they exist in, which should also contain the config.json file for the Text Encoder.
-                            For example, a downloaded repository folder from huggingface.
+                            and should be one of: auto, bfloat16, float16, or float32. The "quantize" argument
+                            specifies whether or not to use optimum-quanto to quantize the text encoder weights
+                            to qfloat8, this can be utilized to run Flux models with much less GPU memory. If
+                            you wish to load weights directly from a path on disk, you must point this argument
+                            at the folder they exist in, which should also contain the config.json file for the
+                            Text Encoder. For example, a downloaded repository folder from huggingface.
       -te2 TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...], --text-encoders2 TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]
                             --text-encoders but for the SDXL refiner or Stable Cascade decoder model.
       -un UNET_URI, --unet UNET_URI
                             Specify a UNet using a URI. Examples: "huggingface/unet",
                             "huggingface/unet;revision=main", "unet_folder_on_disk". Blob links / single file
                             loads are not supported for UNets. The "revision" argument specifies the model
-                            revision to use for the UNet when loading from huggingface repository or blob link,
-                            (The git branch / tag, default is "main"). The "variant" argument specifies the UNet
-                            model variant. If "variant" is specified when loading from a huggingface repository
-                            or folder, weights will be loaded from "variant" filename, e.g.
+                            revision to use for the UNet when loading from huggingface repository, (The git
+                            branch / tag, default is "main"). The "variant" argument specifies the UNet model
+                            variant. If "variant" is specified when loading from a huggingface repository or
+                            folder, weights will be loaded from "variant" filename, e.g.
                             "pytorch_model.<variant>.safetensors. For this argument, "variant" defaults to the
                             value of --variant if it is not specified in the URI. The "subfolder" argument
                             specifies the UNet model subfolder, if specified when loading from a huggingface
@@ -333,6 +337,32 @@ Help Output
       -un2 UNET_URI, --unet2 UNET_URI
                             Specify a second UNet, this is only valid when using SDXL or Stable Cascade model
                             types. This UNet will be used for the SDXL refiner, or Stable Cascade decoder model.
+      -tf TRANSFORMER_URI, --transformer TRANSFORMER_URI
+                            Specify a Stable Diffusion 3 or Flux Transformer model using a URI. Examples:
+                            "huggingface/transformer", "huggingface/transformer;revision=main",
+                            "transformer_folder_on_disk". Blob links / single file loads are supported for SD3
+                            Transformers. The "revision" argument specifies the model revision to use for the
+                            Transformer when loading from huggingface repository or blob link, (The git branch /
+                            tag, default is "main"). The "variant" argument specifies the Transformer model
+                            variant. If "variant" is specified when loading from a huggingface repository or
+                            folder, weights will be loaded from "variant" filename, e.g.
+                            "pytorch_model.<variant>.safetensors. For this argument, "variant" defaults to the
+                            value of --variant if it is not specified in the URI. The "subfolder" argument
+                            specifies the Transformer model subfolder, if specified when loading from a
+                            huggingface repository or folder, weights from the specified subfolder. The "dtype"
+                            argument specifies the Transformer model precision, it defaults to the value of
+                            -t/--dtype and should be one of: auto, bfloat16, float16, or float32. The "quantize"
+                            argument specifies whether or not to use optimum-quanto to quantize the text encoder
+                            weights to qfloat8, this can be utilized to run Flux models with much less GPU
+                            memory. If you wish to load a weights file directly from disk, the simplest way is:
+                            --transformer "transformer.safetensors", or with a dtype
+                            "transformer.safetensors;dtype=float16". All loading arguments except "dtype" and
+                            "quantize" are unused in this case and may produce an error message if used. If you
+                            wish to load a specific weight file from a huggingface repository, use the blob link
+                            loading syntax: --transformer
+                            "AutoencoderKL;https://huggingface.co/UserName/repository-
+                            name/blob/main/transformer.safetensors", the "revision" argument may be used with
+                            this syntax.
       -vae VAE_URI, --vae VAE_URI
                             Specify a VAE using a URI, the URI syntax is: "AutoEncoderClass;model=(huggingface
                             repository slug/blob link or file/folder path)". Examples:
@@ -854,6 +884,15 @@ Help Output
                             tertiary (T5) text encoder. By default the model is passed the primary prompt for
                             this value, this option allows you to choose a different prompt. The negative prompt
                             component can be specified with the same syntax as --prompts
+      --flux-second-prompts PROMPT [PROMPT ...]
+                            One or more secondary prompts to try using the torch-flux (Flux) secondary (T5) text
+                            encoder. By default the model is passed the primary prompt for this value, this
+                            option allows you to choose a different prompt.
+      --flux-max-sequence-length INTEGER
+                            The maximum amount of prompt tokens that the T5EncoderModel (second text encoder) of
+                            Flux can handle. This should be an integer value between 1 and 512 inclusive. The
+                            higher the value the more resources and time are required for processing. (default:
+                            512)
       -cs INTEGER [INTEGER ...], --clip-skips INTEGER [INTEGER ...]
                             One or more clip skip values to try. Clip skip is the number of layers to be skipped
                             from CLIP while computing the prompt embeddings, it must be a value greater than or
@@ -1068,6 +1107,14 @@ Help Output
                             Example, and default value: "adapter_size > (available * 0.75)" For Syntax See: [htt
                             ps://dgenerate.readthedocs.io/en/v4.0.0/dgenerate_submodules.html#dgenerate.pipeline
                             wrapper.ADAPTER_CACHE_MEMORY_CONSTRAINTS]
+      -tfmc EXPR [EXPR ...], --transformer-cache-memory-constraints EXPR [EXPR ...]
+                            Cache constraint expressions describing when to automatically clear the in memory
+                            Transformer cache considering current memory usage, and estimated memory usage of
+                            new Transformer models that are about to enter memory. If any of these constraint
+                            expressions are met all Transformer models cached in memory will be cleared.
+                            Example, and default value: "transformer_size > (available * 0.75)" For Syntax See:
+                            [https://dgenerate.readthedocs.io/en/v4.0.0/dgenerate_submodules.html#dgenerate.pipe
+                            linewrapper.TRANSFORMER_CACHE_MEMORY_CONSTRAINTS]
       -ipmc EXPR [EXPR ...], --image-processor-memory-constraints EXPR [EXPR ...]
                             Cache constraint expressions describing when to automatically clear the entire in
                             memory diffusion model cache considering current memory usage, and estimated memory
@@ -1084,8 +1131,6 @@ Help Output
                             destroyed. Example, and default value: "processor_size > (available * 0.70)" For
                             Syntax See: [https://dgenerate.readthedocs.io/en/v4.0.0/dgenerate_submodules.html#dg
                             enerate.imageprocessors.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS]
-
-
 
 
 
