@@ -167,6 +167,8 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
                 if negative_2:
                     negative_2 = pipeline.maybe_convert_prompt(negative_2, tokenizer=pipeline.tokenizer_2)
 
+        flux_embeds = None
+        flux_pooled_embeds = None
         pos_conditioning = None
         neg_conditioning = None
         pos_pooled = None
@@ -285,32 +287,32 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
 
         elif pipeline.__class__.__name__.startswith('Flux'):
             pos_conditioning, \
-                neg_conditioning = _sd_embed.get_weighted_text_embeddings_flux1(
+                pos_pooled = _sd_embed.get_weighted_text_embeddings_flux1(
                 pipe=pipeline,
                 prompt=positive,
                 prompt2=positive_2,
                 device=device)
 
-        self._tensors.append(pos_conditioning)
-        self._tensors.append(neg_conditioning)
+        if pos_conditioning is not None:
+            self._tensors.append(pos_conditioning)
+            output.update({
+                'prompt_embeds': pos_conditioning,
+            })
+
+        if neg_conditioning is not None:
+            self._tensors.append(neg_conditioning)
+            output.update({
+                'negative_prompt_embeds': neg_conditioning,
+            })
 
         if pos_pooled is not None:
             self._tensors.append(pos_pooled)
-
-        if neg_pooled is not None:
-            self._tensors.append(neg_pooled)
-
-        output.update({
-            'prompt_embeds': pos_conditioning,
-            'negative_prompt_embeds': neg_conditioning,
-        })
-
-        if pos_pooled is not None:
             output.update({
                 'pooled_prompt_embeds': pos_pooled,
             })
 
         if neg_pooled is not None:
+            self._tensors.append(neg_pooled)
             output.update({
                 'negative_pooled_prompt_embeds': neg_pooled,
             })
