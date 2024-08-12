@@ -1,7 +1,7 @@
-title: Generic Image Process (to directory)
+title: Generic Image Process
 
 \image_process @file[{"label":"Input File", "optional":false, "mode":"input", "file-types":["images-in", "videos-in"]}]
-@dir[{"label":"Output Directory", "default":"output", "arg":"--output", "after":"/", "mode":"output"}]
+@file[{"label":"Output File", "default":"output.png", "arg":"--output", "mode":"output", "file-types":["images-out", "videos-out"]}]
 @switch[{"label":"Output Overwrite", "arg":"--output-overwrite", "divider-after":true}]
 @imagesize[{"label":"Resize Dimension (WxH)", "arg":"--resize"}]
 @switch[{"label":"Resize Ignores Aspect", "arg":"--no-aspect"}]
