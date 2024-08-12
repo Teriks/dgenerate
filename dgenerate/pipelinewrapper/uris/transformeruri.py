@@ -31,6 +31,7 @@ import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
+import dgenerate.pipelinewrapper.quanto as _quanto
 import optimum.quanto
 
 _transformer_uri_parser = _textprocessing.ConceptUriParser(
@@ -251,8 +252,7 @@ class TransformerUri:
             estimated_size=estimated_memory_use)
 
         if self._quantize:
-            optimum.quanto.quantize(transformer, weights=optimum.quanto.qfloat8)
-            optimum.quanto.freeze(transformer)
+            _quanto.quantize_freeze(transformer, weights=optimum.quanto.qfloat8)
 
         return transformer
 

@@ -45,6 +45,7 @@ import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 import dgenerate.pipelinewrapper.util as _util
+import dgenerate.pipelinewrapper.quanto as _quanto
 
 
 class UnsupportedPipelineConfigError(Exception):
@@ -519,10 +520,14 @@ def enable_sequential_cpu_offload(pipeline: diffusers.DiffusionPipeline,
         if name in pipeline._exclude_from_cpu_offload:
             continue
         elif not is_sequential_cpu_offload_enabled(model):
-            _set_sequential_cpu_offload_flag(model, True)
-            accelerate.cpu_offload(model, torch_device, offload_buffers=len(model._parameters) > 0)
-
-        _disable_to(model)
+            if _quanto.is_quantized_and_frozen(model):
+                _messages.debug_log(
+                    f'Skipping sequential offload on optimum '
+                    f'quantized & frozen module: {name}={model.__class__.__name__}')
+            else:
+                _set_sequential_cpu_offload_flag(model, True)
+                accelerate.cpu_offload(model, torch_device, offload_buffers=len(model._parameters) > 0)
+                _disable_to(model)
 
 
 def enable_model_cpu_offload(pipeline: diffusers.DiffusionPipeline,

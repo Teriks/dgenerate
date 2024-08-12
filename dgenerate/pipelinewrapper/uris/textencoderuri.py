@@ -21,6 +21,7 @@
 import typing
 
 import huggingface_hub
+import optimum.quanto
 import transformers.models.clip
 
 import dgenerate.memoize as _d_memoize
@@ -33,7 +34,7 @@ import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
-import optimum.quanto
+import dgenerate.pipelinewrapper.quanto as _quanto
 
 _text_encoder_uri_parser = _textprocessing.ConceptUriParser(
     'TextEncoder', ['model', 'revision', 'variant', 'subfolder', 'dtype', 'quantize'])
@@ -290,8 +291,7 @@ class TextEncoderUri:
             estimated_size=estimated_memory_use)
 
         if self._quantize:
-            optimum.quanto.quantize(text_encoder, weights=optimum.quanto.qfloat8)
-            optimum.quanto.freeze(text_encoder)
+            _quanto.quantize_freeze(text_encoder, weights=optimum.quanto.qfloat8)
 
         return text_encoder
 
