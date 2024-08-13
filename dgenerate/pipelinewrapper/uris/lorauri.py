@@ -145,14 +145,15 @@ class LoRAUri:
 
                 model_path = _hfutil.download_non_hf_model(lora_uri.model)
 
+                weight_name = lora_uri.weight_name
+
                 if local_files_only and not os.path.exists(model_path):
-                    # Temporary fix for diffusers bug
 
                     subfolder = lora_uri.subfolder if lora_uri.subfolder else ''
 
                     probable_path_1 = os.path.join(
                         subfolder, 'pytorch_lora_weights.safetensors' if
-                        lora_uri.weight_name is None else lora_uri.weight_name)
+                        weight_name is None else weight_name)
 
                     probable_path_2 = os.path.join(
                         subfolder, 'pytorch_lora_weights.bin')
@@ -165,11 +166,15 @@ class LoRAUri:
                         file_path = huggingface_hub.try_to_load_from_cache(lora_uri.model,
                                                                            filename=probable_path_2,
                                                                            revision=lora_uri.revision)
-
-                    if not isinstance(file_path, str):
-                        raise RuntimeError(
-                            f'LoRA model "{lora_uri.model}" '
-                            'was not available in the local huggingface cache.')
+                        if not isinstance(file_path, str):
+                            raise RuntimeError(
+                                f'LoRA model "{lora_uri.model}" '
+                                'was not available in the local huggingface cache.')
+                        else:
+                            weight_name = 'pytorch_lora_weights.bin'
+                    else:
+                        if weight_name is None:
+                            weight_name = 'pytorch_lora_weights.safetensors'
 
                     model_path = os.path.dirname(file_path)
 
@@ -181,7 +186,7 @@ class LoRAUri:
                     pipeline.load_lora_weights(model_path,
                                                revision=lora_uri.revision,
                                                subfolder=lora_uri.subfolder,
-                                               weight_name=lora_uri.weight_name,
+                                               weight_name=weight_name,
                                                local_files_only=local_files_only,
                                                use_safetensors=True,
                                                token=use_auth_token,
@@ -191,7 +196,7 @@ class LoRAUri:
                     pipeline.load_lora_weights(model_path,
                                                revision=lora_uri.revision,
                                                subfolder=lora_uri.subfolder,
-                                               weight_name=lora_uri.weight_name,
+                                               weight_name=weight_name,
                                                local_files_only=local_files_only,
                                                token=use_auth_token,
                                                adapter_name=adapter_name)
