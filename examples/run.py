@@ -269,7 +269,7 @@ def run_directory_subprocess(configs, injected_args, extra_args, debug_torch, kn
 
 
 def filter_to_directories_under_top_level(directories, top_level_directory):
-    top_level_directory = os.path.abspath(top_level_directory)
+    top_level_directory = os.path.abspath(top_level_directory) + os.path.sep
     return [d for d in directories if os.path.abspath(d).startswith(top_level_directory)]
 
 
