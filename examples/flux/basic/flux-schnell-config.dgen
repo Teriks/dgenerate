@@ -18,5 +18,5 @@ black-forest-labs/FLUX.1-schnell
 --guidance-scales 0
 --gen-seeds 1
 --output-path flux-schnell
---output-size 512x512
+--output-size 1024
 --prompts "Photo of a horse standing near the open door of a red barn, high resolution"

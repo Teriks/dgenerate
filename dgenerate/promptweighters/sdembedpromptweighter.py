@@ -227,9 +227,9 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
                             neg_pooled = _sd_embed.get_weighted_text_embeddings_sdxl_2p(
                             pipe=pipeline,
                             prompt=positive,
-                            prompt_2=positive_2,
+                            prompt_2=positive_2 if positive_2 else None,
                             neg_prompt=negative,
-                            neg_prompt_2=negative_2,
+                            neg_prompt_2=negative_2 if negative_2 else None,
                             device=device)
                     else:
                         pos_conditioning, \
@@ -290,7 +290,7 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
                 pos_pooled = _sd_embed.get_weighted_text_embeddings_flux1(
                 pipe=pipeline,
                 prompt=positive,
-                prompt2=positive_2,
+                prompt2=positive_2 if positive_2 else None,
                 device=device)
 
         if pos_conditioning is not None:
