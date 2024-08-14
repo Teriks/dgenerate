@@ -9,14 +9,14 @@
 {% endif %} !END
 
 
-black-forest-labs/FLUX.1-dev
+black-forest-labs/FLUX.1-schnell
 --model-type torch-flux
 --dtype bfloat16
 --model-sequential-offload
---inference-steps 50
---guidance-scales 3.5
+--inference-steps 4
+--guidance-scales 0
 --gen-seeds 1
 --output-path output
 --prompt-weighter sd-embed
---output-size 512x512
+--output-size 1024
 --prompts "((Photo)) of a (horse) standing near the open door of a (red barn), (high resolution:1.3)"
