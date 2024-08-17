@@ -1027,15 +1027,26 @@ class RenderLoop:
 
             else:
                 def image_seed_iterator():
+
+                    # Stable cascade input images are used for style reference
+                    # and should not be resized, output dimension is determined
+                    # by the first image if no explicit width/height is provided
+                    # to the pipeline wrapper call, in addition, these images
+                    # do not need to match in dimension
+
                     yield from _mediainput.iterate_image_seed(
                         uri=parsed_image_seed,
                         frame_start=self.config.frame_start,
                         frame_end=self.config.frame_end,
-                        resize_resolution=self.config.output_size,
+                        resize_resolution=
+                        self.config.output_size if not
+                        _pipelinewrapper.model_type_is_s_cascade(self.config.model_type) else None,
                         aspect_correct=not self.config.no_aspect,
                         seed_image_processor=seed_image_processor,
                         mask_image_processor=mask_image_processor,
-                        control_image_processor=control_image_processor)
+                        control_image_processor=control_image_processor,
+                        check_dimensions_match=
+                        not _pipelinewrapper.model_type_is_s_cascade(self.config.model_type))
 
             if seed_info.is_animation:
 
@@ -1046,10 +1057,10 @@ class RenderLoop:
                 else:
                     def set_extra_args(args: _pipelinewrapper.DiffusionArguments,
                                        ims_obj: _mediainput.ImageSeed):
-                        if ims_obj.image is not None:
-                            args.image = ims_obj.image
-                        if ims_obj.mask_image is not None:
-                            args.mask_image = ims_obj.mask_image
+                        if ims_obj.images is not None:
+                            args.images = ims_obj.images
+                        if ims_obj.mask_images is not None:
+                            args.mask_images = ims_obj.mask_images
                         if ims_obj.control_images is not None:
                             args.control_images = ims_obj.control_images
                         if ims_obj.adapter_images is not None:
@@ -1071,11 +1082,11 @@ class RenderLoop:
                 yield from self._pre_generation_step(diffusion_arguments)
 
                 with next(image_seed_iterator()) as image_seed:
-                    if not is_control_guidance_spec and image_seed.image is not None:
-                        diffusion_arguments.image = image_seed.image
+                    if not is_control_guidance_spec and image_seed.images is not None:
+                        diffusion_arguments.images = image_seed.images
 
-                    if image_seed.mask_image is not None:
-                        diffusion_arguments.mask_image = image_seed.mask_image
+                    if image_seed.mask_images is not None:
+                        diffusion_arguments.mask_images = image_seed.mask_images
 
                     if image_seed.control_images is not None:
                         diffusion_arguments.control_images = image_seed.control_images

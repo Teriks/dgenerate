@@ -805,18 +805,19 @@ Help Output
                             dimensions specified for this value must be aligned by 8 or you will receive an
                             error message. If an --image-seeds URI is used its Seed, Mask, and/or Control
                             component image sources will be resized to this dimension with aspect ratio
-                            maintained before being used for generation by default. Unless --no-aspect is
-                            specified, width will be fixed and a new height (aligned by 8) will be calculated
-                            for the input images. In most cases resizing the image inputs will result in an
-                            image output of an equal size to the inputs, except in the case of upscalers and
-                            Deep Floyd --model-type values (torch-if*). If only one integer value is provided,
-                            that is the value for both dimensions. X/Y dimension values should be separated by
-                            "x". This value defaults to 512x512 for Stable Diffusion when no --image-seeds are
-                            specified (IE txt2img mode), 1024x1024 for Stable Cascade and Stable Diffusion 3/XL
-                            (SD3 or SDXL) model types, and 64x64 for --model-type torch-if (Deep Floyd stage 1).
-                            Deep Floyd stage 1 images passed to superscaler models (--model-type torch-ifs*)
-                            that are specified with the 'floyd' keyword argument in an --image-seeds definition
-                            are never resized or processed in any way.
+                            maintained before being used for generation by default, except in the case of Stable
+                            Cascade where the images are used as a style prompt and not a noised seed and can be
+                            of varying dimensions. If --no-aspect is not specified, width will be fixed and a
+                            new height (aligned by 8) will be calculated for the input images. In most cases
+                            resizing the image inputs will result in an image output of an equal size to the
+                            inputs, except for upscalers and Deep Floyd --model-type values (torch-if*). If only
+                            one integer value is provided, that is the value for both dimensions. X/Y dimension
+                            values should be separated by "x". This value defaults to 512x512 for Stable
+                            Diffusion when no --image-seeds are specified (IE txt2img mode), 1024x1024 for
+                            Stable Cascade and Stable Diffusion 3/XL or Flux model types, and 64x64 for --model-
+                            type torch-if (Deep Floyd stage 1). Deep Floyd stage 1 images passed to superscaler
+                            models (--model-type torch-ifs*) that are specified with the 'floyd' keyword
+                            argument in an --image-seeds definition are never resized or processed in any way.
       -na, --no-aspect      This option disables aspect correct resizing of images provided to --image-seeds
                             globally. Seed, Mask, and Control guidance images will be resized to the closest
                             dimension specified by --output-size that is aligned by 8 pixels with no
@@ -1131,7 +1132,6 @@ Help Output
                             destroyed. Example, and default value: "processor_size > (available * 0.70)" For
                             Syntax See: [https://dgenerate.readthedocs.io/en/v4.0.0/dgenerate_submodules.html#dg
                             enerate.imageprocessors.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS]
-
 
 
 Windows Install

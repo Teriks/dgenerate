@@ -14,4 +14,5 @@ stabilityai/stable-cascade-prior
 --s-cascade-decoder-inference-steps 10
 --s-cascade-decoder-guidance-scales 0
 --gen-seeds 2
+--output-path basic
 --prompts "A huge tsunami wave about to impact a tropical beach, high resolution, photo, real; fake, artwork, imaginary"
