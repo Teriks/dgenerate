@@ -1,0 +1,42 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 4.0.0
+
+# Stable Cascade can accept multiple input images and derive a style from it
+
+# Somewhat like an image encoder used with IP Adapters
+
+# These images do not all need to be the same dimension, if you do not specify
+# --output-size, then the dimension of the first image will be used, it may be
+# force-ably aligned to 128 if it is not already aligned.
+
+
+\setp ziggy_style_images []
+
+{% for i in range(0, 11) %}
+    \download image "https://huggingface.co/datasets/YiYiXu/testing-images/resolve/main/style_ziggy/img{{i}}.png"
+    \setp ziggy_style_images ziggy_style_images + [image]
+{% endfor %} !END
+
+
+# join all the image paths together with +, and some space to create the
+# image group for --image-seeds
+
+\setp ziggy_style_images ', '.join(ziggy_style_images)
+
+
+stabilityai/stable-cascade-prior
+--model-type torch-s-cascade
+--image-seeds "images: {{ ziggy_style_images }}"
+--variant bf16
+--dtype bfloat16
+--model-cpu-offload
+--s-cascade-decoder-sequential-offload
+--s-cascade-decoder "stabilityai/stable-cascade;dtype=float16"
+--inference-steps 50
+--guidance-scales 2
+--s-cascade-decoder-inference-steps 10
+--s-cascade-decoder-guidance-scales 0
+--gen-seeds 2
+--output-path multiple-inputs
+--output-size 1024
+--prompts "a house; monochrome, lowres, bad anatomy, worst quality, low quality"

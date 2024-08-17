@@ -39,18 +39,27 @@ class DiffusionArguments(_types.SetFromMixin):
     Primary prompt
     """
 
-    image: PIL.Image.Image | None = None
+    images: _types.Images | None = None
     """
-    Image for img2img operations, or the base for inpainting operations.
+    Images for img2img operations, or the base for inpainting operations.
     
-    All input images involved in a generation must match in dimension and be aligned by 8 pixels.
+    All input images involved in a generation except for ``adapter_images`` must match in dimension and be aligned by 8 pixels,
+    except in the case of Stable Cascade, which can accept multiple images of any dimension for the purpose of image based
+    prompting similar to IP Adapters.
+    
+    All other pipelines interpret multiple image inputs as a batching request.
     """
 
-    mask_image: PIL.Image.Image | None = None
+    mask_images: _types.Images | None = None
     """
-    Mask image for inpainting operations.
+    Mask images for inpainting operations.
     
-    All input images involved in a generation must match in dimension and be aligned by 8 pixels.
+    The amount of img2img ``images`` must be equal to the amount of ``mask_images`` supplied.
+    
+    All input images involved in a generation except for ``adapter_images``  must match in dimension and be aligned by 8 pixels,
+    except in the case of Stable Cascade, which can accept multiple images of any dimension for the purpose of image based
+    prompting similar to IP Adapters.  Stable Cascade cannot preform inpainting, so ``mask_images`` is irrelevant in
+    this case. All other pipelines interpret multiple image inputs as a batching request.
     """
 
     control_images: _types.Images | None = None
@@ -435,11 +444,11 @@ class DiffusionArguments(_types.SetFromMixin):
         :return: :py:attr:`dgenerate.pipelinewrapper.PipelineType`
         """
 
-        if self.image is not None and self.mask_image is not None:
+        if self.images is not None and self.mask_images is not None:
             # Inpainting is handled by INPAINT type
             return _enums.PipelineType.INPAINT
 
-        if self.image is not None:
+        if self.images is not None:
             # Image only is handled by IMG2IMG type
             return _enums.PipelineType.IMG2IMG
 

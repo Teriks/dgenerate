@@ -1374,13 +1374,13 @@ class DiffusionPipelineWrapper:
                 else:
                     args['image'] = control_images
             elif self._pipeline_type in {_enums.PipelineType.IMG2IMG, _enums.PipelineType.INPAINT}:
-                args['image'] = user_args.image
+                args['image'] = user_args.images
                 args['control_image'] = control_images
                 set_strength()
 
-            mask_image = user_args.mask_image
-            if mask_image is not None:
-                args['mask_image'] = mask_image
+            mask_images = user_args.mask_images
+            if mask_images is not None:
+                args['mask_image'] = mask_images
 
         def set_t2iadapter_defaults():
             adapter_control_images = list(user_args.control_images)
@@ -1431,7 +1431,7 @@ class DiffusionPipelineWrapper:
                 )
 
         def set_img2img_defaults():
-            image = user_args.image
+            images = user_args.images
 
             floyd_og_image_needed = (self._pipeline_type == _enums.PipelineType.INPAINT and
                                      _enums.model_type_is_floyd_ifs(self._model_type)
@@ -1442,12 +1442,12 @@ class DiffusionPipelineWrapper:
                     raise _pipelines.UnsupportedPipelineConfigError(
                         'must specify "floyd_image" to disambiguate this operation, '
                         '"floyd_image" being the output of a previous floyd stage.')
-                args['original_image'] = image
+                args['original_image'] = images
                 args['image'] = user_args.floyd_image
             elif self._model_type == _enums.ModelType.TORCH_S_CASCADE:
-                args['images'] = [image]
+                args['images'] = images
             else:
-                args['image'] = image
+                args['image'] = images
 
             def check_no_image_seed_strength():
                 if user_args.image_seed_strength is not None:
@@ -1497,36 +1497,39 @@ class DiffusionPipelineWrapper:
             else:
                 check_no_image_seed_strength()
 
-            mask_image = user_args.mask_image
+            mask_images = user_args.mask_images
 
-            if mask_image is not None:
-                args['mask_image'] = mask_image
+            if mask_images is not None:
+                args['mask_image'] = mask_images
                 if not _enums.model_type_is_floyd(self._model_type):
-                    args['width'] = image.size[0]
-                    args['height'] = image.size[1]
+                    args['width'] = images[0].size[0]
+                    args['height'] = images[0].size[1]
 
             if self._model_type == _enums.ModelType.TORCH_SDXL_PIX2PIX:
-                args['width'] = image.size[0]
-                args['height'] = image.size[1]
+                args['width'] = images[0].size[0]
+                args['height'] = images[0].size[1]
 
             if self._model_type == _enums.ModelType.TORCH_UPSCALER_X2:
-                if not _image.is_aligned(image.size, 64):
-                    size = _image.align_by(image.size, 64)
-                    _messages.log(
-                        f'Input image size {image.size} is not aligned by 64. '
-                        f'Output dimensions will be forcefully aligned to 64: {size}.',
-                        level=_messages.WARNING)
-                    args['image'] = image.resize(size, PIL.Image.Resampling.LANCZOS)
+                args['image'] = list(images)
+
+                for idx, image in enumerate(images):
+                    if not _image.is_aligned(image.size, 64):
+                        size = _image.align_by(image.size, 64)
+                        _messages.log(
+                            f'Input image size {image.size} is not aligned by 64. '
+                            f'Output dimensions will be forcefully aligned to 64: {size}.',
+                            level=_messages.WARNING)
+                        args['image'][idx] = image.resize(size, PIL.Image.Resampling.LANCZOS)
 
             if self._model_type == _enums.ModelType.TORCH_S_CASCADE:
-                if not _image.is_aligned(image.size, 128):
-                    size = _image.align_by(image.size, 128)
+                if not _image.is_aligned(images[0].size, 128):
+                    size = _image.align_by(images[0].size, 128)
                     _messages.log(
-                        f'Input image size {image.size} is not aligned by 128. '
+                        f'Input image size {images[0].size} is not aligned by 128. '
                         f'Output dimensions will be forcefully aligned to 128: {size}.',
                         level=_messages.WARNING)
                 else:
-                    size = image.size
+                    size = images[0].size
 
                 if user_args.width and user_args.width > 0:
                     if not (user_args.width % 128) == 0:
@@ -1542,13 +1545,16 @@ class DiffusionPipelineWrapper:
                 args['height'] = _types.default(user_args.height, size[1])
 
             if self._model_type == _enums.ModelType.TORCH_SD3:
-                if not _image.is_aligned(image.size, 16):
-                    size = _image.align_by(image.size, 16)
-                    _messages.log(
-                        f'Input image size {image.size} is not aligned by 16. '
-                        f'Output dimensions will be forcefully aligned to 16: {size}.',
-                        level=_messages.WARNING)
-                    args['image'] = image.resize(size, PIL.Image.Resampling.LANCZOS)
+                args['image'] = list(images)
+
+                for idx, image in enumerate(images):
+                    if not _image.is_aligned(image.size, 16):
+                        size = _image.align_by(image.size, 16)
+                        _messages.log(
+                            f'Input image size {image.size} is not aligned by 16. '
+                            f'Output dimensions will be forcefully aligned to 16: {size}.',
+                            level=_messages.WARNING)
+                        args['image'][idx] = image.resize(size, PIL.Image.Resampling.LANCZOS)
 
         def set_txt2img_defaults():
             if _enums.model_type_is_sdxl(self._model_type):
@@ -1582,7 +1588,7 @@ class DiffusionPipelineWrapper:
             set_controlnet_defaults()
         elif self._t2i_adapter_uris:
             set_t2iadapter_defaults()
-        elif user_args.image is not None:
+        elif user_args.images is not None:
             set_img2img_defaults()
         else:
             set_txt2img_defaults()
@@ -1915,23 +1921,38 @@ class DiffusionPipelineWrapper:
 
         batch_size = _types.default(user_args.batch_size, 1)
 
-        mock_batching = False
+        if user_args.images:
+            if batch_size % len(user_args.images) != 0:
+                batch_size = len(user_args.images)
+                if user_args.batch_size is not None:
+                    # only warn if the user specified a value
+                    _messages.log(f'Setting --batch-size to {batch_size} because '
+                                  f'given batch size did not divide evenly with the '
+                                  f'provided number of input images.',
+                                  level=_messages.WARNING)
 
         if self._model_type != _enums.ModelType.TORCH_UPSCALER_X2:
-            # Upscaler does not take this argument, can only produce one image
             pipeline_args['num_images_per_prompt'] = batch_size
         else:
-            mock_batching = batch_size > 1
+            in_img_cnt = len(pipeline_args['image'])
+            if batch_size > in_img_cnt:
+                batch_mul = batch_size // in_img_cnt
+            else:
+                batch_mul = 1
+
+            in_imgs = pipeline_args['image'] * batch_mul
+            num_prompts = len(in_imgs)
+            pipeline_args['image'] = in_imgs
+
+            pipeline_args['prompt'] = \
+                [pipeline_args['prompt']] * num_prompts
+
+            if pipeline_args.get('negative_prompt', None) is not None:
+                pipeline_args['negative_prompt'] = \
+                    [pipeline_args['negative_prompt']] * num_prompts
 
         def generate_images(**kwargs):
-            if mock_batching:
-                images = []
-                for i in range(0, batch_size):
-                    images.append(
-                        _pipelines.call_pipeline(**kwargs).images[0])
-                return images
-            else:
-                return _pipelines.call_pipeline(**kwargs).images
+            return _pipelines.call_pipeline(**kwargs).images
 
         pipeline_args['generator'] = \
             torch.Generator(device=self._device).manual_seed(
@@ -1977,6 +1998,7 @@ class DiffusionPipelineWrapper:
                         pipeline_args['image'] = pipeline_args['image'][0].convert('L')
 
             elif isinstance(self._pipeline.adapter, diffusers.MultiAdapter):
+                pipeline_args['image'] = list(pipeline_args['image'])
                 for idx, adapter in enumerate(self._pipeline.adapter.adapters):
                     if hasattr(adapter.config, 'in_channels'):
                         if adapter.config.in_channels == 1:

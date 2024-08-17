@@ -41,29 +41,41 @@ class TestImageSeedParser(unittest.TestCase):
         parsed = _mi.parse_image_seed_uri(
             'examples/media/dog-on-bench.png')
 
-        self.assertEqual(parsed.seed_path, 'examples/media/dog-on-bench.png')
-        self.assertIsNone(parsed.mask_path)
+        self.assertEqual(parsed.images, ['examples/media/dog-on-bench.png'])
+        self.assertIsNone(parsed.mask_images)
         self.assertIsNone(parsed.resize_resolution)
 
         parsed = _mi.parse_image_seed_uri(
             'examples/media/dog-on-bench.png;examples/media/dog-on-bench-mask.png')
 
-        self.assertEqual(parsed.seed_path, 'examples/media/dog-on-bench.png')
-        self.assertEqual(parsed.mask_path, 'examples/media/dog-on-bench-mask.png')
+        self.assertEqual(parsed.images, ['examples/media/dog-on-bench.png'])
+        self.assertEqual(parsed.mask_images, ['examples/media/dog-on-bench-mask.png'])
         self.assertIsNone(parsed.resize_resolution)
 
         parsed = _mi.parse_image_seed_uri(
             'examples/media/dog-on-bench.png;512x512;examples/media/dog-on-bench-mask.png')
 
         self.assertEqual(parsed.resize_resolution, (512, 512))
-        self.assertEqual(parsed.seed_path, 'examples/media/dog-on-bench.png')
-        self.assertEqual(parsed.mask_path, 'examples/media/dog-on-bench-mask.png')
+        self.assertEqual(parsed.images, ['examples/media/dog-on-bench.png'])
+        self.assertEqual(parsed.mask_images, ['examples/media/dog-on-bench-mask.png'])
 
         parsed = _mi.parse_image_seed_uri('examples/media/dog-on-bench.png;examples/media/dog-on-bench-mask.png;1024')
 
         self.assertEqual(parsed.resize_resolution, (1024, 1024))
-        self.assertEqual(parsed.seed_path, 'examples/media/dog-on-bench.png')
-        self.assertEqual(parsed.mask_path, 'examples/media/dog-on-bench-mask.png')
+        self.assertEqual(parsed.images, ['examples/media/dog-on-bench.png'])
+        self.assertEqual(parsed.mask_images, ['examples/media/dog-on-bench-mask.png'])
+
+        parsed = _mi.parse_image_seed_uri('images: examples/media/dog-on-bench.png, examples/media/earth.jpg;examples/media/dog-on-bench-mask.png;1024')
+
+        self.assertEqual(parsed.resize_resolution, (1024, 1024))
+        self.assertEqual(parsed.images, ['examples/media/dog-on-bench.png', 'examples/media/earth.jpg'])
+        self.assertEqual(parsed.mask_images, ['examples/media/dog-on-bench-mask.png', 'examples/media/dog-on-bench-mask.png'])
+
+        parsed = _mi.parse_image_seed_uri('images: examples/media/dog-on-bench.png, examples/media/earth.jpg;examples/media/dog-on-bench-mask.png, examples/media/dog-on-bench.png;512')
+
+        self.assertEqual(parsed.resize_resolution, (512, 512))
+        self.assertEqual(parsed.images, ['examples/media/dog-on-bench.png', 'examples/media/earth.jpg'])
+        self.assertEqual(parsed.mask_images, ['examples/media/dog-on-bench-mask.png', 'examples/media/dog-on-bench.png'])
 
     def test_uri_arguments(self):
         with self.assertRaises(_mi.ImageSeedArgumentError):
@@ -87,9 +99,9 @@ class TestImageSeedParser(unittest.TestCase):
             'examples/media/earth.jpg;mask=examples/media/horse1.jpg;'
             'control=examples/media/horse2.jpeg;resize=512;aspect=false;frame-start=5;frame-end=10')
 
-        self.assertEqual(parsed.seed_path, 'examples/media/earth.jpg')
-        self.assertEqual(parsed.mask_path, 'examples/media/horse1.jpg')
-        self.assertEqual(parsed.control_path, 'examples/media/horse2.jpeg')
+        self.assertEqual(parsed.images, ['examples/media/earth.jpg'])
+        self.assertEqual(parsed.mask_images, ['examples/media/horse1.jpg'])
+        self.assertEqual(parsed.control_images, ['examples/media/horse2.jpeg'])
         self.assertEqual(parsed.resize_resolution, (512, 512))
         self.assertFalse(parsed.aspect_correct)
         self.assertEqual(parsed.frame_start, 5)
@@ -100,9 +112,9 @@ class TestImageSeedParser(unittest.TestCase):
             'control=examples/media/horse2.jpeg, "examples/media/beach.jpg";'
             'resize=1024x512;aspect=false;frame-start=5;frame-end=10')
 
-        self.assertEqual(parsed.seed_path, 'examples/media/earth.jpg')
-        self.assertEqual(parsed.mask_path, 'examples/media/horse1.jpg')
-        self.assertSequenceEqual(parsed.control_path, ['examples/media/horse2.jpeg', 'examples/media/beach.jpg'])
+        self.assertEqual(parsed.images, ['examples/media/earth.jpg'])
+        self.assertEqual(parsed.mask_images, ['examples/media/horse1.jpg'])
+        self.assertSequenceEqual(parsed.control_images, ['examples/media/horse2.jpeg', 'examples/media/beach.jpg'])
         self.assertEqual(parsed.resize_resolution, (1024, 512))
         self.assertFalse(parsed.aspect_correct)
         self.assertEqual(parsed.frame_start, 5)
@@ -112,9 +124,9 @@ class TestImageSeedParser(unittest.TestCase):
             'examples/media/earth.jpg;mask=examples/media/horse1.jpg;'
             'floyd=examples/media/horse2.jpeg;resize=512;aspect=false;frame-start=5;frame-end=10')
 
-        self.assertEqual(parsed.seed_path, 'examples/media/earth.jpg')
-        self.assertEqual(parsed.mask_path, 'examples/media/horse1.jpg')
-        self.assertEqual(parsed.floyd_path, 'examples/media/horse2.jpeg')
+        self.assertEqual(parsed.images, ['examples/media/earth.jpg'])
+        self.assertEqual(parsed.mask_images, ['examples/media/horse1.jpg'])
+        self.assertEqual(parsed.floyd_image, 'examples/media/horse2.jpeg')
         self.assertEqual(parsed.resize_resolution, (512, 512))
         self.assertFalse(parsed.aspect_correct)
         self.assertEqual(parsed.frame_start, 5)
@@ -124,9 +136,9 @@ class TestImageSeedParser(unittest.TestCase):
             'examples/media/earth.jpg;mask=examples/media/horse1.jpg;'
             'floyd=examples/media/horse2.jpeg;resize=1024x512;aspect=false;frame-start=5;frame-end=10')
 
-        self.assertEqual(parsed.seed_path, 'examples/media/earth.jpg')
-        self.assertEqual(parsed.mask_path, 'examples/media/horse1.jpg')
-        self.assertEqual(parsed.floyd_path, 'examples/media/horse2.jpeg')
+        self.assertEqual(parsed.images, ['examples/media/earth.jpg'])
+        self.assertEqual(parsed.mask_images, ['examples/media/horse1.jpg'])
+        self.assertEqual(parsed.floyd_image, 'examples/media/horse2.jpeg')
         self.assertEqual(parsed.resize_resolution, (1024, 512))
         self.assertFalse(parsed.aspect_correct)
         self.assertEqual(parsed.frame_start, 5)

@@ -919,9 +919,6 @@ class RenderLoopConfig(_types.SetFromMixin):
             raise RenderLoopConfigError(
                 f'Cannot specify {a_namer("no_frames")} when {a_namer("animation_format")} is set to "frames"')
 
-        if self.batch_size is None:
-            self.batch_size = 1
-
         if self.clip_skips and not (self.model_type == _pipelinewrapper.ModelType.TORCH or
                                     self.model_type == _pipelinewrapper.ModelType.TORCH_SDXL or
                                     self.model_type == _pipelinewrapper.ModelType.TORCH_SD3):
@@ -1252,7 +1249,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                         image_seed_strengths_default_set=image_seed_strengths_default_set,
                         upscaler_noise_levels_default_set=upscaler_noise_levels_default_set))
 
-            if all(p.mask_path is None for p in parsed_image_seeds):
+            if all(p.mask_images is None for p in parsed_image_seeds):
                 if self.model_type == _pipelinewrapper.ModelType.TORCH_IFS:
                     self.image_seed_strengths = None
                     if user_provided_image_seed_strengths:
@@ -1283,7 +1280,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         except _mediainput.ImageSeedError as e:
             raise RenderLoopConfigError(e)
 
-        mask_part = 'mask=my-mask.png;' if parsed.mask_path else ''
+        mask_part = 'mask=my-mask.png;' if parsed.mask_images else ''
         # ^ Used for nice messages about image seed keyword argument misuse
 
         if _pipelinewrapper.model_type_is_sd3(self.model_type):
@@ -1336,13 +1333,14 @@ class RenderLoopConfig(_types.SetFromMixin):
             control_image_paths = parsed.get_control_image_paths()
             num_control_images = len(control_image_paths) if control_image_paths is not None else 0
 
-            if not parsed.is_single_spec and parsed.control_path is None:
+            if not parsed.is_single_spec and parsed.control_images is None:
+                images_str = ', '.join(parsed.images)
                 raise RenderLoopConfigError(
                     f'You must specify a control image with the control argument '
                     f'IE: "my-seed.png;control=my-control.png" in your '
                     f'{a_namer("image_seeds")} "{uri}" when using {a_namer("controlnet_uris")} '
                     f'in order to use inpainting. If you want to use the control image alone '
-                    f'without a mask, use {a_namer("image_seeds")} "{parsed.seed_path}".')
+                    f'without a mask, use {a_namer("image_seeds")} "{images_str}".')
 
             if control_image_paths is None:
                 raise RenderLoopConfigError(
@@ -1373,7 +1371,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         is_control_guidance_spec = (self.controlnet_uris or self.t2i_adapter_uris) and parsed.is_single_spec
 
-        has_additional_control = parsed.control_path and not parsed.is_single_spec
+        has_additional_control = parsed.control_images and not parsed.is_single_spec
 
         if has_additional_control and not self.controlnet_uris:
             raise RenderLoopConfigError(
@@ -1409,9 +1407,9 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'separated list of sources.')
 
         if self.model_type == _pipelinewrapper.ModelType.TORCH_IFS_IMG2IMG or \
-                (parsed.mask_path and _pipelinewrapper.model_type_is_floyd_ifs(self.model_type)):
+                (parsed.mask_images and _pipelinewrapper.model_type_is_floyd_ifs(self.model_type)):
 
-            if not parsed.floyd_path:
+            if not parsed.floyd_image:
                 raise RenderLoopConfigError(
                     f'You must specify a floyd image with the floyd argument '
                     f'IE: "my-seed.png;{mask_part}floyd=previous-stage-image.png" '
