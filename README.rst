@@ -95,6 +95,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v4.0.0/>`_.
         * `The sd-embed prompt weighter`_
     * `Utilizing CivitAI links and Other Hosted Models`_
     * `Specifying Generation Batch Size`_
+    * `Batching Input Images and Inpaint Masks`_
     * `Image Processors`_
     * `Sub Commands`_
         * `Sub Command: image-process`_
