@@ -3766,7 +3766,7 @@ Here is an example of ``img2img`` usage:
     #! /usr/bin/env bash
 
     # Standard img2img, this results in two outputs
-    # each the images are resized to 1024 so they match
+    # each of the images are resized to 1024 so they match
     # in dimension, which is a requirement for batching
 
     stabilityai/stable-diffusion-2 \
