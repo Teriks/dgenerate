@@ -1354,7 +1354,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                             The dimensions specified for this value must be aligned by 8 or you will receive an error message.
                             If an --image-seeds URI is used its Seed, Mask, and/or Control component image sources will be 
                             resized to this dimension with aspect ratio maintained before being used for generation by default,
-                            except in the case of Stable Cascade where the images are used as a style prompt and not a noised seed
+                            except in the case of Stable Cascade where the images are used as a style prompt (not a noised seed),
                             and can be of varying dimensions. If --no-aspect is not specified, width will be fixed and a new height 
                             (aligned by 8) will be calculated for the input images. In most cases resizing the image inputs 
                             will result in an image output of an equal size to the inputs, except for upscalers and Deep Floyd 
