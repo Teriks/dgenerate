@@ -1658,6 +1658,13 @@ This will work when using a mask image for inpainting as well, including when us
 
 This also works when `Specifying Control Nets`_ and guidance images for control nets.
 
+Resizing in this fashion will resize any img2img image, inpaint mask, or control image to the specified
+size, generally all of these images need to be the same size. In combination with the URI argument
+``aspect=False`` this can be used to force multiple images of different sizes to the same dimension.
+
+This does not resize IP Adapter images as they have their own special per image resizing
+syntax discussed in: `Specifying IP Adapters`_
+
 Here are some possible definitions:
 
     * ``--image-seeds "my-image-seed.png;512x512"`` (img2img)
