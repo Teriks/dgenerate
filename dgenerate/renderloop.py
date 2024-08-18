@@ -51,7 +51,7 @@ from dgenerate.events import \
 from dgenerate.renderloopconfig import \
     RenderLoopConfig, \
     RenderLoopConfigError, \
-    CONTROL_IMAGE_PROCESSOR_SEP, \
+    IMAGE_PROCESSOR_SEP, \
     gen_seeds
 
 __doc__ = """
@@ -917,14 +917,32 @@ class RenderLoop:
                 generation_result.images[idx] = img
 
     def _load_image_processors(self, processors):
-        return self.image_processor_loader.load(processors, device=self.config.device)
+        if not processors:
+            return None
+
+        processor_chain = [[]]
+
+        for processor in processors:
+            if processor != IMAGE_PROCESSOR_SEP:
+                processor_chain[-1].append(processor)
+            else:
+                processor_chain.append([])
+
+        if len(processor_chain) == 1:
+            r = self.image_processor_loader.load(processor_chain[0], device=self.config.device)
+        else:
+            r = [self.image_processor_loader.load(p, device=self.config.device) for p in processor_chain]
+
+        return r
 
     def _load_seed_image_processors(self):
         if not self.config.seed_image_processors:
             return None
 
         r = self._load_image_processors(self.config.seed_image_processors)
-        _messages.debug_log('Loaded Seed Image Processor:', r)
+
+        _messages.debug_log('Loaded Seed Image Processor(s):', r)
+
         return r
 
     def _load_mask_image_processors(self):
@@ -932,27 +950,18 @@ class RenderLoop:
             return None
 
         r = self._load_image_processors(self.config.mask_image_processors)
-        _messages.debug_log('Loaded Mask Image Processor:', r)
+
+        _messages.debug_log('Loaded Mask Image Processor(s):', r)
+
         return r
 
     def _load_control_image_processors(self):
         if not self.config.control_image_processors:
             return None
 
-        processors = [[]]
+        r = self._load_image_processors(self.config.control_image_processors)
 
-        for processor in self.config.control_image_processors:
-            if processor != CONTROL_IMAGE_PROCESSOR_SEP:
-                processors[-1].append(processor)
-            else:
-                processors.append([])
-
-        if len(processors) == 1:
-            r = self._load_image_processors(processors[0])
-        else:
-            r = [self._load_image_processors(p) for p in processors]
-
-        _messages.debug_log('Loaded Control Image Processor(s): ', r)
+        _messages.debug_log('Loaded Control Image Processor(s):', r)
 
         return r
 
@@ -970,13 +979,24 @@ class RenderLoop:
                 control_image_processor)
         finally:
             if seed_image_processor is not None:
-                seed_image_processor.to('cpu')
+                if isinstance(seed_image_processor, list):
+                    for p in seed_image_processor:
+                        if p is not None:
+                            p.to('cpu')
+                else:
+                    seed_image_processor.to('cpu')
             if mask_image_processor is not None:
-                mask_image_processor.to('cpu')
+                if isinstance(mask_image_processor, list):
+                    for p in mask_image_processor:
+                        if p is not None:
+                            p.to('cpu')
+                else:
+                    mask_image_processor.to('cpu')
             if control_image_processor is not None:
                 if isinstance(control_image_processor, list):
                     for p in control_image_processor:
-                        p.to('cpu')
+                        if p is not None:
+                            p.to('cpu')
                 else:
                     control_image_processor.to('cpu')
 
