@@ -1597,11 +1597,12 @@ via the use of a URI syntax involving keyword arguments.
 The syntax ``--image-seeds "my-image-seed.png;control=my-control-image.png"`` can be used with ``--control-nets`` to specify
 img2img mode with a ControlNet for example, see: `Specifying Control Nets`_ for more information.
 
-IP Adapter images may be provided via a special syntax discussed in: `Specifying IP Adapters`_
+IP Adapter images may be provided via a special ``adapters: ...`` syntax and
+via the ``adapters`` URI argument discussed in: `Specifying IP Adapters`_
 
 Batching or providing multiple image inputs for the same generation, resulting in multiple output
 variations possibly using different input images, or multiple image prompts, is possible using the
-``images: ...`` syntax discussed in the section `Batching Input Images and Inpaint Masks`_.
+``images: ...`` syntax discussed in the section: `Batching Input Images and Inpaint Masks`_.
 
 
 Inpainting
