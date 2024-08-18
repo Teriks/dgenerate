@@ -69,7 +69,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v4.0.0/>`_.
     * `Basic Usage`_
     * `Negative Prompt`_
     * `Multiple Prompts`_
-    * `Image Seed`_
+    * `Image Seeds`_
     * `Inpainting`_
     * `Per Image Seed Resizing`_
     * `Animated Output`_
@@ -1543,8 +1543,8 @@ All using 50 inference steps, and 10 for guidance scale value.
     --output-size 512x512
 
 
-Image Seed
-==========
+Image Seeds
+===========
 
 The ``--image-seeds`` argument can be used to specify one or more image input resource groups
 for use in rendering, and allows for the specification of img2img source images, inpaint masks,
@@ -1597,7 +1597,11 @@ via the use of a URI syntax involving keyword arguments.
 The syntax ``--image-seeds "my-image-seed.png;control=my-control-image.png"`` can be used with ``--control-nets`` to specify
 img2img mode with a ControlNet for example, see: `Specifying Control Nets`_ for more information.
 
-You may also provide IP Adapter images via a special syntax discussed in: `Specifying IP Adapters`_
+IP Adapter images may be provided via a special syntax discussed in: `Specifying IP Adapters`_
+
+Batching or providing multiple image inputs for the same generation, resulting in multiple output
+variations possibly using different input images, or multiple image prompts, is possible using the
+``images: ...`` syntax discussed in the section `Batching Input Images and Inpaint Masks`_.
 
 
 Inpainting
@@ -3827,6 +3831,8 @@ And an ``inpainting`` example:
 
 In the case of Stable Cascade, this syntax results in multiple images being passed to Stable Cascade
 as an image/style prompt, and does not result in multiple outputs or batching behavior.
+
+This Stable Cascade functionality is demonstrated in the example config: `examples/stablecascade/img2img/multiple-inputs-config.dgen <https://github.com/Teriks/dgenerate/blob/4.0.0/examples/stablecascade/img2img/multiple-inputs-config.dgen>`_
 
 
 Image Processors
