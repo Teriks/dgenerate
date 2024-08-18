@@ -1585,7 +1585,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                             help="""Specify one or more image processor actions to preform on the primary
                             image(s) specified by --image-seeds. For example: --seed-image-processors "flip" "mirror" "grayscale".
                             To obtain more information about what image processors are available and how to use them, 
-                            see: --image-processor-help. If you have multiple image specified for batching, for example
+                            see: --image-processor-help. If you have multiple images specified for batching, for example
                             (--image-seeds "images: img2img-1.png, img2img-2.png"), you may use the + symbol to separate image processor chains, 
                             so that a certain chain affects a certain seed image, the plus symbol may also be used to represent 
                             a null processor. For example: (--seed-image-processors affect-img-1 + affect-img-2), or 
