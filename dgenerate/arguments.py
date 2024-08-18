@@ -1583,11 +1583,11 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument('-sip', '--seed-image-processors', action='store', nargs='+', default=None,
                             metavar="PROCESSOR_URI",
                             help="""Specify one or more image processor actions to preform on the primary
-                            image specified by --image-seeds. For example: --seed-image-processors "flip" "mirror" "grayscale".
+                            image(s) specified by --image-seeds. For example: --seed-image-processors "flip" "mirror" "grayscale".
                             To obtain more information about what image processors are available and how to use them, 
                             see: --image-processor-help. If you have multiple image specified for batching, for example
                             (--image-seeds "images: img2img-1.png, img2img-2.png"), you may use the + symbol to separate image processor chains, 
-                            so that a certain chain affects a certain mask image, the plus symbol may also be used to represent 
+                            so that a certain chain affects a certain seed image, the plus symbol may also be used to represent 
                             a null processor. For example: (--seed-image-processors affect-img-1 + affect-img-2), or 
                             (--seed-image-processors + affect-img-2), or (--seed-image-processors affect-img-1 +)
                             """))
@@ -1596,7 +1596,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument('-mip', '--mask-image-processors', action='store', nargs='+', default=None,
                             metavar="PROCESSOR_URI",
                             help="""Specify one or more image processor actions to preform on the inpaint mask
-                            image specified by --image-seeds. For example: --mask-image-processors "invert".
+                            image(s) specified by --image-seeds. For example: --mask-image-processors "invert".
                             To obtain more information about what image processors are available and how to use them, 
                             see: --image-processor-help. If you have multiple masks specified for batching, for example
                             --image-seeds ("images: img2img-1.png, img2img-2.png; mask-1.png, mask-2.png"), you may use 
