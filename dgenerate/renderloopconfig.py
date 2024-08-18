@@ -31,10 +31,11 @@ import dgenerate.promptweighters as _promptweighters
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 
-CONTROL_IMAGE_PROCESSOR_SEP = '+'
+IMAGE_PROCESSOR_SEP = '+'
 """
-The character that is used to separate control image processor chains
-when specifying processors for multiple control guidance images
+The character that is used to separate image processor chains
+when specifying processors for individual images in a group
+of input images.
 """
 
 
@@ -1312,6 +1313,34 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'{number_of_ip_adapter_image_groups} IP Adapter image groups for {number_of_ip_adapter_uris} IP '
                     f'Adapter models.')
 
+        if self.seed_image_processors:
+            num_img2img_images = len(parsed.images) if parsed.images is not None else 0
+
+            seed_processor_chain_count = \
+                (sum(1 for p in self.seed_image_processors if p == IMAGE_PROCESSOR_SEP) + 1)
+
+            if seed_processor_chain_count > num_img2img_images:
+                raise RenderLoopConfigError(
+                    f'Your {a_namer("image_seeds")} specification "{uri}" defines {num_img2img_images} '
+                    f'img2img image sources, and you have specified {seed_processor_chain_count} '
+                    f'{a_namer("seed_image_processors")} actions / action chains. The amount of processors '
+                    f'must not exceed the amount of img2img images.'
+                )
+
+        if self.mask_image_processors:
+            num_mask_images = len(parsed.mask_images) if parsed.mask_images is not None else 0
+
+            mask_processor_chain_count = \
+                (sum(1 for p in self.mask_image_processors if p == IMAGE_PROCESSOR_SEP) + 1)
+
+            if mask_processor_chain_count > num_mask_images:
+                raise RenderLoopConfigError(
+                    f'Your {a_namer("image_seeds")} specification "{uri}" defines {num_mask_images} '
+                    f'inpaint mask image sources, and you have specified {mask_processor_chain_count} '
+                    f'{a_namer("mask_image_processors")} actions / action chains. The amount of processors '
+                    f'must not exceed the amount of inpaint mask images.'
+                )
+
         if self.t2i_adapter_uris:
             control_image_paths = parsed.get_control_image_paths()
             num_control_images = len(control_image_paths) if control_image_paths is not None else 0
@@ -1359,7 +1388,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
             if self.control_image_processors:
                 control_processor_chain_count = \
-                    (sum(1 for p in self.control_image_processors if p == CONTROL_IMAGE_PROCESSOR_SEP) + 1)
+                    (sum(1 for p in self.control_image_processors if p == IMAGE_PROCESSOR_SEP) + 1)
 
                 if control_processor_chain_count > num_control_images:
                     raise RenderLoopConfigError(

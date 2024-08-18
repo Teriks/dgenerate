@@ -2120,17 +2120,17 @@ def _flatten(xs):
             yield x
 
 
-ControlProcessorSpec = _imageprocessors.ImageProcessor | \
-                       collections.abc.Sequence[_imageprocessors.ImageProcessor] | None
+ImageProcessorSpec = _imageprocessors.ImageProcessor | \
+                     collections.abc.Sequence[_imageprocessors.ImageProcessor] | None
 
 
-def _validate_control_image_processor_count(processors, guidance_images):
+def _validate_image_processor_count(processors, images, error_title):
     num_processors = len(processors)
-    num_guidance_images = len(guidance_images)
-    if num_processors > num_guidance_images:
-        raise ValueError('Too many control image processors specified, '
+    num_images = len(images)
+    if num_processors > num_images:
+        raise ValueError(f'Too many {error_title} image processors specified, '
                          f'there are {num_processors} processors and '
-                         f'{num_guidance_images} control guidance image sources.')
+                         f'{num_images} {error_title} image sources.')
 
 
 def _reshape_ip_adapter_image_seed(adapter_images, reader_output):
@@ -2151,9 +2151,9 @@ def iterate_image_seed(uri: str | ImageSeedParseResult,
                        resize_resolution: _types.OptionalSize = None,
                        aspect_correct: bool = True,
                        align: int | None = 8,
-                       seed_image_processor: _imageprocessors.ImageProcessor | None = None,
-                       mask_image_processor: _imageprocessors.ImageProcessor | None = None,
-                       control_image_processor: ControlProcessorSpec = None,
+                       seed_image_processor: ImageProcessorSpec = None,
+                       mask_image_processor: ImageProcessorSpec = None,
+                       control_image_processor: ImageProcessorSpec = None,
                        check_dimensions_match: bool = True) -> \
         collections.abc.Iterator[ImageSeed]:
     """
@@ -2220,8 +2220,21 @@ def iterate_image_seed(uri: str | ImageSeedParseResult,
 
     :param align: Images which are read are aligned to this amount of pixels, ``None`` or ``1`` will disable alignment.
 
-    :param seed_image_processor: optional :py:class:`dgenerate.imageprocessors.ImageProcessor`
-    :param mask_image_processor: optional :py:class:`dgenerate.imageprocessors.ImageProcessor`
+    :param seed_image_processor: optional :py:class:`dgenerate.imageprocessors.ImageProcessor` or list of them.
+        A list is used to specify processors for individual images in a multi img2img image specification
+        such as uri = "images: img2img-1.png, img2img-2.png".  In the case that a multi img2img image
+        specification is used and only one processor is given, that processor will be used on only the
+        first image / video in the specification. Images in a multi img2img specification with no corresponding
+        processor value will have their processor set to ``None``, specifying extra processors
+        as compared to img2img sources will cause :py:exc:`ValueError` to be raised.
+
+    :param mask_image_processor: optional :py:class:`dgenerate.imageprocessors.ImageProcessor` or list of them.
+        A list is used to specify processors for individual mask images in a multi inpaint mask specification
+        such as uri = "images: img2img-1.png, img2img-2.png;mask=mask-1.png, mask-2.png".  In the case that
+        a multi inpaint mask specification is used and only one processor is given, that processor will
+        be used on only the first image / video in the specification. Images in an inpaint mask specification
+        with no corresponding processor value will have their processor set to ``None``, specifying extra
+        processors as compared to inpaint mask image sources will cause :py:exc:`ValueError` to be raised.
 
     :param control_image_processor: optional :py:class:`dgenerate.imageprocessors.ImageProcessor` or list of them.
         A list is used to specify processors for individual images in a multi guidance image specification
@@ -2280,28 +2293,46 @@ def iterate_image_seed(uri: str | ImageSeedParseResult,
         image_ranges.append((name, (start_range, start_range + length)))
 
     if parse_result.images is not None:
+        if not isinstance(seed_image_processor, list):
+            seed_image_processor = [seed_image_processor]
+
         seed_paths = parse_result.images
 
-        for seed_path in seed_paths:
+        _validate_image_processor_count(
+            processors=seed_image_processor,
+            images=seed_paths,
+            error_title='seed')
+
+        for idx, seed_path in enumerate(seed_paths):
             reader_specs.append(
-                MediaReaderSpec(path=seed_path,
-                                image_processor=seed_image_processor,
-                                resize_resolution=resize_resolution,
-                                aspect_correct=aspect_correct,
-                                align=align))
+                MediaReaderSpec(
+                    path=seed_path,
+                    image_processor=seed_image_processor[idx] if idx < len(seed_image_processor) else None,
+                    resize_resolution=resize_resolution,
+                    aspect_correct=aspect_correct,
+                    align=align))
 
         append_range('images', len(seed_paths))
 
     if parse_result.mask_images is not None:
+        if not isinstance(mask_image_processor, list):
+            mask_image_processor = [mask_image_processor]
+
         mask_paths = parse_result.mask_images
 
-        for mask_path in mask_paths:
-            reader_specs.append(MediaReaderSpec(
-                path=mask_path,
-                image_processor=mask_image_processor,
-                resize_resolution=resize_resolution,
-                aspect_correct=aspect_correct,
-                align=align))
+        _validate_image_processor_count(
+            processors=mask_image_processor,
+            images=mask_paths,
+            error_title='inpaint mask')
+
+        for idx, mask_path in enumerate(mask_paths):
+            reader_specs.append(
+                MediaReaderSpec(
+                    path=mask_path,
+                    image_processor=mask_image_processor[idx] if idx < len(mask_image_processor) else None,
+                    resize_resolution=resize_resolution,
+                    aspect_correct=aspect_correct,
+                    align=align))
 
         append_range('mask_images', len(mask_paths))
 
@@ -2309,21 +2340,23 @@ def iterate_image_seed(uri: str | ImageSeedParseResult,
         if not isinstance(control_image_processor, list):
             control_image_processor = [control_image_processor]
 
-        _validate_control_image_processor_count(
+        control_paths = parse_result.control_images
+
+        _validate_image_processor_count(
             processors=control_image_processor,
-            guidance_images=parse_result.control_images)
+            images=control_paths,
+            error_title='control guidance')
 
-        reader_specs += [
-            MediaReaderSpec(
-                path=p,
-                image_processor=control_image_processor[idx] if idx < len(control_image_processor) else None,
-                resize_resolution=resize_resolution,
-                aspect_correct=aspect_correct,
-                align=align)
-            for idx, p in enumerate(parse_result.control_images)
-        ]
+        for idx, control_path in enumerate(control_paths):
+            reader_specs.append(
+                MediaReaderSpec(
+                    path=control_path,
+                    image_processor=control_image_processor[idx] if idx < len(control_image_processor) else None,
+                    resize_resolution=resize_resolution,
+                    aspect_correct=aspect_correct,
+                    align=align))
 
-        append_range('control_images', len(parse_result.control_images))
+        append_range('control_images', len(control_paths))
 
     if parse_result.adapter_images is not None and parse_result.floyd_image is not None:
         raise ValueError('IP adapter images not supported with floyd stage image.')
@@ -2407,7 +2440,7 @@ def iterate_control_image(uri: str | ImageSeedParseResult,
                           resize_resolution: _types.OptionalSize = None,
                           aspect_correct: bool = True,
                           align: int | None = 8,
-                          image_processor: ControlProcessorSpec = None) -> \
+                          image_processor: ImageProcessorSpec = None) -> \
         collections.abc.Iterator[ImageSeed]:
     """
     Parse and load a control image/video in an ``--image-seeds`` uri and return an iterator that
@@ -2489,9 +2522,10 @@ def iterate_control_image(uri: str | ImageSeedParseResult,
 
     control_guidance_image_paths = parse_result.get_control_image_paths()
 
-    _validate_control_image_processor_count(
+    _validate_image_processor_count(
         processors=image_processor,
-        guidance_images=control_guidance_image_paths)
+        images=control_guidance_image_paths,
+        error_title='control guidance')
 
     reader_specs += [
         MediaReaderSpec(
