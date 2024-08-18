@@ -65,7 +65,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v4.0.0/>`_.
     * `Linux or WSL Install`_
     * `Google Colab Install`_
 
-* Usage Examples
+* Usage Manual
     * `Basic Usage`_
     * `Negative Prompt`_
     * `Multiple Prompts`_
