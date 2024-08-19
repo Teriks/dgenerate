@@ -58,7 +58,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     All input images involved in a generation except for ``adapter_images``  must match in dimension and be aligned by 8 pixels,
     except in the case of Stable Cascade, which can accept multiple images of any dimension for the purpose of image based
-    prompting similar to IP Adapters.  Stable Cascade cannot preform inpainting, so ``mask_images`` is irrelevant in
+    prompting similar to IP Adapters.  Stable Cascade cannot perform inpainting, so ``mask_images`` is irrelevant in
     this case. All other pipelines interpret multiple image inputs as a batching request.
     """
 

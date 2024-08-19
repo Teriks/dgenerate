@@ -64,7 +64,7 @@ class ZoeDepthProcessor(_imageprocessor.ImageProcessor):
                  pre_resize: bool = False,
                  **kwargs):
         """
-        :param gamma_corrected: preform gamma correction on the depth map?
+        :param gamma_corrected: perform gamma correction on the depth map?
         :param detect_resolution: the input image is resized to this dimension before being processed,
             providing ``None`` indicates it is not to be resized.  If there is no resize requested during
             the processing action via ``resize_resolution`` it will be resized back to its original size.

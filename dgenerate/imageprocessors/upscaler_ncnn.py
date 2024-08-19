@@ -75,7 +75,7 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
 
     Once a Vulkan allocator exists on a specific GPU it cannot be destroyed except
     via the process exiting due to issues with the ncnn python binding.  If you
-    create this processor on a GPU you intend to preform diffusion on, you are
+    create this processor on a GPU you intend to perform diffusion on, you are
     going to run into memory errors after the first image generation and
     there on out until the process exits.
 
