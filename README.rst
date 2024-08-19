@@ -86,9 +86,9 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v4.0.0/>`_.
     * `Specifying a Stable Cascade Decoder`_
     * `Specifying LoRAs`_
     * `Specifying IP Adapters`_
-        * `basic –image-seeds specification`_
-        * `img2img –image-seeds specification`_
-        * `inpainting –image-seeds specification`_
+        * `basic --image-seeds specification`_
+        * `img2img –-image-seeds specification`_
+        * `inpainting –-image-seeds specification`_
         * `quoting IP Adapter image URLs with plus symbols`_
         * `animated inputs & combinatorics`_
     * `Specifying Textual Inversions`_
