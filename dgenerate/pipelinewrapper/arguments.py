@@ -18,8 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-
+import collections.abc
 import typing
 
 import PIL.Image
@@ -70,7 +69,7 @@ class DiffusionArguments(_types.SetFromMixin):
     All input images involved in a generation must match in dimension and be aligned by 8 pixels.
     """
 
-    ip_adapter_images: list[_types.Images] | None = None
+    ip_adapter_images: collections.abc.Sequence[_types.Images] | None = None
     """
     IP Adapter images to use if ``ip_adapter_uris`` were given to the
     constructor of :py:class:`.DiffusionPipelineWrapper`.
