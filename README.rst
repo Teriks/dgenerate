@@ -3917,11 +3917,11 @@ Output:
         "openpose"
         "pidi"
         "posterize"
+        "resize"
         "sam"
         "solarize"
         "teed"
         "upscaler"
-        "upscaler-ncnn"
         "zoe"
 
 
