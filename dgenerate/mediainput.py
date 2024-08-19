@@ -855,7 +855,7 @@ class ImageSeedParseResult:
 
     adapter_images: list[list[IPAdapterImageUri]] | None = None
     """
-    IPAdapter image URIs.
+    IP Adapter image URIs.
 
     In parses such as:
     

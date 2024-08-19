@@ -86,6 +86,11 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v4.0.0/>`_.
     * `Specifying a Stable Cascade Decoder`_
     * `Specifying LoRAs`_
     * `Specifying IP Adapters`_
+        * `basic –image-seeds specification`_
+        * `img2img –image-seeds specification`_
+        * `inpainting –image-seeds specification`_
+        * `quoting IP Adapter image URLs with plus symbols`_
+        * `animated inputs & combinatorics`_
     * `Specifying Textual Inversions`_
     * `Specifying Control Nets`_
     * `Specifying T2I Adapters`_
@@ -97,6 +102,8 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v4.0.0/>`_.
     * `Specifying Generation Batch Size`_
     * `Batching Input Images and Inpaint Masks`_
     * `Image Processors`_
+        * `Image processor arguments`_
+        * `Multiple control net images, and input image batching`_
     * `Sub Commands`_
         * `Sub Command: image-process`_
         * `Sub Command: civitai-links`_
@@ -3802,7 +3809,7 @@ Here is an example of ``img2img`` usage:
     # each of the images are resized to 1024 so they match
     # in dimension, which is a requirement for batching
 
-    stabilityai/stable-diffusion-2 \
+    dgenerate stabilityai/stable-diffusion-2 \
     --inference-steps 30 \
     --guidance-scales 8 \
     --image-seeds "images: examples/media/earth.jpg, examples/media/mountain.png;1024" \
@@ -3816,7 +3823,7 @@ Here is an example of ``img2img`` usage:
     # The --batch-size must be divisible by the number of provided images
     # this results in 4 images being produced, 2 variations of each input image
 
-    stabilityai/stable-diffusion-2 \
+    dgenerate stabilityai/stable-diffusion-2 \
     --inference-steps 30 \
     --guidance-scales 8 \
     --image-seeds "images: examples/media/earth.jpg, examples/media/mountain.png;1024" \
@@ -3847,7 +3854,7 @@ And an ``inpainting`` example:
     # The same logic for --batch-size still applies as mentioned
     # in the img2img example
 
-    stabilityai/stable-diffusion-2-inpainting \
+    dgenerate stabilityai/stable-diffusion-2-inpainting \
     --inference-steps 30 \
     --guidance-scales 8 \
     --image-seeds "images: ../../media/dog-on-bench.png, ../../media/beach.jpg;mask=../../media/dog-on-bench-mask.png;resize=1024;aspect=False" \
@@ -3925,6 +3932,10 @@ processor module and a description of what the module does.
 Custom image processor modules can also be loaded through the ``--plugin-modules`` option as discussed
 in the `Writing Plugins`_ section.
 
+
+Image processor arguments
+-------------------------
+
 All processors posses the arguments: ``output-file`` and  ``output-overwrite``.
 
 The ``output-file`` argument can be used to write the processed image to a specific file, if multiple
@@ -3988,9 +3999,13 @@ is used in the example below with a ControlNet that is trained to generate image
     --output-path unicorn
 
 
-The ``--control-image-processors`` has a special additional syntax that the other processor specification
-options do not, which is used to describe which processor group is affecting which control guidance image
-source in an ``--image-seeds`` specification.
+Multiple control net images, and input image batching
+-----------------------------------------------------
+
+
+Each ``--*-image-processors`` option has a special additional syntax, which is used to
+describe which processor or processor chain is affecting which input image in an
+``--image-seeds`` specification.
 
 For instance if you have multiple control guidance images, and multiple control nets which are going
 to use those images, or frames etc. and you want to process each guidance image with a separate
@@ -4037,6 +4052,42 @@ for example the specification:
 
 The two + (plus symbol) arguments indicate that the first two images mentioned in the control image
 specification in ``--image-seeds`` are not to be processed by any processor.
+
+This same syntax applies to ``img2img`` and ``mask`` images when using the ``images: ...`` batching
+syntax described in: `Batching Input Images and Inpaint Masks`_
+
+.. code-block:: bash
+
+    #! /usr/bin/env bash
+
+    # process these two images as img2img inputs in one go on the GPU
+    # mirror the second image horizontally, the + indicates that
+    # we are skipping processing the first image
+
+    dgenerate stabilityai/stable-diffusion-2 \
+    --inference-steps 30 \
+    --guidance-scales 8 \
+    --image-seeds "images: examples/media/horse2.jpeg, examples/media/horse2.jpeg" \
+    --seed-image-processors + mirror
+    --image-seed-strengths 0.9 \
+    --vae-tiling  \
+    --vae-slicing \
+    --output-path batching \
+    --prompts "A fancy unicorn"
+
+    # now with inpainting
+
+    dgenerate stabilityai/stable-diffusion-2 \
+    --inference-steps 30 \
+    --guidance-scales 8 \
+    --image-seeds "images: examples/media/horse1.jpg, examples/media/horse1.jpg;mask=examples/media/horse1-mask.jpg, examples/media/horse1-mask.jpg" \
+    --seed-image-processors + mirror
+    --mask-image-processors + mirror
+    --image-seed-strengths 0.9 \
+    --vae-tiling  \
+    --vae-slicing \
+    --output-path batching \
+    --prompts "A photo of a horse standing on mars"
 
 
 Sub Commands
