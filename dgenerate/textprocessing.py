@@ -128,7 +128,7 @@ def tokenized_split(string: str,
     :param escapable_separator: The seperator character may be escaped with a backslash where it would otherwise cause a split?
 
     :param allow_unterminated_strings: Allows the lex to end on an unterminated string without a syntax error being produced.
-        It is necessary to preform lookahead N to determine if a seperator is quoted by a string or not, this allows your input
+        It is necessary to perform lookahead N to determine if a seperator is quoted by a string or not, this allows your input
         to end with an unterminated string and still split correctly, complete strings proceeding the unterminated string which
         contain the seperator character will not be split on the seperator because the seperator is considered quoted in a string token.
 
