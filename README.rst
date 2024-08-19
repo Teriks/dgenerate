@@ -3861,6 +3861,7 @@ And an ``inpainting`` example:
     --image-seed-strengths 1 \
     --vae-tiling \
     --vae-slicing \
+    --seeds 39877139643371 \
     --output-path batching \
     --prompts "A fluffy orange cat, realistic, high quality; deformed, scary"
 
