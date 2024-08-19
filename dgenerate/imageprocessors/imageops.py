@@ -306,7 +306,7 @@ class ResizeProcessor(_imageprocessor.ImageProcessor):
 
     The "align" argument is the new image alignment.
 
-    The "aspect_correct" argument is a boolean argument that determines if the resize is aspect correct.
+    The "aspect-correct" argument is a boolean argument that determines if the resize is aspect correct.
 
     The "algo" argument is the resize filtering algorithm, which can be one of:
     "nearest", "box", "bilinear", "hamming", "bicubic", "lanczos"
