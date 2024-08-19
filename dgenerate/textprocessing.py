@@ -1310,7 +1310,7 @@ def remove_tail_comments(string) -> tuple[bool, str]:
         return False, _remove_tail_comments_unlexable(string)
 
 
-def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | None,
+def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | None = None,
                           mask_images: str | collections.abc.Iterable[str] | None = None,
                           control_images: str | collections.abc.Iterable[str] | None = None,
                           adapter_images: collections.abc.Iterable[str] | None = None,
