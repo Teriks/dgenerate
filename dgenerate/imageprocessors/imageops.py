@@ -298,6 +298,83 @@ class SolarizeProcessor(_imageprocessor.ImageProcessor):
         return self
 
 
+class ResizeProcessor(_imageprocessor.ImageProcessor):
+    """
+    Resize an image using basic resampling algorithms.
+
+    The "size" argument is the new image size.
+
+    The "align" argument is the new image alignment.
+
+    The "aspect_correct" argument is a boolean argument that determines if the resize is aspect correct.
+
+    The "algo" argument is the resize filtering algorithm, which can be one of:
+    "nearest", "box", "bilinear", "hamming", "bicubic", "lanczos"
+    """
+
+    NAMES = ['resize']
+
+    # hide inherited arguments
+    # that are device related
+    HIDE_ARGS = ['device', 'model-offload']
+
+    def __init__(self,
+                 size: typing.Optional[str] = None,
+                 align: typing.Optional[int] = None,
+                 aspect_correct: bool = True,
+                 algo: str = 'lanczos',
+                 **kwargs):
+        super().__init__(**kwargs)
+
+        if algo not in {"nearest", "box", "bilinear", "hamming", "bicubic", "lanczos"}:
+            raise self.argument_error(
+                'algo must be one of: "nearest", "box", "bilinear", "hamming", "bicubic", "lanczos"')
+
+        try:
+            self._size = _textprocessing.parse_image_size(size)
+        except ValueError as e:
+            raise self.argument_error(str(e).strip())
+
+        if align is not None and align < 1:
+            raise self.argument_error('align must not be less than 1.')
+
+        self._align = align
+        self._aspect_correct = aspect_correct
+        self._algo = algo
+        pass
+
+    def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
+        """
+        Does nothing, no-op.
+
+        :param image: the image.
+        :param resize_resolution: dimension dgenerate will resize to.
+        :return: The same image.
+        """
+        return image
+
+    def impl_post_resize(self, image: PIL.Image.Image):
+        """
+        Preform the resize operation.
+
+        :param image: The image after being resized by dgenerate.
+        :return: The resized image.
+        """
+        return _image.resize_image(img=image,
+                                   size=self._size,
+                                   aspect_correct=self._aspect_correct,
+                                   align=self._align,
+                                   algo=getattr(PIL.Image.Resampling, self._algo.upper()))
+
+    def to(self, device) -> "ResizeProcessor":
+        """
+        Does nothing for this processor.
+        :param device: the device
+        :return: this processor
+        """
+        return self
+
+
 class LetterboxProcessor(_imageprocessor.ImageProcessor):
     """
     Letterbox an image.
