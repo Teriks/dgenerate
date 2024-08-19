@@ -6054,7 +6054,7 @@ Image processor plugins
 -----------------------
 
 A code example as well as a usage example for image processor plugins can be found
-in the `"writing_plugins/image_processor" <https://github.com/Teriks/dgenerate/tree/v4.0.0/examples/writing_plugins/image_processor>`_
+in the `writing_plugins/image_processor <https://github.com/Teriks/dgenerate/tree/v4.0.0/examples/writing_plugins/image_processor>`_
 folder of the examples folder.
 
 The source code for the built in `canny <https://github.com/Teriks/dgenerate/blob/v4.0.0/dgenerate/imageprocessors/canny.py>`_ processor,
@@ -6068,9 +6068,9 @@ be of reference as they are written as internal image processor plugins.
 Config directive and template function plugins
 ----------------------------------------------
 
-An example for writing config directives can be found in the `"writing_plugins/config_directive" <https://github.com/Teriks/dgenerate/tree/v4.0.0/examples/writing_plugins/config_directive>`_  example folder.
+An example for writing config directives can be found in the `writing_plugins/config_directive <https://github.com/Teriks/dgenerate/tree/v4.0.0/examples/writing_plugins/config_directive>`_  example folder.
 
-Config template functions can also be implemented by plugins, see: `"writing_plugins/template_function" <https://github.com/Teriks/dgenerate/tree/v4.0.0/examples/writing_plugins/template_function>`_
+Config template functions can also be implemented by plugins, see: `writing_plugins/template_function <https://github.com/Teriks/dgenerate/tree/v4.0.0/examples/writing_plugins/template_function>`_
 
 Currently the only internal directive that is implemented as a plugin is the ``\image_process`` directive, who's source file 
 `can be located here <https://github.com/Teriks/dgenerate/blob/v4.0.0/dgenerate/batchprocess/image_process_directive.py>`_.
@@ -6088,7 +6088,7 @@ Sub-command plugins
 
 Reference for writing sub-commands can be found in the `image-process <https://github.com/Teriks/dgenerate/blob/v4.0.0/dgenerate/subcommands/image_process.py>`_
 sub-command implementation, and a plugin skeleton file for sub-commands can be found in the 
-`"writing_plugins/sub_command" <https://github.com/Teriks/dgenerate/tree/v4.0.0/examples/writing_plugins/sub_command>`_ example folder.
+`writing_plugins/sub_command <https://github.com/Teriks/dgenerate/tree/v4.0.0/examples/writing_plugins/sub_command>`_ example folder.
 
 ~~~~
 
@@ -6100,7 +6100,7 @@ Reference for writing prompt weighters can be found in the `CompelPromptWeighter
 and `SdEmbedPromptWeighter <https://github.com/Teriks/dgenerate/blob/v4.0.0/dgenerate/promptweighters/sdembedpromptweighter.py>`_ internal prompt weighter implementations.
  
 A plugin skeleton file for prompt weighters can be found in the 
-`"writing_plugins/prompt_weighter" <https://github.com/Teriks/dgenerate/tree/v4.0.0/examples/writing_plugins/prompt_weighter>`_
+`writing_plugins/prompt_weighter <https://github.com/Teriks/dgenerate/tree/v4.0.0/examples/writing_plugins/prompt_weighter>`_
 example folder.
 
 ~~~~
