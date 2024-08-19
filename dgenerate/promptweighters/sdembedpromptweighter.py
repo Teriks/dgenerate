@@ -63,7 +63,11 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
     with a warning message.
 
     The secondary prompt option for SD3 --sd3-second-prompts is not supported by this prompt weighter
-    implementation.  Neither is --sd3-third-prompts. The prompts from these arguments will be ignored.
+    implementation. Neither is --sd3-third-prompts. The prompts from these arguments will be ignored.
+
+    The secondary prompt option for Flux --flux-second-prompts is supported by this prompt weighter.
+
+    Flux does not support negative prompting in either prompt.
     """
 
     NAMES = ['sd-embed']
