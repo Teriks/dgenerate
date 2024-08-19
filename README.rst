@@ -4068,25 +4068,25 @@ syntax described in: `Batching Input Images and Inpaint Masks`_
     --inference-steps 30 \
     --guidance-scales 8 \
     --image-seeds "images: examples/media/horse2.jpeg, examples/media/horse2.jpeg" \
-    --seed-image-processors + mirror
+    --seed-image-processors + mirror \
     --image-seed-strengths 0.9 \
     --vae-tiling  \
     --vae-slicing \
-    --output-path batching \
+    --output-path unicorn \
     --prompts "A fancy unicorn"
 
-    # now with inpainting
+    # Now with inpainting
 
     dgenerate stabilityai/stable-diffusion-2 \
     --inference-steps 30 \
     --guidance-scales 8 \
     --image-seeds "images: examples/media/horse1.jpg, examples/media/horse1.jpg;mask=examples/media/horse1-mask.jpg, examples/media/horse1-mask.jpg" \
-    --seed-image-processors + mirror
-    --mask-image-processors + mirror
+    --seed-image-processors + mirror \
+    --mask-image-processors + mirror \
     --image-seed-strengths 0.9 \
     --vae-tiling  \
     --vae-slicing \
-    --output-path batching \
+    --output-path mars_horse \
     --prompts "A photo of a horse standing on mars"
 
 
