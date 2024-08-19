@@ -326,6 +326,9 @@ class ResizeProcessor(_imageprocessor.ImageProcessor):
                  **kwargs):
         super().__init__(**kwargs)
 
+        if size is None and align is None:
+            raise self.argument_error('no arguments provided that result in resizing.')
+
         if algo not in {"nearest", "box", "bilinear", "hamming", "bicubic", "lanczos"}:
             raise self.argument_error(
                 'algo must be one of: "nearest", "box", "bilinear", "hamming", "bicubic", "lanczos"')
