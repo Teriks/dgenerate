@@ -3652,8 +3652,8 @@ as the ``compel`` prompt weighter currently does not.
 
     sd-embed:
 
-        Implements prompt weighting syntax for Stable Diffusion 1/2, Stable Diffusion XL, and Stable Diffusion 3,
-        and Flux using sd_embed.
+        Implements prompt weighting syntax for Stable Diffusion 1/2, Stable Diffusion XL, and Stable
+        Diffusion 3, and Flux using sd_embed.
 
         sd_embed uses a Stable Diffusion Web UI compatible prompt syntax.
 
@@ -3675,13 +3675,18 @@ as the ``compel`` prompt weighter currently does not.
         --model-type torch-flux
 
         The secondary prompt option for SDXL --sdxl-second-prompts is supported by this prompt weighter
-        implementation. However, --sdxl-refiner-second-prompts is not supported and will be ignored with a warning
-        message.
+        implementation. However, --sdxl-refiner-second-prompts is not supported and will be ignored with
+        a warning message.
 
-        The secondary prompt option for SD3 --sd3-second-prompts is not supported by this prompt weighter
-        implementation.  Neither is --sd3-third-prompts. The prompts from these arguments will be ignored.
+        The secondary prompt option for SD3 --sd3-second-prompts is not supported by this prompt
+        weighter implementation. Neither is --sd3-third-prompts. The prompts from these arguments will
+        be ignored.
 
-    ==============================================================================================================
+        The secondary prompt option for Flux --flux-second-prompts is supported by this prompt weighter.
+
+        Flux does not support negative prompting in either prompt.
+
+    ====================================================================================================
 
 
 You can enable the ``sd-embed`` prompt weighter by specifying it with the ``--prompt-weighter`` argument.
