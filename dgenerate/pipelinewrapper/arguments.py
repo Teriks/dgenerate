@@ -74,7 +74,7 @@ class DiffusionArguments(_types.SetFromMixin):
     IP Adapter images to use if ``ip_adapter_uris`` were given to the
     constructor of :py:class:`.DiffusionPipelineWrapper`.
     
-    This should be a list of ``list[PIL.Image]``
+    This should be a list of ``Sequence[PIL.Image]``
     
     Each list entry corresponds to an IP adapter URI.
     
