@@ -853,7 +853,8 @@ class ImageSeedParseResult:
         
     """
 
-    adapter_images: list[list[IPAdapterImageUri]] | None = None
+    adapter_images: collections.abc.Sequence[
+                        collections.abc.Sequence[IPAdapterImageUri]] | None = None
     """
     IP Adapter image URIs.
 
@@ -2053,7 +2054,7 @@ class ImageSeed:
     Control guidance images, or None.
     """
 
-    adapter_images: list[_types.Images] | None
+    adapter_images: collections.abc.Sequence[_types.Images] | None
     """
     IP Adapter images, or None.
     """
