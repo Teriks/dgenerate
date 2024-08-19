@@ -39,6 +39,7 @@ from .imageops import (
     MirrorFlipProcessor,
     SimpleColorProcessor,
     LetterboxProcessor,
+    ResizeProcessor
 )
 
 from .imageprocessor import ImageProcessor

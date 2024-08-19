@@ -171,7 +171,8 @@ def copy_img(img: PIL.Image.Image):
 def resize_image(img: PIL.Image.Image,
                  size: _types.OptionalSize,
                  aspect_correct: bool = True,
-                 align: int | None = 8):
+                 align: int | None = 8,
+                 algo: PIL.Image.Resampling = PIL.Image.Resampling.LANCZOS):
     """
     Resize a :py:class:`PIL.Image.Image` and return a copy.
 
@@ -186,6 +187,7 @@ def resize_image(img: PIL.Image.Image,
     :param size: requested new size for the image, may be ``None``.
     :param aspect_correct: preserve aspect ratio?
     :param align: Force alignment by this amount of pixels.
+    :param algo: Resampling algorithm
     :return: the resized image
     """
     new_size = resize_image_calc(old_size=img.size,
@@ -196,7 +198,7 @@ def resize_image(img: PIL.Image.Image,
         # probably less costly
         return copy_img(img)
 
-    r = img.resize(new_size, PIL.Image.Resampling.LANCZOS)
+    r = img.resize(new_size, algo)
 
     if hasattr(img, 'filename'):
         r.filename = img.filename
