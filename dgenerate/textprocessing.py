@@ -1328,6 +1328,8 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
                        if ``frame_start`` is greater than ``frame_end``.
                        if ``adapter_images`` are used with ``floyd_image``.
                        if both ``control_images`` and ``floyd_image`` are specified.
+                       if too many mask images are provided.
+                       if too few mask images are provided.
                        if no arguments are provided.
 
     :param seed_images: Seed image path(s)
@@ -1346,6 +1348,16 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
         raise ValueError('format_image_seed_uri, no arguments provided.')
 
     if seed_images is not None and not isinstance(seed_images, str):
+
+        if mask_images is not None and not isinstance(mask_images, str):
+            mask_image_cnt = len(list(mask_images))
+            seed_image_cnt = len(list(seed_images))
+
+            if mask_image_cnt > seed_image_cnt:
+                raise ValueError('too many mask images provided.')
+            if mask_image_cnt != 1 and mask_image_cnt < seed_image_cnt:
+                raise ValueError('too few mask images provided.')
+
         seed_images = 'images:' + ', '.join(seed_images)
 
     if mask_images is not None and not isinstance(mask_images, str):
