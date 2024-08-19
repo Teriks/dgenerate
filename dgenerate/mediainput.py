@@ -751,12 +751,31 @@ def mimetype_is_supported(mimetype: str) -> bool:
         mimetype_is_video(mimetype)
 
 
-class IPAdapterImageSpec:
+class IPAdapterImageUri:
     path: str
+    """
+    File path or URL to an image.
+    """
+
     scale: float
+    """
+    IP Adapter image scale value.
+    """
+
     resize: str | None
+    """
+    Image resize dimension in the form ``WIDTHxHEIGHT`` or ``WIDTH``
+    """
+
     aspect: bool
+    """
+    Aspect correct resizing?
+    """
+
     align: int
+    """
+    Pixel alignment, defaults to 1.
+    """
 
     def __init__(self, path, resize, aspect, align):
         self.path = path
@@ -834,9 +853,9 @@ class ImageSeedParseResult:
         
     """
 
-    adapter_images: list[list[IPAdapterImageSpec]] | None = None
+    adapter_images: list[list[IPAdapterImageUri]] | None = None
     """
-    IPAdapter image specifications.
+    IPAdapter image URIs.
 
     In parses such as:
     
@@ -952,7 +971,7 @@ _ip_adapter_image_parser = _textprocessing.ConceptUriParser(
     'Adapter Image', ['resize', 'aspect', 'align'], delimiter='|')
 
 
-def _parse_ip_adapter_uri(uri: str) -> IPAdapterImageSpec:
+def _parse_ip_adapter_uri(uri: str) -> IPAdapterImageUri:
     i_strip = uri.strip()
     adapter_parts = i_strip.split('|')
 
@@ -988,7 +1007,7 @@ def _parse_ip_adapter_uri(uri: str) -> IPAdapterImageSpec:
         raise ImageSeedFileNotFoundError(
             f'Adapter image file "{path}" does not exist.')
 
-    return IPAdapterImageSpec(path, resize, aspect, align)
+    return IPAdapterImageUri(path, resize, aspect, align)
 
 
 # noinspection HttpUrlsUsage
