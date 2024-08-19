@@ -322,6 +322,12 @@ def _type_expression(arg):
         raise argparse.ArgumentTypeError(f'Syntax error: {str(e).strip()}')
 
 
+def _type_text_encoder(val):
+    if val == '+':
+        return None
+    return val
+
+
 _ARG_PARSER_CACHE = dict()
 
 
@@ -566,11 +572,6 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     (image_N) in the filename signifying which image in the batch they are."""
         )
     )
-
-    def _type_text_encoder(val):
-        if val == '+':
-            return None
-        return val
 
     actions.append(
         parser.add_argument(
