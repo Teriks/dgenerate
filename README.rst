@@ -91,7 +91,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v4.0.0/>`_.
         * `inpainting --image-seeds specification`_
         * `quoting IP Adapter image URLs with plus symbols`_
         * `animated inputs & combinatorics`_
-    * `Specifying Textual Inversions`_
+    * `Specifying Textual Inversions (embeddings)`_
     * `Specifying Control Nets`_
     * `Specifying T2I Adapters`_
     * `Specifying Text Encoders`_
@@ -2755,8 +2755,8 @@ If you are loading a .safetensors or other file from a path on disk, only the ``
     --loras "my_lora.safetensors;scale=1.0"
 
 
-Specifying Textual Inversions
-=============================
+Specifying Textual Inversions (embeddings)
+==========================================
 
 One or more Textual Inversion models (otherwise known as embeddings) may be specified with ``--textual-inversions``
 
