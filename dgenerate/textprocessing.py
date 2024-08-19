@@ -1328,6 +1328,7 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
                        if ``frame_start`` is greater than ``frame_end``.
                        if ``adapter_images`` are used with ``floyd_image``.
                        if both ``control_images`` and ``floyd_image`` are specified.
+                       if no arguments are provided.
 
     :param seed_images: Seed image path(s)
     :param mask_images: Inpaint image path(s)
@@ -1341,13 +1342,16 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
     :return: The generated ``--image-seeds`` URI string
     """
 
-    if not isinstance(seed_images, str):
+    if all(v is None for v in locals().values() if not isinstance(v, bool)):
+        raise ValueError('format_image_seed_uri, no arguments provided.')
+
+    if seed_images is not None and not isinstance(seed_images, str):
         seed_images = 'images:' + ', '.join(seed_images)
 
-    if not isinstance(mask_images, str):
+    if mask_images is not None and not isinstance(mask_images, str):
         mask_images = ', '.join(mask_images)
 
-    if not isinstance(control_images, str):
+    if control_images is not None and not isinstance(control_images, str):
         control_images = ', '.join(control_images)
 
     components = []
