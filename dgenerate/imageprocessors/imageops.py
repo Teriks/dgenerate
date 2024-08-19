@@ -330,10 +330,13 @@ class ResizeProcessor(_imageprocessor.ImageProcessor):
             raise self.argument_error(
                 'algo must be one of: "nearest", "box", "bilinear", "hamming", "bicubic", "lanczos"')
 
-        try:
-            self._size = _textprocessing.parse_image_size(size)
-        except ValueError as e:
-            raise self.argument_error(str(e).strip())
+        if size is not None:
+            try:
+                self._size = _textprocessing.parse_image_size(size)
+            except ValueError as e:
+                raise self.argument_error(str(e).strip())
+        else:
+            self._size = None
 
         if align is not None and align < 1:
             raise self.argument_error('align must not be less than 1.')
