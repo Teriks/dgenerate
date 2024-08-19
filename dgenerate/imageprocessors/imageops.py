@@ -347,7 +347,6 @@ class ResizeProcessor(_imageprocessor.ImageProcessor):
         self._align = align
         self._aspect_correct = aspect_correct
         self._algo = algo
-        pass
 
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         """
