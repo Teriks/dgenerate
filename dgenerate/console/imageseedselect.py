@@ -53,7 +53,7 @@ class _ImageSeedSelect(tk.Toplevel):
 
     def _create_widgets(self):
 
-        labels = ["(Required If Inpainting) Seed Image", "(Optional) Inpaint Image", "(Optional) Control Image"]
+        labels = ["(Required If Inpainting) Seed Image", "(Optional) Inpaint Mask Image", "(Optional) Control Image"]
 
         for i, label in enumerate(labels):
             tk.Label(self, text=label).grid(row=i, column=0, sticky=tk.E)
@@ -67,7 +67,7 @@ class _ImageSeedSelect(tk.Toplevel):
             button.grid(row=i, column=2, padx=(0, 5), sticky=tk.W)
 
         self.seed_image_entry = self.entries[0]
-        self.inpaint_image_entry = self.entries[1]
+        self.mask_image_entry = self.entries[1]
         self.control_image_entry = self.entries[2]
 
         tk.Label(self, text='(Optional) Resize Dimension (WxH)').grid(
@@ -118,11 +118,11 @@ class _ImageSeedSelect(tk.Toplevel):
     def _insert_click(self):
 
         image_seed = _entry.shell_quote_if(self.seed_image_entry.get().strip())
-        inpaint_image = _entry.shell_quote_if(self.inpaint_image_entry.get().strip())
+        mask_image = _entry.shell_quote_if(self.mask_image_entry.get().strip())
         control_image = _entry.shell_quote_if(self.control_image_entry.get().strip())
 
         # Validate that image seed is specified if inpaint image is provided
-        if inpaint_image and not image_seed:
+        if mask_image and not image_seed:
             _entry.invalid_colors(self.entries[0])
             return
 
@@ -150,8 +150,8 @@ class _ImageSeedSelect(tk.Toplevel):
             return
 
         self.result = _textprocessing.format_image_seed_uri(
-            seed_image=image_seed,
-            inpaint_image=inpaint_image,
+            seed_images=image_seed,
+            mask_images=mask_image,
             control_images=control_image,
             resize=resize_value,
             aspect=aspect_value,

@@ -1310,10 +1310,10 @@ def remove_tail_comments(string) -> tuple[bool, str]:
         return False, _remove_tail_comments_unlexable(string)
 
 
-def format_image_seed_uri(seed_image: str | None,
-                          inpaint_image: str | None = None,
-                          control_images: str | None = None,
-                          adapter_images: list[str] | None = None,
+def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | None,
+                          mask_images: str | collections.abc.Iterable[str] | None = None,
+                          control_images: str | collections.abc.Iterable[str] | None = None,
+                          adapter_images: collections.abc.Iterable[str] | None = None,
                           floyd_image: str | None = None,
                           resize: str | tuple[int | str, int | str] | None = None,
                           aspect: bool = True,
@@ -1329,11 +1329,10 @@ def format_image_seed_uri(seed_image: str | None,
                        if ``adapter_images`` are used with ``floyd_image``.
                        if both ``control_images`` and ``floyd_image`` are specified.
 
-    :param seed_image: Seed image path
-    :param inpaint_image: Inpaint image path
-    :param control_images: Single control image path, or a paths string with
-        multiple paths separated by the ``,`` character.
-    :param adapter_images: List of adapter image paths
+    :param seed_images: Seed image path(s)
+    :param mask_images: Inpaint image path(s)
+    :param control_images: Control image path(s)
+    :param adapter_images: Adapter image paths
     :param floyd_image: Path to a Floyd image
     :param resize: Optional resize dimension (WxH string)
     :param aspect: Preserve aspect ratio?
@@ -1341,6 +1340,15 @@ def format_image_seed_uri(seed_image: str | None,
     :param frame_end: Optional frame end index
     :return: The generated ``--image-seeds`` URI string
     """
+
+    if not isinstance(seed_images, str):
+        seed_images = 'images:' + ', '.join(seed_images)
+
+    if not isinstance(mask_images, str):
+        mask_images = ', '.join(mask_images)
+
+    if not isinstance(control_images, str):
+        control_images = ', '.join(control_images)
 
     components = []
 
@@ -1354,10 +1362,10 @@ def format_image_seed_uri(seed_image: str | None,
     # aspect=True by default
     use_keyword_args = aspect is False or frame_start is not None or frame_end is not None
 
-    if inpaint_image and not seed_image:
+    if mask_images and not seed_images:
         raise ValueError('inpaint_image cannot be specified without seed_image.')
 
-    if use_keyword_args and not seed_image and not control_images:
+    if use_keyword_args and not seed_images and not control_images:
         raise ValueError('Keyword arguments present without seed_image or control_images.')
 
     if frame_start is not None and frame_start < 0:
@@ -1392,14 +1400,14 @@ def format_image_seed_uri(seed_image: str | None,
         else:
             raise ValueError('resize argument expects a string or a tuple.')
 
-    if control_images and not seed_image and not inpaint_image:
+    if control_images and not seed_images and not mask_images:
         # we can specify a control image alone
-        seed_image = control_images
+        seed_images = control_images
         control_images = None
 
     # case 1: Only image seed provided
-    if seed_image and not inpaint_image and not control_images:
-        components.append(seed_image)
+    if seed_images and not mask_images and not control_images:
+        components.append(seed_images)
         if resize:
             if use_keyword_args:
                 add_component_if_valid(resize, "resize")
@@ -1407,45 +1415,45 @@ def format_image_seed_uri(seed_image: str | None,
                 components.append(resize)
 
     # case 2: Inpaint image without control image
-    elif seed_image and inpaint_image and not control_images:
-        components.append(seed_image)
+    elif seed_images and mask_images and not control_images:
+        components.append(seed_images)
         if use_keyword_args:
-            add_component_if_valid(inpaint_image, "mask")
+            add_component_if_valid(mask_images, "mask")
             add_component_if_valid(resize, "resize")
         else:
-            components.append(inpaint_image)
+            components.append(mask_images)
             if resize:
                 components.append(resize)
 
     # case 3: Inpaint image with control image
-    elif seed_image and inpaint_image and control_images:
-        components.append(seed_image)
-        add_component_if_valid(inpaint_image, "mask")
+    elif seed_images and mask_images and control_images:
+        components.append(seed_images)
+        add_component_if_valid(mask_images, "mask")
         add_component_if_valid(control_images, "control")
         if resize:
             add_component_if_valid(resize, "resize")
 
     # case 4: Control image with image seed
-    elif seed_image and not inpaint_image and control_images:
-        components.append(seed_image)
+    elif seed_images and not mask_images and control_images:
+        components.append(seed_images)
         add_component_if_valid(control_images, "control")
         if resize:
             add_component_if_valid(resize, "resize")
 
     # case 5: Adapter images only
-    elif adapter_images and not seed_image and not inpaint_image:
+    elif adapter_images and not seed_images and not mask_images:
         adapter_str = 'adapter:' + ' + '.join(adapter_images)
         components.append(adapter_str)
 
     # case 6: Seed image with adapter images
-    elif seed_image and adapter_images:
-        components.append(seed_image)
+    elif seed_images and adapter_images:
+        components.append(seed_images)
         adapter_str = 'adapter=' + ' + '.join(adapter_images)
         add_component_if_valid(adapter_str)
 
     # case 7: Floyd image with seed image or inpaint image
-    elif floyd_image and (seed_image or inpaint_image):
-        components.append(seed_image or inpaint_image)
+    elif floyd_image and (seed_images or mask_images):
+        components.append(seed_images or mask_images)
         add_component_if_valid(floyd_image, "floyd")
 
     # handle aspect ratio setting if applicable (only add if aspect=False)
