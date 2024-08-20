@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import argparse
 import collections.abc
 import datetime
 import enum
@@ -1553,3 +1554,43 @@ def format_dgenerate_config(lines: typing.Iterator[str], indentation=' ' * 4) ->
 
     # Handle any remaining continuation lines after the last line
     yield from add_continuation_lines()
+
+
+class ArgparseParagraphFormatter(argparse.HelpFormatter):
+    """
+    Argparse formatter which preserves paragraphs in help text.
+
+    This formatter also underlines option text for better visual segregation.
+    """
+
+    PARAGRAPH_SEPARATOR = "\n\n"
+    PARAGRAPH_SEPARATOR_RE = re.compile(r"\n\s*\n", flags=re.ASCII)
+    WHITESPACE_PATTERN = re.compile(r"\s+")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def _fill_text(self, text, width, indent):
+        formatted_paragraphs = [
+            textwrap.fill(
+                self.WHITESPACE_PATTERN.sub(" ", paragraph).strip(),
+                width,
+                initial_indent=indent,
+                subsequent_indent=indent,
+            )
+            for paragraph in self.PARAGRAPH_SEPARATOR_RE.split(text)
+        ]
+
+        return self.PARAGRAPH_SEPARATOR.join(formatted_paragraphs)
+
+    def _split_lines(self, text, width):
+        wrapped_lines = []
+        for paragraph in self.PARAGRAPH_SEPARATOR_RE.split(text):
+            cleaned_paragraph = self.WHITESPACE_PATTERN.sub(" ", paragraph).strip()
+            if wrapped_lines:
+                wrapped_lines.append("")
+            wrapped_lines.extend(textwrap.wrap(cleaned_paragraph, width))
+
+        wrapped_lines.append('-' * len(wrapped_lines[-1]))
+
+        return wrapped_lines
