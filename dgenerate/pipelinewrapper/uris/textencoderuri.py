@@ -88,9 +88,9 @@ class TextEncoderUri:
         return self._dtype
 
     @property
-    def quantize(self) -> bool:
+    def quantize(self) -> _types.OptionalString:
         """
-        Quantize flag
+        ``optimum.quanto`` Quantization dtype
         """
         return self._quantize
 
@@ -111,7 +111,7 @@ class TextEncoderUri:
                  variant: _types.OptionalString = None,
                  subfolder: _types.OptionalString = None,
                  dtype: _enums.DataType | str | None = None,
-                 quantize: bool = False):
+                 quantize: _types.OptionalString = None):
         """
         :param encoder: encoder class name, for example ``CLIPTextModel``
         :param model: model path
@@ -119,7 +119,9 @@ class TextEncoderUri:
         :param variant: model variant, for example ``fp16``
         :param subfolder: model subfolder
         :param dtype: model data type (precision)
-        :param quantize: Quantize to qfloat8 with optimum-quanto?
+        :param quantize: Quantize to a specific data type optimum-quanto,
+            must be a supported dtype name that exists in ``optimum.quanto.qtypes``,
+            such as qint8 or qfloat8
 
         :raises InvalidTextEncoderUriError: If ``dtype`` is passed an invalid data type string, or if
             ``model`` points to a single file and the specified ``encoder`` class name does not
@@ -148,7 +150,14 @@ class TextEncoderUri:
         self._revision = revision
         self._variant = variant
         self._subfolder = subfolder
-        self._quantize = quantize
+
+        if quantize.lower() not in optimum.quanto.qtypes:
+            raise _exceptions.InvalidTextEncoderUriError(
+                f'Unknown quantize argument value "{quantize}", '
+                f'must be one of: {_textprocessing.oxford_comma(optimum.quanto.qtypes.keys(), "or")} '
+            )
+
+        self._quantize = quantize.lower()
 
         try:
             self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
@@ -290,8 +299,8 @@ class TextEncoderUri:
             text_encoder=text_encoder,
             estimated_size=estimated_memory_use)
 
-        if self._quantize:
-            _quanto.quantize_freeze(text_encoder, weights=optimum.quanto.qfloat8)
+        if self._quantize is not None:
+            _quanto.quantize_freeze(text_encoder, weights=optimum.quanto.qtypes[self._quantize])
 
         return text_encoder
 

@@ -79,6 +79,7 @@ def _create_arg_parser(prog, description):
     parser = argparse.ArgumentParser(
         prog,
         description=description,
+        formatter_class=_textprocessing.ArgparseParagraphFormatter,
         exit_on_error=False,
         allow_abbrev=False)
 

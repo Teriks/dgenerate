@@ -27,8 +27,6 @@ import subprocess
 import sys
 import traceback
 
-import graphviz
-
 try:
     import dgenerate
     import dgenerate.batchprocess as _batchprocess
@@ -132,6 +130,11 @@ def patch_module_and_optimizers():
 
 
 def find_gpu_tensors_in_gc():
+    try:
+        import graphviz
+    except ImportError:
+        print('pip install graphviz and graphviz native binaries to use --torch-debug')
+
     dot = graphviz.Digraph(comment='Torch GPU Object Reference Graph')
     dot.graph_attr.update(size="100,100!", ratio="expand", layout="circo", splines="true", nodesep="1.5", ranksep="2.0")
     dot.node_attr.update(style="filled", fillcolor="lightgrey", shape="box")
