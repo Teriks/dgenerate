@@ -110,13 +110,13 @@ class TransformerUri:
         self._variant = variant
         self._subfolder = subfolder
 
-        if quantize.lower() not in optimum.quanto.qtypes:
+        if quantize and quantize.lower() not in optimum.quanto.qtypes:
             raise _exceptions.InvalidTextEncoderUriError(
                 f'Unknown quantize argument value "{quantize}", '
                 f'must be one of: {_textprocessing.oxford_comma(optimum.quanto.qtypes.keys(), "or")} '
             )
 
-        self._quantize = quantize.lower()
+        self._quantize = quantize.lower() if quantize else None
 
         try:
             self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
