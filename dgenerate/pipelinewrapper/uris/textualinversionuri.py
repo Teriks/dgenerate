@@ -30,8 +30,8 @@ import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 
-_textual_inversion_uri_parser = _textprocessing.ConceptUriParser('Textual Inversion',
-                                                                 ['token', 'revision', 'subfolder', 'weight-name'])
+_textual_inversion_uri_parser = _textprocessing.ConceptUriParser(
+    'Textual Inversion', ['token', 'revision', 'subfolder', 'weight-name'])
 
 
 def _load_textual_inversion_state_dict(pretrained_model_name_or_path, **kwargs):

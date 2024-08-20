@@ -33,8 +33,8 @@ import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 
-_image_encoder_uri_parser = _textprocessing.ConceptUriParser('ImageEncoder',
-                                                             ['revision', 'variant', 'subfolder', 'dtype'])
+_image_encoder_uri_parser = _textprocessing.ConceptUriParser(
+    'ImageEncoder', ['revision', 'variant', 'subfolder', 'dtype'])
 
 
 class ImageEncoderUri:
@@ -138,9 +138,9 @@ class ImageEncoderUri:
         """
         try:
             return self._load(
-                              dtype_fallback,
-                              use_auth_token,
-                              local_files_only)
+                dtype_fallback,
+                use_auth_token,
+                local_files_only)
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _hfutil.ModelNotFoundError(e)
