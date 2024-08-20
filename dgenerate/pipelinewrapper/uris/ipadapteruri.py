@@ -29,8 +29,8 @@ import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 
-_ip_adapter_uri_parser = _textprocessing.ConceptUriParser('IP Adapter',
-                                                          ['scale', 'revision', 'subfolder', 'weight-name'])
+_ip_adapter_uri_parser = _textprocessing.ConceptUriParser(
+    'IP Adapter', ['scale', 'revision', 'subfolder', 'weight-name'])
 
 
 class IPAdapterUri:

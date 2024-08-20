@@ -24,8 +24,8 @@ import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 
-_s_cascade_decoder_uri_parser = _textprocessing.ConceptUriParser('Stable Cascade decoder',
-                                                                 ['revision', 'variant', 'subfolder', 'dtype'])
+_s_cascade_decoder_uri_parser = _textprocessing.ConceptUriParser(
+    'Stable Cascade decoder', ['revision', 'variant', 'subfolder', 'dtype'])
 
 
 class SCascadeDecoderUri:

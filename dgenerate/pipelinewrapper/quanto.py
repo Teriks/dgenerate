@@ -20,6 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import optimum.quanto
 import torch
+import dgenerate.types as _types
 
 
 def quantize_freeze(
@@ -76,3 +77,6 @@ def is_quantized_and_frozen(model):
     :return: ``True`` or ``False``
     """
     return hasattr(model, '_DGENERATE_QUANTO_FREEZE')
+
+
+__all__ = _types.module_all()

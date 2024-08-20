@@ -34,8 +34,7 @@ from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 
 _t2i_adapter_uri_parser = _textprocessing.ConceptUriParser(
-    'T2IAdapter',
-    ['scale', 'revision', 'variant', 'subfolder', 'dtype']
+    'T2IAdapter', ['scale', 'revision', 'variant', 'subfolder', 'dtype']
 )
 
 

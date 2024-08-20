@@ -33,10 +33,8 @@ import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 
-_controlnet_uri_parser = _textprocessing.ConceptUriParser('ControlNet',
-                                                          ['scale', 'start', 'end', 'revision', 'variant',
-                                                                 'subfolder',
-                                                                 'dtype'])
+_controlnet_uri_parser = _textprocessing.ConceptUriParser(
+    'ControlNet', ['scale', 'start', 'end', 'revision', 'variant', 'subfolder', 'dtype'])
 
 
 class ControlNetUri:
