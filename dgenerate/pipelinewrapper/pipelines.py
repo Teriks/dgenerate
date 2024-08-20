@@ -1632,7 +1632,11 @@ def _create_torch_diffusion_pipeline(
             elif model_type == _enums.ModelType.TORCH_S_CASCADE_DECODER:
                 pipeline_class = diffusers.StableCascadeDecoderPipeline
             elif model_type == _enums.ModelType.TORCH_FLUX:
-                pipeline_class = diffusers.FluxPipeline
+                pipeline_class = type(
+                    'FluxPipeline',
+                    (diffusers.loaders.FromSingleFileMixin, diffusers.FluxPipeline),
+                    {},
+                )
             elif model_type == _enums.ModelType.TORCH_SD3:
                 pipeline_class = (
                     diffusers.StableDiffusion3Pipeline
