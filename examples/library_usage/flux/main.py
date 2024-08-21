@@ -18,7 +18,7 @@ if not os.environ.get('HF_TOKEN'):
 device, _ = dgenerate.arguments.parse_device()
 
 if device is None:
-    device = 'cuda:1'
+    device = 'cuda'
 
 config = RenderLoopConfig()
 
