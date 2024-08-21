@@ -27,6 +27,8 @@ import subprocess
 import sys
 import traceback
 
+mp.set_start_method('spawn', force=True)
+
 try:
     import dgenerate
     import dgenerate.batchprocess as _batchprocess

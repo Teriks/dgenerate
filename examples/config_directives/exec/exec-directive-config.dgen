@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 3.9.3
+#! dgenerate 4.0.0
 
 # run dgenerate as a subprocess, read a config
 # and send stdout and stderr to a file
