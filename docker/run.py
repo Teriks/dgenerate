@@ -36,6 +36,7 @@ with open(os.path.join(image_working_dir, 'dgenerate', '__init__.py')) as _f:
 
 hf_cache_local = os.path.abspath(os.path.join(script_path, '..', 'docker_cache', 'huggingface'))
 dgenerate_cache_local = os.path.abspath(os.path.join(script_path, '..', 'docker_cache', 'dgenerate'))
+pip_cache_local = os.path.abspath(os.path.join(script_path, '..', 'docker_cache', 'pip'))
 
 print('hf_cache_local:', hf_cache_local)
 print('dgenerate_cache_local:', dgenerate_cache_local)
@@ -83,5 +84,6 @@ subprocess.run(['docker', 'run', *env_defs,
                 '-v', f"{image_working_dir}:/opt/dgenerate",
                 '-v', f"{hf_cache_local}:/home/dgenerate/.cache/huggingface",
                 '-v', f"{dgenerate_cache_local}:/home/dgenerate/.cache/dgenerate",
+                '-v', f"{pip_cache_local}:/home/dgenerate/.cache/pip",
                 '-it', f'teriks/dgenerate:{container_version}',
                 'bash', '-c', f"source {install_script}; {' '.join(args)}"])

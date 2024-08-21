@@ -1630,16 +1630,7 @@ First update your system and install build-essential
 
 Install CUDA Toolkit 12.*: https://developer.nvidia.com/cuda-downloads
 
-I recommend using the runfile option:
-
-.. code-block:: bash
-
-    #!/usr/bin/env bash
-
-    # CUDA Toolkit 12.2.1 For Ubuntu / Debian / WSL
-
-    wget https://developer.download.nvidia.com/compute/cuda/12.2.1/local_installers/cuda_12.2.1_535.86.10_linux.run
-    sudo sh cuda_12.2.1_535.86.10_linux.run
+I recommend using the runfile option.
 
 Do not attempt to install a driver from the prompts if using WSL.
 

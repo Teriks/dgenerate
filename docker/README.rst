@@ -1,6 +1,6 @@
 Very basic environment for testing nix features on Windows, this should also work on *nix platforms.
 
-This is broken on the 555.99 nvidia driver for Windows, downgrade to 551.23 for guaranteed success.
+If running from windows, make sure you have the latest version of WSL, Docker For Windows, and your graphics driver.
 
 To start a shell use: ``python run.py``
 
