@@ -60,7 +60,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v4.0.0/>`_.
 
 ----
 
-* `Feature Table <https://github.com/Teriks/dgenerate/blob/t2iadapter/README.rst>`
+* `Feature Table <https://github.com/Teriks/dgenerate/blob/t2iadapter/README.rst>`_
 
 * How to install
     * `Windows Install`_
