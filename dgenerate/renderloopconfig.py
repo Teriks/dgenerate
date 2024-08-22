@@ -425,7 +425,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     Optional user specified Transformer URI, this corresponds to the ``--transformer`` argument of the 
     dgenerate command line tool.
     
-    This is currently only supported for Stable Diffusion 3 models.
+    This is currently only supported for Stable Diffusion 3 and Flux models.
     """
 
     vae_uri: _types.OptionalUri = None

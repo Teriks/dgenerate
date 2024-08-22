@@ -275,7 +275,7 @@ def estimate_pipeline_memory_use(
     :param subfolder: huggingface repo subfolder if using a huggingface slug
     :param unet_uri: optional user specified ``--unet`` URI that will be loaded on to the pipeline
     :param transformer_uri: optional user specified ``--transformer`` URI that will be loaded on to the pipeline,
-        this is currently only supported for Stable Diffusion 3 models.
+        this is currently only supported for Stable Diffusion 3 and Flux models.
     :param vae_uri: optional user specified ``--vae`` URI that will be loaded on to the pipeline
     :param lora_uris: optional user specified ``--loras`` URIs that will be loaded on to the pipeline
     :param image_encoder_uri: optional user specified ``--image-encoder`` URI that will be loaded on to the pipeline
@@ -1219,7 +1219,7 @@ def create_torch_diffusion_pipeline(model_path: str,
     :param dtype: Optional :py:class:`dgenerate.pipelinewrapper.DataType` enum value
     :param unet_uri: Optional ``--unet`` URI string for specifying a specific UNet
     :param transformer_uri: Optional ``--transformer`` URI string for specifying a specific Transformer,
-        currently this is only supported for Stable Diffusion 3 models.
+        currently this is only supported for Stable Diffusion 3 and Flux models.
     :param vae_uri: Optional ``--vae`` URI string for specifying a specific VAE
     :param lora_uris: Optional ``--loras`` URI strings for specifying LoRA weights
     :param lora_fuse_scale: Optional ``--lora-fuse-scale`` global LoRA fuse scale value.

@@ -2113,13 +2113,15 @@ If you do not set an output size, the size of the input animation will be used.
 
 
 The above syntax is the same syntax used for generating an animation with a control
-image when ``--control-nets`` is used.
+image when ``--control-nets`` or ``--t2i-adapters`` is used.
 
 Animations can also be generated using an alternate syntax for ``--image-seeds``
 that allows the specification of a control image source when it is desired to use
 ``--control-nets`` with img2img or inpainting.
 
 For more information about this see: `Specifying Control Nets`_
+
+And also: `Specifying T2I Adapters`_
 
 As well as the information about ``--image-seeds`` from dgenerates ``--help``
 output.
