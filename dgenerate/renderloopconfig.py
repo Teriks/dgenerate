@@ -1307,7 +1307,7 @@ class RenderLoopConfig(_types.SetFromMixin):
             if not parsed.is_single_spec:
                 raise RenderLoopConfigError(
                     f'{a_namer("image_seeds")} configurations other than plain '
-                    f'img2img are not supported for upscaler models.')
+                    f'img2img are not supported for Stable Diffusion upscaler models.')
 
         if parsed.adapter_images:
             if not self.ip_adapter_uris:
