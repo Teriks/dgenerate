@@ -61,6 +61,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v4.0.0/>`_.
 ----
 
 * `Diffusion Feature Table <https://github.com/Teriks/dgenerate/blob/t2iadapter/FEATURE_TABLE.rst>`_
+* `Help Output`_
 
 * How to install
     * `Windows Install`_
@@ -68,7 +69,6 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v4.0.0/>`_.
     * `Google Colab Install`_
 
 * Usage Manual
-    * `Help Output`_
     * `Basic Usage`_
     * `Negative Prompt`_
     * `Multiple Prompts`_
