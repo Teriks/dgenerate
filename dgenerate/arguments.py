@@ -47,10 +47,10 @@ _SUPPORTED_MODEL_TYPES_PRETTY = \
     _textprocessing.oxford_comma(_pipelinewrapper.supported_model_type_strings(), 'or')
 
 _SUPPORTED_ANIMATION_OUTPUT_FORMATS_PRETTY = \
-    _textprocessing.oxford_comma(_mediaoutput.supported_animation_writer_formats(), 'or')
+    _textprocessing.oxford_comma(_mediaoutput.get_supported_animation_writer_formats(), 'or')
 
 _SUPPORTED_STATIC_IMAGE_OUTPUT_FORMATS_PRETTY = \
-    _textprocessing.oxford_comma(_mediaoutput.supported_static_image_formats(), 'or')
+    _textprocessing.oxford_comma(_mediaoutput.get_supported_static_image_formats(), 'or')
 
 _SUPPORTED_DATA_TYPES_PRETTY = \
     _textprocessing.oxford_comma(_pipelinewrapper.supported_data_type_strings(), 'or')
@@ -236,7 +236,7 @@ def _type_gen_seeds(val):
 
 def _type_animation_format(val):
     val = val.lower()
-    if val not in _mediaoutput.supported_animation_writer_formats() + ['frames']:
+    if val not in _mediaoutput.get_supported_animation_writer_formats() + ['frames']:
         raise argparse.ArgumentTypeError(
             f'Must be {_SUPPORTED_ANIMATION_OUTPUT_FORMATS_PRETTY}. Unknown value: {val}')
     return val
@@ -244,9 +244,9 @@ def _type_animation_format(val):
 
 def _type_image_format(val):
     val = val.lower()
-    if val not in _mediaoutput.supported_static_image_formats():
+    if val not in _mediaoutput.get_supported_static_image_formats():
         raise argparse.ArgumentTypeError(
-            f'Must be one of {_textprocessing.oxford_comma(_mediaoutput.supported_static_image_formats(), "or")}')
+            f'Must be one of {_textprocessing.oxford_comma(_mediaoutput.get_supported_static_image_formats(), "or")}')
     return val
 
 

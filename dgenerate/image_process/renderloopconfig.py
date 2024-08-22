@@ -165,12 +165,12 @@ class ImageProcessRenderLoopConfig(_types.SetFromMixin):
                 output_ext = output_ext.lstrip('.').lower()
 
                 if not _mediainput.mimetype_is_static_image(input_mime_type):
-                    if output_ext not in _mediaoutput.supported_animation_writer_formats():
+                    if output_ext not in _mediaoutput.get_supported_animation_writer_formats():
                         raise ImageProcessRenderLoopConfigError(
                             f'Animated file output "{output_name}" specifies '
                             f'unsupported animation format "{output_ext}".')
                 else:
-                    if output_ext not in _mediaoutput.supported_static_image_formats():
+                    if output_ext not in _mediaoutput.get_supported_static_image_formats():
                         raise ImageProcessRenderLoopConfigError(
                             f'Image file output "{output_name}" specifies '
                             f'unsupported image format "{output_ext}".')
@@ -180,11 +180,11 @@ class ImageProcessRenderLoopConfig(_types.SetFromMixin):
                 output_ext = output_ext.lstrip('.').lower()
 
                 if not _mediainput.mimetype_is_static_image(input_mime_type):
-                    if output_ext not in _mediaoutput.supported_animation_writer_formats():
+                    if output_ext not in _mediaoutput.get_supported_animation_writer_formats():
                         raise ImageProcessRenderLoopConfigError(
                             f'Animated file input "{file}" specifies unsupported animation output format "{output_ext}".')
                 else:
-                    if output_ext not in _mediaoutput.supported_static_image_formats():
+                    if output_ext not in _mediaoutput.get_supported_static_image_formats():
                         raise ImageProcessRenderLoopConfigError(
                             f'Image file input "{file}" specifies unsupported image output format "{output_ext}".')
 

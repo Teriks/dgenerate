@@ -135,7 +135,7 @@ class AnimatedImageWriter(AnimationWriter):
         self.collected_frames.append(img.copy())
 
 
-def supported_animation_writer_formats():
+def get_supported_animation_writer_formats():
     """
     Supported animation writer formats, file extensions with no period.
 
@@ -148,7 +148,7 @@ def supported_animation_writer_formats():
                       ext in {'gif', 'webp', 'apng', 'png'}]
 
 
-def supported_static_image_formats():
+def get_supported_static_image_formats():
     """
     What file extensions does PIL/Pillow support for output of at least one frame?
 
@@ -180,7 +180,7 @@ def create_animation_writer(animation_format: str, out_filename: str, fps: float
     """
     animation_format = animation_format.strip().lower()
 
-    if animation_format not in supported_animation_writer_formats():
+    if animation_format not in get_supported_animation_writer_formats():
         raise UnknownAnimationFormatError(f'Animation format "{animation_format}" is not a known format.')
 
     return VideoWriter(out_filename, fps) if animation_format == 'mp4' \
