@@ -181,6 +181,7 @@ stabilityai/stable-diffusion-2-1
 
 # unet
 # vae
+# transformer
 # text_encoder
 # text_encoder_2
 # text_encoder_3
@@ -189,6 +190,8 @@ stabilityai/stable-diffusion-2-1
 # tokenizer_3
 # safety_checker
 # feature_extractor
+# image_encoder
+# adapter
 # controlnet
 # scheduler
 
