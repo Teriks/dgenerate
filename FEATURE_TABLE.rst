@@ -30,7 +30,7 @@ Model Feature Support Table
      - sd-embed Prompt Weighting
      - compel Prompt Weighting
 
-   * - torch
+   * - ``torch``
      - ✅
      - ✅
      - ✅
@@ -41,7 +41,7 @@ Model Feature Support Table
      - ✅
      - ✅
 
-   * - torch-pix2pix
+   * - ``torch-pix2pix``
      - ❌
      - ✅
      - ❌
@@ -52,7 +52,7 @@ Model Feature Support Table
      - ✅
      - ✅
 
-   * - torch-sdxl
+   * - ``torch-sdxl``
      - ✅
      - ✅
      - ✅
@@ -63,7 +63,7 @@ Model Feature Support Table
      - ✅
      - ✅
 
-   * - torch-if
+   * - ``torch-if``
      - ✅
      - ✅
      - ✅
@@ -74,7 +74,7 @@ Model Feature Support Table
      - ❌
      - ❌
 
-   * - torch-ifs
+   * - ``torch-ifs``
      - ❌
      - ✅
      - ✅
@@ -85,7 +85,7 @@ Model Feature Support Table
      - ❌
      - ❌
 
-   * - torch-ifs-img2img
+   * - ``torch-ifs-img2img``
      - ❌
      - ✅
      - ✅
@@ -96,7 +96,7 @@ Model Feature Support Table
      - ❌
      - ❌
 
-   * - torch-sdxl-pix2pix
+   * - ``torch-sdxl-pix2pix``
      - ❌
      - ✅
      - ❌
@@ -107,7 +107,7 @@ Model Feature Support Table
      - ✅
      - ✅
 
-   * - torch-upscaler-x2
+   * - ``torch-upscaler-x2``
      - ❌
      - ✅
      - ❌
@@ -118,7 +118,7 @@ Model Feature Support Table
      - ❌
      - ❌
 
-   * - torch-upscaler-x4
+   * - ``torch-upscaler-x4``
      - ❌
      - ✅
      - ❌
@@ -129,7 +129,7 @@ Model Feature Support Table
      - ✅
      - ✅
 
-   * - torch-s-cascade
+   * - ``torch-s-cascade``
      - ✅
      - ✅
      - ❌
@@ -140,7 +140,7 @@ Model Feature Support Table
      - ❌
      - ❌
 
-   * - torch-sd3
+   * - ``torch-sd3``
      - ✅
      - ✅
      - ❌
@@ -151,7 +151,7 @@ Model Feature Support Table
      - ✅
      - ❌
 
-   * - torch-flux
+   * - ``torch-flux``
      - ✅
      - ❌
      - ❌
