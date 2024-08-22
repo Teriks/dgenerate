@@ -137,7 +137,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v4.0.0/>`_.
     * `File Cache Control`_
 
 Help Output
------------
+===========
 
 .. code-block:: text
 
