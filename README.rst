@@ -5637,6 +5637,8 @@ such as VAEs etc. outside of relying on the caching system.
     # tokenizer_3
     # safety_checker
     # feature_extractor
+    # image_encoder
+    # adapter
     # controlnet
     # scheduler
 
