@@ -1,5 +1,5 @@
-Model Feature Support Table
-===========================
+Diffusion Model Feature Support Table
+=====================================
 
    * ``--model-type torch`` (SD 1.5 - SD 2.*)
    * ``--model-type torch-pix2pix`` (SD 1.5 - SD 2.* - Pix2Pix)
