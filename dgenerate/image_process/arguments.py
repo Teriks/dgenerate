@@ -124,7 +124,7 @@ def _create_arg_parser(prog, description):
     actions.append(parser.add_argument(
         '-ff', '--frame-format', default='png', type=_arguments._type_image_format,
         help=f'Image format for animation frames. '
-             f'Must be one of: {_textprocessing.oxford_comma(_mediaoutput.supported_static_image_formats(), "or")}.'))
+             f'Must be one of: {_textprocessing.oxford_comma(_mediaoutput.get_supported_static_image_formats(), "or")}.'))
 
     actions.append(parser.add_argument(
         '-ox', '--output-overwrite', action='store_true',

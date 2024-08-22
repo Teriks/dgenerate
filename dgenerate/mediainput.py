@@ -589,7 +589,7 @@ def _get_read_video_file_extensions() -> list[str]:
     return list(supported_extensions)
 
 
-def supported_animation_reader_formats():
+def get_supported_animation_reader_formats():
     """
     Supported animation reader formats, file extensions with no period.
 
@@ -604,7 +604,7 @@ def supported_animation_reader_formats():
         ext in {'gif', 'webp', 'apng'}]
 
 
-def supported_image_formats():
+def get_supported_image_formats():
     """
     What file extensions does PIL/Pillow support for reading?
 
