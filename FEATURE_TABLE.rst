@@ -15,7 +15,7 @@ Diffusion Model Feature Support Table
    * ``--model-type torch-flux`` (Flux.1)
 
 
-.. list-table:: Supported Features by Model Type
+.. list-table:: Supported Features by --model-type
    :widths: 40 10 10 10 10 10 10 10 10 10
    :header-rows: 1
 
