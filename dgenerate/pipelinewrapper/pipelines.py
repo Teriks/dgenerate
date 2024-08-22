@@ -1732,6 +1732,9 @@ def _create_torch_diffusion_pipeline(
             if model_type == _enums.ModelType.TORCH_FLUX:
                 raise UnsupportedPipelineConfigError(
                     'Flux model types do not support inpainting.')
+            if _enums.model_type_is_upscaler(model_type):
+                raise UnsupportedPipelineConfigError(
+                    'Stable Diffusion upscaler model types do not support inpainting.')
 
             if model_type == _enums.ModelType.TORCH_IF:
                 pipeline_class = diffusers.IFInpaintingPipeline
