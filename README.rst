@@ -66,6 +66,8 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v4.0.0/>`_.
     * `Google Colab Install`_
 
 * Usage Manual
+    * `Help Output`_
+    * `Model Feature Support Table`_
     * `Basic Usage`_
     * `Negative Prompt`_
     * `Multiple Prompts`_
@@ -1500,6 +1502,157 @@ Help Output
                             Syntax See: [https://dgenerate.readthedocs.io/en/v4.0.0/dgenerate_submodules.html#dg
                             enerate.imageprocessors.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS]
                             ----------------------------------------------------------------
+
+
+Model Feature Support Table
+===========================
+
+.. list-table:: Supported Features by Model Type
+   :widths: 20 10 10 10 10 10 10 10 10 10
+   :header-rows: 1
+
+   * - Model Type
+     - Txt2Img
+     - Img2Img
+     - Inpainting
+     - LoRA
+     - ControlNet
+     - T2I Adapter
+     - IP Adapter
+     - sd-embed Prompt Weighting
+     - compel Prompt Weighting
+
+   * - torch
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+
+   * - torch-pix2pix
+     - ❌
+     - ✅
+     - ❌
+     - ✅
+     - ❌
+     - ❌
+     - ✅
+     - ✅
+     - ✅
+
+   * - torch-sdxl
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+
+   * - torch-if
+     - ✅
+     - ✅
+     - ✅
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+
+   * - torch-ifs
+     - ❌
+     - ✅
+     - ✅
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+
+   * - torch-ifs-img2img
+     - ❌
+     - ✅
+     - ✅
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+
+   * - torch-sdxl-pix2pix
+     - ❌
+     - ✅
+     - ❌
+     - ✅
+     - ❌
+     - ❌
+     - ❌
+     - ✅
+     - ✅
+
+   * - torch-upscaler-x2
+     - ❌
+     - ✅
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+
+   * - torch-upscaler-x4
+     - ❌
+     - ✅
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ✅
+     - ✅
+
+   * - torch-s-cascade
+     - ✅
+     - ✅
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+
+   * - torch-sd3
+     - ✅
+     - ✅
+     - ❌
+     - ✅
+     - ✅
+     - ❌
+     - ❌
+     - ✅
+     - ❌
+
+   * - torch-flux
+     - ✅
+     - ❌
+     - ❌
+     - ✅
+     - ❌
+     - ❌
+     - ❌
+     - ✅
+     - ❌
 
 
 Windows Install
