@@ -24,6 +24,7 @@ Diffusion Model Feature Support Table
      - Img2Img
      - Inpainting
      - LoRA
+     - Textual Inversions
      - ControlNet
      - T2I Adapter
      - IP Adapter
@@ -40,11 +41,13 @@ Diffusion Model Feature Support Table
      - ✅
      - ✅
      - ✅
+     - ✅
 
    * - ``torch-pix2pix``
      - ❌
      - ✅
      - ❌
+     - ✅
      - ✅
      - ❌
      - ❌
@@ -53,6 +56,7 @@ Diffusion Model Feature Support Table
      - ✅
 
    * - ``torch-sdxl``
+     - ✅
      - ✅
      - ✅
      - ✅
@@ -73,11 +77,13 @@ Diffusion Model Feature Support Table
      - ❌
      - ❌
      - ❌
+     - ❌
 
    * - ``torch-ifs``
      - ❌
      - ✅
      - ✅
+     - ❌
      - ❌
      - ❌
      - ❌
@@ -95,11 +101,13 @@ Diffusion Model Feature Support Table
      - ❌
      - ❌
      - ❌
+     - ❌
 
    * - ``torch-sdxl-pix2pix``
      - ❌
      - ✅
      - ❌
+     - ✅
      - ✅
      - ❌
      - ❌
@@ -117,15 +125,17 @@ Diffusion Model Feature Support Table
      - ❌
      - ❌
      - ❌
+     - ❌
 
    * - ``torch-upscaler-x4``
      - ❌
      - ✅
      - ❌
      - ❌
+     - ✅
      - ❌
      - ❌
-     - ❌
+     - ✅
      - ✅
      - ✅
 
@@ -139,12 +149,14 @@ Diffusion Model Feature Support Table
      - ❌
      - ❌
      - ❌
+     - ❌
 
    * - ``torch-sd3``
      - ✅
      - ✅
      - ❌
      - ✅
+     - ❌
      - ✅
      - ❌
      - ❌
@@ -156,6 +168,7 @@ Diffusion Model Feature Support Table
      - ❌
      - ❌
      - ✅
+     - ❌
      - ❌
      - ❌
      - ❌
