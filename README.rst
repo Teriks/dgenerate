@@ -2773,9 +2773,9 @@ This argument is nearly identical to ``--unet``, however it can support single f
 from safetensors files or huggingface blob links if desired.
 
 In addition to the arguments that ``--unet`` supports, ``--transformer`` supports the ``quantize``
-boolean URI argument to enable weights quantization to ``bfloat8`` via the
-`optimum-quanto library <optimum-quanto_library_1_>`_, allowing for lower
-GPU memory usage.
+URI argument to enable weights quantization via the `optimum-quanto library <optimum-quanto_library_1_>`_, 
+allowing for lower GPU memory usage. ``quantize`` may be passed the values "qint2", "qint4", "qint8", 
+"qfloat8_e4m3fn", "qfloat8_e5m2", or "qfloat8", to indicate the quantization data type.
 
 SD3 Example:
 
@@ -3652,9 +3652,11 @@ The ``variant`` argument defaults to the value of ``--variant``
 
 The ``dtype`` argument defaults to the value of ``--dtype``
 
-The ``quantize`` boolean URI argument enables weights quantization to ``bfloat8``
-via the `optimum-quanto library <optimum-quanto_library_1_>`_, allowing for lower
-GPU memory usage. This is useful when generating with Flux models.
+The ``quantize`` URI argument enables weights quantization via the `optimum-quanto 
+library <optimum-quanto_library_1_>`_, allowing for lower GPU memory usage. 
+This is useful when generating with Flux models. ``quantize`` may be passed the 
+values "qint2", "qint4", "qint8", "qfloat8_e4m3fn", "qfloat8_e5m2", or "qfloat8", 
+to indicate the quantization data type.
 
 The other named arguments are available when loading from a huggingface repository or folder
 that may or may not be a local git repository on disk.
