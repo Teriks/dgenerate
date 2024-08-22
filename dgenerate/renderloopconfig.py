@@ -1297,6 +1297,18 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'{a_namer("image_seeds")} are currently not supported with {a_namer("lora_uris")} for {a_namer("model_type")} '
                     f'{_pipelinewrapper.get_model_type_string(self.model_type)}')
 
+        if _pipelinewrapper.model_type_is_s_cascade(self.model_type):
+            if not parsed.is_single_spec:
+                raise RenderLoopConfigError(
+                    f'{a_namer("image_seeds")} configurations other than plain '
+                    f'img2img are not supported for Stable Cascade.')
+
+        if _pipelinewrapper.model_type_is_upscaler(self.model_type):
+            if not parsed.is_single_spec:
+                raise RenderLoopConfigError(
+                    f'{a_namer("image_seeds")} configurations other than plain '
+                    f'img2img are not supported for upscaler models.')
+
         if parsed.adapter_images:
             if not self.ip_adapter_uris:
                 raise RenderLoopConfigError(
