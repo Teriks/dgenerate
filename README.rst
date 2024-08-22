@@ -2987,16 +2987,19 @@ LoRAs are supported for these model types:
     * ``--model-type torch-upscaler-x4``
     * ``--model-type torch-sdxl``
     * ``--model-type torch-sdxl-pix2pix``
-    * ``--model-type torch-sd3`` (scale not supported yet)
+    * ``--model-type torch-sd3``
+    * ``--model-type torch-flux``
 
-When multiple specifications are given, all mentioned models will be fused into
-the main model at a given scale.
+When multiple specifications are given, all mentioned models will be fused together
+into one set of weights at their individual scale, and then those weights will be
+fused into the main model at the scale value of ``--lora-fuse-scale``, which
+defaults to 1.0.
 
 You can provide a huggingface repository slug, .pt, .pth, .bin, .ckpt, or .safetensors files.
 Blob links are not accepted, for that use ``subfolder`` and ``weight-name`` described below.
 
-The LoRA scale can be specified after the model path by placing a ``;`` (semicolon) and
-then using the named argument ``scale``
+The individual LoRA scale for each provided model can be specified after the model path
+by placing a ``;`` (semicolon) and then using the named argument ``scale``
 
 When a scale is not specified, 1.0 is assumed.
 
