@@ -2533,6 +2533,7 @@ VAEs are supported for these model types:
     * ``--model-type torch-sdxl``
     * ``--model-type torch-sdxl-pix2pix``
     * ``--model-type torch-sd3``
+    * ``--model-type torch-flux``
 
 The URI syntax for ``--vae`` is ``AutoEncoderClass;model=(huggingface repository slug/blob link or file/folder path)``
 
