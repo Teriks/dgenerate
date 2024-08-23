@@ -573,12 +573,11 @@ Help Output
                             
                             The "variant" argument specifies the Image Encoder model variant. If "variant" is
                             specified when loading from a Hugging Face repository or folder, weights will be
-                            loaded from "variant" filename, e.g. "pytorch_model.<variant>.safetensors. If you
-                            specify multiple IP Adapters, they must all have the same "variant" value or you
-                            will receive a usage error.
+                            loaded from "variant" filename, e.g. "pytorch_model.<variant>.safetensors.
                             
                             Similar to --vae, "variant" does not default to the value of --variant in order to
-                            prevent errors with common use cases.
+                            prevent errors with common use cases. If you specify multiple IP Adapters, they must
+                            all have the same "variant" value or you will receive a usage error.
                             
                             The "subfolder" argument specifies the Image Encoder model subfolder, if specified
                             when loading from a Hugging Face repository or folder, weights from the specified
@@ -1505,6 +1504,7 @@ Help Output
                             Syntax See: [https://dgenerate.readthedocs.io/en/v4.0.0/dgenerate_submodules.html#dg
                             enerate.imageprocessors.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS]
                             ----------------------------------------------------------------
+
 
 
 Windows Install
