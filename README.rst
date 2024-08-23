@@ -2126,6 +2126,13 @@ And also: `Specifying T2I Adapters`_
 As well as the information about ``--image-seeds`` from dgenerates ``--help``
 output.
 
+IP Adapter images can also be animated inputs see: `Specifying IP Adapters`_
+
+In general, every image component of an ``--image-seeds`` specification may be an
+animated file, animated files may be mixed with static images. The animated input with the 
+shortest length determines the number of output frames, and any static image components
+are duplicated over that amount of frames.
+
 
 Animation Slicing
 =================
