@@ -3525,7 +3525,7 @@ particular way for the model to work.
 In addition, IP Adapter models can be used with Control Net and T2I Adapter models introducing additional complexities in specifying
 image input.
 
-If you specify multiple IP Adapters, they must all have the same "variant" URI argument value or you will receive a usage error.
+If you specify multiple IP Adapters, they must all have the same ``variant`` URI argument value or you will receive a usage error.
 
 ----
 
