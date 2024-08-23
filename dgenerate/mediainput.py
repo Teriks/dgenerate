@@ -1043,7 +1043,7 @@ def _parse_image_seed_uri_legacy(uri: str, align: int = 8) -> ImageSeedParseResu
 
     try:
         first_parts = [t.strip() for t in _textprocessing.tokenized_split(
-            first, ',', strict=True, remove_quotes=True, escapes_in_quoted=True)]
+            first, ',', remove_quotes=True, escapes_in_quoted=True)]
 
     except _textprocessing.TokenizedSplitSyntaxError as e:
         raise ImageSeedParseError(
@@ -1228,7 +1228,7 @@ def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResul
         if adapter_paths is not None:
             result.adapter_images = []
             adapter_paths = _textprocessing.tokenized_split(
-                adapter_paths, ',', strict=True, remove_quotes=True, escapes_in_quoted=True)
+                adapter_paths, ',', remove_quotes=True, escapes_in_quoted=True)
             for adapter_path in adapter_paths:
                 a_strip = adapter_path.strip()
                 if not a_strip:
