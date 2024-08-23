@@ -51,7 +51,7 @@ Diffusion Model Feature Support Table
      - ✅
      - ❌
      - ❌
-     - ❌
+     - ✅
      - ✅
      - ✅
 
@@ -135,7 +135,7 @@ Diffusion Model Feature Support Table
      - ✅
      - ❌
      - ❌
-     - ❌
+     - ✅
      - ✅
      - ✅
 
