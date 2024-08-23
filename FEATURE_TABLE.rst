@@ -135,7 +135,7 @@ Diffusion Model Feature Support Table
      - ✅
      - ❌
      - ❌
-     - ✅
+     - ❌
      - ✅
      - ✅
 
