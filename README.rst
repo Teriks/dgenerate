@@ -2791,8 +2791,7 @@ SD3 Example:
 
 .. code-block:: bash
 
-    #! /usr/bin/env dgenerate --file
-    #! dgenerate 4.0.0
+    #!/usr/bin/env bash
 
     # This just loads the default transformer out of the repo on huggingface
 
@@ -2813,8 +2812,7 @@ Flux Example:
 
 .. code-block:: bash
 
-    #! /usr/bin/env dgenerate --file
-    #! dgenerate 4.0.0
+    #!/usr/bin/env bash
 
     # use Flux with quantized transformer and text encoder (qfloat8)
 
@@ -3495,25 +3493,24 @@ This example nearly duplicates an image created with a code snippet in the diffu
 
 .. code-block:: bash
 
-    #! /usr/bin/env dgenerate --file
-    #! dgenerate 4.0.0
+    #!/usr/bin/env bash
 
     # this uses one IP Adapter input image with the IP Adapter h94/IP-Adapter
 
-    stabilityai/stable-diffusion-xl-base-1.0
-    --model-type torch-sdxl
-    --dtype float16
-    --variant fp16
-    --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0
-    --inference-steps 30
-    --guidance-scales 5
-    --sdxl-high-noise-fractions 0.8
-    --seeds 0
-    --output-path basic
-    --model-cpu-offload
-    --image-seeds "adapter: https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/ip_adapter_diner.png"
-    --ip-adapters h94/IP-Adapter;subfolder=sdxl_models;weight-name=ip-adapter_sdxl.bin
-    --output-size 1024x1024
+    dgenerate stabilityai/stable-diffusion-xl-base-1.0 \
+    --model-type torch-sdxl \
+    --dtype float16 \
+    --variant fp16 \
+    --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
+    --inference-steps 30 \
+    --guidance-scales 5 \
+    --sdxl-high-noise-fractions 0.8 \
+    --seeds 0 \
+    --output-path basic \
+    --model-cpu-offload \
+    --image-seeds "adapter: https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/ip_adapter_diner.png" \
+    --ip-adapters h94/IP-Adapter;subfolder=sdxl_models;weight-name=ip-adapter_sdxl.bin \
+    --output-size 1024x1024 \
     --prompts "a polar bear sitting in a chair drinking a milkshake; \
                deformed, ugly, wrong proportion, low res, bad anatomy, worst quality, low quality"
 
