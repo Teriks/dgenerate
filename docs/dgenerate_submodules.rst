@@ -67,18 +67,13 @@ dgenerate.image_process module
 dgenerate.imageprocessors module
 --------------------------------
 
-Image processors implemented by dgenerate.
-
-This includes many image processing tasks useful for creating diffusion input images, or for postprocessing.
-
-.. include:: imageprocessors_constants.rst
-
 .. automodule:: dgenerate.imageprocessors
    :members:
    :undoc-members:
    :show-inheritance:
-   :exclude-members: __doc__
    :special-members: __call__, __init__
+   
+.. include:: imageprocessors_constants.rst
 
 dgenerate.invoker module
 ------------------------
@@ -137,18 +132,13 @@ dgenerate.messages module
 dgenerate.pipelinewrapper module
 --------------------------------
 
-huggingface diffusers pipeline wrapper / driver interface.
-
-All functionality needed from the diffusers library is behind this interface.
-
-.. include:: pipeline_wrapper_constants.rst
-
 .. automodule:: dgenerate.pipelinewrapper
    :members:
    :undoc-members:
    :show-inheritance:
-   :exclude-members: __doc__
    :special-members: __call__, __init__
+   
+.. include:: pipeline_wrapper_constants.rst
 
 dgenerate.plugin module
 -----------------------
