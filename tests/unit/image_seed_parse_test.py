@@ -25,6 +25,33 @@ class TestImageSeedParser(unittest.TestCase):
             _mi.parse_image_seed_uri('examples/media/earth.jpg;floyd=not_found')
         self.assertIn('not_found', str(e.exception))
 
+    def test_adapter_quoting(self):
+        seed = _mi.parse_image_seed_uri(
+            'images: "examples/media/earth.jpg", "examples/media/beach.jpg"; '
+            'adapter=examples/media/earth.jpg + "examples/media/earth.jpg"|resize=512')
+
+        self.assertEqual(seed.images, ['examples/media/earth.jpg', 'examples/media/beach.jpg'])
+        self.assertEqual(seed.adapter_images[0][0].path, 'examples/media/earth.jpg')
+        self.assertEqual(seed.adapter_images[0][1].resize, (512, 512))
+
+        seed = _mi.parse_image_seed_uri('adapter: examples/media/earth.jpg + "examples/media/earth.jpg"|resize=512')
+
+        self.assertEqual(seed.adapter_images[0][0].path, 'examples/media/earth.jpg')
+        self.assertEqual(seed.adapter_images[0][1].resize, (512, 512))
+
+        seed = _mi.parse_image_seed_uri(
+            'images: "examples/media/earth.jpg", "examples/media/beach.jpg"; '
+            'adapter=examples/media/earth.jpg, "examples/media/earth.jpg"|resize=512')
+
+        self.assertEqual(seed.images, ['examples/media/earth.jpg', 'examples/media/beach.jpg'])
+        self.assertEqual(seed.adapter_images[0][0].path, 'examples/media/earth.jpg')
+        self.assertEqual(seed.adapter_images[1][0].resize, (512, 512))
+
+        seed = _mi.parse_image_seed_uri('adapter: examples/media/earth.jpg, "examples/media/earth.jpg"|resize=512')
+
+        self.assertEqual(seed.adapter_images[0][0].path, 'examples/media/earth.jpg')
+        self.assertEqual(seed.adapter_images[1][0].resize, (512, 512))
+
     def test_legacy_arguments(self):
         with self.assertRaises(_mi.ImageSeedArgumentError):
             # not aligned by 8
@@ -65,17 +92,21 @@ class TestImageSeedParser(unittest.TestCase):
         self.assertEqual(parsed.images, ['examples/media/dog-on-bench.png'])
         self.assertEqual(parsed.mask_images, ['examples/media/dog-on-bench-mask.png'])
 
-        parsed = _mi.parse_image_seed_uri('images: examples/media/dog-on-bench.png, examples/media/earth.jpg;examples/media/dog-on-bench-mask.png;1024')
+        parsed = _mi.parse_image_seed_uri(
+            'images: examples/media/dog-on-bench.png, examples/media/earth.jpg;examples/media/dog-on-bench-mask.png;1024')
 
         self.assertEqual(parsed.resize_resolution, (1024, 1024))
         self.assertEqual(parsed.images, ['examples/media/dog-on-bench.png', 'examples/media/earth.jpg'])
-        self.assertEqual(parsed.mask_images, ['examples/media/dog-on-bench-mask.png', 'examples/media/dog-on-bench-mask.png'])
+        self.assertEqual(parsed.mask_images,
+                         ['examples/media/dog-on-bench-mask.png', 'examples/media/dog-on-bench-mask.png'])
 
-        parsed = _mi.parse_image_seed_uri('images: examples/media/dog-on-bench.png, examples/media/earth.jpg;examples/media/dog-on-bench-mask.png, examples/media/dog-on-bench.png;512')
+        parsed = _mi.parse_image_seed_uri(
+            'images: examples/media/dog-on-bench.png, examples/media/earth.jpg;examples/media/dog-on-bench-mask.png, examples/media/dog-on-bench.png;512')
 
         self.assertEqual(parsed.resize_resolution, (512, 512))
         self.assertEqual(parsed.images, ['examples/media/dog-on-bench.png', 'examples/media/earth.jpg'])
-        self.assertEqual(parsed.mask_images, ['examples/media/dog-on-bench-mask.png', 'examples/media/dog-on-bench.png'])
+        self.assertEqual(parsed.mask_images,
+                         ['examples/media/dog-on-bench-mask.png', 'examples/media/dog-on-bench.png'])
 
     def test_uri_arguments(self):
         with self.assertRaises(_mi.ImageSeedArgumentError):
@@ -210,7 +241,8 @@ class TestImageSeedParser(unittest.TestCase):
             _mi.parse_image_seed_uri("examples/media/earth.jpg;control=,examples/media/earth.jpg")
 
         with self.assertRaises(_mi.ImageSeedParseError):
-            _mi.parse_image_seed_uri("examples/media/earth.jpg;control=examples/media/earth.jpg,,examples/media/earth.jpg")
+            _mi.parse_image_seed_uri(
+                "examples/media/earth.jpg;control=examples/media/earth.jpg,,examples/media/earth.jpg")
 
         with self.assertRaises(_mi.ImageSeedParseError):
             _mi.parse_image_seed_uri("examples/media/earth.jpg;control=,")
@@ -227,4 +259,3 @@ class TestImageSeedParser(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-
