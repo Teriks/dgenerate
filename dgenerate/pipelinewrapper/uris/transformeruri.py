@@ -100,7 +100,7 @@ class TransformerUri:
         :param dtype: model data type (precision)
         :param quantize: Quantize to a specific data type optimum-quanto,
             must be a supported dtype name that exists in ``optimum.quanto.qtypes``,
-            such as qint8 or qfloat8
+            such as ``qint8`` or ``qfloat8``
 
         :raises InvalidTransformerUriError: If ``dtype`` is passed an invalid data type string.
         """
