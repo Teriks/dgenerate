@@ -3487,6 +3487,12 @@ One or more IP Adapter models can be specified with the ``--ip-adapters`` argume
 
 The URI syntax for this argument is identical to ``--loras``, which is discussed in: `Specifying LoRAs`_
 
+IP Adapters are supported for these model types:
+
+    * ``--model-type torch``
+    * ``--model-type torch-pix2pix``
+    * ``--model-type torch-sdxl``
+
 Here is a brief example of loading an IP Adapter in the most basic way and passing it an image via ``--image-seeds``.
 
 This example nearly duplicates an image created with a code snippet in the diffusers documentation page
