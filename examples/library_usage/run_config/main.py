@@ -6,7 +6,7 @@ import dgenerate.batchprocess
 
 
 config = r"""
-#! dgenerate 4.0.0
+#! dgenerate 4.0.1
 
 stabilityai/stable-diffusion-2 --prompts "a man walking on the moon without a space suit"
 

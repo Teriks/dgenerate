@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-# dgenerate 4.0.0
+# dgenerate 4.0.1
 
 # Test the consistency decoder VAE contributed from Dalle-3, which works
 # with stable diffusion 1.x models
