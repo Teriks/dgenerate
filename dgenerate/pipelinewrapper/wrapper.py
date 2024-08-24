@@ -969,6 +969,12 @@ class DiffusionPipelineWrapper:
         if args.sd3_third_prompt is not None:
             opts.append(('--sd3-third-prompts', args.sd3_third_prompt))
 
+        if args.flux_max_sequence_length is not None:
+            opts.append(('--flux-max-sequence-length', args.flux_max_sequence_length))
+
+        if args.flux_second_prompt is not None:
+            opts.append(('--flux-second-prompts', args.flux_second_prompt))
+
         if args.clip_skip is not None:
             opts.append(('--clip-skips', args.clip_skip))
 
@@ -1059,6 +1065,9 @@ class DiffusionPipelineWrapper:
 
         if self._lora_uris:
             opts.append(('--loras', self._lora_uris))
+
+        if self._lora_fuse_scale is not None:
+            opts.append(('--lora-fuse-scale', self._lora_fuse_scale))
 
         if self._image_encoder_uri:
             opts.append(('--image-encoder', self._image_encoder_uri))
