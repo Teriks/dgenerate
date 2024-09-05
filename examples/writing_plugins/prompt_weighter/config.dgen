@@ -1,8 +1,8 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 4.0.2
+#! dgenerate 4.0.3
 
 \import_plugins demo_plugin
 
-"runwayml/stable-diffusion-v1-5"
+"Lykon/dreamshaper-8"
 --prompt-weighter my-weighter
 --prompts "hello world"

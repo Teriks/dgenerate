@@ -1,12 +1,12 @@
 #! /usr/bin/env dgenerate --file
-# dgenerate 4.0.2
+# dgenerate 4.0.3
 
 # Test the consistency decoder VAE contributed from Dalle-3, which works
 # with stable diffusion 1.x models
 
 \set prompt "a jet-age style robot playing chess"
 
-runwayml/stable-diffusion-v1-5
+Lykon/dreamshaper-8
 --dtype float16
 --variant fp16
 --vae ConsistencyDecoderVAE;model=openai/consistency-decoder;variant=fp16

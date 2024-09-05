@@ -1,10 +1,10 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 4.0.2
+#! dgenerate 4.0.3
 
 
 # Complete transformation with canny edge detection
 
-runwayml/stable-diffusion-v1-5
+Lykon/dreamshaper-8
 --inference-steps 30
 --guidance-scales 8
 --prompts "Black and white ((charcoal)) art of (rick astley) dancing; color, colors"

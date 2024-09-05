@@ -1,9 +1,9 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 4.0.2
+#! dgenerate 4.0.3
 
 # Use an already processed image with the canny control net
 
-runwayml/stable-diffusion-v1-5
+Lykon/dreamshaper-8
 --inference-steps 40
 --guidance-scales 8
 --gen-seeds 2

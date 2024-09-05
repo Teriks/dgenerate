@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 4.0.2
+#! dgenerate 4.0.3
 
 \set device_switch {{ '--device '+injected_device if injected_device else '' }}
 
