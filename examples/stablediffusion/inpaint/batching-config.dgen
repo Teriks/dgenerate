@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 4.0.2
+#! dgenerate 4.0.3
 
 # We can run this same prompt over multiple images in batch on the GPU
 # by using the "images: ..." syntax of --image-seeds

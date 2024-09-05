@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 4.0.2
+#! dgenerate 4.0.3
 
 # This example duplicates: https://huggingface.co/docs/diffusers/main/en/using-diffusers/ip_adapter#multi-ip-adapter
 
@@ -24,7 +24,7 @@
 # The first model gets the style images, the second model gets a face
 
 
-runwayml/stable-diffusion-v1-5
+Lykon/dreamshaper-8
 --dtype float16
 --variant fp16
 --scheduler DDIMScheduler

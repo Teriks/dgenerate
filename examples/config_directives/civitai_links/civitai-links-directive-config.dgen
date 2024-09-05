@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 4.0.2
+#! dgenerate 4.0.3
 
 # CivitAI has recently made a change to their website UI
 # which prevents you from right clicking and copying

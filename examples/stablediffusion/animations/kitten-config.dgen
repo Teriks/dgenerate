@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 4.0.2
+#! dgenerate 4.0.3
 
 
 # Strange but interesting upscaling effect on a gif

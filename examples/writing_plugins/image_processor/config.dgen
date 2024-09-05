@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 4.0.2
+#! dgenerate 4.0.3
 
 # Run the FooBarImageProcessor plugin
 
@@ -10,7 +10,7 @@
 \import_plugins demo_plugin
 
 
-"runwayml/stable-diffusion-v1-5"
+"Lykon/dreamshaper-8"
 --prompts "hello world"
 --image-seeds "../../media/earth.jpg"
 --vae-slicing
@@ -19,7 +19,7 @@
 
 # Run the BooFabImageProcessor plugin
 
-"runwayml/stable-diffusion-v1-5"
+"Lykon/dreamshaper-8"
 --prompts "hello world"
 --vae-slicing
 --image-seeds "../../media/earth.jpg"

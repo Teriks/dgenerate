@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 4.0.2
+#! dgenerate 4.0.3
 
 # I am not really sure if you are supposed to be able to use LCMScheduler
 # In cooperative denoising mode but this seems to work somewhat, so dgenerate
