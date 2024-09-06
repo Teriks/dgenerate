@@ -139,7 +139,7 @@ class _SCascadeEmbeddingsProvider(compel.EmbeddingsProvider):
 
         pooled = text_encoder_output.text_embeds
 
-        return pooled
+        return pooled.unsqueeze(1)
 
 
 def _compel_s_cascade_patch(compel_obj: compel.Compel):
@@ -425,8 +425,6 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
 
                 pos_conditioning, pos_pooled = compel1(positive)
                 neg_conditioning, neg_pooled = compel1(negative)
-                pos_pooled = pos_pooled.unsqueeze(1)
-                neg_pooled = neg_pooled.unsqueeze(1)
 
                 pos_conditioning, neg_conditioning = compel1.pad_conditioning_tensors_to_same_length(
                     [pos_conditioning, neg_conditioning])
