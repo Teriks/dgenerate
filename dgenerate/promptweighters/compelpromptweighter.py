@@ -116,6 +116,36 @@ def _translate_sdwui_to_compel(text: str) -> str:
     return _attention_to_compel_prompt(attention)
 
 
+class _SCascadeEmbeddingsProvider(compel.EmbeddingsProvider):
+
+    def _encode_token_ids_to_embeddings(self, token_ids: torch.Tensor,
+                                        attention_mask: typing.Optional[torch.Tensor] = None) -> torch.Tensor:
+        text_encoder_output = self.text_encoder(token_ids,
+                                                attention_mask,
+                                                output_hidden_states=True,
+                                                return_dict=True)
+
+        return text_encoder_output.hidden_states[-1]
+
+    def get_pooled_embeddings(self, texts: typing.List[str], attention_mask: typing.Optional[torch.Tensor] = None,
+                              device: typing.Optional[str] = None) -> typing.Optional[torch.Tensor]:
+        device = device or self.device
+
+        token_ids = self.get_token_ids(texts, padding="max_length", truncation_override=True)
+
+        token_ids = torch.tensor(token_ids, dtype=torch.long).to(device)
+
+        text_encoder_output = self.text_encoder(token_ids, attention_mask, return_dict=True)
+
+        pooled = text_encoder_output.text_embeds
+
+        return pooled
+
+
+def _compel_s_cascade_patch(compel_obj: compel.Compel):
+    compel_obj.conditioning_provider.__class__ = _SCascadeEmbeddingsProvider
+
+
 class CompelPromptWeighter(_promptweighter.PromptWeighter):
     """
     Implements prompt weighting syntax for Stable Diffusion 1/2 and Stable Diffusion XL
@@ -144,6 +174,7 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
     --model-type torch-upscaler-x4
     --model-type torch-sdxl
     --model-type torch-sdxl-pix2pix
+    --model-type torch-s-cascade
 
     The secondary prompt option for SDXL --sdxl-second-prompts is supported by this prompt weighter
     implementation. However, --sdxl-refiner-second-prompts is not supported and will be ignored
@@ -160,7 +191,8 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
             _enums.ModelType.TORCH_PIX2PIX,
             _enums.ModelType.TORCH_UPSCALER_X4,
             _enums.ModelType.TORCH_SDXL,
-            _enums.ModelType.TORCH_SDXL_PIX2PIX
+            _enums.ModelType.TORCH_SDXL_PIX2PIX,
+            _enums.ModelType.TORCH_S_CASCADE
         }
 
         if self.model_type not in supported:
@@ -206,7 +238,8 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
                 f'in mode: {_enums.get_pipeline_type_string(self.pipeline_type)}')
 
         if not (pipeline.__class__.__name__.startswith('StableDiffusionXL')
-                or pipeline.__class__.__name__.startswith('StableDiffusion')) or \
+                or pipeline.__class__.__name__.startswith('StableDiffusion')
+                or pipeline.__class__.__name__.startswith('StableCascade')) or \
                 _enums.model_type_is_sd3(self.model_type):
             raise _exceptions.PromptWeightingUnsupported(
                 f'Prompt weighting not supported for --model-type: {_enums.get_model_type_string(self.model_type)}')
@@ -372,6 +405,39 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
                     [pos_conditioning, neg_conditioning])
 
                 torch.cuda.empty_cache()
+        elif pipeline.__class__.__name__.startswith('StableCascade'):
+            original_clip_layers = pipeline.text_encoder.text_model.encoder.layers
+
+            try:
+
+                if clip_skip > 0:
+                    pipeline.text_encoder.text_model.encoder.layers = original_clip_layers[:-clip_skip]
+
+                compel1 = compel.Compel(
+                    tokenizer=pipeline.tokenizer,
+                    text_encoder=pipeline.text_encoder,
+                    requires_pooled=True,
+                    truncate_long_prompts=False,
+                    device=device
+                )
+
+                _compel_s_cascade_patch(compel1)
+
+                pos_conditioning, pos_pooled = compel1(positive)
+                neg_conditioning, neg_pooled = compel1(negative)
+                pos_pooled = pos_pooled.unsqueeze(1)
+                neg_pooled = neg_pooled.unsqueeze(1)
+
+                pos_conditioning, neg_conditioning = compel1.pad_conditioning_tensors_to_same_length(
+                    [pos_conditioning, neg_conditioning])
+
+            finally:
+                # leaving this modified would really
+                # screw up other stuff in dgenerate :)
+                if clip_skip > 0:
+                    pipeline.text_encoder.text_model.encoder.layers = original_clip_layers
+
+            torch.cuda.empty_cache()
 
         elif pipeline.__class__.__name__.startswith('StableDiffusion'):
             embedding_type = \
@@ -425,14 +491,28 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
         })
 
         if pos_pooled is not None:
-            output.update({
-                'pooled_prompt_embeds': pos_pooled,
-            })
+            self._tensors.append(pos_pooled)
+
+            if self.model_type == _enums.ModelType.TORCH_S_CASCADE:
+                output.update({
+                    'prompt_embeds_pooled': pos_pooled,
+                })
+            else:
+                output.update({
+                    'pooled_prompt_embeds': pos_pooled,
+                })
 
         if neg_pooled is not None:
-            output.update({
-                'negative_pooled_prompt_embeds': neg_pooled,
-            })
+            self._tensors.append(neg_pooled)
+
+            if self.model_type == _enums.ModelType.TORCH_S_CASCADE:
+                output.update({
+                    'negative_prompt_embeds_pooled': neg_pooled,
+                })
+            else:
+                output.update({
+                    'negative_pooled_prompt_embeds': neg_pooled,
+                })
 
         return output
 

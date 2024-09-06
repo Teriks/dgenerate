@@ -3898,6 +3898,7 @@ features not mentioned in this documentation, that are worth reading about in th
         --model-type torch-upscaler-x4
         --model-type torch-sdxl
         --model-type torch-sdxl-pix2pix
+        --model-type torch-s-cascade
 
         The secondary prompt option for SDXL --sdxl-second-prompts is supported by this prompt weighter
         implementation. However, --sdxl-refiner-second-prompts is not supported and will be ignored
@@ -4027,6 +4028,7 @@ as the ``compel`` prompt weighter currently does not.
         --model-type torch-upscaler-x4
         --model-type torch-sdxl
         --model-type torch-sdxl-pix2pix
+        --model-type torch-s-cascade
         --model-type torch-sd3
         --model-type torch-flux
 
