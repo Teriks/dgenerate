@@ -37,7 +37,7 @@ _DGENERATE_FUNCTIONS = sorted((
     "hash", "hex", "int", "iter", "last", "len", "list", "map", "max", "min", "next",
     "object", "oct", "ord", "pow", "pow2_size", "quote", "range", "repr", "reversed",
     "round", "set", "size_is_aligned", "size_is_pow2", "slice", "sorted", "str",
-    "sum", "tuple", "type", "unquote", "zip"
+    "sum", "tuple", "type", "unquote", "zip", "have_feature", "platform"
 ), key=lambda s: len(s), reverse=True)
 
 _DGENERATE_FUNCTIONS_NS = sorted(map(lambda x: '({})(.)({})'.format(*x.split('.')), (
@@ -162,6 +162,12 @@ _MODEL_TYPE_KEYWORDS = sorted((
 ), key=lambda s: len(s), reverse=True)
 
 _DTYPE_KEYWORDS = sorted((
+    'qfloat8',
+    'qfloat8_e4m3fn',
+    'qfloat8_e5m2',
+    'qint2',
+    'qint4',
+    'qint8',
     'float16',
     'bfloat16',
     'float32',
