@@ -55,6 +55,7 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
     --model-type torch-upscaler-x4
     --model-type torch-sdxl
     --model-type torch-sdxl-pix2pix
+    --model-type torch-s-cascade
     --model-type torch-sd3
     --model-type torch-flux
 
@@ -81,6 +82,7 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
             _enums.ModelType.TORCH_UPSCALER_X4,
             _enums.ModelType.TORCH_SDXL,
             _enums.ModelType.TORCH_SDXL_PIX2PIX,
+            _enums.ModelType.TORCH_S_CASCADE,
             _enums.ModelType.TORCH_SD3,
             _enums.ModelType.TORCH_FLUX
         }
@@ -124,7 +126,8 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
         if not (pipeline.__class__.__name__.startswith('StableDiffusionXL')
                 or pipeline.__class__.__name__.startswith('StableDiffusion')
                 or pipeline.__class__.__name__.startswith('StableDiffusion3')
-                or pipeline.__class__.__name__.startswith('Flux')):
+                or pipeline.__class__.__name__.startswith('Flux')
+                or pipeline.__class__.__name__.startswith('StableCascade')):
             raise _exceptions.PromptWeightingUnsupported(
                 f'Prompt weighting not supported for --model-type: {_enums.get_model_type_string(self.model_type)}')
 
@@ -171,8 +174,6 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
                 if negative_2:
                     negative_2 = pipeline.maybe_convert_prompt(negative_2, tokenizer=pipeline.tokenizer_2)
 
-        flux_embeds = None
-        flux_pooled_embeds = None
         pos_conditioning = None
         neg_conditioning = None
         pos_pooled = None
@@ -211,6 +212,29 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
                 if clip_skip > 0:
                     pipeline.text_encoder.text_model.encoder.layers = original_clip_layers
                     pipeline.text_encoder_2.text_model.encoder.layers = original_clip_layers_2
+
+        elif pipeline.__class__.__name__.startswith('StableCascade'):
+
+            original_clip_layers = pipeline.text_encoder.text_model.encoder.layers
+
+            try:
+                if clip_skip > 0:
+                    pipeline.text_encoder.text_model.encoder.layers = original_clip_layers[:-clip_skip]
+
+                pos_conditioning, \
+                    neg_conditioning, \
+                    pos_pooled, \
+                    neg_pooled = _sd_embed.get_weighted_text_embeddings_s_cascade(
+                    pipe=pipeline,
+                    prompt=positive,
+                    neg_prompt=negative,
+                    device=device)
+
+            finally:
+                # leaving this modified would really
+                # screw up other stuff in dgenerate :)
+                if clip_skip > 0:
+                    pipeline.text_encoder.text_model.encoder.layers = original_clip_layers
 
         elif pipeline.__class__.__name__.startswith('StableDiffusionXL'):
 
@@ -311,15 +335,27 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
 
         if pos_pooled is not None:
             self._tensors.append(pos_pooled)
-            output.update({
-                'pooled_prompt_embeds': pos_pooled,
-            })
+
+            if self.model_type == _enums.ModelType.TORCH_S_CASCADE:
+                output.update({
+                    'prompt_embeds_pooled': pos_pooled,
+                })
+            else:
+                output.update({
+                    'pooled_prompt_embeds': pos_pooled,
+                })
 
         if neg_pooled is not None:
             self._tensors.append(neg_pooled)
-            output.update({
-                'negative_pooled_prompt_embeds': neg_pooled,
-            })
+
+            if self.model_type == _enums.ModelType.TORCH_S_CASCADE:
+                output.update({
+                    'negative_prompt_embeds_pooled': neg_pooled,
+                })
+            else:
+                output.update({
+                    'negative_pooled_prompt_embeds': neg_pooled,
+                })
 
         return output
 
