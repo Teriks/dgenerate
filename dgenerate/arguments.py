@@ -209,7 +209,8 @@ def _type_sdxl_high_noise_fractions(val):
 def _type_device(device):
     try:
         if not _pipelinewrapper.is_valid_device_string(device):
-            raise argparse.ArgumentTypeError(f'Must be cuda or cpu. Unknown value: {device}')
+            raise argparse.ArgumentTypeError(
+                f'Must be cuda or cpu, or other device supported by torch. Unknown value: {device}')
     except _pipelinewrapper.InvalidDeviceOrdinalException as e:
         raise argparse.ArgumentTypeError(e)
 
@@ -1524,7 +1525,9 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     actions.append(
         parser.add_argument(
             '-d', '--device', action='store', default='cuda', type=_type_device,
-            help="""cuda / cpu. (default: cuda). Use: cuda:0, cuda:1, cuda:2, etc. to specify a specific GPU."""
+            help="""cuda / cpu, or other device supported by torch, for example mps on MacOS. 
+            (default: cuda). Use: cuda:0, cuda:1, cuda:2, etc. to specify a specific 
+            cuda supporting GPU."""
         )
     )
 

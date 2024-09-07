@@ -282,7 +282,8 @@ class DiffusionPipelineWrapper:
         # Check for valid device string
         if not _util.is_valid_device_string(device):
             raise _pipelines.UnsupportedPipelineConfigError(
-                'device must be "cuda" (optionally with a device ordinal "cuda:N") or "cpu"')
+                'device must be "cuda" (optionally with a device ordinal "cuda:N") or "cpu", '
+                'or other device supported by torch.')
 
         # Check if the prompt weighter URI exists
         if prompt_weighter_uri is not None and not _promptweighters.prompt_weighter_exists(prompt_weighter_uri):

@@ -167,23 +167,47 @@ def get_torch_vae_types():
             "ConsistencyDecoderVAE"]
 
 
-def get_torch_devices():
+def _mps_available():
     try:
-        extra_kwargs = dict()
-        if platform.system() == 'Windows':
-            extra_kwargs = {'creationflags': subprocess.CREATE_NO_WINDOW}
+        # Check if Metal is supported
+        result = subprocess.run(
+            ['system_profiler', 'SPHardwareDataType'],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        # Look for "Metal: Supported" in the output
+        if "Metal: Supported" in result.stdout:
+            return True
+        else:
+            return False
+    except:
+        return False
 
-        result = subprocess.run(['nvidia-smi',
-                                 '--query-gpu=index',
-                                 '--format=csv,noheader'],
-                                stdin=None,
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.STDOUT,
-                                **extra_kwargs)
-        devices = result.stdout.decode().strip().split('\n')
-        return ['cuda:' + device for device in devices]
-    except FileNotFoundError:
-        return ['cpu']
+
+def get_torch_devices():
+    if platform.system() == 'Darwin':
+        if _mps_available():
+            return ['mps', 'cpu']
+        else:
+            return ['cpu']
+    else:
+        try:
+            extra_kwargs = dict()
+            if platform.system() == 'Windows':
+                extra_kwargs = {'creationflags': subprocess.CREATE_NO_WINDOW}
+
+            result = subprocess.run(['nvidia-smi',
+                                     '--query-gpu=index',
+                                     '--format=csv,noheader'],
+                                    stdin=None,
+                                    stdout=subprocess.PIPE,
+                                    stderr=subprocess.STDOUT,
+                                    **extra_kwargs)
+            devices = result.stdout.decode().strip().split('\n')
+            return ['cuda:' + device for device in devices] + ['cpu']
+        except FileNotFoundError:
+            return ['cpu']
 
 
 def get_karras_scheduler_prediction_types():

@@ -792,7 +792,8 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'{a_namer("model_type")} must be one of: {supported_model_types}')
         if not _pipelinewrapper.is_valid_device_string(self.device):
             raise RenderLoopConfigError(
-                f'{a_namer("device")} must be "cuda" (optionally with a device ordinal "cuda:N") or "cpu"')
+                f'{a_namer("device")} must be "cuda" (optionally with a device ordinal "cuda:N") or "cpu", '
+                f'or other device supported by torch.')
 
         if self.model_cpu_offload and self.model_sequential_offload:
             raise RenderLoopConfigError(

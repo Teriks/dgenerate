@@ -646,7 +646,7 @@ class DgenerateConsole(tk.Tk):
 
     @staticmethod
     def _install_show_in_directory_entry(menu: tk.Menu, get_path: typing.Callable[[], str]):
-        open_file_explorer_support = platform.system() == 'Windows' or shutil.which('nautilus')
+        open_file_explorer_support = platform.system() in {'Windows', 'Darwin'} or shutil.which('nautilus')
 
         if open_file_explorer_support:
 
@@ -656,7 +656,19 @@ class DgenerateConsole(tk.Tk):
                         ['explorer', '/select', ',', get_path()],
                         stdout=subprocess.DEVNULL,
                         stderr=subprocess.DEVNULL)
-            else:
+            elif platform.system() == 'Darwin':  # macOS
+                def open_image_pane_directory_in_explorer():
+                    file_path = get_path()
+                    # Use AppleScript to open Finder and highlight the file
+                    subprocess.Popen(
+                        ['osascript', '-e', f'tell application "Finder" to reveal POSIX file "{file_path}"'],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL)
+                    subprocess.Popen(
+                        ['osascript', '-e', 'tell application "Finder" to activate'],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL)
+            else:  # Linux (assuming nautilus is available)
                 def open_image_pane_directory_in_explorer():
                     subprocess.Popen(
                         ['nautilus', get_path()],

@@ -1462,7 +1462,8 @@ def _create_torch_diffusion_pipeline(
     # Device check
     if not _util.is_valid_device_string(device):
         raise UnsupportedPipelineConfigError(
-            'device" must be "cuda" (optionally with a device ordinal "cuda:N") or "cpu"')
+            'device must be "cuda" (optionally with a device ordinal "cuda:N") or "cpu", '
+            'or other device supported by torch.')
 
     # Flux model restrictions
     if _enums.model_type_is_flux(model_type):
