@@ -5363,6 +5363,7 @@ The following is output from ``\functions_help`` showing every implemented templ
         format_model_type(model_type: <enum 'ModelType'>) -> str
         format_prompt(prompts: dgenerate.prompt.Prompt | collections.abc.Iterable[dgenerate.prompt.Prompt]) -> str
         format_size(size: collections.abc.Iterable[int]) -> str
+        frange(start, stop = None, step = 0.1)
         frozenset(args, kwargs)
         gen_seeds(n: int) -> list[str]
         getattr(args, kwargs)
