@@ -159,6 +159,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'download': _configrunnerbuiltins.download,
             'have_feature': _configrunnerbuiltins.have_feature,
             'platform': _configrunnerbuiltins.platform,
+            'frange': _configrunnerbuiltins.frange
         }
 
         def return_zero(func, help_text):

@@ -37,7 +37,7 @@ _DGENERATE_FUNCTIONS = sorted((
     "hash", "hex", "int", "iter", "last", "len", "list", "map", "max", "min", "next",
     "object", "oct", "ord", "pow", "pow2_size", "quote", "range", "repr", "reversed",
     "round", "set", "size_is_aligned", "size_is_pow2", "slice", "sorted", "str",
-    "sum", "tuple", "type", "unquote", "zip", "have_feature", "platform"
+    "sum", "tuple", "type", "unquote", "zip", "have_feature", "platform", "frange"
 ), key=lambda s: len(s), reverse=True)
 
 _DGENERATE_FUNCTIONS_NS = sorted(map(lambda x: '({})(.)({})'.format(*x.split('.')), (

@@ -433,3 +433,19 @@ def platform() -> str:
     """
 
     return _platform.system()
+
+
+def frange(start, stop=None, step=0.1):
+    """
+    Like range, but for floating point numbers.
+
+    The default step value is 0.1
+    """
+
+    if stop is None:
+        stop = start
+        start = 0.0
+    current = start
+    while current < stop:
+        yield round(current, 10)
+        current += step
