@@ -148,8 +148,8 @@ Diffusion Model Feature Support Table
      - ❌
      - ❌
      - ❌
-     - ❌
-     - ❌
+     - ✅
+     - ✅
 
    * - ``torch-sd3``
      - ✅
