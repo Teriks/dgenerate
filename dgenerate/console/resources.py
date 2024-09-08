@@ -167,30 +167,11 @@ def get_torch_vae_types():
             "ConsistencyDecoderVAE"]
 
 
-def _mps_available():
-    try:
-        # Check if Metal is supported
-        result = subprocess.run(
-            ['system_profiler', 'SPHardwareDataType'],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
-        )
-        # Look for "Metal: Supported" in the output
-        if "Metal: Supported" in result.stdout:
-            return True
-        else:
-            return False
-    except:
-        return False
-
-
 def get_torch_devices():
     if platform.system() == 'Darwin':
-        if _mps_available():
-            return ['mps', 'cpu']
-        else:
-            return ['cpu']
+        # not sure how to detect if mps is available
+        # just assume it is
+        return ['mps', 'cpu']
     else:
         try:
             extra_kwargs = dict()
