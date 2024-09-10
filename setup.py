@@ -22,6 +22,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import io
 import os
+import platform
 import re
 import sys
 from ast import literal_eval
@@ -231,7 +232,7 @@ if __name__ != 'setup_as_library':
                                   get_poetry_pyproject_as_pip_requires(
                                       exclude=exclude.union({'python'})).items()]
 
-    if 'READTHEDOCS' in os.environ:
+    if 'READTHEDOCS' in os.environ or platform.system() == 'Darwin':
         for idx, requires in enumerate(pyproject_requirements):
             # no cuda
             pyproject_requirements[idx] = requires.replace('+cu121', '')
