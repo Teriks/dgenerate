@@ -22,6 +22,7 @@
 import argparse
 import collections.abc
 import typing
+import platform
 
 import dgenerate.arguments as _arguments
 import dgenerate.image_process.renderloopconfig as _renderloopconfig
@@ -144,18 +145,23 @@ def _create_arg_parser(prog, description):
             Specifying 1 will disable resolution alignment."""))
 
     actions.append(parser.add_argument(
-        '-d', '--device', default='cuda', type=_arguments._type_device,
-        help='Processing device, for example "cuda", "cuda:1".'))
+        '-d', '--device',
+        default='cuda' if platform.system() != 'Darwin' else 'mps',
+        type=_arguments._type_device,
+        help='Processing device, for example "cuda", "cuda:1". '
+             'Or "mps" on MacOS. (default: cuda, mps on MacOS)'))
 
-    actions.append(parser.add_argument('-fs', '--frame-start', default=0, type=_arguments._type_frame_start,
-                                       metavar="FRAME_NUMBER",
-                                       help="""Starting frame slice point for animated files (zero-indexed), the specified
-                         frame will be included.  (default: 0)"""))
+    actions.append(parser.add_argument(
+        '-fs', '--frame-start', default=0, type=_arguments._type_frame_start,
+        metavar="FRAME_NUMBER",
+        help="""Starting frame slice point for animated files (zero-indexed), the specified
+                frame will be included.  (default: 0)"""))
 
-    actions.append(parser.add_argument('-fe', '--frame-end', default=None, type=_arguments._type_frame_end,
-                                       metavar="FRAME_NUMBER",
-                                       help="""Ending frame slice point for animated files (zero-indexed), the specified 
-                        frame will be included."""))
+    actions.append(parser.add_argument(
+        '-fe', '--frame-end', default=None, type=_arguments._type_frame_end,
+        metavar="FRAME_NUMBER",
+        help="""Ending frame slice point for animated files (zero-indexed), the specified 
+                frame will be included."""))
 
     write_types = parser.add_mutually_exclusive_group()
 
