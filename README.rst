@@ -1826,7 +1826,7 @@ You can also install dgenerate with ``pipx`` but you will need to install `homeb
     
     # dgenerate should now be globally available
     # from any terminal you open without activating
-    # any environment after starting a new terminal
+    # any environment, after starting a new terminal
     # or logging out and logging back in
     
     # Now you can generate images to test the install
