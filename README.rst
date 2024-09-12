@@ -1776,8 +1776,8 @@ environment in a directory of your choosing and install ``dgenerate`` into it.
 
 Do not specify any ``--extra-index-url`` to pip, it is not necessary on MacOS.
 
-pipx install
-------------
+MacOS pipx install
+------------------
 
 Installing with ``pipx`` allows you to easily install ``dgenerate`` and
 have it available globally from the command line without installing
@@ -1814,8 +1814,8 @@ global python site packages.
     --inference-steps 40 \
     --guidance-scales 10
 
-venv install
-------------
+MacOS venv install
+------------------
 
 You can also manually install into a virtual environment 
 of your own creation.
