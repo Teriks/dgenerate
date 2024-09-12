@@ -53,8 +53,8 @@ animated image using any of its built in image processors, which include various
 depth detectors, segment generation, normal map generation, pose detection, non-diffusion based AI upscaling,
 and more.
 
-This software requires an Nvidia GPU supporting CUDA 12.1+, CPU rendering is possible for
-some operations but extraordinarily slow.
+This software requires an Nvidia GPU supporting CUDA 12.1+, or MacOS on Apple Silicon, 
+CPU rendering is possible for some operations but extraordinarily slow.
 
 For library documentation, and a better README reading experience which
 includes proper syntax highlighting for examples, and side panel navigation,
