@@ -1,3 +1,5 @@
+.. _homebrew_1: https://brew.sh/
+
 .. _optimum-quanto_library_1: https://github.com/huggingface/optimum-quanto
 .. _vermeer_canny_edged.png_1: https://raw.githubusercontent.com/Teriks/dgenerate/v4.1.0/examples/media/vermeer_canny_edged.png
 
@@ -66,6 +68,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v4.1.0/>`_.
 * How to install
     * `Windows Install`_
     * `Linux or WSL Install`_
+    * `MacOS Install (Apple Silicon Only)`
     * `Google Colab Install`_
 
 * Usage Manual
@@ -1517,7 +1520,6 @@ install with pipx, (or pip if you want) as described below.
 Manual Install
 --------------
 
-
 Install Visual Studios (Community or other), make sure "Desktop development with C++" is selected, unselect anything you do not need.
 
 https://visualstudio.microsoft.com/downloads/
@@ -1751,6 +1753,62 @@ Run ``dgenerate`` to generate images:
     --output-path output \
     --inference-steps 40 \
     --guidance-scales 10
+    
+    
+# MacOS Install (Apple Silicon Only)
+====================================
+
+MacOS on Apple Silicon (arm64) is experimentally supported.
+
+Rendering can be preformed in CPU only mode, and with hardware acceleration using ``--device mps`` (Metal Performance Shaders).
+
+You can install on MacOS by first installing python from the universal ``dmg`` installer
+located at: https://www.python.org/downloads/release/python-3126/
+
+It is also possible to install Python using `homebrew <homebrew_1_>`_.
+
+Once you have done so, you can create a virtual environment in a directory of your choosing
+and install dgenerate into it.
+
+Do not specify any ``--extra-index-url`` to pip, it is not necessary on MacOS.
+
+.. code-block:: bash
+
+    # create the environment
+
+    python3 -m venv dgenerate_venv
+    
+    # you must activate this environment
+    # every time you want to use dgenerate
+    # with this install method 
+    
+    source dgenerate_venv/bin/activate
+    
+    pip install dgenerate==4.1.0
+    
+    # launch the Console UI to test the install
+    
+    dgenerate --console
+    
+    
+You can also install dgenerate with ``pipx`` but you will need to install `homebrew <homebrew_1_>`_.
+
+.. code-block:: bash
+
+    # use brew to install pipx and setup PATH
+    
+    brew install pipx
+    pipx ensurepath
+    
+    # install dgenerate into an isolated environment
+    
+    pipx install dgenerate==4.1.0
+    
+    # dgenerate should now be globally available
+    # from any terminal you open without activating
+    # any environment
+    
+    dgenerate --console
 
 
 Google Colab Install
