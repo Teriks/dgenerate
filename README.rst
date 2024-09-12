@@ -1786,6 +1786,8 @@ Do not specify any ``--extra-index-url`` to pip, it is not necessary on MacOS.
     
     source dgenerate_venv/bin/activate
     
+    # install dgenerate into an isolated environment
+    
     pip install dgenerate==4.1.0
     
     # launch the Console UI to test the install
