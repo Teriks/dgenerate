@@ -2242,6 +2242,7 @@ class DiffusionPipelineWrapper:
                 safety_checker=self._safety_checker,
                 extra_modules=self._second_model_extra_modules,
                 auth_token=self._auth_token,
+                device=self._device,
                 local_files_only=self._local_files_only,
                 vae_tiling=self._vae_tiling,
                 vae_slicing=self._vae_slicing,
@@ -2324,6 +2325,7 @@ class DiffusionPipelineWrapper:
 
                 safety_checker=self._safety_checker,
                 auth_token=self._auth_token,
+                device=self._device,
                 extra_modules=refiner_extra_modules,
                 local_files_only=self._local_files_only,
                 vae_tiling=self._vae_tiling,

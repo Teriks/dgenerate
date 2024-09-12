@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 4.1.0
+#! dgenerate 4.1.1
 
 stabilityai/stable-diffusion-2
 --inference-steps 40

@@ -1,7 +1,7 @@
 ﻿<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
      xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
     <Package UpgradeCode="CAA6E951-8C80-44A9-81CF-1F545DAA534C" Language="1033" Manufacturer="Teriks@github.com"
-             Name="dgenerate" Version="4.1.0" InstallerVersion="301">
+             Name="dgenerate" Version="4.1.1" InstallerVersion="301">
         <MediaTemplate MaximumUncompressedMediaSize="2048" EmbedCab="no"/>
 
         <Icon Id="dgenerate.ico" SourceFile="..\dgenerate\icon.ico"/>

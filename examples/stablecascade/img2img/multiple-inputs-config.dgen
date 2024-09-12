@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 4.1.0
+#! dgenerate 4.1.1
 
 # Stable Cascade can accept multiple input images and derive a style from it
 

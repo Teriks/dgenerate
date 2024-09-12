@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 4.1.0
+#! dgenerate 4.1.1
 
 # this uses an img2img image and an IP Adapter input image with the IP Adapter h94/IP-Adapter
 
