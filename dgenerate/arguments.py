@@ -21,6 +21,7 @@
 
 import argparse
 import collections.abc
+import platform
 import sys
 import typing
 from argparse import Action
@@ -1524,9 +1525,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '-d', '--device', action='store', default='cuda', type=_type_device,
+            '-d', '--device', action='store', 
+            default='cuda' if platform.system() != 'Darwin' else 'mps', type=_type_device,
             help="""cuda / cpu, or other device supported by torch, for example mps on MacOS. 
-            (default: cuda). Use: cuda:0, cuda:1, cuda:2, etc. to specify a specific 
+            (default: cuda, mps on MacOS). Use: cuda:0, cuda:1, cuda:2, etc. to specify a specific 
             cuda supporting GPU."""
         )
     )
