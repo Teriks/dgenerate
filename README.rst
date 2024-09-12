@@ -1792,6 +1792,14 @@ Do not specify any ``--extra-index-url`` to pip, it is not necessary on MacOS.
     
     dgenerate --console
     
+    # or generate images
+    
+    dgenerate stabilityai/stable-diffusion-2-1 \
+    --prompts "an astronaut riding a horse" \
+    --output-path output \
+    --inference-steps 40 \
+    --guidance-scales 10
+    
     
 You can also install dgenerate with ``pipx`` but you will need to install `homebrew <homebrew_1_>`_.
 
@@ -1812,7 +1820,17 @@ You can also install dgenerate with ``pipx`` but you will need to install `homeb
     # from any terminal you open without activating
     # any environment
     
+    # launch the Console UI to test the install
+    
     dgenerate --console
+    
+    # or generate images
+    
+    dgenerate stabilityai/stable-diffusion-2-1 \
+    --prompts "an astronaut riding a horse" \
+    --output-path output \
+    --inference-steps 40 \
+    --guidance-scales 10
 
 
 Google Colab Install
