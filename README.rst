@@ -68,7 +68,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v4.1.0/>`_.
 * How to install
     * `Windows Install`_
     * `Linux or WSL Install`_
-    * `MacOS Install (Apple Silicon Only)`
+    * `MacOS Install (Apple Silicon Only)`_
     * `Google Colab Install`_
 
 * Usage Manual
