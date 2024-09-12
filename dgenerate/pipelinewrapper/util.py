@@ -19,10 +19,9 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import re
-
 import torch
-
 import dgenerate.types as _types
+import platform
 
 
 class InvalidDeviceOrdinalException(Exception):
@@ -30,6 +29,15 @@ class InvalidDeviceOrdinalException(Exception):
     GPU in device specification (cuda:N) does not exist
     """
     pass
+
+
+def default_device() -> str:
+    """
+    Return a string representing the systems default accelerator device.
+
+    :return: "cuda", "mps", etc.
+    """
+    return 'cuda' if platform.system() != 'Darwin' else 'mps'
 
 
 def is_valid_device_string(device, raise_ordinal=True):
