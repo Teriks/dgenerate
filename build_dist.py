@@ -3,7 +3,6 @@ import shutil
 import os
 import build.__main__
 
-
 os.environ['DGENERATE_POETRY_LOCKFILE_PATH'] = os.path.join(os.path.dirname(__file__), 'poetry', 'poetry.lock')
 os.environ['DGENERATE_POETRY_PYPROJECT_PATH'] = os.path.join(os.path.dirname(__file__), 'poetry', 'pyproject.toml')
 
@@ -23,8 +22,6 @@ def latest_file(directory):
     return max(files, key=os.path.getmtime)
 
 
-wheels = []
-
 for platform, platform_tags in platforms.items():
     os.environ['DGENERATE_PLATFORM'] = platform
 
@@ -43,5 +40,3 @@ for platform, platform_tags in platforms.items():
         shutil.rmtree(os.path.dirname(directory), ignore_errors=True)
 
 build.__main__.main(['--sdist'])
-
-
