@@ -21,7 +21,6 @@
 
 import argparse
 import collections.abc
-import platform
 import sys
 import typing
 from argparse import Action
@@ -35,6 +34,7 @@ import dgenerate.memoize as _memoize
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
+import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 import dgenerate.prompt as _prompt
 import dgenerate.promptweighters as _promptweighters
 import dgenerate.textprocessing as _textprocessing
@@ -1525,8 +1525,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '-d', '--device', action='store', 
-            default='cuda' if platform.system() != 'Darwin' else 'mps', type=_type_device,
+            '-d', '--device', action='store',
+            default=_pipelinewrapper_util.default_device(),
             help="""cuda / cpu, or other device supported by torch, for example mps on MacOS. 
             (default: cuda, mps on MacOS). Use: cuda:0, cuda:1, cuda:2, etc. to specify a specific 
             cuda supporting GPU."""

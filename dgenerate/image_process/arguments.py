@@ -22,7 +22,7 @@
 import argparse
 import collections.abc
 import typing
-import platform
+import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 
 import dgenerate.arguments as _arguments
 import dgenerate.image_process.renderloopconfig as _renderloopconfig
@@ -146,7 +146,7 @@ def _create_arg_parser(prog, description):
 
     actions.append(parser.add_argument(
         '-d', '--device',
-        default='cuda' if platform.system() != 'Darwin' else 'mps',
+        default=_pipelinewrapper_util.default_device(),
         type=_arguments._type_device,
         help='Processing device, for example "cuda", "cuda:1". '
              'Or "mps" on MacOS. (default: cuda, mps on MacOS)'))

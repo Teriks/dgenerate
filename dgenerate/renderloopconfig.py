@@ -26,6 +26,7 @@ import dgenerate.image as _image
 import dgenerate.mediainput as _mediainput
 import dgenerate.mediaoutput as _mediaoutput
 import dgenerate.pipelinewrapper as _pipelinewrapper
+import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 import dgenerate.prompt as _prompt
 import dgenerate.promptweighters as _promptweighters
 import dgenerate.textprocessing as _textprocessing
@@ -545,11 +546,13 @@ class RenderLoopConfig(_types.SetFromMixin):
     Corresponds to the ``--model-type`` argument of the dgenerate command line tool.
     """
 
-    device: _types.Name = 'cuda'
+    device: _types.Name = _pipelinewrapper_util.default_device()
     """
     Processing device specification, for example "cuda" or "cuda:N" where N is an 
     alternate GPU id as reported by nvidia-smi if you want to specify a specific GPU.
     This corresponds to the ``--device`` argument of the dgenerate command line tool.
+
+    The default device on MacOS is "mps".
     """
 
     dtype: _pipelinewrapper.DataType = _pipelinewrapper.DataType.AUTO

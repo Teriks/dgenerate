@@ -26,6 +26,8 @@ import dgenerate.mediainput as _mediainput
 import dgenerate.mediaoutput as _mediaoutput
 import dgenerate.types as _types
 
+import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
+
 
 class ImageProcessRenderLoopConfigError(Exception):
     """
@@ -75,7 +77,7 @@ class ImageProcessRenderLoopConfig(_types.SetFromMixin):
     Forced image alignment, corresponds to ``-al/--align``
     """
 
-    device: str = 'cuda'
+    device: _types.Name = _pipelinewrapper_util.default_device()
     """
     Rendering device, corresponds to ``-d/--device``
     """
