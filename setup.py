@@ -39,6 +39,12 @@ poetry_pyproject_path = \
     os.environ.get('DGENERATE_POETRY_PYPROJECT_PATH',
                    os.path.join(setup_path, 'poetry', 'pyproject.toml')).strip('"').strip("'")
 
+dgenerate_platform = \
+    os.environ.get('DGENERATE_PLATFORM', platform.system())
+
+dgenerate_platform_tag = \
+    os.environ.get('DGENERATE_PLATFORM_TAG', 'any')
+
 force_lockfile_requires = \
     os.environ.get('DGENERATE_FORCE_LOCKFILE_REQUIRES')
 
@@ -220,19 +226,19 @@ if __name__ != 'setup_as_library':
 
     python_requirement = requires.get('python')
 
-    exclude = {'triton'} if 'linux' not in sys.platform else set()
+    exclude = {'triton'} if dgenerate_platform.lower() != 'linux' else set()
 
     if force_lockfile_requires:
         # nvidia- packages not actually required on windows
         pyproject_requirements = [name + spec for name, spec in
                                   get_poetry_lockfile_as_pip_requires(exclude=exclude).items()
-                                  if not (name.startswith('nvidia-') and sys.platform.startswith('win'))]
+                                  if not (name.startswith('nvidia-') and dgenerate_platform.lower() == 'windows')]
     else:
         pyproject_requirements = [name + spec for name, spec in
                                   get_poetry_pyproject_as_pip_requires(
                                       exclude=exclude.union({'python'})).items()]
 
-    if 'READTHEDOCS' in os.environ or platform.system() == 'Darwin':
+    if 'READTHEDOCS' in os.environ or dgenerate_platform.lower() == 'darwin':
         for idx, requires in enumerate(pyproject_requirements):
             # no cuda
             pyproject_requirements[idx] = requires.replace('+cu121', '')
