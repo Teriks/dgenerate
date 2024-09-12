@@ -172,8 +172,12 @@ class DgenerateConsole(tk.Tk):
 
         self._run_menu = tk.Menu(self._menu_bar, tearoff=0)
 
-        self._run_menu.add_command(label='Run', accelerator='Ctrl+Space',
-                                   command=self._run_input_text)
+        self._run_menu.add_command(
+            label='Run',
+            accelerator=
+            'Command+r' if platform.system() == 'Darwin' else 'Ctrl+Space',
+            command=self._run_input_text)
+
         self._run_menu.add_command(label='Kill', accelerator='Ctrl+Q',
                                    command=lambda: self.kill_shell_process(restart=True))
 
@@ -220,9 +224,11 @@ class DgenerateConsole(tk.Tk):
 
         self._options_menu.add_cascade(label='Theme', menu=self._theme_menu)
 
-        self._options_menu.add_checkbutton(label='Multiline input',
-                                           accelerator='Insert Key',
-                                           variable=self._multi_line_input_check_var)
+        self._options_menu.add_checkbutton(
+            label='Multiline input',
+            accelerator=
+            'Command+i' if platform.system() == 'Darwin' else 'Insert Key',
+            variable=self._multi_line_input_check_var)
 
         # Create the word wrap input checkbox
 
@@ -325,7 +331,10 @@ class DgenerateConsole(tk.Tk):
             event.widget.event_generate('<<SelectAll>>')
             return 'break'
 
-        self._input_text.text.bind('<Insert>', handle_insert)
+        if platform.system() == 'Darwin':
+            self._input_text.text.bind('<Command-i>', handle_insert)
+        else:
+            self._input_text.text.bind('<Insert>', handle_insert)
 
         self._input_text.text.bind('<Control-f>',
                                    lambda e: _finddialog.open_find_dialog(
@@ -339,13 +348,21 @@ class DgenerateConsole(tk.Tk):
                                        'Replace In Input',
                                        self._input_text.text))
 
+        if platform.system() == 'Darwin':
+            # not native
+            self._input_text.text.bind('<Control-z>', lambda e: self._undo_input_entry())
+
         self._input_text.text.bind('<Control-Z>', lambda e: self._redo_input_entry())
 
         self._input_text.text.bind('<Control-q>',
                                    lambda e: self.kill_shell_process(restart=True))
 
-        self._input_text.text.bind('<Control-space>',
-                                   lambda e: self._run_input_text())
+        if platform.system() == 'Darwin':
+            self._input_text.text.bind('<Command-r>',
+                                       lambda e: self._run_input_text())
+        else:
+            self._input_text.text.bind('<Control-space>',
+                                       lambda e: self._run_input_text())
 
         self._input_text.text.bind('<Control-F>', lambda e: self._format_code())
 
@@ -354,6 +371,15 @@ class DgenerateConsole(tk.Tk):
         self._input_text.text.focus_set()
 
         self._input_text_context = tk.Menu(self._input_text, tearoff=0)
+
+        if platform.system() == 'Darwin':
+            # these are not native
+            self._input_text.text.bind('<Control-x>',
+                                       lambda e: self._cut_input_entry_selection())
+            self._input_text.text.bind('<Control-c>',
+                                       lambda e: self._copy_input_entry_selection())
+            self._input_text.text.bind('<Control-v>',
+                                       lambda e: self._paste_input_entry())
 
         self._input_text_context.add_command(label='Cut', accelerator='Ctrl+X',
                                              command=self._cut_input_entry_selection)
@@ -508,7 +534,7 @@ class DgenerateConsole(tk.Tk):
             # output (stdout) refresh rate (ms)
             self._output_refresh_rate = 100
         else:
-            # linux tcl backend can handle the
+            # linux / macos tcl backend can handle the
             # shell process output in near real time
 
             # output (stdout) refresh rate (ms)
@@ -562,13 +588,16 @@ class DgenerateConsole(tk.Tk):
         self._load_command_history()
         self._load_settings()
 
+        multiline_enter_mode = 'Command+i' if platform.system() == 'Darwin' else 'the insert key'
+        run_key = 'Command+r' if platform.system() == 'Darwin' else 'Ctrl+Space'
+
         self._output_text.text.insert(
             '1.0',
             'This console provides a REPL for dgenerates configuration language.\n\n'
-            'Enter configuration above and hit enter to submit, or use the insert key\n'
+            f'Enter configuration above and hit enter to submit, or use {multiline_enter_mode}\n'
             'to enter multiline input mode (indicated by the presence of line numbers). You must\n'
             'exit multiline input mode to submit configuration with the enter key, or instead\n'
-            'use Ctrl+Space / the run menu.\n\n'
+            f'use {run_key} / the run menu.\n\n'
             'Command history is supported via the up and down arrow keys when not in multiline\n'
             'input mode. Right clicking the input or output pane will reveal further menu options.\n\n'
             'To get started quickly with image generation, see the menu option: Edit -> Insert Recipe.\n\n'
