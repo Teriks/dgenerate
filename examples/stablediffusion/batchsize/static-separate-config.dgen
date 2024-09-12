@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 4.0.3
+#! dgenerate 4.1.0
 
 # Write the variations as separate files to the output directory with the suffix _image_N
 
