@@ -1765,16 +1765,60 @@ Rendering can be preformed in CPU only mode, and with hardware acceleration usin
 
 The default device on MacOS is ``mps`` unless specified otherwise.
 
-You can install on MacOS by first installing python from the universal ``dmg`` installer
+You can install on MacOS by first installing python from the universal ``pkg`` installer
 located at: https://www.python.org/downloads/release/python-3126/
 
 It is also possible to install Python using `homebrew <homebrew_1_>`_, though tkinter will
 not be available meaning that you cannot run the Console UI.
 
-Once you have done so, you can create a virtual environment in a directory of your choosing
-and install dgenerate into it.
+Once you have done so, you can install using ``pipx`` (recommended), or create a virtual
+environment in a directory of your choosing and install ``dgenerate`` into it.
 
 Do not specify any ``--extra-index-url`` to pip, it is not necessary on MacOS.
+
+pipx install
+------------
+
+Installing with ``pipx`` allows you to easily install ``dgenerate`` and
+have it available globally from the command line without installing
+global python site packages.
+
+.. code-block:: bash
+
+    #!/usr/bin/env bash
+    
+    # install pipx
+    
+    pip3 install pipx
+    
+    # install dgenerate into an isolated
+    # environment with pipx
+    
+    pipx install dgenerate==4.1.0
+    pipx ensurepath
+    
+    # open a new terminal or logout & login
+    
+    # launch the Console UI to test the install.
+    # tkinter will be available when you install 
+    # python using the dmg from pythons official 
+    # website
+    
+    dgenerate --console
+    
+    # or generate images
+    
+    dgenerate stabilityai/stable-diffusion-2-1 \
+    --prompts "an astronaut riding a horse" \
+    --output-path output \
+    --inference-steps 40 \
+    --guidance-scales 10
+
+venv install
+------------
+
+You can also manually install into a virtual environment 
+of your own creation.
 
 .. code-block:: bash
 
@@ -1791,9 +1835,8 @@ Do not specify any ``--extra-index-url`` to pip, it is not necessary on MacOS.
     source dgenerate_venv/bin/activate
     
     # install dgenerate into an isolated environment
-    # if pip does not work, try pip3
     
-    pip install dgenerate==4.1.0
+    pip3 install dgenerate==4.1.0
     
     # launch the Console UI to test the install.
     # tkinter will be available when you install 
@@ -1810,39 +1853,6 @@ Do not specify any ``--extra-index-url`` to pip, it is not necessary on MacOS.
     --inference-steps 40 \
     --guidance-scales 10
     
-    
-You can also install dgenerate with ``pipx`` but you will need to install `homebrew <homebrew_1_>`_.
-
-.. code-block:: bash
-
-    #!/usr/bin/env bash
-
-    # use brew to install pipx and setup PATH
-    
-    brew install pipx
-    pipx ensurepath
-    
-    # install dgenerate into an isolated environment
-    
-    pipx install dgenerate==4.1.0
-    
-    # dgenerate should now be globally available
-    # from any terminal you open without activating
-    # any environment, after starting a new terminal
-    # or logging out and logging back in
-    
-    # Now you can generate images to test the install
-    
-    # The Console UI will not be available,
-    # as the python binaries that brew installs
-    # do not seem to support tkinter on MacOS
-    
-    dgenerate stabilityai/stable-diffusion-2-1 \
-    --prompts "an astronaut riding a horse" \
-    --output-path output \
-    --inference-steps 40 \
-    --guidance-scales 10
-
 
 Google Colab Install
 ====================
