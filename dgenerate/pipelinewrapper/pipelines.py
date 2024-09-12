@@ -2170,7 +2170,7 @@ def _create_torch_diffusion_pipeline(
 
     # Model Offloading
 
-    if device.startswith('cuda'):
+    if not device.startswith('cpu'):
         if sequential_cpu_offload:
             enable_sequential_cpu_offload(pipeline, device)
         elif model_cpu_offload:
