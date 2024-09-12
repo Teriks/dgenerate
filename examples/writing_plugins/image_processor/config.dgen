@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 4.0.3
+#! dgenerate 4.1.0
 
 # Run the FooBarImageProcessor plugin
 
