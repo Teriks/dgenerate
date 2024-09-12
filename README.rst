@@ -1790,6 +1790,7 @@ Do not specify any ``--extra-index-url`` to pip, it is not necessary on MacOS.
     source dgenerate_venv/bin/activate
     
     # install dgenerate into an isolated environment
+    # if pip does not work, try pip3
     
     pip install dgenerate==4.1.0
     
