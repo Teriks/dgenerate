@@ -1768,7 +1768,8 @@ The default device on MacOS is ``mps`` unless specified otherwise.
 You can install on MacOS by first installing python from the universal ``dmg`` installer
 located at: https://www.python.org/downloads/release/python-3126/
 
-It is also possible to install Python using `homebrew <homebrew_1_>`_.
+It is also possible to install Python using `homebrew <homebrew_1_>`_, though tkinter will
+not be available meaning that you cannot run the Console UI.
 
 Once you have done so, you can create a virtual environment in a directory of your choosing
 and install dgenerate into it.
