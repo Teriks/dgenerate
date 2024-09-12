@@ -281,6 +281,7 @@ class DgenerateLexer(_lexer.RegexLexer):
             (r'\bauto\b', _token.Keyword),
             (r'\bcpu\b', _token.Keyword),
             (r'\bcuda\b', _token.Keyword),
+            (r'\bmps\b', _token.Keyword),
             (r'\bTrue|true\b', _token.Keyword),
             (r'\bFalse|false\b', _token.Keyword),
             (r'[!]END\b', _token.Keyword),
