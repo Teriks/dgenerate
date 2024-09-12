@@ -1796,7 +1796,7 @@ Do not specify any ``--extra-index-url`` to pip, it is not necessary on MacOS.
     # launch the Console UI to test the install.
     # tkinter will be available when you install 
     # python using the dmg from pythons official 
-    $ website
+    # website
     
     dgenerate --console
     
