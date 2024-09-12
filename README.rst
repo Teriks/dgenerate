@@ -1793,7 +1793,10 @@ Do not specify any ``--extra-index-url`` to pip, it is not necessary on MacOS.
     
     pip install dgenerate==4.1.0
     
-    # launch the Console UI to test the install
+    # launch the Console UI to test the install.
+    # tkinter will be available when you install 
+    # python using the dmg from pythons official 
+    $ website
     
     dgenerate --console
     
@@ -1823,13 +1826,14 @@ You can also install dgenerate with ``pipx`` but you will need to install `homeb
     
     # dgenerate should now be globally available
     # from any terminal you open without activating
-    # any environment
+    # any environment after starting a new terminal
+    # or logging out and logging back in
     
-    # launch the Console UI to test the install
+    # Now you can generate images to test the install
     
-    dgenerate --console
-    
-    # or generate images
+    # The Console UI will not be available,
+    # as the python binaries that brew installs
+    # do not seem to support tkinter on MacOS
     
     dgenerate stabilityai/stable-diffusion-2-1 \
     --prompts "an astronaut riding a horse" \
