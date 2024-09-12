@@ -1755,8 +1755,8 @@ Run ``dgenerate`` to generate images:
     --guidance-scales 10
     
     
-# MacOS Install (Apple Silicon Only)
-====================================
+MacOS Install (Apple Silicon Only)
+==================================
 
 MacOS on Apple Silicon (arm64) is experimentally supported.
 
