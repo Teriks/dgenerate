@@ -1763,6 +1763,8 @@ MacOS on Apple Silicon (arm64) is experimentally supported.
 
 Rendering can be preformed in CPU only mode, and with hardware acceleration using ``--device mps`` (Metal Performance Shaders).
 
+The default device on MacOS is ``mps`` unless specified otherwise.
+
 You can install on MacOS by first installing python from the universal ``dmg`` installer
 located at: https://www.python.org/downloads/release/python-3126/
 
