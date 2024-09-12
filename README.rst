@@ -1774,6 +1774,8 @@ Do not specify any ``--extra-index-url`` to pip, it is not necessary on MacOS.
 
 .. code-block:: bash
 
+    #!/usr/bin/env bash
+
     # create the environment
 
     python3 -m venv dgenerate_venv
@@ -1794,6 +1796,8 @@ Do not specify any ``--extra-index-url`` to pip, it is not necessary on MacOS.
 You can also install dgenerate with ``pipx`` but you will need to install `homebrew <homebrew_1_>`_.
 
 .. code-block:: bash
+
+    #!/usr/bin/env bash
 
     # use brew to install pipx and setup PATH
     
