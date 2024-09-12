@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 4.1.0
+#! dgenerate 4.1.1
 
 \env MY_ENV_VAR=1 MY_ENV_VAR2=2
 
