@@ -1774,7 +1774,11 @@ not be available meaning that you cannot run the Console UI.
 Once you have done so, you can install using ``pipx`` (recommended), or create a virtual
 environment in a directory of your choosing and install ``dgenerate`` into it.
 
-Do not specify any ``--extra-index-url`` to pip, it is not necessary on MacOS.
+Do not specify any ``--extra-index-url`` to ``pip``, it is not necessary on MacOS.
+
+When using SDXL on MacOS with ``--dtype float16``, you might need to specify 
+``--vae AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix`` if your images 
+are rendering solid black.
 
 MacOS pipx install
 ------------------
