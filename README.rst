@@ -1814,6 +1814,15 @@ global python site packages.
     --inference-steps 40 \
     --guidance-scales 10
 
+
+If you want to upgrade dgenerate, uninstall it first and then install the new version with ``pipx``.
+
+.. code-block:: bash
+
+    pipx uninstall dgenerate
+    pipx install dgenerate==4.1.1
+    
+
 MacOS venv install
 ------------------
 
