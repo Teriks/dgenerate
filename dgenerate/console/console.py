@@ -609,6 +609,8 @@ class DgenerateConsole(tk.Tk):
             'See: \\templates_help or \\templates_help (variable name) for help with template variables.\n'
             '============================================================\n\n')
 
+        self._output_text.text.config(state=tk.DISABLED)
+
         self._next_text_update_line_return = False
         self._next_text_update_line_escape = False
 
@@ -993,9 +995,7 @@ class DgenerateConsole(tk.Tk):
             return
 
         with open(f, mode='w', encoding='utf-8') as f:
-            self._output_text.text.config(state=tk.NORMAL)
             f.write(self._output_text.text.get('1.0', 'end-1c'))
-            self._output_text.text.config(state=tk.DISABLED)
             f.close()
 
     def _save_output_text_selection(self):
@@ -1050,6 +1050,8 @@ class DgenerateConsole(tk.Tk):
 
         output_lines = int(self._output_text.text.index('end-1c').split('.')[0])
 
+        self._output_text.text.config(state=tk.NORMAL)
+
         if output_lines + 1 > self._max_output_lines:
             remove_range = ('1.0', f'{output_lines - self._max_output_lines}.0')
             self._output_text.text.tag_remove('error', *remove_range)
@@ -1070,6 +1072,8 @@ class DgenerateConsole(tk.Tk):
 
         if tag is not None:
             self._output_text.text.tag_add(tag, f'end - {len(clean_text) + 1} chars', 'end-1c')
+
+        self._output_text.text.config(state=tk.DISABLED)
 
         self._next_text_update_line_escape = text.endswith('\u001B[A\r')
         self._next_text_update_line_return = text.endswith('\r')
