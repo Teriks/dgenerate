@@ -15,7 +15,7 @@ title: Flux (Schnell quantized)
 @switch[{"label":"VAE Tiling", "arg":"--vae-tiling"}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing", "divider-after":true}]
 @uriwithfloat[{"label":"LoRA Path / URI", "float-label":"LoRA Scale", "arg":"--loras", "float-arg":"scale", "dir":true, "file-types":["models"]}]
-@uri[{"label":"Transformer Path / URI", "default":"https://huggingface.co/Kijai/flux-fp8/blob/main/flux1-schnell-fp8.safetensors;quantize=qfloat8", "dir":true, "arg":"--transformer", "file-types":["models"], "divider-after":true}]
+@uri[{"label":"Transformer Path / URI", "default":"https://huggingface.co/Kijai/flux-fp8/blob/main/flux1-schnell-fp8-e4m3fn.safetensors;quantize=qfloat8", "dir":true, "arg":"--transformer", "file-types":["models"], "divider-after":true}]
 --text-encoders + T5EncoderModel;model=black-forest-labs/FLUX.1-schnell;subfolder=text_encoder_2;quantize=qfloat8
 @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":4, "min":1}]
 @float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":0, "min":0}]
