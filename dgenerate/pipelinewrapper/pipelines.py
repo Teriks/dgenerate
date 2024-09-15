@@ -2048,6 +2048,21 @@ def _create_torch_diffusion_pipeline(
 
     creation_kwargs.update(extra_modules)
 
+    def _handle_generic_pipeline_load_failure(e):
+        exc_msg = str(e)
+
+        _messages.debug_log(
+            f'Failed to load primary pipeline model: "{model_path}", reason: {exc_msg}')
+
+        if model_path in exc_msg:
+            if 'restricted' in exc_msg:
+                # the gated repo message is far more useful to the user
+                raise InvalidModelFileError(exc_msg)
+            else:
+                raise InvalidModelFileError(f'invalid model file or repo slug: {model_path}')
+
+        raise InvalidModelFileError(e)
+
     if _hfutil.is_single_file_model_load(model_path):
         if subfolder is not None:
             raise UnsupportedPipelineConfigError(
@@ -2075,10 +2090,7 @@ def _create_torch_diffusion_pipeline(
                 raise UnsupportedPipelineConfigError(
                     f'Single file load error, missing component:\n{e}')
         except (ValueError, TypeError, NameError, OSError) as e:
-            msg = str(e)
-            if model_path in msg:
-                raise InvalidModelFileError(f'invalid model file, unable to load: {model_path}')
-            raise InvalidModelFileError(e)
+            _handle_generic_pipeline_load_failure(e)
     else:
         try:
             pipeline = _pipeline_creation_args_debug(
@@ -2094,10 +2106,7 @@ def _create_torch_diffusion_pipeline(
                 local_files_only=local_files_only,
                 **creation_kwargs)
         except (ValueError, TypeError, NameError, OSError) as e:
-            msg = str(e)
-            if model_path in msg:
-                raise InvalidModelFileError(f'invalid model file or repo slug: {model_path}')
-            raise InvalidModelFileError(e)
+            _handle_generic_pipeline_load_failure(e)
 
     # Select Scheduler
 
