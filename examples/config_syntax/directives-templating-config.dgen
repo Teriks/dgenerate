@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 4.1.1
+#! dgenerate 4.1.2
 
 # You can define your own template variables with the \set directive
 # the \set directive does not do any shell args parsing on its value
