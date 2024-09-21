@@ -1184,7 +1184,7 @@ class DgenerateConsole(tk.Tk):
 
         try:
             self._shell_procmon.stdin_pipe.write(
-                (user_input + '\n\n').encode('utf-8'))
+                (user_input + '\n\n' + '\\reset_lineno' + '\n\n').encode('utf-8'))
         except StdinPipeFullError:
             self._write_stderr_output(
                 'WARNING: The command queue is full, '

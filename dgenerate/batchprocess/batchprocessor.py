@@ -43,6 +43,10 @@ class BatchProcessError(Exception):
     pass
 
 
+class _TemplateContinuationInternalError(Exception):
+    pass
+
+
 class BatchProcessor:
     """
     Implements dgenerates batch processing scripts in a generified manner.
@@ -58,6 +62,7 @@ class BatchProcessor:
         * ``\\unset_env``
         * ``\\print``
         * ``\\echo``
+        * ``\\reset_lineno``
 
     If you wish to create this object to run a dgenerate configuration, use
     :py:class:`dgenerate.batchprocess.ConfigRunner`
@@ -280,7 +285,9 @@ class BatchProcessor:
                          'that expands to the name of an environmental variable. Attempting to unset a variable '
                          'that does not exist is a no-op.',
             'print': 'Prints all content to the right to stdout, no shell parsing of the argument occurs.',
-            'echo': 'Echo shell arguments with shell parsing and expansion.'
+            'echo': 'Echo shell arguments with shell parsing and expansion.',
+            'reset_lineno': 'Reset the interpreter line number record to 0, this affects error messages and can '
+                            'be issued by the user, or automatically by a connected terminal.'
         }
 
     @property
@@ -289,6 +296,42 @@ class BatchProcessor:
         The current line number in the file being processed.
         """
         return self._current_line
+
+    @property
+    def running_template_continuation(self) -> bool:
+        """
+        Is code that exists inside a template continuation being processed?
+        :return: ``True`` or ``False``
+        """
+        return self._running_template_continuation
+
+    @property
+    def template_continuation_start_line(self) -> int:
+        """
+        Start line of the template continuation being processed.
+
+        Value is only valid if :py:attr:`BatchProcessor.running_template_continuation` is ``True``.
+
+        :return: line number
+        """
+        if not self.running_template_continuation:
+            return -1
+
+        return self._template_continuation_start_line
+
+    @property
+    def template_continuation_end_line(self) -> int:
+        """
+        End line of the template continuation being processed.
+
+        Value is only valid if :py:attr:`BatchProcessor.running_template_continuation` is ``True``.
+
+        :return: line number
+        """
+        if not self.running_template_continuation:
+            return -1
+
+        return self._template_continuation_end_line
 
     @property
     def executing_text(self) -> None | str:
@@ -536,6 +579,9 @@ class BatchProcessor:
             return self._handle_print_directive(line)
         elif line.startswith('\\echo'):
             return self._handle_echo_directive(line)
+        elif line.startswith('\\reset_lineno'):
+            self._current_line = -1
+            return True
         elif line.startswith('{'):
             return self._handle_template_continuation(line)
         elif line.startswith('\\'):
@@ -669,9 +715,20 @@ class BatchProcessor:
         """Handle template continuation directive."""
         try:
             self._running_template_continuation = True
+            self._current_line = -1
             self.run_file(self.render_template(line, stream=True))
+        except BatchProcessError as e:
+            sub_err_msg = str(e).split(":", 1)[-1].strip()
+            line_txt, err_msg = sub_err_msg.split('\n', 1)
+            raise _TemplateContinuationInternalError(
+                f'Error inside template continuation '
+                f'from line {self._template_continuation_start_line} to line '
+                f'{self._template_continuation_end_line}:\n{" "*4}Error on line '
+                f'{self._template_continuation_start_line + self.current_line}: '
+                f'{line_txt}\n{" "*4}{err_msg}')
         finally:
             self._running_template_continuation = False
+            self._current_line = self._template_continuation_end_line
         return True
 
     def _handle_custom_directive(self, line: str) -> bool:
@@ -692,7 +749,7 @@ class BatchProcessor:
                 return_code = impl([])
             if return_code != 0:
                 raise BatchProcessError(
-                    f'Directive error return code: {return_code}')
+                    f'Directive "{directive}" error return code: {return_code}')
         except Exception as e:
             if self._directive_exceptions:
                 raise e
@@ -767,8 +824,7 @@ class BatchProcessor:
 
             line_strip = _textprocessing.remove_tail_comments(line)[1].strip()
 
-            if not self._running_template_continuation:
-                self._current_line = line_idx
+            self._current_line += 1
 
             if line_strip == '' and not template_continuation:
                 if continuation and last_line is not None:
@@ -778,8 +834,11 @@ class BatchProcessor:
             elif line_strip.startswith('#') and not template_continuation:
                 self._look_for_version_mismatch(line_idx, line)
             elif line_strip.startswith('{') and not template_continuation and not normal_continuation:
+                self._template_continuation_start_line = self._current_line
+
                 line_rstrip = _textprocessing.remove_tail_comments(line)[1].rstrip()
                 if line_rstrip.endswith('!END'):
+                    self._template_continuation_end_line = self._current_line
                     run_continuation(line_rstrip.removesuffix('!END'))
                 else:
                     continuation += line
@@ -791,6 +850,7 @@ class BatchProcessor:
             elif template_continuation:
                 line_rstrip = _textprocessing.remove_tail_comments(line)[1].rstrip()
                 if line_rstrip.endswith('!END'):
+                    self._template_continuation_end_line = self._current_line
                     run_continuation(line_rstrip.removesuffix('!END'))
                 else:
                     continuation += line
@@ -828,8 +888,12 @@ class BatchProcessor:
 
         try:
             self._run_file(stream)
+        except _TemplateContinuationInternalError as e:
+            raise BatchProcessError(str(e).strip())
         except BatchProcessError as e:
-            raise BatchProcessError(f'Error on line {self.current_line}: {str(e).strip()}')
+            raise BatchProcessError(
+                f'Error on line {self.current_line}: '
+                f'"{self.executing_text}":\n{" "*4}{str(e).strip()}')
         finally:
             _messages.pop_level()
             self._directive_exceptions = directive_exceptions_last
