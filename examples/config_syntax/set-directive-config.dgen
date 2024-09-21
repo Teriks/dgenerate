@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 4.1.2
+#! dgenerate 4.2.0
 
 \set my_variable "I am an incomplete string and this is completely fine because I am a raw value
 
