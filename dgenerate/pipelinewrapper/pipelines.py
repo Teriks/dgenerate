@@ -1727,9 +1727,6 @@ def _create_torch_diffusion_pipeline(
             if _enums.model_type_is_s_cascade(model_type):
                 raise UnsupportedPipelineConfigError(
                     'Stable Cascade model types do not support inpainting.')
-            if model_type == _enums.ModelType.TORCH_SD3:
-                raise UnsupportedPipelineConfigError(
-                    'Stable Diffusion 3 model types do not support inpainting.')
             if model_type == _enums.ModelType.TORCH_FLUX:
                 raise UnsupportedPipelineConfigError(
                     'Flux model types do not support inpainting.')
@@ -1741,6 +1738,14 @@ def _create_torch_diffusion_pipeline(
                 pipeline_class = diffusers.IFInpaintingPipeline
             elif model_type == _enums.ModelType.TORCH_IFS:
                 pipeline_class = diffusers.IFInpaintingSuperResolutionPipeline
+            elif model_type == _enums.ModelType.TORCH_SD3:
+                if controlnet_uris:
+                    raise UnsupportedPipelineConfigError(
+                        '--model-type torch-sd3 does not support inpaint mode with ControlNet models.')
+                if lora_uris:
+                    raise UnsupportedPipelineConfigError(
+                        '--model-type torch-sd3 does not support --loras in inpaint mode.')
+                pipeline_class = diffusers.StableDiffusion3InpaintPipeline
             elif t2i_adapter_uris:
                 raise UnsupportedPipelineConfigError(
                     'inpaint mode is not supported with --t2i-adapters.')

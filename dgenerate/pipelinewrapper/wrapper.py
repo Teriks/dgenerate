@@ -1511,7 +1511,8 @@ class DiffusionPipelineWrapper:
 
             if mask_images is not None:
                 args['mask_image'] = mask_images
-                if not _enums.model_type_is_floyd(self._model_type):
+                if not (_enums.model_type_is_floyd(self._model_type) or
+                        _enums.model_type_is_sd3(self._model_type)):
                     args['width'] = images[0].size[0]
                     args['height'] = images[0].size[1]
 
@@ -1519,8 +1520,9 @@ class DiffusionPipelineWrapper:
                 args['width'] = images[0].size[0]
                 args['height'] = images[0].size[1]
 
-            if self._model_type == _enums.ModelType.TORCH_UPSCALER_X2:
-                args['image'] = list(images)
+            elif self._model_type == _enums.ModelType.TORCH_UPSCALER_X2:
+                images = list(images)
+                args['image'] = images
 
                 for idx, image in enumerate(images):
                     if not _image.is_aligned(image.size, 64):
@@ -1529,9 +1531,9 @@ class DiffusionPipelineWrapper:
                             f'Input image size {image.size} is not aligned by 64. '
                             f'Output dimensions will be forcefully aligned to 64: {size}.',
                             level=_messages.WARNING)
-                        args['image'][idx] = image.resize(size, PIL.Image.Resampling.LANCZOS)
+                        images[idx] = image.resize(size, PIL.Image.Resampling.LANCZOS)
 
-            if self._model_type == _enums.ModelType.TORCH_S_CASCADE:
+            elif self._model_type == _enums.ModelType.TORCH_S_CASCADE:
                 if not _image.is_aligned(images[0].size, 128):
                     size = _image.align_by(images[0].size, 128)
                     _messages.log(
@@ -1554,17 +1556,34 @@ class DiffusionPipelineWrapper:
                 args['width'] = _types.default(user_args.width, size[0])
                 args['height'] = _types.default(user_args.height, size[1])
 
-            if self._model_type == _enums.ModelType.TORCH_SD3:
-                args['image'] = list(images)
+            elif self._model_type == _enums.ModelType.TORCH_SD3:
+                images = list(images)
+                args['image'] = images
 
                 for idx, image in enumerate(images):
                     if not _image.is_aligned(image.size, 16):
                         size = _image.align_by(image.size, 16)
                         _messages.log(
                             f'Input image size {image.size} is not aligned by 16. '
-                            f'Output dimensions will be forcefully aligned to 16: {size}.',
+                            f'Dimensions will be forcefully aligned to 16: {size}.',
                             level=_messages.WARNING)
-                        args['image'][idx] = image.resize(size, PIL.Image.Resampling.LANCZOS)
+                        images[idx] = image.resize(size, PIL.Image.Resampling.LANCZOS)
+
+                if mask_images:
+                    mask_images = list(mask_images)
+                    args['mask_image'] = mask_images
+
+                    for idx, image in enumerate(mask_images):
+                        if not _image.is_aligned(image.size, 16):
+                            size = _image.align_by(image.size, 16)
+                            _messages.log(
+                                f'Input mask image size {image.size} is not aligned by 16. '
+                                f'Dimensions will be forcefully aligned to 16: {size}.',
+                                level=_messages.WARNING)
+                            mask_images[idx] = image.resize(size, PIL.Image.Resampling.LANCZOS)
+
+                    args['width'] = mask_images[0].size[0]
+                    args['height'] = mask_images[0].size[1]
 
         def set_txt2img_defaults():
             if _enums.model_type_is_sdxl(self._model_type):
