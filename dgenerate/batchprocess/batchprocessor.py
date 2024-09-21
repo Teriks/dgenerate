@@ -719,13 +719,12 @@ class BatchProcessor:
             self.run_file(self.render_template(line, stream=True))
         except BatchProcessError as e:
             sub_err_msg = str(e).split(":", 1)[-1].strip()
-            line_txt, err_msg = sub_err_msg.split('\n', 1)
             raise _TemplateContinuationInternalError(
                 f'Error inside template continuation '
                 f'from line {self._template_continuation_start_line} to line '
-                f'{self._template_continuation_end_line}:\n{" "*4}Error on line '
-                f'{self._template_continuation_start_line + self.current_line}: '
-                f'{line_txt}\n{" "*4}{err_msg}')
+                f'{self._template_continuation_end_line}:\n{" " * 4}Error on line '
+                f'{self._template_continuation_start_line + self.current_line}:'
+                f'\n{" " * 8}{sub_err_msg}')
         finally:
             self._running_template_continuation = False
             self._current_line = self._template_continuation_end_line
@@ -892,8 +891,8 @@ class BatchProcessor:
             raise BatchProcessError(str(e).strip())
         except BatchProcessError as e:
             raise BatchProcessError(
-                f'Error on line {self.current_line}: '
-                f'"{self.executing_text}":\n{" "*4}{str(e).strip()}')
+                f'Error on line {self.current_line}:'
+                f'\n{" " * 4}{str(e).strip()}')
         finally:
             _messages.pop_level()
             self._directive_exceptions = directive_exceptions_last
