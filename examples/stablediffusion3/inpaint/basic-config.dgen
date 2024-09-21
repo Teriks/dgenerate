@@ -1,0 +1,23 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 4.1.2
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %} !END
+
+
+stabilityai/stable-diffusion-3-medium-diffusers
+--model-type torch-sd3
+--variant fp16
+--dtype float16
+--inference-steps 30
+--guidance-scales 8
+--image-seeds "../../media/horse1.jpg; ../../media/horse1-mask.jpg"
+--image-seed-strengths 0.9
+--seeds 39877139643371
+--output-path basic
+--model-sequential-offload
+--prompts "Horse standing on the surface of mars, real, photo, high resolution; artwork, fake, imaginary"
