@@ -20,8 +20,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-import os
-
 import dgenerate.types as _types
 
 # Cache constants
