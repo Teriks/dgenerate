@@ -115,6 +115,10 @@ try:
         PipelineType,
     )
 
+    from dgenerate.pipelinewrapper.util import (
+        default_device
+    )
+
     from dgenerate.exceptions import OutOfMemoryError
 
     from dgenerate.promptweighters import PromptWeightingUnsupported

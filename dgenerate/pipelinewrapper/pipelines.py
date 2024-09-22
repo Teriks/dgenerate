@@ -833,7 +833,7 @@ def destroy_last_called_pipeline(collect=True):
 # noinspection PyCallingNonCallable
 @torch.inference_mode()
 def call_pipeline(pipeline: diffusers.DiffusionPipeline,
-                  device: torch.device | str | None = 'cuda',
+                  device: torch.device | str | None = _util.default_device(),
                   prompt_weighter: _promptweighters.PromptWeighter = None,
                   **kwargs):
     """
@@ -1164,7 +1164,7 @@ class TorchPipelineCreationResult(PipelineCreationResult):
         self.parsed_transformer_uri = parsed_transformer_uri
 
     def call(self,
-             device: str | None = 'cuda',
+             device: str | None = _util.default_device(),
              prompt_weighter: _promptweighters.PromptWeighter | None = None,
              **kwargs) -> diffusers.utils.BaseOutput:
         """
@@ -1202,7 +1202,7 @@ def create_torch_diffusion_pipeline(model_path: str,
                                     scheduler: _types.OptionalString = None,
                                     safety_checker: bool = False,
                                     auth_token: _types.OptionalString = None,
-                                    device: str = 'cuda',
+                                    device: str = _util.default_device(),
                                     extra_modules: dict[str, typing.Any] | None = None,
                                     model_cpu_offload: bool = False,
                                     sequential_cpu_offload: bool = False,
@@ -1294,7 +1294,7 @@ class TorchPipelineFactory:
                  scheduler: _types.OptionalString = None,
                  safety_checker: bool = False,
                  auth_token: _types.OptionalString = None,
-                 device: str = 'cuda',
+                 device: str = _util.default_device(),
                  extra_modules: dict[str, typing.Any] | None = None,
                  model_cpu_offload: bool = False,
                  sequential_cpu_offload: bool = False,
@@ -1440,7 +1440,7 @@ def _create_torch_diffusion_pipeline(
         scheduler: _types.OptionalString = None,
         safety_checker: bool = False,
         auth_token: _types.OptionalString = None,
-        device: str = 'cuda',
+        device: str = _util.default_device(),
         extra_modules: dict[str, typing.Any] | None = None,
         model_cpu_offload: bool = False,
         sequential_cpu_offload: bool = False,

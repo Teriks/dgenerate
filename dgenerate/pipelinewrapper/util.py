@@ -21,7 +21,6 @@
 import re
 import torch
 import dgenerate.types as _types
-import platform
 
 
 class InvalidDeviceOrdinalException(Exception):
@@ -35,9 +34,29 @@ def default_device() -> str:
     """
     Return a string representing the systems default accelerator device.
 
-    :return: "cuda", "mps", etc.
+    Possible Values:
+
+        * ``"cuda"``
+        * ``"mps"``
+        * ``"xla"``
+        * ``"hip"``
+        * ``"vulkan"``
+        * ``"cpu"``
+
+    :return: ``"cuda"``, ``"mps"``, etc.
     """
-    return 'cuda' if platform.system() != 'Darwin' else 'mps'
+    if torch.cuda.is_available():
+        return 'cuda'
+    elif torch.backends.mps.is_available():
+        return 'mps'
+    elif hasattr(torch.backends, 'xla') and torch.backends.xla.is_available():
+        return 'xla'
+    elif hasattr(torch.backends, 'hip') and torch.backends.hip.is_available():
+        return 'hip'
+    elif torch.has_vulkan:
+        return 'vulkan'
+    else:
+        return 'cpu'
 
 
 def is_valid_device_string(device, raise_ordinal=True):
