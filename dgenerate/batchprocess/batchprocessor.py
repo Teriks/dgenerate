@@ -41,6 +41,9 @@ class _PatchedAstEval(asteval.Interpreter):
 
     def eval(self, expr, lineno=0, show_errors=True, raise_errors=False):
         """Evaluate a single statement."""
+
+        # fixes minor bug in asteval 1.0.4 affecting error messages
+
         self.lineno = lineno
         self.error = []
         self.start_time = time.time()
@@ -53,7 +56,7 @@ class _PatchedAstEval(asteval.Interpreter):
                     lerr = self.error[-1]
                     errmsg = lerr.get_error()[1]
                     if raise_errors:
-                        raise lerr.exc(errmsg) from exc  # HERE exc does not exist
+                        raise lerr.exc(errmsg) from exc
                 if show_errors:
                     print(errmsg, file=self.err_writer)
                 return None
@@ -66,7 +69,7 @@ class _PatchedAstEval(asteval.Interpreter):
             if len(self.error) > 0:
                 errmsg = self.error[-1].get_error()[1]
             if raise_errors:
-                raise self.error[-1].exc(errmsg) from exc  # HERE exc does not exist
+                raise self.error[-1].exc(errmsg) from exc
             if show_errors:
                 print(errmsg, file=self.err_writer)
         return None
