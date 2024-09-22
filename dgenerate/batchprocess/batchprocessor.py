@@ -33,6 +33,43 @@ import dgenerate.files as _files
 import dgenerate.messages as _messages
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
+import time
+import sys
+
+
+class _PatchedAstEval(asteval.Interpreter):
+
+    def eval(self, expr, lineno=0, show_errors=True, raise_errors=False):
+        """Evaluate a single statement."""
+        self.lineno = lineno
+        self.error = []
+        self.start_time = time.time()
+        if isinstance(expr, str):
+            try:
+                node = self.parse(expr)
+            except Exception as exc:
+                errmsg = sys.exc_info()[1]
+                if len(self.error) > 0:
+                    lerr = self.error[-1]
+                    errmsg = lerr.get_error()[1]
+                    if raise_errors:
+                        raise lerr.exc(errmsg) from exc  # HERE exc does not exist
+                if show_errors:
+                    print(errmsg, file=self.err_writer)
+                return None
+        else:
+            node = expr
+        try:
+            return self.run(node, expr=expr, lineno=lineno, with_raise=raise_errors)
+        except Exception as exc:
+            errmsg = sys.exc_info()[1]
+            if len(self.error) > 0:
+                errmsg = self.error[-1].get_error()[1]
+            if raise_errors:
+                raise self.error[-1].exc(errmsg) from exc  # HERE exc does not exist
+            if show_errors:
+                print(errmsg, file=self.err_writer)
+        return None
 
 
 class BatchProcessError(Exception):
@@ -511,7 +548,7 @@ class BatchProcessor:
         self.template_variables.pop(name)
 
     def _intepret_setp_value(self, value):
-        interpreter = asteval.Interpreter(
+        interpreter = _PatchedAstEval(
             minimal=True,
             with_listcomp=True,
             with_dictcomp=True,
@@ -530,7 +567,7 @@ class BatchProcessor:
                                     show_errors=False,
                                     raise_errors=True)
         except Exception as e:
-            raise BatchProcessError(f'\\setp eval error: {e}')
+            raise BatchProcessError(f'\\setp eval error: {str(e).strip()}')
 
     def _set_split(self, directive_args, line):
         name_part = directive_args[1]
