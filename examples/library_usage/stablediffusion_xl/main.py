@@ -10,7 +10,7 @@ from dgenerate import \
 device, _ = dgenerate.arguments.parse_device()
 
 if device is None:
-    device = 'cuda'
+    device = dgenerate.default_device()
 
 config = RenderLoopConfig()
 

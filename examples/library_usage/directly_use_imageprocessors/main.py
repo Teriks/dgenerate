@@ -7,7 +7,7 @@ from dgenerate.imageprocessors import ImageProcessorLoader
 device, _ = dgenerate.arguments.parse_device()
 
 if device is None:
-    device = 'cuda'
+    device = dgenerate.default_device()
 
 
 # Any image processor plugin implemented by dgenerate can be reused easily
