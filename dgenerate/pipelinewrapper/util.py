@@ -47,7 +47,7 @@ def default_device() -> str:
     """
     if torch.cuda.is_available():
         return 'cuda'
-    elif torch.backends.mps.is_available():
+    elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
         return 'mps'
     elif hasattr(torch.backends, 'xla') and torch.backends.xla.is_available():
         return 'xla'
@@ -64,6 +64,8 @@ def is_valid_device_string(device, raise_ordinal=True):
     Is a device string valid? including the device ordinal specified?
 
     Other than cuda, "mps" (MacOS metal performance shaders) is experimentally supported.
+
+    "xla", "hip", and "vulkan" are also recognized if available.
 
     :param device: device string, such as ``cpu``, or ``cuda``, or ``cuda:N``
     :param raise_ordinal: Raise :py:exc:`.InvalidDeviceOrdinalException` if
@@ -88,6 +90,14 @@ def is_valid_device_string(device, raise_ordinal=True):
 
     if device == 'mps' and hasattr(torch.backends, 'mps') \
             and torch.backends.mps.is_available():
+        return True
+    elif device == 'xla' and hasattr(torch.backends, 'xla') \
+            and torch.backends.xla.is_available():
+        return True
+    elif device == 'hip' and hasattr(torch.backends, 'hip') \
+            and torch.backends.hip.is_available():
+        return True
+    elif device == 'vulkan' and torch.has_vulkan:
         return True
 
     return False
