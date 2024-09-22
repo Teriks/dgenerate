@@ -567,7 +567,8 @@ class BatchProcessor:
                                     show_errors=False,
                                     raise_errors=True)
         except Exception as e:
-            raise BatchProcessError(f'\\setp eval error: {str(e).strip()}')
+            raise BatchProcessError(
+                f'\\setp eval error: {(chr(10)+"  "*4).join(str(e).strip().split(chr(10)))}')
 
     def _set_split(self, directive_args, line):
         name_part = directive_args[1]
