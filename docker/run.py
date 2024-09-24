@@ -65,25 +65,33 @@ while '-e' in args:
         sys.exit(1)
 
 dev_mode = False
+amd_mode = False
 
 while '--dev' in args:
     args.remove('--dev')
     dev_mode = True
 
+while '--amd' in args:
+    args.remove('--amd')
+    amd_mode = True
+
 if len(args) == 0:
     args = ['bash']
 
-install_script = 'docker/install.sh'
-if dev_mode:
-    install_script = 'docker/install_dev.sh'
+if amd_mode:
+    extra_index = "https://download.pytorch.org/whl/rocm6.1/"
+else:
+    extra_index = "https://download.pytorch.org/whl/cu124/"
 
 subprocess.run(['docker', 'image', 'build', '-t', f'teriks/dgenerate:{container_version}', '.'])
 subprocess.run(['docker', 'rm', '-f', 'dgenerate'])
 subprocess.run(['docker', 'run', *env_defs,
                 '--gpus', 'all', '--name', 'dgenerate',
+                '-e', f"DGENERATE_INSTALL_DEV={1 if dev_mode else 0}",
+                '-e', f"DGENERATE_INSTALL_INDEX={extra_index}",
                 '-v', f"{image_working_dir}:/opt/dgenerate",
                 '-v', f"{hf_cache_local}:/home/dgenerate/.cache/huggingface",
                 '-v', f"{dgenerate_cache_local}:/home/dgenerate/.cache/dgenerate",
                 '-v', f"{pip_cache_local}:/home/dgenerate/.cache/pip",
                 '-it', f'teriks/dgenerate:{container_version}',
-                'bash', '-c', f"source {install_script}; {' '.join(args)}"])
+                'bash', '-c', f"source docker/install.sh; {' '.join(args)}"])

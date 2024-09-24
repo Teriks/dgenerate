@@ -15,8 +15,10 @@ To run a command in a fresh environment use for example:
     python run.py -e CIVIT_AI_TOKEN=tokenhere -e HF_TOKEN=tokenhere "python3 run_tests.py --clean --examples --subprocess-only --skip-ncnn"
 
 
-You can also use the ``--dev`` option to ``run.py`` to indicate that you want a development install
+You can also use the ``--dev`` option of ``run.py`` to indicate that you want a development install
 from the current directory instead of building and then installing a wheel.
+
+To install the ROCm torch backend (AMD), use the ``--amd`` option of ``run.py``
 
 Take note that the initial working directory of the environment is the top level directory of the dgenerate project.
 
