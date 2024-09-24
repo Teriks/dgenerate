@@ -1767,7 +1767,9 @@ This is only supported on Linux, as torch does not distribute this backend for W
 I am not exactly sure how much of dgenerate can function with this backend, as I do
 not have the hardware to test it.
 
-Simply use: ``--extra-index-url https://download.pytorch.org/whl/rocm6.1/`` when installing via ``pip`` or ``pipx``.
+You need to first install ROCm support, follow: https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/quick-start.html
+
+Then simply use: ``--extra-index-url https://download.pytorch.org/whl/rocm6.1/`` when installing via ``pip`` or ``pipx``.
 
 Install Python 3.10+ (Debian / Ubuntu) and pipx
 -----------------------------------------------
