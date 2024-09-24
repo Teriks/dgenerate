@@ -61,8 +61,3 @@ build-backend = "poetry.core.masonry.api"
 name = "pytorch"
 url = "https://download.pytorch.org/whl/cu124/"
 priority = "explicit"
-
-[[tool.poetry.source]]
-name = "jax"
-url = "https://storage.googleapis.com/jax-releases/jax_cuda_releases.html"
-priority = "supplemental"
