@@ -1561,30 +1561,30 @@ Install dgenerate:
 .. code-block:: bash
 
     pipx install dgenerate ^
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu121/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu124/"
 
     # with NCNN upscaler support
 
     pipx install dgenerate[ncnn] ^
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu121/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu124/"
 
     # If you want a specific version
 
     pipx install dgenerate==4.2.0 ^
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu121/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu124/"
 
     # with NCNN upscaler support and a specific version
 
     pipx install dgenerate[ncnn]==4.2.0 ^
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu121/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu124/"
 
     # You can install without pipx into your own environment like so
 
-    pip install dgenerate==4.2.0 --extra-index-url https://download.pytorch.org/whl/cu121/
+    pip install dgenerate==4.2.0 --extra-index-url https://download.pytorch.org/whl/cu124/
 
     # Or with NCNN
 
-    pip install dgenerate[ncnn]==4.2.0 --extra-index-url https://download.pytorch.org/whl/cu121/
+    pip install dgenerate[ncnn]==4.2.0 --extra-index-url https://download.pytorch.org/whl/cu124/
 
 
 It is recommended to install dgenerate with pipx if you are just intending
@@ -1601,11 +1601,11 @@ a cloned repository like this:
 
     # Install with pip into the environment
 
-    pip install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu121/
+    pip install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu124/
 
     # Install with pip into the environment, include NCNN
 
-    pip install --editable .[dev, ncnn] --extra-index-url https://download.pytorch.org/whl/cu121/
+    pip install --editable .[dev, ncnn] --extra-index-url https://download.pytorch.org/whl/cu124/
 
 
 Run ``dgenerate`` to generate images:
@@ -1691,7 +1691,7 @@ Install dgenerate
     # install with just support for torch
 
     pipx install dgenerate \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu121/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu124/"
 
     # With NCNN upscaler support
 
@@ -1703,20 +1703,20 @@ Install dgenerate
     # to get Vulkan driver support
 
     pipx install dgenerate[ncnn] \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu121/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu124/"
 
     # If you want a specific version
 
     pipx install dgenerate==4.2.0 \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu121/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu124/"
 
     # You can install without pipx into your own environment like so
 
-    pip3 install dgenerate==4.2.0 --extra-index-url https://download.pytorch.org/whl/cu121/
+    pip3 install dgenerate==4.2.0 --extra-index-url https://download.pytorch.org/whl/cu124/
 
     # Or with NCNN
 
-    pip3 install dgenerate[ncnn]==4.2.0 --extra-index-url https://download.pytorch.org/whl/cu121/
+    pip3 install dgenerate[ncnn]==4.2.0 --extra-index-url https://download.pytorch.org/whl/cu124/
 
 
 It is recommended to install dgenerate with pipx if you are just intending
@@ -1735,7 +1735,7 @@ a cloned repository like this:
 
     # Install with pip into the environment
 
-    pip3 install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu121/
+    pip3 install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu124/
 
 
 Run ``dgenerate`` to generate images:
