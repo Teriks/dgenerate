@@ -50,6 +50,7 @@ class _PatchedAstEval(asteval.Interpreter):
 
         err = asteval.astutils.ExceptionHolder(node, exc=exc, msg=msg, expr=self.expr, lineno=lineno)
         self._interrupt = ast.Raise()
+
         self.error.append(err)
         if self.error_msg is None:
             self.error_msg = msg
@@ -67,11 +68,20 @@ class _PatchedAstEval(asteval.Interpreter):
             exc = Exception
         raise exc(self.error_msg)
 
+    def _remove_duplicate_errors(self):
+        """remove duplicate exceptions"""
+        error = [self.error[0]]
+        for err in self.error[1:]:
+            lerr = error[-1]
+            if err.exc != lerr.exc or err.expr != lerr.expr or err.msg != lerr.msg:
+                error.append(err)
+        self.error = error
+
     def eval(self, expr, lineno=0, show_errors=True, raise_errors=False):
         """Evaluate a single statement."""
-
         self.lineno = lineno
         self.error = []
+        self.error_msg = None
         self.start_time = time.time()
         if isinstance(expr, str):
             try:
@@ -97,6 +107,7 @@ class _PatchedAstEval(asteval.Interpreter):
                     errmsg = self.error[-1].get_error()[1]
                 print(errmsg, file=self.err_writer)
         if raise_errors and len(self.error) > 0:
+            self._remove_duplicate_errors()
             err = self.error[-1]
             raise err.exc(err.get_error()[1])
         return None
