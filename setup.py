@@ -238,11 +238,6 @@ if __name__ != 'setup_as_library':
                                   get_poetry_pyproject_as_pip_requires(
                                       exclude=exclude.union({'python'})).items()]
 
-    if 'READTHEDOCS' in os.environ or dgenerate_platform.lower() == 'darwin':
-        for idx, requires in enumerate(pyproject_requirements):
-            # no cuda
-            pyproject_requirements[idx] = requires.replace('+cu121', '')
-
     setup(name='dgenerate',
           python_requires=python_requirement,
           author='Teriks',
