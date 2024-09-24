@@ -1754,7 +1754,64 @@ Run ``dgenerate`` to generate images:
     --output-path output \
     --inference-steps 40 \
     --guidance-scales 10
-    
+
+
+Linux with ROCm (AMD Cards)
+===========================
+
+On Linux you can use the ROCm torch backend with AMD cards.
+
+This is only supported on Linux, as torch does not distribute this backend for Windows.
+
+I am not exactly sure how much of dgenerate can function with this backend, as I do
+not have the hardware to test it.
+
+Simply use: ``--extra-index-url https://download.pytorch.org/whl/rocm6.1/`` when installing via ``pip`` or ``pipx``.
+
+Install Python 3.10+ (Debian / Ubuntu) and pipx
+-----------------------------------------------
+
+.. code-block:: bash
+
+    #!/usr/bin/env bash
+
+    sudo apt install python3.10 python3-pip pipx python3.10-venv python3-wheel
+    pipx ensurepath
+
+    source ~/.bashrc
+
+
+Install dgenerate
+-----------------
+
+.. code-block:: bash
+
+    #!/usr/bin/env bash
+
+    # install with just support for torch
+
+    pipx install dgenerate \
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm6.1/"
+
+    # With NCNN upscaler support
+
+    pipx install dgenerate[ncnn] \
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm6.1/"
+
+    # If you want a specific version
+
+    pipx install dgenerate==4.2.0 \
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm6.1/"
+
+    # You can install without pipx into your own environment like so
+
+    pip3 install dgenerate==4.2.0 --extra-index-url https://download.pytorch.org/whl/rocm6.1/
+
+    # Or with NCNN
+
+    pip3 install dgenerate[ncnn]==4.2.0 --extra-index-url https://download.pytorch.org/whl/rocm6.1/
+
+
     
 MacOS Install (Apple Silicon Only)
 ==================================
