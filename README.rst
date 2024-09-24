@@ -68,6 +68,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v4.2.0/>`_.
 * How to install
     * `Windows Install`_
     * `Linux or WSL Install`_
+    * `Linux with ROCm (AMD Cards)`_
     * `MacOS Install (Apple Silicon Only)`_
     * `Google Colab Install`_
 
