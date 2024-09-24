@@ -1246,9 +1246,7 @@ def main(args: collections.abc.Sequence[str]):
     if args:
         try:
             app.load_file(args[0])
-        except FileNotFoundError:
-            # the original check could 'technically' race,
-            # catch here, with uglier console output
+        except (FileNotFoundError, IsADirectoryError):
             print(f'File not found: {args[0]}',
                   file=sys.stderr)
             app.destroy()
