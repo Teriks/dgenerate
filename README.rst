@@ -1793,8 +1793,8 @@ You may need to export some variation of these environmental variables before at
 
 .. code-block:: bash
 
-    export PYTORCH_ROCM_ARCH="gfx1031"
-    export HSA_OVERRIDE_GFX_VERSION=10.3.1
+    export PYTORCH_ROCM_ARCH="gfx1030"
+    export HSA_OVERRIDE_GFX_VERSION=10.3.0
     export HIP_VISIBLE_DEVICES=0
     export ROCM_PATH=/opt/rocm
 
