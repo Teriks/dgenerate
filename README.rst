@@ -1767,9 +1767,11 @@ This is only supported on Linux, as torch does not distribute this backend for W
 I am not exactly sure how much of dgenerate can function with this backend, as I do
 not have the hardware to test it.
 
+When specifying any ``--device`` value use ``cuda``, ``cuda:1``, etc. as you would for Nvidia GPUs.
+
 You need to first install ROCm support, follow: https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/quick-start.html
 
-Then simply use: ``--extra-index-url https://download.pytorch.org/whl/rocm6.1/`` when installing via ``pip`` or ``pipx``.
+Then use: ``--extra-index-url https://download.pytorch.org/whl/rocm6.1/`` when installing via ``pip`` or ``pipx``.
 
 Install Python 3.10+ (Debian / Ubuntu) and pipx
 -----------------------------------------------
@@ -1782,6 +1784,19 @@ Install Python 3.10+ (Debian / Ubuntu) and pipx
     pipx ensurepath
 
     source ~/.bashrc
+
+
+Setup Environment
+-----------------
+
+You may need to export some variation of these environmental variables before attempting to use dgenerate.
+
+.. code-block:: bash
+
+    export PYTORCH_ROCM_ARCH="gfx1031"
+    export HSA_OVERRIDE_GFX_VERSION=10.3.1
+    export HIP_VISIBLE_DEVICES=0
+    export ROCM_PATH=/opt/rocm
 
 
 Install dgenerate
