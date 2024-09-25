@@ -1676,7 +1676,7 @@ Install Python 3.10+ (Debian / Ubuntu) and pipx
 
     #!/usr/bin/env bash
 
-    sudo apt install python3.10 python3-pip pipx python3.10-venv python3-wheel
+    sudo apt install python3 python3-pip pipx python3-venv python3-wheel
     pipx ensurepath
 
     source ~/.bashrc
@@ -1778,7 +1778,7 @@ Install Python 3.10+ (Debian / Ubuntu) and pipx
 
     #!/usr/bin/env bash
 
-    sudo apt install python3.10 python3-pip pipx python3.10-venv python3-wheel
+    sudo apt install python3 python3-pip pipx python3-venv python3-wheel
     pipx ensurepath
 
     source ~/.bashrc
