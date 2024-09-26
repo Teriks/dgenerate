@@ -1790,8 +1790,8 @@ Setup Environment
 
 You may need to export the environmental variable ``PYTORCH_ROCM_ARCH`` before attempting to use dgenerate.
 
-This value will depend on the model of your card, you may wish to add them to ``~/.bashrc`` so that they
-persist in your shell environment.
+This value will depend on the model of your card, you may wish to add this and any other necessary
+environment settings to ``~/.bashrc`` so that they persist in your shell environment.
 
 For details, see: https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/3rd-party/pytorch-install.html
 
