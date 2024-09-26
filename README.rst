@@ -1788,7 +1788,7 @@ Install Python 3.10+ (Debian / Ubuntu) and pipx
 Setup Environment
 -----------------
 
-You may need to the environmental variable ``PYTORCH_ROCM_ARCH`` before attempting to use dgenerate.
+You may need to export the environmental variable ``PYTORCH_ROCM_ARCH`` before attempting to use dgenerate.
 
 This value will depend on the model of your card, you may wish to add them to ``~/.bashrc`` so that they
 persist in your shell environment.
