@@ -1799,6 +1799,8 @@ Generally, this information can be obtained by running the command: ``rocminfo``
 
 .. code-block:: bash
 
+    # example
+
     export PYTORCH_ROCM_ARCH="gfx1030"
 
 
