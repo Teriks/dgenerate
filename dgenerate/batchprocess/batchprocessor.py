@@ -595,6 +595,7 @@ class BatchProcessor:
             with_dictcomp=True,
             with_setcomp=True,
             with_assign=False,
+            with_ifexp=True,
             symtable=self.template_variables.copy())
 
         if 'print' in interpreter.symtable:
