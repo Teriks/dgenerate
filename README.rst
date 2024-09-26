@@ -1760,12 +1760,11 @@ Run ``dgenerate`` to generate images:
 Linux with ROCm (AMD Cards)
 ===========================
 
-On Linux you can use the ROCm torch backend with AMD cards.
+On Linux you can use the ROCm torch backend with AMD cards. This is only supported on Linux, as
+torch does not distribute this backend for Windows.
 
-This is only supported on Linux, as torch does not distribute this backend for Windows.
-
-I am not exactly sure how much of dgenerate can function with this backend, as I do
-not have the hardware to test it.
+ROCm has been minimally verified to work with dgenerate using a rented
+MI300X AMD GPU instance / space, and has not been tested extensively.
 
 When specifying any ``--device`` value use ``cuda``, ``cuda:1``, etc. as you would for Nvidia GPUs.
 
@@ -1789,17 +1788,18 @@ Install Python 3.10+ (Debian / Ubuntu) and pipx
 Setup Environment
 -----------------
 
-You may need to export some variation of these environmental variables before attempting to use dgenerate.
+You may need to the environmental variable ``PYTORCH_ROCM_ARCH`` before attempting to use dgenerate.
 
-These values will depend on the model of your card, you may wish to add them to ``~/.bashrc`` so that they
+This value will depend on the model of your card, you may wish to add them to ``~/.bashrc`` so that they
 persist in your shell environment.
 
 For details, see: https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/3rd-party/pytorch-install.html
 
+Generally, this information can be obtained by running the command: ``rocminfo``
+
 .. code-block:: bash
 
     export PYTORCH_ROCM_ARCH="gfx1030"
-    export HSA_OVERRIDE_GFX_VERSION=10.3.0
 
 
 Install dgenerate
