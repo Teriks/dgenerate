@@ -197,6 +197,7 @@ def get_torch_devices():
             # Detect ROCm devices using rocm-smi
             elif shutil.which('rocm-smi') is not None:
                 result = subprocess.run(['rocm-smi', '-l'],
+                                        stdin=None,
                                         stdout=subprocess.PIPE,
                                         stderr=subprocess.STDOUT,
                                         **extra_kwargs)
