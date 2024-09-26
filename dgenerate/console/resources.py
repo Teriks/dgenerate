@@ -25,6 +25,7 @@ import json
 import os
 import platform
 import re
+import shutil
 import subprocess
 import tkinter
 import tkinter as tk
@@ -169,8 +170,7 @@ def get_torch_vae_types():
 
 def get_torch_devices():
     if platform.system() == 'Darwin':
-        # not sure how to detect if mps is available
-        # just assume it is
+        # Assume MPS is available without importing torch
         return ['mps', 'cpu']
     else:
         try:
@@ -178,16 +178,42 @@ def get_torch_devices():
             if platform.system() == 'Windows':
                 extra_kwargs = {'creationflags': subprocess.CREATE_NO_WINDOW}
 
-            result = subprocess.run(['nvidia-smi',
-                                     '--query-gpu=index',
-                                     '--format=csv,noheader'],
-                                    stdin=None,
-                                    stdout=subprocess.PIPE,
-                                    stderr=subprocess.STDOUT,
-                                    **extra_kwargs)
-            devices = result.stdout.decode().strip().split('\n')
-            return ['cuda:' + device for device in devices] + ['cpu']
-        except FileNotFoundError:
+            # Detect CUDA devices using nvidia-smi
+            if shutil.which('nvidia-smi') is not None:
+                result = subprocess.run(['nvidia-smi',
+                                         '--query-gpu=index',
+                                         '--format=csv,noheader'],
+                                        stdin=None,
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.STDOUT,
+                                        **extra_kwargs)
+
+                if result.returncode != 0:
+                    return ['cpu']
+
+                devices = result.stdout.decode().strip().split('\n')
+                return ['cuda:' + device for device in devices] + ['cpu']
+
+            # Detect ROCm devices using rocm-smi
+            elif shutil.which('rocm-smi') is not None:
+                result = subprocess.run(['rocm-smi', '-l'],
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.STDOUT,
+                                        **extra_kwargs)
+
+                if result.returncode != 0:
+                    return ['cpu']
+
+                gpu_count = sum(1 for line in result.stdout.decode().split('\n')
+                                if line.strip().startswith("GPU"))
+
+                if gpu_count > 0:
+                    devices = [str(i) for i in range(gpu_count)]
+                    return ['cuda:' + device for device in devices] + ['cpu']
+
+            # No GPUs found, fallback to CPU
+            return ['cpu']
+        except:
             return ['cpu']
 
 
