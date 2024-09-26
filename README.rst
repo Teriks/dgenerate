@@ -1791,12 +1791,14 @@ Setup Environment
 
 You may need to export some variation of these environmental variables before attempting to use dgenerate.
 
+These values will depend on the model of your card.
+
+For details, see: https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/3rd-party/pytorch-install.html
+
 .. code-block:: bash
 
     export PYTORCH_ROCM_ARCH="gfx1030"
     export HSA_OVERRIDE_GFX_VERSION=10.3.0
-    export HIP_VISIBLE_DEVICES=0
-    export ROCM_PATH=/opt/rocm
 
 
 Install dgenerate
