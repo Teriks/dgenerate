@@ -18,7 +18,7 @@ To run a command in a fresh environment use for example:
 You can also use the ``--dev`` option of ``run.py`` to indicate that you want a development install
 from the current directory instead of building and then installing a wheel.
 
-To install the ROCm torch backend (AMD), use the ``--amd`` option of ``run.py``
+To install and use the ROCm torch backend (AMD Cards), use the ``--amd`` option of ``run.py``. This only works from a linux host.
 
 Take note that the initial working directory of the environment is the top level directory of the dgenerate project.
 

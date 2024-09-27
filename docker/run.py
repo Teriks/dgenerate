@@ -22,6 +22,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import os
+import platform
 import re
 import subprocess
 import sys
@@ -80,18 +81,30 @@ if len(args) == 0:
 
 if amd_mode:
     extra_index = "https://download.pytorch.org/whl/rocm6.1/"
+    docker_file = 'dockerfile-rocm'
+    image = 'dgenerate-rocm'
+
+    # just need to be able to test this build process
+    # on windows even though GPU passthrough does
+    # not function
+    gpu_opts = ['--device', '/dev/kfd', '--device', '/dev/dri', '--security-opt', 'seccomp=unconfined'] \
+        if platform.system() != 'Windows' else []
 else:
     extra_index = "https://download.pytorch.org/whl/cu124/"
+    docker_file = 'dockerfile-cuda'
+    image = 'dgenerate-cuda'
+    gpu_opts = ['--gpus', 'all']
 
-subprocess.run(['docker', 'image', 'build', '-t', f'teriks/dgenerate:{container_version}', '.'])
-subprocess.run(['docker', 'rm', '-f', 'dgenerate'])
+subprocess.run(['docker', 'image', 'build', '-f', docker_file, '-t', f'teriks/{image}:{container_version}', '.'])
+
+subprocess.run(['docker', 'rm', '-f', image])
 subprocess.run(['docker', 'run', *env_defs,
-                '--gpus', 'all', '--name', 'dgenerate',
+                *gpu_opts, '--name', image,
                 '-e', f"DGENERATE_INSTALL_DEV={1 if dev_mode else 0}",
                 '-e', f"DGENERATE_INSTALL_INDEX={extra_index}",
                 '-v', f"{image_working_dir}:/opt/dgenerate",
                 '-v', f"{hf_cache_local}:/home/dgenerate/.cache/huggingface",
                 '-v', f"{dgenerate_cache_local}:/home/dgenerate/.cache/dgenerate",
                 '-v', f"{pip_cache_local}:/home/dgenerate/.cache/pip",
-                '-it', f'teriks/dgenerate:{container_version}',
+                '-it', f'teriks/{image}:{container_version}',
                 'bash', '-c', f"source docker/install.sh; {' '.join(args)}"])
