@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 4.2.0
+#! dgenerate 4.2.1
 
 diffusers/stable-diffusion-xl-1.0-inpainting-0.1 --model-type torch-sdxl
 --variant fp16 --dtype float16

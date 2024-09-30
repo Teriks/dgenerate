@@ -33,84 +33,6 @@ import dgenerate.files as _files
 import dgenerate.messages as _messages
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
-import time
-import sys
-import ast
-
-
-class _PatchedAstEval(asteval.Interpreter):
-
-    # fixes minor bug in asteval 1.0.4 affecting error messages
-
-    def raise_exception(self, node, exc=None, msg='', expr=None, lineno=None):
-        """Add an exception."""
-        if expr is not None:
-            self.expr = expr
-        msg = str(msg)
-
-        err = asteval.astutils.ExceptionHolder(node, exc=exc, msg=msg, expr=self.expr, lineno=lineno)
-        self._interrupt = ast.Raise()
-
-        self.error.append(err)
-        if self.error_msg is None:
-            self.error_msg = msg
-        elif len(msg) > 0:
-            pass
-            # if err.exc is not None:
-            #     self.error_msg = f"{err.exc.__name__}: {msg}"
-        if exc is None:
-            exc = self.error[-1].exc
-            if exc is None and len(self.error) > 0:
-                while exc is None and len(self.error) > 0:
-                    err = self.error.pop()
-                    exc = err.exc
-        if exc is None:
-            exc = Exception
-        raise exc(self.error_msg)
-
-    def _remove_duplicate_errors(self):
-        """remove duplicate exceptions"""
-        error = [self.error[0]]
-        for err in self.error[1:]:
-            lerr = error[-1]
-            if err.exc != lerr.exc or err.expr != lerr.expr or err.msg != lerr.msg:
-                error.append(err)
-        self.error = error
-
-    def eval(self, expr, lineno=0, show_errors=True, raise_errors=False):
-        """Evaluate a single statement."""
-        self.lineno = lineno
-        self.error = []
-        self.error_msg = None
-        self.start_time = time.time()
-        if isinstance(expr, str):
-            try:
-                node = self.parse(expr)
-            except Exception:
-                errmsg = sys.exc_info()[1]
-                if len(self.error) > 0:
-                    lerr = self.error[-1]
-                    errmsg = lerr.get_error()[1]
-                    if raise_errors:
-                        raise lerr.exc(errmsg)
-                if show_errors:
-                    print(errmsg, file=self.err_writer)
-                return None
-        else:
-            node = expr
-        try:
-            return self.run(node, expr=expr, lineno=lineno, with_raise=raise_errors)
-        except Exception:
-            if show_errors and not raise_errors:
-                errmsg = sys.exc_info()[1]
-                if len(self.error) > 0:
-                    errmsg = self.error[-1].get_error()[1]
-                print(errmsg, file=self.err_writer)
-        if raise_errors and len(self.error) > 0:
-            self._remove_duplicate_errors()
-            err = self.error[-1]
-            raise err.exc(err.get_error()[1])
-        return None
 
 
 class BatchProcessError(Exception):
@@ -589,7 +511,7 @@ class BatchProcessor:
         self.template_variables.pop(name)
 
     def _intepret_setp_value(self, value):
-        interpreter = _PatchedAstEval(
+        interpreter = asteval.Interpreter(
             minimal=True,
             with_listcomp=True,
             with_dictcomp=True,
