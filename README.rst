@@ -2978,8 +2978,8 @@ from safetensors files or huggingface blob links if desired.
 
 In addition to the arguments that ``--unet`` supports, ``--transformer`` supports the ``quantize``
 URI argument to enable weights quantization via the `optimum-quanto library <optimum-quanto_library_1_>`_, 
-allowing for lower GPU memory usage. ``quantize`` may be passed the values "qint2", "qint4", "qint8", 
-"qfloat8_e4m3fn", "qfloat8_e5m2", or "qfloat8", to indicate the quantization data type.
+allowing for lower GPU memory usage. ``quantize`` may be passed the values ``qint2``, ``qint4``, ``qint8``,
+``qfloat8_e4m3fn``, ``qfloat8_e5m2``, or ``qfloat8``, to indicate the quantization data type.
 
 SD3 Example:
 
