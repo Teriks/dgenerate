@@ -22,7 +22,6 @@ import os.path
 import typing
 
 import PIL.Image
-import PIL.Image
 import numpy
 import psutil
 import tqdm.auto

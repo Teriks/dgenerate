@@ -22,7 +22,6 @@ import os
 import typing
 
 import PIL.Image
-import PIL.Image
 import spandrel
 import spandrel_extra_arches
 import torch
