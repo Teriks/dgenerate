@@ -1080,9 +1080,6 @@ class RenderLoopConfig(_types.SetFromMixin):
             if self.textual_inversion_uris is not None:
                 raise RenderLoopConfigError(
                     f'Flux model types do not support {a_namer("textual_inversion_uris")}.')
-            if self.controlnet_uris is not None:
-                raise RenderLoopConfigError(
-                    f'Flux model types do not support {a_namer("controlnet_uris")}.')
             if self.t2i_adapter_uris is not None:
                 raise RenderLoopConfigError(
                     f'Flux model types do not support {a_namer("t2i_adapter_uris")}.')
@@ -1221,10 +1218,6 @@ class RenderLoopConfig(_types.SetFromMixin):
         # ===
 
         if self.image_seeds:
-            if _pipelinewrapper.model_type_is_flux(self.model_type):
-                raise RenderLoopConfigError(
-                    f'{a_namer("image_seeds")} cannot be used with Flux models, flux models '
-                    f'currently do not support any type of image input.')
 
             no_seed_strength = (_pipelinewrapper.model_type_is_upscaler(self.model_type) or
                                 _pipelinewrapper.model_type_is_pix2pix(self.model_type) or

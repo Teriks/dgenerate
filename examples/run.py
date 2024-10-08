@@ -255,6 +255,15 @@ def run_config(config, injected_args, extra_args, debug_torch, use_subprocess=Fa
                         except _batchprocess.BatchProcessError as e:
                             log(e)
                             sys.exit(1)
+                    else:
+                        log(
+                            'Cannot run example in example runner process, '
+                            'dgenerate library installation not found, '
+                            'running in subprocess.')
+                        result = subprocess.run(
+                            ["dgenerate", '--file', config] + injected_args + extra_args, cwd=dirname)
+                        if result is not None:
+                            check_return_code([config], result.returncode)
                 except KeyboardInterrupt:
                     sys.exit(1)
             elif ext == '.py':

@@ -141,8 +141,10 @@ class ControlNetUri:
              local_files_only: bool = False,
              sequential_cpu_offload_member: bool = False,
              model_cpu_offload_member: bool = False,
-             model_class: type[diffusers.ControlNetModel] | type[
-                 diffusers.SD3ControlNetModel] = diffusers.ControlNetModel) -> \
+             model_class:
+                type[diffusers.ControlNetModel] |
+                type[diffusers.SD3ControlNetModel] |
+                type[diffusers.FluxControlNetModel] = diffusers.ControlNetModel) -> \
             diffusers.ControlNetModel | diffusers.SD3ControlNetModel:
         """
         Load a :py:class:`diffusers.ControlNetModel` from this URI.
@@ -169,7 +171,7 @@ class ControlNetUri:
 
         :raises ModelNotFoundError: If the model could not be found.
 
-        :return: :py:class:`diffusers.ControlNetModel` or :py:class:`diffusers.SD3ControlNetModel`
+        :return: :py:class:`diffusers.ControlNetModel`, :py:class:`diffusers.SD3ControlNetModel`, or :py:class:`diffusers.FluxControlNetModel`
         """
         try:
             return self._load(dtype_fallback,
@@ -198,12 +200,23 @@ class ControlNetUri:
               local_files_only: bool = False,
               sequential_cpu_offload_member: bool = False,
               model_cpu_offload_member: bool = False,
-              model_class: type[diffusers.ControlNetModel] | type[
-                  diffusers.SD3ControlNetModel] = diffusers.ControlNetModel) -> diffusers.ControlNetModel | diffusers.SD3ControlNetModel:
+              model_class:
+                type[diffusers.ControlNetModel] |
+                type[diffusers.SD3ControlNetModel] |
+                type[diffusers.FluxControlNetModel] = diffusers.ControlNetModel) \
+            -> diffusers.ControlNetModel | diffusers.SD3ControlNetModel:
 
         if sequential_cpu_offload_member and model_cpu_offload_member:
             # these are used for cache differentiation only
             raise ValueError('sequential_cpu_offload_member and model_cpu_offload_member cannot both be True.')
+
+        if model_class is diffusers.FluxControlNetModel:
+            if self.start != 0.0:
+                raise ValueError(
+                    f'The "start" argument of ControlNet "{self.model}" must be 0.0 for Flux.')
+            if self.end != 1.0:
+                raise ValueError(
+                    f'The "end" argument of ControlNet "{self.model}" must be 1.0 for Flux.')
 
         model_path = _hfutil.download_non_hf_model(self.model)
 

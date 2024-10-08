@@ -1,0 +1,14 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 4.2.1
+
+black-forest-labs/FLUX.1-schnell
+--model-type torch-flux {{ auth_token }}
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 4
+--guidance-scales 0
+--image-seeds "../../media/horse1.jpg;../../media/horse1-mask.jpg"
+--image-seed-strengths 0.9
+--seeds 39877139643371
+--output-path basic
+--prompts "Horse standing on the surface of mars, real, photo, high resolution"

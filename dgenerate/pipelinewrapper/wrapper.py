@@ -403,11 +403,6 @@ class DiffusionPipelineWrapper:
                     'Textual Inversions not supported for Flux.'
                 )
 
-            if controlnet_uris:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'ControlNets not supported for Flux.'
-                )
-
             if t2i_adapter_uris:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'T2IAdapters not supported for Flux.'
@@ -1381,6 +1376,8 @@ class DiffusionPipelineWrapper:
                 if _enums.model_type_is_sd3(self._model_type):
                     # Handle SD3 model specifics for control images
                     args['control_image'] = self._sd3_force_control_to_a16(args, control_images, user_args)
+                elif _enums.model_type_is_flux(self._model_type):
+                    args['control_image'] = control_images
                 else:
                     args['image'] = control_images
             elif self._pipeline_type in {_enums.PipelineType.IMG2IMG, _enums.PipelineType.INPAINT}:
@@ -1816,6 +1813,10 @@ class DiffusionPipelineWrapper:
         pipeline_args['generator'] = \
             torch.Generator(device=self._device).manual_seed(
                 _types.default(user_args.seed, _constants.DEFAULT_SEED))
+
+        if hasattr(self._pipeline, 'controlnet'):
+            pipeline_args['controlnet_conditioning_scale'] = \
+                self._get_controlnet_conditioning_scale()
 
         return PipelineWrapperResult(_pipelines.call_pipeline(
             pipeline=self._pipeline,
