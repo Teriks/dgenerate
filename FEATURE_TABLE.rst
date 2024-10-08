@@ -165,11 +165,11 @@ Diffusion Model Feature Support Table
 
    * - ``torch-flux``
      - ✅
-     - ❌
-     - ❌
+     - ✅
+     - ✅
      - ✅
      - ❌
-     - ❌
+     - ✅
      - ❌
      - ❌
      - ✅
