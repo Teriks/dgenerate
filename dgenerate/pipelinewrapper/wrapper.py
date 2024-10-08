@@ -1808,7 +1808,19 @@ class DiffusionPipelineWrapper:
                 'Flux is ignoring the provided second negative prompt as it '
                 'does not support negative prompting.', level=_messages.WARNING)
 
-        pipeline_args['num_images_per_prompt'] = _types.default(user_args.batch_size, 1)
+        batch_size = _types.default(user_args.batch_size, 1)
+
+        if user_args.images:
+            if batch_size % len(user_args.images) != 0:
+                batch_size = len(user_args.images)
+                if user_args.batch_size is not None:
+                    # only warn if the user specified a value
+                    _messages.log(f'Setting --batch-size to {batch_size} because '
+                                  f'given batch size did not divide evenly with the '
+                                  f'provided number of input images.',
+                                  level=_messages.WARNING)
+
+        pipeline_args['num_images_per_prompt'] = batch_size
 
         pipeline_args['generator'] = \
             torch.Generator(device=self._device).manual_seed(
