@@ -1467,9 +1467,6 @@ def _create_torch_diffusion_pipeline(
 
     # Flux model restrictions
     if _enums.model_type_is_flux(model_type):
-        if controlnet_uris:
-            raise UnsupportedPipelineConfigError(
-                'Flux --model-type values are not compatible with --control-nets.')
         if t2i_adapter_uris:
             raise UnsupportedPipelineConfigError(
                 'Flux --model-type values are not compatible with --t2i-adapters.')
@@ -1633,11 +1630,10 @@ def _create_torch_diffusion_pipeline(
             elif model_type == _enums.ModelType.TORCH_S_CASCADE_DECODER:
                 pipeline_class = diffusers.StableCascadeDecoderPipeline
             elif model_type == _enums.ModelType.TORCH_FLUX:
-                pipeline_class = type(
-                    'FluxPipeline',
-                    (diffusers.loaders.FromSingleFileMixin, diffusers.FluxPipeline),
-                    {},
-                )
+                if controlnet_uris:
+                    pipeline_class = diffusers.FluxControlNetPipeline
+                else:
+                    pipeline_class = diffusers.FluxPipeline
             elif model_type == _enums.ModelType.TORCH_SD3:
                 pipeline_class = (
                     diffusers.StableDiffusion3Pipeline
@@ -1694,8 +1690,10 @@ def _create_torch_diffusion_pipeline(
                 raise UnsupportedPipelineConfigError(
                     'Stable Cascade decoder models do not support img2img.')
             elif model_type == _enums.ModelType.TORCH_FLUX:
-                raise UnsupportedPipelineConfigError(
-                    'Flux model types do not support img2img.')
+                if controlnet_uris:
+                    pipeline_class = diffusers.FluxControlNetImg2ImgPipeline
+                else:
+                    pipeline_class = diffusers.FluxImg2ImgPipeline
             elif model_type == _enums.ModelType.TORCH_SD3:
                 if controlnet_uris:
                     raise UnsupportedPipelineConfigError(
@@ -1727,14 +1725,16 @@ def _create_torch_diffusion_pipeline(
             if _enums.model_type_is_s_cascade(model_type):
                 raise UnsupportedPipelineConfigError(
                     'Stable Cascade model types do not support inpainting.')
-            if model_type == _enums.ModelType.TORCH_FLUX:
-                raise UnsupportedPipelineConfigError(
-                    'Flux model types do not support inpainting.')
             if _enums.model_type_is_upscaler(model_type):
                 raise UnsupportedPipelineConfigError(
                     'Stable Diffusion upscaler model types do not support inpainting.')
 
-            if model_type == _enums.ModelType.TORCH_IF:
+            if model_type == _enums.ModelType.TORCH_FLUX:
+                if controlnet_uris:
+                    pipeline_class = diffusers.FluxControlNetInpaintPipeline
+                else:
+                    pipeline_class = diffusers.FluxInpaintPipeline
+            elif model_type == _enums.ModelType.TORCH_IF:
                 pipeline_class = diffusers.IFInpaintingPipeline
             elif model_type == _enums.ModelType.TORCH_IFS:
                 pipeline_class = diffusers.IFInpaintingSuperResolutionPipeline
@@ -2011,8 +2011,13 @@ def _create_torch_diffusion_pipeline(
     if controlnet_uris and not controlnet_override:
 
         controlnets = None
-        controlnet_model_class = diffusers.ControlNetModel if not \
-            _enums.model_type_is_sd3(model_type) else diffusers.SD3ControlNetModel
+
+        if _enums.model_type_is_flux(model_type):
+            controlnet_model_class = diffusers.FluxControlNetModel
+        elif _enums.model_type_is_sd3(model_type):
+            controlnet_model_class = diffusers.SD3ControlNetModel
+        else:
+            controlnet_model_class = diffusers.ControlNetModel
 
         for controlnet_uri in controlnet_uris:
             parsed_controlnet_uri = _uris.ControlNetUri.parse(controlnet_uri)
@@ -2039,9 +2044,12 @@ def _create_torch_diffusion_pipeline(
             else:
                 controlnets = new_net
 
-        if _enums.model_type_is_sd3(model_type) and isinstance(controlnets, list):
+        if isinstance(controlnets, list):
             # not handled internally for whatever reason like the other pipelines
-            creation_kwargs['controlnet'] = diffusers.SD3MultiControlNetModel(controlnets)
+            if _enums.model_type_is_sd3(model_type):
+                creation_kwargs['controlnet'] = diffusers.SD3MultiControlNetModel(controlnets)
+            elif _enums.model_type_is_flux(model_type):
+                creation_kwargs['controlnet'] = diffusers.FluxMultiControlNetModel(controlnets)
         else:
             creation_kwargs['controlnet'] = controlnets
 
