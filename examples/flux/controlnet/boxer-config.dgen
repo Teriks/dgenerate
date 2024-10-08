@@ -1,0 +1,24 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 4.2.1
+
+# There is no easily usable pose controlnet yet, so lets try depth maps
+
+\setp auth_token "$HF_TOKEN"
+
+\set auth_token {{ '--auth-token ' + quote(auth_token) if auth_token else '' }}
+
+black-forest-labs/FLUX.1-schnell
+--model-type torch-flux {{ auth_token }}
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 4
+--guidance-scales 0
+--output-path boxer
+--gen-seeds 2
+--output-size 1024
+--vae-tiling
+--vae-slicing
+--prompts "A boxer throwing a punch in the ring"
+--control-nets "jasperai/Flux.1-dev-Controlnet-Depth;scale=1.0"
+--image-seeds "../../media/man-fighting-pose.jpg"
+--control-image-processors "midas;output-file=boxer/boxer-midas.png"
