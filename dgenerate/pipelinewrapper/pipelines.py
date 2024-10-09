@@ -2118,6 +2118,8 @@ def _create_torch_diffusion_pipeline(
                 creation_kwargs['controlnet'] = diffusers.SD3MultiControlNetModel(controlnets)
             elif _enums.model_type_is_flux(model_type):
                 creation_kwargs['controlnet'] = diffusers.FluxMultiControlNetModel(controlnets)
+            else:
+                creation_kwargs['controlnet'] = controlnets
         else:
             creation_kwargs['controlnet'] = controlnets
 
