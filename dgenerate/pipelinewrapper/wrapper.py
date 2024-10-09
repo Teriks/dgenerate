@@ -143,6 +143,7 @@ class DiffusionPipelineWrapper:
                  controlnet_uris: _types.OptionalUris = None,
                  t2i_adapter_uris: _types.OptionalUris = None,
                  scheduler: _types.OptionalUri = None,
+                 pag: bool = False,
                  sdxl_refiner_uri: _types.OptionalUri = None,
                  sdxl_refiner_scheduler: _types.OptionalUri = None,
                  s_cascade_decoder_uri: _types.OptionalUri = None,
@@ -202,6 +203,7 @@ class DiffusionPipelineWrapper:
         :param controlnet_uris: One or more ControlNet URI strings
         :param t2i_adapter_uris: One or more T2IAdapter URI strings
         :param scheduler: Scheduler URI string for the main model
+        :param pag: Use perturbed attenuation guidance?
         :param sdxl_refiner_uri: SDXL Refiner model URI string
         :param sdxl_refiner_scheduler: Scheduler URI string for the SDXL Refiner
         :param s_cascade_decoder_uri: Stable Cascade decoder URI string
@@ -256,6 +258,7 @@ class DiffusionPipelineWrapper:
             controlnet_uris: _types.OptionalUris = None,
             t2i_adapter_uris: _types.OptionalUris = None,
             scheduler: _types.OptionalUri = None,
+            pag: bool = False,
             sdxl_refiner_uri: _types.OptionalUri = None,
             sdxl_refiner_scheduler: _types.OptionalUri = None,
             s_cascade_decoder_uri: _types.OptionalUri = None,
@@ -349,6 +352,15 @@ class DiffusionPipelineWrapper:
                 'Cannot use "image_encoder_uri" without "ip_adapter_uris" '
                 'if "model_type" is not TORCH_S_CASCADE.'
             )
+
+        if pag:
+            if not (model_type == _enums.ModelType.TORCH or
+                    model_type == _enums.ModelType.TORCH_SDXL or
+                    model_type == _enums.ModelType.TORCH_SD3):
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'Perturbed attenuation guidance (--pag*) is only supported with '
+                    '--model-type torch, torch-sdxl, and torch-sd3.')
+
 
         # Only one help argument can be used at a time
         helps_used = [
@@ -548,6 +560,7 @@ class DiffusionPipelineWrapper:
         self._vae_slicing = vae_slicing
         self._safety_checker = safety_checker
         self._scheduler = scheduler
+        self._pag = pag
         self._sdxl_refiner_scheduler = sdxl_refiner_scheduler
         self._s_cascade_decoder_scheduler = s_cascade_decoder_scheduler
 
@@ -885,6 +898,13 @@ class DiffusionPipelineWrapper:
         """
         return self._s_cascade_decoder_cpu_offload
 
+    @property
+    def pag(self) -> bool:
+        """
+        Current ``--pag`` value
+        """
+        return self._pag
+
     def reconstruct_dgenerate_opts(self,
                                    args: DiffusionArguments | None = None,
                                    extra_opts:
@@ -1082,6 +1102,9 @@ class DiffusionPipelineWrapper:
 
         if self._scheduler is not None:
             opts.append(('--scheduler', self._scheduler))
+
+        if self._pag:
+            opts.append(('--pag',))
 
         if self._sdxl_refiner_scheduler is not None:
             if self._sdxl_refiner_scheduler != self._scheduler:
@@ -1940,6 +1963,16 @@ class DiffusionPipelineWrapper:
 
         self._set_non_universal_pipeline_arg(self._pipeline,
                                              pipeline_args, user_args,
+                                             'pag_scale', 'pag_scale',
+                                             '--pag-scale')
+
+        self._set_non_universal_pipeline_arg(self._pipeline,
+                                             pipeline_args, user_args,
+                                             'pag_adaptive_scale', 'pag_adaptive_scale',
+                                             '--pag-adaptive-scale')
+
+        self._set_non_universal_pipeline_arg(self._pipeline,
+                                             pipeline_args, user_args,
                                              'guidance_rescale', 'guidance_rescale',
                                              '--guidance-rescales')
 
@@ -2241,6 +2274,7 @@ class DiffusionPipelineWrapper:
                     lora_uris=self._lora_uris,
                     lora_fuse_scale=self._lora_fuse_scale,
                     scheduler=self._scheduler,
+                    pag=self._pag,
                     safety_checker=self._safety_checker,
                     auth_token=self._auth_token,
                     device=self._device,
@@ -2270,6 +2304,7 @@ class DiffusionPipelineWrapper:
 
                 scheduler=self._scheduler if
                 self._s_cascade_decoder_scheduler is None else self._s_cascade_decoder_scheduler,
+                pag=self._pag,
 
                 safety_checker=self._safety_checker,
                 extra_modules=self._second_model_extra_modules,
@@ -2309,6 +2344,7 @@ class DiffusionPipelineWrapper:
                     controlnet_uris=self._controlnet_uris,
                     t2i_adapter_uris=self._t2i_adapter_uris,
                     scheduler=self._scheduler,
+                    pag=self._pag,
                     safety_checker=self._safety_checker,
                     auth_token=self._auth_token,
                     device=self._device,
@@ -2355,6 +2391,7 @@ class DiffusionPipelineWrapper:
                 scheduler=self._scheduler if
                 self._sdxl_refiner_scheduler is None else self._sdxl_refiner_scheduler,
 
+                pag=self._pag,
                 safety_checker=self._safety_checker,
                 auth_token=self._auth_token,
                 device=self._device,
@@ -2388,6 +2425,7 @@ class DiffusionPipelineWrapper:
                 controlnet_uris=self._controlnet_uris,
                 t2i_adapter_uris=self._t2i_adapter_uris,
                 scheduler=self._scheduler,
+                pag=self._pag,
                 safety_checker=self._safety_checker,
                 auth_token=self._auth_token,
                 device=self._device,

@@ -793,7 +793,6 @@ def _warn_prompt_lengths(pipeline, **kwargs):
                             warned_prompts[key] = True
 
 
-
 _LAST_CALLED_PIPELINE = None
 
 
@@ -1181,32 +1180,34 @@ class TorchPipelineCreationResult(PipelineCreationResult):
                              **kwargs)
 
 
-def create_torch_diffusion_pipeline(model_path: str,
-                                    model_type: _enums.ModelType = _enums.ModelType.TORCH,
-                                    pipeline_type: _enums.PipelineType = _enums.PipelineType.TXT2IMG,
-                                    revision: _types.OptionalString = None,
-                                    variant: _types.OptionalString = None,
-                                    subfolder: _types.OptionalString = None,
-                                    dtype: _enums.DataType = _enums.DataType.AUTO,
-                                    unet_uri: _types.OptionalUri = None,
-                                    transformer_uri: _types.OptionalUri = None,
-                                    vae_uri: _types.OptionalUri = None,
-                                    lora_uris: _types.OptionalUris = None,
-                                    lora_fuse_scale: _types.OptionalFloat = None,
-                                    image_encoder_uri: _types.OptionalUri = None,
-                                    ip_adapter_uris: _types.OptionalUris = None,
-                                    textual_inversion_uris: _types.OptionalUris = None,
-                                    text_encoder_uris: _types.OptionalUris = None,
-                                    controlnet_uris: _types.OptionalUris = None,
-                                    t2i_adapter_uris: _types.OptionalUris = None,
-                                    scheduler: _types.OptionalString = None,
-                                    safety_checker: bool = False,
-                                    auth_token: _types.OptionalString = None,
-                                    device: str = _util.default_device(),
-                                    extra_modules: dict[str, typing.Any] | None = None,
-                                    model_cpu_offload: bool = False,
-                                    sequential_cpu_offload: bool = False,
-                                    local_files_only: bool = False) -> TorchPipelineCreationResult:
+def create_torch_diffusion_pipeline(
+        model_path: str,
+        model_type: _enums.ModelType = _enums.ModelType.TORCH,
+        pipeline_type: _enums.PipelineType = _enums.PipelineType.TXT2IMG,
+        revision: _types.OptionalString = None,
+        variant: _types.OptionalString = None,
+        subfolder: _types.OptionalString = None,
+        dtype: _enums.DataType = _enums.DataType.AUTO,
+        unet_uri: _types.OptionalUri = None,
+        transformer_uri: _types.OptionalUri = None,
+        vae_uri: _types.OptionalUri = None,
+        lora_uris: _types.OptionalUris = None,
+        lora_fuse_scale: _types.OptionalFloat = None,
+        image_encoder_uri: _types.OptionalUri = None,
+        ip_adapter_uris: _types.OptionalUris = None,
+        textual_inversion_uris: _types.OptionalUris = None,
+        text_encoder_uris: _types.OptionalUris = None,
+        controlnet_uris: _types.OptionalUris = None,
+        t2i_adapter_uris: _types.OptionalUris = None,
+        scheduler: _types.OptionalString = None,
+        pag: bool = False,
+        safety_checker: bool = False,
+        auth_token: _types.OptionalString = None,
+        device: str = _util.default_device(),
+        extra_modules: dict[str, typing.Any] | None = None,
+        model_cpu_offload: bool = False,
+        sequential_cpu_offload: bool = False,
+        local_files_only: bool = False) -> TorchPipelineCreationResult:
     """
     Create a :py:class:`diffusers.DiffusionPipeline` in dgenerates in memory cacheing system.
 
@@ -1236,6 +1237,7 @@ def create_torch_diffusion_pipeline(model_path: str,
     :param scheduler: Optional scheduler (sampler) class name, unqualified, or "help" / "helpargs" to print supported values
         to STDOUT and raise :py:exc:`dgenerate.pipelinewrapper.SchedulerHelpException`.  Dgenerate URI syntax is supported
         for overriding the schedulers constructor parameter defaults.
+    :param pag: Use perturbed attenuation guidance?
     :param safety_checker: Safety checker enabled? default is ``False``
     :param auth_token: Optional huggingface API token for accessing repositories that are restricted to your account
     :param device: Optional ``--device`` string, defaults to "cuda"
@@ -1292,6 +1294,7 @@ class TorchPipelineFactory:
                  t2i_adapter_uris: _types.OptionalUris = None,
                  text_encoder_uris: _types.OptionalUris = None,
                  scheduler: _types.OptionalString = None,
+                 pag: bool = False,
                  safety_checker: bool = False,
                  auth_token: _types.OptionalString = None,
                  device: str = _util.default_device(),
@@ -1438,6 +1441,7 @@ def _create_torch_diffusion_pipeline(
         controlnet_uris: _types.OptionalUris = None,
         t2i_adapter_uris: _types.OptionalUris = None,
         scheduler: _types.OptionalString = None,
+        pag: bool = False,
         safety_checker: bool = False,
         auth_token: _types.OptionalString = None,
         device: str = _util.default_device(),
@@ -1464,6 +1468,15 @@ def _create_torch_diffusion_pipeline(
         raise UnsupportedPipelineConfigError(
             'device must be "cuda" (optionally with a device ordinal "cuda:N") or "cpu", '
             'or other device supported by torch.')
+
+    # PAG check
+    if pag:
+        if not (model_type == _enums.ModelType.TORCH or
+                model_type == _enums.ModelType.TORCH_SDXL or
+                model_type == _enums.ModelType.TORCH_SD3):
+            raise UnsupportedPipelineConfigError(
+                'Perturbed attenuation guidance (--pag*) is only supported with '
+                '--model-type torch, torch-sdxl, and torch-sd3.')
 
     # Flux model restrictions
     if _enums.model_type_is_flux(model_type):
@@ -1635,11 +1648,16 @@ def _create_torch_diffusion_pipeline(
                 else:
                     pipeline_class = diffusers.FluxPipeline
             elif model_type == _enums.ModelType.TORCH_SD3:
-                pipeline_class = (
-                    diffusers.StableDiffusion3Pipeline
-                    if not controlnet_uris
-                    else diffusers.StableDiffusion3ControlNetPipeline
-                )
+                if pag:
+                    pipeline_class = diffusers.StableDiffusion3PAGPipeline
+                elif controlnet_uris:
+                    if pag:
+                        raise UnsupportedPipelineConfigError(
+                            'Stable Diffusion 3 does not support PAG with control nets.')
+
+                    pipeline_class = diffusers.StableDiffusion3ControlNetPipeline
+                else:
+                    pipeline_class = diffusers.StableDiffusion3Pipeline
             elif t2i_adapter_uris:
                 # The custom type is a hack to support from_single_file for SD1.5 - 2
                 # models with the associated pipeline class which does not inherit
@@ -1654,17 +1672,27 @@ def _create_torch_diffusion_pipeline(
                     )
                 )
             elif controlnet_uris:
-                pipeline_class = (
-                    diffusers.StableDiffusionXLControlNetPipeline
-                    if is_sdxl
-                    else diffusers.StableDiffusionControlNetPipeline
-                )
+                if is_sdxl:
+                    if pag:
+                        pipeline_class = diffusers.StableDiffusionXLControlNetPAGPipeline
+                    else:
+                        pipeline_class = diffusers.StableDiffusionXLControlNetPipeline
+                else:
+                    if pag:
+                        pipeline_class = diffusers.StableDiffusionControlNetPAGPipeline
+                    else:
+                        pipeline_class = diffusers.StableDiffusionControlNetPipeline
             else:
-                pipeline_class = (
-                    diffusers.StableDiffusionXLPipeline
-                    if is_sdxl
-                    else diffusers.StableDiffusionPipeline
-                )
+                if is_sdxl:
+                    if pag:
+                        pipeline_class = diffusers.StableDiffusionXLPAGPipeline
+                    else:
+                        pipeline_class = diffusers.StableDiffusionXLPipeline
+                else:
+                    if pag:
+                        pipeline_class = diffusers.StableDiffusionPAGPipeline
+                    else:
+                        pipeline_class = diffusers.StableDiffusionPipeline
 
         elif pipeline_type == _enums.PipelineType.IMG2IMG:
             if controlnet_uris:
@@ -1701,22 +1729,42 @@ def _create_torch_diffusion_pipeline(
                 if lora_uris:
                     raise UnsupportedPipelineConfigError(
                         '--model-type torch-sd3 does not support --loras in img2img mode.')
+
+                if pag:
+                    raise UnsupportedPipelineConfigError(
+                        '--model-type torch-sd3 does not support --pag in img2img mode.'
+                    )
+
                 pipeline_class = diffusers.StableDiffusion3Img2ImgPipeline
             elif t2i_adapter_uris:
                 raise UnsupportedPipelineConfigError(
                     'img2img mode is not supported with --t2i-adapters.')
             elif controlnet_uris:
-                pipeline_class = (
-                    diffusers.StableDiffusionXLControlNetImg2ImgPipeline
-                    if is_sdxl
-                    else diffusers.StableDiffusionControlNetImg2ImgPipeline
-                )
+                if is_sdxl:
+                    if pag:
+                        pipeline_class = diffusers.StableDiffusionXLControlNetPAGImg2ImgPipeline
+                    else:
+                        pipeline_class = diffusers.StableDiffusionXLControlNetImg2ImgPipeline
+                else:
+                    if pag:
+                        raise UnsupportedPipelineConfigError(
+                            '--model-type torch (Stable Diffusion 1.5 - 2.*) '
+                            'does not support PAG in img2img mode with ControlNet models.')
+                    else:
+                        pipeline_class = diffusers.StableDiffusionControlNetImg2ImgPipeline
             else:
-                pipeline_class = (
-                    diffusers.StableDiffusionXLImg2ImgPipeline
-                    if is_sdxl
-                    else diffusers.StableDiffusionImg2ImgPipeline
-                )
+                if is_sdxl:
+                    if pag:
+                        pipeline_class = diffusers.StableDiffusionXLPAGImg2ImgPipeline
+                    else:
+                        pipeline_class = diffusers.StableDiffusionXLImg2ImgPipeline
+                else:
+                    if pag:
+                        raise UnsupportedPipelineConfigError(
+                            '--model-type torch (Stable Diffusion 1.5 - 2.*) '
+                            'does not support PAG in img2img mode.')
+                    else:
+                        pipeline_class = diffusers.StableDiffusionImg2ImgPipeline
 
         elif pipeline_type == _enums.PipelineType.INPAINT:
             if is_pix2pix:
@@ -1745,22 +1793,42 @@ def _create_torch_diffusion_pipeline(
                 if lora_uris:
                     raise UnsupportedPipelineConfigError(
                         '--model-type torch-sd3 does not support --loras in inpaint mode.')
+                if pag:
+                    raise UnsupportedPipelineConfigError(
+                        '--model-type torch-sd3 does not support --pag in inpaint mode.'
+                    )
+
                 pipeline_class = diffusers.StableDiffusion3InpaintPipeline
             elif t2i_adapter_uris:
                 raise UnsupportedPipelineConfigError(
                     'inpaint mode is not supported with --t2i-adapters.')
             elif controlnet_uris:
-                pipeline_class = (
-                    diffusers.StableDiffusionXLControlNetInpaintPipeline
-                    if is_sdxl
-                    else diffusers.StableDiffusionControlNetInpaintPipeline
-                )
+                if is_sdxl:
+                    if pag:
+                        raise UnsupportedPipelineConfigError(
+                            '--model-type torch-sdxl does not support --pag '
+                            'in inpaint mode with ControlNet models.'
+                        )
+                    else:
+                        pipeline_class = diffusers.StableDiffusionXLControlNetInpaintPipeline
+                else:
+                    if pag:
+                        pipeline_type = diffusers.StableDiffusionControlNetPAGInpaintPipeline
+                    else:
+                        pipeline_class = diffusers.StableDiffusionControlNetInpaintPipeline
             else:
-                pipeline_class = (
-                    diffusers.StableDiffusionXLInpaintPipeline
-                    if is_sdxl
-                    else diffusers.StableDiffusionInpaintPipeline
-                )
+                if is_sdxl:
+                    if pag:
+                        pipeline_class = diffusers.StableDiffusionXLPAGInpaintPipeline
+                    else:
+                        pipeline_class = diffusers.StableDiffusionXLInpaintPipeline
+                else:
+                    if pag:
+                        raise UnsupportedPipelineConfigError(
+                            '--model-type torch (Stable Diffusion 1.5 - 2.*) '
+                            'does not support PAG in img2img mode.')
+                    else:
+                        pipeline_class = diffusers.StableDiffusionInpaintPipeline
         else:
             # Should be impossible
             raise UnsupportedPipelineConfigError('Pipeline type not implemented.')
