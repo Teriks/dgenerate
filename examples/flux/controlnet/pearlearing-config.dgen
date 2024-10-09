@@ -3,12 +3,16 @@
 
 # Use an already processed image with the canny control net
 
-\setp auth_token "$HF_TOKEN"
+\set token %HF_TOKEN%
 
-\set auth_token {{ '--auth-token ' + quote(auth_token) if auth_token else '' }}
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %} !END
+
 
 black-forest-labs/FLUX.1-schnell
---model-type torch-flux {{ auth_token }}
+--model-type torch-flux
 --dtype bfloat16
 --model-sequential-offload
 --inference-steps 4
