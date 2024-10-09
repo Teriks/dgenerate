@@ -419,6 +419,12 @@ class RenderLoop:
         if diffusion_args.image_guidance_scale is not None:
             args += ['igs', diffusion_args.image_guidance_scale]
 
+        if diffusion_args.pag_scale is not None:
+            args += ['ps', diffusion_args.pag_scale]
+
+        if diffusion_args.pag_adaptive_scale is not None:
+            args += ['pas', diffusion_args.pag_adaptive_scale]
+
         args += ['i', diffusion_args.inference_steps]
 
         if diffusion_args.clip_skip is not None:

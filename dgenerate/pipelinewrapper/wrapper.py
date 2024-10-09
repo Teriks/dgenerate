@@ -1106,6 +1106,12 @@ class DiffusionPipelineWrapper:
         if self._pag:
             opts.append(('--pag',))
 
+        if args.pag_scale:
+            opts.append(('--pag-scales', args.pag_scale))
+
+        if args.pag_adaptive_scale:
+            opts.append(('--pag-adaptive-scales', args.pag_adaptive_scale))
+
         if self._sdxl_refiner_scheduler is not None:
             if self._sdxl_refiner_scheduler != self._scheduler:
                 opts.append(('--sdxl-refiner-scheduler', self._sdxl_refiner_scheduler))
