@@ -818,6 +818,7 @@ class RenderLoop:
             s_cascade_decoder_sequential_offload=bool(self.config.s_cascade_decoder_sequential_offload),
             s_cascade_decoder_scheduler=self.config.s_cascade_decoder_scheduler,
             scheduler=self.config.scheduler,
+            pag=self.config.pag or bool(self.config.pag_scales or self.config.pag_adaptive_scales),
             sdxl_refiner_scheduler=
             self.config.sdxl_refiner_scheduler if self.config.sdxl_refiner_uri else None,
             safety_checker=self.config.safety_checker,

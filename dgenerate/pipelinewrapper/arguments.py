@@ -383,6 +383,16 @@ class DiffusionArguments(_types.SetFromMixin):
     when :py:attr:`.DiffusionArguments.guidance_scale`  > 1
     """
 
+    pag_scale: _types.OptionalFloat = None
+    """
+    Perturbed attenuation guidance scale.
+    """
+
+    pag_adaptive_scale: _types.OptionalFloat = None
+    """
+    Adaptive perturbed attenuation guidance scale.
+    """
+
     image_guidance_scale: _types.OptionalFloat = None
     """
     This value is only relevant for ``pix2pix`` :py:class:`dgenerate.pipelinewrapper.ModelType`.
@@ -562,6 +572,8 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.sdxl_refiner_negative_original_size, "SDXL Refiner Negative Original Size:"),
             (self.sdxl_refiner_negative_target_size, "SDXL Refiner Negative Target Size:"),
             (self.sdxl_refiner_negative_crops_coords_top_left, "SDXL Refiner Negative Top Left Crop Coords:"),
+            (self.pag_scale, "PAG Scale:"),
+            (self.pag_adaptive_scale, "PAG Adaptive Scale:"),
             (self.guidance_scale, "Guidance Scale:"),
             (self.image_guidance_scale, "Image Guidance Scale:"),
             (self.guidance_rescale, "Guidance Rescale:"),
