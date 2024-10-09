@@ -1103,7 +1103,8 @@ class DiffusionPipelineWrapper:
         if self._scheduler is not None:
             opts.append(('--scheduler', self._scheduler))
 
-        if self._pag:
+        if self._pag and (args.pag_scale is None and args.pag_adaptive_scale is None):
+            # implied if --pag-scales or --pag-adaptive-scales is used
             opts.append(('--pag',))
 
         if args.pag_scale:
