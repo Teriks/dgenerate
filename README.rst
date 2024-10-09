@@ -778,14 +778,15 @@ Help Output
                             and their typical defaults. Arguments listed by "helpargs" can be overridden using
                             the URI syntax typical to other dgenerate URI arguments.
                             --------------------------------------------------------
-      -pag, --pag           Use perturbed attenuation guidance?
-                            -----------------------------------
+      -pag, --pag           Use perturbed attenuation guidance? This is supported for --model-type torch, torch-
+                            sdxl, and torch-sd3 for most use cases.
+                            ---------------------------------------
       -pags FLOAT [FLOAT ...], --pag-scales FLOAT [FLOAT ...]
-                            One or more perturbed attenuation guidance scales. Specifying values implies --pag
-                            if that argument is not provided.
-                            ---------------------------------
+                            One or more perturbed attenuation guidance scales to try. Specifying values implies
+                            --pag if that argument is not provided.
+                            ---------------------------------------
       -pagas FLOAT [FLOAT ...], --pag-adaptive-scales FLOAT [FLOAT ...]
-                            One or more adaptive perturbed attenuation guidance scales. Specifying values
+                            One or more adaptive perturbed attenuation guidance scales to try. Specifying values
                             implies --pag if that argument is not provided.
                             -----------------------------------------------
       -mqo, --model-sequential-offload
@@ -1520,6 +1521,7 @@ Help Output
                             Syntax See: [https://dgenerate.readthedocs.io/en/v4.2.3/dgenerate_submodules.html#dg
                             enerate.imageprocessors.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS]
                             ----------------------------------------------------------------
+
 
 
 Windows Install

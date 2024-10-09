@@ -1067,7 +1067,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     actions.append(
         parser.add_argument(
             '-pag', '--pag', action='store_true', default=False,
-            help=f"""Use perturbed attenuation guidance?"""
+            help=f"""Use perturbed attenuation guidance? This is supported 
+            for --model-type torch, torch-sdxl, and torch-sd3 for most use cases."""
         )
     )
 
@@ -1075,7 +1076,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '-pags', '--pag-scales', nargs='+', action='store',
             type=_type_guidance_scale, default=None, metavar="FLOAT",
-            help=f"""One or more perturbed attenuation guidance scales. 
+            help=f"""One or more perturbed attenuation guidance scales to try. 
             Specifying values implies --pag if that argument is not provided."""
         )
     )
@@ -1084,7 +1085,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '-pagas', '--pag-adaptive-scales', nargs='+', action='store',
             type=_type_guidance_scale, default=None, metavar="FLOAT",
-            help=f"""One or more adaptive perturbed attenuation guidance scales.
+            help=f"""One or more adaptive perturbed attenuation guidance scales to try.
             Specifying values implies --pag if that argument is not provided."""
         )
     )
