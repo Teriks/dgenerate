@@ -795,6 +795,11 @@ class RenderLoopConfig(_types.SetFromMixin):
                     'Perturbed attenuation guidance (--pag*) is only supported with '
                     '--model-type torch, torch-sdxl, and torch-sd3.')
 
+            if self.t2i_adapter_uris:
+                raise RenderLoopConfigError(
+                    'Perturbed attenuation guidance (--pag*) is is not supported '
+                    'with --t2i-adapters.')
+
         self.pag = pag
 
         # Detect logically incorrect config and set certain defaults
