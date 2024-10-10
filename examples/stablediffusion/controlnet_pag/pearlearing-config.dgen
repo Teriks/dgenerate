@@ -1,0 +1,14 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 4.2.1
+
+# Use an already processed image with the canny control net
+
+Lykon/dreamshaper-8
+--pag
+--inference-steps 40
+--guidance-scales 8
+--gen-seeds 2
+--prompts "Painting, Girl with a pearl earring by Leonardo Da Vinci, masterpiece; low quality, low resolution, blank eyeballs"
+--control-nets lllyasviel/sd-controlnet-canny;scale=0.5
+--image-seeds "../../media/vermeer_canny_edged.png"
+--output-path pearlearring
