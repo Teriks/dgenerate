@@ -1831,7 +1831,7 @@ def _create_torch_diffusion_pipeline(
                     if pag:
                         raise UnsupportedPipelineConfigError(
                             '--model-type torch (Stable Diffusion 1.5 - 2.*) '
-                            'does not support PAG in img2img mode.')
+                            'does not support PAG in inpaint mode.')
                     else:
                         pipeline_class = diffusers.StableDiffusionInpaintPipeline
         else:
