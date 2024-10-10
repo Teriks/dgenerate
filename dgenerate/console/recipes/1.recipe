@@ -22,6 +22,8 @@ title: Stable Diffusion 3
 @imageprocessor[{"arg":"--control-image-processors", "label":"Control Image Processor", "divider-after":true}]
 @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":30, "min":1}]
 @float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":5, "min":0}]
+@float[{"label":"PAG Scale", "arg":"--pag-scales", "min":0}]
+@float[{"label":"Adaptive PAG Scale", "arg":"--pag-adaptive-scales", "min":0}]
 @int[{"label":"Clip Skip", "arg":"--clip-skips", "default":0, "min":0}]
 @seeds[{"label":"Seeds"}]
 @int[{"label":"Batch Size", "arg":"--batch-size", "default":"", "min":1}]

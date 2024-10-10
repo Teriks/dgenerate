@@ -2118,8 +2118,12 @@ class DiffusionPipelineWrapper:
 
         if not isinstance(self._sdxl_refiner_pipeline, diffusers.StableDiffusionXLInpaintPipeline):
             # Width / Height not necessary for any other refiner
-            if not (isinstance(self._pipeline, diffusers.StableDiffusionXLImg2ImgPipeline) and
-                    isinstance(self._sdxl_refiner_pipeline, diffusers.StableDiffusionXLImg2ImgPipeline)):
+            if not (isinstance(self._pipeline,
+                               (diffusers.StableDiffusionXLImg2ImgPipeline,
+                                diffusers.StableDiffusionXLPAGImg2ImgPipeline)) and
+                    isinstance(self._sdxl_refiner_pipeline,
+                               (diffusers.StableDiffusionXLImg2ImgPipeline,
+                                diffusers.StableDiffusionXLPAGImg2ImgPipeline))):
                 # Width / Height does not get passed to img2img
                 pipeline_args.pop('width')
                 pipeline_args.pop('height')
