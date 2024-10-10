@@ -18,7 +18,6 @@ black-forest-labs/FLUX.1-schnell
 --inference-steps 4
 --guidance-scales 0
 --output-path boxer
---gen-seeds 2
 --output-size 1024
 --vae-tiling
 --vae-slicing

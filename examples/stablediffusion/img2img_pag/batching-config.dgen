@@ -1,0 +1,27 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 4.2.1
+
+# We can run this same prompt over multiple images in batch on the GPU
+# by using the "images: ..." syntax of --image-seeds
+
+# all images involved must be the same dimension or resized to the same dimension
+
+# in this case it is possible to resize them both to 1024, the image of the earth
+# is 1024 already, and the image of the mountain is 512
+
+# Two images are produced on the GPU in once go, --vae-tiling and --vae-slicing
+# is used to reduce memory usage upon VAE decode
+
+# If we wanted we could use --batch-grid-size to put these images into a grid
+
+stabilityai/stable-diffusion-2
+--pag
+--inference-steps 30
+--guidance-scales 8
+--image-seeds "images: ../../media/earth.jpg, ../../media/mountain.png;1024"
+--image-seed-strengths 0.9
+--vae-tiling
+--vae-slicing
+--seeds 70466855166895
+--output-path batching
+--prompts "A detailed view of the planet mars"

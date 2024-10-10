@@ -1,0 +1,15 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 4.2.1
+
+stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
+--variant fp16 --dtype float16
+--sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0
+--sdxl-high-noise-fractions 0.8
+--pag
+--inference-steps 30
+--guidance-scales 8
+--image-seeds "../../media/beach.jpg"
+--image-seed-strengths 0.85
+--seeds 24344090316981
+--output-path basic
+--prompts "A huge tsunami wave about to impact a tropical beach, high resolution, photo, real; fake, artwork, imaginary"

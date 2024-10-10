@@ -1077,7 +1077,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '-pags', '--pag-scales', nargs='+', action='store',
             type=_type_guidance_scale, default=None, metavar="FLOAT",
             help=f"""One or more perturbed attenuation guidance scales to try. 
-            Specifying values implies --pag if that argument is not provided."""
+            Specifying values implies --pag if that argument is not provided. (default: [3.0])"""
         )
     )
 
@@ -1086,7 +1086,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '-pagas', '--pag-adaptive-scales', nargs='+', action='store',
             type=_type_guidance_scale, default=None, metavar="FLOAT",
             help=f"""One or more adaptive perturbed attenuation guidance scales to try.
-            Specifying values implies --pag if that argument is not provided."""
+            Specifying values implies --pag if that argument is not provided. (default: [0.0])"""
         )
     )
 

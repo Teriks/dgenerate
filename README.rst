@@ -783,11 +783,11 @@ Help Output
                             ---------------------------------------
       -pags FLOAT [FLOAT ...], --pag-scales FLOAT [FLOAT ...]
                             One or more perturbed attenuation guidance scales to try. Specifying values implies
-                            --pag if that argument is not provided.
+                            --pag if that argument is not provided. (default: [3.0])
                             ---------------------------------------
       -pagas FLOAT [FLOAT ...], --pag-adaptive-scales FLOAT [FLOAT ...]
                             One or more adaptive perturbed attenuation guidance scales to try. Specifying values
-                            implies --pag if that argument is not provided.
+                            implies --pag if that argument is not provided. (default: [0.0])
                             -----------------------------------------------
       -mqo, --model-sequential-offload
                             Force sequential model offloading for the main pipeline, this may drastically reduce
