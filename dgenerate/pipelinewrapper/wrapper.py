@@ -361,6 +361,10 @@ class DiffusionPipelineWrapper:
                     'Perturbed attenuation guidance (--pag*) is only supported with '
                     '--model-type torch, torch-sdxl, and torch-sd3.')
 
+            if t2i_adapter_uris:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'Perturbed attenuation guidance (--pag*) is is not supported '
+                    'with --t2i-adapters.')
 
         # Only one help argument can be used at a time
         helps_used = [

@@ -1478,6 +1478,11 @@ def _create_torch_diffusion_pipeline(
                 'Perturbed attenuation guidance (--pag*) is only supported with '
                 '--model-type torch, torch-sdxl, and torch-sd3.')
 
+        if t2i_adapter_uris:
+            raise UnsupportedPipelineConfigError(
+                'Perturbed attenuation guidance (--pag*) is is not supported '
+                'with --t2i-adapters.')
+
     # Flux model restrictions
     if _enums.model_type_is_flux(model_type):
         if t2i_adapter_uris:
