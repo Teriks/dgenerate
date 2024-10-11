@@ -2057,7 +2057,9 @@ class DiffusionPipelineWrapper:
 
         sd_edit = user_args.sdxl_refiner_edit or \
                   has_controlnet or has_t2i_adapter or \
-                  isinstance(self._pipeline, diffusers.StableDiffusionXLInpaintPipeline)
+                  isinstance(self._pipeline,
+                             (diffusers.StableDiffusionXLInpaintPipeline,
+                              diffusers.StableDiffusionXLPAGInpaintPipeline))
 
         if has_controlnet:
             pipeline_args['controlnet_conditioning_scale'] = \
@@ -2107,16 +2109,24 @@ class DiffusionPipelineWrapper:
             i_start = {'denoising_start': high_noise_fraction}
             i_end = {'denoising_end': high_noise_fraction}
 
+        output_type = 'latent'
+        if isinstance(self._sdxl_refiner_pipeline,
+                      diffusers.StableDiffusionXLPAGInpaintPipeline):
+            # cannot handle latent input
+            output_type = 'pil'
+
         image = _pipelines.call_pipeline(pipeline=self._pipeline,
                                          device=self._device,
                                          prompt_weighter=self._prompt_weighter,
                                          **pipeline_args,
                                          **i_end,
-                                         output_type='latent').images
+                                         output_type=output_type).images
 
         pipeline_args['image'] = image
 
-        if not isinstance(self._sdxl_refiner_pipeline, diffusers.StableDiffusionXLInpaintPipeline):
+        if not isinstance(self._sdxl_refiner_pipeline,
+                          (diffusers.StableDiffusionXLInpaintPipeline,
+                           diffusers.StableDiffusionXLPAGInpaintPipeline)):
             # Width / Height not necessary for any other refiner
             if not (isinstance(self._pipeline,
                                (diffusers.StableDiffusionXLImg2ImgPipeline,
