@@ -1658,7 +1658,7 @@ def _create_torch_diffusion_pipeline(
                 elif controlnet_uris:
                     if pag:
                         raise UnsupportedPipelineConfigError(
-                            'Stable Diffusion 3 does not support PAG with control nets.')
+                            'Stable Diffusion 3 does not support --pag with control nets.')
 
                     pipeline_class = diffusers.StableDiffusion3ControlNetPipeline
                 else:
@@ -1754,7 +1754,7 @@ def _create_torch_diffusion_pipeline(
                     if pag:
                         raise UnsupportedPipelineConfigError(
                             '--model-type torch (Stable Diffusion 1.5 - 2.*) '
-                            'does not support PAG in img2img mode with ControlNet models.')
+                            'does not support --pag in img2img mode with ControlNet models.')
                     else:
                         pipeline_class = diffusers.StableDiffusionControlNetImg2ImgPipeline
             else:
@@ -1767,7 +1767,7 @@ def _create_torch_diffusion_pipeline(
                     if pag:
                         raise UnsupportedPipelineConfigError(
                             '--model-type torch (Stable Diffusion 1.5 - 2.*) '
-                            'does not support PAG in img2img mode.')
+                            'does not support --pag in img2img mode.')
                     else:
                         pipeline_class = diffusers.StableDiffusionImg2ImgPipeline
 
@@ -1831,7 +1831,7 @@ def _create_torch_diffusion_pipeline(
                     if pag:
                         raise UnsupportedPipelineConfigError(
                             '--model-type torch (Stable Diffusion 1.5 - 2.*) '
-                            'does not support PAG in inpaint mode.')
+                            'does not support --pag in inpaint mode.')
                     else:
                         pipeline_class = diffusers.StableDiffusionInpaintPipeline
         else:

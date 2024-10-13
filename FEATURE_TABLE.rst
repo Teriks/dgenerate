@@ -187,3 +187,20 @@ Diffusion Model Feature Support Table
      - ❌
      - ✅
      - ❌
+
+
+PAG Support Caveats
+-------------------
+
+PAG is supported for txt2img in all cases, but there are some edge
+cases in which PAG is not supported.
+
+There is no support for using T2I Adapters with PAG.
+
+Stable Diffusion 3 does not currently support PAG in img2img mode, or with Control Nets at all.
+
+Stable Diffusion XL does not support PAG in (inpaint + Control Nets) mode.
+
+Stable Diffusion 1.5 - 2.* does not support PAG in img2img, inpaint, or (img2img + Control Nets) mode.
+It does however support PAG in inpaint + Control Nets mode.
+
