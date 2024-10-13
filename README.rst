@@ -157,7 +157,8 @@ Help Output
                      [-lrfs LORA_FUSE_SCALE] [-ie IMAGE_ENCODER_URI] [-ipa IP_ADAPTER_URI [IP_ADAPTER_URI ...]]
                      [-ti URI [URI ...]] [-cn CONTROLNET_URI [CONTROLNET_URI ...] | -t2i T2I_ADAPTER_URI
                      [T2I_ADAPTER_URI ...]] [-sch SCHEDULER_URI] [-pag] [-pags FLOAT [FLOAT ...]]
-                     [-pagas FLOAT [FLOAT ...]] [-mqo | -mco] [--s-cascade-decoder MODEL_URI] [-dqo] [-dco]
+                     [-pagas FLOAT [FLOAT ...]] [-rpag] [-rpags FLOAT [FLOAT ...]] [-rpagas FLOAT [FLOAT ...]]
+                     [-mqo | -mco] [--s-cascade-decoder MODEL_URI] [-dqo] [-dco]
                      [--s-cascade-decoder-prompts PROMPT [PROMPT ...]]
                      [--s-cascade-decoder-inference-steps INTEGER [INTEGER ...]]
                      [--s-cascade-decoder-guidance-scales INTEGER [INTEGER ...]]
@@ -779,16 +780,30 @@ Help Output
                             the URI syntax typical to other dgenerate URI arguments.
                             --------------------------------------------------------
       -pag, --pag           Use perturbed attenuation guidance? This is supported for --model-type torch, torch-
-                            sdxl, and torch-sd3 for most use cases.
-                            ---------------------------------------
+                            sdxl, and torch-sd3 for most use cases. This enables PAG for the main model using
+                            default scale values.
+                            ---------------------
       -pags FLOAT [FLOAT ...], --pag-scales FLOAT [FLOAT ...]
-                            One or more perturbed attenuation guidance scales to try. Specifying values implies
-                            --pag if that argument is not provided. (default: [3.0])
-                            ---------------------------------------
+                            One or more perturbed attenuation guidance scales to try. Specifying values enables
+                            PAG for the main model. (default: [3.0])
+                            ----------------------------------------
       -pagas FLOAT [FLOAT ...], --pag-adaptive-scales FLOAT [FLOAT ...]
                             One or more adaptive perturbed attenuation guidance scales to try. Specifying values
-                            implies --pag if that argument is not provided. (default: [0.0])
-                            -----------------------------------------------
+                            enables PAG for the main model. (default: [0.0])
+                            ------------------------------------------------
+      -rpag, --sdxl-refiner-pag
+                            Use perturbed attenuation guidance in the SDXL refiner? This is supported for
+                            --model-type torch-sdxl for most use cases. This enables PAG for the SDXL refiner
+                            model using default scale values.
+                            ---------------------------------
+      -rpags FLOAT [FLOAT ...], --sdxl-refiner-pag-scales FLOAT [FLOAT ...]
+                            One or more perturbed attenuation guidance scales to try with the SDXL refiner pass.
+                            Specifying values enables PAG for the refiner. (default: [3.0])
+                            ---------------------------------------------------------------
+      -rpagas FLOAT [FLOAT ...], --sdxl-refiner-pag-adaptive-scales FLOAT [FLOAT ...]
+                            One or more adaptive perturbed attenuation guidance scales to try with the SDXL
+                            refiner pass. Specifying values enables PAG for the refiner. (default: [0.0])
+                            -----------------------------------------------------------------------------
       -mqo, --model-sequential-offload
                             Force sequential model offloading for the main pipeline, this may drastically reduce
                             memory consumption and allow large models to run when they would otherwise not fit

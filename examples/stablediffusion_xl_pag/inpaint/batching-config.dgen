@@ -26,6 +26,7 @@ diffusers/stable-diffusion-xl-1.0-inpainting-0.1 --model-type torch-sdxl
 --guidance-scales 7
 --image-seeds "images: ../../media/dog-on-bench.png, ../../media/beach.jpg;mask=../../media/dog-on-bench-mask.png;resize=1024;aspect=False"
 --image-seed-strengths 0.9
+--model-sequential-offload
 --vae-tiling
 --vae-slicing
 --seeds 39877139643371

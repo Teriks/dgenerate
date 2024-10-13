@@ -393,6 +393,16 @@ class DiffusionArguments(_types.SetFromMixin):
     Adaptive perturbed attenuation guidance scale.
     """
 
+    sdxl_refiner_pag_scale: _types.OptionalFloat = None
+    """
+    Perturbed attenuation guidance scale for the SDXL refiner.
+    """
+
+    sdxl_refiner_pag_adaptive_scale: _types.OptionalFloat = None
+    """
+    Adaptive perturbed attenuation guidance scale for the SDXL refiner.
+    """
+
     image_guidance_scale: _types.OptionalFloat = None
     """
     This value is only relevant for ``pix2pix`` :py:class:`dgenerate.pipelinewrapper.ModelType`.
@@ -554,6 +564,8 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.sdxl_high_noise_fraction, "SDXL High Noise Fraction:"),
             (self.sdxl_t2i_adapter_factor, "SDXL T2I Adapter Factor:"),
             (self.sdxl_refiner_inference_steps, "SDXL Refiner Inference Steps:"),
+            (self.sdxl_refiner_pag_scale, 'SDXL Refiner PAG Scale:'),
+            (self.sdxl_refiner_pag_adaptive_scale, 'SDXL Refiner PAG Adaptive Scale:'),
             (self.sdxl_refiner_guidance_scale, "SDXL Refiner Guidance Scale:"),
             (self.sdxl_refiner_guidance_rescale, "SDXL Refiner Guidance Rescale:"),
             (self.sdxl_aesthetic_score, "SDXL Aesthetic Score:"),

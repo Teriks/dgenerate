@@ -436,6 +436,12 @@ class RenderLoop:
         if diffusion_args.sdxl_high_noise_fraction is not None:
             args += ['hnf', diffusion_args.sdxl_high_noise_fraction]
 
+        if diffusion_args.sdxl_refiner_pag_scale is not None:
+            args += ['rps', diffusion_args.sdxl_refiner_pag_scale]
+
+        if diffusion_args.sdxl_refiner_pag_adaptive_scale is not None:
+            args += ['rpas', diffusion_args.sdxl_refiner_pag_adaptive_scale]
+
         if diffusion_args.sdxl_refiner_guidance_scale is not None:
             args += ['rg', diffusion_args.sdxl_refiner_guidance_scale]
 
@@ -824,7 +830,6 @@ class RenderLoop:
             s_cascade_decoder_sequential_offload=bool(self.config.s_cascade_decoder_sequential_offload),
             s_cascade_decoder_scheduler=self.config.s_cascade_decoder_scheduler,
             scheduler=self.config.scheduler,
-            pag=self.config.pag or self.config.pag_scales or self.config.pag_adaptive_scales,
             sdxl_refiner_scheduler=
             self.config.sdxl_refiner_scheduler if self.config.sdxl_refiner_uri else None,
             safety_checker=self.config.safety_checker,
