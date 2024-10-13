@@ -202,5 +202,5 @@ Stable Diffusion 3 does not currently support PAG in img2img mode, or with Contr
 Stable Diffusion XL does not support PAG in (inpaint + Control Nets) mode.
 
 Stable Diffusion 1.5 - 2.* does not support PAG in img2img, inpaint, or (img2img + Control Nets) mode.
-It does however support PAG in inpaint + Control Nets mode.
+It does however support PAG in (inpaint + Control Nets) mode.
 
