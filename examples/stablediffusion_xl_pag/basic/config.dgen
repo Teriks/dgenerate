@@ -10,3 +10,18 @@ stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
 --gen-seeds 2
 --output-size 1024
 --prompts "Photo of a horse standing near the open door of a red barn, high resolution; artwork"
+
+
+# Enable PAG in the refiner with --sdxl-refiner-pag
+
+
+stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
+--variant fp16 --dtype float16
+--sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0
+--sdxl-high-noise-fractions 0.8
+--pag
+--sdxl-refiner-pag
+--inference-steps 40
+--gen-seeds 2
+--output-size 1024
+--prompts "Photo of a horse standing near the open door of a red barn, high resolution; artwork"
