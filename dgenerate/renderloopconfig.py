@@ -535,6 +535,23 @@ class RenderLoopConfig(_types.SetFromMixin):
     corresponds to the ``--pag-adaptive-scales`` argument of the dgenerate command line tool.
     """
 
+    sdxl_refiner_pag: _types.OptionalBoolean = None
+    """
+    Use perturbed attenuation guidance in the SDXL refiner?
+    """
+
+    sdxl_refiner_pag_scales: _types.OptionalFloats = None
+    """
+    List of floating point perturbed attenuation guidance scales to try with the SDXL refiner,
+    this corresponds to the ``--sdxl-refiner-pag-scales`` argument of the dgenerate command line tool.
+    """
+
+    sdxl_refiner_pag_adaptive_scales: _types.OptionalFloats = None
+    """
+    List of floating point adaptive perturbed attenuation guidance scales to try with the SDXL refiner, 
+    this corresponds to the ``--sdxl-refiner-pag-adaptive-scales`` argument of the dgenerate command line tool.
+    """
+
     sdxl_refiner_scheduler: _types.OptionalUri = None
     """
     Optional SDXL refiner model scheduler/sampler class name specification, this corresponds to the 
@@ -782,12 +799,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise RenderLoopConfigError(
                     f'{a_namer("output_prefix")} value may not contain slash characters.')
 
-        if self.pag_scales or self.pag_adaptive_scales:
-            pag = True
-        else:
-            pag = self.pag
-
-        if pag:
+        if self.pag:
             if not (self.model_type == _pipelinewrapper.ModelType.TORCH or
                     self.model_type == _pipelinewrapper.ModelType.TORCH_SDXL or
                     self.model_type == _pipelinewrapper.ModelType.TORCH_SD3):
@@ -800,7 +812,15 @@ class RenderLoopConfig(_types.SetFromMixin):
                     'Perturbed attenuation guidance (--pag*) is is not supported '
                     'with --t2i-adapters.')
 
-        self.pag = pag
+            if not (self.pag_scales or self.pag_adaptive_scales):
+                self.pag_scales = [3.0]
+                self.pag_adaptive_scales = [0.0]
+
+        if self.sdxl_refiner_pag and self.sdxl_refiner_uri:
+            if not (self.sdxl_refiner_pag_scales or
+                    self.sdxl_refiner_pag_adaptive_scales):
+                self.sdxl_refiner_pag_scales = [3.0]
+                self.sdxl_refiner_pag_adaptive_scales = [0.0]
 
         # Detect logically incorrect config and set certain defaults
         def non_null_attr_that_start_with(s):
@@ -1535,7 +1555,12 @@ class RenderLoopConfig(_types.SetFromMixin):
             self.s_cascade_decoder_guidance_scales,
             self.s_cascade_decoder_prompts,
             self.pag_scales,
-            self.pag_adaptive_scales
+            self.pag_adaptive_scales,
+            self.sdxl_refiner_pag_scales,
+            self.sdxl_refiner_pag_adaptive_scales,
+            self.sdxl_refiner_inference_steps,
+            self.sdxl_refiner_guidance_scales,
+            self.sdxl_refiner_guidance_rescales
         ]
 
         product = 1
@@ -1607,6 +1632,10 @@ class RenderLoopConfig(_types.SetFromMixin):
             sdxl_high_noise_fraction=ov('sdxl_high_noise_fraction', self.sdxl_high_noise_fractions),
             sdxl_refiner_inference_steps=ov('sdxl_refiner_inference_steps', self.sdxl_refiner_inference_steps),
             sdxl_refiner_guidance_scale=ov('sdxl_refiner_guidance_scale', self.sdxl_refiner_guidance_scales),
+            sdxl_refiner_pag_scale=ov('sdxl_refiner_pag_scales',
+                                      self.sdxl_refiner_pag_scales),
+            sdxl_refiner_pag_adaptive_scale=ov('sdxl_refiner_pag_adaptive_scale',
+                                               self.sdxl_refiner_pag_adaptive_scales),
 
             sdxl_refiner_guidance_rescale=ov('sdxl_refiner_guidance_rescale',
                                              self.sdxl_refiner_guidance_rescales),

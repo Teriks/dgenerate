@@ -1068,7 +1068,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '-pag', '--pag', action='store_true', default=False,
             help=f"""Use perturbed attenuation guidance? This is supported 
-            for --model-type torch, torch-sdxl, and torch-sd3 for most use cases."""
+            for --model-type torch, torch-sdxl, and torch-sd3 for most use cases.
+            This enables PAG for the main model using default scale values."""
         )
     )
 
@@ -1077,7 +1078,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '-pags', '--pag-scales', nargs='+', action='store',
             type=_type_guidance_scale, default=None, metavar="FLOAT",
             help=f"""One or more perturbed attenuation guidance scales to try. 
-            Specifying values implies --pag if that argument is not provided. (default: [3.0])"""
+            Specifying values enables PAG for the main model. 
+            (default: [3.0])"""
         )
     )
 
@@ -1086,7 +1088,38 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '-pagas', '--pag-adaptive-scales', nargs='+', action='store',
             type=_type_guidance_scale, default=None, metavar="FLOAT",
             help=f"""One or more adaptive perturbed attenuation guidance scales to try.
-            Specifying values implies --pag if that argument is not provided. (default: [0.0])"""
+            Specifying values enables PAG for the main model. 
+            (default: [0.0])"""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-rpag', '--sdxl-refiner-pag', action='store_true', default=False,
+            help=f"""Use perturbed attenuation guidance in the SDXL refiner? 
+            This is supported for --model-type torch-sdxl for most use cases.
+            This enables PAG for the SDXL refiner model using default scale 
+            values."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-rpags', '--sdxl-refiner-pag-scales', nargs='+', action='store',
+            type=_type_guidance_scale, default=None, metavar="FLOAT",
+            help=f"""One or more perturbed attenuation guidance scales to try 
+            with the SDXL refiner pass. Specifying values enables PAG for the refiner.
+            (default: [3.0])"""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-rpagas', '--sdxl-refiner-pag-adaptive-scales', nargs='+', action='store',
+            type=_type_guidance_scale, default=None, metavar="FLOAT",
+            help=f"""One or more adaptive perturbed attenuation guidance scales to try 
+            with the SDXL refiner pass. Specifying values enables PAG for the refiner.
+            (default: [0.0])"""
         )
     )
 

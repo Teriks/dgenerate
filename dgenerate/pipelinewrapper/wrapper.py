@@ -143,7 +143,6 @@ class DiffusionPipelineWrapper:
                  controlnet_uris: _types.OptionalUris = None,
                  t2i_adapter_uris: _types.OptionalUris = None,
                  scheduler: _types.OptionalUri = None,
-                 pag: bool = False,
                  sdxl_refiner_uri: _types.OptionalUri = None,
                  sdxl_refiner_scheduler: _types.OptionalUri = None,
                  s_cascade_decoder_uri: _types.OptionalUri = None,
@@ -203,7 +202,6 @@ class DiffusionPipelineWrapper:
         :param controlnet_uris: One or more ControlNet URI strings
         :param t2i_adapter_uris: One or more T2IAdapter URI strings
         :param scheduler: Scheduler URI string for the main model
-        :param pag: Use perturbed attenuation guidance?
         :param sdxl_refiner_uri: SDXL Refiner model URI string
         :param sdxl_refiner_scheduler: Scheduler URI string for the SDXL Refiner
         :param s_cascade_decoder_uri: Stable Cascade decoder URI string
@@ -258,7 +256,6 @@ class DiffusionPipelineWrapper:
             controlnet_uris: _types.OptionalUris = None,
             t2i_adapter_uris: _types.OptionalUris = None,
             scheduler: _types.OptionalUri = None,
-            pag: bool = False,
             sdxl_refiner_uri: _types.OptionalUri = None,
             sdxl_refiner_scheduler: _types.OptionalUri = None,
             s_cascade_decoder_uri: _types.OptionalUri = None,
@@ -352,19 +349,6 @@ class DiffusionPipelineWrapper:
                 'Cannot use "image_encoder_uri" without "ip_adapter_uris" '
                 'if "model_type" is not TORCH_S_CASCADE.'
             )
-
-        if pag:
-            if not (model_type == _enums.ModelType.TORCH or
-                    model_type == _enums.ModelType.TORCH_SDXL or
-                    model_type == _enums.ModelType.TORCH_SD3):
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'Perturbed attenuation guidance (--pag*) is only supported with '
-                    '--model-type torch, torch-sdxl, and torch-sd3.')
-
-            if t2i_adapter_uris:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'Perturbed attenuation guidance (--pag*) is is not supported '
-                    'with --t2i-adapters.')
 
         # Only one help argument can be used at a time
         helps_used = [
@@ -564,7 +548,6 @@ class DiffusionPipelineWrapper:
         self._vae_slicing = vae_slicing
         self._safety_checker = safety_checker
         self._scheduler = scheduler
-        self._pag = pag
         self._sdxl_refiner_scheduler = sdxl_refiner_scheduler
         self._s_cascade_decoder_scheduler = s_cascade_decoder_scheduler
 
@@ -902,13 +885,6 @@ class DiffusionPipelineWrapper:
         """
         return self._s_cascade_decoder_cpu_offload
 
-    @property
-    def pag(self) -> bool:
-        """
-        Current ``--pag`` value
-        """
-        return self._pag
-
     def reconstruct_dgenerate_opts(self,
                                    args: DiffusionArguments | None = None,
                                    extra_opts:
@@ -1107,15 +1083,22 @@ class DiffusionPipelineWrapper:
         if self._scheduler is not None:
             opts.append(('--scheduler', self._scheduler))
 
-        if self._pag and (args.pag_scale is None and args.pag_adaptive_scale is None):
-            # implied if --pag-scales or --pag-adaptive-scales is used
+        if args.pag_scale == 3.0 and args.pag_adaptive_scale == 0.0:
             opts.append(('--pag',))
+        else:
+            if args.pag_scale is not None:
+                opts.append(('--pag-scale', args.pag_scale))
+            if args.pag_adaptive_scale is not None:
+                opts.append(('--pag-adaptive-scale', args.pag_adaptive_scale))
 
-        if args.pag_scale:
-            opts.append(('--pag-scales', args.pag_scale))
-
-        if args.pag_adaptive_scale:
-            opts.append(('--pag-adaptive-scales', args.pag_adaptive_scale))
+        if args.sdxl_refiner_pag_scale == 3.0 and \
+                args.sdxl_refiner_pag_adaptive_scale == 0.0:
+            opts.append(('--sdxl-refiner-pag',))
+        else:
+            if args.sdxl_refiner_pag_scale is not None:
+                opts.append(('--sdxl-refiner-pag-scale', args.sdxl_refiner_pag_scale))
+            if args.sdxl_refiner_pag_adaptive_scale is not None:
+                opts.append(('--sdxl-refiner-pag-adaptive-scale', args.sdxl_refiner_pag_adaptive_scale))
 
         if self._sdxl_refiner_scheduler is not None:
             if self._sdxl_refiner_scheduler != self._scheduler:
@@ -2148,6 +2131,10 @@ class DiffusionPipelineWrapper:
         pipeline_args.pop('image_guidance_scale', None)
         pipeline_args.pop('control_image', None)
 
+        # these are only passed if set for the refiner specifically
+        pipeline_args.pop('pag_scale', None)
+        pipeline_args.pop('pag_adaptive_scale', None)
+
         # we will handle the strength parameter if it is necessary below
         pipeline_args.pop('strength', None)
 
@@ -2191,6 +2178,12 @@ class DiffusionPipelineWrapper:
 
         if user_args.sdxl_refiner_inference_steps is not None:
             pipeline_args['num_inference_steps'] = user_args.sdxl_refiner_inference_steps
+
+        if user_args.sdxl_refiner_pag_scale is not None:
+            pipeline_args['pag_scale'] = user_args.sdxl_refiner_pag_scale
+
+        if user_args.sdxl_refiner_pag_adaptive_scale is not None:
+            pipeline_args['pag_adaptive_scale'] = user_args.sdxl_refiner_pag_adaptive_scale
 
         if user_args.sdxl_refiner_guidance_scale is not None:
             pipeline_args['guidance_scale'] = user_args.sdxl_refiner_guidance_scale
@@ -2266,10 +2259,28 @@ class DiffusionPipelineWrapper:
 
         return self._recall_refiner_pipeline()
 
-    def _lazy_init_pipeline(self, pipeline_type):
+    def _lazy_init_pipeline(self, pipeline_type, pag: bool, sdxl_refiner_pag: bool):
         if self._pipeline is not None:
             if self._pipeline_type == pipeline_type:
                 return False
+
+        if pag:
+            if not (self.model_type == _enums.ModelType.TORCH or
+                    self.model_type == _enums.ModelType.TORCH_SDXL or
+                    self.model_type == _enums.ModelType.TORCH_SD3):
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'Perturbed attenuation guidance (pag* arguments) is only supported with '
+                    '--model-type torch, torch-sdxl, and torch-sd3.')
+
+            if self.t2i_adapter_uris:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'Perturbed attenuation guidance (pag* arguments) are is not supported '
+                    'with --t2i-adapters.')
+
+        if sdxl_refiner_pag and not self._sdxl_refiner_uri:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'sdxl_refiner_pag* arguments are not supported when '
+                'an SDXL refiner is not specified.')
 
         self._pipeline_type = pipeline_type
 
@@ -2299,7 +2310,6 @@ class DiffusionPipelineWrapper:
                     lora_uris=self._lora_uris,
                     lora_fuse_scale=self._lora_fuse_scale,
                     scheduler=self._scheduler,
-                    pag=self._pag,
                     safety_checker=self._safety_checker,
                     auth_token=self._auth_token,
                     device=self._device,
@@ -2329,7 +2339,6 @@ class DiffusionPipelineWrapper:
 
                 scheduler=self._scheduler if
                 self._s_cascade_decoder_scheduler is None else self._s_cascade_decoder_scheduler,
-                pag=self._pag,
 
                 safety_checker=self._safety_checker,
                 extra_modules=self._second_model_extra_modules,
@@ -2369,7 +2378,7 @@ class DiffusionPipelineWrapper:
                     controlnet_uris=self._controlnet_uris,
                     t2i_adapter_uris=self._t2i_adapter_uris,
                     scheduler=self._scheduler,
-                    pag=self._pag,
+                    pag=pag,
                     safety_checker=self._safety_checker,
                     auth_token=self._auth_token,
                     device=self._device,
@@ -2416,7 +2425,7 @@ class DiffusionPipelineWrapper:
                 scheduler=self._scheduler if
                 self._sdxl_refiner_scheduler is None else self._sdxl_refiner_scheduler,
 
-                pag=self._pag,
+                pag=sdxl_refiner_pag,
                 safety_checker=self._safety_checker,
                 auth_token=self._auth_token,
                 device=self._device,
@@ -2450,7 +2459,7 @@ class DiffusionPipelineWrapper:
                 controlnet_uris=self._controlnet_uris,
                 t2i_adapter_uris=self._t2i_adapter_uris,
                 scheduler=self._scheduler,
-                pag=self._pag,
+                pag=pag,
                 safety_checker=self._safety_checker,
                 auth_token=self._auth_token,
                 device=self._device,
@@ -2511,7 +2520,12 @@ class DiffusionPipelineWrapper:
                 pipeline_type=pipeline_type,
                 dtype=self._dtype)
 
-        loaded_new = self._lazy_init_pipeline(pipeline_type)
+        loaded_new = self._lazy_init_pipeline(
+            pipeline_type,
+            pag=copy_args.pag_scale is not None or
+                copy_args.pag_adaptive_scale is not None,
+            sdxl_refiner_pag=copy_args.sdxl_refiner_pag_scale is not None or
+                             copy_args.sdxl_refiner_pag_adaptive_scale is not None)
 
         if loaded_new:
             _cache.enforce_cache_constraints()

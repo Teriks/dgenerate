@@ -9,6 +9,7 @@ diffusers/stable-diffusion-xl-1.0-inpainting-0.1 --model-type torch-sdxl
 --guidance-scales 7
 --image-seeds "../../media/horse1.jpg;../../media/horse1-mask.jpg"
 --image-seed-strengths 0.9
+--model-sequential-offload
 --seeds 39877139643371
 --output-path basic
 --prompts "Horse standing on the surface of mars, real, photo, high resolution; artwork, fake, imaginary"
