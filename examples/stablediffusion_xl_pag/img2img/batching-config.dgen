@@ -28,3 +28,24 @@ stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
 --seeds 24344090316981
 --output-path batching
 --prompts "A detailed view of the planet mars"
+
+
+# Enable PAG in the refiner with --sdxl-refiner-pag
+
+
+stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
+--variant fp16 --dtype float16
+--sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0
+--sdxl-high-noise-fractions 0.8
+--pag
+--sdxl-refiner-pag
+--inference-steps 30
+--guidance-scales 8
+--image-seeds "images: ../../media/earth.jpg, ../../media/mountain.png;1024"
+--image-seed-strengths 0.9
+--vae-tiling
+--vae-slicing
+--seeds 24344090316981
+--output-path batching
+--prompts "A detailed view of the planet mars"
+
