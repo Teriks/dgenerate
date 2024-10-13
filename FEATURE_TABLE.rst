@@ -28,10 +28,12 @@ Diffusion Model Feature Support Table
      - ControlNet
      - T2I Adapter
      - IP Adapter
+     - Perturbed Attenuation Guidance (PAG)
      - sd-embed Prompt Weighting
      - compel Prompt Weighting
 
    * - ``torch``
+     - ✅
      - ✅
      - ✅
      - ✅
@@ -52,10 +54,12 @@ Diffusion Model Feature Support Table
      - ❌
      - ❌
      - ✅
+     - ❌
      - ✅
      - ✅
 
    * - ``torch-sdxl``
+     - ✅
      - ✅
      - ✅
      - ✅
@@ -78,11 +82,13 @@ Diffusion Model Feature Support Table
      - ❌
      - ❌
      - ❌
+     - ❌
 
    * - ``torch-ifs``
      - ❌
      - ✅
      - ✅
+     - ❌
      - ❌
      - ❌
      - ❌
@@ -102,6 +108,7 @@ Diffusion Model Feature Support Table
      - ❌
      - ❌
      - ❌
+     - ❌
 
    * - ``torch-sdxl-pix2pix``
      - ❌
@@ -112,12 +119,14 @@ Diffusion Model Feature Support Table
      - ❌
      - ❌
      - ❌
+     - ❌
      - ✅
      - ✅
 
    * - ``torch-upscaler-x2``
      - ❌
      - ✅
+     - ❌
      - ❌
      - ❌
      - ❌
@@ -136,12 +145,14 @@ Diffusion Model Feature Support Table
      - ❌
      - ❌
      - ❌
+     - ❌
      - ✅
      - ✅
 
    * - ``torch-s-cascade``
      - ✅
      - ✅
+     - ❌
      - ❌
      - ❌
      - ❌
@@ -161,6 +172,7 @@ Diffusion Model Feature Support Table
      - ❌
      - ❌
      - ✅
+     - ✅
      - ❌
 
    * - ``torch-flux``
@@ -170,6 +182,7 @@ Diffusion Model Feature Support Table
      - ✅
      - ❌
      - ✅
+     - ❌
      - ❌
      - ❌
      - ✅
