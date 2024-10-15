@@ -260,7 +260,7 @@ if __name__ != 'setup_as_library':
           long_description=README,
           install_requires=pyproject_requirements,
           extras_require={
-              'ncnn': ['ncnn==1.0.20240410'],
+              'ncnn': ['ncnn==1.0.20240820'],
               'dev': ['pandoc==2.3',
                       'pyinstaller==6.2.0',
                       'sphinx==7.2.6',
