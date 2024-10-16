@@ -1503,7 +1503,10 @@ class RenderLoopConfig(_types.SetFromMixin):
             self.sdxl_refiner_negative_crops_coords_top_left,
             self.s_cascade_decoder_inference_steps,
             self.s_cascade_decoder_guidance_scales,
-            self.s_cascade_decoder_prompts
+            self.s_cascade_decoder_prompts,
+            self.sdxl_refiner_inference_steps,
+            self.sdxl_refiner_guidance_scales,
+            self.sdxl_refiner_guidance_rescales
         ]
 
         product = 1
