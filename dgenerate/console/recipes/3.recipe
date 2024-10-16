@@ -14,6 +14,7 @@ title: Stable Diffusion XL (no refiner)
 @uriwithfloat[{"label":"T2I Adapter Path / URI", "float-label":"T2I Adapter Scale", "arg":"--t2i-adapters", "float-arg":"scale", "dir":true, "file-types":["models"]}]
 @dir[{"label":"UNet Directory / URI", "arg":"--unet", "divider-after":true}]
 @imageseed[{"label":"Image Seed", "arg":"--image-seeds", "file-types":["images-in", "videos-in"], "float-label":"Image Seed Strength", "float-arg":"--image-seed-strengths", "min":0.01, "max":1, "default":"", "float":""}]
+@switch[{"label":"No Aspect Correction?", "arg":"--no-aspect"}]
 @imageprocessor[{"arg":"--seed-image-processors", "label":"Seed Image Processor"}]
 @imageprocessor[{"arg":"--mask-image-processors", "label":"Inpaint Mask Processor"}]
 @imageprocessor[{"arg":"--control-image-processors", "label":"Control Image Processor", "divider-after":true}]
