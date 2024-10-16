@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 4.2.1
+#! dgenerate 4.2.2
 
 diffusers/sdxl-instructpix2pix-768 --model-type torch-sdxl-pix2pix
 --dtype float16

@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 4.2.1
+#! dgenerate 4.2.2
 
 timbrooks/instruct-pix2pix --model-type "torch-pix2pix" --dtype float16
 --inference-steps 30
