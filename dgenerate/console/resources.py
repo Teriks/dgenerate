@@ -31,6 +31,7 @@ import tkinter
 import tkinter as tk
 import typing
 import webbrowser
+import packaging.version
 
 import PIL.Image
 import PIL.ImageTk
@@ -272,24 +273,12 @@ class VersionComparison(enum.Enum):
 
 
 def compare_versions(version1, version2) -> VersionComparison:
-    def parse_version(version):
-        # Remove any non-alphanumeric characters except dots
-        version = re.sub(r'[^0-9a-zA-Z.]+', '', version)
-        # Remove leading 'v' if present
-        if version.startswith('v'):
-            version = version[1:]
-        # Remove any suffix
-        if '-' in version:
-            version = version.split('-')[0]
-        major, minor, patch = version.split('.')
-        return int(major), int(minor), int(patch)
+    version1 = packaging.version.Version(version1)
+    version2 = packaging.version.Version(version2)
 
-    v1_major, v1_minor, v1_patch = parse_version(version1)
-    v2_major, v2_minor, v2_patch = parse_version(version2)
-
-    if (v1_major, v1_minor, v1_patch) > (v2_major, v2_minor, v2_patch):
+    if version1 > version2:
         return VersionComparison.V1_NEWER
-    elif (v1_major, v1_minor, v1_patch) < (v2_major, v2_minor, v2_patch):
+    elif version1 < version2:
         return VersionComparison.V2_NEWER
     else:
         return VersionComparison.SAME
