@@ -26,12 +26,19 @@ import shutil
 import subprocess
 import sys
 import platform
+import argparse
 
 if platform.system() != 'Windows':
     print('Windows installer build is not supported on non windows systems.')
     sys.exit(1)
 
-wix_only = '--wix-only' in sys.argv
+# Argument parsing
+parser = argparse.ArgumentParser(prog='build')
+parser.add_argument('--wix-only', nargs='*', help='Rebuild MSI, using build cache instead of a clean build.')
+parser.add_argument('--custom-diffusers', help='Custom diffusers pip install package.')
+
+args = parser.parse_args()
+
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -64,6 +71,10 @@ def create_portable_environment():
                     '-m', 'pip', 'install', '.[win-installer, ncnn]',
                     '--extra-index-url', 'https://download.pytorch.org/whl/cu124/'], env=env)
 
+    if args.custom_diffusers:
+        subprocess.run([python_exe,
+                        '-m', 'pip', 'install', args.custom_diffusers, '--force'], env=env)
+
     os.chdir(script_dir)
 
     # Build a executable and distributable environment
@@ -72,7 +83,7 @@ def create_portable_environment():
 
 # Remove old artifacts
 
-if not wix_only:
+if not args.wix_only:
     for directory in ['venv', 'build', 'dist', 'obj', 'bin']:
         shutil.rmtree(directory, ignore_errors=True)
 
@@ -89,7 +100,7 @@ else:
 # Build WiX installer
 subprocess.run(['dotnet', 'build', 'dgenerate.wixproj', '--configuration', 'Release'])
 
-if not wix_only:
+if not args.wix_only:
     # Create a multi-part zip archive
     os.chdir('bin\\Release')
     cab_files = [f for f in os.listdir() if f.endswith('.cab')]
