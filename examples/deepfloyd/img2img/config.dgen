@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 4.2.3
+#! dgenerate 4.3.0
 
 \set image_to_vary ../../media/dog-on-bench.png
 
