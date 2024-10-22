@@ -271,15 +271,42 @@ class VersionComparison(enum.Enum):
     SAME = 2
 
 
+def _ver_extra(ver: packaging.version.Version) -> tuple[str, int] | None:
+    if ver.is_postrelease:
+        return 'post', ver.post
+    if ver.is_devrelease:
+        return 'dev', ver.dev
+    if ver.is_prerelease:
+        return ver.pre
+    return None
+
+
 def compare_versions(version1, version2) -> VersionComparison:
-    version1 = packaging.version.Version(version1)
-    version2 = packaging.version.Version(version2)
+    try:
+        version1 = packaging.version.Version(version1)
+        version2 = packaging.version.Version(version2)
+    except packaging.version.InvalidVersion as e:
+        raise ValueError(str(e))
 
     if version1 > version2:
         return VersionComparison.V1_NEWER
     elif version1 < version2:
         return VersionComparison.V2_NEWER
     else:
+        extra1 = _ver_extra(version1)
+        extra2 = _ver_extra(version2)
+
+        if extra1 != extra2:
+            # fallback, probably not required
+            if extra1 is not None and extra2 is None:
+                return VersionComparison.V1_NEWER
+            elif extra1 is None and extra2 is not None:
+                return VersionComparison.V2_NEWER
+            elif extra1[1] > extra2[1]:
+                return VersionComparison.V1_NEWER
+            elif extra1[1] < extra2[1]:
+                return VersionComparison.V2_NEWER
+
         return VersionComparison.SAME
 
 
@@ -313,10 +340,16 @@ def add_help_menu_links(menu: tk.Menu):
             f'https://dgenerate.readthedocs.io/en/{ver}/readme.html'))
 
     release_info = check_latest_release()
+    cur_ver = release_version()
 
     if release_info is not None:
+        try:
+            compare_result = compare_versions(release_info.tag_name, cur_ver)
+        except:
+            # do not kill the UI just for this.
+            compare_result = VersionComparison.SAME
 
-        if compare_versions(release_info.tag_name, release_version()) == VersionComparison.V1_NEWER:
+        if compare_result == VersionComparison.V1_NEWER:
             menu.add_separator()
 
             menu.add_command(
