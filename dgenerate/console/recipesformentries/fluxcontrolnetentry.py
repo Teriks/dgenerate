@@ -89,10 +89,11 @@ class _FluxControlNetEntry(_urientry._UriEntry):
 
         self.uri_entry.bind('<Key>', lambda e: self.valid())
 
-        self.uri_var.trace_add('write', lambda *a: self._check_float_active())
+        self.uri_var.trace_add('write', lambda *a: self._check_fields_active())
 
         if not self.uri_entry.get():
             self.float_entry.config(state=tk.DISABLED)
+            self.mode_entry.config(state=tk.DISABLED)
             for c in self.spin_buttons.children.values():
                 c.config(state=tk.DISABLED)
 
@@ -113,7 +114,7 @@ class _FluxControlNetEntry(_urientry._UriEntry):
         if self.float_entry.is_valid():
             _entry.valid_colors(self.float_entry)
 
-    def _check_float_active(self):
+    def _check_fields_active(self):
         if self.uri_var.get():
             self.float_entry.config(state=tk.NORMAL)
             self.mode_entry.config(state=tk.NORMAL)
