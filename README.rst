@@ -3592,7 +3592,7 @@ Flux Union Control Net Mode
 
 Flux can utilize a combined control net model called ControlNet Union, i.e ``InstantX/FLUX.1-dev-Controlnet-Union``.
 
-This model is a union (combined weights) of six different trained control net models for Flux in one file under
+This model is a union (combined weights) of seven different trained control net models for Flux in one file under
 one HuggingFace repository.
 
 Contained within the tensor file are ControlNet weights for: ``canny``, ``tile``, ``depth``, ``blur``, ``pose``, ``gray``, and ``lq``.
