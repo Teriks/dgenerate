@@ -26,7 +26,7 @@ black-forest-labs/FLUX.1-schnell
 --vae-tiling
 --vae-slicing
 --prompts "A boxer throwing a punch in the ring"
---control-nets "InstantX/FLUX.1-dev-Controlnet-Union;scale=0.5;mode=pose" "InstantX/FLUX.1-dev-Controlnet-Canny;scale=0.5"
+--control-nets "InstantX/FLUX.1-dev-Controlnet-Union;end=0.5;mode=pose" "InstantX/FLUX.1-dev-Controlnet-Canny;start=0.5"
 --image-seeds "../../media/man-fighting-pose.jpg, ../../media/man-fighting-pose.jpg"
 --control-image-processors \
     "openpose;include-hand=true;include-face=true;output-file=multiple/boxer-openpose.png" + \
