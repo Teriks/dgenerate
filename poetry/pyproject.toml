@@ -8,7 +8,7 @@ license = "BSD 3-Clause"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<4"
-diffusers = "0.30.3"
+diffusers = "0.31.0"
 peft = "0.13.0"
 transformers = "4.45.2"
 accelerate = "1.0.1"
