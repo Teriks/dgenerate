@@ -342,6 +342,10 @@ class ControlNetUri:
                 raise _exceptions.InvalidControlNetUriError(
                     f'Torch ControlNet "end" must be a floating point number, received: {end}')
 
+            if start > end:
+                raise _exceptions.InvalidControlNetUriError(
+                    f'Torch ControlNet "start" must be less than or equal to "end".')
+
             if mode is not None:
                 modes = _textprocessing.oxford_comma(
                     [n.name.lower() for n in FluxControlNetUriModes], "or")
@@ -362,10 +366,6 @@ class ControlNetUri:
                         f'Torch Flux Union ControlNet "mode" must be less than '
                         f'{len(FluxControlNetUriModes)} and greater than zero, '
                         f'mode number {mode} does not exist.')
-
-            if start > end:
-                raise _exceptions.InvalidControlNetUriError(
-                    f'Torch ControlNet "start" must be less than or equal to "end".')
 
             return ControlNetUri(
                 model=r.concept,
