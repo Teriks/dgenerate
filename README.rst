@@ -3595,7 +3595,7 @@ Flux can utilize a combined control net model called ControlNet Union, i.e ``Ins
 This model is a union (combined weights) of seven different trained control net models for Flux in one file under
 one HuggingFace repository.
 
-Contained within the tensor file are ControlNet weights for: ``canny``, ``tile``, ``depth``, ``blur``, ``pose``, ``gray``, and ``lq``.
+Contained within the safetensors file are ControlNet weights for: ``canny``, ``tile``, ``depth``, ``blur``, ``pose``, ``gray``, and ``lq``.
 
 When using this ControlNet repository, you must specify which weights within that you want to use.
 
