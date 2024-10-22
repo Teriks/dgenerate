@@ -3627,8 +3627,8 @@ You can do this by specifying the mode name to the ``mode`` URI argument of ``--
 
 You can specify multiple instances of this control net URI with different modes if desired.
 
-Everything else about control net URIs works identically to Stable Diffusion,
-Stable Diffusion XL, and Stable Diffusion 3.
+Everything else about control net URI usage, such as URI arguments, is unchanged from
+what is described in the main `Specifying Control Nets`_ section.
 
 Specifying T2I Adapters
 =======================
