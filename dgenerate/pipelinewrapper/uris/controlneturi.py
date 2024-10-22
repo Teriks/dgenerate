@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import enum
 
 import diffusers
 import huggingface_hub
@@ -34,7 +35,20 @@ from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 
 _controlnet_uri_parser = _textprocessing.ConceptUriParser(
-    'ControlNet', ['scale', 'start', 'end', 'revision', 'variant', 'subfolder', 'dtype'])
+    'ControlNet', ['scale', 'start', 'end', 'mode', 'revision', 'variant', 'subfolder', 'dtype'])
+
+
+class FluxControlNetUriModes(enum.Enum):
+    """
+    Represents control net modes associated with the Flux Union controlnet.
+    """
+    CANNY = 0
+    TILE = 1
+    DEPTH = 2
+    BLUR = 3
+    POSE = 4
+    GRAY = 5
+    LQ = 6
 
 
 class ControlNetUri:
@@ -98,6 +112,13 @@ class ControlNetUri:
         """
         return self._end
 
+    @property
+    def mode(self) -> int | None:
+        """
+        Flux Union ControlNet mode.
+        """
+        return self._mode
+
     def __init__(self,
                  model: str,
                  revision: _types.OptionalString,
@@ -106,7 +127,8 @@ class ControlNetUri:
                  dtype: _enums.DataType | str | None = None,
                  scale: float = 1.0,
                  start: float = 0.0,
-                 end: float = 1.0):
+                 end: float = 1.0,
+                 mode: int | None = None):
         """
         :param model: model path
         :param revision: model revision (branch name)
@@ -116,6 +138,7 @@ class ControlNetUri:
         :param scale: control net scale
         :param start: control net guidance start value
         :param end: control net guidance end value
+        :param mode: Flux Union control net mode.
 
         :raises InvalidControlNetUriError: If ``dtype`` is passed an invalid data type string.
         """
@@ -124,6 +147,7 @@ class ControlNetUri:
         self._revision = revision
         self._variant = variant
         self._subfolder = subfolder
+        self._mode = mode
 
         try:
             self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
@@ -142,9 +166,9 @@ class ControlNetUri:
              sequential_cpu_offload_member: bool = False,
              model_cpu_offload_member: bool = False,
              model_class:
-                type[diffusers.ControlNetModel] |
-                type[diffusers.SD3ControlNetModel] |
-                type[diffusers.FluxControlNetModel] = diffusers.ControlNetModel) -> \
+             type[diffusers.ControlNetModel] |
+             type[diffusers.SD3ControlNetModel] |
+             type[diffusers.FluxControlNetModel] = diffusers.ControlNetModel) -> \
             diffusers.ControlNetModel | diffusers.SD3ControlNetModel:
         """
         Load a :py:class:`diffusers.ControlNetModel` from this URI.
@@ -201,22 +225,21 @@ class ControlNetUri:
               sequential_cpu_offload_member: bool = False,
               model_cpu_offload_member: bool = False,
               model_class:
-                type[diffusers.ControlNetModel] |
-                type[diffusers.SD3ControlNetModel] |
-                type[diffusers.FluxControlNetModel] = diffusers.ControlNetModel) \
+              type[diffusers.ControlNetModel] |
+              type[diffusers.SD3ControlNetModel] |
+              type[diffusers.FluxControlNetModel] = diffusers.ControlNetModel) \
             -> diffusers.ControlNetModel | diffusers.SD3ControlNetModel:
 
         if sequential_cpu_offload_member and model_cpu_offload_member:
             # these are used for cache differentiation only
             raise ValueError('sequential_cpu_offload_member and model_cpu_offload_member cannot both be True.')
 
-        if model_class is diffusers.FluxControlNetModel:
-            if self.start != 0.0:
+        if model_class is not diffusers.FluxControlNetModel:
+            if self.mode is not None:
                 raise ValueError(
-                    f'The "start" argument of ControlNet "{self.model}" must be 0.0 for Flux.')
-            if self.end != 1.0:
-                raise ValueError(
-                    f'The "end" argument of ControlNet "{self.model}" must be 1.0 for Flux.')
+                    f'The "mode" argument of ControlNet "{self.model}" is invalid to use '
+                    'with non Flux models.'
+                )
 
         model_path = _hfutil.download_non_hf_model(self.model)
 
@@ -293,6 +316,7 @@ class ControlNetUri:
             scale = r.args.get('scale', 1.0)
             start = r.args.get('start', 0.0)
             end = r.args.get('end', 1.0)
+            mode = r.args.get('mode', None)
 
             supported_dtypes = _enums.supported_data_type_strings()
             if dtype is not None and dtype not in supported_dtypes:
@@ -318,6 +342,27 @@ class ControlNetUri:
                 raise _exceptions.InvalidControlNetUriError(
                     f'Torch ControlNet "end" must be a floating point number, received: {end}')
 
+            if mode is not None:
+                modes = _textprocessing.oxford_comma(
+                    [n.name.lower() for n in FluxControlNetUriModes], "or")
+
+                try:
+                    try:
+                        mode = int(mode)
+                    except ValueError:
+                        mode = FluxControlNetUriModes[mode.upper()].value
+
+                except KeyError as e:
+                    raise _exceptions.InvalidControlNetUriError(
+                        f'Torch Flux Union ControlNet "mode" must be an integer, '
+                        f'or one of: {modes}. received: {mode}')
+
+                if mode >= len(FluxControlNetUriModes) or mode < 0:
+                    raise _exceptions.InvalidControlNetUriError(
+                        f'Torch Flux Union ControlNet "mode" must be less than '
+                        f'{len(FluxControlNetUriModes)} and greater than zero, '
+                        f'mode number {mode} does not exist.')
+
             if start > end:
                 raise _exceptions.InvalidControlNetUriError(
                     f'Torch ControlNet "start" must be less than or equal to "end".')
@@ -330,7 +375,8 @@ class ControlNetUri:
                 dtype=dtype,
                 scale=scale,
                 start=start,
-                end=end)
+                end=end,
+                mode=mode)
 
         except _textprocessing.ConceptUriParseError as e:
             raise _exceptions.InvalidControlNetUriError(e)
