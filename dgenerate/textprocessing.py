@@ -31,6 +31,8 @@ import shutil
 import textwrap
 import typing
 
+import packaging.version
+
 import dgenerate.files as _files
 import dgenerate.types as _types
 
@@ -1083,14 +1085,15 @@ def parse_version(string: str) -> _types.Version:
 
     :return: tuple of three ints
     """
-    ver_parts = string.split('.')
-    minor_re = re.compile(r'\d+')
 
-    if len(ver_parts) != 3 or not minor_re.match(ver_parts[2]):
+    try:
+        version = packaging.version.Version(string)
+    except packaging.version.InvalidVersion:
         raise ValueError(
-            f'version expected to be a version string in the format major.minor.patch. received: "{string}"')
+            f'version expected to be a version string in the format '
+            f'major.minor.patch. received: "{string}"')
 
-    return int(ver_parts[0]), int(ver_parts[1]), int(minor_re.match(ver_parts[2])[0])
+    return version.major, version.minor, version.micro
 
 
 def parse_dimensions(string):
