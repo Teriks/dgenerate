@@ -100,6 +100,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v4.3.0/>`_.
         * `animated inputs & combinatorics`_
     * `Specifying Textual Inversions (embeddings)`_
     * `Specifying Control Nets`_
+        * `Flux Union Control Net Mode`_
     * `Specifying T2I Adapters`_
     * `Specifying Text Encoders`_
     * `Prompt Weighting and Enhancement`_
@@ -3585,6 +3586,49 @@ If you are loading a .safetensors or other file from a path on disk, simply do:
     --prompts "Syntax example" \
     --control-nets "my_cn_model.safetensors"
 
+
+Flux Union Control Net Mode
+---------------------------
+
+Flux can utilize a combined control net model called ControlNet Union, i.e ``InstantX/FLUX.1-dev-Controlnet-Union``.
+
+This model is a union (combined weights) of six different trained control net models for Flux in one file under
+one HuggingFace repository.
+
+Contained within the tensor file are ControlNet weights for: ``canny``, ``tile``, ``depth``, ``blur``, ``pose``, ``gray``, and ``lq``.
+
+When using this ControlNet repository, you must specify which weights within that you want to use.
+
+You can do this by specifying the mode name to the ``mode`` URI argument of ``--control-nets``.
+
+.. code-block:: bash
+
+    #!/usr/bin/env bash
+
+    # Use a character from the examples media folder
+    # of this repository to generate an openpose rigging,
+    # and then feed that image to Flux using the ControlNet
+    # union repository, with the mode specified as "pose"
+
+    dgenerate black-forest-labs/FLUX.1-schnell \
+    --model-type torch-flux \
+    --dtype bfloat16 \
+    --model-sequential-offload \
+    --control-nets InstantX/FLUX.1-dev-Controlnet-Union;scale=0.8;mode=pose \
+    --image-seeds examples/media/man-fighting-pose.jpg \
+    --control-image-processors openpose \
+    --inference-steps 4 \
+    --guidance-scales 0 \
+    --gen-seeds 1 \
+    --output-path output \
+    --output-size 1024x1024 \
+    --prompts "a boxer throwing a punch in the ring"
+
+
+You can specify multiple instances of this control net URI with different modes if desired.
+
+Everything else about control net URIs works identically to Stable Diffusion,
+Stable Diffusion XL, and Stable Diffusion 3.
 
 Specifying T2I Adapters
 =======================
