@@ -3597,7 +3597,7 @@ one HuggingFace repository.
 
 Contained within the safetensors file are ControlNet weights for: ``canny``, ``tile``, ``depth``, ``blur``, ``pose``, ``gray``, and ``lq``.
 
-When using this ControlNet repository, you must specify which weights within that you want to use.
+When using this control net repository, you must specify which weights within that you want to use.
 
 You can do this by specifying the mode name to the ``mode`` URI argument of ``--control-nets``.
 
