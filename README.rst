@@ -1,7 +1,7 @@
 .. _homebrew_1: https://brew.sh/
 
 .. _optimum-quanto_library_1: https://github.com/huggingface/optimum-quanto
-.. _vermeer_canny_edged.png_1: https://raw.githubusercontent.com/Teriks/dgenerate/v4.3.0-1/examples/media/vermeer_canny_edged.png
+.. _vermeer_canny_edged.png_1: https://raw.githubusercontent.com/Teriks/dgenerate/v4.3.0/examples/media/vermeer_canny_edged.png
 
 .. _spandrel_1: https://github.com/chaiNNer-org/spandrel
 .. _ncnn_1: https://github.com/Tencent/ncnn
@@ -10,8 +10,8 @@
 .. _CivitAI_1: https://civitai.com/
 .. _chaiNNer_1: https://github.com/chaiNNer-org/chaiNNer
 
-.. |Documentation| image:: https://readthedocs.org/projects/dgenerate/badge/?version=v4.3.0-1
-   :target: http://dgenerate.readthedocs.io/en/v4.3.0-1/
+.. |Documentation| image:: https://readthedocs.org/projects/dgenerate/badge/?version=v4.3.0
+   :target: http://dgenerate.readthedocs.io/en/v4.3.0/
 
 .. |Latest Release| image:: https://img.shields.io/github/v/release/Teriks/dgenerate
    :target: https://github.com/Teriks/dgenerate/releases/latest
@@ -58,12 +58,12 @@ CPU rendering is possible for some operations but extraordinarily slow.
 
 For library documentation, and a better README reading experience which
 includes proper syntax highlighting for examples, and side panel navigation,
-please visit `readthedocs <http://dgenerate.readthedocs.io/en/v4.3.0-1/>`_.
+please visit `readthedocs <http://dgenerate.readthedocs.io/en/v4.3.0/>`_.
 
 ----
 
 * `Help Output`_
-* `Diffusion Feature Table <https://github.com/Teriks/dgenerate/blob/v4.3.0-1/FEATURE_TABLE.rst>`_
+* `Diffusion Feature Table <https://github.com/Teriks/dgenerate/blob/v4.3.0/FEATURE_TABLE.rst>`_
 
 * How to install
     * `Windows Install`_
@@ -1444,7 +1444,7 @@ Help Output
                             (DiffusionPipeline, UNet, VAE, ControlNet, and Text Encoder) considering current
                             memory usage. If any of these constraint expressions are met all models cached in
                             memory will be cleared. Example, and default value: "used_percent > 70" For Syntax
-                            See: [https://dgenerate.readthedocs.io/en/v4.3.0-1/dgenerate_submodules.html#dgenerate
+                            See: [https://dgenerate.readthedocs.io/en/v4.3.0/dgenerate_submodules.html#dgenerate
                             .pipelinewrapper.CACHE_MEMORY_CONSTRAINTS]
                             ------------------------------------------
       -pmc EXPR [EXPR ...], --pipeline-cache-memory-constraints EXPR [EXPR ...]
@@ -1453,7 +1453,7 @@ Help Output
                             of new models that are about to enter memory. If any of these constraint expressions
                             are met all DiffusionPipeline objects cached in memory will be cleared. Example, and
                             default value: "pipeline_size > (available * 0.75)" For Syntax See: [https://dgenera
-                            te.readthedocs.io/en/v4.3.0-1/dgenerate_submodules.html#dgenerate.pipelinewrapper.PIPE
+                            te.readthedocs.io/en/v4.3.0/dgenerate_submodules.html#dgenerate.pipelinewrapper.PIPE
                             LINE_CACHE_MEMORY_CONSTRAINTS]
                             ------------------------------
       -umc EXPR [EXPR ...], --unet-cache-memory-constraints EXPR [EXPR ...]
@@ -1462,7 +1462,7 @@ Help Output
                             models that are about to enter memory. If any of these constraint expressions are
                             met all UNet models cached in memory will be cleared. Example, and default value:
                             "unet_size > (available * 0.75)" For Syntax See: [https://dgenerate.readthedocs.io/e
-                            n/v4.3.0-1/dgenerate_submodules.html#dgenerate.pipelinewrapper.UNET_CACHE_MEMORY_CONST
+                            n/v4.3.0/dgenerate_submodules.html#dgenerate.pipelinewrapper.UNET_CACHE_MEMORY_CONST
                             RAINTS]
                             -------
       -vmc EXPR [EXPR ...], --vae-cache-memory-constraints EXPR [EXPR ...]
@@ -1471,7 +1471,7 @@ Help Output
                             models that are about to enter memory. If any of these constraint expressions are
                             met all VAE models cached in memory will be cleared. Example, and default value:
                             "vae_size > (available * 0.75)" For Syntax See: [https://dgenerate.readthedocs.io/en
-                            /v4.3.0-1/dgenerate_submodules.html#dgenerate.pipelinewrapper.VAE_CACHE_MEMORY_CONSTRA
+                            /v4.3.0/dgenerate_submodules.html#dgenerate.pipelinewrapper.VAE_CACHE_MEMORY_CONSTRA
                             INTS]
                             -----
       -cmc EXPR [EXPR ...], --control-net-cache-memory-constraints EXPR [EXPR ...]
@@ -1480,7 +1480,7 @@ Help Output
                             ControlNet models that are about to enter memory. If any of these constraint
                             expressions are met all ControlNet models cached in memory will be cleared. Example,
                             and default value: "controlnet_size > (available * 0.75)" For Syntax See: [https://d
-                            generate.readthedocs.io/en/v4.3.0-1/dgenerate_submodules.html#dgenerate.pipelinewrappe
+                            generate.readthedocs.io/en/v4.3.0/dgenerate_submodules.html#dgenerate.pipelinewrappe
                             r.CONTROLNET_CACHE_MEMORY_CONSTRAINTS]
                             --------------------------------------
       -tmc EXPR [EXPR ...], --text-encoder-cache-memory-constraints EXPR [EXPR ...]
@@ -1489,7 +1489,7 @@ Help Output
                             new Text Encoder models that are about to enter memory. If any of these constraint
                             expressions are met all Text Encoder models cached in memory will be cleared.
                             Example, and default value: "text_encoder_size > (available * 0.75)" For Syntax See:
-                            [https://dgenerate.readthedocs.io/en/v4.3.0-1/dgenerate_submodules.html#dgenerate.pipe
+                            [https://dgenerate.readthedocs.io/en/v4.3.0/dgenerate_submodules.html#dgenerate.pipe
                             linewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS]
                             --------------------------------------------------
       -iemc EXPR [EXPR ...], --image-encoder-cache-memory-constraints EXPR [EXPR ...]
@@ -1498,7 +1498,7 @@ Help Output
                             new Image Encoder models that are about to enter memory. If any of these constraint
                             expressions are met all Image Encoder models cached in memory will be cleared.
                             Example, and default value: "image_encoder_size > (available * 0.75)" For Syntax
-                            See: [https://dgenerate.readthedocs.io/en/v4.3.0-1/dgenerate_submodules.html#dgenerate
+                            See: [https://dgenerate.readthedocs.io/en/v4.3.0/dgenerate_submodules.html#dgenerate
                             .pipelinewrapper.IMAGE_ENCODER_CACHE_MEMORY_CONSTRAINTS]
                             --------------------------------------------------------
       -amc EXPR [EXPR ...], --adapter-cache-memory-constraints EXPR [EXPR ...]
@@ -1507,7 +1507,7 @@ Help Output
                             new T2I Adapter models that are about to enter memory. If any of these constraint
                             expressions are met all T2I Adapter models cached in memory will be cleared.
                             Example, and default value: "adapter_size > (available * 0.75)" For Syntax See: [htt
-                            ps://dgenerate.readthedocs.io/en/v4.3.0-1/dgenerate_submodules.html#dgenerate.pipeline
+                            ps://dgenerate.readthedocs.io/en/v4.3.0/dgenerate_submodules.html#dgenerate.pipeline
                             wrapper.ADAPTER_CACHE_MEMORY_CONSTRAINTS]
                             -----------------------------------------
       -tfmc EXPR [EXPR ...], --transformer-cache-memory-constraints EXPR [EXPR ...]
@@ -1525,7 +1525,7 @@ Help Output
                             usage of new image processor models that are about to enter memory. If any of these
                             constraint expressions are met all diffusion related models cached in memory will be
                             cleared. Example, and default value: "processor_size > (available * 0.70)" For
-                            Syntax See: [https://dgenerate.readthedocs.io/en/v4.3.0-1/dgenerate_submodules.html#dg
+                            Syntax See: [https://dgenerate.readthedocs.io/en/v4.3.0/dgenerate_submodules.html#dg
                             enerate.imageprocessors.IMAGE_PROCESSOR_MEMORY_CONSTRAINTS]
                             -----------------------------------------------------------
       -ipcc EXPR [EXPR ...], --image-processor-cuda-memory-constraints EXPR [EXPR ...]
@@ -1534,7 +1534,7 @@ Help Output
                             memory usage of new image processor models that are about to enter VRAM. If any of
                             these constraint expressions are met the last active diffusion model in VRAM will be
                             destroyed. Example, and default value: "processor_size > (available * 0.70)" For
-                            Syntax See: [https://dgenerate.readthedocs.io/en/v4.3.0-1/dgenerate_submodules.html#dg
+                            Syntax See: [https://dgenerate.readthedocs.io/en/v4.3.0/dgenerate_submodules.html#dg
                             enerate.imageprocessors.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS]
                             ----------------------------------------------------------------
 
@@ -2214,8 +2214,8 @@ however for this example files on disk are used for brevity.
 
 You can download them here:
 
- * `my-image-seed.png <https://raw.githubusercontent.com/Teriks/dgenerate/v4.3.0-1/examples/media/dog-on-bench.png>`_
- * `my-mask-image.png <https://raw.githubusercontent.com/Teriks/dgenerate/v4.3.0-1/examples/media/dog-on-bench-mask.png>`_
+ * `my-image-seed.png <https://raw.githubusercontent.com/Teriks/dgenerate/v4.3.0/examples/media/dog-on-bench.png>`_
+ * `my-mask-image.png <https://raw.githubusercontent.com/Teriks/dgenerate/v4.3.0/examples/media/dog-on-bench-mask.png>`_
 
 The command below generates a cat sitting on a bench with the images from the links above, the mask image masks out
 areas over the dog in the original image, causing the dog to be replaced with an AI generated cat.
@@ -4601,7 +4601,7 @@ CPU immediately when it is done with an image, clearing up VRAM space before the
 For an example, images can be processed with the canny edge detection algorithm or OpenPose (rigging generation)
 before being used for generation with a model + a ControlNet.
 
-This image of a `horse <https://raw.githubusercontent.com/Teriks/dgenerate/v4.3.0-1/examples/media/horse2.jpeg>`_
+This image of a `horse <https://raw.githubusercontent.com/Teriks/dgenerate/v4.3.0/examples/media/horse2.jpeg>`_
 is used in the example below with a ControlNet that is trained to generate images from canny edge detected input.
 
 .. code-block:: bash
@@ -4969,7 +4969,7 @@ Stable diffusion image upscaling models can be used via the model types:
     * ``--model-type torch-upscaler-x2``
     * ``--model-type torch-upscaler-x4``
 
-The image used in the example below is this `low resolution cat <https://raw.githubusercontent.com/Teriks/dgenerate/v4.3.0-1/examples/media/low_res_cat.png>`_
+The image used in the example below is this `low resolution cat <https://raw.githubusercontent.com/Teriks/dgenerate/v4.3.0/examples/media/low_res_cat.png>`_
 
 .. code-block:: bash
 
@@ -6701,12 +6701,12 @@ Image processor plugins
 -----------------------
 
 A code example as well as a usage example for image processor plugins can be found
-in the `writing_plugins/image_processor <https://github.com/Teriks/dgenerate/tree/v4.3.0-1/examples/writing_plugins/image_processor>`_
+in the `writing_plugins/image_processor <https://github.com/Teriks/dgenerate/tree/v4.3.0/examples/writing_plugins/image_processor>`_
 folder of the examples folder.
 
-The source code for the built in `canny <https://github.com/Teriks/dgenerate/blob/v4.3.0-1/dgenerate/imageprocessors/canny.py>`_ processor,
-the `openpose <https://github.com/Teriks/dgenerate/blob/v4.3.0-1/dgenerate/imageprocessors/openpose.py>`_ processor, and the simple
-`pillow image operations <https://github.com/Teriks/dgenerate/blob/v4.3.0-1/dgenerate/imageprocessors/imageops.py>`_ processors can also
+The source code for the built in `canny <https://github.com/Teriks/dgenerate/blob/v4.3.0/dgenerate/imageprocessors/canny.py>`_ processor,
+the `openpose <https://github.com/Teriks/dgenerate/blob/v4.3.0/dgenerate/imageprocessors/openpose.py>`_ processor, and the simple
+`pillow image operations <https://github.com/Teriks/dgenerate/blob/v4.3.0/dgenerate/imageprocessors/imageops.py>`_ processors can also
 be of reference as they are written as internal image processor plugins.
 
 ~~~~
@@ -6715,17 +6715,17 @@ be of reference as they are written as internal image processor plugins.
 Config directive and template function plugins
 ----------------------------------------------
 
-An example for writing config directives can be found in the `writing_plugins/config_directive <https://github.com/Teriks/dgenerate/tree/v4.3.0-1/examples/writing_plugins/config_directive>`_  example folder.
+An example for writing config directives can be found in the `writing_plugins/config_directive <https://github.com/Teriks/dgenerate/tree/v4.3.0/examples/writing_plugins/config_directive>`_  example folder.
 
-Config template functions can also be implemented by plugins, see: `writing_plugins/template_function <https://github.com/Teriks/dgenerate/tree/v4.3.0-1/examples/writing_plugins/template_function>`_
+Config template functions can also be implemented by plugins, see: `writing_plugins/template_function <https://github.com/Teriks/dgenerate/tree/v4.3.0/examples/writing_plugins/template_function>`_
 
 Currently the only internal directive that is implemented as a plugin is the ``\image_process`` directive, who's source file 
-`can be located here <https://github.com/Teriks/dgenerate/blob/v4.3.0-1/dgenerate/batchprocess/image_process_directive.py>`_.
+`can be located here <https://github.com/Teriks/dgenerate/blob/v4.3.0/dgenerate/batchprocess/image_process_directive.py>`_.
 
 The source file for the ``\image_process`` directive is terse as most of it is implemented as reusable code.
 
 The behavior of ``\image_process`` which is also used for ``--sub-command image-process`` is
-`is implemented here <https://github.com/Teriks/dgenerate/blob/v4.3.0-1/dgenerate/image_process>`_.
+`is implemented here <https://github.com/Teriks/dgenerate/blob/v4.3.0/dgenerate/image_process>`_.
 
 ~~~~
 
@@ -6733,9 +6733,9 @@ The behavior of ``\image_process`` which is also used for ``--sub-command image-
 Sub-command plugins
 -------------------
 
-Reference for writing sub-commands can be found in the `image-process <https://github.com/Teriks/dgenerate/blob/v4.3.0-1/dgenerate/subcommands/image_process.py>`_
+Reference for writing sub-commands can be found in the `image-process <https://github.com/Teriks/dgenerate/blob/v4.3.0/dgenerate/subcommands/image_process.py>`_
 sub-command implementation, and a plugin skeleton file for sub-commands can be found in the 
-`writing_plugins/sub_command <https://github.com/Teriks/dgenerate/tree/v4.3.0-1/examples/writing_plugins/sub_command>`_ example folder.
+`writing_plugins/sub_command <https://github.com/Teriks/dgenerate/tree/v4.3.0/examples/writing_plugins/sub_command>`_ example folder.
 
 ~~~~
 
@@ -6743,11 +6743,11 @@ sub-command implementation, and a plugin skeleton file for sub-commands can be f
 Prompt weighter plugins
 -----------------------
 
-Reference for writing prompt weighters can be found in the `CompelPromptWeighter <https://github.com/Teriks/dgenerate/blob/v4.3.0-1/dgenerate/promptweighters/compelpromptweighter.py>`_
-and `SdEmbedPromptWeighter <https://github.com/Teriks/dgenerate/blob/v4.3.0-1/dgenerate/promptweighters/sdembedpromptweighter.py>`_ internal prompt weighter implementations.
+Reference for writing prompt weighters can be found in the `CompelPromptWeighter <https://github.com/Teriks/dgenerate/blob/v4.3.0/dgenerate/promptweighters/compelpromptweighter.py>`_
+and `SdEmbedPromptWeighter <https://github.com/Teriks/dgenerate/blob/v4.3.0/dgenerate/promptweighters/sdembedpromptweighter.py>`_ internal prompt weighter implementations.
  
 A plugin skeleton file for prompt weighters can be found in the 
-`writing_plugins/prompt_weighter <https://github.com/Teriks/dgenerate/tree/v4.3.0-1/examples/writing_plugins/prompt_weighter>`_
+`writing_plugins/prompt_weighter <https://github.com/Teriks/dgenerate/tree/v4.3.0/examples/writing_plugins/prompt_weighter>`_
 example folder.
 
 ~~~~
