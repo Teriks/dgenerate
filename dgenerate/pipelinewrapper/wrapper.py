@@ -1678,6 +1678,12 @@ class DiffusionPipelineWrapper:
         return [p.scale for p in self._parsed_controlnet_uris] if \
             len(self._parsed_controlnet_uris) > 1 else self._parsed_controlnet_uris[0].scale
 
+    def _get_controlnet_mode(self):
+        if not self._parsed_controlnet_uris:
+            return None
+        return [p.mode for p in self._parsed_controlnet_uris] if \
+            len(self._parsed_controlnet_uris) > 1 else self._parsed_controlnet_uris[0].mode
+
     def _get_controlnet_guidance_start(self):
         if not self._parsed_controlnet_uris:
             return 0.0
@@ -1846,6 +1852,12 @@ class DiffusionPipelineWrapper:
         if hasattr(self._pipeline, 'controlnet'):
             pipeline_args['controlnet_conditioning_scale'] = \
                 self._get_controlnet_conditioning_scale()
+            pipeline_args['control_guidance_start'] = \
+                self._get_controlnet_guidance_start()
+            pipeline_args['control_guidance_end'] = \
+                self._get_controlnet_guidance_end()
+            pipeline_args['control_mode'] = \
+                self._get_controlnet_mode()
 
         return PipelineWrapperResult(_pipelines.call_pipeline(
             pipeline=self._pipeline,

@@ -52,7 +52,7 @@ from .lorauri import LoRAUri
 from .scascadedecoderuri import SCascadeDecoderUri
 from .sdxlrefineruri import SDXLRefinerUri
 from .textualinversionuri import TextualInversionUri
-from .controlneturi import ControlNetUri
+from .controlneturi import ControlNetUri, FluxControlNetUriModes
 from .textencoderuri import TextEncoderUri
 from .uneturi import UNetUri
 from .vaeuri import VAEUri
