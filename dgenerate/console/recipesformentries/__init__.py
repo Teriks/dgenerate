@@ -38,5 +38,6 @@ from .imagesizeentry import _ImageSizeEntry
 from .argswitchradio import _ArgSwitchRadio
 from .urientry import _UriEntry
 from .imageseedentry import _ImageSeedEntry
+from .fluxcontrolnetentry import _FluxControlNetEntry
 
 from .entry import DIVIDER_YPAD, ROW_XPAD
