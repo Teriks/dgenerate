@@ -33,7 +33,7 @@ black-forest-labs/FLUX.1-schnell
 --model-sequential-offload
 --inference-steps 4
 --guidance-scales 0
---image-seeds "images: ../../media/dog-on-bench.png, ../../media/beach.jpg;mask=../../media/dog-on-bench-mask.png;resize=1024;aspect=False"
+--image-seeds "images: ../../media/dog-on-bench.png, ../../media/beach.jpg;mask=../../media/dog-on-bench-mask.png;resize=512;aspect=False"
 --image-seed-strengths 0.9
 --vae-tiling
 --vae-slicing
