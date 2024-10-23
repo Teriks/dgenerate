@@ -19,5 +19,4 @@ black-forest-labs/FLUX.1-schnell
 --image-seeds "../../media/beach.jpg"
 --image-seed-strengths 0.9
 --seeds 70466855166895
---output-path basic
 --prompts "A huge tsunami wave about to impact a tropical beach, high resolution, photo, real"
