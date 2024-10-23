@@ -147,7 +147,7 @@ class ControlNetUri:
         self._revision = revision
         self._variant = variant
         self._subfolder = subfolder
-        self._mode = mode
+        self._mode = int(mode) if mode is not None else None
 
         try:
             self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
