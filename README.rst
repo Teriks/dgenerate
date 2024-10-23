@@ -371,8 +371,9 @@ Help Output
 
                             The "quantize" argument specifies whether or not to use optimum-quanto to quantize
                             the text encoder weights, and may be passed the values "qint2", "qint4", "qint8",
-                            "qfloat8_e4m3fn", "qfloat8_e5m2", or "qfloat8" to specify the quantization datatype,
-                            this can be utilized to run Flux models with much less GPU memory.
+                            "qfloat8_e4m3fn", "qfloat8_e4m3fnuz", "qfloat8_e5m2", or "qfloat8" to specify the
+                            quantization datatype, this can be utilized to run Flux models with much less GPU
+                            memory.
 
                             If you wish to load weights directly from a path on disk, you must point this
                             argument at the folder they exist in, which should also contain the config.json file
@@ -439,8 +440,9 @@ Help Output
 
                             The "quantize" argument specifies whether or not to use optimum-quanto to quantize
                             the transformer weights, and may be passed the values "qint2", "qint4", "qint8",
-                            "qfloat8_e4m3fn", "qfloat8_e5m2", or "qfloat8" to specify the quantization datatype,
-                            this can be utilized to run Flux models with much less GPU memory.
+                            "qfloat8_e4m3fn", "qfloat8_e4m3fnuz", "qfloat8_e5m2", or "qfloat8" to specify the
+                            quantization datatype, this can be utilized to run Flux models with much less GPU
+                            memory.
 
                             If you wish to load a weights file directly from disk, the simplest way is:
                             --transformer "transformer.safetensors", or with a dtype
@@ -1516,7 +1518,7 @@ Help Output
                             new Transformer models that are about to enter memory. If any of these constraint
                             expressions are met all Transformer models cached in memory will be cleared.
                             Example, and default value: "transformer_size > (available * 0.75)" For Syntax See:
-                            [https://dgenerate.readthedocs.io/en/v4.2.1/dgenerate_submodules.html#dgenerate.pipe
+                            [https://dgenerate.readthedocs.io/en/v4.3.0/dgenerate_submodules.html#dgenerate.pipe
                             linewrapper.TRANSFORMER_CACHE_MEMORY_CONSTRAINTS]
                             -------------------------------------------------
       -ipmc EXPR [EXPR ...], --image-processor-memory-constraints EXPR [EXPR ...]
