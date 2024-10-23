@@ -701,6 +701,11 @@ Help Output
                             The "end" argument specifies at what fraction of the total inference steps to stop
                             applying the ControlNet, defaults to 1.0, IE: the very end.
 
+                            The "mode" argument can be used when using --model-type torch-flux and ControlNet
+                            Union to specify the ControlNet mode. Acceptable values are: "canny", "tile",
+                            "depth", "blur", "pose", "gray", "lq". This value may also be an integer between 0
+                            and 6, inclusive.
+
                             The "revision" argument specifies the model revision to use for the ControlNet model
                             when loading from Hugging Face repository, (The Git branch / tag, default is
                             "main").
