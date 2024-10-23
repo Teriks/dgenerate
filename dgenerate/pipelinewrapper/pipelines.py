@@ -1237,7 +1237,7 @@ def create_torch_diffusion_pipeline(
     :param scheduler: Optional scheduler (sampler) class name, unqualified, or "help" / "helpargs" to print supported values
         to STDOUT and raise :py:exc:`dgenerate.pipelinewrapper.SchedulerHelpException`.  Dgenerate URI syntax is supported
         for overriding the schedulers constructor parameter defaults.
-    :param pag: Use perturbed attenuation guidance?
+    :param pag: Use perturbed attention guidance?
     :param safety_checker: Safety checker enabled? default is ``False``
     :param auth_token: Optional huggingface API token for accessing repositories that are restricted to your account
     :param device: Optional ``--device`` string, defaults to "cuda"
@@ -1475,12 +1475,12 @@ def _create_torch_diffusion_pipeline(
                 model_type == _enums.ModelType.TORCH_SDXL or
                 model_type == _enums.ModelType.TORCH_SD3):
             raise UnsupportedPipelineConfigError(
-                'Perturbed attenuation guidance (--pag*) is only supported with '
+                'Perturbed attention guidance (--pag*) is only supported with '
                 '--model-type torch, torch-sdxl, and torch-sd3.')
 
         if t2i_adapter_uris:
             raise UnsupportedPipelineConfigError(
-                'Perturbed attenuation guidance (--pag*) is is not supported '
+                'Perturbed attention guidance (--pag*) is is not supported '
                 'with --t2i-adapters.')
 
     # Flux model restrictions

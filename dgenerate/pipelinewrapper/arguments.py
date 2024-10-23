@@ -385,22 +385,22 @@ class DiffusionArguments(_types.SetFromMixin):
 
     pag_scale: _types.OptionalFloat = None
     """
-    Perturbed attenuation guidance scale.
+    Perturbed attention guidance scale.
     """
 
     pag_adaptive_scale: _types.OptionalFloat = None
     """
-    Adaptive perturbed attenuation guidance scale.
+    Adaptive perturbed attention guidance scale.
     """
 
     sdxl_refiner_pag_scale: _types.OptionalFloat = None
     """
-    Perturbed attenuation guidance scale for the SDXL refiner.
+    Perturbed attention guidance scale for the SDXL refiner.
     """
 
     sdxl_refiner_pag_adaptive_scale: _types.OptionalFloat = None
     """
-    Adaptive perturbed attenuation guidance scale for the SDXL refiner.
+    Adaptive perturbed attention guidance scale for the SDXL refiner.
     """
 
     image_guidance_scale: _types.OptionalFloat = None
