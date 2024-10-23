@@ -100,7 +100,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v4.3.0/>`_.
         * `animated inputs & combinatorics`_
     * `Specifying Textual Inversions (embeddings)`_
     * `Specifying Control Nets`_
-        * `Flux Union Control Net Mode`_
+        * `Flux Control Net Union Mode`_
     * `Specifying T2I Adapters`_
     * `Specifying Text Encoders`_
     * `Prompt Weighting and Enhancement`_
@@ -3593,7 +3593,7 @@ If you are loading a .safetensors or other file from a path on disk, simply do:
     --control-nets "my_cn_model.safetensors"
 
 
-Flux Union Control Net Mode
+Flux Control Net Union Mode
 ---------------------------
 
 Flux can utilize a combined control net model called ControlNet Union, i.e ``InstantX/FLUX.1-dev-Controlnet-Union``.
