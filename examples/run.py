@@ -217,7 +217,10 @@ def check_return_code(configs, exitcode):
 
 
 def run_config(config, injected_args, extra_args, debug_torch, use_subprocess=False):
+    config = os.path.abspath(config)
+
     log(f'RUNNING{" IN SUBPROCESS" if use_subprocess else ""}: {config}')
+
     dirname = os.path.dirname(config)
     _, ext = os.path.splitext(config)
 

@@ -6,7 +6,7 @@
 
 # all images involved must be the same dimension or resized to the same dimension
 
-# in this case it is possible to resize them both to 1024, the image of the earth
+# in this case it is possible to resize them both to 512, the image of the earth
 # is 1024 already, and the image of the mountain is 512
 
 # Two images are produced on the GPU in once go, --vae-tiling and --vae-slicing
@@ -28,7 +28,7 @@ black-forest-labs/FLUX.1-schnell
 --model-sequential-offload
 --inference-steps 4
 --guidance-scales 0
---image-seeds "images: ../../media/earth.jpg, ../../media/mountain.png;1024"
+--image-seeds "images: ../../media/earth.jpg, ../../media/mountain.png;512"
 --image-seed-strengths 0.9
 --vae-tiling
 --vae-slicing
