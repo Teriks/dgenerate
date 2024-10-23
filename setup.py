@@ -262,7 +262,7 @@ if __name__ != 'setup_as_library':
           extras_require={
               'ncnn': ['ncnn==1.0.20240820'],
               'dev': ['pandoc==2.3',
-                      'pyinstaller==6.2.0',
+                      'pyinstaller==6.11.0',
                       'sphinx==7.2.6',
                       'sphinx_rtd_theme==2.0.0',
                       'build==1.0.3',
