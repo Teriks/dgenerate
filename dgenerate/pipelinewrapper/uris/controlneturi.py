@@ -128,7 +128,7 @@ class ControlNetUri:
                  scale: float = 1.0,
                  start: float = 0.0,
                  end: float = 1.0,
-                 mode: int | FluxControlNetUriModes | None = None):
+                 mode: int | str | FluxControlNetUriModes | None = None):
         """
         :param model: model path
         :param revision: model revision (branch name)
@@ -147,7 +147,11 @@ class ControlNetUri:
         self._revision = revision
         self._variant = variant
         self._subfolder = subfolder
-        self._mode = int(mode) if mode is not None else None
+
+        if isinstance(mode, str):
+            self._mode = self._flux_mode_int_from_str(mode)
+        else:
+            self._mode = int(mode) if mode is not None else None
 
         try:
             self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
@@ -347,25 +351,7 @@ class ControlNetUri:
                     f'Torch ControlNet "start" must be less than or equal to "end".')
 
             if mode is not None:
-                modes = _textprocessing.oxford_comma(
-                    [n.name.lower() for n in FluxControlNetUriModes], "or")
-
-                try:
-                    try:
-                        mode = int(mode)
-                    except ValueError:
-                        mode = FluxControlNetUriModes[mode.upper()].value
-
-                except KeyError as e:
-                    raise _exceptions.InvalidControlNetUriError(
-                        f'Torch Flux Union ControlNet "mode" must be an integer, '
-                        f'or one of: {modes}. received: {mode}')
-
-                if mode >= len(FluxControlNetUriModes) or mode < 0:
-                    raise _exceptions.InvalidControlNetUriError(
-                        f'Torch Flux Union ControlNet "mode" must be less than '
-                        f'{len(FluxControlNetUriModes)} and greater than zero, '
-                        f'mode number {mode} does not exist.')
+                mode = ControlNetUri._flux_mode_int_from_str(mode)
 
             return ControlNetUri(
                 model=r.concept,
@@ -380,3 +366,24 @@ class ControlNetUri:
 
         except _textprocessing.ConceptUriParseError as e:
             raise _exceptions.InvalidControlNetUriError(e)
+
+    @staticmethod
+    def _flux_mode_int_from_str(mode):
+        modes = _textprocessing.oxford_comma(
+            [n.name.lower() for n in FluxControlNetUriModes], "or")
+        try:
+            try:
+                mode = int(mode)
+            except ValueError:
+                mode = FluxControlNetUriModes[mode.upper()].value
+
+        except KeyError as e:
+            raise _exceptions.InvalidControlNetUriError(
+                f'Torch Flux Union ControlNet "mode" must be an integer, '
+                f'or one of: {modes}. received: {mode}')
+        if mode >= len(FluxControlNetUriModes) or mode < 0:
+            raise _exceptions.InvalidControlNetUriError(
+                f'Torch Flux Union ControlNet "mode" must be less than '
+                f'{len(FluxControlNetUriModes)} and greater than zero, '
+                f'mode number {mode} does not exist.')
+        return mode
