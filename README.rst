@@ -4498,7 +4498,7 @@ And an ``inpainting`` example:
 In the case of Stable Cascade, this syntax results in multiple images being passed to Stable Cascade
 as an image/style prompt, and does not result in multiple outputs or batching behavior.
 
-This Stable Cascade functionality is demonstrated in the example config: `examples/stablecascade/img2img/multiple-inputs-config.dgen <https://github.com/Teriks/dgenerate/blob/v4.2.1/examples/stablecascade/img2img/multiple-inputs-config.dgen>`_
+This Stable Cascade functionality is demonstrated in the example config: `examples/stablecascade/img2img/multiple-inputs-config.dgen <https://github.com/Teriks/dgenerate/blob/v4.3.0/examples/stablecascade/img2img/multiple-inputs-config.dgen>`_
 
 
 Image Processors
