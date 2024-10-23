@@ -520,35 +520,35 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     pag: bool = False
     """
-    Use perturbed attenuation guidance?
+    Use perturbed attention guidance?
     """
 
     pag_scales: _types.OptionalFloats = None
     """
-    List of floating point perturbed attenuation guidance scales, this 
+    List of floating point perturbed attention guidance scales, this 
     corresponds to the ``--pag-scales`` argument of the dgenerate command line tool.
     """
 
     pag_adaptive_scales: _types.OptionalFloats = None
     """
-    List of floating point adaptive perturbed attenuation guidance scales, this
+    List of floating point adaptive perturbed attention guidance scales, this
     corresponds to the ``--pag-adaptive-scales`` argument of the dgenerate command line tool.
     """
 
     sdxl_refiner_pag: _types.OptionalBoolean = None
     """
-    Use perturbed attenuation guidance in the SDXL refiner?
+    Use perturbed attention guidance in the SDXL refiner?
     """
 
     sdxl_refiner_pag_scales: _types.OptionalFloats = None
     """
-    List of floating point perturbed attenuation guidance scales to try with the SDXL refiner,
+    List of floating point perturbed attention guidance scales to try with the SDXL refiner,
     this corresponds to the ``--sdxl-refiner-pag-scales`` argument of the dgenerate command line tool.
     """
 
     sdxl_refiner_pag_adaptive_scales: _types.OptionalFloats = None
     """
-    List of floating point adaptive perturbed attenuation guidance scales to try with the SDXL refiner, 
+    List of floating point adaptive perturbed attention guidance scales to try with the SDXL refiner, 
     this corresponds to the ``--sdxl-refiner-pag-adaptive-scales`` argument of the dgenerate command line tool.
     """
 
@@ -804,12 +804,12 @@ class RenderLoopConfig(_types.SetFromMixin):
                     self.model_type == _pipelinewrapper.ModelType.TORCH_SDXL or
                     self.model_type == _pipelinewrapper.ModelType.TORCH_SD3):
                 raise RenderLoopConfigError(
-                    'Perturbed attenuation guidance (--pag*) is only supported with '
+                    'Perturbed attention guidance (--pag*) is only supported with '
                     '--model-type torch, torch-sdxl, and torch-sd3.')
 
             if self.t2i_adapter_uris:
                 raise RenderLoopConfigError(
-                    'Perturbed attenuation guidance (--pag*) is is not supported '
+                    'Perturbed attention guidance (--pag*) is is not supported '
                     'with --t2i-adapters.')
 
             if not (self.pag_scales or self.pag_adaptive_scales):

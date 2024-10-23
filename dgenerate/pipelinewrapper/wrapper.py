@@ -2281,12 +2281,12 @@ class DiffusionPipelineWrapper:
                     self.model_type == _enums.ModelType.TORCH_SDXL or
                     self.model_type == _enums.ModelType.TORCH_SD3):
                 raise _pipelines.UnsupportedPipelineConfigError(
-                    'Perturbed attenuation guidance (pag* arguments) is only supported with '
+                    'Perturbed attention guidance (pag* arguments) is only supported with '
                     '--model-type torch, torch-sdxl, and torch-sd3.')
 
             if self.t2i_adapter_uris:
                 raise _pipelines.UnsupportedPipelineConfigError(
-                    'Perturbed attenuation guidance (pag* arguments) are is not supported '
+                    'Perturbed attention guidance (pag* arguments) are is not supported '
                     'with --t2i-adapters.')
 
         if sdxl_refiner_pag and not self._sdxl_refiner_uri:

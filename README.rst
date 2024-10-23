@@ -787,29 +787,29 @@ Help Output
                             and their typical defaults. Arguments listed by "helpargs" can be overridden using
                             the URI syntax typical to other dgenerate URI arguments.
                             --------------------------------------------------------
-      -pag, --pag           Use perturbed attenuation guidance? This is supported for --model-type torch, torch-
+      -pag, --pag           Use perturbed attention guidance? This is supported for --model-type torch, torch-
                             sdxl, and torch-sd3 for most use cases. This enables PAG for the main model using
                             default scale values.
                             ---------------------
       -pags FLOAT [FLOAT ...], --pag-scales FLOAT [FLOAT ...]
-                            One or more perturbed attenuation guidance scales to try. Specifying values enables
+                            One or more perturbed attention guidance scales to try. Specifying values enables
                             PAG for the main model. (default: [3.0])
                             ----------------------------------------
       -pagas FLOAT [FLOAT ...], --pag-adaptive-scales FLOAT [FLOAT ...]
-                            One or more adaptive perturbed attenuation guidance scales to try. Specifying values
+                            One or more adaptive perturbed attention guidance scales to try. Specifying values
                             enables PAG for the main model. (default: [0.0])
                             ------------------------------------------------
       -rpag, --sdxl-refiner-pag
-                            Use perturbed attenuation guidance in the SDXL refiner? This is supported for
+                            Use perturbed attention guidance in the SDXL refiner? This is supported for
                             --model-type torch-sdxl for most use cases. This enables PAG for the SDXL refiner
                             model using default scale values.
                             ---------------------------------
       -rpags FLOAT [FLOAT ...], --sdxl-refiner-pag-scales FLOAT [FLOAT ...]
-                            One or more perturbed attenuation guidance scales to try with the SDXL refiner pass.
+                            One or more perturbed attention guidance scales to try with the SDXL refiner pass.
                             Specifying values enables PAG for the refiner. (default: [3.0])
                             ---------------------------------------------------------------
       -rpagas FLOAT [FLOAT ...], --sdxl-refiner-pag-adaptive-scales FLOAT [FLOAT ...]
-                            One or more adaptive perturbed attenuation guidance scales to try with the SDXL
+                            One or more adaptive perturbed attention guidance scales to try with the SDXL
                             refiner pass. Specifying values enables PAG for the refiner. (default: [0.0])
                             -----------------------------------------------------------------------------
       -mqo, --model-sequential-offload

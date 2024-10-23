@@ -28,7 +28,7 @@ Diffusion Model Feature Support Table
      - ControlNet
      - T2I Adapter
      - IP Adapter
-     - Perturbed Attenuation Guidance (PAG)
+     - Perturbed Attention Guidance (PAG)
      - sd-embed Prompt Weighting
      - compel Prompt Weighting
 
