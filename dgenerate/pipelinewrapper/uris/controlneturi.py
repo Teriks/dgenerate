@@ -38,7 +38,7 @@ _controlnet_uri_parser = _textprocessing.ConceptUriParser(
     'ControlNet', ['scale', 'start', 'end', 'mode', 'revision', 'variant', 'subfolder', 'dtype'])
 
 
-class FluxControlNetUriModes(enum.Enum):
+class FluxControlNetUriModes(enum.IntEnum):
     """
     Represents control net modes associated with the Flux Union controlnet.
     """
@@ -128,7 +128,7 @@ class ControlNetUri:
                  scale: float = 1.0,
                  start: float = 0.0,
                  end: float = 1.0,
-                 mode: int | None = None):
+                 mode: int | FluxControlNetUriModes | None = None):
         """
         :param model: model path
         :param revision: model revision (branch name)
