@@ -228,6 +228,9 @@ if __name__ != 'setup_as_library':
 
     exclude = {'triton'} if dgenerate_platform.lower() != 'linux' else set()
 
+    if dgenerate_platform.lower() == 'darwin':
+        exclude.union({'bitsandbytes'})
+
     if force_lockfile_requires:
         # nvidia- packages not actually required on windows
         pyproject_requirements = [name + spec for name, spec in
