@@ -52,6 +52,7 @@ try:
 except ImportError:
     _bnb_utils = None
 
+
 class UnsupportedPipelineConfigError(Exception):
     """
     Occurs when a diffusers pipeline is requested to be
