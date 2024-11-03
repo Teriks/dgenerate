@@ -958,7 +958,18 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline,
 
     def _call_pipeline():
         nonlocal enable_retry_pipe
+        old_execution_device_property = None
         try:
+            if hasattr(pipeline, '_execution_device'):
+                # HACK
+                # The device this returns is sometimes wrong and causes issues
+                # with a randomly generated tensor (complaining about) being
+                # generated on the wrong device as compared to the torch.Generator
+                # object being used to generate it, this is a diffusers problem in
+                # the code of this private property
+                old_execution_device_property = pipeline.__class__._execution_device
+                pipeline.__class__._execution_device = property(lambda s: torch.device(device))
+
             return _call_pipeline_raw()
         except _d_exceptions.TORCH_CUDA_OOM_EXCEPTIONS as e:
             _d_exceptions.raise_if_not_cuda_oom(e)
@@ -971,6 +982,10 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline,
             # same cleanup
             _torch_oom_handler()
             raise
+        finally:
+            if old_execution_device_property is not None:
+                pipeline.__class__._execution_device = old_execution_device_property
+
 
     if pipeline is _LAST_CALLED_PIPELINE:
         try:
