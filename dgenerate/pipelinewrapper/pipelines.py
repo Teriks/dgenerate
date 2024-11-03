@@ -579,6 +579,9 @@ def enable_model_cpu_offload(pipeline: diffusers.DiffusionPipeline,
                 _bnb_utils._check_bnb_status(model)
 
             if is_loaded_in_8bit_bnb:
+                _messages.debug_log(
+                    f'Skipping cpu offload on 8-bit bitsandbytes '
+                    f'quantized module: {model_str}={model.__class__.__name__}')
                 continue
 
         _, hook = accelerate.cpu_offload_with_hook(model, device, prev_module_hook=hook)
