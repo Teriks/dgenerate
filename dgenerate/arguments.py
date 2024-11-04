@@ -592,7 +592,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                     Examples: "CLIPTextModel;model=huggingface/text_encoder", 
                     "CLIPTextModelWithProjection;model=huggingface/text_encoder;revision=main", 
-                    "T5TextModel;model=text_encoder_folder_on_disk". 
+                    "T5EncoderModel;model=text_encoder_folder_on_disk". 
                     
                     For main models which require multiple text encoders, the + symbol may be used
                     to indicate that a default value should be used for a particular text encoder,
