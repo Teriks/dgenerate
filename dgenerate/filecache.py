@@ -202,7 +202,11 @@ class KeyValueStore:
         :return: The keys and values that were deleted.
         """
         with self:
-            cutoff_date = datetime.datetime.now() - timedelta
+            try:
+                cutoff_date = datetime.datetime.now() - timedelta
+            except OverflowError:
+                cutoff_date = datetime.datetime.min
+
             self.cursor.execute("SELECT key, value FROM store WHERE creation_date < ?", (cutoff_date,))
             deleted_rows = self.cursor.fetchall()
             self.cursor.execute("DELETE FROM store WHERE creation_date < ?", (cutoff_date,))
