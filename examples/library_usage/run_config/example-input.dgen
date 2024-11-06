@@ -1,4 +1,4 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 4.3.3
+#! dgenerate 4.3.4
 
 \print Hello World!
