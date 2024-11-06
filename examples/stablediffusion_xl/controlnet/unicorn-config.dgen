@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 4.3.3
+#! dgenerate 4.3.4
 
 # Use the built in canny processor action to process
 # the image for you before using it for generation
