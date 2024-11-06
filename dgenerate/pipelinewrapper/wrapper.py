@@ -1087,18 +1087,18 @@ class DiffusionPipelineWrapper:
             opts.append(('--pag',))
         else:
             if args.pag_scale is not None:
-                opts.append(('--pag-scale', args.pag_scale))
+                opts.append(('--pag-scales', args.pag_scale))
             if args.pag_adaptive_scale is not None:
-                opts.append(('--pag-adaptive-scale', args.pag_adaptive_scale))
+                opts.append(('--pag-adaptive-scales', args.pag_adaptive_scale))
 
         if args.sdxl_refiner_pag_scale == 3.0 and \
                 args.sdxl_refiner_pag_adaptive_scale == 0.0:
             opts.append(('--sdxl-refiner-pag',))
         else:
             if args.sdxl_refiner_pag_scale is not None:
-                opts.append(('--sdxl-refiner-pag-scale', args.sdxl_refiner_pag_scale))
+                opts.append(('--sdxl-refiner-pag-scales', args.sdxl_refiner_pag_scale))
             if args.sdxl_refiner_pag_adaptive_scale is not None:
-                opts.append(('--sdxl-refiner-pag-adaptive-scale', args.sdxl_refiner_pag_adaptive_scale))
+                opts.append(('--sdxl-refiner-pag-adaptive-scales', args.sdxl_refiner_pag_adaptive_scale))
 
         if self._sdxl_refiner_scheduler is not None:
             if self._sdxl_refiner_scheduler != self._scheduler:
