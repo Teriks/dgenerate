@@ -4348,9 +4348,9 @@ Utilizing CivitAI links and Other Hosted Models
 ===============================================
 
 Any model accepted by dgenerate that can be specified as a single file
-inside of a URI or otherwise can be specified by a URL link to a model
-file itself. dgenerate will attempt to download the file from the link,
-store it in the web cache, and then use it.
+inside of a URI (or otherwise) can be specified by a URL to a model file. 
+dgenerate will attempt to download the file from the URL directly, store it in 
+the web cache, and then use it.
 
 You may also use the ``\download`` config directive to assist in pre
 downloading other resources from the internet. The directive has the ability
