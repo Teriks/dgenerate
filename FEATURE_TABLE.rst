@@ -11,7 +11,7 @@ Diffusion Model Feature Support Table
    * ``--model-type torch-upscaler-x2`` (Stable Diffusion x2 Upscaler)
    * ``--model-type torch-upscaler-x4`` (Stable Diffusion x4 Upscaler)
    * ``--model-type torch-s-cascade`` (Stable Cascade)
-   * ``--model-type torch-sd3`` (Stable Diffusion 3)
+   * ``--model-type torch-sd3`` (Stable Diffusion 3 and 3.5)
    * ``--model-type torch-flux`` (Flux.1)
 
 
