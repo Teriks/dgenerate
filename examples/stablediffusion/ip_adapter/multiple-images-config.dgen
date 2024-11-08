@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 4.3.4
+#! dgenerate 4.4.0
 
 # this uses two different IP Adapter input images with the IP Adapter h94/IP-Adapter
 

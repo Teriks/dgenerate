@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 4.3.4
+#! dgenerate 4.4.0
 
 # The image produced with this model will be
 # two times the --output-size dimension IE: 512x512 in this case
