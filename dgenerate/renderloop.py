@@ -50,6 +50,7 @@ from dgenerate.events import \
 # noinspection PyUnresolvedReferences
 from dgenerate.renderloopconfig import \
     RenderLoopConfig, \
+    RenderLoopSchedulerSet, \
     RenderLoopConfigError, \
     IMAGE_PROCESSOR_SEP, \
     gen_seeds
@@ -402,9 +403,22 @@ class RenderLoop:
             return os.path.normpath(os.path.join(self.config.output_path, name))
         return name
 
-    @staticmethod
-    def _gen_filename_components_base(diffusion_args: _pipelinewrapper.DiffusionArguments):
-        args = ['s', diffusion_args.seed]
+    def _gen_filename_components_base(self,
+                                      scheduler_set: RenderLoopSchedulerSet,
+                                      diffusion_args: _pipelinewrapper.DiffusionArguments):
+
+        scheduler_components = []
+        if self.config.scheduler_combination_count() > 1:
+            if scheduler_set.scheduler:
+                scheduler_components.append(scheduler_set.scheduler)
+
+            if scheduler_set.sdxl_refiner_scheduler:
+                scheduler_components.append(scheduler_set.sdxl_refiner_scheduler)
+
+            if scheduler_set.s_cascade_decoder_scheduler:
+                scheduler_components.append(scheduler_set.s_cascade_decoder_scheduler)
+
+        args = scheduler_components + ['s', diffusion_args.seed]
 
         if diffusion_args.upscaler_noise_level is not None:
             args += ['unl', diffusion_args.upscaler_noise_level]
@@ -684,10 +698,12 @@ class RenderLoop:
                                          image_seed)
 
     def _write_animation_frame(self,
+                               scheduler_set: RenderLoopSchedulerSet,
                                diffusion_args: _pipelinewrapper.DiffusionArguments,
                                image_seed_obj: _mediainput.ImageSeed,
                                generation_result: _pipelinewrapper.PipelineWrapperResult) -> RenderLoopEventStream:
-        filename_components = [*self._gen_filename_components_base(diffusion_args),
+
+        filename_components = [*self._gen_filename_components_base(scheduler_set, diffusion_args),
                                'frame',
                                image_seed_obj.frame_index + 1,
                                'step',
@@ -698,10 +714,12 @@ class RenderLoop:
                                                  generation_result,
                                                  image_seed_obj)
 
-    def _write_image_seed_gen_image(self, diffusion_args: _pipelinewrapper.DiffusionArguments,
+    def _write_image_seed_gen_image(self,
+                                    scheduler_set: RenderLoopSchedulerSet,
+                                    diffusion_args: _pipelinewrapper.DiffusionArguments,
                                     image_seed_obj: _mediainput.ImageSeed,
                                     generation_result: _pipelinewrapper.PipelineWrapperResult) -> RenderLoopEventStream:
-        filename_components = [*self._gen_filename_components_base(diffusion_args),
+        filename_components = [*self._gen_filename_components_base(scheduler_set, diffusion_args),
                                'step',
                                self._generation_step + 1]
 
@@ -710,10 +728,12 @@ class RenderLoop:
                                                  generation_result,
                                                  image_seed_obj)
 
-    def _write_prompt_only_image(self, diffusion_args: _pipelinewrapper.DiffusionArguments,
+    def _write_prompt_only_image(self,
+                                 scheduler_set: RenderLoopSchedulerSet,
+                                 diffusion_args: _pipelinewrapper.DiffusionArguments,
                                  generation_result: _pipelinewrapper.PipelineWrapperResult) \
             -> RenderLoopEventStream:
-        filename_components = [*self._gen_filename_components_base(diffusion_args),
+        filename_components = [*self._gen_filename_components_base(scheduler_set, diffusion_args),
                                'step',
                                self._generation_step + 1]
 
@@ -721,13 +741,25 @@ class RenderLoop:
                                                  diffusion_args,
                                                  generation_result)
 
-    def _pre_generation_step(self, diffusion_args: _pipelinewrapper.DiffusionArguments):
+    def _pre_generation_step(self,
+                             scheduler_set: RenderLoopSchedulerSet,
+                             diffusion_args: _pipelinewrapper.DiffusionArguments):
 
         self._last_frame_time = 0
         self._frame_time_sum = 0
         self._generation_step += 1
 
-        desc = diffusion_args.describe_pipeline_wrapper_args()
+        desc = ''
+
+        if self.config.scheduler_combination_count() > 0:
+            if scheduler_set.scheduler:
+                desc += f'Scheduler: {scheduler_set.scheduler}\n'
+            if scheduler_set.sdxl_refiner_scheduler:
+                desc += f'Refiner Scheduler: {scheduler_set.sdxl_refiner_scheduler}\n'
+            if scheduler_set.s_cascade_decoder_scheduler:
+                desc += f'Decoder Scheduler: {scheduler_set.s_cascade_decoder_scheduler}\n'
+
+        desc += diffusion_args.describe_pipeline_wrapper_args()
 
         total_steps = self.config.calculate_generation_steps()
 
@@ -798,7 +830,7 @@ class RenderLoop:
         except _pipelinewrapper.ArgumentHelpException:
             pass
 
-    def _create_pipeline_wrapper(self):
+    def _create_pipeline_wrapper(self, scheduler_set: RenderLoopSchedulerSet):
         self._pipeline_wrapper = _pipelinewrapper.DiffusionPipelineWrapper(
             self.config.model_path,
             dtype=self.config.dtype,
@@ -828,10 +860,10 @@ class RenderLoop:
             s_cascade_decoder_uri=self.config.s_cascade_decoder_uri,
             s_cascade_decoder_cpu_offload=bool(self.config.s_cascade_decoder_cpu_offload),
             s_cascade_decoder_sequential_offload=bool(self.config.s_cascade_decoder_sequential_offload),
-            s_cascade_decoder_scheduler=self.config.s_cascade_decoder_scheduler,
-            scheduler=self.config.scheduler,
+            s_cascade_decoder_scheduler=scheduler_set.s_cascade_decoder_scheduler,
+            scheduler=scheduler_set.scheduler,
             sdxl_refiner_scheduler=
-            self.config.sdxl_refiner_scheduler if self.config.sdxl_refiner_uri else None,
+            scheduler_set.sdxl_refiner_scheduler if self.config.sdxl_refiner_uri else None,
             safety_checker=self.config.safety_checker,
             auth_token=self.config.auth_token,
             local_files_only=self.config.offline_mode,
@@ -879,31 +911,36 @@ class RenderLoop:
             self._init_post_processor()
 
             if self.config.image_seeds:
-                yield from self._render_with_image_seeds()
+                for scheduler_set in self.config.iterate_schedulers():
+                    yield from self._render_with_image_seeds(scheduler_set)
             else:
-                pipeline_wrapper = self._create_pipeline_wrapper()
+                for scheduler_set in self.config.iterate_schedulers():
+                    pipeline_wrapper = self._create_pipeline_wrapper(scheduler_set)
 
-                sdxl_high_noise_fractions = \
-                    self.config.sdxl_high_noise_fractions if \
-                        self.config.sdxl_refiner_uri is not None else None
+                    sdxl_high_noise_fractions = \
+                        self.config.sdxl_high_noise_fractions if \
+                            self.config.sdxl_refiner_uri is not None else None
 
-                for diffusion_arguments in self.config.iterate_diffusion_args(
-                        sdxl_high_noise_fraction=sdxl_high_noise_fractions,
-                        image_seed_strength=None,
-                        upscaler_noise_level=None):
+                    for diffusion_arguments in self.config.iterate_diffusion_args(
+                            sdxl_high_noise_fraction=sdxl_high_noise_fractions,
+                            image_seed_strength=None,
+                            upscaler_noise_level=None):
 
-                    if self.config.output_size is not None:
-                        diffusion_arguments.width = self.config.output_size[0]
-                        diffusion_arguments.height = self.config.output_size[1]
+                        if self.config.output_size is not None:
+                            diffusion_arguments.width = self.config.output_size[0]
+                            diffusion_arguments.height = self.config.output_size[1]
 
-                    diffusion_arguments.batch_size = self.config.batch_size
-                    diffusion_arguments.sdxl_refiner_edit = self.config.sdxl_refiner_edit
+                        diffusion_arguments.batch_size = self.config.batch_size
+                        diffusion_arguments.sdxl_refiner_edit = self.config.sdxl_refiner_edit
 
-                    yield from self._pre_generation_step(diffusion_arguments)
+                        yield from self._pre_generation_step(scheduler_set, diffusion_arguments)
 
-                    with pipeline_wrapper(diffusion_arguments) as generation_result:
-                        self._run_postprocess(generation_result)
-                        yield from self._write_prompt_only_image(diffusion_arguments, generation_result)
+                        with pipeline_wrapper(diffusion_arguments) as generation_result:
+                            self._run_postprocess(generation_result)
+                            yield from self._write_prompt_only_image(
+                                scheduler_set,
+                                diffusion_arguments,
+                                generation_result)
         finally:
             self._destroy_post_processor()
 
@@ -977,7 +1014,7 @@ class RenderLoop:
 
         return r
 
-    def _render_with_image_seeds(self):
+    def _render_with_image_seeds(self, scheduler_set: RenderLoopSchedulerSet):
         # unintuitive, but these should be long-lived and then
         # garbage collected, if they are not specified by the user
         # these will return None
@@ -986,6 +1023,7 @@ class RenderLoop:
         control_image_processor = self._load_control_image_processors()
         try:
             yield from self._render_with_image_seeds_unmanaged(
+                scheduler_set,
                 seed_image_processor,
                 mask_image_processor,
                 control_image_processor)
@@ -1012,12 +1050,14 @@ class RenderLoop:
                 else:
                     control_image_processor.to('cpu')
 
-    def _render_with_image_seeds_unmanaged(self,
-                                           seed_image_processor,
-                                           mask_image_processor,
-                                           control_image_processor):
+    def _render_with_image_seeds_unmanaged(
+            self,
+            scheduler_set: RenderLoopSchedulerSet,
+            seed_image_processor: _mediainput.ImageProcessorSpec,
+            mask_image_processor: _mediainput.ImageProcessorSpec,
+            control_image_processor: _mediainput.ImageProcessorSpec):
 
-        pipeline_wrapper = self._create_pipeline_wrapper()
+        pipeline_wrapper = self._create_pipeline_wrapper(scheduler_set)
 
         def iterate_image_seeds():
             # image seeds have already had logical and syntax validation preformed
@@ -1100,7 +1140,8 @@ class RenderLoop:
                         if ims_obj.floyd_image is not None:
                             args.floyd_image = ims_obj.floyd_image
 
-                yield from self._render_animation(pipeline_wrapper=pipeline_wrapper,
+                yield from self._render_animation(scheduler_set=scheduler_set,
+                                                  pipeline_wrapper=pipeline_wrapper,
                                                   set_wrapper_args_per_image_seed=set_extra_args,
                                                   arg_iterator=arg_iterator,
                                                   image_seed_iterator=image_seed_iterator,
@@ -1111,7 +1152,7 @@ class RenderLoop:
                 diffusion_arguments.batch_size = self.config.batch_size
                 diffusion_arguments.sdxl_refiner_edit = self.config.sdxl_refiner_edit
 
-                yield from self._pre_generation_step(diffusion_arguments)
+                yield from self._pre_generation_step(scheduler_set, diffusion_arguments)
 
                 with next(image_seed_iterator()) as image_seed:
                     if not is_control_guidance_spec and image_seed.images is not None:
@@ -1132,18 +1173,25 @@ class RenderLoop:
                     with pipeline_wrapper(diffusion_arguments) as generation_result:
                         self._run_postprocess(generation_result)
                         yield from self._write_image_seed_gen_image(
-                            diffusion_arguments, image_seed, generation_result)
+                            scheduler_set,
+                            diffusion_arguments,
+                            image_seed,
+                            generation_result)
 
     def _gen_animation_filename(self,
+                                scheduler_set: RenderLoopSchedulerSet,
                                 diffusion_args: _pipelinewrapper.DiffusionArguments,
                                 generation_step,
                                 ext):
 
-        components = ['ANIM', *self._gen_filename_components_base(diffusion_args), 'step', generation_step + 1]
+        components = ['ANIM',
+                      *self._gen_filename_components_base(scheduler_set, diffusion_args),
+                      'step', generation_step + 1]
 
         return self._join_output_filename(components, ext=ext)
 
     def _render_animation(self,
+                          scheduler_set: RenderLoopSchedulerSet,
                           pipeline_wrapper: _pipelinewrapper.DiffusionPipelineWrapper,
                           set_wrapper_args_per_image_seed:
                           typing.Callable[[_pipelinewrapper.DiffusionArguments, _mediainput.ImageSeed], None],
@@ -1158,7 +1206,9 @@ class RenderLoop:
 
         base_filename = \
             self._gen_animation_filename(
-                first_diffusion_args, self._generation_step + 1,
+                scheduler_set,
+                first_diffusion_args,
+                self._generation_step + 1,
                 ext=self.config.animation_format)
 
         next_args_terminates_anim = False
@@ -1181,7 +1231,7 @@ class RenderLoop:
                 diffusion_args.batch_size = self.config.batch_size
                 diffusion_args.sdxl_refiner_edit = self.config.sdxl_refiner_edit
 
-                yield from self._pre_generation_step(diffusion_args)
+                yield from self._pre_generation_step(scheduler_set, diffusion_args)
 
                 if next_args_terminates_anim:
                     next_args_terminates_anim = False
@@ -1191,6 +1241,7 @@ class RenderLoop:
                     # for the finished animation file
                     anim_writer.end(
                         new_file=self._gen_animation_filename(
+                            scheduler_set,
                             diffusion_args,
                             self._generation_step,
                             ext=self.config.animation_format))
@@ -1261,7 +1312,11 @@ class RenderLoop:
                                             starting_animation_file_event)
                                         yield starting_animation_file_event
 
-                            yield from self._write_animation_frame(diffusion_args, image_seed_frame, generation_result)
+                            yield from self._write_animation_frame(
+                                scheduler_set,
+                                diffusion_args,
+                                image_seed_frame,
+                                generation_result)
 
                         next_args_terminates_anim = image_seed_frame.frame_index == (image_seed_frame.total_frames - 1)
 

@@ -1060,11 +1060,18 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '-sch', '--scheduler', action='store', default=None, metavar="SCHEDULER_URI",
+            '-sch',
+            '--scheduler',
+            '--schedulers',
+            dest='scheduler',
+            action='store', nargs='+', default=None, metavar="SCHEDULER_URI",
             help=f"""Specify a scheduler (sampler) by URI. Passing "help" to this argument 
                     will print the compatible schedulers for a model without generating any images. Passing "helpargs" 
                     will yield a help message with a list of overridable arguments for each scheduler and their typical defaults. 
-                    Arguments listed by "helpargs" can be overridden using the URI syntax typical to other dgenerate URI arguments."""
+                    Arguments listed by "helpargs" can be overridden using the URI syntax typical to other dgenerate URI arguments.
+                    
+                    You may pass multiple scheduler URIs to this argument, each URI will be tried in turn.
+                    """
         )
     )
 
@@ -1239,11 +1246,17 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--s-cascade-decoder-scheduler', action='store', default=None, metavar="SCHEDULER_URI",
+            '--s-cascade-decoder-scheduler',
+            '--s-cascade-decoder-schedulers',
+            dest='s_cascade_decoder_scheduler',
+            nargs='+', action='store', default=None, metavar="SCHEDULER_URI",
             help="""Specify a scheduler (sampler) by URI for the Stable Cascade decoder pass. 
                     Operates the exact same way as --scheduler including the "help" option. Passing 'helpargs' 
                     will yield a help message with a list of overridable arguments for each scheduler and 
-                    their typical defaults. Defaults to the value of --scheduler."""
+                    their typical defaults. Defaults to the value of --scheduler.
+                    
+                    You may pass multiple scheduler URIs to this argument, each URI will be tried in turn.
+                    """
         )
     )
 
@@ -1305,11 +1318,17 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--sdxl-refiner-scheduler', action='store', default=None, metavar="SCHEDULER_URI",
+            '--sdxl-refiner-scheduler',
+            '--sdxl-refiner-schedulers',
+            dest='sdxl_refiner_scheduler',
+            nargs='+', action='store', default=None, metavar="SCHEDULER_URI",
             help="""Specify a scheduler (sampler) by URI for the SDXL refiner pass. Operates the exact
                  same way as --scheduler including the "help" option. Passing 'helpargs' will yield a help 
                  message with a list of overridable arguments for each scheduler and their typical defaults.
-                 Defaults to the value of --scheduler."""
+                 Defaults to the value of --scheduler.
+                 
+                 You may pass multiple scheduler URIs to this argument, each URI will be tried in turn.
+                 """
         )
     )
 
