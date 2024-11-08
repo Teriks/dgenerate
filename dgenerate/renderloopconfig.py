@@ -1673,7 +1673,7 @@ class RenderLoopConfig(_types.SetFromMixin):
             prod *= len(s)
         return prod
 
-    def iterate_schedulers(self) -> typing.Generator[RenderLoopSchedulerSet, None, None]:
+    def iterate_schedulers(self) -> collections.abc.Iterator[RenderLoopSchedulerSet]:
         """
         Iterate over :py:class:`dgenerate.renderloopconfig.RenderLoopSchedulerSet` objects
         using the provided scheduler URIs. This represents all possible combinations of
