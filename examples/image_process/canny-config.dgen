@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 4.3.4
+#! dgenerate 4.4.0
 
 # Get arguments help and continue, this does not cause dgenerate to exit
 
