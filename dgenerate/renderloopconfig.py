@@ -1646,11 +1646,11 @@ class RenderLoopConfig(_types.SetFromMixin):
         sdxl_refiner_schedulers = self.sdxl_refiner_scheduler
         s_cascade_decoder_schedulers = self.s_cascade_decoder_scheduler
 
-        if isinstance(schedulers, str):
+        if isinstance(schedulers, _types.Uri):
             schedulers = [schedulers]
-        if isinstance(self.sdxl_refiner_scheduler, str):
+        if isinstance(self.sdxl_refiner_scheduler, _types.Uri):
             sdxl_refiner_schedulers = [sdxl_refiner_schedulers]
-        if isinstance(self.s_cascade_decoder_scheduler, str):
+        if isinstance(self.s_cascade_decoder_scheduler, _types.Uri):
             s_cascade_decoder_schedulers = [s_cascade_decoder_schedulers]
         return schedulers, sdxl_refiner_schedulers, s_cascade_decoder_schedulers
 
