@@ -829,7 +829,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         except ValueError as e:
             raise RenderLoopConfigError(e)
 
-        schedulers = [self.scheduler] if isinstance(self.scheduler, _types.Uri) else self.scheduler
+        schedulers = [self.scheduler] if isinstance(self.scheduler, (_types.Uri, type(None))) else self.scheduler
         scheduler_help = any(_pipelinewrapper.scheduler_is_help(s) for s in schedulers)
 
         if scheduler_help and len(schedulers) > 1:
@@ -840,7 +840,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         sdxl_refiner_schedulers = \
             [self.sdxl_refiner_scheduler] if \
-                isinstance(self.sdxl_refiner_scheduler, _types.Uri) else self.sdxl_refiner_scheduler
+                isinstance(self.sdxl_refiner_scheduler, (_types.Uri, type(None))) else self.sdxl_refiner_scheduler
         sdxl_refiner_scheduler_help = any(_pipelinewrapper.scheduler_is_help(s) for s in sdxl_refiner_schedulers)
 
         if sdxl_refiner_scheduler_help and len(sdxl_refiner_schedulers) > 1:
@@ -851,7 +851,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         s_cascade_decoder_schedulers = \
             [self.s_cascade_decoder_scheduler] if \
-                isinstance(self.s_cascade_decoder_scheduler, _types.Uri) else self.s_cascade_decoder_scheduler
+                isinstance(self.s_cascade_decoder_scheduler, (_types.Uri, type(None))) else self.s_cascade_decoder_scheduler
         s_cascade_decoder_scheduler_help = any(
             _pipelinewrapper.scheduler_is_help(s) for s in s_cascade_decoder_schedulers)
 
@@ -1646,11 +1646,11 @@ class RenderLoopConfig(_types.SetFromMixin):
         sdxl_refiner_schedulers = self.sdxl_refiner_scheduler
         s_cascade_decoder_schedulers = self.s_cascade_decoder_scheduler
 
-        if isinstance(schedulers, _types.Uri):
+        if isinstance(schedulers, (_types.Uri, type(None))):
             schedulers = [schedulers]
-        if isinstance(self.sdxl_refiner_scheduler, _types.Uri):
+        if isinstance(self.sdxl_refiner_scheduler, (_types.Uri, type(None))):
             sdxl_refiner_schedulers = [sdxl_refiner_schedulers]
-        if isinstance(self.s_cascade_decoder_scheduler, _types.Uri):
+        if isinstance(self.s_cascade_decoder_scheduler, (_types.Uri, type(None))):
             s_cascade_decoder_schedulers = [s_cascade_decoder_schedulers]
         return schedulers, sdxl_refiner_schedulers, s_cascade_decoder_schedulers
 
