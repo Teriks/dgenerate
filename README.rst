@@ -157,14 +157,15 @@ Help Output
                      [-tf TRANSFORMER_URI] [-vae VAE_URI] [-vt] [-vs] [-lra LORA_URI [LORA_URI ...]]
                      [-lrfs LORA_FUSE_SCALE] [-ie IMAGE_ENCODER_URI] [-ipa IP_ADAPTER_URI [IP_ADAPTER_URI ...]]
                      [-ti URI [URI ...]] [-cn CONTROLNET_URI [CONTROLNET_URI ...] | -t2i T2I_ADAPTER_URI
-                     [T2I_ADAPTER_URI ...]] [-sch SCHEDULER_URI] [-pag] [-pags FLOAT [FLOAT ...]]
-                     [-pagas FLOAT [FLOAT ...]] [-rpag] [-rpags FLOAT [FLOAT ...]] [-rpagas FLOAT [FLOAT ...]]
-                     [-mqo | -mco] [--s-cascade-decoder MODEL_URI] [-dqo] [-dco]
+                     [T2I_ADAPTER_URI ...]] [-sch SCHEDULER_URI [SCHEDULER_URI ...]] [-pag]
+                     [-pags FLOAT [FLOAT ...]] [-pagas FLOAT [FLOAT ...]] [-rpag] [-rpags FLOAT [FLOAT ...]]
+                     [-rpagas FLOAT [FLOAT ...]] [-mqo | -mco] [--s-cascade-decoder MODEL_URI] [-dqo] [-dco]
                      [--s-cascade-decoder-prompts PROMPT [PROMPT ...]]
                      [--s-cascade-decoder-inference-steps INTEGER [INTEGER ...]]
                      [--s-cascade-decoder-guidance-scales INTEGER [INTEGER ...]]
-                     [--s-cascade-decoder-scheduler SCHEDULER_URI] [--sdxl-refiner MODEL_URI] [-rqo] [-rco]
-                     [--sdxl-refiner-scheduler SCHEDULER_URI] [--sdxl-refiner-edit]
+                     [--s-cascade-decoder-scheduler SCHEDULER_URI [SCHEDULER_URI ...]]
+                     [--sdxl-refiner MODEL_URI] [-rqo] [-rco]
+                     [--sdxl-refiner-scheduler SCHEDULER_URI [SCHEDULER_URI ...]] [--sdxl-refiner-edit]
                      [--sdxl-second-prompts PROMPT [PROMPT ...]] [--sdxl-t2i-adapter-factors FLOAT [FLOAT ...]]
                      [--sdxl-aesthetic-scores FLOAT [FLOAT ...]]
                      [--sdxl-crops-coords-top-left COORD [COORD ...]] [--sdxl-original-size SIZE [SIZE ...]]
@@ -780,13 +781,16 @@ Help Output
                             "https://huggingface.co/UserName/repository-name/blob/main/t2i_adapter.safetensors",
                             the "revision" argument may be used with this syntax.
                             -----------------------------------------------------
-      -sch SCHEDULER_URI, --scheduler SCHEDULER_URI
+      -sch SCHEDULER_URI [SCHEDULER_URI ...], --scheduler SCHEDULER_URI [SCHEDULER_URI ...], --schedulers SCHEDULER_URI [SCHEDULER_URI ...]
                             Specify a scheduler (sampler) by URI. Passing "help" to this argument will print the
                             compatible schedulers for a model without generating any images. Passing "helpargs"
                             will yield a help message with a list of overridable arguments for each scheduler
                             and their typical defaults. Arguments listed by "helpargs" can be overridden using
                             the URI syntax typical to other dgenerate URI arguments.
-                            --------------------------------------------------------
+
+                            You may pass multiple scheduler URIs to this argument, each URI will be tried in
+                            turn.
+                            -----
       -pag, --pag           Use perturbed attention guidance? This is supported for --model-type torch, torch-
                             sdxl, and torch-sd3 for most use cases. This enables PAG for the main model using
                             default scale values.
@@ -800,10 +804,10 @@ Help Output
                             enables PAG for the main model. (default: [0.0])
                             ------------------------------------------------
       -rpag, --sdxl-refiner-pag
-                            Use perturbed attention guidance in the SDXL refiner? This is supported for
-                            --model-type torch-sdxl for most use cases. This enables PAG for the SDXL refiner
-                            model using default scale values.
-                            ---------------------------------
+                            Use perturbed attention guidance in the SDXL refiner? This is supported for --model-
+                            type torch-sdxl for most use cases. This enables PAG for the SDXL refiner model
+                            using default scale values.
+                            ---------------------------
       -rpags FLOAT [FLOAT ...], --sdxl-refiner-pag-scales FLOAT [FLOAT ...]
                             One or more perturbed attention guidance scales to try with the SDXL refiner pass.
                             Specifying values enables PAG for the refiner. (default: [3.0])
@@ -888,12 +892,15 @@ Help Output
                             One or more guidance scale values to try with the Stable Cascade decoder. (default:
                             [0])
                             ----
-      --s-cascade-decoder-scheduler SCHEDULER_URI
+      --s-cascade-decoder-scheduler SCHEDULER_URI [SCHEDULER_URI ...], --s-cascade-decoder-schedulers SCHEDULER_URI [SCHEDULER_URI ...]
                             Specify a scheduler (sampler) by URI for the Stable Cascade decoder pass. Operates
                             the exact same way as --scheduler including the "help" option. Passing 'helpargs'
                             will yield a help message with a list of overridable arguments for each scheduler
                             and their typical defaults. Defaults to the value of --scheduler.
-                            -----------------------------------------------------------------
+
+                            You may pass multiple scheduler URIs to this argument, each URI will be tried in
+                            turn.
+                            -----
       --sdxl-refiner MODEL_URI
                             Specify a Stable Diffusion XL (torch-sdxl) refiner model path using a URI. This
                             should be a Hugging Face repository slug / blob link, path to model file on disk
@@ -945,12 +952,15 @@ Help Output
                             GPUs VRAM. Inference will be slower. Mutually exclusive with --refiner-sequential-
                             offload
                             -------
-      --sdxl-refiner-scheduler SCHEDULER_URI
+      --sdxl-refiner-scheduler SCHEDULER_URI [SCHEDULER_URI ...], --sdxl-refiner-schedulers SCHEDULER_URI [SCHEDULER_URI ...]
                             Specify a scheduler (sampler) by URI for the SDXL refiner pass. Operates the exact
                             same way as --scheduler including the "help" option. Passing 'helpargs' will yield a
                             help message with a list of overridable arguments for each scheduler and their
                             typical defaults. Defaults to the value of --scheduler.
-                            -------------------------------------------------------
+
+                            You may pass multiple scheduler URIs to this argument, each URI will be tried in
+                            turn.
+                            -----
       --sdxl-refiner-edit   Force the SDXL refiner to operate in edit mode instead of cooperative denoising mode
                             as it would normally do for inpainting and ControlNet usage. The main model will
                             perform the full amount of inference steps requested by --inference-steps. The
@@ -1544,6 +1554,7 @@ Help Output
                             Syntax See: [https://dgenerate.readthedocs.io/en/v4.3.4/dgenerate_submodules.html#dg
                             enerate.imageprocessors.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS]
                             ----------------------------------------------------------------
+
 
 
 Windows Install
@@ -2745,6 +2756,40 @@ As an example, you may override the mentioned arguments for any scheduler in thi
     --gen-seeds 2 \
     --prompts "none" \
     --scheduler PNDMScheduler;prediction-type=v_prediction
+
+Like diffusion parameter arguments, you may specify multiple scheduler URIs and they will be tried in turn.
+
+When you specify multiple schedulers in this manner they will be added to the beginning of the
+output file name, in the order: ``(scheduler)_(refiner scheduler)_(decoder scheduler)``
+
+.. code-block:: bash
+
+    #!/usr/bin/env bash
+
+    # Try these two schedulers one after another
+
+    dgenerate stabilityai/stable-diffusion-2-1 \
+    --inference-steps 30 \
+    --guidance-scales 5 \
+    --schedulers EulerAncestralDiscreteScheduler KDPM2AncestralDiscreteScheduler
+    --output-size 512x512
+    --prompts "a horse standing in a field"
+
+
+    # This works for all scheduler arguments, for instance
+    # this SDXL command results in 4 generation steps, trying
+    # all possible combinations of schedulers provided
+
+    dgenerate stabilityai/stable-diffusion-xl-base-1.0 \
+    --model-type torch-sdxl \
+    --dtype float16 \
+    --variant fp16 \
+    --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
+    --schedulers EulerAncestralDiscreteScheduler EulerDiscreteScheduler \
+    --sdxl-refiner-schedulers KDPM2AncestralDiscreteScheduler KDPM2DiscreteScheduler \
+    --inference-steps 30 \
+    --guidance-scales 5 \
+    --prompts "a horse standing in a field"
 
 
 Specifying a VAE
