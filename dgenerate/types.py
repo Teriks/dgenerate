@@ -428,6 +428,8 @@ def type_check_struct(obj,
     """
     Preform some basic type checks on a struct like objects attributes using their type hints.
 
+    This function can only handle ``typing.Union`` constructs in a very basic capacity.
+
     :raise ValueError: on type checking failure
 
     :param obj: the object
@@ -476,6 +478,19 @@ def type_check_struct(obj,
                 f'{a_namer(name)} must be one of these literal values: '
                 f'{_textprocessing.oxford_comma(args, "or")}')
 
+    def _simple_name(t):
+        name = get_type(t).__name__
+        if name == 'NoneType':
+            return 'None'
+        else:
+            return name
+
+    def _is_union(union, name, value):
+        if not any(isinstance(value, get_type(t)) for t in union.__args__):
+            raise ValueError(
+                f'{a_namer(name)} must be type '
+                f'typing.Union[{", ".join(_simple_name(t) for t in union.__args__)}], value was: {value}')
+
     def _is(value_type, name, value):
         if not isinstance(value, value_type):
             raise ValueError(
@@ -496,6 +511,8 @@ def type_check_struct(obj,
                 _is_tuple(attr, v, hint)
             elif is_type(hint, typing.Literal):
                 _is_literal(attr, v, hint)
+            elif is_type(hint, typing.Union):
+                _is_union(hint, attr, v)
             else:
                 _is(get_type(hint), attr, v)
 
