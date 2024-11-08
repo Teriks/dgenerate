@@ -539,7 +539,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     of the dgenerate command line tool.
     """
 
-    scheduler: _types.Uri | _types.Uris | None = None
+    scheduler: typing.Union[_types.Uri, _types.Uris, None] = None
     """
     Optional primary model scheduler/sampler class name specification, this corresponds to the ``--scheduler``
     argument of the dgenerate command line tool. Setting this to 'help' will yield a help message to stdout
@@ -583,7 +583,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     this corresponds to the ``--sdxl-refiner-pag-adaptive-scales`` argument of the dgenerate command line tool.
     """
 
-    sdxl_refiner_scheduler: _types.Uri | _types.Uris | None = None
+    sdxl_refiner_scheduler: typing.Union[_types.Uri, _types.Uris, None] = None
     """
     Optional SDXL refiner model scheduler/sampler class name specification, this corresponds to the 
     ``--sdxl-refiner-scheduler`` argument of the dgenerate command line tool. Setting this to 'help' 
@@ -594,7 +594,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     This may be a list of schedulers, indicating to try each scheduler in turn.
     """
 
-    s_cascade_decoder_scheduler: _types.Uri | _types.Uris | None = None
+    s_cascade_decoder_scheduler: typing.Union[_types.Uri, _types.Uris, None] = None
     """
     Optional Stable Cascade decoder model scheduler/sampler class name specification, this corresponds to the 
     ``--s-cascade-decoder-scheduler`` argument of the dgenerate command line tool. Setting this to 'help' 
