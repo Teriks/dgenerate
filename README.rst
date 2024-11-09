@@ -1410,11 +1410,9 @@ Help Output
                             inpaint mode. Closer to 0 means high usage of the seed image (less noise
                             convolution), 1 effectively means no usage (high noise convolution). Low values will
                             produce something closer or more relevant to the input image, high values will give
-                            the AI
-
-                            more creative freedom. This value must be greater than 0 and less than or equal to
-                            1. (default: [0.8])
-                            -------------------
+                            the AI more creative freedom. This value must be greater than 0 and less than or
+                            equal to 1. (default: [0.8])
+                            ----------------------------
       -uns INTEGER [INTEGER ...], --upscaler-noise-levels INTEGER [INTEGER ...]
                             One or more upscaler noise level values to try when using the super resolution
                             upscaler --model-type torch-upscaler-x4 or torch-ifs. Specifying this option for
@@ -1554,6 +1552,7 @@ Help Output
                             Syntax See: [https://dgenerate.readthedocs.io/en/v4.4.0/dgenerate_submodules.html#dg
                             enerate.imageprocessors.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS]
                             ----------------------------------------------------------------
+
 
 
 
@@ -4415,6 +4414,8 @@ Near the bottom of the page in the section: ``API Keys``
 You can use the `civitai-links <Sub Command: civitai-links_>`_ sub-command to fetch the necessary model
 links from a CivitAI model page. You may also use this sub-command in the form of the config
 directive ``\civitai_links`` from a config file or the Console UI.
+
+You can also `(Right Click) -> Copy Link Address` on a CivitAI models download link to get the necessary URL.
 
 If you plan to download many large models to the web cache in this manner you may wish
 to adjust the global cache expiry time so that they exist in the cache longer than the default of 12 hours.
