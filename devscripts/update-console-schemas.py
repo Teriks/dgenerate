@@ -8,6 +8,7 @@ import argparse
 
 import json
 import os
+import inspect
 
 import diffusers
 
@@ -15,6 +16,7 @@ import dgenerate.imageprocessors.imageprocessorloader as _loader
 import dgenerate.mediainput as _mediainput
 import dgenerate.mediaoutput as _mediaoutput
 import dgenerate.arguments as _arguments
+import dgenerate.textprocessing as _textprocessing
 
 os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
@@ -68,6 +70,7 @@ with open('dgenerate/console/schemas/arguments.json', 'w') as file:
 
 
     for action in (a for a in _arguments._actions if a.option_strings):
-        schema[_opt_name(action)] = action.help
+        schema[_opt_name(action)] = _textprocessing.wrap_paragraphs(
+            inspect.cleandoc(action.help), width=100)
 
     json.dump(schema, file)

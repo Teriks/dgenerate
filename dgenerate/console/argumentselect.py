@@ -18,16 +18,12 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import inspect
-import re
-import textwrap
+
 import tkinter as tk
 import tkinter.ttk as ttk
 import dgenerate.console.resources as _resources
 import dgenerate.console.util as _util
 from dgenerate.console.mousewheelbind import bind_mousewheel
-import dgenerate.textprocessing as _textprocessing
-
 
 def _adjust_combobox_width(combo, options):
     f = tk.font.Font(combo, combo.cget("font"))
@@ -35,24 +31,6 @@ def _adjust_combobox_width(combo, options):
     avg_char_width = f.measure("0")  # Get the average width of a character
     max_width = max(f.measure(option) for option in options) // avg_char_width  # Convert pixel width to character width
     combo.config(width=max_width + 2)  # Add a couple of characters to avoid tight fit
-
-
-class _SearchableCombobox(ttk.Combobox):
-    def __init__(self, master, values, **kwargs):
-        super().__init__(master, values=values, **kwargs)
-        self.original_values = values
-        self.bind("<KeyRelease>", self.update_list)
-
-    def update_list(self, event):
-        search_term = self.get()
-
-        # Filter original values to show only those that match search_term
-        filtered_values = [item for item in self.original_values if search_term.lower() in item.lower()]
-
-        # Update the Combobox's values
-        self["values"] = filtered_values
-        if search_term:
-            self.event_generate("<Down>")  # open dropdown if there's a match
 
 
 class _DgenerateArgumentSelect(tk.Toplevel):
@@ -122,10 +100,7 @@ class _DgenerateArgumentSelect(tk.Toplevel):
         text_widget.config(state='normal')
 
         text_widget.insert(
-            tk.END,
-            _textprocessing.ArgparseParagraphFormatter(prog='none')._fill_text(
-                inspect.cleandoc(self._arguments_dict[self._current_argument.get()]),
-                width=100, indent='') + '\n\n')
+            tk.END, self._arguments_dict[self._current_argument.get()] + '\n\n')
 
         text_widget.config(state='disabled')
 
