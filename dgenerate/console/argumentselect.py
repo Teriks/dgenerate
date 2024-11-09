@@ -58,7 +58,7 @@ class _SearchableCombobox(ttk.Combobox):
 class _DgenerateArgumentSelect(tk.Toplevel):
     def __init__(self, master=None, position: tuple[int, int] = None):
         super().__init__(master)
-        self.title('Insert Option')
+        self.title('Insert Argument')
         self._arguments_dict = _resources.get_dgenerate_arguments()
         self._templates = None
         self._dropdown = None
