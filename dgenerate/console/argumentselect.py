@@ -52,9 +52,6 @@ class _DgenerateArgumentSelect(tk.Toplevel):
 
         self._frame = tk.Frame(self)
 
-        # Create labels
-        self._scheduler_label = tk.Label(self._frame, text="Argument Name")
-
         # Create dropdowns
         self._argument_dropdown = ttk.Combobox(
             self._frame, textvariable=self._current_argument, values=self._arguments)
@@ -65,7 +62,6 @@ class _DgenerateArgumentSelect(tk.Toplevel):
         self._help_button = tk.Button(self._frame, text='Help', command=self._show_help)
 
         # Grid layout
-        self._scheduler_label.grid(row=0, column=0)
         self._argument_dropdown.grid(row=0, column=1, sticky="we")
         self._help_button.grid(row=0, column=2, padx=(5, 5))
         self._insert_button.grid(row=2, column=0, columnspan=2, pady=(5, 0))
