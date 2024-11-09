@@ -42,6 +42,7 @@ import dgenerate.console.imageprocessorselect as _imageprocessorselect
 import dgenerate.console.imageseedselect as _imageseedselect
 import dgenerate.console.karrasschedulerselect as _karrasschedulerselect
 import dgenerate.console.recipesform as _recipesform
+import dgenerate.console.argumentselect as _argumentselect
 import dgenerate.console.resources as _resources
 import dgenerate.textprocessing as _textprocessing
 from dgenerate.console.codeview import DgenerateCodeView
@@ -161,6 +162,8 @@ class DgenerateConsole(tk.Tk):
 
         self._edit_menu.add_command(label='Insert Recipe',
                                     command=self._input_text_insert_recipe)
+        self._edit_menu.add_command(label='Insert Argument',
+                                    command=self._input_text_insert_argument)
         self._edit_menu.add_command(label='Insert Image Seed URI',
                                     command=self._input_text_insert_image_seed)
         self._edit_menu.add_command(label='Insert Karras Scheduler URI',
@@ -427,7 +430,8 @@ class DgenerateConsole(tk.Tk):
         self._input_text_context.add_separator()
         self._input_text_context.add_command(label='Insert Recipe',
                                              command=self._input_text_insert_recipe)
-
+        self._input_text_context.add_command(label='Insert Argument',
+                                             command=self._input_text_insert_argument)
         self._input_text_context.add_command(label='Insert Image Seed URI',
                                              command=self._input_text_insert_image_seed)
         self._input_text_context.add_command(label='Insert Karras Scheduler URI',
@@ -743,6 +747,15 @@ class DgenerateConsole(tk.Tk):
 
     def _input_text_insert_recipe(self):
         s = _recipesform.request_recipe(
+            master=self)
+
+        if s is None or not s.strip():
+            return
+
+        self._insert_or_replace_input_text(s)
+
+    def _input_text_insert_argument(self):
+        s = _argumentselect.request_argument(
             master=self)
 
         if s is None or not s.strip():

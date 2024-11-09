@@ -157,18 +157,22 @@ def get_schema(name):
         return schema
 
 
-def get_karras_schedulers():
+def get_karras_schedulers() -> list[str]:
     return get_schema('karrasschedulers')['names']
 
 
-def get_torch_vae_types():
+def get_dgenerate_arguments() -> dict[str, str]:
+    return get_schema('arguments')
+
+
+def get_torch_vae_types()-> list[str]:
     return ["AutoencoderKL",
             "AsymmetricAutoencoderKL",
             "AutoencoderTiny",
             "ConsistencyDecoderVAE"]
 
 
-def get_torch_devices():
+def get_torch_devices() -> list[str]:
     if platform.system() == 'Darwin':
         # Assume MPS is available without importing torch
         return ['mps', 'cpu']
@@ -218,11 +222,11 @@ def get_torch_devices():
             return ['cpu']
 
 
-def get_karras_scheduler_prediction_types():
+def get_karras_scheduler_prediction_types() -> list[str]:
     return ['epsilon', 'v_prediction']
 
 
-def supported_torch_model_formats_open():
+def supported_torch_model_formats_open() -> list[str]:
     return ['safetensors', 'pt', 'pth', 'cpkt', 'bin']
 
 
