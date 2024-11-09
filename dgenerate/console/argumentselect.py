@@ -120,10 +120,13 @@ class _DgenerateArgumentSelect(tk.Toplevel):
         text_widget.configure(**_resources.get_textbox_theme())
 
         text_widget.config(state='normal')
-        text_widget.insert(tk.END,
-                           _textprocessing.ArgparseParagraphFormatter(prog='none')._fill_text(
-                               inspect.cleandoc(self._arguments_dict[self._current_argument.get()]),
-                               width=100, indent='') + '\n\n')
+
+        text_widget.insert(
+            tk.END,
+            _textprocessing.ArgparseParagraphFormatter(prog='none')._fill_text(
+                inspect.cleandoc(self._arguments_dict[self._current_argument.get()]),
+                width=100, indent='') + '\n\n')
+
         text_widget.config(state='disabled')
 
         v_scrollbar.config(command=text_widget.yview)
@@ -132,17 +135,6 @@ class _DgenerateArgumentSelect(tk.Toplevel):
 
         width = 850
         height = 600
-
-        # Centering logic 
-
-        # master_x = self.recipe_form.winfo_rootx()
-        # master_y = self.recipe_form.winfo_rooty()
-        # master_width = self.recipe_form.winfo_width()
-        # master_height = self.recipe_form.winfo_height()
-
-        # # Calculate position x, y
-        # x = master_x + (master_width // 2) - (width // 2)
-        # y = master_y + (master_height // 2) - (height // 2)
 
         # Dock right
         master_x = self.winfo_rootx()
