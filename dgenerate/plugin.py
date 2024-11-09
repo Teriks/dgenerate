@@ -368,7 +368,9 @@ class Plugin:
                     entry['optional'] = True
                     union_args.remove('NoneType')
 
-                entry['types'] = list(union_args)
+                # deterministic order is ideal
+                # for schemas in version control
+                entry['types'] = list(sorted(union_args))
 
             else:
                 entry['optional'] = False
