@@ -131,8 +131,8 @@ _SCHEDULER_KEYWORDS = sorted((
     "LMSDiscreteScheduler",
     "PNDMScheduler",
     "UniPCMultistepScheduler",
-    "DDPMWuerstchenScheduler"),
-    key=lambda s: len(s), reverse=True)
+    "DDPMWuerstchenScheduler"
+), key=lambda s: len(s), reverse=True)
 
 _CLASS_KEYWORDS = sorted((
     "AutoencoderKL",
@@ -141,7 +141,7 @@ _CLASS_KEYWORDS = sorted((
     "ConsistencyDecoderVAE",
     "CLIPTextModel",
     "CLIPTextModelWithProjection",
-    "T5EncoderModel",
+    "T5EncoderModel"
 ), key=lambda s: len(s), reverse=True)
 
 _MODEL_TYPE_KEYWORDS = sorted((
@@ -158,7 +158,7 @@ _MODEL_TYPE_KEYWORDS = sorted((
     'torch-upscaler-x4',
     'torch-s-cascade',
     'help',
-    'helpargs',
+    'helpargs'
 ), key=lambda s: len(s), reverse=True)
 
 _DTYPE_KEYWORDS = sorted((
