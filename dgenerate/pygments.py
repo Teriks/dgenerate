@@ -130,7 +130,7 @@ _SCHEDULER_KEYWORDS = sorted((
     "LCMScheduler",
     "LMSDiscreteScheduler",
     "PNDMScheduler",
-    "UniPCMultistepScheduler"
+    "UniPCMultistepScheduler",
     "DDPMWuerstchenScheduler"),
     key=lambda s: len(s), reverse=True)
 
