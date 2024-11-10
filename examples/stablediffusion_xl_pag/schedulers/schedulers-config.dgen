@@ -8,9 +8,17 @@
 # and --sdxl-refiner-schedulers
 
 
-# List out possible scheduler names
+# List out possible scheduler names for the main model
 
 stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl --pag --scheduler help
+
+# List out possible scheduler names for the refiner model
+
+stabilityai/stable-diffusion-xl-base-1.0
+--model-type torch-sdxl
+--pag
+--sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0
+--sdxl-refiner-scheduler help
 
 
 # Try every combination of these schedulers for the main model and refiner.
