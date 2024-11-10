@@ -1680,9 +1680,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     actions.append(
         parser.add_argument(
             '-ox', '--output-overwrite', action='store_true', default=False,
-            help="""Enable
-
- overwrites of files in the output directory that already exists.
+            help="""Enable overwrites of files in the output directory that already exists.
                     The default behavior is not to do this, and instead append a filename suffix:
                     "_duplicate_(number)" when it is detected that the generated file name already exists."""
         )

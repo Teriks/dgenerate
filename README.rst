@@ -1158,9 +1158,7 @@ Help Output
                             beginning of every generated file, followed by an underscore.
                             -------------------------------------------------------------
       -ox, --output-overwrite
-                            Enable
-
-                            overwrites of files in the output directory that already exists. The default
+                            Enable overwrites of files in the output directory that already exists. The default
                             behavior is not to do this, and instead append a filename suffix:
                             "_duplicate_(number)" when it is detected that the generated file name already
                             exists.
@@ -1552,8 +1550,6 @@ Help Output
                             Syntax See: [https://dgenerate.readthedocs.io/en/v4.4.0/dgenerate_submodules.html#dg
                             enerate.imageprocessors.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS]
                             ----------------------------------------------------------------
-
-
 
 
 Windows Install
