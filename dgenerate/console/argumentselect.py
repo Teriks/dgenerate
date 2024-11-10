@@ -25,6 +25,7 @@ import dgenerate.console.resources as _resources
 import dgenerate.console.util as _util
 from dgenerate.console.mousewheelbind import bind_mousewheel
 
+
 def _adjust_combobox_width(combo, options):
     f = tk.font.Font(combo, combo.cget("font"))
     # Estimate width based on average character width
