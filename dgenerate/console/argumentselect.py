@@ -53,12 +53,13 @@ class _DgenerateArgumentSelect(tk.Toplevel):
 
         self._frame = tk.Frame(self)
 
-        # Create dropdowns
+        # Create dropdown
         self._argument_dropdown = ttk.Combobox(
             self._frame, textvariable=self._current_argument, values=self._arguments)
 
         _adjust_combobox_width(self._argument_dropdown, self._arguments)
-        # Create Insert button
+
+        # Create buttons
         self._insert_button = tk.Button(self._frame, text="Insert", command=self._insert_action)
         self._help_button = tk.Button(self._frame, text='Help', command=self._show_help)
 
