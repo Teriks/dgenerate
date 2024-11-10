@@ -1,0 +1,28 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 4.4.0
+
+# try out different schedulers (samplers)
+
+# Note that --schedulers is simply an alias of --scheduler
+# They both have the same syntax, same with --sdxl-refiner-scheduler
+# and --sdxl-refiner-schedulers
+
+
+# List out possible scheduler names
+
+stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl --pag --scheduler help
+
+
+# Try every combination of these schedulers for the main model and refiner.
+# With one seed, this amounts to 4 generation steps
+
+stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
+--variant fp16 --dtype float16
+--pag
+--sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0
+--schedulers EulerAncestralDiscreteScheduler KDPM2AncestralDiscreteScheduler
+--sdxl-refiner-schedulers EulerAncestralDiscreteScheduler KDPM2AncestralDiscreteScheduler
+--sdxl-high-noise-fractions 0.8
+--inference-steps 40
+--output-size 1024
+--prompts "Photo of a horse standing near the open door of a red barn, high resolution; artwork"
