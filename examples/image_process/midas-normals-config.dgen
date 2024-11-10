@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 4.4.0
+#! dgenerate 4.4.1
 
 # run the MiDaS depth detector, but generate a normal map from the depth image.
 
