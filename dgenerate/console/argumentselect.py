@@ -62,6 +62,16 @@ class _DgenerateArgumentSelect(tk.Toplevel):
         # Create buttons
         self._insert_button = tk.Button(self._frame, text="Insert", command=self._insert_action)
         self._help_button = tk.Button(self._frame, text='Help', command=self._show_help)
+        self._insert_button.config(state=tk.DISABLED)
+        self._help_button.config(state=tk.DISABLED)
+
+        self._current_argument.trace('w',
+                                     lambda *a:
+                                     (self._help_button.config(state=tk.ACTIVE),
+                                      self._insert_button.config(state=tk.ACTIVE))
+                                     if self._current_argument.get() else
+                                     (self._help_button.config(state=tk.DISABLED),
+                                      self._insert_button.config(state=tk.DISABLED)))
 
         # Grid layout
         self._argument_dropdown.grid(row=0, column=1, sticky="we")
