@@ -2755,7 +2755,7 @@ As an example, you may override the mentioned arguments for any scheduler in thi
 Like diffusion parameter arguments, you may specify multiple scheduler URIs and they will be tried in turn.
 
 When you specify multiple schedulers in this manner they will be added to the beginning of the
-output file name, in the order: ``(scheduler)_(refiner scheduler)_(decoder scheduler)``
+output file name, in the order: ``(scheduler)_(refiner / decoder scheduler)``
 
 .. code-block:: bash
 
