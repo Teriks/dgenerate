@@ -41,8 +41,8 @@ class _DgenerateArgumentSelect(tk.Toplevel):
         self._arguments_dict = _resources.get_dgenerate_arguments()
         self._templates = None
         self._dropdown = None
-        self._arguments = list(self._arguments_dict.keys())
-        self._current_argument = tk.StringVar(value=self._arguments[0])
+        self._arguments = list(sorted(self._arguments_dict.keys()))
+        self._current_argument = tk.StringVar()
         self._entries = []
         self._content = None
         self._ok = False
