@@ -2770,8 +2770,8 @@ output file name, in the order: ``(scheduler)_(refiner scheduler)_(decoder sched
     dgenerate stabilityai/stable-diffusion-2-1 \
     --inference-steps 30 \
     --guidance-scales 5 \
-    --schedulers EulerAncestralDiscreteScheduler KDPM2AncestralDiscreteScheduler
-    --output-size 512x512
+    --schedulers EulerAncestralDiscreteScheduler KDPM2AncestralDiscreteScheduler \
+    --output-size 512x512 \
     --prompts "a horse standing in a field"
 
 
