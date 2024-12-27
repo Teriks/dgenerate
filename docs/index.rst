@@ -10,7 +10,7 @@ For library usage examples see the `Library Usage Examples <https://github.com/T
 folder under the examples folder in the github repository.
 
 For command line usage documentation see the `Command Line Manual`_
-or the `Examples Folder <https://github.com/Teriks/dgenerate/tree/v4.0.0/examples>`_ in
+or the `Examples Folder <https://github.com/Teriks/dgenerate/tree/v4.4.1/examples>`_ in
 the github repository.
 
 
