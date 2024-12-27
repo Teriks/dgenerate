@@ -6,7 +6,7 @@ This is the library documentation for `dgenerate <https://github.com/Teriks/dgen
 ``dgenerate`` is a scriptable command line tool for generating images and animation sequences 
 using stable diffusion and related techniques, with an accompanying UI scripting environment.
 
-For library usage examples see the `Library Usage Examples <https://github.com/Teriks/dgenerate/tree/v4.0.0/examples/library_usage>`_
+For library usage examples see the `Library Usage Examples <https://github.com/Teriks/dgenerate/tree/v4.4.1/examples/library_usage>`_
 folder under the examples folder in the github repository.
 
 For command line usage documentation see the `Command Line Manual`_
