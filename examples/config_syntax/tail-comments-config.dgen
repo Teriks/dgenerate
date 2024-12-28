@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 4.4.1
+#! dgenerate 4.4.2
 
 # the ability to use tail comments requires a non trivial parse
 # that creates some penalty over the usage of the # character
