@@ -357,12 +357,10 @@ class FileCache:
                 file_path = self._generate_unique_filename(ext)
 
         if isinstance(file_data, bytes):
-            written_amount = len(file_data)
             with open(file_path, 'wb') as f:
                 f.write(file_data)
                 f.flush()
         else:
-            written_amount = 0
             with open(file_path, 'wb') as f:
                 iterable = iter(file_data)
                 for chunk in iterable:
