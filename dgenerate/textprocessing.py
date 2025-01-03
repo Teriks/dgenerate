@@ -542,21 +542,32 @@ def unquote(string: str, escapes_in_quoted=True, escapes_in_unquoted=False) -> s
         raise UnquoteSyntaxError(e)
 
 
-def shell_expandvars(string: str):
+def shell_expandvars(string: str) -> str:
     """
     Expand shell variables of form ``$var``, ``${var}``, ``%var%`` in a string.
 
-    Unknown variables expand to nothing.
+    Escaped characters ``\\$`` and ``\\%`` are ignored.
 
-    :param string: input string
+    Unknown variables expand to an empty string.
+
+    Supported formats:
+    - Unix-style: $VAR or ${VAR}
+    - Windows-style: %VAR%
+
+    :param string: Input string containing variables to expand.
+    :return: String with expanded variables.
     """
 
     def replace_var(match):
+        if match.group(0).startswith('\\'):
+            return match.group(0)[1:]
         var = match.group(1) or match.group(2) or match.group(3)
         return os.environ.get(var, '')
 
-    re_var = re.compile(r'%(\w+)%|\$\{(\w+)}|\$(\w+)')
-    return re_var.sub(replace_var, string)
+    re_var = re.compile(r'(?<!\\)(%(\w+)%|\$\{(\w+)\}|\$(\w+))')
+    result = re_var.sub(replace_var, string)
+
+    return result
 
 
 def shell_parse(string,
