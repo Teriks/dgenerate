@@ -24,6 +24,7 @@ import io
 import os
 import re
 import typing
+import warnings
 
 import asteval
 import jinja2
@@ -526,13 +527,23 @@ class BatchProcessor:
         interpreter.symtable.update(self.builtins)
         interpreter.symtable.update(self.template_functions)
 
-        try:
-            return interpreter.eval(value,
-                                    show_errors=False,
-                                    raise_errors=True)
-        except Exception as e:
-            raise BatchProcessError(
-                f'\\setp eval error: {(chr(10) + "  " * 4).join(str(e).strip().split(chr(10)))}')
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                category=SyntaxWarning,
+                message=r".*invalid escape sequence '\\%'.*")
+            warnings.filterwarnings(
+                "ignore",
+                category=SyntaxWarning,
+                message=r".*invalid escape sequence '\\\$'.*")
+
+            try:
+                return interpreter.eval(value,
+                                        show_errors=False,
+                                        raise_errors=True)
+            except Exception as e:
+                raise BatchProcessError(
+                    f'\\setp eval error: {(chr(10) + "  " * 4).join(str(e).strip().split(chr(10)))}')
 
     def _set_split(self, directive_args, line):
         name_part = directive_args[1]
