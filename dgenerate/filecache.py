@@ -351,9 +351,10 @@ class FileCache:
         """
         with self.kv_store as kv:
             if key in kv:
-                file_path = pathlib.Path(json.loads(kv.get(key))['path']).name
+                file_path = json.loads(kv.get(key))['path']
             else:
                 file_path = self._generate_unique_filename(ext)
+
         if isinstance(file_data, bytes):
             written_amount = len(file_data)
             with open(file_path, 'wb') as f:
