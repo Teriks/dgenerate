@@ -561,13 +561,16 @@ def shell_expandvars(string: str) -> str:
     def replace_var(match):
         if match.group(0).startswith('\\'):
             return match.group(0)[1:]
-        var = match.group(1) or match.group(2) or match.group(3)
+        var = match.group('unix') or match.group('braced') or match.group('windows')
         return os.environ.get(var, '')
 
-    re_var = re.compile(r'(?<!\\)(%(\w+)%|\$\{(\w+)\}|\$(\w+))')
+    re_var = re.compile(
+        r'(?<!\\)(?:\$(?P<unix>\w+)|\$\{(?P<braced>\w+)\}|%(?P<windows>\w+)%)'
+    )
     result = re_var.sub(replace_var, string)
 
     return result
+
 
 
 def shell_parse(string,
