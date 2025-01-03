@@ -26,6 +26,7 @@ import pathlib
 import sqlite3
 import typing
 import uuid
+import re
 
 import fake_useragent
 import filelock
@@ -498,6 +499,10 @@ class WebFileCache(FileCache):
         :param tqdm_pbar: tqdm progress bar type, if set to `None` no progress bar will be used. Defaults to `tqdm.tqdm`
         :return: The path to the downloaded file.
         """
+
+        # allow escaping of shell env-vars
+        url = re.sub(r'\\([%$])', r'\1', url)
+
         self._clear_old_files()
 
         def _mimetype_is_supported(mimetype):
