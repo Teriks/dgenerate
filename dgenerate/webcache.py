@@ -90,9 +90,6 @@ def create_web_cache_file(url,
     :return: tuple(mimetype_str, filepath)
     """
 
-    # allow escaping of shell env-vars
-    url = re.sub(r'\\([%$])', r'\1', url)
-
     cached_file = cache.download(
         url,
         mime_acceptable_desc,
