@@ -195,7 +195,7 @@ def download(url: str,
     a top level jinja template, which refers to your template variable,
     cache expiry may invalidate the file stored in your variable.
 
-    You can rectify this by using the template function inside of your loop.
+    You can rectify this by using the template function inside your loop.
     """
 
     # allow escaping of shell env-vars
