@@ -24,6 +24,7 @@ import itertools
 import os
 import shlex
 import typing
+import re
 
 import fake_useragent
 import pyrfc6266
@@ -196,6 +197,9 @@ def download(url: str,
 
     You can rectify this by using the template function inside of your loop.
     """
+
+    # allow escaping of shell env-vars
+    url = re.sub(r'\\([%$])', r'\1', url)
 
     def mimetype_supported(mimetype):
         if text:
