@@ -23,6 +23,7 @@ import os
 import pathlib
 import sys
 import typing
+import re
 
 import tqdm
 
@@ -88,6 +89,9 @@ def create_web_cache_file(url,
     :param tqdm_pbar: tqdm progress bar type, if set to `None` no progress bar will be used. Defaults to `tqdm.tqdm`
     :return: tuple(mimetype_str, filepath)
     """
+
+    # allow escaping of shell env-vars
+    url = re.sub(r'\\([%$])', r'\1', url)
 
     cached_file = cache.download(
         url,
