@@ -559,8 +559,6 @@ def shell_expandvars(string: str) -> str:
     """
 
     def replace_var(match):
-        if match.group(0).startswith('\\'):
-            return match.group(0)[1:]
         var = match.group('unix') or match.group('braced') or match.group('windows')
         return os.environ.get(var, '')
 
