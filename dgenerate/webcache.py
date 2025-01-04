@@ -23,7 +23,6 @@ import os
 import pathlib
 import sys
 import typing
-import re
 
 import tqdm
 
