@@ -1520,15 +1520,9 @@ def _create_torch_diffusion_pipeline(
         if t2i_adapter_uris:
             raise UnsupportedPipelineConfigError(
                 'Flux --model-type values are not compatible with --t2i-adapters.')
-        if ip_adapter_uris:
-            raise UnsupportedPipelineConfigError(
-                'Flux --model-type values are not compatible with --ip-adapters.')
         if textual_inversion_uris:
             raise UnsupportedPipelineConfigError(
                 'Flux --model-type values are not compatible with --textual-inversions.')
-        if image_encoder_uri:
-            raise UnsupportedPipelineConfigError(
-                'Flux --model-type values are not compatible with --image-encoder.')
 
     # Deep Floyd model restrictions
     if _enums.model_type_is_floyd(model_type):

@@ -1207,12 +1207,6 @@ class RenderLoopConfig(_types.SetFromMixin):
             if self.t2i_adapter_uris is not None:
                 raise RenderLoopConfigError(
                     f'Flux model types do not support {a_namer("t2i_adapter_uris")}.')
-            if self.ip_adapter_uris is not None:
-                raise RenderLoopConfigError(
-                    f'Flux model types do not support {a_namer("ip_adapter_uris")}.')
-            if self.image_encoder_uri is not None:
-                raise RenderLoopConfigError(
-                    f'Flux model types do not support {a_namer("image_encoder_uri")}.')
 
         if not _pipelinewrapper.model_type_is_sd3(self.model_type):
             invalid_self = []

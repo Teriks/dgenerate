@@ -408,11 +408,6 @@ class DiffusionPipelineWrapper:
                     'T2IAdapters not supported for Flux.'
                 )
 
-            if image_encoder_uri:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'ImageEncoder not supported for Flux.'
-                )
-
         if _enums.model_type_is_floyd(model_type):
             if vae_uri is not None:
                 raise _pipelines.UnsupportedPipelineConfigError(
@@ -1844,6 +1839,11 @@ class DiffusionPipelineWrapper:
                                   level=_messages.WARNING)
 
         pipeline_args['num_images_per_prompt'] = batch_size
+
+        self._set_non_universal_pipeline_arg(self._pipeline,
+                                             pipeline_args, user_args,
+                                             'ip_adapter_image', 'ip_adapter_images',
+                                             'IP Adapter images')
 
         pipeline_args['generator'] = \
             torch.Generator(device=self._device).manual_seed(

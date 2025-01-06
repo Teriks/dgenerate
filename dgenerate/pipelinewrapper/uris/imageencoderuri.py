@@ -182,14 +182,21 @@ class ImageEncoderUri:
 
         _cache.enforce_image_encoder_cache_constraints(new_image_encoder_size=estimated_memory_use)
 
+        if self.subfolder:
+
+            extra_args = {'subfolder': self.subfolder}
+        else:
+            # flux null reference bug
+            extra_args = dict()
+
         image_encoder = transformers.CLIPVisionModelWithProjection.from_pretrained(
             path,
             revision=self.revision,
             variant=self.variant,
             torch_dtype=torch_dtype,
-            subfolder=self.subfolder,
             token=use_auth_token,
-            local_files_only=local_files_only)
+            local_files_only=local_files_only,
+            **extra_args)
 
         _messages.debug_log('Estimated Image Encoder Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_use))
