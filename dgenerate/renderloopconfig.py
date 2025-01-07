@@ -1371,6 +1371,16 @@ class RenderLoopConfig(_types.SetFromMixin):
                         image_seed_strengths_default_set=image_seed_strengths_default_set,
                         upscaler_noise_levels_default_set=upscaler_noise_levels_default_set))
 
+            if all(p.images is None for p in parsed_image_seeds):
+                if image_seed_strengths_default_set:
+                    self.image_seed_strengths = None
+                elif self.image_seed_strengths:
+                    # user set this
+                    raise RenderLoopConfigError(
+                        f'{a_namer("image_seed_strengths")} '
+                        f'cannot be used unless an img2img operation exists '
+                        f'in at least one {a_namer("image_seed_uris")} definition.')
+
             if all(p.mask_images is None for p in parsed_image_seeds):
                 if self.model_type == _pipelinewrapper.ModelType.TORCH_IFS:
                     self.image_seed_strengths = None
