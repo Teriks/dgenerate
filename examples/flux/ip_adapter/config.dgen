@@ -1,0 +1,20 @@
+# Flux requires a huggingface auth token to access
+# you must request access to the repository
+
+\setp auth_token "$HF_TOKEN"
+
+\set auth_token {{ '--auth-token ' + quote(auth_token) if auth_token else '' }}
+
+black-forest-labs/FLUX.1-schnell
+--model-type torch-flux {{ auth_token }}
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 4
+--guidance-scales 0
+--gen-seeds 1
+--output-path output
+--image-encoder openai/clip-vit-large-patch14
+--image-seeds adapter:../../media/monalisa.png
+--ip-adapters XLabs-AI/flux-ip-adapter;weight-name="ip_adapter.safetensors"
+--output-size 1024x1024
+--prompts "wearing sunglasses"
