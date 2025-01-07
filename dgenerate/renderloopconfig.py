@@ -1017,6 +1017,11 @@ class RenderLoopConfig(_types.SetFromMixin):
         elif self.s_cascade_decoder_guidance_scales is not None:
             raise RenderLoopConfigError(
                 f'{a_namer("s_cascade_decoder_guidance_scales")} may only be used with "torch-s-cascade"')
+        elif self.image_encoder_uri and not self.ip_adapter_uris:
+            raise RenderLoopConfigError(
+                f'Cannot use {a_namer("image_encoder_uri")} without {a_namer("ip_adapter_uris")} '
+                'if model type is not torch-s-cascade.'
+            )
 
         if self.model_path is None:
             raise RenderLoopConfigError(
@@ -1207,6 +1212,15 @@ class RenderLoopConfig(_types.SetFromMixin):
             if self.t2i_adapter_uris is not None:
                 raise RenderLoopConfigError(
                     f'Flux model types do not support {a_namer("t2i_adapter_uris")}.')
+
+            if self.ip_adapter_uris and not self.image_encoder_uri:
+                raise RenderLoopConfigError(
+                    f'Must specify {a_namer("image_encoder_uri")} when '
+                    f'using {a_namer("ip_adapter_uris")} with Flux.')
+
+            if self.ip_adapter_uris and len(self.ip_adapter_uris) > 1:
+                raise RenderLoopConfigError(
+                    f'Flux does not support multiple {a_namer("ip_adapter_uris")} values.')
 
         if not _pipelinewrapper.model_type_is_sd3(self.model_type):
             invalid_self = []
