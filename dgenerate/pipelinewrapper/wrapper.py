@@ -408,6 +408,14 @@ class DiffusionPipelineWrapper:
                     'T2IAdapters not supported for Flux.'
                 )
 
+            if ip_adapter_uris and not image_encoder_uri:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'Must specify "image_encoder_uri" when using "ip_adapter_uris" with Flux.')
+
+            if ip_adapter_uris and len(ip_adapter_uris) > 1:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'Flux does not support multiple IP Adapters.')
+
         if _enums.model_type_is_floyd(model_type):
             if vae_uri is not None:
                 raise _pipelines.UnsupportedPipelineConfigError(

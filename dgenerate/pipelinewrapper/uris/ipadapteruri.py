@@ -120,6 +120,11 @@ class IPAdapterUri:
         except _exceptions.InvalidIPAdapterUriError:
             raise
         except Exception as e:
+            if "NoneType" in str(e):
+                # Rectify highly useless error caused by bug in diffusers
+                raise _exceptions.IPAdapterUriLoadError(
+                    'Cannot find IP Adapter weights in repository, '
+                    'you may need to specify a "subfolder" and/or "weight-name" URI value.')
             raise _exceptions.IPAdapterUriLoadError(
                 f'error loading IP Adapter: {e}')
 

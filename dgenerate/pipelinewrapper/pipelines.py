@@ -1523,6 +1523,12 @@ def _create_torch_diffusion_pipeline(
         if textual_inversion_uris:
             raise UnsupportedPipelineConfigError(
                 'Flux --model-type values are not compatible with --textual-inversions.')
+        if ip_adapter_uris and not image_encoder_uri:
+            raise UnsupportedPipelineConfigError(
+                'Must specify --image-encoder when using --ip-adapters with Flux.')
+        if ip_adapter_uris and len(ip_adapter_uris) > 1:
+            raise UnsupportedPipelineConfigError(
+                'Flux --model-type values do not support multiple --ip-adapters.')
 
     # Deep Floyd model restrictions
     if _enums.model_type_is_floyd(model_type):
