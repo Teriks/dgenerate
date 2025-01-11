@@ -149,6 +149,7 @@ _MODEL_TYPE_KEYWORDS = sorted((
     'torch-pix2pix',
     'torch-sd3',
     'torch-flux',
+    'torch-flux-fill',
     'torch-sdxl',
     'torch-if',
     'torch-ifs',
