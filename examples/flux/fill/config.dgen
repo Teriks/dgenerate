@@ -15,6 +15,6 @@ black-forest-labs/FLUX.1-Fill-dev
 --dtype bfloat16
 --model-sequential-offload
 --inference-steps 30
---guidance-scales 0
+--guidance-scales 3.5
 --image-seeds "../../media/horse1.jpg;../../media/horse1-mask.jpg"
 --prompts "Horse standing on the surface of mars, real, photo, high resolution"
