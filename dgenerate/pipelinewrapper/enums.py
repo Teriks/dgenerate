@@ -209,6 +209,10 @@ class ModelType(enum.Enum):
     Flux pipeline
     """
 
+    TORCH_FLUX_FILL = 13
+    """
+    Flux infill / outfill pipeline
+    """
 
 def supported_model_type_strings():
     """
@@ -225,7 +229,8 @@ def supported_model_type_strings():
             'torch-ifs-img2img',
             'torch-s-cascade',
             'torch-sd3',
-            'torch-flux']
+            'torch-flux',
+            'torch-flux-fill']
 
 
 def supported_model_type_enums() -> list[ModelType]:
@@ -261,7 +266,8 @@ def get_model_type_enum(id_str: ModelType | str) -> ModelType:
                 'torch-upscaler-x4': ModelType.TORCH_UPSCALER_X4,
                 'torch-s-cascade': ModelType.TORCH_S_CASCADE,
                 'torch-sd3': ModelType.TORCH_SD3,
-                'torch-flux': ModelType.TORCH_FLUX}[id_str.strip().lower()]
+                'torch-flux': ModelType.TORCH_FLUX,
+                'torch-flux-fill': ModelType.TORCH_FLUX_FILL}[id_str.strip().lower()]
     except KeyError:
         raise ValueError('invalid ModelType string')
 
@@ -288,7 +294,8 @@ def get_model_type_string(model_type_enum: ModelType) -> str:
             ModelType.TORCH_S_CASCADE: 'torch-s-cascade',
             ModelType.TORCH_S_CASCADE_DECODER: 'torch-s-cascade-decoder',
             ModelType.TORCH_SD3: 'torch-sd3',
-            ModelType.TORCH_FLUX: 'torch-flux'}[model_type]
+            ModelType.TORCH_FLUX: 'torch-flux',
+            ModelType.TORCH_FLUX_FILL: 'torch-flux-fill'}[model_type]
 
 
 def model_type_is_upscaler(model_type: ModelType | str) -> bool:

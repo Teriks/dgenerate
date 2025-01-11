@@ -1,0 +1,20 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 4.4.2
+
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %} !END
+
+
+black-forest-labs/FLUX.1-Fill-dev
+--model-type torch-flux-fill
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 30
+--guidance-scales 0
+--image-seeds "../../media/horse1.jpg;../../media/horse1-mask.jpg"
+--prompts "Horse standing on the surface of mars, real, photo, high resolution"

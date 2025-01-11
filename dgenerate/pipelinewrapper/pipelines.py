@@ -1813,12 +1813,16 @@ def _create_torch_diffusion_pipeline(
             if _enums.model_type_is_upscaler(model_type):
                 raise UnsupportedPipelineConfigError(
                     'Stable Diffusion upscaler model types do not support inpainting.')
-
             if model_type == _enums.ModelType.TORCH_FLUX:
                 if controlnet_uris:
                     pipeline_class = diffusers.FluxControlNetInpaintPipeline
                 else:
                     pipeline_class = diffusers.FluxInpaintPipeline
+            elif model_type == _enums.ModelType.TORCH_FLUX_FILL:
+                if controlnet_uris:
+                    raise UnsupportedPipelineConfigError(
+                        '--model-type torch-flux-fill does not support ControlNet models.')
+                pipeline_class = diffusers.FluxFillPipeline
             elif model_type == _enums.ModelType.TORCH_IF:
                 pipeline_class = diffusers.IFInpaintingPipeline
             elif model_type == _enums.ModelType.TORCH_IFS:

@@ -851,7 +851,8 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         s_cascade_decoder_schedulers = \
             [self.s_cascade_decoder_scheduler] if \
-                isinstance(self.s_cascade_decoder_scheduler, (_types.Uri, type(None))) else self.s_cascade_decoder_scheduler
+                isinstance(self.s_cascade_decoder_scheduler,
+                           (_types.Uri, type(None))) else self.s_cascade_decoder_scheduler
         s_cascade_decoder_scheduler_help = any(
             _pipelinewrapper.scheduler_is_help(s) for s in s_cascade_decoder_schedulers)
 
@@ -1345,7 +1346,8 @@ class RenderLoopConfig(_types.SetFromMixin):
 
             no_seed_strength = (_pipelinewrapper.model_type_is_upscaler(self.model_type) or
                                 _pipelinewrapper.model_type_is_pix2pix(self.model_type) or
-                                _pipelinewrapper.model_type_is_s_cascade(self.model_type))
+                                _pipelinewrapper.model_type_is_s_cascade(self.model_type) or
+                                self.model_type == _pipelinewrapper.ModelType.TORCH_FLUX_FILL)
 
             image_seed_strengths_default_set = False
             user_provided_image_seed_strengths = False

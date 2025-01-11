@@ -1493,6 +1493,8 @@ class DiffusionPipelineWrapper:
                         )
                     )
                 check_no_image_seed_strength()
+            elif self._model_type == _enums.ModelType.TORCH_FLUX_FILL:
+                check_no_image_seed_strength()
             elif self._model_type == _enums.ModelType.TORCH_IFS:
                 if self._pipeline_type != _enums.PipelineType.INPAINT:
                     args['noise_level'] = int(
@@ -2557,7 +2559,7 @@ class DiffusionPipelineWrapper:
             result = self._call_torch_s_cascade(
                 pipeline_args=pipeline_args,
                 user_args=copy_args)
-        elif self.model_type == _enums.ModelType.TORCH_FLUX:
+        elif _enums.model_type_is_flux(self.model_type):
             result = self._call_torch_flux(pipeline_args=pipeline_args,
                                            user_args=copy_args)
         else:
