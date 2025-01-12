@@ -1263,11 +1263,16 @@ class RenderLoopConfig(_types.SetFromMixin):
 
             try:
                 for image_seed in parsed_image_seeds:
+                    if image_seed.images and image_seed.mask_images:
+                        pipeline_type = _pipelinewrapper.PipelineType.IMG2IMG
+                    elif image_seed.images:
+                        pipeline_type = _pipelinewrapper.PipelineType.INPAINT
+                    else:
+                        pipeline_type = _pipelinewrapper.PipelineType.TXT2IMG
+
                     _pipelinewrapper.get_torch_pipeline_class(
                         model_type=self.model_type,
-                        pipeline_type=
-                        _pipelinewrapper.PipelineType.IMG2IMG if
-                        not image_seed.mask_images else _pipelinewrapper.PipelineType.INPAINT,
+                        pipeline_type=pipeline_type,
                         unet_uri=self.unet_uri,
                         transformer_uri=self.transformer_uri,
                         vae_uri=self.vae_uri,

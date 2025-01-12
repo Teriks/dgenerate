@@ -1869,15 +1869,21 @@ def get_torch_pipeline_class(
 
     if lora_uris and not pipeline_class_supports_lora(pipeline_class):
         raise UnsupportedPipelineConfigError(
-            f'--model-type {_enums.get_model_type_string(model_type)} does not support LoRAs.')
+            f'Given current arguments, '
+            f'--model-type {_enums.get_model_type_string(model_type)} '
+            f'(pipeline: {pipeline_class.__name__}) does not support LoRAs.')
 
     if textual_inversion_uris and not pipeline_class_supports_textual_inversion(pipeline_class):
         raise UnsupportedPipelineConfigError(
-            f'--model-type {_enums.get_model_type_string(model_type)} does not support Textual Inversions.')
+            f'Given current arguments, '
+            f'--model-type {_enums.get_model_type_string(model_type)} '
+            f'(pipeline: {pipeline_class.__name__}) does not support Textual Inversions.')
 
     if ip_adapter_uris and not pipeline_class_supports_ip_adapter(pipeline_class):
         raise UnsupportedPipelineConfigError(
-            f'--model-type {_enums.get_model_type_string(model_type)} does not support IP Adapters.')
+            f'Given current arguments, '
+            f'--model-type {_enums.get_model_type_string(model_type)} '
+            f'(pipeline: {pipeline_class.__name__}) does not support IP Adapters.')
 
     return pipeline_class
 
