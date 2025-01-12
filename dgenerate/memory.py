@@ -60,6 +60,7 @@ def memory_constraint_syntax_check(expression: str):
                 raise MemoryConstraintSyntaxError(
                     f'Expression "{expression}" is invalid. '
                     f'Only simple expressions accepted, no control statements, etc.')
+            # noinspection PyUnresolvedReferences
             if not isinstance(tree.body[0].value, (ast.BoolOp, ast.Compare)):
                 raise MemoryConstraintSyntaxError(
                     f'Expression "{expression}" is invalid. '
