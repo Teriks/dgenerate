@@ -1177,11 +1177,18 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'without {a_namer("image_seeds")}.')
 
         if not self.image_seeds:
+            if self.model_type == _pipelinewrapper.ModelType.TORCH_FLUX_FILL:
+                raise RenderLoopConfigError(
+                    f'you cannot use {a_namer("model_type")} '
+                    f'torch-flux-fill without {a_namer("image_seeds")}.'
+                )
+
             invalid_self = []
             for processor_self in non_null_attr_that_end_with('image_processors'):
                 invalid_self.append(
                     f'you cannot specify {a_namer(processor_self)} '
                     f'without {a_namer("image_seeds")}.')
+
             if invalid_self:
                 raise RenderLoopConfigError('\n'.join(invalid_self))
 
@@ -1381,7 +1388,13 @@ class RenderLoopConfig(_types.SetFromMixin):
                     raise RenderLoopConfigError(
                         f'{a_namer("image_seed_strengths")} '
                         f'cannot be used unless an img2img operation exists '
-                        f'in at least one {a_namer("image_seed_uris")} definition.')
+                        f'in at least one {a_namer("image_seeds")} definition.')
+
+            if not all(p.mask_images is not None for p in parsed_image_seeds):
+                if self.model_type == _pipelinewrapper.ModelType.TORCH_FLUX_FILL:
+                    raise RenderLoopConfigError(
+                        f'Only inpainting {a_namer("image_seeds")} '
+                        f'definitions can be used with {a_namer("model_type")} torch-flux-fill.')
 
             if all(p.mask_images is None for p in parsed_image_seeds):
                 if self.model_type == _pipelinewrapper.ModelType.TORCH_IFS:
