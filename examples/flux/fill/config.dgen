@@ -9,12 +9,15 @@
     \exit
 {% endif %} !END
 
+\setp image "https://huggingface.co/datasets/diffusers/diffusers-images-docs/resolve/main/cup.png"
+\setp mask "https://huggingface.co/datasets/diffusers/diffusers-images-docs/resolve/main/cup_mask.png"
+
 
 black-forest-labs/FLUX.1-Fill-dev
 --model-type torch-flux-fill
 --dtype bfloat16
 --model-sequential-offload
---inference-steps 30
---guidance-scales 3.5
---image-seeds "../../media/dog-on-bench.png;../../media/dog-on-bench-mask.png"
---prompts "A cat sitting on a bench"
+--inference-steps 50
+--guidance-scales 30
+--image-seeds "{{ image }};{{ mask }}"
+--prompts "a white paper cup"
