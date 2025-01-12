@@ -1,23 +1,34 @@
-title: Upscaling (Stable Diffusion x4)
+title: Flux Fill (Dev quantized)
 
-stabilityai/stable-diffusion-x4-upscaler
-@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "divider-after":true}]
---model-type torch-upscaler-x4
---dtype float16
---variant fp16
-@file[{"label":"Input Image File", "arg":"--image-seeds", "optional":false, "mode":"input", "file-types":["images-in", "videos-in"]}]
-@imageprocessor[{"arg":"--seed-image-processors", "label":"Input Image Processor", "divider-after":true}]
+# Flux requires a huggingface auth token to access
+# you must request access to the repository
+
+\setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"
+
+\set auth_token {{ '--auth-token ' + quote(auth_token) if auth_token else '' }}
+
+@uri[{"label":"Model Path / HF Slug", "dir":true, "default": "black-forest-labs/FLUX.1-Fill-dev", "optional":false, "file-types":["models"]}]
+--model-type torch-flux-fill {{ auth_token }}
+@dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["bfloat16", "float16", "float32"], "default":"bfloat16"}]
+@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "default":0, "divider-after":true}]
+@torchvae[{"label":"VAE Path / URI", "dir":true, "file-types":["models"]}]
 @switch[{"label":"VAE Tiling", "arg":"--vae-tiling"}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing", "divider-after":true}]
-@int[{"label":"Inference Steps", "arg":"--inference-steps", "default":30, "min":1}]
-@float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":5, "min":0}]
-@int[{"label":"Upscaler Noise Level", "arg":"--upscaler-noise-levels", "default":20, "min":0}]
+@uriwithfloat[{"label":"LoRA Path / URI", "float-label":"LoRA Scale", "arg":"--loras", "float-arg":"scale", "dir":true, "file-types":["models"]}]
+@uri[{"label":"Transformer Path / URI", "default":"https://huggingface.co/jackzheng/flux-fill-FP8/blob/main/fluxFillFP8_v10.safetensors;quantize=qfloat8", "dir":true, "arg":"--transformer", "file-types":["models"], "divider-after":true}]
+--text-encoders + T5EncoderModel;model=black-forest-labs/FLUX.1-dev;subfolder=text_encoder_2;quantize=qfloat8
+--image-seeds @file[{"label":"Input Image File", "optional":false, "mode":"input", "file-types":["images-in", "videos-in"]}];@file[{"label":"Input Mask File", "optional":false, "mode":"input", "file-types":["images-in", "videos-in"]}]
+@switch[{"label":"No Aspect Correction?", "arg":"--no-aspect"}]
+@imageprocessor[{"arg":"--seed-image-processors", "label":"Seed Image Processor"}]
+@imageprocessor[{"arg":"--mask-image-processors", "label":"Inpaint Mask Processor"}]
+@int[{"label":"Inference Steps", "arg":"--inference-steps", "default":50, "min":1}]
+@float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":3.5, "min":0}]
 @seeds[{"label":"Seeds"}]
 @int[{"label":"Batch Size", "arg":"--batch-size", "default":"", "min":1}]
 @imagesize[{"label":"Batch Grid Size (CxR)", "arg":"--batch-grid-size", "default":"", "divider-after":true}]
 @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
-@imagesize[{"label":"Input Resize (WxH)", "arg":"--output-size", "default":""}]
-@dropdown[{"label":"Prompt Weighter", "arg":"--prompt-weighter", "options":["compel", "compel;syntax=sdwui", "sd-embed"]}]
+@imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"1024x1024"}]
+@dropdown[{"label":"Prompt Weighter", "arg":"--prompt-weighter", "options":["sd-embed"]}]
 @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
 @device[{}]
---prompts "your prompt here"
+--prompts "add your prompt here"
