@@ -1515,6 +1515,8 @@ def get_torch_pipeline_class(
         to STDOUT and raise :py:exc:`dgenerate.pipelinewrapper.SchedulerHelpException`.  Dgenerate URI syntax is supported
         for overriding the schedulers constructor parameter defaults.
     :param pag: Use perturbed attention guidance?
+
+    :raises UnsupportedPipelineConfigError:
     """
 
     # Ensure model type is a Torch ModelType
