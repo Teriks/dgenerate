@@ -862,24 +862,33 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'with multiple values involved.'
             )
 
+        if not self.image_seeds:
+            try:
+                _pipelinewrapper.get_torch_pipeline_class(
+                    model_type=self.model_type,
+                    pipeline_type=_pipelinewrapper.PipelineType.TXT2IMG,
+                    unet_uri=self.unet_uri,
+                    transformer_uri=self.transformer_uri,
+                    vae_uri=self.vae_uri,
+                    lora_uris=self.lora_uris,
+                    image_encoder_uri=self.image_encoder_uri,
+                    ip_adapter_uris=self.ip_adapter_uris,
+                    textual_inversion_uris=self.textual_inversion_uris,
+                    text_encoder_uris=self.text_encoder_uris,
+                    controlnet_uris=self.controlnet_uris,
+                    t2i_adapter_uris=self.t2i_adapter_uris,
+                    scheduler=self.scheduler,
+                    pag=self.pag
+                )
+            except _pipelinewrapper.UnsupportedPipelineConfigError as e:
+                raise RenderLoopConfigError(str(e))
+
         if self.output_prefix:
             if '/' in self.output_prefix or '\\' in self.output_prefix:
                 raise RenderLoopConfigError(
                     f'{a_namer("output_prefix")} value may not contain slash characters.')
 
         if self.pag:
-            if not (self.model_type == _pipelinewrapper.ModelType.TORCH or
-                    self.model_type == _pipelinewrapper.ModelType.TORCH_SDXL or
-                    self.model_type == _pipelinewrapper.ModelType.TORCH_SD3):
-                raise RenderLoopConfigError(
-                    'Perturbed attention guidance (--pag*) is only supported with '
-                    '--model-type torch, torch-sdxl, and torch-sd3.')
-
-            if self.t2i_adapter_uris:
-                raise RenderLoopConfigError(
-                    'Perturbed attention guidance (--pag*) is is not supported '
-                    'with --t2i-adapters.')
-
             if not (self.pag_scales or self.pag_adaptive_scales):
                 self.pag_scales = [3.0]
                 self.pag_adaptive_scales = [0.0]
@@ -938,52 +947,11 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'{a_namer("s_cascade_decoder_cpu_offload")} and {a_namer("s_cascade_decoder_sequential_offload")} '
                 f'may not be enabled simultaneously.')
 
-        if _pipelinewrapper.model_type_is_floyd(self.model_type):
-            if self.vae_uri is not None:
-                raise RenderLoopConfigError(
-                    f'Deep Floyd model types cannot use a {a_namer("vae_uri")} value.')
-            if self.textual_inversion_uris is not None:
-                raise RenderLoopConfigError(
-                    f'Deep Floyd model types do not support {a_namer("textual_inversion_uris")}.')
-            if self.controlnet_uris is not None:
-                raise RenderLoopConfigError(
-                    f'Deep Floyd model types do not support {a_namer("controlnet_uris")}.')
-            if self.t2i_adapter_uris is not None:
-                raise RenderLoopConfigError(
-                    f'Deep Floyd model types do not support {a_namer("t2i_adapter_uris")}.')
-            if self.ip_adapter_uris is not None:
-                raise RenderLoopConfigError(
-                    f'Deep Floyd model types do not support {a_namer("ip_adapter_uris")}.')
-            if self.image_encoder_uri is not None:
-                raise RenderLoopConfigError(
-                    f'Deep Floyd model types do not support {a_namer("image_encoder_uri")}.')
-
         if self.model_type == _pipelinewrapper.ModelType.TORCH_S_CASCADE_DECODER:
             raise RenderLoopConfigError(
                 f'Stable Cascade decoder {a_namer("model_type")} may not be used as the primary model.')
 
         if self.model_type == _pipelinewrapper.ModelType.TORCH_S_CASCADE:
-            if self.textual_inversion_uris is not None:
-                raise RenderLoopConfigError(
-                    f'Stable Cascade does not currently support the '
-                    f'use of {a_namer("textual_inversion_uris")}.')
-
-            if not self.s_cascade_decoder_uri:
-                raise RenderLoopConfigError(
-                    f'You must specify a Stable Cascade decoder '
-                    f'model when {a_namer("model_type")} is "torch-s-cascade"')
-
-            if self.vae_uri is not None:
-                raise RenderLoopConfigError(
-                    f'Stable Cascade cannot use a {a_namer("vae_uri")} value.')
-
-            if self.lora_uris is not None:
-                raise RenderLoopConfigError(
-                    f'Stable Cascade does not currently support the use of {a_namer("lora_uris")}.')
-
-            if self.textual_inversion_uris is not None:
-                raise RenderLoopConfigError(
-                    f'Stable Cascade does not currently support the use of {a_namer("textual_inversion_uris")}.')
 
             if not self.s_cascade_decoder_guidance_scales:
                 self.s_cascade_decoder_guidance_scales = [
@@ -992,18 +960,6 @@ class RenderLoopConfig(_types.SetFromMixin):
             if not self.s_cascade_decoder_inference_steps:
                 self.s_cascade_decoder_inference_steps = [
                     _pipelinewrapper.DEFAULT_S_CASCADE_DECODER_INFERENCE_STEPS]
-
-            if self.controlnet_uris is not None:
-                raise RenderLoopConfigError(
-                    f'Stable Cascade does not currently support the use of {a_namer("controlnet_uris")}.')
-
-            if self.t2i_adapter_uris is not None:
-                raise RenderLoopConfigError(
-                    f'Stable Cascade does not currently support the use of {a_namer("t2i_adapter_uris")}.')
-
-            if self.ip_adapter_uris is not None:
-                raise RenderLoopConfigError(
-                    f'Stable Cascade does not currently support the use of {a_namer("ip_adapter_uris")}.')
 
             if self.output_size is not None and not _image.is_aligned(self.output_size, 128):
                 raise RenderLoopConfigError(
@@ -1018,11 +974,6 @@ class RenderLoopConfig(_types.SetFromMixin):
         elif self.s_cascade_decoder_guidance_scales is not None:
             raise RenderLoopConfigError(
                 f'{a_namer("s_cascade_decoder_guidance_scales")} may only be used with "torch-s-cascade"')
-        elif self.image_encoder_uri and not self.ip_adapter_uris:
-            raise RenderLoopConfigError(
-                f'Cannot use {a_namer("image_encoder_uri")} without {a_namer("ip_adapter_uris")} '
-                'if model type is not torch-s-cascade.'
-            )
 
         if self.model_path is None:
             raise RenderLoopConfigError(
@@ -1106,12 +1057,6 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise RenderLoopConfigError(
                     f'you cannot specify {a_namer("ip_adapter_uris")} without {a_namer("image_seeds")}.')
 
-        if self.model_type == _pipelinewrapper.ModelType.TORCH_UPSCALER_X2:
-            if self.lora_uris or self.textual_inversion_uris:
-                raise RenderLoopConfigError(
-                    f'--model-type {_pipelinewrapper.get_model_type_string(self.model_type)} '
-                    f'is not compatible with {a_namer("lora_uris")} or {a_namer("textual_inversion_uris")}.')
-
         upscaler_noise_levels_default_set = False
         if not _pipelinewrapper.model_type_is_upscaler(self.model_type) \
                 and not _pipelinewrapper.model_type_is_floyd_ifs(self.model_type):
@@ -1119,22 +1064,6 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise RenderLoopConfigError(
                     f'you cannot specify {a_namer("upscaler_noise_levels")} for a '
                     f'non upscaler model type, see: {a_namer("model_type")}.')
-        elif self.controlnet_uris:
-            raise RenderLoopConfigError(
-                f'{a_namer("controlnet_uris")} is not compatible '
-                f'with upscaler models, see: {a_namer("model_type")}.')
-        elif self.t2i_adapter_uris:
-            raise RenderLoopConfigError(
-                f'{a_namer("t2i_adapter_uris")} is not compatible '
-                f'with upscaler models, see: {a_namer("model_type")}.')
-        elif self.ip_adapter_uris:
-            raise RenderLoopConfigError(
-                f'{a_namer("ip_adapter_uris")} is not compatible '
-                f'with upscaler models, see: {a_namer("model_type")}.')
-        elif self.image_encoder_uri:
-            raise RenderLoopConfigError(
-                f'{a_namer("image_encoder_uri")} is not compatible '
-                f'with upscaler models, see: {a_namer("model_type")}.')
         elif self.upscaler_noise_levels is None:
             if self.model_type == _pipelinewrapper.ModelType.TORCH_UPSCALER_X4:
                 upscaler_noise_levels_default_set = True
@@ -1151,22 +1080,6 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise RenderLoopConfigError(
                     f'argument {a_namer("image_guidance_scales")} only valid with '
                     f'pix2pix models, see: {a_namer("model_type")}.')
-        elif self.controlnet_uris:
-            raise RenderLoopConfigError(
-                f'{a_namer("controlnet_uris")} is not compatible with '
-                f'pix2pix models, see: {a_namer("model_type")}.')
-        elif self.t2i_adapter_uris:
-            raise RenderLoopConfigError(
-                f'{a_namer("t2i_adapter_uris")} is not compatible with '
-                f'pix2pix models, see: {a_namer("model_type")}.')
-        elif self.image_encoder_uri and self.model_type != _pipelinewrapper.ModelType.TORCH_PIX2PIX:
-            raise RenderLoopConfigError(
-                f'{a_namer("image_encoder_uri")} is not compatible with '
-                f'SDXL pix2pix models, only SD1.5 & SD2, see, see: {a_namer("model_type")}.')
-        elif self.ip_adapter_uris and self.model_type != _pipelinewrapper.ModelType.TORCH_PIX2PIX:
-            raise RenderLoopConfigError(
-                f'{a_namer("ip_adapter_uris")} is not compatible with '
-                f'SDXL pix2pix models, only SD1.5 & SD2, see: {a_namer("model_type")}.')
         elif not self.image_guidance_scales:
             self.image_guidance_scales = [_pipelinewrapper.DEFAULT_IMAGE_GUIDANCE_SCALE]
 
@@ -1214,22 +1127,6 @@ class RenderLoopConfig(_types.SetFromMixin):
                         f'to 1 and less than or equal to 512.'
                     )
 
-            if self.textual_inversion_uris is not None:
-                raise RenderLoopConfigError(
-                    f'Flux model types do not support {a_namer("textual_inversion_uris")}.')
-            if self.t2i_adapter_uris is not None:
-                raise RenderLoopConfigError(
-                    f'Flux model types do not support {a_namer("t2i_adapter_uris")}.')
-
-            if self.ip_adapter_uris and not self.image_encoder_uri:
-                raise RenderLoopConfigError(
-                    f'Must specify {a_namer("image_encoder_uri")} when '
-                    f'using {a_namer("ip_adapter_uris")} with Flux.')
-
-            if self.ip_adapter_uris and len(self.ip_adapter_uris) > 1:
-                raise RenderLoopConfigError(
-                    f'Flux does not support multiple {a_namer("ip_adapter_uris")} values.')
-
         if not _pipelinewrapper.model_type_is_sd3(self.model_type):
             invalid_self = []
             for sd3_self in non_null_attr_that_start_with('sd3'):
@@ -1259,22 +1156,6 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise RenderLoopConfigError(
                     f'Stable Diffusion 3 does not support the '
                     f'use of {a_namer("unet_uri")}/{a_namer("second_unet_uri")}.')
-            if self.textual_inversion_uris:
-                raise RenderLoopConfigError(
-                    f'Stable Diffusion 3 does not currently support the '
-                    f'use of {a_namer("textual_inversion_uris")}.')
-            if self.t2i_adapter_uris:
-                raise RenderLoopConfigError(
-                    f'Stable Diffusion 3 does not currently support the '
-                    f'use of {a_namer("t2i_adapter_uris")}.')
-            if self.ip_adapter_uris:
-                raise RenderLoopConfigError(
-                    f'Stable Diffusion 3 does not currently support the '
-                    f'use of {a_namer("ip_adapter_uris")}.')
-            if self.image_encoder_uri:
-                raise RenderLoopConfigError(
-                    f'Stable Diffusion 3 does not currently support the '
-                    f'use of {a_namer("image_encoder_uri")}.')
 
         if not _pipelinewrapper.model_type_is_sdxl(self.model_type):
             invalid_self = []
@@ -1380,6 +1261,29 @@ class RenderLoopConfig(_types.SetFromMixin):
                         image_seed_strengths_default_set=image_seed_strengths_default_set,
                         upscaler_noise_levels_default_set=upscaler_noise_levels_default_set))
 
+            try:
+                for image_seed in parsed_image_seeds:
+                    _pipelinewrapper.get_torch_pipeline_class(
+                        model_type=self.model_type,
+                        pipeline_type=
+                        _pipelinewrapper.PipelineType.IMG2IMG if
+                        not image_seed.mask_images else _pipelinewrapper.PipelineType.INPAINT,
+                        unet_uri=self.unet_uri,
+                        transformer_uri=self.transformer_uri,
+                        vae_uri=self.vae_uri,
+                        lora_uris=self.lora_uris,
+                        image_encoder_uri=self.image_encoder_uri,
+                        ip_adapter_uris=self.ip_adapter_uris,
+                        textual_inversion_uris=self.textual_inversion_uris,
+                        text_encoder_uris=self.text_encoder_uris,
+                        controlnet_uris=self.controlnet_uris,
+                        t2i_adapter_uris=self.t2i_adapter_uris,
+                        scheduler=self.scheduler,
+                        pag=self.pag
+                    )
+            except _pipelinewrapper.UnsupportedPipelineConfigError as e:
+                raise RenderLoopConfigError(str(e))
+
             if all(p.images is None for p in parsed_image_seeds):
                 if image_seed_strengths_default_set:
                     self.image_seed_strengths = None
@@ -1438,10 +1342,6 @@ class RenderLoopConfig(_types.SetFromMixin):
                         f'{a_namer("image_seeds")} configurations other than plain img2img and '
                         f'inpaint are currently not supported for {a_namer("model_type")} '
                         f'{_pipelinewrapper.get_model_type_string(self.model_type)}')
-            if self.lora_uris:
-                raise RenderLoopConfigError(
-                    f'{a_namer("image_seeds")} are currently not supported with {a_namer("lora_uris")} for {a_namer("model_type")} '
-                    f'{_pipelinewrapper.get_model_type_string(self.model_type)}')
 
         if _pipelinewrapper.model_type_is_s_cascade(self.model_type):
             if not parsed.is_single_spec:
