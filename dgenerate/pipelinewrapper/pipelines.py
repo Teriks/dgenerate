@@ -1530,6 +1530,12 @@ def _create_torch_diffusion_pipeline(
             raise UnsupportedPipelineConfigError(
                 'Flux --model-type values do not support multiple --ip-adapters.')
 
+    if model_type == _enums.ModelType.TORCH_FLUX_FILL:
+        if pipeline_type != _enums.PipelineType.INPAINT:
+            raise UnsupportedPipelineConfigError(
+                'Flux fill --model-type value does not support anything but inpaint mode.'
+            )
+
     # Deep Floyd model restrictions
     if _enums.model_type_is_floyd(model_type):
         if controlnet_uris:
