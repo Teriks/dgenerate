@@ -16,7 +16,7 @@ title: Flux Fill (Dev quantized)
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing", "divider-after":true}]
 @uriwithfloat[{"label":"LoRA Path / URI", "float-label":"LoRA Scale", "arg":"--loras", "float-arg":"scale", "dir":true, "file-types":["models"]}]
 @uri[{"label":"Transformer Path / URI", "default":"https://huggingface.co/jackzheng/flux-fill-FP8/blob/main/fluxFillFP8_v10.safetensors;quantize=qfloat8", "dir":true, "arg":"--transformer", "file-types":["models"], "divider-after":true}]
---text-encoders + T5EncoderModel;model=black-forest-labs/FLUX.1-dev;subfolder=text_encoder_2;quantize=qfloat8
+--text-encoders + T5EncoderModel;model=black-forest-labs/FLUX.1-Fill-dev;subfolder=text_encoder_2;quantize=qfloat8
 --image-seeds @file[{"label":"Input Image File", "optional":false, "mode":"input", "file-types":["images-in", "videos-in"]}];@file[{"label":"Input Mask File", "optional":false, "mode":"input", "file-types":["images-in", "videos-in"]}]
 @switch[{"label":"No Aspect Correction?", "arg":"--no-aspect"}]
 @imageprocessor[{"arg":"--seed-image-processors", "label":"Seed Image Processor"}]
