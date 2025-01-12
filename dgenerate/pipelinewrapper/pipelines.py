@@ -1003,7 +1003,6 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline,
             if old_execution_device_property is not None:
                 pipeline.__class__._execution_device = old_execution_device_property
 
-
     if pipeline is _LAST_CALLED_PIPELINE:
         try:
             return _call_pipeline()
@@ -1448,24 +1447,43 @@ def _torch_on_create(key, new):
     _d_memoize.simple_cache_miss_debug('Torch Pipeline', key, new.pipeline)
 
 
-@_memoize(_cache._PIPELINE_CACHE,
-          exceptions={'local_files_only'},
-          hasher=_torch_args_hasher,
-          on_hit=_torch_on_hit,
-          on_create=_torch_on_create)
-def _create_torch_diffusion_pipeline(
-        model_path: str,
+def pipeline_class_supports_textual_inversion(cls: typing.Type[diffusers.DiffusionPipeline]):
+    """
+    Does a pipeline class support Textual Inversions?
+
+    :param cls: ``diffusers`` pipeline class
+    :return: ``True`` or ``False``
+    """
+    return any('TextualInversionLoaderMixin' in x.__name__ for x in cls.__bases__)
+
+
+def pipeline_class_supports_lora(cls: typing.Type[diffusers.DiffusionPipeline]):
+    """
+    Does a pipeline class support LoRAs?
+
+    :param cls: ``diffusers`` pipeline class
+    :return: ``True`` or ``False``
+    """
+    return any('LoraLoaderMixin' in x.__name__ for x in cls.__bases__)
+
+
+def pipeline_class_supports_ip_adapter(cls: typing.Type[diffusers.DiffusionPipeline]):
+    """
+    Does a pipeline class support IP Adapters?
+
+    :param cls: ``diffusers`` pipeline class
+    :return: ``True`` or ``False``
+    """
+    return any('IPAdapterMixin' in x.__name__ for x in cls.__bases__)
+
+
+def get_torch_pipeline_class(
         model_type: _enums.ModelType = _enums.ModelType.TORCH,
         pipeline_type: _enums.PipelineType = _enums.PipelineType.TXT2IMG,
-        revision: _types.OptionalString = None,
-        variant: _types.OptionalString = None,
-        subfolder: _types.OptionalString = None,
-        dtype: _enums.DataType = _enums.DataType.AUTO,
         unet_uri: _types.OptionalUri = None,
         transformer_uri: _types.OptionalUri = None,
         vae_uri: _types.OptionalUri = None,
         lora_uris: _types.OptionalUris = None,
-        lora_fuse_scale: _types.OptionalFloat = None,
         image_encoder_uri: _types.OptionalUri = None,
         ip_adapter_uris: _types.OptionalUris = None,
         textual_inversion_uris: _types.OptionalUris = None,
@@ -1473,33 +1491,35 @@ def _create_torch_diffusion_pipeline(
         controlnet_uris: _types.OptionalUris = None,
         t2i_adapter_uris: _types.OptionalUris = None,
         scheduler: _types.OptionalString = None,
-        pag: bool = False,
-        safety_checker: bool = False,
-        auth_token: _types.OptionalString = None,
-        device: str = _util.default_device(),
-        extra_modules: dict[str, typing.Any] | None = None,
-        model_cpu_offload: bool = False,
-        sequential_cpu_offload: bool = False,
-        local_files_only: bool = False
-) -> TorchPipelineCreationResult:
-    # Ensure model path is specified
-    if not model_path:
-        raise ValueError('model_path must be specified.')
+        pag: bool = False
+) -> typing.Type[diffusers.DiffusionPipeline]:
+    """
+    Get an appropriate ``diffusers`` pipeline class for the provided arguments.
+
+    :param model_type:  :py:class:`dgenerate.pipelinewrapper.ModelType` enum value
+    :param pipeline_type: :py:class:`dgenerate.pipelinewrapper.PipelineType` enum value
+    :param unet_uri: Optional ``--unet`` URI string for specifying a specific UNet
+    :param transformer_uri: Optional ``--transformer`` URI string for specifying a specific Transformer,
+        currently this is only supported for Stable Diffusion 3 and Flux models.
+    :param vae_uri: Optional ``--vae`` URI string for specifying a specific VAE
+    :param lora_uris: Optional ``--loras`` URI strings for specifying LoRA weights
+    :param image_encoder_uri: Optional ``--image-encoder`` URI for use with IP Adapter weights or Stable Cascade
+    :param ip_adapter_uris: Optional ``--ip-adapters`` URI strings for specifying IP Adapter weights
+    :param textual_inversion_uris: Optional ``--textual-inversions`` URI strings for specifying Textual Inversion weights
+    :param text_encoder_uris: Optional user specified ``--text-encoders`` URIs that will be loaded on to the
+        pipeline in order. A uri value of ``+`` or ``None`` indicates use default, a string value of ``null``
+        indicates to explicitly not load any encoder all
+    :param controlnet_uris: Optional ``--control-nets`` URI strings for specifying ControlNet models
+    :param t2i_adapter_uris: Optional ``--t2i-adapters`` URI strings for specifying T2IAdapter models
+    :param scheduler: Optional scheduler (sampler) class name, unqualified, or "help" / "helpargs" to print supported values
+        to STDOUT and raise :py:exc:`dgenerate.pipelinewrapper.SchedulerHelpException`.  Dgenerate URI syntax is supported
+        for overriding the schedulers constructor parameter defaults.
+    :param pag: Use perturbed attention guidance?
+    """
 
     # Ensure model type is a Torch ModelType
     if not _enums.model_type_is_torch(model_type):
         raise UnsupportedPipelineConfigError('model_type must be a TORCH ModelType enum value.')
-
-    # Offload checks
-    if model_cpu_offload and sequential_cpu_offload:
-        raise UnsupportedPipelineConfigError(
-            'model_cpu_offload and sequential_cpu_offload may not be enabled simultaneously.')
-
-    # Device check
-    if not _util.is_valid_device_string(device):
-        raise UnsupportedPipelineConfigError(
-            'device must be "cuda" (optionally with a device ordinal "cuda:N") or "cpu", '
-            'or other device supported by torch.')
 
     # PAG check
     if pag:
@@ -1520,9 +1540,6 @@ def _create_torch_diffusion_pipeline(
         if t2i_adapter_uris:
             raise UnsupportedPipelineConfigError(
                 'Flux --model-type values are not compatible with --t2i-adapters.')
-        if textual_inversion_uris:
-            raise UnsupportedPipelineConfigError(
-                'Flux --model-type values are not compatible with --textual-inversions.')
         if ip_adapter_uris and not image_encoder_uri:
             raise UnsupportedPipelineConfigError(
                 'Must specify --image-encoder when using --ip-adapters with Flux.')
@@ -1544,12 +1561,6 @@ def _create_torch_diffusion_pipeline(
         if t2i_adapter_uris:
             raise UnsupportedPipelineConfigError(
                 'Deep Floyd --model-type values are not compatible with --t2i-adapters.')
-        if ip_adapter_uris:
-            raise UnsupportedPipelineConfigError(
-                'Deep Floyd --model-type values are not compatible with --ip-adapters.')
-        if textual_inversion_uris:
-            raise UnsupportedPipelineConfigError(
-                'Deep Floyd --model-type values are not compatible with --textual-inversions.')
         if vae_uri:
             raise UnsupportedPipelineConfigError(
                 'Deep Floyd --model-type values are not compatible with --vae.')
@@ -1565,15 +1576,6 @@ def _create_torch_diffusion_pipeline(
         if t2i_adapter_uris:
             raise UnsupportedPipelineConfigError(
                 'Stable Cascade --model-type values are not compatible with --t2i-adapters.')
-        if ip_adapter_uris:
-            raise UnsupportedPipelineConfigError(
-                'Stable Cascade --model-type values are not compatible with --ip-adapters.')
-        if textual_inversion_uris:
-            raise UnsupportedPipelineConfigError(
-                'Stable Cascade --model-type values are not compatible with --textual-inversions.')
-        if lora_uris:
-            raise UnsupportedPipelineConfigError(
-                'Stable Cascade --model-type values are not compatible with --loras.')
         if vae_uri:
             raise UnsupportedPipelineConfigError(
                 'Stable Cascade --model-type values are not compatible with --vae.')
@@ -1583,15 +1585,9 @@ def _create_torch_diffusion_pipeline(
         if t2i_adapter_uris:
             raise UnsupportedPipelineConfigError(
                 '--model-type torch-sd3 is not compatible with --t2i-adapters.')
-        if ip_adapter_uris:
-            raise UnsupportedPipelineConfigError(
-                '--model-type torch-sd3 is not compatible with --ip-adapters.')
         if unet_uri:
             raise UnsupportedPipelineConfigError(
                 '--model-type torch-sd3 is not compatible with --unet.')
-        if textual_inversion_uris:
-            raise UnsupportedPipelineConfigError(
-                '--model-type torch-sd3 is not compatible with --textual-inversions.')
         if image_encoder_uri:
             raise UnsupportedPipelineConfigError(
                 '--model-type torch-sd3 is not compatible with --image-encoder.')
@@ -1620,10 +1616,6 @@ def _create_torch_diffusion_pipeline(
         if t2i_adapter_uris:
             raise UnsupportedPipelineConfigError(
                 'Pix2Pix --model-type values are not compatible with --t2i-adapters.')
-        if ip_adapter_uris and model_type != _enums.ModelType.TORCH_PIX2PIX:
-            raise UnsupportedPipelineConfigError(
-                'Only Pix2Pix --model-type torch-pix2pix is compatible '
-                'with --ip-adapters. Pix2Pix SDXL is not supported.')
         if image_encoder_uri and model_type != _enums.ModelType.TORCH_PIX2PIX:
             raise UnsupportedPipelineConfigError(
                 'Only Pix2Pix --model-type torch-pix2pix is compatible '
@@ -1639,20 +1631,12 @@ def _create_torch_diffusion_pipeline(
         if t2i_adapter_uris:
             raise UnsupportedPipelineConfigError(
                 'Upscaler models are not compatible with --t2i-adapters.')
-        if ip_adapter_uris:
-            raise UnsupportedPipelineConfigError(
-                'Upscaler models are not compatible with --ip-adapters.')
         if image_encoder_uri:
             raise UnsupportedPipelineConfigError(
                 'Upscaler models are not compatible with --image-encoder.')
         if pipeline_type != _enums.PipelineType.IMG2IMG and not scheduler_is_help(scheduler):
             raise UnsupportedPipelineConfigError(
                 'Upscaler models only work with img2img generation, IE: --image-seeds (with no image masks).')
-
-        if model_type == _enums.ModelType.TORCH_UPSCALER_X2:
-            if lora_uris or textual_inversion_uris:
-                raise UnsupportedPipelineConfigError(
-                    '--model-type torch-upscaler-x2 is not compatible with --loras or --textual-inversions.')
 
         pipeline_class = (
             diffusers.StableDiffusionUpscalePipeline
@@ -1860,7 +1844,7 @@ def _create_torch_diffusion_pipeline(
                         pipeline_class = diffusers.StableDiffusionXLControlNetInpaintPipeline
                 else:
                     if pag:
-                        pipeline_type = diffusers.StableDiffusionControlNetPAGInpaintPipeline
+                        pipeline_class = diffusers.StableDiffusionControlNetPAGInpaintPipeline
                     else:
                         pipeline_class = diffusers.StableDiffusionControlNetInpaintPipeline
             else:
@@ -1879,6 +1863,87 @@ def _create_torch_diffusion_pipeline(
         else:
             # Should be impossible
             raise UnsupportedPipelineConfigError('Pipeline type not implemented.')
+
+    if lora_uris and not pipeline_class_supports_lora(pipeline_class):
+        raise UnsupportedPipelineConfigError(
+            f'--model-type {_enums.get_model_type_string(model_type)} does not support LoRAs.')
+
+    if textual_inversion_uris and not pipeline_class_supports_textual_inversion(pipeline_class):
+        raise UnsupportedPipelineConfigError(
+            f'--model-type {_enums.get_model_type_string(model_type)} does not support Textual Inversions.')
+
+    if ip_adapter_uris and not pipeline_class_supports_ip_adapter(pipeline_class):
+        raise UnsupportedPipelineConfigError(
+            f'--model-type {_enums.get_model_type_string(model_type)} does not support IP Adapters.')
+
+    return pipeline_class
+
+
+@_memoize(_cache._PIPELINE_CACHE,
+          exceptions={'local_files_only'},
+          hasher=_torch_args_hasher,
+          on_hit=_torch_on_hit,
+          on_create=_torch_on_create)
+def _create_torch_diffusion_pipeline(
+        model_path: str,
+        model_type: _enums.ModelType = _enums.ModelType.TORCH,
+        pipeline_type: _enums.PipelineType = _enums.PipelineType.TXT2IMG,
+        revision: _types.OptionalString = None,
+        variant: _types.OptionalString = None,
+        subfolder: _types.OptionalString = None,
+        dtype: _enums.DataType = _enums.DataType.AUTO,
+        unet_uri: _types.OptionalUri = None,
+        transformer_uri: _types.OptionalUri = None,
+        vae_uri: _types.OptionalUri = None,
+        lora_uris: _types.OptionalUris = None,
+        lora_fuse_scale: _types.OptionalFloat = None,
+        image_encoder_uri: _types.OptionalUri = None,
+        ip_adapter_uris: _types.OptionalUris = None,
+        textual_inversion_uris: _types.OptionalUris = None,
+        text_encoder_uris: _types.OptionalUris = None,
+        controlnet_uris: _types.OptionalUris = None,
+        t2i_adapter_uris: _types.OptionalUris = None,
+        scheduler: _types.OptionalString = None,
+        pag: bool = False,
+        safety_checker: bool = False,
+        auth_token: _types.OptionalString = None,
+        device: str = _util.default_device(),
+        extra_modules: dict[str, typing.Any] | None = None,
+        model_cpu_offload: bool = False,
+        sequential_cpu_offload: bool = False,
+        local_files_only: bool = False
+) -> TorchPipelineCreationResult:
+    # Ensure model path is specified
+    if not model_path:
+        raise ValueError('model_path must be specified.')
+
+    # Offload checks
+    if model_cpu_offload and sequential_cpu_offload:
+        raise UnsupportedPipelineConfigError(
+            'model_cpu_offload and sequential_cpu_offload may not be enabled simultaneously.')
+
+    # Device check
+    if not _util.is_valid_device_string(device):
+        raise UnsupportedPipelineConfigError(
+            'device must be "cuda" (optionally with a device ordinal "cuda:N") or "cpu", '
+            'or other device supported by torch.')
+
+    pipeline_class = get_torch_pipeline_class(
+        model_type=model_type,
+        pipeline_type=pipeline_type,
+        unet_uri=unet_uri,
+        transformer_uri=transformer_uri,
+        vae_uri=vae_uri,
+        lora_uris=lora_uris,
+        image_encoder_uri=image_encoder_uri,
+        ip_adapter_uris=ip_adapter_uris,
+        textual_inversion_uris=textual_inversion_uris,
+        text_encoder_uris=text_encoder_uris,
+        controlnet_uris=controlnet_uris,
+        t2i_adapter_uris=t2i_adapter_uris,
+        scheduler=scheduler,
+        pag=pag
+    )
 
     text_encoder_count = len(
         [a for a in inspect.getfullargspec(pipeline_class.__init__).args if a.startswith('text_encoder')])

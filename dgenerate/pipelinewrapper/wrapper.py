@@ -365,106 +365,6 @@ class DiffusionPipelineWrapper:
                 'with multiple arguments simultaneously.'
             )
 
-        # Model-specific restrictions
-        if _enums.model_type_is_s_cascade(model_type):
-            if textual_inversion_uris:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'Textual Inversions not supported for StableCascade.'
-                )
-
-            if controlnet_uris:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'ControlNets not supported for StableCascade.'
-                )
-
-            if t2i_adapter_uris:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'T2IAdapters not supported for StableCascade.'
-                )
-
-            if lora_uris:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'LoRA loading is not implemented for stable cascade.'
-                )
-
-            if ip_adapter_uris:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'IP Adapter loading is not implemented for stable cascade.'
-                )
-
-            if vae_uri:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'StableCascade models do not use a VAE.'
-                )
-
-        if _enums.model_type_is_flux(model_type):
-            if textual_inversion_uris:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'Textual Inversions not supported for Flux.'
-                )
-
-            if t2i_adapter_uris:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'T2IAdapters not supported for Flux.'
-                )
-
-            if ip_adapter_uris and not image_encoder_uri:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'Must specify "image_encoder_uri" when using "ip_adapter_uris" with Flux.')
-
-            if ip_adapter_uris and len(ip_adapter_uris) > 1:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'Flux does not support multiple IP Adapters.')
-
-        if _enums.model_type_is_floyd(model_type):
-            if vae_uri is not None:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'Deep Floyd model types do not use a VAE.'
-                )
-
-            if textual_inversion_uris:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'Textual Inversions not supported for Deep Floyd.'
-                )
-
-            if controlnet_uris:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'ControlNets not supported for Deep Floyd.'
-                )
-
-            if t2i_adapter_uris:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'T2IAdapters not supported for Deep Floyd.'
-                )
-
-            if image_encoder_uri:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'ImageEncoder not supported for Deep Floyd.'
-                )
-
-        if _enums.model_type_is_upscaler(model_type):
-            if controlnet_uris:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'Upscaler models are not compatible with ControlNets.'
-                )
-            if t2i_adapter_uris:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'Upscaler models are not compatible with T2IAdapters.'
-                )
-            if ip_adapter_uris:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'Upscaler models are not compatible with IPAdapters.'
-                )
-            if image_encoder_uri:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'Upscaler models are not compatible with ImageEncoders.'
-                )
-            if model_type == _enums.ModelType.TORCH_UPSCALER_X2:
-                if lora_uris or textual_inversion_uris:
-                    raise _pipelines.UnsupportedPipelineConfigError(
-                        '--model-type torch-upscaler-x2 is not compatible with --loras or --textual-inversions.'
-                    )
-
         if sdxl_refiner_uri is not None:
             if not _enums.model_type_is_sdxl(model_type):
                 raise _pipelines.UnsupportedPipelineConfigError(
@@ -479,59 +379,10 @@ class DiffusionPipelineWrapper:
                     'please use model_type "torch-s-cascade" if you are trying to load an Stable Cascade model.'
                 )
 
-        if _enums.model_type_is_sd3(model_type):
-            if image_encoder_uri:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'ImageEncoder is not supported for stable diffusion 3.'
-                )
-
-            if textual_inversion_uris:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'Textual inversion loading is not implemented for stable diffusion 3.'
-                )
-
-            if t2i_adapter_uris:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'T2IAdapters not supported for stable diffusion 3.'
-                )
-
-            if ip_adapter_uris:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'IP Adapter loading is not implemented for stable diffusion 3.'
-                )
-
-            if unet_uri or second_unet_uri:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'Stable Diffusion 3 does not use a UNet model.'
-                )
-
         if transformer_uri:
             if not _enums.model_type_is_sd3(model_type) and not _enums.model_type_is_flux(model_type):
                 raise _pipelines.UnsupportedPipelineConfigError(
                     '--transformer is only supported for --model-type torch-sd3 and torch-flux.')
-
-        if _enums.model_type_is_pix2pix(model_type):
-            if controlnet_uris:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'Pix2Pix model types are not compatible with ControlNets.'
-                )
-
-            if t2i_adapter_uris:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'Pix2Pix model types are not compatible with T2IAdapters.'
-                )
-
-            if ip_adapter_uris and model_type != _enums.ModelType.TORCH_PIX2PIX:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'Only Pix2Pix model type torch-pix2pix is compatible '
-                    'with IPAdapters. Pix2Pix SDXL is not supported.'
-                )
-
-            if image_encoder_uri and model_type != _enums.ModelType.TORCH_PIX2PIX:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'Only Pix2Pix model type TORCH-PIX2PIX is compatible '
-                    'with --image-encoder. Pix2Pix SDXL is not supported.'
-                )
 
         self._subfolder = subfolder
         self._device = device

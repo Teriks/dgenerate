@@ -180,6 +180,7 @@ from .pipelines import (
     SchedulerHelpException,
     TextEncodersHelpException,
     set_vae_slicing_tiling,
+    get_torch_pipeline_class,
     create_torch_diffusion_pipeline,
     estimate_pipeline_memory_use,
     load_scheduler,
