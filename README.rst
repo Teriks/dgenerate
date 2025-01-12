@@ -3804,6 +3804,7 @@ IP Adapters are supported for these model types:
     * ``--model-type torch``
     * ``--model-type torch-pix2pix``
     * ``--model-type torch-sdxl``
+    * ``--model-type torch-flux`` (basic adapter image specification only)
 
 Here is a brief example of loading an IP Adapter in the most basic way and passing it an image via ``--image-seeds``.
 
