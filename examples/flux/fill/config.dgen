@@ -17,6 +17,7 @@ black-forest-labs/FLUX.1-Fill-dev
 --model-type torch-flux-fill
 --dtype bfloat16
 --model-sequential-offload
+--output-size 1024
 --inference-steps 50
 --guidance-scales 30
 --image-seeds "{{ image }};{{ mask }}"
