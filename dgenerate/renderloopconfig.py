@@ -1264,9 +1264,9 @@ class RenderLoopConfig(_types.SetFromMixin):
             try:
                 for image_seed in parsed_image_seeds:
                     if image_seed.images and image_seed.mask_images:
-                        pipeline_type = _pipelinewrapper.PipelineType.IMG2IMG
-                    elif image_seed.images:
                         pipeline_type = _pipelinewrapper.PipelineType.INPAINT
+                    elif image_seed.images:
+                        pipeline_type = _pipelinewrapper.PipelineType.IMG2IMG
                     else:
                         pipeline_type = _pipelinewrapper.PipelineType.TXT2IMG
 
