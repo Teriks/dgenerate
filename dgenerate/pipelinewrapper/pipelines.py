@@ -1650,6 +1650,7 @@ def get_torch_pipeline_class(
                     raise UnsupportedPipelineConfigError(
                         'Pix2Pix models only work in img2img mode and cannot work without --image-seeds.')
                 else:
+                    # noinspection PyUnusedLocal
                     pipeline_class = (
                         diffusers.StableDiffusionXLInstructPix2PixPipeline
                         if is_sdxl
