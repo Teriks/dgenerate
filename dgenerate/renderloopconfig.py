@@ -1263,9 +1263,12 @@ class RenderLoopConfig(_types.SetFromMixin):
 
             try:
                 for image_seed in parsed_image_seeds:
+                    is_control_guidance_spec = \
+                        (self.controlnet_uris or self.t2i_adapter_uris) and image_seed.is_single_spec
+
                     if image_seed.images and image_seed.mask_images:
                         pipeline_type = _pipelinewrapper.PipelineType.INPAINT
-                    elif image_seed.images:
+                    elif image_seed.images and not is_control_guidance_spec:
                         pipeline_type = _pipelinewrapper.PipelineType.IMG2IMG
                     else:
                         pipeline_type = _pipelinewrapper.PipelineType.TXT2IMG
