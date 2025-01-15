@@ -1860,7 +1860,7 @@ Install dgenerate
 
     # in order for bitsandbytes to work correctly on ROCm
     # you need to force the install of a development build
-    # using --force-reinstall and a link to the multibackend
+    # using --force-reinstall and a link to the multi-backend
     # wheel for bitsandbytes on the github releases page
 
     # pip and pipx will only be happy with these incantations if you do
