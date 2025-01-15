@@ -47,11 +47,6 @@ from dgenerate.memoize import memoize as _memoize
 import dgenerate.pipelinewrapper.util as _util
 import dgenerate.pipelinewrapper.quanto as _quanto
 
-try:
-    import diffusers.quantizers.bitsandbytes.utils as _bnb_utils
-except ImportError:
-    _bnb_utils = None
-
 
 class UnsupportedPipelineConfigError(Exception):
     """
@@ -572,18 +567,6 @@ def enable_model_cpu_offload(pipeline: diffusers.DiffusionPipeline,
         model = all_model_components.pop(model_str, None)
         if not isinstance(model, torch.nn.Module):
             continue
-
-        if _bnb_utils is not None:
-            # This is because the model would
-            # already be placed on a CUDA device.
-            _, _, is_loaded_in_8bit_bnb = \
-                _bnb_utils._check_bnb_status(model)
-
-            if is_loaded_in_8bit_bnb:
-                _messages.debug_log(
-                    f'Skipping cpu offload on 8-bit bitsandbytes '
-                    f'quantized module: {model_str}={model.__class__.__name__}')
-                continue
 
         _, hook = accelerate.cpu_offload_with_hook(model, device, prev_module_hook=hook)
         _set_cpu_offload_flag(model, True)

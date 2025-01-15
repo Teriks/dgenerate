@@ -6,21 +6,13 @@ python3 -m venv ~/dgenerate_venv
 source ~/dgenerate_venv/bin/activate
 
 if [ "$DGENERATE_INSTALL_DEV" = "1" ]; then
-  if [ -z "$DGENERATE_BITSANDBYTES_ALT" ]; then
-    pip3 install --editable . --extra-index-url $DGENERATE_INSTALL_INDEX
-  else
-    pip3 install --editable . --force-reinstall "$DGENERATE_BITSANDBYTES_ALT" --extra-index-url $DGENERATE_INSTALL_INDEX
-  fi
+  pip3 install --editable . --extra-index-url $DGENERATE_INSTALL_INDEX
 else
   pip3 install build
   rm -rf docker/dist
   python3 -m build --outdir docker/dist
   latest_whl=$(realpath $(ls -t docker/dist/*.whl | head -n 1))
 
-  if [ -z "$DGENERATE_BITSANDBYTES_ALT" ]; then
-    pip3 install "${latest_whl}" --extra-index-url $DGENERATE_INSTALL_INDEX
-  else
-    pip3 install "${latest_whl}" --force-reinstall "$DGENERATE_BITSANDBYTES_ALT" --extra-index-url $DGENERATE_INSTALL_INDEX
-  fi
-fi
 
+  pip3 install "${latest_whl}" --extra-index-url $DGENERATE_INSTALL_INDEX
+fi
