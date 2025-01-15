@@ -80,7 +80,7 @@ if len(args) == 0:
     args = ['bash']
 
 if amd_mode:
-    extra_index = "https://download.pytorch.org/whl/rocm6.1/"
+    extra_index = "https://download.pytorch.org/whl/rocm6.2/"
     docker_file = 'dockerfile-rocm'
     image = 'dgenerate-rocm'
 
