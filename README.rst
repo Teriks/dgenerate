@@ -1863,6 +1863,16 @@ Install dgenerate
     # using --force-reinstall and a link to the multibackend
     # wheel for bitsandbytes on the github releases page
 
+    # pip and pipx will only be happy with these incantations if you do
+    # not explicitly specify a dgenerate version, i.e. you can only
+    # grab the latest version of dgenerate from PyPi with these commands
+
+    # if you need a specific version of dgenerate you will need to install
+    # into your own environment instead of using pipx, and then install
+    # the multi-backend preview of bitsandbytes over the top of your
+    # dgenerate install with a second invocation of pip
+
+
     # install with just support for torch
 
     pipx install dgenerate \
@@ -1875,21 +1885,15 @@ Install dgenerate
     --pip-args "--force-reinstall 'https://github.com/bitsandbytes-foundation/bitsandbytes/releases/download/continuous-release_multi-backend-refactor/bitsandbytes-0.45.0.dev0-py3-none-manylinux_2_24_x86_64.whl' \
     --extra-index-url https://download.pytorch.org/whl/rocm6.2/"
 
-    # If you want a specific version
-
-    pipx install dgenerate==4.4.2 \
-    --pip-args "--force-reinstall 'https://github.com/bitsandbytes-foundation/bitsandbytes/releases/download/continuous-release_multi-backend-refactor/bitsandbytes-0.45.0.dev0-py3-none-manylinux_2_24_x86_64.whl' \
-    --extra-index-url https://download.pytorch.org/whl/rocm6.2/"
-
     # You can install without pipx into your own environment like so
 
-    pip3 install dgenerate==4.4.2 \
+    pip3 install dgenerate \
     --force-reinstall 'https://github.com/bitsandbytes-foundation/bitsandbytes/releases/download/continuous-release_multi-backend-refactor/bitsandbytes-0.45.0.dev0-py3-none-manylinux_2_24_x86_64.whl' \
     --extra-index-url https://download.pytorch.org/whl/rocm6.2/
 
     # Or with NCNN
 
-    pip3 install dgenerate[ncnn]==4.4.2 \
+    pip3 install dgenerate[ncnn] \
    --force-reinstall 'https://github.com/bitsandbytes-foundation/bitsandbytes/releases/download/continuous-release_multi-backend-refactor/bitsandbytes-0.45.0.dev0-py3-none-manylinux_2_24_x86_64.whl' \
    --extra-index-url https://download.pytorch.org/whl/rocm6.2/
 
