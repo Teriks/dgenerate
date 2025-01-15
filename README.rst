@@ -1710,7 +1710,7 @@ When done editing ``~/.bashrc`` do:
     source ~/.bashrc
 
 
-Install Python 3.10+ (Debian / Ubuntu) and pipx
+Install Python >=3.10,<3.13 (Debian / Ubuntu) and pipx
 -----------------------------------------------
 
 .. code-block:: bash
@@ -1811,9 +1811,9 @@ When specifying any ``--device`` value use ``cuda``, ``cuda:1``, etc. as you wou
 
 You need to first install ROCm support, follow: https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/quick-start.html
 
-Then use: ``--extra-index-url https://download.pytorch.org/whl/rocm6.1/`` when installing via ``pip`` or ``pipx``.
+Then use: ``--extra-index-url https://download.pytorch.org/whl/rocm6.2/`` when installing via ``pip`` or ``pipx``.
 
-Install Python 3.10+ (Debian / Ubuntu) and pipx
+Install Python >=3.10,<3.13 (Debian / Ubuntu) and pipx
 -----------------------------------------------
 
 .. code-block:: bash
@@ -1852,28 +1852,40 @@ Install dgenerate
 
     #!/usr/bin/env bash
 
+    # in order for bitsandbytes to work correctly on ROCm
+    # you need to force the install of a development build
+    # using --force-reinstall and a link to the multibackend
+    # wheel for bitsandbytes on the github releases page
+
     # install with just support for torch
 
     pipx install dgenerate \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm6.1/"
+    --pip-args "--force-reinstall 'https://github.com/bitsandbytes-foundation/bitsandbytes/releases/download/continuous-release_multi-backend-refactor/bitsandbytes-0.45.0.dev0-py3-none-manylinux_2_24_x86_64.whl' \
+    --extra-index-url https://download.pytorch.org/whl/rocm6.2/"
 
     # With NCNN upscaler support
 
     pipx install dgenerate[ncnn] \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm6.1/"
+    --pip-args "--force-reinstall 'https://github.com/bitsandbytes-foundation/bitsandbytes/releases/download/continuous-release_multi-backend-refactor/bitsandbytes-0.45.0.dev0-py3-none-manylinux_2_24_x86_64.whl' \
+    --extra-index-url https://download.pytorch.org/whl/rocm6.2/"
 
     # If you want a specific version
 
     pipx install dgenerate==4.4.2 \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm6.1/"
+    --pip-args "--force-reinstall 'https://github.com/bitsandbytes-foundation/bitsandbytes/releases/download/continuous-release_multi-backend-refactor/bitsandbytes-0.45.0.dev0-py3-none-manylinux_2_24_x86_64.whl' \
+    --extra-index-url https://download.pytorch.org/whl/rocm6.2/"
 
     # You can install without pipx into your own environment like so
 
-    pip3 install dgenerate==4.4.2 --extra-index-url https://download.pytorch.org/whl/rocm6.1/
+    pip3 install dgenerate==4.4.2 \
+    --force-reinstall 'https://github.com/bitsandbytes-foundation/bitsandbytes/releases/download/continuous-release_multi-backend-refactor/bitsandbytes-0.45.0.dev0-py3-none-manylinux_2_24_x86_64.whl' \
+    --extra-index-url https://download.pytorch.org/whl/rocm6.2/
 
     # Or with NCNN
 
-    pip3 install dgenerate[ncnn]==4.4.2 --extra-index-url https://download.pytorch.org/whl/rocm6.1/
+    pip3 install dgenerate[ncnn]==4.4.2 \
+   --force-reinstall 'https://github.com/bitsandbytes-foundation/bitsandbytes/releases/download/continuous-release_multi-backend-refactor/bitsandbytes-0.45.0.dev0-py3-none-manylinux_2_24_x86_64.whl' \
+   --extra-index-url https://download.pytorch.org/whl/rocm6.2/
 
 
     
