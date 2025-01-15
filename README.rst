@@ -1813,6 +1813,12 @@ You need to first install ROCm support, follow: https://rocm.docs.amd.com/projec
 
 Then use: ``--extra-index-url https://download.pytorch.org/whl/rocm6.2/`` when installing via ``pip`` or ``pipx``.
 
+In addition, you must also use ``--force-reinstall`` with a link to the wheel for a development version of bitsandbytes that supports ROCm.
+
+This wheel can be located on the multi-backend preview [releases page](https://github.com/bitsandbytes-foundation/bitsandbytes/releases/tag/continuous-release_multi-backend-refactor),
+and is mentioned in the install commands for dgenerate given below.
+
+
 Install Python >=3.10,<3.13 (Debian / Ubuntu) and pipx
 -----------------------------------------------
 
