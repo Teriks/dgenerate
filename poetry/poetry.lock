@@ -285,26 +285,6 @@ html5lib = ["html5lib"]
 lxml = ["lxml"]
 
 [[package]]
-name = "bitsandbytes"
-version = "0.45.0"
-description = "k-bit optimizers and matrix multiplication routines."
-optional = false
-python-versions = "*"
-files = [
-    {file = "bitsandbytes-0.45.0-py3-none-manylinux_2_24_x86_64.whl", hash = "sha256:0f0323de1ff1fdf8383e79bdad1283516a4c05a6fd2b44a363bf4e059422305b"},
-    {file = "bitsandbytes-0.45.0-py3-none-win_amd64.whl", hash = "sha256:ebbf96e0ecb466716a65ecdeaef3fa1983575447b9ab66b74e5211892507c6ff"},
-]
-
-[package.dependencies]
-numpy = "*"
-torch = "*"
-typing_extensions = ">=4.8.0"
-
-[package.extras]
-benchmark = ["matplotlib", "pandas"]
-test = ["lion_pytorch", "scipy"]
-
-[[package]]
 name = "certifi"
 version = "2024.12.14"
 description = "Python package for providing Mozilla's CA Bundle."
@@ -3051,4 +3031,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.13"
-content-hash = "0ad95ddc06178c4ed0a339f6492ec4156c4323a394c51ba3497f87dc64d9fd5f"
+content-hash = "953e1e05a92bd80c3c777fb90c2b55fc06444fa1e4a9b13282b37e0648009b09"
