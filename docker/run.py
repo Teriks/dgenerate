@@ -83,6 +83,7 @@ if amd_mode:
     extra_index = "https://download.pytorch.org/whl/rocm6.2/"
     docker_file = 'dockerfile-rocm'
     image = 'dgenerate-rocm'
+    bitsandbytes_alt = "https://github.com/bitsandbytes-foundation/bitsandbytes/releases/download/continuous-release_multi-backend-refactor/bitsandbytes-0.45.0.dev0-py3-none-manylinux_2_24_x86_64.whl"
 
     # just need to be able to test this build process
     # on windows even though GPU passthrough does
@@ -94,6 +95,7 @@ else:
     docker_file = 'dockerfile-cuda'
     image = 'dgenerate-cuda'
     gpu_opts = ['--gpus', 'all']
+    bitsandbytes_alt = ""
 
 subprocess.run(['docker', 'image', 'build', '-f', docker_file, '-t', f'teriks/{image}:{container_version}', '.'])
 
@@ -102,6 +104,7 @@ subprocess.run(['docker', 'run', *env_defs,
                 *gpu_opts, '--name', image,
                 '-e', f"DGENERATE_INSTALL_DEV={1 if dev_mode else 0}",
                 '-e', f"DGENERATE_INSTALL_INDEX={extra_index}",
+                '-e', f"DGENERATE_BITSANDBYTES_ALT={bitsandbytes_alt}",
                 '-v', f"{image_working_dir}:/opt/dgenerate",
                 '-v', f"{hf_cache_local}:/home/dgenerate/.cache/huggingface",
                 '-v', f"{dgenerate_cache_local}:/home/dgenerate/.cache/dgenerate",
