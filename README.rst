@@ -1815,7 +1815,7 @@ Then use: ``--extra-index-url https://download.pytorch.org/whl/rocm6.2/`` when i
 
 In addition, you must also use ``--force-reinstall`` with a link to the wheel for a development version of bitsandbytes that supports ROCm.
 
-This wheel can be located on the multi-backend preview [releases page](https://github.com/bitsandbytes-foundation/bitsandbytes/releases/tag/continuous-release_multi-backend-refactor),
+This wheel can be located on the multi-backend preview `releases page <https://github.com/bitsandbytes-foundation/bitsandbytes/releases/tag/continuous-release_multi-backend-refactor>`_,
 and is mentioned in the install commands for dgenerate given below.
 
 
