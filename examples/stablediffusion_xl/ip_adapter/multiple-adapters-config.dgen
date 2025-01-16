@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 4.4.2
+#! dgenerate 4.5.0
 
 # This example duplicates: https://huggingface.co/docs/diffusers/main/en/using-diffusers/ip_adapter#multi-ip-adapter
 
