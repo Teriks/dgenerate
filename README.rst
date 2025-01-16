@@ -5466,211 +5466,394 @@ The ``\templates_help`` output from the above example is:
 .. code-block:: text
 
     Config template variables are:
-    
+
         Name: "glob"
             Type: <class 'module'>
+            Value: <module 'glob'>
         Name: "injected_args"
             Type: collections.abc.Sequence[str]
+            Value: []
         Name: "injected_device"
             Type: typing.Optional[str]
+            Value: None
         Name: "injected_plugin_modules"
             Type: typing.Optional[collections.abc.Sequence[str]]
+            Value: []
         Name: "injected_verbose"
             Type: typing.Optional[bool]
+            Value: False
+        Name: "last_adapter_cache_memory_constraints"
+            Type: typing.Optional[collections.abc.Sequence[str]]
+            Value: []
         Name: "last_animation_format"
             Type: <class 'str'>
+            Value: 'mp4'
         Name: "last_animations"
             Type: collections.abc.Iterable[str]
+            Value: <dgenerate.renderloop.RenderLoop.written_animations.<locals>.Iterable object>
         Name: "last_auth_token"
             Type: typing.Optional[str]
+            Value: None
         Name: "last_batch_grid_size"
             Type: typing.Optional[tuple[int, int]]
+            Value: None
         Name: "last_batch_size"
             Type: typing.Optional[int]
+            Value: None
+        Name: "last_cache_memory_constraints"
+            Type: typing.Optional[collections.abc.Sequence[str]]
+            Value: []
         Name: "last_clip_skips"
             Type: typing.Optional[collections.abc.Sequence[int]]
+            Value: []
         Name: "last_control_image_processors"
             Type: typing.Optional[collections.abc.Sequence[str]]
+            Value: []
+        Name: "last_controlnet_cache_memory_constraints"
+            Type: typing.Optional[collections.abc.Sequence[str]]
+            Value: []
         Name: "last_controlnet_uris"
             Type: typing.Optional[collections.abc.Sequence[str]]
+            Value: []
         Name: "last_device"
             Type: <class 'str'>
+            Value: 'cuda:1'
         Name: "last_dtype"
             Type: <enum 'DataType'>
+            Value: <DataType.AUTO: 0>
+        Name: "last_flux_max_sequence_length"
+            Type: typing.Optional[int]
+            Value: None
+        Name: "last_flux_second_prompts"
+            Type: typing.Optional[collections.abc.Sequence[dgenerate.prompt.Prompt]]
+            Value: []
         Name: "last_frame_end"
             Type: typing.Optional[int]
+            Value: None
         Name: "last_frame_start"
             Type: <class 'int'>
+            Value: 0
         Name: "last_guidance_rescales"
             Type: typing.Optional[collections.abc.Sequence[float]]
+            Value: []
         Name: "last_guidance_scales"
             Type: collections.abc.Sequence[float]
+            Value: [5]
+        Name: "last_image_encoder_cache_memory_constraints"
+            Type: typing.Optional[collections.abc.Sequence[str]]
+            Value: []
+        Name: "last_image_encoder_uri"
+            Type: typing.Optional[str]
+            Value: None
         Name: "last_image_format"
             Type: <class 'str'>
+            Value: 'png'
         Name: "last_image_guidance_scales"
             Type: typing.Optional[collections.abc.Sequence[float]]
+            Value: []
+        Name: "last_image_processor_cuda_memory_constraints"
+            Type: typing.Optional[collections.abc.Sequence[str]]
+            Value: []
+        Name: "last_image_processor_memory_constraints"
+            Type: typing.Optional[collections.abc.Sequence[str]]
+            Value: []
         Name: "last_image_seed_strengths"
             Type: typing.Optional[collections.abc.Sequence[float]]
+            Value: []
         Name: "last_image_seeds"
             Type: typing.Optional[collections.abc.Sequence[str]]
+            Value: []
         Name: "last_images"
             Type: collections.abc.Iterable[str]
+            Value: <dgenerate.renderloop.RenderLoop.written_images.<locals>.Iterable object>
         Name: "last_inference_steps"
             Type: collections.abc.Sequence[int]
+            Value: [30]
+        Name: "last_ip_adapter_uris"
+            Type: typing.Optional[collections.abc.Sequence[str]]
+            Value: []
+        Name: "last_lora_fuse_scale"
+            Type: typing.Optional[float]
+            Value: None
         Name: "last_lora_uris"
             Type: typing.Optional[collections.abc.Sequence[str]]
+            Value: []
         Name: "last_mask_image_processors"
             Type: typing.Optional[collections.abc.Sequence[str]]
+            Value: []
         Name: "last_model_cpu_offload"
             Type: <class 'bool'>
+            Value: False
         Name: "last_model_path"
             Type: typing.Optional[str]
+            Value: 'stabilityai/stable-diffusion-2-1'
         Name: "last_model_sequential_offload"
             Type: <class 'bool'>
+            Value: False
         Name: "last_model_type"
             Type: <enum 'ModelType'>
+            Value: <ModelType.TORCH: 0>
         Name: "last_no_aspect"
             Type: <class 'bool'>
+            Value: False
         Name: "last_no_frames"
             Type: <class 'bool'>
+            Value: False
         Name: "last_offline_mode"
             Type: <class 'bool'>
+            Value: False
         Name: "last_output_configs"
             Type: <class 'bool'>
+            Value: False
         Name: "last_output_metadata"
             Type: <class 'bool'>
+            Value: False
         Name: "last_output_overwrite"
             Type: <class 'bool'>
+            Value: False
         Name: "last_output_path"
             Type: <class 'str'>
+            Value: 'output'
         Name: "last_output_prefix"
             Type: typing.Optional[str]
+            Value: None
         Name: "last_output_size"
             Type: typing.Optional[tuple[int, int]]
+            Value: None
+        Name: "last_pag"
+            Type: <class 'bool'>
+            Value: False
+        Name: "last_pag_adaptive_scales"
+            Type: typing.Optional[collections.abc.Sequence[float]]
+            Value: []
+        Name: "last_pag_scales"
+            Type: typing.Optional[collections.abc.Sequence[float]]
+            Value: []
         Name: "last_parsed_image_seeds"
             Type: typing.Optional[collections.abc.Sequence[dgenerate.mediainput.ImageSeedParseResult]]
+            Value: []
+        Name: "last_pipeline_cache_memory_constraints"
+            Type: typing.Optional[collections.abc.Sequence[str]]
+            Value: []
+        Name: "last_plugin_module_paths"
+            Type: collections.abc.Sequence[str]
+            Value: []
         Name: "last_post_processors"
             Type: typing.Optional[collections.abc.Sequence[str]]
+            Value: []
         Name: "last_prompt_weighter_uri"
             Type: typing.Optional[str]
+            Value: None
         Name: "last_prompts"
             Type: collections.abc.Sequence[dgenerate.prompt.Prompt]
+            Value: ['a man walking on the moon without a space suit']
         Name: "last_revision"
             Type: <class 'str'>
+            Value: 'main'
         Name: "last_s_cascade_decoder_cpu_offload"
             Type: typing.Optional[bool]
+            Value: None
         Name: "last_s_cascade_decoder_guidance_scales"
             Type: typing.Optional[collections.abc.Sequence[float]]
+            Value: []
         Name: "last_s_cascade_decoder_inference_steps"
             Type: typing.Optional[collections.abc.Sequence[int]]
+            Value: []
         Name: "last_s_cascade_decoder_prompts"
             Type: typing.Optional[collections.abc.Sequence[dgenerate.prompt.Prompt]]
+            Value: []
         Name: "last_s_cascade_decoder_scheduler"
-            Type: typing.Optional[str]
+            Type: typing.Union[str, collections.abc.Sequence[str], NoneType]
+            Value: None
         Name: "last_s_cascade_decoder_sequential_offload"
             Type: typing.Optional[bool]
+            Value: None
         Name: "last_s_cascade_decoder_uri"
             Type: typing.Optional[str]
+            Value: None
         Name: "last_safety_checker"
             Type: <class 'bool'>
+            Value: False
         Name: "last_scheduler"
-            Type: typing.Optional[str]
+            Type: typing.Union[str, collections.abc.Sequence[str], NoneType]
+            Value: None
         Name: "last_sd3_max_sequence_length"
             Type: typing.Optional[int]
+            Value: None
         Name: "last_sd3_second_prompts"
             Type: typing.Optional[collections.abc.Sequence[dgenerate.prompt.Prompt]]
+            Value: []
         Name: "last_sd3_third_prompts"
             Type: typing.Optional[collections.abc.Sequence[dgenerate.prompt.Prompt]]
+            Value: []
         Name: "last_sdxl_aesthetic_scores"
             Type: typing.Optional[collections.abc.Sequence[float]]
+            Value: []
         Name: "last_sdxl_crops_coords_top_left"
             Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
+            Value: []
         Name: "last_sdxl_high_noise_fractions"
             Type: typing.Optional[collections.abc.Sequence[float]]
+            Value: []
         Name: "last_sdxl_negative_aesthetic_scores"
             Type: typing.Optional[collections.abc.Sequence[float]]
+            Value: []
         Name: "last_sdxl_negative_crops_coords_top_left"
             Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
+            Value: []
         Name: "last_sdxl_negative_original_sizes"
             Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
+            Value: []
         Name: "last_sdxl_negative_target_sizes"
             Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
+            Value: []
         Name: "last_sdxl_original_sizes"
             Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
+            Value: []
         Name: "last_sdxl_refiner_aesthetic_scores"
             Type: typing.Optional[collections.abc.Sequence[float]]
+            Value: []
         Name: "last_sdxl_refiner_clip_skips"
             Type: typing.Optional[collections.abc.Sequence[int]]
+            Value: []
         Name: "last_sdxl_refiner_cpu_offload"
             Type: typing.Optional[bool]
+            Value: None
         Name: "last_sdxl_refiner_crops_coords_top_left"
             Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
+            Value: []
         Name: "last_sdxl_refiner_edit"
             Type: typing.Optional[bool]
+            Value: None
         Name: "last_sdxl_refiner_guidance_rescales"
             Type: typing.Optional[collections.abc.Sequence[float]]
+            Value: []
         Name: "last_sdxl_refiner_guidance_scales"
             Type: typing.Optional[collections.abc.Sequence[float]]
+            Value: []
         Name: "last_sdxl_refiner_inference_steps"
             Type: typing.Optional[collections.abc.Sequence[int]]
+            Value: []
         Name: "last_sdxl_refiner_negative_aesthetic_scores"
             Type: typing.Optional[collections.abc.Sequence[float]]
+            Value: []
         Name: "last_sdxl_refiner_negative_crops_coords_top_left"
             Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
+            Value: []
         Name: "last_sdxl_refiner_negative_original_sizes"
             Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
+            Value: []
         Name: "last_sdxl_refiner_negative_target_sizes"
             Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
+            Value: []
         Name: "last_sdxl_refiner_original_sizes"
             Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
+            Value: []
+        Name: "last_sdxl_refiner_pag"
+            Type: typing.Optional[bool]
+            Value: None
+        Name: "last_sdxl_refiner_pag_adaptive_scales"
+            Type: typing.Optional[collections.abc.Sequence[float]]
+            Value: []
+        Name: "last_sdxl_refiner_pag_scales"
+            Type: typing.Optional[collections.abc.Sequence[float]]
+            Value: []
         Name: "last_sdxl_refiner_prompts"
             Type: typing.Optional[collections.abc.Sequence[dgenerate.prompt.Prompt]]
+            Value: []
         Name: "last_sdxl_refiner_scheduler"
-            Type: typing.Optional[str]
+            Type: typing.Union[str, collections.abc.Sequence[str], NoneType]
+            Value: None
         Name: "last_sdxl_refiner_second_prompts"
             Type: typing.Optional[collections.abc.Sequence[dgenerate.prompt.Prompt]]
+            Value: []
         Name: "last_sdxl_refiner_sequential_offload"
             Type: typing.Optional[bool]
+            Value: None
         Name: "last_sdxl_refiner_target_sizes"
             Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
+            Value: []
         Name: "last_sdxl_refiner_uri"
             Type: typing.Optional[str]
+            Value: None
         Name: "last_sdxl_second_prompts"
             Type: typing.Optional[collections.abc.Sequence[dgenerate.prompt.Prompt]]
+            Value: []
+        Name: "last_sdxl_t2i_adapter_factors"
+            Type: typing.Optional[collections.abc.Sequence[float]]
+            Value: []
         Name: "last_sdxl_target_sizes"
             Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
+            Value: []
         Name: "last_second_text_encoder_uris"
             Type: typing.Optional[collections.abc.Sequence[str]]
+            Value: []
         Name: "last_second_unet_uri"
             Type: typing.Optional[str]
+            Value: None
         Name: "last_seed_image_processors"
             Type: typing.Optional[collections.abc.Sequence[str]]
+            Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
+            Value: [95374578727442]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
+            Value: False
         Name: "last_subfolder"
             Type: typing.Optional[str]
+            Value: None
+        Name: "last_t2i_adapter_uris"
+            Type: typing.Optional[collections.abc.Sequence[str]]
+            Value: []
+        Name: "last_text_encoder_cache_memory_constraints"
+            Type: typing.Optional[collections.abc.Sequence[str]]
+            Value: []
         Name: "last_text_encoder_uris"
             Type: typing.Optional[collections.abc.Sequence[str]]
+            Value: []
         Name: "last_textual_inversion_uris"
             Type: typing.Optional[collections.abc.Sequence[str]]
+            Value: []
+        Name: "last_transformer_cache_memory_constraints"
+            Type: typing.Optional[collections.abc.Sequence[str]]
+            Value: []
+        Name: "last_transformer_uri"
+            Type: typing.Optional[str]
+            Value: None
+        Name: "last_unet_cache_memory_constraints"
+            Type: typing.Optional[collections.abc.Sequence[str]]
+            Value: []
         Name: "last_unet_uri"
             Type: typing.Optional[str]
+            Value: None
         Name: "last_upscaler_noise_levels"
             Type: typing.Optional[collections.abc.Sequence[int]]
+            Value: []
+        Name: "last_vae_cache_memory_constraints"
+            Type: typing.Optional[collections.abc.Sequence[str]]
+            Value: []
         Name: "last_vae_slicing"
             Type: <class 'bool'>
+            Value: False
         Name: "last_vae_tiling"
             Type: <class 'bool'>
+            Value: False
         Name: "last_vae_uri"
             Type: typing.Optional[str]
+            Value: None
         Name: "last_variant"
             Type: typing.Optional[str]
+            Value: None
+        Name: "last_verbose"
+            Type: <class 'bool'>
+            Value: False
         Name: "path"
             Type: <class 'module'>
+            Value: <module 'ntpath' (frozen)>
         Name: "saved_modules"
             Type: dict[str, dict[str, typing.Any]]
+            Value: {}
 
 The following is output from ``\functions_help`` showing every implemented template function signature.
 
