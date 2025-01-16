@@ -19,4 +19,6 @@ for i in setup.poetry_pyproject_deps():
     if i[0] == 'python':
         continue
     t = get_latest_version(i[0])
-    print(i[0] + f' = "{t}"')
+    cur_ver = i[1]['version'].lstrip('^')
+    if cur_ver != t:
+        print(i[0] + f' = "{t}"')
