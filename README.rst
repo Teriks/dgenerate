@@ -30,8 +30,9 @@ Overview
 and animation sequences using Stable Diffusion and related models.
 
 Alongside the command line tool, this project features a syntax-highlighting
-REPL Console UI for the dgenerate configuration / scripting language, which is built on
-Tkinter to be lightweight and portable.
+REPL `Console UI`_ for the dgenerate configuration / scripting language, which is built on
+Tkinter to be lightweight and portable. Which serves as an interface to dgenerate running
+in the background via the ``--shell`` option.
 
 You can use dgenerate to generate multiple images or animated outputs using multiple
 combinations of diffusion input parameters in batch, so that the differences in
