@@ -70,7 +70,7 @@ prompt weighting and many other useful generation features are supported.
 dgenerate can be easily installed on Windows via a Windows Installer MSI containing a
 frozen python environment, making setup for Windows users easy, and likely to "just work"
 without any dependency issues. This installer can be found in the release artifact under each
-release located on the [github releases page](https://github.com/Teriks/dgenerate/releases).
+release located on the `github releases page <https://github.com/Teriks/dgenerate/releases>`_.
 
 This software requires a Nvidia GPU supporting CUDA 12.1+, AMD GPU supporting ROCm (Linux Only),
 or MacOS on Apple Silicon, and supports ``python>=3.10,<3.13``. CPU rendering is possible for
