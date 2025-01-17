@@ -13,7 +13,7 @@ Diffusion Model Feature Support Table
    * ``--model-type torch-s-cascade`` (Stable Cascade)
    * ``--model-type torch-sd3`` (Stable Diffusion 3 and 3.5)
    * ``--model-type torch-flux`` (Flux.1)
-   * ``--model-type torch-fill`` (Flux.1 - Infill / Outfill)
+   * ``--model-type torch-flux-fill`` (Flux.1 - Infill / Outfill)
 
 
 .. list-table:: Supported Features by ``--model-type``
