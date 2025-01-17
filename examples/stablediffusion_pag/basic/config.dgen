@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 4.5.0
+#! dgenerate 4.5.1
 
 stabilityai/stable-diffusion-2
 --pag
