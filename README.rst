@@ -311,9 +311,9 @@ Help Output
       -mt MODEL_TYPE, --model-type MODEL_TYPE
                             Use when loading different model types. Currently supported: torch, torch-pix2pix,
                             torch-sdxl, torch-sdxl-pix2pix, torch-upscaler-x2, torch-upscaler-x4, torch-if,
-                            torch-ifs, torch-ifs-img2img, torch-s-cascade, torch-sd3, or torch-flux. (default:
-                            torch)
-                            ------
+                            torch-ifs, torch-ifs-img2img, torch-s-cascade, torch-sd3, torch-flux, or torch-flux-
+                            fill. (default: torch)
+                            ----------------------
       -rev BRANCH, --revision BRANCH
                             The model revision to use when loading from a Hugging Face repository, (The Git
                             branch / tag, default is "main")
@@ -678,8 +678,8 @@ Help Output
 
                             The "token" argument can be used to override the prompt token used for the textual
                             inversion prompt embedding. For normal Stable Diffusion the default token value is
-                            provided by the model itself, but for Stable Diffusion XL the default token value is
-                            equal to the model file name with no extension and all spaces replaced by
+                            provided by the model itself, but for Stable Diffusion XL and Flux the default token
+                            value is equal to the model file name with no extension and all spaces replaced by
                             underscores.
 
                             The "revision" argument specifies the model revision to use for the Textual
@@ -1570,6 +1570,7 @@ Help Output
                             Syntax See: [https://dgenerate.readthedocs.io/en/v4.5.0/dgenerate_submodules.html#dg
                             enerate.imageprocessors.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS]
                             ----------------------------------------------------------------
+
 
 
 Windows Install
@@ -3420,7 +3421,7 @@ in the prompt that triggers the inversion, textual inversions for stable diffusi
 include this token value in the model itself, for instance in the example below the token
 for ``Isometric_Dreams-1000.pt`` is ``Isometric_Dreams``.
 
-The token value used for SDXL (Stable Diffusion XL) models is a bit different, a default
+The token value used for SDXL and Flux models is a bit different, a default
 value is not provided in the model file. If you do not provide a token value, dgenerate
 will assign the tokens default value to the filename of the model with any spaces converted to
 underscores, and with the file extension removed.
