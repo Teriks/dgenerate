@@ -258,6 +258,7 @@ if __name__ != 'setup_as_library':
           description='Batch image generation and manipulation tool supporting Stable Diffusion and related techniques / '
                       'algorithms, with support for video and animated image processing.',
           long_description=README,
+          long_description_content_type="text/x-rst",
           install_requires=pyproject_requirements,
           extras_require={
               'ncnn': ['ncnn==1.0.20240820'],

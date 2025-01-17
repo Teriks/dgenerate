@@ -1731,7 +1731,7 @@ When done editing ``~/.bashrc`` do:
 
 
 Install Python >=3.10,<3.13 (Debian / Ubuntu) and pipx
------------------------------------------------
+------------------------------------------------------
 
 .. code-block:: bash
 
@@ -1834,7 +1834,7 @@ You need to first install ROCm support, follow: https://rocm.docs.amd.com/projec
 Then use: ``--extra-index-url https://download.pytorch.org/whl/rocm6.2/`` when installing via ``pip`` or ``pipx``.
 
 Install Python >=3.10,<3.13 (Debian / Ubuntu) and pipx
------------------------------------------------
+------------------------------------------------------
 
 .. code-block:: bash
 
