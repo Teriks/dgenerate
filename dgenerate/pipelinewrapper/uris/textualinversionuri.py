@@ -220,7 +220,10 @@ class TextualInversionUri:
                     os.environ['HF_TOKEN'] = use_auth_token
 
                 try:
-                    if pipeline.__class__.__name__.startswith('StableDiffusionXL'):
+                    is_sdxl = pipeline.__class__.__name__.startswith('StableDiffusionXL')
+                    is_flux = pipeline.__class__.__name__.startswith('Flux')
+
+                    if is_sdxl or is_flux:
                         filename, dicts = _load_textual_inversion_state_dict(
                             model_path,
                             revision=textual_inversion_uri.revision,
@@ -229,11 +232,18 @@ class TextualInversionUri:
                             local_files_only=local_files_only
                         )
 
-                        if 'clip_l' not in dicts or 'clip_g' not in dicts:
-                            raise RuntimeError(
-                                'clip_l or clip_g not found in SDXL textual '
-                                f'inversion model "{textual_inversion_uri.model}" state dict, '
-                                'unsupported model format.')
+                        if is_sdxl:
+                            if 'clip_l' not in dicts or 'clip_g' not in dicts:
+                                raise RuntimeError(
+                                    'clip_l or clip_g not found in SDXL textual '
+                                    f'inversion model "{textual_inversion_uri.model}" state dict, '
+                                    'unsupported model format.')
+                        else:
+                            if 'clip_l' not in dicts:
+                                raise RuntimeError(
+                                    'clip_l not found in Flux textual '
+                                    f'inversion model "{textual_inversion_uri.model}" state dict, '
+                                    'unsupported model format.')
 
                         # token is the file name (no extension) with spaces
                         # replaced by underscores when the user does not provide
@@ -247,10 +257,11 @@ class TextualInversionUri:
                                                         text_encoder=pipeline.text_encoder,
                                                         tokenizer=pipeline.tokenizer)
 
-                        pipeline.load_textual_inversion(dicts['clip_g'],
-                                                        token=token,
-                                                        text_encoder=pipeline.text_encoder_2,
-                                                        tokenizer=pipeline.tokenizer_2)
+                        if is_sdxl:
+                            pipeline.load_textual_inversion(dicts['clip_g'],
+                                                            token=token,
+                                                            text_encoder=pipeline.text_encoder_2,
+                                                            tokenizer=pipeline.tokenizer_2)
                     else:
                         pipeline.load_textual_inversion(model_path,
                                                         token=textual_inversion_uri.token,
