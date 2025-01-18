@@ -3291,6 +3291,7 @@ LoRAs are supported for these model types:
     * ``--model-type torch-sdxl-pix2pix``
     * ``--model-type torch-sd3``
     * ``--model-type torch-flux``
+    * ``--model-type torch-flux-fill``
 
 When multiple specifications are given, all mentioned models will be fused together
 into one set of weights at their individual scale, and then those weights will be
@@ -3403,6 +3404,8 @@ Textual inversions are supported for these model types:
     * ``--model-type torch-upscaler-x4``
     * ``--model-type torch-sdxl``
     * ``--model-type torch-sdxl-pix2pix``
+    * ``--model-type torch-flux`` (``txt2img``, ``txt2img + Control Nets``, ``inpainting + Control Nets`` only)
+    * ``--model-type torch-flux-fill`` (``inpainting`` only)
 
 You can provide a huggingface repository slug, .pt, .pth, .bin, .ckpt, or .safetensors files.
 Blob links are not accepted, for that use ``subfolder`` and ``weight-name`` described below.
