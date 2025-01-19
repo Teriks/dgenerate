@@ -1642,7 +1642,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                     This value defaults to 512x512 for Stable Diffusion when no --image-seeds are
                     specified (IE txt2img mode), 1024x1024 for Stable Cascade and Stable Diffusion 3/XL or
-                    Flux model types, and 64x64 for  --model-type torch-if (Deep Floyd stage 1).
+                    Flux model types, and 64x64 for --model-type torch-if (Deep Floyd stage 1).
                     
                     Deep Floyd stage 1 images passed to superscaler models (--model-type torch-ifs*) 
                     that are specified  with the 'floyd' keyword argument in an --image-seeds definition are
