@@ -496,9 +496,21 @@ def is_model_cpu_offload_enabled(module: diffusers.DiffusionPipeline | torch.nn.
     return hasattr(module, 'DGENERATE_MODEL_CPU_OFFLOAD') and bool(module.DGENERATE_MODEL_CPU_OFFLOAD)
 
 
-def _disable_to(module):
+def _disable_to(module, vae=False):
+
+    og_to = module.to
+
     def dummy(*args, **kwargs):
-        pass
+        if vae and module.config.force_upcast and \
+           (len(args) == 1 and isinstance(args[0], torch.dtype)) or \
+           (len(kwargs) == 1 and 'dtype' in kwargs):
+
+            # basically, is this a VAE that the pipeline needs to upcast
+            # this has to happen even if it is described as 'meta'
+
+            og_to(*args, **kwargs)
+        else:
+            pass
 
     module.to = dummy
     _messages.debug_log(
@@ -527,7 +539,10 @@ def enable_sequential_cpu_offload(pipeline: diffusers.DiffusionPipeline,
             else:
                 _set_sequential_cpu_offload_flag(model, True)
                 accelerate.cpu_offload(model, torch_device, offload_buffers=len(model._parameters) > 0)
-                _disable_to(model)
+                _disable_to(
+                    model,
+                    name == 'vae'
+                )
 
 
 def enable_model_cpu_offload(pipeline: diffusers.DiffusionPipeline,
@@ -664,7 +679,10 @@ def _pipeline_to(pipeline, device: torch.device | str | None):
             _messages.debug_log(
                 f'pipeline_to() Not moving module "{name} = {value.__class__.__name__}" to "{device}" '
                 f'as its device value is "meta".')
-            _disable_to(value)
+            _disable_to(
+                value,
+                name == 'vae'
+            )
             continue
 
         if current_device == to_device:
@@ -1957,7 +1975,10 @@ def _create_torch_diffusion_pipeline(
             try:
                 if get_torch_device(module[1]).type == 'meta':
                     _messages.debug_log(f'"{module[0]}" has meta tensors.')
-                    _disable_to(module[1])
+                    _disable_to(
+                        module[1],
+                        module[0] == 'vae'
+                    )
             except ValueError:
                 _messages.debug_log(
                     f'Unable to get device of {module[0]} = {module[1].__class__}')
