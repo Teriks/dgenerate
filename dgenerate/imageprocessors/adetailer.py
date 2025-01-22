@@ -75,7 +75,7 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
 
     The "negative-prompt" argument specifies the negative prompt for inpainting.
 
-    The "prompt-weighter" argument specifies a prompt weigher plugin for applying
+    The "prompt-weighter" argument specifies a prompt weighter plugin for applying
     prompt weighting to the provided positive and negative prompts. Prompt weighters
     may have arguments, when supplying URI arguments to a prompt weighter you must
     use double quoting around the prompt weighter definition, i.e:
