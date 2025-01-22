@@ -24,7 +24,6 @@ import io
 import os
 import platform
 import re
-import sys
 from ast import literal_eval
 
 from setuptools import setup, find_packages
