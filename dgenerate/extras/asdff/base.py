@@ -69,8 +69,10 @@ class AdPipelineBase:
                 vae=self.pipe.vae,
                 text_encoder=self.pipe.text_encoder,
                 text_encoder_2=self.pipe.text_encoder_2,
+                text_encoder_3=self.pipe.text_encoder_3,
                 tokenizer=self.pipe.tokenizer,
                 tokenizer_2=self.pipe.tokenizer_2,
+                tokenizer_3=self.pipe.tokenizer_3,
                 transformer=self.pipe.transformer,
                 scheduler=self.pipe.scheduler,
             )
