@@ -114,6 +114,18 @@ class DiffusionPipelineWrapper:
     Monolithic diffusion pipelines wrapper.
     """
 
+    __LAST_CALLED = None
+
+    @staticmethod
+    def last_called_wrapper() -> typing.Optional['DiffusionPipelineWrapper']:
+        """
+        Return a reference to the last :py:class:`DiffusionPipelineWrapper`
+        that successfully executed an image generation.
+
+        :return: :py:class:`DiffusionPipelineWrapper`
+        """
+        return DiffusionPipelineWrapper.__LAST_CALLED
+
     def __str__(self):
         return f'{self.__class__.__name__}({str(_types.get_public_attributes(self))})'
 
@@ -2416,6 +2428,8 @@ class DiffusionPipelineWrapper:
         else:
             result = self._call_torch(pipeline_args=pipeline_args,
                                       user_args=copy_args)
+
+        DiffusionPipelineWrapper.__LAST_CALLED = self
 
         return result
 
