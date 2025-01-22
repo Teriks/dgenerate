@@ -41,7 +41,7 @@ import dgenerate.pipelinewrapper.enums as _enums
 
 class AedetailerProcessor(_imageprocessor.ImageProcessor):
     r"""
-    aedetailer, diffusion base post processor for SD1.5, SDXL, and Flux
+    aedetailer, diffusion based post processor for SD1.5, SDXL, and Flux
 
     aedetailer can detect features of your image and automatically generate an inpaint
     mask for them, such as faces, hands etc. and then re-run diffusion over those portions
