@@ -39,17 +39,17 @@ import dgenerate.promptweighters as _promptweighters
 import dgenerate.pipelinewrapper.enums as _enums
 
 
-class AedetailerProcessor(_imageprocessor.ImageProcessor):
+class AdetailerProcessor(_imageprocessor.ImageProcessor):
     r"""
-    aedetailer, diffusion based post processor for SD1.5, SDXL, and Flux
+    adetailer, diffusion based post processor for SD1.5, SDXL, and Flux
 
-    aedetailer can detect features of your image and automatically generate an inpaint
+    adetailer can detect features of your image and automatically generate an inpaint
     mask for them, such as faces, hands etc. and then re-run diffusion over those portions
     of the image using inpainting to enhance detail.
 
     This image processor may only be used if a diffusion pipeline has been
     previously executed by dgenerate, that pipeline will be used to process
-    the inpainting done by aedetailer.  For a single command line invocation
+    the inpainting done by adetailer.  For a single command line invocation
     you must use --post-processor to use this image processor correctly. In
     dgenerate config script, you may use it anywhere, and the last executed
     diffusion pipeline will be reused for inpainting.
@@ -57,7 +57,7 @@ class AedetailerProcessor(_imageprocessor.ImageProcessor):
     Example:
 
     NOWRAP!
-    --post-processors "aedetailer;\
+    --post-processors "adetailer;\
                        model=Bingsu/adetailer;\
                        weight-name=face_yolov8n.pt;\
                        prompt=detailed image of a mans face;\
@@ -111,14 +111,14 @@ class AedetailerProcessor(_imageprocessor.ImageProcessor):
     The "pag-scale" argument indicates the perturbed attention guidance scale,
     this enables a PAG inpaint pipeline if supported. If the previously used
     pipeline was a PAG pipeline, PAG is automatically enabled for inpainting
-    if supported and this value defaults to 3.0 if not supplied. The aedetailer
+    if supported and this value defaults to 3.0 if not supplied. The adetailer
     processor supports PAG with --model-type torch and torch-sdxl.
 
     The "pag-adaptive-scale" argument indicates the perturbed attention guidance
     adaptive scale, this enables a PAG inpaint pipeline if supported.
     If the previously usee pipeline was a PAG pipeline, PAG is automatically
     enabled for inpainting if supported and this value defaults to 0.0 if
-    not supplied. The aedetailer processor supports PAG with
+    not supplied. The adetailer processor supports PAG with
     --model-type torch and torch-sdxl.
 
     The "strength" argument is analogous to --image-seed-strengths
@@ -135,7 +135,7 @@ class AedetailerProcessor(_imageprocessor.ImageProcessor):
 
     """
 
-    NAMES = ['aedetailer']
+    NAMES = ['adetailer']
 
     HIDE_ARGS = ['pipe', 'device', 'model-offload']
 
@@ -187,7 +187,7 @@ class AedetailerProcessor(_imageprocessor.ImageProcessor):
                 self._model_path = model
             else:
                 if local_files_only:
-                    raise self.argument_error(f'Could not find aedetailer model: {model}')
+                    raise self.argument_error(f'Could not find adetailer model: {model}')
                 self._model_path = _hfutil.download_non_hf_model(model)
         else:
             try:
@@ -199,9 +199,9 @@ class AedetailerProcessor(_imageprocessor.ImageProcessor):
                     revision=revision,
                     local_files_only=local_files_only)
             except Exception as e:
-                raise self.argument_error(f'Error loading aedetailer model: {e}')
+                raise self.argument_error(f'Error loading adetailer model: {e}')
 
-    def _aedetailer(self, image):
+    def _adetailer(self, image):
         i_filename = _image.get_filename(image)
 
         if self._pipe:
@@ -211,7 +211,7 @@ class AedetailerProcessor(_imageprocessor.ImageProcessor):
 
         if last_pipe is None:
             raise self.argument_error(
-                'aedetailer did not find an active previously used diffusion pipeline, '
+                'adetailer did not find an active previously used diffusion pipeline, '
                 'please preform diffusion before attempting to use this processor.')
 
         is_flux = last_pipe.__class__.__name__.startswith('Flux') and \
@@ -245,7 +245,7 @@ class AedetailerProcessor(_imageprocessor.ImageProcessor):
             common['negative_prompt'] = self._negative_prompt
         elif self._negative_prompt:
             dgenerate.messages.log(
-                'aedetailer is ignoring negative prompt, as Flux does not support negative prompting.')
+                'adetailer is ignoring negative prompt, as Flux does not support negative prompting.')
 
         if self._prompt_weighter:
             loader = _promptweighters.PromptWeighterLoader()
@@ -260,7 +260,7 @@ class AedetailerProcessor(_imageprocessor.ImageProcessor):
                 model_type = _enums.ModelType.TORCH
             else:
                 raise self.argument_error(
-                    f'Pipeline: "{last_pipe.__class__.__name__}" does not support aedetailer use.')
+                    f'Pipeline: "{last_pipe.__class__.__name__}" does not support adetailer use.')
 
             if last_pipe.text_encoder is not None:
                 encoder_dtype = next(last_pipe.text_encoder.parameters()).dtype
@@ -268,7 +268,7 @@ class AedetailerProcessor(_imageprocessor.ImageProcessor):
                 encoder_dtype = next(last_pipe.text_encoder2.parameters()).dtype
             else:
                 raise self.argument_error(
-                    'aedetailer processor could not determine text encoder dtype for prompt weighting.')
+                    'adetailer processor could not determine text encoder dtype for prompt weighting.')
 
             encoder_dtype = _enums.get_data_type_enum(str(encoder_dtype).lstrip('torch.'))
 
@@ -306,16 +306,16 @@ class AedetailerProcessor(_imageprocessor.ImageProcessor):
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
 
         if self._pre_resize:
-            return self._aedetailer(image)
+            return self._adetailer(image)
         return image
 
     def impl_post_resize(self, image: PIL.Image.Image):
 
         if not self._pre_resize:
-            return self._aedetailer(image)
+            return self._adetailer(image)
         return image
 
-    def to(self, device) -> "AedetailerProcessor":
+    def to(self, device) -> "AdetailerProcessor":
         """
         Does nothing for this processor.
         :param device: the device

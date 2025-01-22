@@ -12,7 +12,7 @@ stabilityai/stable-diffusion-xl-base-1.0
 --gen-seeds 1
 --output-path output
 --output-size 1024x1024
---post-processors "aedetailer;\
+--post-processors "adetailer;\
                    model=Bingsu/adetailer;\
                    weight-name=face_yolov8n.pt;\
                    prompt=image of emma watson;\
