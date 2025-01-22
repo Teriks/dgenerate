@@ -1,0 +1,6 @@
+This code is derivative of: https://github.com/theblackhatmagician/adetailer_sdxl
+
+Which in turn is a derivative of the original work: https://github.com/Bing-su/asdff
+
+Modifications here: add support for flux inpainting
+

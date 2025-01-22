@@ -1,0 +1,30 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 4.5.1
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %} !END
+
+
+black-forest-labs/FLUX.1-schnell
+--model-type torch-flux
+--dtype bfloat16
+--inference-steps 4
+--guidance-scales 0
+--model-sequential-offload
+--gen-seeds 1
+--output-path output
+--output-size 1024x1024
+--post-processors "aedetailer;\
+                   model=Bingsu/adetailer;\
+                   weight-name=face_yolov8n.pt;\
+                   prompt=image of emma watson;\
+                   prompt-weighter=sd-embed;\
+                   guidance-scale=0;\
+                   inference-steps=4;\
+                   strength=0.4"
+--prompts "full body photo of emma watson in black clothes, \
+           night city street, bokeh"

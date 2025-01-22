@@ -12,6 +12,7 @@ diffusers = "0.32.2"
 peft = "0.14.0"
 transformers = "4.48.0"
 accelerate = "1.2.1"
+ultralytics = {version = "8.3.65", platform = "not_darwin"}
 optimum-quanto = "0.2.6"
 pytorch-lightning = "^2.5.0"
 lightning-utilities = "^0.11.9"
