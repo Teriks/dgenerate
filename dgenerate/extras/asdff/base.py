@@ -31,9 +31,6 @@ class AdPipelineBase:
     def __init__(self, pipe, force_pag=False):
         self.pipe = pipe
         self.force_pag = force_pag
-        for attr in dir(self.pipe):
-            if not attr.startswith('__'):
-                setattr(self, attr, getattr(self.pipe, attr))
 
     @cached_property
     def inpaint_pipeline(self):
@@ -48,34 +45,34 @@ class AdPipelineBase:
                     is_pag else diffusers.StableDiffusionXLInpaintPipeline
 
             pipe = pipe_class(
-                vae=self.vae,
-                text_encoder=self.text_encoder,
-                text_encoder_2=self.text_encoder_2,
-                tokenizer=self.tokenizer,
-                tokenizer_2=self.tokenizer_2,
-                unet=self.unet,
-                scheduler=self.scheduler,
-                feature_extractor=self.feature_extractor,
+                vae=self.pipe.vae,
+                text_encoder=self.pipe.text_encoder,
+                text_encoder_2=self.pipe.text_encoder_2,
+                tokenizer=self.pipe.tokenizer,
+                tokenizer_2=self.pipe.tokenizer_2,
+                unet=self.pipe.unet,
+                scheduler=self.pipe.scheduler,
+                feature_extractor=self.pipe.feature_extractor,
             )
         elif is_flux:
             pipe = diffusers.FluxInpaintPipeline(
-                vae=self.vae,
-                text_encoder=self.text_encoder,
-                text_encoder_2=self.text_encoder_2,
-                tokenizer=self.tokenizer,
-                tokenizer_2=self.tokenizer_2,
-                transformer=self.transformer,
-                scheduler=self.scheduler
+                vae=self.pipe.vae,
+                text_encoder=self.pipe.text_encoder,
+                text_encoder_2=self.pipe.text_encoder_2,
+                tokenizer=self.pipe.tokenizer,
+                tokenizer_2=self.pipe.tokenizer_2,
+                transformer=self.pipe.transformer,
+                scheduler=self.pipe.scheduler
             )
         elif is_sd3:
             pipe = diffusers.StableDiffusion3InpaintPipeline(
-                vae=self.vae,
-                text_encoder=self.text_encoder,
-                text_encoder_2=self.text_encoder_2,
-                tokenizer=self.tokenizer,
-                tokenizer_2=self.tokenizer_2,
-                transformer=self.transformer,
-                scheduler=self.scheduler,
+                vae=self.pipe.vae,
+                text_encoder=self.pipe.text_encoder,
+                text_encoder_2=self.pipe.text_encoder_2,
+                tokenizer=self.pipe.tokenizer,
+                tokenizer_2=self.pipe.tokenizer_2,
+                transformer=self.pipe.transformer,
+                scheduler=self.pipe.scheduler,
             )
         else:
             pipe_class = \
@@ -83,13 +80,13 @@ class AdPipelineBase:
                     is_pag else diffusers.StableDiffusionInpaintPipeline
 
             pipe = pipe_class(
-                vae=self.vae,
-                text_encoder=self.text_encoder,
-                tokenizer=self.tokenizer,
-                unet=self.unet,
-                scheduler=self.scheduler,
-                safety_checker=self.safety_checker if hasattr(self, 'safety_checker') else None,
-                feature_extractor=self.feature_extractor if hasattr(self, 'feature_extractor') else None,
+                vae=self.pipe.vae,
+                text_encoder=self.pipe.text_encoder,
+                tokenizer=self.pipe.tokenizer,
+                unet=self.pipe.unet,
+                scheduler=self.pipe.scheduler,
+                safety_checker=self.pipe.safety_checker if hasattr(self.pipe, 'safety_checker') else None,
+                feature_extractor=self.pipe.feature_extractor if hasattr(self.pipe, 'feature_extractor') else None,
             )
 
         _messages.debug_log(
