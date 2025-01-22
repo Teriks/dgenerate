@@ -264,8 +264,10 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
 
             if last_pipe.text_encoder is not None:
                 encoder_dtype = next(last_pipe.text_encoder.parameters()).dtype
-            elif last_pipe.text_encoder2 is not None:
+            elif hasattr(last_pipe, 'text_encoder2') and last_pipe.text_encoder2 is not None:
                 encoder_dtype = next(last_pipe.text_encoder2.parameters()).dtype
+            elif hasattr(last_pipe, 'text_encoder3') and last_pipe.text_encoder3 is not None:
+                encoder_dtype = next(last_pipe.text_encoder3.parameters()).dtype
             else:
                 raise self.argument_error(
                     'adetailer processor could not determine text encoder dtype for prompt weighting.')
