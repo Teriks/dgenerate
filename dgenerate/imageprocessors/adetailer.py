@@ -31,7 +31,7 @@ import dgenerate.imageprocessors.imageprocessor as _imageprocessor
 import dgenerate.messages
 import dgenerate.types as _types
 import dgenerate.extras.asdff.base as _asdff
-import dgenerate.pipelinewrapper.pipelines as _pipelines
+import dgenerate.pipelinewrapper as _pipelinewrapper
 from huggingface_hub import hf_hub_download
 import dgenerate.image as _image
 import dgenerate.pipelinewrapper.hfutil as _hfutil
@@ -207,7 +207,10 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
         if self._pipe:
             last_pipe = self._pipe
         else:
-            last_pipe = _pipelines.get_last_called_pipeline()
+            last_pipe = _pipelinewrapper.DiffusionPipelineWrapper.last_called_wrapper()
+            if last_pipe is not None:
+                # we only want the primary pipe, not the sdxl refiner for instance
+                last_pipe = last_pipe.recall_main_pipeline().pipeline
 
         if last_pipe is None:
             raise self.argument_error(
