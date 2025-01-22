@@ -107,7 +107,8 @@ def poetry_pyproject_deps(exclude=None, include_optional=False):
                             replace('version', '"version"'). \
                             replace('optional', '"optional"'). \
                             replace('extras', '"extras"'). \
-                            replace('source', '"source"')
+                            replace('source', '"source"'). \
+                            replace('platform', '"platform"')
 
                     version = literal_eval(spec)
                     is_optional = version.get('optional')

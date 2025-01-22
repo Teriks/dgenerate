@@ -61,6 +61,7 @@ from .zoe import ZoeDepthProcessor
 from .teed import TEEDProcessor
 from .linart_standard import LineArtStandardProcessor
 from .anyline import AnylineProcessor
+from .aedetailer import AedetailerProcessor
 
 from .constants import (
     IMAGE_PROCESSOR_MEMORY_CONSTRAINTS,

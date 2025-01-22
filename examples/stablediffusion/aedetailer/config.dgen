@@ -1,0 +1,24 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 4.5.1
+
+stabilityai/stable-diffusion-2
+--inference-steps 40
+--guidance-scales 8
+--output-size 1024
+--gen-seeds 2
+--output-path output
+--output-size 1024x1024
+--post-processors "aedetailer;\
+                   model=Bingsu/adetailer;\
+                   weight-name=face_yolov8n.pt;\
+                   prompt=image of emma watson;\
+                   negative-prompt=nsfw, blurry, disfigured;\
+                   prompt-weighter=sd-embed;\
+                   guidance-scale=7;\
+                   inference-steps=40;\
+                   strength=0.4"
+--prompts "full body photo of emma watson in black clothes, \
+           night city street, bokeh; pencil drawing, black and white, \
+           greyscale, poorly drawn, bad anatomy, wrong anatomy, extra limb, \
+           missing limb, floating limbs, disconnected limbs, mutation, mutated, \
+           ugly, disgusting, amputation"

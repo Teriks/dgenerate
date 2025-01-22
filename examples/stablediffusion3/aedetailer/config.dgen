@@ -1,0 +1,35 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 4.5.1
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %} !END
+
+
+stabilityai/stable-diffusion-3-medium-diffusers
+--model-type torch-sd3
+--variant fp16
+--dtype float16
+--inference-steps 30
+--guidance-scales 5.00
+--model-sequential-offload
+--gen-seeds 1
+--output-path output
+--output-size 1024x1024
+--post-processors "aedetailer;\
+                   model=Bingsu/adetailer;\
+                   weight-name=face_yolov8n.pt;\
+                   prompt=image of emma watson;\
+                   negative-prompt=nsfw, blurry, disfigured;\
+                   prompt-weighter=sd-embed;\
+                   guidance-scale=5.00;\
+                   inference-steps=30;\
+                   strength=0.4"
+--prompts "full body photo of emma watson in black clothes, \
+           night city street, bokeh; pencil drawing, black and white, \
+           greyscale, poorly drawn, bad anatomy, wrong anatomy, extra limb, \
+           missing limb, floating limbs, disconnected limbs, mutation, mutated, \
+           ugly, disgusting, amputation"
