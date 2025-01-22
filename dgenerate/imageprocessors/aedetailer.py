@@ -295,8 +295,11 @@ class AedetailerProcessor(_imageprocessor.ImageProcessor):
             mask_padding=self._mask_padding,
             model_path=self._model_path)
 
-        output_image = result.images[0]
-        output_image.filename = i_filename
+        if len(result.images) > 0:
+            output_image = result.images[0]
+            output_image.filename = i_filename
+        else:
+            output_image = image
 
         return output_image
 
