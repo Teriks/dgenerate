@@ -2,11 +2,12 @@
 #! dgenerate 4.5.1
 
 stabilityai/stable-diffusion-2
+--pag
 --inference-steps 40
 --guidance-scales 8
 --output-size 1024
 --gen-seeds 2
---output-path output
+--output-path sd-pag
 --output-size 768x768
 --post-processors "adetailer;\
                    model=Bingsu/adetailer;\

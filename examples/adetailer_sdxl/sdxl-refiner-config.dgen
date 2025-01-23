@@ -1,0 +1,33 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 4.5.1
+
+# the refiner step happens before adetailer
+# due to adetailer being an image post-processor
+# plugin
+
+stabilityai/stable-diffusion-xl-base-1.0
+--model-type torch-sdxl
+--dtype float16
+--variant fp16
+--sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0
+--sdxl-high-noise-fractions 0.8
+--inference-steps 30
+--guidance-scales 7
+--clip-skips 0
+--gen-seeds 1
+--output-path sdxl
+--output-size 1024x1024
+--post-processors "adetailer;\
+                   model=Bingsu/adetailer;\
+                   weight-name=face_yolov8n.pt;\
+                   prompt=image of emma watson;\
+                   negative-prompt=nsfw, blurry, disfigured;\
+                   prompt-weighter=sd-embed;\
+                   guidance-scale=7;\
+                   inference-steps=30;\
+                   strength=0.4"
+--prompts "full body photo of emma watson in black clothes, \
+           night city street, bokeh; pencil drawing, black and white, \
+           greyscale, poorly drawn, bad anatomy, wrong anatomy, extra limb, \
+           missing limb, floating limbs, disconnected limbs, mutation, mutated, \
+           ugly, disgusting, amputation"
