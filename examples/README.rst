@@ -29,6 +29,11 @@ You can use run.py to run all of the examples at once, or a specific folder, or 
     python run.py --paths stablediffusion/animations/kitten-config.dgen
 
 
+    # globs are supported in a platform independent manner
+
+    python run.py --paths adetailer_s*
+
+
     # Pass arguments to dgenerate, run all examples with debugging output
 
     python run.py -v
