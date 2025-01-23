@@ -241,6 +241,11 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
 
             ad_pipe.force_pag = True
 
+            if self._pag_scale is not None:
+                common['pag_scale'] = self._pag_scale
+            if self._pag_adaptive_scale is not None:
+                common['pag_adaptive_scale'] = self._pag_adaptive_scale
+
         if is_sdxl:
             common['target_size'] = image.size
 
@@ -250,10 +255,7 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
             dgenerate.messages.log(
                 'adetailer is ignoring negative prompt, as Flux does not support negative prompting.')
 
-        if last_pipe._execution_device.type == 'cpu':
-            _pipelinewrapper.pipeline_to(last_pipe, self.device)
-
-        dgenerate.messages.debug_log(f'adetailer pipe execution device: {last_pipe._execution_device}')
+        prompt_weighter = None
 
         if self._prompt_weighter:
             loader = _promptweighters.PromptWeighterLoader()
@@ -282,16 +284,18 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
 
             encoder_dtype = _enums.get_data_type_enum(str(encoder_dtype).lstrip('torch.'))
 
-            weighter = loader.load(self._prompt_weighter,
-                                   model_type=model_type,
-                                   pipeline_type=_enums.PipelineType.INPAINT,
-                                   dtype=encoder_dtype)
-
-            common = weighter.translate_to_embeds(last_pipe, last_pipe._execution_device, common)
+            try:
+                prompt_weighter = loader.load(
+                    self._prompt_weighter,
+                    model_type=model_type,
+                    pipeline_type=_enums.PipelineType.INPAINT,
+                    dtype=encoder_dtype)
+            except Exception as e:
+                raise self.argument_error(str(e))
 
         if self._seed is not None:
             generator = torch.Generator(
-                device=last_pipe._execution_device).manual_seed(self._seed)
+                device=self.device).manual_seed(self._seed)
             common['generator'] = generator
 
         inpaint_only = {'strength': self._strength}
@@ -303,7 +307,9 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
             mask_dilation=self._mask_dilation,
             mask_blur=self._mask_blur,
             mask_padding=self._mask_padding,
-            model_path=self._model_path)
+            model_path=self._model_path,
+            device=self.device,
+            prompt_weighter=prompt_weighter)
 
         if len(result.images) > 0:
             output_image = result.images[0]
@@ -314,13 +320,11 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
         return output_image
 
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
-
         if self._pre_resize:
             return self._adetailer(image)
         return image
 
     def impl_post_resize(self, image: PIL.Image.Image):
-
         if not self._pre_resize:
             return self._adetailer(image)
         return image

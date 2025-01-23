@@ -18,6 +18,7 @@ from dgenerate.extras.asdff.utils import (
 from dgenerate.extras.asdff.yolo import yolo_detector
 
 import dgenerate.messages as _messages
+import dgenerate.pipelinewrapper as _pipelinewrapper
 
 DetectorType = Callable[[Image.Image], Optional[List[Image.Image]]]
 
@@ -91,8 +92,12 @@ class AdPipelineBase:
                 feature_extractor=self.pipe.feature_extractor if hasattr(self.pipe, 'feature_extractor') else None,
             )
 
+        if hasattr(self.pipe, 'DGENERATE_SIZE_ESTIMATE'):
+            pipe.DGENERATE_SIZE_ESTIMATE = self.pipe.DGENERATE_SIZE_ESTIMATE
+
         _messages.debug_log(
             f'AdPipelineBase (adetailer pipeline) initialized pipeline class: {pipe.__class__.__name__}')
+
         return pipe
 
     def __call__(  # noqa: C901
@@ -104,7 +109,9 @@ class AdPipelineBase:
             mask_dilation: int = 4,
             mask_blur: int = 4,
             mask_padding: int = 32,
-            model_path: str = None
+            model_path: str = None,
+            device: str = 'cuda',
+            prompt_weighter: Optional[str] = None
     ):
         if common is None:
             common = {}
@@ -154,6 +161,8 @@ class AdPipelineBase:
                         init_image,
                         mask,
                         bbox_padded,
+                        device,
+                        prompt_weighter
                     )
                     inpaint_image = inpaint_output[0][0]
                     final_image = composite(
@@ -198,6 +207,8 @@ class AdPipelineBase:
             init_image: Image.Image,
             mask: Image.Image,
             bbox_padded: tuple[int, int, int, int],
+            device: str,
+            prompt_weighter: Optional[str] = None
     ):
         crop_image = init_image.crop(bbox_padded)
         crop_mask = mask.crop(bbox_padded)
@@ -209,4 +220,8 @@ class AdPipelineBase:
             inpaint_args["control_image"] = inpaint_args["control_image"].resize(
                 crop_image.size
             )
-        return self.inpaint_pipeline(**inpaint_args)
+        return _pipelinewrapper.call_pipeline(
+            pipeline=self.inpaint_pipeline,
+            device=device,
+            prompt_weighter=prompt_weighter,
+            **inpaint_args)

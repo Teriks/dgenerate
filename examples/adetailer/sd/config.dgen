@@ -7,7 +7,7 @@ stabilityai/stable-diffusion-2
 --output-size 1024
 --gen-seeds 2
 --output-path output
---output-size 1024x1024
+--output-size 768x768
 --post-processors "adetailer;\
                    model=Bingsu/adetailer;\
                    weight-name=face_yolov8n.pt;\
