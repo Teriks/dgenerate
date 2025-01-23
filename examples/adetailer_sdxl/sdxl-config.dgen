@@ -9,7 +9,7 @@ stabilityai/stable-diffusion-xl-base-1.0
 --guidance-scales 7
 --clip-skips 0
 --gen-seeds 1
---output-path output
+--output-path sdxl
 --output-size 1024x1024
 --post-processors "adetailer;\
                    model=Bingsu/adetailer;\
