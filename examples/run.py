@@ -297,7 +297,7 @@ def main():
 
     if known_args.paths:
         configs = []
-        for path in known_args.paths:
+        for path in [p for path in known_args.paths for p in glob.glob(path)]:
             _, ext = os.path.splitext(path)
             if ext:
                 configs.append(path)
