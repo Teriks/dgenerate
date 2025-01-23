@@ -217,11 +217,6 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
                 'adetailer did not find an active previously used diffusion pipeline, '
                 'please preform diffusion before attempting to use this processor.')
 
-        if last_pipe._execution_device.type == 'cpu':
-            _pipelinewrapper.pipeline_to(last_pipe, self.device)
-
-        dgenerate.messages.debug_log(f'adetailer pipe execution device: {last_pipe._execution_device}')
-
         is_flux = last_pipe.__class__.__name__.startswith('Flux') and \
                   not isinstance(last_pipe, diffusers.FluxFillPipeline)
 
@@ -254,6 +249,11 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
         elif self._negative_prompt:
             dgenerate.messages.log(
                 'adetailer is ignoring negative prompt, as Flux does not support negative prompting.')
+
+        if last_pipe._execution_device.type == 'cpu':
+            _pipelinewrapper.pipeline_to(last_pipe, self.device)
+
+        dgenerate.messages.debug_log(f'adetailer pipe execution device: {last_pipe._execution_device}')
 
         if self._prompt_weighter:
             loader = _promptweighters.PromptWeighterLoader()
