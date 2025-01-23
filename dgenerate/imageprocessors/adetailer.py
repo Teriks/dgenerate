@@ -217,7 +217,7 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
                 'adetailer did not find an active previously used diffusion pipeline, '
                 'please preform diffusion before attempting to use this processor.')
 
-        if last_pipe._execution_device == 'cpu':
+        if last_pipe._execution_device.type == 'cpu':
             _pipelinewrapper.pipeline_to(last_pipe, self.device)
 
         dgenerate.messages.debug_log(f'adetailer pipe execution device: {last_pipe._execution_device}')
