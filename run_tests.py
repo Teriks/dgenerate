@@ -30,21 +30,6 @@ import unittest
 
 os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__))))
 
-# Set the maximum split size for the CUDA memory allocator to handle large allocations efficiently
-os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:512"
-
-# Keep CUDA launch blocking disabled for better performance
-os.environ["PYTORCH_CUDA_LAUNCH_BLOCKING"] = "0"
-
-# Enable TF32 for improved performance on supported hardware
-os.environ["PYTORCH_TF32"] = "1"
-
-# Keep CUDA memory caching enabled (default behavior)
-os.environ["PYTORCH_NO_CUDA_MEMORY_CACHING"] = "0"
-
-# Keep CUDA fuser enabled (default behavior)
-os.environ["PYTORCH_CUDA_FUSER_DISABLE"] = "0"
-
 parser = argparse.ArgumentParser()
 
 parser.add_argument('-c', '--clean', default=False, action='store_true')
