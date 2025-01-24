@@ -31,7 +31,7 @@ You can use run.py to run all of the examples at once, or a specific folder, or 
 
     # globs are supported in a platform independent manner
 
-    python run.py --paths adetailer_s*
+    python run.py --paths stablediffusion*
 
 
     # Pass arguments to dgenerate, run all examples with debugging output
