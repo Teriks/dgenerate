@@ -166,6 +166,33 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
         """
         super().__init__(**kwargs)
 
+        if mask_padding < 0:
+            raise self.argument_error('mask-padding may not be less than zero.')
+
+        if mask_blur < 0:
+            raise self.argument_error('mask-blur may not be less than zero.')
+
+        if mask_dilation < 0:
+            raise self.argument_error('mask-dilation may not be less than zero.')
+
+        if inference_steps <= 0:
+            raise self.argument_error('inference-steps must be greater than zero.')
+
+        if guidance_scale < 0:
+            raise self.argument_error('guidance-scale may not be less than zero.')
+
+        if pag_scale is not None and pag_scale < 0:
+            raise self.argument_error('pag-scale may not be less than zero.')
+
+        if pag_adaptive_scale is not None and pag_adaptive_scale < 0:
+            raise self.argument_error('pag-adaptive-scale may not be less than zero.')
+
+        if strength < 0:
+            raise self.argument_error('strength may not be less than zero.')
+
+        if strength > 1:
+            raise self.argument_error('strength may not be greater than 1.')
+
         self._prompt = prompt
         self._negative_prompt = negative_prompt
         self._mask_padding = mask_padding
