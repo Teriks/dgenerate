@@ -326,7 +326,7 @@ def main():
     top_level_dirs = sorted(set(os.path.join(cwd, os.path.relpath(config, cwd).split(os.sep)[0]) for config in configs))
 
     if known_args.subprocess_only:
-        for config in configs:
+        for config in sorted(configs):
             if should_skip_config(config, known_args):
                 continue
 

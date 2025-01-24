@@ -24,17 +24,6 @@ __version__ = '4.5.1'
 import os
 import sys
 
-
-# Set the maximum split size for the CUDA memory allocator
-# to handle large allocations efficiently
-os.environ['PYTORCH_CUDA_ALLOC_CONF'] = os.environ.get(
-    'PYTORCH_CUDA_ALLOC_CONF', 'max_split_size_mb:512')
-
-# Keep CUDA launch blocking disabled for better performance
-os.environ['PYTORCH_CUDA_LAUNCH_BLOCKING'] = os.environ.get(
-    'PYTORCH_CUDA_LAUNCH_BLOCKING', '0')
-
-
 __am_dgenerate_app = \
     os.path.splitext(
         os.path.basename(os.path.realpath(sys.argv[0])))[0] in {'dgenerate', 'dgenerate_windowed'}
