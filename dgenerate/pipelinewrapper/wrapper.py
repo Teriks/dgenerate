@@ -912,13 +912,13 @@ class DiffusionPipelineWrapper:
         if self._adetailer_detector_uris:
             opts.append(('--adetailer-detectors', self._adetailer_detector_uris))
 
-        if args.adetailer_mask_padding:
+        if args.adetailer_mask_padding is not None:
             opts.append(('--adetailer-mask-paddings', args.adetailer_mask_padding))
 
-        if args.adetailer_mask_blur:
+        if args.adetailer_mask_blur is not None:
             opts.append(('--adetailer-mask-blurs', args.adetailer_mask_blur))
 
-        if args.adetailer_mask_dilation:
+        if args.adetailer_mask_dilation is not None:
             opts.append(('--adetailer-mask-dilations', args.adetailer_mask_dilation))
 
         if self._adetailer_crop_control_image:
