@@ -83,7 +83,12 @@ class AdetailerDetectorUri:
                        local_files_only: bool = False,
                        use_auth_token: _types.OptionalString = None):
         try:
-            if _hfutil.is_single_file_model_load(self.model):
+            if not self.model.startswith('http://') or self.model.startswith('https://'):
+                _, ext = os.path.splitext(self.model)
+            else:
+                ext = ''
+
+            if _hfutil.is_single_file_model_load(self.model) or ext in {'.yaml', '.yml'}:
                 if os.path.exists(self.model):
                     return self.model
                 else:
