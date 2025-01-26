@@ -245,7 +245,7 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
 
         ad_pipe = _asdff.AdPipelineBase(last_pipe)
 
-        common = {
+        pipeline_args = {
             "num_inference_steps": self._inference_steps,
             "guidance_scale": self._guidance_scale,
             "prompt": self._prompt
@@ -261,15 +261,15 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
             ad_pipe.force_pag = True
 
             if self._pag_scale is not None:
-                common['pag_scale'] = self._pag_scale
+                pipeline_args['pag_scale'] = self._pag_scale
             if self._pag_adaptive_scale is not None:
-                common['pag_adaptive_scale'] = self._pag_adaptive_scale
+                pipeline_args['pag_adaptive_scale'] = self._pag_adaptive_scale
 
         if is_sdxl:
-            common['target_size'] = image.size
+            pipeline_args['target_size'] = image.size
 
         if not is_flux:
-            common['negative_prompt'] = self._negative_prompt
+            pipeline_args['negative_prompt'] = self._negative_prompt
         elif self._negative_prompt:
             dgenerate.messages.log(
                 'adetailer is ignoring negative prompt, as Flux does not support negative prompting.')
@@ -315,13 +315,12 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
         if self._seed is not None:
             generator = torch.Generator(
                 device=self.device).manual_seed(self._seed)
-            common['generator'] = generator
+            pipeline_args['generator'] = generator
 
-        inpaint_only = {'strength': self._strength}
+        pipeline_args['strength'] = self._strength
 
         result = ad_pipe(
-            common=common,
-            inpaint_only=inpaint_only,
+            pipeline_args=pipeline_args,
             images=[image],
             mask_dilation=self._mask_dilation,
             mask_blur=self._mask_blur,

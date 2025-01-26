@@ -413,7 +413,8 @@ class DiffusionPipelineWrapper:
             _enums.ModelType.TORCH,
             _enums.ModelType.TORCH_SDXL,
             _enums.ModelType.TORCH_SD3,
-            _enums.ModelType.TORCH_FLUX}:
+            _enums.ModelType.TORCH_FLUX,
+            _enums.ModelType.TORCH_FLUX_FILL}:
             raise _pipelines.UnsupportedPipelineConfigError(
                 '--adetailer-detectors is only supported with --model-type torch, torch-sdxl, torch-sd3, and torch-flux.')
 
@@ -1837,10 +1838,8 @@ class DiffusionPipelineWrapper:
         for detector_uri in self._parsed_adetailer_detector_uris:
             input_images = pipeline_args['image'] if asdff_output is None else asdff_output.images
             input_images *= (batch_size // len(input_images))
-
             asdff_output = asdff_pipe(
-                common=pipeline_args,
-                inpaint_only={'strength': pipeline_args.get('strength', _constants.DEFAULT_IMAGE_SEED_STRENGTH)},
+                pipeline_args=pipeline_args,
                 model_path=detector_uri.get_model_path(
                     local_files_only=self._local_files_only, use_auth_token=self._auth_token),
                 images=input_images,
