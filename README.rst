@@ -1158,12 +1158,12 @@ Help Output
                             One or more high-noise-fraction values for Stable Diffusion XL (torch-sdxl), this
                             fraction of inference steps will be processed by the base model, while the rest will
                             be processed by the refiner model. Multiple values to this argument will result in
-                            additional generation steps for each value. In certain situations when the mixture
-                            of denoisers algorithm is not supported, such as when using --control-nets and
-                            inpainting with SDXL, the inverse proportion of this value IE: (1.0 - high-noise-
-                            fraction) becomes the --image-seed-strengths input to the SDXL refiner. (default:
-                            [0.8])
-                            ------
+                            additional generation steps for each value. In certain situations when collaborative
+                            denoising is not supported, such as when using --control-nets and inpainting with
+                            SDXL, the inverse proportion of this value IE: (1.0 - high-noise-fraction) becomes
+                            the --image-seed-strengths input to the SDXL refiner in plain img2img mode. Edit
+                            mode may be forced with the option --sdxl-refiner-edit (default: [0.8])
+                            -----------------------------------------------------------------------
       -ri INT [INT ...], --sdxl-refiner-inference-steps INT [INT ...]
                             One or more inference steps values for the SDXL refiner when in use. Override the
                             number of inference steps used by the SDXL refiner, which defaults to the value
