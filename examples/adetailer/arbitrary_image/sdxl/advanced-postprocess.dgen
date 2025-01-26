@@ -34,7 +34,7 @@ stabilityai/stable-diffusion-xl-base-1.0
 # adetailer
 
 # we can also choose any model type and model that we want to use with
-# adetailer, even different models that the model that generated the initial image,
+# adetailer, even different models than the model that generated the initial image,
 # as long as that model supports inpainting
 
 # this means we can apply this postprocess to the output of models that do not
