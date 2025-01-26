@@ -133,12 +133,14 @@ class AdPipelineBase:
         txt2img_images = [images] if not isinstance(images, Iterable) else images
 
         control_images = [None] * len(txt2img_images)
-        for idx, txt2img in enumerate(txt2img_images):
-            ctrl_img_pipe = common['control_image']
-            if isinstance(ctrl_img_pipe, list):
-                control_images[idx] = ctrl_img_pipe[idx]
-            else:
-                control_images[idx] = ctrl_img_pipe
+
+        if 'control_image' in common:
+            for idx, txt2img in enumerate(txt2img_images):
+                ctrl_img_pipe = common['control_image']
+                if isinstance(ctrl_img_pipe, list):
+                    control_images[idx] = ctrl_img_pipe[idx]
+                else:
+                    control_images[idx] = ctrl_img_pipe
 
         init_images = []
         final_images = []
