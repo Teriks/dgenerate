@@ -24,6 +24,11 @@ __version__ = '4.5.1'
 import os
 import sys
 
+# Set the maximum split size for the CUDA memory allocator
+# and GC threshold to handle large allocations efficiently
+os.environ['PYTORCH_CUDA_ALLOC_CONF'] = os.environ.get(
+    'PYTORCH_CUDA_ALLOC_CONF', 'garbage_collection_threshold:0.8,max_split_size_mb:512')
+
 __am_dgenerate_app = \
     os.path.splitext(
         os.path.basename(os.path.realpath(sys.argv[0])))[0] in {'dgenerate', 'dgenerate_windowed'}
