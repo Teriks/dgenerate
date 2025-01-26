@@ -85,7 +85,7 @@ def yolo_detector(
         else:
             masks = mask_to_pil(pred[0].masks.data, image.size)
     finally:
-        if model and device != 'cpu':
+        if model is not None and device != 'cpu':
             model.to('cpu')
             del model
             torch.cuda.empty_cache()
