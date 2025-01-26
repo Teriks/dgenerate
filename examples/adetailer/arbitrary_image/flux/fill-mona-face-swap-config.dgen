@@ -1,0 +1,28 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 4.5.1
+
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %} !END
+
+# Use a YOLO model to detect a face and generate an inpaint mask
+# for the Flux fill pipeline, composite with adetailer
+
+# You can also use the normal flux inpaint pipeline if desired
+
+black-forest-labs/FLUX.1-Fill-dev
+--model-type torch-flux-fill {{ auth_token }}
+--dtype bfloat16
+--model-sequential-offload
+--image-seeds ../../../media/monalisa.png
+--adetailer-detectors Bingsu/adetailer;weight-name=face_yolov8n.pt
+--inference-steps 50
+--guidance-scales 3.5
+--gen-seeds 1
+--output-path fill-mona-face-swap
+--output-size 800
+--prompts "woman smiling like a maniac"

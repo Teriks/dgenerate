@@ -9,20 +9,21 @@
     \exit
 {% endif %} !END
 
-# use a YOLO model to detect a face and generate an inpaint mask
-# for the Flux fill pipeline, composite with adetailer
+# Use a YOLO model to detect a face and generate an inpaint mask
+# for the Flux pipeline, composite with adetailer
 
-# you can also use the normal flux inpaint pipeline if desired
+# This example uses Flux schnell just because it is faster.
 
-black-forest-labs/FLUX.1-Fill-dev
---model-type torch-flux-fill {{ auth_token }}
+black-forest-labs/FLUX.1-schnell
+--model-type torch-flux {{ auth_token }}
 --dtype bfloat16
 --model-sequential-offload
 --image-seeds ../../../media/monalisa.png
 --adetailer-detectors Bingsu/adetailer;weight-name=face_yolov8n.pt
---inference-steps 50
---guidance-scales 3.5
+--image-seed-strengths 0.4
+--inference-steps 4
+--guidance-scales 0
 --gen-seeds 1
---output-path flux-fill-mona-face-swap
+--output-path inpaint-mona-face-swap
 --output-size 800
 --prompts "woman smiling like a maniac"

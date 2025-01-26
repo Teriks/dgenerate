@@ -1,0 +1,47 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 4.5.1
+
+stabilityai/stable-diffusion-xl-base-1.0
+--model-type torch-sdxl
+--dtype float16
+--variant fp16
+--inference-steps 30
+--guidance-scales 7
+--gen-seeds 1
+--output-path advanced-postprocess
+--output-prefix unrefined
+--output-size 1024x1024
+--prompts "full body photo of emma watson in black clothes, \
+           night city street, bokeh; pencil drawing, black and white, \
+           greyscale, poorly drawn, bad anatomy, wrong anatomy, extra limb, \
+           missing limb, floating limbs, disconnected limbs, mutation, mutated, \
+           ugly, disgusting, amputation"
+
+# make every image from the last generation an --image-seeds value
+# that gets passed to the adetailer step, the settings
+# for the adetailer process are far more configurable this
+# way, but this cannot be done as a one liner on the command
+# line as with --post-processors
+
+# we can for instance, use the combinatorics arguments of dgenerate
+# to make variations, and also run the SDXL refiner as a final step
+# where as with --post-processors, the SDXL refiner always runs before
+# adetailer
+
+# combinatorially refine 8 variants using different settings for adetailer
+
+stabilityai/stable-diffusion-xl-base-1.0
+--model-type torch-sdxl
+--variant fp16
+--dtype float16
+--image-seeds {{ quote(last_images) }}
+--inference-steps 30
+--guidance-scales 7
+--adetailer-detectors Bingsu/adetailer;weight-name=face_yolov8n.pt
+--adetailer-mask-blurs 4 8
+--adetailer-mask-dilations 4 8
+--image-seed-strengths 0.4 0.7
+--output-size 1024x1024
+--output-path advanced-postprocess
+--output-prefix refined
+--prompts "image of emma watson; nsfw, blurry, disfigured"
