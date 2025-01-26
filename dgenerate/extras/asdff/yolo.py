@@ -77,6 +77,9 @@ def yolo_detector(
     else:
         masks = mask_to_pil(pred[0].masks.data, image.size)
 
+    model.to('cpu')
+    del model
+
     return masks
 
 

@@ -15,7 +15,7 @@ stabilityai/stable-diffusion-xl-base-1.0
 --gen-seeds 1
 --output-path advanced-postprocess
 --output-prefix unrefined
---output-size 1024x1024
+--output-size 800x800
 --prompts "full body photo of emma watson in black clothes, \
            night city street, bokeh; pencil drawing, black and white, \
            greyscale, poorly drawn, bad anatomy, wrong anatomy, extra limb, \
@@ -54,7 +54,6 @@ stabilityai/stable-diffusion-xl-base-1.0
 --adetailer-mask-blurs 4 8
 --adetailer-mask-dilations 4 8
 --image-seed-strengths 0.4 0.7
---output-size 1024x1024
 --output-path advanced-postprocess
 --output-prefix refined
 --prompts "image of emma watson; nsfw, blurry, disfigured"
