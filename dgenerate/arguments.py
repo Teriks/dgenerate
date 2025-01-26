@@ -630,7 +630,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     the detection areas. This can be used for face detailing, face swapping, hand detailing, 
                     etc. on any arbitrary image provided using an image generation model of your choice.
                     
-                    This option supports: --model-type torch, torch-sdxl, torch-sd3, and torch-flux
+                    This option supports: --model-type torch, torch-sdxl, torch-sd3, torch-flux, and torch-flux-fill
                     
                     Example: --adetailer-detectors Bingsu/adetailer;weight-name=face_yolov8n.pt
                     
