@@ -115,9 +115,23 @@ class InvalidImageEncoderUriError(InvalidModelUriError):
     pass
 
 
+class InvalidTransformerUriError(InvalidModelUriError):
+    """
+    Error in ``--transformer`` uri
+    """
+    pass
+
+
 class TextEncoderUriLoadError(InvalidModelUriError):
     """
     Error loading ``--text-encoder*`` uri
+    """
+    pass
+
+
+class InvalidAdetailerDetectorUriError(InvalidModelUriError):
+    """
+    Error in ``--adetailer-detectors`` uri
     """
     pass
 
@@ -178,15 +192,15 @@ class ImageEncoderUriLoadError(ModelUriLoadError):
     pass
 
 
-class InvalidTransformerUriError(InvalidModelUriError):
+class TransformerUriLoadError(ModelUriLoadError):
     """
     Error while loading model file in ``--transformer`` uri
     """
     pass
 
 
-class TransformerUriLoadError(ModelUriLoadError):
+class AdetailerDetectorUriLoadError(ModelUriLoadError):
     """
-    Error in ``--transformer`` uri
+    Error while loading model file in ``--adetailer-detectors`` uri
     """
     pass

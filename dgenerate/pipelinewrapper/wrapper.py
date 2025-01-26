@@ -41,6 +41,7 @@ import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.pipelinewrapper.arguments import DiffusionArguments
 import dgenerate.pipelinewrapper.util as _util
+import dgenerate.extras.asdff.base as _asdff_base
 
 
 class PipelineWrapperResult:
@@ -172,7 +173,9 @@ class DiffusionPipelineWrapper:
                  s_cascade_decoder_cpu_offload: bool = False,
                  s_cascade_decoder_sequential_offload: bool = False,
                  prompt_weighter_uri: _types.OptionalUri = None,
-                 prompt_weighter_loader: _promptweighters.PromptWeighterLoader | None = None):
+                 prompt_weighter_loader: _promptweighters.PromptWeighterLoader | None = None,
+                 adetailer_detector_uris: _types.OptionalUris = None,
+                 adetailer_crop_control_image: bool = False):
         """
         This is a monolithic wrapper around all supported diffusion pipelines which handles
         txt2img, img2img, and inpainting on demand. It spins up the correct pipelines as needed
@@ -232,6 +235,14 @@ class DiffusionPipelineWrapper:
         :param s_cascade_decoder_sequential_offload: Use sequential CPU offloading for the Stable Cascade decoder via the accelerate module?
         :param prompt_weighter_uri: Prompt weighter implementation URI, to be loaded from ``prompt_weighter_loader``
         :param prompt_weighter_loader: Plugin loader for prompt weighter implementations, if you pass ``None`` a default instance will be created.
+        :param adetailer_detector_uris: adetailer subject detection model URIs, specifying this argument indicates ``img2img`` mode implicitly,
+            the pipeline wrapper will accept a single image and preform the adetailer inpainting algorithm on it using the provided
+            detector URIs.
+        :param adetailer_crop_control_image: Should adetailer crop any provided ControlNet control image
+            in the same way that it crops the generated mask to the detection area? Otherwise,
+            use the full control image resized down to the size of the detection area. If you enable
+            this and your control image is not the same size as your input image, a warning will be
+            issued and resizing will be used instead of cropping.
         """
 
         __locals = locals()
@@ -285,7 +296,9 @@ class DiffusionPipelineWrapper:
             s_cascade_decoder_cpu_offload: bool = False,
             s_cascade_decoder_sequential_offload: bool = False,
             prompt_weighter_uri: _types.OptionalUri = None,
-            prompt_weighter_loader: _promptweighters.PromptWeighterLoader | None = None
+            prompt_weighter_loader: _promptweighters.PromptWeighterLoader | None = None,
+            adetailer_detector_uris: _types.OptionalUris = None,
+            adetailer_crop_control_image: bool = False
     ):
         # Check that model_path is provided
         if model_path is None:
@@ -396,6 +409,14 @@ class DiffusionPipelineWrapper:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     '--transformer is only supported for --model-type torch-sd3 and torch-flux.')
 
+        if adetailer_detector_uris and model_type not in {
+            _enums.ModelType.TORCH,
+            _enums.ModelType.TORCH_SDXL,
+            _enums.ModelType.TORCH_SD3,
+            _enums.ModelType.TORCH_FLUX}:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                '--adetailer-detectors is only supported with --model-type torch, torch-sdxl, torch-sd3, and torch-flux.')
+
         self._subfolder = subfolder
         self._device = device
         self._model_type = _enums.get_model_type_enum(model_type)
@@ -467,6 +488,17 @@ class DiffusionPipelineWrapper:
         self._prompt_weighter_loader = \
             prompt_weighter_loader if prompt_weighter_loader is not None \
                 else _promptweighters.PromptWeighterLoader()
+
+        self._adetailer_detector_uris = adetailer_detector_uris
+        self._parsed_adetailer_detector_uris = None
+
+        self._adetailer_crop_control_image = adetailer_crop_control_image
+
+        if adetailer_detector_uris:
+            self._parsed_adetailer_detector_uris = []
+            for adetailer_detector_uri in adetailer_detector_uris:
+                self._parsed_adetailer_detector_uris.append(
+                    _uris.AdetailerDetectorUri.parse(adetailer_detector_uri))
 
         self._prompt_weighter_uri = prompt_weighter_uri
         self._prompt_weighter: _promptweighters.PromptWeighter | None = None
@@ -568,6 +600,31 @@ class DiffusionPipelineWrapper:
         List of supplied ``--text-encoders2`` uri strings or an empty list
         """
         return list(self._second_text_encoder_uris) if self._second_text_encoder_uris else []
+
+    @property
+    def adetailer_detector_uris(self) -> _types.OptionalUris:
+        """
+        List of supplied ``--adetailer-detectors`` uri strings or an empty list
+        """
+        return list(self._adetailer_detector_uris) if self._adetailer_detector_uris else []
+
+    @property
+    def adetailer_crop_control_image(self) -> bool:
+        """
+        Should adetailer crop any provided control image in the same way that it crops the
+        generated mask to the detection area? Otherwise, use the full control image
+        resized down to the size of the detection area.
+        """
+        return self._adetailer_crop_control_image
+
+    @adetailer_crop_control_image.setter
+    def adetailer_crop_control_image(self, value: bool):
+        """
+        Should adetailer crop any provided control image in the same way that it crops the
+        generated mask to the detection area? Otherwise, use the full control image
+        resized down to the size of the detection area.
+        """
+        self._adetailer_crop_control_image = value
 
     @property
     def device(self) -> _types.Name:
@@ -851,6 +908,21 @@ class DiffusionPipelineWrapper:
 
         if args.sdxl_refiner_second_prompt is not None:
             opts.append(('--sdxl-refiner-second-prompts', args.sdxl_refiner_second_prompt))
+
+        if self._adetailer_detector_uris:
+            opts.append(('--adetailer-detectors', self._adetailer_detector_uris))
+
+        if args.adetailer_mask_padding:
+            opts.append(('--adetailer-mask-paddings', args.adetailer_mask_padding))
+
+        if args.adetailer_mask_blur:
+            opts.append(('--adetailer-mask-blurs', args.adetailer_mask_blur))
+
+        if args.adetailer_mask_dilation:
+            opts.append(('--adetailer-mask-dilations', args.adetailer_mask_dilation))
+
+        if self._adetailer_crop_control_image:
+            opts.append(('--adetailer-crop-control-image',))
 
         if self._text_encoder_uris:
             opts.append(('--text-encoders', ['+' if x is None else x for x in self._text_encoder_uris]))
@@ -1216,9 +1288,9 @@ class DiffusionPipelineWrapper:
 
         def set_strength():
             strength = float(_types.default(user_args.image_seed_strength, _constants.DEFAULT_IMAGE_SEED_STRENGTH))
-
-            if (strength * user_args.inference_steps) < 1.0:
-                strength = 1.0 / user_args.inference_steps
+            ifs = int(_types.default(user_args.inference_steps, _constants.DEFAULT_INFERENCE_STEPS))
+            if (strength * ifs) < 1.0:
+                strength = 1.0 / ifs
                 _messages.log(
                     f'image-seed-strength * inference-steps '
                     f'was calculated at < 1, image-seed-strength defaulting to (1.0 / inference-steps): {strength}',
@@ -1395,6 +1467,13 @@ class DiffusionPipelineWrapper:
                 args['mask_image'] = mask_images
                 if not (_enums.model_type_is_floyd(self._model_type) or
                         _enums.model_type_is_sd3(self._model_type)):
+                    args['width'] = images[0].size[0]
+                    args['height'] = images[0].size[1]
+
+            if self._parsed_adetailer_detector_uris:
+                # inpainting pipeline, just no mask
+                # because it is auto generated
+                if not _enums.model_type_is_sd3(self._model_type):
                     args['width'] = images[0].size[0]
                     args['height'] = images[0].size[1]
 
@@ -1732,11 +1811,49 @@ class DiffusionPipelineWrapper:
             pipeline_args['control_mode'] = \
                 self._get_controlnet_mode()
 
-        return PipelineWrapperResult(_pipelines.call_pipeline(
-            pipeline=self._pipeline,
-            device=self._device,
-            prompt_weighter=self._prompt_weighter,
-            **pipeline_args).images)
+        if self._parsed_adetailer_detector_uris:
+            return self._call_asdff(
+                user_args=user_args,
+                pipeline_args=pipeline_args,
+                batch_size=batch_size)
+        else:
+            return PipelineWrapperResult(_pipelines.call_pipeline(
+                pipeline=self._pipeline,
+                prompt_weighter=self._prompt_weighter,
+                device=self._device,
+                **pipeline_args).images)
+
+    def _call_asdff(self, user_args: DiffusionArguments, pipeline_args: dict[str, typing.Any], batch_size: int):
+        asdff_pipe = _asdff_base.AdPipelineBase(self._pipeline)
+
+        # use the provided pipe as is, it must be
+        # some sort of inpainting pipe
+        asdff_pipe.auto_detect_pipe = False
+
+        # should we crop any control image the same way that we crop the mask?
+        asdff_pipe.crop_control_image = self._adetailer_crop_control_image
+
+        asdff_output = None
+        for detector_uri in self._parsed_adetailer_detector_uris:
+            input_images = pipeline_args['image'] if asdff_output is None else asdff_output.images
+            input_images *= (batch_size // len(input_images))
+
+            asdff_output = asdff_pipe(
+                common=pipeline_args,
+                inpaint_only={'strength': pipeline_args.get('strength', _constants.DEFAULT_IMAGE_SEED_STRENGTH)},
+                model_path=detector_uri.get_model_path(
+                    local_files_only=self._local_files_only, use_auth_token=self._auth_token),
+                images=input_images,
+                device=self._device,
+                prompt_weighter=self._prompt_weighter,
+                mask_blur=int(_types.default(user_args.adetailer_mask_blur, _constants.DEFAULT_ADETAILER_MASK_BLUR)),
+                mask_padding=int(
+                    _types.default(user_args.adetailer_mask_padding, _constants.DEFAULT_ADETAILER_MASK_PADDING)),
+                mask_dilation=int(
+                    _types.default(user_args.adetailer_mask_padding, _constants.DEFAULT_ADETAILER_MASK_DILATION))
+            )
+
+        return PipelineWrapperResult(asdff_output.images)
 
     def _call_torch_s_cascade(self, pipeline_args, user_args: DiffusionArguments):
         self._check_for_invalid_model_specific_opts(user_args)
@@ -1905,9 +2022,6 @@ class DiffusionPipelineWrapper:
                 pipeline_args['negative_prompt'] = \
                     [pipeline_args['negative_prompt']] * num_prompts
 
-        def generate_images(**kwargs):
-            return _pipelines.call_pipeline(**kwargs).images
-
         pipeline_args['generator'] = \
             torch.Generator(device=self._device).manual_seed(
                 _types.default(user_args.seed, _constants.DEFAULT_SEED))
@@ -1925,6 +2039,7 @@ class DiffusionPipelineWrapper:
 
         sd_edit = user_args.sdxl_refiner_edit or \
                   has_controlnet or has_t2i_adapter or \
+                  self._parsed_adetailer_detector_uris or \
                   isinstance(self._pipeline,
                              (diffusers.StableDiffusionXLInpaintPipeline,
                               diffusers.StableDiffusionXLPAGInpaintPipeline))
@@ -1960,12 +2075,21 @@ class DiffusionPipelineWrapper:
                         if adapter.config.in_channels == 1:
                             pipeline_args['image'][idx] = pipeline_args['image'][idx].convert('L')
 
+        def generate_asdff():
+            return self._call_asdff(
+                user_args=user_args,
+                pipeline_args=pipeline_args,
+                batch_size=batch_size)
+
         if self._sdxl_refiner_pipeline is None:
-            return PipelineWrapperResult(generate_images(
-                pipeline=self._pipeline,
-                prompt_weighter=self._prompt_weighter,
-                device=self._device,
-                **pipeline_args))
+            if self._parsed_adetailer_detector_uris:
+                return generate_asdff()
+            else:
+                return PipelineWrapperResult(_pipelines.call_pipeline(
+                    pipeline=self._pipeline,
+                    prompt_weighter=self._prompt_weighter,
+                    device=self._device,
+                    **pipeline_args).images)
 
         high_noise_fraction = _types.default(user_args.sdxl_high_noise_fraction,
                                              _constants.DEFAULT_SDXL_HIGH_NOISE_FRACTION)
@@ -1983,12 +2107,16 @@ class DiffusionPipelineWrapper:
             # cannot handle latent input
             output_type = 'pil'
 
-        image = _pipelines.call_pipeline(pipeline=self._pipeline,
-                                         device=self._device,
-                                         prompt_weighter=self._prompt_weighter,
-                                         **pipeline_args,
-                                         **i_end,
-                                         output_type=output_type).images
+        if self._parsed_adetailer_detector_uris:
+            image = generate_asdff().images
+        else:
+            image = _pipelines.call_pipeline(
+                pipeline=self._pipeline,
+                device=self._device,
+                prompt_weighter=self._prompt_weighter,
+                **pipeline_args,
+                **i_end,
+                output_type=output_type).images
 
         pipeline_args['image'] = image
 
@@ -2172,6 +2300,9 @@ class DiffusionPipelineWrapper:
         self._recall_main_pipeline = None
         self._recall_refiner_pipeline = None
 
+        if self._parsed_adetailer_detector_uris:
+            pipeline_type = _enums.PipelineType.INPAINT
+
         if self._model_type == _enums.ModelType.TORCH_S_CASCADE:
 
             if self._s_cascade_decoder_uri is None:
@@ -2279,7 +2410,10 @@ class DiffusionPipelineWrapper:
                 self._parsed_controlnet_uris = creation_result.parsed_controlnet_uris
                 self._parsed_t2i_adapter_uris = creation_result.parsed_t2i_adapter_uris
 
-            refiner_pipeline_type = _enums.PipelineType.IMG2IMG if pipeline_type is _enums.PipelineType.TXT2IMG else pipeline_type
+            if pipeline_type is _enums.PipelineType.TXT2IMG or self._parsed_adetailer_detector_uris:
+                refiner_pipeline_type = _enums.PipelineType.IMG2IMG
+            else:
+                refiner_pipeline_type = pipeline_type
 
             if self._pipeline is not None:
 

@@ -899,6 +899,22 @@ class ImageSeedParseResult:
     This should override any globally defined resize value.
     """
 
+    resize_align: _types.OptionalInteger = None
+    """
+    Per image user specified resize alignment for image, mask, and control image 
+    components of the ``--image-seed`` specification.
+    
+    This field available in parses such as:
+    
+        * ``--image-seeds "img2img.png;control=control.png;align=64"``
+        * ``--image-seeds "img2img.png;control=control1.png, control2.png;align=64"``
+        * ``--image-seeds "img2img.png;mask=mask.png;control=control.png;align=64"``
+        * ``--image-seeds "img2img.png;mask=mask.png;control=control1.png, control2.png;align=64"``
+        
+    This will overwrite any default global value (usually 8), the provided value must be divisible by 
+    the global value defined by the parser (i.e. 8 pixels), or a parse error will occur.
+    """
+
     aspect_correct: _types.OptionalBoolean = None
     """
     Aspect correct resize setting override from the **aspect** image seed keyword argument, 
@@ -1182,6 +1198,7 @@ def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResul
                     'adapter',
                     'floyd',
                     'resize',
+                    'align',
                     'aspect',
                     'frame-start',
                     'frame-end']
@@ -1340,6 +1357,20 @@ def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResul
                     f'Image seed resize {["width", "height"][d_idx]} dimension {d} is not divisible by {align}.')
 
         result.resize_resolution = dimensions
+
+    user_align = parse_result.args.get('align', None)
+
+    if user_align is not None:
+        try:
+            user_align = int(user_align)
+        except ValueError as e:
+            raise ImageSeedArgumentError(
+                f'Error parsing image seed "align" argument: {e}.')
+        if user_align % align != 0:
+            raise ImageSeedArgumentError(
+                f'Image seed resize alignment {user_align} is not divisible by {align}.')
+
+        result.resize_align = user_align
 
     aspect = parse_result.args.get('aspect', None)
 
@@ -1969,7 +2000,7 @@ class MediaReader(AnimationReader):
         :param resize_resolution: Resize resolution
         :param aspect_correct: Aspect correct resize enabled?
         :param align: Images which are read are aligned to this amount of pixels, ``None`` or ``1`` will disable alignment.
-        :param image_processor: Optional image image processor associated with the file
+        :param image_processor: Optional image processor associated with the file
         :param frame_start: inclusive frame slice start frame
         :param frame_end: inclusive frame slice end frame
         :param path_opener: opens a binary file stream from paths.
@@ -2298,6 +2329,9 @@ def iterate_image_seed(uri: str | ImageSeedParseResult,
     if parse_result.resize_resolution is not None:
         resize_resolution = parse_result.resize_resolution
 
+    if parse_result.resize_align is not None:
+        align = parse_result.resize_align
+
     if parse_result.aspect_correct is not None:
         aspect_correct = parse_result.aspect_correct
 
@@ -2531,6 +2565,9 @@ def iterate_control_image(uri: str | ImageSeedParseResult,
 
     if parse_result.resize_resolution is not None:
         resize_resolution = parse_result.resize_resolution
+
+    if parse_result.resize_align is not None:
+        align = parse_result.resize_align
 
     if parse_result.aspect_correct is not None:
         aspect_correct = parse_result.aspect_correct
