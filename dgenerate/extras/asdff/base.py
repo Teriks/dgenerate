@@ -32,9 +32,14 @@ class AdPipelineBase:
     def __init__(self, pipe, force_pag=False):
         self.pipe = pipe
         self.force_pag = force_pag
+        self.auto_detect_pipe = True
+        self.crop_control_image = False
 
     @cached_property
     def inpaint_pipeline(self):
+        if not self.auto_detect_pipe:
+            return self.pipe
+
         is_xl = self.pipe.__class__.__name__.startswith('StableDiffusionXL')
         is_flux = self.pipe.__class__.__name__.startswith('Flux')
         is_sd3 = self.pipe.__class__.__name__.startswith('StableDiffusion3')
@@ -127,10 +132,21 @@ class AdPipelineBase:
 
         txt2img_images = [images] if not isinstance(images, Iterable) else images
 
+        control_images = [None] * len(txt2img_images)
+        for idx, txt2img in enumerate(txt2img_images):
+            ctrl_img_pipe = common['control_image']
+            if isinstance(ctrl_img_pipe, list):
+                control_images[idx] = ctrl_img_pipe[idx]
+            else:
+                control_images[idx] = ctrl_img_pipe
+
         init_images = []
         final_images = []
 
-        for i, init_image in enumerate(txt2img_images):
+        for i, pipe_images in enumerate(zip(txt2img_images, control_images)):
+            init_image = pipe_images[0]
+            control_image = pipe_images[1]
+
             init_images.append(init_image.copy())
             final_image = None
 
@@ -159,6 +175,7 @@ class AdPipelineBase:
                         common,
                         inpaint_only,
                         init_image,
+                        control_image,
                         mask,
                         bbox_padded,
                         device,
@@ -205,6 +222,7 @@ class AdPipelineBase:
             common: Mapping[str, Any],
             inpaint_only: Mapping[str, Any],
             init_image: Image.Image,
+            control_image: Image.Image,
             mask: Image.Image,
             bbox_padded: tuple[int, int, int, int],
             device: str,
@@ -216,10 +234,19 @@ class AdPipelineBase:
         inpaint_args["image"] = crop_image
         inpaint_args["mask_image"] = crop_mask
 
-        if "control_image" in inpaint_args:
-            inpaint_args["control_image"] = inpaint_args["control_image"].resize(
-                crop_image.size
-            )
+        if control_image is not None:
+            if self.crop_control_image and init_image.size == control_image.size:
+                inpaint_args["control_image"] = control_image.crop(bbox_padded)
+            else:
+                if init_image.size != control_image.size:
+                    _messages.log(
+                        'adetailer could not crop the control image correctly as it is a different '
+                        'size from your input image, they need to be the same dimension, '
+                        'reverting to resize only mode.')
+
+                inpaint_args["control_image"] = control_image.resize(
+                    crop_image.size
+                )
         return _pipelinewrapper.call_pipeline(
             pipeline=self.inpaint_pipeline,
             device=device,

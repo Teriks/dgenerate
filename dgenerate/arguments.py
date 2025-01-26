@@ -583,6 +583,94 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-ad', '--adetailer-detectors',
+            nargs='+',
+            action='store',
+            default=None,
+            metavar='ADETAILER_DETECTOR_URIS',
+            dest='adetailer_detector_uris',
+            help="""Specify one or more adetailer YOLO detector model URIs. When specifying this option, 
+                    you must provide an image to --image-seeds, inpaint masks will be auto generated 
+                    based on what is detected by the provided detector models.
+                    
+                    The models will be used in sequence to detect and then inpaint your image within
+                    the detection areas. This can be used for face detailing, face swapping, hand detailing, 
+                    etc. on any arbitrary image provided using an image generation model of your choice.
+                    
+                    This option supports: --model-type torch, torch-sdxl, torch-sd3, and torch-flux
+                    
+                    Example: --adetailer-detectors Bingsu/adetailer;weight-name=face_yolov8n.pt
+                    
+                    The "revision" argument specifies the model revision to use for the adetailer model when loading from
+                    Hugging Face repository, (The Git branch / tag, default is "main").
+                    
+                    The "subfolder" argument specifies the adetailer model subfolder, if specified when loading from a
+                    Hugging Face repository or folder, weights from the specified subfolder.
+                    
+                    The "weight-name" argument indicates the name of the weights file to be loaded when
+                    loading from a Hugging Face repository or folder on disk.
+                    
+                    If you wish to load a weights file directly from disk, use: --adetailer-detectors "yolo_model.pt"
+                    
+                    You may also load a YOLO model directly from a URL or Hugging Face blob link.
+                    
+                    Example: --adetailer-detectors https://modelsite.com/yolo-model.pt
+                    """)
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-adp', '--adetailer-mask-paddings',
+            nargs='+',
+            action='store',
+            type=int,
+            default=None,
+            metavar='ADETAILER_MASK_PADDING',
+            dest='adetailer_mask_paddings',
+            help="""One or more adetailer mask padding values to try. This specifies how much padding 
+                    should be between the adetailer detected feature and the boundary of the mask area. (default: 32).""")
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-adb', '--adetailer-mask-blurs',
+            nargs='+',
+            action='store',
+            type=int,
+            default=None,
+            metavar='ADETAILER_MASK_BLUR',
+            dest='adetailer_mask_blurs',
+            help="""The level of gaussian blur to apply
+                    to the generated adetailer inpaint mask, which can help with 
+                    smooth blending in of the inpainted feature. (default: 4)""")
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-add', '--adetailer-mask-dilations',
+            nargs='+',
+            action='store',
+            type=int,
+            default=None,
+            metavar='ADETAILER_MASK_DILATION',
+            dest='adetailer_mask_dilations',
+            help="The amount of dilation applied to the adetailer inpaint mask, see: cv2.dilate. (default: 4)")
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-adc', '--adetailer-crop-control-image',
+            action='store_true',
+            default=False,
+            dest='adetailer_crop_control_image',
+            help="""Should adetailer crop ControlNet control images to the feature detection area? 
+                    Your input image and control image should be the the same dimension, otherwise 
+                    this argument is ignored with a warning. When this argument is not specified, 
+                    the control image provided is simply resized to the same size as the 
+                    detection area."""))
+
+    actions.append(
+        parser.add_argument(
             '-te', '--text-encoders', nargs='+', type=_type_text_encoder, action='store', default=None,
             metavar='TEXT_ENCODER_URIS', dest='text_encoder_uris',
             help=f"""Specify Text Encoders for the main model using URIs, main models

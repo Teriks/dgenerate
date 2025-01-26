@@ -19,7 +19,6 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import os.path
 import typing
 
 import PIL.Image
@@ -32,11 +31,11 @@ import dgenerate.messages
 import dgenerate.types as _types
 import dgenerate.extras.asdff.base as _asdff
 import dgenerate.pipelinewrapper as _pipelinewrapper
-from huggingface_hub import hf_hub_download
 import dgenerate.image as _image
-import dgenerate.pipelinewrapper.hfutil as _hfutil
 import dgenerate.promptweighters as _promptweighters
 import dgenerate.pipelinewrapper.enums as _enums
+import dgenerate.pipelinewrapper.uris as _uris
+import dgenerate.pipelinewrapper.constants as _constants
 
 
 class AdetailerProcessor(_imageprocessor.ImageProcessor):
@@ -155,9 +154,9 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
                  pag_scale: typing.Optional[float] = None,
                  pag_adaptive_scale: typing.Optional[float] = None,
                  strength: float = 0.4,
-                 mask_padding: int = 32,
-                 mask_blur: int = 4,
-                 mask_dilation: int = 4,
+                 mask_padding: int = _constants.DEFAULT_ADETAILER_MASK_PADDING,
+                 mask_blur: int = _constants.DEFAULT_ADETAILER_MASK_BLUR,
+                 mask_dilation: int = _constants.DEFAULT_ADETAILER_MASK_DILATION,
                  pipe: diffusers.DiffusionPipeline = None,
                  pre_resize: bool = False,
                  **kwargs):
@@ -209,24 +208,17 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
         self._pre_resize = pre_resize
         self._pipe = pipe
 
-        if _hfutil.is_single_file_model_load(model):
-            if os.path.exists(model):
-                self._model_path = model
-            else:
-                if local_files_only:
-                    raise self.argument_error(f'Could not find adetailer model: {model}')
-                self._model_path = _hfutil.download_non_hf_model(model)
-        else:
-            try:
-                self._model_path = hf_hub_download(
-                    model,
-                    filename=weight_name,
-                    subfolder=subfolder,
-                    token=token,
-                    revision=revision,
-                    local_files_only=local_files_only)
-            except Exception as e:
-                raise self.argument_error(f'Error loading adetailer model: {e}')
+        try:
+            self._model_path = _uris.AdetailerDetectorUri(
+                model=model,
+                revision=revision,
+                subfolder=subfolder,
+                weight_name=weight_name
+            ).get_model_path(
+                use_auth_token=token,
+                local_files_only=local_files_only)
+        except Exception as e:
+            raise self.argument_error(str(e))
 
     def _adetailer(self, image):
         i_filename = _image.get_filename(image)

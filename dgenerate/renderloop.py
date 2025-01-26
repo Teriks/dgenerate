@@ -874,7 +874,9 @@ class RenderLoop:
             sdxl_refiner_cpu_offload=bool(self.config.sdxl_refiner_cpu_offload),
             sdxl_refiner_sequential_offload=bool(self.config.sdxl_refiner_sequential_offload),
             prompt_weighter_uri=self.config.prompt_weighter_uri,
-            prompt_weighter_loader=self.prompt_weighter_loader)
+            prompt_weighter_loader=self.prompt_weighter_loader,
+            adetailer_detector_uris=self.config.adetailer_detector_uris,
+            adetailer_crop_control_image=bool(self.config.adetailer_crop_control_image))
         return self._pipeline_wrapper
 
     def _ensure_output_path(self):

@@ -172,7 +172,11 @@ Help Output
                      [--sub-command-help [SUB_COMMAND ...]] [-ofm] [--templates-help [VARIABLE_NAME ...]]
                      [--directives-help [DIRECTIVE_NAME ...]] [--functions-help [FUNCTION_NAME ...]]
                      [-mt MODEL_TYPE] [-rev BRANCH] [-var VARIANT] [-sbf SUBFOLDER] [-atk TOKEN] [-bs INTEGER]
-                     [-bgs SIZE] [-te TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]]
+                     [-bgs SIZE] [-ad ADETAILER_DETECTOR_URIS [ADETAILER_DETECTOR_URIS ...]]
+                     [-adp ADETAILER_MASK_PADDING [ADETAILER_MASK_PADDING ...]]
+                     [-adb ADETAILER_MASK_BLUR [ADETAILER_MASK_BLUR ...]]
+                     [-add ADETAILER_MASK_DILATION [ADETAILER_MASK_DILATION ...]] [-adc]
+                     [-te TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]]
                      [-te2 TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]] [-un UNET_URI] [-un2 UNET_URI]
                      [-tf TRANSFORMER_URI] [-vae VAE_URI] [-vt] [-vs] [-lra LORA_URI [LORA_URI ...]]
                      [-lrfs LORA_FUSE_SCALE] [-ie IMAGE_ENCODER_URI] [-ipa IP_ADAPTER_URI [IP_ADAPTER_URI ...]]
@@ -353,6 +357,56 @@ Help Output
                             number suffix (image_N) in the filename signifying which image in the batch they
                             are.
                             ----
+      -ad ADETAILER_DETECTOR_URIS [ADETAILER_DETECTOR_URIS ...], --adetailer-detectors ADETAILER_DETECTOR_URIS [ADETAILER_DETECTOR_URIS ...]
+                            Specify one or more adetailer YOLO detector model URIs. When specifying this option,
+                            you must provide an image to --image-seeds, inpaint masks will be auto generated
+                            based on what is detected by the provided detector models.
+
+                            The models will be used in sequence to detect and then inpaint your image within the
+                            detection areas. This can be used for face detailing, face swapping, hand detailing,
+                            etc. on any arbitrary image provided using an image generation model of your choice.
+
+                            This option supports: --model-type torch, torch-sdxl, torch-sd3, and torch-flux
+
+                            Example: --adetailer-detectors Bingsu/adetailer;weight-name=face_yolov8n.pt
+
+                            The "revision" argument specifies the model revision to use for the adetailer model
+                            when loading from Hugging Face repository, (The Git branch / tag, default is
+                            "main").
+
+                            The "subfolder" argument specifies the adetailer model subfolder, if specified when
+                            loading from a Hugging Face repository or folder, weights from the specified
+                            subfolder.
+
+                            The "weight-name" argument indicates the name of the weights file to be loaded when
+                            loading from a Hugging Face repository or folder on disk.
+
+                            If you wish to load a weights file directly from disk, use: --adetailer-detectors
+                            "yolo_model.pt"
+
+                            You may also load a YOLO model directly from a URL or Hugging Face blob link.
+
+                            Example: --adetailer-detectors https://modelsite.com/yolo-model.pt
+                            ------------------------------------------------------------------
+      -adp ADETAILER_MASK_PADDING [ADETAILER_MASK_PADDING ...], --adetailer-mask-paddings ADETAILER_MASK_PADDING [ADETAILER_MASK_PADDING ...]
+                            One or more adetailer mask padding values to try. This specifies how much padding
+                            should be between the adetailer detected feature and the boundary of the mask area.
+                            (default: 32).
+                            --------------
+      -adb ADETAILER_MASK_BLUR [ADETAILER_MASK_BLUR ...], --adetailer-mask-blurs ADETAILER_MASK_BLUR [ADETAILER_MASK_BLUR ...]
+                            The level of gaussian blur to apply to the generated adetailer inpaint mask, which
+                            can help with smooth blending in of the inpainted feature. (default: 4)
+                            -----------------------------------------------------------------------
+      -add ADETAILER_MASK_DILATION [ADETAILER_MASK_DILATION ...], --adetailer-mask-dilations ADETAILER_MASK_DILATION [ADETAILER_MASK_DILATION ...]
+                            The amount of dilation applied to the adetailer inpaint mask, see: cv2.dilate.
+                            (default: 4)
+                            ------------
+      -adc, --adetailer-crop-control-image
+                            Should adetailer crop ControlNet control images to the feature detection area? Your
+                            input image and control image should be the the same dimension, otherwise this
+                            argument is ignored with a warning. When this argument is not specified, the control
+                            image provided is simply resized to the same size as the detection area.
+                            ------------------------------------------------------------------------
       -te TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...], --text-encoders TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]
                             Specify Text Encoders for the main model using URIs, main models may use one or more
                             text encoders depending on the --model-type value and other dgenerate arguments.
@@ -2313,6 +2367,15 @@ Some possible definitions:
     * ``--image-seeds "my-image-seed.png;resize=512x512;aspect=false"`` (img2img)
     * ``--image-seeds "my-image-seed.png;mask=my-mask-image.png;resize=512x512;aspect=false"`` (inpainting)
 
+
+You may also specify the ``align`` keyword argument in order to force a specific image alignment for
+all incoming images, this alignment value must be divisible by 8, and can be used with or without
+the specification of ``resize``.
+
+Some possible definitions with ``align``:
+
+    * ``--image-seeds "my-image-seed.png;resize=1000;align=64"`` (equates to ``960x960``)
+    * ``--image-seeds "my-image-seed.png;align=64"`` (force the original size to 64 pixel alignment)
 
 The following example preforms img2img generation, followed by inpainting generation using 2 image seed definitions.
 The involved images are resized using the basic syntax with no keyword arguments present in the image seeds.
