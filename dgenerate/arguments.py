@@ -333,6 +333,39 @@ def _type_text_encoder(val):
     return val
 
 
+def _type_adetailer_mask_padding(val):
+    try:
+        val = int(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be an integer')
+
+    if val < 0:
+        raise argparse.ArgumentTypeError('Must be greater than or equal to 0')
+    return val
+
+
+def _type_adetailer_mask_blur(val):
+    try:
+        val = int(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be an integer')
+
+    if val < 0:
+        raise argparse.ArgumentTypeError('Must be greater than or equal to 0')
+    return val
+
+
+def _type_adetailer_mask_dilation(val):
+    try:
+        val = int(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be an integer')
+
+    if val < 0:
+        raise argparse.ArgumentTypeError('Must be greater than or equal to 0')
+    return val
+
+
 _ARG_PARSER_CACHE = dict()
 
 
@@ -627,7 +660,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '-adp', '--adetailer-mask-paddings',
             nargs='+',
             action='store',
-            type=int,
+            type=_type_adetailer_mask_padding,
             default=None,
             metavar='ADETAILER_MASK_PADDING',
             dest='adetailer_mask_paddings',
@@ -640,7 +673,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '-adb', '--adetailer-mask-blurs',
             nargs='+',
             action='store',
-            type=int,
+            type=_type_adetailer_mask_blur,
             default=None,
             metavar='ADETAILER_MASK_BLUR',
             dest='adetailer_mask_blurs',
@@ -654,7 +687,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '-add', '--adetailer-mask-dilations',
             nargs='+',
             action='store',
-            type=int,
+            type=_type_adetailer_mask_dilation,
             default=None,
             metavar='ADETAILER_MASK_DILATION',
             dest='adetailer_mask_dilations',
