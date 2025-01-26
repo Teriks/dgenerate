@@ -233,11 +233,11 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
 
         if last_pipe is None:
             raise self.argument_error(
-                'adetailer could not find the last image generation pipeline that was used, '
-                'please preform an image generation operation before attempting to '
-                'use this processor, this processor is best used with the --post-processors option '
+                'adetailer could not find the last image generation pipeline that was used '
+                'for image generation, please preform an image generation operation before attempting to '
+                'use this processor. This processor is best used with the --post-processors option '
                 'of dgenerate. It is possible however, to use this processor elsewhere in a config '
-                'script if image generation has occured previously. It will re-use the last '
+                'script if image generation has occurred previously. It will re-use the last '
                 'image generation pipelines components for inpainting.')
 
         is_flux = last_pipe.__class__.__name__.startswith('Flux') and \
