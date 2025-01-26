@@ -4665,6 +4665,7 @@ Output:
 
     Available image processors:
 
+        "adetailer"
         "anyline"
         "canny"
         "flip"
