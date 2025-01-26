@@ -1725,6 +1725,11 @@ class RenderLoopConfig(_types.SetFromMixin):
         """
 
         def ov(n, v):
+            if not hasattr(_pipelinewrapper.DiffusionArguments, n):
+                # fat-fingered an argument name too many times :)
+                raise AssertionError(
+                    f'dgenerate.pipelinewrapper.DiffusionArguments lacks property: {n}')
+
             if not _pipelinewrapper.model_type_is_sdxl(self.model_type):
                 if n.startswith('sdxl'):
                     return None
@@ -1770,7 +1775,7 @@ class RenderLoopConfig(_types.SetFromMixin):
             sdxl_t2i_adapter_factor=ov('sdxl_t2i_adapter_factor', self.sdxl_t2i_adapter_factors),
             image_seed_strength=ov('image_seed_strength', self.image_seed_strengths),
             guidance_scale=ov('guidance_scale', self.guidance_scales),
-            pag_scale=ov('pag_scales', self.pag_scales),
+            pag_scale=ov('pag_scale', self.pag_scales),
             pag_adaptive_scale=ov('pag_adaptive_scale', self.pag_adaptive_scales),
             image_guidance_scale=ov('image_guidance_scale', self.image_guidance_scales),
             guidance_rescale=ov('guidance_rescale', self.guidance_rescales),
