@@ -51,13 +51,13 @@ config.dtype = DataType.FLOAT16
 
 # config.seeds = [123456789]
 
-render_loop = RenderLoop(config=config)
+render_loop = RenderLoop(
+    config=config,
+    disable_writes=True  # disables all writes to disk
+)
 
 # Output size for SDXL defaults to 1024
 
-
-# disables all writes to disk
-render_loop.disable_writes = True
 
 # run the render loop and handle events,
 # you could also use render_loop.run() if you did not care

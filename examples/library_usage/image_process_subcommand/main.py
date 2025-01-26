@@ -12,7 +12,10 @@ config.output = ['earth-upscaled.png']
 config.processors = [
     'upscaler;model=https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth']
 
-render_loop = dgenerate.image_process.ImageProcessRenderLoop(config=config)
+render_loop = dgenerate.image_process.ImageProcessRenderLoop(
+    config=config,
+    disable_writes=True  # disable all writes to disk
+)
 
 render_loop.run()
 
@@ -27,9 +30,6 @@ render_loop.image_processor_loader.load_plugin_modules(['plugin_example'])
 config.processors = ['foo']
 
 config.output = ['foo-processed.png']
-
-# do not write anything to disk for us
-render_loop.disable_writes = True
 
 # run again, this time observe user handleable events
 

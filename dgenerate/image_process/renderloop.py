@@ -194,8 +194,33 @@ class ImageProcessRenderLoop:
     if writes to disk are disabled.
     """
 
-    def __init__(self, config: _renderloopconfig.ImageProcessRenderLoopConfig = None,
-                 image_processor_loader: _imageprocessors.ImageProcessorLoader | None = None):
+    config: _renderloopconfig.ImageProcessRenderLoopConfig = None
+    """
+    Render loop configuration.
+    """
+
+    def __init__(self,
+                 config: _renderloopconfig.ImageProcessRenderLoopConfig = None,
+                 image_processor_loader: _imageprocessors.ImageProcessorLoader | None = None,
+                 message_header: str = 'image-process',
+                 disable_writes: bool = False):
+        """
+        :param config: :py:class:`.ImageProcessRenderLoopConfig`. If ``None`` is provided, a
+            :py:class:`.ImageProcessRenderLoopConfig` instance will be created and assigned to
+            :py:attr:`.ImageProcessRenderLoop.config`.
+
+        :param image_processor_loader: :py:class:`dgenerate.imageprocessors.ImageProcessorLoader`.
+            If ``None`` is provided, an instance will be created and assigned to
+            :py:attr:`.ImageProcessRenderLoop.image_processor_loader`.
+
+        :param message_header: Used as the header for messages written via :py:mod:`dgenerate.messages`
+
+        :param disable_writes: Disable or enable all writes to disk, if you intend to
+            only ever use the event stream of the render loop when using dgenerate as a
+            library, this is a useful option. :py:attr:`.ImageProcessRenderLoop.written_images` and
+            :py:attr:`.ImageProcessRenderLoop.written_animations` will not be available if
+            writes to disk are disabled.
+        """
 
         if config is None:
             self.config = _renderloopconfig.ImageProcessRenderLoopConfig()
@@ -210,6 +235,9 @@ class ImageProcessRenderLoop:
         self._written_images: _files.GCFile | None = None
         self._written_animations: _files.GCFile | None = None
         self._iterating = False
+
+        self.message_header = message_header
+        self.disable_writes = disable_writes
 
     @property
     def written_images(self) -> collections.abc.Iterable[str]:
