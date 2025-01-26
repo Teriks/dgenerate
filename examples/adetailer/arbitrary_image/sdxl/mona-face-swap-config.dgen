@@ -16,7 +16,7 @@
 # processor forces this alignment and we want the input image and control
 # images to be identical in size
 
-# --adetailer-crop-control-image tells the adetailer algorith to crop the depth
+# --adetailer-crop-control-image tells the adetailer algorithm to crop the depth
 # image down to just the detection area, so that its just the face depth map
 # that is used as the control image
 
