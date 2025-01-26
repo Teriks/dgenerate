@@ -132,6 +132,9 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
     The "mask-dilation" argument indicates the amount of dilation applied
     to the inpaint mask, see: cv2.dilate
 
+    The "detector-device" argument can be used to specify a device
+    override for the YOLO detector, i.e. the GPU / Accelerate device
+    the model will run on. Example: cuda:0, cuda:1, cpu
     """
 
     NAMES = ['adetailer']
@@ -157,6 +160,7 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
                  mask_padding: int = _constants.DEFAULT_ADETAILER_MASK_PADDING,
                  mask_blur: int = _constants.DEFAULT_ADETAILER_MASK_BLUR,
                  mask_dilation: int = _constants.DEFAULT_ADETAILER_MASK_DILATION,
+                 detector_device: _types.OptionalName = None,
                  pipe: diffusers.DiffusionPipeline = None,
                  pre_resize: bool = False,
                  **kwargs):
@@ -204,6 +208,7 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
         self._strength = strength
         self._seed = seed
         self._prompt_weighter = prompt_weighter
+        self._detector_device = detector_device
 
         self._pre_resize = pre_resize
         self._pipe = pipe
@@ -331,6 +336,7 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
             mask_padding=self._mask_padding,
             model_path=self._model_path,
             device=self.device,
+            detector_device=_types.default(self._detector_device, self._detector_device),
             prompt_weighter=prompt_weighter)
 
         if len(result.images) > 0:

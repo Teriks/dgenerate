@@ -1844,6 +1844,7 @@ class DiffusionPipelineWrapper:
                     local_files_only=self._local_files_only, use_auth_token=self._auth_token),
                 images=input_images,
                 device=self._device,
+                detector_device=_types.default(detector_uri.device, self._device),
                 prompt_weighter=self._prompt_weighter,
                 mask_blur=int(_types.default(user_args.adetailer_mask_blur, _constants.DEFAULT_ADETAILER_MASK_BLUR)),
                 mask_padding=int(

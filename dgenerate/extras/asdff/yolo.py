@@ -8,6 +8,8 @@ from huggingface_hub import hf_hub_download
 from PIL import Image, ImageDraw
 from torchvision.transforms.functional import to_pil_image
 
+import dgenerate.messages
+
 try:
     from ultralytics import YOLO
 except ModuleNotFoundError:
@@ -61,21 +63,32 @@ def mask_to_pil(masks: torch.Tensor, shape: tuple[int, int]) -> list[Image.Image
 
 
 def yolo_detector(
-    image: Image.Image, model_path: str | Path | None = None, confidence: float = 0.3
+    image: Image.Image, model_path: str | Path | None = None, device: str = 'cuda', confidence: float = 0.3
 ) -> list[Image.Image] | None:
     if not model_path:
         model_path = hf_hub_download("Bingsu/adetailer", "face_yolov8n.pt")
-    model = YOLO(model_path)
-    pred = model(image, conf=confidence)
 
-    bboxes = pred[0].boxes.xyxy.cpu().numpy()
-    if bboxes.size == 0:
-        return None
+    dgenerate.messages.debug_log(f'running adetailer YOLO detector on device: {device}')
 
-    if pred[0].masks is None:
-        masks = create_mask_from_bbox(bboxes, image.size)
-    else:
-        masks = mask_to_pil(pred[0].masks.data, image.size)
+    model = None
+    try:
+        model = YOLO(model_path).to(device)
+
+        pred = model(image, conf=confidence)
+
+        bboxes = pred[0].boxes.xyxy.cpu().numpy()
+        if bboxes.size == 0:
+            return None
+
+        if pred[0].masks is None:
+            masks = create_mask_from_bbox(bboxes, image.size)
+        else:
+            masks = mask_to_pil(pred[0].masks.data, image.size)
+    finally:
+        if model and device != 'cpu':
+            model.to('cpu')
+            del model
+            torch.cuda.empty_cache()
 
     return masks
 
