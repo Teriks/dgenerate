@@ -73,7 +73,10 @@ config.seed_image_processors = ['foo']
 # config.seeds = [123456789]
 
 
-render_loop = RenderLoop(config=config)
+render_loop = RenderLoop(
+    config=config,
+    disable_writes=True  # disable all writes to disk
+)
 
 # Add our processor class
 render_loop.image_processor_loader.add_class(MyProcessor)
@@ -88,8 +91,6 @@ render_loop.image_processor_loader.add_class(MyProcessor)
 
 # render_loop.image_processor_loader.load_plugin_modules(['my_python_file.py'])
 
-# disables all writes to disk
-render_loop.disable_writes = True
 
 # run the render loop and handle events,
 # you could also use render_loop.run() if you did not care

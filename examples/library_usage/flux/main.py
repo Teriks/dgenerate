@@ -51,10 +51,10 @@ config.flux_max_sequence_length = 256
 # config.seeds = [123456789]
 
 
-render_loop = RenderLoop(config=config)
-
-# disables all writes to disk
-render_loop.disable_writes = True
+render_loop = RenderLoop(
+    config=config,
+    disable_writes=True  # disables all writes to disk
+)
 
 # run the render loop and handle events,
 # you could also use render_loop.run() if you did not care

@@ -307,9 +307,13 @@ class RenderLoop:
 
         return self._pipeline_wrapper
 
-    def __init__(self, config: RenderLoopConfig | None = None,
+    def __init__(self,
+                 config: RenderLoopConfig | None = None,
                  image_processor_loader: _imageprocessors.ImageProcessorLoader | None = None,
-                 prompt_weighter_loader: _promptweighters.PromptWeighterLoader | None = None):
+                 prompt_weighter_loader: _promptweighters.PromptWeighterLoader | None = None,
+                 model_extra_modules: dict[str, typing.Any] = None,
+                 second_model_extra_modules: dict[str, typing.Any] = None,
+                 disable_writes: bool = False):
         """
         :param config: :py:class:`.RenderLoopConfig` or :py:class:`dgenerate.arguments.DgenerateArguments`.
             If ``None`` is provided, a :py:class:`.RenderLoopConfig` instance will be created and
@@ -322,6 +326,18 @@ class RenderLoop:
         :param prompt_weighter_loader: :py:class:`dgenerate.promptweighters.PromptWeighterLoader`.
             If ``None`` is provided, an instance will be created and assigned to
             :py:attr:`.RenderLoop.prompt_weighter_loader`.
+
+        :param model_extra_modules: Extra raw diffusers modules to use in the creation
+            of the main model pipeline.
+
+        :param second_model_extra_modules: Extra raw diffusers modules to use in the creation of
+            any refiner or stable cascade decoder model pipeline.
+
+        :param disable_writes: Disable or enable all writes to disk, if you intend to only
+            ever use the event stream of the render loop when using dgenerate as a
+            library, this is a useful option. :py:attr:`.RenderLoop.written_images` and
+            :py:attr:`.RenderLoop.written_animations` will not be available if writes to
+            disk are disabled.
         """
 
         self._generation_step = -1
@@ -341,6 +357,10 @@ class RenderLoop:
         self.prompt_weighter_loader = \
             _promptweighters.PromptWeighterLoader() if \
                 prompt_weighter_loader is None else prompt_weighter_loader
+
+        self.model_extra_modules = model_extra_modules
+        self.second_model_extra_modules = second_model_extra_modules
+        self.disable_writes = disable_writes
 
         self._post_processor = None
 
