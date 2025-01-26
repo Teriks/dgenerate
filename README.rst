@@ -381,6 +381,10 @@ Help Output
                             The "weight-name" argument indicates the name of the weights file to be loaded when
                             loading from a Hugging Face repository or folder on disk.
 
+                            The "device" argument indicates a device override for the YOLO detector model, the
+                            detector model can be set to run on a different device if desired, for example:
+                            cuda:0, cuda:1, cpu, etc. It runs on the same device as --device by default.
+
                             If you wish to load a weights file directly from disk, use: --adetailer-detectors
                             "yolo_model.pt"
 
@@ -1620,10 +1624,6 @@ Help Output
                             diffusion model from VRAM considering current GPU memory usage, and estimated GPU
                             memory usage of new image processor models that are about to enter VRAM. If any of
                             these constraint expressions are met the last active diffusion model in VRAM will be
-                            destroyed. Example, and default value: "processor_size > (available * 0.70)" For
-                            Syntax See: [https://dgenerate.readthedocs.io/en/v4.5.1/dgenerate_submodules.html#dg
-                            enerate.imageprocessors.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS]
-                            ----------------------------------------------------------------
 
 
 

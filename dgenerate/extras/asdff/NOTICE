@@ -2,5 +2,9 @@ This code is derivative of: https://github.com/theblackhatmagician/adetailer_sdx
 
 Which in turn is a derivative of the original work: https://github.com/Bing-su/asdff
 
-Modifications here: add support for SD3 and Flux, integrate with dgenerate memory management in base.py
+Modifications here:
+
+    Add support for SD3 and Flux, integrate with dgenerate memory management in base.py
+
+    Arbitrary device selection for YOLO detector in base.py and yolo.py, VRAM memory management.
 

@@ -25,9 +25,10 @@ import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 import huggingface_hub
+import dgenerate.pipelinewrapper.util as _util
 
 _lora_uri_parser = _textprocessing.ConceptUriParser(
-    'Adetailer Detector', ['revision', 'subfolder', 'weight-name'])
+    'Adetailer Detector', ['revision', 'subfolder', 'weight-name', 'device'])
 
 
 class AdetailerDetectorUri:
@@ -63,15 +64,32 @@ class AdetailerDetectorUri:
         """
         return self._weight_name
 
+    @property
+    def device(self) -> _types.OptionalName:
+        """
+        Model device override
+        """
+        return self._device
+
     def __init__(self,
                  model: str,
                  revision: _types.OptionalString = None,
                  subfolder: _types.OptionalPath = None,
-                 weight_name: _types.OptionalName = None):
+                 weight_name: _types.OptionalName = None,
+                 device: _types.OptionalName = None):
         self._model = model
         self._revision = revision
         self._subfolder = subfolder
         self._weight_name = weight_name
+        self._device = device
+
+        if self._device is not None:
+            if _util.is_valid_device_string(device):
+                self._device = device
+            else:
+                self._device = None
+                raise _exceptions.InvalidAdetailerDetectorUriError(
+                    f'invalid adetailer detector device specification: {device}')
 
     def __str__(self):
         return f'{self.__class__.__name__}({str(_types.get_public_attributes(self))})'
@@ -114,9 +132,9 @@ class AdetailerDetectorUri:
 
         :param uri: string with ``--adetailer-detectors`` uri syntax
 
-        :raise InvalidLoRAUriError:
+        :raise InvalidAdetailerDetectorUriError:
 
-        :return: :py:class:`.LoRAUri`
+        :return: :py:class:`.AdetailerDetectorUri`
         """
         try:
             r = _lora_uri_parser.parse(uri)
@@ -124,6 +142,7 @@ class AdetailerDetectorUri:
             return AdetailerDetectorUri(model=r.concept,
                                         weight_name=r.args.get('weight-name', None),
                                         revision=r.args.get('revision', None),
-                                        subfolder=r.args.get('subfolder', None))
+                                        subfolder=r.args.get('subfolder', None),
+                                        device=r.args.get('device', None))
         except _textprocessing.ConceptUriParseError as e:
             raise _exceptions.InvalidAdetailerDetectorUriError(e)

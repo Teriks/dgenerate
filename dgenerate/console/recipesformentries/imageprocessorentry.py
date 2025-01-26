@@ -302,7 +302,7 @@ class _ImageProcessorEntry(_entry._Entry):
                 entry.grid(row=row, column=1, sticky='w')
                 return False, [entry], variable
 
-        elif param_name == 'device':
+        elif 'device' in param_name:
             variable = tk.StringVar(value='')
             values = _resources.get_torch_devices()
             if optional:

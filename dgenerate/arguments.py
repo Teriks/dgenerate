@@ -610,6 +610,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     The "weight-name" argument indicates the name of the weights file to be loaded when
                     loading from a Hugging Face repository or folder on disk.
                     
+                    The "device" argument indicates a device override for the YOLO detector model, the 
+                    detector model can be set to run on a different device if desired, for example: 
+                    cuda:0, cuda:1, cpu, etc. It runs on the same device as --device by default.
+                    
                     If you wish to load a weights file directly from disk, use: --adetailer-detectors "yolo_model.pt"
                     
                     You may also load a YOLO model directly from a URL or Hugging Face blob link.

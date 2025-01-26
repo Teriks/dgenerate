@@ -115,6 +115,7 @@ class AdPipelineBase:
             mask_padding: int = 32,
             model_path: str = None,
             device: str = 'cuda',
+            detector_device: str = 'cuda',
             prompt_weighter: Optional[str] = None
     ):
         if pipeline_args is None:
@@ -149,9 +150,9 @@ class AdPipelineBase:
 
             for j, detector in enumerate(detectors):
                 if model_path:
-                    masks = detector(init_image, model_path=model_path)
+                    masks = detector(init_image, device=detector_device, model_path=model_path)
                 else:
-                    masks = detector(init_image)
+                    masks = detector(init_image, device=detector_device)
 
                 if masks is None:
                     _messages.log(
