@@ -1,6 +1,11 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 4.5.1
 
+# first we should generate an image that we want to refine
+# with adetailer using some model, or operation that affects
+# the last_images template variable, even \image_process will
+# do this
+
 stabilityai/stable-diffusion-xl-base-1.0
 --model-type torch-sdxl
 --dtype float16
@@ -23,12 +28,20 @@ stabilityai/stable-diffusion-xl-base-1.0
 # way, but this cannot be done as a one liner on the command
 # line as with --post-processors
 
-# we can for instance, use the combinatorics arguments of dgenerate
-# to make variations, and also run the SDXL refiner as a final step
+# we can for instance, use the combinatorial arguments of dgenerate
+# to make variations, and also run the SDXL refiner as a final step,
 # where as with --post-processors, the SDXL refiner always runs before
 # adetailer
 
-# combinatorially refine 8 variants using different settings for adetailer
+# we can also choose any model type and model that we want to use with
+# adetailer, even different models that the model that generated the initial image,
+# as long as that model supports inpainting
+
+# this means we can apply this postprocess to the output of models that do not
+# support adetailer if desired, such as Stable Cascade etc.
+
+# now, combinatorially refine 8 variants using different settings for adetailer
+# so that we can observe differences in the output
 
 stabilityai/stable-diffusion-xl-base-1.0
 --model-type torch-sdxl
