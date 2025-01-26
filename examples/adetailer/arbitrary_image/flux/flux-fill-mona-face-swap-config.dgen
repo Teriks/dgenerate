@@ -1,9 +1,13 @@
-# Flux requires a huggingface auth token to access
-# you must request access to the repository
+#! /usr/bin/env dgenerate --file
+#! dgenerate 4.5.1
 
-\setp auth_token "$HF_TOKEN"
 
-\set auth_token {{ '--auth-token ' + quote(auth_token) if auth_token else '' }}
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %} !END
 
 # use a YOLO model to detect a face and generate an inpaint mask
 # for the Flux fill pipeline, composite with adetailer
