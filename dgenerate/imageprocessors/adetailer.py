@@ -233,8 +233,12 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
 
         if last_pipe is None:
             raise self.argument_error(
-                'adetailer did not find an active previously used diffusion pipeline, '
-                'please preform diffusion before attempting to use this processor.')
+                'adetailer could not find the last image generation pipeline that was used, '
+                'please preform an image generation operation before attempting to '
+                'use this processor, this processor is best used with the --post-processors option '
+                'of dgenerate. It is possible however, to use this processor elsewhere in a config '
+                'script if image generation has occured previously. It will re-use the last '
+                'image generation pipelines components for inpainting.')
 
         is_flux = last_pipe.__class__.__name__.startswith('Flux') and \
                   not isinstance(last_pipe, diffusers.FluxFillPipeline)
@@ -350,6 +354,7 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
     def to(self, device) -> "AdetailerProcessor":
         """
         Does nothing for this processor.
+
         :param device: the device
         :return: this processor
         """
