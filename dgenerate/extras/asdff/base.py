@@ -107,8 +107,7 @@ class AdPipelineBase:
 
     def __call__(  # noqa: C901
             self,
-            common: Mapping[str, Any] | None = None,
-            inpaint_only: Mapping[str, Any] | None = None,
+            pipeline_args: Mapping[str, Any] | None = None,
             images: Image.Image | Iterable[Image.Image] | None = None,
             detectors: DetectorType | Iterable[DetectorType] | None = None,
             mask_dilation: int = 4,
@@ -118,12 +117,8 @@ class AdPipelineBase:
             device: str = 'cuda',
             prompt_weighter: Optional[str] = None
     ):
-        if common is None:
-            common = {}
-        if inpaint_only is None:
-            inpaint_only = {}
-        if "strength" not in inpaint_only:
-            inpaint_only = {**inpaint_only, "strength": 0.4}
+        if pipeline_args is None:
+            pipeline_args = {}
 
         if detectors is None:
             detectors = [self.default_detector]
@@ -134,9 +129,9 @@ class AdPipelineBase:
 
         control_images = [None] * len(txt2img_images)
 
-        if 'control_image' in common:
+        if 'control_image' in pipeline_args:
             for idx, txt2img in enumerate(txt2img_images):
-                ctrl_img_pipe = common['control_image']
+                ctrl_img_pipe = pipeline_args['control_image']
                 if isinstance(ctrl_img_pipe, list):
                     control_images[idx] = ctrl_img_pipe[idx]
                 else:
@@ -174,8 +169,7 @@ class AdPipelineBase:
                     mask = mask_gaussian_blur(mask, mask_blur)
                     bbox_padded = bbox_padding(bbox, init_image.size, mask_padding)
                     inpaint_output = self.process_inpainting(
-                        common,
-                        inpaint_only,
+                        pipeline_args,
                         init_image,
                         control_image,
                         mask,
@@ -202,27 +196,25 @@ class AdPipelineBase:
         return yolo_detector
 
     def _get_inpaint_args(
-            self, common: Mapping[str, Any], inpaint_only: Mapping[str, Any]
+            self, pipeline_args: Mapping[str, Any]
     ):
-        common = dict(common)
+        pipeline_args = dict(pipeline_args)
         sig = inspect.signature(self.inpaint_pipeline)
         if (
                 "control_image" in sig.parameters
-                and "control_image" not in common
-                and "image" in common
+                and "control_image" not in pipeline_args
+                and "image" in pipeline_args
         ):
-            common["control_image"] = common.pop("image")
+            pipeline_args["control_image"] = pipeline_args.pop("image")
         return {
-            **common,
-            **inpaint_only,
+            **pipeline_args,
             "num_images_per_prompt": 1,
             "output_type": "pil",
         }
 
     def process_inpainting(
             self,
-            common: Mapping[str, Any],
-            inpaint_only: Mapping[str, Any],
+            pipeline_args: Mapping[str, Any],
             init_image: Image.Image,
             control_image: Image.Image,
             mask: Image.Image,
@@ -232,7 +224,7 @@ class AdPipelineBase:
     ):
         crop_image = init_image.crop(bbox_padded)
         crop_mask = mask.crop(bbox_padded)
-        inpaint_args = self._get_inpaint_args(common, inpaint_only)
+        inpaint_args = self._get_inpaint_args(pipeline_args)
         inpaint_args["image"] = crop_image
         inpaint_args["mask_image"] = crop_mask
 

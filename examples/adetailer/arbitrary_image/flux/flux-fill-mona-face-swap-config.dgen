@@ -1,0 +1,24 @@
+# Flux requires a huggingface auth token to access
+# you must request access to the repository
+
+\setp auth_token "$HF_TOKEN"
+
+\set auth_token {{ '--auth-token ' + quote(auth_token) if auth_token else '' }}
+
+# use a YOLO model to detect a face and generate an inpaint mask
+# for the Flux fill pipeline, composite with adetailer
+
+# you can also use the normal flux inpaint pipeline if desired
+
+black-forest-labs/FLUX.1-Fill-dev
+--model-type torch-flux-fill {{ auth_token }}
+--dtype bfloat16
+--model-sequential-offload
+--image-seeds ../../../media/monalisa.png
+--adetailer-detectors Bingsu/adetailer;weight-name=face_yolov8n.pt
+--inference-steps 50
+--guidance-scales 3.5
+--gen-seeds 1
+--output-path flux-fill-mona-face-swap
+--output-size 800
+--prompts "woman smiling like a maniac"

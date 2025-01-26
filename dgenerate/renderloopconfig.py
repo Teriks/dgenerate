@@ -916,7 +916,8 @@ class RenderLoopConfig(_types.SetFromMixin):
             _pipelinewrapper.ModelType.TORCH,
             _pipelinewrapper.ModelType.TORCH_SDXL,
             _pipelinewrapper.ModelType.TORCH_SD3,
-            _pipelinewrapper.ModelType.TORCH_FLUX
+            _pipelinewrapper.ModelType.TORCH_FLUX,
+            _pipelinewrapper.ModelType.TORCH_FLUX_FILL
         }:
             raise RenderLoopConfigError(
                 f'{a_namer("adetailer_detector_uris")} is only compatible with '
@@ -1378,7 +1379,8 @@ class RenderLoopConfig(_types.SetFromMixin):
                         f'in at least one {a_namer("image_seeds")} definition.')
 
             if not all(p.mask_images is not None for p in parsed_image_seeds):
-                if self.model_type == _pipelinewrapper.ModelType.TORCH_FLUX_FILL:
+                if self.model_type == _pipelinewrapper.ModelType.TORCH_FLUX_FILL \
+                        and not self.adetailer_detector_uris:
                     raise RenderLoopConfigError(
                         f'Only inpainting {a_namer("image_seeds")} '
                         f'definitions can be used with {a_namer("model_type")} torch-flux-fill.')
