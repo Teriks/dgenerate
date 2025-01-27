@@ -906,6 +906,12 @@ class DgenerateConsole(tk.Tk):
             height = label_height
             width = int(height * image_aspect)
 
+        if width < 0:
+            return
+
+        if height < 0:
+            return
+
         img = self._displayed_image.resize((width, height), PIL.Image.Resampling.LANCZOS)
 
         photo_img = PIL.ImageTk.PhotoImage(img)

@@ -1,0 +1,32 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 4.5.1
+
+# You can utilize multiple ControlNet union models with different modes
+# The models used must be exactly the same model or dgenerate will
+# throw a relevant error, the only thing that can vary is the "mode"
+# argument to change the mode being used
+
+# Only the first model specification can apply the "scale", "start", and "end"
+# argument values, if they are specified again those values are ignored.
+
+# Use depth + pose below, two images are used (the same images), for each
+# "mode" that is mentioned.  Force openpose to align to 64 pixels because
+# the midas processor forces this alignment and the input images
+# need to be the same size
+
+stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
+--variant fp16 --dtype float16
+--vae AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix
+--sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0
+--gen-seeds 2
+--inference-steps 30
+--guidance-scales 8
+--output-path multiple
+--output-size 1024
+--model-cpu-offload
+--vae-tiling
+--vae-slicing
+--prompts "A boxer throwing a punch in the ring"
+--control-nets xinsir/controlnet-union-sdxl-1.0;scale=0.8;mode=depth xinsir/controlnet-union-sdxl-1.0;mode=openpose
+--image-seeds "../../media/man-fighting-pose.jpg, ../../media/man-fighting-pose.jpg"
+--control-image-processors midas + "openpose;detect-align=64;include-hand=true;include-face=true;output-file=boxer/boxer-openpose.png"
