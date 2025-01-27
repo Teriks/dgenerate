@@ -5436,6 +5436,21 @@ The ``\templates_help`` output from the above example is:
         Name: "last_adapter_cache_memory_constraints"
             Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
+        Name: "last_adetailer_crop_control_image"
+            Type: typing.Optional[bool]
+            Value: None
+        Name: "last_adetailer_detector_uris"
+            Type: typing.Optional[collections.abc.Sequence[str]]
+            Value: []
+        Name: "last_adetailer_mask_blurs"
+            Type: typing.Optional[collections.abc.Sequence[int]]
+            Value: []
+        Name: "last_adetailer_mask_dilations"
+            Type: typing.Optional[collections.abc.Sequence[int]]
+            Value: []
+        Name: "last_adetailer_mask_paddings"
+            Type: typing.Optional[collections.abc.Sequence[int]]
+            Value: []
         Name: "last_animation_format"
             Type: <class 'str'>
             Value: 'mp4'
