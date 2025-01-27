@@ -48,7 +48,7 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
 
     This image processor may only be used if a diffusion pipeline has been
     previously executed by dgenerate, that pipeline will be used to process
-    the inpainting done by adetailer.  For a single command line invocation
+    the inpainting done by adetailer. For a single command line invocation
     you must use --post-processors to use this image processor correctly. In
     dgenerate config script, you may use it anywhere, and the last executed
     diffusion pipeline will be reused for inpainting.
