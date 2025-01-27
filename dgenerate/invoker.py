@@ -393,7 +393,7 @@ def invoke_dgenerate_events(
             _pipelinewrapper.InvalidModelFileError,
             _pipelinewrapper.InvalidModelUriError,
             _pipelinewrapper.ModelUriLoadError,
-            _pipelinewrapper.InvalidSchedulerNameError,
+            _pipelinewrapper.SchedulerLoadError,
             _pipelinewrapper.UnsupportedPipelineConfigError,
             _promptweighters.PromptWeightingUnsupported,
             _plugin.ModuleFileNotFoundError,

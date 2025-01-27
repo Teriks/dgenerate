@@ -179,6 +179,8 @@ from .hfutil import (
 # Pipelines
 from .pipelines import (
     InvalidModelFileError,
+    SchedulerLoadError,
+    SchedulerArgumentError,
     InvalidSchedulerNameError,
     TorchPipelineFactory,
     TorchPipelineCreationResult,
@@ -190,6 +192,7 @@ from .pipelines import (
     get_torch_pipeline_class,
     create_torch_diffusion_pipeline,
     estimate_pipeline_memory_use,
+    get_scheduler_uri_schema,
     load_scheduler,
     scheduler_is_help,
     text_encoder_is_help,
