@@ -1800,15 +1800,35 @@ def get_torch_pipeline_class(
 
     is_sdxl = _enums.model_type_is_sdxl(model_type)
 
+    sdxl_controlnet_union = False
+    parsed_control_net_uris = None
+
     try:
-        sdxl_controlnet_union = controlnet_uris and is_sdxl and any(
-            _uris.ControlNetUri.parse(s, model_type).mode is not None for s in controlnet_uris)
+        if controlnet_uris and is_sdxl:
+            parsed_control_net_uris = [_uris.ControlNetUri.parse(s, model_type) for s in controlnet_uris]
+            sdxl_controlnet_union = controlnet_uris and is_sdxl and any(
+                s.mode is not None for s in parsed_control_net_uris)
     except _uris.InvalidControlNetUriError as e:
         raise UnsupportedPipelineConfigError(str(e))
 
-    if sdxl_controlnet_union and len(controlnet_uris) > 1:
+    def eq_cn_uri(
+            uri1:_uris.ControlNetUri,
+            uri2: _uris.ControlNetUri):
+        equals = True
+
+        for name, val in _types.get_public_attributes(uri1).items():
+            if name not in {'scale', 'mode', 'start', 'end'}:
+                equals = (equals and val == getattr(uri2, name))
+
+        return equals
+
+    if sdxl_controlnet_union and \
+            any(not eq_cn_uri(parsed_control_net_uris[0], u)
+                for u in parsed_control_net_uris):
         raise UnsupportedPipelineConfigError(
-            'SDXL ControlNet Union mode does not support multiple ControlNet model definitions.'
+            'SDXL ControlNet Union mode requires all ControlNet '
+            'model URIs to be identical with the exception of the '
+            '"scale", "mode", "start", and "end" arguments.'
         )
 
     # Pipeline class selection
@@ -2403,6 +2423,7 @@ def _create_torch_diffusion_pipeline(
 
     if controlnet_uris and not controlnet_override:
         controlnets = None
+        sdxl_cn_union = None
 
         for controlnet_uri in controlnet_uris:
             parsed_controlnet_uri = _uris.ControlNetUri.parse(
@@ -2423,6 +2444,14 @@ def _create_torch_diffusion_pipeline(
                                 f'Added Torch ControlNet: "{controlnet_uri}" '
                                 f'to pipeline: "{pipeline_class.__name__}"')
 
+            if sdxl_cn_union is not None:
+                continue
+            if isinstance(new_net, diffusers.ControlNetUnionModel):
+                # first model determines controlnet model,
+                # the rest of the specifications just provide the mode
+                sdxl_cn_union = new_net
+                continue
+
             if controlnets is not None:
                 if not isinstance(controlnets, list):
                     controlnets = [controlnets, new_net]
@@ -2430,6 +2459,9 @@ def _create_torch_diffusion_pipeline(
                     controlnets.append(new_net)
             else:
                 controlnets = new_net
+
+        if sdxl_cn_union is not None:
+            controlnets = sdxl_cn_union
 
         if isinstance(controlnets, list):
             # not handled internally for whatever reason like the other pipelines

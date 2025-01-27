@@ -2055,19 +2055,20 @@ class DiffusionPipelineWrapper:
                               diffusers.StableDiffusionXLPAGInpaintPipeline))
 
         if has_controlnet:
-            pipeline_args['controlnet_conditioning_scale'] = \
-                self._get_controlnet_conditioning_scale()
+            is_xl_union_model = isinstance(
+                self._pipeline.controlnet, diffusers.ControlNetUnionModel) and len(self.controlnet_uris) > 1
 
-            pipeline_args['control_guidance_start'] = \
-                self._get_controlnet_guidance_start()
+            pipeline_args.update({
+                'controlnet_conditioning_scale': self._get_controlnet_conditioning_scale()[0] if
+                is_xl_union_model else self._get_controlnet_conditioning_scale(),
+                'control_guidance_start': self._get_controlnet_guidance_start()[0] if
+                is_xl_union_model else self._get_controlnet_guidance_start(),
+                'control_guidance_end': self._get_controlnet_guidance_end()[0] if
+                is_xl_union_model else self._get_controlnet_guidance_end()
+            })
 
-            pipeline_args['control_guidance_end'] = \
-                self._get_controlnet_guidance_end()
-
-            if 'control_mode' in inspect.signature(
-                    self._pipeline.__call__).parameters:
-                pipeline_args['control_mode'] = \
-                    self._get_controlnet_mode()
+            if 'control_mode' in inspect.signature(self._pipeline.__call__).parameters:
+                pipeline_args['control_mode'] = self._get_controlnet_mode()
 
         if has_t2i_adapter:
             pipeline_args['adapter_conditioning_scale'] = \
