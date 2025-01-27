@@ -1583,7 +1583,7 @@ class ArgparseParagraphFormatter(argparse.HelpFormatter):
     WHITESPACE_PATTERN = re.compile(r"\s+")
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, max_help_position=8, **kwargs)
 
     def _fill_text(self, text, width, indent):
         formatted_paragraphs = [
