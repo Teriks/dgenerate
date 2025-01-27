@@ -17,6 +17,7 @@ import dgenerate.mediainput as _mediainput
 import dgenerate.mediaoutput as _mediaoutput
 import dgenerate.arguments as _arguments
 import dgenerate.textprocessing as _textprocessing
+import dgenerate.pipelinewrapper as _pipelinewrapper
 
 os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
@@ -35,15 +36,15 @@ with open('dgenerate/console/schemas/imageprocessors.json', 'w') as file:
 
     json.dump(schema, file)
 
-with open('dgenerate/console/schemas/karrasschedulers.json', 'w') as file:
-    schema = dict()
 
-    # sort by name, this affects json output
-    schema['names'] = sorted(
+with open('dgenerate/console/schemas/karrasschedulers.json', 'w') as file:
+    scheduler_names = sorted(
         [e.name for e in diffusers.schedulers.scheduling_utils.KarrasDiffusionSchedulers] +
         ['LCMScheduler'])
 
+    schema = _pipelinewrapper.get_scheduler_uri_schema([getattr(diffusers, n) for n in scheduler_names])
     json.dump(schema, file)
+
 
 with open('dgenerate/console/schemas/mediaformats.json', 'w') as file:
     schema = dict()

@@ -27,7 +27,7 @@ import dgenerate.console.util as _util
 
 
 class _ImageProcessorSelect(tk.Toplevel):
-    def __init__(self, master=None, position: tuple[int, int] = None, size: tuple[int, int] = None):
+    def __init__(self, master=None, position: tuple[int, int] = None):
         super().__init__(master)
         self.title('Insert Image Processor URI')
 

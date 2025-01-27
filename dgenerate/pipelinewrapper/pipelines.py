@@ -23,6 +23,7 @@ import collections.abc
 import gc
 import inspect
 import typing
+import itertools
 
 import accelerate
 import diffusers
@@ -46,6 +47,7 @@ import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 import dgenerate.pipelinewrapper.util as _util
 import dgenerate.pipelinewrapper.quanto as _quanto
+import numpy
 
 
 class UnsupportedPipelineConfigError(Exception):
@@ -67,9 +69,22 @@ class InvalidModelFileError(Exception):
     pass
 
 
-class InvalidSchedulerNameError(Exception):
+class SchedulerLoadError(Exception):
     """
-    Unknown scheduler name used
+    Base class for scheduler loading exceptions.
+    """
+
+
+class SchedulerArgumentError(SchedulerLoadError):
+    """
+    Scheduler URI argument error.
+    """
+    pass
+
+
+class InvalidSchedulerNameError(SchedulerLoadError):
+    """
+    Unknown scheduler name used.
     """
     pass
 
@@ -163,12 +178,105 @@ def text_encoder_is_help(text_encoder_uris: _types.OptionalUris):
     return any(t == 'help' for t in text_encoder_uris)
 
 
+def get_scheduler_uri_schema(scheduler: type[diffusers.SchedulerMixin] | list[type[diffusers.SchedulerMixin]]):
+    """
+    Return a schema describing initialization arguments from a ``diffusers`` scheduler type, or list of scheduler types.
+
+    This returns a set of schemas keyed by scheduler name, which are identical to the schema format returned by
+    :py:meth:`dgenerate.plugin.Plugin.get_accepted_args_schema`.
+
+    Arguments which cannot be passed through a URI such as class references are omitted.
+
+    :param scheduler: ``diffusers`` scheduler type, or list of them.
+
+    :return: ``dict`` schema.
+    """
+    if not isinstance(scheduler, list):
+        scheduler = [scheduler]
+
+    schema = dict()
+
+    for class_type in scheduler:
+        parameter_schema = dict()
+        schema[class_type.__name__] = parameter_schema
+
+        def _type_name(t):
+            return (str(t) if t.__module__ != 'builtins' else t.__name__).strip()
+
+        def _resolve_union(t):
+            t_name = _type_name(t)
+            if t_name.startswith('typing.Union') or \
+                    t_name.startswith('typing.Optional'):
+                return set(itertools.chain.from_iterable(
+                    [_resolve_union(t) for t in parameter.annotation.__args__]))
+            return [t_name]
+
+        def _filter_types(typs):
+            o = set()
+            for t in typs:
+                if t.startswith('typing.List'):
+                    o.add('list')
+                elif t == "<class 'numpy.ndarray'>":
+                    o.add('list')
+                elif t.startswith("<class"):
+                    pass
+                else:
+                    o.add(t)
+            return list(o)
+
+        for parameter_name, parameter in inspect.signature(class_type.__init__).parameters.items():
+            if parameter_name == 'self':
+                continue
+
+            parameter_details = dict()
+
+            type_name = _type_name(parameter.annotation)
+
+            if type_name.startswith('typing.Union') or \
+                    type_name.startswith('typing.Optional'):
+                union_args = _resolve_union(parameter.annotation)
+                if 'NoneType' in union_args:
+                    parameter_details['optional'] = True
+                    union_args.remove('NoneType')
+
+                filtered_types = _filter_types(list(sorted(union_args)))
+                if not filtered_types:
+                    continue
+                parameter_details['types'] = filtered_types
+
+            else:
+                filtered_types = _filter_types([type_name])
+                if not filtered_types:
+                    continue
+                parameter_details['optional'] = False
+                parameter_details['types'] = filtered_types
+
+            if isinstance(parameter.default, list):
+                if not all(isinstance(i, typing.SupportsIndex) or
+                           not isinstance(i, typing.Iterable) for i in parameter.default):
+                    # cannot support multiple dimensions
+                    continue
+            if isinstance(parameter.default, numpy.ndarray):
+                if parameter.default.ndim != 1:
+                    # cannot support multiple dimensions
+                    continue
+
+            if parameter.default is not inspect.Parameter.empty:
+                parameter_details['default'] = parameter.default
+
+            parameter_schema[_textprocessing.dashup(parameter_name)] = parameter_details
+    return schema
+
+
 def load_scheduler(pipeline: diffusers.DiffusionPipeline,
                    scheduler_name=None, model_path: str | None = None):
     """
     Load a specific compatible scheduler class name onto a huggingface diffusers pipeline object.
 
     :raises SchedulerHelpException: if "help" is passed as a scheduler name.
+    :raises SchedulerArgumentError: If invalid arguments are supplied to the scheduler via the URI.
+    :raises InvalidSchedulerNameError: If an invalid scheduler name is specified specifically.
+
 
     :param pipeline: pipeline object
     :param scheduler_name: compatible scheduler class name, pass "help" to receive a print out to STDOUT
@@ -203,6 +311,7 @@ def load_scheduler(pipeline: diffusers.DiffusionPipeline,
     compatibles = sorted(compatibles, key=lambda c: c.__name__)
 
     help_name = scheduler_name.strip().lower()
+
     if help_name == 'help':
         help_string = f'Compatible schedulers for "{model_path}" are:' + '\n\n'
         help_string += '\n'.join((" " * 4) + _textprocessing.quote(i.__name__) for i in compatibles) + '\n'
@@ -210,39 +319,104 @@ def load_scheduler(pipeline: diffusers.DiffusionPipeline,
         raise SchedulerHelpException(help_string)
 
     if help_name == 'helpargs':
+        schemas = get_scheduler_uri_schema(compatibles)
+
         help_string = f'Compatible schedulers for "{model_path}" are:' + '\n\n'
-        help_string += '\n\n'.join((" " * 4) + i.__name__ + (':\n' + ' ' * 8) + ('\n' + ' ' * 8).join(
-            _textprocessing.dashup(k[0]) + ('=' + str(k[1]) if len(k) > 1 else '') for k in
-            list(_types.get_accepted_args_with_defaults(i.__init__.__wrapped__))[1:]) for i in compatibles) + '\n'
+        for s_idx, (scheduler_name, arg_schema) in enumerate(schemas.items()):
+            help_string += (" " * 4) + scheduler_name + ":\n"
+            is_end = s_idx == len(schemas) - 1
+            for d_idx, (arg, details) in enumerate(arg_schema.items()):
+                is_args_end = d_idx == len(arg_schema) - 1
+                help_string += (" " * 8) + arg + "=" + str(details['default']) + (
+                    '' if is_end and is_args_end else '\n')
+            help_string += '\n'
+
         _messages.log(help_string)
         raise SchedulerHelpException(help_string)
 
-    def _get_value(v):
-        try:
-            return ast.literal_eval(v)
-        except (ValueError, SyntaxError):
-            return v
+    def _get_uri_arg_value(
+            scheduler: str,
+            value: typing.Any,
+            arg_name: str,
+            optional: bool,
+            types: list):
 
-    for i in compatibles:
-        if i.__name__.startswith(scheduler_name.split(';')[0]):
+        if isinstance(value, list):
+            return value
+        elif optional and value.lower() == 'none':
+            return None
+        elif any(t == 'list' for t in types):
+            try:
+                return [ast.literal_eval(value)]
+            except (ValueError, SyntaxError):
+                return [value]
+        elif any(t == 'float' for t in types):
+            try:
+                return float(value)
+            except ValueError:
+                raise SchedulerArgumentError(
+                    f'{scheduler} argument "{arg_name}" '
+                    f'must be a floating point value.'
+                )
+        elif any(t == 'int' for t in types):
+            try:
+                return int(value)
+            except ValueError:
+                raise SchedulerArgumentError(
+                    f'{scheduler} argument "{arg_name}" '
+                    f'must be an integer value.'
+                )
+        elif any(t == 'bool' for t in types):
+            try:
+                return _types.parse_bool(value)
+            except ValueError:
+                raise SchedulerArgumentError(
+                    f'{scheduler} argument "{arg_name}" '
+                    f'must be a boolean value.'
+                )
+
+        try:
+            # string literal?
+            return ast.literal_eval(value)
+        except (ValueError, SyntaxError):
+            # token (string)
+            return value
+
+    for scheduler_type in compatibles:
+        if scheduler_type.__name__.startswith(scheduler_name.split(';')[0].strip()):
+            schema = get_scheduler_uri_schema(scheduler_type)[scheduler_type.__name__]
+
             parser = _textprocessing.ConceptUriParser(
                 'Scheduler',
-                known_args=[_textprocessing.dashup(a) for a in inspect.getfullargspec(i.__init__.__wrapped__).args[1:]])
+                known_args=list(schema.keys()),
+                args_lists=[k for k, v in schema.items()
+                            if any(t == 'list' for t in v['types'])])
 
             try:
                 result = parser.parse(scheduler_name)
             except _textprocessing.ConceptUriParseError as e:
-                raise InvalidSchedulerNameError(e)
+                raise SchedulerArgumentError(e)
 
-            pipeline.scheduler = i.from_config(
-                pipeline.scheduler.config,
-                **{_textprocessing.dashdown(k): _get_value(v) for k, v in result.args.items()})
+            args = {_textprocessing.dashdown(k): _get_uri_arg_value(
+                scheduler_type.__name__, v, k, schema[k]['optional'], schema[k]['types'])
+                for k, v in result.args.items()}
 
+            _messages.debug_log(f'Constructing Scheduler: "{scheduler_type.__name__}", Args: {args}')
+
+            try:
+                pipeline.scheduler = scheduler_type.from_config(pipeline.scheduler.config, **args)
+            except Exception as e:
+                raise SchedulerArgumentError(
+                    f'Error constructing scheduler "{scheduler_type.__name__}" '
+                    f'with given URI argument values, encountered error: {e}')
+
+            # found a matching scheduler, return
             return
 
     raise InvalidSchedulerNameError(
         f'Scheduler named "{scheduler_name}" is not a valid compatible scheduler, '
-        f'options are:\n\n{chr(10).join(sorted(" " * 4 + _textprocessing.quote(i.__name__.split(".")[-1]) for i in compatibles))}')
+        'options are:\n\n' + '\n'.join(
+            sorted(' ' * 4 + _textprocessing.quote(i.__name__.split('.')[-1]) for i in compatibles)))
 
 
 def estimate_pipeline_memory_use(
@@ -497,13 +671,12 @@ def is_model_cpu_offload_enabled(module: diffusers.DiffusionPipeline | torch.nn.
 
 
 def _disable_to(module, vae=False):
-
     og_to = module.to
 
     def dummy(*args, **kwargs):
         if vae and module.config.force_upcast and \
-           (len(args) == 1 and isinstance(args[0], torch.dtype)) or \
-           (len(kwargs) == 1 and 'dtype' in kwargs):
+                (len(args) == 1 and isinstance(args[0], torch.dtype)) or \
+                (len(kwargs) == 1 and 'dtype' in kwargs):
 
             # basically, is this a VAE that the pipeline needs to upcast
             # this has to happen even if it is described as 'meta'
@@ -1432,8 +1605,9 @@ def _torch_args_hasher(args):
         'ip_adapter_uris': _cache.uri_list_hash_with_parser(_uris.IPAdapterUri),
         'textual_inversion_uris': _cache.uri_list_hash_with_parser(_uris.TextualInversionUri.parse),
         'text_encoder_uris': _cache.uri_list_hash_with_parser(text_encoder_uri_parse),
-        'controlnet_uris': _cache.uri_list_hash_with_parser(lambda s: _uris.ControlNetUri.parse(s, model_type=args['model_type']),
-                                                            exclude={'scale', 'start', 'end'}),
+        'controlnet_uris': _cache.uri_list_hash_with_parser(
+            lambda s: _uris.ControlNetUri.parse(s, model_type=args['model_type']),
+            exclude={'scale', 'start', 'end'}),
         't2i_adapter_uris': _cache.uri_list_hash_with_parser(_uris.T2IAdapterUri.parse,
                                                              exclude={'scale'})
     }

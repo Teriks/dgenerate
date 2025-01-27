@@ -102,6 +102,8 @@ try:
         InvalidModelUriError,
         ModelUriLoadError,
         NonHFModelDownloadError,
+        SchedulerLoadError,
+        SchedulerArgumentError,
         InvalidSchedulerNameError,
         UnsupportedPipelineConfigError,
         ModelType,

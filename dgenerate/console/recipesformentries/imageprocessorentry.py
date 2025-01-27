@@ -281,18 +281,11 @@ class _ImageProcessorEntry(_entry._Entry):
             return True, [entry, spin_buttons], variable
 
         elif param_type == 'bool' and default_value != "":
-
             if optional:
-                variable = tk.StringVar(value=default_value)
+                variable = tk.StringVar(value=str(default_value))
                 values = ['True', 'False', 'None']
 
-                def_v = str(default_value)
-                values.remove(def_v)
-
-                if def_v == 'None':
-                    entry = tk.OptionMenu(self.master, variable, '', *values)
-                else:
-                    entry = tk.OptionMenu(self.master, variable, def_v, *values)
+                entry = tk.OptionMenu(self.master, variable, *values)
 
                 entry.grid(row=row, column=1, sticky='we', padx=_entry.ROW_XPAD)
                 return False, [entry], variable
