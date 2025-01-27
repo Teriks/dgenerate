@@ -225,15 +225,15 @@ Help Output
                      [-iemc EXPR [EXPR ...]] [-amc EXPR [EXPR ...]] [-tfmc EXPR [EXPR ...]]
                      [-ipmc EXPR [EXPR ...]] [-ipcc EXPR [EXPR ...]]
                      model_path
-
+    
     Batch image generation and manipulation tool supporting Stable Diffusion and related techniques /
     algorithms, with support for video and animated image processing.
-
+    
     positional arguments:
       model_path            Hugging Face model repository slug, Hugging Face blob link to a model file, path to
                             folder on disk, or path to a .pt, .pth, .bin, .ckpt, or .safetensors file.
                             --------------------------------------------------------------------------
-
+    
     options:
       -h, --help            show this help message and exit
                             -------------------------------
@@ -338,14 +338,14 @@ Help Output
       -bs INTEGER, --batch-size INTEGER
                             The number of image variations to produce per set of individual diffusion parameters
                             in one rendering step simultaneously on a single GPU.
-
+                            
                             When generating animations with a --batch-size greater than one, a separate
                             animation (with the filename suffix "animation_N") will be written to for each image
                             in the batch.
-
+                            
                             If --batch-grid-size is specified when producing an animation then the image grid is
                             used for the output frames.
-
+                            
                             During animation rendering each image in the batch will still be written to the
                             output directory along side the produced animation as either suffixed files or image
                             grids depending on the options you choose. (Default: 1)
@@ -361,36 +361,39 @@ Help Output
                             Specify one or more adetailer YOLO detector model URIs. When specifying this option,
                             you must provide an image to --image-seeds, inpaint masks will be auto generated
                             based on what is detected by the provided detector models.
-
+                            
                             The models will be used in sequence to detect and then inpaint your image within the
                             detection areas. This can be used for face detailing, face swapping, hand detailing,
                             etc. on any arbitrary image provided using an image generation model of your choice.
-
+                            
                             This option supports: --model-type torch, torch-sdxl, torch-sd3, torch-flux, and
                             torch-flux-fill
-
+                            
                             Example: --adetailer-detectors Bingsu/adetailer;weight-name=face_yolov8n.pt
-
+                            
                             The "revision" argument specifies the model revision to use for the adetailer model
                             when loading from Hugging Face repository, (The Git branch / tag, default is
                             "main").
-
+                            
                             The "subfolder" argument specifies the adetailer model subfolder, if specified when
                             loading from a Hugging Face repository or folder, weights from the specified
                             subfolder.
-
+                            
                             The "weight-name" argument indicates the name of the weights file to be loaded when
                             loading from a Hugging Face repository or folder on disk.
-
+                            
+                            The "confidence" argument indicates the confidence value to use with the YOLO
+                            detector model, this value defaults to 0.3 if not specified.
+                            
                             The "device" argument indicates a device override for the YOLO detector model, the
                             detector model can be set to run on a different device if desired, for example:
                             cuda:0, cuda:1, cpu, etc. It runs on the same device as --device by default.
-
+                            
                             If you wish to load a weights file directly from disk, use: --adetailer-detectors
                             "yolo_model.pt"
-
+                            
                             You may also load a YOLO model directly from a URL or Hugging Face blob link.
-
+                            
                             Example: --adetailer-detectors https://modelsite.com/yolo-model.pt
                             ------------------------------------------------------------------
       -adp ADETAILER_MASK_PADDING [ADETAILER_MASK_PADDING ...], --adetailer-mask-paddings ADETAILER_MASK_PADDING [ADETAILER_MASK_PADDING ...]
@@ -417,44 +420,44 @@ Help Output
                             text encoders depending on the --model-type value and other dgenerate arguments.
                             See: --text-encoders help for information about what text encoders are needed for
                             your invocation.
-
+                            
                             Examples: "CLIPTextModel;model=huggingface/text_encoder",
                             "CLIPTextModelWithProjection;model=huggingface/text_encoder;revision=main",
                             "T5EncoderModel;model=text_encoder_folder_on_disk".
-
+                            
                             For main models which require multiple text encoders, the + symbol may be used to
                             indicate that a default value should be used for a particular text encoder, for
                             example: --text-encoders + + huggingface/encoder3. Any trailing text encoders which
                             are not specified are given their default value.
-
+                            
                             The value "null" may be used to indicate that a specific text encoder should not be
                             loaded.
-
+                            
                             Blob links / single file loads are not supported for Text Encoders.
-
+                            
                             The "revision" argument specifies the model revision to use for the Text Encoder
                             when loading from Hugging Face repository, (The Git branch / tag, default is
                             "main").
-
+                            
                             The "variant" argument specifies the Text Encoder model variant. If "variant" is
                             specified when loading from a Hugging Face repository or folder, weights will be
                             loaded from "variant" filename, e.g. "pytorch_model.<variant>.safetensors". For this
                             argument, "variant" defaults to the value of --variant if it is not specified in the
                             URI.
-
+                            
                             The "subfolder" argument specifies the UNet model subfolder, if specified when
                             loading from a Hugging Face repository or folder, weights from the specified
                             subfolder.
-
+                            
                             The "dtype" argument specifies the Text Encoder model precision, it defaults to the
                             value of -t/--dtype and should be one of: auto, bfloat16, float16, or float32.
-
+                            
                             The "quantize" argument specifies whether or not to use optimum-quanto to quantize
                             the text encoder weights, and may be passed the values "qint2", "qint4", "qint8",
                             "qfloat8_e4m3fn", "qfloat8_e4m3fnuz", "qfloat8_e5m2", or "qfloat8" to specify the
                             quantization datatype, this can be utilized to run Flux models with much less GPU
                             memory.
-
+                            
                             If you wish to load weights directly from a path on disk, you must point this
                             argument at the folder they exist in, which should also contain the config.json file
                             for the Text Encoder. For example, a downloaded repository folder from Hugging Face.
@@ -464,27 +467,27 @@ Help Output
                             -------------------------------------------------------------------------
       -un UNET_URI, --unet UNET_URI
                             Specify a UNet using a URI.
-
+                            
                             Examples: "huggingface/unet", "huggingface/unet;revision=main",
                             "unet_folder_on_disk".
-
+                            
                             Blob links / single file loads are not supported for UNets.
-
+                            
                             The "revision" argument specifies the model revision to use for the UNet when
                             loading from Hugging Face repository, (The Git branch / tag, default is "main").
-
+                            
                             The "variant" argument specifies the UNet model variant. If "variant" is specified
                             when loading from a Hugging Face repository or folder, weights will be loaded from
                             "variant" filename, e.g. "pytorch_model.<variant>.safetensors. For this argument,
                             "variant" defaults to the value of --variant if it is not specified in the URI.
-
+                            
                             The "subfolder" argument specifies the UNet model subfolder, if specified when
                             loading from a Hugging Face repository or folder, weights from the specified
                             subfolder.
-
+                            
                             The "dtype" argument specifies the UNet model precision, it defaults to the value of
                             -t/--dtype and should be one of: auto, bfloat16, float16, or float32.
-
+                            
                             If you wish to load weights directly from a path on disk, you must point this
                             argument at the folder they exist in, which should also contain the config.json file
                             for the UNet. For example, a downloaded repository folder from Hugging Face.
@@ -495,40 +498,40 @@ Help Output
                             ------------------------------------------------------------------------------------
       -tf TRANSFORMER_URI, --transformer TRANSFORMER_URI
                             Specify a Stable Diffusion 3 or Flux Transformer model using a URI.
-
+                            
                             Examples: "huggingface/transformer", "huggingface/transformer;revision=main",
                             "transformer_folder_on_disk".
-
+                            
                             Blob links / single file loads are supported for SD3 Transformers.
-
+                            
                             The "revision" argument specifies the model revision to use for the Transformer when
                             loading from Hugging Face repository or blob link, (The Git branch / tag, default is
                             "main").
-
+                            
                             The "variant" argument specifies the Transformer model variant. If "variant" is
                             specified when loading from a Hugging Face repository or folder, weights will be
                             loaded from "variant" filename, e.g. "pytorch_model.<variant>.safetensors. For this
                             argument, "variant" defaults to the value of --variant if it is not specified in the
                             URI.
-
+                            
                             The "subfolder" argument specifies the Transformer model subfolder, if specified
                             when loading from a Hugging Face repository or folder, weights from the specified
                             subfolder.
-
+                            
                             The "dtype" argument specifies the Transformer model precision, it defaults to the
                             value of -t/--dtype and should be one of: auto, bfloat16, float16, or float32.
-
+                            
                             The "quantize" argument specifies whether or not to use optimum-quanto to quantize
                             the transformer weights, and may be passed the values "qint2", "qint4", "qint8",
                             "qfloat8_e4m3fn", "qfloat8_e4m3fnuz", "qfloat8_e5m2", or "qfloat8" to specify the
                             quantization datatype, this can be utilized to run Flux models with much less GPU
                             memory.
-
+                            
                             If you wish to load a weights file directly from disk, the simplest way is:
                             --transformer "transformer.safetensors", or with a dtype
                             "transformer.safetensors;dtype=float16". All loading arguments except "dtype" and
                             "quantize" are unused in this case and may produce an error message if used.
-
+                            
                             If you wish to load a specific weight file from a Hugging Face repository, use the
                             blob link loading syntax: --transformer
                             "AutoencoderKL;https://huggingface.co/UserName/repository-
@@ -538,50 +541,50 @@ Help Output
       -vae VAE_URI, --vae VAE_URI
                             Specify a VAE using a URI, the URI syntax is: "AutoEncoderClass;model=(Hugging Face
                             repository slug/blob link or file/folder path)".
-
+                            
                             Examples: "AutoencoderKL;model=vae.pt",
                             "AsymmetricAutoencoderKL;model=huggingface/vae",
                             "AutoencoderTiny;model=huggingface/vae",
                             "ConsistencyDecoderVAE;model=huggingface/vae".
-
+                            
                             The AutoencoderKL encoder class accepts Hugging Face repository slugs/blob links,
                             .pt, .pth, .bin, .ckpt, and .safetensors files.
-
+                            
                             Other encoders can only accept Hugging Face repository slugs/blob links, or a path
                             to a folder on disk with the model configuration and model file(s).
-
+                            
                             If an AutoencoderKL VAE model file exists at a URL which serves the file as a raw
                             download, you may provide an http/https link to it and it will be downloaded to
                             dgenerates web cache.
-
+                            
                             Aside from the "model" argument, there are four other optional arguments that can be
                             specified, these are: "revision", "variant", "subfolder", "dtype".
-
+                            
                             They can be specified as so in any order, they are not positional: "AutoencoderKL;mo
                             del=huggingface/vae;revision=main;variant=fp16;subfolder=sub_folder;dtype=float16".
-
+                            
                             The "revision" argument specifies the model revision to use for the VAE when loading
                             from Hugging Face repository or blob link, (The Git branch / tag, default is
                             "main").
-
+                            
                             The "variant" argument specifies the VAE model variant. If "variant" is specified
                             when loading from a Hugging Face repository or folder, weights will be loaded from
                             "variant" filename, e.g. "pytorch_model.<variant>.safetensors. "variant" in the case
                             of --vae does not default to the value of --variant to prevent failures during
                             common use cases.
-
+                            
                             The "subfolder" argument specifies the VAE model subfolder, if specified when
                             loading from a Hugging Face repository or folder, weights from the specified
                             subfolder.
-
+                            
                             The "dtype" argument specifies the VAE model precision, it defaults to the value of
                             -t/--dtype and should be one of: auto, bfloat16, float16, or float32.
-
+                            
                             If you wish to load a weights file directly from disk, the simplest way is: --vae
                             "AutoencoderKL;my_vae.safetensors", or with a dtype
                             "AutoencoderKL;my_vae.safetensors;dtype=float16". All loading arguments except
                             "dtype" are unused in this case and may produce an error message if used.
-
+                            
                             If you wish to load a specific weight file from a Hugging Face repository, use the
                             blob link loading syntax: --vae
                             "AutoencoderKL;https://huggingface.co/UserName/repository-
@@ -605,33 +608,33 @@ Help Output
                             Specify one or more LoRA models using URIs. These should be a Hugging Face
                             repository slug, path to model file on disk (for example, a .pt, .pth, .bin, .ckpt,
                             or .safetensors file), or model folder containing model files.
-
+                            
                             If a LoRA model file exists at a URL which serves the file as a raw download, you
                             may provide an http/https link to it and it will be downloaded to dgenerates web
                             cache.
-
+                            
                             Hugging Face blob links are not supported, see "subfolder" and "weight-name" below
                             instead.
-
+                            
                             Optional arguments can be provided after a LoRA model specification, these are:
                             "scale", "revision", "subfolder", and "weight-name".
-
+                            
                             They can be specified as so in any order, they are not positional:
                             "huggingface/lora;scale=1.0;revision=main;subfolder=repo_subfolder;weight-
                             name=lora.safetensors".
-
+                            
                             The "scale" argument indicates the scale factor of the LoRA.
-
+                            
                             The "revision" argument specifies the model revision to use for the LoRA when
                             loading from Hugging Face repository, (The Git branch / tag, default is "main").
-
+                            
                             The "subfolder" argument specifies the LoRA model subfolder, if specified when
                             loading from a Hugging Face repository or folder, weights from the specified
                             subfolder.
-
+                            
                             The "weight-name" argument indicates the name of the weights file to be loaded when
                             loading from a Hugging Face repository or folder on disk.
-
+                            
                             If you wish to load a weights file directly from disk, the simplest way is: --loras
                             "my_lora.safetensors", or with a scale "my_lora.safetensors;scale=1.0", all other
                             loading arguments are unused in this case and may produce an error message if used.
@@ -644,37 +647,37 @@ Help Output
                             ---------------
       -ie IMAGE_ENCODER_URI, --image-encoder IMAGE_ENCODER_URI
                             Specify an Image Encoder using a URI.
-
+                            
                             Image Encoders are used with --ip-adapters models, and must be specified if none of
                             the loaded --ip-adapters contain one. An error will be produced in this situation,
                             which requires you to use this argument.
-
+                            
                             An image encoder can also be manually specified for Stable Cascade models.
-
+                            
                             Examples: "huggingface/image_encoder", "huggingface/image_encoder;revision=main",
                             "image_encoder_folder_on_disk".
-
+                            
                             Blob links / single file loads are not supported for Image Encoders.
-
+                            
                             The "revision" argument specifies the model revision to use for the Image Encoder
                             when loading from Hugging Face repository or blob link, (The Git branch / tag,
                             default is "main").
-
+                            
                             The "variant" argument specifies the Image Encoder model variant. If "variant" is
                             specified when loading from a Hugging Face repository or folder, weights will be
                             loaded from "variant" filename, e.g. "pytorch_model.<variant>.safetensors.
-
+                            
                             Similar to --vae, "variant" does not default to the value of --variant in order to
                             prevent errors with common use cases. If you specify multiple IP Adapters, they must
                             all have the same "variant" value or you will receive a usage error.
-
+                            
                             The "subfolder" argument specifies the Image Encoder model subfolder, if specified
                             when loading from a Hugging Face repository or folder, weights from the specified
                             subfolder.
-
+                            
                             The "dtype" argument specifies the Image Encoder model precision, it defaults to the
                             value of -t/--dtype and should be one of: auto, bfloat16, float16, or float32.
-
+                            
                             If you wish to load weights directly from a path on disk, you must point this
                             argument at the folder they exist in, which should also contain the config.json file
                             for the Image Encoder. For example, a downloaded repository folder from Hugging
@@ -684,33 +687,33 @@ Help Output
                             Specify one or more IP Adapter models using URIs. These should be a Hugging Face
                             repository slug, path to model file on disk (for example, a .pt, .pth, .bin, .ckpt,
                             or .safetensors file), or model folder containing model files.
-
+                            
                             If an IP Adapter model file exists at a URL which serves the file as a raw download,
                             you may provide an http/https link to it and it will be downloaded to dgenerates web
                             cache.
-
+                            
                             Hugging Face blob links are not supported, see "subfolder" and "weight-name" below
                             instead.
-
+                            
                             Optional arguments can be provided after an IP Adapter model specification, these
                             are: "scale", "revision", "subfolder", and "weight-name".
-
+                            
                             They can be specified as so in any order, they are not positional: "huggingface/ip-
                             adapter;scale=1.0;revision=main;subfolder=repo_subfolder;weight-
                             name=ip_adapter.safetensors".
-
+                            
                             The "scale" argument indicates the scale factor of the IP Adapter.
-
+                            
                             The "revision" argument specifies the model revision to use for the IP Adapter when
                             loading from Hugging Face repository, (The Git branch / tag, default is "main").
-
+                            
                             The "subfolder" argument specifies the IP Adapter model subfolder, if specified when
                             loading from a Hugging Face repository or folder, weights from the specified
                             subfolder.
-
+                            
                             The "weight-name" argument indicates the name of the weights file to be loaded when
                             loading from a Hugging Face repository or folder on disk.
-
+                            
                             If you wish to load a weights file directly from disk, the simplest way is: --ip-
                             adapters "ip_adapter.safetensors", or with a scale
                             "ip_adapter.safetensors;scale=1.0", all other loading arguments are unused in this
@@ -720,38 +723,38 @@ Help Output
                             Specify one or more Textual Inversion models using URIs. These should be a Hugging
                             Face repository slug, path to model file on disk (for example, a .pt, .pth, .bin,
                             .ckpt, or .safetensors file), or model folder containing model files.
-
+                            
                             If a Textual Inversion model file exists at a URL which serves the file as a raw
                             download, you may provide an http/https link to it and it will be downloaded to
                             dgenerates web cache.
-
+                            
                             Hugging Face blob links are not supported, see "subfolder" and "weight-name" below
                             instead.
-
+                            
                             Optional arguments can be provided after the Textual Inversion model specification,
                             these are: "token", "revision", "subfolder", and "weight-name".
-
+                            
                             They can be specified as so in any order, they are not positional:
                             "huggingface/ti_model;revision=main;subfolder=repo_subfolder;weight-
                             name=ti_model.safetensors".
-
+                            
                             The "token" argument can be used to override the prompt token used for the textual
                             inversion prompt embedding. For normal Stable Diffusion the default token value is
                             provided by the model itself, but for Stable Diffusion XL and Flux the default token
                             value is equal to the model file name with no extension and all spaces replaced by
                             underscores.
-
+                            
                             The "revision" argument specifies the model revision to use for the Textual
                             Inversion model when loading from Hugging Face repository, (The Git branch / tag,
                             default is "main").
-
+                            
                             The "subfolder" argument specifies the Textual Inversion model subfolder, if
                             specified when loading from a Hugging Face repository or folder, weights from the
                             specified subfolder.
-
+                            
                             The "weight-name" argument indicates the name of the weights file to be loaded when
                             loading from a Hugging Face repository or folder on disk.
-
+                            
                             If you wish to load a weights file directly from disk, the simplest way is:
                             --textual-inversions "my_ti_model.safetensors", all other loading arguments are
                             unused in this case and may produce an error message if used.
@@ -760,55 +763,55 @@ Help Output
                             Specify one or more ControlNet models using URIs. This should be a Hugging Face
                             repository slug / blob link, path to model file on disk (for example, a .pt, .pth,
                             .bin, .ckpt, or .safetensors file), or model folder containing model files.
-
+                            
                             If a ControlNet model file exists at a URL which serves the file as a raw download,
                             you may provide an http/https link to it and it will be downloaded to dgenerates web
                             cache.
-
+                            
                             Optional arguments can be provided after the ControlNet model specification, these
                             are: "scale", "start", "end", "revision", "variant", "subfolder", and "dtype".
-
+                            
                             They can be specified as so in any order, they are not positional: "huggingface/cont
                             rolnet;scale=1.0;start=0.0;end=1.0;revision=main;variant=fp16;subfolder=repo_subfold
                             er;dtype=float16".
-
+                            
                             The "scale" argument specifies the scaling factor applied to the ControlNet model,
                             the default value is 1.0.
-
+                            
                             The "start" argument specifies at what fraction of the total inference steps to
                             begin applying the ControlNet, defaults to 0.0, IE: the very beginning.
-
+                            
                             The "end" argument specifies at what fraction of the total inference steps to stop
                             applying the ControlNet, defaults to 1.0, IE: the very end.
-
+                            
                             The "mode" argument can be used when using --model-type torch-flux and ControlNet
                             Union to specify the ControlNet mode. Acceptable values are: "canny", "tile",
                             "depth", "blur", "pose", "gray", "lq". This value may also be an integer between 0
                             and 6, inclusive.
-
+                            
                             The "revision" argument specifies the model revision to use for the ControlNet model
                             when loading from Hugging Face repository, (The Git branch / tag, default is
                             "main").
-
+                            
                             The "variant" argument specifies the ControlNet model variant, if "variant" is
                             specified when loading from a Hugging Face repository or folder, weights will be
                             loaded from "variant" filename, e.g. "pytorch_model.<variant>.safetensors. "variant"
                             defaults to automatic selection. "variant" in the case of --control-nets does not
                             default to the value of --variant to prevent failures during common use cases.
-
+                            
                             The "subfolder" argument specifies the ControlNet model subfolder, if specified when
                             loading from a Hugging Face repository or folder, weights from the specified
                             subfolder.
-
+                            
                             The "dtype" argument specifies the ControlNet model precision, it defaults to the
                             value of -t/--dtype and should be one of: auto, bfloat16, float16, or float32.
-
+                            
                             If you wish to load a weights file directly from disk, the simplest way is:
                             --control-nets "my_controlnet.safetensors" or --control-nets
                             "my_controlnet.safetensors;scale=1.0;dtype=float16", all other loading arguments
                             aside from "scale", "start", "end", and "dtype" are unused in this case and may
                             produce an error message if used.
-
+                            
                             If you wish to load a specific weight file from a Hugging Face repository, use the
                             blob link loading syntax: --control-nets
                             "https://huggingface.co/UserName/repository-name/blob/main/controlnet.safetensors",
@@ -818,43 +821,43 @@ Help Output
                             Specify one or more T2IAdapter models using URIs. This should be a Hugging Face
                             repository slug / blob link, path to model file on disk (for example, a .pt, .pth,
                             .bin, .ckpt, or .safetensors file), or model folder containing model files.
-
+                            
                             If a T2IAdapter model file exists at a URL which serves the file as a raw download,
                             you may provide an http/https link to it and it will be downloaded to dgenerates web
                             cache.
-
+                            
                             Optional arguments can be provided after the T2IAdapter model specification, these
                             are: "scale", "revision", "variant", "subfolder", and "dtype".
-
+                            
                             They can be specified as so in any order, they are not positional: "huggingface/t2ia
                             dapter;scale=1.0;revision=main;variant=fp16;subfolder=repo_subfolder;dtype=float16".
-
+                            
                             The "scale" argument specifies the scaling factor applied to the T2IAdapter model,
                             the default value is 1.0.
-
+                            
                             The "revision" argument specifies the model revision to use for the T2IAdapter model
                             when loading from Hugging Face repository, (The Git branch / tag, default is
                             "main").
-
+                            
                             The "variant" argument specifies the T2IAdapter model variant, if "variant" is
                             specified when loading from a Hugging Face repository or folder, weights will be
                             loaded from "variant" filename, e.g. "pytorch_model.<variant>.safetensors. "variant"
                             defaults to automatic selection. "variant" in the case of --t2i-adapters does not
                             default to the value of --variant to prevent failures during common use cases.
-
+                            
                             The "subfolder" argument specifies the ControlNet model subfolder, if specified when
                             loading from a Hugging Face repository or folder, weights from the specified
                             subfolder.
-
+                            
                             The "dtype" argument specifies the T2IAdapter model precision, it defaults to the
                             value of -t/--dtype and should be one of: auto, bfloat16, float16, or float32.
-
+                            
                             If you wish to load a weights file directly from disk, the simplest way is:
                             --t2i-adapters "my_t2i_adapter.safetensors" or --t2i-adapters
                             "my_t2i_adapter.safetensors;scale=1.0;dtype=float16", all other loading arguments
                             aside from "scale" and "dtype" are unused in this case and may produce an error
                             message if used.
-
+                            
                             If you wish to load a specific weight file from a Hugging Face repository, use the
                             blob link loading syntax: --t2i-adapters
                             "https://huggingface.co/UserName/repository-name/blob/main/t2i_adapter.safetensors",
@@ -866,7 +869,7 @@ Help Output
                             will yield a help message with a list of overridable arguments for each scheduler
                             and their typical defaults. Arguments listed by "helpargs" can be overridden using
                             the URI syntax typical to other dgenerate URI arguments.
-
+                            
                             You may pass multiple scheduler URIs to this argument, each URI will be tried in
                             turn.
                             -----
@@ -911,35 +914,35 @@ Help Output
                             should be a Hugging Face repository slug / blob link, path to model file on disk
                             (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or model folder
                             containing model files.
-
+                            
                             Optional arguments can be provided after the decoder model specification, these are:
                             "revision", "variant", "subfolder", and "dtype".
-
+                            
                             They can be specified as so in any order, they are not positional: "huggingface/deco
                             der_model;revision=main;variant=fp16;subfolder=repo_subfolder;dtype=float16".
-
+                            
                             The "revision" argument specifies the model revision to use for the decoder model
                             when loading from Hugging Face repository, (The Git branch / tag, default is
                             "main").
-
+                            
                             The "variant" argument specifies the decoder model variant and defaults to the value
                             of --variant. When "variant" is specified when loading from a Hugging Face
                             repository or folder, weights will be loaded from "variant" filename, e.g.
                             "pytorch_model.<variant>.safetensors.
-
+                            
                             The "subfolder" argument specifies the decoder model subfolder, if specified when
                             loading from a Hugging Face repository or folder, weights from the specified
                             subfolder.
-
+                            
                             The "dtype" argument specifies the Stable Cascade decoder model precision, it
                             defaults to the value of -t/--dtype and should be one of: auto, bfloat16, float16,
                             or float32.
-
+                            
                             If you wish to load a weights file directly from disk, the simplest way is: --sdxl-
                             refiner "my_decoder.safetensors" or --sdxl-refiner
                             "my_decoder.safetensors;dtype=float16", all other loading arguments aside from
                             "dtype" are unused in this case and may produce an error message if used.
-
+                            
                             If you wish to load a specific weight file from a Hugging Face repository, use the
                             blob link loading syntax: --s-cascade-decoder
                             "https://huggingface.co/UserName/repository-name/blob/main/decoder.safetensors", the
@@ -976,7 +979,7 @@ Help Output
                             the exact same way as --scheduler including the "help" option. Passing 'helpargs'
                             will yield a help message with a list of overridable arguments for each scheduler
                             and their typical defaults. Defaults to the value of --scheduler.
-
+                            
                             You may pass multiple scheduler URIs to this argument, each URI will be tried in
                             turn.
                             -----
@@ -985,34 +988,34 @@ Help Output
                             should be a Hugging Face repository slug / blob link, path to model file on disk
                             (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or model folder
                             containing model files.
-
+                            
                             Optional arguments can be provided after the SDXL refiner model specification, these
                             are: "revision", "variant", "subfolder", and "dtype".
-
+                            
                             They can be specified as so in any order, they are not positional: "huggingface/refi
                             ner_model_xl;revision=main;variant=fp16;subfolder=repo_subfolder;dtype=float16".
-
+                            
                             The "revision" argument specifies the model revision to use for the refiner model
                             when loading from Hugging Face repository, (The Git branch / tag, default is
                             "main").
-
+                            
                             The "variant" argument specifies the SDXL refiner model variant and defaults to the
                             value of --variant. When "variant" is specified when loading from a Hugging Face
                             repository or folder, weights will be loaded from "variant" filename, e.g.
                             "pytorch_model.<variant>.safetensors.
-
+                            
                             The "subfolder" argument specifies the SDXL refiner model subfolder, if specified
                             when loading from a Hugging Face repository or folder, weights from the specified
                             subfolder.
-
+                            
                             The "dtype" argument specifies the SDXL refiner model precision, it defaults to the
                             value of -t/--dtype and should be one of: auto, bfloat16, float16, or float32.
-
+                            
                             If you wish to load a weights file directly from disk, the simplest way is: --sdxl-
                             refiner "my_sdxl_refiner.safetensors" or --sdxl-refiner
                             "my_sdxl_refiner.safetensors;dtype=float16", all other loading arguments aside from
                             "dtype" are unused in this case and may produce an error message if used.
-
+                            
                             If you wish to load a specific weight file from a Hugging Face repository, use the
                             blob link loading syntax: --sdxl-refiner
                             "https://huggingface.co/UserName/repository-
@@ -1036,7 +1039,7 @@ Help Output
                             same way as --scheduler including the "help" option. Passing 'helpargs' will yield a
                             help message with a list of overridable arguments for each scheduler and their
                             typical defaults. Defaults to the value of --scheduler.
-
+                            
                             You may pass multiple scheduler URIs to this argument, each URI will be tried in
                             turn.
                             -----
@@ -1205,19 +1208,19 @@ Help Output
                             maintained before being used for generation by default, except in the case of Stable
                             Cascade where the images are used as a style prompt (not a noised seed), and can be
                             of varying dimensions.
-
+                            
                             If --no-aspect is not specified, width will be fixed and a new height (aligned by 8)
                             will be calculated for the input images. In most cases resizing the image inputs
                             will result in an image output of an equal size to the inputs, except for upscalers
                             and Deep Floyd --model-type values (torch-if*).
-
+                            
                             If only one integer value is provided, that is the value for both dimensions. X/Y
                             dimension values should be separated by "x".
-
+                            
                             This value defaults to 512x512 for Stable Diffusion when no --image-seeds are
                             specified (IE txt2img mode), 1024x1024 for Stable Cascade and Stable Diffusion 3/XL
                             or Flux model types, and 64x64 for --model-type torch-if (Deep Floyd stage 1).
-
+                            
                             Deep Floyd stage 1 images passed to superscaler models (--model-type torch-ifs*)
                             that are specified with the 'floyd' keyword argument in an --image-seeds definition
                             are never resized or processed in any way.
@@ -1367,7 +1370,7 @@ Help Output
                             white mask image in each image seed string using a semicolon as the separating
                             character, like so: "my-seed-image.png;my-image-mask.png", white areas of the mask
                             indicate where generated content is to be placed in your seed image.
-
+                            
                             Output dimensions specific to the image seed can be specified by placing the
                             dimension at the end of the string following a semicolon like so: "my-seed-
                             image.png;512x512" or "my-seed-image.png;my-image-mask.png;512x512". When using
@@ -1376,13 +1379,13 @@ Help Output
                             them with commas in the case where multiple ControlNets are specified, IE: (--image-
                             seeds "control-image1.png, control-image2.png") OR (--image-seeds
                             "seed.png;control=control-image1.png, control-image2.png").
-
+                            
                             Using --control-nets with img2img or inpainting can be accomplished with the syntax:
                             "my-seed-image.png;mask=my-image-mask.png;control=my-control-
                             image.png;resize=512x512". The "mask" and "resize" arguments are optional when using
                             --control-nets. Videos, GIFs, and WEBP are also supported as inputs when using
                             --control-nets, even for the "control" argument.
-
+                            
                             --image-seeds is capable of reading from multiple animated files at once or any
                             combination of animated files and images, the animated file with the least amount of
                             frames dictates how many frames are generated and static images are duplicated over
@@ -1390,7 +1393,7 @@ Help Output
                             resizing behavior when the global argument --output-size or the local keyword
                             argument "resize" is specified, it is a boolean argument indicating whether aspect
                             ratio of the input image should be respected or ignored.
-
+                            
                             The keyword argument "floyd" can be used to specify images from a previous deep
                             floyd stage when using --model-type torch-ifs*. When keyword arguments are present,
                             all applicable images such as "mask", "control", etc. must also be defined with
@@ -1399,20 +1402,20 @@ Help Output
       -sip PROCESSOR_URI [PROCESSOR_URI ...], --seed-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
                             Specify one or more image processor actions to perform on the primary image(s)
                             specified by --image-seeds.
-
+                            
                             For example: --seed-image-processors "flip" "mirror" "grayscale".
-
+                            
                             To obtain more information about what image processors are available and how to use
                             them, see: --image-processor-help.
-
+                            
                             If you have multiple images specified for batching, for example (--image-seeds
                             "images: img2img-1.png, img2img-2.png"), you may use the delimiter "+" to separate
                             image processor chains, so that a certain chain affects a certain seed image, the
                             plus symbol may also be used to represent a null processor.
-
+                            
                             For example: (--seed-image-processors affect-img-1 + affect-img-2), or (--seed-
                             image-processors + affect-img-2), or (--seed-image-processors affect-img-1 +).
-
+                            
                             The amount of processors / processor chains must not exceed the amount of input
                             images, or you will receive a syntax error message. To obtain more information about
                             what image processors are available and how to use them, see: --image-processor-
@@ -1421,20 +1424,20 @@ Help Output
       -mip PROCESSOR_URI [PROCESSOR_URI ...], --mask-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
                             Specify one or more image processor actions to perform on the inpaint mask image(s)
                             specified by --image-seeds.
-
+                            
                             For example: --mask-image-processors "invert".
-
+                            
                             To obtain more information about what image processors are available and how to use
                             them, see: --image-processor-help.
-
+                            
                             If you have multiple masks specified for batching, for example --image-seeds
                             ("images: img2img-1.png, img2img-2.png; mask-1.png, mask-2.png"), you may use the
                             delimiter "+" to separate image processor chains, so that a certain chain affects a
                             certain mask image, the plus symbol may also be used to represent a null processor.
-
+                            
                             For example: (--mask-image-processors affect-mask-1 + affect-mask-2), or (--mask-
                             image-processors + affect-mask-2), or (--mask-image-processors affect-mask-1 +).
-
+                            
                             The amount of processors / processor chains must not exceed the amount of input mask
                             images, or you will receive a syntax error message. To obtain more information about
                             what image processors are available and how to use them, see: --image-processor-
@@ -1443,29 +1446,29 @@ Help Output
       -cip PROCESSOR_URI [PROCESSOR_URI ...], --control-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
                             Specify one or more image processor actions to perform on the control image
                             specified by --image-seeds, this option is meant to be used with --control-nets.
-
+                            
                             Example: --control-image-processors "canny;lower=50;upper=100".
-
+                            
                             The delimiter "+" can be used to specify a different processor group for each image
                             when using multiple control images with --control-nets.
-
+                            
                             For example if you have --image-seeds "img1.png, img2.png" or --image-seeds
                             "...;control=img1.png, img2.png" specified and multiple ControlNet models specified
                             with --control-nets, you can specify processors for those control images with the
                             syntax: (--control-image-processors "processes-img1" + "processes-img2").
-
+                            
                             This syntax also supports chaining of processors, for example: (--control-image-
                             processors "first-process-img1" "second-process-img1" + "process-img2").
-
+                            
                             The amount of specified processors must not exceed the amount of specified control
                             images, or you will receive a syntax error message.
-
+                            
                             Images which do not have a processor defined for them will not be processed, and the
                             plus character can be used to indicate an image is not to be processed and instead
                             skipped over when that image is a leading element, for example (--control-image-
                             processors + "process-second") would indicate that the first control guidance image
                             is not to be processed, only the second.
-
+                            
                             To obtain more information about what image processors are available and how to use
                             them, see: --image-processor-help.
                             ----------------------------------
@@ -1607,7 +1610,7 @@ Help Output
                             Transformer cache considering current memory usage, and estimated memory usage of
                             new Transformer models that are about to enter memory. If any of these constraint
                             expressions are met all Transformer models cached in memory will be cleared.
-                            Example, and default value: "transformer_size > (available * 0.75)" For Syntax See:
+                            Example, and default value: "transformer_size > (available * 0.75)" For Syntax See: 
                             [https://dgenerate.readthedocs.io/en/v4.5.1/dgenerate_submodules.html#dgenerate.pipe
                             linewrapper.TRANSFORMER_CACHE_MEMORY_CONSTRAINTS]
                             -------------------------------------------------
@@ -1625,8 +1628,10 @@ Help Output
                             diffusion model from VRAM considering current GPU memory usage, and estimated GPU
                             memory usage of new image processor models that are about to enter VRAM. If any of
                             these constraint expressions are met the last active diffusion model in VRAM will be
-
-
+                            destroyed. Example, and default value: "processor_size > (available * 0.70)" For
+                            Syntax See: [https://dgenerate.readthedocs.io/en/v4.5.1/dgenerate_submodules.html#dg
+                            enerate.imageprocessors.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS]
+                            ----------------------------------------------------------------
 
 Windows Install
 ===============

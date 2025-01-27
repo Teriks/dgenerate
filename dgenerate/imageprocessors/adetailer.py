@@ -132,6 +132,9 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
     The "mask-dilation" argument indicates the amount of dilation applied
     to the inpaint mask, see: cv2.dilate
 
+    The "confidence" argument can be used to adjust the confidence
+    value for the YOLO detector model. Defaults to: 0.3
+
     The "detector-device" argument can be used to specify a device
     override for the YOLO detector, i.e. the GPU / Accelerate device
     the model will run on. Example: cuda:0, cuda:1, cpu
@@ -160,6 +163,7 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
                  mask_padding: int = _constants.DEFAULT_ADETAILER_MASK_PADDING,
                  mask_blur: int = _constants.DEFAULT_ADETAILER_MASK_BLUR,
                  mask_dilation: int = _constants.DEFAULT_ADETAILER_MASK_DILATION,
+                 confidence: float = 0.3,
                  detector_device: _types.OptionalName = None,
                  pipe: diffusers.DiffusionPipeline = None,
                  pre_resize: bool = False,
@@ -196,6 +200,9 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
         if strength > 1:
             raise self.argument_error('strength may not be greater than 1.')
 
+        if confidence < 0.0:
+            raise self.argument_error('confidence may not be less than 0.')
+
         self._prompt = prompt
         self._negative_prompt = negative_prompt
         self._mask_padding = mask_padding
@@ -209,6 +216,7 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
         self._seed = seed
         self._prompt_weighter = prompt_weighter
         self._detector_device = detector_device
+        self._confidence = confidence
 
         self._pre_resize = pre_resize
         self._pipe = pipe
@@ -337,7 +345,9 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
             model_path=self._model_path,
             device=self.device,
             detector_device=_types.default(self._detector_device, self._detector_device),
-            prompt_weighter=prompt_weighter)
+            confidence=self._confidence,
+            prompt_weighter=prompt_weighter
+        )
 
         if len(result.images) > 0:
             output_image = result.images[0]

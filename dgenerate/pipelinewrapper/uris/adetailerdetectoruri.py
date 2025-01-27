@@ -71,11 +71,19 @@ class AdetailerDetectorUri:
         """
         return self._device
 
+    @property
+    def confidence(self) -> float:
+        """
+        Confidence value for YOLO detector model.
+        """
+        return self._confidence
+
     def __init__(self,
                  model: str,
                  revision: _types.OptionalString = None,
                  subfolder: _types.OptionalPath = None,
                  weight_name: _types.OptionalName = None,
+                 confidence: float = 0.3,
                  device: _types.OptionalName = None):
         self._model = model
         self._revision = revision
@@ -83,7 +91,16 @@ class AdetailerDetectorUri:
         self._weight_name = weight_name
         self._device = device
 
+        if confidence < 0.0:
+            raise _exceptions.InvalidAdetailerDetectorUriError(
+                f'adetailer detector confidence must be greater than 0.'
+            )
+
+        self._confidence = confidence
+
         if self._device is not None:
+            device = str(device)
+
             if _util.is_valid_device_string(device):
                 self._device = device
             else:
@@ -139,10 +156,20 @@ class AdetailerDetectorUri:
         try:
             r = _lora_uri_parser.parse(uri)
 
+            confidence = r.args.get('confidence', 0.3)
+
+            try:
+                confidence = float(confidence)
+            except ValueError:
+                raise _exceptions.InvalidAdetailerDetectorUriError(
+                    f'could not parse adetailer detector confidence value: {confidence}'
+                )
+
             return AdetailerDetectorUri(model=r.concept,
                                         weight_name=r.args.get('weight-name', None),
                                         revision=r.args.get('revision', None),
                                         subfolder=r.args.get('subfolder', None),
+                                        confidence=confidence,
                                         device=r.args.get('device', None))
         except _textprocessing.ConceptUriParseError as e:
             raise _exceptions.InvalidAdetailerDetectorUriError(e)

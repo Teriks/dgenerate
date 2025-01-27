@@ -63,7 +63,10 @@ def mask_to_pil(masks: torch.Tensor, shape: tuple[int, int]) -> list[Image.Image
 
 
 def yolo_detector(
-    image: Image.Image, model_path: str | Path | None = None, device: str = 'cuda', confidence: float = 0.3
+    image: Image.Image,
+    model_path: str | Path | None = None,
+    device: str = 'cuda',
+    confidence: float = 0.3
 ) -> list[Image.Image] | None:
     if not model_path:
         model_path = hf_hub_download("Bingsu/adetailer", "face_yolov8n.pt")

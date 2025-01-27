@@ -643,6 +643,9 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     The "weight-name" argument indicates the name of the weights file to be loaded when
                     loading from a Hugging Face repository or folder on disk.
                     
+                    The "confidence" argument indicates the confidence value to use with the YOLO 
+                    detector model, this value defaults to 0.3 if not specified.
+                    
                     The "device" argument indicates a device override for the YOLO detector model, the 
                     detector model can be set to run on a different device if desired, for example: 
                     cuda:0, cuda:1, cpu, etc. It runs on the same device as --device by default.
