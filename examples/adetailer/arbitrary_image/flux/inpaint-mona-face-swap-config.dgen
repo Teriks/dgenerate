@@ -20,7 +20,7 @@ black-forest-labs/FLUX.1-schnell
 --model-sequential-offload
 --image-seeds ../../../media/monalisa.png
 --adetailer-detectors Bingsu/adetailer;weight-name=face_yolov8n.pt
---image-seed-strengths 0.4
+--image-seed-strengths 0.6
 --inference-steps 4
 --guidance-scales 0
 --gen-seeds 1

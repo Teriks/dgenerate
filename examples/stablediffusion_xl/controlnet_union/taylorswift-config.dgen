@@ -1,0 +1,20 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 4.5.1
+
+# Use an already processed image with the canny control net
+
+stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
+--variant fp16 --dtype float16
+--vae AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix
+--sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0
+--gen-seeds 2
+--inference-steps 30
+--guidance-scales 8
+--model-cpu-offload
+--vae-tiling
+--vae-slicing
+--prompts "Taylor Swift, high quality, masterpiece, high resolution; low quality, bad quality, sketches"
+--control-nets xinsir/controlnet-union-sdxl-1.0;mode=canny;scale=0.5
+--image-seeds "../../media/vermeer_canny_edged.png"
+--output-size 1024
+--output-path taylorswift
