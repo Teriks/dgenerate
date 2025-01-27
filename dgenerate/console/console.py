@@ -85,6 +85,7 @@ class DgenerateConsole(tk.Tk):
         # File menu
         self._menu_bar = tk.Menu(self)
         self._file_menu = tk.Menu(self._menu_bar, tearoff=0)
+        self._last_known_working_dir = os.getcwd()
 
         def handle_new_window():
             subprocess.Popen(
@@ -933,8 +934,14 @@ class DgenerateConsole(tk.Tk):
 
     def _shell_restarting_commence_message(self):
         self._write_stdout_output('Restarting Shell Process...\n')
+        return self._last_known_working_dir
 
     def _shell_restarting_finish_message(self):
+        # if the process dies from something that
+        # happened internally, the cwd of it cannot
+        # be replicated and will change
+        self._update_cwd_title()
+
         self._write_stdout_output('Shell Process Started.\n'
                                   '======================\n')
 
@@ -1050,6 +1057,7 @@ class DgenerateConsole(tk.Tk):
         if directory is None:
             directory = self._shell_procmon.cwd()
         self.title(f'Dgenerate Console: {directory}')
+        self._last_known_working_dir = directory
 
     def _add_output_line(self, text, tag=None):
         if text.startswith('Working Directory Changed To: '):

@@ -145,10 +145,15 @@ class ProcessMonitor:
             self.stdin_pipe.close()
 
             self.process_exit_callback(return_code)
-            self.process_restarting_callback()
+
+            working_dir = self.process_restarting_callback()
 
             # Restart the process
-            self.popen(*self.popen_args, **self.popen_kwargs)
+            popen_kwargs = self.popen_kwargs.copy()
+            if working_dir is not None:
+                popen_kwargs['cwd'] = working_dir
+
+            self.popen(*self.popen_args, **popen_kwargs)
             self.process_restarted_callback()
 
     def _kill_threads(self):
