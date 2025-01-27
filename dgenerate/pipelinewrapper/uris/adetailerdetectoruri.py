@@ -28,7 +28,7 @@ import huggingface_hub
 import dgenerate.pipelinewrapper.util as _util
 
 _lora_uri_parser = _textprocessing.ConceptUriParser(
-    'Adetailer Detector', ['revision', 'subfolder', 'weight-name', 'device'])
+    'Adetailer Detector', ['revision', 'subfolder', 'weight-name', 'device', 'confidence'])
 
 
 class AdetailerDetectorUri:
