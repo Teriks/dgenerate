@@ -1,7 +1,7 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 4.5.1
 
-# You can utilize multiple ControlNet union models with different modes
+# You can utilize multiple SDXL ControlNet union models with different modes
 # The models used must be exactly the same model or dgenerate will
 # throw a relevant error, the only thing that can vary is the "mode"
 # argument to change the mode being used
