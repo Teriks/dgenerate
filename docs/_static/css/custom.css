@@ -1,4 +1,7 @@
 .wy-nav-content {
-    max-width: 100%; /* or set a specific width like 1200px */
-    width: 100%;
+    max-width: 1200px; /* command examples can become long */
+}
+
+p {
+    max-width: 800px;
 }
