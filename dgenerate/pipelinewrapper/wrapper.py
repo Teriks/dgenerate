@@ -1328,17 +1328,26 @@ class DiffusionPipelineWrapper:
             args['width'] = _types.default(user_args.width, control_images[0].width)
             args['height'] = _types.default(user_args.height, control_images[0].height)
 
+            sdxl_cn_union = _enums.model_type_is_sdxl(self._model_type) and \
+                            any(p.mode is not None for p in self._parsed_controlnet_uris)
+
             if self._pipeline_type == _enums.PipelineType.TXT2IMG:
                 if _enums.model_type_is_sd3(self._model_type):
                     # Handle SD3 model specifics for control images
                     args['control_image'] = self._sd3_force_control_to_a16(args, control_images, user_args)
                 elif _enums.model_type_is_flux(self._model_type):
                     args['control_image'] = control_images
+                elif sdxl_cn_union:
+                    # controlnet union pipeline does not use "image"
+                    # it also destructively modifies
+                    # this input value if it is a list for
+                    # whatever reason
+                    args['control_image'] = list(control_images)
                 else:
                     args['image'] = control_images
             elif self._pipeline_type in {_enums.PipelineType.IMG2IMG, _enums.PipelineType.INPAINT}:
                 args['image'] = user_args.images
-                args['control_image'] = control_images
+                args['control_image'] = control_images if not sdxl_cn_union else list(control_images)
                 set_strength()
 
             mask_images = user_args.mask_images
@@ -2053,6 +2062,11 @@ class DiffusionPipelineWrapper:
 
             pipeline_args['control_guidance_end'] = \
                 self._get_controlnet_guidance_end()
+
+            if 'control_mode' in inspect.signature(
+                    self._pipeline.__call__).parameters:
+                pipeline_args['control_mode'] = \
+                    self._get_controlnet_mode()
 
         if has_t2i_adapter:
             pipeline_args['adapter_conditioning_scale'] = \

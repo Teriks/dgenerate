@@ -51,6 +51,24 @@ class FluxControlNetUriModes(enum.IntEnum):
     LQ = 6
 
 
+class SDXLControlNetUriModes(enum.IntEnum):
+    """
+    Represents control net modes associated with the SDXL Union controlnet.
+    """
+    OPENPOSE = 0
+    DEPTH = 1
+    HED = 2
+    PIDI = 2
+    SCRIBBLE = 2
+    TED = 2
+    CANNY = 3
+    LINEART = 3
+    ANIME_LINEART = 3
+    MLSD = 3
+    NORMAL = 4
+    SEGMENT = 5
+
+
 class ControlNetUri:
     """
     Representation of ``--control-nets`` uri when ``--model-type`` torch*
@@ -115,9 +133,16 @@ class ControlNetUri:
     @property
     def mode(self) -> int | None:
         """
-        Flux Union ControlNet mode.
+        Union ControlNet mode.
         """
         return self._mode
+
+    @property
+    def model_type(self) -> _enums.ModelType:
+        """
+        Model type the ControlNet model is expected to attach to.
+        """
+        return self._model_type
 
     def __init__(self,
                  model: str,
@@ -128,7 +153,8 @@ class ControlNetUri:
                  scale: float = 1.0,
                  start: float = 0.0,
                  end: float = 1.0,
-                 mode: int | str | FluxControlNetUriModes | None = None):
+                 mode: int | str | FluxControlNetUriModes | None = None,
+                 model_type: _enums.ModelType = _enums.ModelType.TORCH):
         """
         :param model: model path
         :param revision: model revision (branch name)
@@ -139,6 +165,7 @@ class ControlNetUri:
         :param start: control net guidance start value
         :param end: control net guidance end value
         :param mode: Flux Union control net mode.
+        :param model_type: Model type this ControlNet will be attached to.
 
         :raises InvalidControlNetUriError: If ``dtype`` is passed an invalid data type string.
         """
@@ -147,6 +174,7 @@ class ControlNetUri:
         self._revision = revision
         self._variant = variant
         self._subfolder = subfolder
+        self._model_type = model_type
 
         if isinstance(mode, str):
             self._mode = self._flux_mode_int_from_str(mode)
@@ -168,12 +196,11 @@ class ControlNetUri:
              use_auth_token: _types.OptionalString = None,
              local_files_only: bool = False,
              sequential_cpu_offload_member: bool = False,
-             model_cpu_offload_member: bool = False,
-             model_class:
-             type[diffusers.ControlNetModel] |
-             type[diffusers.SD3ControlNetModel] |
-             type[diffusers.FluxControlNetModel] = diffusers.ControlNetModel) -> \
-            diffusers.ControlNetModel | diffusers.SD3ControlNetModel:
+             model_cpu_offload_member: bool = False) -> \
+                diffusers.ControlNetModel | \
+                diffusers.ControlNetUnionModel | \
+                diffusers.SD3ControlNetModel | \
+                diffusers.FluxControlNetModel:
         """
         Load a :py:class:`diffusers.ControlNetModel` from this URI.
 
@@ -192,16 +219,20 @@ class ControlNetUri:
         :param model_cpu_offload_member: This model will be attached to a pipeline
             which will have model cpu offload enabled?
 
-        :param model_class: What class of control net model should be loaded?
-            :py:class:`diffusers.ControlNetModel` or :py:class:`diffusers.SD3ControlNetModel`.
-            The first class is for Stable Diffusion 1 & 2, and the second class is used for
-            Stable Diffusion 3.
-
         :raises ModelNotFoundError: If the model could not be found.
 
         :return: :py:class:`diffusers.ControlNetModel`, :py:class:`diffusers.SD3ControlNetModel`, or :py:class:`diffusers.FluxControlNetModel`
         """
         try:
+            if _enums.model_type_is_flux(self.model_type):
+                model_class = diffusers.FluxControlNetModel
+            elif _enums.model_type_is_sd3(self.model_type):
+                model_class = diffusers.SD3ControlNetModel
+            elif _enums.model_type_is_sdxl(self.model_type) and self.mode is not None:
+                model_class = diffusers.ControlNetUnionModel
+            else:
+                model_class = diffusers.ControlNetModel
+
             return self._load(dtype_fallback,
                               use_auth_token,
                               local_files_only,
@@ -230,19 +261,23 @@ class ControlNetUri:
               model_cpu_offload_member: bool = False,
               model_class:
               type[diffusers.ControlNetModel] |
+              type[diffusers.ControlNetUnionModel] |
               type[diffusers.SD3ControlNetModel] |
-              type[diffusers.FluxControlNetModel] = diffusers.ControlNetModel) \
-            -> diffusers.ControlNetModel | diffusers.SD3ControlNetModel:
+              type[diffusers.FluxControlNetModel] = diffusers.ControlNetModel) -> \
+                diffusers.ControlNetModel | \
+                diffusers.ControlNetUnionModel | \
+                diffusers.SD3ControlNetModel | \
+                diffusers.FluxControlNetModel:
 
         if sequential_cpu_offload_member and model_cpu_offload_member:
             # these are used for cache differentiation only
             raise ValueError('sequential_cpu_offload_member and model_cpu_offload_member cannot both be True.')
 
-        if model_class is not diffusers.FluxControlNetModel:
+        if model_class not in {diffusers.FluxControlNetModel, diffusers.ControlNetUnionModel}:
             if self.mode is not None:
                 raise ValueError(
                     f'The "mode" argument of ControlNet "{self.model}" is invalid to use '
-                    'with non Flux models.'
+                    'with non Flux / SDXL ControlNet Union models.'
                 )
 
         model_path = _hfutil.download_non_hf_model(self.model)
@@ -303,11 +338,13 @@ class ControlNetUri:
         return new_net
 
     @staticmethod
-    def parse(uri: _types.Uri) -> 'ControlNetUri':
+    def parse(uri: _types.Uri,
+              model_type=_enums.ModelType.TORCH) -> 'ControlNetUri':
         """
         Parse a ``--model-type`` torch* ``--control-nets`` uri specification and return an object representing its constituents
 
         :param uri: string with ``--control-nets`` uri syntax
+        :param model_type: model type that the CntrolNnet will be attached to.
 
         :raise InvalidControlNetUriError:
 
@@ -351,7 +388,15 @@ class ControlNetUri:
                     f'Torch ControlNet "start" must be less than or equal to "end".')
 
             if mode is not None:
-                mode = ControlNetUri._flux_mode_int_from_str(mode)
+                if _enums.model_type_is_sdxl(model_type):
+                    mode = ControlNetUri._sdxl_mode_int_from_str(mode)
+                elif _enums.model_type_is_flux(model_type):
+                    mode = ControlNetUri._flux_mode_int_from_str(mode)
+                else:
+                    raise _exceptions.InvalidControlNetUriError(
+                        f'Torch ControlNet "mode" argument not supported '
+                        f'for model type: {_enums.get_model_type_string(model_type)}.'
+                    )
 
             return ControlNetUri(
                 model=r.concept,
@@ -362,10 +407,33 @@ class ControlNetUri:
                 scale=scale,
                 start=start,
                 end=end,
-                mode=mode)
+                mode=mode,
+                model_type=model_type
+            )
 
         except _textprocessing.ConceptUriParseError as e:
             raise _exceptions.InvalidControlNetUriError(e)
+
+    @staticmethod
+    def _sdxl_mode_int_from_str(mode):
+        modes = _textprocessing.oxford_comma(
+            [n.name.lower() for n in SDXLControlNetUriModes], "or")
+        try:
+            try:
+                mode = int(mode)
+            except ValueError:
+                mode = SDXLControlNetUriModes[mode.upper()].value
+
+        except KeyError as e:
+            raise _exceptions.InvalidControlNetUriError(
+                f'Torch SDXL Union ControlNet "mode" must be an integer, '
+                f'or one of: {modes}. received: {mode}')
+        if mode >= len(SDXLControlNetUriModes) or mode < 0:
+            raise _exceptions.InvalidControlNetUriError(
+                f'Torch SDXL Union ControlNet "mode" must be less than '
+                f'{len(SDXLControlNetUriModes)} and greater than zero, '
+                f'mode number {mode} does not exist.')
+        return mode
 
     @staticmethod
     def _flux_mode_int_from_str(mode):

@@ -1432,7 +1432,7 @@ def _torch_args_hasher(args):
         'ip_adapter_uris': _cache.uri_list_hash_with_parser(_uris.IPAdapterUri),
         'textual_inversion_uris': _cache.uri_list_hash_with_parser(_uris.TextualInversionUri.parse),
         'text_encoder_uris': _cache.uri_list_hash_with_parser(text_encoder_uri_parse),
-        'controlnet_uris': _cache.uri_list_hash_with_parser(_uris.ControlNetUri.parse,
+        'controlnet_uris': _cache.uri_list_hash_with_parser(lambda s: _uris.ControlNetUri.parse(s, model_type=args['model_type']),
                                                             exclude={'scale', 'start', 'end'}),
         't2i_adapter_uris': _cache.uri_list_hash_with_parser(_uris.T2IAdapterUri.parse,
                                                              exclude={'scale'})
@@ -1626,6 +1626,17 @@ def get_torch_pipeline_class(
 
     is_sdxl = _enums.model_type_is_sdxl(model_type)
 
+    try:
+        sdxl_controlnet_union = controlnet_uris and is_sdxl and any(
+            _uris.ControlNetUri.parse(s, model_type).mode is not None for s in controlnet_uris)
+    except _uris.InvalidControlNetUriError as e:
+        raise UnsupportedPipelineConfigError(str(e))
+
+    if sdxl_controlnet_union and len(controlnet_uris) > 1:
+        raise UnsupportedPipelineConfigError(
+            'SDXL ControlNet Union mode does not support multiple ControlNet model definitions.'
+        )
+
     # Pipeline class selection
     if _enums.model_type_is_upscaler(model_type):
         if controlnet_uris:
@@ -1705,9 +1716,15 @@ def get_torch_pipeline_class(
             elif controlnet_uris:
                 if is_sdxl:
                     if pag:
+                        if sdxl_controlnet_union:
+                            raise UnsupportedPipelineConfigError(
+                                'SDXL ControlNet Union mode does not support PAG')
                         pipeline_class = diffusers.StableDiffusionXLControlNetPAGPipeline
                     else:
-                        pipeline_class = diffusers.StableDiffusionXLControlNetPipeline
+                        if sdxl_controlnet_union:
+                            pipeline_class = diffusers.StableDiffusionXLControlNetUnionPipeline
+                        else:
+                            pipeline_class = diffusers.StableDiffusionXLControlNetPipeline
                 else:
                     if pag:
                         pipeline_class = diffusers.StableDiffusionControlNetPAGPipeline
@@ -1773,9 +1790,15 @@ def get_torch_pipeline_class(
             elif controlnet_uris:
                 if is_sdxl:
                     if pag:
+                        if sdxl_controlnet_union:
+                            raise UnsupportedPipelineConfigError(
+                                'SDXL ControlNet Union mode does not support PAG')
                         pipeline_class = diffusers.StableDiffusionXLControlNetPAGImg2ImgPipeline
                     else:
-                        pipeline_class = diffusers.StableDiffusionXLControlNetImg2ImgPipeline
+                        if sdxl_controlnet_union:
+                            pipeline_class = diffusers.StableDiffusionXLControlNetUnionImg2ImgPipeline
+                        else:
+                            pipeline_class = diffusers.StableDiffusionXLControlNetImg2ImgPipeline
                 else:
                     if pag:
                         raise UnsupportedPipelineConfigError(
@@ -1845,7 +1868,10 @@ def get_torch_pipeline_class(
                             'in inpaint mode with ControlNet models.'
                         )
                     else:
-                        pipeline_class = diffusers.StableDiffusionXLControlNetInpaintPipeline
+                        if sdxl_controlnet_union:
+                            pipeline_class = diffusers.StableDiffusionXLControlNetUnionInpaintPipeline
+                        else:
+                            pipeline_class = diffusers.StableDiffusionXLControlNetInpaintPipeline
                 else:
                     if pag:
                         pipeline_class = diffusers.StableDiffusionControlNetPAGInpaintPipeline
@@ -2202,18 +2228,13 @@ def _create_torch_diffusion_pipeline(
             creation_kwargs['adapter'] = t2i_adapters
 
     if controlnet_uris and not controlnet_override:
-
         controlnets = None
 
-        if _enums.model_type_is_flux(model_type):
-            controlnet_model_class = diffusers.FluxControlNetModel
-        elif _enums.model_type_is_sd3(model_type):
-            controlnet_model_class = diffusers.SD3ControlNetModel
-        else:
-            controlnet_model_class = diffusers.ControlNetModel
-
         for controlnet_uri in controlnet_uris:
-            parsed_controlnet_uri = _uris.ControlNetUri.parse(controlnet_uri)
+            parsed_controlnet_uri = _uris.ControlNetUri.parse(
+                uri=controlnet_uri,
+                model_type=model_type
+            )
 
             parsed_controlnet_uris.append(parsed_controlnet_uri)
 
@@ -2222,8 +2243,7 @@ def _create_torch_diffusion_pipeline(
                 dtype_fallback=dtype,
                 local_files_only=local_files_only,
                 sequential_cpu_offload_member=sequential_cpu_offload,
-                model_cpu_offload_member=model_cpu_offload,
-                model_class=controlnet_model_class)
+                model_cpu_offload_member=model_cpu_offload)
 
             _messages.debug_log(lambda:
                                 f'Added Torch ControlNet: "{controlnet_uri}" '
