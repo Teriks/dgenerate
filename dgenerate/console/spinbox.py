@@ -188,6 +188,10 @@ class FloatSpinbox(tk.Entry):
         if self.cget('state') == tk.DISABLED:
             return
 
+        if 'inf' in self.display_value.get():
+            self.display_value.set('0')
+            return
+
         try:
             new_value = max(self.from_,
                             min(self.to, round(float(self.display_value.get()) + (delta * self.increment), 2)))
@@ -243,12 +247,19 @@ class FloatSpinbox(tk.Entry):
         if action != '-1':
             # inserting or deleting
             try:
-                if self.from_ >= 0:
-                    return re.match(r'^[0-9.]+$', value_if_allowed) is not None and value_if_allowed.count('.') < 2
-                else:
-                    some_float = re.match(r'^[0-9.-]+$', value_if_allowed) is not None and value_if_allowed.count('.') < 2
-                    neg = value_if_allowed.find('-')
-                    return some_float and (neg == 0 or neg == -1) and value_if_allowed.count('-') < 2
+                is_positive_min = self.from_ >= 0
+
+                pattern = r'^i(nf?)?$|^[0-9.]+$' if is_positive_min else r'^-?i(nf?)?$|^[0-9.-]+$'
+
+                match = re.match(pattern, value_if_allowed)
+
+                return (
+                        match is not None
+                        and value_if_allowed.count('.') < 2  # At most one decimal point
+                        and value_if_allowed.count('-') < 2  # At most one '-' sign
+                        and (is_positive_min or value_if_allowed.find('-') in [0, -1])  # '-' at valid position
+                )
+
             except ValueError:
                 return False
         else:
