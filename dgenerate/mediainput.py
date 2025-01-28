@@ -1273,8 +1273,11 @@ def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResul
             _ensure_exists(img, 'Image seed')
         result.images = seed_images
     else:
-        _ensure_exists(images, 'Image seed')
-        result.images = [images]
+        images = _textprocessing.tokenized_split(
+            images, ',', remove_quotes=True, escapes_in_quoted=True)
+        for i in images:
+            _ensure_exists(i, 'Image seed')
+        result.images = images
 
     mask_images = parse_result.args.get('mask', None)
     if mask_images is not None:

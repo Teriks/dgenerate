@@ -48,6 +48,7 @@ from dgenerate.memoize import memoize as _memoize
 import dgenerate.pipelinewrapper.util as _util
 import dgenerate.pipelinewrapper.quanto as _quanto
 import numpy
+import dgenerate.extras.diffusers
 
 
 class UnsupportedPipelineConfigError(Exception):
@@ -1916,7 +1917,8 @@ def get_torch_pipeline_class(
                         pipeline_class = diffusers.StableDiffusionXLControlNetPAGPipeline
                     else:
                         if sdxl_controlnet_union:
-                            pipeline_class = diffusers.StableDiffusionXLControlNetUnionPipeline
+                            pipeline_class = \
+                                dgenerate.extras.diffusers.StableDiffusionXLControlNetUnionPipeline
                         else:
                             pipeline_class = diffusers.StableDiffusionXLControlNetPipeline
                 else:
@@ -1990,7 +1992,8 @@ def get_torch_pipeline_class(
                         pipeline_class = diffusers.StableDiffusionXLControlNetPAGImg2ImgPipeline
                     else:
                         if sdxl_controlnet_union:
-                            pipeline_class = diffusers.StableDiffusionXLControlNetUnionImg2ImgPipeline
+                            pipeline_class = \
+                                dgenerate.extras.diffusers.StableDiffusionXLControlNetUnionImg2ImgPipeline
                         else:
                             pipeline_class = diffusers.StableDiffusionXLControlNetImg2ImgPipeline
                 else:
@@ -2063,7 +2066,8 @@ def get_torch_pipeline_class(
                         )
                     else:
                         if sdxl_controlnet_union:
-                            pipeline_class = diffusers.StableDiffusionXLControlNetUnionInpaintPipeline
+                            pipeline_class = \
+                                dgenerate.extras.diffusers.StableDiffusionXLControlNetUnionInpaintPipeline
                         else:
                             pipeline_class = diffusers.StableDiffusionXLControlNetInpaintPipeline
                 else:

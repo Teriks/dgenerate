@@ -2056,11 +2056,11 @@ class DiffusionPipelineWrapper:
 
         if has_controlnet:
             is_xl_union_model = isinstance(
-                self._pipeline.controlnet, diffusers.ControlNetUnionModel) and len(self.controlnet_uris) > 1
+                self._pipeline.controlnet, diffusers.ControlNetUnionModel)\
+                                and len(self.controlnet_uris) > 1
 
             pipeline_args.update({
-                'controlnet_conditioning_scale': self._get_controlnet_conditioning_scale()[0] if
-                is_xl_union_model else self._get_controlnet_conditioning_scale(),
+                'controlnet_conditioning_scale': self._get_controlnet_conditioning_scale(),
                 'control_guidance_start': self._get_controlnet_guidance_start()[0] if
                 is_xl_union_model else self._get_controlnet_guidance_start(),
                 'control_guidance_end': self._get_controlnet_guidance_end()[0] if

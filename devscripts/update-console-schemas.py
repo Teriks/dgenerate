@@ -40,7 +40,7 @@ with open('dgenerate/console/schemas/imageprocessors.json', 'w') as file:
 with open('dgenerate/console/schemas/karrasschedulers.json', 'w') as file:
     scheduler_names = sorted(
         [e.name for e in diffusers.schedulers.scheduling_utils.KarrasDiffusionSchedulers] +
-        ['LCMScheduler'])
+        ['LCMScheduler', 'FlowMatchEulerDiscreteScheduler', 'DDPMWuerstchenScheduler'])
 
     schema = _pipelinewrapper.get_scheduler_uri_schema([getattr(diffusers, n) for n in scheduler_names])
     json.dump(schema, file)

@@ -2,17 +2,25 @@
 #! dgenerate 4.5.1
 
 # You can utilize multiple SDXL ControlNet union models with different modes
-# The models used must be exactly the same model or dgenerate will
-# throw a relevant error, the only thing that can vary is the "mode"
-# argument to change the mode being used
 
-# Only the first model specification can apply the "scale", "start", and "end"
-# argument values, if they are specified again those values are ignored.
+# The models used must be exactly the same model specification,
+# or dgenerate will throw a relevant error, the only URI arguments
+# that can vary are the "mode" and "scale" argument.
+
+# The "start" and "end" argument can be used with the first specification.
+# Only the "start" and "end" values from the first specification are used
+# and any further specifications are ignored.  These values apply to
+# the ControlNet model globally, (technically it is one model being used)
+
+# The "scale" argument can be applied per "mode", to indicate the amount
+# that particular mode contributes to guidance
 
 # Use depth + pose below, two images are used (the same images), for each
-# "mode" that is mentioned.  Force openpose to align to 64 pixels because
-# the midas processor forces this alignment and the input images
+# "mode" that is mentioned.  Force control images to align to 64 pixels
+# because the midas processor forces this alignment and the input images
 # need to be the same size
+
+# even 50/50 split on mode contribution
 
 stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
 --variant fp16 --dtype float16
@@ -27,6 +35,6 @@ stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
 --vae-tiling
 --vae-slicing
 --prompts "A boxer throwing a punch in the ring"
---control-nets xinsir/controlnet-union-sdxl-1.0;scale=0.8;mode=depth xinsir/controlnet-union-sdxl-1.0;mode=openpose
---image-seeds "../../media/man-fighting-pose.jpg, ../../media/man-fighting-pose.jpg"
---control-image-processors midas + "openpose;detect-align=64;include-hand=true;include-face=true;output-file=boxer/boxer-openpose.png"
+--control-nets xinsir/controlnet-union-sdxl-1.0;scale=0.5;mode=depth xinsir/controlnet-union-sdxl-1.0;scale=0.5;mode=openpose
+--image-seeds "../../media/man-fighting-pose.jpg, ../../media/man-fighting-pose.jpg;align=64"
+--control-image-processors midas + "openpose;include-hand=true;include-face=true;output-file=boxer/boxer-openpose.png"

@@ -3458,6 +3458,7 @@ When using ``--control-nets`` specifying control images via ``--image-seeds`` ca
 Multiple control image sources can be specified in these ways when using multiple control nets:
 
     * ``--image-seeds "control-1.png, control-2.png"`` (txt2img)
+    * ``--image-seeds "control-1.png, control-2.png;align=64"`` (resize arguments work here)
     * ``--image-seeds "img2img-seed.png;control=control-1.png, control-2.png"`` (img2img)
     * ``--image-seeds "img2img-seed.png;mask=mask.png;control=control-1.png, control-2.png"`` (inpainting)
 
@@ -3466,8 +3467,8 @@ It is considered a syntax error if you specify a non-equal amount of control gui
 images and ``--control-nets`` URIs and you will receive an error message if you do so.
 
 ``resize=WIDTHxHEIGHT`` can be used to select a per ``--image-seeds`` resize dimension for all image
-sources involved in that particular specification, as well as ``aspect=true/false`` and the frame
-slicing arguments ``frame-start`` and ``frame-end``.
+sources involved in that particular specification, as well as ``align``, ``aspect=true/false``, and
+the frame slicing arguments ``frame-start`` and ``frame-end``.
 
 ControlNet guidance images may actually be animations such as MP4s, GIFs etc. Frames can be
 taken from multiple videos simultaneously. Any possible combination of image/video parameters can be used.
