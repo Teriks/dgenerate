@@ -1,0 +1,13 @@
+Kolors SDXL pipelines not currently included in diffusers
+
+This code is heavily modified to add support for:
+
+txt2img controlnet
+inpaint controlnet
+
+VRAM optimizations / offloading
+
+And also to work with diffusers.ControlNetModel unmodified
+
+Derived from: https://github.com/Kwai-Kolors/Kolors
+
