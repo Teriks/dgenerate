@@ -53,10 +53,9 @@ from transformers import (
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
 
 
-
 # Copied from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion_img2img.retrieve_latents
 def retrieve_latents(
-    encoder_output: torch.Tensor, generator: Optional[torch.Generator] = None, sample_mode: str = "sample"
+        encoder_output: torch.Tensor, generator: Optional[torch.Generator] = None, sample_mode: str = "sample"
 ):
     if hasattr(encoder_output, "latent_dist") and sample_mode == "sample":
         return encoder_output.latent_dist.sample(generator)
@@ -138,17 +137,17 @@ class KolorsControlNetImg2ImgPipeline(
     ]
 
     def __init__(
-        self,
-        vae: AutoencoderKL,
-        text_encoder: CLIPTextModel,
-        tokenizer: CLIPTokenizer,
-        unet: UNet2DConditionModel,
-        controlnet: Union[ControlNetModel, List[ControlNetModel], Tuple[ControlNetModel], MultiControlNetModel],
-        scheduler: KarrasDiffusionSchedulers,
-        requires_aesthetics_score: bool = False,
-        force_zeros_for_empty_prompt: bool = True,
-        feature_extractor: CLIPImageProcessor = None,
-        image_encoder: CLIPVisionModelWithProjection = None,
+            self,
+            vae: AutoencoderKL,
+            text_encoder: CLIPTextModel,
+            tokenizer: CLIPTokenizer,
+            unet: UNet2DConditionModel,
+            controlnet: Union[ControlNetModel, List[ControlNetModel], Tuple[ControlNetModel], MultiControlNetModel],
+            scheduler: KarrasDiffusionSchedulers,
+            requires_aesthetics_score: bool = False,
+            force_zeros_for_empty_prompt: bool = True,
+            feature_extractor: CLIPImageProcessor = None,
+            image_encoder: CLIPVisionModelWithProjection = None,
     ):
         super().__init__()
 
@@ -176,19 +175,18 @@ class KolorsControlNetImg2ImgPipeline(
         self.register_to_config(force_zeros_for_empty_prompt=force_zeros_for_empty_prompt)
         self.register_to_config(requires_aesthetics_score=requires_aesthetics_score)
 
-
     def encode_prompt(
-        self,
-        prompt,
-        device: Optional[torch.device] = None,
-        num_images_per_prompt: int = 1,
-        do_classifier_free_guidance: bool = True,
-        negative_prompt=None,
-        prompt_embeds: Optional[torch.FloatTensor] = None,
-        negative_prompt_embeds: Optional[torch.FloatTensor] = None,
-        pooled_prompt_embeds: Optional[torch.FloatTensor] = None,
-        negative_pooled_prompt_embeds: Optional[torch.FloatTensor] = None,
-        lora_scale: Optional[float] = None,
+            self,
+            prompt,
+            device: Optional[torch.device] = None,
+            num_images_per_prompt: int = 1,
+            do_classifier_free_guidance: bool = True,
+            negative_prompt=None,
+            prompt_embeds: Optional[torch.FloatTensor] = None,
+            negative_prompt_embeds: Optional[torch.FloatTensor] = None,
+            pooled_prompt_embeds: Optional[torch.FloatTensor] = None,
+            negative_pooled_prompt_embeds: Optional[torch.FloatTensor] = None,
+            lora_scale: Optional[float] = None,
     ):
         r"""
         Encodes the prompt into text encoder hidden states.
@@ -257,12 +255,12 @@ class KolorsControlNetImg2ImgPipeline(
                     return_tensors="pt",
                 ).to(self._execution_device)
                 output = text_encoder(
-                        input_ids=text_inputs['input_ids'] ,
-                        attention_mask=text_inputs['attention_mask'],
-                        position_ids=text_inputs['position_ids'],
-                        output_hidden_states=True)
+                    input_ids=text_inputs['input_ids'],
+                    attention_mask=text_inputs['attention_mask'],
+                    position_ids=text_inputs['position_ids'],
+                    output_hidden_states=True)
                 prompt_embeds = output.hidden_states[-2].permute(1, 0, 2).clone()
-                pooled_prompt_embeds = output.hidden_states[-1][-1, :, :].clone() # [batch_size, 4096]
+                pooled_prompt_embeds = output.hidden_states[-1][-1, :, :].clone()  # [batch_size, 4096]
                 bs_embed, seq_len, _ = prompt_embeds.shape
                 prompt_embeds = prompt_embeds.repeat(1, num_images_per_prompt, 1)
                 prompt_embeds = prompt_embeds.view(bs_embed * num_images_per_prompt, seq_len, -1)
@@ -313,12 +311,12 @@ class KolorsControlNetImg2ImgPipeline(
                     return_tensors="pt",
                 ).to(self._execution_device)
                 output = text_encoder(
-                        input_ids=uncond_input['input_ids'] ,
-                        attention_mask=uncond_input['attention_mask'],
-                        position_ids=uncond_input['position_ids'],
-                        output_hidden_states=True)
+                    input_ids=uncond_input['input_ids'],
+                    attention_mask=uncond_input['attention_mask'],
+                    position_ids=uncond_input['position_ids'],
+                    output_hidden_states=True)
                 negative_prompt_embeds = output.hidden_states[-2].permute(1, 0, 2).clone()
-                negative_pooled_prompt_embeds = output.hidden_states[-1][-1, :, :].clone() # [batch_size, 4096]
+                negative_pooled_prompt_embeds = output.hidden_states[-1][-1, :, :].clone()  # [batch_size, 4096]
 
                 if do_classifier_free_guidance:
                     # duplicate unconditional embeddings for each generation per prompt, using mps friendly method
@@ -351,7 +349,6 @@ class KolorsControlNetImg2ImgPipeline(
 
         return prompt_embeds, negative_prompt_embeds, pooled_prompt_embeds, negative_pooled_prompt_embeds
 
-
     # Copied from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion.StableDiffusionPipeline.encode_image
     def encode_image(self, image, device, num_images_per_prompt, output_hidden_states=None):
         dtype = next(self.image_encoder.parameters()).dtype
@@ -379,7 +376,7 @@ class KolorsControlNetImg2ImgPipeline(
 
     # Copied from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion.StableDiffusionPipeline.prepare_ip_adapter_image_embeds
     def prepare_ip_adapter_image_embeds(
-        self, ip_adapter_image, ip_adapter_image_embeds, device, num_images_per_prompt, do_classifier_free_guidance
+            self, ip_adapter_image, ip_adapter_image_embeds, device, num_images_per_prompt, do_classifier_free_guidance
     ):
         image_embeds = []
         if do_classifier_free_guidance:
@@ -394,7 +391,7 @@ class KolorsControlNetImg2ImgPipeline(
                 )
 
             for single_ip_adapter_image, image_proj_layer in zip(
-                ip_adapter_image, self.unet.encoder_hid_proj.image_projection_layers
+                    ip_adapter_image, self.unet.encoder_hid_proj.image_projection_layers
             ):
                 output_hidden_state = not isinstance(image_proj_layer, ImageProjection)
                 single_image_embeds, single_negative_image_embeds = self.encode_image(
@@ -442,23 +439,23 @@ class KolorsControlNetImg2ImgPipeline(
         return extra_step_kwargs
 
     def check_inputs(
-        self,
-        prompt,
-        image,
-        strength,
-        num_inference_steps,
-        callback_steps,
-        negative_prompt=None,
-        prompt_embeds=None,
-        negative_prompt_embeds=None,
-        pooled_prompt_embeds=None,
-        negative_pooled_prompt_embeds=None,
-        ip_adapter_image=None,
-        ip_adapter_image_embeds=None,
-        controlnet_conditioning_scale=1.0,
-        control_guidance_start=0.0,
-        control_guidance_end=1.0,
-        callback_on_step_end_tensor_inputs=None,
+            self,
+            prompt,
+            image,
+            strength,
+            num_inference_steps,
+            callback_steps,
+            negative_prompt=None,
+            prompt_embeds=None,
+            negative_prompt_embeds=None,
+            pooled_prompt_embeds=None,
+            negative_pooled_prompt_embeds=None,
+            ip_adapter_image=None,
+            ip_adapter_image_embeds=None,
+            controlnet_conditioning_scale=1.0,
+            control_guidance_start=0.0,
+            control_guidance_end=1.0,
+            callback_on_step_end_tensor_inputs=None,
     ):
         if strength < 0 or strength > 1:
             raise ValueError(f"The value of strength should in [0.0, 1.0] but is {strength}")
@@ -477,7 +474,7 @@ class KolorsControlNetImg2ImgPipeline(
             )
 
         if callback_on_step_end_tensor_inputs is not None and not all(
-            k in self._callback_tensor_inputs for k in callback_on_step_end_tensor_inputs
+                k in self._callback_tensor_inputs for k in callback_on_step_end_tensor_inputs
         ):
             raise ValueError(
                 f"`callback_on_step_end_tensor_inputs` has to be in {self._callback_tensor_inputs}, but found {[k for k in callback_on_step_end_tensor_inputs if k not in self._callback_tensor_inputs]}"
@@ -534,15 +531,15 @@ class KolorsControlNetImg2ImgPipeline(
         )
 
         if (
-            isinstance(self.controlnet, ControlNetModel)
-            or is_compiled
-            and isinstance(self.controlnet._orig_mod, ControlNetModel)
+                isinstance(self.controlnet, ControlNetModel)
+                or is_compiled
+                and isinstance(self.controlnet._orig_mod, ControlNetModel)
         ):
             self.check_image(image, prompt, prompt_embeds)
         elif (
-            isinstance(self.controlnet, MultiControlNetModel)
-            or is_compiled
-            and isinstance(self.controlnet._orig_mod, MultiControlNetModel)
+                isinstance(self.controlnet, MultiControlNetModel)
+                or is_compiled
+                and isinstance(self.controlnet._orig_mod, MultiControlNetModel)
         ):
             if not isinstance(image, list):
                 raise TypeError("For multiple controlnets: `image` must be type `list`")
@@ -563,22 +560,22 @@ class KolorsControlNetImg2ImgPipeline(
 
         # Check `controlnet_conditioning_scale`
         if (
-            isinstance(self.controlnet, ControlNetModel)
-            or is_compiled
-            and isinstance(self.controlnet._orig_mod, ControlNetModel)
+                isinstance(self.controlnet, ControlNetModel)
+                or is_compiled
+                and isinstance(self.controlnet._orig_mod, ControlNetModel)
         ):
             if not isinstance(controlnet_conditioning_scale, float):
                 raise TypeError("For single controlnet: `controlnet_conditioning_scale` must be type `float`.")
         elif (
-            isinstance(self.controlnet, MultiControlNetModel)
-            or is_compiled
-            and isinstance(self.controlnet._orig_mod, MultiControlNetModel)
+                isinstance(self.controlnet, MultiControlNetModel)
+                or is_compiled
+                and isinstance(self.controlnet._orig_mod, MultiControlNetModel)
         ):
             if isinstance(controlnet_conditioning_scale, list):
                 if any(isinstance(i, list) for i in controlnet_conditioning_scale):
                     raise ValueError("A single batch of multiple conditionings are supported at the moment.")
             elif isinstance(controlnet_conditioning_scale, list) and len(controlnet_conditioning_scale) != len(
-                self.controlnet.nets
+                    self.controlnet.nets
             ):
                 raise ValueError(
                     "For multiple controlnets: When `controlnet_conditioning_scale` is specified as `list`, it must have"
@@ -639,12 +636,12 @@ class KolorsControlNetImg2ImgPipeline(
         image_is_np_list = isinstance(image, list) and isinstance(image[0], np.ndarray)
 
         if (
-            not image_is_pil
-            and not image_is_tensor
-            and not image_is_np
-            and not image_is_pil_list
-            and not image_is_tensor_list
-            and not image_is_np_list
+                not image_is_pil
+                and not image_is_tensor
+                and not image_is_np
+                and not image_is_pil_list
+                and not image_is_tensor_list
+                and not image_is_np_list
         ):
             raise TypeError(
                 f"image must be passed and be one of PIL image, numpy array, torch tensor, list of PIL images, list of numpy arrays or list of torch tensors, but is {type(image)}"
@@ -669,16 +666,16 @@ class KolorsControlNetImg2ImgPipeline(
 
     # Copied from diffusers.pipelines.controlnet.pipeline_controlnet_sd_xl.StableDiffusionXLControlNetPipeline.prepare_image
     def prepare_control_image(
-        self,
-        image,
-        width,
-        height,
-        batch_size,
-        num_images_per_prompt,
-        device,
-        dtype,
-        do_classifier_free_guidance=False,
-        guess_mode=False,
+            self,
+            image,
+            width,
+            height,
+            batch_size,
+            num_images_per_prompt,
+            device,
+            dtype,
+            do_classifier_free_guidance=False,
+            guess_mode=False,
     ):
         image = self.control_image_processor.preprocess(image, height=height, width=width).to(dtype=torch.float32)
         image_batch_size = image.shape[0]
@@ -704,7 +701,7 @@ class KolorsControlNetImg2ImgPipeline(
         init_timestep = min(int(num_inference_steps * strength), num_inference_steps)
 
         t_start = max(num_inference_steps - init_timestep, 0)
-        timesteps = self.scheduler.timesteps[t_start * self.scheduler.order :]
+        timesteps = self.scheduler.timesteps[t_start * self.scheduler.order:]
         if hasattr(self.scheduler, "set_begin_index"):
             self.scheduler.set_begin_index(t_start * self.scheduler.order)
 
@@ -712,7 +709,7 @@ class KolorsControlNetImg2ImgPipeline(
 
     # Copied from diffusers.pipelines.stable_diffusion_xl.pipeline_stable_diffusion_xl_img2img.StableDiffusionXLImg2ImgPipeline.prepare_latents
     def prepare_latents(
-        self, image, timestep, batch_size, num_images_per_prompt, dtype, device, generator=None, add_noise=True
+            self, image, timestep, batch_size, num_images_per_prompt, dtype, device, generator=None, add_noise=True
     ):
         if not isinstance(image, (torch.Tensor, PIL.Image.Image, list)):
             raise ValueError(
@@ -744,7 +741,7 @@ class KolorsControlNetImg2ImgPipeline(
 
             elif isinstance(generator, list):
                 init_latents = [
-                    retrieve_latents(self.vae.encode(image[i : i + 1]), generator=generator[i])
+                    retrieve_latents(self.vae.encode(image[i: i + 1]), generator=generator[i])
                     for i in range(batch_size)
                 ]
                 init_latents = torch.cat(init_latents, dim=0)
@@ -755,7 +752,7 @@ class KolorsControlNetImg2ImgPipeline(
                 self.vae.to(dtype)
 
             init_latents = init_latents.to(dtype)
-            
+
             init_latents = self.vae.config.scaling_factor * init_latents
 
         if batch_size > init_latents.shape[0] and batch_size % init_latents.shape[0] == 0:
@@ -779,9 +776,9 @@ class KolorsControlNetImg2ImgPipeline(
 
         return latents
 
-
     # Copied from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion.StableDiffusionPipeline.prepare_latents
-    def prepare_latents_t2i(self, batch_size, num_channels_latents, height, width, dtype, device, generator, latents=None):
+    def prepare_latents_t2i(self, batch_size, num_channels_latents, height, width, dtype, device, generator,
+                            latents=None):
         shape = (batch_size, num_channels_latents, height // self.vae_scale_factor, width // self.vae_scale_factor)
         if isinstance(generator, list) and len(generator) != batch_size:
             raise ValueError(
@@ -798,13 +795,11 @@ class KolorsControlNetImg2ImgPipeline(
         latents = latents * self.scheduler.init_noise_sigma
         return latents
 
-
-
     def _get_add_time_ids(self, original_size, crops_coords_top_left, target_size, dtype):
         add_time_ids = list(original_size + crops_coords_top_left + target_size)
 
         passed_add_embed_dim = (
-            self.unet.config.addition_time_embed_dim * len(add_time_ids) + 4096
+                self.unet.config.addition_time_embed_dim * len(add_time_ids) + 4096
         )
         expected_add_embed_dim = self.unet.add_embedding.linear_1.in_features
 
@@ -815,7 +810,6 @@ class KolorsControlNetImg2ImgPipeline(
 
         add_time_ids = torch.tensor([add_time_ids], dtype=dtype)
         return add_time_ids
-
 
     # Copied from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion_upscale.StableDiffusionUpscalePipeline.upcast_vae
     def upcast_vae(self):
@@ -860,42 +854,42 @@ class KolorsControlNetImg2ImgPipeline(
 
     @torch.no_grad()
     def __call__(
-        self,
-        prompt: Union[str, List[str]] = None,
-        image: PipelineImageInput = None,
-        control_image: PipelineImageInput = None,
-        height: Optional[int] = None,
-        width: Optional[int] = None,
-        strength: float = 0.8,
-        num_inference_steps: int = 50,
-        guidance_scale: float = 5.0,
-        negative_prompt: Optional[Union[str, List[str]]] = None,
-        num_images_per_prompt: Optional[int] = 1,
-        eta: float = 0.0,
-        guess_mode: bool = False,
-        generator: Optional[Union[torch.Generator, List[torch.Generator]]] = None,
-        latents: Optional[torch.Tensor] = None,
-        prompt_embeds: Optional[torch.Tensor] = None,
-        negative_prompt_embeds: Optional[torch.Tensor] = None,
-        pooled_prompt_embeds: Optional[torch.Tensor] = None,
-        negative_pooled_prompt_embeds: Optional[torch.Tensor] = None,
-        ip_adapter_image: Optional[PipelineImageInput] = None,
-        ip_adapter_image_embeds: Optional[List[torch.Tensor]] = None,
-        output_type: Optional[str] = "pil",
-        return_dict: bool = True,
-        cross_attention_kwargs: Optional[Dict[str, Any]] = None,
-        controlnet_conditioning_scale: Union[float, List[float]] = 0.8,
-        control_guidance_start: Union[float, List[float]] = 0.0,
-        control_guidance_end: Union[float, List[float]] = 1.0,
-        original_size: Tuple[int, int] = None,
-        crops_coords_top_left: Tuple[int, int] = (0, 0),
-        target_size: Tuple[int, int] = None,
-        clip_skip: Optional[int] = None,
-        callback_on_step_end: Optional[
-            Union[Callable[[int, int, Dict], None], PipelineCallback, MultiPipelineCallbacks]
-        ] = None,
-        callback_on_step_end_tensor_inputs: List[str] = ["latents"],
-        **kwargs,
+            self,
+            prompt: Union[str, List[str]] = None,
+            image: PipelineImageInput = None,
+            control_image: PipelineImageInput = None,
+            height: Optional[int] = None,
+            width: Optional[int] = None,
+            strength: float = 0.8,
+            num_inference_steps: int = 50,
+            guidance_scale: float = 5.0,
+            negative_prompt: Optional[Union[str, List[str]]] = None,
+            num_images_per_prompt: Optional[int] = 1,
+            eta: float = 0.0,
+            guess_mode: bool = False,
+            generator: Optional[Union[torch.Generator, List[torch.Generator]]] = None,
+            latents: Optional[torch.Tensor] = None,
+            prompt_embeds: Optional[torch.Tensor] = None,
+            negative_prompt_embeds: Optional[torch.Tensor] = None,
+            pooled_prompt_embeds: Optional[torch.Tensor] = None,
+            negative_pooled_prompt_embeds: Optional[torch.Tensor] = None,
+            ip_adapter_image: Optional[PipelineImageInput] = None,
+            ip_adapter_image_embeds: Optional[List[torch.Tensor]] = None,
+            output_type: Optional[str] = "pil",
+            return_dict: bool = True,
+            cross_attention_kwargs: Optional[Dict[str, Any]] = None,
+            controlnet_conditioning_scale: Union[float, List[float]] = 0.8,
+            control_guidance_start: Union[float, List[float]] = 0.0,
+            control_guidance_end: Union[float, List[float]] = 1.0,
+            original_size: Tuple[int, int] = None,
+            crops_coords_top_left: Tuple[int, int] = (0, 0),
+            target_size: Tuple[int, int] = None,
+            clip_skip: Optional[int] = None,
+            callback_on_step_end: Optional[
+                Union[Callable[[int, int, Dict], None], PipelineCallback, MultiPipelineCallbacks]
+            ] = None,
+            callback_on_step_end_tensor_inputs: List[str] = ["latents"],
+            **kwargs,
     ):
         r"""
         Function invoked when calling the pipeline for generation.
@@ -1049,107 +1043,110 @@ class KolorsControlNetImg2ImgPipeline(
 
         controlnet = self.controlnet._orig_mod if is_compiled_module(self.controlnet) else self.controlnet
 
-        cn_og_forward = self.controlnet.forward
+        # align format for control guidance
+        if not isinstance(control_guidance_start, list) and isinstance(control_guidance_end, list):
+            control_guidance_start = len(control_guidance_end) * [control_guidance_start]
+        elif not isinstance(control_guidance_end, list) and isinstance(control_guidance_start, list):
+            control_guidance_end = len(control_guidance_start) * [control_guidance_end]
+        elif not isinstance(control_guidance_start, list) and not isinstance(control_guidance_end, list):
+            mult = len(controlnet.nets) if isinstance(controlnet, MultiControlNetModel) else 1
+            control_guidance_start, control_guidance_end = (
+                mult * [control_guidance_start],
+                mult * [control_guidance_end],
+            )
 
-        # patch diffusers controlnet instance forward
-        def _cn_patch_forward(*args, **kwargs):
-            encoder_hidden_states = kwargs['encoder_hidden_states']
-            if controlnet.encoder_hid_proj is not None and controlnet.config.encoder_hid_dim_type == "text_proj":
-                encoder_hidden_states = controlnet.encoder_hid_proj(kwargs['encoder_hidden_states'])
-            kwargs.pop('encoder_hidden_states')
-            return cn_og_forward(*args, encoder_hidden_states=encoder_hidden_states, **kwargs)
+        # from IPython import embed; embed()
+        # 1. Check inputs. Raise error if not correct
+        self.check_inputs(
+            prompt,
+            control_image,
+            strength,
+            num_inference_steps,
+            callback_steps,
+            negative_prompt,
+            prompt_embeds,
+            negative_prompt_embeds,
+            pooled_prompt_embeds,
+            negative_pooled_prompt_embeds,
+            ip_adapter_image,
+            ip_adapter_image_embeds,
+            controlnet_conditioning_scale,
+            control_guidance_start,
+            control_guidance_end,
+            callback_on_step_end_tensor_inputs,
+        )
 
-        self.controlnet.forward = _cn_patch_forward
+        self._guidance_scale = guidance_scale
+        self._clip_skip = clip_skip
+        self._cross_attention_kwargs = cross_attention_kwargs
 
-        try:
-            # align format for control guidance
-            if not isinstance(control_guidance_start, list) and isinstance(control_guidance_end, list):
-                control_guidance_start = len(control_guidance_end) * [control_guidance_start]
-            elif not isinstance(control_guidance_end, list) and isinstance(control_guidance_start, list):
-                control_guidance_end = len(control_guidance_start) * [control_guidance_end]
-            elif not isinstance(control_guidance_start, list) and not isinstance(control_guidance_end, list):
-                mult = len(controlnet.nets) if isinstance(controlnet, MultiControlNetModel) else 1
-                control_guidance_start, control_guidance_end = (
-                    mult * [control_guidance_start],
-                    mult * [control_guidance_end],
-                )
+        # 2. Define call parameters
+        if prompt is not None and isinstance(prompt, str):
+            batch_size = 1
+        elif prompt is not None and isinstance(prompt, list):
+            batch_size = len(prompt)
+        else:
+            batch_size = prompt_embeds.shape[0]
 
-            # from IPython import embed; embed()
-            # 1. Check inputs. Raise error if not correct
-            self.check_inputs(
-                prompt,
-                control_image,
-                strength,
-                num_inference_steps,
-                callback_steps,
-                negative_prompt,
-                prompt_embeds,
-                negative_prompt_embeds,
-                pooled_prompt_embeds,
-                negative_pooled_prompt_embeds,
+        device = self._execution_device
+
+        if isinstance(controlnet, MultiControlNetModel) and isinstance(controlnet_conditioning_scale, float):
+            controlnet_conditioning_scale = [controlnet_conditioning_scale] * len(controlnet.nets)
+
+        # 3.1. Encode input prompt
+        text_encoder_lora_scale = (
+            self.cross_attention_kwargs.get("scale", None) if self.cross_attention_kwargs is not None else None
+        )
+        (
+            prompt_embeds,
+            negative_prompt_embeds,
+            pooled_prompt_embeds,
+            negative_pooled_prompt_embeds,
+        ) = self.encode_prompt(
+            prompt,
+            device,
+            num_images_per_prompt,
+            self.do_classifier_free_guidance,
+            negative_prompt,
+            prompt_embeds=prompt_embeds,
+            negative_prompt_embeds=negative_prompt_embeds,
+            pooled_prompt_embeds=pooled_prompt_embeds,
+            negative_pooled_prompt_embeds=negative_pooled_prompt_embeds,
+            lora_scale=text_encoder_lora_scale,
+        )
+
+        # 3.2 Encode ip_adapter_image
+        if ip_adapter_image is not None or ip_adapter_image_embeds is not None:
+            image_embeds = self.prepare_ip_adapter_image_embeds(
                 ip_adapter_image,
                 ip_adapter_image_embeds,
-                controlnet_conditioning_scale,
-                control_guidance_start,
-                control_guidance_end,
-                callback_on_step_end_tensor_inputs,
-            )
-
-            self._guidance_scale = guidance_scale
-            self._clip_skip = clip_skip
-            self._cross_attention_kwargs = cross_attention_kwargs
-
-            # 2. Define call parameters
-            if prompt is not None and isinstance(prompt, str):
-                batch_size = 1
-            elif prompt is not None and isinstance(prompt, list):
-                batch_size = len(prompt)
-            else:
-                batch_size = prompt_embeds.shape[0]
-
-            device = self._execution_device
-
-            if isinstance(controlnet, MultiControlNetModel) and isinstance(controlnet_conditioning_scale, float):
-                controlnet_conditioning_scale = [controlnet_conditioning_scale] * len(controlnet.nets)
-
-            # 3.1. Encode input prompt
-            text_encoder_lora_scale = (
-                self.cross_attention_kwargs.get("scale", None) if self.cross_attention_kwargs is not None else None
-            )
-            (
-                prompt_embeds,
-                negative_prompt_embeds,
-                pooled_prompt_embeds,
-                negative_pooled_prompt_embeds,
-            ) = self.encode_prompt(
-                prompt,
                 device,
-                num_images_per_prompt,
+                batch_size * num_images_per_prompt,
                 self.do_classifier_free_guidance,
-                negative_prompt,
-                prompt_embeds=prompt_embeds,
-                negative_prompt_embeds=negative_prompt_embeds,
-                pooled_prompt_embeds=pooled_prompt_embeds,
-                negative_pooled_prompt_embeds=negative_pooled_prompt_embeds,
-                lora_scale=text_encoder_lora_scale,
             )
 
-            # 3.2 Encode ip_adapter_image
-            if ip_adapter_image is not None or ip_adapter_image_embeds is not None:
-                image_embeds = self.prepare_ip_adapter_image_embeds(
-                    ip_adapter_image,
-                    ip_adapter_image_embeds,
-                    device,
-                    batch_size * num_images_per_prompt,
-                    self.do_classifier_free_guidance,
-                )
+        # 4. Prepare image and controlnet_conditioning_image
+        image = self.image_processor.preprocess(image, height=height, width=width).to(dtype=torch.float32)
 
-            # 4. Prepare image and controlnet_conditioning_image
-            image = self.image_processor.preprocess(image, height=height, width=width).to(dtype=torch.float32)
+        if isinstance(controlnet, ControlNetModel):
+            control_image = self.prepare_control_image(
+                image=control_image,
+                width=width,
+                height=height,
+                batch_size=batch_size * num_images_per_prompt,
+                num_images_per_prompt=num_images_per_prompt,
+                device=device,
+                dtype=controlnet.dtype,
+                do_classifier_free_guidance=self.do_classifier_free_guidance,
+                guess_mode=guess_mode,
+            )
+            height, width = control_image.shape[-2:]
+        elif isinstance(controlnet, MultiControlNetModel):
+            control_images = []
 
-            if isinstance(controlnet, ControlNetModel):
-                control_image = self.prepare_control_image(
-                    image=control_image,
+            for control_image_ in control_image:
+                control_image_ = self.prepare_control_image(
+                    image=control_image_,
                     width=width,
                     height=height,
                     batch_size=batch_size * num_images_per_prompt,
@@ -1159,100 +1156,99 @@ class KolorsControlNetImg2ImgPipeline(
                     do_classifier_free_guidance=self.do_classifier_free_guidance,
                     guess_mode=guess_mode,
                 )
-                height, width = control_image.shape[-2:]
-            elif isinstance(controlnet, MultiControlNetModel):
-                control_images = []
 
-                for control_image_ in control_image:
-                    control_image_ = self.prepare_control_image(
-                        image=control_image_,
-                        width=width,
-                        height=height,
-                        batch_size=batch_size * num_images_per_prompt,
-                        num_images_per_prompt=num_images_per_prompt,
-                        device=device,
-                        dtype=controlnet.dtype,
-                        do_classifier_free_guidance=self.do_classifier_free_guidance,
-                        guess_mode=guess_mode,
-                    )
+                control_images.append(control_image_)
 
-                    control_images.append(control_image_)
+            control_image = control_images
+            height, width = control_image[0].shape[-2:]
+        else:
+            assert False
 
-                control_image = control_images
-                height, width = control_image[0].shape[-2:]
+        # 5. Prepare timesteps
+        self.scheduler.set_timesteps(num_inference_steps, device=device)
+        timesteps, num_inference_steps = self.get_timesteps(num_inference_steps, strength, device)
+        latent_timestep = timesteps[:1].repeat(batch_size * num_images_per_prompt)
+        self._num_timesteps = len(timesteps)
+
+        # 6. Prepare latent variables
+
+        num_channels_latents = self.unet.config.in_channels
+        if latents is None:
+            if strength >= 1.0:
+                latents = self.prepare_latents_t2i(
+                    batch_size * num_images_per_prompt,
+                    num_channels_latents,
+                    height,
+                    width,
+                    prompt_embeds.dtype,
+                    device,
+                    generator,
+                    latents,
+                )
             else:
-                assert False
+                latents = self.prepare_latents(
+                    image,
+                    latent_timestep,
+                    batch_size,
+                    num_images_per_prompt,
+                    prompt_embeds.dtype,
+                    device,
+                    generator,
+                    True,
+                )
 
-            # 5. Prepare timesteps
-            self.scheduler.set_timesteps(num_inference_steps, device=device)
-            timesteps, num_inference_steps = self.get_timesteps(num_inference_steps, strength, device)
-            latent_timestep = timesteps[:1].repeat(batch_size * num_images_per_prompt)
-            self._num_timesteps = len(timesteps)
+        # 7. Prepare extra step kwargs. TODO: Logic should ideally just be moved out of the pipeline
+        extra_step_kwargs = self.prepare_extra_step_kwargs(generator, eta)
 
-            # 6. Prepare latent variables
+        # 7.1 Create tensor stating which controlnets to keep
+        controlnet_keep = []
+        for i in range(len(timesteps)):
+            keeps = [
+                1.0 - float(i / len(timesteps) < s or (i + 1) / len(timesteps) > e)
+                for s, e in zip(control_guidance_start, control_guidance_end)
+            ]
+            controlnet_keep.append(keeps[0] if isinstance(controlnet, ControlNetModel) else keeps)
 
-            num_channels_latents = self.unet.config.in_channels
-            if latents is None:
-                if strength >= 1.0:
-                    latents = self.prepare_latents_t2i(
-                        batch_size * num_images_per_prompt,
-                        num_channels_latents,
-                        height,
-                        width,
-                        prompt_embeds.dtype,
-                        device,
-                        generator,
-                        latents,
-                    )
-                else:
-                    latents = self.prepare_latents(
-                        image,
-                        latent_timestep,
-                        batch_size,
-                        num_images_per_prompt,
-                        prompt_embeds.dtype,
-                        device,
-                        generator,
-                        True,
-                    )
+        # 7.2 Prepare added time ids & embeddings
+        if isinstance(control_image, list):
+            original_size = original_size or control_image[0].shape[-2:]
+        else:
+            original_size = original_size or control_image.shape[-2:]
+        target_size = target_size or (height, width)
 
+        # 7. Prepare added time ids & embeddings
+        add_text_embeds = pooled_prompt_embeds
+        add_time_ids = self._get_add_time_ids(
+            original_size, crops_coords_top_left, target_size, dtype=prompt_embeds.dtype
+        )
 
-            # 7. Prepare extra step kwargs. TODO: Logic should ideally just be moved out of the pipeline
-            extra_step_kwargs = self.prepare_extra_step_kwargs(generator, eta)
+        if self.do_classifier_free_guidance:
+            prompt_embeds = torch.cat([negative_prompt_embeds, prompt_embeds], dim=0)
+            add_text_embeds = torch.cat([negative_pooled_prompt_embeds, add_text_embeds], dim=0)
+            add_time_ids = torch.cat([add_time_ids, add_time_ids], dim=0)
 
-            # 7.1 Create tensor stating which controlnets to keep
-            controlnet_keep = []
-            for i in range(len(timesteps)):
-                keeps = [
-                    1.0 - float(i / len(timesteps) < s or (i + 1) / len(timesteps) > e)
-                    for s, e in zip(control_guidance_start, control_guidance_end)
-                ]
-                controlnet_keep.append(keeps[0] if isinstance(controlnet, ControlNetModel) else keeps)
+        prompt_embeds = prompt_embeds.to(device)
+        add_text_embeds = add_text_embeds.to(device)
+        add_time_ids = add_time_ids.to(device).repeat(batch_size * num_images_per_prompt, 1)
 
-            # 7.2 Prepare added time ids & embeddings
-            if isinstance(control_image, list):
-                original_size = original_size or control_image[0].shape[-2:]
-            else:
-                original_size = original_size or control_image.shape[-2:]
-            target_size = target_size or (height, width)
+        # patch diffusers controlnet instance forward, undo
+        # after denoising loop
 
-            # 7. Prepare added time ids & embeddings
-            add_text_embeds = pooled_prompt_embeds
-            add_time_ids = self._get_add_time_ids(
-                original_size, crops_coords_top_left, target_size, dtype=prompt_embeds.dtype
-            )
+        cn_og_forward = self.controlnet.forward
 
-            if self.do_classifier_free_guidance:
-                prompt_embeds = torch.cat([negative_prompt_embeds, prompt_embeds], dim=0)
-                add_text_embeds = torch.cat([negative_pooled_prompt_embeds, add_text_embeds], dim=0)
-                add_time_ids = torch.cat([add_time_ids, add_time_ids], dim=0)
+        def _cn_patch_forward(*args, **kwargs):
+            encoder_hidden_states = kwargs['encoder_hidden_states']
+            if controlnet.encoder_hid_proj is not None and controlnet.config.encoder_hid_dim_type == "text_proj":
+                encoder_hidden_states = controlnet.encoder_hid_proj(kwargs['encoder_hidden_states'])
+            kwargs.pop('encoder_hidden_states')
+            return cn_og_forward(*args, encoder_hidden_states=encoder_hidden_states, **kwargs)
 
-            prompt_embeds = prompt_embeds.to(device)
-            add_text_embeds = add_text_embeds.to(device)
-            add_time_ids = add_time_ids.to(device).repeat(batch_size * num_images_per_prompt, 1)
+        self.controlnet.forward = _cn_patch_forward
 
-            # 8. Denoising loop
-            num_warmup_steps = len(timesteps) - num_inference_steps * self.scheduler.order
+        # 8. Denoising loop
+        num_warmup_steps = len(timesteps) - num_inference_steps * self.scheduler.order
+
+        try:
             with self.progress_bar(total=num_inference_steps) as progress_bar:
                 for i, t in enumerate(timesteps):
                     # expand the latents if we are doing classifier free guidance
@@ -1331,40 +1327,40 @@ class KolorsControlNetImg2ImgPipeline(
                         if callback is not None and i % callback_steps == 0:
                             step_idx = i // getattr(self.scheduler, "order", 1)
                             callback(step_idx, t, latents)
-
-            # If we do sequential model offloading, let's offload unet and controlnet
-            # manually for max memory savings
-            if hasattr(self, "final_offload_hook") and self.final_offload_hook is not None:
-                self.unet.to("cpu")
-                self.controlnet.to("cpu")
-                torch.cuda.empty_cache()
-
-            if not output_type == "latent":
-                # make sure the VAE is in float32 mode, as it overflows in float16
-                needs_upcasting = self.vae.dtype == torch.float16 and self.vae.config.force_upcast
-
-                if needs_upcasting:
-                    self.upcast_vae()
-                    latents = latents.to(next(iter(self.vae.post_quant_conv.parameters())).dtype)
-
-                latents = latents / self.vae.config.scaling_factor
-                image = self.vae.decode(latents, return_dict=False)[0]
-
-                # cast back to fp16 if needed
-                if needs_upcasting:
-                    self.vae.to(dtype=torch.float16)
-            else:
-                image = latents
-                return StableDiffusionXLPipelineOutput(images=image)
-
-            image = self.image_processor.postprocess(image, output_type=output_type)
-
-            # Offload all models
-            self.maybe_free_model_hooks()
-
-            if not return_dict:
-                return (image,)
-
-            return StableDiffusionXLPipelineOutput(images=image)
         finally:
             self.controlnet.forward = cn_og_forward
+
+        # If we do sequential model offloading, let's offload unet and controlnet
+        # manually for max memory savings
+        if hasattr(self, "final_offload_hook") and self.final_offload_hook is not None:
+            self.unet.to("cpu")
+            self.controlnet.to("cpu")
+            torch.cuda.empty_cache()
+
+        if not output_type == "latent":
+            # make sure the VAE is in float32 mode, as it overflows in float16
+            needs_upcasting = self.vae.dtype == torch.float16 and self.vae.config.force_upcast
+
+            if needs_upcasting:
+                self.upcast_vae()
+                latents = latents.to(next(iter(self.vae.post_quant_conv.parameters())).dtype)
+
+            latents = latents / self.vae.config.scaling_factor
+            image = self.vae.decode(latents, return_dict=False)[0]
+
+            # cast back to fp16 if needed
+            if needs_upcasting:
+                self.vae.to(dtype=torch.float16)
+        else:
+            image = latents
+            return StableDiffusionXLPipelineOutput(images=image)
+
+        image = self.image_processor.postprocess(image, output_type=output_type)
+
+        # Offload all models
+        self.maybe_free_model_hooks()
+
+        if not return_dict:
+            return (image,)
+
+        return StableDiffusionXLPipelineOutput(images=image)
