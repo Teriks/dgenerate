@@ -167,7 +167,8 @@ from .enums import (
     get_pipeline_type_string,
     get_pipeline_type_enum,
     supported_model_type_strings,
-    model_type_is_flux
+    model_type_is_flux,
+    model_type_is_kolors
 )
 
 # HF Utility Errors

@@ -391,7 +391,8 @@ class DiffusionPipelineWrapper:
             )
 
         if sdxl_refiner_uri is not None:
-            if not _enums.model_type_is_sdxl(model_type):
+            if not (_enums.model_type_is_sdxl(model_type) or
+                    _enums.model_type_is_kolors(model_type)):
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'Only Stable Diffusion XL models support refiners, '
                     'please use model_type "torch-sdxl" if you are trying to load an sdxl model.'
@@ -412,11 +413,14 @@ class DiffusionPipelineWrapper:
         if adetailer_detector_uris and model_type not in {
             _enums.ModelType.TORCH,
             _enums.ModelType.TORCH_SDXL,
+            _enums.ModelType.TORCH_KOLORS,
             _enums.ModelType.TORCH_SD3,
             _enums.ModelType.TORCH_FLUX,
-            _enums.ModelType.TORCH_FLUX_FILL}:
+            _enums.ModelType.TORCH_FLUX_FILL
+        }:
             raise _pipelines.UnsupportedPipelineConfigError(
-                '--adetailer-detectors is only supported with --model-type torch, torch-sdxl, torch-sd3, and torch-flux.')
+                f'--adetailer-detectors is only compatible with '
+                f'--model-type torch, torch-sdxl, torch-kolors, torch-sd3, and torch-flux')
 
         self._subfolder = subfolder
         self._device = device
@@ -1335,7 +1339,8 @@ class DiffusionPipelineWrapper:
                 if _enums.model_type_is_sd3(self._model_type):
                     # Handle SD3 model specifics for control images
                     args['control_image'] = self._sd3_force_control_to_a16(args, control_images, user_args)
-                elif _enums.model_type_is_flux(self._model_type):
+                elif (_enums.model_type_is_flux(self._model_type) or
+                      _enums.model_type_is_kolors(self._model_type)):
                     args['control_image'] = control_images
                 elif sdxl_cn_union:
                     # controlnet union pipeline does not use "image"
@@ -1560,6 +1565,9 @@ class DiffusionPipelineWrapper:
             if _enums.model_type_is_sdxl(self._model_type):
                 args['height'] = _types.default(user_args.height, _constants.DEFAULT_SDXL_OUTPUT_HEIGHT)
                 args['width'] = _types.default(user_args.width, _constants.DEFAULT_SDXL_OUTPUT_WIDTH)
+            elif _enums.model_type_is_kolors(self._model_type):
+                args['height'] = _types.default(user_args.height, _constants.DEFAULT_KOLORS_OUTPUT_HEIGHT)
+                args['width'] = _types.default(user_args.width, _constants.DEFAULT_KOLORS_OUTPUT_WIDTH)
             elif _enums.model_type_is_floyd_if(self._model_type):
                 args['height'] = _types.default(user_args.height, _constants.DEFAULT_FLOYD_IF_OUTPUT_HEIGHT)
                 args['width'] = _types.default(user_args.width, _constants.DEFAULT_FLOYD_IF_OUTPUT_WIDTH)
@@ -1660,7 +1668,8 @@ class DiffusionPipelineWrapper:
                     raise _pipelines.UnsupportedPipelineConfigError(
                         f'{arg} may only be used with Flux models.')
 
-        if not _enums.model_type_is_sdxl(self.model_type):
+        if not (_enums.model_type_is_sdxl(self.model_type) or
+                _enums.model_type_is_kolors(self.model_type)):
             for arg, val in _types.get_public_attributes(user_args).items():
                 if arg.startswith('sdxl') and val is not None:
                     raise _pipelines.UnsupportedPipelineConfigError(
@@ -2056,7 +2065,7 @@ class DiffusionPipelineWrapper:
 
         if has_controlnet:
             is_xl_union_model = isinstance(
-                self._pipeline.controlnet, diffusers.ControlNetUnionModel)\
+                self._pipeline.controlnet, diffusers.ControlNetUnionModel) \
                                 and len(self.controlnet_uris) > 1
 
             pipeline_args.update({
@@ -2433,8 +2442,11 @@ class DiffusionPipelineWrapper:
 
             if self._pipeline is not None:
 
-                refiner_extra_modules = {'vae': self._pipeline.vae,
-                                         'text_encoder_2': self._pipeline.text_encoder_2}
+                if _enums.model_type_is_sdxl(self.model_type):
+                    refiner_extra_modules = {'vae': self._pipeline.vae,
+                                             'text_encoder_2': self._pipeline.text_encoder_2}
+                else:
+                    refiner_extra_modules = {'vae': self._pipeline.vae}
 
                 if self._second_model_extra_modules is not None:
                     refiner_extra_modules.update(self._second_model_extra_modules)

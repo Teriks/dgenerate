@@ -1,0 +1,28 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 4.5.1
+
+# this uses an img2img image and an IP Adapter input image with the IP Adapter Kwai-Kolors/Kolors-IP-Adapter-Plus
+
+# you can also do inpainting with this --image-seed syntax using the "mask" argument as normal
+# and even ControlNet with the "control" image argument
+
+# the amount of combinations possible is quite high, so these examples probably cannot
+# cover all of them
+
+Kwai-Kolors/Kolors-diffusers
+--model-type torch-kolors
+--variant fp16
+--dtype float16
+--sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0
+--inference-steps 30
+--guidance-scales 5
+--sdxl-high-noise-fractions 0.8
+--seeds 0
+--output-path img2img
+--model-sequential-offload
+--image-seeds "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/ip_adapter_diner.png; \
+               adapter=https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/ip_adapter_diner_2.png"
+--image-encoder Kwai-Kolors/Kolors-IP-Adapter-Plus;subfolder=image_encoder
+--ip-adapters Kwai-Kolors/Kolors-IP-Adapter-Plus;weight-name=ip_adapter_plus_general.bin
+--output-size 1024x1024
+--prompts "a polar bear sitting in a chair drinking a milkshake; deformed, ugly, wrong proportion, low res, bad anatomy, worst quality, low quality"

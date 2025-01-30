@@ -1,71 +1,37 @@
-title: Deep Floyd
+title: Kolors
 
-# DeepFloyd requires a multistage generation process involving 
-# multiple models and more advanced use of dgenerate
-
-# You need a huggingface account (http://huggingface.co) and to 
-# request access to the models at (https://huggingface.co/DeepFloyd) 
-# in order for dgenerate to be able to download the required models
-
-# once you have done this, provide your access token 
-# from (https://huggingface.co/settings/tokens)
-
-# Or set the environmental variable HF_TOKEN on your system
-
-\set prompt "add your prompt here"
-
-\setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"
-
-\set device @device[{"optional":false}]
-
-\set output_dir @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output", "optional":false, "divider-after":true}]
-
-\set auth_token {{ '--auth-token ' + quote(auth_token) if auth_token else '' }}
-
-@uri[{"label":"Stage 1 Model Path / HF Slug", "default": "DeepFloyd/IF-I-M-v1.0", "optional":false, "dir":true, "file-types":["models"]}]
---variant fp16
---dtype float16
---model-type torch-if
---model-sequential-offload
-@int[{"label":"Stage 1 Inference Steps", "arg":"--inference-steps", "default":60, "min":1}]
-@float[{"label":"Stage 1 Guidance Scale", "arg":"--guidance-scales", "default":7, "min":0}]
---output-size 64
-@seeds[{"label":"Seeds", "divider-after":true}]
---prompts {{ prompt }}
---output-prefix stage1 {{ device }} {{ output_dir }} {{ auth_token }}
-
-\save_modules stage_1_modules feature_extractor
-
-@uri[{"label":"Stage 2 Model Path / HF Slug", "default": "DeepFloyd/IF-II-M-v1.0", "optional":false, "dir":true, "file-types":["models"]}]
---variant fp16
---dtype float16
---model-type torch-ifs
---model-sequential-offload
-@int[{"label":"Stage 2 Inference Steps", "arg":"--inference-steps", "default":30, "min":1}]
-@float[{"label":"Stage 2 Guidance Scale", "arg":"--guidance-scales", "default":4, "min":0}]
-@int[{"label":"Stage 2 Upscaler Noise Level", "arg":"--upscaler-noise-levels", "default":250, "min":1, "divider-after":true}]
---prompts {{ format_prompt(last_prompts) }}
---seeds {{ last_seeds | join(' ') }}
---seeds-to-images
---image-seeds {{ quote(last_images) }}
---output-prefix stage2 {{ device }} {{ output_dir }} {{ auth_token }}
-
-\use_modules stage_1_modules
-
-@uri[{"label":"Stage 3 - x4 Upscaler Model Path / HF Slug", "default": "stabilityai/stable-diffusion-x4-upscaler", "optional":false, "dir":true, "file-types":["models"]}]
---variant fp16
---dtype float16
---model-type torch-upscaler-x4
-@karrasscheduler[{"label":"Stage 3 Scheduler"}]
-@torchvae[{"label":"Stage 3 VAE File / URI", "dir":true, "file-types":["models"]}]
-@int[{"label":"Stage 3 Inference Steps", "arg":"--inference-steps", "default":30, "min":1}]
-@float[{"label":"Stage 3 Guidance Scale", "arg":"--guidance-scales", "default":9, "min":0}]
---prompts {{ format_prompt(last_prompts) }}
---seeds {{ last_seeds | join(' ') }}
---seeds-to-images
---image-seeds {{ quote(last_images) }}
-@int[{"label":"Stage 3 Upscaler Noise Level", "arg":"--upscaler-noise-levels", "default":20, "min":1, "divider-after":true}]
+@uri[{"label":"Model Path / HF Slug", "dir":true, "default": "Kwai-Kolors/Kolors-diffusers", "optional":false, "file-types":["models"]}]
+--model-type torch-kolors
+@dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "float32"], "default":"float16"}]
+@dropdown[{"label":"Model variant", "arg":"--variant", "options":["fp16"], "default":"fp16"}]
+@karrasscheduler[{}]
+@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "divider-after":true, "default": 1}]
+@uri[{"label":"Refiner Path / URI", "dir":true, "arg":"--sdxl-refiner", "default":"stabilityai/stable-diffusion-xl-refiner-1.0", "file-types":["models"]}]
+@karrasscheduler[{"label":"Refiner Scheduler", "arg":"--sdxl-refiner-scheduler"}]
+@switchradio[{"labels":["Refiner CPU Offload", "Refiner Sequential Offload"], "args":["--sdxl-refiner-cpu-offload", "--sdxl-refiner-sequential-offload"]}]
+@switch[{"label":"Refiner Edit Mode", "arg":"--sdxl-refiner-edit", "divider-after":true}]
+@torchvae[{"label":"VAE Path / URI", "dir":true, "file-types":["models"]}]
+@switch[{"label":"VAE Tiling", "arg":"--vae-tiling"}]
+@switch[{"label":"VAE Slicing", "arg":"--vae-slicing", "divider-after":true}]
+@uriwithfloat[{"label":"LoRA Path / URI", "float-label":"LoRA Scale", "arg":"--loras", "float-arg":"scale", "dir":true, "file-types":["models"]}]
+@uriwithfloat[{"label":"ControlNet Path / URI", "float-label":"ControlNet Scale", "arg":"--control-nets", "float-arg":"scale", "dir":true, "file-types":["models"]}]
+@dir[{"label":"UNet Directory / URI", "arg":"--unet"}]
+@dir[{"label":"Refiner UNet Directory / URI", "arg":"--unet2", "divider-after":true}]
+@imageseed[{"label":"Image Seed", "arg":"--image-seeds", "file-types":["images-in", "videos-in"], "float-label":"Image Seed Strength", "float-arg":"--image-seed-strengths", "min":0.01, "max":1, "default":"", "float":""}]
+@switch[{"label":"No Aspect Correction?", "arg":"--no-aspect"}]
+@imageprocessor[{"arg":"--seed-image-processors", "label":"Seed Image Processor"}]
+@imageprocessor[{"arg":"--mask-image-processors", "label":"Inpaint Mask Processor"}]
+@imageprocessor[{"arg":"--control-image-processors", "label":"Control Image Processor", "divider-after":true}]
+@int[{"label":"Inference Steps", "arg":"--inference-steps", "default":30, "min":1}]
+@float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":5, "min":0}]
+@float[{"label":"PAG Scale", "arg":"--pag-scales", "min":0}]
+@float[{"label":"Adaptive PAG Scale", "arg":"--pag-adaptive-scales", "min":0}]
+@float[{"label":"SDXL High Noise Fraction", "arg":"--sdxl-high-noise-fractions", "default":0.8, "min":0.001, "max":0.99}]
+@seeds[{"label":"Seeds"}]
+@int[{"label":"Batch Size", "arg":"--batch-size", "default":"", "min":1}]
+@imagesize[{"label":"Batch Grid Size (CxR)", "arg":"--batch-grid-size", "default":"", "divider-after":true}]
+@dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
+@imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"1024x1024"}]
 @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
---output-prefix stage3 {{ device }} {{ output_dir }} {{ auth_token }}
-
-\clear_modules stage_1_modules
+@device[{}]
+--prompts "add your prompt here"

@@ -41,16 +41,14 @@ from diffusers.utils import (
     is_invisible_watermark_available,
     is_torch_xla_available,
     logging,
-    replace_example_docstring,
 )
 from diffusers.utils.torch_utils import randn_tensor
 from transformers import (
     CLIPImageProcessor,
-    CLIPTextModel,
-    CLIPTextModelWithProjection,
-    CLIPTokenizer,
     CLIPVisionModelWithProjection,
 )
+
+from diffusers.pipelines.kolors import ChatGLMModel, ChatGLMTokenizer
 
 if is_invisible_watermark_available():
     from diffusers.pipelines.stable_diffusion_xl.watermark import StableDiffusionXLWatermarker
@@ -63,34 +61,6 @@ else:
     XLA_AVAILABLE = False
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
-
-EXAMPLE_DOC_STRING = """
-    Examples:
-        ```py
-        >>> import torch
-        >>> from diffusers import StableDiffusionXLInpaintPipeline
-        >>> from diffusers.utils import load_image
-
-        >>> pipe = StableDiffusionXLInpaintPipeline.from_pretrained(
-        ...     "stabilityai/stable-diffusion-xl-base-1.0",
-        ...     torch_dtype=torch.float16,
-        ...     variant="fp16",
-        ...     use_safetensors=True,
-        ... )
-        >>> pipe.to("cuda")
-
-        >>> img_url = "https://raw.githubusercontent.com/CompVis/latent-diffusion/main/data/inpainting_examples/overture-creations-5sI6fQgYIuo.png"
-        >>> mask_url = "https://raw.githubusercontent.com/CompVis/latent-diffusion/main/data/inpainting_examples/overture-creations-5sI6fQgYIuo_mask.png"
-
-        >>> init_image = load_image(img_url).convert("RGB")
-        >>> mask_image = load_image(mask_url).convert("RGB")
-
-        >>> prompt = "A majestic tiger sitting on a bench"
-        >>> image = pipe(
-        ...     prompt=prompt, image=init_image, mask_image=mask_image, num_inference_steps=50, strength=0.80
-        ... ).images[0]
-        ```
-"""
 
 
 # Copied from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion.rescale_noise_cfg
@@ -340,22 +310,11 @@ class KolorsInpaintPipeline(
     Args:
         vae ([`AutoencoderKL`]):
             Variational Auto-Encoder (VAE) Model to encode and decode images to and from latent representations.
-        text_encoder ([`CLIPTextModel`]):
-            Frozen text-encoder. Stable Diffusion XL uses the text portion of
-            [CLIP](https://huggingface.co/docs/transformers/model_doc/clip#transformers.CLIPTextModel), specifically
-            the [clip-vit-large-patch14](https://huggingface.co/openai/clip-vit-large-patch14) variant.
-        text_encoder_2 ([` CLIPTextModelWithProjection`]):
-            Second frozen text-encoder. Stable Diffusion XL uses the text and pool portion of
-            [CLIP](https://huggingface.co/docs/transformers/model_doc/clip#transformers.CLIPTextModelWithProjection),
-            specifically the
-            [laion/CLIP-ViT-bigG-14-laion2B-39B-b160k](https://huggingface.co/laion/CLIP-ViT-bigG-14-laion2B-39B-b160k)
-            variant.
-        tokenizer (`CLIPTokenizer`):
+        text_encoder ([`ChatGLMModel`]):
+            Frozen text-encoder. Kolors uses [ChatGLM3-6B](https://huggingface.co/THUDM/chatglm3-6b).
+        tokenizer (`ChatGLMTokenizer`):
             Tokenizer of class
-            [CLIPTokenizer](https://huggingface.co/docs/transformers/v4.21.0/en/model_doc/clip#transformers.CLIPTokenizer).
-        tokenizer_2 (`CLIPTokenizer`):
-            Second Tokenizer of class
-            [CLIPTokenizer](https://huggingface.co/docs/transformers/v4.21.0/en/model_doc/clip#transformers.CLIPTokenizer).
+            [ChatGLMTokenizer](https://huggingface.co/THUDM/chatglm3-6b/blob/main/tokenization_chatglm.py).
         unet ([`UNet2DConditionModel`]): Conditional U-Net architecture to denoise the encoded image latents.
         scheduler ([`SchedulerMixin`]):
             A scheduler to be used in combination with `unet` to denoise the encoded image latents. Can be one of
@@ -372,13 +331,11 @@ class KolorsInpaintPipeline(
             watermarker will be used.
     """
 
-    model_cpu_offload_seq = "text_encoder->text_encoder_2->image_encoder->unet->vae"
+    model_cpu_offload_seq = "text_encoder->image_encoder->unet->vae"
 
     _optional_components = [
         "tokenizer",
-        "tokenizer_2",
         "text_encoder",
-        "text_encoder_2",
         "image_encoder",
         "feature_extractor",
     ]
@@ -397,12 +354,10 @@ class KolorsInpaintPipeline(
     def __init__(
             self,
             vae: AutoencoderKL,
-            text_encoder: CLIPTextModel,
-            tokenizer: CLIPTokenizer,
+            text_encoder: ChatGLMModel,
+            tokenizer: ChatGLMTokenizer,
             unet: UNet2DConditionModel,
             scheduler: KarrasDiffusionSchedulers,
-            tokenizer_2: CLIPTokenizer = None,
-            text_encoder_2: CLIPTextModelWithProjection = None,
             image_encoder: CLIPVisionModelWithProjection = None,
             feature_extractor: CLIPImageProcessor = None,
             requires_aesthetics_score: bool = False,
@@ -414,9 +369,7 @@ class KolorsInpaintPipeline(
         self.register_modules(
             vae=vae,
             text_encoder=text_encoder,
-            text_encoder_2=text_encoder_2,
             tokenizer=tokenizer,
-            tokenizer_2=tokenizer_2,
             unet=unet,
             image_encoder=image_encoder,
             feature_extractor=feature_extractor,
@@ -705,7 +658,6 @@ class KolorsInpaintPipeline(
     def check_inputs(
             self,
             prompt,
-            prompt_2,
             image,
             mask_image,
             height,
@@ -714,7 +666,6 @@ class KolorsInpaintPipeline(
             callback_steps,
             output_type,
             negative_prompt=None,
-            negative_prompt_2=None,
             prompt_embeds=None,
             negative_prompt_embeds=None,
             ip_adapter_image=None,
@@ -746,28 +697,16 @@ class KolorsInpaintPipeline(
                 f"Cannot forward both `prompt`: {prompt} and `prompt_embeds`: {prompt_embeds}. Please make sure to"
                 " only forward one of the two."
             )
-        elif prompt_2 is not None and prompt_embeds is not None:
-            raise ValueError(
-                f"Cannot forward both `prompt_2`: {prompt_2} and `prompt_embeds`: {prompt_embeds}. Please make sure to"
-                " only forward one of the two."
-            )
         elif prompt is None and prompt_embeds is None:
             raise ValueError(
                 "Provide either `prompt` or `prompt_embeds`. Cannot leave both `prompt` and `prompt_embeds` undefined."
             )
         elif prompt is not None and (not isinstance(prompt, str) and not isinstance(prompt, list)):
             raise ValueError(f"`prompt` has to be of type `str` or `list` but is {type(prompt)}")
-        elif prompt_2 is not None and (not isinstance(prompt_2, str) and not isinstance(prompt_2, list)):
-            raise ValueError(f"`prompt_2` has to be of type `str` or `list` but is {type(prompt_2)}")
 
         if negative_prompt is not None and negative_prompt_embeds is not None:
             raise ValueError(
                 f"Cannot forward both `negative_prompt`: {negative_prompt} and `negative_prompt_embeds`:"
-                f" {negative_prompt_embeds}. Please make sure to only forward one of the two."
-            )
-        elif negative_prompt_2 is not None and negative_prompt_embeds is not None:
-            raise ValueError(
-                f"Cannot forward both `negative_prompt_2`: {negative_prompt_2} and `negative_prompt_embeds`:"
                 f" {negative_prompt_embeds}. Please make sure to only forward one of the two."
             )
 
@@ -1029,7 +968,7 @@ class KolorsInpaintPipeline(
             )
         elif expected_add_embed_dim != passed_add_embed_dim:
             raise ValueError(
-                f"Model expects an added time embedding vector of length {expected_add_embed_dim}, but a vector of {passed_add_embed_dim} was created. The model has an incorrect config. Please check `unet.config.time_embedding_type` and `text_encoder_2.config.projection_dim`."
+                f"Model expects an added time embedding vector of length {expected_add_embed_dim}, but a vector of {passed_add_embed_dim} was created. The model has an incorrect config. Please check `unet.config.time_embedding_type` and `text_encoder.config.projection_dim`."
             )
 
         add_time_ids = torch.tensor([add_time_ids], dtype=dtype)
@@ -1096,10 +1035,6 @@ class KolorsInpaintPipeline(
     def guidance_rescale(self):
         return self._guidance_rescale
 
-    @property
-    def clip_skip(self):
-        return self._clip_skip
-
     # here `guidance_scale` is defined analog to the guidance weight `w` of equation (2)
     # of the Imagen paper: https://arxiv.org/pdf/2205.11487.pdf . `guidance_scale = 1`
     # corresponds to doing no classifier free guidance.
@@ -1128,11 +1063,9 @@ class KolorsInpaintPipeline(
         return self._interrupt
 
     @torch.no_grad()
-    @replace_example_docstring(EXAMPLE_DOC_STRING)
     def __call__(
             self,
             prompt: Union[str, List[str]] = None,
-            prompt_2: Optional[Union[str, List[str]]] = None,
             image: PipelineImageInput = None,
             mask_image: PipelineImageInput = None,
             masked_image_latents: torch.Tensor = None,
@@ -1147,7 +1080,6 @@ class KolorsInpaintPipeline(
             denoising_end: Optional[float] = None,
             guidance_scale: float = 7.5,
             negative_prompt: Optional[Union[str, List[str]]] = None,
-            negative_prompt_2: Optional[Union[str, List[str]]] = None,
             num_images_per_prompt: Optional[int] = 1,
             eta: float = 0.0,
             generator: Optional[Union[torch.Generator, List[torch.Generator]]] = None,
@@ -1170,7 +1102,6 @@ class KolorsInpaintPipeline(
             negative_target_size: Optional[Tuple[int, int]] = None,
             aesthetic_score: float = 6.0,
             negative_aesthetic_score: float = 2.5,
-            clip_skip: Optional[int] = None,
             callback_on_step_end: Optional[
                 Union[Callable[[int, int, Dict], None], PipelineCallback, MultiPipelineCallbacks]
             ] = None,
@@ -1184,9 +1115,6 @@ class KolorsInpaintPipeline(
             prompt (`str` or `List[str]`, *optional*):
                 The prompt or prompts to guide the image generation. If not defined, one has to pass `prompt_embeds`.
                 instead.
-            prompt_2 (`str` or `List[str]`, *optional*):
-                The prompt or prompts to be sent to the `tokenizer_2` and `text_encoder_2`. If not defined, `prompt` is
-                used in both text-encoders
             image (`PIL.Image.Image`):
                 `Image`, or tensor representing an image batch which will be inpainted, *i.e.* parts of the image will
                 be masked out with `mask_image` and repainted according to `prompt`.
@@ -1256,9 +1184,6 @@ class KolorsInpaintPipeline(
                 The prompt or prompts not to guide the image generation. If not defined, one has to pass
                 `negative_prompt_embeds` instead. Ignored when not using guidance (i.e., ignored if `guidance_scale` is
                 less than `1`).
-            negative_prompt_2 (`str` or `List[str]`, *optional*):
-                The prompt or prompts not to guide the image generation to be sent to `tokenizer_2` and
-                `text_encoder_2`. If not defined, `negative_prompt` is used in both text-encoders
             prompt_embeds (`torch.Tensor`, *optional*):
                 Pre-generated text embeddings. Can be used to easily tweak text inputs, *e.g.* prompt weighting. If not
                 provided, text embeddings will be generated from `prompt` input argument.
@@ -1338,9 +1263,6 @@ class KolorsInpaintPipeline(
                 Part of SDXL's micro-conditioning as explained in section 2.2 of
                 [https://huggingface.co/papers/2307.01952](https://huggingface.co/papers/2307.01952). Can be used to
                 simulate an aesthetic score of the generated image by influencing the negative text condition.
-            clip_skip (`int`, *optional*):
-                Number of layers to be skipped from CLIP while computing the prompt embeddings. A value of 1 means that
-                the output of the pre-final layer will be used for computing the prompt embeddings.
             callback_on_step_end (`Callable`, `PipelineCallback`, `MultiPipelineCallbacks`, *optional*):
                 A function or a subclass of `PipelineCallback` or `MultiPipelineCallbacks` that is called at the end of
                 each denoising step during the inference. with the following arguments: `callback_on_step_end(self:
@@ -1385,7 +1307,6 @@ class KolorsInpaintPipeline(
         # 1. Check inputs
         self.check_inputs(
             prompt,
-            prompt_2,
             image,
             mask_image,
             height,
@@ -1394,7 +1315,6 @@ class KolorsInpaintPipeline(
             callback_steps,
             output_type,
             negative_prompt,
-            negative_prompt_2,
             prompt_embeds,
             negative_prompt_embeds,
             ip_adapter_image,
@@ -1405,7 +1325,6 @@ class KolorsInpaintPipeline(
 
         self._guidance_scale = guidance_scale
         self._guidance_rescale = guidance_rescale
-        self._clip_skip = clip_skip
         self._cross_attention_kwargs = cross_attention_kwargs
         self._denoising_end = denoising_end
         self._denoising_start = denoising_start
@@ -1570,10 +1489,7 @@ class KolorsInpaintPipeline(
             negative_target_size = target_size
 
         add_text_embeds = pooled_prompt_embeds
-        if self.text_encoder_2 is None:
-            text_encoder_projection_dim = int(pooled_prompt_embeds.shape[-1])
-        else:
-            text_encoder_projection_dim = self.text_encoder_2.config.projection_dim
+        text_encoder_projection_dim = int(pooled_prompt_embeds.shape[-1])
 
         add_time_ids, add_neg_time_ids = self._get_add_time_ids(
             original_size,

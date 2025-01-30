@@ -1,0 +1,15 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 4.5.1
+
+Kwai-Kolors/Kolors-diffusers
+--model-type torch-kolors
+--variant fp16
+--dtype float16
+--sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0
+--sdxl-high-noise-fractions 0.8
+--inference-steps 40
+--gen-seeds 2
+--output-size 1024
+--text-encoders ChatGLMModel;model=Kwai-Kolors/Kolors-diffusers;subfolder=text_encoder
+--model-sequential-offload
+--prompts "Photo of a horse standing near the open door of a red barn, high resolution; artwork"

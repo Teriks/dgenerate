@@ -23,6 +23,7 @@ import typing
 import huggingface_hub
 import optimum.quanto
 import transformers.models.clip
+import diffusers.pipelines.kolors
 
 import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
@@ -97,7 +98,8 @@ class TextEncoderUri:
     _encoders = {
         'CLIPTextModel': transformers.models.clip.CLIPTextModel,
         'CLIPTextModelWithProjection': transformers.models.clip.CLIPTextModelWithProjection,
-        'T5EncoderModel': transformers.models.t5.T5EncoderModel
+        'T5EncoderModel': transformers.models.t5.T5EncoderModel,
+        'ChatGLMModel': diffusers.pipelines.kolors.ChatGLMModel
     }
 
     @staticmethod
@@ -175,11 +177,13 @@ class TextEncoderUri:
             typing.Union[
                 transformers.models.clip.CLIPTextModel,
                 transformers.models.clip.CLIPTextModelWithProjection,
-                transformers.models.t5.T5EncoderModel]:
+                transformers.models.t5.T5EncoderModel,
+                diffusers.pipelines.kolors.ChatGLMModel]:
         """
         Load a torch Text Encoder of type :py:class:`transformers.models.clip.CLIPTextModel`,
-        :py:class:`transformers.models.clip.CLIPTextModelWithProjection`, or
-        :py:class:`transformers.models.t5.T5EncoderModel` from this URI
+        :py:class:`transformers.models.clip.CLIPTextModelWithProjection`,
+        :py:class:`transformers.models.t5.T5EncoderModel`, or
+        :py:class:`diffusers.pipelines.kolors.ChatGLMModel` from this URI
 
         :param variant_fallback: If the URI does not specify a variant, use this variant.
         :param dtype_fallback: If the URI does not specify a dtype, use this dtype.
@@ -196,8 +200,9 @@ class TextEncoderUri:
         :raises ModelNotFoundError: If the model could not be found.
 
         :return: :py:class:`transformers.models.clip.CLIPTextModel`,
-            :py:class:`transformers.models.clip.CLIPTextModelWithProjection`, or
-            :py:class:`transformers.models.t5.T5EncoderModel`
+            :py:class:`transformers.models.clip.CLIPTextModelWithProjection`,
+            :py:class:`transformers.models.t5.T5EncoderModel`, or
+            :py:class:`diffusers.pipelines.kolors.ChatGLMModel`
         """
 
         try:

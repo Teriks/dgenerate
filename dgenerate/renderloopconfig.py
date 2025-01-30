@@ -915,13 +915,14 @@ class RenderLoopConfig(_types.SetFromMixin):
         if self.adetailer_detector_uris and self.model_type not in {
             _pipelinewrapper.ModelType.TORCH,
             _pipelinewrapper.ModelType.TORCH_SDXL,
+            _pipelinewrapper.ModelType.TORCH_KOLORS,
             _pipelinewrapper.ModelType.TORCH_SD3,
             _pipelinewrapper.ModelType.TORCH_FLUX,
             _pipelinewrapper.ModelType.TORCH_FLUX_FILL
         }:
             raise RenderLoopConfigError(
                 f'{a_namer("adetailer_detector_uris")} is only compatible with '
-                f'{a_namer("model_type")} torch, torch-sdxl, torch-sd3, and torch-flux')
+                f'{a_namer("model_type")} torch, torch-sdxl, torch-kolors, torch-sd3, and torch-flux')
 
         if not self.image_seeds:
             if self.adetailer_detector_uris:
@@ -1227,7 +1228,8 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'Stable Diffusion 3 does not support the '
                     f'use of {a_namer("unet_uri")}/{a_namer("second_unet_uri")}.')
 
-        if not _pipelinewrapper.model_type_is_sdxl(self.model_type):
+        if not (_pipelinewrapper.model_type_is_sdxl(self.model_type) or
+                _pipelinewrapper.model_type_is_kolors(self.model_type)):
             invalid_self = []
             for sdxl_self in non_null_attr_that_start_with('sdxl'):
                 invalid_self.append(f'you cannot specify {a_namer(sdxl_self)} '
@@ -1730,7 +1732,9 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise AssertionError(
                     f'dgenerate.pipelinewrapper.DiffusionArguments lacks property: {n}')
 
-            if not _pipelinewrapper.model_type_is_sdxl(self.model_type):
+            if not (
+                    _pipelinewrapper.model_type_is_sdxl(self.model_type) or
+                    _pipelinewrapper.model_type_is_kolors(self.model_type)):
                 if n.startswith('sdxl'):
                     return None
             else:
