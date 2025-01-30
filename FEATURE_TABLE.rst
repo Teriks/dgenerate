@@ -18,7 +18,7 @@ Diffusion Model Feature Support Table
 
 
 .. list-table:: Supported Features by ``--model-type``
-   :widths: 40 10 10 10 10 10 10 10 10 10 10 10 10
+   :widths: 30 10 10 10 10 10 10 10 10 10 10 10 10
    :header-rows: 1
 
    * - Model Type
