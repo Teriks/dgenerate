@@ -41,7 +41,7 @@ import dgenerate.textprocessing as _textprocessing
 
 class AdetailerProcessor(_imageprocessor.ImageProcessor):
     r"""
-    adetailer, diffusion based post processor for SD1.5, SDXL, SD3, and Flux
+    adetailer, diffusion based post processor for SD1.5, SDXL, Kolors, SD3, and Flux
 
     adetailer can detect features of your image and automatically generate an inpaint
     mask for them, such as faces, hands etc. and then re-run diffusion over those portions
@@ -53,6 +53,11 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
     you must use --post-processors to use this image processor correctly. In
     dgenerate config script, you may use it anywhere, and the last executed
     diffusion pipeline will be reused for inpainting.
+
+    Inpainting will occur on the device used by the last executed diffusion
+    pipeline unless the "device" argument is specified, the detector model can be run on
+    an alternate GPU if desired using the "detector-device" argument, otherwise
+    the detector will run on "device".
 
     Example:
 
@@ -168,7 +173,7 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
 
     NAMES = ['adetailer']
 
-    HIDE_ARGS = ['pipe', 'device', 'model-offload']
+    HIDE_ARGS = ['pipe', 'model-offload']
 
     def __init__(self,
                  model: str,
@@ -404,7 +409,7 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
             detector_padding=self._detector_padding,
             model_path=self._model_path,
             device=self.device,
-            detector_device=_types.default(self._detector_device, self._detector_device),
+            detector_device=_types.default(self._detector_device, self.device),
             confidence=self._confidence,
             prompt_weighter=prompt_weighter
         )
