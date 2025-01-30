@@ -232,3 +232,5 @@ Stable Diffusion XL does not support PAG in (inpaint + Control Nets) mode.
 Stable Diffusion 1.5 - 2.* does not support PAG in img2img, inpaint, or (img2img + Control Nets) mode.
 It does however support PAG in (inpaint + Control Nets) mode.
 
+Kolors only supports PAG in txt2img mode
+
