@@ -36,6 +36,7 @@ import dgenerate.promptweighters as _promptweighters
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.uris as _uris
 import dgenerate.pipelinewrapper.constants as _constants
+import dgenerate.textprocessing as _textprocessing
 
 
 class AdetailerProcessor(_imageprocessor.ImageProcessor):
@@ -123,7 +124,18 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
     The "strength" argument is analogous to --image-seed-strengths
 
     The "mask-padding" argument indicates how much padding exists between the
-    feature and the boundary of the mask area
+    feature and the boundary of the mask area.
+
+    Padding Examples:
+
+        NOWRAP!
+        32 (32px Uniform, all sides)
+
+        NOWRAP!
+        10x20 (10px Horizontal, 20px Vertical)
+
+        NOWRAP!
+        10x20x30x40 (10px Left, 20px Top, 30px Right, 40px Bottom)
 
     The "mask-blur" argument indicates the level of gaussian blur to apply
     to the generated inpaint mask, which can help with smooth blending in
@@ -160,7 +172,7 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
                  pag_scale: typing.Optional[float] = None,
                  pag_adaptive_scale: typing.Optional[float] = None,
                  strength: float = 0.4,
-                 mask_padding: int = _constants.DEFAULT_ADETAILER_MASK_PADDING,
+                 mask_padding: str = str(_constants.DEFAULT_ADETAILER_MASK_PADDING),
                  mask_blur: int = _constants.DEFAULT_ADETAILER_MASK_BLUR,
                  mask_dilation: int = _constants.DEFAULT_ADETAILER_MASK_DILATION,
                  confidence: float = 0.3,
@@ -173,8 +185,20 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
         """
         super().__init__(**kwargs)
 
-        if mask_padding < 0:
-            raise self.argument_error('mask-padding may not be less than zero.')
+        try:
+            mask_padding = _textprocessing.parse_dimensions(mask_padding)
+
+            if len(mask_padding) not in {1, 2, 4}:
+                raise ValueError()
+
+        except ValueError:
+            raise self.argument_error(
+                'mask-padding must be an integer value, WIDTHxHEIGHT, or LEFTxTOPxRIGHTxBOTTOM')
+
+        if len(mask_padding) == 1:
+            mask_padding = mask_padding[0]
+
+        self._mask_padding = mask_padding
 
         if mask_blur < 0:
             raise self.argument_error('mask-blur may not be less than zero.')

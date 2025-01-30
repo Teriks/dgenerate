@@ -32,23 +32,41 @@ def mask_gaussian_blur(image: Image.Image, value: int = 4) -> Image.Image:
 
 
 def bbox_padding(
-    bbox: tuple[int, int, int, int], image_size: tuple[int, int], value: int = 32
+        bbox: tuple[int, int, int, int],
+        image_size: tuple[int, int],
+        value: int | tuple[int, int] | tuple[int, int, int, int] = 32
 ) -> tuple[int, int, int, int]:
-    if value <= 0:
-        return bbox
+    if isinstance(value, int):  # Uniform padding
+        left, top, right, bottom = value, value, value, value
+    elif isinstance(value, tuple) and len(value) == 2:  # Horizontal | Vertical padding
+        left, right = value[0], value[0]
+        top, bottom = value[1], value[1]
+    elif isinstance(value, tuple) and len(value) == 4:  # Left | Top | Right | Bottom padding
+        left, top, right, bottom = value
+    else:
+        raise ValueError("Padding value must be an int, a tuple of 2 (horizontal, vertical), or a tuple of 4 (left, top, right, bottom).")
 
-    arr = np.array(bbox).reshape(2, 2)
-    arr[0] -= value
-    arr[1] += value
-    arr = np.clip(arr, (0, 0), image_size)
-    return tuple(arr.flatten())
+    x_min, y_min, x_max, y_max = bbox
+    width, height = image_size  # WIDTH × HEIGHT
+
+    x_min -= left
+    y_min -= top
+    x_max += right
+    y_max += bottom
+
+    # Clip to ensure the bbox remains within image boundaries
+    x_min, y_min = max(0, x_min), max(0, y_min)
+    x_max, y_max = min(width, x_max), min(height, y_max)
+
+    return x_min, y_min, x_max, y_max
+
 
 
 def composite(
-    init: Image.Image,
-    mask: Image.Image,
-    gen: Image.Image,
-    bbox_padded: tuple[int, int, int, int],
+        init: Image.Image,
+        mask: Image.Image,
+        gen: Image.Image,
+        bbox_padded: tuple[int, int, int, int],
 ) -> Image.Image:
     img_masked = Image.new("RGBa", init.size)
     img_masked.paste(

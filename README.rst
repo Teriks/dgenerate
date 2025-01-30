@@ -314,9 +314,9 @@ Help Output
             ---------------
       -mt MODEL_TYPE, --model-type MODEL_TYPE
             Use when loading different model types. Currently supported: torch, torch-pix2pix, torch-sdxl,
-            torch-sdxl-pix2pix, torch-upscaler-x2, torch-upscaler-x4, torch-if, torch-ifs, torch-ifs-img2img,
-            torch-s-cascade, torch-sd3, torch-flux, or torch-flux-fill. (default: torch)
-            ----------------------------------------------------------------------------
+            torch-sdxl-pix2pix, torch-kolors, torch-upscaler-x2, torch-upscaler-x4, torch-if, torch-ifs, torch-
+            ifs-img2img, torch-s-cascade, torch-sd3, torch-flux, or torch-flux-fill. (default: torch)
+            -----------------------------------------------------------------------------------------
       -rev BRANCH, --revision BRANCH
             The model revision to use when loading from a Hugging Face repository, (The Git branch / tag,
             default is "main")
@@ -390,8 +390,18 @@ Help Output
             ------------------------------------------------------------------
       -adp ADETAILER_MASK_PADDING [ADETAILER_MASK_PADDING ...], --adetailer-mask-paddings ADETAILER_MASK_PADDING [ADETAILER_MASK_PADDING ...]
             One or more adetailer mask padding values to try. This specifies how much padding should be between
-            the adetailer detected feature and the boundary of the mask area. (default: 32).
-            --------------------------------------------------------------------------------
+            the adetailer detected feature and the boundary of the mask area.
+            
+            Example:
+            
+            32 (32px Uniform, all sides)
+            
+            10x20 (10px Horizontal, 20px Vertical)
+            
+            10x20x30x40 (10px Left, 20px Top, 30px Right, 40px Bottom)
+            
+            (default: 32).
+            --------------
       -adb ADETAILER_MASK_BLUR [ADETAILER_MASK_BLUR ...], --adetailer-mask-blurs ADETAILER_MASK_BLUR [ADETAILER_MASK_BLUR ...]
             The level of gaussian blur to apply to the generated adetailer inpaint mask, which can help with
             smooth blending in of the inpainted feature. (default: 4)

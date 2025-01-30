@@ -100,7 +100,6 @@ def retrieve_latents(
 class KolorsControlNetPipeline(
     DiffusionPipeline,
     StableDiffusionMixin,
-    TextualInversionLoaderMixin,
     StableDiffusionXLLoraLoaderMixin,
     FromSingleFileMixin,
     IPAdapterMixin,
