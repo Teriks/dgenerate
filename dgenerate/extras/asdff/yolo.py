@@ -18,29 +18,40 @@ except ModuleNotFoundError:
 
 
 def create_mask_from_bbox(
-    bboxes: np.ndarray, shape: tuple[int, int]
+        bboxes: list[list[float]], shape: tuple[int, int], mask_shape: str = "rectangle"
 ) -> list[Image.Image]:
     """
+    Create binary masks from bounding boxes, with optional rectangle or circle masks.
+
     Parameters
     ----------
-        bboxes: list[list[float]]
-            list of [x1, y1, x2, y2]
-            bounding boxes
-        shape: tuple[int, int]
-            shape of the image (width, height)
+    bboxes: list[list[float]]
+        List of bounding boxes, each defined as [x1, y1, x2, y2].
+    shape: tuple[int, int]
+        Shape of the image as (width, height).
+    mask_shape: str, optional
+        The shape of the mask: "rectangle" (default) or "circle".
 
     Returns
     -------
-        masks: list[Image.Image]
-        A list of masks
-
+    masks: list[Image.Image]
+        A list of PIL Image masks.
     """
     masks = []
     for bbox in bboxes:
-        mask = Image.new("L", shape, "black")
+        mask = Image.new("L", (shape[1], shape[0]), 0)  # Ensure (height, width) ordering
         mask_draw = ImageDraw.Draw(mask)
-        mask_draw.rectangle(bbox, fill="white")
+        x1, y1, x2, y2 = map(int, bbox)  # Convert bbox to integers
+
+        if mask_shape == "circle":
+            cx, cy = (x1 + x2) // 2, (y1 + y2) // 2  # Center of bbox
+            radius = min(x2 - x1, y2 - y1) // 2  # Fit inside the bbox
+            mask_draw.ellipse((cx - radius, cy - radius, cx + radius, cy + radius), fill=255)
+        else:  # Default to rectangle
+            mask_draw.rectangle([x1, y1, x2, y2], fill=255)
+
         masks.append(mask)
+
     return masks
 
 
@@ -63,10 +74,11 @@ def mask_to_pil(masks: torch.Tensor, shape: tuple[int, int]) -> list[Image.Image
 
 
 def yolo_detector(
-    image: Image.Image,
-    model_path: str | Path | None = None,
-    device: str = 'cuda',
-    confidence: float = 0.3
+        image: Image.Image,
+        model_path: str | Path | None = None,
+        device: str = 'cuda',
+        confidence: float = 0.3,
+        mask_shape: str = "rectangle"
 ) -> list[Image.Image] | None:
     if not model_path:
         model_path = hf_hub_download("Bingsu/adetailer", "face_yolov8n.pt")
@@ -84,7 +96,7 @@ def yolo_detector(
             return None
 
         if pred[0].masks is None:
-            masks = create_mask_from_bbox(bboxes, image.size)
+            masks = create_mask_from_bbox(bboxes, image.size, mask_shape)
         else:
             masks = mask_to_pil(pred[0].masks.data, image.size)
     finally:
@@ -94,7 +106,6 @@ def yolo_detector(
             torch.cuda.empty_cache()
 
     return masks
-
 
 # YOLO DETECTION with output mask in square
 # def yolo_detector(

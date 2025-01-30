@@ -512,7 +512,6 @@ class KolorsInpaintPipeline(
             lora_scale (`float`, *optional*):
                 A lora scale that will be applied to all LoRA layers of the text encoder if LoRA layers are loaded.
         """
-        # from IPython import embed; embed(); exit()
         device = device or self._execution_device
 
         # set lora scale so that monkey patched LoRA
@@ -551,12 +550,13 @@ class KolorsInpaintPipeline(
                     position_ids=text_inputs['position_ids'],
                     output_hidden_states=True)
                 prompt_embeds = output.hidden_states[-2].permute(1, 0, 2).clone()
-                text_proj = output.hidden_states[-1][-1, :, :].clone()
+                pooled_prompt_embeds = output.hidden_states[-1][-1, :, :].clone()  # [batch_size, 4096]
                 bs_embed, seq_len, _ = prompt_embeds.shape
                 prompt_embeds = prompt_embeds.repeat(1, num_images_per_prompt, 1)
                 prompt_embeds = prompt_embeds.view(bs_embed * num_images_per_prompt, seq_len, -1)
                 prompt_embeds_list.append(prompt_embeds)
 
+            # prompt_embeds = torch.concat(prompt_embeds_list, dim=-1)
             prompt_embeds = prompt_embeds_list[0]
 
         # get unconditional embeddings for classifier free guidance
@@ -605,7 +605,7 @@ class KolorsInpaintPipeline(
                     position_ids=uncond_input['position_ids'],
                     output_hidden_states=True)
                 negative_prompt_embeds = output.hidden_states[-2].permute(1, 0, 2).clone()
-                negative_text_proj = output.hidden_states[-1][-1, :, :].clone()
+                negative_pooled_prompt_embeds = output.hidden_states[-1][-1, :, :].clone()  # [batch_size, 4096]
 
                 if do_classifier_free_guidance:
                     # duplicate unconditional embeddings for each generation per prompt, using mps friendly method
@@ -624,17 +624,19 @@ class KolorsInpaintPipeline(
 
                 negative_prompt_embeds_list.append(negative_prompt_embeds)
 
+            # negative_prompt_embeds = torch.concat(negative_prompt_embeds_list, dim=-1)
             negative_prompt_embeds = negative_prompt_embeds_list[0]
 
-        bs_embed = text_proj.shape[0]
-        text_proj = text_proj.repeat(1, num_images_per_prompt).view(
+        bs_embed = pooled_prompt_embeds.shape[0]
+        pooled_prompt_embeds = pooled_prompt_embeds.repeat(1, num_images_per_prompt).view(
             bs_embed * num_images_per_prompt, -1
         )
-        negative_text_proj = negative_text_proj.repeat(1, num_images_per_prompt).view(
-            bs_embed * num_images_per_prompt, -1
-        )
+        if do_classifier_free_guidance:
+            negative_pooled_prompt_embeds = negative_pooled_prompt_embeds.repeat(1, num_images_per_prompt).view(
+                bs_embed * num_images_per_prompt, -1
+            )
 
-        return prompt_embeds, negative_prompt_embeds, text_proj, negative_text_proj
+        return prompt_embeds, negative_prompt_embeds, pooled_prompt_embeds, negative_pooled_prompt_embeds
 
     # Copied from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion.StableDiffusionPipeline.prepare_extra_step_kwargs
     def prepare_extra_step_kwargs(self, generator, eta):
