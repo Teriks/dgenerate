@@ -49,6 +49,7 @@ import dgenerate.pipelinewrapper.util as _util
 import dgenerate.pipelinewrapper.quanto as _quanto
 import numpy
 import dgenerate.extras.diffusers
+import dgenerate.extras.kolors
 
 
 class UnsupportedPipelineConfigError(Exception):
@@ -1770,6 +1771,12 @@ def get_torch_pipeline_class(
             raise UnsupportedPipelineConfigError(
                 '--model-type torch-sd3 is not compatible with --image-encoder.')
 
+    # Torch Kolors restrictions
+    if _enums.model_type_is_sd3(model_type):
+        if t2i_adapter_uris:
+            raise UnsupportedPipelineConfigError(
+                '--model-type torch-kolors is not compatible with --t2i-adapters.')
+
     if transformer_uri:
         if not _enums.model_type_is_sd3(model_type) and not _enums.model_type_is_flux(model_type):
             raise UnsupportedPipelineConfigError(
@@ -1813,7 +1820,7 @@ def get_torch_pipeline_class(
         raise UnsupportedPipelineConfigError(str(e))
 
     def eq_cn_uri(
-            uri1:_uris.ControlNetUri,
+            uri1: _uris.ControlNetUri,
             uri2: _uris.ControlNetUri):
         equals = True
 
@@ -1895,6 +1902,18 @@ def get_torch_pipeline_class(
                     pipeline_class = diffusers.StableDiffusion3ControlNetPipeline
                 else:
                     pipeline_class = diffusers.StableDiffusion3Pipeline
+            elif model_type == _enums.ModelType.TORCH_KOLORS:
+                if controlnet_uris:
+                    if pag:
+                        raise UnsupportedPipelineConfigError(
+                            'Kolors ControlNet mode does not support PAG')
+                    else:
+                        pipeline_class = dgenerate.extras.kolors.KolorsControlNetPipeline
+                else:
+                    if pag:
+                        pipeline_class = diffusers.KolorsPAGPipeline
+                    else:
+                        pipeline_class = diffusers.KolorsPipeline
             elif t2i_adapter_uris:
                 # The custom type is a hack to support from_single_file for SD1.5 - 2
                 # models with the associated pipeline class which does not inherit
@@ -1980,6 +1999,19 @@ def get_torch_pipeline_class(
                     )
 
                 pipeline_class = diffusers.StableDiffusion3Img2ImgPipeline
+            elif model_type == _enums.ModelType.TORCH_KOLORS:
+                if controlnet_uris:
+                    if pag:
+                        raise UnsupportedPipelineConfigError(
+                            'Kolors ControlNet does not support PAG in img2img mode'
+                        )
+                    pipeline_class = dgenerate.extras.kolors.KolorsControlNetImg2ImgPipeline
+                else:
+                    if pag:
+                        raise UnsupportedPipelineConfigError(
+                            'Kolors does not support PAG in img2img mode'
+                        )
+                    pipeline_class = diffusers.KolorsImg2ImgPipeline
             elif t2i_adapter_uris:
                 raise UnsupportedPipelineConfigError(
                     'img2img mode is not supported with --t2i-adapters.')
@@ -2054,6 +2086,19 @@ def get_torch_pipeline_class(
                     )
 
                 pipeline_class = diffusers.StableDiffusion3InpaintPipeline
+            elif model_type == _enums.ModelType.TORCH_KOLORS:
+                if controlnet_uris:
+                    if pag:
+                        raise UnsupportedPipelineConfigError(
+                            'Kolors ControlNet does not support PAG in inpaint mode'
+                        )
+                    pipeline_class = dgenerate.extras.kolors.KolorsControlNetInpaintPipeline
+                else:
+                    if pag:
+                        raise UnsupportedPipelineConfigError(
+                            'Kolors does not support PAG in inpaint mode'
+                        )
+                    pipeline_class = dgenerate.extras.kolors.KolorsInpaintPipeline
             elif t2i_adapter_uris:
                 raise UnsupportedPipelineConfigError(
                     'inpaint mode is not supported with --t2i-adapters.')
@@ -2481,7 +2526,9 @@ def _create_torch_diffusion_pipeline(
     if _enums.model_type_is_floyd(model_type):
         creation_kwargs['watermarker'] = None
 
-    if not safety_checker and not _enums.model_type_is_sdxl(model_type) and not safety_checker_override:
+    if not safety_checker and \
+            (_enums.model_type_is_sd15(model_type) or
+             _enums.model_type_is_floyd(model_type)) and not safety_checker_override:
         creation_kwargs['safety_checker'] = None
 
     creation_kwargs.update(extra_modules)

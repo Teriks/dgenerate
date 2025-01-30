@@ -1,0 +1,16 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 4.5.1
+
+Kwai-Kolors/Kolors-diffusers
+--model-type torch-kolors
+--variant fp16
+--dtype float16
+--sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0
+--inference-steps 20
+--guidance-scales 7
+--image-seeds "../../media/horse1.jpg;../../media/horse1-mask.jpg"
+--image-seed-strengths 0.9
+--seeds 39877139643371
+--output-path basic
+--model-sequential-offload
+--prompts "Horse standing on the surface of mars, real, photo, high resolution; artwork, fake, imaginary"

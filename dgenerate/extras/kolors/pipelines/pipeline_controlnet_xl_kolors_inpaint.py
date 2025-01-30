@@ -28,26 +28,30 @@ from diffusers.loaders import (
     TextualInversionLoaderMixin
 )
 from diffusers.models import AutoencoderKL, ImageProjection, UNet2DConditionModel
-from diffusers.models import ControlNetModel
+from diffusers.models import ControlNetModel, MultiControlNetModel
 from diffusers.models.attention_processor import (
     AttnProcessor2_0,
     XFormersAttnProcessor,
 )
-from diffusers.models.controlnets.multicontrolnet import MultiControlNetModel
+
 from diffusers.pipelines.pipeline_utils import DiffusionPipeline, StableDiffusionMixin
 from diffusers.pipelines.stable_diffusion_xl.pipeline_output import StableDiffusionXLPipelineOutput
 from diffusers.schedulers import KarrasDiffusionSchedulers
 from diffusers.utils import (
+    is_invisible_watermark_available,
     deprecate,
-    logging,
+    logging
 )
 from diffusers.utils.torch_utils import is_compiled_module, randn_tensor
 from transformers import (
     CLIPImageProcessor,
-    CLIPTextModel,
-    CLIPTokenizer,
     CLIPVisionModelWithProjection,
 )
+
+from diffusers.pipelines.kolors import ChatGLMModel, ChatGLMTokenizer
+
+if is_invisible_watermark_available():
+    from diffusers.pipelines.stable_diffusion_xl.watermark import StableDiffusionXLWatermarker
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
 
@@ -149,13 +153,11 @@ class KolorsControlNetInpaintPipeline(
     Args:
         vae ([`AutoencoderKL`]):
             Variational Auto-Encoder (VAE) Model to encode and decode images to and from latent representations.
-        text_encoder ([`CLIPTextModel`]):
-            Frozen text-encoder. Stable Diffusion uses the text portion of
-            [CLIP](https://huggingface.co/docs/transformers/model_doc/clip#transformers.CLIPTextModel), specifically
-            the [clip-vit-large-patch14](https://huggingface.co/openai/clip-vit-large-patch14) variant.
-        tokenizer (`CLIPTokenizer`):
+        text_encoder ([`ChatGLMModel`]):
+            Frozen text-encoder. Kolors uses [ChatGLM3-6B](https://huggingface.co/THUDM/chatglm3-6b).
+        tokenizer (`ChatGLMTokenizer`):
             Tokenizer of class
-            [CLIPTokenizer](https://huggingface.co/docs/transformers/v4.21.0/en/model_doc/clip#transformers.CLIPTokenizer).
+            [ChatGLMTokenizer](https://huggingface.co/THUDM/chatglm3-6b/blob/main/tokenization_chatglm.py).
         unet ([`UNet2DConditionModel`]): Conditional U-Net architecture to denoise the encoded image latents.
         controlnet ([`ControlNetModel`] or `List[ControlNetModel]`):
             Provides additional conditioning to the unet during the denoising process. If you set multiple ControlNets
@@ -170,15 +172,12 @@ class KolorsControlNetInpaintPipeline(
         force_zeros_for_empty_prompt (`bool`, *optional*, defaults to `"True"`):
             Whether the negative prompt embeddings shall be forced to always be set to 0. Also see the config of
             `stabilityai/stable-diffusion-xl-base-1-0`.
-        add_watermarker (`bool`, *optional*):
-            Whether to use the [invisible_watermark library](https://github.com/ShieldMnt/invisible-watermark/) to
-            watermark output images. If not defined, it will default to True if the package is installed, otherwise no
-            watermarker will be used.
         feature_extractor ([`~transformers.CLIPImageProcessor`]):
             A `CLIPImageProcessor` to extract features from generated images; used as inputs to the `safety_checker`.
     """
 
     model_cpu_offload_seq = "text_encoder->image_encoder->unet->vae"
+
     _optional_components = [
         "tokenizer",
         "text_encoder",
@@ -198,8 +197,8 @@ class KolorsControlNetInpaintPipeline(
     def __init__(
             self,
             vae: AutoencoderKL,
-            text_encoder: CLIPTextModel,
-            tokenizer: CLIPTokenizer,
+            text_encoder: ChatGLMModel,
+            tokenizer: ChatGLMTokenizer,
             unet: UNet2DConditionModel,
             controlnet: Union[ControlNetModel, List[ControlNetModel], Tuple[ControlNetModel], MultiControlNetModel],
             scheduler: KarrasDiffusionSchedulers,
@@ -207,6 +206,7 @@ class KolorsControlNetInpaintPipeline(
             force_zeros_for_empty_prompt: bool = True,
             feature_extractor: CLIPImageProcessor = None,
             image_encoder: CLIPVisionModelWithProjection = None,
+            add_watermarker: Optional[bool] = None,
     ):
         super().__init__()
 
@@ -232,7 +232,10 @@ class KolorsControlNetInpaintPipeline(
             vae_scale_factor=self.vae_scale_factor, do_normalize=False, do_binarize=True, do_convert_grayscale=True
         )
 
-        self.watermark = None
+        if add_watermarker:
+            self.watermark = StableDiffusionXLWatermarker()
+        else:
+            self.watermark = None
 
         self.register_to_config(force_zeros_for_empty_prompt=force_zeros_for_empty_prompt)
         self.register_to_config(requires_aesthetics_score=requires_aesthetics_score)
@@ -929,10 +932,6 @@ class KolorsControlNetInpaintPipeline(
     def guidance_scale(self):
         return self._guidance_scale
 
-    @property
-    def clip_skip(self):
-        return self._clip_skip
-
     # here `guidance_scale` is defined analog to the guidance weight `w` of equation (2)
     # of the Imagen paper: https://arxiv.org/pdf/2205.11487.pdf . `guidance_scale = 1`
     # corresponds to doing no classifier free guidance.
@@ -1069,7 +1068,6 @@ class KolorsControlNetInpaintPipeline(
             negative_target_size: Optional[Tuple[int, int]] = None,
             aesthetic_score: float = 6.0,
             negative_aesthetic_score: float = 2.5,
-            clip_skip: Optional[int] = None,
             callback_on_step_end: Optional[
                 Union[Callable[[int, int, Dict], None], PipelineCallback, MultiPipelineCallbacks]
             ] = None,
@@ -1253,9 +1251,6 @@ class KolorsControlNetInpaintPipeline(
                 Part of SDXL's micro-conditioning as explained in section 2.2 of
                 [https://huggingface.co/papers/2307.01952](https://huggingface.co/papers/2307.01952). Can be used to
                 simulate an aesthetic score of the generated image by influencing the negative text condition.
-            clip_skip (`int`, *optional*):
-                Number of layers to be skipped from CLIP while computing the prompt embeddings. A value of 1 means that
-                the output of the pre-final layer will be used for computing the prompt embeddings.
             callback_on_step_end (`Callable`, `PipelineCallback`, `MultiPipelineCallbacks`, *optional*):
                 A function or a subclass of `PipelineCallback` or `MultiPipelineCallbacks` that is called at the end of
                 each denoising step during the inference. with the following arguments: `callback_on_step_end(self:
@@ -1329,7 +1324,6 @@ class KolorsControlNetInpaintPipeline(
         )
 
         self._guidance_scale = guidance_scale
-        self._clip_skip = clip_skip
         self._cross_attention_kwargs = cross_attention_kwargs
         self._denoising_end = denoising_end
         self._denoising_start = denoising_start
@@ -1596,16 +1590,24 @@ class KolorsControlNetInpaintPipeline(
         # patch diffusers controlnet instance forward, undo
         # after denoising loop
 
-        cn_og_forward = self.controlnet.forward
+        patched_cn_models = []
+        if isinstance(self.controlnet, MultiControlNetModel):
+            cn_models_to_patch = self.controlnet.nets
+        else:
+            cn_models_to_patch = [self.controlnet]
 
-        def _cn_patch_forward(*args, **kwargs):
-            encoder_hidden_states = kwargs['encoder_hidden_states']
-            if controlnet.encoder_hid_proj is not None and controlnet.config.encoder_hid_dim_type == "text_proj":
-                encoder_hidden_states = controlnet.encoder_hid_proj(kwargs['encoder_hidden_states'])
-            kwargs.pop('encoder_hidden_states')
-            return cn_og_forward(*args, encoder_hidden_states=encoder_hidden_states, **kwargs)
+        for cn_model in cn_models_to_patch:
+            cn_og_forward = cn_model.forward
 
-        self.controlnet.forward = _cn_patch_forward
+            def _cn_patch_forward(*args, **kwargs):
+                encoder_hidden_states = kwargs['encoder_hidden_states']
+                if cn_model.encoder_hid_proj is not None and cn_model.config.encoder_hid_dim_type == "text_proj":
+                    encoder_hidden_states = cn_model.encoder_hid_proj(kwargs['encoder_hidden_states'])
+                kwargs.pop('encoder_hidden_states')
+                return cn_og_forward(*args, encoder_hidden_states=encoder_hidden_states, **kwargs)
+
+            cn_model.forward = _cn_patch_forward
+            patched_cn_models.append((cn_model, cn_og_forward))
 
         try:
             with self.progress_bar(total=num_inference_steps) as progress_bar:
@@ -1708,7 +1710,8 @@ class KolorsControlNetInpaintPipeline(
                             step_idx = i // getattr(self.scheduler, "order", 1)
                             callback(step_idx, t, latents)
         finally:
-            self.controlnet.forward = cn_og_forward
+            for cn_and_og in patched_cn_models:
+                cn_and_og[0].forward = cn_and_og[1]
 
         # If we do sequential model offloading, let's offload unet and controlnet
         # manually for max memory savings

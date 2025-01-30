@@ -8,6 +8,7 @@ from functools import cached_property
 
 import diffusers
 
+import dgenerate.extras.kolors
 from dgenerate.extras.asdff.utils import (
     ADOutput,
     bbox_padding,
@@ -43,6 +44,7 @@ class AdPipelineBase:
         is_xl = self.pipe.__class__.__name__.startswith('StableDiffusionXL')
         is_flux = self.pipe.__class__.__name__.startswith('Flux')
         is_sd3 = self.pipe.__class__.__name__.startswith('StableDiffusion3')
+        is_kolors = self.pipe.__class__.__name__.startswith('Kolors')
         is_pag = "PAG" in self.pipe.__class__.__name__ or self.force_pag
 
         if is_xl:
@@ -81,6 +83,15 @@ class AdPipelineBase:
                 tokenizer_3=self.pipe.tokenizer_3,
                 transformer=self.pipe.transformer,
                 scheduler=self.pipe.scheduler,
+            )
+        elif is_kolors:
+            pipe = dgenerate.extras.kolors.KolorsInpaintPipeline(
+                vae=self.pipe.vae,
+                text_encoder=self.pipe.text_encoder,
+                tokenizer=self.pipe.tokenizer,
+                unet=self.pipe.unet,
+                scheduler=self.pipe.scheduler,
+                feature_extractor=self.pipe.feature_extractor,
             )
         else:
             pipe_class = \

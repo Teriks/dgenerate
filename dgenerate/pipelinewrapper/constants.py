@@ -84,6 +84,16 @@ DEFAULT_SDXL_OUTPUT_HEIGHT: int = 1024
 Default output height for SDXL txt2img.
 """
 
+DEFAULT_KOLORS_OUTPUT_WIDTH: int = 1024
+"""
+Default output width for Kolors txt2img.
+"""
+
+DEFAULT_KOLORS_OUTPUT_HEIGHT: int = 1024
+"""
+Default output height for Kolors txt2img.
+"""
+
 DEFAULT_FLOYD_IF_OUTPUT_WIDTH: int = 64
 """
 Default output width for Deep Floyd IF txt2img first stage.

@@ -214,6 +214,10 @@ class ModelType(enum.Enum):
     Flux infill / outfill pipeline
     """
 
+    TORCH_KOLORS = 14
+    """Kolors (SDXL + ChatGLM)"""
+
+
 def supported_model_type_strings():
     """
     Return a list of supported ``--model-type`` strings
@@ -222,6 +226,7 @@ def supported_model_type_strings():
             'torch-pix2pix',
             'torch-sdxl',
             'torch-sdxl-pix2pix',
+            'torch-kolors',
             'torch-upscaler-x2',
             'torch-upscaler-x4',
             'torch-if',
@@ -258,6 +263,7 @@ def get_model_type_enum(id_str: ModelType | str) -> ModelType:
         return {'torch': ModelType.TORCH,
                 'torch-pix2pix': ModelType.TORCH_PIX2PIX,
                 'torch-sdxl': ModelType.TORCH_SDXL,
+                'torch-kolors': ModelType.TORCH_KOLORS,
                 'torch-if': ModelType.TORCH_IF,
                 'torch-ifs': ModelType.TORCH_IFS,
                 'torch-ifs-img2img': ModelType.TORCH_IFS_IMG2IMG,
@@ -285,6 +291,7 @@ def get_model_type_string(model_type_enum: ModelType) -> str:
     return {ModelType.TORCH: 'torch',
             ModelType.TORCH_PIX2PIX: 'torch-pix2pix',
             ModelType.TORCH_SDXL: 'torch-sdxl',
+            ModelType.TORCH_KOLORS: 'torch-kolors',
             ModelType.TORCH_IF: 'torch-if',
             ModelType.TORCH_IFS: 'torch-ifs',
             ModelType.TORCH_IFS_IMG2IMG: 'torch-ifs-img2img',
@@ -296,6 +303,18 @@ def get_model_type_string(model_type_enum: ModelType) -> str:
             ModelType.TORCH_SD3: 'torch-sd3',
             ModelType.TORCH_FLUX: 'torch-flux',
             ModelType.TORCH_FLUX_FILL: 'torch-flux-fill'}[model_type]
+
+
+def model_type_is_sd15(model_type: ModelType | str) -> bool:
+    """
+    Does a ``--model-type`` string or :py:class:`.ModelType` enum value represents an SD1.5 - 2 model?
+
+    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
+    :return: bool
+    """
+    model_type = get_model_type_enum(model_type)
+
+    return model_type in {ModelType.TORCH, ModelType.TORCH_PIX2PIX, ModelType.TORCH_UPSCALER_X2}
 
 
 def model_type_is_upscaler(model_type: ModelType | str) -> bool:
@@ -320,6 +339,18 @@ def model_type_is_sdxl(model_type: ModelType | str) -> bool:
     model_type = get_model_type_string(model_type)
 
     return 'sdxl' in model_type
+
+
+def model_type_is_kolors(model_type: ModelType | str) -> bool:
+    """
+    Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent a Kolors model?
+
+    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
+    :return: bool
+    """
+    model_type = get_model_type_string(model_type)
+
+    return 'kolors' in model_type
 
 
 def model_type_is_sd3(model_type: ModelType | str) -> bool:

@@ -40,6 +40,13 @@ class _KarrasSchedulerEntry(_entry._Entry):
         self.internal_divider = config.get(
             'internal-divider', not config.get('divider-after', False))
 
+        self.scheduler_filter = config.get(
+            'filter', None
+        )
+
+        if self.scheduler_filter:
+            self.scheduler_filter = set(self.scheduler_filter)
+
         max_rows = max(len(args) for args in self.schema.values()) + (1 if not self.internal_divider else 2)
 
         super().__init__(*args, **kwargs, widget_rows=max_rows)
@@ -54,7 +61,11 @@ class _KarrasSchedulerEntry(_entry._Entry):
 
         self.optional = False
         self.scheduler_name_var = tk.StringVar(self.master)
-        values = list(self.schema.keys())
+
+        if self.scheduler_filter:
+            values = list(k for k in self.schema.keys() if k in self.scheduler_filter)
+        else:
+            values = list(self.schema.keys())
 
         self.dropdown_label = tk.Label(self.master, text=label)
 
@@ -118,7 +129,7 @@ class _KarrasSchedulerEntry(_entry._Entry):
 
         label_text = \
             f"{optional_label}{param_name} ({', '.join(param_info['types'])})" if raw else \
-            f"{optional_label}{param_name}"
+                f"{optional_label}{param_name}"
 
         label = tk.Label(self.master, text=label_text)
         self.dynamic_widgets.append(label)

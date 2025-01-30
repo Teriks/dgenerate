@@ -1,4 +1,4 @@
-title: Flux (Dev)
+title: Flux (Schnell)
 
 # Flux requires a huggingface auth token to access
 # you must request access to the repository
@@ -7,9 +7,10 @@ title: Flux (Dev)
 
 \set auth_token {{ '--auth-token ' + quote(auth_token) if auth_token else '' }}
 
-@uri[{"label":"Model Path / HF Slug", "dir":true, "default": "black-forest-labs/FLUX.1-dev", "optional":false, "file-types":["models"]}]
+@uri[{"label":"Model Path / HF Slug", "dir":true, "default": "black-forest-labs/FLUX.1-schnell", "optional":false, "file-types":["models"]}]
 --model-type torch-flux {{ auth_token }}
 @dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["bfloat16", "float16", "float32"], "default":"bfloat16"}]
+@karrasscheduler[{"filter": ["FlowMatchEulerDiscreteScheduler"]}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "default":1, "divider-after":true}]
 @torchvae[{"label":"VAE Path / URI", "dir":true, "file-types":["models"]}]
 @switch[{"label":"VAE Tiling", "arg":"--vae-tiling"}]
@@ -22,8 +23,8 @@ title: Flux (Dev)
 @imageprocessor[{"arg":"--seed-image-processors", "label":"Seed Image Processor"}]
 @imageprocessor[{"arg":"--mask-image-processors", "label":"Inpaint Mask Processor"}]
 @imageprocessor[{"arg":"--control-image-processors", "label":"Control Image Processor", "divider-after":true}]
-@int[{"label":"Inference Steps", "arg":"--inference-steps", "default":50, "min":1}]
-@float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":3.5, "min":0}]
+@int[{"label":"Inference Steps", "arg":"--inference-steps", "default":4, "min":1}]
+@float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":0, "min":0}]
 @seeds[{"label":"Seeds"}]
 @int[{"label":"Batch Size", "arg":"--batch-size", "default":"", "min":1}]
 @imagesize[{"label":"Batch Grid Size (CxR)", "arg":"--batch-grid-size", "default":"", "divider-after":true}]

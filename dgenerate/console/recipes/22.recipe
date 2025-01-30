@@ -1,0 +1,14 @@
+title: Generic Image Process (to directory)
+
+\image_process @file[{"label":"Input File", "optional":false, "mode":"input", "file-types":["images-in", "videos-in"]}]
+@dir[{"label":"Output Directory", "default":"output", "arg":"--output", "after":"/", "mode":"output"}]
+@switch[{"label":"Output Overwrite", "arg":"--output-overwrite", "divider-after":true}]
+@imagesize[{"label":"Resize Dimension (WxH)", "arg":"--resize"}]
+@switch[{"label":"Resize Ignores Aspect", "arg":"--no-aspect"}]
+@int[{"label":"Image Alignment", "arg":"--align", "min":1, "default":8, "divider-after":true}]
+@int[{"label":"Frame Start (inclusive)", "arg":"--frame-start", "min":0, "default":""}]
+@int[{"label":"Frame End (inclusive)", "arg":"--frame-end", "min":0, "default":""}]
+@switch[{"label":"Don't Output Frames", "arg":"--no-frames"}]
+@switch[{"label":"Don't Output Animation File", "arg":"--no-animation-file", "divider-after":true}]
+@imageprocessor[{"arg":"--processors", "label":"Image Processor", "hide-device":true}]
+@device[{}]

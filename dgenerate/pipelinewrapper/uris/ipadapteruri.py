@@ -146,7 +146,10 @@ class IPAdapterUri:
                     ip_adapter_uri = IPAdapterUri.parse(ip_adapter_uri)
 
                 models.append(_hfutil.download_non_hf_model(ip_adapter_uri.model))
-                subfolders.append(ip_adapter_uri.subfolder)
+                if ip_adapter_uri.subfolder is None:
+                    subfolders.append('.')
+                else:
+                    subfolders.append(ip_adapter_uri.subfolder)
                 weight_names.append(ip_adapter_uri.weight_name)
                 revisions.add(ip_adapter_uri.revision)
 
