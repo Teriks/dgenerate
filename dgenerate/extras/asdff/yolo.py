@@ -7,6 +7,7 @@ import torch
 from huggingface_hub import hf_hub_download
 from PIL import Image, ImageDraw
 from torchvision.transforms.functional import to_pil_image
+from dgenerate.extras.asdff.utils import bbox_padding
 
 import dgenerate.messages
 
@@ -18,7 +19,10 @@ except ModuleNotFoundError:
 
 
 def create_mask_from_bbox(
-        bboxes: list[list[float]], shape: tuple[int, int], mask_shape: str = "rectangle"
+        bboxes: list[list[float]],
+        shape: tuple[int, int],
+        padding: int | tuple[int, int] | tuple[int, int, int, int] = 0,
+        mask_shape: str = "rectangle"
 ) -> list[Image.Image]:
     """
     Create binary masks from bounding boxes, with optional rectangle or circle masks.
@@ -41,7 +45,8 @@ def create_mask_from_bbox(
     for bbox in bboxes:
         mask = Image.new("L", (shape[1], shape[0]), 0)  # Ensure (height, width) ordering
         mask_draw = ImageDraw.Draw(mask)
-        x1, y1, x2, y2 = map(int, bbox)  # Convert bbox to integers
+        # noinspection PyTypeChecker
+        x1, y1, x2, y2 = bbox_padding(tuple(map(int, bbox)), shape, padding)  # Convert bbox to integers
 
         if mask_shape == "circle":
             cx, cy = (x1 + x2) // 2, (y1 + y2) // 2  # Center of bbox
@@ -78,6 +83,7 @@ def yolo_detector(
         model_path: str | Path | None = None,
         device: str = 'cuda',
         confidence: float = 0.3,
+        padding: int | tuple[int, int] | tuple[int, int, int, int] = 0,
         mask_shape: str = "rectangle"
 ) -> list[Image.Image] | None:
     if not model_path:
@@ -96,7 +102,8 @@ def yolo_detector(
             return None
 
         if pred[0].masks is None:
-            masks = create_mask_from_bbox(bboxes, image.size, mask_shape)
+            masks = create_mask_from_bbox(
+                bboxes, image.size, padding, mask_shape)
         else:
             masks = mask_to_pil(pred[0].masks.data, image.size)
     finally:

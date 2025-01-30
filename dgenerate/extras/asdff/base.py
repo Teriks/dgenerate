@@ -124,6 +124,7 @@ class AdPipelineBase:
             mask_dilation: int = 4,
             mask_blur: int = 4,
             mask_padding: int | tuple[int, int] | tuple[int, int, int, int] = 32,
+            detector_padding: int | tuple[int, int] | tuple[int, int, int, int] = 0,
             model_path: str = None,
             device: str = 'cuda',
             detector_device: str = 'cuda',
@@ -167,7 +168,8 @@ class AdPipelineBase:
                     confidence=confidence,
                     device=detector_device,
                     model_path=model_path,
-                    mask_shape=mask_shape
+                    mask_shape=mask_shape,
+                    padding=detector_padding
                 )
 
                 if masks is None:
