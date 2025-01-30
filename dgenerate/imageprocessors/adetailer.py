@@ -123,6 +123,11 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
 
     The "strength" argument is analogous to --image-seed-strengths
 
+    The "mask-shape" argument indicates what mask shape adetailer should
+    attempt to draw around a detected feature, the default value is "rectangle".
+    You may also specify "circle" to generate an ellipsoid shaped mask, which
+    might be helpfully for better inpaint blending.
+`
     The "mask-padding" argument indicates how much padding exists between the
     feature and the boundary of the mask area.
 
@@ -172,6 +177,7 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
                  pag_scale: typing.Optional[float] = None,
                  pag_adaptive_scale: typing.Optional[float] = None,
                  strength: float = 0.4,
+                 mask_shape: str = 'rectangle',
                  mask_padding: str = str(_constants.DEFAULT_ADETAILER_MASK_PADDING),
                  mask_blur: int = _constants.DEFAULT_ADETAILER_MASK_BLUR,
                  mask_dilation: int = _constants.DEFAULT_ADETAILER_MASK_DILATION,
@@ -199,6 +205,11 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
             mask_padding = mask_padding[0]
 
         self._mask_padding = mask_padding
+
+        mask_shape = mask_shape.lower()
+
+        if mask_shape not in {'rectangle', 'circle'}:
+            raise self.argument_error('mask-shape must be either "rectangle" or "circle".')
 
         if mask_blur < 0:
             raise self.argument_error('mask-blur may not be less than zero.')
