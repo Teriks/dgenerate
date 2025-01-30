@@ -144,7 +144,7 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
     attempt to draw around a detected feature, the default value is "rectangle".
     You may also specify "circle" to generate an ellipsoid shaped mask, which
     might be helpful for achieving better blending.
-`
+
     The "mask-padding" argument indicates how much padding to place around
     the masked area when cropping out the image to be inpainted. This value must be
     large enough to accommodate any feathering on the edge of the mask caused
