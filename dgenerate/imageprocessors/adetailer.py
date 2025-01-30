@@ -211,6 +211,8 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
         if mask_shape not in {'rectangle', 'circle'}:
             raise self.argument_error('mask-shape must be either "rectangle" or "circle".')
 
+        self._mask_shape = mask_shape
+
         if mask_blur < 0:
             raise self.argument_error('mask-blur may not be less than zero.')
 
@@ -374,6 +376,7 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
         result = ad_pipe(
             pipeline_args=pipeline_args,
             images=[image],
+            mask_shape=self._mask_shape,
             mask_dilation=self._mask_dilation,
             mask_blur=self._mask_blur,
             mask_padding=self._mask_padding,

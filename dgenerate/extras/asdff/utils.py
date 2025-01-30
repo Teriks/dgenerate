@@ -23,6 +23,7 @@ def mask_dilate(image: Image.Image, value: int = 4) -> Image.Image:
     dilated = cv2.dilate(arr, kernel, iterations=1)
     return Image.fromarray(dilated)
 
+
 def mask_gaussian_blur(image: Image.Image, value: int = 4) -> Image.Image:
     if value <= 0:
         return image
