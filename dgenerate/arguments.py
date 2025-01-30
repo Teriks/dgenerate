@@ -335,12 +335,18 @@ def _type_text_encoder(val):
 
 def _type_adetailer_mask_padding(val):
     try:
-        val = int(val)
-    except ValueError:
-        raise argparse.ArgumentTypeError('Must be an integer')
+        val = _textprocessing.parse_dimensions(val)
 
-    if val < 0:
-        raise argparse.ArgumentTypeError('Must be greater than or equal to 0')
+        if len(val) not in {1, 2, 4}:
+            raise ValueError()
+
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            'Must be an integer value, WIDTHxHEIGHT, or LEFTxTOPxRIGHTxBOTTOM')
+
+    if len(val) == 1:
+        return val[0]
+
     return val
 
 
@@ -668,7 +674,17 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             metavar='ADETAILER_MASK_PADDING',
             dest='adetailer_mask_paddings',
             help="""One or more adetailer mask padding values to try. This specifies how much padding 
-                    should be between the adetailer detected feature and the boundary of the mask area. (default: 32).""")
+                    should be between the adetailer detected feature and the boundary of the mask area. 
+                    
+                    Example:
+                    
+                    32 (32px Uniform, all sides)
+                    
+                    10x20 (10px Horizontal, 20px Vertical)
+                    
+                    10x20x30x40 (10px Left, 20px Top, 30px Right, 40px Bottom)
+
+                    (default: 32).""")
     )
 
     actions.append(

@@ -443,10 +443,24 @@ class DiffusionArguments(_types.SetFromMixin):
     :py:attr:`.DiffusionArguments.clip_skip` when it is defined.
     """
 
-    adetailer_mask_padding: _types.OptionalInteger = None
+    adetailer_mask_padding: typing.Optional[
+        int |
+        tuple[int, int] |
+        tuple[int, int, int, int]
+    ] = None
     """
-    Indicates how much padding exists between features detected by adetailer 
-    and the boundary of the mask area. Defaults to 32.
+    Indicates how much padding exists between features detected
+    by adetailer and the boundary of the mask area. 
+    
+    Example:
+    
+    32 (32px Uniform, all sides)
+    
+    (10, 20) (10px Horizontal, 20px Vertical)
+    
+    (10, 20, 30, 40) (10px Left, 20px Top, 30px Right, 40px Bottom)
+    
+    Defaults to 32.
     """
 
     adetailer_mask_blur: _types.OptionalInteger = None

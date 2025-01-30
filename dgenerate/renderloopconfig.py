@@ -811,10 +811,23 @@ class RenderLoopConfig(_types.SetFromMixin):
     use of :py:attr:`.RenderLoopConfig.image_seeds`
     """
 
-    adetailer_mask_paddings: _types.OptionalIntegers = None
+    adetailer_mask_paddings: typing.Optional[
+        collections.abc.Sequence[int | tuple[int, int] | tuple[int, int, int, int]]] = None
     """
-    Indicates how much padding exists between features detected by adetailer 
-    and the boundary of the mask area. Defaults to [32].
+    One or more adetailer mask padding values.
+    
+    Indicates how much padding exists between features detected
+    by adetailer and the boundary of the mask area.
+
+    Example:
+
+    32 (32px Uniform, all sides)
+
+    (10, 20) (10px Horizontal, 20px Vertical)
+
+    (10, 20, 30, 40) (10px Left, 20px Top, 30px Right, 40px Bottom)
+
+    Defaults to [32].
     """
 
     adetailer_mask_blurs: _types.OptionalIntegers = None

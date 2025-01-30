@@ -123,7 +123,7 @@ class AdPipelineBase:
             detectors: DetectorType | Iterable[DetectorType] | None = None,
             mask_dilation: int = 4,
             mask_blur: int = 4,
-            mask_padding: int = 32,
+            mask_padding: int | tuple[int, int] | tuple[int, int, int, int] = 32,
             model_path: str = None,
             device: str = 'cuda',
             detector_device: str = 'cuda',

@@ -2151,7 +2151,8 @@ class DiffusionPipelineWrapper:
             # Width / Height not necessary for any other refiner
             if not (isinstance(self._pipeline,
                                (diffusers.StableDiffusionXLImg2ImgPipeline,
-                                diffusers.StableDiffusionXLPAGImg2ImgPipeline)) and
+                                diffusers.StableDiffusionXLPAGImg2ImgPipeline,
+                                diffusers.KolorsImg2ImgPipeline)) and
                     isinstance(self._sdxl_refiner_pipeline,
                                (diffusers.StableDiffusionXLImg2ImgPipeline,
                                 diffusers.StableDiffusionXLPAGImg2ImgPipeline))):

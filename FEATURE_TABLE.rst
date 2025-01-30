@@ -4,6 +4,7 @@ Diffusion Model Feature Support Table
    * ``--model-type torch`` (SD 1.5 - SD 2.*)
    * ``--model-type torch-pix2pix`` (SD 1.5 - SD 2.* - Pix2Pix)
    * ``--model-type torch-sdxl`` (Stable Diffusion XL)
+   * ``--model-type torch-kolors`` (Kolors)
    * ``--model-type torch-if`` (Deep Floyd Stage 1)
    * ``--model-type torch-ifs`` (Deep Floyd Stage 2)
    * ``--model-type torch-if-img2img`` (Deep Floyd Stage 2 - Img2Img)
@@ -17,7 +18,7 @@ Diffusion Model Feature Support Table
 
 
 .. list-table:: Supported Features by ``--model-type``
-   :widths: 40 10 10 10 10 10 10 10 10 10 10 10
+   :widths: 40 10 10 10 10 10 10 10 10 10 10 10 10
    :header-rows: 1
 
    * - Model Type
@@ -71,6 +72,19 @@ Diffusion Model Feature Support Table
      - ✅
      - ✅
      - ✅
+
+   * - ``torch-kolors``
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ❌
+     - ✅
+     - ❌
+     - ✅
+     - ✅
+     - ❌
+     - ❌
 
    * - ``torch-if``
      - ✅

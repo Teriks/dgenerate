@@ -289,7 +289,6 @@ def retrieve_timesteps(
 class KolorsInpaintPipeline(
     DiffusionPipeline,
     StableDiffusionMixin,
-    TextualInversionLoaderMixin,
     StableDiffusionXLLoraLoaderMixin,
     FromSingleFileMixin,
     IPAdapterMixin,

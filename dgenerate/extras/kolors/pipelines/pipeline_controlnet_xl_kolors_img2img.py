@@ -74,7 +74,6 @@ def retrieve_latents(
 class KolorsControlNetImg2ImgPipeline(
     DiffusionPipeline,
     StableDiffusionMixin,
-    TextualInversionLoaderMixin,
     StableDiffusionXLLoraLoaderMixin,
     FromSingleFileMixin,
     IPAdapterMixin,
