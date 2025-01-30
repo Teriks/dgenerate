@@ -1,7 +1,7 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 4.5.1
 
-# You can use any SDXL model you want in combination with the adetailer inpainting algorithm
+# You can use any Kolors model you want in combination with the adetailer inpainting algorithm
 # this can be preformed on any image of your choosing in this manner
 
 # This can be used for highly configurable face detailing on diffusion output, or

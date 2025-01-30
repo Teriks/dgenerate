@@ -45,7 +45,8 @@ def bbox_padding(
     elif isinstance(value, tuple) and len(value) == 4:  # Left | Top | Right | Bottom padding
         left, top, right, bottom = value
     else:
-        raise ValueError("Padding value must be an int, a tuple of 2 (horizontal, vertical), or a tuple of 4 (left, top, right, bottom).")
+        raise ValueError(
+            "Padding value must be an int, a tuple of 2 (horizontal, vertical), or a tuple of 4 (left, top, right, bottom).")
 
     x_min, y_min, x_max, y_max = bbox
     width, height = image_size  # WIDTH × HEIGHT
@@ -60,7 +61,6 @@ def bbox_padding(
     x_max, y_max = min(width, x_max), min(height, y_max)
 
     return x_min, y_min, x_max, y_max
-
 
 
 def composite(

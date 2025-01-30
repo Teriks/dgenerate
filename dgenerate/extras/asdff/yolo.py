@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import numpy as np
 import torch
 from huggingface_hub import hf_hub_download
 from PIL import Image, ImageDraw
@@ -25,35 +24,37 @@ def create_mask_from_bbox(
         mask_shape: str = "rectangle"
 ) -> list[Image.Image]:
     """
-    Create binary masks from bounding boxes, with optional rectangle or circle masks.
-
     Parameters
     ----------
-    bboxes: list[list[float]]
-        List of bounding boxes, each defined as [x1, y1, x2, y2].
-    shape: tuple[int, int]
-        Shape of the image as (width, height).
-    mask_shape: str, optional
-        The shape of the mask: "rectangle" (default) or "circle".
+        bboxes: list[list[float]]
+            List of [x1, y1, x2, y2] bounding boxes.
+        shape: tuple[int, int]
+            Shape of the image (width, height).
+        padding: int | tuple[int, int] | tuple[int, int, int, int], optional
+            Padding to apply to the bounding box (default: 0).
+        mask_shape: str, optional
+            Shape of the mask ("rectangle" or "circle").
 
     Returns
     -------
-    masks: list[Image.Image]
-        A list of PIL Image masks.
+        list[Image.Image]
+            A list of mask images.
     """
     masks = []
     for bbox in bboxes:
-        mask = Image.new("L", (shape[1], shape[0]), 0)  # Ensure (height, width) ordering
+        bbox = bbox_padding(tuple(map(int, bbox)), shape, padding)
+        mask = Image.new("L", shape, 0)
         mask_draw = ImageDraw.Draw(mask)
-        # noinspection PyTypeChecker
-        x1, y1, x2, y2 = bbox_padding(tuple(map(int, bbox)), shape, padding)  # Convert bbox to integers
 
-        if mask_shape == "circle":
-            cx, cy = (x1 + x2) // 2, (y1 + y2) // 2  # Center of bbox
-            radius = min(x2 - x1, y2 - y1) // 2  # Fit inside the bbox
-            mask_draw.ellipse((cx - radius, cy - radius, cx + radius, cy + radius), fill=255)
-        else:  # Default to rectangle
-            mask_draw.rectangle([x1, y1, x2, y2], fill=255)
+        if mask_shape == "rectangle":
+            mask_draw.rectangle(bbox, fill=255)
+        elif mask_shape == "circle":
+            # Compute center and radius
+            cx, cy = (bbox[0] + bbox[2]) // 2, (bbox[1] + bbox[3]) // 2
+            radius = min((bbox[2] - bbox[0]) // 2, (bbox[3] - bbox[1]) // 2)
+            mask_draw.ellipse([cx - radius, cy - radius, cx + radius, cy + radius], fill=255)
+        else:
+            raise ValueError(f"Unsupported mask_shape: {mask_shape}")
 
         masks.append(mask)
 
