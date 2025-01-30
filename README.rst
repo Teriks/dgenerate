@@ -389,8 +389,10 @@ Help Output
             Example: --adetailer-detectors https://modelsite.com/yolo-model.pt
             ------------------------------------------------------------------
       -adp ADETAILER_MASK_PADDING [ADETAILER_MASK_PADDING ...], --adetailer-mask-paddings ADETAILER_MASK_PADDING [ADETAILER_MASK_PADDING ...]
-            One or more adetailer mask padding values to try. This specifies how much padding should be between
-            the adetailer detected feature and the boundary of the mask area.
+            One or more adetailer mask padding values to try. This value indicates how much padding to place
+            around the masked area when cropping out the image to be inpainted, this value must be large enough
+            to accommodate any feathering on the edge of the mask caused by "--adetailer-mask-blurs" or "--
+            adetailer-mask-dilations" for the best result.
             
             Example:
             

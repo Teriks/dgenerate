@@ -123,13 +123,11 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
 
     The "strength" argument is analogous to --image-seed-strengths
 
-    The "mask-shape" argument indicates what mask shape adetailer should
-    attempt to draw around a detected feature, the default value is "rectangle".
-    You may also specify "circle" to generate an ellipsoid shaped mask, which
-    might be helpfully for better inpaint blending.
-`
-    The "mask-padding" argument indicates how much padding exists between the
-    feature and the boundary of the mask area.
+    The "detector-padding" argument specifies the amount of padding
+    that will be added to the detection rectangle which is used to
+    generate a masked area. The default is 0, you can make the mask
+    area around the detected feature larger with positive padding
+    and smaller with negative padding.
 
     Padding Examples:
 
@@ -141,6 +139,17 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
 
         NOWRAP!
         10x20x30x40 (10px Left, 20px Top, 30px Right, 40px Bottom)
+
+    The "mask-shape" argument indicates what mask shape adetailer should
+    attempt to draw around a detected feature, the default value is "rectangle".
+    You may also specify "circle" to generate an ellipsoid shaped mask, which
+    might be helpful for achieving better blending.
+`
+    The "mask-padding" argument indicates how much padding to place around
+    the masked area when cropping out the image to be inpainted. This value must be
+    large enough to accommodate any feathering on the edge of the mask caused
+    by "mask-blur" or "mask-dilation" for the best result, the default value is 32.
+    The syntax for specifying this value is identical to "detector-padding".
 
     The "mask-blur" argument indicates the level of gaussian blur to apply
     to the generated inpaint mask, which can help with smooth blending in
@@ -177,6 +186,7 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
                  pag_scale: typing.Optional[float] = None,
                  pag_adaptive_scale: typing.Optional[float] = None,
                  strength: float = 0.4,
+                 detector_padding: str = "0",
                  mask_shape: str = 'rectangle',
                  mask_padding: str = str(_constants.DEFAULT_ADETAILER_MASK_PADDING),
                  mask_blur: int = _constants.DEFAULT_ADETAILER_MASK_BLUR,
@@ -204,14 +214,23 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
         if len(mask_padding) == 1:
             mask_padding = mask_padding[0]
 
-        self._mask_padding = mask_padding
+        try:
+            detector_padding = _textprocessing.parse_dimensions(detector_padding)
+
+            if len(detector_padding) not in {1, 2, 4}:
+                raise ValueError()
+
+        except ValueError:
+            raise self.argument_error(
+                'detector-padding must be an integer value, WIDTHxHEIGHT, or LEFTxTOPxRIGHTxBOTTOM')
+
+        if len(detector_padding) == 1:
+            detector_padding = detector_padding[0]
 
         mask_shape = mask_shape.lower()
 
         if mask_shape not in {'rectangle', 'circle'}:
             raise self.argument_error('mask-shape must be either "rectangle" or "circle".')
-
-        self._mask_shape = mask_shape
 
         if mask_blur < 0:
             raise self.argument_error('mask-blur may not be less than zero.')
@@ -242,6 +261,8 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
 
         self._prompt = prompt
         self._negative_prompt = negative_prompt
+        self._detector_padding = detector_padding
+        self._mask_shape = mask_shape
         self._mask_padding = mask_padding
         self._mask_blur = mask_blur
         self._mask_dilation = mask_dilation
@@ -380,6 +401,7 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
             mask_dilation=self._mask_dilation,
             mask_blur=self._mask_blur,
             mask_padding=self._mask_padding,
+            detector_padding=self._detector_padding,
             model_path=self._model_path,
             device=self.device,
             detector_device=_types.default(self._detector_device, self._detector_device),

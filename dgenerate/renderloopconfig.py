@@ -816,8 +816,12 @@ class RenderLoopConfig(_types.SetFromMixin):
     """
     One or more adetailer mask padding values.
     
-    Indicates how much padding exists between features detected
-    by adetailer and the boundary of the mask area.
+    This value indicates how much padding to place around the masked 
+    area when cropping out the image to be inpainted, this value must be large
+    enough to accommodate any feathering on the edge of the mask caused
+    by :py:attr:`.RenderLoopConfig.adetailer_mask_blurs` or 
+    :py:attr:`.RenderLoopConfig.adetailer_mask_dilations` for 
+    the best result.
 
     Example:
 
