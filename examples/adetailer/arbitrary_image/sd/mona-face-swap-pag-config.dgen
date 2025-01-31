@@ -5,6 +5,7 @@
 # it is fairly quick to run
 
 stabilityai/stable-diffusion-2-1
+--pag
 --inference-steps 30
 --guidance-scales 5
 --clip-skips 0
