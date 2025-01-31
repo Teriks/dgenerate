@@ -53,6 +53,7 @@ parser.add_argument('--subprocess-only', action='store_true', default=False,
 parser.add_argument('--skip-animations', action='store_true', default=False, help='Skip rendering animations.')
 parser.add_argument('--skip-library', action='store_true', default=False, help='Skip library usage examples.')
 parser.add_argument('--skip-deepfloyd', action='store_true', default=False, help='Skip deep floyd examples.')
+parser.add_argument('--skip-flux', action='store_true', default=False, help='Skip flux examples.')
 parser.add_argument('--skip-ncnn', action='store_true', default=False, help='Skip examples involving ncnn.')
 parser.add_argument('--short-animations', action='store_true', default=False,
                     help='Render only 3 frames for animations.')
@@ -198,6 +199,9 @@ def should_skip_config(config, known_args):
         return True
     if 'deepfloyd' in c and known_args.skip_deepfloyd:
         log(f'SKIPPING DEEPFLOYD: {config}')
+        return True
+    if 'flux' in c and known_args.skip_flux:
+        log(f'SKIPPING FLUX: {config}')
         return True
     if 'ncnn' in c and known_args.skip_ncnn:
         log(f'SKIPPING NCNN: {config}')

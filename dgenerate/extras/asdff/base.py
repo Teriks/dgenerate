@@ -120,7 +120,7 @@ class AdPipelineBase:
             self,
             pipeline_args: Mapping[str, Any] | None = None,
             images: Image.Image | Iterable[Image.Image] | None = None,
-            detectors: DetectorType | Iterable[DetectorType] | None = None,
+            detector: DetectorType | None = None,
             mask_dilation: int = 4,
             mask_blur: int = 4,
             mask_padding: int | tuple[int, int] | tuple[int, int, int, int] = 32,
@@ -135,10 +135,8 @@ class AdPipelineBase:
         if pipeline_args is None:
             pipeline_args = {}
 
-        if detectors is None:
-            detectors = [self.default_detector]
-        elif not isinstance(detectors, Iterable):
-            detectors = [detectors]
+        if detector is None:
+            detector = self.default_detector
 
         txt2img_images = [images] if not isinstance(images, Iterable) else images
 
@@ -162,48 +160,47 @@ class AdPipelineBase:
             init_images.append(init_image.copy())
             final_image = None
 
-            for j, detector in enumerate(detectors):
-                masks = detector(
-                    init_image,
-                    confidence=confidence,
-                    device=detector_device,
-                    model_path=model_path,
-                    mask_shape=mask_shape,
-                    padding=detector_padding
+            masks = detector(
+                init_image,
+                confidence=confidence,
+                device=detector_device,
+                model_path=model_path,
+                mask_shape=mask_shape,
+                padding=detector_padding
+            )
+
+            if masks is None:
+                _messages.log(
+                    f"No object detected on {ordinal(i + 1)} image."
                 )
+                continue
 
-                if masks is None:
-                    _messages.log(
-                        f"No object detected on {ordinal(i + 1)} image with {ordinal(j + 1)} detector."
-                    )
+            for k, mask in enumerate(masks):
+                mask = mask.convert("L")
+                mask = mask_dilate(mask, mask_dilation)
+                bbox = mask.getbbox()
+                if bbox is None:
+                    _messages.log(f"No object in {ordinal(k + 1)} mask.")
                     continue
-
-                for k, mask in enumerate(masks):
-                    mask = mask.convert("L")
-                    mask = mask_dilate(mask, mask_dilation)
-                    bbox = mask.getbbox()
-                    if bbox is None:
-                        _messages.log(f"No object in {ordinal(k + 1)} mask.")
-                        continue
-                    mask = mask_gaussian_blur(mask, mask_blur)
-                    bbox_padded = bbox_padding(bbox, init_image.size, mask_padding)
-                    inpaint_output = self.process_inpainting(
-                        pipeline_args,
-                        init_image,
-                        control_image,
-                        mask,
-                        bbox_padded,
-                        device,
-                        prompt_weighter
-                    )
-                    inpaint_image = inpaint_output[0][0]
-                    final_image = composite(
-                        init_image,
-                        mask,
-                        inpaint_image,
-                        bbox_padded,
-                    )
-                    init_image = final_image
+                mask = mask_gaussian_blur(mask, mask_blur)
+                bbox_padded = bbox_padding(bbox, init_image.size, mask_padding)
+                inpaint_output = self.process_inpainting(
+                    pipeline_args,
+                    init_image,
+                    control_image,
+                    mask,
+                    bbox_padded,
+                    device,
+                    prompt_weighter
+                )
+                inpaint_image = inpaint_output[0][0]
+                final_image = composite(
+                    init_image,
+                    mask,
+                    inpaint_image,
+                    bbox_padded,
+                )
+                init_image = final_image
 
             if final_image is not None:
                 final_images.append(final_image)
