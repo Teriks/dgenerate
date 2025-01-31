@@ -173,7 +173,9 @@ Help Output
                      [--directives-help [DIRECTIVE_NAME ...]] [--functions-help [FUNCTION_NAME ...]]
                      [-mt MODEL_TYPE] [-rev BRANCH] [-var VARIANT] [-sbf SUBFOLDER] [-atk TOKEN] [-bs INTEGER]
                      [-bgs SIZE] [-ad ADETAILER_DETECTOR_URIS [ADETAILER_DETECTOR_URIS ...]]
-                     [-adp ADETAILER_MASK_PADDING [ADETAILER_MASK_PADDING ...]]
+                     [-ads ADETAILER_MASK_SHAPE [ADETAILER_MASK_SHAPE ...]]
+                     [-addp ADETAILER_DETECTOR_PADDING [ADETAILER_DETECTOR_PADDING ...]]
+                     [-admp ADETAILER_MASK_PADDING [ADETAILER_MASK_PADDING ...]]
                      [-adb ADETAILER_MASK_BLUR [ADETAILER_MASK_BLUR ...]]
                      [-add ADETAILER_MASK_DILATION [ADETAILER_MASK_DILATION ...]] [-adc]
                      [-te TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]]
@@ -388,7 +390,29 @@ Help Output
             
             Example: --adetailer-detectors https://modelsite.com/yolo-model.pt
             ------------------------------------------------------------------
-      -adp ADETAILER_MASK_PADDING [ADETAILER_MASK_PADDING ...], --adetailer-mask-paddings ADETAILER_MASK_PADDING [ADETAILER_MASK_PADDING ...]
+      -ads ADETAILER_MASK_SHAPE [ADETAILER_MASK_SHAPE ...], --adetailer-mask-shapes ADETAILER_MASK_SHAPE [ADETAILER_MASK_SHAPE ...]
+            One or more adetailer mask shapes to try. This indicates what mask shape adetailer should attempt to
+            draw around a detected feature, the default value is "rectangle". You may also specify "circle" to
+            generate an ellipsoid shaped mask, which might be helpful for achieving better blending. (default:
+            rectangle).
+            -----------
+      -addp ADETAILER_DETECTOR_PADDING [ADETAILER_DETECTOR_PADDING ...], --adetailer-detector-paddings ADETAILER_DETECTOR_PADDING [ADETAILER_DETECTOR_PADDING ...]
+            One or more adetailer detector padding values to try. This value specifies the amount of padding
+            that will be added to the detection rectangle which is used to generate a masked area. The default
+            is 0, you can make the mask area around the detected feature larger with positive padding and
+            smaller with negative padding.
+            
+            Example:
+            
+            32 (32px Uniform, all sides)
+            
+            10x20 (10px Horizontal, 20px Vertical)
+            
+            10x20x30x40 (10px Left, 20px Top, 30px Right, 40px Bottom)
+            
+            (default: 0).
+            -------------
+      -admp ADETAILER_MASK_PADDING [ADETAILER_MASK_PADDING ...], --adetailer-mask-paddings ADETAILER_MASK_PADDING [ADETAILER_MASK_PADDING ...]
             One or more adetailer mask padding values to try. This value indicates how much padding to place
             around the masked area when cropping out the image to be inpainted, this value must be large enough
             to accommodate any feathering on the edge of the mask caused by "--adetailer-mask-blurs" or "--

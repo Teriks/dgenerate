@@ -917,8 +917,16 @@ class DiffusionPipelineWrapper:
         if self._adetailer_detector_uris:
             opts.append(('--adetailer-detectors', self._adetailer_detector_uris))
 
+        if args.adetailer_mask_shape is not None:
+            opts.append(('--adetailer-mask-shapes', args.adetailer_mask_shape))
+
+        if args.adetailer_detector_padding is not None:
+            opts.append(('--adetailer-detector-paddings',
+                         _textprocessing.format_size(args.adetailer_detector_padding)))
+
         if args.adetailer_mask_padding is not None:
-            opts.append(('--adetailer-mask-paddings', args.adetailer_mask_padding))
+            opts.append(('--adetailer-mask-paddings',
+                         _textprocessing.format_size(args.adetailer_mask_padding)))
 
         if args.adetailer_mask_blur is not None:
             opts.append(('--adetailer-mask-blurs', args.adetailer_mask_blur))
@@ -1866,10 +1874,11 @@ class DiffusionPipelineWrapper:
                 confidence=detector_uri.confidence,
                 prompt_weighter=self._prompt_weighter,
                 mask_blur=int(_types.default(user_args.adetailer_mask_blur, _constants.DEFAULT_ADETAILER_MASK_BLUR)),
-                mask_padding=int(
-                    _types.default(user_args.adetailer_mask_padding, _constants.DEFAULT_ADETAILER_MASK_PADDING)),
+                mask_shape=str(_types.default(user_args.adetailer_mask_shape, _constants.DEFAULT_ADETAILER_MASK_SHAPE)),
+                detector_padding=_types.default(user_args.adetailer_detector_padding, _constants.DEFAULT_ADETAILER_DETECTOR_PADDING),
+                mask_padding=_types.default(user_args.adetailer_mask_padding, _constants.DEFAULT_ADETAILER_MASK_PADDING),
                 mask_dilation=int(
-                    _types.default(user_args.adetailer_mask_padding, _constants.DEFAULT_ADETAILER_MASK_DILATION))
+                    _types.default(user_args.adetailer_mask_dilation, _constants.DEFAULT_ADETAILER_MASK_DILATION))
             )
 
         return PipelineWrapperResult(asdff_output.images)

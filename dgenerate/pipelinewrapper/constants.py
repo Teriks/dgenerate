@@ -149,9 +149,19 @@ DEFAULT_FLUX_OUTPUT_WIDTH: int = 1024
 Default output width for Flux.
 """
 
+DEFAULT_ADETAILER_MASK_SHAPE: str = 'rectangle'
+"""
+Default detector mask shape
+"""
+
 DEFAULT_ADETAILER_MASK_PADDING: int = 32
 """
 Default adetailer mask padding
+"""
+
+DEFAULT_ADETAILER_DETECTOR_PADDING: int = 0
+"""
+Default detector padding
 """
 
 DEFAULT_ADETAILER_MASK_DILATION: int = 4

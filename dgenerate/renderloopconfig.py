@@ -811,6 +811,37 @@ class RenderLoopConfig(_types.SetFromMixin):
     use of :py:attr:`.RenderLoopConfig.image_seeds`
     """
 
+    adetailer_mask_shapes: _types.OptionalNames = None
+    """
+    One or more adetailer mask shapes to try.
+    
+    This indicates what mask shape adetailer should attempt to draw around a detected feature,
+    the default value is "rectangle". You may also specify "circle" to generate an ellipsoid 
+    shaped mask, which might be helpful for achieving better blending.
+    """
+
+    adetailer_detector_paddings: typing.Optional[
+        collections.abc.Sequence[int | tuple[int, int] | tuple[int, int, int, int]]] = None
+    """
+    One or more adetailer detector padding values.
+    
+    This value specifies the amount of padding
+    that will be added to the detection rectangle which is used to
+    generate a masked area. The default is 0, you can make the mask
+    area around the detected feature larger with positive padding
+    and smaller with negative padding.
+    
+    Example:
+
+    32 (32px Uniform, all sides)
+
+    (10, 20) (10px Horizontal, 20px Vertical)
+
+    (10, 20, 30, 40) (10px Left, 20px Top, 30px Right, 40px Bottom)
+
+    Defaults to [0].
+    """
+
     adetailer_mask_paddings: typing.Optional[
         collections.abc.Sequence[int | tuple[int, int] | tuple[int, int, int, int]]] = None
     """
@@ -983,14 +1014,21 @@ class RenderLoopConfig(_types.SetFromMixin):
                 self.sdxl_refiner_pag_scales = [_pipelinewrapper.DEFAULT_SDXL_REFINER_PAG_SCALE]
                 self.sdxl_refiner_pag_adaptive_scales = [_pipelinewrapper.DEFAULT_SDXL_REFINER_PAG_ADAPTIVE_SCALE]
 
-        if self.adetailer_detector_uris and self.adetailer_mask_paddings is None:
-            self.adetailer_mask_paddings = [_pipelinewrapper.DEFAULT_ADETAILER_MASK_PADDING]
+        if self.adetailer_detector_uris:
+            if self.adetailer_mask_shapes is None:
+                self.adetailer_mask_shapes = [_pipelinewrapper.DEFAULT_ADETAILER_MASK_SHAPE]
 
-        if self.adetailer_detector_uris and self.adetailer_mask_blurs is None:
-            self.adetailer_mask_blurs = [_pipelinewrapper.DEFAULT_ADETAILER_MASK_BLUR]
+            if self.adetailer_mask_paddings is None:
+                self.adetailer_mask_paddings = [_pipelinewrapper.DEFAULT_ADETAILER_MASK_PADDING]
 
-        if self.adetailer_detector_uris and self.adetailer_mask_dilations is None:
-            self.adetailer_mask_dilations = [_pipelinewrapper.DEFAULT_ADETAILER_MASK_DILATION]
+            if self.adetailer_detector_paddings is None:
+                self.adetailer_detector_paddings = [_pipelinewrapper.DEFAULT_ADETAILER_DETECTOR_PADDING]
+
+            if self.adetailer_mask_blurs is None:
+                self.adetailer_mask_blurs = [_pipelinewrapper.DEFAULT_ADETAILER_MASK_BLUR]
+
+            if self.adetailer_mask_dilations is None:
+                self.adetailer_mask_dilations = [_pipelinewrapper.DEFAULT_ADETAILER_MASK_DILATION]
 
         # Detect logically incorrect config and set certain defaults
 
@@ -1659,6 +1697,8 @@ class RenderLoopConfig(_types.SetFromMixin):
             self.sdxl_refiner_inference_steps,
             self.sdxl_refiner_guidance_scales,
             self.sdxl_refiner_guidance_rescales,
+            self.adetailer_mask_shapes,
+            self.adetailer_detector_paddings,
             self.adetailer_mask_paddings,
             self.adetailer_mask_blurs,
             self.adetailer_mask_dilations
@@ -1842,6 +1882,8 @@ class RenderLoopConfig(_types.SetFromMixin):
                                                  self.sdxl_refiner_negative_target_sizes),
             sdxl_refiner_negative_crops_coords_top_left=ov('sdxl_refiner_negative_crops_coords_top_left',
                                                            self.sdxl_refiner_negative_crops_coords_top_left),
+            adetailer_mask_shape=ov('adetailer_mask_shape', self.adetailer_mask_shapes),
+            adetailer_detector_padding=ov('adetailer_detector_padding', self.adetailer_detector_paddings),
             adetailer_mask_padding=ov('adetailer_mask_padding', self.adetailer_mask_paddings),
             adetailer_mask_blur=ov('adetailer_mask_blur', self.adetailer_mask_blurs),
             adetailer_mask_dilation=ov('adetailer_mask_dilation', self.adetailer_mask_dilations))

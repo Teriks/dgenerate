@@ -443,11 +443,41 @@ class DiffusionArguments(_types.SetFromMixin):
     :py:attr:`.DiffusionArguments.clip_skip` when it is defined.
     """
 
+    adetailer_mask_shape: _types.OptionalName = None
+    """
+    This indicates what mask shape adetailer should attempt to draw around a detected feature,
+    the default value is "rectangle". You may also specify "circle" to generate an ellipsoid 
+    shaped mask, which might be helpful for achieving better blending.
+    """
+
+    adetailer_detector_padding: typing.Optional[
+        int |
+        tuple[int, int] |
+        tuple[int, int, int, int]
+        ] = None
+    """
+    This value specifies the amount of padding
+    that will be added to the detection rectangle which is used to
+    generate a masked area. The default is 0, you can make the mask
+    area around the detected feature larger with positive padding
+    and smaller with negative padding.
+    
+    Example:
+    
+    32 (32px Uniform, all sides)
+    
+    (10, 20) (10px Horizontal, 20px Vertical)
+    
+    (10, 20, 30, 40) (10px Left, 20px Top, 30px Right, 40px Bottom)
+    
+    Defaults to 0.
+    """
+
     adetailer_mask_padding: typing.Optional[
         int |
         tuple[int, int] |
         tuple[int, int, int, int]
-    ] = None
+        ] = None
     """
     This value indicates how much padding to place around the masked 
     area when cropping out the image to be inpainted, this value must be large
@@ -626,6 +656,8 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.image_guidance_scale, "Image Guidance Scale:"),
             (self.guidance_rescale, "Guidance Rescale:"),
             (self.inference_steps, "Inference Steps:"),
+            (self.adetailer_mask_shape, "Adetailer Mask Shape:"),
+            (self.adetailer_detector_padding, "Adetailer Detector Padding:"),
             (self.adetailer_mask_padding, "Adetailer Mask Padding:"),
             (self.adetailer_mask_blur, "Adetailer Mask Blur:"),
             (self.adetailer_mask_dilation, "Adetailer Mask Dilation:")
