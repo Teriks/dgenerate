@@ -464,8 +464,14 @@ class RenderLoop:
         if diffusion_args.clip_skip is not None:
             args += ['cs', diffusion_args.clip_skip]
 
+        if diffusion_args.adetailer_mask_shape is not None:
+            args += ['ads', diffusion_args.adetailer_mask_shape]
+
+        if diffusion_args.adetailer_detector_padding is not None:
+            args += ['addp', _textprocessing.format_size(diffusion_args.adetailer_detector_padding)]
+
         if diffusion_args.adetailer_mask_padding is not None:
-            args += ['adp', diffusion_args.adetailer_mask_padding]
+            args += ['admp', _textprocessing.format_size(diffusion_args.adetailer_mask_padding)]
 
         if diffusion_args.adetailer_mask_blur is not None:
             args += ['adb', diffusion_args.adetailer_mask_blur]

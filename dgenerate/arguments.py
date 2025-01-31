@@ -333,6 +333,17 @@ def _type_text_encoder(val):
     return val
 
 
+def _type_adetailer_mask_shape(val):
+    val = val.lower()
+
+    if val not in {'rectangle', 'circle'}:
+        raise argparse.ArgumentTypeError(
+            'Must be one of: rectangle or circle'
+        )
+
+    return val
+
+
 def _type_adetailer_mask_padding(val):
     try:
         val = _textprocessing.parse_dimensions(val)
@@ -666,7 +677,47 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '-adp', '--adetailer-mask-paddings',
+            '-ads', '--adetailer-mask-shapes',
+            nargs='+',
+            action='store',
+            type=_type_adetailer_mask_shape,
+            default=None,
+            metavar='ADETAILER_MASK_SHAPE',
+            dest='adetailer_mask_shapes',
+            help="""One or more adetailer mask shapes to try. This indicates what mask shape 
+                    adetailer should attempt to draw around a detected feature, the default value is 
+                    "rectangle". You may also specify "circle" to generate an ellipsoid shaped mask, 
+                    which might be helpful for achieving better blending. (default: rectangle).""")
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-addp', '--adetailer-detector-paddings',
+            nargs='+',
+            action='store',
+            type=_type_adetailer_mask_padding,
+            default=None,
+            metavar='ADETAILER_DETECTOR_PADDING',
+            dest='adetailer_detector_paddings',
+            help="""One or more adetailer detector padding values to try. This value specifies the 
+                    amount of padding that will be added to the detection rectangle which is used to
+                    generate a masked area. The default is 0, you can make the mask area around the 
+                    detected feature larger with positive padding and smaller with negative padding.
+                    
+                    Example:
+                    
+                    32 (32px Uniform, all sides)
+                    
+                    10x20 (10px Horizontal, 20px Vertical)
+                    
+                    10x20x30x40 (10px Left, 20px Top, 30px Right, 40px Bottom)
+
+                    (default: 0).""")
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-admp', '--adetailer-mask-paddings',
             nargs='+',
             action='store',
             type=_type_adetailer_mask_padding,

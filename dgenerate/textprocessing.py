@@ -1069,13 +1069,16 @@ def wrap(text: str,
         **fill_args)
 
 
-def format_size(size: collections.abc.Iterable[int]):
+def format_size(size: int | collections.abc.Iterable[int]):
     """
     Join together an iterable of integers with the character x
 
     :param size: the iterable
     :return: formatted string
     """
+    if isinstance(size, int):
+        return str(size)
+
     return 'x'.join(str(a) for a in size)
 
 
