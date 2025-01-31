@@ -18,7 +18,10 @@ stabilityai/stable-diffusion-3-medium-diffusers
 --model-sequential-offload
 --image-seeds ../../../media/monalisa.png
 --adetailer-detectors Bingsu/adetailer;weight-name=face_yolov8n.pt
---image-seed-strengths 0.6
+--adetailer-mask-shapes rectangle circle
+--image-seed-strengths 0.5
+--adetailer-mask-blurs 16
+--adetailer-detector-paddings 20
 --output-path mona-face-swap
 --output-size 1024
 --output-configs
