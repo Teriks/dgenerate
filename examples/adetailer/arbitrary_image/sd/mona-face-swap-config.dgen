@@ -9,7 +9,7 @@ stabilityai/stable-diffusion-2-1
 --guidance-scales 5
 --clip-skips 0
 --gen-seeds 1
---image-seeds examples/media/monalisa.png
+--image-seeds ../../../media/monalisa.png
 --adetailer-detectors Bingsu/adetailer;weight-name=face_yolov8n.pt
 --adetailer-mask-shapes rectangle circle
 --image-seed-strengths 0.6
