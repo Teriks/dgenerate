@@ -657,8 +657,12 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.guidance_rescale, "Guidance Rescale:"),
             (self.inference_steps, "Inference Steps:"),
             (self.adetailer_mask_shape, "Adetailer Mask Shape:"),
-            (_textprocessing.format_size(self.adetailer_detector_padding), "Adetailer Detector Padding:"),
-            (_textprocessing.format_size(self.adetailer_mask_padding), "Adetailer Mask Padding:"),
+            (_textprocessing.format_size(self.adetailer_detector_padding)
+             if self.adetailer_detector_padding is not None else None,
+             "Adetailer Detector Padding:"),
+            (_textprocessing.format_size(self.adetailer_mask_padding)
+             if self.adetailer_mask_padding is not None else None,
+             "Adetailer Mask Padding:"),
             (self.adetailer_mask_blur, "Adetailer Mask Blur:"),
             (self.adetailer_mask_dilation, "Adetailer Mask Dilation:")
         ]
