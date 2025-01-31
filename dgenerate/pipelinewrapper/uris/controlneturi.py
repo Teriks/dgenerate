@@ -196,7 +196,12 @@ class ControlNetUri:
              use_auth_token: _types.OptionalString = None,
              local_files_only: bool = False,
              sequential_cpu_offload_member: bool = False,
-             model_cpu_offload_member: bool = False) -> \
+             model_cpu_offload_member: bool = False,
+             model_class:
+             type[diffusers.ControlNetModel] |
+             type[diffusers.ControlNetUnionModel] |
+             type[diffusers.SD3ControlNetModel] |
+             type[diffusers.FluxControlNetModel] | None = None) -> \
                 diffusers.ControlNetModel | \
                 diffusers.ControlNetUnionModel | \
                 diffusers.SD3ControlNetModel | \
@@ -219,19 +224,24 @@ class ControlNetUri:
         :param model_cpu_offload_member: This model will be attached to a pipeline
             which will have model cpu offload enabled?
 
+        :param model_class: What class of control net model should be loaded?
+            if ``None`` is specified, load based off :py:attr:`ControlNetUri.model_type`
+            and provided URI arguments.
+        
         :raises ModelNotFoundError: If the model could not be found.
 
         :return: :py:class:`diffusers.ControlNetModel`, :py:class:`diffusers.SD3ControlNetModel`, or :py:class:`diffusers.FluxControlNetModel`
         """
         try:
-            if _enums.model_type_is_flux(self.model_type):
-                model_class = diffusers.FluxControlNetModel
-            elif _enums.model_type_is_sd3(self.model_type):
-                model_class = diffusers.SD3ControlNetModel
-            elif _enums.model_type_is_sdxl(self.model_type) and self.mode is not None:
-                model_class = diffusers.ControlNetUnionModel
-            else:
-                model_class = diffusers.ControlNetModel
+            if model_class is None:
+                if _enums.model_type_is_flux(self.model_type):
+                    model_class = diffusers.FluxControlNetModel
+                elif _enums.model_type_is_sd3(self.model_type):
+                    model_class = diffusers.SD3ControlNetModel
+                elif _enums.model_type_is_sdxl(self.model_type) and self.mode is not None:
+                    model_class = diffusers.ControlNetUnionModel
+                else:
+                    model_class = diffusers.ControlNetModel
 
             return self._load(dtype_fallback,
                               use_auth_token,
