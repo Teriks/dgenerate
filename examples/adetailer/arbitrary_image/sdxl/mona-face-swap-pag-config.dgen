@@ -45,5 +45,5 @@ stabilityai/stable-diffusion-xl-base-1.0
 --seeds 1
 --model-cpu-offload # save some memory, a lot of models are being used
 --output-size 800
---output-path face-swap-mona
+--output-path face-swap-mona-pag
 --prompts "woman smiling really wide and showing teeth; deformed, weird chin"
