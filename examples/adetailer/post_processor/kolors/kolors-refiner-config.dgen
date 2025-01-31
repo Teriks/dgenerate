@@ -13,7 +13,6 @@ Kwai-Kolors/Kolors-diffusers
 --sdxl-high-noise-fractions 0.8
 --inference-steps 30
 --guidance-scales 7
---clip-skips 0
 --gen-seeds 1
 --output-path sdxl-refiner
 --output-size 1024x1024
