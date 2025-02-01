@@ -128,13 +128,27 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
 
     The "strength" argument is analogous to --image-seed-strengths
 
-    The "index-filter" argument is a list values that indicates what YOLO
-    detection indices to keep, the index values start at zero. Detections are
+    The "index-filter" argument is a list values or a single value that indicates
+    what YOLO detection indices to keep, the index values start at zero. Detections are
     sorted by their top left bounding box coordinate from left to right, top to bottom,
     by (confidence descending). The order of detections in the image is identical to
     the reading order of words on a page (english). Inpainting will only be
     preformed on the specified detection indices, if no indices are specified, then
     inpainting will be preformed on all detections.
+
+    Example "index-filter" values:
+
+        NOWRAP!
+        # keep the first, leftmost, topmost detection
+        index-filter=0
+
+        NOWRAP!
+        # keep detections 1 and 3
+        index-filter=[1, 3]
+
+        NOWRAP!
+        # CSV syntax is supported (tuple)
+        index-filter=1,3
 
     The "detector-padding" argument specifies the amount of padding
     that will be added to the detection rectangle which is used to
@@ -142,7 +156,7 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
     area around the detected feature larger with positive padding
     and smaller with negative padding.
 
-    Padding Examples:
+    Padding examples:
 
         NOWRAP!
         32 (32px Uniform, all sides)
@@ -201,7 +215,7 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
                  strength: float = 0.4,
                  detector_padding: str = "0",
                  mask_shape: str = 'rectangle',
-                 index_filter: typing.Optional[list] = None,
+                 index_filter: typing.Optional[int | list | tuple] = None,
                  mask_padding: str = str(_constants.DEFAULT_ADETAILER_MASK_PADDING),
                  mask_blur: int = _constants.DEFAULT_ADETAILER_MASK_BLUR,
                  mask_dilation: int = _constants.DEFAULT_ADETAILER_MASK_DILATION,
@@ -246,6 +260,9 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
         self._index_filter = None
 
         if index_filter is not None:
+            if isinstance(index_filter, int):
+                index_filter = [index_filter]
+
             self._index_filter = set()
             try:
                 for i in index_filter:
