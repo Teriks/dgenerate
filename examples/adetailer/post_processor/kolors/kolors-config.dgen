@@ -16,7 +16,6 @@ Kwai-Kolors/Kolors-diffusers
                    weight-name=face_yolov8n.pt;\
                    prompt=image of emma watson;\
                    negative-prompt=nsfw, blurry, disfigured;\
-                   prompt-weighter=sd-embed;\
                    guidance-scale=7;\
                    inference-steps=30;\
                    strength=0.4"
