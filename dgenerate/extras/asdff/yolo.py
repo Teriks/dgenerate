@@ -21,7 +21,8 @@ def create_mask_from_bbox(
         bboxes: list[list[float]],
         shape: tuple[int, int],
         padding: int | tuple[int, int] | tuple[int, int, int, int] = 0,
-        mask_shape: str = "rectangle"
+        mask_shape: str = "rectangle",
+        index_filter: set[int] | list[int] | None = None
 ) -> list[Image.Image]:
     """
     Parameters
@@ -34,6 +35,8 @@ def create_mask_from_bbox(
             Padding to apply to the bounding box (default: 0).
         mask_shape: str, optional
             Shape of the mask ("rectangle" or "circle").
+        index_filter: set[int] | list[int] | None
+            Include only these detection indices
 
     Returns
     -------
@@ -41,7 +44,11 @@ def create_mask_from_bbox(
             A list of mask images.
     """
     masks = []
-    for bbox in bboxes:
+    for idx, bbox in enumerate(bboxes):
+        if index_filter is not None:
+            if idx not in index_filter:
+                continue
+
         bbox = bbox_padding(tuple(map(int, bbox)), shape, padding)
         mask = Image.new("L", shape, 0)
         mask_draw = ImageDraw.Draw(mask)
@@ -61,7 +68,10 @@ def create_mask_from_bbox(
     return masks
 
 
-def mask_to_pil(masks: torch.Tensor, shape: tuple[int, int]) -> list[Image.Image]:
+def mask_to_pil(
+        masks: torch.Tensor,
+        shape: tuple[int, int],
+        index_filter: set[int] | list[int] | None = None) -> list[Image.Image]:
     """
     Parameters
     ----------
@@ -71,12 +81,19 @@ def mask_to_pil(masks: torch.Tensor, shape: tuple[int, int]) -> list[Image.Image
     shape: tuple[int, int]
         (width, height) of the original image
 
+    index_filter: set[int] | list[int] | None
+        Include only these detection indices
+
     Returns
     -------
     images: list[Image.Image]
     """
     n = masks.shape[0]
-    return [to_pil_image(masks[i], mode="L").resize(shape) for i in range(n)]
+
+    if index_filter is not None:
+        return [to_pil_image(masks[i], mode="L").resize(shape) for i in range(n) if i in index_filter]
+    else:
+        return [to_pil_image(masks[i], mode="L").resize(shape) for i in range(n)]
 
 
 def yolo_detector(
@@ -85,12 +102,15 @@ def yolo_detector(
         device: str = 'cuda',
         confidence: float = 0.3,
         padding: int | tuple[int, int] | tuple[int, int, int, int] = 0,
-        mask_shape: str = "rectangle"
-) -> list[Image.Image] | None:
+        mask_shape: str = "rectangle",
+        boxes_only: bool = False,
+        index_filter: set[int] | list[int] | None = None
+) -> list[Image.Image] | list[tuple[int, int, int, int]] | None:
     if not model_path:
         model_path = hf_hub_download("Bingsu/adetailer", "face_yolov8n.pt")
 
-    dgenerate.messages.debug_log(f'running adetailer YOLO detector on device: {device}')
+    dgenerate.messages.debug_log(
+        f'running adetailer YOLO detector on device: {device}')
 
     model = None
     try:
@@ -104,22 +124,35 @@ def yolo_detector(
         if bboxes.size == 0:
             return None
 
-        # Sort boxes: first by y (top to bottom),
-        # then by x (left to right),
+        # Sort boxes: first by x (left to right),
+        # then by y (top to bottom),
         # then by confidence (descending)
 
         # this orders the boxes the same as
         # words on a page (euro languages)
         # deterministically
-        sorted_indices = sorted(range(len(bboxes)), key=lambda i: (bboxes[i][1], bboxes[i][0], -confidences[i]))
+        sorted_indices = sorted(
+            range(len(bboxes)), key=lambda i: (bboxes[i][0], bboxes[i][1], -confidences[i]))
 
         bboxes = bboxes[sorted_indices]
 
+        if boxes_only:
+            return bboxes
+
         if pred[0].masks is None:
             masks = create_mask_from_bbox(
-                bboxes, image.size, padding, mask_shape)
+                bboxes=bboxes,
+                shape=image.size,
+                padding=padding,
+                mask_shape=mask_shape,
+                index_filter=index_filter
+            )
         else:
-            masks = mask_to_pil(pred[0].masks.data, image.size)
+            masks = mask_to_pil(
+                masks=pred[0].masks.data[sorted_indices],
+                shape=image.size,
+                index_filter=index_filter
+            )
     finally:
         if model is not None and device != 'cpu':
             model.to('cpu')
@@ -127,7 +160,6 @@ def yolo_detector(
             torch.cuda.empty_cache()
 
     return masks
-
 
 # YOLO DETECTION with output mask in square
 # def yolo_detector(

@@ -130,6 +130,7 @@ class AdPipelineBase:
             detector_device: str = 'cuda',
             confidence: float = 0.3,
             mask_shape: str = 'rectangle',
+            index_filter: set[int] | list[int] | None = None,
             prompt_weighter: Optional[str] = None
     ):
         if pipeline_args is None:
@@ -166,7 +167,8 @@ class AdPipelineBase:
                 device=detector_device,
                 model_path=model_path,
                 mask_shape=mask_shape,
-                padding=detector_padding
+                padding=detector_padding,
+                index_filter=index_filter
             )
 
             if masks is None:
