@@ -107,7 +107,7 @@ class PluginArg:
             if not _types.is_typing_hint(base_type) or base_type is typing.Any:
                 if base_type is bool:
                     return _types.parse_bool(value)
-                if any(base_type is t for t in (list, dict, set, typing.Any)):
+                if any(base_type is t for t in (list, tuple, dict, set, typing.Any)):
                     try:
                         evaled = ast.literal_eval(value)
                     except ValueError:
