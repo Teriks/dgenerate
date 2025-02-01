@@ -1,0 +1,62 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 4.5.1
+
+# the index-filter argument of the adetailer processor can be
+# used to select which detections to act on, this argument should
+# be a list of detection indices. The index is zero based, meaning
+# that the first detection is 0
+
+# detections are sorted by their top left corner coordinates
+# from left to right, top to bottom, by confidence.
+# (confidence is descending order)
+
+# this is the same ordering as words on a page when reading english
+
+# you can then use the post processor multiple times to affect
+# different detection areas in the image
+
+# in this case we want to detail two different faces
+# in the same image, but the first face on the left
+# in this seed is a woman, and the face on the right
+# is a man
+
+# this example makes use of dgenerates special
+# line continuation syntax to specify 2 post processor
+# steps with documentation interleaved between
+
+
+stabilityai/stable-diffusion-xl-base-1.0
+--model-type torch-sdxl
+--variant fp16
+--dtype float16
+--inference-steps 30
+--guidance-scales 8
+--output-path multi-subject-config
+--output-size 1024
+--seeds 55307998457041
+--prompts "a woman and a man standing next to each other"
+--post-processors \
+
+# womans face on the left comes first
+"adetailer;\
+model=Bingsu/adetailer;\
+weight-name=face_yolov8n.pt;\
+prompt=the face of a woman;\
+detector-padding=50;\
+guidance-scale=7;\
+seed=0;\
+index-filter=[0];\
+inference-steps=30;\
+strength=0.7"\
+
+# mans face on the right comes second
+"adetailer;\
+model=Bingsu/adetailer;\
+weight-name=face_yolov8n.pt;\
+prompt=the face of a man;\
+detector-padding=50;\
+guidance-scale=7;\
+seed=0;\
+index-filter=[1];\
+inference-steps=30;\
+strength=0.7"

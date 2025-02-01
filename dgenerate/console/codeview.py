@@ -197,6 +197,12 @@ class DgenerateCodeView(tk.Frame):
                 # If the first character is a tab, delete it
                 elif self.text.get(start_of_line, f"{line}.1") == '\t':
                     self.text.delete(start_of_line, f"{line}.1")
+                else:
+                    # remove all indentation
+                    self.text.delete(
+                        start_of_line,
+                        f"{line}.{len(indentation) - len(indentation.lstrip(' '))}"
+                    )
 
         # Prevent the default Shift-Tab behavior
         return 'break'

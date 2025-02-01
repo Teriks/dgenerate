@@ -128,6 +128,14 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
 
     The "strength" argument is analogous to --image-seed-strengths
 
+    The "index-filter" argument is a list values that indicates what YOLO
+    detection indices to keep, the index values start at zero. Detections are
+    sorted by their top left bounding box coordinate from left to right, top to bottom,
+    by (confidence descending). The order of detections in the image is identical to
+    the reading order of words on a page (english). Inpainting will only be
+    preformed on the specified detection indices, if no indices are specified, then
+    inpainting will be preformed on all detections.
+
     The "detector-padding" argument specifies the amount of padding
     that will be added to the detection rectangle which is used to
     generate a masked area. The default is 0, you can make the mask
@@ -193,6 +201,7 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
                  strength: float = 0.4,
                  detector_padding: str = "0",
                  mask_shape: str = 'rectangle',
+                 index_filter: typing.Optional[list] = None,
                  mask_padding: str = str(_constants.DEFAULT_ADETAILER_MASK_PADDING),
                  mask_blur: int = _constants.DEFAULT_ADETAILER_MASK_BLUR,
                  mask_dilation: int = _constants.DEFAULT_ADETAILER_MASK_DILATION,
@@ -233,6 +242,19 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
             detector_padding = detector_padding[0]
 
         mask_shape = mask_shape.lower()
+
+        self._index_filter = None
+
+        if index_filter is not None:
+            self._index_filter = set()
+            try:
+                for i in index_filter:
+                    val = int(i)
+                    if val < 0:
+                        raise self.argument_error('index-filter values must be greater than 0.')
+                    self._index_filter.add(val)
+            except ValueError:
+                raise self.argument_error('index-filter values must be integers.')
 
         if mask_shape not in {'rectangle', 'circle'}:
             raise self.argument_error('mask-shape must be either "rectangle" or "circle".')
@@ -414,7 +436,8 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
             device=self.device,
             detector_device=_types.default(self._detector_device, self.device),
             confidence=self._confidence,
-            prompt_weighter=prompt_weighter
+            prompt_weighter=prompt_weighter,
+            index_filter=self._index_filter
         )
 
         if len(result.images) > 0:
