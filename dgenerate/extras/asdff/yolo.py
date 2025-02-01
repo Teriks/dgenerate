@@ -99,8 +99,21 @@ def yolo_detector(
         pred = model(image, conf=confidence)
 
         bboxes = pred[0].boxes.xyxy.cpu().numpy()
+        confidences = pred[0].boxes.conf.cpu().numpy()  # Extract confidence scores
+
         if bboxes.size == 0:
             return None
+
+        # Sort boxes: first by y (top to bottom),
+        # then by x (left to right),
+        # then by confidence (descending)
+
+        # this orders the boxes the same as
+        # words on a page (euro languages)
+        # deterministically
+        sorted_indices = sorted(range(len(bboxes)), key=lambda i: (bboxes[i][1], bboxes[i][0], -confidences[i]))
+
+        bboxes = bboxes[sorted_indices]
 
         if pred[0].masks is None:
             masks = create_mask_from_bbox(
@@ -114,6 +127,7 @@ def yolo_detector(
             torch.cuda.empty_cache()
 
     return masks
+
 
 # YOLO DETECTION with output mask in square
 # def yolo_detector(
