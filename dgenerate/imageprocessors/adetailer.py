@@ -322,6 +322,7 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
         is_sdxl = last_pipe.__class__.__name__.startswith('StableDiffusionXL')
         is_sd3 = last_pipe.__class__.__name__.startswith('StableDiffusion3')
         is_sd = last_pipe.__class__.__name__.startswith('StableDiffusion') and not is_sd3 and not is_sdxl
+        is_kolors = last_pipe.__class__.__name__.startswith('Kolors')
 
         ad_pipe = _asdff.AdPipelineBase(last_pipe)
 
@@ -363,6 +364,8 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
                 model_type = _enums.ModelType.TORCH_FLUX
             elif is_sdxl:
                 model_type = _enums.ModelType.TORCH_SDXL
+            elif is_kolors:
+                model_type = _enums.ModelType.TORCH_KOLORS
             elif is_sd3:
                 model_type = _enums.ModelType.TORCH_SD3
             elif is_sd:
