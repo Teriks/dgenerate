@@ -1,12 +1,13 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 4.5.1
 
-# the index-filter argument of the adetailer processor can be
+# The index-filter argument of the adetailer processor can be
 # used to select which detections to act on, this argument should
-# be a list of detection indices. The index is zero based, meaning
-# that the first detection is 0
+# be a list [0,1,..], tuple 0,1,... or singular value.
+# It specifies detection indices. The index is zero based, meaning
+# that the first detection is 0.
 
-# detections are sorted by their top left corner coordinates
+# Detections are sorted by their top left corner coordinates
 # from left to right, top to bottom, by confidence.
 # (confidence is descending order)
 
@@ -45,7 +46,7 @@ prompt=the face of a woman;\
 detector-padding=50;\
 guidance-scale=7;\
 seed=0;\
-index-filter=[0];\
+index-filter=0;\
 inference-steps=30;\
 strength=0.7"\
 
@@ -57,6 +58,6 @@ prompt=the face of a man;\
 detector-padding=50;\
 guidance-scale=7;\
 seed=0;\
-index-filter=[1];\
+index-filter=1;\
 inference-steps=30;\
 strength=0.7"

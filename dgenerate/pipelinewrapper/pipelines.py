@@ -349,9 +349,17 @@ def load_scheduler(pipeline: diffusers.DiffusionPipeline,
             return None
         elif any(t == 'list' for t in types):
             try:
-                return [ast.literal_eval(value)]
+                val = ast.literal_eval(value)
+                if not isinstance(val, (list, tuple, set)):
+                    return [val]
+                else:
+                    return val
             except (ValueError, SyntaxError):
-                return [value]
+                raise SchedulerArgumentError(
+                    f'{scheduler} argument "{arg_name}" '
+                    f'must be a singular literal, list, '
+                    f'tuple, or set value in python syntax.'
+                )
         elif any(t == 'float' for t in types):
             try:
                 return float(value)
@@ -391,8 +399,8 @@ def load_scheduler(pipeline: diffusers.DiffusionPipeline,
             parser = _textprocessing.ConceptUriParser(
                 'Scheduler',
                 known_args=list(schema.keys()),
-                args_lists=[k for k, v in schema.items()
-                            if any(t == 'list' for t in v['types'])])
+                args_raw=[k for k, v in schema.items()
+                          if any(t == 'list' for t in v['types'])])
 
             try:
                 result = parser.parse(scheduler_name)
