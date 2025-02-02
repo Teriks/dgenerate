@@ -243,6 +243,9 @@ class DiffusionPipelineWrapper:
             use the full control image resized down to the size of the detection area. If you enable
             this and your control image is not the same size as your input image, a warning will be
             issued and resizing will be used instead of cropping.
+
+        :raises UnsupportedPipelineConfigError:
+        :raises InvalidModelUriError:
         """
 
         __locals = locals()
@@ -511,105 +514,105 @@ class DiffusionPipelineWrapper:
     @property
     def prompt_weighter_loader(self) -> _promptweighters.PromptWeighterLoader:
         """
-        Current prompt weighter loader
+        Current prompt weighter loader.
         """
         return self._prompt_weighter_loader
 
     @property
     def prompt_weighter_uri(self) -> _types.OptionalUri:
         """
-        Current prompt weighter implementation uri
+        Current prompt weighter implementation URI.
         """
         return self._prompt_weighter_uri
 
     @property
     def local_files_only(self) -> bool:
         """
-        Currently set value for ``local_files_only``
+        Currently set value for ``local_files_only``.
         """
         return self._local_files_only
 
     @property
     def revision(self) -> _types.OptionalName:
         """
-        Currently set ``--revision`` for the main model or ``None``
+        Currently set ``--revision`` for the main model or ``None``.
         """
         return self._revision
 
     @property
     def safety_checker(self) -> bool:
         """
-        Safety checker enabled status
+        Safety checker enabled status.
         """
         return self._safety_checker
 
     @property
     def variant(self) -> _types.OptionalName:
         """
-        Currently set ``--variant`` for the main model or ``None``
+        Currently set ``--variant`` for the main model or ``None``.
         """
         return self._variant
 
     @property
     def dtype(self) -> _enums.DataType:
         """
-        Currently set ``--dtype`` enum value for the main model
+        Currently set ``--dtype`` enum value for the main model.
         """
         return self._dtype
 
     @property
     def dtype_string(self) -> str:
         """
-        Currently set ``--dtype`` string value for the main model
+        Currently set ``--dtype`` string value for the main model.
         """
         return _enums.get_data_type_string(self._dtype)
 
     @property
     def textual_inversion_uris(self) -> _types.OptionalUris:
         """
-        List of supplied ``--textual-inversions`` uri strings or an empty list
+        List of supplied ``--textual-inversions`` URI strings or an empty list.
         """
         return list(self._textual_inversion_uris) if self._textual_inversion_uris else []
 
     @property
     def controlnet_uris(self) -> _types.OptionalUris:
         """
-        List of supplied ``--control-nets`` uri strings or an empty list
+        List of supplied ``--control-nets`` URI strings or an empty list.
         """
         return list(self._controlnet_uris) if self._controlnet_uris else []
 
     @property
     def t2i_adapter_uris(self) -> _types.OptionalUris:
         """
-        List of supplied ``--t2i-adapters`` uri strings or an empty list
+        List of supplied ``--t2i-adapters`` URI strings or an empty list.
         """
         return list(self._t2i_adapter_uris) if self._t2i_adapter_uris else []
 
     @property
     def ip_adapter_uris(self) -> _types.OptionalUris:
         """
-        List of supplied ``--ip-adapters`` uri strings or an empty list
+        List of supplied ``--ip-adapters`` URI strings or an empty list.
         """
         return list(self._ip_adapter_uris) if self._ip_adapter_uris else []
 
     @property
     def text_encoder_uris(self) -> _types.OptionalUris:
         """
-        List of supplied ``--text-encoders`` uri strings or an empty list
+        List of supplied ``--text-encoders`` URI strings or an empty list.
         """
         return list(self._text_encoder_uris) if self._text_encoder_uris else []
 
     @property
     def second_text_encoder_uris(self) -> _types.OptionalUris:
         """
-        List of supplied ``--text-encoders2`` uri strings or an empty list
+        List of supplied ``--text-encoders2`` URI strings or an empty list.
         """
         return list(self._second_text_encoder_uris) if self._second_text_encoder_uris else []
 
     @property
     def adetailer_detector_uris(self) -> _types.OptionalUris:
         """
-        List of supplied ``--adetailer-detectors`` uri strings or an empty list
+        List of supplied ``--adetailer-detectors`` URI strings or an empty list.
         """
         return list(self._adetailer_detector_uris) if self._adetailer_detector_uris else []
 
@@ -634,182 +637,182 @@ class DiffusionPipelineWrapper:
     @property
     def device(self) -> _types.Name:
         """
-        Currently set ``--device`` string
+        Currently set ``--device`` string.
         """
         return self._device
 
     @property
     def model_path(self) -> _types.Path:
         """
-        Model path for the main model
+        Model path for the main model.
         """
         return self._model_path
 
     @property
     def scheduler(self) -> _types.OptionalUri:
         """
-        Selected scheduler URI for the main model or ``None``
+        Selected scheduler URI for the main model or ``None``.
         """
         return self._scheduler
 
     @property
     def sdxl_refiner_scheduler(self) -> _types.OptionalUri:
         """
-        Selected scheduler URI for the SDXL refiner or ``None``
+        Selected scheduler URI for the SDXL refiner or ``None``.
         """
         return self._sdxl_refiner_scheduler
 
     @property
     def s_cascade_decoder_scheduler(self) -> _types.OptionalUri:
         """
-        Selected scheduler URI for the Stable Cascade decoder or ``None``
+        Selected scheduler URI for the Stable Cascade decoder or ``None``.
         """
         return self._s_cascade_decoder_scheduler
 
     @property
     def sdxl_refiner_uri(self) -> _types.OptionalUri:
         """
-        Model URI for the SDXL refiner or ``None``
+        Model URI for the SDXL refiner or ``None``.
         """
         return self._sdxl_refiner_uri
 
     @property
     def s_cascade_decoder_uri(self) -> _types.OptionalUri:
         """
-        Model URI for the Stable Cascade decoder or ``None``
+        Model URI for the Stable Cascade decoder or ``None``.
         """
         return self._s_cascade_decoder_uri
 
     @property
     def transformer_uri(self) -> _types.OptionalUri:
         """
-        Model URI for the SD3 Transformer or ``None``
+        Model URI for the SD3 Transformer or ``None``.
         """
         return self._transformer_uri
 
     @property
     def model_type(self) -> _enums.ModelType:
         """
-        Currently set ``--model-type`` enum value
+        Currently set ``--model-type`` enum value.
         """
         return self._model_type
 
     @property
     def model_type_string(self) -> str:
         """
-        Currently set ``--model-type`` string value
+        Currently set ``--model-type`` string value.
         """
         return _enums.get_model_type_string(self._model_type)
 
     @property
     def subfolder(self) -> _types.OptionalName:
         """
-        Selected model ``--subfolder`` for the main model, (remote repo subfolder or local) or ``None``
+        Selected model ``--subfolder`` for the main model, (remote repo subfolder or local) or ``None``.
         """
         return self._subfolder
 
     @property
     def vae_uri(self) -> _types.OptionalUri:
         """
-        Selected ``--vae`` uri for the main model or ``None``
+        Selected ``--vae`` uri for the main model or ``None``.
         """
         return self._vae_uri
 
     @property
     def image_encoder_uri(self) -> _types.OptionalUri:
         """
-        Selected ``--image-encoder`` uri for the main model or ``None``
+        Selected ``--image-encoder`` uri for the main model or ``None``.
         """
         return self._image_encoder_uri
 
     @property
     def unet_uri(self) -> _types.OptionalUri:
         """
-        Selected ``--unet`` uri for the main model or ``None``
+        Selected ``--unet`` uri for the main model or ``None``.
         """
         return self._unet_uri
 
     @property
     def second_unet_uri(self) -> _types.OptionalUri:
         """
-        Selected ``--unet2`` uri for the SDXL refiner or Stable Cascade decoder model or ``None``
+        Selected ``--unet2`` uri for the SDXL refiner or Stable Cascade decoder model or ``None``.
         """
         return self._second_unet_uri
 
     @property
     def vae_tiling(self) -> bool:
         """
-        Current ``--vae-tiling`` status
+        Current ``--vae-tiling`` status.
         """
         return self._vae_tiling
 
     @property
     def vae_slicing(self) -> bool:
         """
-        Current ``--vae-slicing`` status
+        Current ``--vae-slicing`` status.
         """
         return self._vae_slicing
 
     @property
     def lora_uris(self) -> _types.OptionalUris:
         """
-        List of supplied ``--loras`` uri strings or an empty list
+        List of supplied ``--loras`` uri strings or an empty list.
         """
         return list(self._lora_uris) if self._lora_uris else []
 
     @property
     def lora_fuse_scale(self) -> float:
         """
-        Supplied ``--lora-fuse-scale`` value
+        Supplied ``--lora-fuse-scale`` value.
         """
         return self._lora_fuse_scale
 
     @property
     def auth_token(self) -> _types.OptionalString:
         """
-        Current ``--auth-token`` value or ``None``
+        Current ``--auth-token`` value or ``None``.
         """
         return self._auth_token
 
     @property
     def model_sequential_offload(self) -> bool:
         """
-        Current ``--model-sequential-offload`` value
+        Current ``--model-sequential-offload`` value.
         """
         return self._model_sequential_offload
 
     @property
     def model_cpu_offload(self) -> bool:
         """
-        Current ``--model-cpu-offload`` value
+        Current ``--model-cpu-offload`` value.
         """
         return self._model_cpu_offload
 
     @property
     def sdxl_refiner_sequential_offload(self) -> bool:
         """
-        Current ``--sdxl-refiner-sequential-offload`` value
+        Current ``--sdxl-refiner-sequential-offload`` value.
         """
         return self._sdxl_refiner_sequential_offload
 
     @property
     def sdxl_refiner_cpu_offload(self) -> bool:
         """
-        Current ``--sdxl-refiner-cpu-offload`` value
+        Current ``--sdxl-refiner-cpu-offload`` value.
         """
         return self._sdxl_refiner_cpu_offload
 
     @property
     def s_cascade_decoder_sequential_offload(self) -> bool:
         """
-        Current ``--s-cascade-decoder-sequential-offload`` value
+        Current ``--s-cascade-decoder-sequential-offload`` value.
         """
         return self._s_cascade_decoder_sequential_offload
 
     @property
     def s_cascade_decoder_cpu_offload(self) -> bool:
         """
-        Current ``--s-cascade-decoder-cpu-offload`` value
+        Current ``--s-cascade-decoder-cpu-offload`` value.
         """
         return self._s_cascade_decoder_cpu_offload
 
@@ -916,6 +919,10 @@ class DiffusionPipelineWrapper:
 
         if self._adetailer_detector_uris:
             opts.append(('--adetailer-detectors', self._adetailer_detector_uris))
+
+        if args.adetailer_index_filter is not None:
+            opts.append(('--adetailer-index-filter',
+                         ' '.join(str(i) for i in args.adetailer_index_filter)))
 
         if args.adetailer_mask_shape is not None:
             opts.append(('--adetailer-mask-shapes', args.adetailer_mask_shape))
@@ -2594,11 +2601,10 @@ class DiffusionPipelineWrapper:
             :py:class:`.DiffusionArguments` object given to the *args* parameter.
 
         :raises InvalidModelFileError:
-        :raises UnsupportedPipelineConfigError:
         :raises InvalidModelUriError:
         :raises InvalidSchedulerNameError:
         :raises dgenerate.OutOfMemoryError:
-
+        :raises UnsupportedPipelineConfigError:
 
         :return: :py:class:`.PipelineWrapperResult`
         """

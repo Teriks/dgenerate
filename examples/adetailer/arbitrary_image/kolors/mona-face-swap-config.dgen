@@ -40,7 +40,8 @@ Kwai-Kolors/Kolors-diffusers
 --control-image-processors midas
 --adetailer-detectors Bingsu/adetailer;weight-name=face_yolov8n.pt
 --adetailer-crop-control-image
---image-seed-strengths 0.7
+--adetailer-detector-paddings 20
+--image-seed-strengths 0.5
 --seeds 1
 --model-sequential-offload
 --output-size 800
