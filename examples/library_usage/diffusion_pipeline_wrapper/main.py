@@ -11,7 +11,7 @@ if device is None:
 
 # It is useful for generating singular images
 # and utilizes dgenerates pipeline memory
-# management and caching features, you do
+# management and caching features
 
 # this is designed in a way where it is friendly to
 # browse arguments and documentation inside your IDE
