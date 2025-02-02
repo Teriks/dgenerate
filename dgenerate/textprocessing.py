@@ -570,7 +570,6 @@ def shell_expandvars(string: str) -> str:
     return result
 
 
-
 def shell_parse(string,
                 expand_home: bool = True,
                 expand_vars: bool = True,
@@ -646,12 +645,22 @@ def shell_parse(string,
         return s
 
     try:
-        return tokenized_split(string, ' ',
-                               remove_quotes=True,
-                               strict=False,
-                               text_expander=text_expander,
-                               string_expander=string_expander,
-                               remove_stray_separators=True)
+        tokens = tokenized_split(string, ' ',
+                                 remove_quotes=False,
+                                 strict=False,
+                                 text_expander=text_expander,
+                                 string_expander=string_expander,
+                                 remove_stray_separators=True)
+
+        # only remove quotes from token boundaries
+        for idx, t in enumerate(tokens):
+            if t[0] == '"' and t[-1] == '"':
+                tokens[idx] = t[1:-1]
+            if t[0] == "'" and t[-1] == "'":
+                tokens[idx] = t[1:-1]
+
+        return tokens
+
     except TokenizedSplitSyntaxError as e:
         raise ShellParseSyntaxError(e)
 

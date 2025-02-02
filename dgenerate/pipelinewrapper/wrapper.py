@@ -1869,37 +1869,49 @@ class DiffusionPipelineWrapper:
             if detector_uri.mask_blur is not None:
                 mask_blur = detector_uri.mask_blur
                 _messages.log(f'Overriding global adetailer mask-blur '
-                              f'value with detector URI value: {mask_blur}')
+                              f'value with adetailer detector URI value: {mask_blur}')
 
-            mask_dilation = int(_types.default(user_args.adetailer_mask_dilation, _constants.DEFAULT_ADETAILER_MASK_DILATION))
+            mask_dilation = int(
+                _types.default(user_args.adetailer_mask_dilation, _constants.DEFAULT_ADETAILER_MASK_DILATION))
             if detector_uri.mask_dilation is not None:
                 mask_dilation = detector_uri.mask_dilation
                 _messages.log(f'Overriding global adetailer mask-dilation '
-                              f'value with detector URI value: {mask_dilation}')
+                              f'value with adetailer detector URI value: {mask_dilation}')
 
             mask_padding = _types.default(user_args.adetailer_mask_padding, _constants.DEFAULT_ADETAILER_MASK_PADDING)
             if detector_uri.mask_padding is not None:
                 mask_padding = detector_uri.mask_padding
                 _messages.log(f'Overriding global adetailer mask-dilation '
-                              f'value with detector URI value: {mask_dilation}')
+                              f'value with adetailer detector URI value: {mask_dilation}')
 
-            detector_padding = _types.default(user_args.adetailer_detector_padding, _constants.DEFAULT_ADETAILER_DETECTOR_PADDING)
+            detector_padding = _types.default(user_args.adetailer_detector_padding,
+                                              _constants.DEFAULT_ADETAILER_DETECTOR_PADDING)
             if detector_uri.detector_padding is not None:
                 detector_padding = detector_uri.detector_padding
                 _messages.log(f'Overriding global adetailer detector-padding '
-                              f'value with detector URI value: {detector_padding}')
+                              f'value with adetailer detector URI value: {detector_padding}')
 
             mask_shape = str(_types.default(user_args.adetailer_mask_shape, _constants.DEFAULT_ADETAILER_MASK_SHAPE))
             if detector_uri.mask_shape is not None:
                 mask_shape = detector_uri.mask_shape
                 _messages.log(f'Overriding global adetailer mask-shape '
-                              f'value with detector URI value: {mask_shape}')
+                              f'value with adetailer detector URI value: {mask_shape}')
 
             index_filter = _types.default(user_args.adetailer_index_filter, None)
             if detector_uri.index_filter is not None:
                 index_filter = detector_uri.index_filter
                 _messages.log(f'Overriding global adetailer index-filter '
-                              f'value with detector URI value: {index_filter}')
+                              f'value with adetailer detector URI value: {index_filter}')
+
+            if detector_uri.prompt is not None:
+                pipeline_args['prompt'] = detector_uri.prompt
+                _messages.log(f'Overriding global positive prompt '
+                              f'value with adetailer detector URI value: "{detector_uri.prompt}"')
+
+            if detector_uri.negative_prompt is not None:
+                pipeline_args['negative_prompt'] = detector_uri.negative_prompt
+                _messages.log(f'Overriding global negative prompt '
+                              f'value with adetailer detector URI value: "{detector_uri.negative_prompt}"')
 
             asdff_output = asdff_pipe(
                 pipeline_args=pipeline_args,

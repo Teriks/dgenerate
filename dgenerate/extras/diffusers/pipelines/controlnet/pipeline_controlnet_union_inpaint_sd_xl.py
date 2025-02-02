@@ -1765,6 +1765,7 @@ class StableDiffusionXLControlNetUnionInpaintPipeline(
             self.unet.to("cpu")
             self.controlnet.to("cpu")
             torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
 
         if not output_type == "latent":
             image = self.vae.decode(latents / self.vae.config.scaling_factor, return_dict=False)[0]

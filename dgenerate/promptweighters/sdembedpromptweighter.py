@@ -30,6 +30,7 @@ import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.promptweighters.exceptions as _exceptions
 import dgenerate.promptweighters.promptweighter as _promptweighter
+import dgenerate.memory as _memory
 
 
 class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
@@ -365,4 +366,4 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
             del tensor
         self._tensors.clear()
         gc.collect()
-        torch.cuda.empty_cache()
+        _memory.torch_gc()

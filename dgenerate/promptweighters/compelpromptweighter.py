@@ -31,6 +31,7 @@ import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.promptweighters.exceptions as _exceptions
 import dgenerate.promptweighters.promptweighter as _promptweighter
+import dgenerate.memory as _memory
 
 _Attention = typing.List[typing.Tuple[str, float]]
 
@@ -323,7 +324,7 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
                             device=device
                         )
 
-                        torch.cuda.empty_cache()
+                        _memory.torch_gc()
 
                         compel2 = compel.Compel(
                             tokenizer=pipeline.tokenizer_2,
@@ -368,7 +369,7 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
                         pipeline.text_encoder.text_model.encoder.layers = original_clip_layers
                         pipeline.text_encoder_2.text_model.encoder.layers = original_clip_layers_2
 
-                torch.cuda.empty_cache()
+                _memory.torch_gc()
 
             else:
                 if positive_2 or negative_2:
@@ -404,7 +405,7 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
                 pos_conditioning, neg_conditioning = compel2.pad_conditioning_tensors_to_same_length(
                     [pos_conditioning, neg_conditioning])
 
-                torch.cuda.empty_cache()
+                _memory.torch_gc()
         elif pipeline.__class__.__name__.startswith('StableCascade'):
             original_clip_layers = pipeline.text_encoder.text_model.encoder.layers
 
@@ -435,7 +436,7 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
                 if clip_skip > 0:
                     pipeline.text_encoder.text_model.encoder.layers = original_clip_layers
 
-            torch.cuda.empty_cache()
+            _memory.torch_gc()
 
         elif pipeline.__class__.__name__.startswith('StableDiffusion'):
             embedding_type = \
@@ -472,7 +473,7 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
             pos_conditioning, neg_conditioning = compel1.pad_conditioning_tensors_to_same_length(
                 [pos_conditioning, neg_conditioning])
 
-            torch.cuda.empty_cache()
+            _memory.torch_gc()
 
         self._tensors.append(pos_conditioning)
         self._tensors.append(neg_conditioning)
@@ -520,4 +521,4 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
             del tensor
         self._tensors.clear()
         gc.collect()
-        torch.cuda.empty_cache()
+        _memory.torch_gc()
