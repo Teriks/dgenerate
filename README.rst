@@ -5295,8 +5295,7 @@ DeepFloyd related model types.
 
 dgenerates adetailer implementation can be used to very selectively detail specific detections, the
 implementation includes features that allow using different prompts and settings on different faces / hands in
-an image etc. Allowing for use on images with multiple characters or objects of interest that are detected
-by the same detection model.
+an image etc. Allowing for pinpoint use on images with multiple characters or objects of interest.
 
 
 Adetailer Image Processor
