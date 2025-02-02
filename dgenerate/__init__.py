@@ -110,6 +110,8 @@ try:
         DataType,
         ModelNotFoundError,
         PipelineType,
+        DiffusionPipelineWrapper,
+        DiffusionArguments
     )
 
     from dgenerate.pipelinewrapper.util import (
