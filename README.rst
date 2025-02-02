@@ -173,7 +173,7 @@ Help Output
                      [--directives-help [DIRECTIVE_NAME ...]] [--functions-help [FUNCTION_NAME ...]]
                      [-mt MODEL_TYPE] [-rev BRANCH] [-var VARIANT] [-sbf SUBFOLDER] [-atk TOKEN] [-bs INTEGER]
                      [-bgs SIZE] [-ad ADETAILER_DETECTOR_URIS [ADETAILER_DETECTOR_URIS ...]]
-                     [-ads ADETAILER_MASK_SHAPE [ADETAILER_MASK_SHAPE ...]]
+                     [-adi INTEGER [INTEGER ...]] [-ads ADETAILER_MASK_SHAPE [ADETAILER_MASK_SHAPE ...]]
                      [-addp ADETAILER_DETECTOR_PADDING [ADETAILER_DETECTOR_PADDING ...]]
                      [-admp ADETAILER_MASK_PADDING [ADETAILER_MASK_PADDING ...]]
                      [-adb ADETAILER_MASK_BLUR [ADETAILER_MASK_BLUR ...]]
@@ -391,6 +391,13 @@ Help Output
             
             Example: --adetailer-detectors https://modelsite.com/yolo-model.pt
             ------------------------------------------------------------------
+      -adi INTEGER [INTEGER ...], --adetailer-index-filter INTEGER [INTEGER ...]
+            A list index values that indicates what adetailer YOLO detection indices to keep, the index values
+            start at zero. Detections are sorted by their top left bounding box coordinate from left to right,
+            top to bottom, by (confidence descending). The order of detections in the image is identical to the
+            reading order of words on a page (english). Inpainting will only be preformed on the specified
+            detection indices, if no indices are specified, then inpainting will be preformed on all detections.
+            ----------------------------------------------------------------------------------------------------
       -ads ADETAILER_MASK_SHAPE [ADETAILER_MASK_SHAPE ...], --adetailer-mask-shapes ADETAILER_MASK_SHAPE [ADETAILER_MASK_SHAPE ...]
             One or more adetailer mask shapes to try. This indicates what mask shape adetailer should attempt to
             draw around a detected feature, the default value is "rectangle". You may also specify "circle" to

@@ -333,6 +333,21 @@ def _type_text_encoder(val):
     return val
 
 
+def _type_adetailer_index_filter_value(val):
+    try:
+        val = int(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            'Must be an integer value.'
+        )
+
+    if val < 0:
+        raise argparse.ArgumentTypeError(
+            'Must be greater than or equal to zero.'
+        )
+    return val
+
+
 def _type_adetailer_mask_shape(val):
     val = val.lower()
 
@@ -672,6 +687,24 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     You may also load a YOLO model directly from a URL or Hugging Face blob link.
                     
                     Example: --adetailer-detectors https://modelsite.com/yolo-model.pt
+                    """)
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-adi', '--adetailer-index-filter',
+            nargs='+',
+            action='store',
+            type=_type_adetailer_index_filter_value,
+            default=None,
+            metavar='INTEGER',
+            dest='adetailer_index_filter',
+            help="""A list index values that indicates what adetailer YOLO detection indices to keep, 
+                    the index values start at zero. Detections are sorted by their top left bounding box 
+                    coordinate from left to right, top to bottom, by (confidence descending). The order of 
+                    detections in the image is identical to the reading order of words on a page (english). 
+                    Inpainting will only be preformed on the specified detection indices, if no indices 
+                    are specified, then inpainting will be preformed on all detections.
                     """)
     )
 
