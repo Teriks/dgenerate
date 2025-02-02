@@ -803,6 +803,16 @@ class RenderLoopConfig(_types.SetFromMixin):
     :py:attr:`RenderLoopConfig.s_cascade_decoder_cpu_offload`
     """
 
+    adetailer_index_filter: _types.OptionalIntegers = None
+    """
+    A list index values that indicates what YOLO detection indices to keep, 
+    the index values start at zero. Detections are sorted by their top left bounding box 
+    coordinate from left to right, top to bottom, by (confidence descending). The order of 
+    detections in the image is identical to the reading order of words on a page (english). 
+    Inpainting will only be preformed on the specified detection indices, if no indices 
+    are specified, then inpainting will be preformed on all detections.
+    """
+
     adetailer_detector_uris: _types.OptionalUris = None
     """
     One or more adetailer YOLO detector model URIs. Corresponds directly to --adetailer-detectors.
@@ -1882,6 +1892,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                                                  self.sdxl_refiner_negative_target_sizes),
             sdxl_refiner_negative_crops_coords_top_left=ov('sdxl_refiner_negative_crops_coords_top_left',
                                                            self.sdxl_refiner_negative_crops_coords_top_left),
+            adetailer_index_filter=ov('adetailer_index_filter', [self.adetailer_index_filter]),
             adetailer_mask_shape=ov('adetailer_mask_shape', self.adetailer_mask_shapes),
             adetailer_detector_padding=ov('adetailer_detector_padding', self.adetailer_detector_paddings),
             adetailer_mask_padding=ov('adetailer_mask_padding', self.adetailer_mask_paddings),

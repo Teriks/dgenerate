@@ -1864,6 +1864,43 @@ class DiffusionPipelineWrapper:
         for detector_uri in self._parsed_adetailer_detector_uris:
             input_images = pipeline_args['image'] if asdff_output is None else asdff_output.images
             input_images *= (batch_size // len(input_images))
+
+            mask_blur = int(_types.default(user_args.adetailer_mask_blur, _constants.DEFAULT_ADETAILER_MASK_BLUR))
+            if detector_uri.mask_blur is not None:
+                mask_blur = detector_uri.mask_blur
+                _messages.log(f'Overriding global adetailer mask-blur '
+                              f'value with detector URI value: {mask_blur}')
+
+            mask_dilation = int(_types.default(user_args.adetailer_mask_dilation, _constants.DEFAULT_ADETAILER_MASK_DILATION))
+            if detector_uri.mask_dilation is not None:
+                mask_dilation = detector_uri.mask_dilation
+                _messages.log(f'Overriding global adetailer mask-dilation '
+                              f'value with detector URI value: {mask_dilation}')
+
+            mask_padding = _types.default(user_args.adetailer_mask_padding, _constants.DEFAULT_ADETAILER_MASK_PADDING)
+            if detector_uri.mask_padding is not None:
+                mask_padding = detector_uri.mask_padding
+                _messages.log(f'Overriding global adetailer mask-dilation '
+                              f'value with detector URI value: {mask_dilation}')
+
+            detector_padding = _types.default(user_args.adetailer_detector_padding, _constants.DEFAULT_ADETAILER_DETECTOR_PADDING)
+            if detector_uri.detector_padding is not None:
+                detector_padding = detector_uri.detector_padding
+                _messages.log(f'Overriding global adetailer detector-padding '
+                              f'value with detector URI value: {detector_padding}')
+
+            mask_shape = str(_types.default(user_args.adetailer_mask_shape, _constants.DEFAULT_ADETAILER_MASK_SHAPE))
+            if detector_uri.mask_shape is not None:
+                mask_shape = detector_uri.mask_shape
+                _messages.log(f'Overriding global adetailer mask-shape '
+                              f'value with detector URI value: {mask_shape}')
+
+            index_filter = _types.default(user_args.adetailer_index_filter, None)
+            if detector_uri.index_filter is not None:
+                index_filter = detector_uri.index_filter
+                _messages.log(f'Overriding global adetailer index-filter '
+                              f'value with detector URI value: {index_filter}')
+
             asdff_output = asdff_pipe(
                 pipeline_args=pipeline_args,
                 model_path=detector_uri.get_model_path(
@@ -1873,12 +1910,12 @@ class DiffusionPipelineWrapper:
                 detector_device=_types.default(detector_uri.device, self._device),
                 confidence=detector_uri.confidence,
                 prompt_weighter=self._prompt_weighter,
-                mask_blur=int(_types.default(user_args.adetailer_mask_blur, _constants.DEFAULT_ADETAILER_MASK_BLUR)),
-                mask_shape=str(_types.default(user_args.adetailer_mask_shape, _constants.DEFAULT_ADETAILER_MASK_SHAPE)),
-                detector_padding=_types.default(user_args.adetailer_detector_padding, _constants.DEFAULT_ADETAILER_DETECTOR_PADDING),
-                mask_padding=_types.default(user_args.adetailer_mask_padding, _constants.DEFAULT_ADETAILER_MASK_PADDING),
-                mask_dilation=int(
-                    _types.default(user_args.adetailer_mask_dilation, _constants.DEFAULT_ADETAILER_MASK_DILATION))
+                index_filter=index_filter,
+                mask_blur=mask_blur,
+                mask_shape=mask_shape,
+                detector_padding=detector_padding,
+                mask_padding=mask_padding,
+                mask_dilation=mask_dilation
             )
 
         return PipelineWrapperResult(asdff_output.images)

@@ -443,6 +443,16 @@ class DiffusionArguments(_types.SetFromMixin):
     :py:attr:`.DiffusionArguments.clip_skip` when it is defined.
     """
 
+    adetailer_index_filter: _types.OptionalIntegers = None
+    """
+    A list index values that indicates what YOLO detection indices to keep, 
+    the index values start at zero. Detections are sorted by their top left bounding box 
+    coordinate from left to right, top to bottom, by (confidence descending). The order of 
+    detections in the image is identical to the reading order of words on a page (english). 
+    Inpainting will only be preformed on the specified detection indices, if no indices 
+    are specified, then inpainting will be preformed on all detections.
+    """
+
     adetailer_mask_shape: _types.OptionalName = None
     """
     This indicates what mask shape adetailer should attempt to draw around a detected feature,
@@ -656,6 +666,7 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.image_guidance_scale, "Image Guidance Scale:"),
             (self.guidance_rescale, "Guidance Rescale:"),
             (self.inference_steps, "Inference Steps:"),
+            (self.adetailer_index_filter, "Adetailer Index Filter:"),
             (self.adetailer_mask_shape, "Adetailer Mask Shape:"),
             (_textprocessing.format_size(self.adetailer_detector_padding)
              if self.adetailer_detector_padding is not None else None,

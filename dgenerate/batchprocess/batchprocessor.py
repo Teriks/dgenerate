@@ -849,7 +849,7 @@ class BatchProcessor:
                 self._template_continuation_start_line = self._current_line
 
                 line_rstrip = _textprocessing.remove_tail_comments(line)[1].rstrip()
-                if line_rstrip.endswith('!END'):
+                if line_rstrip.endswith('!END') or next_line is None:
                     self._template_continuation_end_line = self._current_line
                     run_continuation(line_rstrip.removesuffix('!END'))
                 else:
@@ -861,7 +861,7 @@ class BatchProcessor:
                 normal_continuation = True
             elif template_continuation:
                 line_rstrip = _textprocessing.remove_tail_comments(line)[1].rstrip()
-                if line_rstrip.endswith('!END'):
+                if line_rstrip.endswith('!END') or next_line is None:
                     self._template_continuation_end_line = self._current_line
                     run_continuation(line_rstrip.removesuffix('!END'))
                 else:
