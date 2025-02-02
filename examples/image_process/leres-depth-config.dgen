@@ -5,13 +5,13 @@
 
 \set device_switch {{ '--device '+injected_device if injected_device else '' }}
 
-\image_process "../media/horse2.jpeg"
--o horse2-leres-depth.png
+\image_process "../media/monalisa.png"
+-o mona-leres-depth.png
 --processors leres
 --align 64 {{ device_switch }}
 
 
-\image_process "../media/horse2.jpeg"
--o horse2-leres-depth-boost.png
+\image_process "../media/monalisa.png"
+-o mona-leres-depth-boost.png
 --processors leres;boost=True
 --align 64 {{ device_switch }}
