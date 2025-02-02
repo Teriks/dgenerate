@@ -23,4 +23,3 @@ stabilityai/stable-diffusion-xl-base-1.0
 --adetailer-detector-paddings 40
 --prompt-weighter sd-embed
 --output-path multi-subject-config
---prompts ""

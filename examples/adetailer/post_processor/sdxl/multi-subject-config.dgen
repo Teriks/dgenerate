@@ -38,26 +38,26 @@ stabilityai/stable-diffusion-xl-base-1.0
 --prompts "a woman and a man standing next to each other"
 --post-processors \
 
-    # womans face on the left comes first
-    adetailer;\
-    model=Bingsu/adetailer;\
-    weight-name=face_yolov8n.pt;\
-    prompt="the face of a woman";\
-    detector-padding=50;\
-    guidance-scale=7;\
-    seed=0;\
-    index-filter=0;\
-    inference-steps=30;\
-    strength=0.7"\
+# womans face on the left comes first
+"adetailer;\
+model=Bingsu/adetailer;\
+weight-name=face_yolov8n.pt;\
+prompt=the face of a woman;\
+detector-padding=50;\
+guidance-scale=7;\
+seed=0;\
+index-filter=0;\
+inference-steps=30;\
+strength=0.7"\
 
-    # mans face on the right comes second
-    adetailer;\
-    model=Bingsu/adetailer;\
-    weight-name=face_yolov8n.pt;\
-    prompt="the face of a man";\
-    detector-padding=50;\
-    guidance-scale=7;\
-    seed=0;\
-    index-filter=1;\
-    inference-steps=30;\
-    strength=0.7
+# mans face on the right comes second
+"adetailer;\
+model=Bingsu/adetailer;\
+weight-name=face_yolov8n.pt;\
+prompt=the face of a man;\
+detector-padding=50;\
+guidance-scale=7;\
+seed=0;\
+index-filter=1;\
+inference-steps=30;\
+strength=0.7"
