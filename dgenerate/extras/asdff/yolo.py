@@ -7,6 +7,7 @@ from huggingface_hub import hf_hub_download
 from PIL import Image, ImageDraw
 from torchvision.transforms.functional import to_pil_image
 from dgenerate.extras.asdff.utils import bbox_padding
+import dgenerate.memory
 
 import dgenerate.messages
 
@@ -157,7 +158,7 @@ def yolo_detector(
         if model is not None and device != 'cpu':
             model.to('cpu')
             del model
-            torch.cuda.empty_cache()
+            dgenerate.memory.torch_gc()
 
     return masks
 

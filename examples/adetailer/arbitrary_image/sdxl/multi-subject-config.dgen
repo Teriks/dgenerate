@@ -1,7 +1,11 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 4.5.1
 
-# process the first face on the left using --adetailer-index-filter
+# edit multiple adetailer YOLO detected features in one go on an arbitrary image
+# using detector URI arguments to override the prompt and selected detection
+# index
+
+# the URI prompts are weighted with --prompt-weighter sd-embed
 
 stabilityai/stable-diffusion-xl-base-1.0
 --model-type torch-sdxl
@@ -9,33 +13,14 @@ stabilityai/stable-diffusion-xl-base-1.0
 --dtype float16
 --inference-steps 30
 --image-seeds ../../../media/americangothic.jpg
---image-seed-strengths 0.7
+--image-seed-strengths 0.5
 --guidance-scales 8
---adetailer-detectors Bingsu/adetailer;weight-name=face_yolov8n.pt
---adetailer-index-filter 0
+--adetailer-detectors \
+    Bingsu/adetailer;weight-name=face_yolov8n.pt;prompt="a smiling woman's face";negative-prompt="ugly, deformed";index-filter=0 \
+    Bingsu/adetailer;weight-name=face_yolov8n.pt;prompt="a smiling mans face";negative-prompt="ugly, deformed";index-filter=1
 --adetailer-mask-blurs 16
 --adetailer-mask-shapes circle
---output-prefix first_face
 --adetailer-detector-paddings 40
+--prompt-weighter sd-embed
 --output-path multi-subject-config
---prompts "a smiling womans face"
-
-# process the second face on the right
-
-stabilityai/stable-diffusion-xl-base-1.0
---model-type torch-sdxl
---variant fp16
---dtype float16
---inference-steps 30
---seeds {{ quote(last_seeds) }}
---image-seeds {{ quote(last_images) }}
---image-seed-strengths 0.7
---guidance-scales 8
---adetailer-detectors Bingsu/adetailer;weight-name=face_yolov8n.pt
---adetailer-index-filter 1
---adetailer-mask-blurs 16
---adetailer-mask-shapes circle
---output-prefix second_face
---adetailer-detector-paddings 40
---output-path multi-subject-config
---prompts "a smiling mans face"
+--prompts ""

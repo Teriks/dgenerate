@@ -903,7 +903,7 @@ def _pipeline_to(pipeline, device: torch.device | str | None):
         value.to(device)
 
     if device == 'cpu':
-        torch.cuda.empty_cache()
+        _memory.torch_gc()
 
 
 def pipeline_to(pipeline, device: torch.device | str | None):
@@ -938,7 +938,7 @@ def pipeline_to(pipeline, device: torch.device | str | None):
         # move any modules back to cpu which have entered VRAM
 
         _pipeline_to(pipeline=pipeline, device='cpu')
-        torch.cuda.empty_cache()
+        _memory.torch_gc()
         gc.collect()
 
         raise _d_exceptions.OutOfMemoryError(e)
@@ -1014,7 +1014,7 @@ def destroy_last_called_pipeline(collect=True):
 
     This is a no-op if a pipeline has never been called with :py:func:`call_pipeline`
 
-    :param collect: call ``gc.collect`` and ``torch.cuda.empty_cache`` if
+    :param collect: call ``gc.collect`` and :py:func:`dgenerate.memory.torch_gc` if
         there is a pipeline to dereference?
     """
     global _LAST_CALLED_PIPELINE
@@ -1027,7 +1027,7 @@ def destroy_last_called_pipeline(collect=True):
 
         if collect:
             gc.collect()
-            torch.cuda.empty_cache()
+            _memory.torch_gc()
 
 
 # noinspection PyCallingNonCallable
@@ -1092,7 +1092,7 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline,
         except _d_exceptions.TORCH_CUDA_OOM_EXCEPTIONS as e:
             _d_exceptions.raise_if_not_cuda_oom(e)
             _cleanup_prompt_weighter()
-            torch.cuda.empty_cache()
+            _memory.torch_gc()
             gc.collect()
             raise _d_exceptions.OutOfMemoryError(e)
         except MemoryError:
@@ -1101,7 +1101,7 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline,
             raise _d_exceptions.OutOfMemoryError('cpu (system memory)')
         except Exception as e:
             _cleanup_prompt_weighter()
-            torch.cuda.empty_cache()
+            _memory.torch_gc()
             gc.collect()
             raise
 
@@ -1152,7 +1152,7 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline,
         pipeline_to(pipeline, 'cpu')
 
         # empty the CUDA cache
-        torch.cuda.empty_cache()
+        _memory.torch_gc()
 
         # force garbage collection
         gc.collect()

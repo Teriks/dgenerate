@@ -498,3 +498,10 @@ def cuda_memory_constraints(expressions: collections.abc.Iterable[str],
             f'Memory constraint syntax error: {e}')
 
 
+def torch_gc():
+    """
+    Call ``torch.cuda.empty_cache()`` and ``torch.cuda.ipc_collect()``
+    """
+
+    torch.cuda.empty_cache()
+    torch.cuda.ipc_collect()

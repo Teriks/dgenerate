@@ -882,6 +882,7 @@ class StableDiffusionXLControlNetUnionImg2ImgPipeline(
         if hasattr(self, "final_offload_hook") and self.final_offload_hook is not None:
             self.text_encoder_2.to("cpu")
             torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
 
         image = image.to(device=device, dtype=dtype)
 
@@ -1579,6 +1580,7 @@ class StableDiffusionXLControlNetUnionImg2ImgPipeline(
             self.unet.to("cpu")
             self.controlnet.to("cpu")
             torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
 
         if not output_type == "latent":
             # make sure the VAE is in float32 mode, as it overflows in float16

@@ -24,6 +24,8 @@ from diffusers import StableDiffusionXLPipeline
 from diffusers import StableDiffusion3Pipeline
 from diffusers import StableCascadePriorPipeline, StableCascadeDecoderPipeline
 from diffusers import FluxPipeline
+import dgenerate.memory as _memory
+
 
 def get_prompts_tokens_with_weights(
     clip_tokenizer: CLIPTokenizer
@@ -311,7 +313,7 @@ def get_weighted_text_embeddings_sd15(
             neg_token_tensor, \
             neg_weight_tensor, \
             neg_token_embedding
-        torch.cuda.empty_cache()
+        _memory.torch_gc()
     
     prompt_embeds = torch.cat(embeds, dim = 1).to(device)
     neg_prompt_embeds = torch.cat(neg_embeds, dim = 1).to(device)
@@ -589,7 +591,7 @@ def get_weighted_text_embeddings_sdxl(
             prompt_embeds_2, \
             neg_prompt_embeds_1, \
             neg_prompt_embeds_2
-        torch.cuda.empty_cache()
+        _memory.torch_gc()
     
     prompt_embeds           = torch.cat(embeds, dim = 1).to(device)
     negative_prompt_embeds  = torch.cat(neg_embeds, dim = 1).to(device)
@@ -742,7 +744,7 @@ def get_weighted_text_embeddings_sdxl_refiner(
             prompt_embeds_2, \
             prompt_embeds_2_hidden_states, \
             token_embedding
-        torch.cuda.empty_cache()
+        _memory.torch_gc()
 
         # get negative prompt embeddings with weights
         neg_token_tensor_2 = torch.tensor(
@@ -795,7 +797,7 @@ def get_weighted_text_embeddings_sdxl_refiner(
             neg_prompt_embeds_2, \
             neg_prompt_embeds_2_hidden_states,\
             neg_token_embedding
-        torch.cuda.empty_cache()
+        _memory.torch_gc()
 
     prompt_embeds = torch.cat([e.to(device) for e in embeds], dim = 1)
 
@@ -1096,7 +1098,7 @@ def get_weighted_text_embeddings_sdxl_2p(
             neg_token_tensor,\
             neg_weight_tensor,\
             neg_token_embedding
-        torch.cuda.empty_cache()
+        _memory.torch_gc()
     
     prompt_embeds           = torch.cat(embeds, dim=1).to(device)
     negative_prompt_embeds  = torch.cat(neg_embeds, dim=1).to(device)
@@ -1278,7 +1280,7 @@ def get_weighted_text_embeddings_s_cascade(
             neg_prompt_embeds_1_hidden_states, \
             prompt_embeds_1, \
             neg_prompt_embeds_1
-        torch.cuda.empty_cache()
+        _memory.torch_gc()
 
     prompt_embeds = torch.cat(embeds, dim=1).to(device)
     negative_prompt_embeds = torch.cat(neg_embeds, dim=1).to(device)
@@ -1494,7 +1496,7 @@ def get_weighted_text_embeddings_sd3(
             prompt_embeds_1_hidden_states, \
             prompt_embeds_2_hidden_states, \
             token_embedding
-        torch.cuda.empty_cache()
+        _memory.torch_gc()
 
         # get negative prompt embeddings with weights
         neg_token_tensor = torch.tensor(
@@ -1567,7 +1569,7 @@ def get_weighted_text_embeddings_sd3(
             neg_prompt_embeds_1_hidden_states, \
             neg_prompt_embeds_2_hidden_states, \
             neg_token_embedding
-        torch.cuda.empty_cache()
+        _memory.torch_gc()
 
     prompt_embeds = torch.cat([e.to(device) for e in embeds], dim=1)
     
@@ -1607,7 +1609,7 @@ def get_weighted_text_embeddings_sd3(
     t5_prompt_embeds.cpu()
     del clip_prompt_embeds, \
         t5_prompt_embeds
-    torch.cuda.empty_cache()
+    _memory.torch_gc()
 
     if use_t5_encoder and pipe.text_encoder_3:  
         # ---------------------- get neg t5 embeddings -------------------------
@@ -1634,7 +1636,7 @@ def get_weighted_text_embeddings_sd3(
     t5_neg_prompt_embeds.cpu()
     del clip_neg_prompt_embeds, \
         t5_neg_prompt_embeds
-    torch.cuda.empty_cache()
+    _memory.torch_gc()
 
     # padding 
     import torch.nn.functional as F

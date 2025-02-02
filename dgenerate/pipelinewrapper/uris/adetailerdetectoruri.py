@@ -42,6 +42,8 @@ _lora_uri_parser = _textprocessing.ConceptUriParser(
         'mask-padding',
         'mask-blur',
         'mask-dilation',
+        'prompt',
+        'negative-prompt',
         'device'
     ], args_raw=['index-filter']
 )
@@ -144,6 +146,27 @@ class AdetailerDetectorUri:
         """
         return self._index_filter
 
+    @property
+    def index_filter(self) -> _types.OptionalIntegers:
+        """
+        Process these YOLO detection indices.
+        """
+        return self._index_filter
+
+    @property
+    def prompt(self) -> _types.OptionalString:
+        """
+        Positive prompt override.
+        """
+        return self._prompt
+
+    @property
+    def negative_prompt(self) -> _types.OptionalString:
+        """
+        Negative prompt override.
+        """
+        return self._negative_prompt
+
     def __init__(self,
                  model: str,
                  revision: _types.OptionalString = None,
@@ -156,6 +179,8 @@ class AdetailerDetectorUri:
                  mask_blur: _types.OptionalInteger = None,
                  mask_dilation: _types.OptionalInteger = None,
                  index_filter: _types.OptionalIntegers = None,
+                 prompt: _types.OptionalString = None,
+                 negative_prompt: _types.OptionalString = None,
                  device: _types.OptionalName = None):
 
         self._model = model
@@ -167,6 +192,8 @@ class AdetailerDetectorUri:
         self._mask_dilation = mask_dilation
         self._mask_padding = mask_padding
         self._detector_padding = detector_padding
+        self._prompt = prompt
+        self._negative_prompt = negative_prompt
 
         if mask_shape is not None:
             mask_shape = mask_shape.lower()
@@ -323,6 +350,8 @@ class AdetailerDetectorUri:
                 mask_blur=mask_blur,
                 mask_dilation=mask_dilation,
                 index_filter=index_filter,
+                prompt=r.args.get('prompt', None),
+                negative_prompt=r.args.get('negative-prompt', None),
                 mask_shape=r.args.get('mask-shape', None),
                 device=r.args.get('device', None))
         except _textprocessing.ConceptUriParseError as e:

@@ -378,8 +378,59 @@ Help Output
             The "weight-name" argument indicates the name of the weights file to be loaded when loading from a
             Hugging Face repository or folder on disk.
             
+            The "index-filter" (overrides --adetailer-index-filter) argument is a list values or a single value
+            that indicates what YOLO detection indices to keep, the index values start at zero. Detections are
+            sorted by their top left bounding box coordinate from left to right, top to bottom, by (confidence
+            descending). The order of detections in the image is identical to the reading order of words on a
+            page (english). Inpainting will only be preformed on the specified detection indices, if no indices
+            are specified, then inpainting will be preformed on all detections.
+            
+            Example "index-filter" values:
+            
+            # keep the first, leftmost, topmost detection index-filter=0
+            
+            # keep detections 1 and 3 index-filter=[1, 3]
+            
+            # CSV syntax is supported (tuple) index-filter=1,3
+            
+            The "detector-padding" (overrides --adetailer-detector-paddings) argument specifies the amount of
+            padding that will be added to the detection rectangle which is used to generate a masked area. The
+            default is 0, you can make the mask area around the detected feature larger with positive padding
+            and smaller with negative padding.
+            
+            Padding examples:
+            
+            32 (32px Uniform, all sides)
+            
+            10x20 (10px Horizontal, 20px Vertical)
+            
+            10x20x30x40 (10px Left, 20px Top, 30px Right, 40px Bottom)
+            
+            The "mask-padding" (overrides --adetailer-mask-paddings) argument indicates how much padding to
+            place around the masked area when cropping out the image to be inpainted. This value must be large
+            enough to accommodate any feathering on the edge of the mask caused by "mask-blur" or "mask-
+            dilation" for the best result, the default value is 32. The syntax for specifying this value is
+            identical to "detector-padding".
+            
+            The "mask-shape" (overrides --adetailer-mask-shapes) argument indicates what mask shape adetailer
+            should attempt to draw around a detected feature, the default value is "rectangle". You may also
+            specify "circle" to generate an ellipsoid shaped mask, which might be helpful for achieving better
+            blending.
+            
+            The "mask-blur" (overrides --adetailer-mask-blurs) argument indicates the level of gaussian blur to
+            apply to the generated inpaint mask, which can help with smooth blending in of the inpainted feature
+            
+            The "mask-dilation" (overrides --adetailer-mask-dilations) argument indicates the amount of dilation
+            applied to the inpaint mask, see: cv2.dilate
+            
             The "confidence" argument indicates the confidence value to use with the YOLO detector model, this
             value defaults to 0.3 if not specified.
+            
+            The "prompt" (overrides --prompt positive) argument overrides the positive inpainting prompt for
+            detections by this detector.
+            
+            The "negative-prompt" (overrides --prompt negative) argument overrides the negative inpainting
+            prompt for detections by this detector.
             
             The "device" argument indicates a device override for the YOLO detector model, the detector model
             can be set to run on a different device if desired, for example: cuda:0, cuda:1, cpu, etc. It runs

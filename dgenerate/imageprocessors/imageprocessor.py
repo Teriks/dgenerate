@@ -224,7 +224,7 @@ class ImageProcessor(_plugin.Plugin):
     @staticmethod
     def __flush_mem_ignore_error():
         try:
-            torch.cuda.empty_cache()
+            _memory.torch_gc()
             gc.collect()
         except:
             pass
