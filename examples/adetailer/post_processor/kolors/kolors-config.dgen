@@ -11,14 +11,14 @@ Kwai-Kolors/Kolors-diffusers
 --output-path sdxl
 --output-size 1024x1024
 --model-sequential-offload
---post-processors "adetailer;\
-                   model=Bingsu/adetailer;\
-                   weight-name=face_yolov8n.pt;\
-                   prompt=image of emma watson;\
-                   negative-prompt=nsfw, blurry, disfigured;\
-                   guidance-scale=7;\
-                   inference-steps=30;\
-                   strength=0.4"
+--post-processors adetailer;\
+                  model=Bingsu/adetailer;\
+                  weight-name=face_yolov8n.pt;\
+                  prompt="image of emma watson";\
+                  negative-prompt="nsfw, blurry, disfigured";\
+                  guidance-scale=7;\
+                  inference-steps=40;\
+                  strength=0.4
 --prompts "full body photo of emma watson in black clothes, \
            night city street, bokeh; pencil drawing, black and white, \
            greyscale, poorly drawn, bad anatomy, wrong anatomy, extra limb, \

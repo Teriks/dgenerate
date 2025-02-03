@@ -805,14 +805,23 @@ class BatchProcessor:
 
     def _run_file(self, stream: typing.Iterator[str]):
         continuation = ''
+        continuation_char = '\\'
         template_continuation = False
         normal_continuation = False
 
+        last_line = None
+
         def run_continuation(cur_line):
-            nonlocal continuation, template_continuation, normal_continuation
+            nonlocal continuation, template_continuation, normal_continuation, last_line
+
+            last_line_starts_with_dash = last_line and last_line.startswith('-')
+            last_line_ends_with_cont = last_line and last_line.endswith(continuation_char)
 
             if not template_continuation:
-                completed_continuation = (continuation + ' ' + cur_line).strip()
+                if cur_line.startswith('-') or (last_line_starts_with_dash and not last_line_ends_with_cont):
+                    completed_continuation = (continuation + ' ' + cur_line).strip()
+                else:
+                    completed_continuation = (continuation + cur_line).strip()
             else:
                 completed_continuation = (continuation + cur_line).strip()
 
@@ -827,40 +836,55 @@ class BatchProcessor:
 
             self._lex_and_run_invocation(completed_continuation)
 
-        last_line = None
-
         for line_idx, line_and_next in enumerate(_files.PeekReader(stream)):
             line: str
             next_line: str | None
             line, next_line = line_and_next
 
             line_strip = _textprocessing.remove_tail_comments(line)[1].strip()
+            line_strip_end_with_cont = line_strip.endswith(continuation_char)
+            next_line_starts_with_dash = next_line and next_line.lstrip().startswith('-')
+            last_line_starts_with_dash = last_line and last_line.startswith('-')
+            last_line_ends_with_cont = last_line and last_line.endswith(continuation_char)
+            line_strip_starts_with_dash = line_strip.startswith('-')
 
             self._current_line += 1
 
             if line_strip == '' and not template_continuation:
                 if continuation and last_line is not None:
-                    if last_line.startswith('-') and \
-                            not last_line.endswith('\\'):
+                    if last_line_starts_with_dash and not last_line_ends_with_cont:
                         run_continuation('')
             elif line_strip.startswith('#') and not template_continuation:
+
                 self._look_for_version_mismatch(line_idx, line)
+
             elif line_strip.startswith('{') and not template_continuation and not normal_continuation:
+
                 self._template_continuation_start_line = self._current_line
 
                 line_rstrip = _textprocessing.remove_tail_comments(line)[1].rstrip()
+
                 if line_rstrip.endswith('!END') or next_line is None:
                     self._template_continuation_end_line = self._current_line
                     run_continuation(line_rstrip.removesuffix('!END'))
                 else:
                     continuation += line
                     template_continuation = True
-            elif not template_continuation and (line_strip.endswith('\\') or next_line
-                                                and next_line.lstrip().startswith('-')):
-                continuation += ' ' + line_strip.strip().removesuffix('\\').strip()
+
+            elif not template_continuation and (line_strip_end_with_cont or next_line_starts_with_dash):
+
+                if (line_strip_end_with_cont and not line_strip_starts_with_dash) or \
+                        (next_line_starts_with_dash and not line_strip_starts_with_dash):
+                    continuation += line_strip.removesuffix(continuation_char).lstrip().rstrip("\r\n")
+                else:
+                    continuation += ' ' + line_strip.removesuffix(continuation_char).lstrip().rstrip("\r\n")
+
                 normal_continuation = True
+
             elif template_continuation:
+
                 line_rstrip = _textprocessing.remove_tail_comments(line)[1].rstrip()
+
                 if line_rstrip.endswith('!END') or next_line is None:
                     self._template_continuation_end_line = self._current_line
                     run_continuation(line_rstrip.removesuffix('!END'))
