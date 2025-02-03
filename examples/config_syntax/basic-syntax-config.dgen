@@ -26,7 +26,9 @@ stabilityai/stable-diffusion-2-1 --prompts "an astronaut riding a horse" --outpu
 stabilityai/stable-diffusion-2-1 --prompts "a cowboy riding a horse" --output-path unique_output_2 --inference-steps 30 --guidance-scales 10
 
 # Multiline continuations are possible implicitly for argument
-# switches IE lines starting with '-'
+# switches IE lines starting with '-', space is automatically
+# added to the command in the necessary places so that arguments
+# starting with a dash do not run together
 
 stabilityai/stable-diffusion-2-1 --prompts "a martian riding a horse"
 --output-path unique_output_3  # there can be comments at the end of lines

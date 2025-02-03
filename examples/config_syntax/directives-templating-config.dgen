@@ -8,9 +8,9 @@
 
 \set my_prompt "an astronaut riding a horse; bad quality"
 
-# If your variable is long you can use continuation, note that
-# continuation replaces newlines and surrounding whitespace
-# with a single space
+# If your variable is long you can use continuation, dash
+# continuations work the same way as a posix shell,
+# no extra space is added to the line
 
 \set my_prompt "my very very very very very very very \
                 very very very very very very very very \
