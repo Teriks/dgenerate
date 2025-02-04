@@ -9,7 +9,6 @@
 
 \image_process "../media/monalisa.png"
 -o mona-lineart-anime.png
---resize 1024
 --processors lineart-anime
 --align 1 {{ device_switch }}
 
