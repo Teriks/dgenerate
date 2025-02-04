@@ -147,14 +147,9 @@ class SegmentAnythingProcessor(_imageprocessor.ImageProcessor):
         detected_map = _cna_util.HWC3(self._sam.show_anns(self._sam.mask_generator.generate(input_image)))
 
         if resize_resolution is not None:
-            # resize it to what dgenerate requested, this happens automatically,
-            # but not with linear interpolation, so we will do it here, dgenerate will
-            # see that it is already at the requested size and not resize it any further
-            detected_map = cv2.resize(detected_map, resize_resolution, interpolation=cv2.INTER_LINEAR)
-        elif self._detect_resolution is not None:
-            # resize it to its original size since we changed its size before detection
-            # and dgenerate did not request a resize
-            detected_map = cv2.resize(detected_map, original_size, interpolation=cv2.INTER_LINEAR)
+            detected_map = _image.cv2_resize_image(detected_map, resize_resolution)
+        else:
+            detected_map = _image.cv2_resize_image(detected_map, original_size)
 
         return PIL.Image.fromarray(detected_map)
 

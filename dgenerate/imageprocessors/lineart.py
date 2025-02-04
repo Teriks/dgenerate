@@ -148,9 +148,9 @@ class LineArtProcessor(_imageprocessor.ImageProcessor):
         detected_map = _cna_util.HWC3(line)
 
         if resize_resolution is not None:
-            detected_map = cv2.resize(detected_map, resize_resolution, interpolation=cv2.INTER_LINEAR)
-        elif self._detect_resolution is not None:
-            detected_map = cv2.resize(detected_map, original_size, interpolation=cv2.INTER_LINEAR)
+            detected_map = _image.cv2_resize_image(detected_map, resize_resolution)
+        else:
+            detected_map = _image.cv2_resize_image(detected_map, original_size)
 
         return PIL.Image.fromarray(detected_map)
 

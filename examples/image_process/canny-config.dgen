@@ -13,8 +13,19 @@
 # generate a gif without rendering intermediate frames
 # do not align the resolution to 8 pixels
 
+
 \image_process "../media/rickroll-roll.gif"
 -o rickroll-canny.gif
 --processors "canny;threshold-algo=otsu;blur=true;gray=true"
 --align 1
 --no-frames {{ device_switch }}
+
+
+
+# since alignment is 1, the resulting image should be identical in size
+# to the input image, this is a minor test of the processor
+
+{% if image_size("rickroll-canny.gif") != image_size("../media/rickroll-roll.gif") %}
+    \print 'canny image processor test failure, incorrect output image size'
+    \exit 1
+{% endif %} !END

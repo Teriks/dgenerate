@@ -148,6 +148,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'format_size': _configrunnerbuiltins.format_size,
             'align_size': _configrunnerbuiltins.align_size,
             'pow2_size': _configrunnerbuiltins.pow2_size,
+            'image_size': _configrunnerbuiltins.image_size,
             'size_is_aligned': _configrunnerbuiltins.size_is_aligned,
             'size_is_pow2': _configrunnerbuiltins.size_is_pow2,
             'format_model_type': _configrunnerbuiltins.format_model_type,

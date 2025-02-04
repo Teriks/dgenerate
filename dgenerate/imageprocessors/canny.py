@@ -159,6 +159,9 @@ class CannyEdgeDetectProcessor(_imageprocessor.ImageProcessor):
             ('blur', self._blur),
             ('threshold_algo', self._threshold_algo),
             ('sigma', self._sigma),
+            ('detect_resolution', self._detect_resolution),
+            ('detect_aspect', self._detect_aspect),
+            ('detect_align', self._detect_align),
             ('pre_resize', self._pre_resize),
         ]
         return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
@@ -209,9 +212,9 @@ class CannyEdgeDetectProcessor(_imageprocessor.ImageProcessor):
         detected_map = cv2.cvtColor(edges, convert_back)
 
         if resize_resolution is not None:
-            detected_map = cv2.resize(detected_map, resize_resolution, interpolation=cv2.INTER_LINEAR)
-        elif self._detect_resolution is not None:
-            detected_map = cv2.resize(detected_map, original_size, interpolation=cv2.INTER_LINEAR)
+            detected_map = _image.cv2_resize_image(detected_map, resize_resolution)
+        else:
+            detected_map = _image.cv2_resize_image(detected_map, original_size)
 
         return PIL.Image.fromarray(detected_map)
 

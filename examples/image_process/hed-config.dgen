@@ -12,7 +12,21 @@
 --processors hed
 --align 1 {{ device_switch }}
 
+
+{% if image_size("horse2-hed.png") != image_size("../media/horse2.jpeg") %}
+    \print 'hed image processor test failure, incorrect output image size'
+    \exit 1
+{% endif %} !END
+
+
+
 \image_process "../media/horse2.jpeg"
 -o horse2-hed-scribble.png
 --processors hed;scribble=True
 --align 1 {{ device_switch }}
+
+
+{% if image_size("horse2-hed-scribble.png") != image_size("../media/horse2.jpeg") %}
+    \print 'hed scribble image processor test failure, incorrect output image size'
+    \exit 1
+{% endif %} !END

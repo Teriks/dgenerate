@@ -309,7 +309,7 @@ class ResizeProcessor(_imageprocessor.ImageProcessor):
     The "aspect-correct" argument is a boolean argument that determines if the resize is aspect correct.
 
     The "algo" argument is the resize filtering algorithm, which can be one of:
-    "nearest", "box", "bilinear", "hamming", "bicubic", "lanczos"
+    "auto", "nearest", "box", "bilinear", "hamming", "bicubic", "lanczos"
     """
 
     NAMES = ['resize']
@@ -322,7 +322,7 @@ class ResizeProcessor(_imageprocessor.ImageProcessor):
                  size: typing.Optional[str] = None,
                  align: typing.Optional[int] = None,
                  aspect_correct: bool = True,
-                 algo: str = 'lanczos',
+                 algo: str = 'auto',
                  **kwargs):
         super().__init__(**kwargs)
 
@@ -365,11 +365,17 @@ class ResizeProcessor(_imageprocessor.ImageProcessor):
         :param image: The image after being resized by dgenerate.
         :return: The resized image.
         """
+
+        if self._algo == 'auto':
+            algo = None
+        else:
+            algo = getattr(PIL.Image.Resampling, self._algo.upper())
+
         return _image.resize_image(img=image,
                                    size=self._size,
                                    aspect_correct=self._aspect_correct,
                                    align=self._align,
-                                   algo=getattr(PIL.Image.Resampling, self._algo.upper()))
+                                   algo=algo)
 
     def to(self, device) -> "ResizeProcessor":
         """

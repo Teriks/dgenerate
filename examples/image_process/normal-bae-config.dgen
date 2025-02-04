@@ -10,7 +10,19 @@
 
 \set device_switch {{ '--device '+injected_device if injected_device else '' }}
 
+
 \image_process "../media/horse2.jpeg"
 -o horse2-normal-bae.png
 --processors normal-bae
 --align 1 {{ device_switch }}
+
+
+
+# since alignment is 1, the resulting image should be identical in size
+# to the input image, this is a minor test of the processor
+
+{% if image_size("horse2-normal-bae.png") != image_size("../media/horse2.jpeg") %}
+    \print 'normal-bae processor test failure, incorrect output image size'
+    \exit 1
+{% endif %} !END
+

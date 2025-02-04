@@ -5,12 +5,30 @@
 
 \set device_switch {{ '--device '+injected_device if injected_device else '' }}
 
+
+
 \image_process "../media/horse2.jpeg"
 -o horse2-pidi.png
 --processors pidi
 --align 1 {{ device_switch }}
 
+
+
+{% if image_size("horse2-pidi.png") != image_size("../media/horse2.jpeg") %}
+    \print 'pidi processor test failure, incorrect output image size'
+    \exit 1
+{% endif %} !END
+
+
+
 \image_process "../media/horse2.jpeg"
 -o horse2-pidi-filter.png
 --processors pidi;apply-filter=True
 --align 1 {{ device_switch }}
+
+
+
+{% if image_size("horse2-pidi-filter.png") != image_size("../media/horse2.jpeg") %}
+    \print 'pidi filter processor test failure, incorrect output image size'
+    \exit 1
+{% endif %} !END

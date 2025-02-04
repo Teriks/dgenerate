@@ -5,13 +5,28 @@
 
 \set device_switch {{ '--device '+injected_device if injected_device else '' }}
 
+
+
 \image_process "../media/monalisa.png"
 -o mona-leres-depth.png
 --processors leres
---align 64 {{ device_switch }}
+--align 1 {{ device_switch }}
+
+
+{% if image_size("mona-leres-depth.png") != image_size("../media/monalisa.png") %}
+    \print 'leres image processor test failure, incorrect output image size'
+    \exit 1
+{% endif %} !END
+
 
 
 \image_process "../media/monalisa.png"
 -o mona-leres-depth-boost.png
 --processors leres;boost=True
---align 64 {{ device_switch }}
+--align 1 {{ device_switch }}
+
+
+{% if image_size("mona-leres-depth-boost.png") != image_size("../media/monalisa.png") %}
+    \print 'leres depth boost image processor test failure, incorrect output image size'
+    \exit 1
+{% endif %} !END

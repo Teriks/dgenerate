@@ -60,10 +60,6 @@ class LeresDepthProcessor(_imageprocessor.ImageProcessor):
 
     NAMES = ['leres']
 
-    # Force incoming image alignment to 64 pixels, required
-    def get_alignment(self):
-        return 64
-
     def __init__(self,
                  threshold_near: int = 0,
                  threshold_far: int = 0,
@@ -125,23 +121,22 @@ class LeresDepthProcessor(_imageprocessor.ImageProcessor):
         original_size = image.size
 
         with image:
-            # must be aligned to 8 pixels, forcefully align
+            # must be aligned to 64 pixels, forcefully align
             resized = _image.resize_image(
                 image,
                 self._detect_resolution,
                 aspect_correct=self._detect_aspect,
-                align=8
+                align=64
             )
 
-        image = resized
-
-        input_image = numpy.array(image, dtype=numpy.uint8)
+        input_image = numpy.array(resized, dtype=numpy.uint8)
         input_image = _cna_util.HWC3(input_image)
         height, width, dim = input_image.shape
 
         if self._boost:
-            depth = _cna.leres.estimateboost(input_image, self._leres.model, 0, self._leres.pix2pixmodel,
-                                             max(width, height))
+            depth = _cna.leres.estimateboost(
+                input_image, self._leres.model, 0,
+                self._leres.pix2pixmodel, max(width, height))
         else:
             depth = _cna.leres.estimateleres(input_image, self._leres.model, width, height)
 
@@ -178,9 +173,9 @@ class LeresDepthProcessor(_imageprocessor.ImageProcessor):
         detected_map = _cna_util.HWC3(depth_image)
 
         if resize_resolution is not None:
-            detected_map = cv2.resize(detected_map, resize_resolution, interpolation=cv2.INTER_LINEAR)
-        elif self._detect_resolution is not None:
-            detected_map = cv2.resize(detected_map, original_size, interpolation=cv2.INTER_LINEAR)
+            detected_map = _image.cv2_resize_image(detected_map, resize_resolution)
+        else:
+            detected_map = _image.cv2_resize_image(detected_map, original_size)
 
         return PIL.Image.fromarray(detected_map)
 

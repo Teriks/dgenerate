@@ -11,10 +11,7 @@
 # the SDXL depth ControlNet to orient the new face in the correct direction.
 # This works because ControlNets are compatible with SDXL inpainting
 
-# we generate a depth image from the incoming control image using the midas
-# image processor, our input images need to be aligned to 64 since the midas
-# processor forces this alignment and we want the input image and control
-# images to be identical in size
+# we generate a depth image from the incoming control image using the midas image processor
 
 # --adetailer-crop-control-image tells the adetailer algorithm to crop the depth
 # image down to just the detection area, so that its just the face depth map
@@ -33,7 +30,7 @@ stabilityai/stable-diffusion-xl-base-1.0
 --model-type torch-sdxl
 --variant fp16
 --dtype float16
---image-seeds ../../../media/monalisa.png;control=../../../media/monalisa.png;align=64
+--image-seeds ../../../media/monalisa.png;control=../../../media/monalisa.png
 --inference-steps 30
 --guidance-scales 7
 --control-nets diffusers/controlnet-depth-sdxl-1.0;scale=0.6

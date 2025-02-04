@@ -123,9 +123,7 @@ class LineArtAnimeProcessor(_imageprocessor.ImageProcessor):
         input_image = _cna_util.HWC3(numpy.array(image, dtype=numpy.uint8))
 
         H, W, C = input_image.shape
-        Hn = 256 * int(numpy.ceil(float(H) / 256.0))
-        Wn = 256 * int(numpy.ceil(float(W) / 256.0))
-        img = cv2.resize(input_image, (Wn, Hn), interpolation=cv2.INTER_CUBIC)
+        img = _image.cv2_resize_image(input_image, (W, H), align=256)
 
         image_feed = torch.from_numpy(img).float().to(self.modules_device)
         image_feed = image_feed / 127.5 - 1.0
@@ -138,15 +136,13 @@ class LineArtAnimeProcessor(_imageprocessor.ImageProcessor):
 
         line = line.cpu().numpy()
 
-        line = cv2.resize(line, (W, H), interpolation=cv2.INTER_CUBIC)
+        line = _image.cv2_resize_image(line, original_size)
         line = line.clip(0, 255).astype(numpy.uint8)
 
         detected_map = _cna_util.HWC3(line)
 
         if resize_resolution is not None:
-            detected_map = cv2.resize(detected_map, resize_resolution, interpolation=cv2.INTER_LINEAR)
-        elif self._detect_resolution is not None:
-            detected_map = cv2.resize(detected_map, original_size, interpolation=cv2.INTER_LINEAR)
+            detected_map = _image.cv2_resize_image(detected_map, resize_resolution)
 
         return PIL.Image.fromarray(detected_map)
 
