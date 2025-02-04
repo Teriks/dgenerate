@@ -5337,15 +5337,15 @@ for usage information.
     --gen-seeds 1
     --output-path sdxl
     --output-size 1024x1024
-    --post-processors "adetailer;\
-                       model=Bingsu/adetailer;\
-                       weight-name=face_yolov8n.pt;\
-                       prompt=image of emma watson;\
-                       negative-prompt=nsfw, blurry, disfigured;\
-                       prompt-weighter=sd-embed;\
-                       guidance-scale=7;\
-                       inference-steps=30;\
-                       strength=0.4"
+    --post-processors adetailer;\
+                      model=Bingsu/adetailer;\
+                      weight-name=face_yolov8n.pt;\
+                      prompt="image of emma watson";\
+                      negative-prompt="nsfw, blurry, disfigured";\
+                      prompt-weighter=sd-embed;\
+                      guidance-scale=7;\
+                      inference-steps=30;\
+                      strength=0.4
     --prompts "full body photo of emma watson in black clothes, \
                night city street, bokeh; pencil drawing, black and white, \
                greyscale, poorly drawn, bad anatomy, wrong anatomy, extra limb, \
@@ -5360,6 +5360,53 @@ by the top left corner of the detection area.
 
 The processor can be chained together with another adetailer processor definition to
 inpaint multiple types of objects in an image, or different detection indices separately.
+
+.. code-block::
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 4.5.1
+
+    stabilityai/stable-diffusion-xl-base-1.0
+    --model-type torch-sdxl
+    --variant fp16
+    --dtype float16
+    --inference-steps 30
+    --guidance-scales 8
+    --output-path multi-subject-config
+    --output-size 1024
+    --seeds 55307998457041
+    --prompts "a woman and a man standing next to each other"
+    --post-processors \
+
+    # womans face on the left comes first
+    adetailer;\
+    model=Bingsu/adetailer;\
+    weight-name=face_yolov8n.pt;\
+    prompt="the face of a woman";\
+    detector-padding=50;\
+    guidance-scale=7;\
+    seed=0;\
+    index-filter=0;\
+    inference-steps=30;\
+    strength=0.7 \
+
+    # mans face on the right comes second.
+    # note the space before the last line
+    # continuation character above, that
+    # separates these two processors with
+    # a single space.
+
+    adetailer;\
+    model=Bingsu/adetailer;\
+    weight-name=face_yolov8n.pt;\
+    prompt="the face of a man";\
+    detector-padding=50;\
+    guidance-scale=7;\
+    seed=0;\
+    index-filter=1;\
+    inference-steps=30;\
+    strength=0.7
+
 
 This leads to a large amount of possible use cases that are hard to fully demonstrate,
 as always, be creative :)

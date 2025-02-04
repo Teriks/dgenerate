@@ -50,7 +50,12 @@ index-filter=0;\
 inference-steps=30;\
 strength=0.7 \
 
-# mans face on the right comes second
+# mans face on the right comes second.
+# note the space before the last line
+# continuation character above, that
+# separates these two processors with
+# a single space.
+
 adetailer;\
 model=Bingsu/adetailer;\
 weight-name=face_yolov8n.pt;\
