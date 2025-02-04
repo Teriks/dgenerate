@@ -11,7 +11,17 @@
 # specified, meaning it gets sized back up to its original size, with no alignment
 # since --align 1 is specified
 
+
 \image_process "../media/horse2.jpeg"
 -o horse2-segment.png
 --processors sam
 --align 1 {{ device_switch }}
+
+
+# since alignment is 1, the resulting image should be identical in size
+# to the input image, this is a minor test of the processor
+
+{% if image_size("horse2-segment.png") != image_size("../media/horse2.jpeg") %}
+    \print 'sam processor test failure, incorrect output image size'
+    \exit 1
+{% endif %} !END

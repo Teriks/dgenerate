@@ -154,7 +154,7 @@ class AnylineProcessor(_imageprocessor.ImageProcessor):
 
         edges = [e.detach().cpu().numpy().astype(numpy.float32)[0, 0] for e in edges]
         edges = [
-            cv2.resize(e, (width, height), interpolation=cv2.INTER_LINEAR)
+            _image.cv2_resize_image(e, (width, height))
             for e in edges
         ]
         edges = numpy.stack(edges, axis=2)
@@ -189,9 +189,9 @@ class AnylineProcessor(_imageprocessor.ImageProcessor):
         detected_map = self._anyline.combine_layers(mteed_result, lineart_result)
 
         if resize_resolution is not None:
-            detected_map = cv2.resize(detected_map, resize_resolution, interpolation=cv2.INTER_LINEAR)
-        elif self._detect_resolution is not None:
-            detected_map = cv2.resize(detected_map, original_size, interpolation=cv2.INTER_LINEAR)
+            detected_map = _image.cv2_resize_image(detected_map, resize_resolution)
+        else:
+            detected_map = _image.cv2_resize_image(detected_map, original_size)
 
         return PIL.Image.fromarray(detected_map)
 

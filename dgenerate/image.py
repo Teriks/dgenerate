@@ -22,6 +22,8 @@ import math
 import typing
 
 import PIL.Image
+import cv2
+import numpy
 
 import dgenerate.types as _types
 
@@ -32,8 +34,8 @@ Image operations commonly used by dgenerate.
 
 def resize_image_calc(old_size: _types.Size,
                       new_size: _types.OptionalSize,
-                      aspect_correct: bool = True,
-                      align: int | None = 8):
+                      aspect_correct: bool = False,
+                      align: int | None = 1):
     """
     Calculate the new dimensions for a requested resize of an image..
 
@@ -168,11 +170,98 @@ def copy_img(img: PIL.Image.Image):
     return c
 
 
+def best_pil_resampling(old_size: _types.Size, new_size: _types.Size) -> PIL.Image.Resampling:
+    """
+    Auto-select the best PIL resampling setting for a resize operation.
+
+    :param old_size: (tuple) Source image size (width, height).
+    :param new_size: (tuple) Destination image size (width, height).
+    :return: (PIL.Image.Resampling) Best resampling method.
+    """
+    scale_x = new_size[0] / old_size[0]
+    scale_y = new_size[1] / old_size[1]
+    scale_factor = min(scale_x, scale_y)  # Use the smallest scale factor
+
+    if scale_factor > 1:
+        # Upscaling
+        return PIL.Image.Resampling.BICUBIC if scale_factor < 3 else PIL.Image.Resampling.LANCZOS
+    elif scale_factor < 1:
+        # Downscaling
+        return PIL.Image.Resampling.LANCZOS
+    else:
+        # No scaling
+        return PIL.Image.Resampling.NEAREST
+
+
+def best_cv2_resampling(old_size: _types.Size, new_size: _types.Size) -> int:
+    """
+    Auto-select the best OpenCV resampling setting for a resize operation.
+
+    :param old_size: (tuple) Source image shape (height, width, channels).
+    :param new_size: (tuple) Destination image shape (height, width).
+    :return: (int) Best OpenCV interpolation method.
+    """
+    scale_x = new_size[1] / old_size[1]
+    scale_y = new_size[0] / old_size[0]
+    scale_factor = min(scale_x, scale_y)  # Use the smallest scale factor
+
+    if scale_factor > 1:
+        # Upscaling
+        return cv2.INTER_CUBIC if scale_factor < 3 else cv2.INTER_LANCZOS4
+    elif scale_factor < 1:
+        # Downscaling
+        return cv2.INTER_AREA
+    else:
+        # No scaling
+        return cv2.INTER_NEAREST
+
+
+def cv2_resize_image(img: numpy.ndarray,
+                     size: _types.OptionalSize,
+                     aspect_correct: bool = False,
+                     align: int | None = 1,
+                     algo: typing.Optional[int] = None):
+    """
+    Resize a :py:class:`numpy.ndarray` image and return a copy.
+
+    This function always returns a copy even if the images size did not change.
+
+    The new image dimension will always be forcefully aligned by ``align``,
+    specifying ``None`` or ``1`` indicates no alignment.
+
+    The filename attribute is preserved.
+
+    :param img: the image to resize
+    :param size: requested new size for the image, may be ``None``.
+    :param aspect_correct: preserve aspect ratio?
+    :param align: Force alignment by this amount of pixels (default 1).
+    :param algo: cv2 resampling algorithm
+    :return: the resized image
+    """
+    in_height = img.shape[0]
+    in_width = img.shape[1]
+
+    new_size = resize_image_calc(old_size=(in_width, in_height),
+                                 new_size=size,
+                                 aspect_correct=aspect_correct,
+                                 align=align)
+    if img.size == new_size:
+        # probably less costly
+        return numpy.copy(img)
+
+    if algo is None:
+        algo = best_cv2_resampling((in_width, in_height), new_size)
+
+    r = cv2.resize(img, new_size, interpolation=algo)
+
+    return r
+
+
 def resize_image(img: PIL.Image.Image,
                  size: _types.OptionalSize,
-                 aspect_correct: bool = True,
-                 align: int | None = 8,
-                 algo: PIL.Image.Resampling = PIL.Image.Resampling.LANCZOS):
+                 aspect_correct: bool = False,
+                 align: int | None = 1,
+                 algo: typing.Optional[PIL.Image.Resampling] = None):
     """
     Resize a :py:class:`PIL.Image.Image` and return a copy.
 
@@ -197,6 +286,9 @@ def resize_image(img: PIL.Image.Image,
     if img.size == new_size:
         # probably less costly
         return copy_img(img)
+
+    if algo is None:
+        algo = best_pil_resampling(img.size, new_size)
 
     r = img.resize(new_size, algo)
 

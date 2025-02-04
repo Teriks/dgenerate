@@ -1592,7 +1592,12 @@ def create_image(
                 e_img.filename = file_source
                 if not _image.is_aligned(e_img.size, align=align):
                     with e_img:
-                        resized = _image.resize_image(e_img, size=None, align=align)
+                        resized = _image.resize_image(
+                            e_img,
+                            size=None,
+                            aspect_correct=True,
+                            align=align
+                        )
                         return resized
                 else:
                     return e_img

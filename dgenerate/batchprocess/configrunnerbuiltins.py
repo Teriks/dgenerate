@@ -25,6 +25,7 @@ import os
 import shlex
 import typing
 import re
+import PIL.Image
 
 import fake_useragent
 import pyrfc6266
@@ -370,6 +371,20 @@ def pow2_size(size: str | tuple, format_size: bool = True) -> str | tuple:
         return aligned
 
     return _textprocessing.format_size(aligned)
+
+
+def image_size(file: str, format_size: bool = True) -> str | tuple[int, int]:
+    """
+    Return the width and height of an image file on disk.
+
+    If "format_size" is False, return a tuple instead of a WIDTHxHEIGHT string.
+    """
+
+    with PIL.Image.open(file) as img:
+        if not format_size:
+            return img.width, img.height
+
+        return _textprocessing.format_size((img.width, img.height))
 
 
 def size_is_aligned(size: str | tuple, align: int) -> bool:

@@ -5,9 +5,21 @@
 
 \set device_switch {{ '--device '+injected_device if injected_device else '' }}
 
+
+
 \image_process "../media/monalisa.png"
 -o mona-lineart-anime.png
 --resize 1024
 --processors lineart-anime
 --align 1 {{ device_switch }}
+
+
+
+# since alignment is 1, the resulting image should be identical in size
+# to the input image, this is a minor test of the processor
+
+{% if image_size("mona-lineart-anime.png") != image_size("../media/monalisa.png") %}
+    \print 'lineart anime image processor test failure, incorrect output image size'
+    \exit 1
+{% endif %} !END
 

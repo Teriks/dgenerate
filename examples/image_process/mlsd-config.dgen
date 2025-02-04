@@ -5,7 +5,18 @@
 
 \set device_switch {{ '--device '+injected_device if injected_device else '' }}
 
+
+
 \image_process "../media/dog-on-bench.png"
 -o dog-bench-mlsd.png
 --processors mlsd;threshold-score=0.2;threshold-distance=10
 --align 1 {{ device_switch }}
+
+
+# since alignment is 1, the resulting image should be identical in size
+# to the input image, this is a minor test of the processor
+
+{% if image_size("dog-bench-mlsd.png") != image_size("../media/dog-on-bench.png") %}
+    \print 'mlsd image processor test failure, incorrect output image size'
+    \exit 1
+{% endif %} !END
