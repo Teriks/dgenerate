@@ -329,9 +329,9 @@ class ResizeProcessor(_imageprocessor.ImageProcessor):
         if size is None and align is None:
             raise self.argument_error('no arguments provided that result in resizing.')
 
-        if algo not in {"nearest", "box", "bilinear", "hamming", "bicubic", "lanczos"}:
+        if algo not in {"auto", "nearest", "box", "bilinear", "hamming", "bicubic", "lanczos"}:
             raise self.argument_error(
-                'algo must be one of: "nearest", "box", "bilinear", "hamming", "bicubic", "lanczos"')
+                'algo must be one of: "auto", "nearest", "box", "bilinear", "hamming", "bicubic", "lanczos"')
 
         if size is not None:
             try:

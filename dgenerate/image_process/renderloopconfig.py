@@ -64,7 +64,7 @@ class ImageProcessRenderLoopConfig(_types.SetFromMixin):
 
     resize: _types.OptionalSize = None
     """
-    Naive resizing value (LANCZOS), corresponds to ``-r/--resize``
+    Naive resizing value, corresponds to ``-r/--resize``
     """
 
     no_aspect: bool = False

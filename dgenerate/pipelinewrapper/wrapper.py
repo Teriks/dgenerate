@@ -1406,7 +1406,7 @@ class DiffusionPipelineWrapper:
                     f'aligned by 16 to {new_size} to prevent errors.', level=_messages.WARNING)
 
                 for idx, img in enumerate(adapter_control_images):
-                    adapter_control_images[idx] = img.resize(new_size, PIL.Image.Resampling.LANCZOS)
+                    adapter_control_images[idx] = _image.resize_image(img, new_size)
 
             if _enums.model_type_is_sdxl(self.model_type) and user_args.sdxl_t2i_adapter_factor is not None:
                 args['adapter_conditioning_factor'] = user_args.sdxl_t2i_adapter_factor
@@ -1522,7 +1522,7 @@ class DiffusionPipelineWrapper:
                             f'Input image size {image.size} is not aligned by 64. '
                             f'Output dimensions will be forcefully aligned to 64: {size}.',
                             level=_messages.WARNING)
-                        images[idx] = image.resize(size, PIL.Image.Resampling.LANCZOS)
+                        images[idx] = _image.resize_image(image, size)
 
             elif self._model_type == _enums.ModelType.TORCH_S_CASCADE:
                 if not _image.is_aligned(images[0].size, 128):
@@ -1558,7 +1558,7 @@ class DiffusionPipelineWrapper:
                             f'Input image size {image.size} is not aligned by 16. '
                             f'Dimensions will be forcefully aligned to 16: {size}.',
                             level=_messages.WARNING)
-                        images[idx] = image.resize(size, PIL.Image.Resampling.LANCZOS)
+                        images[idx] = _image.resize_image(image, size)
 
                 if mask_images:
                     mask_images = list(mask_images)
@@ -1571,7 +1571,7 @@ class DiffusionPipelineWrapper:
                                 f'Input mask image size {image.size} is not aligned by 16. '
                                 f'Dimensions will be forcefully aligned to 16: {size}.',
                                 level=_messages.WARNING)
-                            mask_images[idx] = image.resize(size, PIL.Image.Resampling.LANCZOS)
+                            mask_images[idx] = _image.resize_image(image, size)
 
                     args['width'] = mask_images[0].size[0]
                     args['height'] = mask_images[0].size[1]
@@ -1643,7 +1643,7 @@ class DiffusionPipelineWrapper:
                     f'Output dimensions will be forcefully aligned by 16: {size}.',
                     level=_messages.WARNING)
 
-                processed_control_images[idx] = img.resize(size, PIL.Image.Resampling.LANCZOS)
+                processed_control_images[idx] = _image.resize_image(img, size)
         return processed_control_images
 
     def _get_adapter_conditioning_scale(self):

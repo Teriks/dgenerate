@@ -23,7 +23,7 @@
 # dgenerates --seed-image-processors and related commands, such as --post-processors
 
 # The "upscaler" image processor operates post-resize by default unless you use the "pre-resize=true" URI argument.
-# So below, dgenerate resizes the image down to 196x196 pixels (no alignment, LANCZOS)
+# So below, dgenerate resizes the image down to 196x196 pixels (no alignment)
 # and then upscales it using an ESRGAN X4 upscaling model, resulting in an image output that is 784x784
 
 \image_process "../media/earth.jpg" {{ device_switch }}
