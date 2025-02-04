@@ -2371,10 +2371,11 @@ class DiffusionPipelineWrapper:
         if pag:
             if not (self.model_type == _enums.ModelType.TORCH or
                     self.model_type == _enums.ModelType.TORCH_SDXL or
-                    self.model_type == _enums.ModelType.TORCH_SD3):
+                    self.model_type == _enums.ModelType.TORCH_SD3 or
+                    self.model_type == _enums.ModelType.TORCH_KOLORS):
                 raise _pipelines.UnsupportedPipelineConfigError(
-                    'Perturbed attention guidance (pag* arguments) is only supported with '
-                    '--model-type torch, torch-sdxl, and torch-sd3.')
+                    'Perturbed attention guidance (pag arguments) are only supported with '
+                    '--model-type torch, torch-sdxl, torch-kolors (txt2img), and torch-sd3.')
 
             if self.t2i_adapter_uris:
                 raise _pipelines.UnsupportedPipelineConfigError(
