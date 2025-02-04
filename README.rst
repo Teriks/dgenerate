@@ -5635,7 +5635,14 @@ The following is a config file example that covers the most basic syntax concept
     stabilityai/stable-diffusion-2-1 --prompts "a cowboy riding a horse" --output-path unique_output_2 --inference-steps 30 --guidance-scales 10
 
     # Multiline continuations are possible implicitly for argument
-    # switches IE lines starting with '-'
+    # switches IE lines starting with '-', space is automatically
+    # added to the command in the necessary places so that arguments
+    # starting with a dash do not run together unless the argument
+    # ends with a slash \ continuation
+
+    # when a slash \ character is involved, you must always insure
+    # there is a space before the slash if you want the space
+    # to persist (posix behavior)
 
     stabilityai/stable-diffusion-2-1 --prompts "a martian riding a horse"
     --output-path unique_output_3  # there can be comments at the end of lines
@@ -6328,9 +6335,9 @@ such as VAEs etc. outside of relying on the caching system.
 
     \set my_prompt "an astronaut riding a horse; bad quality"
 
-    # If your variable is long you can use continuation, note that
-    # continuation replaces newlines and surrounding whitespace
-    # with a single space
+    # If your variable is long you can use continuation, slash
+    # continuations work the same way as a posix shell,
+    # no extra space is added to the line
 
     \set my_prompt "my very very very very very very very \
                     very very very very very very very very \
