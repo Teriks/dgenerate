@@ -4901,8 +4901,8 @@ The help output of ``image-process`` is as follows:
             Indicate that it is okay to overwrite files, instead of appending a duplicate suffix.
             -------------------------------------------------------------------------------------
       -r RESIZE, --resize RESIZE
-            Preform naive image resizing (LANCZOS).
-            ---------------------------------------
+            Preform naive image resizing, the best resampling algorithm is auto selected.
+            -----------------------------------------------------------------------------
       -na, --no-aspect
             Make --resize ignore aspect ratio.
             ----------------------------------

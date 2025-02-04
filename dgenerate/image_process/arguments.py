@@ -133,7 +133,7 @@ def _create_arg_parser(prog, description):
 
     actions.append(parser.add_argument(
         '-r', '--resize', default=None, type=_arguments._type_size,
-        help='Preform naive image resizing (LANCZOS).'))
+        help='Preform naive image resizing, the best resampling algorithm is auto selected.'))
 
     actions.append(parser.add_argument(
         '-na', '--no-aspect', action='store_true',
