@@ -8,7 +8,7 @@
 
 \set my_prompt "an astronaut riding a horse; bad quality"
 
-# If your variable is long you can use continuation, dash
+# If your variable is long you can use continuation, slash
 # continuations work the same way as a posix shell,
 # no extra space is added to the line
 
