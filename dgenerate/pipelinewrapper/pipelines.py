@@ -1712,10 +1712,11 @@ def get_torch_pipeline_class(
     if pag:
         if not (model_type == _enums.ModelType.TORCH or
                 model_type == _enums.ModelType.TORCH_SDXL or
-                model_type == _enums.ModelType.TORCH_SD3):
+                model_type == _enums.ModelType.TORCH_SD3 or
+                model_type == _enums.ModelType.TORCH_KOLORS):
             raise UnsupportedPipelineConfigError(
                 'Perturbed attention guidance (--pag*) is only supported with '
-                '--model-type torch, torch-sdxl, and torch-sd3.')
+                '--model-type torch, torch-sdxl, torch-kolors (txt2img), and torch-sd3.')
 
         if t2i_adapter_uris:
             raise UnsupportedPipelineConfigError(
