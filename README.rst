@@ -5790,8 +5790,14 @@ The ``\templates_help`` output from the above example is:
         Name: "last_adetailer_crop_control_image"
             Type: typing.Optional[bool]
             Value: None
+        Name: "last_adetailer_detector_paddings"
+            Type: typing.Optional[collections.abc.Sequence[int | tuple[int, int] | tuple[int, int, int, int]]]
+            Value: []
         Name: "last_adetailer_detector_uris"
             Type: typing.Optional[collections.abc.Sequence[str]]
+            Value: []
+        Name: "last_adetailer_index_filter"
+            Type: typing.Optional[collections.abc.Sequence[int]]
             Value: []
         Name: "last_adetailer_mask_blurs"
             Type: typing.Optional[collections.abc.Sequence[int]]
@@ -5800,7 +5806,10 @@ The ``\templates_help`` output from the above example is:
             Type: typing.Optional[collections.abc.Sequence[int]]
             Value: []
         Name: "last_adetailer_mask_paddings"
-            Type: typing.Optional[collections.abc.Sequence[int]]
+            Type: typing.Optional[collections.abc.Sequence[int | tuple[int, int] | tuple[int, int, int, int]]]
+            Value: []
+        Name: "last_adetailer_mask_shapes"
+            Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
         Name: "last_animation_format"
             Type: <class 'str'>
@@ -5855,7 +5864,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_guidance_scales"
             Type: collections.abc.Sequence[float]
-            Value: [5]
+            Value: [5.0]
         Name: "last_image_encoder_cache_memory_constraints"
             Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
@@ -6113,7 +6122,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [95374578727442]
+            Value: [56601080900147]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -6211,6 +6220,7 @@ The following is output from ``\functions_help`` showing every implemented templ
         hash(args, kwargs)
         have_feature(feature_name: str) -> bool
         hex(args, kwargs)
+        image_size(file: str, format_size: bool = True) -> str | tuple[int, int]
         int(args, kwargs)
         iter(args, kwargs)
         last(iterable: list | collections.abc.Iterable[typing.Any]) -> typing.Any
