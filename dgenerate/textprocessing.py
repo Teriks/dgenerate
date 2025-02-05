@@ -95,7 +95,7 @@ def tokenized_split(string: str,
                     single_quotes_raw: bool = False,
                     double_quotes_raw: bool = False,
                     string_expander: typing.Callable[[str, str], str] = None,
-                    text_expander: typing.Callable[[str], list[str]] = None,
+                    text_expander: typing.Callable[[str], str | list[str]] = None,
                     remove_stray_separators: bool = False,
                     escapable_separator: bool = False,
                     allow_unterminated_strings: bool = False,
@@ -126,8 +126,8 @@ def tokenized_split(string: str,
     :param single_quotes_raw: Never evaluate escape sequences in single-quoted strings?
     :param double_quotes_raw: Never evaluate escape sequences in double-quoted strings?
     :param string_expander: User post process string expansion hook ``string_expander(quote_char, string) -> str``
-    :param text_expander: User post process text token expansion hook ``text_expander(text_token) -> list[str]``.
-        should return a list of new tokens.
+    :param text_expander: User post process text token expansion hook ``text_expander(text_token) -> str | list[str]``.
+        should return a list of new tokens (indicates globbing) or a single token string (indicates no globbing).
     :param remove_stray_separators: Remove consecutive seperator characters with no inner content at the end of the string?
         In effect, do not create entrys for empty seperators at the end of a string.
     :param escapable_separator: The seperator character may be escaped with a backslash where it would otherwise cause a split?
@@ -142,7 +142,6 @@ def tokenized_split(string: str,
 
     :return: parsed fields
     """
-
     if remove_quotes and remove_boundary_quotes:
         raise ValueError(
             'cannot use "remove_quotes" and "remove_boundary_quotes" together, redundant.')
@@ -157,7 +156,7 @@ def tokenized_split(string: str,
 
     if text_expander is None:
         def text_expander(s):
-            return [s]
+            return s
 
     class _States(enum.Enum):
         AWAIT_TEXT = 0
@@ -198,25 +197,38 @@ def tokenized_split(string: str,
     def append_text(t):
         # append text to the last token
         if back_expand > 0:
-            # boundary quotes are always
-            # removed from the text appended by
-            # back expansion expressions
-            t = process_boundary_quotes(t)
+            # might be appending to multiple tokens
+            # due to globbing, stack has content
             for i in range(back_expand):
-                parts[-(i + 1)] += t
+                offset = -(i + 1)
+                if isinstance(parts[offset], tuple):
+                    # custom token processor requested
+                    # for the appended text, run it
+                    parts[offset] = parts[offset][0] + parts[offset][1](t)
+                else:
+                    parts[offset] += t
         else:
+            # normal append, token character
             if parts:
                 parts[-1] += t
             else:
+                # nothing on the stack
                 parts.append(t)
 
     def separate_here(idx):
         nonlocal parts
         if last_state != _States.STRING:
             expanded = text_expander(parts[-1].rstrip())
-            if len(expanded) > 0:
-                parts[-1] = expanded[0]
-                parts += expanded[1:]
+            if isinstance(expanded, str):
+                # single token, just set it
+                parts[-1] = expanded
+            elif len(expanded) > 0:
+                # this is some kind of glob returning
+                # a non-zero amount of names, need a custom
+                # token processor to remove quotes from
+                # any appended text (back expansion syntax)
+                parts[-1] = (expanded[0], rem_boundary_quotes)
+                parts += ((e, rem_boundary_quotes) for e in expanded[1:])
         else:
             parts[-1] = parts[-1].rstrip()
 
@@ -268,7 +280,7 @@ def tokenized_split(string: str,
         # create syntax error
         return TokenizedSplitSyntaxError(f'{msg}: \'{string[:idx]}[ERROR HERE>]{string[idx:]}\'')
 
-    def process_boundary_quotes(token):
+    def rem_boundary_quotes(token):
         if token[0] == '"' and token[-1] == '"':
             return token[1:-1]
         if token[0] == "'" and token[-1] == "'":
@@ -278,7 +290,7 @@ def tokenized_split(string: str,
     def post_process_tokens(tokens):
         if remove_boundary_quotes:
             for i, t in enumerate(tokens):
-                tokens[i] = process_boundary_quotes(t)
+                tokens[i] = rem_boundary_quotes(t)
         return tokens
 
     for idx, c in enumerate(string):
@@ -455,11 +467,23 @@ def tokenized_split(string: str,
                 cur_quote = c
                 cur_string += (c if not remove_quotes else '')
                 state_change(_States.STRING)
+
                 expanded = text_expander(parts[-1])
-                back_expand = len(expanded)
-                if back_expand > 0:
-                    parts[-1] = expanded[0]
-                    parts += expanded[1:]
+
+                if isinstance(expanded, str):
+                    # if string, just set the token
+                    # to it, no glob involved
+                    parts[-1] = expanded
+                else:
+                    back_expand = len(expanded)
+                    if back_expand > 0:
+                        # this is some kind of glob returning
+                        # a non-zero amount of names, need a custom
+                        # token processor to remove quotes from
+                        # any appended text (back expansion syntax)
+                        parts[-1] = (expanded[0], rem_boundary_quotes)
+                        parts += ((e, rem_boundary_quotes) for e in expanded[1:])
+
             elif c == separator:
                 # encountered a separator
                 # the last element needs to be right stripped
@@ -517,9 +541,16 @@ def tokenized_split(string: str,
         # considered 'outside' the token, and spaces are only allowed 'inside'
         # and this is ambiguous without lookahead
         expanded = text_expander(parts[-1].rstrip())
-        if len(expanded) > 0:
-            parts[-1] = expanded[0]
-            parts += expanded[1:]
+        if isinstance(expanded, str):
+            # single token, just set it
+            parts[-1] = expanded
+        elif len(expanded) > 0:
+            # this is some kind of glob returning
+            # a non-zero amount of names, need a custom
+            # token processor to remove quotes from
+            # any appended text (back expansion syntax)
+            parts[-1] = (expanded[0], rem_boundary_quotes)
+            parts += ((e, rem_boundary_quotes) for e in expanded[1:])
 
     if state == _States.TEXT_ESCAPE and escapes_in_unquoted:
         # incomplete escapes are not allowed in text tokens
@@ -664,7 +695,9 @@ def shell_parse(string,
                 raise ShellParseSyntaxError(
                     f'glob expression "{token}" returned zero files.')
             return globs
-        return [token]
+
+        # if no globs, return a string
+        return token
 
     def string_expander(q, s):
         if q == '"':

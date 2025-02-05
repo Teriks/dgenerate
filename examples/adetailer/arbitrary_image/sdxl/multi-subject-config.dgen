@@ -15,9 +15,7 @@ stabilityai/stable-diffusion-xl-base-1.0
 --image-seeds ../../../media/americangothic.jpg
 --image-seed-strengths 0.7
 --guidance-scales 8
---adetailer-detectors \
-    Bingsu/adetailer;weight-name=face_yolov8n.pt;prompt="a smiling woman's face";negative-prompt="ugly, deformed";index-filter=0 \
-    Bingsu/adetailer;weight-name=face_yolov8n.pt;prompt="a smiling mans face";negative-prompt="ugly, deformed";index-filter=1
+--adetailer-detectors Bingsu/adetailer;weight-name=face_yolov8n.pt;prompt="a smiling woman's face";negative-prompt="ugly, deformed";index-filter=0
 --adetailer-mask-blurs 16
 --adetailer-detector-paddings 40
 --prompt-weighter sd-embed
