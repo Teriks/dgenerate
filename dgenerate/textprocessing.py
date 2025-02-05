@@ -88,6 +88,7 @@ class ShellParseSyntaxError(Exception):
 def tokenized_split(string: str,
                     separator: str | None,
                     remove_quotes: bool = False,
+                    remove_boundary_quotes: bool = False,
                     strict: bool = False,
                     escapes_in_unquoted: bool = False,
                     escapes_in_quoted: bool = False,
@@ -113,6 +114,7 @@ def tokenized_split(string: str,
     :param string: the string
     :param separator: separator
     :param remove_quotes: remove quotes from quoted string tokens?
+    :param remove_boundary_quotes: remove quotes only from strings that are not surrounded by other tokens?
     :param strict: Text tokens cannot be intermixed with quoted strings? disallow IE: ``"text'string'text"``
     :param escapes_in_unquoted: evaluate escape sequences in text tokens (unquoted strings)?
         The slash is retained by default when escaping quotes, this disables that, and also enables handling of the escapes ``n, r, t, b, f, and \\``.
@@ -140,6 +142,14 @@ def tokenized_split(string: str,
 
     :return: parsed fields
     """
+
+    if remove_quotes and remove_boundary_quotes:
+        raise ValueError(
+            'cannot use remove_quotes and remove_boundary_quotes together, redundant.')
+
+    if remove_boundary_quotes and strict:
+        raise ValueError(
+            'cannot use remove_boundary quotes and strict together, incompatible.')
 
     if string_expander is None:
         def string_expander(q, s):
@@ -188,6 +198,10 @@ def tokenized_split(string: str,
     def append_text(t):
         # append text to the last token
         if back_expand > 0:
+            # boundary quotes are always
+            # removed from the text appended by
+            # back expansion expressions
+            t = process_boundary_quotes(t)
             for i in range(back_expand):
                 parts[-(i + 1)] += t
         else:
@@ -253,6 +267,19 @@ def tokenized_split(string: str,
     def syntax_error(msg, idx):
         # create syntax error
         return TokenizedSplitSyntaxError(f'{msg}: \'{string[:idx]}[ERROR HERE>]{string[idx:]}\'')
+
+    def process_boundary_quotes(token):
+        if token[0] == '"' and token[-1] == '"':
+            return token[1:-1]
+        if token[0] == "'" and token[-1] == "'":
+            return token[1:-1]
+        return token
+
+    def post_process_tokens(tokens):
+        if remove_boundary_quotes:
+            for i, t in enumerate(tokens):
+                tokens[i] = process_boundary_quotes(t)
+        return tokens
 
     for idx, c in enumerate(string):
         if state == _States.EOL:
@@ -501,9 +528,9 @@ def tokenized_split(string: str,
     if remove_stray_separators:
         while parts and parts[-1] == "":
             parts.pop()
-        return parts
+        return post_process_tokens(parts)
 
-    return parts
+    return post_process_tokens(parts)
 
 
 class UnquoteSyntaxError(Exception):
@@ -570,12 +597,12 @@ def shell_expandvars(string: str) -> str:
     return result
 
 
-
 def shell_parse(string,
                 expand_home: bool = True,
                 expand_vars: bool = True,
                 expand_glob: bool = True,
-                expand_vars_func: typing.Callable[[str], str] = shell_expandvars) -> list[str]:
+                expand_vars_func: typing.Callable[[str], str] = shell_expandvars,
+                shlex_compatible: bool = False) -> list[str]:
     """
     Shell command line parsing, implements basic home directory expansion, globbing, and
     environmental variable expansion.
@@ -620,6 +647,7 @@ def shell_parse(string,
     :param expand_glob: Expand ``*`` glob expressions including recursive globs?
     :param expand_vars_func: This function is used to expand shell variables in a string,
         analogous to `os.path.expandvars`
+    :param shlex_compatible: ensure shlex compatibility? (remove all quotes)
     :return: shell arguments
     """
 
@@ -646,12 +674,20 @@ def shell_parse(string,
         return s
 
     try:
+        opts = dict()
+
+        if shlex_compatible:
+            opts['remove_quotes'] = True
+        else:
+            opts['remove_boundary_quotes'] = True
+
         return tokenized_split(string, ' ',
-                               remove_quotes=True,
                                strict=False,
                                text_expander=text_expander,
                                string_expander=string_expander,
-                               remove_stray_separators=True)
+                               remove_stray_separators=True,
+                               **opts)
+
     except TokenizedSplitSyntaxError as e:
         raise ShellParseSyntaxError(e)
 
