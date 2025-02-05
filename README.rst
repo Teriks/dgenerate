@@ -1849,7 +1849,7 @@ When specifying any ``--device`` value use ``cuda``, ``cuda:1``, etc. as you wou
 
 You need to first install ROCm support, follow: https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/quick-start.html
 
-Then use: ``--extra-index-url https://download.pytorch.org/whl/rocm6.2/`` when installing via ``pip`` or ``pipx``.
+Then use: ``--extra-index-url https://download.pytorch.org/whl/rocm6.2.4/`` when installing via ``pip`` or ``pipx``.
 
 Install Python >=3.10,<3.13 (Debian / Ubuntu) and pipx
 ------------------------------------------------------
@@ -1893,25 +1893,25 @@ Install dgenerate
     # install with just support for torch
 
     pipx install dgenerate \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm6.2/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm6.2.4/"
 
     # With NCNN upscaler support
 
     pipx install dgenerate[ncnn] \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm6.2/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm6.2.4/"
 
     # If you want a specific version
 
     pipx install dgenerate==4.5.1 \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm6.2/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm6.2.4/"
 
     # You can install without pipx into your own environment like so
 
-    pip3 install dgenerate==4.5.1 --extra-index-url https://download.pytorch.org/whl/rocm6.2/
+    pip3 install dgenerate==4.5.1 --extra-index-url https://download.pytorch.org/whl/rocm6.2.4/
 
     # Or with NCNN
 
-    pip3 install dgenerate[ncnn]==4.5.1 --extra-index-url https://download.pytorch.org/whl/rocm6.2/
+    pip3 install dgenerate[ncnn]==4.5.1 --extra-index-url https://download.pytorch.org/whl/rocm6.2.4/
 
 
     
