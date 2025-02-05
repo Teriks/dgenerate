@@ -2799,6 +2799,9 @@ As an example, you may override the mentioned arguments for any scheduler in thi
     --prompts "none" \
     --scheduler PNDMScheduler;prediction-type=v_prediction
 
+In the case of list / array arguments such as ``trained-betas`` you may use python
+literal syntax, i.e: ``[1, 2, 3]`` or CSV (tuple) ``1,2,3``.
+
 Like diffusion parameter arguments, you may specify multiple scheduler URIs and they will be tried in turn.
 
 When you specify multiple schedulers in this manner they will be added to the beginning of the
