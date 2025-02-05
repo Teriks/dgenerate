@@ -93,8 +93,7 @@ stabilityai/stable-diffusion-2-1 --prompts {{ my_prompt }} --gen-seeds 5
 # For loops are possible with normal continuation
 # when not using a heredoc template continuation (mentioned below),
 # such as when the loop occurs in the body of a directive or a
-# dgenerate invocation, however this sort of continuation usage will
-# replace newlines and whitespace with a single space.
+# dgenerate invocation
 
 # IE this template will be: "{% for image in last_images %} {{ quote(image) }} {% endfor %}"
 
