@@ -13,31 +13,6 @@
 # limitations under the License.
 
 
-from typing import Optional
-
-import PIL.Image
-import torch
-from diffusers.utils import (
-    logging,
-)
-
-logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
-
-
-# Copied from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion_img2img.retrieve_latents
-def retrieve_latents(
-        encoder_output: torch.Tensor, generator: Optional[torch.Generator] = None, sample_mode: str = "sample"
-):
-    if hasattr(encoder_output, "latent_dist") and sample_mode == "sample":
-        return encoder_output.latent_dist.sample(generator)
-    elif hasattr(encoder_output, "latent_dist") and sample_mode == "argmax":
-        return encoder_output.latent_dist.mode()
-    elif hasattr(encoder_output, "latents"):
-        return encoder_output.latents
-    else:
-        raise AttributeError("Could not access latents of provided encoder_output")
-
-
 import inspect
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
@@ -66,6 +41,7 @@ from diffusers.models.attention_processor import (
 from diffusers.schedulers import KarrasDiffusionSchedulers
 from diffusers.utils import (
     is_invisible_watermark_available,
+    replace_example_docstring,
     deprecate,
     logging,
 )
@@ -81,6 +57,50 @@ if is_invisible_watermark_available():
     from diffusers.pipelines.stable_diffusion_xl.watermark import StableDiffusionXLWatermarker
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
+
+
+EXAMPLE_DOC_STRING = """
+    Examples:
+        ```py
+        >>> import torch
+        >>> from diffusers import KolorsControlNetPipeline, ControlNetModel
+        >>> from diffusers.utils import load_image
+        >>> import numpy as np
+        >>> import cv2
+        >>> from PIL import Image
+        
+        >>> prompt = "aerial view, a futuristic research complex in a bright foggy jungle, hard lighting"
+        >>> negative_prompt = "low quality, bad quality, sketches"
+        
+        >>> # download an image
+        >>> image = load_image(
+        ...     "https://hf.co/datasets/hf-internal-testing/diffusers-images/resolve/main/sd_controlnet/hf-logo.png"
+        ... )
+        
+        >>> # initialize the models and pipeline
+        >>> controlnet_conditioning_scale = 0.5  # recommended for good generalization
+        >>> controlnet = ControlNetModel.from_pretrained(
+        ...     "Kwai-Kolors/Kolors-ControlNet-Canny", torch_dtype=torch.float16
+        ... )
+        
+        >>> pipe = KolorsControlNetPipeline.from_pretrained(
+        ...     "Kwai-Kolors/Kolors-diffusers", controlnet=controlnet, torch_dtype=torch.float16
+        ... )
+        >>> pipe.enable_model_cpu_offload()
+        
+        >>> # get canny image
+        >>> image = np.array(image)
+        >>> image = cv2.Canny(image, 100, 200)
+        >>> image = image[:, :, None]
+        >>> image = np.concatenate([image, image, image], axis=2)
+        >>> canny_image = Image.fromarray(image)
+        
+        >>> # generate image
+        >>> image = pipe(
+        ...     prompt, controlnet_conditioning_scale=controlnet_conditioning_scale, image=canny_image
+        ... ).images[0]
+        ```
+"""
 
 
 # Copied from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion_img2img.retrieve_latents
@@ -105,13 +125,13 @@ class KolorsControlNetPipeline(
     IPAdapterMixin,
 ):
     r"""
-    Pipeline for image-to-image generation using Stable Diffusion XL with ControlNet guidance.
+    Pipeline for image-to-image generation using Kolors with ControlNet guidance.
 
     This model inherits from [`DiffusionPipeline`]. Check the superclass documentation for the generic methods the
     library implements for all the pipelines (such as downloading or saving, running on a particular device, etc.)
 
     The pipeline also inherits the following loading methods:
-        - [`~loaders.TextualInversionLoaderMixin.load_textual_inversion`] for loading textual inversion embeddings
+        - [`~loaders.FromSingleFileMixin.from_single_file`] for loading `.safetensors` files
         - [`~loaders.StableDiffusionXLLoraLoaderMixin.load_lora_weights`] for loading LoRA weights
         - [`~loaders.StableDiffusionXLLoraLoaderMixin.save_lora_weights`] for saving LoRA weights
         - [`~loaders.IPAdapterMixin.load_ip_adapter`] for loading IP Adapters
@@ -133,11 +153,10 @@ class KolorsControlNetPipeline(
             A scheduler to be used in combination with `unet` to denoise the encoded image latents. Can be one of
             [`DDIMScheduler`], [`LMSDiscreteScheduler`], or [`PNDMScheduler`].
         requires_aesthetics_score (`bool`, *optional*, defaults to `"False"`):
-            Whether the `unet` requires an `aesthetic_score` condition to be passed during inference. Also see the
-            config of `stabilityai/stable-diffusion-xl-refiner-1-0`.
+            Whether the `unet` requires an `aesthetic_score` condition to be passed during inference.
         force_zeros_for_empty_prompt (`bool`, *optional*, defaults to `"True"`):
             Whether the negative prompt embeddings shall be forced to always be set to 0. Also see the config of
-            `stabilityai/stable-diffusion-xl-base-1-0`.
+            `Kwai-Kolors/Kolors-diffusers`.
         feature_extractor ([`~transformers.CLIPImageProcessor`]):
             A `CLIPImageProcessor` to extract features from generated images; used as inputs to the `safety_checker`.
     """
@@ -784,6 +803,7 @@ class KolorsControlNetPipeline(
         return self._num_timesteps
 
     @torch.no_grad()
+    @replace_example_docstring(EXAMPLE_DOC_STRING)
     def __call__(
             self,
             prompt: Union[str, List[str]] = None,

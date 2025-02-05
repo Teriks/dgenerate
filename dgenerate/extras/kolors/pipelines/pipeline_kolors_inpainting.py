@@ -37,9 +37,10 @@ from diffusers.pipelines.pipeline_utils import DiffusionPipeline, StableDiffusio
 from diffusers.pipelines.stable_diffusion_xl.pipeline_output import StableDiffusionXLPipelineOutput
 from diffusers.schedulers import KarrasDiffusionSchedulers
 from diffusers.utils import (
-    deprecate,
     is_invisible_watermark_available,
+    replace_example_docstring,
     is_torch_xla_available,
+    deprecate,
     logging,
 )
 from diffusers.utils.torch_utils import randn_tensor
@@ -61,6 +62,34 @@ else:
     XLA_AVAILABLE = False
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
+
+
+EXAMPLE_DOC_STRING = """
+    Examples:
+        ```py
+        >>> import torch
+        >>> from diffusers import KolorsInpaintPipeline
+        >>> from diffusers.utils import load_image
+        
+        >>> pipe = KolorsInpaintPipeline.from_pretrained(
+        ...     "Kwai-Kolors/Kolors-diffusers",
+        ...     torch_dtype=torch.float16,
+        ...     variant="fp16"
+        ... )
+        >>> pipe.to("cuda")
+        
+        >>> img_url = "https://raw.githubusercontent.com/CompVis/latent-diffusion/main/data/inpainting_examples/overture-creations-5sI6fQgYIuo.png"
+        >>> mask_url = "https://raw.githubusercontent.com/CompVis/latent-diffusion/main/data/inpainting_examples/overture-creations-5sI6fQgYIuo_mask.png"
+        
+        >>> init_image = load_image(img_url).convert("RGB")
+        >>> mask_image = load_image(mask_url).convert("RGB")
+        
+        >>> prompt = "A majestic tiger sitting on a bench"
+        >>> image = pipe(
+        ...     prompt=prompt, image=init_image, mask_image=mask_image, num_inference_steps=50, strength=0.80
+        ... ).images[0]
+        ```
+"""
 
 
 # Copied from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion.rescale_noise_cfg
@@ -294,14 +323,13 @@ class KolorsInpaintPipeline(
     IPAdapterMixin,
 ):
     r"""
-    Pipeline for text-to-image generation using Stable Diffusion XL.
+    Pipeline for text-to-image generation using Kolors.
 
     This model inherits from [`DiffusionPipeline`]. Check the superclass documentation for the generic methods the
     library implements for all the pipelines (such as downloading or saving, running on a particular device, etc.)
 
     The pipeline also inherits the following loading methods:
-        - [`~loaders.TextualInversionLoaderMixin.load_textual_inversion`] for loading textual inversion embeddings
-        - [`~loaders.FromSingleFileMixin.from_single_file`] for loading `.ckpt` files
+        - [`~loaders.FromSingleFileMixin.from_single_file`] for loading `.safetensors` files
         - [`~loaders.StableDiffusionXLLoraLoaderMixin.load_lora_weights`] for loading LoRA weights
         - [`~loaders.StableDiffusionXLLoraLoaderMixin.save_lora_weights`] for saving LoRA weights
         - [`~loaders.IPAdapterMixin.load_ip_adapter`] for loading IP Adapters
@@ -319,11 +347,10 @@ class KolorsInpaintPipeline(
             A scheduler to be used in combination with `unet` to denoise the encoded image latents. Can be one of
             [`DDIMScheduler`], [`LMSDiscreteScheduler`], or [`PNDMScheduler`].
         requires_aesthetics_score (`bool`, *optional*, defaults to `"False"`):
-            Whether the `unet` requires a aesthetic_score condition to be passed during inference. Also see the config
-            of `stabilityai/stable-diffusion-xl-refiner-1-0`.
+            Whether the `unet` requires a aesthetic_score condition to be passed during inference.
         force_zeros_for_empty_prompt (`bool`, *optional*, defaults to `"True"`):
             Whether the negative prompt embeddings shall be forced to always be set to 0. Also see the config of
-            `stabilityai/stable-diffusion-xl-base-1-0`.
+            `Kwai-Kolors/Kolors-diffusers`.
         add_watermarker (`bool`, *optional*):
             Whether to use the [invisible_watermark library](https://github.com/ShieldMnt/invisible-watermark/) to
             watermark output images. If not defined, it will default to True if the package is installed, otherwise no
@@ -1064,6 +1091,7 @@ class KolorsInpaintPipeline(
         return self._interrupt
 
     @torch.no_grad()
+    @replace_example_docstring(EXAMPLE_DOC_STRING)
     def __call__(
             self,
             prompt: Union[str, List[str]] = None,
