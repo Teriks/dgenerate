@@ -145,11 +145,11 @@ def tokenized_split(string: str,
 
     if remove_quotes and remove_boundary_quotes:
         raise ValueError(
-            'cannot use remove_quotes and remove_boundary_quotes together, redundant.')
+            'cannot use "remove_quotes" and "remove_boundary_quotes" together, redundant.')
 
     if remove_boundary_quotes and strict:
         raise ValueError(
-            'cannot use remove_boundary quotes and strict together, incompatible.')
+            'cannot use "remove_boundary_quotes" and "strict" together, incompatible.')
 
     if string_expander is None:
         def string_expander(q, s):
