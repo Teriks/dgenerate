@@ -39,6 +39,7 @@ from diffusers.pipelines.stable_diffusion_xl.pipeline_output import StableDiffus
 from diffusers.schedulers import KarrasDiffusionSchedulers
 from diffusers.utils import (
     is_invisible_watermark_available,
+    replace_example_docstring,
     deprecate,
     logging
 )
@@ -54,6 +55,63 @@ if is_invisible_watermark_available():
     from diffusers.pipelines.stable_diffusion_xl.watermark import StableDiffusionXLWatermarker
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
+
+
+EXAMPLE_DOC_STRING = """
+    Examples:
+        ```py
+        >>> from diffusers import KolorsControlNetInpaintPipeline, ControlNetModel
+        >>> from diffusers.utils import load_image
+        >>> from PIL import Image
+        >>> import numpy as np
+        >>> import torch
+        >>> import cv2
+        
+        >>> init_image = load_image(
+        ...     "https://huggingface.co/datasets/diffusers/test-arrays/resolve/main/stable_diffusion_inpaint/boy.png"
+        ... )
+        >>> init_image = init_image.resize((1024, 1024))
+        
+        >>> generator = torch.Generator(device="cpu").manual_seed(1)
+        
+        >>> mask_image = load_image(
+        ...     "https://huggingface.co/datasets/diffusers/test-arrays/resolve/main/stable_diffusion_inpaint/boy_mask.png"
+        ... )
+        >>> mask_image = mask_image.resize((1024, 1024))
+        
+        
+        >>> def make_canny_condition(image):
+        ...     image = np.array(image)
+        ...     image = cv2.Canny(image, 100, 200)
+        ...     image = image[:, :, None]
+        ...     image = np.concatenate([image, image, image], axis=2)
+        ...     image = Image.fromarray(image)
+        ...     return image
+        
+        
+        >>> control_image = make_canny_condition(init_image)
+        
+        >>> controlnet = ControlNetModel.from_pretrained(
+        ...     "Kwai-Kolors/Kolors-ControlNet-Canny", torch_dtype=torch.float16
+        ... )
+        >>> pipe = KolorsControlNetInpaintPipeline.from_pretrained(
+        ...     "Kwai-Kolors/Kolors-diffusers", controlnet=controlnet, torch_dtype=torch.float16
+        ... )
+        
+        >>> pipe.enable_model_cpu_offload()
+        
+        # generate image
+        >>> image = pipe(
+        ...     "a handsome man with ray-ban sunglasses",
+        ...     num_inference_steps=20,
+        ...     generator=generator,
+        ...     eta=1.0,
+        ...     image=init_image,
+        ...     mask_image=mask_image,
+        ...     control_image=control_image,
+        ... ).images[0]
+        ```
+"""
 
 
 # Copied from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion_img2img.retrieve_latents
@@ -138,13 +196,13 @@ class KolorsControlNetInpaintPipeline(
     IPAdapterMixin,
 ):
     r"""
-    Pipeline for inpainting using Stable Diffusion XL with ControlNet guidance.
+    Pipeline for inpainting using Kolors with ControlNet guidance.
 
     This model inherits from [`DiffusionPipeline`]. Check the superclass documentation for the generic methods the
     library implements for all the pipelines (such as downloading or saving, running on a particular device, etc.)
 
     The pipeline also inherits the following loading methods:
-        - [`~loaders.TextualInversionLoaderMixin.load_textual_inversion`] for loading textual inversion embeddings
+        - [`~loaders.FromSingleFileMixin.from_single_file`] for loading `.safetensors` files
         - [`~loaders.StableDiffusionXLLoraLoaderMixin.load_lora_weights`] for loading LoRA weights
         - [`~loaders.StableDiffusionXLLoraLoaderMixin.save_lora_weights`] for saving LoRA weights
         - [`~loaders.IPAdapterMixin.load_ip_adapter`] for loading IP Adapters
@@ -170,7 +228,7 @@ class KolorsControlNetInpaintPipeline(
             config of `stabilityai/stable-diffusion-xl-refiner-1-0`.
         force_zeros_for_empty_prompt (`bool`, *optional*, defaults to `"True"`):
             Whether the negative prompt embeddings shall be forced to always be set to 0. Also see the config of
-            `stabilityai/stable-diffusion-xl-base-1-0`.
+            `Kwai-Kolors/Kolors-diffusers`.
         feature_extractor ([`~transformers.CLIPImageProcessor`]):
             A `CLIPImageProcessor` to extract features from generated images; used as inputs to the `safety_checker`.
     """
@@ -1024,6 +1082,7 @@ class KolorsControlNetInpaintPipeline(
         return mask, masked_image_latents
 
     @torch.no_grad()
+    @replace_example_docstring(EXAMPLE_DOC_STRING)
     def __call__(
             self,
             prompt: Union[str, List[str]] = None,
