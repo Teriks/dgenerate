@@ -14,7 +14,7 @@ Kwai-Kolors/Kolors-diffusers
 --inference-steps 30
 --guidance-scales 7
 --gen-seeds 1
---output-path sdxl-refiner
+--output-path kolors-refiner
 --output-size 1024x1024
 --model-sequential-offload
 --post-processors adetailer;\
