@@ -21,4 +21,4 @@
 
     \exec cat subprocess.dgen | dgenerate &> log2.txt
 
-{% endif %} !END
+{% endif %}

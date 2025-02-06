@@ -16,7 +16,7 @@
 {% if image_size("mona-leres-depth.png") != image_size("../media/monalisa.png") %}
     \print 'leres image processor test failure, incorrect output image size'
     \exit 1
-{% endif %} !END
+{% endif %}
 
 
 
@@ -29,4 +29,4 @@
 {% if image_size("mona-leres-depth-boost.png") != image_size("../media/monalisa.png") %}
     \print 'leres depth boost image processor test failure, incorrect output image size'
     \exit 1
-{% endif %} !END
+{% endif %}

@@ -20,5 +20,5 @@
 {% if image_size("mona-lineart-anime.png") != image_size("../media/monalisa.png") %}
     \print 'lineart anime image processor test failure, incorrect output image size'
     \exit 1
-{% endif %} !END
+{% endif %}
 

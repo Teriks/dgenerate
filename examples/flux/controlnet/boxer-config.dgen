@@ -12,7 +12,7 @@
 {% if not token.strip() and not '--auth-token' in injected_args %}
     \print Set HF_TOKEN environmental variable or --auth-token to run this example!
     \exit
-{% endif %} !END
+{% endif %}
 
 
 black-forest-labs/FLUX.1-schnell

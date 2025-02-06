@@ -19,4 +19,4 @@
 {% if image_size("mona-midas-depth.png") != image_size("../media/monalisa.png") %}
     \print 'midas image processor test failure, incorrect output image size'
     \exit 1
-{% endif %} !END
+{% endif %}

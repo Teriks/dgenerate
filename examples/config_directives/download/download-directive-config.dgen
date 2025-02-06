@@ -22,8 +22,7 @@
 
     \print {{ '{{ quote(model_path) }}' }}
 
-    # we can now render with the model, we do not need to put !END at the end
-    # because we are already in a template here doc in this case (the if statement)
+    # we can now render with the model
 
     {{ '{{ quote(model_path) }}' }}
     --inference-steps 30
@@ -42,4 +41,4 @@
 
     \print Must set CIVIT_AI_TOKEN environmental variable for this example!
 
-{% endif %} !END
+{% endif %}

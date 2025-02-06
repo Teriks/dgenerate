@@ -42,4 +42,4 @@
 
     \print Set CIVIT_AI_TOKEN environmental variable to run this example!
 
-{% endif %} !END
+{% endif %}

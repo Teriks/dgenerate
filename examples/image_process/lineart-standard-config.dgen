@@ -18,4 +18,4 @@
 {% if image_size("horse2-lineart-standard.png") != image_size("../media/horse2.jpeg") %}
     \print 'lineart stadnard image processor test failure, incorrect output image size'
     \exit 1
-{% endif %} !END
+{% endif %}

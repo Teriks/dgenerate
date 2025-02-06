@@ -6455,31 +6455,26 @@ such as VAEs etc. outside of relying on the caching system.
 
 
     # Execute additional config with full templating.
-    # The sequence !END is interpreted as the end of a
-    # template continuation, a template continuation is
-    # started when a line begins with the character {
-    # and is effectively a heredoc, in that all whitespace
-    # within is preserved including newlines
+    # a template continuation is started when a line begins
+    # with the character { and is effectively a heredoc, in
+    # that all whitespace within is preserved including newlines
 
     {% for image in last_images %}
         stabilityai/stable-diffusion-2-1 --image-seeds {{ quote(image) }} --prompts {{ my_prompt }}
-    {% endfor %} !END
+    {% endfor %}
 
 
     # Multiple lines can be used with a template continuation
     # the inside of the template will be expanded to raw config
     # and then be ran, so make sure to use line continuations within
     # where they are necessary as you would do in the top level of
-    # a config file. The whole of the template continuation is
-    # processed by Jinja, from { to !END, so only one !END is
-    # ever necessary after the external template
-    # when dealing with nested templates
+    # a config file.
 
     {% for image in last_images %}
         stabilityai/stable-diffusion-2-1
         --image-seeds {{ quote(image) }}
         --prompts {{ my_prompt }}
-    {% endfor %} !END
+    {% endfor %}
 
 
     # The above are both basically equivalent to this
@@ -6695,7 +6690,7 @@ implemented by dgenerate are available for use in the evaluated expressions.
 
     {% for value in my_variable %}
         \print {{ value }}
-    {% endfor %} !END
+    {% endfor %}
 
     # indirect expansion is allowed
 
@@ -6817,7 +6812,7 @@ globbing.
 
     {% for file in glob.iglob('../media/*.png') %}
         \print {{ quote(file) }}
-    {% endfor %} !END
+    {% endfor %}
 
     # usage of os.path via path
 

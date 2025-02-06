@@ -6,7 +6,7 @@
 {% if not token.strip() and not '--auth-token' in injected_args %}
     \print Set HF_TOKEN environmental variable or --auth-token to run this example!
     \exit
-{% endif %} !END
+{% endif %}
 
 # We can run this same prompt over multiple images in batch on the GPU
 # by using the "images: ..." syntax of --image-seeds
