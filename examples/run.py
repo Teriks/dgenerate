@@ -50,11 +50,7 @@ parser = argparse.ArgumentParser(prog='run')
 parser.add_argument('--paths', nargs='*', help='Example paths, relative to the working directory.')
 parser.add_argument('--subprocess-only', action='store_true', default=False,
                     help='Use a different subprocess for every example.')
-parser.add_argument('--skip-animations', action='store_true', default=False, help='Skip rendering animations.')
-parser.add_argument('--skip-library', action='store_true', default=False, help='Skip library usage examples.')
-parser.add_argument('--skip-deepfloyd', action='store_true', default=False, help='Skip deep floyd examples.')
-parser.add_argument('--skip-flux', action='store_true', default=False, help='Skip flux examples.')
-parser.add_argument('--skip-ncnn', action='store_true', default=False, help='Skip examples involving ncnn.')
+parser.add_argument('--skip', nargs='+', default=False, help='Skip paths containing these strings.')
 parser.add_argument('--short-animations', action='store_true', default=False,
                     help='Render only 3 frames for animations.')
 parser.add_argument('--torch-debug', action='store_true', default=False,
@@ -194,18 +190,14 @@ def find_gpu_tensors_in_gc():
 
 def should_skip_config(config, known_args):
     c = os.path.relpath(config, cwd)
-    if known_args.skip_animations and 'animation' in c:
-        log(f'SKIPPING ANIMATION: {config}')
-        return True
-    if 'deepfloyd' in c and known_args.skip_deepfloyd:
-        log(f'SKIPPING DEEPFLOYD: {config}')
-        return True
-    if 'flux' in c and known_args.skip_flux:
-        log(f'SKIPPING FLUX: {config}')
-        return True
-    if 'ncnn' in c and known_args.skip_ncnn:
-        log(f'SKIPPING NCNN: {config}')
-        return True
+    skips = known_args.skip
+
+    if skips:
+        for skip in skips:
+            if skip in c:
+                log(f'SKIPPING "{skip}": {config}')
+                return True
+
     return False
 
 
@@ -296,7 +288,7 @@ def filter_to_directories_under_top_level(directories, top_level_directory):
 
 def main():
     known_args, injected_args = parser.parse_known_args()
-    library_installed = _batchprocess is not None and not known_args.skip_library
+    library_installed = _batchprocess is not None
     debug_torch = not known_args.subprocess_only and torch is not None and known_args.torch_debug
 
     if known_args.paths:
