@@ -678,7 +678,11 @@ def shell_parse(string,
     :param expand_glob: Expand ``*`` glob expressions including recursive globs?
     :param expand_vars_func: This function is used to expand shell variables in a string,
         analogous to `os.path.expandvars`
-    :param shlex_compatible: ensure shlex compatibility? (remove all quotes)
+    :param shlex_compatible: ensure shlex compatibility? This removes all quotes, instead
+        of just quotes at the ends of strings that exist on word boundary. dgenerates
+        configuration script shell parse only removes quotes from strings that are not mixed
+        together next to other tokens by default, this is to preserve important quoting
+        inside URI arguments.
     :return: shell arguments
     """
 
