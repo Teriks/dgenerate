@@ -28,4 +28,4 @@
 {% if image_size("rickroll-canny.gif") != image_size("../media/rickroll-roll.gif") %}
     \print 'canny image processor test failure, incorrect output image size'
     \exit 1
-{% endif %} !END
+{% endif %}

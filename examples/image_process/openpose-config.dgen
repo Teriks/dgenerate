@@ -27,4 +27,4 @@
 {% if image_size("rickroll-openpose.gif") != image_size("../media/rickroll-roll.gif") %}
     \print 'openpose processor test failure, incorrect output image size'
     \exit 1
-{% endif %} !END
+{% endif %}

@@ -7,7 +7,7 @@
 {% if not token.strip() and not '--auth-token' in injected_args %}
     \print Set HF_TOKEN environmental variable or --auth-token to run this example!
     \exit
-{% endif %} !END
+{% endif %}
 
 # Use a YOLO model to detect a face and generate an inpaint mask
 # for the Flux fill pipeline, composite with adetailer

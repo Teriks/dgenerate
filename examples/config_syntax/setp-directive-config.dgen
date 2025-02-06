@@ -46,7 +46,7 @@
 
 {% for value in my_variable %}
     \print {{ value }}
-{% endfor %} !END
+{% endfor %}
 
 # indirect expansion is allowed
 

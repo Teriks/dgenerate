@@ -16,7 +16,7 @@
 {% if test_var != '"hello # world!"' %}
     \print FAILED CASE 1: {{ quote(test_var) }}
     \exit 1
-{% endif %} !END
+{% endif %}
 
 \print RESULT CASE 1: {{ test_var }}
 
@@ -38,7 +38,7 @@
     \print FAILED CASE 2: {{ quote(test_var) }}
     \exit 1
 
-{% endif %} !END
+{% endif %}
 
 
 # here quoting # is not needed, because \print itself is expanding the template
@@ -56,7 +56,7 @@
 {% if test_var != 'hello # world!' %}
     \print FAILED CASE 3: {{ quote(test_var) }}
     \exit 1
-{% endif %} !END
+{% endif %}
 
 \print RESULT CASE 3: {{ test_var }}
 
@@ -75,7 +75,7 @@
 {% if test_var != '"I want a literal hashtag here # but I dont want my comment in my continuation!"' %} # there can be comment here
     \print FAILED CASE 4: {{ quote(test_var) }} # comment time :)
     \exit 1
-{% endif %} !END
+{% endif %}
 
 \print RESULT CASE 4: {{ test_var }}
 
@@ -90,7 +90,7 @@
 {% if test_var != '"This string continues on to the next line, but I want a hash # right here so I have to escape it"' %}
     \print FAILED CASE 5: {{ quote(test_var) }}
     \exit 1
-{% endif %} !END
+{% endif %}
 
 \print RESULT CASE 5: {{ test_var }}
 
@@ -103,7 +103,7 @@
 {% if test_var != 'hello # world!    # theres a literal hashtag behind me preceded by some space' %}
     \print FAILED CASE 6: {{ quote(test_var) }}
     \exit 1
-{% endif %} !END
+{% endif %}
 
 \print RESULT CASE 6: {{ test_var }}
 
@@ -116,7 +116,7 @@
 {% if test_var != '"hello # world!' %}
     \print FAILED CASE 7: {{ quote(test_var) }}
     \exit 1
-{% endif %} !END
+{% endif %}
 
 \print RESULT CASE 7: {{ test_var }}
 

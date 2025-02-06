@@ -17,7 +17,7 @@
 {% if image_size("horse2-lineart.png") != image_size("../media/horse2.jpeg") %}
     \print 'lineart image processor test failure, incorrect output image size'
     \exit 1
-{% endif %} !END
+{% endif %}
 
 
 
@@ -30,5 +30,5 @@
 {% if image_size("horse2-lineart-course.png") != image_size("../media/horse2.jpeg") %}
     \print 'lineart course image processor test failure, incorrect output image size'
     \exit 1
-{% endif %} !END
+{% endif %}
 

@@ -286,7 +286,6 @@ class DgenerateLexer(_lexer.RegexLexer):
             (r'\bmps\b', _token.Keyword),
             (r'\bTrue|true\b', _token.Keyword),
             (r'\bFalse|false\b', _token.Keyword),
-            (r'[!]END\b', _token.Keyword),
             _jinja_block_pattern,
             _jinja_comment_pattern,
             _jinja_interpolate_pattern,

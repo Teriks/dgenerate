@@ -24,5 +24,5 @@
 {% if image_size("horse2-normal-bae.png") != image_size("../media/horse2.jpeg") %}
     \print 'normal-bae processor test failure, incorrect output image size'
     \exit 1
-{% endif %} !END
+{% endif %}
 

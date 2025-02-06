@@ -34,6 +34,7 @@ import dgenerate.files as _files
 import dgenerate.messages as _messages
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
+import dgenerate.batchprocess.jinjabalancechecker as _jinjabalancechecker
 
 
 class BatchProcessError(Exception):
@@ -811,6 +812,8 @@ class BatchProcessor:
 
         last_line = None
 
+        jinja_lexer = None
+
         def run_continuation(cur_line):
             nonlocal continuation, template_continuation, normal_continuation, last_line
 
@@ -860,13 +863,19 @@ class BatchProcessor:
 
             elif line_strip.startswith('{') and not template_continuation and not normal_continuation:
 
+                jinja_lexer = _jinjabalancechecker.JinjaBalanceChecker(
+                    jinja2.Environment()
+                )
+
                 self._template_continuation_start_line = self._current_line
 
                 line_rstrip = _textprocessing.remove_tail_comments(line)[1].rstrip()
 
-                if line_rstrip.endswith('!END') or next_line is None:
+                jinja_lexer.put_source(line_rstrip)
+
+                if jinja_lexer.is_balanced() or next_line is None:
                     self._template_continuation_end_line = self._current_line
-                    run_continuation(line_rstrip.removesuffix('!END'))
+                    run_continuation(line_rstrip)
                 else:
                     continuation += line
                     template_continuation = True
@@ -885,9 +894,11 @@ class BatchProcessor:
 
                 line_rstrip = _textprocessing.remove_tail_comments(line)[1].rstrip()
 
-                if line_rstrip.endswith('!END') or next_line is None:
+                jinja_lexer.put_source(line_rstrip)
+
+                if jinja_lexer.is_balanced() or next_line is None:
                     self._template_continuation_end_line = self._current_line
-                    run_continuation(line_rstrip.removesuffix('!END'))
+                    run_continuation(line_rstrip)
                 else:
                     continuation += line
             else:

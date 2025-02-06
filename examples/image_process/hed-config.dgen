@@ -16,7 +16,7 @@
 {% if image_size("horse2-hed.png") != image_size("../media/horse2.jpeg") %}
     \print 'hed image processor test failure, incorrect output image size'
     \exit 1
-{% endif %} !END
+{% endif %}
 
 
 
@@ -29,4 +29,4 @@
 {% if image_size("horse2-hed-scribble.png") != image_size("../media/horse2.jpeg") %}
     \print 'hed scribble image processor test failure, incorrect output image size'
     \exit 1
-{% endif %} !END
+{% endif %}

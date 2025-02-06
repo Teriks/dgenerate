@@ -15,7 +15,7 @@
 {% for i in range(0, 11) %}
     \download image "https://huggingface.co/datasets/YiYiXu/testing-images/resolve/main/style_ziggy/img{{i}}.png"
     \setp ziggy_style_images ziggy_style_images + [image]
-{% endfor %} !END
+{% endfor %}
 
 
 # join all the image paths together with +, and some space to create the

@@ -36,7 +36,7 @@
 
 {% for file in glob.iglob('../media/*.png') %}
     \print {{ quote(file) }}
-{% endfor %} !END
+{% endfor %}
 
 # usage of os.path via path
 

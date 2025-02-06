@@ -277,7 +277,6 @@ def run_directory_subprocess(configs, injected_args, extra_args, debug_torch, kn
     for config in configs:
         if should_skip_config(config, known_args):
             continue
-
         run_config(config, injected_args, extra_args, debug_torch)
 
 
@@ -294,15 +293,16 @@ def main():
     if known_args.paths:
         configs = []
         for path in [p for path in known_args.paths for p in glob.glob(path)]:
+            path = os.path.abspath(path)
             _, ext = os.path.splitext(path)
             if ext:
                 configs.append(path)
             else:
                 if library_installed:
                     configs.extend(
-                        glob.glob(os.path.join(cwd, *os.path.split(path), '**', LIB_EXAMPLES_GLOB), recursive=True))
+                        glob.glob(os.path.join(path, '**', LIB_EXAMPLES_GLOB), recursive=True))
                 configs.extend(
-                    glob.glob(os.path.join(cwd, *os.path.split(path), '**', CONFIG_GLOB), recursive=True))
+                    glob.glob(os.path.join(path, '**', CONFIG_GLOB), recursive=True))
     else:
         configs = []
         if library_installed:

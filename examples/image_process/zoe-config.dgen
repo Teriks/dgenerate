@@ -20,4 +20,4 @@
 {% if image_size("horse2-zoe-depth.png") != image_size("../media/horse2.jpeg") %}
     \print 'zoe processor test failure, incorrect output image size'
     \exit 1
-{% endif %} !END
+{% endif %}
