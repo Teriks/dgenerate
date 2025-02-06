@@ -633,6 +633,7 @@ def shell_parse(string,
                 expand_vars: bool = True,
                 expand_glob: bool = True,
                 expand_vars_func: typing.Callable[[str], str] = shell_expandvars,
+                glob_include_hidden: bool = False,
                 shlex_compatible: bool = False) -> list[str]:
     """
     Shell command line parsing, implements basic home directory expansion, globbing, and
@@ -682,6 +683,7 @@ def shell_parse(string,
     :param expand_glob: Expand ``*`` glob expressions including recursive globs?
     :param expand_vars_func: This function is used to expand shell variables in a string,
         analogous to `os.path.expandvars`
+    :param glob_include_hidden: Should globs include hidden directories?
     :param shlex_compatible: ensure shlex compatibility? This removes all quotes, instead
         of just quotes at the ends of strings that exist on word boundaries. dgenerates
         configuration script shell parsing only removes quotes from strings that are not mixed
@@ -698,7 +700,15 @@ def shell_parse(string,
             token = expand_vars_func(token)
 
         if expand_glob and '*' in token:
-            globs = list(glob.glob(token, recursive=True))
+
+            globs = list(
+                glob.glob(
+                    token,
+                    recursive=True,
+                    include_hidden=glob_include_hidden
+                )
+            )
+
             if len(globs) == 0:
                 raise ShellParseSyntaxError(
                     f'glob expression "{token}" returned zero files.')
