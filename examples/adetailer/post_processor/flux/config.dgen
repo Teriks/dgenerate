@@ -23,8 +23,8 @@ black-forest-labs/FLUX.1-schnell
                   weight-name=face_yolov8n.pt;\
                   prompt="image of emma watson";\
                   prompt-weighter=sd-embed;\
-                  guidance-scale=7;\
-                  inference-steps=40;\
+                  guidance-scale=0;\
+                  inference-steps=4;\
                   strength=0.4
 --prompts "full body photo of emma watson in black clothes, \
            night city street, bokeh"
