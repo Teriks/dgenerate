@@ -50,3 +50,9 @@ You can use run.py to run all of the examples at once, or a specific folder, or 
     python run.py --paths library_usage/basic
 
 
+    # skip anything with flux, deepfloyd, or animations
+    # in the file path name
+
+    python run.py --skip flux deepfloyd animations
+
+
