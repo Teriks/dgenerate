@@ -660,11 +660,13 @@ def shell_parse(string,
         shell_parse('command ~/*')
 
         # append text to every glob result (back expansion)
-        # the quotes are removed from the appended text
+        # the quotes are always removed from
+        # the outside of the appended text
         shell_parse('command *".png"') # -> ['command', 'file.png', 'file2.png', ...]
 
         # append text to every glob result (back expansion)
-        # the quotes are removed from the appended text
+        # the quotes are always removed from
+        # the outside of the appended text
         shell_parse("command *'.png'") # -> ['command', 'file.png', 'file2.png', ...]
 
         # environmental variable syntax 1
