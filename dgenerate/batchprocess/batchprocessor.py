@@ -593,9 +593,6 @@ class BatchProcessor:
             return self._handle_print_directive(line)
         elif line.startswith('\\echo'):
             return self._handle_echo_directive(line)
-        elif line.startswith('\\reset_lineno'):
-            self._current_line = -1
-            return True
         elif line.startswith('{'):
             return self._handle_template_continuation(line)
         elif line.startswith('\\'):
@@ -859,6 +856,11 @@ class BatchProcessor:
 
             line_rstrip = _textprocessing.remove_tail_comments(line)[1].rstrip()
             line_strip = line_rstrip.lstrip()
+
+            if line_strip == '\\reset_lineno':
+                self._current_line = -1
+                continue
+
             line_strip_end_with_cont = line_strip.endswith(continuation_char)
             next_line_starts_with_dash = next_line and next_line.lstrip().startswith('-')
             last_line_starts_with_dash = last_line and last_line.startswith('-')
@@ -893,7 +895,10 @@ class BatchProcessor:
 
                 self._template_continuation_start_line = self._current_line
 
-                jinja_lexer.put_source(line_strip)
+                try:
+                    jinja_lexer.put_source(line_strip)
+                except jinja2.TemplateSyntaxError as e:
+                    raise BatchProcessError(f'Template Syntax Error: {e.message}')
 
                 if jinja_lexer.is_balanced() or next_line is None:
                     self._template_continuation_end_line = self._current_line
@@ -911,7 +916,10 @@ class BatchProcessor:
                 start_or_append_normal_continuation()
             elif template_continuation:
 
-                jinja_lexer.put_source(line_strip)
+                try:
+                    jinja_lexer.put_source(line_strip)
+                except jinja2.TemplateSyntaxError as e:
+                    raise BatchProcessError(f'Template Syntax Error: {e.message}')
 
                 if jinja_lexer.is_balanced() or next_line is None:
                     self._template_continuation_end_line = self._current_line
