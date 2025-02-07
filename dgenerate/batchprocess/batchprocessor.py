@@ -622,6 +622,8 @@ class BatchProcessor:
                             f'Environmental variable name expanded to nothing!')
                     raise BatchProcessError(
                         f'Illegal environmental variable name value: {assignment[0]}')
+        elif line != '\\env':
+            raise BatchProcessError(f'Unknown directive "{line}".')
         else:
             for key, value in os.environ.items():
                 _messages.log(f'\\env "{key}={value}"')
@@ -638,6 +640,8 @@ class BatchProcessor:
                 expand_glob=False)
             for opt in opts:
                 os.environ.pop(opt, None)
+        elif line != '\\unset_env':
+            raise BatchProcessError(f'Unknown directive "{line}".')
         else:
             raise BatchProcessError('\\unset_env was provided no arguments.')
         return True
@@ -697,6 +701,8 @@ class BatchProcessor:
             self.user_undefine(
                 self.render_template(directive_args[1].strip()))
             return True
+        elif line != '\\unset':
+            raise BatchProcessError(f'Unknown directive "{line}".')
         else:
             raise BatchProcessError(
                 f'\\unset directive received less than 1 arguments, '
@@ -707,6 +713,8 @@ class BatchProcessor:
         directive_args = line.split(' ', 1)
         if len(directive_args) == 2:
             _messages.log(self.render_template(directive_args[1].strip()))
+        elif line != '\\print':
+            raise BatchProcessError(f'Unknown directive "{line}".')
         else:
             _messages.log()
         return True
@@ -721,6 +729,8 @@ class BatchProcessor:
                     expand_vars=False))
             except _textprocessing.ShellParseSyntaxError as e:
                 raise BatchProcessError(e)
+        elif line != '\\echo':
+            raise BatchProcessError(f'Unknown directive "{line}".')
         else:
             _messages.log()
         return True
@@ -805,6 +815,8 @@ class BatchProcessor:
                 f'Invocation error return code: {return_code}')
 
     def _run_file(self, stream: typing.Iterator[str]):
+        # only me and god understand this.
+
         continuation = ''
         continuation_char = '\\'
         template_continuation = False
@@ -817,11 +829,12 @@ class BatchProcessor:
         def run_continuation(cur_line):
             nonlocal continuation, template_continuation, normal_continuation, last_line
 
-            last_line_starts_with_dash = last_line and last_line.startswith('-')
-            last_line_ends_with_cont = last_line and last_line.endswith(continuation_char)
+            # local
+            l_last_line_starts_with_dash = last_line and last_line.startswith('-')
+            l_last_line_ends_with_cont = last_line and last_line.endswith(continuation_char)
 
             if not template_continuation:
-                if cur_line.startswith('-') or (last_line_starts_with_dash and not last_line_ends_with_cont):
+                if cur_line.startswith('-') or (l_last_line_starts_with_dash and not l_last_line_ends_with_cont):
                     completed_continuation = (continuation + ' ' + cur_line).strip()
                 else:
                     completed_continuation = (continuation + cur_line).strip()
@@ -844,12 +857,23 @@ class BatchProcessor:
             next_line: str | None
             line, next_line = line_and_next
 
-            line_strip = _textprocessing.remove_tail_comments(line)[1].strip()
+            line_rstrip = _textprocessing.remove_tail_comments(line)[1].rstrip()
+            line_strip = line_rstrip.lstrip()
             line_strip_end_with_cont = line_strip.endswith(continuation_char)
             next_line_starts_with_dash = next_line and next_line.lstrip().startswith('-')
             last_line_starts_with_dash = last_line and last_line.startswith('-')
             last_line_ends_with_cont = last_line and last_line.endswith(continuation_char)
             line_strip_starts_with_dash = line_strip.startswith('-')
+
+            def start_or_append_normal_continuation():
+                nonlocal continuation, normal_continuation
+
+                normal_continuation = True
+                if (line_strip_end_with_cont and not line_strip_starts_with_dash) or \
+                        (next_line_starts_with_dash and not line_strip_starts_with_dash):
+                    continuation += line_strip.removesuffix(continuation_char).lstrip().rstrip("\r\n")
+                else:
+                    continuation += ' ' + line_strip.removesuffix(continuation_char).lstrip().rstrip("\r\n")
 
             self._current_line += 1
 
@@ -869,36 +893,34 @@ class BatchProcessor:
 
                 self._template_continuation_start_line = self._current_line
 
-                line_rstrip = _textprocessing.remove_tail_comments(line)[1].rstrip()
-
-                jinja_lexer.put_source(line_rstrip)
+                jinja_lexer.put_source(line_strip)
 
                 if jinja_lexer.is_balanced() or next_line is None:
                     self._template_continuation_end_line = self._current_line
-                    run_continuation(line_rstrip)
+
+                    if line_strip.startswith('{{') and (line_strip_end_with_cont or next_line_starts_with_dash):
+                        template_continuation = False
+                        start_or_append_normal_continuation()
+                    else:
+                        run_continuation(line_rstrip)
                 else:
                     continuation += line
                     template_continuation = True
 
             elif not template_continuation and (line_strip_end_with_cont or next_line_starts_with_dash):
-
-                if (line_strip_end_with_cont and not line_strip_starts_with_dash) or \
-                        (next_line_starts_with_dash and not line_strip_starts_with_dash):
-                    continuation += line_strip.removesuffix(continuation_char).lstrip().rstrip("\r\n")
-                else:
-                    continuation += ' ' + line_strip.removesuffix(continuation_char).lstrip().rstrip("\r\n")
-
-                normal_continuation = True
-
+                start_or_append_normal_continuation()
             elif template_continuation:
 
-                line_rstrip = _textprocessing.remove_tail_comments(line)[1].rstrip()
-
-                jinja_lexer.put_source(line_rstrip)
+                jinja_lexer.put_source(line_strip)
 
                 if jinja_lexer.is_balanced() or next_line is None:
                     self._template_continuation_end_line = self._current_line
-                    run_continuation(line_rstrip)
+
+                    if continuation.startswith('{{') and (line_strip_end_with_cont or next_line_starts_with_dash):
+                        template_continuation = False
+                        start_or_append_normal_continuation()
+                    else:
+                        run_continuation(line_rstrip)
                 else:
                     continuation += line
             else:
