@@ -219,4 +219,4 @@ class JinjaBalanceChecker:
             self._block_balancing_stack.pop()
 
     def is_balanced(self):
-        return len(self._token_stack) == 0 and len(self._block_balancing_stack) == 0
+        return len(self._lex_state_stack) == 1 and len(self._token_stack) == 0 and len(self._block_balancing_stack) == 0
