@@ -48,23 +48,19 @@ class JinjaBalanceChecker:
         """Tokenizes the input character-by-character incrementally."""
         self._buffer += source
 
-        try:
-            for lineno, token_type, token_value in self._tokeniter():
-                if token_type == jinja2.lexer.TOKEN_BLOCK_BEGIN:
-                    self._token_stack.append(jinja2.lexer.TOKEN_BLOCK_BEGIN)
+        for lineno, token_type, token_value in self._tokeniter():
+            if token_type == jinja2.lexer.TOKEN_BLOCK_BEGIN:
+                self._token_stack.append(jinja2.lexer.TOKEN_BLOCK_BEGIN)
 
-                elif token_type == jinja2.lexer.TOKEN_NAME:
-                    if self._token_stack and self._token_stack[-1] == jinja2.lexer.TOKEN_BLOCK_BEGIN:
-                        self._cur_name = token_value
-                        self._token_stack.append(jinja2.lexer.TOKEN_NAME)
+            elif token_type == jinja2.lexer.TOKEN_NAME:
+                if self._token_stack and self._token_stack[-1] == jinja2.lexer.TOKEN_BLOCK_BEGIN:
+                    self._cur_name = token_value
+                    self._token_stack.append(jinja2.lexer.TOKEN_NAME)
 
-                elif token_type == jinja2.lexer.TOKEN_BLOCK_END:
-                    if self._token_stack and self._token_stack[-1] == jinja2.lexer.TOKEN_NAME:
-                        self._handle_block_end()
-                        self._token_stack.clear()
-
-        except jinja2.exceptions.TemplateSyntaxError:
-            pass
+            elif token_type == jinja2.lexer.TOKEN_BLOCK_END:
+                if self._token_stack and self._token_stack[-1] == jinja2.lexer.TOKEN_NAME:
+                    self._handle_block_end()
+                    self._token_stack.clear()
 
     def _tokeniter(self):
         while self._buffer:
