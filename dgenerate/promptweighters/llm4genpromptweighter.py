@@ -287,7 +287,7 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
             use_auth_token=token
         )
 
-        self.llm_projector = LLMFusionModule(768, 2048, 8)
+        self.llm_projector = LLMFusionModule(768, self.t5_model.model.config.d_model, 8)
         self.llm_projector.load_state_dict(torch.load(self.llm_projector_path))
 
         self._tensors = list()
