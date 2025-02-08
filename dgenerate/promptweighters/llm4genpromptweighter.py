@@ -203,6 +203,7 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
 
     The encoder specified must be one of:
 
+    NOWRAP!
     * kalpeshk2011/rankgen-t5-xl-all
     * kalpeshk2011/rankgen-t5-xl-pg19
     * kalpeshk2011/rankgen-t5-base-all
