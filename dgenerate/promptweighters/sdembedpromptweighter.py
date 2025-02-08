@@ -50,6 +50,8 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
       year         = {2024},
     }
 
+    This prompt weighter supports the model types:
+
     NOWRAP!
     --model-type torch
     --model-type torch-pix2pix

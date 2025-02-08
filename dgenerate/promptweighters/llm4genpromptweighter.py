@@ -199,6 +199,13 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
 
     Stable Diffusion 2.* is not supported.
 
+    This prompt weighter supports the model types:
+
+    NOWRAP!
+    --model-type torch
+    --model-type torch-pix2pix
+    --model-type torch-upscaler-x4
+
     The "encoder" argument specifies the T5 encoder model (Rank generation model).
 
     The encoder specified must be one of:
