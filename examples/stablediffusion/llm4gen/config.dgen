@@ -1,0 +1,12 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 4.5.1
+
+stable-diffusion-v1-5/stable-diffusion-v1-5
+--inference-steps 30
+--guidance-scales 5
+--gen-seeds 1
+--output-path output
+--unet Shui-VL/LLM4GEN-models;subfolder=unet
+--prompt-weighter llm4gen
+--output-size 768
+--prompts "Ground view of the Great Pyramids and Sphinx on the moon's surface. The back of an astronaut is in the foreground. The planet Earth looms in the sky"
