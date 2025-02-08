@@ -88,8 +88,9 @@ class RankGenEncoder:
             use_auth_token=use_auth_token
         )
 
-    def to(self, *args, **kwargs):
-        return self.model.to(*args, **kwargs)
+    def to(self, device, **kwargs):
+        self.device = device
+        return self.model.to(device, **kwargs)
 
     def eval(self):
         return self.model.eval()
@@ -194,8 +195,6 @@ class LLMFusionModule(torch.nn.Module):
 class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
     r"""
     LLM4GEN prompt weighter specifically for Stable Diffusion 1.5, See: https://github.com/YUHANG-Ma/LLM4GEN
-
-    This prompt weighter requires the use of --unet Shui-VL/LLM4GEN-models;subfolder=unet in order to function properly.
 
     Stable Diffusion 2.* is not supported.
 
@@ -370,6 +369,11 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
         negative = negative if negative else ""
 
         try:
+            for module in self.llm_projector.CrossFusionModule.modules():
+                module.dim = pipeline.unet.config.cross_attention_dim
+                module.heads = pipeline.unet.config.attention_head_dim
+                module.head_dim = module.dim // module.heads
+
             self.llm_projector.to(device).eval()
             self.t5_model.to(device).eval()
 
