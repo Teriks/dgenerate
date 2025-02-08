@@ -4393,6 +4393,8 @@ as the ``compel`` prompt weighter currently does not.
           year         = {2024},
         }
 
+        This prompt weighter supports the model types:
+
         --model-type torch
         --model-type torch-pix2pix
         --model-type torch-upscaler-x4
