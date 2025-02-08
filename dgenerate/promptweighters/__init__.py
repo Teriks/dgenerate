@@ -33,6 +33,7 @@ from .exceptions import (
 from .promptweighter import PromptWeighter
 from .promptweighterloader import PromptWeighterLoader
 from .sdembedpromptweighter import SdEmbedPromptWeighter
+from .llm4genpromptweighter import LLM4GENPromptWeighter
 
 
 def prompt_weighter_help(names: _types.Names,
