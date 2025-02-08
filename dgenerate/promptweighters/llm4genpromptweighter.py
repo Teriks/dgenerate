@@ -227,7 +227,7 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
     The "local_files_only" argument specifies that no attempt should be made to download
     models from the internet, only look for cached models on disk.
 
-    The "token" argument allows you to explicitly specify a Hugging Face auth tokenfor downloads.
+    The "token" argument allows you to explicitly specify a Hugging Face auth token for downloads.
 
     NOWRAP!
     @misc{liu2024llm4genleveragingsemanticrepresentation,
