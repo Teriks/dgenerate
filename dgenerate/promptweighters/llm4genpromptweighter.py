@@ -368,11 +368,19 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
         positive = positive if positive else ""
         negative = negative if negative else ""
 
+        if isinstance(pipeline.unet.config.attention_head_dim, list):
+            raise self.argument_error(
+                'llm4gen prompt-weighter does not support Stable Diffusion 2.* models.')
+        else:
+            heads = pipeline.unet.config.attention_head_dim
+            dim = pipeline.unet.config.cross_attention_dim
+            head_dim = dim // heads
+
         try:
             for module in self.llm_projector.CrossFusionModule.modules():
-                module.dim = pipeline.unet.config.cross_attention_dim
-                module.heads = pipeline.unet.config.attention_head_dim
-                module.head_dim = module.dim // module.heads
+                module.heads = heads
+                module.dim = dim
+                module.head_dim = head_dim
 
             self.llm_projector.to(device).eval()
             self.t5_model.to(device).eval()
