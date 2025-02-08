@@ -4,8 +4,8 @@
 # note that this configuration only works with SD1.5
 
 stable-diffusion-v1-5/stable-diffusion-v1-5
---inference-steps 30
---guidance-scales 5
+--inference-steps 50
+--guidance-scales 7
 --gen-seeds 1
 --output-path output
 --unet Shui-VL/LLM4GEN-models;subfolder=unet
