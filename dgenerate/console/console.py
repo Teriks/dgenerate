@@ -943,10 +943,7 @@ class DgenerateConsole(tk.Tk):
         return self._last_known_working_dir
 
     def _shell_restarting_finish_message(self):
-        # if the process dies from something that
-        # happened internally, the cwd of it cannot
-        # be replicated and will change
-        self._update_cwd_title()
+        self._update_cwd_title(self._last_known_working_dir)
 
         self._write_stdout_output('Shell Process Started.\n'
                                   '======================\n')
