@@ -1,6 +1,8 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 4.5.1
 
+# note that this configuration only works with SD1.5
+
 stable-diffusion-v1-5/stable-diffusion-v1-5
 --inference-steps 30
 --guidance-scales 5
