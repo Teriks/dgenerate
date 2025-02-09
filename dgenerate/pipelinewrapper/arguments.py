@@ -668,19 +668,18 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.inference_steps, "Inference Steps:"),
             (self.adetailer_index_filter, "Adetailer Index Filter:"),
             (self.adetailer_mask_shape, "Adetailer Mask Shape:"),
-            (_textprocessing.format_size(self.adetailer_detector_padding)
-             if self.adetailer_detector_padding is not None else None,
-             "Adetailer Detector Padding:"),
-            (_textprocessing.format_size(self.adetailer_mask_padding)
-             if self.adetailer_mask_padding is not None else None,
-             "Adetailer Mask Padding:"),
+            (self.adetailer_detector_padding, "Adetailer Detector Padding:"),
+            (self.adetailer_mask_padding, "Adetailer Mask Padding:"),
             (self.adetailer_mask_blur, "Adetailer Mask Blur:"),
             (self.adetailer_mask_dilation, "Adetailer Mask Dilation:")
         ]
 
         for prompt_val, desc in descriptions:
             if prompt_val is not None:
-                inputs.append(desc + ' ' + str(prompt_val))
+                if isinstance(prompt_val, tuple):
+                    inputs.append(desc + ' ' + _textprocessing.format_size(prompt_val))
+                else:
+                    inputs.append(desc + ' ' + str(prompt_val))
 
         inputs = '\n'.join(inputs)
 
