@@ -1,4 +1,4 @@
-rmdir /s /q "%~dp0venv"
+rmdir /s /q "%~dp0venv" 2>nul
 
 python -m venv venv
 
