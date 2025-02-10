@@ -1636,6 +1636,8 @@ def _torch_args_hasher(args):
 
         return _uris.TextEncoderUri.parse(uri)
 
+    quantizer_uri = args['quantizer_uri']
+
     custom_hashes = {
         'unet_uri': _cache.uri_hash_with_parser(_uris.UNetUri.parse),
         'transformer_uri': _cache.uri_hash_with_parser(_uris.TransformerUri),
@@ -1650,8 +1652,10 @@ def _torch_args_hasher(args):
             exclude={'scale', 'start', 'end'}),
         't2i_adapter_uris': _cache.uri_list_hash_with_parser(_uris.T2IAdapterUri.parse,
                                                              exclude={'scale'}),
-        'quantizer_uri': _cache.uri_hash_with_parser(
-            _util.get_quantizer_uri_class(args['quantizer_uri']))
+        'quantizer_uri':
+            _cache.uri_hash_with_parser(
+                _util.get_quantizer_uri_class(quantizer_uri))
+        if quantizer_uri else lambda x: None
     }
     return _d_memoize.args_cache_key(args, custom_hashes=custom_hashes)
 
