@@ -531,8 +531,8 @@ Help Output
             The "subfolder" argument specifies the Text Encoder model subfolder, if specified when loading from
             a Hugging Face repository or folder, weights from the specified subfolder. If you are loading from a
             combined single file checkpoint containing multiple components, this value will be used to determine
-            the key in the checkpoint that contains the unet, by default "text_encoder" is used if subfolder is
-            not provided.
+            the key in the checkpoint that contains the text encoder, by default "text_encoder" is used if
+            subfolder is not provided.
             
             The "dtype" argument specifies the Text Encoder model precision, it defaults to the value of
             -t/--dtype and should be one of: auto, bfloat16, float16, or float32.
