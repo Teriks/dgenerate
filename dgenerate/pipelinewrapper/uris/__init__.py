@@ -20,7 +20,9 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import dgenerate.types as _types
-
+from .adetailerdetectoruri import AdetailerDetectorUri
+from .bnbquantizeruri import BNBQuantizerUri
+from .controlneturi import ControlNetUri, FluxControlNetUriModes
 from .exceptions import (
     ModelUriLoadError,
     ControlNetUriLoadError,
@@ -47,19 +49,17 @@ from .exceptions import (
     InvalidTransformerUriError,
     TransformerUriLoadError
 )
-
+from .imageencoderuri import ImageEncoderUri
+from .ipadapteruri import IPAdapterUri
 from .lorauri import LoRAUri
 from .scascadedecoderuri import SCascadeDecoderUri
 from .sdxlrefineruri import SDXLRefinerUri
-from .textualinversionuri import TextualInversionUri
-from .controlneturi import ControlNetUri, FluxControlNetUriModes
+from .t2iadapteruri import T2IAdapterUri
 from .textencoderuri import TextEncoderUri
+from .textualinversionuri import TextualInversionUri
+from .torchaoquantizeruri import TorchAOQuantizerUri
+from .transformeruri import TransformerUri
 from .uneturi import UNetUri
 from .vaeuri import VAEUri
-from .t2iadapteruri import T2IAdapterUri
-from .ipadapteruri import IPAdapterUri
-from .imageencoderuri import ImageEncoderUri
-from .transformeruri import TransformerUri
-from .adetailerdetectoruri import AdetailerDetectorUri
 
 __all__ = _types.module_all()

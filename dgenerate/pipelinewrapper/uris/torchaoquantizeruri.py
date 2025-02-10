@@ -19,26 +19,49 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from .argswitchcheckbox import _ArgSwitchCheckbox
-from .deviceentry import _DeviceEntry
-from .directoryentry import _DirectoryEntry
-from .dropdownentry import _DropDownEntry
-from .entry import _Entry
-from .fileentry import _FileEntry
-from .floatentry import _FloatEntry
-from .imageprocessorentry import _ImageProcessorEntry
-from .intentry import _IntEntry
-from .karrasschedulerentry import _KarrasSchedulerEntry
-from .stringentry import _StringEntry
-from .torchvaeentry import _TorchVaeEntry
-from .uriwithfloatentry import _UriWithFloatEntry
-from .uriwithfloatargentry import _UriWithFloatArgEntry
-from .seedsentry import _SeedsEntry
-from .imagesizeentry import _ImageSizeEntry
-from .argswitchradio import _ArgSwitchRadio
-from .urientry import _UriEntry
-from .imageseedentry import _ImageSeedEntry
-from .fluxcontrolnetentry import _FluxControlNetEntry
-from .quantizerurientry import _QuantizerEntry
+import diffusers
 
-from .entry import DIVIDER_YPAD, ROW_XPAD
+import dgenerate.textprocessing as _textprocessing
+import dgenerate.types as _types
+from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
+
+_bnb_quantizer_uri_parser = _textprocessing.ConceptUriParser(
+    'TorchAO Quantizer', ['type'])
+
+
+class TorchAOQuantizerUri:
+    """
+    Representation of ``--quantizer`` uri when ``--model-type`` torch*
+    """
+
+    def __init__(self,
+                 type: str = 'int8wo'):
+
+        types = sorted(diffusers.TorchAoConfig._get_torchao_quant_type_to_method().keys())
+
+        if type not in types:
+            raise _exceptions.InvalidTorchAOQuantizerUriError(
+                f'TorchAO quantizer type must be one of: {_textprocessing.oxford_comma(types, "or")}'
+            )
+
+        self.type = type
+
+    def to_config(self) -> diffusers.TorchAoConfig:
+        return diffusers.TorchAoConfig(
+            quant_type=self.type
+        )
+
+    @staticmethod
+    def parse(uri: _types.Uri) -> 'TorchAOQuantizerUri':
+        try:
+            r = _bnb_quantizer_uri_parser.parse(uri)
+
+            if r.concept != 'torchao':
+                raise _exceptions.InvalidTorchAOQuantizerUriError(
+                    f'Unknown quantization backend: {r.concept}'
+                )
+
+            return TorchAOQuantizerUri(type=r.args.get('type', 'int8wo'))
+
+        except _textprocessing.ConceptUriParseError as e:
+            raise _exceptions.InvalidTorchAOQuantizerUriError(e)

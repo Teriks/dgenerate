@@ -539,6 +539,25 @@ class RenderLoopConfig(_types.SetFromMixin):
     of the dgenerate command line tool.
     """
 
+    quantizer_uri: _types.OptionalUri = None
+    """
+    Global quantizer URI for main pipline, this corresponds to the ``--quantizer`` argument 
+    of the dgenerate command line tool.
+    
+    The quantization backend and settings specified by this URI will be used globally 
+    on the the most appropriate models associated with the main diffusion pipeline.
+    """
+
+    second_quantizer_uri: _types.OptionalUri = None
+    """
+    Global quantizer URI for secondary pipeline (SDXL Refiner or Stable Cascade decoder), 
+    this corresponds to the ``--quantizer2`` argument of the dgenerate command line tool.
+    
+    The quantization backend and settings specified by this URI will be used globally 
+    on the the most appropriate models associated with the secondary diffusion pipeline 
+    (SDXL Refiner, Stable Cascade Decoder).
+    """
+
     scheduler: typing.Union[_types.Uri, _types.Uris, None] = None
     """
     Optional primary model scheduler/sampler class name specification, this corresponds to the ``--scheduler``

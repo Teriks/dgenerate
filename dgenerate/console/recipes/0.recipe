@@ -29,5 +29,6 @@ title: Stable Diffusion
 @imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"512x512"}]
 @dropdown[{"label":"Prompt Weighter", "arg":"--prompt-weighter", "options":["compel", "compel;syntax=sdwui", "sd-embed"]}]
 @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
+@quantizer[{}]
 @device[{}]
 --prompts "add your prompt here"
