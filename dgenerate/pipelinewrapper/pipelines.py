@@ -1649,7 +1649,9 @@ def _torch_args_hasher(args):
             lambda s: _uris.ControlNetUri.parse(s, model_type=args['model_type']),
             exclude={'scale', 'start', 'end'}),
         't2i_adapter_uris': _cache.uri_list_hash_with_parser(_uris.T2IAdapterUri.parse,
-                                                             exclude={'scale'})
+                                                             exclude={'scale'}),
+        'quantizer_uri': _cache.uri_hash_with_parser(
+            _util.get_quantizer_uri_class(args['quantizer_uri']))
     }
     return _d_memoize.args_cache_key(args, custom_hashes=custom_hashes)
 
