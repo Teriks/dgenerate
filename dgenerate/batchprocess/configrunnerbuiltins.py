@@ -436,11 +436,20 @@ def have_feature(feature_name: str) -> bool:
 
     NOWRAP!
     "ncnn": Do we have ncnn installed?
+    "torchao": Do we have torchao installed?
+    "bitsandbytes": Do we have bitsandbytes installed?
     """
 
-    if feature_name not in {'ncnn'}:
+    known_flags = [
+        'ncnn',
+        'torchao',
+        'bitsandbytes'
+    ]
+
+    if feature_name not in known_flags:
         raise _batchprocessor.BatchProcessError(
-            f'Feature "{feature_name}" is not a known feature flag.')
+            f'Feature "{feature_name}" is not a known feature flag, '
+            f'acceptable values are: {_textprocessing.oxford_comma(known_flags, "or")}')
 
     return importlib.util.find_spec(feature_name) is not None
 

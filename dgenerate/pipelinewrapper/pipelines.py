@@ -22,6 +22,7 @@ import ast
 import collections.abc
 import gc
 import inspect
+import os.path
 import typing
 import itertools
 
@@ -32,6 +33,7 @@ import diffusers.loaders.single_file_utils
 import huggingface_hub
 import torch.nn
 import torch.nn
+import transformers.utils.quantization_config
 
 import dgenerate.exceptions as _d_exceptions
 import dgenerate.memoize as _d_memoize
@@ -46,7 +48,6 @@ import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 import dgenerate.pipelinewrapper.util as _util
-import dgenerate.pipelinewrapper.quanto as _quanto
 import numpy
 import dgenerate.extras.diffusers
 import dgenerate.extras.kolors
@@ -709,23 +710,20 @@ def enable_sequential_cpu_offload(pipeline: diffusers.DiffusionPipeline,
     :param device: the device
     """
     torch_device = torch.device(device)
+    pipeline.remove_all_hooks()
 
     _set_sequential_cpu_offload_flag(pipeline, True)
     for name, model in get_torch_pipeline_modules(pipeline).items():
         if name in pipeline._exclude_from_cpu_offload:
             continue
+
         elif not is_sequential_cpu_offload_enabled(model):
-            if _quanto.is_quantized_and_frozen(model):
-                _messages.debug_log(
-                    f'Skipping sequential offload on optimum '
-                    f'quantized & frozen module: {name}={model.__class__.__name__}')
-            else:
-                _set_sequential_cpu_offload_flag(model, True)
-                accelerate.cpu_offload(model, torch_device, offload_buffers=len(model._parameters) > 0)
-                _disable_to(
-                    model,
-                    name == 'vae'
-                )
+            _set_sequential_cpu_offload_flag(model, True)
+            accelerate.cpu_offload(model, torch_device, offload_buffers=len(model._parameters) > 0)
+            _disable_to(
+                model,
+                name == 'vae'
+            )
 
 
 def enable_model_cpu_offload(pipeline: diffusers.DiffusionPipeline,
@@ -744,6 +742,8 @@ def enable_model_cpu_offload(pipeline: diffusers.DiffusionPipeline,
 
     torch_device = torch.device(device)
 
+    pipeline.remove_all_hooks()
+
     pipeline._offload_gpu_id = torch_device.index or getattr(pipeline, "_offload_gpu_id", 0)
 
     device_type = torch_device.type
@@ -759,11 +759,24 @@ def enable_model_cpu_offload(pipeline: diffusers.DiffusionPipeline,
 
     all_model_components = {k: v for k, v in pipeline.components.items() if isinstance(v, torch.nn.Module)}
 
-    pipeline._all_hooks = []
     hook = None
+    pipeline._all_hooks = []
     for model_str in pipeline.model_cpu_offload_seq.split("->"):
         model = all_model_components.pop(model_str, None)
+
         if not isinstance(model, torch.nn.Module):
+            continue
+
+        is_loaded_in_8bit_bnb = (
+                hasattr(model, "is_loaded_in_8bit")
+                and model.is_loaded_in_8bit
+                and getattr(model, "quantization_method", None) ==
+                transformers.utils.quantization_config.QuantizationMethod.BITS_AND_BYTES
+        )
+
+        if is_loaded_in_8bit_bnb:
+            _messages.debug_log(
+                f'Not cpu offloading pipeline module: {model_str}, due to bitsandbytes 8 bit quantization.')
             continue
 
         _, hook = accelerate.cpu_offload_with_hook(model, device, prev_module_hook=hook)
@@ -855,6 +868,20 @@ def _pipeline_to(pipeline, device: torch.device | str | None):
             _cache.pipeline_to_cpu_update_cache_info(pipeline)
 
     for name, value in get_torch_pipeline_modules(pipeline).items():
+
+        is_loaded_in_8bit_bnb = (
+                hasattr(value, "is_loaded_in_8bit")
+                and value.is_loaded_in_8bit
+                and getattr(value, "quantization_method", None) ==
+                transformers.utils.quantization_config.QuantizationMethod.BITS_AND_BYTES
+        )
+
+        if is_loaded_in_8bit_bnb:
+            _messages.debug_log(
+                f'pipeline_to() Not moving module "{name} = {value.__class__.__name__}" to "{device}" '
+                f'as it is loaded in 8bit mode via bitsandbytes.')
+            _disable_to(value)
+            continue
 
         current_device = get_torch_device(value)
 
@@ -1414,6 +1441,7 @@ def create_torch_diffusion_pipeline(
         text_encoder_uris: _types.OptionalUris = None,
         controlnet_uris: _types.OptionalUris = None,
         t2i_adapter_uris: _types.OptionalUris = None,
+        quantizer_uri: _types.OptionalUri = None,
         scheduler: _types.OptionalString = None,
         pag: bool = False,
         safety_checker: bool = False,
@@ -1449,6 +1477,7 @@ def create_torch_diffusion_pipeline(
         indicates to explicitly not load any encoder all
     :param controlnet_uris: Optional ``--control-nets`` URI strings for specifying ControlNet models
     :param t2i_adapter_uris: Optional ``--t2i-adapters`` URI strings for specifying T2IAdapter models
+    :param quantizer_uri: Optional ``--quantizer`` URI value
     :param scheduler: Optional scheduler (sampler) class name, unqualified, or "help" / "helpargs" to print supported values
         to STDOUT and raise :py:exc:`dgenerate.pipelinewrapper.SchedulerHelpException`.  Dgenerate URI syntax is supported
         for overriding the schedulers constructor parameter defaults.
@@ -1508,6 +1537,7 @@ class TorchPipelineFactory:
                  controlnet_uris: _types.OptionalUris = None,
                  t2i_adapter_uris: _types.OptionalUris = None,
                  text_encoder_uris: _types.OptionalUris = None,
+                 quantizer_uri: _types.OptionalUri = None,
                  scheduler: _types.OptionalString = None,
                  pag: bool = False,
                  safety_checker: bool = False,
@@ -2191,6 +2221,7 @@ def _create_torch_diffusion_pipeline(
         text_encoder_uris: _types.OptionalUris = None,
         controlnet_uris: _types.OptionalUris = None,
         t2i_adapter_uris: _types.OptionalUris = None,
+        quantizer_uri: _types.OptionalUri = None,
         scheduler: _types.OptionalString = None,
         pag: bool = False,
         safety_checker: bool = False,
@@ -2215,6 +2246,11 @@ def _create_torch_diffusion_pipeline(
         raise UnsupportedPipelineConfigError(
             'device must be "cuda" (optionally with a device ordinal "cuda:N") or "cpu", '
             'or other device supported by torch.')
+
+    if _hfutil.is_single_file_model_load(model_path) and quantizer_uri:
+        raise UnsupportedPipelineConfigError(
+            'specifying a global pipeline quantizer URI is only supported for Hugging Face '
+            'repository loads from a repo slug or disk path, single file loads are not supported.')
 
     pipeline_class = get_torch_pipeline_class(
         model_type=model_type,
@@ -2347,15 +2383,18 @@ def _create_torch_diffusion_pipeline(
     parsed_vae_uri = None
     parsed_transformer_uri = None
 
+    pipe_params = inspect.signature(pipeline_class.__init__).parameters
+
+    def load_text_encoder(uri):
+        return uri.load(
+            variant_fallback=variant,
+            dtype_fallback=dtype,
+            use_auth_token=auth_token,
+            local_files_only=local_files_only,
+            sequential_cpu_offload_member=sequential_cpu_offload,
+            model_cpu_offload_member=model_cpu_offload)
+
     if text_encoder_uris:
-        def load_text_encoder(uri):
-            return uri.load(
-                variant_fallback=variant,
-                dtype_fallback=dtype,
-                use_auth_token=auth_token,
-                local_files_only=local_files_only,
-                sequential_cpu_offload_member=sequential_cpu_offload,
-                model_cpu_offload_member=model_cpu_offload)
 
         if not text_encoder_override and (len(text_encoder_uris) > 0) and \
                 _text_encoder_not_default(text_encoder_uris[0]):
@@ -2369,24 +2408,99 @@ def _create_torch_diffusion_pipeline(
                 _text_encoder_not_default(text_encoder_uris[2]):
             creation_kwargs['text_encoder_3'] = load_text_encoder(
                 _uris.TextEncoderUri.parse(text_encoder_uris[2]))
+    else:
+        override_states = [
+            text_encoder_override,
+            text_encoder_2_override,
+            text_encoder_3_override
+        ]
+        for idx, (name, param) in enumerate(
+                [n for n in sorted(pipe_params.items(), key=lambda x: x[0]) if n[0].startswith('text_encoder')]):
+            if override_states[idx]:
+                continue
+            encoder_name = f'text_encoder{"_" + str(idx + 1) if idx > 0 else ""}'
+            if param.annotation is inspect.Parameter.empty:
+                raise RuntimeError(f"No type hint found for pipeline constructor parameter: '{name}'")
 
-    if vae_uri is not None and not vae_override:
-        parsed_vae_uri = _uris.VAEUri.parse(vae_uri)
+            if _hfutil.is_single_file_model_load(model_path):
+                encoder_subfolder = encoder_name
+            else:
+                encoder_subfolder = os.path.join(subfolder, encoder_name) if subfolder else encoder_name
+            try:
+                creation_kwargs[encoder_name] = load_text_encoder(
+                    _uris.TextEncoderUri(
+                        encoder=param.annotation.__name__,
+                        model=model_path,
+                        variant=variant,
+                        subfolder=encoder_subfolder,
+                        dtype=dtype,
+                        quantizer=quantizer_uri
+                    )
+                )
+            except dgenerate.ModelNotFoundError:
+                # it is probable that the model just does not use
+                # this text encoder, let it error out later if we
+                # are wrong
+                continue
 
-        creation_kwargs['vae'] = \
-            parsed_vae_uri.load(
-                dtype_fallback=dtype,
-                use_auth_token=auth_token,
-                local_files_only=local_files_only,
-                sequential_cpu_offload_member=sequential_cpu_offload,
-                model_cpu_offload_member=model_cpu_offload)
+    if not vae_override:
+        if vae_uri:
+            parsed_vae_uri = _uris.VAEUri.parse(vae_uri)
 
-        _messages.debug_log(lambda:
-                            f'Added Torch VAE: "{vae_uri}" to pipeline: "{pipeline_class.__name__}"')
+            creation_kwargs['vae'] = \
+                parsed_vae_uri.load(
+                    dtype_fallback=dtype,
+                    use_auth_token=auth_token,
+                    local_files_only=local_files_only,
+                    sequential_cpu_offload_member=sequential_cpu_offload,
+                    model_cpu_offload_member=model_cpu_offload)
 
-    if unet_uri is not None and not unet_override:
-        parsed_unet_uri = _uris.UNetUri.parse(unet_uri)
+            _messages.debug_log(lambda:
+                                f'Added Torch VAE: "{vae_uri}" to pipeline: "{pipeline_class.__name__}"')
+        elif 'vae' in pipe_params:
+            if _hfutil.is_single_file_model_load(model_path):
+                vae_subfolder = 'vae'
+            else:
+                vae_subfolder = os.path.join(subfolder, 'vae') if subfolder else 'vae'
 
+            vae_encoder_name = pipe_params['vae'].annotation.__name__
+
+            vae_extract_from_checkpoint = _hfutil.is_single_file_model_load(model_path)
+
+            try:
+                creation_kwargs['vae'] = \
+                    _uris.VAEUri(
+                        encoder=vae_encoder_name,
+                        model=model_path,
+                        variant=variant,
+                        subfolder=vae_subfolder,
+                        extract=vae_extract_from_checkpoint,
+                        dtype=dtype
+                    ).load(
+                        dtype_fallback=dtype,
+                        use_auth_token=auth_token,
+                        local_files_only=local_files_only,
+                        sequential_cpu_offload_member=sequential_cpu_offload,
+                        model_cpu_offload_member=model_cpu_offload
+                    )
+            except dgenerate.ModelNotFoundError:
+                if vae_extract_from_checkpoint:
+                    raise
+                creation_kwargs['vae'] = \
+                    _uris.VAEUri(
+                        encoder=vae_encoder_name,
+                        model=model_path,
+                        subfolder=vae_subfolder,
+                        dtype=dtype
+                    ).load(
+                        dtype_fallback=dtype,
+                        use_auth_token=auth_token,
+                        local_files_only=local_files_only,
+                        sequential_cpu_offload_member=sequential_cpu_offload,
+                        model_cpu_offload_member=model_cpu_offload
+                    )
+
+    if not unet_override:
         unet_parameter = 'unet'
 
         if model_type == _enums.ModelType.TORCH_S_CASCADE:
@@ -2397,40 +2511,94 @@ def _create_torch_diffusion_pipeline(
         unet_class = diffusers.UNet2DConditionModel if unet_parameter == 'unet' \
             else diffusers.models.unets.StableCascadeUNet
 
-        creation_kwargs[unet_parameter] = \
-            parsed_unet_uri.load(
+        if unet_uri is not None:
+            parsed_unet_uri = _uris.UNetUri.parse(unet_uri)
+
+            creation_kwargs[unet_parameter] = \
+                parsed_unet_uri.load(
+                    variant_fallback=variant,
+                    dtype_fallback=dtype,
+                    use_auth_token=auth_token,
+                    local_files_only=local_files_only,
+                    sequential_cpu_offload_member=sequential_cpu_offload,
+                    model_cpu_offload_member=model_cpu_offload,
+                    unet_class=unet_class)
+
+            _messages.debug_log(lambda:
+                                f'Added Torch UNet: "{unet_uri}" to pipeline: "{pipeline_class.__name__}"')
+        elif 'unet' in pipe_params:
+
+            if _hfutil.is_single_file_model_load(model_path):
+                unet_subfolder = unet_parameter
+            else:
+                unet_subfolder = os.path.join(subfolder, unet_parameter) if subfolder else unet_parameter
+
+            creation_kwargs['unet'] = _uris.UNetUri(
+                model=model_path,
+                variant=variant,
+                subfolder=unet_subfolder,
+                dtype=dtype,
+                quantizer=quantizer_uri
+            ).load(
                 variant_fallback=variant,
                 dtype_fallback=dtype,
                 use_auth_token=auth_token,
                 local_files_only=local_files_only,
                 sequential_cpu_offload_member=sequential_cpu_offload,
                 model_cpu_offload_member=model_cpu_offload,
-                unet_class=unet_class)
+                unet_class=unet_class
+            )
 
-        _messages.debug_log(lambda:
-                            f'Added Torch UNet: "{unet_uri}" to pipeline: "{pipeline_class.__name__}"')
+    if _enums.model_type_is_sd3(model_type):
+        transformer_class = diffusers.SD3Transformer2DModel
+    elif _enums.model_type_is_flux(model_type):
+        transformer_class = diffusers.FluxTransformer2DModel
+    else:
+        transformer_class = None
 
-    if transformer_uri is not None and not transformer_override:
-        parsed_transformer_uri = _uris.TransformerUri.parse(transformer_uri)
+    if not transformer_override:
+        if transformer_uri is not None:
+            assert transformer_class is not None
 
-        if _enums.model_type_is_sd3(model_type):
-            transformer_class = diffusers.SD3Transformer2DModel
-        elif _enums.model_type_is_flux(model_type):
-            transformer_class = diffusers.FluxTransformer2DModel
+            parsed_transformer_uri = _uris.TransformerUri.parse(transformer_uri)
 
-        creation_kwargs['transformer'] = \
-            parsed_transformer_uri.load(
+            creation_kwargs['transformer'] = \
+                parsed_transformer_uri.load(
+                    variant_fallback=variant,
+                    dtype_fallback=dtype,
+                    use_auth_token=auth_token,
+                    local_files_only=local_files_only,
+                    sequential_cpu_offload_member=sequential_cpu_offload,
+                    model_cpu_offload_member=model_cpu_offload,
+                    transformer_class=transformer_class
+                )
+
+            _messages.debug_log(lambda:
+                                f'Added Torch Transformer: "{transformer_uri}" to '
+                                f'pipeline: "{pipeline_class.__name__}"')
+        elif 'transformer' in pipe_params:
+            assert transformer_class is not None
+
+            if _hfutil.is_single_file_model_load(model_path):
+                transformer_subfolder = 'transformer'
+            else:
+                transformer_subfolder = os.path.join(subfolder, 'transformer') if subfolder else 'transformer'
+
+            creation_kwargs['transformer'] = _uris.TransformerUri(
+                model=model_path,
+                variant=variant,
+                subfolder=transformer_subfolder,
+                dtype=dtype,
+                quantizer=quantizer_uri
+            ).load(
                 variant_fallback=variant,
                 dtype_fallback=dtype,
                 use_auth_token=auth_token,
                 local_files_only=local_files_only,
                 sequential_cpu_offload_member=sequential_cpu_offload,
                 model_cpu_offload_member=model_cpu_offload,
-                transformer_class=transformer_class)
-
-        _messages.debug_log(lambda:
-                            f'Added Torch Transformer: "{transformer_uri}" to '
-                            f'pipeline: "{pipeline_class.__name__}"')
+                transformer_class=transformer_class
+            )
 
     if image_encoder_uri is not None and not image_encoder_override:
         parsed_image_encoder_uri = _uris.ImageEncoderUri.parse(image_encoder_uri)

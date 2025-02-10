@@ -34,6 +34,7 @@ import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
+import dgenerate.pipelinewrapper.util as _util
 
 _vae_uri_parser = _textprocessing.ConceptUriParser(
     'VAE', ['model', 'revision', 'variant', 'subfolder', 'dtype'])
@@ -86,6 +87,13 @@ class VAEUri:
         """
         return self._dtype
 
+    @property
+    def extract(self) -> False:
+        """
+        Extract from a single file checkpoint containing multiple components?
+        """
+        return self._extract
+
     _encoders = {
         'AutoencoderKL': diffusers.AutoencoderKL,
         'AsymmetricAutoencoderKL': diffusers.AsymmetricAutoencoderKL,
@@ -103,6 +111,7 @@ class VAEUri:
                  revision: _types.OptionalString = None,
                  variant: _types.OptionalString = None,
                  subfolder: _types.OptionalString = None,
+                 extract: bool = False,
                  dtype: _enums.DataType | str | None = None):
         """
         :param encoder: encoder class name, for example ``AutoencoderKL``
@@ -110,6 +119,8 @@ class VAEUri:
         :param revision: model revision (branch name)
         :param variant: model variant, for example ``fp16``
         :param subfolder: model subfolder
+        :param extract: Extract the VAE from a single file checkpoint
+            that contains other models, such as a UNet or Text Encoders.
         :param dtype: model data type (precision)
 
         :raises InvalidVaeUriError: If ``dtype`` is passed an invalid data type string, or if
@@ -125,13 +136,20 @@ class VAEUri:
         single_file_load_path = _hfutil.is_single_file_model_load(model)
 
         if single_file_load_path and not can_single_file_load:
-            raise _exceptions.InvalidVaeUriError(f'{encoder} is not capable of loading from a single file, '
-                                                 f'must be loaded from a huggingface repository slug or folder on disk.')
+            raise _exceptions.InvalidVaeUriError(
+                f'{encoder} is not capable of loading from a single file, '
+                f'must be loaded from a huggingface repository slug or folder on disk.')
+
+        if not single_file_load_path and extract:
+            raise _exceptions.InvalidVaeUriError(
+                f'VAE URI cannot have "extract" set to True when "model" is not '
+                f'pointing to a single file checkpoint.')
 
         if single_file_load_path:
             if subfolder is not None:
                 raise _exceptions.InvalidVaeUriError('Single file VAE loads do not support the subfolder option.')
 
+        self._extract = extract
         self._encoder = encoder
         self._model = model
         self._revision = revision
@@ -149,7 +167,8 @@ class VAEUri:
              use_auth_token: _types.OptionalString = None,
              local_files_only: bool = False,
              sequential_cpu_offload_member: bool = False,
-             model_cpu_offload_member: bool = False) -> \
+             model_cpu_offload_member: bool = False,
+             ) -> \
             typing.Union[
                 diffusers.AutoencoderKL,
                 diffusers.AsymmetricAutoencoderKL,
@@ -199,7 +218,8 @@ class VAEUri:
               use_auth_token: _types.OptionalString = None,
               local_files_only: bool = False,
               sequential_cpu_offload_member: bool = False,
-              model_cpu_offload_member: bool = False) -> \
+              model_cpu_offload_member: bool = False
+              ) -> \
             typing.Union[
                 diffusers.AutoencoderKL,
                 diffusers.AsymmetricAutoencoderKL,
@@ -231,19 +251,38 @@ class VAEUri:
 
             _cache.enforce_vae_cache_constraints(new_vae_size=estimated_memory_use)
 
-            if encoder is diffusers.AutoencoderKL:
-                # There is a bug in their cast
-                vae = encoder.from_single_file(model_path,
-                                               token=use_auth_token,
-                                               revision=self.revision,
-                                               local_files_only=local_files_only) \
-                    .to(dtype=torch_dtype, non_blocking=False)
+            if not self.extract:
+                if encoder is diffusers.AutoencoderKL:
+                    # There is a bug in their cast
+                    vae = encoder.from_single_file(model_path,
+                                                   token=use_auth_token,
+                                                   revision=self.revision,
+                                                   local_files_only=local_files_only) \
+                        .to(dtype=torch_dtype, non_blocking=False)
+                else:
+                    vae = encoder.from_single_file(model_path,
+                                                   token=use_auth_token,
+                                                   revision=self.revision,
+                                                   torch_dtype=torch_dtype,
+                                                   local_files_only=local_files_only)
+
             else:
-                vae = encoder.from_single_file(model_path,
-                                               token=use_auth_token,
-                                               revision=self.revision,
-                                               torch_dtype=torch_dtype,
-                                               local_files_only=local_files_only)
+                try:
+                    vae = _util.single_file_load_sub_module(
+                        path=model_path,
+                        class_name=self.encoder,
+                        library_name='diffusers',
+                        name=self.subfolder if self.subfolder else 'vae',
+                        use_auth_token=use_auth_token,
+                        local_files_only=local_files_only,
+                        revision=self.revision,
+                        dtype=torch_dtype
+                    )
+                except FileNotFoundError as e:
+                    # cannot find configs
+                    raise _exceptions.TextEncoderUriLoadError(e)
+
+                estimated_memory_use = _util.estimate_memory_usage(vae)
 
         else:
 

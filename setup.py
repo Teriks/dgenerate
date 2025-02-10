@@ -24,6 +24,7 @@ import io
 import os
 import platform
 import re
+import shutil
 from ast import literal_eval
 
 from setuptools import setup, find_packages
@@ -226,7 +227,16 @@ if __name__ != 'setup_as_library':
 
     python_requirement = requires.get('python')
 
-    exclude = {'triton'} if dgenerate_platform.lower() != 'linux' else set()
+    exclude = set()
+
+    if dgenerate_platform.lower() != 'linux':
+        exclude.add('triton')
+        exclude.add('torchao')
+
+    if shutil.which('nvidia-smi') is None:
+        exclude.add('bitsandbytes')
+        exclude.add('torchao')
+        exclude.add('triton')
 
     if force_lockfile_requires:
         # nvidia- packages not actually required on windows

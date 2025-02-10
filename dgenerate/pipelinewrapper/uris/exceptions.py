@@ -38,6 +38,20 @@ class InvalidModelUriError(Exception):
     pass
 
 
+class InvalidBNBQuantizerUriError(InvalidModelUriError):
+    """
+    Error in ``--quantizer`` uri
+    """
+    pass
+
+
+class InvalidTorchAOQuantizerUriError(InvalidModelUriError):
+    """
+    Error in ``--quantizer`` uri
+    """
+    pass
+
+
 class InvalidSDXLRefinerUriError(InvalidModelUriError):
     """
     Error in ``--sdxl-refiner`` uri

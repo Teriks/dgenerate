@@ -213,12 +213,6 @@ from .pipelines import (
     destroy_last_called_pipeline
 )
 
-# Quantization and module flag test
-from .quanto import (
-    quantize_freeze,
-    is_quantized_and_frozen
-)
-
 # URI Errors and Types
 from .uris import (
     InvalidModelUriError,

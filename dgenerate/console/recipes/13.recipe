@@ -32,5 +32,6 @@ title: Flux (Schnell)
 @imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"1024x1024"}]
 @dropdown[{"label":"Prompt Weighter", "arg":"--prompt-weighter", "options":["sd-embed"]}]
 @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
+@quantizer[{}]
 @device[{}]
 --prompts "add your prompt here"

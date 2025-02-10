@@ -27,15 +27,14 @@ import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.cache as _cache
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.hfutil as _hfutil
+import dgenerate.pipelinewrapper.util as _util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
-import dgenerate.pipelinewrapper.quanto as _quanto
-import optimum.quanto
 
 _transformer_uri_parser = _textprocessing.ConceptUriParser(
-    'Transformer', ['model', 'revision', 'variant', 'subfolder', 'dtype', 'quantize'])
+    'Transformer', ['model', 'revision', 'variant', 'subfolder', 'dtype', 'quantizer'])
 
 
 class TransformerUri:
@@ -79,11 +78,11 @@ class TransformerUri:
         return self._dtype
 
     @property
-    def quantize(self) -> _types.OptionalString:
+    def quantizer(self) -> _types.OptionalUri:
         """
-        ``optimum.quanto`` Quantization dtype
+        --quantizer URI override
         """
-        return self._quantize
+        return self._quantizer
 
     def __init__(self,
                  model: str,
@@ -91,16 +90,13 @@ class TransformerUri:
                  variant: _types.OptionalString = None,
                  subfolder: _types.OptionalString = None,
                  dtype: _enums.DataType | str | None = None,
-                 quantize: _types.OptionalString = None):
+                 quantizer: _types.OptionalUri = None):
         """
         :param model: model path
         :param revision: model revision (branch name)
         :param variant: model variant, for example ``fp16``
         :param subfolder: model subfolder
         :param dtype: model data type (precision)
-        :param quantize: Quantize to a specific data type optimum-quanto,
-            must be a supported dtype name that exists in ``optimum.quanto.qtypes``,
-            such as ``qint8`` or ``qfloat8``
 
         :raises InvalidTransformerUriError: If ``dtype`` is passed an invalid data type string.
         """
@@ -109,14 +105,7 @@ class TransformerUri:
         self._revision = revision
         self._variant = variant
         self._subfolder = subfolder
-
-        if quantize and quantize.lower() not in optimum.quanto.qtypes:
-            raise _exceptions.InvalidTextEncoderUriError(
-                f'Unknown quantize argument value "{quantize}", '
-                f'must be one of: {_textprocessing.oxford_comma(optimum.quanto.qtypes.keys(), "or")} '
-            )
-
-        self._quantize = quantize.lower() if quantize else None
+        self._quantizer = quantizer
 
         try:
             self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
@@ -210,9 +199,15 @@ class TransformerUri:
 
         model_path = _hfutil.download_non_hf_model(self.model)
 
-        single_file_load_path = _hfutil.is_single_file_model_load(model_path)
+        if self.quantizer:
+            quant_config = _util.get_quantizer_uri_class(
+                self.quantizer,
+                _exceptions.InvalidTransformerUriError
+            ).parse(self.quantizer).to_config()
+        else:
+            quant_config = None
 
-        if single_file_load_path:
+        if _hfutil.is_single_file_model_load(model_path):
             estimated_memory_use = _hfutil.estimate_model_memory_use(
                 repo_id=model_path,
                 revision=self.revision,
@@ -228,10 +223,11 @@ class TransformerUri:
                 token=use_auth_token,
                 revision=self.revision,
                 torch_dtype=torch_dtype,
-                local_files_only=local_files_only)
+                local_files_only=local_files_only,
+                quantization_config=quant_config
+            )
 
         else:
-
             estimated_memory_use = _hfutil.estimate_model_memory_use(
                 repo_id=model_path,
                 revision=self.revision,
@@ -251,7 +247,9 @@ class TransformerUri:
                 torch_dtype=torch_dtype,
                 subfolder=self.subfolder if self.subfolder else "",
                 token=use_auth_token,
-                local_files_only=local_files_only)
+                local_files_only=local_files_only,
+                quantization_config=quant_config
+            )
 
         _messages.debug_log('Estimated Torch Transformer Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_use))
@@ -259,9 +257,6 @@ class TransformerUri:
         _cache.transformer_create_update_cache_info(
             transformer=transformer,
             estimated_size=estimated_memory_use)
-
-        if self._quantize is not None:
-            _quanto.quantize_freeze(transformer, weights=optimum.quanto.qtypes[self._quantize])
 
         return transformer
 
@@ -292,6 +287,6 @@ class TransformerUri:
                                   variant=r.args.get('variant', None),
                                   dtype=dtype,
                                   subfolder=r.args.get('subfolder', None),
-                                  quantize=r.args.get('quantize', False))
+                                  quantizer=r.args.get('quantizer', False))
         except _textprocessing.ConceptUriParseError as e:
             raise _exceptions.InvalidTransformerUriError(e)

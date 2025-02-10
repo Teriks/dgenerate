@@ -186,9 +186,10 @@ Help Output
                      [-tf TRANSFORMER_URI] [-vae VAE_URI] [-vt] [-vs] [-lra LORA_URI [LORA_URI ...]]
                      [-lrfs LORA_FUSE_SCALE] [-ie IMAGE_ENCODER_URI] [-ipa IP_ADAPTER_URI [IP_ADAPTER_URI ...]]
                      [-ti URI [URI ...]] [-cn CONTROLNET_URI [CONTROLNET_URI ...] | -t2i T2I_ADAPTER_URI
-                     [T2I_ADAPTER_URI ...]] [-sch SCHEDULER_URI [SCHEDULER_URI ...]] [-pag]
-                     [-pags FLOAT [FLOAT ...]] [-pagas FLOAT [FLOAT ...]] [-rpag] [-rpags FLOAT [FLOAT ...]]
-                     [-rpagas FLOAT [FLOAT ...]] [-mqo | -mco] [--s-cascade-decoder MODEL_URI] [-dqo] [-dco]
+                     [T2I_ADAPTER_URI ...]] [-q QUANTIZER_URI] [-q2 QUANTIZER_URI]
+                     [-sch SCHEDULER_URI [SCHEDULER_URI ...]] [-pag] [-pags FLOAT [FLOAT ...]]
+                     [-pagas FLOAT [FLOAT ...]] [-rpag] [-rpags FLOAT [FLOAT ...]] [-rpagas FLOAT [FLOAT ...]]
+                     [-mqo | -mco] [--s-cascade-decoder MODEL_URI] [-dqo] [-dco]
                      [--s-cascade-decoder-prompts PROMPT [PROMPT ...]]
                      [--s-cascade-decoder-inference-steps INTEGER [INTEGER ...]]
                      [--s-cascade-decoder-guidance-scales INTEGER [INTEGER ...]]
@@ -519,8 +520,6 @@ Help Output
             
             The value "null" may be used to indicate that a specific text encoder should not be loaded.
             
-            Blob links / single file loads are not supported for Text Encoders.
-            
             The "revision" argument specifies the model revision to use for the Text Encoder when loading from
             Hugging Face repository, (The Git branch / tag, default is "main").
             
@@ -529,8 +528,11 @@ Help Output
             e.g. "pytorch_model.<variant>.safetensors". For this argument, "variant" defaults to the value of
             --variant if it is not specified in the URI.
             
-            The "subfolder" argument specifies the UNet model subfolder, if specified when loading from a
-            Hugging Face repository or folder, weights from the specified subfolder.
+            The "subfolder" argument specifies the Text Encoder model subfolder, if specified when loading from
+            a Hugging Face repository or folder, weights from the specified subfolder. If you are loading from a
+            combined single file checkpoint containing multiple components, this value will be used to determine
+            the key in the checkpoint that contains the unet, by default "text_encoder" is used if subfolder is
+            not provided.
             
             The "dtype" argument specifies the Text Encoder model precision, it defaults to the value of
             -t/--dtype and should be one of: auto, bfloat16, float16, or float32.
@@ -552,8 +554,6 @@ Help Output
             
             Examples: "huggingface/unet", "huggingface/unet;revision=main", "unet_folder_on_disk".
             
-            Blob links / single file loads are not supported for UNets.
-            
             The "revision" argument specifies the model revision to use for the UNet when loading from Hugging
             Face repository, (The Git branch / tag, default is "main").
             
@@ -563,7 +563,10 @@ Help Output
             --variant if it is not specified in the URI.
             
             The "subfolder" argument specifies the UNet model subfolder, if specified when loading from a
-            Hugging Face repository or folder, weights from the specified subfolder.
+            Hugging Face repository or folder, weights from the specified subfolder. If you are loading from a
+            combined single file checkpoint containing multiple components, this value will be used to determine
+            the key in the checkpoint that contains the unet, by default "unet" is used if subfolder is not
+            provided.
             
             The "dtype" argument specifies the UNet model precision, it defaults to the value of -t/--dtype and
             should be one of: auto, bfloat16, float16, or float32.
@@ -644,6 +647,11 @@ Help Output
             
             The "subfolder" argument specifies the VAE model subfolder, if specified when loading from a Hugging
             Face repository or folder, weights from the specified subfolder.
+            
+            The "extract" argument specifies that "model" points at a combind single file checkpoint containing
+            multiple components such as the UNet and Text Encoders, and that we should extract the VAE. When
+            using this argument you can use "subfolder" to indicate the key in the checkpoint containing the
+            model, this defaults to "vae".
             
             The "dtype" argument specifies the VAE model precision, it defaults to the value of -t/--dtype and
             should be one of: auto, bfloat16, float16, or float32.
@@ -898,6 +906,53 @@ Help Output
             syntax: --t2i-adapters "https://huggingface.co/UserName/repository-
             name/blob/main/t2i_adapter.safetensors", the "revision" argument may be used with this syntax.
             ----------------------------------------------------------------------------------------------
+      -q QUANTIZER_URI, --quantizer QUANTIZER_URI
+            Global quantization configuration via URI.
+            
+            This URI specifies the quantization backend and its configuration.
+            
+            Quantization will be applied to all text encoders, and unet / transformer models with the provided
+            settings when using this argument.
+            
+            If you wish to specify different quantization types per encoder or unet / transformer, you should
+            use the "quantizer" URI argument of --text-encoders and or --unet / --transformer to specify the
+            quantization settings on a per model basis.
+            
+            Available backends are: (bnb / bitsandbytes), torchao
+            
+            bitsandbytes can be specified with "bnb" or "bitsandbytes"
+            
+            Example:
+            
+            --quantizer bnb;bits=4;bits4_compute_dtype=float16
+            
+            or:
+            
+            --quantizer bnb;bits=4;bits4_compute_dtype=float16
+            
+            The bitsandbytes backend URI possesses these arguments and defaults:
+            
+            * bits: int = 8 (must be 4 or 8)
+            
+            * bits4_compute_dtype: str = None
+            
+            * bits4_quant_type: str = "fp4"
+            
+            * bits4_use_double_quant = False,
+            
+            * bits4_quant_storage: str = None
+            
+            torchao may be specified using this syntax:
+            
+            --quantizer torchao;type=int8wo
+            
+            The only configuration argument used with the torchao backend is "type", which is a string
+            indicating the quantization datatype for loading.
+            -------------------------------------------------
+      -q2 QUANTIZER_URI, --quantizer2 QUANTIZER_URI
+            Global quantization configuration via URI for the secondary model, such as the SDXL Refiner or
+            Stable Cascade decoder. See --quantizer for syntax examples.
+            ------------------------------------------------------------
       -sch SCHEDULER_URI [SCHEDULER_URI ...], --scheduler SCHEDULER_URI [SCHEDULER_URI ...], --schedulers SCHEDULER_URI [SCHEDULER_URI ...]
             Specify a scheduler (sampler) by URI. Passing "help" to this argument will print the compatible
             schedulers for a model without generating any images. Passing "helpargs" will yield a help message

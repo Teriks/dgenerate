@@ -160,6 +160,8 @@ class DiffusionPipelineWrapper:
                  sdxl_refiner_scheduler: _types.OptionalUri = None,
                  s_cascade_decoder_uri: _types.OptionalUri = None,
                  s_cascade_decoder_scheduler: _types.OptionalUri = None,
+                 quantizer_uri: _types.OptionalUri = None,
+                 second_quantizer_uri: _types.OptionalUri = None,
                  device: str = _util.default_device(),
                  safety_checker: bool = False,
                  auth_token: _types.OptionalString = None,
@@ -221,6 +223,8 @@ class DiffusionPipelineWrapper:
         :param sdxl_refiner_scheduler: Scheduler URI string for the SDXL Refiner
         :param s_cascade_decoder_uri: Stable Cascade decoder URI string
         :param s_cascade_decoder_scheduler: Scheduler URI string for the Stable Cascade decoder
+        :param quantizer_uri: Global --quantizer URI value
+        :param second_quantizer_uri: Global --quantizer2 URI value
         :param device: Rendering device string, example: ``cuda:0`` or ``cuda``
         :param safety_checker: Use safety checker model if available? (antiquated, for SD 1/2, Deep Floyd etc.)
         :param auth_token: huggingface authentication token.
@@ -286,6 +290,8 @@ class DiffusionPipelineWrapper:
             sdxl_refiner_scheduler: _types.OptionalUri = None,
             s_cascade_decoder_uri: _types.OptionalUri = None,
             s_cascade_decoder_scheduler: _types.OptionalUri = None,
+            quantizer_uri: _types.OptionalUri = None,
+            second_quantizer_uri: _types.OptionalUri = None,
             device: str = _util.default_device(),
             safety_checker: bool = False,
             auth_token: _types.OptionalString = None,
@@ -425,6 +431,20 @@ class DiffusionPipelineWrapper:
                 f'--adetailer-detectors is only compatible with '
                 f'--model-type torch, torch-sdxl, torch-kolors, torch-sd3, and torch-flux')
 
+        if quantizer_uri is not None:
+            try:
+                _util.get_quantizer_uri_class(quantizer_uri)
+            except ValueError as e:
+                raise _pipelines.UnsupportedPipelineConfigError(str(e))
+
+        if second_quantizer_uri is not None:
+            try:
+                _util.get_quantizer_uri_class(second_quantizer_uri)
+            except ValueError as e:
+                raise _pipelines.UnsupportedPipelineConfigError(str(e))
+
+        self._quantizer_uri = quantizer_uri
+        self._second_quantizer_uri = second_quantizer_uri
         self._subfolder = subfolder
         self._device = device
         self._model_type = _enums.get_model_type_enum(model_type)
@@ -815,6 +835,20 @@ class DiffusionPipelineWrapper:
         Current ``--s-cascade-decoder-cpu-offload`` value.
         """
         return self._s_cascade_decoder_cpu_offload
+
+    @property
+    def quantizer_uri(self) -> _types.OptionalUri:
+        """
+        Current ``--quantizer`` value.
+        """
+        return self._quantizer_uri
+
+    @property
+    def second_quantizer_uri(self) -> _types.OptionalUri:
+        """
+        Current ``--quantizer2`` value.
+        """
+        return self._second_quantizer_uri
 
     def reconstruct_dgenerate_opts(self,
                                    args: DiffusionArguments | None = None,
@@ -2417,6 +2451,7 @@ class DiffusionPipelineWrapper:
                     vae_uri=self._vae_uri,
                     lora_uris=self._lora_uris,
                     lora_fuse_scale=self._lora_fuse_scale,
+                    quantizer_uri=self._quantizer_uri,
                     scheduler=self._scheduler,
                     safety_checker=self._safety_checker,
                     auth_token=self._auth_token,
@@ -2438,6 +2473,7 @@ class DiffusionPipelineWrapper:
                 revision=self._parsed_s_cascade_decoder_uri.revision,
                 unet_uri=self._second_unet_uri,
                 text_encoder_uris=self._second_text_encoder_uris,
+                quantizer_uri=self._second_quantizer_uri,
 
                 variant=self._parsed_s_cascade_decoder_uri.variant if
                 self._parsed_s_cascade_decoder_uri.variant is not None else self._variant,
@@ -2485,6 +2521,7 @@ class DiffusionPipelineWrapper:
                     text_encoder_uris=self._text_encoder_uris,
                     controlnet_uris=self._controlnet_uris,
                     t2i_adapter_uris=self._t2i_adapter_uris,
+                    quantizer_uri=self._quantizer_uri,
                     scheduler=self._scheduler,
                     pag=pag,
                     safety_checker=self._safety_checker,
@@ -2529,6 +2566,7 @@ class DiffusionPipelineWrapper:
                 revision=self._parsed_sdxl_refiner_uri.revision,
                 unet_uri=self._second_unet_uri,
                 text_encoder_uris=self._second_text_encoder_uris,
+                quantizer_uri=self._second_quantizer_uri,
 
                 variant=self._parsed_sdxl_refiner_uri.variant if
                 self._parsed_sdxl_refiner_uri.variant is not None else self._variant,
@@ -2570,6 +2608,7 @@ class DiffusionPipelineWrapper:
                 ip_adapter_uris=self._ip_adapter_uris,
                 textual_inversion_uris=self._textual_inversion_uris,
                 text_encoder_uris=self._text_encoder_uris,
+                quantizer_uri=self._quantizer_uri,
                 controlnet_uris=self._controlnet_uris,
                 t2i_adapter_uris=self._t2i_adapter_uris,
                 scheduler=self._scheduler,

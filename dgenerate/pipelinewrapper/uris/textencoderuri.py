@@ -20,10 +20,9 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import typing
 
-import huggingface_hub
-import optimum.quanto
-import transformers.models.clip
 import diffusers.pipelines.kolors
+import huggingface_hub
+import transformers.models.clip
 
 import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
@@ -31,14 +30,14 @@ import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.cache as _cache
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.hfutil as _hfutil
+import dgenerate.pipelinewrapper.util as _util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
-import dgenerate.pipelinewrapper.quanto as _quanto
 
 _text_encoder_uri_parser = _textprocessing.ConceptUriParser(
-    'TextEncoder', ['model', 'revision', 'variant', 'subfolder', 'dtype', 'quantize'])
+    'TextEncoder', ['model', 'revision', 'variant', 'subfolder', 'dtype', 'quantizer'])
 
 
 class TextEncoderUri:
@@ -89,11 +88,11 @@ class TextEncoderUri:
         return self._dtype
 
     @property
-    def quantize(self) -> _types.OptionalString:
+    def quantizer(self) -> _types.OptionalUri:
         """
-        ``optimum.quanto`` Quantization dtype
+        --quantizer URI override
         """
-        return self._quantize
+        return self._quantizer
 
     _encoders = {
         'CLIPTextModel': transformers.models.clip.CLIPTextModel,
@@ -113,7 +112,7 @@ class TextEncoderUri:
                  variant: _types.OptionalString = None,
                  subfolder: _types.OptionalString = None,
                  dtype: _enums.DataType | str | None = None,
-                 quantize: _types.OptionalString = None):
+                 quantizer: _types.OptionalUri = None):
         """
         :param encoder: encoder class name, for example ``CLIPTextModel``
         :param model: model path
@@ -121,9 +120,6 @@ class TextEncoderUri:
         :param variant: model variant, for example ``fp16``
         :param subfolder: model subfolder
         :param dtype: model data type (precision)
-        :param quantize: Quantize to a specific data type optimum-quanto,
-            must be a supported dtype name that exists in ``optimum.quanto.qtypes``,
-            such as ``qint8`` or ``qfloat8``
 
         :raises InvalidTextEncoderUriError: If ``dtype`` is passed an invalid data type string, or if
             ``model`` points to a single file and the specified ``encoder`` class name does not
@@ -134,32 +130,17 @@ class TextEncoderUri:
             raise _exceptions.InvalidTextEncoderUriError(
                 f'Unknown TextEncoder encoder class {encoder}, must be one of: {_textprocessing.oxford_comma(self._encoders.keys(), "or")}')
 
-        can_single_file_load = hasattr(self._encoders[encoder], 'from_single_file')
-        single_file_load_path = _hfutil.is_single_file_model_load(model)
-
-        if single_file_load_path and not can_single_file_load:
+        if _hfutil.is_single_file_model_load(model) and quantizer:
             raise _exceptions.InvalidTextEncoderUriError(
-                f'{encoder} is not capable of loading from a single file, '
-                f'must be loaded from a huggingface repository slug or folder on disk.')
-
-        if single_file_load_path:
-            if subfolder is not None:
-                raise _exceptions.InvalidTextEncoderUriError(
-                    'Single file TextEncoder loads do not support the subfolder option.')
+                'specifying a text encoder quantizer URI is only supported for Hugging Face '
+                'repository loads from a repo slug or disk path, single file loads are not supported.')
 
         self._encoder = encoder
         self._model = model
         self._revision = revision
         self._variant = variant
         self._subfolder = subfolder
-
-        if quantize and quantize.lower() not in optimum.quanto.qtypes:
-            raise _exceptions.InvalidTextEncoderUriError(
-                f'Unknown quantize argument value "{quantize}", '
-                f'must be one of: {_textprocessing.oxford_comma(optimum.quanto.qtypes.keys(), "or")} '
-            )
-
-        self._quantize = quantize.lower() if quantize else None
+        self._quantizer = quantizer
 
         try:
             self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
@@ -255,9 +236,15 @@ class TextEncoderUri:
 
         model_path = _hfutil.download_non_hf_model(self.model)
 
-        single_file_load_path = _hfutil.is_single_file_model_load(model_path)
+        if self.quantizer:
+            quant_config = _util.get_quantizer_uri_class(
+                self.quantizer,
+                _exceptions.InvalidTextEncoderUriError
+            ).parse(self.quantizer).to_config()
+        else:
+            quant_config = None
 
-        if single_file_load_path:
+        if _hfutil.is_single_file_model_load(model_path):
             estimated_memory_use = _hfutil.estimate_model_memory_use(
                 repo_id=model_path,
                 revision=self.revision,
@@ -266,13 +253,25 @@ class TextEncoderUri:
             )
 
             _cache.enforce_text_encoder_cache_constraints(
-                new_text_encoder_size=estimated_memory_use)
+                new_text_encoder_size=estimated_memory_use
+            )
 
-            text_encoder = encoder.from_single_file(model_path,
-                                                    token=use_auth_token,
-                                                    revision=self.revision,
-                                                    torch_dtype=torch_dtype,
-                                                    local_files_only=local_files_only)
+            try:
+                text_encoder = _util.single_file_load_sub_module(
+                    path=model_path,
+                    class_name=self.encoder,
+                    library_name='transformers',
+                    name=self.subfolder if self.subfolder else 'text_encoder',
+                    use_auth_token=use_auth_token,
+                    local_files_only=local_files_only,
+                    revision=self.revision,
+                    dtype=torch_dtype
+                )
+            except FileNotFoundError as e:
+                # cannot find configs
+                raise _exceptions.TextEncoderUriLoadError(e)
+
+            estimated_memory_use = _util.estimate_memory_usage(text_encoder)
 
         else:
 
@@ -295,7 +294,9 @@ class TextEncoderUri:
                 torch_dtype=torch_dtype,
                 subfolder=self.subfolder if self.subfolder else "",
                 token=use_auth_token,
-                local_files_only=local_files_only)
+                local_files_only=local_files_only,
+                quantization_config=quant_config
+            )
 
         _messages.debug_log('Estimated Torch TextEncoder Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_use))
@@ -303,9 +304,6 @@ class TextEncoderUri:
         _cache.text_encoder_create_update_cache_info(
             text_encoder=text_encoder,
             estimated_size=estimated_memory_use)
-
-        if self._quantize is not None:
-            _quanto.quantize_freeze(text_encoder, weights=optimum.quanto.qtypes[self._quantize])
 
         return text_encoder
 
@@ -342,6 +340,6 @@ class TextEncoderUri:
                                   variant=r.args.get('variant', None),
                                   dtype=dtype,
                                   subfolder=r.args.get('subfolder', None),
-                                  quantize=r.args.get('quantize', False))
+                                  quantizer=r.args.get('quantizer', False))
         except _textprocessing.ConceptUriParseError as e:
             raise _exceptions.InvalidTextEncoderUriError(e)

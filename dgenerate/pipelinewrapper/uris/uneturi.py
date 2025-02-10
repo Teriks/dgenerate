@@ -28,13 +28,14 @@ import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.cache as _cache
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.hfutil as _hfutil
+import dgenerate.pipelinewrapper.util as _util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 
 _unet_uri_parser = _textprocessing.ConceptUriParser(
-    'UNet', ['revision', 'variant', 'subfolder', 'dtype'])
+    'UNet', ['revision', 'variant', 'subfolder', 'dtype', 'quantizer'])
 
 
 class UNetUri:
@@ -77,12 +78,20 @@ class UNetUri:
         """
         return self._dtype
 
+    @property
+    def quantizer(self) -> _types.OptionalUri:
+        """
+        --quantizer URI override
+        """
+        return self._quantizer
+
     def __init__(self,
                  model: str,
                  revision: _types.OptionalString = None,
                  variant: _types.OptionalString = None,
                  subfolder: _types.OptionalString = None,
-                 dtype: _enums.DataType | str | None = None):
+                 dtype: _enums.DataType | str | None = None,
+                 quantizer: _types.OptionalUri = None):
         """
         :param model: model path
         :param revision: model revision (branch name)
@@ -95,13 +104,15 @@ class UNetUri:
             invalid data type string.
         """
 
-        if _hfutil.is_single_file_model_load(model):
-            raise _exceptions.InvalidUNetUriError(
-                'Loading a UNet from a single file is not supported.')
+        if _hfutil.is_single_file_model_load(model) and quantizer:
+            raise _exceptions.InvalidTextEncoderUriError(
+                'specifying a unet quantizer URI is only supported for Hugging Face '
+                'repository loads from a repo slug or disk path, single file loads are not supported.')
 
         self._model = model
         self._revision = revision
         self._variant = variant
+        self._quantizer = quantizer
 
         try:
             self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
@@ -183,27 +194,77 @@ class UNetUri:
         else:
             variant = self.variant
 
-        path = self.model
+        model_path = _hfutil.download_non_hf_model(self.model)
 
-        estimated_memory_use = _hfutil.estimate_model_memory_use(
-            repo_id=path,
-            revision=self.revision,
-            variant=variant,
-            subfolder=self.subfolder,
-            local_files_only=local_files_only,
-            use_auth_token=use_auth_token
-        )
+        if self.quantizer:
+            quant_config = _util.get_quantizer_uri_class(
+                self.quantizer,
+                _exceptions.InvalidUNetUriError
+            ).parse(self.quantizer).to_config()
+        else:
+            quant_config = None
 
-        _cache.enforce_unet_cache_constraints(new_unet_size=estimated_memory_use)
+        if _hfutil.is_single_file_model_load(model_path):
+            estimated_memory_use = _hfutil.estimate_model_memory_use(
+                repo_id=model_path,
+                revision=self.revision,
+                local_files_only=local_files_only,
+                use_auth_token=use_auth_token
+            )
 
-        unet = unet_class.from_pretrained(
-            path,
-            revision=self.revision,
-            variant=variant,
-            torch_dtype=torch_dtype,
-            subfolder=self.subfolder,
-            token=use_auth_token,
-            local_files_only=local_files_only)
+            _cache.enforce_text_encoder_cache_constraints(
+                new_text_encoder_size=estimated_memory_use)
+
+            estimated_memory_use = _hfutil.estimate_model_memory_use(
+                repo_id=model_path,
+                revision=self.revision,
+                local_files_only=local_files_only,
+                use_auth_token=use_auth_token
+            )
+
+            _cache.enforce_text_encoder_cache_constraints(
+                new_text_encoder_size=estimated_memory_use
+            )
+
+            try:
+                unet = _util.single_file_load_sub_module(
+                    path=model_path,
+                    class_name=unet_class.__name__,
+                    library_name='diffusers',
+                    name=self.subfolder if self.subfolder else 'unet',
+                    use_auth_token=use_auth_token,
+                    local_files_only=local_files_only,
+                    revision=self.revision,
+                    dtype=torch_dtype
+                )
+            except FileNotFoundError as e:
+                # cannot find configs
+                raise _exceptions.TextEncoderUriLoadError(e)
+
+            estimated_memory_use = _util.estimate_memory_usage(unet)
+        else:
+
+            estimated_memory_use = _hfutil.estimate_model_memory_use(
+                repo_id=model_path,
+                revision=self.revision,
+                variant=variant,
+                subfolder=self.subfolder,
+                local_files_only=local_files_only,
+                use_auth_token=use_auth_token
+            )
+
+            _cache.enforce_unet_cache_constraints(new_unet_size=estimated_memory_use)
+
+            unet = unet_class.from_pretrained(
+                model_path,
+                revision=self.revision,
+                variant=variant,
+                torch_dtype=torch_dtype,
+                subfolder=self.subfolder,
+                token=use_auth_token,
+                local_files_only=local_files_only,
+                quantization_config=quant_config
+            )
 
         _messages.debug_log('Estimated Torch UNet Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_use))

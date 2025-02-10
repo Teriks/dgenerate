@@ -354,7 +354,7 @@ class ControlNetUri:
         Parse a ``--model-type`` torch* ``--control-nets`` uri specification and return an object representing its constituents
 
         :param uri: string with ``--control-nets`` uri syntax
-        :param model_type: model type that the CntrolNnet will be attached to.
+        :param model_type: model type that the ControlNet will be attached to.
 
         :raise InvalidControlNetUriError:
 

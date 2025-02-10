@@ -911,7 +911,9 @@ class RenderLoop:
             prompt_weighter_uri=self.config.prompt_weighter_uri,
             prompt_weighter_loader=self.prompt_weighter_loader,
             adetailer_detector_uris=self.config.adetailer_detector_uris,
-            adetailer_crop_control_image=bool(self.config.adetailer_crop_control_image))
+            adetailer_crop_control_image=bool(self.config.adetailer_crop_control_image),
+            quantizer_uri=self.config.quantizer_uri
+        )
         return self._pipeline_wrapper
 
     def _ensure_output_path(self):
