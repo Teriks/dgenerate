@@ -2471,40 +2471,47 @@ def _create_torch_diffusion_pipeline(
 
             vae_encoder_name = pipe_params['vae'].annotation.__name__
 
-            vae_extract_from_checkpoint = _hfutil.is_single_file_model_load(model_path)
+            if vae_encoder_name in _uris.VAEUri.supported_encoder_names():
+                # sometimes this is Union because the pipeline can accept another
+                # type of VAE, don't cache individually for now.
+                # the vae class needs to be figured out from the pipeline
+                # config files, just let diffusers do it, inspecting the
+                # init args for this is a bit of a hack
 
-            try:
-                creation_kwargs['vae'] = \
-                    _uris.VAEUri(
-                        encoder=vae_encoder_name,
-                        model=model_path,
-                        variant=variant,
-                        subfolder=vae_subfolder,
-                        extract=vae_extract_from_checkpoint,
-                        dtype=dtype
-                    ).load(
-                        dtype_fallback=dtype,
-                        use_auth_token=auth_token,
-                        local_files_only=local_files_only,
-                        sequential_cpu_offload_member=sequential_cpu_offload,
-                        model_cpu_offload_member=model_cpu_offload
-                    )
-            except dgenerate.ModelNotFoundError:
-                if vae_extract_from_checkpoint:
-                    raise
-                creation_kwargs['vae'] = \
-                    _uris.VAEUri(
-                        encoder=vae_encoder_name,
-                        model=model_path,
-                        subfolder=vae_subfolder,
-                        dtype=dtype
-                    ).load(
-                        dtype_fallback=dtype,
-                        use_auth_token=auth_token,
-                        local_files_only=local_files_only,
-                        sequential_cpu_offload_member=sequential_cpu_offload,
-                        model_cpu_offload_member=model_cpu_offload
-                    )
+                vae_extract_from_checkpoint = _hfutil.is_single_file_model_load(model_path)
+
+                try:
+                    creation_kwargs['vae'] = \
+                        _uris.VAEUri(
+                            encoder=vae_encoder_name,
+                            model=model_path,
+                            variant=variant,
+                            subfolder=vae_subfolder,
+                            extract=vae_extract_from_checkpoint,
+                            dtype=dtype
+                        ).load(
+                            dtype_fallback=dtype,
+                            use_auth_token=auth_token,
+                            local_files_only=local_files_only,
+                            sequential_cpu_offload_member=sequential_cpu_offload,
+                            model_cpu_offload_member=model_cpu_offload
+                        )
+                except dgenerate.ModelNotFoundError:
+                    if vae_extract_from_checkpoint:
+                        raise
+                    creation_kwargs['vae'] = \
+                        _uris.VAEUri(
+                            encoder=vae_encoder_name,
+                            model=model_path,
+                            subfolder=vae_subfolder,
+                            dtype=dtype
+                        ).load(
+                            dtype_fallback=dtype,
+                            use_auth_token=auth_token,
+                            local_files_only=local_files_only,
+                            sequential_cpu_offload_member=sequential_cpu_offload,
+                            model_cpu_offload_member=model_cpu_offload
+                        )
 
     if not unet_override:
         unet_parameter = 'unet'
