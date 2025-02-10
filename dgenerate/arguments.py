@@ -909,9 +909,11 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     The "dtype" argument specifies the Text Encoder model precision, it defaults to the value of -t/--dtype
                     and should be one of: {_SUPPORTED_DATA_TYPES_PRETTY}.
                     
-                    The "quantize" argument specifies whether or not to use optimum-quanto to quantize the text encoder weights,
-                    and may be passed the values {_textprocessing.oxford_comma(list(_textprocessing.quote(q) for q in optimum.quanto.qtypes.keys()), 'or')} to
-                    specify the quantization datatype, this can be utilized to run Flux models with much less GPU memory.
+                    The "quantizer" argument specifies a quantization backend and configuration for the
+                    Text Encoder model individually, and uses the same URI syntax as --quantizer. 
+                    If working from the command line you may need to nested quote this URI, i.e:
+                    
+                    --text-encoders 'CLIPTextModel;model=huggingface/text_encoder;quantizer="bnb;bits=8"'
                     
                     If you wish to load weights directly from a path on disk, you must point this argument at the folder
                     they exist in, which should also contain the config.json file for the Text Encoder.
@@ -951,6 +953,12 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     The "dtype" argument specifies the UNet model precision, it defaults to the value of -t/--dtype
                     and should be one of: {_SUPPORTED_DATA_TYPES_PRETTY}.
                     
+                    The "quantizer" argument specifies a quantization backend and configuration for the
+                    UNet model individually, and uses the same URI syntax as --quantizer. 
+                    If working from the command line you may need to nested quote this URI, i.e:
+                    
+                    --unet 'huggingface/unet;quantizer="bnb;bits=8"'
+                    
                     If you wish to load weights directly from a path on disk, you must point this argument at the folder
                     they exist in, which should also contain the config.json file for the UNet.
                     For example, a downloaded repository folder from Hugging Face."""
@@ -988,13 +996,15 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     The "dtype" argument specifies the Transformer model precision, it defaults to the value of -t/--dtype
                     and should be one of: {_SUPPORTED_DATA_TYPES_PRETTY}.
                     
-                    The "quantize" argument specifies whether or not to use optimum-quanto to quantize the transformer weights,
-                    and may be passed the values {_textprocessing.oxford_comma(list(_textprocessing.quote(q) for q in optimum.quanto.qtypes.keys()), 'or')} to
-                    specify the quantization datatype, this can be utilized to run Flux models with much less GPU memory.
+                    The "quantizer" argument specifies a quantization backend and configuration for the
+                    Transformer model individually, and uses the same URI syntax as --quantizer. 
+                    If working from the command line you may need to nested quote this URI, i.e:
+                    
+                    --transformer 'huggingface/transformer;quantizer="bnb;bits=8"'
                     
                     If you wish to load a weights file directly from disk, the simplest
                     way is: --transformer "transformer.safetensors", or with a dtype "transformer.safetensors;dtype=float16".
-                    All loading arguments except "dtype" and "quantize" are unused in this case and may produce an
+                    All loading arguments except "dtype" and "quantizer" are unused in this case and may produce an
                     error message if used.
                     
                     If you wish to load a specific weight file from a Hugging Face repository, use the blob link
