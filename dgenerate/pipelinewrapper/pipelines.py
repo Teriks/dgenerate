@@ -2269,7 +2269,12 @@ def _create_torch_diffusion_pipeline(
             )
 
     if original_config:
-        original_config = _util.download_non_hf_config(original_config)
+        try:
+            original_config = _util.download_non_hf_config(original_config)
+        except _util.NonHFConfigDownloadError as e:
+            raise UnsupportedPipelineConfigError(
+                f'original config file "{original_config}" could not be downloaded: {e}'
+            )
 
     pipeline_class = get_torch_pipeline_class(
         model_type=model_type,
