@@ -383,6 +383,16 @@ class DiffusionArguments(_types.SetFromMixin):
     when :py:attr:`.DiffusionArguments.guidance_scale`  > 1
     """
 
+    hi_diffusion: _types.OptionalBoolean = None
+    """
+    Activate HiDiffusion for this generation?
+    """
+
+    sdxl_refiner_hi_diffusion: _types.OptionalBoolean = None
+    """
+    Activate HiDiffusion on the SDXL refiner for this generation?
+    """
+
     pag_scale: _types.OptionalFloat = None
     """
     Perturbed attention guidance scale.
