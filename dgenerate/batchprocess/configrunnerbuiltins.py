@@ -219,13 +219,13 @@ def download(url: str,
                     else:
                         with open(cache_pointer.path, 'rt', encoding='utf8') as pointer_file:
                             downloaded_file = pointer_file.read().strip()
-                            if os.path.exists(downloaded_file):
-                                _messages.log(
-                                    f'Downloaded file already exists, using: '
-                                    f'{os.path.relpath(downloaded_file)}', underline=True)
-                                return downloaded_file
-                            else:
-                                del web_cache[cache_key]
+                        if os.path.exists(downloaded_file):
+                            _messages.log(
+                                f'Downloaded file already exists, using: '
+                                f'{os.path.relpath(downloaded_file)}', underline=True)
+                            return downloaded_file
+                        else:
+                            del web_cache[cache_key]
 
         try:
             with requests.get(url, headers={
