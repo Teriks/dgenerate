@@ -2795,19 +2795,20 @@ def _create_torch_diffusion_pipeline(
             raise UnsupportedPipelineConfigError(
                 'Single file model loads do not support the subfolder option.')
         try:
-            pipeline = _pipeline_creation_args_debug(
-                backend='Torch',
-                cls=pipeline_class,
-                method=pipeline_class.from_single_file,
-                from_original_config=original_config,
-                model=model_path,
-                token=auth_token,
-                revision=revision,
-                variant=variant,
-                torch_dtype=torch_dtype,
-                use_safe_tensors=model_path.endswith('.safetensors'),
-                local_files_only=local_files_only,
-                **creation_kwargs)
+            with _util._patch_sd21_clip_from_ldm():
+                pipeline = _pipeline_creation_args_debug(
+                    backend='Torch',
+                    cls=pipeline_class,
+                    method=pipeline_class.from_single_file,
+                    from_original_config=original_config,
+                    model=model_path,
+                    token=auth_token,
+                    revision=revision,
+                    variant=variant,
+                    torch_dtype=torch_dtype,
+                    use_safe_tensors=model_path.endswith('.safetensors'),
+                    local_files_only=local_files_only,
+                    **creation_kwargs)
 
         except diffusers.loaders.single_file.SingleFileComponentError as e:
             msg = str(e)
