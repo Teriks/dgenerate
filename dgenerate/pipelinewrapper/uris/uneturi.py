@@ -34,7 +34,15 @@ from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 
 _unet_uri_parser = _textprocessing.ConceptUriParser(
-    'UNet', ['revision', 'variant', 'subfolder', 'dtype', 'quantizer'])
+    'UNet', [
+        'revision',
+        'variant',
+        'subfolder',
+        'dtype',
+        'quantizer',
+        'original_config'
+    ]
+)
 
 
 class UNetUri:
@@ -83,6 +91,12 @@ class UNetUri:
         --quantizer URI override
         """
         return self._quantizer
+    @property
+    def original_config(self) -> _types.OptionalPath:
+        """
+        Original training config file path or URL (.yaml)
+        """
+        return self._original_config
 
     def __init__(self,
                  model: str,
@@ -90,28 +104,37 @@ class UNetUri:
                  variant: _types.OptionalString = None,
                  subfolder: _types.OptionalString = None,
                  dtype: _enums.DataType | str | None = None,
-                 quantizer: _types.OptionalUri = None):
+                 quantizer: _types.OptionalUri = None,
+                 original_config: _types.OptionalPath = None):
         """
         :param model: model path
         :param revision: model revision (branch name)
         :param variant: model variant, for example ``fp16``
         :param subfolder: model subfolder
         :param dtype: model data type (precision)
+        :param original_config: Path to original model configuration for single file checkpoints, URL or `.yaml` file on disk.
 
         :raises InvalidUNetUriError: If ``model`` points to a single file,
             single file loads are not supported. Or if ``dtype`` is passed an
             invalid data type string.
         """
 
-        if _util.is_single_file_model_load(model) and quantizer:
-            raise _exceptions.InvalidTextEncoderUriError(
-                'specifying a unet quantizer URI is only supported for Hugging Face '
-                'repository loads from a repo slug or disk path, single file loads are not supported.')
+        if _util.is_single_file_model_load(model):
+            if quantizer:
+                raise _exceptions.InvalidTextEncoderUriError(
+                    'specifying a UNet quantizer URI is only supported for Hugging Face '
+                    'repository loads from a repo slug or disk path, single file loads are not supported.')
+        else:
+            if original_config:
+                raise _exceptions.InvalidTextEncoderUriError(
+                    'specifying original_config file for UNet '
+                    'is only supported for single file loads.')
 
         self._model = model
         self._revision = revision
         self._variant = variant
         self._quantizer = quantizer
+        self._original_config = original_config
 
         try:
             self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
@@ -232,6 +255,7 @@ class UNetUri:
                     library_name='diffusers',
                     name=self.subfolder if self.subfolder else 'unet',
                     use_auth_token=use_auth_token,
+                    original_config=self.original_config,
                     local_files_only=local_files_only,
                     revision=self.revision,
                     dtype=torch_dtype
@@ -261,6 +285,7 @@ class UNetUri:
                 torch_dtype=torch_dtype,
                 subfolder=self.subfolder,
                 token=use_auth_token,
+                original_config=self.original_config,
                 local_files_only=local_files_only,
                 quantization_config=quant_config
             )
@@ -300,6 +325,7 @@ class UNetUri:
                 revision=r.args.get('revision', None),
                 variant=r.args.get('variant', None),
                 dtype=dtype,
-                subfolder=r.args.get('subfolder', None))
+                subfolder=r.args.get('subfolder', None),
+                original_config=r.args.get('original_config', None))
         except _textprocessing.ConceptUriParseError as e:
             raise _exceptions.InvalidUNetUriError(e)

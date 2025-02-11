@@ -36,7 +36,15 @@ from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 
 _vae_uri_parser = _textprocessing.ConceptUriParser(
-    'VAE', ['model', 'revision', 'variant', 'subfolder', 'dtype'])
+    'VAE', [
+        'model',
+        'revision',
+        'variant',
+        'subfolder',
+        'dtype',
+        'original_config'
+    ]
+)
 
 
 class VAEUri:
@@ -93,6 +101,13 @@ class VAEUri:
         """
         return self._extract
 
+    @property
+    def original_config(self) -> _types.OptionalPath:
+        """
+        Original training config file path or URL (.yaml)
+        """
+        return self._original_config
+
     _encoders = {
         'AutoencoderKL': diffusers.AutoencoderKL,
         'AsymmetricAutoencoderKL': diffusers.AsymmetricAutoencoderKL,
@@ -111,7 +126,8 @@ class VAEUri:
                  variant: _types.OptionalString = None,
                  subfolder: _types.OptionalString = None,
                  extract: bool = False,
-                 dtype: _enums.DataType | str | None = None):
+                 dtype: _enums.DataType | str | None = None,
+                 original_config: _types.OptionalPath = None):
         """
         :param encoder: encoder class name, for example ``AutoencoderKL``
         :param model: model path
@@ -121,6 +137,7 @@ class VAEUri:
         :param extract: Extract the VAE from a single file checkpoint
             that contains other models, such as a UNet or Text Encoders.
         :param dtype: model data type (precision)
+        :param original_config: Path to original model configuration for single file checkpoints, URL or `.yaml` file on disk.
 
         :raises InvalidVaeUriError: If ``dtype`` is passed an invalid data type string, or if
             ``model`` points to a single file and the specified ``encoder`` class name does not
@@ -134,19 +151,25 @@ class VAEUri:
         can_single_file_load = hasattr(self._encoders[encoder], 'from_single_file')
         single_file_load_path = _util.is_single_file_model_load(model)
 
-        if single_file_load_path and not can_single_file_load:
+        if single_file_load_path and not can_single_file_load and not extract:
             raise _exceptions.InvalidVaeUriError(
                 f'{encoder} is not capable of loading from a single file, '
                 f'must be loaded from a huggingface repository slug or folder on disk.')
 
-        if not single_file_load_path and extract:
-            raise _exceptions.InvalidVaeUriError(
-                f'VAE URI cannot have "extract" set to True when "model" is not '
-                f'pointing to a single file checkpoint.')
+        if not single_file_load_path:
+            if extract:
+                raise _exceptions.InvalidVaeUriError(
+                    f'VAE URI cannot have "extract" set to True when "model" is not '
+                    f'pointing to a single file checkpoint.')
+            if original_config:
+                raise _exceptions.InvalidTextEncoderUriError(
+                    'specifying original_config file for VAE '
+                    'is only supported for single file loads.')
 
-        if single_file_load_path:
+        if single_file_load_path and not extract:
             if subfolder is not None:
-                raise _exceptions.InvalidVaeUriError('Single file VAE loads do not support the subfolder option.')
+                raise _exceptions.InvalidVaeUriError(
+                    'Single file VAE loads do not support the subfolder option when "extract" is False.')
 
         self._extract = extract
         self._encoder = encoder
@@ -154,6 +177,7 @@ class VAEUri:
         self._revision = revision
         self._variant = variant
         self._subfolder = subfolder
+        self._original_config = original_config
 
         try:
             self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
@@ -203,9 +227,6 @@ class VAEUri:
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _util.ModelNotFoundError(e)
-        except Exception as e:
-            raise _exceptions.VAEUriLoadError(
-                f'error loading vae "{self.model}": {e}')
 
     @_memoize(_cache._VAE_CACHE,
               exceptions={'local_files_only'},
@@ -253,17 +274,22 @@ class VAEUri:
             if not self.extract:
                 if encoder is diffusers.AutoencoderKL:
                     # There is a bug in their cast
-                    vae = encoder.from_single_file(model_path,
-                                                   token=use_auth_token,
-                                                   revision=self.revision,
-                                                   local_files_only=local_files_only) \
-                        .to(dtype=torch_dtype, non_blocking=False)
+                    vae = encoder.from_single_file(
+                        model_path,
+                        token=use_auth_token,
+                        revision=self.revision,
+                        original_config=self.original_config,
+                        local_files_only=local_files_only
+                    ).to(dtype=torch_dtype, non_blocking=False)
                 else:
-                    vae = encoder.from_single_file(model_path,
-                                                   token=use_auth_token,
-                                                   revision=self.revision,
-                                                   torch_dtype=torch_dtype,
-                                                   local_files_only=local_files_only)
+                    vae = encoder.from_single_file(
+                        model_path,
+                        token=use_auth_token,
+                        revision=self.revision,
+                        original_config=self.original_config,
+                        torch_dtype=torch_dtype,
+                        local_files_only=local_files_only
+                    )
 
             else:
                 try:
@@ -272,6 +298,7 @@ class VAEUri:
                         class_name=self.encoder,
                         library_name='diffusers',
                         name=self.subfolder if self.subfolder else 'vae',
+                        original_config=self.original_config,
                         use_auth_token=use_auth_token,
                         local_files_only=local_files_only,
                         revision=self.revision,
@@ -344,6 +371,7 @@ class VAEUri:
                           revision=r.args.get('revision', None),
                           variant=r.args.get('variant', None),
                           dtype=dtype,
-                          subfolder=r.args.get('subfolder', None))
+                          subfolder=r.args.get('subfolder', None),
+                          original_config=r.args.get('original_config', None))
         except _textprocessing.ConceptUriParseError as e:
             raise _exceptions.InvalidVaeUriError(e)

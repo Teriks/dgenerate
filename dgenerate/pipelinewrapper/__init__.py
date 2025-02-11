@@ -228,15 +228,14 @@ from .uris import (
     InvalidTextEncoderUriError,
     SCascadeDecoderUri
 )
-# Utility Functions
-from .util import (
-    InvalidDeviceOrdinalException,
-    is_valid_device_string
-)
-# HF Utility Errors
+
+# Utility
 from .util import (
     ModelNotFoundError,
-    NonHFModelDownloadError
+    NonHFModelDownloadError,
+    NonHFConfigDownloadError,
+    InvalidDeviceOrdinalException,
+    is_valid_device_string
 )
 # Wrapper
 from .wrapper import (

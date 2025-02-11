@@ -1444,6 +1444,7 @@ def create_torch_diffusion_pipeline(
         scheduler: _types.OptionalString = None,
         pag: bool = False,
         safety_checker: bool = False,
+        original_config: _types.OptionalString = None,
         auth_token: _types.OptionalString = None,
         device: str = _util.default_device(),
         extra_modules: dict[str, typing.Any] | None = None,
@@ -1482,6 +1483,7 @@ def create_torch_diffusion_pipeline(
         for overriding the schedulers constructor parameter defaults.
     :param pag: Use perturbed attention guidance?
     :param safety_checker: Safety checker enabled? default is ``False``
+    :param original_config: Optional original training config .yaml file path when loading a single file checkpoint.
     :param auth_token: Optional huggingface API token for accessing repositories that are restricted to your account
     :param device: Optional ``--device`` string, defaults to "cuda"
     :param extra_modules: Extra module arguments to pass directly into
@@ -1540,6 +1542,7 @@ class TorchPipelineFactory:
                  scheduler: _types.OptionalString = None,
                  pag: bool = False,
                  safety_checker: bool = False,
+                 original_config: _types.OptionalString = None,
                  auth_token: _types.OptionalString = None,
                  device: str = _util.default_device(),
                  extra_modules: dict[str, typing.Any] | None = None,
@@ -2230,6 +2233,7 @@ def _create_torch_diffusion_pipeline(
         scheduler: _types.OptionalString = None,
         pag: bool = False,
         safety_checker: bool = False,
+        original_config: _types.OptionalString = None,
         auth_token: _types.OptionalString = None,
         device: str = _util.default_device(),
         extra_modules: dict[str, typing.Any] | None = None,
@@ -2252,10 +2256,20 @@ def _create_torch_diffusion_pipeline(
             'device must be "cuda" (optionally with a device ordinal "cuda:N") or "cpu", '
             'or other device supported by torch.')
 
-    if _util.is_single_file_model_load(model_path) and quantizer_uri:
-        raise UnsupportedPipelineConfigError(
-            'specifying a global pipeline quantizer URI is only supported for Hugging Face '
-            'repository loads from a repo slug or disk path, single file loads are not supported.')
+    if _util.is_single_file_model_load(model_path):
+        if quantizer_uri:
+            raise UnsupportedPipelineConfigError(
+                'specifying a global pipeline quantizer URI is only supported for Hugging Face '
+                'repository loads from a repo slug or disk path, single file loads are not supported.')
+    else:
+        if original_config:
+            raise UnsupportedPipelineConfigError(
+                'Loading original config .yaml file is not supported '
+                'when loading from a Hugging Face repo.'
+            )
+
+    if original_config:
+        original_config = _util.download_non_hf_config(original_config)
 
     pipeline_class = get_torch_pipeline_class(
         model_type=model_type,
@@ -2442,7 +2456,8 @@ def _create_torch_diffusion_pipeline(
                         variant=variant,
                         subfolder=encoder_subfolder,
                         dtype=dtype,
-                        quantizer=quantizer_uri
+                        quantizer=quantizer_uri,
+                        original_config=original_config
                     )
                 )
             except dgenerate.ModelNotFoundError:
@@ -2510,7 +2525,8 @@ def _create_torch_diffusion_pipeline(
                             variant=variant,
                             subfolder=vae_subfolder,
                             extract=vae_extract_from_checkpoint,
-                            dtype=dtype
+                            dtype=dtype,
+                            original_config=original_config
                         ).load(
                             dtype_fallback=dtype,
                             use_auth_token=auth_token,
@@ -2526,7 +2542,8 @@ def _create_torch_diffusion_pipeline(
                             encoder=vae_encoder_name,
                             model=model_path,
                             subfolder=vae_subfolder,
-                            dtype=dtype
+                            dtype=dtype,
+                            original_config=original_config
                         ).load(
                             dtype_fallback=dtype,
                             use_auth_token=auth_token,
@@ -2576,7 +2593,8 @@ def _create_torch_diffusion_pipeline(
                 variant=variant,
                 subfolder=unet_subfolder,
                 dtype=dtype,
-                quantizer=quantizer_uri
+                quantizer=quantizer_uri,
+                original_config=original_config
             ).load(
                 variant_fallback=variant,
                 dtype_fallback=dtype,
@@ -2630,7 +2648,8 @@ def _create_torch_diffusion_pipeline(
                 variant=variant,
                 subfolder=transformer_subfolder,
                 dtype=dtype,
-                quantizer=quantizer_uri
+                quantizer=quantizer_uri,
+                original_config=original_config
             ).load(
                 variant_fallback=variant,
                 dtype_fallback=dtype,
@@ -2775,6 +2794,7 @@ def _create_torch_diffusion_pipeline(
                 backend='Torch',
                 cls=pipeline_class,
                 method=pipeline_class.from_single_file,
+                from_original_config=original_config,
                 model=model_path,
                 token=auth_token,
                 revision=revision,

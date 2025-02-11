@@ -183,7 +183,9 @@ def single_file_load_sub_module(
         use_auth_token: str | None = None,
         local_files_only: bool = False,
         revision: str | None = None,
-        dtype: torch.dtype | None = None
+        dtype: torch.dtype | None = None,
+        config: _types.OptionalPath = None,
+        original_config: _types.OptionalPath = None
 ) -> torch.nn.Module:
     """
     Load a submodule (vae, unet, textencoder, etc..) by name out of an in one checkpoint file.
@@ -196,9 +198,12 @@ def single_file_load_sub_module(
     :param local_files_only: Do not attempt to download files, only use cache?
     :param revision: Repo revision for detected config repo
     :param dtype: torch dtype for the module
+    :param config: Path to model configuration, Hugging Face repo, or Hugging Face blob link, or `.json` file on disk.
+    :param original_config: Path to original model configuration for single file checkpoints, URL or `.yaml` file on disk.
 
     :return: The module.
     """
+
     checkpoint = _single_file.load_single_file_checkpoint(
         path,
         token=use_auth_token,
@@ -206,8 +211,13 @@ def single_file_load_sub_module(
         revision=revision,
     )
 
-    config = _single_file.fetch_diffusers_config(checkpoint)
-    default_pretrained_model_config_name = config["pretrained_model_name_or_path"]
+    if config is None:
+        config = _single_file.fetch_diffusers_config(checkpoint)
+
+        default_pretrained_model_config_name = config["pretrained_model_name_or_path"]
+    else:
+        default_pretrained_model_config_name = config
+
     allow_patterns = ["**/*.json", "*.json", "*.txt", "**/*.txt", "**/*.model"]
     with _disable_tqdm():
         # the mischief I am doing here does not really integrate well with
@@ -250,6 +260,7 @@ def single_file_load_sub_module(
         cached_model_config_path=cached_model_config_path,
         is_pipeline_module=False,
         torch_dtype=dtype,
+        original_config=original_config,
         local_files_only=local_files_only)
 
     return model
@@ -306,6 +317,10 @@ class ModelNotFoundError(Exception):
 
 
 class NonHFModelDownloadError(Exception):
+    pass
+
+
+class NonHFConfigDownloadError(Exception):
     pass
 
 
@@ -449,6 +464,30 @@ def download_non_hf_model(model_path):
             mimetype_is_supported=lambda m: m is not None and not m.startswith('text/'),
             unknown_mimetype_exception=NonHFModelDownloadError)
     return model_path
+
+
+def download_non_hf_config(path):
+    """
+    Check for a non hugging face link or reference to a config file
+    that is possibly downloadable as a single file.
+
+    If this is applicable, download it to the web cache and return its path.
+    If the file already exists in the web cache simply return a path to it.
+
+    If this is not applicable, return the path unchanged.
+
+    :param path: proposed model path
+    :return: path to downloaded file or unchanged model path.
+    """
+    if _webcache.is_downloadable_url(path) and \
+            HFBlobLink.parse(path) is None:
+        _, path = _webcache.create_web_cache_file(
+            path,
+            mime_acceptable_desc='text / yaml / json',
+            mimetype_is_supported=lambda m:
+            m.startswith('text/') or m.startswith('application/'),
+            unknown_mimetype_exception=NonHFConfigDownloadError)
+    return path
 
 
 def fetch_model_files_with_size(repo_id: str,
