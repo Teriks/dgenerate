@@ -34,7 +34,16 @@ from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 
 _transformer_uri_parser = _textprocessing.ConceptUriParser(
-    'Transformer', ['model', 'revision', 'variant', 'subfolder', 'dtype', 'quantizer'])
+    'Transformer', [
+        'model',
+        'revision',
+        'variant',
+        'subfolder',
+        'dtype',
+        'quantizer',
+        'original_config'
+    ]
+)
 
 
 class TransformerUri:
@@ -84,28 +93,50 @@ class TransformerUri:
         """
         return self._quantizer
 
+    @property
+    def original_config(self) -> _types.OptionalPath:
+        """
+        Original training config file path or URL (.yaml)
+        """
+        return self._original_config
+
     def __init__(self,
                  model: str,
                  revision: _types.OptionalString = None,
                  variant: _types.OptionalString = None,
                  subfolder: _types.OptionalString = None,
                  dtype: _enums.DataType | str | None = None,
-                 quantizer: _types.OptionalUri = None):
+                 quantizer: _types.OptionalUri = None,
+                 original_config: _types.OptionalPath = None):
         """
         :param model: model path
         :param revision: model revision (branch name)
         :param variant: model variant, for example ``fp16``
         :param subfolder: model subfolder
         :param dtype: model data type (precision)
+        :param original_config: Path to original model configuration for single file checkpoints, URL or `.yaml` file on disk.
 
         :raises InvalidTransformerUriError: If ``dtype`` is passed an invalid data type string.
         """
+
+        if _util.is_single_file_model_load(model):
+            if quantizer:
+                raise _exceptions.InvalidTextEncoderUriError(
+                    'specifying a Transformer quantizer URI is only supported for Hugging Face '
+                    'repository loads from a repo slug or disk path, single file loads are not supported.')
+        else:
+            if original_config:
+                raise _exceptions.InvalidTextEncoderUriError(
+                    'specifying original_config file for Transformer '
+                    'is only supported for single file loads.'
+                )
 
         self._model = model
         self._revision = revision
         self._variant = variant
         self._subfolder = subfolder
         self._quantizer = quantizer
+        self._original_config = original_config
 
         try:
             self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
@@ -223,6 +254,7 @@ class TransformerUri:
                 token=use_auth_token,
                 revision=self.revision,
                 torch_dtype=torch_dtype,
+                original_config=self.original_config,
                 local_files_only=local_files_only,
                 quantization_config=quant_config
             )
@@ -287,6 +319,7 @@ class TransformerUri:
                                   variant=r.args.get('variant', None),
                                   dtype=dtype,
                                   subfolder=r.args.get('subfolder', None),
-                                  quantizer=r.args.get('quantizer', False))
+                                  quantizer=r.args.get('quantizer', False),
+                                  original_config=r.args.get('original_config', None))
         except _textprocessing.ConceptUriParseError as e:
             raise _exceptions.InvalidTransformerUriError(e)

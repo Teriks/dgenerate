@@ -390,6 +390,7 @@ def invoke_dgenerate_events(
             _mediainput.FrameStartOutOfBounds,
             _pipelinewrapper.ModelNotFoundError,
             _pipelinewrapper.NonHFModelDownloadError,
+            _pipelinewrapper.NonHFConfigDownloadError,
             _pipelinewrapper.InvalidModelFileError,
             _pipelinewrapper.InvalidModelUriError,
             _pipelinewrapper.ModelUriLoadError,

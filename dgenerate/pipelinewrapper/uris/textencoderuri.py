@@ -36,7 +36,16 @@ from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 
 _text_encoder_uri_parser = _textprocessing.ConceptUriParser(
-    'TextEncoder', ['model', 'revision', 'variant', 'subfolder', 'dtype', 'quantizer'])
+    'TextEncoder', [
+        'model',
+        'revision',
+        'variant',
+        'subfolder',
+        'dtype',
+        'quantizer',
+        'original_config'
+    ]
+)
 
 
 class TextEncoderUri:
@@ -92,6 +101,12 @@ class TextEncoderUri:
         --quantizer URI override
         """
         return self._quantizer
+    @property
+    def original_config(self) -> _types.OptionalPath:
+        """
+        Original training config file path or URL (.yaml)
+        """
+        return self._original_config
 
     _encoders = {
         'CLIPTextModel': transformers.models.clip.CLIPTextModel,
@@ -111,13 +126,15 @@ class TextEncoderUri:
                  variant: _types.OptionalString = None,
                  subfolder: _types.OptionalString = None,
                  dtype: _enums.DataType | str | None = None,
-                 quantizer: _types.OptionalUri = None):
+                 quantizer: _types.OptionalUri = None,
+                 original_config: _types.OptionalPath = None):
         """
         :param encoder: encoder class name, for example ``CLIPTextModel``
         :param model: model path
         :param revision: model revision (branch name)
         :param variant: model variant, for example ``fp16``
         :param subfolder: model subfolder
+        :param original_config: Path to original model configuration for single file checkpoints, URL or `.yaml` file on disk.
         :param dtype: model data type (precision)
 
         :raises InvalidTextEncoderUriError: If ``dtype`` is passed an invalid data type string, or if
@@ -129,10 +146,16 @@ class TextEncoderUri:
             raise _exceptions.InvalidTextEncoderUriError(
                 f'Unknown TextEncoder encoder class {encoder}, must be one of: {_textprocessing.oxford_comma(self._encoders.keys(), "or")}')
 
-        if _util.is_single_file_model_load(model) and quantizer:
-            raise _exceptions.InvalidTextEncoderUriError(
-                'specifying a text encoder quantizer URI is only supported for Hugging Face '
-                'repository loads from a repo slug or disk path, single file loads are not supported.')
+        if _util.is_single_file_model_load(model):
+            if quantizer:
+                raise _exceptions.InvalidTextEncoderUriError(
+                    'specifying a Text Encoder quantizer URI is only supported for Hugging Face '
+                    'repository loads from a repo slug or disk path, single file loads are not supported.')
+        else:
+            if original_config:
+                raise _exceptions.InvalidTextEncoderUriError(
+                    'specifying original_config file for Text Encoder '
+                    'is only supported for single file loads.')
 
         self._encoder = encoder
         self._model = model
@@ -140,6 +163,7 @@ class TextEncoderUri:
         self._variant = variant
         self._subfolder = subfolder
         self._quantizer = quantizer
+        self._original_config = original_config
 
         try:
             self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
@@ -215,7 +239,8 @@ class TextEncoderUri:
             typing.Union[
                 transformers.models.clip.CLIPTextModel,
                 transformers.models.clip.CLIPTextModelWithProjection,
-                transformers.models.t5.T5EncoderModel]:
+                transformers.models.t5.T5EncoderModel,
+                diffusers.pipelines.kolors.ChatGLMModel]:
 
         if sequential_cpu_offload_member and model_cpu_offload_member:
             # these are used for cache differentiation only
@@ -230,6 +255,11 @@ class TextEncoderUri:
             variant = variant_fallback
         else:
             variant = self.variant
+
+        if self.encoder == 'ChatGLMModel':
+            encoder_library = 'diffusers.pipelines.kolors'
+        else:
+            encoder_library = 'transformers'
 
         encoder = self._encoders[self.encoder]
 
@@ -259,9 +289,10 @@ class TextEncoderUri:
                 text_encoder = _util.single_file_load_sub_module(
                     path=model_path,
                     class_name=self.encoder,
-                    library_name='transformers',
+                    library_name=encoder_library,
                     name=self.subfolder if self.subfolder else 'text_encoder',
                     use_auth_token=use_auth_token,
+                    original_config=self.original_config,
                     local_files_only=local_files_only,
                     revision=self.revision,
                     dtype=torch_dtype
@@ -339,6 +370,7 @@ class TextEncoderUri:
                                   variant=r.args.get('variant', None),
                                   dtype=dtype,
                                   subfolder=r.args.get('subfolder', None),
-                                  quantizer=r.args.get('quantizer', False))
+                                  quantizer=r.args.get('quantizer', False),
+                                  original_config=r.args.get('original_config', None))
         except _textprocessing.ConceptUriParseError as e:
             raise _exceptions.InvalidTextEncoderUriError(e)
