@@ -1158,7 +1158,7 @@ class DiffusionPipelineWrapper:
 
         if self._scheduler is not None:
             opts.append(('--scheduler', self._scheduler))
-            
+
         if args.hi_diffusion:
             opts.append(('--hi-diffusion',))
 
@@ -2808,6 +2808,11 @@ class DiffusionPipelineWrapper:
             result = self._call_torch_flux(pipeline_args=pipeline_args,
                                            user_args=copy_args)
         else:
+            if args.hi_diffusion and _enums.model_type_is_sd3(self.model_type):
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'HiDiffusion is not supported for SD3.'
+                )
+
             result = self._call_torch(pipeline_args=pipeline_args,
                                       user_args=copy_args)
 
