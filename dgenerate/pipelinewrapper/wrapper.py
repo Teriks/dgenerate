@@ -409,7 +409,7 @@ class DiffusionPipelineWrapper:
             )
 
         if not _util.is_single_file_model_load(model_path):
-            if self.original_config:
+            if original_config:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'You cannot specify "original_config" when the main '
                     'model is not a a single file checkpoint.'
