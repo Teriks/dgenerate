@@ -973,12 +973,8 @@ def _create_diffusers_clip_model_from_ldm(
         config=None,
         torch_dtype=None,
         local_files_only=None,
-        is_legacy_loading=False,
-        projection_dim=None
+        is_legacy_loading=False
 ):
-    og_args = locals()
-    og_args.pop('projection_dim')
-
     logger = diffusers.models.modeling_utils.logger
 
     from diffusers.utils import (
@@ -1027,14 +1023,18 @@ def _create_diffusers_clip_model_from_ldm(
             clip_config = "stabilityai/stable-diffusion-2"
             config["pretrained_model_name_or_path"] = clip_config
             subfolder = "text_encoder"
-
         else:
             clip_config = "laion/CLIP-ViT-bigG-14-laion2B-39B-b160k"
             config["pretrained_model_name_or_path"] = clip_config
             subfolder = ""
 
-    if projection_dim:
-        config['projection_dim'] = projection_dim
+    if is_open_clip_model(checkpoint):
+        # infer projection_dim for the text_encoder using the checkpoint.
+        # should fix SD2.X LDM checkpoint loads from CivitAI and similar.
+        # The configuration on the hub is often (or always) incorrect for these models
+        # which need projection_dim=1024 and not projection_dim=512
+        if 'cond_stage_model.model.transformer.resblocks.0.mlp.c_proj.weight' in checkpoint:
+            config['projection_dim'] = checkpoint['cond_stage_model.model.transformer.resblocks.0.mlp.c_proj.weight'].shape[0]
 
     model_config = cls.config_class.from_pretrained(**config, subfolder=subfolder, local_files_only=local_files_only)
 
@@ -1085,17 +1085,7 @@ def _create_diffusers_clip_model_from_ldm(
         raise ValueError("The provided checkpoint does not seem to contain a valid CLIP model.")
 
     if is_accelerate_available():
-        # we always have accelerate in dgenerate
-        try:
-            unexpected_keys = load_model_dict_into_meta(model, diffusers_format_checkpoint, dtype=torch_dtype)
-        except ValueError as e:
-            # the projection_dimension from the config on hugging face is wrong for the
-            # model, this is very common with CivitAI checkpoints for SD2.1
-            err_str = str(e)
-            if 'text_model.encoder.layers.0.self_attn.q_proj.weight expected shape' in err_str:
-                projection_dim = int(re.search(r"expected shape torch\.Size\(\[(\d+), (\d+)\]\)", err_str).group(1))
-                return _create_diffusers_clip_model_from_ldm(**og_args, projection_dim=1024)
-            raise
+        unexpected_keys = load_model_dict_into_meta(model, diffusers_format_checkpoint, dtype=torch_dtype)
     else:
         _, unexpected_keys = model.load_state_dict(diffusers_format_checkpoint, strict=False)
 

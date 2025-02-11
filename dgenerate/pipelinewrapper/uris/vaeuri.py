@@ -41,8 +41,7 @@ _vae_uri_parser = _textprocessing.ConceptUriParser(
         'revision',
         'variant',
         'subfolder',
-        'dtype',
-        'original_config'
+        'dtype'
     ]
 )
 
@@ -101,13 +100,6 @@ class VAEUri:
         """
         return self._extract
 
-    @property
-    def original_config(self) -> _types.OptionalPath:
-        """
-        Original training config file path or URL (.yaml)
-        """
-        return self._original_config
-
     _encoders = {
         'AutoencoderKL': diffusers.AutoencoderKL,
         'AsymmetricAutoencoderKL': diffusers.AsymmetricAutoencoderKL,
@@ -126,8 +118,7 @@ class VAEUri:
                  variant: _types.OptionalString = None,
                  subfolder: _types.OptionalString = None,
                  extract: bool = False,
-                 dtype: _enums.DataType | str | None = None,
-                 original_config: _types.OptionalPath = None):
+                 dtype: _enums.DataType | str | None = None):
         """
         :param encoder: encoder class name, for example ``AutoencoderKL``
         :param model: model path
@@ -137,7 +128,6 @@ class VAEUri:
         :param extract: Extract the VAE from a single file checkpoint
             that contains other models, such as a UNet or Text Encoders.
         :param dtype: model data type (precision)
-        :param original_config: Path to original model configuration for single file checkpoints, URL or `.yaml` file on disk.
 
         :raises InvalidVaeUriError: If ``dtype`` is passed an invalid data type string, or if
             ``model`` points to a single file and the specified ``encoder`` class name does not
@@ -161,10 +151,6 @@ class VAEUri:
                 raise _exceptions.InvalidVaeUriError(
                     f'VAE URI cannot have "extract" set to True when "model" is not '
                     f'pointing to a single file checkpoint.')
-            if original_config:
-                raise _exceptions.InvalidTextEncoderUriError(
-                    'specifying original_config file for VAE '
-                    'is only supported for single file loads.')
 
         if single_file_load_path and not extract:
             if subfolder is not None:
@@ -179,13 +165,6 @@ class VAEUri:
         self._subfolder = subfolder
 
         try:
-            self._original_config = _util.download_non_hf_config(original_config) if original_config else None
-        except _util.NonHFConfigDownloadError as e:
-            raise _exceptions.InvalidTextEncoderUriError(
-                f'original config file "{original_config}" for VAE could not be downloaded: {e}'
-            )
-
-        try:
             self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
         except ValueError:
             raise _exceptions.InvalidVaeUriError(
@@ -193,6 +172,7 @@ class VAEUri:
 
     def load(self,
              dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
+             original_config: _types.OptionalPath = None,
              use_auth_token: _types.OptionalString = None,
              local_files_only: bool = False,
              sequential_cpu_offload_member: bool = False,
@@ -208,6 +188,7 @@ class VAEUri:
         :py:class:`diffusers.AutoencoderKLTemporalDecoder`, or :py:class:`diffusers.AutoencoderTiny` from this URI
 
         :param dtype_fallback: If the URI does not specify a dtype, use this dtype.
+        :param original_config: Path to original model configuration for single file checkpoints, URL or `.yaml` file on disk.
         :param use_auth_token: optional huggingface auth token.
         :param local_files_only: avoid downloading files and only look for cached files
             when the model path is a huggingface slug or blob link
@@ -224,12 +205,9 @@ class VAEUri:
             :py:class:`diffusers.AutoencoderKLTemporalDecoder`, or :py:class:`diffusers.AutoencoderTiny`
         """
         try:
-            return self._load(dtype_fallback,
-                              use_auth_token,
-                              local_files_only,
-                              sequential_cpu_offload_member,
-                              model_cpu_offload_member)
-
+            args = locals()
+            args.pop('self')
+            return self._load(**args)
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _util.ModelNotFoundError(e)
@@ -241,6 +219,7 @@ class VAEUri:
               on_create=lambda key, new: _d_memoize.simple_cache_miss_debug("Torch VAE", key, new))
     def _load(self,
               dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
+              original_config: _types.OptionalPath = None,
               use_auth_token: _types.OptionalString = None,
               local_files_only: bool = False,
               sequential_cpu_offload_member: bool = False,
@@ -268,6 +247,13 @@ class VAEUri:
         single_file_load_path = _util.is_single_file_model_load(model_path)
 
         if single_file_load_path:
+            try:
+                original_config = _util.download_non_hf_config(original_config) if original_config else None
+            except _util.NonHFConfigDownloadError as e:
+                raise _exceptions.VAEUriLoadError(
+                    f'original config file "{original_config}" for VAE could not be downloaded: {e}'
+                )
+
             estimated_memory_use = _util.estimate_model_memory_use(
                 repo_id=model_path,
                 revision=self.revision,
@@ -284,7 +270,7 @@ class VAEUri:
                         model_path,
                         token=use_auth_token,
                         revision=self.revision,
-                        original_config=self.original_config,
+                        original_config=original_config,
                         local_files_only=local_files_only
                     ).to(dtype=torch_dtype, non_blocking=False)
                 else:
@@ -292,7 +278,7 @@ class VAEUri:
                         model_path,
                         token=use_auth_token,
                         revision=self.revision,
-                        original_config=self.original_config,
+                        original_config=original_config,
                         torch_dtype=torch_dtype,
                         local_files_only=local_files_only
                     )
@@ -304,7 +290,7 @@ class VAEUri:
                         class_name=self.encoder,
                         library_name='diffusers',
                         name=self.subfolder if self.subfolder else 'vae',
-                        original_config=self.original_config,
+                        original_config=original_config,
                         use_auth_token=use_auth_token,
                         local_files_only=local_files_only,
                         revision=self.revision,
@@ -317,6 +303,10 @@ class VAEUri:
                 estimated_memory_use = _util.estimate_memory_usage(vae)
 
         else:
+            if original_config:
+                raise _exceptions.VAEUriLoadError(
+                    'specifying original_config file for VAE '
+                    'is only supported for single file loads.')
 
             estimated_memory_use = _util.estimate_model_memory_use(
                 repo_id=model_path,
@@ -377,7 +367,6 @@ class VAEUri:
                           revision=r.args.get('revision', None),
                           variant=r.args.get('variant', None),
                           dtype=dtype,
-                          subfolder=r.args.get('subfolder', None),
-                          original_config=r.args.get('original_config', None))
+                          subfolder=r.args.get('subfolder', None))
         except _textprocessing.ConceptUriParseError as e:
             raise _exceptions.InvalidVaeUriError(e)

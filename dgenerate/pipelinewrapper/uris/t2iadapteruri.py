@@ -145,11 +145,9 @@ class T2IAdapterUri:
         :return: :py:class:`diffusers.T2IAdapter`
         """
         try:
-            return self._load(dtype_fallback,
-                              use_auth_token,
-                              local_files_only,
-                              sequential_cpu_offload_member,
-                              model_cpu_offload_member)
+            args = locals()
+            args.pop('self')
+            return self._load(**args)
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _util.ModelNotFoundError(e)

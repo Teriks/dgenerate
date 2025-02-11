@@ -611,6 +611,23 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-olc', '--original-config',
+            dest='original_config',
+            help="""This argument can be used to supply an original LDM config .yaml file 
+            that was provided with a single file checkpoint.""")
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-olc2', '--original-config2',
+            dest='second_original_config',
+            help="""This argument can be used to supply an original LDM config .yaml file 
+            that was provided with a single file checkpoint for the secondary model, 
+            i.e. the SDXL Refiner or Stable Cascade Decoder.""")
+    )
+
+    actions.append(
+        parser.add_argument(
             '-atk', '--auth-token', action='store', default=None, metavar="TOKEN",
             help="""Huggingface auth token.
                     Required to download restricted repositories that have access permissions

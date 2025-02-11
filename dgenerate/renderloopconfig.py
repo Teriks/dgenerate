@@ -114,6 +114,17 @@ class RenderLoopConfig(_types.SetFromMixin):
     Primary model subfolder argument, ``--subfolder`` argument of dgenerate command line tool.
     """
 
+    original_config: _types.OptionalPath = None
+    """
+    This option can be used to supply an original LDM config .yaml file that was provided with a single file checkpoint.
+    """
+
+    second_original_config: _types.OptionalPath = None
+    """
+    This option can be used to supply an original LDM config .yaml file that was provided with a single file checkpoint 
+    for the secondary model, i.e. the SDXL Refiner or Stable Cascade Decoder.
+    """
+
     sdxl_refiner_uri: _types.OptionalUri = None
     """
     SDXL Refiner model URI, ``--sdxl-refiner`` argument of dgenerate command line tool.
@@ -931,6 +942,12 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         :param attribute_namer: Callable for naming attributes mentioned in exception messages
         """
+        try:
+            self._check(attribute_namer)
+        except (_pipelinewrapper.InvalidModelUriError, _mediainput.ImageSeedParseError) as e:
+            raise RenderLoopConfigError(e)
+
+    def _check(self, attribute_namer: typing.Callable[[str], str] = None):
 
         def non_null_attr_that_start_with(s):
             return (a for a in dir(self) if a.startswith(s) and getattr(self, a) is not None)
@@ -980,6 +997,37 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'You cannot specify "help" or "helpargs" to {a_namer("s_cascade_decoder_scheduler")} '
                 f'with multiple values involved.'
             )
+
+        if not _pipelinewrapper_util.is_single_file_model_load(self.model_path):
+            if self.original_config:
+                raise RenderLoopConfigError(
+                    f'You cannot specify {a_namer("original_config")} when the main '
+                    f'model is not a a single file checkpoint.'
+                )
+
+        if self.second_original_config:
+            if not self.sdxl_refiner_uri and not self.s_cascade_decoder_uri:
+                raise RenderLoopConfigError(
+                    f'You cannot specify {a_namer("second_original_config")} '
+                    f'without {a_namer("sdxl_refiner_uri")} or {a_namer("s_cascade_decoder_uri")}.'
+                )
+
+            if self.sdxl_refiner_uri and \
+                    not _pipelinewrapper_util.is_single_file_model_load(
+                        _pipelinewrapper.uris.SDXLRefinerUri.parse(self.sdxl_refiner_uri).model):
+                raise RenderLoopConfigError(
+                    f'You cannot specify {a_namer("second_original_config")} '
+                    f'when the {a_namer("sdxl_refiner_uri")} model is not a '
+                    f'single file checkpoint.'
+                )
+            if self.s_cascade_decoder_uri and \
+                    not _pipelinewrapper_util.is_single_file_model_load(
+                        _pipelinewrapper.uris.SCascadeDecoderUri.parse(self.s_cascade_decoder_uri).model):
+                raise RenderLoopConfigError(
+                    f'You cannot specify {a_namer("second_original_config")} '
+                    f'when the {a_namer("s_cascade_decoder_uri")} model is not a '
+                    f'single file checkpoint.'
+                )
 
         adetailer_args_used = list(non_null_attr_that_start_with('adetailer'))
 
