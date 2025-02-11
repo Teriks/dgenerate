@@ -164,6 +164,8 @@ class DiffusionPipelineWrapper:
                  second_quantizer_uri: _types.OptionalUri = None,
                  device: str = _util.default_device(),
                  safety_checker: bool = False,
+                 original_config: _types.OptionalString = None,
+                 second_original_config: _types.OptionalString = None,
                  auth_token: _types.OptionalString = None,
                  local_files_only: bool = False,
                  model_extra_modules: dict[str, typing.Any] = None,
@@ -227,6 +229,9 @@ class DiffusionPipelineWrapper:
         :param second_quantizer_uri: Global --quantizer2 URI value
         :param device: Rendering device string, example: ``cuda:0`` or ``cuda``
         :param safety_checker: Use safety checker model if available? (antiquated, for SD 1/2, Deep Floyd etc.)
+        :param original_config: Optional original LDM config .yaml file path when loading a single file checkpoint.
+        :param second_original_config: Optional original LDM config .yaml file path when loading a single file checkpoint
+            for the secondary model (SDXL Refiner, Stable Cascade Decoder).
         :param auth_token: huggingface authentication token.
         :param local_files_only: Do not attempt to download files from huggingface?
         :param model_extra_modules: Raw extra diffusers modules for the main pipeline
@@ -294,6 +299,8 @@ class DiffusionPipelineWrapper:
             second_quantizer_uri: _types.OptionalUri = None,
             device: str = _util.default_device(),
             safety_checker: bool = False,
+            original_config: _types.OptionalString = None,
+            second_original_config: _types.OptionalString = None,
             auth_token: _types.OptionalString = None,
             local_files_only: bool = False,
             model_extra_modules: dict[str, typing.Any] = None,
@@ -384,6 +391,37 @@ class DiffusionPipelineWrapper:
                 'if "model_type" is not TORCH_S_CASCADE.'
             )
 
+        if not _util.is_single_file_model_load(model_path):
+            if self.original_config:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'You cannot specify "original_config" when the main '
+                    'model is not a a single file checkpoint.'
+                )
+
+        if second_original_config:
+            if not sdxl_refiner_uri and not s_cascade_decoder_uri:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'You cannot specify "second_original_config" '
+                    'without "sdxl_refiner_uri" or "s_cascade_decoder_uri".'
+                )
+
+            if sdxl_refiner_uri and \
+                    not _util.is_single_file_model_load(
+                        _uris.SDXLRefinerUri.parse(sdxl_refiner_uri).model):
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'You cannot specify "second_original_config" '
+                    'when the "sdxl_refiner_uri" model is not a '
+                    'single file checkpoint.'
+                )
+            if s_cascade_decoder_uri and \
+                    not _util.is_single_file_model_load(
+                        _uris.SCascadeDecoderUri.parse(s_cascade_decoder_uri).model):
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'You cannot specify "second_original_config" '
+                    'when the "s_cascade_decoder_uri" model is not a '
+                    'single file checkpoint.'
+                )
+
         # Only one help argument can be used at a time
         helps_used = [
             _pipelines.scheduler_is_help(scheduler),
@@ -465,6 +503,9 @@ class DiffusionPipelineWrapper:
         self._scheduler = scheduler
         self._sdxl_refiner_scheduler = sdxl_refiner_scheduler
         self._s_cascade_decoder_scheduler = s_cascade_decoder_scheduler
+
+        self._original_config = original_config
+        self._second_original_config = second_original_config
 
         self._s_cascade_decoder_cpu_offload = s_cascade_decoder_cpu_offload
         self._s_cascade_decoder_sequential_offload = s_cascade_decoder_sequential_offload
@@ -850,6 +891,20 @@ class DiffusionPipelineWrapper:
         """
         return self._second_quantizer_uri
 
+    @property
+    def original_config(self) -> _types.OptionalPath:
+        """
+        Current ``--original-config`` value.
+        """
+        return self._original_config
+
+    @property
+    def second_original_config(self) -> _types.OptionalPath:
+        """
+        Current ``--original-config2`` value.
+        """
+        return self._second_original_config
+
     def reconstruct_dgenerate_opts(self,
                                    args: DiffusionArguments | None = None,
                                    extra_opts:
@@ -895,6 +950,18 @@ class DiffusionPipelineWrapper:
 
         opts = [(self.model_path,),
                 ('--model-type', self.model_type_string)]
+
+        if self.original_config:
+            opts.append(('--original-config', self.original_config))
+
+        if self.second_original_config:
+            opts.append(('--original-config2', self.second_original_config))
+
+        if self.quantizer_uri:
+            opts.append(('--quantizer', self.quantizer_uri))
+
+        if self.second_quantizer_uri:
+            opts.append(('--quantizer2', self.quantizer_uri))
 
         if not omit_device:
             opts.append(('--device', self._device))
@@ -2447,6 +2514,7 @@ class DiffusionPipelineWrapper:
                     revision=self._revision,
                     variant=self._variant,
                     dtype=self._dtype,
+                    original_config=self._original_config,
                     unet_uri=self._unet_uri,
                     vae_uri=self._vae_uri,
                     lora_uris=self._lora_uris,
@@ -2484,6 +2552,7 @@ class DiffusionPipelineWrapper:
                 scheduler=self._scheduler if
                 self._s_cascade_decoder_scheduler is None else self._s_cascade_decoder_scheduler,
 
+                original_config=self._second_original_config,
                 safety_checker=self._safety_checker,
                 extra_modules=self._second_model_extra_modules,
                 auth_token=self._auth_token,
@@ -2511,6 +2580,7 @@ class DiffusionPipelineWrapper:
                     revision=self._revision,
                     variant=self._variant,
                     dtype=self._dtype,
+                    original_config=self._original_config,
                     unet_uri=self._unet_uri,
                     vae_uri=self._vae_uri,
                     lora_uris=self._lora_uris,
@@ -2577,6 +2647,7 @@ class DiffusionPipelineWrapper:
                 scheduler=self._scheduler if
                 self._sdxl_refiner_scheduler is None else self._sdxl_refiner_scheduler,
 
+                original_config=self._second_original_config,
                 pag=sdxl_refiner_pag,
                 safety_checker=self._safety_checker,
                 auth_token=self._auth_token,
@@ -2599,6 +2670,7 @@ class DiffusionPipelineWrapper:
                 revision=self._revision,
                 variant=self._variant,
                 dtype=self._dtype,
+                original_config=self._original_config,
                 unet_uri=self._unet_uri,
                 transformer_uri=self._transformer_uri,
                 vae_uri=self._vae_uri,

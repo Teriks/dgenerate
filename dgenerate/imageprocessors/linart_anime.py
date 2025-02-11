@@ -88,8 +88,8 @@ class LineArtAnimeProcessor(_imageprocessor.ImageProcessor):
         if detect_resolution is not None:
             try:
                 self._detect_resolution = _textprocessing.parse_image_size(detect_resolution)
-            except ValueError:
-                raise self.argument_error('Could not parse the "detect-resolution" argument as an image dimension.')
+            except ValueError as e:
+                raise self.argument_error(f'Could not parse the "detect-resolution" argument as an image dimension: {e}')
         else:
             self._detect_resolution = None
 

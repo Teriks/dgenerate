@@ -874,6 +874,8 @@ class RenderLoop:
             revision=self.config.revision,
             variant=self.config.variant,
             subfolder=self.config.subfolder,
+            original_config=self.config.original_config,
+            second_original_config=self.config.second_original_config,
             unet_uri=self.config.unet_uri,
             second_unet_uri=self.config.second_unet_uri,
             transformer_uri=self.config.transformer_uri,

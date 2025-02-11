@@ -174,9 +174,10 @@ Help Output
                      [--plugin-modules PATH [PATH ...]] [--sub-command SUB_COMMAND]
                      [--sub-command-help [SUB_COMMAND ...]] [-ofm] [--templates-help [VARIABLE_NAME ...]]
                      [--directives-help [DIRECTIVE_NAME ...]] [--functions-help [FUNCTION_NAME ...]]
-                     [-mt MODEL_TYPE] [-rev BRANCH] [-var VARIANT] [-sbf SUBFOLDER] [-atk TOKEN] [-bs INTEGER]
-                     [-bgs SIZE] [-ad ADETAILER_DETECTOR_URIS [ADETAILER_DETECTOR_URIS ...]]
-                     [-adi INTEGER [INTEGER ...]] [-ads ADETAILER_MASK_SHAPE [ADETAILER_MASK_SHAPE ...]]
+                     [-mt MODEL_TYPE] [-rev BRANCH] [-var VARIANT] [-sbf SUBFOLDER] [-olc ORIGINAL_CONFIG]
+                     [-olc2 SECOND_ORIGINAL_CONFIG] [-atk TOKEN] [-bs INTEGER] [-bgs SIZE]
+                     [-ad ADETAILER_DETECTOR_URIS [ADETAILER_DETECTOR_URIS ...]] [-adi INTEGER [INTEGER ...]]
+                     [-ads ADETAILER_MASK_SHAPE [ADETAILER_MASK_SHAPE ...]]
                      [-addp ADETAILER_DETECTOR_PADDING [ADETAILER_DETECTOR_PADDING ...]]
                      [-admp ADETAILER_MASK_PADDING [ADETAILER_MASK_PADDING ...]]
                      [-adb ADETAILER_MASK_BLUR [ADETAILER_MASK_BLUR ...]]
@@ -335,6 +336,14 @@ Help Output
             Main model subfolder. If specified when loading from a Hugging Face repository or folder, load
             weights from the specified subfolder.
             -------------------------------------
+      -olc ORIGINAL_CONFIG, --original-config ORIGINAL_CONFIG
+            This argument can be used to supply an original LDM config .yaml file that was provided with a
+            single file checkpoint.
+            -----------------------
+      -olc2 SECOND_ORIGINAL_CONFIG, --original-config2 SECOND_ORIGINAL_CONFIG
+            This argument can be used to supply an original LDM config .yaml file that was provided with a
+            single file checkpoint for the secondary model, i.e. the SDXL Refiner or Stable Cascade Decoder.
+            ------------------------------------------------------------------------------------------------
       -atk TOKEN, --auth-token TOKEN
             Huggingface auth token. Required to download restricted repositories that have access permissions
             granted to your Hugging Face account.

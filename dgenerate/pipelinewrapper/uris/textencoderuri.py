@@ -42,8 +42,7 @@ _text_encoder_uri_parser = _textprocessing.ConceptUriParser(
         'variant',
         'subfolder',
         'dtype',
-        'quantizer',
-        'original_config'
+        'quantizer'
     ]
 )
 
@@ -101,12 +100,6 @@ class TextEncoderUri:
         --quantizer URI override
         """
         return self._quantizer
-    @property
-    def original_config(self) -> _types.OptionalPath:
-        """
-        Original training config file path or URL (.yaml)
-        """
-        return self._original_config
 
     _encoders = {
         'CLIPTextModel': transformers.models.clip.CLIPTextModel,
@@ -126,15 +119,13 @@ class TextEncoderUri:
                  variant: _types.OptionalString = None,
                  subfolder: _types.OptionalString = None,
                  dtype: _enums.DataType | str | None = None,
-                 quantizer: _types.OptionalUri = None,
-                 original_config: _types.OptionalPath = None):
+                 quantizer: _types.OptionalUri = None):
         """
         :param encoder: encoder class name, for example ``CLIPTextModel``
         :param model: model path
         :param revision: model revision (branch name)
         :param variant: model variant, for example ``fp16``
         :param subfolder: model subfolder
-        :param original_config: Path to original model configuration for single file checkpoints, URL or `.yaml` file on disk.
         :param dtype: model data type (precision)
 
         :raises InvalidTextEncoderUriError: If ``dtype`` is passed an invalid data type string, or if
@@ -151,11 +142,6 @@ class TextEncoderUri:
                 raise _exceptions.InvalidTextEncoderUriError(
                     'specifying a Text Encoder quantizer URI is only supported for Hugging Face '
                     'repository loads from a repo slug or disk path, single file loads are not supported.')
-        else:
-            if original_config:
-                raise _exceptions.InvalidTextEncoderUriError(
-                    'specifying original_config file for Text Encoder '
-                    'is only supported for single file loads.')
 
         self._encoder = encoder
         self._model = model
@@ -163,13 +149,6 @@ class TextEncoderUri:
         self._variant = variant
         self._subfolder = subfolder
         self._quantizer = quantizer
-
-        try:
-            self._original_config = _util.download_non_hf_config(original_config) if original_config else None
-        except _util.NonHFConfigDownloadError as e:
-            raise _exceptions.InvalidTextEncoderUriError(
-                f'original config file "{original_config}" for Text Encoder could not be downloaded: {e}'
-            )
 
         try:
             self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
@@ -180,6 +159,7 @@ class TextEncoderUri:
     def load(self,
              variant_fallback: _types.OptionalString = None,
              dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
+             original_config: _types.OptionalPath = None,
              use_auth_token: _types.OptionalString = None,
              local_files_only: bool = False,
              sequential_cpu_offload_member: bool = False,
@@ -197,6 +177,7 @@ class TextEncoderUri:
 
         :param variant_fallback: If the URI does not specify a variant, use this variant.
         :param dtype_fallback: If the URI does not specify a dtype, use this dtype.
+        :param original_config: Path to original model configuration for single file checkpoints, URL or `.yaml` file on disk.
         :param use_auth_token: optional huggingface auth token.
         :param local_files_only: avoid downloading files and only look for cached files
             when the model path is a huggingface slug or blob link
@@ -216,13 +197,9 @@ class TextEncoderUri:
         """
 
         try:
-            return self._load(variant_fallback,
-                              dtype_fallback,
-                              use_auth_token,
-                              local_files_only,
-                              sequential_cpu_offload_member,
-                              model_cpu_offload_member)
-
+            args = locals()
+            args.pop('self')
+            return self._load(**args)
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _util.ModelNotFoundError(e)
@@ -238,6 +215,7 @@ class TextEncoderUri:
     def _load(self,
               variant_fallback: _types.OptionalString = None,
               dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
+              original_config: _types.OptionalPath = None,
               use_auth_token: _types.OptionalString = None,
               local_files_only: bool = False,
               sequential_cpu_offload_member: bool = False,
@@ -280,6 +258,14 @@ class TextEncoderUri:
             quant_config = None
 
         if _util.is_single_file_model_load(model_path):
+
+            try:
+                original_config = _util.download_non_hf_config(original_config) if original_config else None
+            except _util.NonHFConfigDownloadError as e:
+                raise _exceptions.TextEncoderUriLoadError(
+                    f'original config file "{original_config}" for Text Encoder could not be downloaded: {e}'
+                )
+
             estimated_memory_use = _util.estimate_model_memory_use(
                 repo_id=model_path,
                 revision=self.revision,
@@ -298,7 +284,7 @@ class TextEncoderUri:
                     library_name=encoder_library,
                     name=self.subfolder if self.subfolder else 'text_encoder',
                     use_auth_token=use_auth_token,
-                    original_config=self.original_config,
+                    original_config=original_config,
                     local_files_only=local_files_only,
                     revision=self.revision,
                     dtype=torch_dtype
@@ -310,6 +296,10 @@ class TextEncoderUri:
             estimated_memory_use = _util.estimate_memory_usage(text_encoder)
 
         else:
+            if original_config:
+                raise _exceptions.TextEncoderUriLoadError(
+                    'specifying original_config file for Text Encoder '
+                    'is only supported for single file loads.')
 
             estimated_memory_use = _util.estimate_model_memory_use(
                 repo_id=model_path,
@@ -376,7 +366,6 @@ class TextEncoderUri:
                                   variant=r.args.get('variant', None),
                                   dtype=dtype,
                                   subfolder=r.args.get('subfolder', None),
-                                  quantizer=r.args.get('quantizer', False),
-                                  original_config=r.args.get('original_config', None))
+                                  quantizer=r.args.get('quantizer', False))
         except _textprocessing.ConceptUriParseError as e:
             raise _exceptions.InvalidTextEncoderUriError(e)

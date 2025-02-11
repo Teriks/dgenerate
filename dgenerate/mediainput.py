@@ -1353,7 +1353,7 @@ def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResul
             dimensions = _textprocessing.parse_image_size(resize)
         except ValueError as e:
             raise ImageSeedArgumentError(
-                f'Error parsing image seed "resize" argument: {e}.')
+                f'Error parsing image seed "resize" argument: {e}')
         for d_idx, d in enumerate(dimensions):
             if d % align != 0:
                 raise ImageSeedArgumentError(

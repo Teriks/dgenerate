@@ -120,7 +120,6 @@ class ImageEncoderUri:
         """
         Load an Image Encoder Model of type :py:class:`transformers.CLIPVisionModelWithProjection`
 
-        :param variant_fallback: If the URI does not specify a variant, use this variant.
         :param dtype_fallback: If the URI does not specify a dtype, use this dtype.
         :param use_auth_token: optional huggingface auth token.
         :param local_files_only: avoid downloading files and only look for cached files
@@ -137,10 +136,9 @@ class ImageEncoderUri:
         :return: :py:class:`transformers.CLIPVisionModelWithProjection`
         """
         try:
-            return self._load(
-                dtype_fallback,
-                use_auth_token,
-                local_files_only)
+            args = locals()
+            args.pop('self')
+            return self._load(**args)
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _util.ModelNotFoundError(e)

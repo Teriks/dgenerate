@@ -39,8 +39,7 @@ _unet_uri_parser = _textprocessing.ConceptUriParser(
         'variant',
         'subfolder',
         'dtype',
-        'quantizer',
-        'original_config'
+        'quantizer'
     ]
 )
 
@@ -91,12 +90,6 @@ class UNetUri:
         --quantizer URI override
         """
         return self._quantizer
-    @property
-    def original_config(self) -> _types.OptionalPath:
-        """
-        Original training config file path or URL (.yaml)
-        """
-        return self._original_config
 
     def __init__(self,
                  model: str,
@@ -104,15 +97,13 @@ class UNetUri:
                  variant: _types.OptionalString = None,
                  subfolder: _types.OptionalString = None,
                  dtype: _enums.DataType | str | None = None,
-                 quantizer: _types.OptionalUri = None,
-                 original_config: _types.OptionalPath = None):
+                 quantizer: _types.OptionalUri = None):
         """
         :param model: model path
         :param revision: model revision (branch name)
         :param variant: model variant, for example ``fp16``
         :param subfolder: model subfolder
         :param dtype: model data type (precision)
-        :param original_config: Path to original model configuration for single file checkpoints, URL or `.yaml` file on disk.
 
         :raises InvalidUNetUriError: If ``model`` points to a single file,
             single file loads are not supported. Or if ``dtype`` is passed an
@@ -124,23 +115,11 @@ class UNetUri:
                 raise _exceptions.InvalidTextEncoderUriError(
                     'specifying a UNet quantizer URI is only supported for Hugging Face '
                     'repository loads from a repo slug or disk path, single file loads are not supported.')
-        else:
-            if original_config:
-                raise _exceptions.InvalidTextEncoderUriError(
-                    'specifying original_config file for UNet '
-                    'is only supported for single file loads.')
 
         self._model = model
         self._revision = revision
         self._variant = variant
         self._quantizer = quantizer
-
-        try:
-            self._original_config = _util.download_non_hf_config(original_config) if original_config else None
-        except _util.NonHFConfigDownloadError as e:
-            raise _exceptions.InvalidTextEncoderUriError(
-                f'original config file "{original_config}" for UNet could not be downloaded: {e}'
-            )
 
         try:
             self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
@@ -153,6 +132,7 @@ class UNetUri:
     def load(self,
              variant_fallback: _types.OptionalString = None,
              dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
+             original_config: _types.OptionalPath = None,
              use_auth_token: _types.OptionalString = None,
              local_files_only: bool = False,
              sequential_cpu_offload_member: bool = False,
@@ -163,6 +143,7 @@ class UNetUri:
 
         :param variant_fallback: If the URI does not specify a variant, use this variant.
         :param dtype_fallback: If the URI does not specify a dtype, use this dtype.
+        :param original_config: Path to original model configuration for single file checkpoints, URL or `.yaml` file on disk.
         :param use_auth_token: optional huggingface auth token.
         :param local_files_only: avoid downloading files and only look for cached files
             when the model path is a huggingface slug or blob link
@@ -180,13 +161,9 @@ class UNetUri:
         :return: :py:class:`diffusers.UNet2DConditionModel`
         """
         try:
-            return self._load(variant_fallback,
-                              dtype_fallback,
-                              use_auth_token,
-                              local_files_only,
-                              sequential_cpu_offload_member,
-                              model_cpu_offload_member,
-                              unet_class)
+            args = locals()
+            args.pop('self')
+            return self._load(**args)
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _util.ModelNotFoundError(e)
@@ -202,6 +179,7 @@ class UNetUri:
     def _load(self,
               variant_fallback: _types.OptionalString = None,
               dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
+              original_config: _types.OptionalPath = None,
               use_auth_token: _types.OptionalString = None,
               local_files_only: bool = False,
               sequential_cpu_offload_member: bool = False,
@@ -233,6 +211,13 @@ class UNetUri:
             quant_config = None
 
         if _util.is_single_file_model_load(model_path):
+            try:
+                original_config = _util.download_non_hf_config(original_config) if original_config else None
+            except _util.NonHFConfigDownloadError as e:
+                raise _exceptions.UNetUriLoadError(
+                    f'original config file "{original_config}" for UNet could not be downloaded: {e}'
+                )
+
             estimated_memory_use = _util.estimate_model_memory_use(
                 repo_id=model_path,
                 revision=self.revision,
@@ -261,7 +246,7 @@ class UNetUri:
                     library_name='diffusers',
                     name=self.subfolder if self.subfolder else 'unet',
                     use_auth_token=use_auth_token,
-                    original_config=self.original_config,
+                    original_config=original_config,
                     local_files_only=local_files_only,
                     revision=self.revision,
                     dtype=torch_dtype
@@ -272,6 +257,10 @@ class UNetUri:
 
             estimated_memory_use = _util.estimate_memory_usage(unet)
         else:
+            if original_config:
+                raise _exceptions.UNetUriLoadError(
+                    'specifying original_config file for UNet '
+                    'is only supported for single file loads.')
 
             estimated_memory_use = _util.estimate_model_memory_use(
                 repo_id=model_path,
@@ -331,7 +320,6 @@ class UNetUri:
                 revision=r.args.get('revision', None),
                 variant=r.args.get('variant', None),
                 dtype=dtype,
-                subfolder=r.args.get('subfolder', None),
-                original_config=r.args.get('original_config', None))
+                subfolder=r.args.get('subfolder', None))
         except _textprocessing.ConceptUriParseError as e:
             raise _exceptions.InvalidUNetUriError(e)

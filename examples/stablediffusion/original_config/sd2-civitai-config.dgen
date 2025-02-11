@@ -1,0 +1,26 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 4.5.1
+
+
+\set civit_ai_token %CIVIT_AI_TOKEN%
+
+{% if civit_ai_token.strip() %}
+
+    # load https://civitai.com/models/2711/21-sd-modern-buildings-style-md
+    # directly from CivitAI with it's LDM .yaml config file
+
+    https://civitai.com/api/download/models/3002?type=Model&format=PickleTensor&size=full&fp=fp16
+    --original-config "https://civitai.com/api/download/models/3002?type=Config&format=Other"
+    --inference-steps 30
+    --guidance-scales 6
+    --seeds 64517106019308
+    --output-path output
+    --output-size 768x768
+    --scheduler DPMSolverMultistepScheduler
+    --prompts "a photo of a orange parametric building midjourneyi, geometric, in a street; people, trees"
+
+{% else %}
+
+    \print Must set CIVIT_AI_TOKEN environmental variable for this example!
+
+{% endif %}

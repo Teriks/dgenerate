@@ -2413,6 +2413,7 @@ def _create_torch_diffusion_pipeline(
         return uri.load(
             variant_fallback=variant,
             dtype_fallback=dtype,
+            original_config=original_config,
             use_auth_token=auth_token,
             local_files_only=local_files_only,
             sequential_cpu_offload_member=sequential_cpu_offload,
@@ -2461,8 +2462,7 @@ def _create_torch_diffusion_pipeline(
                         variant=variant,
                         subfolder=encoder_subfolder,
                         dtype=dtype,
-                        quantizer=quantizer_uri,
-                        original_config=original_config
+                        quantizer=quantizer_uri
                     )
                 )
             except dgenerate.ModelNotFoundError:
@@ -2530,10 +2530,10 @@ def _create_torch_diffusion_pipeline(
                             variant=variant,
                             subfolder=vae_subfolder,
                             extract=vae_extract_from_checkpoint,
-                            dtype=dtype,
-                            original_config=original_config
+                            dtype=dtype
                         ).load(
                             dtype_fallback=dtype,
+                            original_config=original_config,
                             use_auth_token=auth_token,
                             local_files_only=local_files_only,
                             sequential_cpu_offload_member=sequential_cpu_offload,
@@ -2547,10 +2547,10 @@ def _create_torch_diffusion_pipeline(
                             encoder=vae_encoder_name,
                             model=model_path,
                             subfolder=vae_subfolder,
-                            dtype=dtype,
-                            original_config=original_config
+                            dtype=dtype
                         ).load(
                             dtype_fallback=dtype,
+                            original_config=original_config,
                             use_auth_token=auth_token,
                             local_files_only=local_files_only,
                             sequential_cpu_offload_member=sequential_cpu_offload,
@@ -2598,11 +2598,11 @@ def _create_torch_diffusion_pipeline(
                 variant=variant,
                 subfolder=unet_subfolder,
                 dtype=dtype,
-                quantizer=quantizer_uri,
-                original_config=original_config
+                quantizer=quantizer_uri
             ).load(
                 variant_fallback=variant,
                 dtype_fallback=dtype,
+                original_config=original_config,
                 use_auth_token=auth_token,
                 local_files_only=local_files_only,
                 sequential_cpu_offload_member=sequential_cpu_offload,
@@ -2653,11 +2653,11 @@ def _create_torch_diffusion_pipeline(
                 variant=variant,
                 subfolder=transformer_subfolder,
                 dtype=dtype,
-                quantizer=quantizer_uri,
-                original_config=original_config
+                quantizer=quantizer_uri
             ).load(
                 variant_fallback=variant,
                 dtype_fallback=dtype,
+                original_config=original_config,
                 use_auth_token=auth_token,
                 local_files_only=local_files_only,
                 sequential_cpu_offload_member=sequential_cpu_offload,
