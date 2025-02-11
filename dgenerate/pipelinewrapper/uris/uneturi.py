@@ -27,7 +27,6 @@ import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.cache as _cache
 import dgenerate.pipelinewrapper.enums as _enums
-import dgenerate.pipelinewrapper.hfutil as _hfutil
 import dgenerate.pipelinewrapper.util as _util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
@@ -104,7 +103,7 @@ class UNetUri:
             invalid data type string.
         """
 
-        if _hfutil.is_single_file_model_load(model) and quantizer:
+        if _util.is_single_file_model_load(model) and quantizer:
             raise _exceptions.InvalidTextEncoderUriError(
                 'specifying a unet quantizer URI is only supported for Hugging Face '
                 'repository loads from a repo slug or disk path, single file loads are not supported.')
@@ -161,7 +160,7 @@ class UNetUri:
                               unet_class)
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
-            raise _hfutil.ModelNotFoundError(e)
+            raise _util.ModelNotFoundError(e)
         except Exception as e:
             raise _exceptions.UNetUriLoadError(
                 f'error loading unet "{self.model}": {e}')
@@ -194,7 +193,7 @@ class UNetUri:
         else:
             variant = self.variant
 
-        model_path = _hfutil.download_non_hf_model(self.model)
+        model_path = _util.download_non_hf_model(self.model)
 
         if self.quantizer:
             quant_config = _util.get_quantizer_uri_class(
@@ -204,8 +203,8 @@ class UNetUri:
         else:
             quant_config = None
 
-        if _hfutil.is_single_file_model_load(model_path):
-            estimated_memory_use = _hfutil.estimate_model_memory_use(
+        if _util.is_single_file_model_load(model_path):
+            estimated_memory_use = _util.estimate_model_memory_use(
                 repo_id=model_path,
                 revision=self.revision,
                 local_files_only=local_files_only,
@@ -215,7 +214,7 @@ class UNetUri:
             _cache.enforce_text_encoder_cache_constraints(
                 new_text_encoder_size=estimated_memory_use)
 
-            estimated_memory_use = _hfutil.estimate_model_memory_use(
+            estimated_memory_use = _util.estimate_model_memory_use(
                 repo_id=model_path,
                 revision=self.revision,
                 local_files_only=local_files_only,
@@ -244,7 +243,7 @@ class UNetUri:
             estimated_memory_use = _util.estimate_memory_usage(unet)
         else:
 
-            estimated_memory_use = _hfutil.estimate_model_memory_use(
+            estimated_memory_use = _util.estimate_model_memory_use(
                 repo_id=model_path,
                 revision=self.revision,
                 variant=variant,

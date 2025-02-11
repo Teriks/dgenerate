@@ -24,7 +24,7 @@ import diffusers
 import huggingface_hub
 
 import dgenerate.messages as _messages
-import dgenerate.pipelinewrapper.hfutil as _hfutil
+import dgenerate.pipelinewrapper.util as _util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
@@ -116,7 +116,7 @@ class IPAdapterUri:
                                            local_files_only=local_files_only)
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
-            raise _hfutil.ModelNotFoundError(e)
+            raise _util.ModelNotFoundError(e)
         except _exceptions.InvalidIPAdapterUriError:
             raise
         except Exception as e:
@@ -145,7 +145,7 @@ class IPAdapterUri:
                 if isinstance(ip_adapter_uri, str):
                     ip_adapter_uri = IPAdapterUri.parse(ip_adapter_uri)
 
-                models.append(_hfutil.download_non_hf_model(ip_adapter_uri.model))
+                models.append(_util.download_non_hf_model(ip_adapter_uri.model))
                 if ip_adapter_uri.subfolder is None:
                     subfolders.append('.')
                 else:
