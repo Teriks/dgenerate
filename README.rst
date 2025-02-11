@@ -5431,7 +5431,7 @@ for usage information.
 
 
 Processor arguments such as ``index-filter`` can be used to only include certain detections
-on a per detector bases. The detections have a deterministic order based on position, that
+on a per-detector basis. The detections have a deterministic order based on position, that
 mimics the order of english words on a page, i.e. from left to right, top to bottom, sorted
 by the top left corner of the detection area.
 
