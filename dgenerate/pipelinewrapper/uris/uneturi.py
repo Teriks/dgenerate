@@ -134,7 +134,13 @@ class UNetUri:
         self._revision = revision
         self._variant = variant
         self._quantizer = quantizer
-        self._original_config = original_config
+
+        try:
+            self._original_config = _util.download_non_hf_config(original_config) if original_config else None
+        except _util.NonHFConfigDownloadError as e:
+            raise _exceptions.InvalidTextEncoderUriError(
+                f'original config file "{original_config}" for UNet could not be downloaded: {e}'
+            )
 
         try:
             self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
