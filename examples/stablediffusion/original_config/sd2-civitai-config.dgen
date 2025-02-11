@@ -9,6 +9,8 @@
     # load https://civitai.com/models/2711/21-sd-modern-buildings-style-md
     # directly from CivitAI with it's LDM .yaml config file
 
+    # this checkpoint is based of Stable Diffusion 2.1
+
     https://civitai.com/api/download/models/3002?type=Model&format=PickleTensor&size=full&fp=fp16
     --original-config "https://civitai.com/api/download/models/3002?type=Config&format=Other"
     --inference-steps 30
