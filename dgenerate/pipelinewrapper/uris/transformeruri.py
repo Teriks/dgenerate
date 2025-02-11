@@ -242,7 +242,7 @@ class TransformerUri:
                 token=use_auth_token,
                 revision=self.revision,
                 torch_dtype=torch_dtype,
-                original_config=self.original_config,
+                original_config=original_config,
                 local_files_only=local_files_only,
                 quantization_config=quant_config
             )
