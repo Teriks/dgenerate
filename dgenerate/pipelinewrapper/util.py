@@ -19,12 +19,12 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import collections.abc
+import contextlib
 import glob
 import json
 import os
 import pathlib
 import re
-from contextlib import contextmanager
 
 import diffusers.loaders.single_file as _single_file
 import diffusers.pipelines
@@ -99,7 +99,7 @@ def is_valid_device_string(device, raise_ordinal=True):
     return False
 
 
-@contextmanager
+@contextlib.contextmanager
 def _disable_tqdm():
     huggingface_hub.utils.enable_progress_bars()
     try:
@@ -251,17 +251,19 @@ def single_file_load_sub_module(
                         f'could not find the config file on Hugging Face hub '
                         f'for {class_name} in: {path}')
 
-    model = _single_file.load_single_file_sub_model(
-        library_name=library_name,
-        checkpoint=checkpoint,
-        class_name=class_name,
-        name=name,
-        pipelines=diffusers.pipelines,
-        cached_model_config_path=cached_model_config_path,
-        is_pipeline_module=False,
-        torch_dtype=dtype,
-        original_config=original_config,
-        local_files_only=local_files_only)
+    with _patch_sd21_clip_from_ldm():
+        model = _single_file.load_single_file_sub_model(
+            library_name=library_name,
+            checkpoint=checkpoint,
+            class_name=class_name,
+            name=name,
+            pipelines=diffusers.pipelines,
+            cached_model_config_path=cached_model_config_path,
+            is_pipeline_module=False,
+            torch_dtype=dtype,
+            original_config=original_config,
+            local_files_only=local_files_only
+        )
 
     return model
 
@@ -941,6 +943,177 @@ def is_single_file_model_load(path):
         return True
 
     return False
+
+
+@contextlib.contextmanager
+def _patch_sd21_clip_from_ldm():
+    """
+    A context manager which temporarily patches diffusers clip / text_encoder model loading
+    for single file checkpoints, this fixes loading SD2.1 CivitAI checkpoints
+    with StableDiffusionPipeline.from_single_file, and also loading a text encoder
+    individually via checkpoint extraction using dgenerates TextEncoderUri class.
+
+    The projection_dim chosen for these models in the standard configs on HuggingFace hub
+    is usually wrong, this just detects the correct dimension needed from the exception
+    that is thrown by load_model_dict_into_meta and then reloads the clip model
+    using that dimension instead.
+    """
+    og_func = diffusers.loaders.single_file.create_diffusers_clip_model_from_ldm
+    diffusers.loaders.single_file.create_diffusers_clip_model_from_ldm = _create_diffusers_clip_model_from_ldm
+    try:
+        yield
+    finally:
+        diffusers.loaders.single_file.create_diffusers_clip_model_from_ldm = og_func
+
+
+def _create_diffusers_clip_model_from_ldm(
+        cls,
+        checkpoint,
+        subfolder="",
+        config=None,
+        torch_dtype=None,
+        local_files_only=None,
+        is_legacy_loading=False,
+        projection_dim=None
+):
+    og_args = locals()
+    og_args.pop('projection_dim')
+
+    logger = diffusers.models.modeling_utils.logger
+
+    from diffusers.utils import (
+        is_accelerate_available,
+    )
+
+    from diffusers.loaders.single_file_utils import (
+        fetch_diffusers_config,
+        is_clip_model,
+        is_clip_sdxl_model,
+        is_clip_sd3_model,
+        load_model_dict_into_meta,
+        is_open_clip_model,
+        is_open_clip_sd3_model,
+        convert_open_clip_checkpoint,
+        is_open_clip_sdxl_refiner_model,
+        is_open_clip_sdxl_model,
+        init_empty_weights,
+        convert_ldm_clip_checkpoint,
+        CHECKPOINT_KEY_NAMES
+    )
+
+    if config:
+        config = {"pretrained_model_name_or_path": config}
+    else:
+        config = fetch_diffusers_config(checkpoint)
+
+    # For backwards compatibility
+    # Older versions of `from_single_file` expected CLIP configs to be placed in their original transformers model repo
+    # in the cache_dir, rather than in a subfolder of the Diffusers model
+    if is_legacy_loading:
+        logger.warning(
+            (
+                "Detected legacy CLIP loading behavior. Please run `from_single_file` with `local_files_only=False once to update "
+                "the local cache directory with the necessary CLIP model config files. "
+                "Attempting to load CLIP model from legacy cache directory."
+            )
+        )
+
+        if is_clip_model(checkpoint) or is_clip_sdxl_model(checkpoint):
+            clip_config = "openai/clip-vit-large-patch14"
+            config["pretrained_model_name_or_path"] = clip_config
+            subfolder = ""
+
+        elif is_open_clip_model(checkpoint):
+            clip_config = "stabilityai/stable-diffusion-2"
+            config["pretrained_model_name_or_path"] = clip_config
+            subfolder = "text_encoder"
+
+        else:
+            clip_config = "laion/CLIP-ViT-bigG-14-laion2B-39B-b160k"
+            config["pretrained_model_name_or_path"] = clip_config
+            subfolder = ""
+
+    if projection_dim:
+        config['projection_dim'] = projection_dim
+
+    model_config = cls.config_class.from_pretrained(**config, subfolder=subfolder, local_files_only=local_files_only)
+
+    ctx = init_empty_weights if is_accelerate_available() else contextlib.nullcontext
+    with ctx():
+        model = cls(model_config)
+
+    position_embedding_dim = model.text_model.embeddings.position_embedding.weight.shape[-1]
+
+    if is_clip_model(checkpoint):
+        diffusers_format_checkpoint = convert_ldm_clip_checkpoint(checkpoint)
+
+    elif (
+            is_clip_sdxl_model(checkpoint)
+            and checkpoint[CHECKPOINT_KEY_NAMES["clip_sdxl"]].shape[-1] == position_embedding_dim
+    ):
+        diffusers_format_checkpoint = convert_ldm_clip_checkpoint(checkpoint)
+
+    elif (
+            is_clip_sd3_model(checkpoint)
+            and checkpoint[CHECKPOINT_KEY_NAMES["clip_sd3"]].shape[-1] == position_embedding_dim
+    ):
+        diffusers_format_checkpoint = convert_ldm_clip_checkpoint(checkpoint, "text_encoders.clip_l.transformer.")
+        diffusers_format_checkpoint["text_projection.weight"] = torch.eye(position_embedding_dim)
+
+    elif is_open_clip_model(checkpoint):
+        prefix = "cond_stage_model.model."
+        diffusers_format_checkpoint = convert_open_clip_checkpoint(model, checkpoint, prefix=prefix)
+
+    elif (
+            is_open_clip_sdxl_model(checkpoint)
+            and checkpoint[CHECKPOINT_KEY_NAMES["open_clip_sdxl"]].shape[-1] == position_embedding_dim
+    ):
+        prefix = "conditioner.embedders.1.model."
+        diffusers_format_checkpoint = convert_open_clip_checkpoint(model, checkpoint, prefix=prefix)
+
+    elif is_open_clip_sdxl_refiner_model(checkpoint):
+        prefix = "conditioner.embedders.0.model."
+        diffusers_format_checkpoint = convert_open_clip_checkpoint(model, checkpoint, prefix=prefix)
+
+    elif (
+            is_open_clip_sd3_model(checkpoint)
+            and checkpoint[CHECKPOINT_KEY_NAMES["open_clip_sd3"]].shape[-1] == position_embedding_dim
+    ):
+        diffusers_format_checkpoint = convert_ldm_clip_checkpoint(checkpoint, "text_encoders.clip_g.transformer.")
+
+    else:
+        raise ValueError("The provided checkpoint does not seem to contain a valid CLIP model.")
+
+    if is_accelerate_available():
+        # we always have accelerate in dgenerate
+        try:
+            unexpected_keys = load_model_dict_into_meta(model, diffusers_format_checkpoint, dtype=torch_dtype)
+        except ValueError as e:
+            # the projection_dimension from the config on hugging face is wrong for the
+            # model, this is very common with CivitAI checkpoints for SD2.1
+            err_str = str(e)
+            if 'text_model.encoder.layers.0.self_attn.q_proj.weight expected shape' in err_str:
+                projection_dim = int(re.search(r"expected shape torch\.Size\(\[(\d+), (\d+)\]\)", err_str).group(1))
+                return _create_diffusers_clip_model_from_ldm(**og_args, projection_dim=1024)
+            raise
+    else:
+        _, unexpected_keys = model.load_state_dict(diffusers_format_checkpoint, strict=False)
+
+    if model._keys_to_ignore_on_load_unexpected is not None:
+        for pat in model._keys_to_ignore_on_load_unexpected:
+            unexpected_keys = [k for k in unexpected_keys if re.search(pat, k) is None]
+
+    if len(unexpected_keys) > 0:
+        logger.warning(
+            f"Some weights of the model checkpoint were not used when initializing {cls.__name__}: \n {[', '.join(unexpected_keys)]}"
+        )
+
+    if torch_dtype is not None:
+        model.to(torch_dtype)
+
+    model.eval()
+
+    return model
 
 
 __all__ = _types.module_all()
