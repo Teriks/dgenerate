@@ -29,7 +29,7 @@ import dgenerate.promptweighters.exceptions as _exceptions
 import dgenerate.promptweighters.promptweighter as _promptweighter
 import dgenerate.memory as _memory
 import dgenerate.textprocessing as _textprocessing
-import dgenerate.pipelinewrapper.hfutil as _hfutil
+import dgenerate.pipelinewrapper.util as _util
 import os
 
 import torch
@@ -299,13 +299,13 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
                             local_files_only: bool = False,
                             use_auth_token: str | None = None):
         try:
-            if _hfutil.is_single_file_model_load(model):
+            if _util.is_single_file_model_load(model):
                 if os.path.exists(model):
                     return model
                 else:
                     if local_files_only:
                         raise self.argument_error(f'Could not find projector model: {model}')
-                    return _hfutil.download_non_hf_model(model)
+                    return _util.download_non_hf_model(model)
             else:
                 return huggingface_hub.hf_hub_download(
                     model,

@@ -28,7 +28,7 @@ import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.cache as _cache
 import dgenerate.pipelinewrapper.enums as _enums
-import dgenerate.pipelinewrapper.hfutil as _hfutil
+import dgenerate.pipelinewrapper.util as _util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
@@ -251,7 +251,7 @@ class ControlNetUri:
                               model_class)
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
-            raise _hfutil.ModelNotFoundError(e)
+            raise _util.ModelNotFoundError(e)
         except Exception as e:
             raise _exceptions.ControlNetUriLoadError(
                 f'error loading controlnet "{self.model}": {e}')
@@ -290,16 +290,16 @@ class ControlNetUri:
                     'with non Flux / SDXL ControlNet Union models.'
                 )
 
-        model_path = _hfutil.download_non_hf_model(self.model)
+        model_path = _util.download_non_hf_model(self.model)
 
-        single_file_load_path = _hfutil.is_single_file_model_load(model_path)
+        single_file_load_path = _util.is_single_file_model_load(model_path)
 
         torch_dtype = _enums.get_torch_dtype(
             dtype_fallback if self.dtype is None else self.dtype)
 
         if single_file_load_path:
 
-            estimated_memory_usage = _hfutil.estimate_model_memory_use(
+            estimated_memory_usage = _util.estimate_model_memory_use(
                 repo_id=model_path,
                 revision=self.revision,
                 use_auth_token=use_auth_token,
@@ -317,7 +317,7 @@ class ControlNetUri:
                 local_files_only=local_files_only)
         else:
 
-            estimated_memory_usage = _hfutil.estimate_model_memory_use(
+            estimated_memory_usage = _util.estimate_model_memory_use(
                 repo_id=model_path,
                 revision=self.revision,
                 variant=self.variant,

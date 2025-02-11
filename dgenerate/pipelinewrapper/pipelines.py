@@ -22,35 +22,34 @@ import ast
 import collections.abc
 import gc
 import inspect
+import itertools
 import os.path
 import typing
-import itertools
 
 import accelerate
 import diffusers
 import diffusers.loaders
 import diffusers.loaders.single_file_utils
 import huggingface_hub
+import numpy
 import torch.nn
 import torch.nn
 import transformers.utils.quantization_config
 
 import dgenerate.exceptions as _d_exceptions
+import dgenerate.extras.diffusers
+import dgenerate.extras.kolors
 import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.cache as _cache
 import dgenerate.pipelinewrapper.enums as _enums
-import dgenerate.pipelinewrapper.hfutil as _hfutil
 import dgenerate.pipelinewrapper.uris as _uris
+import dgenerate.pipelinewrapper.util as _util
 import dgenerate.promptweighters as _promptweighters
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
-import dgenerate.pipelinewrapper.util as _util
-import numpy
-import dgenerate.extras.diffusers
-import dgenerate.extras.kolors
 
 
 class UnsupportedPipelineConfigError(Exception):
@@ -489,8 +488,8 @@ def estimate_pipeline_memory_use(
     include_text_encoder_3 = 'text_encoder_3' not in extra_args and (
             len(text_encoder_uris) < 3 or not text_encoder_uris[2])
 
-    usage = _hfutil.estimate_model_memory_use(
-        repo_id=_hfutil.download_non_hf_model(model_path),
+    usage = _util.estimate_model_memory_use(
+        repo_id=_util.download_non_hf_model(model_path),
         revision=revision,
         variant=variant,
         subfolder=subfolder,
@@ -507,8 +506,8 @@ def estimate_pipeline_memory_use(
 
     if transformer_uri:
         parsed = _uris.TransformerUri.parse(transformer_uri)
-        usage += _hfutil.estimate_model_memory_use(
-            repo_id=_hfutil.download_non_hf_model(parsed.model),
+        usage += _util.estimate_model_memory_use(
+            repo_id=_util.download_non_hf_model(parsed.model),
             revision=parsed.revision,
             subfolder=parsed.subfolder,
             use_auth_token=auth_token,
@@ -517,8 +516,8 @@ def estimate_pipeline_memory_use(
 
     if image_encoder_uri:
         parsed = _uris.ImageEncoderUri.parse(image_encoder_uri)
-        usage += _hfutil.estimate_model_memory_use(
-            repo_id=_hfutil.download_non_hf_model(parsed.model),
+        usage += _util.estimate_model_memory_use(
+            repo_id=_util.download_non_hf_model(parsed.model),
             revision=parsed.revision,
             subfolder=parsed.subfolder,
             use_auth_token=auth_token,
@@ -529,8 +528,8 @@ def estimate_pipeline_memory_use(
         for lora_uri in lora_uris:
             parsed = _uris.LoRAUri.parse(lora_uri)
 
-            usage += _hfutil.estimate_model_memory_use(
-                repo_id=_hfutil.download_non_hf_model(parsed.model),
+            usage += _util.estimate_model_memory_use(
+                repo_id=_util.download_non_hf_model(parsed.model),
                 revision=parsed.revision,
                 subfolder=parsed.subfolder,
                 weight_name=parsed.weight_name,
@@ -542,8 +541,8 @@ def estimate_pipeline_memory_use(
         for ip_adapter_uri in ip_adapter_uris:
             parsed = _uris.IPAdapterUri.parse(ip_adapter_uri)
 
-            usage += _hfutil.estimate_model_memory_use(
-                repo_id=_hfutil.download_non_hf_model(parsed.model),
+            usage += _util.estimate_model_memory_use(
+                repo_id=_util.download_non_hf_model(parsed.model),
                 revision=parsed.revision,
                 subfolder=parsed.subfolder,
                 weight_name=parsed.weight_name,
@@ -555,8 +554,8 @@ def estimate_pipeline_memory_use(
         for textual_inversion_uri in textual_inversion_uris:
             parsed = _uris.TextualInversionUri.parse(textual_inversion_uri)
 
-            usage += _hfutil.estimate_model_memory_use(
-                repo_id=_hfutil.download_non_hf_model(parsed.model),
+            usage += _util.estimate_model_memory_use(
+                repo_id=_util.download_non_hf_model(parsed.model),
                 revision=parsed.revision,
                 subfolder=parsed.subfolder,
                 weight_name=parsed.weight_name,
@@ -571,7 +570,7 @@ def estimate_pipeline_memory_use(
 
             parsed = _uris.TextEncoderUri.parse(text_encoder_uri)
 
-            usage += _hfutil.estimate_model_memory_use(
+            usage += _util.estimate_model_memory_use(
                 repo_id=parsed.model,
                 revision=parsed.revision,
                 subfolder=parsed.subfolder,
@@ -1509,7 +1508,7 @@ def create_torch_diffusion_pipeline(
         return _create_torch_diffusion_pipeline(**__locals)
     except (huggingface_hub.utils.HFValidationError,
             huggingface_hub.utils.HfHubHTTPError) as e:
-        raise _hfutil.ModelNotFoundError(e)
+        raise _util.ModelNotFoundError(e)
 
 
 class TorchPipelineFactory:
@@ -1655,7 +1654,7 @@ def _torch_args_hasher(args):
         'quantizer_uri':
             _cache.uri_hash_with_parser(
                 _util.get_quantizer_uri_class(quantizer_uri).parse)
-        if quantizer_uri else lambda x: None
+            if quantizer_uri else lambda x: None
     }
     return _d_memoize.args_cache_key(args, custom_hashes=custom_hashes)
 
@@ -2253,7 +2252,7 @@ def _create_torch_diffusion_pipeline(
             'device must be "cuda" (optionally with a device ordinal "cuda:N") or "cpu", '
             'or other device supported by torch.')
 
-    if _hfutil.is_single_file_model_load(model_path) and quantizer_uri:
+    if _util.is_single_file_model_load(model_path) and quantizer_uri:
         raise UnsupportedPipelineConfigError(
             'specifying a global pipeline quantizer URI is only supported for Hugging Face '
             'repository loads from a repo slug or disk path, single file loads are not supported.')
@@ -2345,7 +2344,7 @@ def _create_torch_diffusion_pipeline(
     if len(text_encoders) > 2 and text_encoder_3_override:
         text_encoders[2] = None
 
-    model_path = _hfutil.download_non_hf_model(model_path)
+    model_path = _util.download_non_hf_model(model_path)
 
     estimated_memory_usage = estimate_pipeline_memory_use(
         pipeline_type=pipeline_type,
@@ -2428,7 +2427,7 @@ def _create_torch_diffusion_pipeline(
             if param.annotation is inspect.Parameter.empty:
                 raise RuntimeError(f"No type hint found for pipeline constructor parameter: '{name}'")
 
-            if _hfutil.is_single_file_model_load(model_path):
+            if _util.is_single_file_model_load(model_path):
                 encoder_subfolder = encoder_name
             else:
                 encoder_subfolder = os.path.join(subfolder, encoder_name) if subfolder else encoder_name
@@ -2464,21 +2463,40 @@ def _create_torch_diffusion_pipeline(
             _messages.debug_log(lambda:
                                 f'Added Torch VAE: "{vae_uri}" to pipeline: "{pipeline_class.__name__}"')
         elif 'vae' in pipe_params:
-            if _hfutil.is_single_file_model_load(model_path):
+            if _util.is_single_file_model_load(model_path):
                 vae_subfolder = 'vae'
             else:
                 vae_subfolder = os.path.join(subfolder, 'vae') if subfolder else 'vae'
 
-            vae_encoder_name = pipe_params['vae'].annotation.__name__
+            vae_param = pipe_params['vae'].annotation
 
-            if vae_encoder_name in _uris.VAEUri.supported_encoder_names():
-                # sometimes this is Union because the pipeline can accept another
-                # type of VAE, don't cache individually for now.
-                # the vae class needs to be figured out from the pipeline
-                # config files, just let diffusers do it, inspecting the
-                # init args for this is a bit of a hack
+            vae_encoder_name = vae_param.__name__
 
-                vae_extract_from_checkpoint = _hfutil.is_single_file_model_load(model_path)
+            if vae_param is typing.Union:
+                try:
+                    # only try this if necessary
+                    vae_encoder_name = _util.fetch_model_index_dict(
+                        model_path,
+                        revision=revision,
+                        use_auth_token=auth_token,
+                        local_files_only=local_files_only
+                    )['vae'][1]
+                except (KeyError, IndexError):
+                    _messages.debug_log(
+                        'Skipping auto VAE caching due to model '
+                        'configuration not having a VAE key.')
+                    vae_encoder_name = None
+                except FileNotFoundError:
+                    raise UnsupportedPipelineConfigError(
+                        'Could not find VAE configuration data.')
+
+                if vae_encoder_name not in _uris.VAEUri.supported_encoder_names():
+                    raise UnsupportedPipelineConfigError(
+                        f'Unsupported VAE encoder type: {vae_encoder_name}'
+                    )
+
+            if vae_encoder_name is not None:
+                vae_extract_from_checkpoint = _util.is_single_file_model_load(model_path)
 
                 try:
                     creation_kwargs['vae'] = \
@@ -2541,7 +2559,7 @@ def _create_torch_diffusion_pipeline(
                                 f'Added Torch UNet: "{unet_uri}" to pipeline: "{pipeline_class.__name__}"')
         elif 'unet' in pipe_params:
 
-            if _hfutil.is_single_file_model_load(model_path):
+            if _util.is_single_file_model_load(model_path):
                 unet_subfolder = unet_parameter
             else:
                 unet_subfolder = os.path.join(subfolder, unet_parameter) if subfolder else unet_parameter
@@ -2592,7 +2610,7 @@ def _create_torch_diffusion_pipeline(
         elif 'transformer' in pipe_params:
             assert transformer_class is not None
 
-            if _hfutil.is_single_file_model_load(model_path):
+            if _util.is_single_file_model_load(model_path):
                 transformer_subfolder = 'transformer'
             else:
                 transformer_subfolder = os.path.join(subfolder, 'transformer') if subfolder else 'transformer'
@@ -2738,7 +2756,7 @@ def _create_torch_diffusion_pipeline(
 
         raise InvalidModelFileError(e)
 
-    if _hfutil.is_single_file_model_load(model_path):
+    if _util.is_single_file_model_load(model_path):
         if subfolder is not None:
             raise UnsupportedPipelineConfigError(
                 'Single file model loads do not support the subfolder option.')

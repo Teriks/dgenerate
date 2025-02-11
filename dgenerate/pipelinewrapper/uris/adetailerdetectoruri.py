@@ -19,16 +19,16 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import ast
 import os.path
 import typing
 
-import dgenerate.pipelinewrapper.hfutil as _hfutil
+import huggingface_hub
+
+import dgenerate.pipelinewrapper.util as _util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
-import huggingface_hub
-import dgenerate.pipelinewrapper.util as _util
-import ast
 
 _lora_uri_parser = _textprocessing.ConceptUriParser(
     'Adetailer Detector', [
@@ -258,13 +258,13 @@ class AdetailerDetectorUri:
             else:
                 ext = ''
 
-            if _hfutil.is_single_file_model_load(self.model) or ext in {'.yaml', '.yml'}:
+            if _util.is_single_file_model_load(self.model) or ext in {'.yaml', '.yml'}:
                 if os.path.exists(self.model):
                     return self.model
                 else:
                     if local_files_only:
                         raise _exceptions.AdetailerDetectorUriLoadError(f'Could not find adetailer model: {self.model}')
-                    return _hfutil.download_non_hf_model(self.model)
+                    return _util.download_non_hf_model(self.model)
             else:
                 return huggingface_hub.hf_hub_download(
                     self.model,

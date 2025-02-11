@@ -21,12 +21,12 @@
 
 import diffusers
 import huggingface_hub
+
 import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.cache as _cache
 import dgenerate.pipelinewrapper.enums as _enums
-import dgenerate.pipelinewrapper.hfutil as _hfutil
 import dgenerate.pipelinewrapper.util as _util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
@@ -160,7 +160,7 @@ class TransformerUri:
 
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
-            raise _hfutil.ModelNotFoundError(e)
+            raise _util.ModelNotFoundError(e)
         except Exception as e:
             raise _exceptions.TransformerUriLoadError(
                 f'error loading transformer "{self.model}": {e}')
@@ -197,7 +197,7 @@ class TransformerUri:
         else:
             variant = self.variant
 
-        model_path = _hfutil.download_non_hf_model(self.model)
+        model_path = _util.download_non_hf_model(self.model)
 
         if self.quantizer:
             quant_config = _util.get_quantizer_uri_class(
@@ -207,8 +207,8 @@ class TransformerUri:
         else:
             quant_config = None
 
-        if _hfutil.is_single_file_model_load(model_path):
-            estimated_memory_use = _hfutil.estimate_model_memory_use(
+        if _util.is_single_file_model_load(model_path):
+            estimated_memory_use = _util.estimate_model_memory_use(
                 repo_id=model_path,
                 revision=self.revision,
                 local_files_only=local_files_only,
@@ -228,7 +228,7 @@ class TransformerUri:
             )
 
         else:
-            estimated_memory_use = _hfutil.estimate_model_memory_use(
+            estimated_memory_use = _util.estimate_model_memory_use(
                 repo_id=model_path,
                 revision=self.revision,
                 variant=variant,

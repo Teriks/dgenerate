@@ -19,15 +19,15 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import transformers
 import huggingface_hub
+import transformers
 
 import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.cache as _cache
 import dgenerate.pipelinewrapper.enums as _enums
-import dgenerate.pipelinewrapper.hfutil as _hfutil
+import dgenerate.pipelinewrapper.util as _util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
@@ -95,7 +95,7 @@ class ImageEncoderUri:
             invalid data type string.
         """
 
-        if _hfutil.is_single_file_model_load(model):
+        if _util.is_single_file_model_load(model):
             raise _exceptions.InvalidImageEncoderUriError(
                 'Loading an Image Encoder from a single file is not supported.')
 
@@ -143,7 +143,7 @@ class ImageEncoderUri:
                 local_files_only)
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
-            raise _hfutil.ModelNotFoundError(e)
+            raise _util.ModelNotFoundError(e)
         except Exception as e:
             raise _exceptions.ImageEncoderUriLoadError(
                 f'error loading Image Encoder "{self.model}": {e}')
@@ -171,7 +171,7 @@ class ImageEncoderUri:
 
         path = self.model
 
-        estimated_memory_use = _hfutil.estimate_model_memory_use(
+        estimated_memory_use = _util.estimate_model_memory_use(
             repo_id=path,
             revision=self.revision,
             variant=self.variant,

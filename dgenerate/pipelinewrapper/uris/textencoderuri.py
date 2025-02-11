@@ -29,7 +29,6 @@ import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.cache as _cache
 import dgenerate.pipelinewrapper.enums as _enums
-import dgenerate.pipelinewrapper.hfutil as _hfutil
 import dgenerate.pipelinewrapper.util as _util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
@@ -130,7 +129,7 @@ class TextEncoderUri:
             raise _exceptions.InvalidTextEncoderUriError(
                 f'Unknown TextEncoder encoder class {encoder}, must be one of: {_textprocessing.oxford_comma(self._encoders.keys(), "or")}')
 
-        if _hfutil.is_single_file_model_load(model) and quantizer:
+        if _util.is_single_file_model_load(model) and quantizer:
             raise _exceptions.InvalidTextEncoderUriError(
                 'specifying a text encoder quantizer URI is only supported for Hugging Face '
                 'repository loads from a repo slug or disk path, single file loads are not supported.')
@@ -196,7 +195,7 @@ class TextEncoderUri:
 
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
-            raise _hfutil.ModelNotFoundError(e)
+            raise _util.ModelNotFoundError(e)
         except Exception as e:
             raise _exceptions.TextEncoderUriLoadError(
                 f'error loading text encoder "{self.model}": {e}')
@@ -234,7 +233,7 @@ class TextEncoderUri:
 
         encoder = self._encoders[self.encoder]
 
-        model_path = _hfutil.download_non_hf_model(self.model)
+        model_path = _util.download_non_hf_model(self.model)
 
         if self.quantizer:
             quant_config = _util.get_quantizer_uri_class(
@@ -244,8 +243,8 @@ class TextEncoderUri:
         else:
             quant_config = None
 
-        if _hfutil.is_single_file_model_load(model_path):
-            estimated_memory_use = _hfutil.estimate_model_memory_use(
+        if _util.is_single_file_model_load(model_path):
+            estimated_memory_use = _util.estimate_model_memory_use(
                 repo_id=model_path,
                 revision=self.revision,
                 local_files_only=local_files_only,
@@ -275,7 +274,7 @@ class TextEncoderUri:
 
         else:
 
-            estimated_memory_use = _hfutil.estimate_model_memory_use(
+            estimated_memory_use = _util.estimate_model_memory_use(
                 repo_id=model_path,
                 revision=self.revision,
                 variant=variant,
