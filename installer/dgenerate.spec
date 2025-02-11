@@ -76,11 +76,15 @@ for package_name in required_package_names:
                                           '**/*.json',
                                           '**/*.jsonl',
                                           '**/*.toml',
-                                          '**/*.yaml'])
+                                          '**/*.yaml',
+                                          '**/*.yml'])
     binaries += collect_dynamic_libs(package_name, search_patterns=['*.dll', '*.pyd'])
 
 # recipes
 datas += collect_data_files('dgenerate', subdir='console/recipes', includes=['*.recipe'])
+
+# module keys from HiDiffusion
+datas += collect_data_files('dgenerate', subdir='dgenerate/extras/hidiffusion/sd_module_key', includes=['*.txt'])
 
 
 a = Analysis(

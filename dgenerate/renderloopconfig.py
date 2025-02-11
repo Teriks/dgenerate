@@ -579,6 +579,16 @@ class RenderLoopConfig(_types.SetFromMixin):
     This may be a list of schedulers, indicating to try each scheduler in turn.
     """
 
+    hi_diffusion: bool = False
+    """
+    Activate HiDiffusion for the primary model?
+    """
+
+    sdxl_refiner_hi_diffusion: _types.OptionalBoolean = None
+    """
+    Activate HiDiffusion for the SDXL refiner?
+    """
+
     pag: bool = False
     """
     Use perturbed attention guidance?
@@ -1913,6 +1923,7 @@ class RenderLoopConfig(_types.SetFromMixin):
             sdxl_t2i_adapter_factor=ov('sdxl_t2i_adapter_factor', self.sdxl_t2i_adapter_factors),
             image_seed_strength=ov('image_seed_strength', self.image_seed_strengths),
             guidance_scale=ov('guidance_scale', self.guidance_scales),
+            hi_diffusion=ov('hi_diffusion', [self.hi_diffusion]),
             pag_scale=ov('pag_scale', self.pag_scales),
             pag_adaptive_scale=ov('pag_adaptive_scale', self.pag_adaptive_scales),
             image_guidance_scale=ov('image_guidance_scale', self.image_guidance_scales),
@@ -1921,6 +1932,7 @@ class RenderLoopConfig(_types.SetFromMixin):
             sdxl_high_noise_fraction=ov('sdxl_high_noise_fraction', self.sdxl_high_noise_fractions),
             sdxl_refiner_inference_steps=ov('sdxl_refiner_inference_steps', self.sdxl_refiner_inference_steps),
             sdxl_refiner_guidance_scale=ov('sdxl_refiner_guidance_scale', self.sdxl_refiner_guidance_scales),
+            sdxl_refiner_hi_diffusion=ov('sdxl_refiner_hi_diffusion', [self.sdxl_refiner_hi_diffusion]),
             sdxl_refiner_pag_scale=ov('sdxl_refiner_pag_scale',
                                       self.sdxl_refiner_pag_scales),
             sdxl_refiner_pag_adaptive_scale=ov('sdxl_refiner_pag_adaptive_scale',

@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import collections.abc
+import contextlib
 import decimal
 import inspect
 import shlex
@@ -42,6 +43,7 @@ import dgenerate.types as _types
 from dgenerate.pipelinewrapper.arguments import DiffusionArguments
 import dgenerate.pipelinewrapper.util as _util
 import dgenerate.extras.asdff.base as _asdff_base
+import dgenerate.extras.hidiffusion as _hidiffusion
 
 
 class PipelineWrapperResult:
@@ -108,6 +110,21 @@ class PipelineWrapperResult:
                 if i is not None:
                     i.close()
                     self.images = None
+
+
+@contextlib.contextmanager
+def _hi_diffusion(pipeline, generator, active: bool):
+    if active:
+        _messages.debug_log(
+            f'Enabling HiDiffusion on pipeline: {pipeline.__class__.__name__}')
+        _hidiffusion.apply_hidiffusion(pipeline, generator=generator)
+    try:
+        yield
+    finally:
+        if active:
+            _messages.debug_log(
+                f'Disabling HiDiffusion on pipeline: {pipeline.__class__.__name__}')
+            _hidiffusion.remove_hidiffusion(pipeline)
 
 
 class DiffusionPipelineWrapper:
@@ -1141,6 +1158,12 @@ class DiffusionPipelineWrapper:
 
         if self._scheduler is not None:
             opts.append(('--scheduler', self._scheduler))
+            
+        if args.hi_diffusion:
+            opts.append(('--hi-diffusion',))
+
+        if args.sdxl_refiner_hi_diffusion:
+            opts.append(('--sdxl-refiner-hi-diffusion',))
 
         if args.pag_scale == 3.0 and args.pag_adaptive_scale == 0.0:
             opts.append(('--pag',))
@@ -2207,9 +2230,10 @@ class DiffusionPipelineWrapper:
                 pipeline_args['negative_prompt'] = \
                     [pipeline_args['negative_prompt']] * num_prompts
 
-        pipeline_args['generator'] = \
-            torch.Generator(device=self._device).manual_seed(
-                _types.default(user_args.seed, _constants.DEFAULT_SEED))
+        generator = torch.Generator(device=self._device).manual_seed(
+            _types.default(user_args.seed, _constants.DEFAULT_SEED))
+
+        pipeline_args['generator'] = generator
 
         if isinstance(self._pipeline, diffusers.StableDiffusionInpaintPipelineLegacy):
             # Not necessary, will cause an error
@@ -2273,14 +2297,17 @@ class DiffusionPipelineWrapper:
                 batch_size=batch_size)
 
         if self._sdxl_refiner_pipeline is None:
-            if self._parsed_adetailer_detector_uris:
-                return generate_asdff()
-            else:
-                return PipelineWrapperResult(_pipelines.call_pipeline(
-                    pipeline=self._pipeline,
-                    prompt_weighter=self._prompt_weighter,
-                    device=self._device,
-                    **pipeline_args).images)
+            with _hi_diffusion(self._pipeline,
+                               generator=generator,
+                               active=user_args.hi_diffusion):
+                if self._parsed_adetailer_detector_uris:
+                    return generate_asdff()
+                else:
+                    return PipelineWrapperResult(_pipelines.call_pipeline(
+                        pipeline=self._pipeline,
+                        prompt_weighter=self._prompt_weighter,
+                        device=self._device,
+                        **pipeline_args).images)
 
         high_noise_fraction = _types.default(user_args.sdxl_high_noise_fraction,
                                              _constants.DEFAULT_SDXL_HIGH_NOISE_FRACTION)
@@ -2298,16 +2325,19 @@ class DiffusionPipelineWrapper:
             # cannot handle latent input
             output_type = 'pil'
 
-        if self._parsed_adetailer_detector_uris:
-            image = generate_asdff().images
-        else:
-            image = _pipelines.call_pipeline(
-                pipeline=self._pipeline,
-                device=self._device,
-                prompt_weighter=self._prompt_weighter,
-                **pipeline_args,
-                **i_end,
-                output_type=output_type).images
+        with _hi_diffusion(self._pipeline,
+                           generator=generator,
+                           active=user_args.hi_diffusion):
+            if self._parsed_adetailer_detector_uris:
+                image = generate_asdff().images
+            else:
+                image = _pipelines.call_pipeline(
+                    pipeline=self._pipeline,
+                    device=self._device,
+                    prompt_weighter=self._prompt_weighter,
+                    **pipeline_args,
+                    **i_end,
+                    output_type=output_type).images
 
         pipeline_args['image'] = image
 
@@ -2422,12 +2452,15 @@ class DiffusionPipelineWrapper:
 
             pipeline_args['strength'] = strength
 
-        return PipelineWrapperResult(
-            _pipelines.call_pipeline(
-                pipeline=self._sdxl_refiner_pipeline,
-                device=self._device,
-                prompt_weighter=self._prompt_weighter,
-                **pipeline_args, **i_start).images)
+        with _hi_diffusion(self._sdxl_refiner_pipeline,
+                           generator=generator,
+                           active=user_args.sdxl_refiner_hi_diffusion):
+            return PipelineWrapperResult(
+                _pipelines.call_pipeline(
+                    pipeline=self._sdxl_refiner_pipeline,
+                    device=self._device,
+                    prompt_weighter=self._prompt_weighter,
+                    **pipeline_args, **i_start).images)
 
     def recall_main_pipeline(self) -> _pipelines.PipelineCreationResult:
         """
@@ -2758,10 +2791,20 @@ class DiffusionPipelineWrapper:
             self._get_pipeline_defaults(user_args=copy_args)
 
         if self.model_type == _enums.ModelType.TORCH_S_CASCADE:
+            if args.hi_diffusion:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'HiDiffusion is not supported for Stable Cascade.'
+                )
+
             result = self._call_torch_s_cascade(
                 pipeline_args=pipeline_args,
                 user_args=copy_args)
         elif _enums.model_type_is_flux(self.model_type):
+            if args.hi_diffusion:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'HiDiffusion is not supported for Flux.'
+                )
+
             result = self._call_torch_flux(pipeline_args=pipeline_args,
                                            user_args=copy_args)
         else:

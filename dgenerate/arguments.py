@@ -611,16 +611,14 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '-olc', '--original-config',
-            dest='original_config',
+            '-olc', '--original-config', default=None, metavar="FILE", dest='original_config',
             help="""This argument can be used to supply an original LDM config .yaml file 
             that was provided with a single file checkpoint.""")
     )
 
     actions.append(
         parser.add_argument(
-            '-olc2', '--original-config2',
-            dest='second_original_config',
+            '-olc2', '--original-config2', default=None, metavar="FILE", dest='second_original_config',
             help="""This argument can be used to supply an original LDM config .yaml file 
             that was provided with a single file checkpoint for the secondary model, 
             i.e. the SDXL Refiner or Stable Cascade Decoder.""")
@@ -1455,6 +1453,22 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                     You may pass multiple scheduler URIs to this argument, each URI will be tried in turn.
                     """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-hd', '--hi-diffusion',
+            action='store_true', default=False, dest='hi_diffusion',
+            help=f"""Activate HiDiffusion for the primary model?"""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-rhd', '--sdxl-refiner-hi-diffusion',
+            action='store_true', default=False, dest='sdxl_refiner_hi_diffusion',
+            help=f"""Activate HiDiffusion for the SDXL refiner?"""
         )
     )
 
