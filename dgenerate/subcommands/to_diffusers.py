@@ -69,7 +69,7 @@ class ToDiffusersSubCommand(_subcommand.SubCommand):
                             help='Model path, as you would provide to dgenerate to generate images.')
         parser.add_argument('-mt', '--model-type',
                             help='Model type, as you would provide to dgenerate to generate images, '
-                                 'must match the checkpoint model type.', required=False, default=None)
+                                 'must match the checkpoint model type.', required=False, default=dgenerate.ModelType.TORCH)
         parser.add_argument('-rev', '--revision',
                             help='Model revision, if loading from Hugging Face hub.', required=False, default=None)
         parser.add_argument('-sbf', '--subfolder',
