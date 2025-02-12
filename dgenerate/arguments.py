@@ -700,13 +700,13 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                 
                     Example "index-filter" values:
                 
-                        # keep the first, leftmost, topmost detection
+                        * keep the first, leftmost, topmost detection:
                         index-filter=0
                 
-                        # keep detections 1 and 3
+                        * keep detections 1 and 3:
                         index-filter=[1, 3]
                 
-                        # CSV syntax is supported (tuple)
+                        * CSV syntax is supported (tuple):
                         index-filter=1,3
                 
                     The "detector-padding" (overrides --adetailer-detector-paddings)
