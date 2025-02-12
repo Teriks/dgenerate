@@ -102,6 +102,7 @@ try:
         InvalidModelUriError,
         ModelUriLoadError,
         NonHFModelDownloadError,
+        NonHFConfigDownloadError,
         SchedulerLoadError,
         SchedulerArgumentError,
         InvalidSchedulerNameError,

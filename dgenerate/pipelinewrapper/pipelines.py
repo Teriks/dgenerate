@@ -1497,6 +1497,8 @@ def create_torch_diffusion_pipeline(
     :raises InvalidModelUriError:
     :raises InvalidSchedulerNameError:
     :raises UnsupportedPipelineConfigError:
+    :raises dgenerate.NonHFModelDownloadError:
+    :raises dgenerate.NonHFConfigDownloadError:
 
     :return: :py:class:`.TorchPipelineCreationResult`
     """
@@ -1565,6 +1567,8 @@ class TorchPipelineFactory:
         :raises InvalidModelUriError:
         :raises InvalidSchedulerNameError:
         :raises UnsupportedPipelineConfigError:
+        :raises dgenerate.NonHFModelDownloadError:
+        :raises dgenerate.NonHFConfigDownloadError:
 
         :return: :py:class:`.TorchPipelineCreationResult`
         """
@@ -2269,12 +2273,7 @@ def _create_torch_diffusion_pipeline(
             )
 
     if original_config:
-        try:
-            original_config = _util.download_non_hf_config(original_config)
-        except _util.NonHFConfigDownloadError as e:
-            raise UnsupportedPipelineConfigError(
-                f'original config file "{original_config}" could not be downloaded: {e}'
-            )
+        original_config = _util.download_non_hf_config(original_config)
 
     model_path = _util.download_non_hf_model(model_path)
 
