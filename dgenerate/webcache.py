@@ -23,7 +23,7 @@ import os
 import pathlib
 import sys
 import typing
-
+import urllib.parse
 import tqdm
 
 import dgenerate.filecache as _filecache
@@ -64,6 +64,26 @@ except _textprocessing.TimeDeltaParseError as e:
     sys.exit(1)
 
 
+def _append_tokens_to_url(url: str) -> str:
+    # append API tokens from environment
+
+    parsed_url = urllib.parse.urlparse(url)
+
+    if parsed_url.netloc == "civitai.com" and parsed_url.path.startswith("/api/download"):
+        query_params = urllib.parse.parse_qs(parsed_url.query)
+
+        if 'CIVIT_AI_TOKEN' in os.environ:
+            token_val = os.environ.get('CIVIT_AI_TOKEN')
+            if token_val and not 'token' in query_params:
+                query_params['token'] = token_val
+
+        new_query = urllib.parse.urlencode(query_params, doseq=True)
+        new_url = urllib.parse.urlunparse(parsed_url._replace(query=new_query))
+        return new_url
+
+    return url
+
+
 def create_web_cache_file(url,
                           mime_acceptable_desc: str | None = None,
                           mimetype_is_supported: typing.Callable[[str], bool] | None = None,
@@ -76,6 +96,8 @@ def create_web_cache_file(url,
     available to all concurrent dgenerate processes.
 
     If the file exists in the cache already, return information for the existing file.
+
+    Append API tokens if applicable, such as `CIVIT_AI_TOKEN` from your environment.
 
     :raise requests.RequestException: Can raise any exception
         raised by ``requests.get`` for request related errors.
@@ -90,7 +112,7 @@ def create_web_cache_file(url,
     """
 
     cached_file = cache.download(
-        url,
+        _append_tokens_to_url(url),
         mime_acceptable_desc,
         mimetype_is_supported,
         unknown_mimetype_exception,
