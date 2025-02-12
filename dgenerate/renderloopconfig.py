@@ -1660,7 +1660,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
             if control_image_paths is None:
                 raise RenderLoopConfigError(
-                    f'You must specify control net guidance images in your {a_namer("image_seeds")} '
+                    f'You must specify controlnet guidance images in your {a_namer("image_seeds")} '
                     f'specification "{uri}" (for example: "img2img;{mask_part}control=control1.png, control2.png") '
                     f'when using {a_namer("controlnet_uris")}'
                 )

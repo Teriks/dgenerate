@@ -119,9 +119,9 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v4.5.1/>`_.
         * `quoting IP Adapter image URLs with plus symbols`_
         * `animated inputs & combinatorics`_
     * `Specifying Textual Inversions (embeddings)`_
-    * `Specifying Control Nets`_
-        * `SDXL Control Net Union Mode`_
-        * `Flux Control Net Union Mode`_
+    * `Specifying ControlNets`_
+        * `SDXL ControlNet Union Mode`_
+        * `Flux ControlNet Union Mode`_
     * `Specifying T2I Adapters`_
     * `Specifying Text Encoders`_
     * `Prompt Weighting and Enhancement`_
@@ -132,7 +132,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v4.5.1/>`_.
     * `Batching Input Images and Inpaint Masks`_
     * `Image Processors`_
         * `Image processor arguments`_
-        * `Multiple control net images, and input image batching`_
+        * `Multiple controlnet images, and input image batching`_
     * `Sub Commands`_
         * `Sub Command: image-process`_
         * `Sub Command: civitai-links`_
@@ -2248,7 +2248,7 @@ Image Seeds
 
 The ``--image-seeds`` argument can be used to specify one or more image input resource groups
 for use in rendering, and allows for the specification of img2img source images, inpaint masks,
-control net guidance images, deep floyd stage images, image group resizing, and frame slicing values
+controlnet guidance images, deep floyd stage images, image group resizing, and frame slicing values
 for animations. It possesses it's own URI syntax for defining different image inputs used for image generation,
 the example described below is the simplest case for one image input (img2img).
 
@@ -2295,7 +2295,7 @@ In addition to this it can be used to provide control guidance images in the cas
 via the use of a URI syntax involving keyword arguments.
 
 The syntax ``--image-seeds "my-image-seed.png;control=my-control-image.png"`` can be used with ``--control-nets`` to specify
-img2img mode with a ControlNet for example, see: `Specifying Control Nets`_ for more information.
+img2img mode with a ControlNet for example, see: `Specifying ControlNets`_ for more information.
 
 IP Adapter images may be provided via a special ``adapters: ...`` syntax and
 via the ``adapters`` URI argument discussed in: `Specifying IP Adapters`_
@@ -2320,7 +2320,7 @@ Some possible definitions for inpainting are:
     * ``--image-seeds "my-image-seed.png;mask=my-mask-image.png"``
 
 The format is your image seed and mask image separated by ``;``, optionally ``mask`` can be named argument.
-The alternate syntax is for disambiguation when preforming img2img or inpainting operations while `Specifying Control Nets`_
+The alternate syntax is for disambiguation when preforming img2img or inpainting operations while `Specifying ControlNets`_
 or other operations where keyword arguments might be necessary for disambiguation such as per image seed `Animation Slicing`_,
 and the specification of the image from a previous Deep Floyd stage using the ``floyd`` argument.
 
@@ -2356,7 +2356,7 @@ You can specify their output size individually at the end of each provided image
 
 This will work when using a mask image for inpainting as well, including when using animated inputs.
 
-This also works when `Specifying Control Nets`_ and guidance images for control nets.
+This also works when `Specifying ControlNets`_ and guidance images for controlnets.
 
 Resizing in this fashion will resize any img2img image, inpaint mask, or control image to the specified
 size, generally all of these images need to be the same size. In combination with the URI argument
@@ -2372,7 +2372,7 @@ Here are some possible definitions:
     * ``--image-seeds "my-image-seed.png;resize=512x512"`` (img2img)
     * ``--image-seeds "my-image-seed.png;mask=my-mask-image.png;resize=512x512"`` (inpainting)
 
-The alternate syntax with named arguments is for disambiguation when `Specifying Control Nets`_, or
+The alternate syntax with named arguments is for disambiguation when `Specifying ControlNets`_, or
 preforming per image seed `Animation Slicing`_, or specifying the previous Deep Floyd stage output
 with the ``floyd`` keyword argument.
 
@@ -2468,7 +2468,7 @@ Animations can also be generated using an alternate syntax for ``--image-seeds``
 that allows the specification of a control image source when it is desired to use
 ``--control-nets`` with img2img or inpainting.
 
-For more information about this see: `Specifying Control Nets`_
+For more information about this see: `Specifying ControlNets`_
 
 And also: `Specifying T2I Adapters`_
 
@@ -3499,7 +3499,7 @@ Textual inversions are supported for these model types:
     * ``--model-type torch-upscaler-x4``
     * ``--model-type torch-sdxl``
     * ``--model-type torch-sdxl-pix2pix``
-    * ``--model-type torch-flux`` (``txt2img``, ``txt2img + Control Nets``, ``inpainting + Control Nets`` only)
+    * ``--model-type torch-flux`` (``txt2img``, ``txt2img + ControlNets``, ``inpainting + ControlNets`` only)
     * ``--model-type torch-flux-fill`` (``inpainting`` only)
 
 You can provide a huggingface repository slug, .pt, .pth, .bin, .ckpt, or .safetensors files.
@@ -3598,12 +3598,12 @@ If you are loading a .safetensors or other file from a path on disk, simply do:
 
 
 
-Specifying Control Nets
+Specifying ControlNets
 =======================
 
 One or more ControlNet models may be specified with ``--control-nets``, and multiple control
 net guidance images can be specified via ``--image-seeds`` in the case that you specify
-multiple control net models.
+multiple controlnet models.
 
 ControlNet models are supported for these model types:
 
@@ -3615,7 +3615,7 @@ ControlNet models are supported for these model types:
 
 You can provide a huggingface repository slug / blob link, .pt, .pth, .bin, .ckpt, or .safetensors files.
 
-Control images for the Control Nets can be provided using ``--image-seeds``
+Control images for the ControlNets can be provided using ``--image-seeds``
 
 When using ``--control-nets`` specifying control images via ``--image-seeds`` can be accomplished in these ways:
 
@@ -3623,7 +3623,7 @@ When using ``--control-nets`` specifying control images via ``--image-seeds`` ca
     * ``--image-seeds "img2img-seed.png;control=control-image.png"`` (img2img)
     * ``--image-seeds "img2img-seed.png;mask=mask.png;control=control-image.png"`` (inpainting)
 
-Multiple control image sources can be specified in these ways when using multiple control nets:
+Multiple control image sources can be specified in these ways when using multiple controlnets:
 
     * ``--image-seeds "control-1.png, control-2.png"`` (txt2img)
     * ``--image-seeds "control-1.png, control-2.png;align=64"`` (resize arguments work here)
@@ -3653,16 +3653,16 @@ Most named arguments apply to loading from a huggingface repository or folder
 that may or may not be a local git repository on disk, when loading directly from a .safetensors file
 or other file from a path on disk the available arguments are ``scale``, ``start``, and ``end``.
 
-The ``scale`` argument indicates the affect scale of the control net model.
+The ``scale`` argument indicates the affect scale of the controlnet model.
 
 For torch, the ``start`` argument indicates at what fraction of the total inference steps
-at which the control net model starts to apply guidance. If you have multiple
-control net models specified, they can apply guidance over different segments
+at which the controlnet model starts to apply guidance. If you have multiple
+controlnet models specified, they can apply guidance over different segments
 of the inference steps using this option, it defaults to 0.0, meaning start at the
 first inference step.
 
 for torch, the ``end`` argument indicates at what fraction of the total inference steps
-at which the control net model stops applying guidance. It defaults to 1.0, meaning
+at which the controlnet model stops applying guidance. It defaults to 1.0, meaning
 stop at the last inference step.
 
 
@@ -3754,21 +3754,21 @@ If you are loading a .safetensors or other file from a path on disk, simply do:
     --prompts "Syntax example" \
     --control-nets "my_cn_model.safetensors"
 
-SDXL Control Net Union Mode
+SDXL ControlNet Union Mode
 ---------------------------
 
 SDXL can utilize a combined control-net model called ControlNet Union, i.e ``xinsir/controlnet-union-sdxl-1.0``.
 
-This model is a union (combined weights) of different several different control net models for SDXL in one
+This model is a union (combined weights) of different several different controlnet models for SDXL in one
 file under one HuggingFace repository.
 
 Contained within the safetensors file are ControlNet weights which cover 12 different types of control image input.
 
-When using this control net repository, you must specify which image input guidance mode you want to use.
+When using this controlnet repository, you must specify which image input guidance mode you want to use.
 
 You can do this by specifying the mode name to the ``mode`` URI argument of ``--control-nets``.
 
-The control net "mode" option may be set to one of:
+The controlnet "mode" option may be set to one of:
 
     * ``openpose``
     * ``depth``
@@ -3828,19 +3828,19 @@ Here is an example making use of ``depth`` and ``openpose``:
     --control-image-processors midas + "openpose;include-hand=true;include-face=true;output-file=boxer/boxer-openpose.png"
 
 
-Flux Control Net Union Mode
+Flux ControlNet Union Mode
 ---------------------------
 
 Flux can also utilize a ControlNet Union model, more specifically: ``InstantX/FLUX.1-dev-Controlnet-Union``.
 
-This model is a union (combined weights) of seven different trained control net models for Flux in one file under
+This model is a union (combined weights) of seven different trained controlnet models for Flux in one file under
 one HuggingFace repository.
 
-When using this control net repository, you must specify which image input guidance mode you want to use.
+When using this controlnet repository, you must specify which image input guidance mode you want to use.
 
 You can do this by specifying the mode name to the ``mode`` URI argument of ``--control-nets``.
 
-The control net "mode" option may be set to one of:
+The controlnet "mode" option may be set to one of:
 
  * ``canny``
  * ``tile``
@@ -3875,10 +3875,10 @@ The control net "mode" option may be set to one of:
     --prompts "a boxer throwing a punch in the ring"
 
 
-You can specify multiple instances of this control net URI with different modes if desired.
+You can specify multiple instances of this controlnet URI with different modes if desired.
 
-Everything else about control net URI usage, such as URI arguments, is unchanged from
-what is described in the main `Specifying Control Nets`_ section.
+Everything else about controlnet URI usage, such as URI arguments, is unchanged from
+what is described in the main `Specifying ControlNets`_ section.
 
 Specifying T2I Adapters
 =======================
@@ -3887,10 +3887,10 @@ One or more T2I Adapters models may be specified with ``--t2i-adapters``, and mu
 T2I Adapter guidance images can be specified via ``--image-seeds`` in the case that you specify
 multiple T2I Adapter models.
 
-T2I Adapters are similar to Control Net models and are mutually exclusive with Control Net models,
+T2I Adapters are similar to ControlNet models and are mutually exclusive with ControlNet models,
 IE: they cannot be used together.
 
-T2I Adapters are more lightweight than Control Net models, but only support txt2img generation
+T2I Adapters are more lightweight than ControlNet models, but only support txt2img generation
 with control images for guidance, img2img and inpainting is not supported with T2I Adapters.
 
 T2I Adapter models are supported for these model types:
@@ -4045,7 +4045,7 @@ shown above.
 Each IP Adapter model can accept multiple IP Adapter input images, and they do not need to all be the same dimension or aligned in any
 particular way for the model to work.
 
-In addition, IP Adapter models can be used with Control Net and T2I Adapter models introducing additional complexities in specifying
+In addition, IP Adapter models can be used with ControlNet and T2I Adapter models introducing additional complexities in specifying
 image input.
 
 If you specify multiple IP Adapters, they must all have the same ``variant`` URI argument value or you will receive a usage error.
@@ -4055,10 +4055,10 @@ If you specify multiple IP Adapters, they must all have the same ``variant`` URI
 basic --image-seeds specification
 ---------------------------------
 
-The first syntax we can use with ``--image-seeds`` is designed to allow using IP Adapter images alone or with Control Net images.
+The first syntax we can use with ``--image-seeds`` is designed to allow using IP Adapter images alone or with ControlNet images.
 
     * ``--image-seeds "adapter: adapter-image.png"`` (txt2img)
-    * ``--image-seeds "adapter: adapter-image.png;control=control-image.png"`` (txt2img + Control Net or T2I Adapter)
+    * ``--image-seeds "adapter: adapter-image.png;control=control-image.png"`` (txt2img + ControlNet or T2I Adapter)
 
 You may specify multiple IP Adapter images with the ``+`` image syntax, and multiple control images as you normally would with control images.
 
@@ -4110,7 +4110,7 @@ Including the ``+`` syntax and sub-uri resizing syntax.
 
 
     * ``--image-seeds "img2img-input.png;adapter=adapter-image.png"`` (img2img)
-    * ``--image-seeds "img2img-input.png;adapter=adapter-image.png;control=control-image.png"`` (img2img + Control Net or T2I Adapter)
+    * ``--image-seeds "img2img-input.png;adapter=adapter-image.png;control=control-image.png"`` (img2img + ControlNet or T2I Adapter)
 
 
 ----
@@ -4124,7 +4124,7 @@ The ``mask`` argument in this case does not refer to IP Adapter mask images, but
 
 
     * ``--image-seeds "img2img-input.png;mask=inpaint-mask.png;adapter=adapter-image.png"`` (inpaint)
-    * ``--image-seeds "img2img-input.png;mask=inpaint-mask.png;adapter=adapter-image.png;control=control-image.png"`` (inpaint + Control Net or T2I Adapter)
+    * ``--image-seeds "img2img-input.png;mask=inpaint-mask.png;adapter=adapter-image.png;control=control-image.png"`` (inpaint + ControlNet or T2I Adapter)
 
 
 ----
@@ -4884,7 +4884,7 @@ is used in the example below with a ControlNet that is trained to generate image
     --output-path unicorn
 
 
-Multiple control net images, and input image batching
+Multiple controlnet images, and input image batching
 -----------------------------------------------------
 
 
@@ -4892,7 +4892,7 @@ Each ``--*-image-processors`` option has a special additional syntax, which is u
 describe which processor or processor chain is affecting which input image in an
 ``--image-seeds`` specification.
 
-For instance if you have multiple control guidance images, and multiple control nets which are going
+For instance if you have multiple control guidance images, and multiple controlnets which are going
 to use those images, or frames etc. and you want to process each guidance image with a separate
 processor OR processor chain. You can specify how each image is processed by delimiting the
 processor specification groups with + (the plus symbol)
@@ -4927,7 +4927,7 @@ than control guidance images.  Specifying less processor chains simply means tha
 guidance images will not be processed, you can avoid processing leading guidance images
 with the mechanism described above.
 
-This can be used with an arbitrary amount of control image sources and control nets, take
+This can be used with an arbitrary amount of control image sources and controlnets, take
 for example the specification:
 
     * ``--control-nets "huggingface/controlnet1" "huggingface/controlnet2" "huggingface/controlnet3"``

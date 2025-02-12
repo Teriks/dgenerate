@@ -1948,7 +1948,7 @@ def get_torch_pipeline_class(
                 elif controlnet_uris:
                     if pag:
                         raise UnsupportedPipelineConfigError(
-                            'Stable Diffusion 3 does not support --pag with control nets.')
+                            'Stable Diffusion 3 does not support --pag with controlnets.')
 
                     pipeline_class = diffusers.StableDiffusion3ControlNetPipeline
                 else:

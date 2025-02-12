@@ -8,7 +8,7 @@
     \exit
 {% endif %}
 
-# Use an already processed image with the canny control net
+# Use an already processed image with the canny controlnet
 
 stabilityai/stable-diffusion-3-medium-diffusers
 --model-type torch-sd3
