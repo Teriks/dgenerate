@@ -2264,7 +2264,9 @@ def _create_torch_diffusion_pipeline(
         if quantizer_uri:
             raise UnsupportedPipelineConfigError(
                 'specifying a global pipeline quantizer URI is only supported for Hugging Face '
-                'repository loads from a repo slug or disk path, single file loads are not supported.')
+                'repository loads from a repo slug or disk path, single file loads are not supported. '
+                'Use "dgenerate --sub-command to-diffusers" to convert your model file to a folder on disk in '
+                'diffusers format, see: "dgenerate --sub-command to-diffusers --help".')
     else:
         if original_config:
             raise UnsupportedPipelineConfigError(

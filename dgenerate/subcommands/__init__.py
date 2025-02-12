@@ -26,6 +26,7 @@ from .image_process import ImageProcessSubCommand
 from .civitai_links import CivitAILinksSubCommand
 from .subcommand import SubCommand
 from .subcommandloader import SubCommandLoader
+from .to_diffusers import ToDiffusersSubCommand
 
 __doc__ = """
 Sub-Commands implemented by the dgenerate command line tool.

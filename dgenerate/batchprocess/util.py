@@ -27,6 +27,7 @@ import argparse
 import typing
 
 import dgenerate.messages as _messages
+import dgenerate.textprocessing as _textprocessing
 
 
 class DirectiveArgumentParser(argparse.ArgumentParser):
@@ -41,6 +42,7 @@ class DirectiveArgumentParser(argparse.ArgumentParser):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.return_code = None
+        self.formatter_class = _textprocessing.ArgparseParagraphFormatter
 
     def parse_args(self, args: typing.Sequence[str] | None = ...) -> argparse.Namespace:
         try:

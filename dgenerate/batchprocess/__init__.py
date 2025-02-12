@@ -37,6 +37,8 @@ from .image_process_directive import ImageProcessDirective
 
 from .civitai_links_directive import CivitAILinksDirective
 
+from .to_diffusers_directive import ToDiffusersDirective
+
 __doc__ = """
 Batch processing / dgenerate config scripts.
 """

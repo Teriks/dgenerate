@@ -5114,6 +5114,89 @@ Output from the above example:
     CCXL (Model): https://civitai.com/api/download/models/133832?format=SafeTensor&size=full&fp=fp16
 
 
+Sub Command: to-diffusers
+--------------------------
+
+The ``to-diffusers`` sub-command can be used to convert single file diffusion model checkpoints from CivitAI
+and elsewhere into diffusers format (a folder on disk with configuration).
+
+This can be useful if you want to load a single file checkpoint with quantization.
+
+You may also save models loaded from Hugging Face repos.
+
+This sub-command also exists as the config directive: ``\to_diffusers``
+
+In memory caching / memoization is disabled for this command to prevent necessary resource usage,
+the models involved with the loaded pipeline are garbage collected immediately after the conversion happens.
+
+.. code-block:: text
+
+    #!/usr/bin/env bash
+
+    # convert a CivitAI checkpoint (https://civitai.com/models/2711/21-sd-modern-buildings-style-md)
+    # into a diffusers compatible model folder, containing seperate checkpoint files for each
+    # model component and related configuration
+
+    dgenerate --sub-command to-diffusers \
+    "https://civitai.com/api/download/models/3002?type=Model&format=PickleTensor&size=full&fp=fp16" \
+    --model-type torch \
+    --dtypes float16 float32 \
+    --output modern_buildings
+
+
+The help output of ``to-diffusers`` is as follows:
+
+
+.. code-block:: text
+
+    usage: to-diffusers [-h] [-mt MODEL_TYPE] [-rev REVISION] [-sbf SUBFOLDER]
+                        [-t [DTYPES ...]] [-olc ORIGINAL_CONFIG] [-atk AUTH_TOKEN]
+                        -o OUTPUT [-v]
+                        model_path
+
+    Save a loaded model to a diffusers format pretrained model folder, models can
+    be loaded from a single file or Hugging Face hub repository.
+
+    positional arguments:
+      model_path
+            Model path, as you would provide to dgenerate to generate images.
+            -----------------------------------------------------------------
+
+    options:
+      -h, --help
+            show this help message and exit
+            -------------------------------
+      -mt MODEL_TYPE, --model-type MODEL_TYPE
+            Model type, as you would provide to dgenerate to generate images, must
+            match the checkpoint model type.
+            --------------------------------
+      -rev REVISION, --revision REVISION
+            Model revision, if loading from Hugging Face hub.
+            -------------------------------------------------
+      -sbf SUBFOLDER, --subfolder SUBFOLDER
+            Model subfolder, if loading from Hugging Face hub.
+            --------------------------------------------------
+      -t [DTYPES ...], --dtypes [DTYPES ...]
+            Model dtypes to generate, this generates variants, such as "fp16", you
+            may specify up to 2 values. Accepted values are: float16, and float32.
+            By default only the 32 bit variant is saved if you do not specify this
+            argument, if you want both variants you must specify both dtypes
+            simultaneously.
+            ---------------
+      -olc ORIGINAL_CONFIG, --original-config ORIGINAL_CONFIG
+            Original LDM config (.yaml) file.
+            ---------------------------------
+      -atk AUTH_TOKEN, --auth-token AUTH_TOKEN
+            Optional Hugging Face authentication token value.
+            -------------------------------------------------
+      -o OUTPUT, --output OUTPUT
+            Output directory for the converted model, this is a folder you can
+            point dgenerate at to generate images.
+            --------------------------------------
+      -v, --verbose
+            Enable debug output?
+            --------------------
+
 Upscaling
 =========
 
@@ -6346,11 +6429,14 @@ Example output:
 
         "\cd"
         "\civitai_links"
+        "\clear_adapter_cache"
         "\clear_controlnet_cache"
+        "\clear_image_encoder_cache"
         "\clear_model_cache"
         "\clear_modules"
         "\clear_pipeline_cache"
         "\clear_text_encoder_cache"
+        "\clear_transformer_cache"
         "\clear_unet_cache"
         "\clear_vae_cache"
         "\cp"
@@ -6374,6 +6460,7 @@ Example output:
         "\prompt_weighter_help"
         "\pushd"
         "\pwd"
+        "\reset_lineno"
         "\rm"
         "\rmdir"
         "\save_modules"
@@ -6381,6 +6468,7 @@ Example output:
         "\sete"
         "\setp"
         "\templates_help"
+        "\to_diffusers"
         "\unset"
         "\unset_env"
         "\use_modules"
