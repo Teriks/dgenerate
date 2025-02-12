@@ -5127,7 +5127,7 @@ You may also save models loaded from Hugging Face repos.
 
 This sub-command also exists as the config directive: ``\to_diffusers``
 
-In memory caching / memoization is disabled for this command to prevent necessary resource usage,
+In memory caching / memoization is disabled for this command to prevent unnecessary resource usage,
 the models involved with the loaded pipeline are garbage collected immediately after the conversion happens.
 
 .. code-block:: text
