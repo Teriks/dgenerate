@@ -1,6 +1,7 @@
 title: Stable Diffusion
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "stabilityai/stable-diffusion-2-1", "optional":false, "file-types":["models"]}]
+@file[{"label": "Original Config (yaml)", "arg": "--original-config", "file-types": ["yaml"]}]
 @dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "float32"]}]
 @dropdown[{"label":"Model variant", "arg":"--variant", "options":["fp16"]}]
 @karrasscheduler[{}]

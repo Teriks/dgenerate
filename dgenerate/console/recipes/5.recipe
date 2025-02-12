@@ -1,6 +1,7 @@
 title: Stable Diffusion XL (LCM UNet no refiner)
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "stabilityai/stable-diffusion-xl-base-1.0", "optional":false, "file-types":["models"]}]
+@file[{"label": "Original Config (yaml)", "arg": "--original-config", "file-types": ["yaml"]}]
 --model-type torch-sdxl
 @dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "float32"], "default":"float16"}]
 @dropdown[{"label":"Model variant", "arg":"--variant", "options":["fp16"], "default":"fp16"}]

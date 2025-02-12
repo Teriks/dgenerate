@@ -271,17 +271,26 @@ def single_file_load_sub_module(
         cached_model_config_path = default_pretrained_model_config_name
 
     with _patch_sd21_clip_from_ldm():
+        args = {
+            "cached_model_config_path": cached_model_config_path,
+            "library_name": library_name,
+            "class_name": class_name,
+            "name": name,
+            "torch_dtype": dtype,
+            "original_config": original_config,
+            "local_files_only": local_files_only
+        }
+
+        _messages.debug_log(
+            f'Loading a "{class_name}" with: '
+            f'diffusers.loaders.load_single_file_sub_model({args})'
+        )
+
         model = _single_file.load_single_file_sub_model(
-            library_name=library_name,
+            **args,
             checkpoint=checkpoint,
-            class_name=class_name,
-            name=name,
             pipelines=diffusers.pipelines,
-            cached_model_config_path=cached_model_config_path,
-            is_pipeline_module=False,
-            torch_dtype=dtype,
-            original_config=original_config,
-            local_files_only=local_files_only
+            is_pipeline_module=False
         )
 
     return model
