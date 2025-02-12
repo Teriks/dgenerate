@@ -1433,8 +1433,6 @@ class KolorsControlNetInpaintPipeline(
             )
 
         # 4. Prepare image, mask, and controlnet_conditioning_image
-        image = self.image_processor.preprocess(image, height=height, width=width).to(dtype=torch.float32)
-
         if isinstance(controlnet, ControlNetModel):
             control_image = self.prepare_control_image(
                 image=control_image,
@@ -1540,7 +1538,7 @@ class KolorsControlNetInpaintPipeline(
                 )
             else:
                 latents = self.prepare_latents(
-                    image,
+                    init_image,
                     latent_timestep,
                     batch_size,
                     num_images_per_prompt,
@@ -1550,7 +1548,7 @@ class KolorsControlNetInpaintPipeline(
                     True,
                 )
 
-        # 7. Prepare mask latent variables
+        # 8. Prepare mask latent variables
         mask, masked_image_latents = self.prepare_mask_latents(
             mask,
             masked_image,
@@ -1563,7 +1561,7 @@ class KolorsControlNetInpaintPipeline(
             self.do_classifier_free_guidance,
         )
 
-        # 7. Check that sizes of mask, masked image and latents match
+        # 9. Check that sizes of mask, masked image and latents match
         if num_channels_unet == 9:
             # default case for runwayml/stable-diffusion-inpainting
             num_channels_mask = mask.shape[1]
@@ -1581,10 +1579,10 @@ class KolorsControlNetInpaintPipeline(
                 f"The unet {self.unet.__class__} should have either 4 or 9 input channels, not {self.unet.config.in_channels}."
             )
 
-        # 7. Prepare extra step kwargs. TODO: Logic should ideally just be moved out of the pipeline
+        # 8.1. Prepare extra step kwargs. TODO: Logic should ideally just be moved out of the pipeline
         extra_step_kwargs = self.prepare_extra_step_kwargs(generator, eta)
 
-        # 7.1 Create tensor stating which controlnets to keep
+        # 8.2 Create tensor stating which controlnets to keep
         controlnet_keep = []
         for i in range(len(timesteps)):
             keeps = [
@@ -1593,7 +1591,7 @@ class KolorsControlNetInpaintPipeline(
             ]
             controlnet_keep.append(keeps[0] if isinstance(controlnet, ControlNetModel) else keeps)
 
-        # 7.2 Prepare added time ids & embeddings
+        # 9 Prepare added time ids & embeddings
         if isinstance(control_image, list):
             original_size = original_size or control_image[0].shape[-2:]
         else:
@@ -1614,7 +1612,7 @@ class KolorsControlNetInpaintPipeline(
         add_text_embeds = add_text_embeds.to(device)
         add_time_ids = add_time_ids.to(device).repeat(batch_size * num_images_per_prompt, 1)
 
-        # 8. Denoising loop
+        # 10. Denoising loop
         num_warmup_steps = max(len(timesteps) - num_inference_steps * self.scheduler.order, 0)
 
         if (
