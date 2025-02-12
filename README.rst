@@ -135,7 +135,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v4.5.1/>`_.
     * `Sub Commands`_
         * `Sub Command: image-process`_
         * `Sub Command: civitai-links`_
-        * `Sub Command: `to-diffusers`_
+        * `Sub Command: to-diffusers`_
     * `Upscaling`_
         * `Upscaling with Diffusion Upscaler Models`_
         * `Upscaling with chaiNNer Compatible Torch Upscaler Models`_
