@@ -2421,7 +2421,7 @@ def _create_torch_diffusion_pipeline(
         raise UnsupportedPipelineConfigError(
             f'Could not locate model_index.json on Hugging Face hub or locally for: {model_path}')
 
-    def load_text_encoder(uri):
+    def load_text_encoder(uri: _uris.TextEncoderUri):
         return uri.load(
             variant_fallback=variant,
             dtype_fallback=dtype,
@@ -2430,6 +2430,39 @@ def _create_torch_diffusion_pipeline(
             local_files_only=local_files_only,
             sequential_cpu_offload_member=sequential_cpu_offload,
             model_cpu_offload_member=model_cpu_offload)
+
+    def load_vae(uri: _uris.VAEUri):
+        return uri.load(
+            dtype_fallback=dtype,
+            original_config=original_config,
+            use_auth_token=auth_token,
+            local_files_only=local_files_only,
+            sequential_cpu_offload_member=sequential_cpu_offload,
+            model_cpu_offload_member=model_cpu_offload)
+
+    def load_unet(uri: _uris.UNetUri, unet_class):
+        return uri.load(
+            variant_fallback=variant,
+            dtype_fallback=dtype,
+            original_config=original_config,
+            use_auth_token=auth_token,
+            local_files_only=local_files_only,
+            sequential_cpu_offload_member=sequential_cpu_offload,
+            model_cpu_offload_member=model_cpu_offload,
+            unet_class=unet_class
+        )
+
+    def load_transformer(uri: _uris.TransformerUri, transformer_class):
+        return uri.load(
+            variant_fallback=variant,
+            dtype_fallback=dtype,
+            original_config=original_config,
+            use_auth_token=auth_token,
+            local_files_only=local_files_only,
+            sequential_cpu_offload_member=sequential_cpu_offload,
+            model_cpu_offload_member=model_cpu_offload,
+            transformer_class=transformer_class
+        )
 
     if text_encoder_uris:
 
@@ -2479,13 +2512,7 @@ def _create_torch_diffusion_pipeline(
         if vae_uri:
             parsed_vae_uri = _uris.VAEUri.parse(vae_uri)
 
-            creation_kwargs['vae'] = \
-                parsed_vae_uri.load(
-                    dtype_fallback=dtype,
-                    use_auth_token=auth_token,
-                    local_files_only=local_files_only,
-                    sequential_cpu_offload_member=sequential_cpu_offload,
-                    model_cpu_offload_member=model_cpu_offload)
+            creation_kwargs['vae'] = load_vae(parsed_vae_uri)
 
             _messages.debug_log(lambda:
                                 f'Added Torch VAE: "{vae_uri}" to pipeline: "{pipeline_class.__name__}"')
@@ -2522,38 +2549,24 @@ def _create_torch_diffusion_pipeline(
                     "VAE is being auto loaded into dgenerate's CPU side cache by inference.")
                 try:
                     creation_kwargs['vae'] = \
-                        _uris.VAEUri(
+                        load_vae(_uris.VAEUri(
                             encoder=vae_encoder_name,
                             model=model_path,
                             variant=variant,
                             subfolder=vae_subfolder,
                             extract=vae_extract_from_checkpoint,
                             dtype=dtype
-                        ).load(
-                            dtype_fallback=dtype,
-                            original_config=original_config,
-                            use_auth_token=auth_token,
-                            local_files_only=local_files_only,
-                            sequential_cpu_offload_member=sequential_cpu_offload,
-                            model_cpu_offload_member=model_cpu_offload
-                        )
+                        ))
                 except dgenerate.ModelNotFoundError:
                     if vae_extract_from_checkpoint:
                         raise
                     creation_kwargs['vae'] = \
-                        _uris.VAEUri(
+                        load_vae(_uris.VAEUri(
                             encoder=vae_encoder_name,
                             model=model_path,
                             subfolder=vae_subfolder,
                             dtype=dtype
-                        ).load(
-                            dtype_fallback=dtype,
-                            original_config=original_config,
-                            use_auth_token=auth_token,
-                            local_files_only=local_files_only,
-                            sequential_cpu_offload_member=sequential_cpu_offload,
-                            model_cpu_offload_member=model_cpu_offload
-                        )
+                        ))
 
     if not unet_override:
         unet_parameter = 'unet'
@@ -2569,15 +2582,9 @@ def _create_torch_diffusion_pipeline(
         if unet_uri is not None:
             parsed_unet_uri = _uris.UNetUri.parse(unet_uri)
 
-            creation_kwargs[unet_parameter] = \
-                parsed_unet_uri.load(
-                    variant_fallback=variant,
-                    dtype_fallback=dtype,
-                    use_auth_token=auth_token,
-                    local_files_only=local_files_only,
-                    sequential_cpu_offload_member=sequential_cpu_offload,
-                    model_cpu_offload_member=model_cpu_offload,
-                    unet_class=unet_class)
+            creation_kwargs[unet_parameter] = load_unet(
+                parsed_unet_uri, unet_class=unet_class
+            )
 
             _messages.debug_log(lambda:
                                 f'Added Torch UNet: "{unet_uri}" to pipeline: "{pipeline_class.__name__}"')
@@ -2591,22 +2598,15 @@ def _create_torch_diffusion_pipeline(
             _messages.debug_log(
                 "UNet is being auto loaded into dgenerate's CPU side cache by inference.")
 
-            creation_kwargs['unet'] = _uris.UNetUri(
-                model=model_path,
-                variant=variant,
-                subfolder=unet_subfolder,
-                dtype=dtype,
-                quantizer=quantizer_uri
-            ).load(
-                variant_fallback=variant,
-                dtype_fallback=dtype,
-                original_config=original_config,
-                use_auth_token=auth_token,
-                local_files_only=local_files_only,
-                sequential_cpu_offload_member=sequential_cpu_offload,
-                model_cpu_offload_member=model_cpu_offload,
-                unet_class=unet_class
-            )
+            creation_kwargs['unet'] = \
+                load_unet(
+                    _uris.UNetUri(
+                        model=model_path,
+                        variant=variant,
+                        subfolder=unet_subfolder,
+                        dtype=dtype,
+                        quantizer=quantizer_uri
+                    ), unet_class=unet_class)
 
     if _enums.model_type_is_sd3(model_type):
         transformer_class = diffusers.SD3Transformer2DModel
@@ -2621,16 +2621,10 @@ def _create_torch_diffusion_pipeline(
 
             parsed_transformer_uri = _uris.TransformerUri.parse(transformer_uri)
 
-            creation_kwargs['transformer'] = \
-                parsed_transformer_uri.load(
-                    variant_fallback=variant,
-                    dtype_fallback=dtype,
-                    use_auth_token=auth_token,
-                    local_files_only=local_files_only,
-                    sequential_cpu_offload_member=sequential_cpu_offload,
-                    model_cpu_offload_member=model_cpu_offload,
-                    transformer_class=transformer_class
-                )
+            creation_kwargs['transformer'] = load_transformer(
+                parsed_transformer_uri,
+                transformer_class=transformer_class
+            )
 
             _messages.debug_log(lambda:
                                 f'Added Torch Transformer: "{transformer_uri}" to '
@@ -2646,22 +2640,14 @@ def _create_torch_diffusion_pipeline(
             _messages.debug_log(
                 "Transformer is being auto loaded into dgenerate's CPU side cache by inference.")
 
-            creation_kwargs['transformer'] = _uris.TransformerUri(
-                model=model_path,
-                variant=variant,
-                subfolder=transformer_subfolder,
-                dtype=dtype,
-                quantizer=quantizer_uri
-            ).load(
-                variant_fallback=variant,
-                dtype_fallback=dtype,
-                original_config=original_config,
-                use_auth_token=auth_token,
-                local_files_only=local_files_only,
-                sequential_cpu_offload_member=sequential_cpu_offload,
-                model_cpu_offload_member=model_cpu_offload,
-                transformer_class=transformer_class
-            )
+            creation_kwargs['transformer'] = load_transformer(
+                _uris.TransformerUri(
+                    model=model_path,
+                    variant=variant,
+                    subfolder=transformer_subfolder,
+                    dtype=dtype,
+                    quantizer=quantizer_uri
+                ), transformer_class=transformer_class)
 
     if image_encoder_uri is not None and not image_encoder_override:
         parsed_image_encoder_uri = _uris.ImageEncoderUri.parse(image_encoder_uri)

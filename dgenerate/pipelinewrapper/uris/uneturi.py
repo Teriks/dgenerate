@@ -253,7 +253,7 @@ class UNetUri:
                 )
             except FileNotFoundError as e:
                 # cannot find configs
-                raise _exceptions.TextEncoderUriLoadError(e)
+                raise _util.ModelNotFoundError(e)
 
             estimated_memory_use = _util.estimate_memory_usage(unet)
         else:
