@@ -176,8 +176,8 @@ Help Output
                      [--plugin-modules PATH [PATH ...]] [--sub-command SUB_COMMAND]
                      [--sub-command-help [SUB_COMMAND ...]] [-ofm] [--templates-help [VARIABLE_NAME ...]]
                      [--directives-help [DIRECTIVE_NAME ...]] [--functions-help [FUNCTION_NAME ...]]
-                     [-mt MODEL_TYPE] [-rev BRANCH] [-var VARIANT] [-sbf SUBFOLDER] [-olc ORIGINAL_CONFIG]
-                     [-olc2 SECOND_ORIGINAL_CONFIG] [-atk TOKEN] [-bs INTEGER] [-bgs SIZE]
+                     [-mt MODEL_TYPE] [-rev BRANCH] [-var VARIANT] [-sbf SUBFOLDER] [-olc FILE] [-olc2 FILE]
+                     [-atk TOKEN] [-bs INTEGER] [-bgs SIZE]
                      [-ad ADETAILER_DETECTOR_URIS [ADETAILER_DETECTOR_URIS ...]] [-adi INTEGER [INTEGER ...]]
                      [-ads ADETAILER_MASK_SHAPE [ADETAILER_MASK_SHAPE ...]]
                      [-addp ADETAILER_DETECTOR_PADDING [ADETAILER_DETECTOR_PADDING ...]]
@@ -190,7 +190,7 @@ Help Output
                      [-lrfs LORA_FUSE_SCALE] [-ie IMAGE_ENCODER_URI] [-ipa IP_ADAPTER_URI [IP_ADAPTER_URI ...]]
                      [-ti URI [URI ...]] [-cn CONTROLNET_URI [CONTROLNET_URI ...] | -t2i T2I_ADAPTER_URI
                      [T2I_ADAPTER_URI ...]] [-q QUANTIZER_URI] [-q2 QUANTIZER_URI]
-                     [-sch SCHEDULER_URI [SCHEDULER_URI ...]] [-pag] [-pags FLOAT [FLOAT ...]]
+                     [-sch SCHEDULER_URI [SCHEDULER_URI ...]] [-hd] [-rhd] [-pag] [-pags FLOAT [FLOAT ...]]
                      [-pagas FLOAT [FLOAT ...]] [-rpag] [-rpags FLOAT [FLOAT ...]] [-rpagas FLOAT [FLOAT ...]]
                      [-mqo | -mco] [--s-cascade-decoder MODEL_URI] [-dqo] [-dco]
                      [--s-cascade-decoder-prompts PROMPT [PROMPT ...]]
@@ -338,11 +338,11 @@ Help Output
             Main model subfolder. If specified when loading from a Hugging Face repository or folder, load
             weights from the specified subfolder.
             -------------------------------------
-      -olc ORIGINAL_CONFIG, --original-config ORIGINAL_CONFIG
+      -olc FILE, --original-config FILE
             This argument can be used to supply an original LDM config .yaml file that was provided with a
             single file checkpoint.
             -----------------------
-      -olc2 SECOND_ORIGINAL_CONFIG, --original-config2 SECOND_ORIGINAL_CONFIG
+      -olc2 FILE, --original-config2 FILE
             This argument can be used to supply an original LDM config .yaml file that was provided with a
             single file checkpoint for the secondary model, i.e. the SDXL Refiner or Stable Cascade Decoder.
             ------------------------------------------------------------------------------------------------
@@ -980,6 +980,12 @@ Help Output
             
             You may pass multiple scheduler URIs to this argument, each URI will be tried in turn.
             --------------------------------------------------------------------------------------
+      -hd, --hi-diffusion
+            Activate HiDiffusion for the primary model?
+            -------------------------------------------
+      -rhd, --sdxl-refiner-hi-diffusion
+            Activate HiDiffusion for the SDXL refiner?
+            ------------------------------------------
       -pag, --pag
             Use perturbed attention guidance? This is supported for --model-type torch, torch-sdxl, and torch-
             sd3 for most use cases. This enables PAG for the main model using default scale values.
