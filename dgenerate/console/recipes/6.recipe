@@ -4,12 +4,14 @@ title: Stable Diffusion XL (LCM LoRA)
 --model-type torch-sdxl
 @dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "float32"], "default":"float16"}]
 @dropdown[{"label":"Model variant", "arg":"--variant", "options":["fp16"], "default":"fp16"}]
-@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "default":0, "divider-after":true}]
 --scheduler LCMScheduler
+@switch[{"label":"Use HiDiffusion", "arg":"--hi-diffusion"}]
+@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "default":0, "divider-after":true}]
 @uri[{"label":"Refiner Path / URI", "dir":true, "arg":"--sdxl-refiner", "default":"stabilityai/stable-diffusion-xl-refiner-1.0", "file-types":["models"]}]
 @karrasscheduler[{"label":"Refiner Scheduler", "arg":"--sdxl-refiner-scheduler", "default":"UniPCMultistepScheduler"}]
-@switchradio[{"labels":["Refiner CPU Offload", "Refiner Sequential Offload"], "args":["--sdxl-refiner-cpu-offload", "--sdxl-refiner-sequential-offload"]}]
-@switch[{"label":"Refiner Edit Mode", "arg":"--sdxl-refiner-edit", "divider-after":true}]
+@switch[{"label":"Refiner Use HiDiffusion", "arg":"--sdxl-refiner-hi-diffusion"}]
+@switch[{"label":"Refiner Edit Mode", "arg":"--sdxl-refiner-edit"}]
+@switchradio[{"labels":["Refiner CPU Offload", "Refiner Sequential Offload"], "args":["--sdxl-refiner-cpu-offload", "--sdxl-refiner-sequential-offload"], "divider-after":true}]
 @torchvae[{"label":"VAE Path / URI", "dir":true, "file-types":["models"]}]
 @switch[{"label":"VAE Tiling", "arg":"--vae-tiling"}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing", "divider-after":true}]
