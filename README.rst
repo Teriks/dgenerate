@@ -165,6 +165,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v4.5.1/>`_.
         * `Sub-command plugins`_
         * `Prompt weighter plugins`_
     * `Console UI`_
+    * `Auth Tokens (Environment)`_
     * `File Cache Control`_
 
 Help Output
@@ -7558,6 +7559,14 @@ A plugin skeleton file for prompt weighters can be found in the
 example folder.
 
 ~~~~
+
+
+Auth Tokens (Environment)
+=========================
+
+dgenerate will automatically append your CivitAI token to CivitAI API links if you set the environmental variable ``CIVIT_AI_TOKEN``
+
+For Hugging Face hub downloads setting ``HF_TOKEN`` is sufficient if you wish to avoid using ``--auth-token`` or related ``token`` URI arguments.
 
 
 File Cache Control
