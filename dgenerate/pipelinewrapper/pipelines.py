@@ -2275,6 +2275,37 @@ def _create_torch_diffusion_pipeline(
             raise UnsupportedPipelineConfigError(
                 f'original config file "{original_config}" could not be downloaded: {e}'
             )
+    try:
+        model_index = _util.fetch_model_index_dict(
+            model_path,
+            subfolder=subfolder,
+            revision=revision,
+            use_auth_token=auth_token,
+            local_files_only=local_files_only
+        )
+    except FileNotFoundError:
+        raise UnsupportedPipelineConfigError(
+            f'Could not locate model_index.json on Hugging Face hub or locally for: {model_path}')
+
+    if '_class_name' in model_index:
+        model_class_name = model_index['_class_name']
+        model_checks = {
+            _enums.model_type_is_flux: ('Flux', 'Flux'),
+            _enums.model_type_is_sd3: ('StableDiffusion3', 'Stable Diffusion 3'),
+            _enums.model_type_is_sdxl: ('StableDiffusionXL', 'Stable Diffusion XL'),
+            _enums.model_type_is_sd15: ('StableDiffusion', 'Stable Diffusion'),
+            _enums.model_type_is_sd2: ('StableDiffusion', 'Stable Diffusion'),
+            _enums.model_type_is_s_cascade: ('StableCascade', 'Stable Cascade'),
+            _enums.model_type_is_kolors: ('Kolors', 'Kolors'),
+            _enums.model_type_is_floyd: ('IF', 'Deep Floyd'),
+        }
+
+        for check_func, (prefix, title) in model_checks.items():
+            if check_func(model_type) and not model_class_name.startswith(prefix):
+                raise UnsupportedPipelineConfigError(
+                    f'{model_path} is not a {title} model, '
+                    f'incorrect --model-type value: {_enums.get_model_type_string(model_type)}'
+                )
 
     pipeline_class = get_torch_pipeline_class(
         model_type=model_type,
@@ -2408,18 +2439,6 @@ def _create_torch_diffusion_pipeline(
     parsed_transformer_uri = None
 
     pipe_params = inspect.signature(pipeline_class.__init__).parameters
-
-    try:
-        model_index = _util.fetch_model_index_dict(
-            model_path,
-            subfolder=subfolder,
-            revision=revision,
-            use_auth_token=auth_token,
-            local_files_only=local_files_only
-        )
-    except FileNotFoundError:
-        raise UnsupportedPipelineConfigError(
-            f'Could not locate model_index.json on Hugging Face hub or locally for: {model_path}')
 
     def load_text_encoder(uri: _uris.TextEncoderUri):
         return uri.load(

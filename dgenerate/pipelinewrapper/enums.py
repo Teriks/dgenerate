@@ -307,14 +307,35 @@ def get_model_type_string(model_type_enum: ModelType) -> str:
 
 def model_type_is_sd15(model_type: ModelType | str) -> bool:
     """
-    Does a ``--model-type`` string or :py:class:`.ModelType` enum value represents an SD1.5 - 2 model?
+    Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent an SD1.5 model?
+
+    These model types may also be able to load SD2 checkpoints, specifically: :py:attr:`.ModelType.TORCH` can.
 
     :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
     :return: bool
     """
     model_type = get_model_type_enum(model_type)
 
-    return model_type in {ModelType.TORCH, ModelType.TORCH_PIX2PIX, ModelType.TORCH_UPSCALER_X2}
+    return model_type in {
+        ModelType.TORCH,
+        ModelType.TORCH_PIX2PIX,
+        ModelType.TORCH_UPSCALER_X2
+    }
+
+
+def model_type_is_sd2(model_type: ModelType | str) -> bool:
+    """
+    Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent an SD 2.X compatible model?
+
+    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
+    :return: bool
+    """
+    model_type = get_model_type_enum(model_type)
+
+    return model_type in {
+        ModelType.TORCH,
+        ModelType.TORCH_UPSCALER_X4
+    }
 
 
 def model_type_is_upscaler(model_type: ModelType | str) -> bool:
