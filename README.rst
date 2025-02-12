@@ -5135,7 +5135,7 @@ the models involved with the loaded pipeline are garbage collected immediately a
     #!/usr/bin/env bash
 
     # convert a CivitAI checkpoint (https://civitai.com/models/2711/21-sd-modern-buildings-style-md)
-    # into a diffusers compatible model folder, containing seperate checkpoint files for each
+    # into a diffusers compatible model folder, containing separate checkpoint files for each
     # model component and related configuration
 
     dgenerate --sub-command to-diffusers \
