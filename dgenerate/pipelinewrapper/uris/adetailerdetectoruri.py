@@ -148,13 +148,6 @@ class AdetailerDetectorUri:
         return self._index_filter
 
     @property
-    def index_filter(self) -> _types.OptionalIntegers:
-        """
-        Process these YOLO detection indices.
-        """
-        return self._index_filter
-
-    @property
     def prompt(self) -> _types.OptionalString:
         """
         Positive prompt override.
