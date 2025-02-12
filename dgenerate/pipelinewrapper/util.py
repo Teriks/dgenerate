@@ -116,8 +116,8 @@ def fetch_model_index_dict(
         local_files_only=False
 ) -> dict:
     """
-    Fetch ``model_index.json` as a dict for a given model path, this may be a Hugging Face repo
-    or a path to a single combined checkpoint file.
+    Fetch ``model_index.json` as a dict for a given model path, this may be a Hugging Face repo,
+    a directory, or a path to a single combined checkpoint file.
 
     :param path: Hugging Face repo, or directory, or file path
     :param revision: repo revision
@@ -140,39 +140,43 @@ def fetch_model_index_dict(
     else:
         default_pretrained_model_config_name = path
 
-    allow_patterns = ["**/*.json", "*.json", "*.txt", "**/*.txt", "**/*.model"]
+    if not os.path.isdir(default_pretrained_model_config_name):
 
-    with _disable_tqdm():
-        # the mischief I am doing here does not really integrate well with
-        # the diffusers tqdm bars for single file loads, so disable them
-        # for this helper function
+        allow_patterns = ["**/*.json", "*.json", "*.txt", "**/*.txt", "**/*.model"]
 
-        try:
-            cached_model_config_path = huggingface_hub.snapshot_download(
-                default_pretrained_model_config_name,
-                revision=revision,
-                local_files_only=True,
-                token=use_auth_token,
-                allow_patterns=allow_patterns
-            )
-        except huggingface_hub.errors.LocalEntryNotFoundError:
-            if local_files_only:
-                raise FileNotFoundError(
-                    f'offline mode is active, but a config file is needed from Hugging Face '
-                    f'hub to utilize: {path}')
-            else:
-                try:
-                    cached_model_config_path = huggingface_hub.snapshot_download(
-                        default_pretrained_model_config_name,
-                        revision=revision,
-                        local_files_only=False,
-                        token=use_auth_token,
-                        allow_patterns=allow_patterns
-                    )
-                except huggingface_hub.errors.LocalEntryNotFoundError:
+        with _disable_tqdm():
+            # the mischief I am doing here does not really integrate well with
+            # the diffusers tqdm bars for single file loads, so disable them
+            # for this helper function
+
+            try:
+                cached_model_config_path = huggingface_hub.snapshot_download(
+                    default_pretrained_model_config_name,
+                    revision=revision,
+                    local_files_only=True,
+                    token=use_auth_token,
+                    allow_patterns=allow_patterns
+                )
+            except huggingface_hub.errors.LocalEntryNotFoundError:
+                if local_files_only:
                     raise FileNotFoundError(
-                        f'could not find the config file on Hugging Face hub '
-                        f'for: {path}')
+                        f'offline mode is active, but a config file is needed from Hugging Face '
+                        f'hub to utilize: {path}')
+                else:
+                    try:
+                        cached_model_config_path = huggingface_hub.snapshot_download(
+                            default_pretrained_model_config_name,
+                            revision=revision,
+                            local_files_only=False,
+                            token=use_auth_token,
+                            allow_patterns=allow_patterns
+                        )
+                    except huggingface_hub.errors.LocalEntryNotFoundError:
+                        raise FileNotFoundError(
+                            f'could not find the config file on Hugging Face hub '
+                            f'for: {path}')
+    else:
+        cached_model_config_path = default_pretrained_model_config_name
 
     extra_path_args = []
     if subfolder:
@@ -195,7 +199,8 @@ def single_file_load_sub_module(
         original_config: _types.OptionalPath = None
 ) -> torch.nn.Module:
     """
-    Load a submodule (vae, unet, textencoder, etc..) by name out of an in one checkpoint file.
+    Load a submodule (vae, unet, textencoder, etc..) by name out of an
+    all in one checkpoint file, directory, or Hugging Face repo slug.
 
     :param path: checkpoint file path
     :param class_name: submodule class name
@@ -225,38 +230,41 @@ def single_file_load_sub_module(
     else:
         default_pretrained_model_config_name = config
 
-    allow_patterns = ["**/*.json", "*.json", "*.txt", "**/*.txt", "**/*.model"]
-    with _disable_tqdm():
-        # the mischief I am doing here does not really integrate well with
-        # the diffusers tqdm bars for single file loads, so disable them
-        # for this helper function
+    if not os.path.isdir(default_pretrained_model_config_name):
+        allow_patterns = ["**/*.json", "*.json", "*.txt", "**/*.txt", "**/*.model"]
+        with _disable_tqdm():
+            # the mischief I am doing here does not really integrate well with
+            # the diffusers tqdm bars for single file loads, so disable them
+            # for this helper function
 
-        try:
-            cached_model_config_path = huggingface_hub.snapshot_download(
-                default_pretrained_model_config_name,
-                revision=revision,
-                local_files_only=True,
-                token=use_auth_token,
-                allow_patterns=allow_patterns
-            )
-        except huggingface_hub.errors.LocalEntryNotFoundError:
-            if local_files_only:
-                raise FileNotFoundError(
-                    f'offline mode is active, but a config file is needed from Hugging Face '
-                    f'hub to utilize the {class_name} in: {path}')
-            else:
-                try:
-                    cached_model_config_path = huggingface_hub.snapshot_download(
-                        default_pretrained_model_config_name,
-                        revision=revision,
-                        local_files_only=False,
-                        token=use_auth_token,
-                        allow_patterns=allow_patterns
-                    )
-                except huggingface_hub.errors.LocalEntryNotFoundError:
+            try:
+                cached_model_config_path = huggingface_hub.snapshot_download(
+                    default_pretrained_model_config_name,
+                    revision=revision,
+                    local_files_only=True,
+                    token=use_auth_token,
+                    allow_patterns=allow_patterns
+                )
+            except huggingface_hub.errors.LocalEntryNotFoundError:
+                if local_files_only:
                     raise FileNotFoundError(
-                        f'could not find the config file on Hugging Face hub '
-                        f'for {class_name} in: {path}')
+                        f'offline mode is active, but a config file is needed from Hugging Face '
+                        f'hub to utilize the {class_name} in: {path}')
+                else:
+                    try:
+                        cached_model_config_path = huggingface_hub.snapshot_download(
+                            default_pretrained_model_config_name,
+                            revision=revision,
+                            local_files_only=False,
+                            token=use_auth_token,
+                            allow_patterns=allow_patterns
+                        )
+                    except huggingface_hub.errors.LocalEntryNotFoundError:
+                        raise FileNotFoundError(
+                            f'could not find the config file on Hugging Face hub '
+                            f'for {class_name} in: {path}')
+    else:
+        cached_model_config_path = default_pretrained_model_config_name
 
     with _patch_sd21_clip_from_ldm():
         model = _single_file.load_single_file_sub_model(
@@ -1041,7 +1049,8 @@ def _create_diffusers_clip_model_from_ldm(
         # The configuration on the hub is often (or always) incorrect for these models
         # which need projection_dim=1024 and not projection_dim=512
         if 'cond_stage_model.model.transformer.resblocks.0.mlp.c_proj.weight' in checkpoint:
-            config['projection_dim'] = checkpoint['cond_stage_model.model.transformer.resblocks.0.mlp.c_proj.weight'].shape[0]
+            config['projection_dim'] = \
+            checkpoint['cond_stage_model.model.transformer.resblocks.0.mlp.c_proj.weight'].shape[0]
 
     model_config = cls.config_class.from_pretrained(**config, subfolder=subfolder, local_files_only=local_files_only)
 
