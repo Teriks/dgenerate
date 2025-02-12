@@ -2287,6 +2287,8 @@ def _create_torch_diffusion_pipeline(
         raise UnsupportedPipelineConfigError(
             f'Could not locate model_index.json on Hugging Face hub or locally for: {model_path}')
 
+    model_path = _util.download_non_hf_model(model_path)
+
     if '_class_name' in model_index:
         model_class_name = model_index['_class_name']
         model_checks = {
@@ -2393,8 +2395,6 @@ def _create_torch_diffusion_pipeline(
         text_encoders[1] = None
     if len(text_encoders) > 2 and text_encoder_3_override:
         text_encoders[2] = None
-
-    model_path = _util.download_non_hf_model(model_path)
 
     estimated_memory_usage = estimate_pipeline_memory_use(
         pipeline_type=pipeline_type,
