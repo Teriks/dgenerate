@@ -29,6 +29,7 @@ import dgenerate.pipelinewrapper.util as _util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
+import dgenerate.webcache as _webcache
 
 _lora_uri_parser = _textprocessing.ConceptUriParser(
     'Adetailer Detector', [
@@ -253,7 +254,7 @@ class AdetailerDetectorUri:
                        local_files_only: bool = False,
                        use_auth_token: _types.OptionalString = None):
         try:
-            if not self.model.startswith('http://') or self.model.startswith('https://'):
+            if not _webcache.is_downloadable_url(self.model):
                 _, ext = os.path.splitext(self.model)
             else:
                 ext = ''
@@ -263,8 +264,10 @@ class AdetailerDetectorUri:
                     return self.model
                 else:
                     if local_files_only:
-                        raise _exceptions.AdetailerDetectorUriLoadError(f'Could not find adetailer model: {self.model}')
-                    return _util.download_non_hf_model(self.model)
+                        raise _exceptions.AdetailerDetectorUriLoadError(
+                            f'Could not find adetailer model: {self.model}')
+                    # any mimetype
+                    return _webcache.create_web_cache_file(self.model)
             else:
                 return huggingface_hub.hf_hub_download(
                     self.model,
