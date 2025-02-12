@@ -2805,7 +2805,7 @@ def _create_torch_diffusion_pipeline(
                     backend='Torch',
                     cls=pipeline_class,
                     method=pipeline_class.from_single_file,
-                    from_original_config=original_config,
+                    original_config=original_config,
                     model=model_path,
                     token=auth_token,
                     revision=revision,

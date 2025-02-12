@@ -67,6 +67,8 @@ def get_file_dialog_args(file_types: list):
         dialog_args['filetypes'] = type_desc
         file_type_mappings = {
             'models': ('Models', supported_torch_model_formats_open),
+            'yaml': ('Config', lambda: ['yaml', 'yml']),
+            'json': ('Config', lambda: ['json', 'json']),
             'images-in': ('Images', lambda: schema['images-in']),
             'videos-in': ('Videos', lambda: schema['videos-in']),
             'images-out': ('Images', lambda: schema['images-out']),
