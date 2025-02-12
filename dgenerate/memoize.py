@@ -18,11 +18,13 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import contextlib
 import enum
 import inspect
 import numbers
 import typing
 
+import dgenerate.memoize
 import dgenerate.messages as _messages
 import dgenerate.types as _types
 
@@ -59,6 +61,29 @@ def args_cache_key(args_dict: dict[str, typing.Any],
         return ','.join(f'{k}={value_hash(v)}' for k, v in sorted(args_dict.items()))
 
 
+_MEMOIZE_DISABLED = False
+
+
+@contextlib.contextmanager
+def disable_memoization_context(disabled=True):
+    """
+    Context manager which allows you to temporarily disable memoization on
+    functions decorated with :py:func:`.memoize`
+
+    The default action is to disable memoization.
+
+    :param disabled: You can use this parameter to allow user configuration of
+    the memoization state without writing separate code outside of this context
+    block for that. Setting `disable=False` leaves memoization enabled in the context.
+    """
+
+    dgenerate.memoize._MEMOIZE_DISABLED = disabled
+    try:
+        yield
+    finally:
+        dgenerate.memoize._MEMOIZE_DISABLED = False
+
+
 def memoize(cache: dict[str, typing.Any],
             exceptions: set[str] = None,
             hasher: typing.Callable[[dict[str, typing.Any]], str] = args_cache_key,
@@ -87,6 +112,9 @@ def memoize(cache: dict[str, typing.Any],
 
     def decorate(func):
         def wrapper(*args, **kwargs):
+            if dgenerate.memoize._MEMOIZE_DISABLED:
+                return func(*args, **kwargs)
+
             spec = inspect.getfullargspec(func)
             args_len = len(args)
 

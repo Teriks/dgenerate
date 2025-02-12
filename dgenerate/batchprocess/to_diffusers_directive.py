@@ -18,29 +18,44 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import collections.abc
 
-import dgenerate.types as _types
+import dgenerate.batchprocess.configrunnerplugin as _configrunnerplugin
+import dgenerate.subcommands.subcommandloader as _subcommandloader
 
-from .batchprocessor import BatchProcessor, BatchProcessError
 
-from .configrunner import ConfigRunner
+class ToDiffusersDirective(_configrunnerplugin.ConfigRunnerPlugin):
+    def __init__(self, **kwargs):
+        """
+        :param kwargs: plugin base class arguments
+        """
 
-from .configrunnerplugin import ConfigRunnerPlugin
+        super().__init__(**kwargs)
 
-from .configrunnerpluginloader import (
-    ConfigRunnerPluginLoader,
-    ConfigRunnerPluginNotFoundError,
-    ConfigRunnerPluginArgumentError,
-)
+        self.register_directive('to_diffusers', self._directive)
 
-from .image_process_directive import ImageProcessDirective
+    def _directive(self, args: collections.abc.Sequence[str]) -> int:
+        """
+        Alias for: --sub-command to-diffusers
 
-from .civitai_links_directive import CivitAILinksDirective
+        Convert single file diffusion model checkpoints from CivitAI and elsewhere into diffusers format (a folder on disk with configuration).
 
-from .to_diffusers_directive import ToDiffusersDirective
+        This can be useful if you want to load a single file checkpoint with quantization.
 
-__doc__ = """
-Batch processing / dgenerate config scripts.
-"""
+        You may also save models loaded from Hugging Face repos.
 
-__all__ = _types.module_all()
+        Examples:
+
+        \\to_diffusers "all_in_one.safetensors" --model-type torch --output model_directory
+
+        \\to_diffusers "https://modelsite.com/all_in_one.safetensors" --model-type torch-sdxl --output model_directory
+
+        See: \\to_diffusers --help
+
+        This does not cause the config to exit.
+        """
+
+        subcommand = _subcommandloader.SubCommandLoader().load(
+            'to-diffusers', args=args, program_name='\\to_diffusers')
+
+        return subcommand()
