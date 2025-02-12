@@ -2409,6 +2409,18 @@ def _create_torch_diffusion_pipeline(
 
     pipe_params = inspect.signature(pipeline_class.__init__).parameters
 
+    try:
+        model_index = _util.fetch_model_index_dict(
+            model_path,
+            subfolder=subfolder,
+            revision=revision,
+            use_auth_token=auth_token,
+            local_files_only=local_files_only
+        )
+    except FileNotFoundError:
+        raise UnsupportedPipelineConfigError(
+            f'Could not locate model_index.json on Hugging Face hub or locally for: {model_path}')
+
     def load_text_encoder(uri):
         return uri.load(
             variant_fallback=variant,
@@ -2440,36 +2452,28 @@ def _create_torch_diffusion_pipeline(
             text_encoder_3_override
         ]
         for idx, (name, param) in enumerate(
-                [n for n in sorted(pipe_params.items(), key=lambda x: x[0]) if n[0].startswith('text_encoder')]):
+                [n for n in sorted(model_index.items(), key=lambda x: x[0])
+                 if n[0].startswith('text_encoder') and n[1][0] is not None]):
             if override_states[idx]:
                 continue
-            encoder_name = f'text_encoder{"_" + str(idx + 1) if idx > 0 else ""}'
-            if param.annotation is inspect.Parameter.empty:
-                raise RuntimeError(f"No type hint found for pipeline constructor parameter: '{name}'")
 
             if _util.is_single_file_model_load(model_path):
-                encoder_subfolder = encoder_name
+                encoder_subfolder = name
             else:
-                encoder_subfolder = os.path.join(subfolder, encoder_name) if subfolder else encoder_name
-            try:
-                _messages.debug_log(
-                    f"Text Encoder \"{encoder_name}\" is being auto loaded "
-                    f"into dgenerate's CPU side cache by inference.")
-                creation_kwargs[encoder_name] = load_text_encoder(
-                    _uris.TextEncoderUri(
-                        encoder=param.annotation.__name__,
-                        model=model_path,
-                        variant=variant,
-                        subfolder=encoder_subfolder,
-                        dtype=dtype,
-                        quantizer=quantizer_uri
-                    )
+                encoder_subfolder = os.path.join(subfolder, name) if subfolder else name
+            _messages.debug_log(
+                f"Text Encoder \"{name}\" is being auto loaded "
+                f"into dgenerate's CPU side cache by inference.")
+            creation_kwargs[name] = load_text_encoder(
+                _uris.TextEncoderUri(
+                    encoder=param[1],
+                    model=model_path,
+                    variant=variant,
+                    subfolder=encoder_subfolder,
+                    dtype=dtype,
+                    quantizer=quantizer_uri
                 )
-            except dgenerate.ModelNotFoundError:
-                # it is probable that the model just does not use
-                # this text encoder, let it error out later if we
-                # are wrong
-                continue
+            )
 
     if not vae_override:
         if vae_uri:
@@ -2497,13 +2501,7 @@ def _create_torch_diffusion_pipeline(
 
             if _types.get_type(vae_param) is typing.Union:
                 try:
-                    # only try this if necessary
-                    vae_encoder_name = _util.fetch_model_index_dict(
-                        model_path,
-                        revision=revision,
-                        use_auth_token=auth_token,
-                        local_files_only=local_files_only
-                    )['vae'][1]
+                    vae_encoder_name = model_index['vae'][1]
                 except (KeyError, IndexError):
                     _messages.debug_log(
                         'Skipping auto VAE caching due to model '
