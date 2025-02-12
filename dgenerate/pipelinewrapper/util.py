@@ -127,7 +127,9 @@ def fetch_model_index_dict(
 
     :return: config dict
     """
-    if is_single_file_model_load(path):
+    single_file_load = is_single_file_model_load(path)
+
+    if single_file_load:
         checkpoint = _single_file.load_single_file_checkpoint(
             path,
             token=use_auth_token,
@@ -140,7 +142,7 @@ def fetch_model_index_dict(
     else:
         default_pretrained_model_config_name = path
 
-    if not os.path.isdir(default_pretrained_model_config_name):
+    if single_file_load or not os.path.isdir(default_pretrained_model_config_name):
 
         allow_patterns = ["**/*.json", "*.json", "*.txt", "**/*.txt", "**/*.model"]
 
@@ -216,6 +218,8 @@ def single_file_load_sub_module(
     :return: The module.
     """
 
+    single_file_load = is_single_file_model_load(path)
+
     checkpoint = _single_file.load_single_file_checkpoint(
         path,
         token=use_auth_token,
@@ -230,7 +234,7 @@ def single_file_load_sub_module(
     else:
         default_pretrained_model_config_name = config
 
-    if not os.path.isdir(default_pretrained_model_config_name):
+    if single_file_load or not os.path.isdir(default_pretrained_model_config_name):
         allow_patterns = ["**/*.json", "*.json", "*.txt", "**/*.txt", "**/*.model"]
         with _disable_tqdm():
             # the mischief I am doing here does not really integrate well with
@@ -1050,7 +1054,7 @@ def _create_diffusers_clip_model_from_ldm(
         # which need projection_dim=1024 and not projection_dim=512
         if 'cond_stage_model.model.transformer.resblocks.0.mlp.c_proj.weight' in checkpoint:
             config['projection_dim'] = \
-            checkpoint['cond_stage_model.model.transformer.resblocks.0.mlp.c_proj.weight'].shape[0]
+                checkpoint['cond_stage_model.model.transformer.resblocks.0.mlp.c_proj.weight'].shape[0]
 
     model_config = cls.config_class.from_pretrained(**config, subfolder=subfolder, local_files_only=local_files_only)
 
