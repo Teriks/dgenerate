@@ -2275,6 +2275,9 @@ def _create_torch_diffusion_pipeline(
             raise UnsupportedPipelineConfigError(
                 f'original config file "{original_config}" could not be downloaded: {e}'
             )
+
+    model_path = _util.download_non_hf_model(model_path)
+
     try:
         model_index = _util.fetch_model_index_dict(
             model_path,
@@ -2286,8 +2289,6 @@ def _create_torch_diffusion_pipeline(
     except FileNotFoundError:
         raise UnsupportedPipelineConfigError(
             f'Could not locate model_index.json on Hugging Face hub or locally for: {model_path}')
-
-    model_path = _util.download_non_hf_model(model_path)
 
     if '_class_name' in model_index:
         model_class_name = model_index['_class_name']
