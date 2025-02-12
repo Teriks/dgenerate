@@ -611,7 +611,7 @@ def enforce_controlnet_cache_constraints(new_controlnet_size, collect=True):
     Enforce :py:attr:`dgenerate.pipelinewrapper.CONTROLNET_CACHE_MEMORY_CONSTRAINTS` and clear the
     ControlNet cache if needed.
 
-    :param new_controlnet_size: estimated size in bytes of any new control net that is about to enter memory
+    :param new_controlnet_size: estimated size in bytes of any new controlnet that is about to enter memory
     :param collect: Call :py:func:`gc.collect` after a cache clear ?
     :return: Whether the cache was cleared due to constraint expressions.
     """
@@ -1024,7 +1024,7 @@ def controlnet_to_cpu_update_cache_info(
     """
     Update CPU side cache size information when a ControlNet module is moved to the CPU
 
-    :param controlnet: the control net, or multi control net
+    :param controlnet: the controlnet, or multi controlnet
     """
 
     global _CONTROLNET_CACHE_SIZE
@@ -1248,7 +1248,7 @@ def controlnet_off_cpu_update_cache_info(
     """
     Update CPU side cache size information when a ControlNet module is moved to a device that is not the CPU
 
-    :param controlnet: the control net, or multi control net
+    :param controlnet: the controlnet, or multi controlnet
     """
     global _CONTROLNET_CACHE_SIZE
 

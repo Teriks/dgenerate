@@ -40,7 +40,7 @@ _controlnet_uri_parser = _textprocessing.ConceptUriParser(
 
 class FluxControlNetUriModes(enum.IntEnum):
     """
-    Represents control net modes associated with the Flux Union controlnet.
+    Represents controlnet modes associated with the Flux Union controlnet.
     """
     CANNY = 0
     TILE = 1
@@ -53,7 +53,7 @@ class FluxControlNetUriModes(enum.IntEnum):
 
 class SDXLControlNetUriModes(enum.IntEnum):
     """
-    Represents control net modes associated with the SDXL Union controlnet.
+    Represents controlnet modes associated with the SDXL Union controlnet.
     """
     OPENPOSE = 0
     DEPTH = 1
@@ -161,10 +161,10 @@ class ControlNetUri:
         :param variant: model variant, for example ``fp16``
         :param subfolder: model subfolder
         :param dtype: model data type (precision)
-        :param scale: control net scale
-        :param start: control net guidance start value
-        :param end: control net guidance end value
-        :param mode: Flux Union control net mode.
+        :param scale: controlnet scale
+        :param start: controlnet guidance start value
+        :param end: controlnet guidance end value
+        :param mode: Flux Union controlnet mode.
         :param model_type: Model type this ControlNet will be attached to.
 
         :raises InvalidControlNetUriError: If ``dtype`` is passed an invalid data type string.
@@ -224,7 +224,7 @@ class ControlNetUri:
         :param model_cpu_offload_member: This model will be attached to a pipeline
             which will have model cpu offload enabled?
 
-        :param model_class: What class of control net model should be loaded?
+        :param model_class: What class of controlnet model should be loaded?
             if ``None`` is specified, load based off :py:attr:`ControlNetUri.model_type`
             and provided URI arguments.
         

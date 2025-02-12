@@ -19,7 +19,7 @@
 
 # we specify --adetailer-detectors with a model that detects faces, an inpaint
 # mask will be auto generated around the face and then inpainting will occur
-# with the control net active
+# with the controlnet active
 
 # The generated inpaint masks properties can be adjusted with: --adetailer-mask-paddings,
 # --adetailer-mask-blurs, and --adetailer-mask-dilations. These arguments are plural because

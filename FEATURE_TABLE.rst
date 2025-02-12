@@ -225,12 +225,12 @@ cases in which PAG is not supported.
 
 There is no support for using T2I Adapters with PAG.
 
-Stable Diffusion 3 does not currently support PAG in img2img mode, or with Control Nets at all.
+Stable Diffusion 3 does not currently support PAG in img2img mode, or with ControlNets at all.
 
-Stable Diffusion XL does not support PAG in (inpaint + Control Nets) mode.
+Stable Diffusion XL does not support PAG in (inpaint + ControlNets) mode.
 
-Stable Diffusion 1.5 - 2.* does not support PAG in img2img, inpaint, or (img2img + Control Nets) mode.
-It does however support PAG in (inpaint + Control Nets) mode.
+Stable Diffusion 1.5 - 2.* does not support PAG in img2img, inpaint, or (img2img + ControlNets) mode.
+It does however support PAG in (inpaint + ControlNets) mode.
 
 Kolors only supports PAG in txt2img mode.
 
