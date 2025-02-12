@@ -111,6 +111,7 @@ def _disable_tqdm():
 def fetch_model_index_dict(
         path: str,
         revision=None,
+        subfolder=None,
         use_auth_token=None,
         local_files_only=False
 ) -> dict:
@@ -120,6 +121,7 @@ def fetch_model_index_dict(
 
     :param path: Hugging Face repo, or directory, or file path
     :param revision: repo revision
+    :param subfolder: repo subfolder
     :param use_auth_token: Use this HF auth token?
     :param local_files_only: Only look through the cache?
 
@@ -171,7 +173,12 @@ def fetch_model_index_dict(
                     raise FileNotFoundError(
                         f'could not find the config file on Hugging Face hub '
                         f'for: {path}')
-    with open(os.path.join(cached_model_config_path, 'model_index.json')) as config_file:
+
+    extra_path_args = []
+    if subfolder:
+        extra_path_args = [subfolder]
+
+    with open(os.path.join(cached_model_config_path, *extra_path_args, 'model_index.json')) as config_file:
         return json.load(config_file)
 
 
