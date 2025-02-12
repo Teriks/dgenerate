@@ -22,6 +22,7 @@ import collections.abc
 import contextlib
 import decimal
 import inspect
+import math
 import shlex
 import typing
 
@@ -2451,6 +2452,35 @@ class DiffusionPipelineWrapper:
                     level=_messages.WARNING)
 
             pipeline_args['strength'] = strength
+
+        if isinstance(self._sdxl_refiner_pipeline.scheduler, diffusers.LCMScheduler):
+            # This will error out catastrophically if we let it happen.
+
+            original_steps = self._sdxl_refiner_pipeline.scheduler.config['original_inference_steps']
+            inference_steps = pipeline_args.get('num_inference_steps')
+
+            if sd_edit:
+                float_limit = strength * original_steps
+                limit = int(math.floor(float_limit))
+                if limit < inference_steps:
+                    _messages.log(
+                        f'Refiner inference-steps is being reduced to {limit} '
+                        f'due to LCMScheduler requirements. "LCMScheduler;original-inference-steps={original_steps}" and '
+                        f'refiner inference-steps must less than or equal to "strength" (inverse high-noise-fraction) * original-inference-steps. '
+                        f'i.e. refiner inference-steps <= ({strength} * {original_steps} = {float_limit}).',
+                        level=_messages.WARNING
+                    )
+            else:
+                limit = original_steps
+                if limit < inference_steps:
+                    _messages.log(
+                        f'Refiner inference-steps is being reduced to {limit} '
+                        f'due to LCMScheduler requirements. "LCMScheduler;original-inference-steps={original_steps}" and '
+                        f'refiner inference-steps must less than or equal to that.',
+                        level=_messages.WARNING
+                    )
+
+            pipeline_args['num_inference_steps'] = limit
 
         with _hi_diffusion(self._sdxl_refiner_pipeline,
                            generator=generator,

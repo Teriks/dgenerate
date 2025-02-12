@@ -2,6 +2,7 @@ title: Upscaling (Stable Diffusion x2)
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "stabilityai/sd-x2-latent-upscaler", "optional":false, "file-types":["models"]}]
 @karrasscheduler[{"filter": ["EulerDiscreteScheduler"]}]
+@switch[{"label":"Use HiDiffusion", "arg":"--hi-diffusion"}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "divider-after":true}]
 --model-type torch-upscaler-x2
 --dtype float16

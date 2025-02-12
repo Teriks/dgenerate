@@ -4,6 +4,7 @@ title: Stable Diffusion
 @dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "float32"]}]
 @dropdown[{"label":"Model variant", "arg":"--variant", "options":["fp16"]}]
 @karrasscheduler[{}]
+@switch[{"label":"Use HiDiffusion", "arg":"--hi-diffusion"}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "divider-after":true}]
 @torchvae[{"label":"VAE Path / URI", "dir":true, "file-types":["models"]}]
 @switch[{"label":"VAE Tiling", "arg":"--vae-tiling"}]
