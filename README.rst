@@ -403,11 +403,11 @@ Help Output
             
             Example "index-filter" values:
             
-            # keep the first, leftmost, topmost detection index-filter=0
+            * keep the first, leftmost, topmost detection: index-filter=0
             
-            # keep detections 1 and 3 index-filter=[1, 3]
+            * keep detections 1 and 3: index-filter=[1, 3]
             
-            # CSV syntax is supported (tuple) index-filter=1,3
+            * CSV syntax is supported (tuple): index-filter=1,3
             
             The "detector-padding" (overrides --adetailer-detector-paddings) argument specifies the amount of
             padding that will be added to the detection rectangle which is used to generate a masked area. The
