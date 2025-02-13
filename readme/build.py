@@ -28,6 +28,8 @@ import sys
 import json
 from collections import defaultdict
 
+COMMAND_CACHE = dict()
+
 proj_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 
 with open(os.path.join(proj_dir, 'dgenerate', '__init__.py')) as _f:
@@ -70,6 +72,10 @@ def find_and_condense_links(rst_content):
 
 
 def execute_command(base_dir, settings):
+    cache_key = str(settings)
+    if cache_key in COMMAND_CACHE:
+        return COMMAND_CACHE[cache_key]
+
     if isinstance(settings, dict):
         command = settings.get('command')
         replacements = settings.get('replace', None)
@@ -81,11 +87,11 @@ def execute_command(base_dir, settings):
 
     print("running:", command)
     try:
-        
+
         env = os.environ.copy()
         if columns is not None:
             env['COLUMNS'] = str(columns)
-        
+
         result = subprocess.run(
             command,
             cwd=base_dir,
@@ -101,6 +107,8 @@ def execute_command(base_dir, settings):
         if replacements is not None:
             for replacements in replacements.items():
                 result = re.sub(replacements[0], replacements[1], result, flags=re.MULTILINE)
+
+        COMMAND_CACHE[cache_key] = result
         return result
     except subprocess.CalledProcessError as e:
         print(f'Warning, error executing: {command}', file=sys.stderr)
@@ -287,9 +295,15 @@ def render_templates(rst_content, filename=None):
     return rst_content
 
 
+command_cache_path = os.path.join(proj_dir, 'readme', 'command.cache.json')
+
+if '--no-cache' not in sys.argv:
+    if os.path.exists(command_cache_path):
+        with open(command_cache_path, 'r') as cache:
+            COMMAND_CACHE = json.load(cache)
+
 # default command output width
 os.environ['COLUMNS'] = '110'
-
 
 input_file = os.path.join(proj_dir, 'readme', 'readme.template.rst')
 output_file = os.path.join(proj_dir, 'README.rst')
@@ -302,3 +316,6 @@ print('Templates rendered.')
 
 with open(output_file, 'w') as file:
     file.write(find_and_condense_links(updated_content))
+
+with open(command_cache_path, 'w') as cache:
+    json.dump(COMMAND_CACHE, cache)
