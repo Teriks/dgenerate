@@ -148,9 +148,27 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     prompt_weighter_uri: _types.OptionalUri = None
     """
-    The URI of a prompt weighter implementation supported by dgenerate.
+    The URI of a prompt-weighter implementation supported by dgenerate.
     
     This corresponds to the ``--prompt-weighter`` argument of the dgenerate command line tool.
+    """
+
+    sdxl_refiner_prompt_weighter_uri: _types.OptionalUri = None
+    """
+    The URI of a prompt-weighter implementation supported by dgenerate to use with the SDXL refiner.
+    
+    Defaults to :py:attr:`RenderLoopConfig.prompt_weighter_uri` if not specified.
+    
+    This corresponds to the ``--sdxl-refiner-prompt-weighter`` argument of the dgenerate command line tool.
+    """
+
+    s_cascade_decoder_prompt_weighter_uri: _types.OptionalUri = None
+    """
+    The URI of a prompt-weighter implementation supported by dgenerate to use with the Stable Cascade decoder.
+    
+    Defaults to :py:attr:`RenderLoopConfig.prompt_weighter_uri` if not specified.
+    
+    This corresponds to the ``--s-cascade-prompt-weighter`` argument of the dgenerate command line tool.
     """
 
     prompts: _types.Prompts
@@ -1119,10 +1137,24 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         # Detect logically incorrect config and set certain defaults
 
-        if self.prompt_weighter_uri is not None and not _promptweighters.prompt_weighter_exists(
-                self.prompt_weighter_uri):
+        if self.prompt_weighter_uri is not None \
+                and not _promptweighters.prompt_weighter_exists(self.prompt_weighter_uri):
             raise RenderLoopConfigError(
                 f'Unknown prompt weighter implementation: {_promptweighters.prompt_weighter_name_from_uri(self.prompt_weighter_uri)}, '
+                f'must be one of: {_textprocessing.oxford_comma(_promptweighters.prompt_weighter_names(), "or")}')
+
+        if self.sdxl_refiner_prompt_weighter_uri is not None \
+                and not _promptweighters.prompt_weighter_exists(self.sdxl_refiner_prompt_weighter_uri):
+            raise RenderLoopConfigError(
+                f'Unknown prompt weighter implementation for SDXL Refiner: '
+                f'{_promptweighters.prompt_weighter_name_from_uri(self.prompt_weighter_uri)}, '
+                f'must be one of: {_textprocessing.oxford_comma(_promptweighters.prompt_weighter_names(), "or")}')
+
+        if self.s_cascade_decoder_prompt_weighter_uri is not None \
+                and not _promptweighters.prompt_weighter_exists(self.s_cascade_decoder_prompt_weighter_uri):
+            raise RenderLoopConfigError(
+                f'Unknown prompt weighter implementation for Stable Cascade Decoder: '
+                f'{_promptweighters.prompt_weighter_name_from_uri(self.prompt_weighter_uri)}, '
                 f'must be one of: {_textprocessing.oxford_comma(_promptweighters.prompt_weighter_names(), "or")}')
 
         if self.sdxl_t2i_adapter_factors and not self.t2i_adapter_uris:
@@ -1903,6 +1935,11 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         yield from _iterate_diffusion_args(
             prompt=ov('prompt', self.prompts),
+            prompt_weighter_uri=ov('prompt_weighter_uri', [self.prompt_weighter_uri]),
+            sdxl_refiner_prompt_weighter_uri=ov('sdxl_refiner_prompt_weighter_uri',
+                                                [self.sdxl_refiner_prompt_weighter_uri]),
+            s_cascade_decoder_prompt_weighter_uri=ov('s_cascade_decoder_prompt_weighter_uri',
+                                                     [self.s_cascade_decoder_prompt_weighter_uri]),
             sdxl_second_prompt=ov('sdxl_second_prompt',
                                   self.sdxl_second_prompts),
             sdxl_refiner_prompt=ov('sdxl_refiner_prompt',

@@ -15,8 +15,21 @@ and specific documentation for a prompt weighter can be printed py passing its n
 You may also use the config directive ``\prompt_weighter_help`` inside of a config, or
 more likely when you are working inside the `Console UI`_ shell.
 
-There are currently two prompt weighter implementations, the ``compel`` prompt weighter, and
-the ``sd-embed`` prompt weighter.
+There are currently three prompt weighter implementations, the ``compel`` prompt weighter,
+the ``sd-embed`` prompt weighter, and the ``llm4gen`` prompt weighter.
+
+Prompt weighters can be specified via ``--prompt-weighter`` or inside your prompt argument using ``<weighter: (uri here)>``
+anywhere in the prompt.  A prompt weighter specified in the prompt text applies the prompt weighter to just
+that prompt alone (both negative and positive prompts).
+
+You can specify different prompt weighters for the SDXL Refiner or Stable Cascade
+decoder using ``--sdxl-refiner-prompt-weighter`` and ``-s-cascade-decoder-prompt-weighter``, or in the prompt
+arguments ``--sdxl-refiner-prompts`` and ``--s-cascade-decoder-prompts``.
+
+Specifying ``<weighter: (uri here)>`` in a ``--prompts`` value will default
+the secondary models to the same prompt weighter unless you specify otherwise.
+Either by using ``<weighter: (uri here)>`` in their respective prompt arguments,
+or in the respective global prompt-weighter arguments.
 
 
 The compel prompt weighter
@@ -42,43 +55,7 @@ features not mentioned in this documentation, that are worth reading about in th
     dgenerate --prompt-weighter-help compel
 
 
-.. code-block:: text
-
-    compel:
-        arguments:
-            syntax: str = "compel"
-
-        Implements prompt weighting syntax for Stable Diffusion 1/2 and Stable Diffusion XL using
-        compel. The default syntax is "compel" which is analogous to the syntax used by InvokeAI.
-
-        Specifying the syntax "sdwui" will translate your prompt from Stable Diffusion Web UI syntax
-        into compel / InvokeAI syntax before generating the prompt embeddings.
-
-        If you wish to use prompt syntax for weighting tokens that is similar to ComfyUI, Automatic1111,
-        or CivitAI for example, use: 'compel;syntax=sdwui'
-
-        The underlying weighting behavior for tokens is not exactly the same as other software that uses
-        the more common "sdwui" syntax, so your prompt may need adjusting if you are reusing a prompt
-        from those other pieces of software.
-
-        You can read about compel here: https://github.com/damian0815/compel
-
-        And InvokeAI here: https://github.com/invoke-ai/InvokeAI
-
-        This prompt weighter supports the model types:
-
-        --model-type torch
-        --model-type torch-pix2pix
-        --model-type torch-upscaler-x4
-        --model-type torch-sdxl
-        --model-type torch-sdxl-pix2pix
-        --model-type torch-s-cascade
-
-        The secondary prompt option for SDXL --sdxl-second-prompts is supported by this prompt weighter
-        implementation. However, --sdxl-refiner-second-prompts is not supported and will be ignored
-        with a warning message.
-
-    ====================================================================================================
+@COMMAND_OUTPUT[dgenerate --no-stdin --prompt-weighter-help compel]
 
 
 You can enable the ``compel`` prompt weighter by specifying it with the ``--prompt-weighter`` argument.
@@ -179,48 +156,7 @@ as the ``compel`` prompt weighter currently does not.
     dgenerate --prompt-weighter-help sd-embed
 
 
-.. code-block:: text
-
-    sd-embed:
-
-        Implements prompt weighting syntax for Stable Diffusion 1/2, Stable Diffusion XL, and Stable
-        Diffusion 3, and Flux using sd_embed.
-
-        sd_embed uses a Stable Diffusion Web UI compatible prompt syntax.
-
-        See: https://github.com/xhinker/sd_embed
-
-        @misc{sd_embed_2024,
-          author       = {Shudong Zhu(Andrew Zhu)},
-          title        = {Long Prompt Weighted Stable Diffusion Embedding},
-          howpublished = {\url{https://github.com/xhinker/sd_embed}},
-          year         = {2024},
-        }
-
-        This prompt weighter supports the model types:
-
-        --model-type torch
-        --model-type torch-pix2pix
-        --model-type torch-upscaler-x4
-        --model-type torch-sdxl
-        --model-type torch-sdxl-pix2pix
-        --model-type torch-s-cascade
-        --model-type torch-sd3
-        --model-type torch-flux
-
-        The secondary prompt option for SDXL --sdxl-second-prompts is supported by this prompt weighter
-        implementation. However, --sdxl-refiner-second-prompts is not supported and will be ignored with
-        a warning message.
-
-        The secondary prompt option for SD3 --sd3-second-prompts is not supported by this prompt
-        weighter implementation. Neither is --sd3-third-prompts. The prompts from these arguments will
-        be ignored.
-
-        The secondary prompt option for Flux --flux-second-prompts is supported by this prompt weighter.
-
-        Flux does not support negative prompting in either prompt.
-
-    ====================================================================================================
+@COMMAND_OUTPUT[dgenerate --no-stdin --prompt-weighter-help sd-embed]
 
 
 You can enable the ``sd-embed`` prompt weighter by specifying it with the ``--prompt-weighter`` argument.
@@ -246,3 +182,25 @@ You can enable the ``sd-embed`` prompt weighter by specifying it with the ``--pr
     --prompt-weighter sd-embed \
     --auth-token $HF_TOKEN \
     --prompts "a (man:1.2) standing on the (beach:1.2) looking out in to the water during a (sunset)"
+
+
+The llm4gen prompt weighter
+---------------------------
+
+The llm4gen prompt weighter is designed to enhance semantic understanding of prompts with Stable Diffusion 1.5 models specifically.
+
+It uses a T5 RankGen encoder model and a translation model (CAM, cross adapter model) to extract a representation of a prompt using
+a combination of the LLM model (T5) and the CLIP encoder model that is normally used with Stable Diffusion.
+
+See: `LLM4GEN <https://github.com/YUHANG-Ma/LLM4GEN>`_
+
+.. code-block:: bash
+
+    #!/usr/bin/env bash
+
+    # print out the documentation for the llm4gen prompt weighter
+
+    dgenerate --prompt-weighter-help llm4gen
+
+
+@COMMAND_OUTPUT[dgenerate --no-stdin --prompt-weighter-help llm4gen]

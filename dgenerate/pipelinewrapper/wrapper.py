@@ -194,7 +194,6 @@ class DiffusionPipelineWrapper:
                  sdxl_refiner_sequential_offload: bool = False,
                  s_cascade_decoder_cpu_offload: bool = False,
                  s_cascade_decoder_sequential_offload: bool = False,
-                 prompt_weighter_uri: _types.OptionalUri = None,
                  prompt_weighter_loader: _promptweighters.PromptWeighterLoader | None = None,
                  adetailer_detector_uris: _types.OptionalUris = None,
                  adetailer_crop_control_image: bool = False):
@@ -260,7 +259,6 @@ class DiffusionPipelineWrapper:
         :param sdxl_refiner_sequential_offload: Use sequential CPU offloading for the SDXL Refiner via the accelerate module?
         :param s_cascade_decoder_cpu_offload: Use CPU offloading for the Stable Cascade decoder via the accelerate module?
         :param s_cascade_decoder_sequential_offload: Use sequential CPU offloading for the Stable Cascade decoder via the accelerate module?
-        :param prompt_weighter_uri: Prompt weighter implementation URI, to be loaded from ``prompt_weighter_loader``
         :param prompt_weighter_loader: Plugin loader for prompt weighter implementations, if you pass ``None`` a default instance will be created.
         :param adetailer_detector_uris: adetailer subject detection model URIs, specifying this argument indicates ``img2img`` mode implicitly,
             the pipeline wrapper will accept a single image and preform the adetailer inpainting algorithm on it using the provided
@@ -329,7 +327,6 @@ class DiffusionPipelineWrapper:
             sdxl_refiner_sequential_offload: bool = False,
             s_cascade_decoder_cpu_offload: bool = False,
             s_cascade_decoder_sequential_offload: bool = False,
-            prompt_weighter_uri: _types.OptionalUri = None,
             prompt_weighter_loader: _promptweighters.PromptWeighterLoader | None = None,
             adetailer_detector_uris: _types.OptionalUris = None,
             adetailer_crop_control_image: bool = False
@@ -343,12 +340,6 @@ class DiffusionPipelineWrapper:
             raise _pipelines.UnsupportedPipelineConfigError(
                 'device must be "cuda" (optionally with a device ordinal "cuda:N") or "cpu", '
                 'or other device supported by torch.')
-
-        # Check if the prompt weighter URI exists
-        if prompt_weighter_uri is not None and not _promptweighters.prompt_weighter_exists(prompt_weighter_uri):
-            raise _pipelines.UnsupportedPipelineConfigError(
-                f'Unknown prompt weighter implementation: {_promptweighters.prompt_weighter_name_from_uri(prompt_weighter_uri)}, '
-                f'must be one of: {_textprocessing.oxford_comma(_promptweighters.prompt_weighter_names(), "or")}')
 
         # Offload options should not be enabled simultaneously
         if model_cpu_offload and model_sequential_offload:
@@ -576,6 +567,8 @@ class DiffusionPipelineWrapper:
             prompt_weighter_loader if prompt_weighter_loader is not None \
                 else _promptweighters.PromptWeighterLoader()
 
+        self._prompt_weighter_cache = dict()
+
         self._adetailer_detector_uris = adetailer_detector_uris
         self._parsed_adetailer_detector_uris = None
 
@@ -587,22 +580,12 @@ class DiffusionPipelineWrapper:
                 self._parsed_adetailer_detector_uris.append(
                     _uris.AdetailerDetectorUri.parse(adetailer_detector_uri))
 
-        self._prompt_weighter_uri = prompt_weighter_uri
-        self._prompt_weighter: _promptweighters.PromptWeighter | None = None
-
     @property
     def prompt_weighter_loader(self) -> _promptweighters.PromptWeighterLoader:
         """
         Current prompt weighter loader.
         """
         return self._prompt_weighter_loader
-
-    @property
-    def prompt_weighter_uri(self) -> _types.OptionalUri:
-        """
-        Current prompt weighter implementation URI.
-        """
-        return self._prompt_weighter_uri
 
     @property
     def local_files_only(self) -> bool:
@@ -1000,8 +983,8 @@ class DiffusionPipelineWrapper:
         if args.image_guidance_scale is not None:
             opts.append(('--image-guidance-scales', args.image_guidance_scale))
 
-        if self.prompt_weighter_uri:
-            opts.append(('--prompt-weighter', self.prompt_weighter_uri))
+        if args.prompt_weighter_uri:
+            opts.append(('--prompt-weighter', args.prompt_weighter_uri))
 
         if args.prompt is not None:
             opts.append(('--prompts', args.prompt))
@@ -1978,7 +1961,7 @@ class DiffusionPipelineWrapper:
         else:
             return PipelineWrapperResult(_pipelines.call_pipeline(
                 pipeline=self._pipeline,
-                prompt_weighter=self._prompt_weighter,
+                prompt_weighter=self._get_prompt_weighter(user_args),
                 device=self._device,
                 **pipeline_args).images)
 
@@ -2053,7 +2036,7 @@ class DiffusionPipelineWrapper:
                 device=self._device,
                 detector_device=_types.default(detector_uri.device, self._device),
                 confidence=detector_uri.confidence,
-                prompt_weighter=self._prompt_weighter,
+                prompt_weighter=self._get_prompt_weighter(user_args),
                 index_filter=index_filter,
                 mask_blur=mask_blur,
                 mask_shape=mask_shape,
@@ -2083,7 +2066,7 @@ class DiffusionPipelineWrapper:
         prior = _pipelines.call_pipeline(
             pipeline=self._pipeline,
             device=self._device,
-            prompt_weighter=self._prompt_weighter,
+            prompt_weighter=self._get_prompt_weighter(user_args),
             **pipeline_args)
 
         pipeline_args['num_inference_steps'] = user_args.s_cascade_decoder_inference_steps
@@ -2109,7 +2092,7 @@ class DiffusionPipelineWrapper:
             image_embeddings=image_embeddings,
             pipeline=self._s_cascade_decoder_pipeline,
             device=self._device,
-            prompt_weighter=self._prompt_weighter,
+            prompt_weighter=self._get_s_cascade_decoder_prompt_weighter(user_args),
             **pipeline_args).images)
 
     def _call_torch(self, pipeline_args, user_args: DiffusionArguments):
@@ -2306,7 +2289,7 @@ class DiffusionPipelineWrapper:
                 else:
                     return PipelineWrapperResult(_pipelines.call_pipeline(
                         pipeline=self._pipeline,
-                        prompt_weighter=self._prompt_weighter,
+                        prompt_weighter=self._get_prompt_weighter(user_args),
                         device=self._device,
                         **pipeline_args).images)
 
@@ -2335,7 +2318,7 @@ class DiffusionPipelineWrapper:
                 image = _pipelines.call_pipeline(
                     pipeline=self._pipeline,
                     device=self._device,
-                    prompt_weighter=self._prompt_weighter,
+                    prompt_weighter=self._get_prompt_weighter(user_args),
                     **pipeline_args,
                     **i_end,
                     output_type=output_type).images
@@ -2489,7 +2472,7 @@ class DiffusionPipelineWrapper:
                 _pipelines.call_pipeline(
                     pipeline=self._sdxl_refiner_pipeline,
                     device=self._device,
-                    prompt_weighter=self._prompt_weighter,
+                    prompt_weighter=self._get_sdxl_refiner_prompt_weighter(user_args),
                     **pipeline_args, **i_start).images)
 
     def recall_main_pipeline(self) -> _pipelines.PipelineCreationResult:
@@ -2765,6 +2748,68 @@ class DiffusionPipelineWrapper:
 
         return True
 
+    def _load_prompt_weighter(
+            self,
+            uri: str,
+            model_type: _enums.ModelType,
+            dtype: _enums.DataType
+    ):
+        # these may load large models on init,
+        # make sure to reuse them when possible
+
+        cache_key = locals()
+        cache_key.pop('self')
+        cache_key = str(cache_key)
+
+        if cache_key in self._prompt_weighter_cache:
+            weighter = self._prompt_weighter_cache[cache_key]
+            _messages.debug_log(
+                f'{self.__class__.__name__} loaded prompt-weighter (from cache): {weighter.__class__.__name__}')
+        else:
+            weighter = self._prompt_weighter_loader.load(
+                uri,
+                model_type=model_type,
+                dtype=dtype
+            )
+            _messages.debug_log(
+                f'{self.__class__.__name__} loaded prompt-weighter: {weighter.__class__.__name__}')
+            self._prompt_weighter_cache[cache_key] = weighter
+        return weighter
+
+    def _default_prompt_weighter(self, *sources):
+        for source in sources:
+            if isinstance(source, str):  # Direct URI case
+                return self._load_prompt_weighter(source, model_type=self.model_type, dtype=self._dtype)
+            elif source is not None and source.weighter:  # Object case with weighter
+                return self._load_prompt_weighter(source.weighter, model_type=self.model_type, dtype=self._dtype)
+        return None
+
+    def _get_prompt_weighter(self, args: DiffusionArguments):
+        # prioritize in descending order
+        return self._default_prompt_weighter(
+            args.prompt,
+            args.prompt_weighter_uri
+        )
+
+    def _get_sdxl_refiner_prompt_weighter(self, args: DiffusionArguments):
+        # prioritize in descending order
+        return self._default_prompt_weighter(
+            args.sdxl_refiner_prompt,
+            args.sdxl_refiner_prompt_weighter_uri,
+            args.prompt,
+            args.prompt_weighter_uri,
+
+        )
+
+    def _get_s_cascade_decoder_prompt_weighter(self, args: DiffusionArguments):
+        # prioritize in descending order
+        return self._default_prompt_weighter(
+            args.s_cascade_decoder_prompt,
+            args.s_cascade_decoder_prompt_weighter_uri,
+            args.prompt,
+            args.prompt_weighter_uri
+        )
+
     def __call__(self, args: DiffusionArguments | None = None, **kwargs) -> PipelineWrapperResult:
         """
         Call the pipeline and generate a result.
@@ -2798,17 +2843,8 @@ class DiffusionPipelineWrapper:
 
         _cache.enforce_cache_constraints()
 
-        pipeline_type = copy_args.determine_pipeline_type()
-
-        if self._prompt_weighter_uri:
-            self._prompt_weighter = self._prompt_weighter_loader.load(
-                self._prompt_weighter_uri,
-                model_type=self.model_type,
-                pipeline_type=pipeline_type,
-                dtype=self._dtype)
-
         loaded_new = self._lazy_init_pipeline(
-            pipeline_type,
+            copy_args.determine_pipeline_type(),
             pag=copy_args.pag_scale is not None or
                 copy_args.pag_adaptive_scale is not None,
             sdxl_refiner_pag=copy_args.sdxl_refiner_pag_scale is not None or

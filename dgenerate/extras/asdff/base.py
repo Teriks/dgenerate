@@ -131,7 +131,7 @@ class AdPipelineBase:
             confidence: float = 0.3,
             mask_shape: str = 'rectangle',
             index_filter: set[int] | list[int] | None = None,
-            prompt_weighter: Optional[str] = None
+            prompt_weighter: dgenerate.promptweighters.PromptWeighter | None = None
     ):
         if pipeline_args is None:
             pipeline_args = {}
@@ -238,7 +238,7 @@ class AdPipelineBase:
             mask: Image.Image,
             bbox_padded: tuple[int, int, int, int],
             device: str,
-            prompt_weighter: Optional[str] = None
+            prompt_weighter: dgenerate.promptweighters.PromptWeighter | None = None
     ):
         crop_image = init_image.crop(bbox_padded)
         crop_mask = mask.crop(bbox_padded)
