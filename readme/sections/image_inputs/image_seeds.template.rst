@@ -1,0 +1,60 @@
+Image Seeds
+===========
+
+The ``--image-seeds`` argument can be used to specify one or more image input resource groups
+for use in rendering, and allows for the specification of img2img source images, inpaint masks,
+controlnet guidance images, deep floyd stage images, image group resizing, and frame slicing values
+for animations. It possesses it's own URI syntax for defining different image inputs used for image generation,
+the example described below is the simplest case for one image input (img2img).
+
+This example uses a photo of Buzz Aldrin on the moon to generate a photo of an astronaut standing on mars
+using img2img, this uses an image seed downloaded from wikipedia.
+
+Disk file paths may also be used for image seeds and generally that is the standard use case,
+multiple image seed definitions may be provided and images will be generated from each image
+seed individually.
+
+.. code-block:: bash
+
+    #!/usr/bin/env bash
+
+    # Generate this image using 5 different seeds, 3 different inference-step values, 3 different
+    # guidance-scale values as above.
+
+    # In addition this image will be generated using 3 different image seed strengths.
+
+    # Adjust output size to 512x512 and output generated images to 'astronaut' folder, the image seed
+    # will be resized to that dimension with aspect ratio respected by default, the width is fixed and
+    # the height will be calculated, this behavior can be changed globally with the --no-aspect option
+    # if desired or locally by specifying "img2img-seed.png;aspect=false" as your image seed
+
+    # If you do not adjust the output size of the generated image, the size of the input image seed will be used.
+
+    # 135 uniquely named images will be generated (5x3x3x3)
+
+    dgenerate stabilityai/stable-diffusion-2-1 \
+    --prompts "an astronaut walking on mars" \
+    --image-seeds https://upload.wikimedia.org/wikipedia/commons/9/98/Aldrin_Apollo_11_original.jpg \
+    --image-seed-strengths 0.2 0.5 0.8 \
+    --gen-seeds 5 \
+    --output-path astronaut \
+    --inference-steps 30 40 50 \
+    --guidance-scales 5 7 10 \
+    --output-size 512x512
+
+
+``--image-seeds`` serves as the entire mechanism for determining if img2img or inpainting is going to occur via
+it's URI syntax described further in the section `Inpainting`_.
+
+In addition to this it can be used to provide control guidance images in the case of txt2img, img2img, or inpainting
+via the use of a URI syntax involving keyword arguments.
+
+The syntax ``--image-seeds "my-image-seed.png;control=my-control-image.png"`` can be used with ``--control-nets`` to specify
+img2img mode with a ControlNet for example, see: `Specifying ControlNets`_ for more information.
+
+IP Adapter images may be provided via a special ``adapters: ...`` syntax and
+via the ``adapters`` URI argument discussed in: `Specifying IP Adapters`_
+
+Batching or providing multiple image inputs for the same generation, resulting in multiple output
+variations possibly using different input images, or multiple image prompts, is possible using the
+``images: ...`` syntax discussed in the section: `Batching Input Images and Inpaint Masks`_.

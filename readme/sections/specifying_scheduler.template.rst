@@ -1,0 +1,167 @@
+Specifying a Scheduler (sampler)
+================================
+
+A scheduler (otherwise known as a sampler) for the main model can be selected via the use of ``--scheduler``.
+
+And in the case of SDXL the refiner's scheduler can be selected independently with ``--sdxl-refiner-scheduler``.
+
+For Stable Cascade the decoder scheduler can be specified via the argument ``-s-cascade-decoder-scheduler``
+however only one scheduler type is supported for Stable Cascade (``DDPMWuerstchenScheduler``).
+
+Both of these default to the value of ``--scheduler``, which in turn defaults to automatic selection.
+
+Available schedulers for a specific combination of dgenerate arguments can be
+queried using ``--scheduler help``, ``--sdxl-refiner-scheduler help``, or ``--s-cascade-decoder-scheduler help``
+though they cannot be queried simultaneously.
+
+In order to use the query feature it is ideal that you provide all the other arguments
+that you plan on using while making the query, as different combinations of arguments
+will result in different underlying pipeline implementations being created, each of which
+may have different compatible scheduler names listed. The model needs to be loaded in order to
+gather this information.
+
+For example there is only one compatible scheduler for this upscaler configuration:
+
+.. code-block:: bash
+
+    #!/usr/bin/env bash
+
+    dgenerate stabilityai/sd-x2-latent-upscaler --variant fp16 --dtype float16 \
+    --model-type torch-upscaler-x2 \
+    --prompts "none" \
+    --image-seeds my-image.png \
+    --output-size 256 \
+    --scheduler help
+
+    # Outputs:
+    #
+    # Compatible schedulers for "stabilityai/sd-x2-latent-upscaler" are:
+    #
+    #    "EulerDiscreteScheduler"
+
+Typically however, there will be many compatible schedulers:
+
+.. code-block:: bash
+
+    #!/usr/bin/env bash
+
+    dgenerate stabilityai/stable-diffusion-2 \
+    --inference-steps 40 \
+    --guidance-scales 8 \
+    --output-size 1024 \
+    --gen-seeds 2 \
+    --prompts "none" \
+    --scheduler help
+
+    # Outputs:
+    #
+    # Compatible schedulers for "stabilityai/stable-diffusion-2" are:
+    #
+    #     "DDIMScheduler"
+    #     "DDPMScheduler"
+    #     "DEISMultistepScheduler"
+    #     "DPMSolverMultistepScheduler"
+    #     "DPMSolverSDEScheduler"
+    #     "DPMSolverSinglestepScheduler"
+    #     "EDMEulerScheduler"
+    #     "EulerAncestralDiscreteScheduler"
+    #     "EulerDiscreteScheduler"
+    #     "HeunDiscreteScheduler"
+    #     "KDPM2AncestralDiscreteScheduler"
+    #     "KDPM2DiscreteScheduler"
+    #     "LCMScheduler"
+    #     "LMSDiscreteScheduler"
+    #     "PNDMScheduler"
+    #     "UniPCMultistepScheduler"
+
+
+Passing ``helpargs`` to a ``--scheduler`` related option will reveal configuration arguments that
+can be overridden via a URI syntax, for every possible scheduler.
+
+.. code-block:: bash
+
+    #!/usr/bin/env bash
+
+    dgenerate stabilityai/stable-diffusion-2 \
+    --inference-steps 40 \
+    --guidance-scales 8 \
+    --output-size 1024 \
+    --gen-seeds 2 \
+    --prompts "none" \
+    --scheduler helpargs
+
+
+    # Outputs (shortened for brevity...):
+    #
+    # Compatible schedulers for "stabilityai/stable-diffusion-2" are:
+    #    ...
+    #
+    #    PNDMScheduler:
+    #        num-train-timesteps=1000
+    #        beta-start=0.0001
+    #        beta-end=0.02
+    #        beta-schedule=linear
+    #        trained-betas=None
+    #        skip-prk-steps=False
+    #        set-alpha-to-one=False
+    #        prediction-type=epsilon
+    #        timestep-spacing=leading
+    #        steps-offset=0
+    #
+    #   ...
+
+
+As an example, you may override the mentioned arguments for any scheduler in this manner:
+
+.. code-block:: bash
+
+    #!/usr/bin/env bash
+
+    # Change prediction type of the scheduler to "v_prediction".
+    # for some models this may be necessary, not for this model
+    # this is just a syntax example
+
+    dgenerate stabilityai/stable-diffusion-2 \
+    --inference-steps 40 \
+    --guidance-scales 8 \
+    --output-size 1024 \
+    --gen-seeds 2 \
+    --prompts "none" \
+    --scheduler PNDMScheduler;prediction-type=v_prediction
+
+In the case of list / array arguments such as ``trained-betas`` you may use python
+literal syntax, i.e: ``[1, 2, 3]`` or CSV (tuple) ``1,2,3``.
+
+Like diffusion parameter arguments, you may specify multiple scheduler URIs and they will be tried in turn.
+
+When you specify multiple schedulers in this manner they will be added to the beginning of the
+output file name, in the order: ``(scheduler)_(refiner / decoder scheduler)``
+
+.. code-block:: bash
+
+    #!/usr/bin/env bash
+
+    # Try these two schedulers one after another
+
+    dgenerate stabilityai/stable-diffusion-2-1 \
+    --inference-steps 30 \
+    --guidance-scales 5 \
+    --schedulers EulerAncestralDiscreteScheduler KDPM2AncestralDiscreteScheduler \
+    --output-size 512x512 \
+    --prompts "a horse standing in a field"
+
+
+    # This works for all scheduler arguments, for instance
+    # this SDXL command results in 4 generation steps, trying
+    # all possible combinations of schedulers provided
+
+    dgenerate stabilityai/stable-diffusion-xl-base-1.0 \
+    --model-type torch-sdxl \
+    --dtype float16 \
+    --variant fp16 \
+    --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
+    --schedulers EulerAncestralDiscreteScheduler EulerDiscreteScheduler \
+    --sdxl-refiner-schedulers KDPM2AncestralDiscreteScheduler KDPM2DiscreteScheduler \
+    --inference-steps 30 \
+    --guidance-scales 5 \
+    --prompts "a horse standing in a field"

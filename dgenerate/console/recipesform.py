@@ -55,22 +55,19 @@ def _find_template_tags(text) -> list[_RecipeTemplateTag]:
         json_start = start_pos + len(classname) + 2
         json_end = json_start
 
-        while json_end < len(text):
-            char = text[json_end]
-            if char == '{':
-                stack.append(char)
-            elif char == '}':
-                stack.pop()
-                if not stack:
-                    break
-            json_end += 1
+        while json_end <= len(text):
+            try:
+                json.loads(text[json_start:json_end])
+                break
+            except json.JSONDecodeError:
+                json_end += 1
 
         if not stack:
-            json_content = text[json_start:json_end + 1]
+            json_content = text[json_start:json_end]
             try:
                 parsed_json = json.loads(json_content)
 
-                full_tag = text[start_pos:json_end + 2]
+                full_tag = text[start_pos:json_end + 1]
 
                 tags.append(
                     _RecipeTemplateTag(
