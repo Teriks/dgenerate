@@ -1,5 +1,5 @@
-Diffusion Model Feature Support Table
-=====================================
+Diffusion Model Feature Support Tables
+======================================
 
    * ``--model-type torch`` (SD 1.5 - SD 2.*)
    * ``--model-type torch-pix2pix`` (SD 1.5 - SD 2.* - Pix2Pix)
@@ -254,7 +254,7 @@ Diffusion Model Feature Support Table
      - ❌
      - ❌
 
-.. list-table:: Prompt enhancement ``--model-type``
+.. list-table:: Prompt enhancement by ``--model-type``
    :widths: 40 10 10
    :header-rows: 1
 
