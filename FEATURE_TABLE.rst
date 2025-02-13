@@ -17,32 +17,16 @@ Diffusion Model Feature Support Table
    * ``--model-type torch-flux-fill`` (Flux.1 - Infill / Outfill)
 
 
-.. list-table:: Supported Features by ``--model-type``
-   :widths: 40 10 10 10 10 10 10 10 10 10 10 10
+.. list-table:: Generation modes by ``--model-type``
+   :widths: 40 10 10 10
    :header-rows: 1
 
    * - Model Type
      - Txt2Img
      - Img2Img
      - Inpainting
-     - LoRA
-     - Textual Inversions
-     - ControlNet
-     - T2I Adapter
-     - IP Adapter
-     - Perturbed Attention Guidance (PAG)
-     - sd-embed Prompt Weighting
-     - compel Prompt Weighting
 
    * - ``torch``
-     - ✅
-     - ✅
-     - ✅
-     - ✅
-     - ✅
-     - ✅
-     - ✅
-     - ✅
      - ✅
      - ✅
      - ✅
@@ -51,24 +35,8 @@ Diffusion Model Feature Support Table
      - ❌
      - ✅
      - ❌
-     - ✅
-     - ✅
-     - ❌
-     - ❌
-     - ✅
-     - ❌
-     - ✅
-     - ✅
 
    * - ``torch-sdxl``
-     - ✅
-     - ✅
-     - ✅
-     - ✅
-     - ✅
-     - ✅
-     - ✅
-     - ✅
      - ✅
      - ✅
      - ✅
@@ -77,23 +45,92 @@ Diffusion Model Feature Support Table
      - ✅
      - ✅
      - ✅
-     - ✅
-     - ❌
-     - ✅
-     - ❌
-     - ✅
-     - ✅
-     - ❌
-     - ❌
 
    * - ``torch-if``
      - ✅
      - ✅
      - ✅
+
+   * - ``torch-ifs``
+     - ❌
+     - ✅
+     - ✅
+
+   * - ``torch-ifs-img2img``
+     - ❌
+     - ✅
+     - ✅
+
+   * - ``torch-sdxl-pix2pix``
+     - ❌
+     - ✅
+     - ❌
+
+   * - ``torch-upscaler-x2``
+     - ❌
+     - ✅
+     - ❌
+
+   * - ``torch-upscaler-x4``
+     - ❌
+     - ✅
+     - ❌
+
+   * - ``torch-s-cascade``
+     - ✅
+     - ✅
+     - ❌
+
+   * - ``torch-sd3``
+     - ✅
+     - ✅
+     - ✅
+
+   * - ``torch-flux``
+     - ✅
+     - ✅
+     - ✅
+
+   * - ``torch-flux-fill``
+     - ✅
+     - ✅
+     - ✅
+
+.. list-table:: Guidance by ``--model-type``
+   :widths: 40 10 10 10 10
+   :header-rows: 1
+
+   * - Model Type
+     - LoRA
+     - Textual Inversions
+     - ControlNet
+     - Perturbed Attention Guidance (PAG)
+
+   * - ``torch``
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+
+   * - ``torch-pix2pix``
+     - ✅
+     - ✅
      - ❌
      - ❌
+
+   * - ``torch-sdxl``
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+
+   * - ``torch-kolors``
+     - ✅
      - ❌
-     - ❌
+     - ✅
+     - ✅
+
+   * - ``torch-if``
      - ❌
      - ❌
      - ❌
@@ -101,51 +138,23 @@ Diffusion Model Feature Support Table
 
    * - ``torch-ifs``
      - ❌
-     - ✅
-     - ✅
-     - ❌
-     - ❌
-     - ❌
-     - ❌
-     - ❌
      - ❌
      - ❌
      - ❌
 
    * - ``torch-ifs-img2img``
      - ❌
-     - ✅
-     - ✅
-     - ❌
-     - ❌
-     - ❌
-     - ❌
-     - ❌
      - ❌
      - ❌
      - ❌
 
    * - ``torch-sdxl-pix2pix``
-     - ❌
-     - ✅
-     - ❌
      - ✅
      - ✅
      - ❌
      - ❌
-     - ❌
-     - ❌
-     - ✅
-     - ✅
 
    * - ``torch-upscaler-x2``
-     - ❌
-     - ✅
-     - ❌
-     - ❌
-     - ❌
-     - ❌
-     - ❌
      - ❌
      - ❌
      - ❌
@@ -156,63 +165,156 @@ Diffusion Model Feature Support Table
      - ✅
      - ❌
      - ❌
-     - ✅
-     - ❌
-     - ❌
-     - ❌
-     - ❌
-     - ✅
-     - ✅
 
    * - ``torch-s-cascade``
-     - ✅
-     - ✅
      - ❌
      - ❌
      - ❌
      - ❌
-     - ❌
-     - ❌
-     - ❌
-     - ✅
-     - ✅
 
    * - ``torch-sd3``
      - ✅
-     - ✅
-     - ✅
-     - ✅
-     - ❌
-     - ✅
-     - ❌
      - ❌
      - ✅
      - ✅
-     - ❌
 
    * - ``torch-flux``
      - ✅
      - ✅
-     - ✅
-     - ✅
-     - ✅
-     - ✅
-     - ❌
-     - ✅
-     - ❌
      - ✅
      - ❌
 
    * - ``torch-flux-fill``
      - ✅
      - ✅
+     - ❌
+     - ❌
+
+.. list-table:: Adapters by ``--model-type``
+   :widths: 40 10 10
+   :header-rows: 1
+
+   * - Model Type
+     - T2I Adapter
+     - IP Adapter
+
+   * - ``torch``
      - ✅
      - ✅
+
+   * - ``torch-pix2pix``
+     - ❌
+     - ✅
+
+   * - ``torch-sdxl``
+     - ✅
+     - ✅
+
+   * - ``torch-kolors``
+     - ❌
+     - ✅
+
+   * - ``torch-if``
+     - ❌
+     - ❌
+
+   * - ``torch-ifs``
+     - ❌
+     - ❌
+
+   * - ``torch-ifs-img2img``
+     - ❌
+     - ❌
+
+   * - ``torch-sdxl-pix2pix``
+     - ❌
+     - ❌
+
+   * - ``torch-upscaler-x2``
+     - ❌
+     - ❌
+
+   * - ``torch-upscaler-x4``
+     - ❌
+     - ❌
+
+   * - ``torch-s-cascade``
+     - ❌
+     - ❌
+
+   * - ``torch-sd3``
+     - ❌
+     - ❌
+
+   * - ``torch-flux``
+     - ❌
+     - ✅
+
+   * - ``torch-flux-fill``
+     - ❌
+     - ❌
+
+.. list-table:: Prompt enhancement ``--model-type``
+   :widths: 40 10 10
+   :header-rows: 1
+
+   * - Model Type
+     - sd-embed Prompt Weighting
+     - compel Prompt Weighting
+
+   * - ``torch``
+     - ✅
+     - ✅
+
+   * - ``torch-pix2pix``
+     - ✅
+     - ✅
+
+   * - ``torch-sdxl``
+     - ✅
+     - ✅
+
+   * - ``torch-kolors``
+     - ❌
+     - ❌
+
+   * - ``torch-if``
+     - ❌
+     - ❌
+
+   * - ``torch-ifs``
+     - ❌
+     - ❌
+
+   * - ``torch-ifs-img2img``
+     - ❌
+     - ❌
+
+   * - ``torch-sdxl-pix2pix``
+     - ✅
+     - ✅
+
+   * - ``torch-upscaler-x2``
+     - ❌
+     - ❌
+
+   * - ``torch-upscaler-x4``
+     - ✅
+     - ✅
+
+   * - ``torch-s-cascade``
+     - ✅
+     - ✅
+
+   * - ``torch-sd3``
      - ✅
      - ❌
+
+   * - ``torch-flux``
+     - ✅
      - ❌
-     - ❌
-     - ❌
+
+   * - ``torch-flux-fill``
      - ✅
      - ❌
 
