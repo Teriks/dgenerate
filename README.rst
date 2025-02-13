@@ -4603,6 +4603,9 @@ to adjust the global cache expiry time so that they exist in the cache longer th
 
 You can see how to change the cache expiry time in this section `File Cache Control`_
 
+If you set the environmental variable ``CIVIT_AI_TOKEN``, your token will be appended to
+CivitAI API links automatically, this example appends it manually.
+
 .. code-block:: bash
 
     #!/usr/bin/env bash
@@ -6349,7 +6352,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [71937225533672]
+            Value: [82714636837278]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
