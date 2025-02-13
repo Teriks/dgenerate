@@ -85,12 +85,11 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v4.5.1/>`_.
 * `Help Output`_
 * `Diffusion Feature Table <https://github.com/Teriks/dgenerate/blob/v4.5.1/FEATURE_TABLE.rst>`_
 
-* How to install
+* How To Install
     * `Windows Install`_
     * `Linux or WSL Install`_
     * `Linux with ROCm (AMD Cards)`_
     * `MacOS Install (Apple Silicon Only)`_
-    * `Google Colab Install`_
 
 * Usage Manual
     * `Basic Usage`_
@@ -112,17 +111,17 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v4.5.1/>`_.
     * `Specifying an SDXL Refiner`_
     * `Specifying a Stable Cascade Decoder`_
     * `Specifying LoRAs`_
+    * `Specifying Textual Inversions (embeddings)`_
+    * `Specifying ControlNets`_
+        * `SDXL ControlNet Union Mode`_
+        * `Flux ControlNet Union Mode`_
+    * `Specifying T2I Adapters`_
     * `Specifying IP Adapters`_
         * `basic --image-seeds specification`_
         * `img2img --image-seeds specification`_
         * `inpainting --image-seeds specification`_
         * `quoting IP Adapter image URLs with plus symbols`_
         * `animated inputs & combinatorics`_
-    * `Specifying Textual Inversions (embeddings)`_
-    * `Specifying ControlNets`_
-        * `SDXL ControlNet Union Mode`_
-        * `Flux ControlNet Union Mode`_
-    * `Specifying T2I Adapters`_
     * `Specifying Text Encoders`_
     * `Prompt Weighting and Enhancement`_
         * `The compel prompt weighter`_
@@ -159,13 +158,13 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v4.5.1/>`_.
         * `The \\exit directive`_
         * `Running configs from the command line`_
         * `Config argument injection`_
+    * `Console UI`_
     * `Writing Plugins`_
         * `Image processor plugins`_
         * `Config directive and template function plugins`_
         * `Sub-command plugins`_
         * `Prompt weighter plugins`_
-    * `Console UI`_
-    * `Auth Tokens (Environment)`_
+    * `Auth Tokens`_
     * `File Cache Control`_
 
 Help Output
@@ -1985,8 +1984,6 @@ Install dgenerate
 
     pip3 install dgenerate[ncnn]==4.5.1 --extra-index-url https://download.pytorch.org/whl/rocm6.2.4/
 
-
-    
 MacOS Install (Apple Silicon Only)
 ==================================
 
@@ -2007,8 +2004,8 @@ environment in a directory of your choosing and install ``dgenerate`` into it.
 
 Do not specify any ``--extra-index-url`` to ``pip``, it is not necessary on MacOS.
 
-When using SDXL on MacOS with ``--dtype float16``, you might need to specify 
-``--vae AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix`` if your images 
+When using SDXL on MacOS with ``--dtype float16``, you might need to specify
+``--vae AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix`` if your images
 are rendering solid black.
 
 MacOS pipx install
@@ -2021,28 +2018,28 @@ global python site packages.
 .. code-block:: bash
 
     #!/usr/bin/env bash
-    
+
     # install pipx
-    
+
     pip3 install pipx
-    
+
     # install dgenerate into an isolated
     # environment with pipx
-    
+
     pipx install dgenerate==4.5.1
     pipx ensurepath
-    
+
     # open a new terminal or logout & login
-    
+
     # launch the Console UI to test the install.
-    # tkinter will be available when you install 
-    # python using the dmg from pythons official 
+    # tkinter will be available when you install
+    # python using the dmg from pythons official
     # website
-    
+
     dgenerate --console
-    
+
     # or generate images
-    
+
     dgenerate stabilityai/stable-diffusion-2-1 \
     --prompts "an astronaut riding a horse" \
     --output-path output \
@@ -2056,12 +2053,12 @@ If you want to upgrade dgenerate, uninstall it first and then install the new ve
 
     pipx uninstall dgenerate
     pipx install dgenerate==4.5.1
-    
+
 
 MacOS venv install
 ------------------
 
-You can also manually install into a virtual environment 
+You can also manually install into a virtual environment
 of your own creation.
 
 .. code-block:: bash
@@ -2071,32 +2068,31 @@ of your own creation.
     # create the environment
 
     python3 -m venv dgenerate_venv
-    
+
     # you must activate this environment
     # every time you want to use dgenerate
-    # with this install method 
-    
+    # with this install method
+
     source dgenerate_venv/bin/activate
-    
+
     # install dgenerate into an isolated environment
-    
+
     pip3 install dgenerate==4.5.1
-    
+
     # launch the Console UI to test the install.
-    # tkinter will be available when you install 
-    # python using the dmg from pythons official 
+    # tkinter will be available when you install
+    # python using the dmg from pythons official
     # website
-    
+
     dgenerate --console
-    
+
     # or generate images
-    
+
     dgenerate stabilityai/stable-diffusion-2-1 \
     --prompts "an astronaut riding a horse" \
     --output-path output \
     --inference-steps 40 \
     --guidance-scales 10
-    
 
 Google Colab Install
 ====================
@@ -2130,7 +2126,6 @@ the virtual environment is not preserved between cells.  For brevity, and as an 
 .. code-block:: bash
 
     !source /content/venv/bin/activate; dgenerate --help
-
 
 Basic Usage
 ===========
@@ -2196,7 +2191,6 @@ recommended to prevent out of memory conditions on the average GPU :)
     --variant fp16 --dtype float16 \
     --output-size 1024
 
-
 Negative Prompt
 ===============
 
@@ -2248,7 +2242,6 @@ All using 50 inference steps, and 10 for guidance scale value.
     --inference-steps 50 \
     --guidance-scales 10 \
     --output-size 512x512
-
 
 Image Seeds
 ===========
@@ -2311,7 +2304,6 @@ Batching or providing multiple image inputs for the same generation, resulting i
 variations possibly using different input images, or multiple image prompts, is possible using the
 ``images: ...`` syntax discussed in the section: `Batching Input Images and Inpaint Masks`_.
 
-
 Inpainting
 ==========
 
@@ -2352,7 +2344,6 @@ areas over the dog in the original image, causing the dog to be replaced with an
     --image-seed-strengths 0.8 \
     --guidance-scales 10 \
     --inference-steps 100
-
 
 Per Image Seed Resizing
 =======================
@@ -2426,7 +2417,6 @@ The involved images are resized using the basic syntax with no keyword arguments
     --guidance-scales 10 \
     --inference-steps 100
 
-
 Animated Output
 ===============
 
@@ -2485,10 +2475,9 @@ output.
 IP Adapter images can also be animated inputs see: `Specifying IP Adapters`_
 
 In general, every image component of an ``--image-seeds`` specification may be an
-animated file, animated files may be mixed with static images. The animated input with the 
+animated file, animated files may be mixed with static images. The animated input with the
 shortest length determines the number of output frames, and any static image components
 are duplicated over that amount of frames.
-
 
 Animation Slicing
 =================
@@ -2548,7 +2537,6 @@ generation step.
     --animation-format mp4 \
     --frame-start 0 \
     --frame-end 0
-
 
 Inpainting Animations
 =====================
@@ -2647,8 +2635,6 @@ them together.
 
     # etc...
 
-
-
 Deterministic Output
 ====================
 
@@ -2708,7 +2694,6 @@ The following command demonstrates manually specifying two different seeds to tr
     --guidance-scales 10 \
     --output-size 512x512
 
-
 Specifying a specific GPU for CUDA
 ==================================
 
@@ -2738,7 +2723,6 @@ the device number of the GPU as reported by ``nvidia-smi``.
     --guidance-scales 10 \
     --output-size 512x512 \
     --device cuda:1
-
 
 Specifying a Scheduler (sampler)
 ================================
@@ -2907,7 +2891,6 @@ output file name, in the order: ``(scheduler)_(refiner / decoder scheduler)``
     --inference-steps 30 \
     --guidance-scales 5 \
     --prompts "a horse standing in a field"
-
 
 Specifying a VAE
 ================
@@ -3086,7 +3069,6 @@ when ``--batch-size`` is greater than 1.
     --sdxl-target-size 2048 \
     --prompts "Photo of a horse standing near the open door of a red barn, high resolution; artwork"
 
-
 Specifying a UNet
 =================
 
@@ -3161,7 +3143,6 @@ UNet models which have a smaller memory footprint using ``--unet`` and ``--unet2
     --gen-seeds 2 \
     --prompts "an image of a shiba inu, donning a spacesuit and helmet"
 
-
 Specifying a Transformer (SD3 and Flux)
 =======================================
 
@@ -3174,7 +3155,7 @@ This argument is nearly identical to ``--unet``, however it can support single f
 from safetensors files or huggingface blob links if desired.
 
 In addition to the arguments that ``--unet`` supports, ``--transformer`` supports the ``quantize``
-URI argument to enable weights quantization via the `optimum-quanto library <optimum-quanto_library_1_>`_, 
+URI argument to enable weights quantization via the `optimum-quanto library <optimum-quanto_library_1_>`_,
 allowing for lower GPU memory usage. ``quantize`` may be passed the values ``qint2``, ``qint4``, ``qint8``,
 ``qfloat8_e4m3fn``, ``qfloat8_e5m2``, or ``qfloat8``, to indicate the quantization data type.
 
@@ -3219,7 +3200,6 @@ Flux Example:
     --output-path output \
     --output-size 512x512 \
     --prompts "Photo of a horse standing near the open door of a red barn, high resolution"
-
 
 Specifying an SDXL Refiner
 ==========================
@@ -3377,7 +3357,6 @@ model as mentioned above.
     --gen-seeds 2 \
     --prompts "an image of a shiba inu, donning a spacesuit and helmet"
 
-
 Specifying LoRAs
 ================
 
@@ -3493,7 +3472,6 @@ If you are loading a .safetensors or other file from a path on disk, only the ``
     --prompts "Syntax example" \
     --loras "my_lora.safetensors;scale=1.0"
 
-
 Specifying Textual Inversions (embeddings)
 ==========================================
 
@@ -3602,8 +3580,6 @@ If you are loading a .safetensors or other file from a path on disk, simply do:
     dgenerate Lykon/dreamshaper-8 \
     --prompts "Syntax example" \
     --textual-inversions "my_ti_model.safetensors"
-
-
 
 Specifying ControlNets
 =======================
@@ -3834,7 +3810,6 @@ Here is an example making use of ``depth`` and ``openpose``:
     --image-seeds "examples/media/man-fighting-pose.jpg, examples/media/man-fighting-pose.jpg"
     --control-image-processors midas + "openpose;include-hand=true;include-face=true;output-file=boxer/boxer-openpose.png"
 
-
 Flux ControlNet Union Mode
 ---------------------------
 
@@ -4001,7 +3976,6 @@ If you are loading a .safetensors or other file from a path on disk, simply do:
     --prompts "Syntax example" \
     --t2i-adapters "my_t2i_model.safetensors"
 
-
 Specifying IP Adapters
 ======================
 
@@ -4165,7 +4139,6 @@ not all possible combinations are covered in this documentation as it would be h
 
 If you find a combination that behaves strangely or incorrectly, or that should work but doesn't, please submit an issue :)
 
-
 Specifying Text Encoders
 ========================
 
@@ -4192,8 +4165,8 @@ The ``variant`` argument defaults to the value of ``--variant``
 
 The ``dtype`` argument defaults to the value of ``--dtype``
 
-The ``quantize`` URI argument enables weights quantization via the `optimum-quanto 
-library <optimum-quanto_library_1_>`_, allowing for lower GPU memory usage. 
+The ``quantize`` URI argument enables weights quantization via the `optimum-quanto
+library <optimum-quanto_library_1_>`_, allowing for lower GPU memory usage.
 This is useful when generating with Flux models. ``quantize`` may be passed the
 values ``qint2``, ``qint4``, ``qint8``, ``qfloat8_e4m3fn``, ``qfloat8_e5m2``, or ``qfloat8``,
 to indicate the quantization data type.
@@ -4346,7 +4319,6 @@ and using ``null`` will override it.
     --output-path output
     --model-sequential-offload
     --prompts "a horse outside a barn"
-
 
 Prompt Weighting and Enhancement
 ================================
@@ -4597,13 +4569,12 @@ You can enable the ``sd-embed`` prompt weighter by specifying it with the ``--pr
     --auth-token $HF_TOKEN \
     --prompts "a (man:1.2) standing on the (beach:1.2) looking out in to the water during a (sunset)"
 
-
 Utilizing CivitAI links and Other Hosted Models
 ===============================================
 
 Any model accepted by dgenerate that can be specified as a single file
-inside of a URI (or otherwise) can be specified by a URL to a model file. 
-dgenerate will attempt to download the file from the URL directly, store it in 
+inside of a URI (or otherwise) can be specified by a URL to a model file.
+dgenerate will attempt to download the file from the URL directly, store it in
 the web cache, and then use it.
 
 You may also use the ``\download`` config directive to assist in pre
@@ -4657,7 +4628,6 @@ You can see how to change the cache expiry time in this section `File Cache Cont
 This method can be used for VAEs, LoRAs, ControlNets, and Textual Inversions
 as well, whenever single file loads are supported by the argument.
 
-
 Specifying Generation Batch Size
 ================================
 
@@ -4679,7 +4649,6 @@ With larger ``--batch-size`` values, the use of ``--vae-slicing`` can make the d
 between an out of memory condition and success, so it is recommended that you
 try this option if you experience an out of memory condition due to the use of
 ``--batch-size``.
-
 
 Batching Input Images and Inpaint Masks
 =======================================
@@ -4760,7 +4729,6 @@ In the case of Stable Cascade, this syntax results in multiple images being pass
 as an image/style prompt, and does not result in multiple outputs or batching behavior.
 
 This Stable Cascade functionality is demonstrated in the example config: `examples/stablecascade/img2img/multiple-inputs-config.dgen <https://github.com/Teriks/dgenerate/blob/v4.5.1/examples/stablecascade/img2img/multiple-inputs-config.dgen>`_
-
 
 Image Processors
 ================
@@ -4981,7 +4949,6 @@ syntax described in: `Batching Input Images and Inpaint Masks`_
     --output-path mars_horse \
     --prompts "A photo of a horse standing on mars"
 
-
 Sub Commands
 ============
 
@@ -5019,15 +4986,15 @@ The help output of ``image-process`` is as follows:
                          [-o OUTPUT [OUTPUT ...]] [-ff FRAME_FORMAT] [-ox] [-r RESIZE] [-na] [-al ALIGN]
                          [-d DEVICE] [-fs FRAME_NUMBER] [-fe FRAME_NUMBER] [-nf | -naf]
                          input [input ...]
-
+    
     This command allows you to use dgenerate image processors directly on files of your choosing.
-
+    
     positional arguments:
       input
             Input file paths, may be a static images or animated files supported by dgenerate. URLs will be
             downloaded.
             -----------
-
+    
     options:
       -h, --help
             show this help message and exit
@@ -5237,30 +5204,28 @@ the models involved with the loaded pipeline are garbage collected immediately a
 
 The help output of ``to-diffusers`` is as follows:
 
-
 .. code-block:: text
 
-    usage: to-diffusers [-h] [-mt MODEL_TYPE] [-rev REVISION] [-sbf SUBFOLDER]
-                        [-t [DTYPES ...]] [-olc ORIGINAL_CONFIG] [-atk AUTH_TOKEN]
-                        -o OUTPUT [-v]
+    usage: to-diffusers [-h] [-mt MODEL_TYPE] [-rev REVISION] [-sbf SUBFOLDER] [-t [DTYPES ...]]
+                        [-olc ORIGINAL_CONFIG] [-atk AUTH_TOKEN] -o OUTPUT [-v]
                         model_path
-
-    Save a loaded model to a diffusers format pretrained model folder, models can
-    be loaded from a single file or Hugging Face hub repository.
-
+    
+    Save a loaded model to a diffusers format pretrained model folder, models can be loaded from a single file
+    or Hugging Face hub repository.
+    
     positional arguments:
       model_path
             Model path, as you would provide to dgenerate to generate images.
             -----------------------------------------------------------------
-
+    
     options:
       -h, --help
             show this help message and exit
             -------------------------------
       -mt MODEL_TYPE, --model-type MODEL_TYPE
-            Model type, as you would provide to dgenerate to generate images, must
-            match the checkpoint model type.
-            --------------------------------
+            Model type, as you would provide to dgenerate to generate images, must match the checkpoint model
+            type.
+            -----
       -rev REVISION, --revision REVISION
             Model revision, if loading from Hugging Face hub.
             -------------------------------------------------
@@ -5268,12 +5233,10 @@ The help output of ``to-diffusers`` is as follows:
             Model subfolder, if loading from Hugging Face hub.
             --------------------------------------------------
       -t [DTYPES ...], --dtypes [DTYPES ...]
-            Model dtypes to generate, this generates variants, such as "fp16", you
-            may specify up to 2 values. Accepted values are: float16, and float32.
-            By default only the 32 bit variant is saved if you do not specify this
-            argument, if you want both variants you must specify both dtypes
-            simultaneously.
-            ---------------
+            Model dtypes to generate, this generates variants, such as "fp16", you may specify up to 2 values.
+            Accepted values are: float16, and float32. By default only the 32 bit variant is saved if you do not
+            specify this argument, if you want both variants you must specify both dtypes simultaneously.
+            ---------------------------------------------------------------------------------------------
       -olc ORIGINAL_CONFIG, --original-config ORIGINAL_CONFIG
             Original LDM config (.yaml) file.
             ---------------------------------
@@ -5281,9 +5244,9 @@ The help output of ``to-diffusers`` is as follows:
             Optional Hugging Face authentication token value.
             -------------------------------------------------
       -o OUTPUT, --output OUTPUT
-            Output directory for the converted model, this is a folder you can
-            point dgenerate at to generate images.
-            --------------------------------------
+            Output directory for the converted model, this is a folder you can point dgenerate at to generate
+            images.
+            -------
       -v, --verbose
             Enable debug output?
             --------------------
@@ -5508,7 +5471,6 @@ When they are not specified, optimal defaults from ncnn for your platform are us
 
 
 For more information see: ``dgenerate --image-processor-help upscaler-ncnn``
-
 
 Adetailer (YOLO based inpainting)
 =================================
@@ -5758,7 +5720,6 @@ when specifying detectors with ``--adetailer-detectors``
     --prompt-weighter sd-embed
     --output-path multi-subject-config
 
-
 Writing and Running Configs
 ===========================
 
@@ -5851,94 +5812,94 @@ The following is a config file example that covers the most basic syntax concept
 
     #! /usr/bin/env dgenerate --file
     #! dgenerate 4.5.1
-
+    
     # If a hash-bang version is provided in the format above
     # a warning will be produced if the version you are running
     # is not compatible (SemVer), this can be used anywhere in the
     # config file, a line number will be mentioned in the warning when the
     # version check fails
-
+    
     # Comments in the file will be ignored
-
+    
     # Each dgenerate invocation in the config begins with the path to a model,
     # IE. the first argument when using dgenerate from the command line, the
     # rest of the options that follow are the options to dgenerate that you
     # would use on the command line
-
+    
     # Guarantee unique file names are generated under the output directory by specifying unique seeds
-
+    
     stabilityai/stable-diffusion-2-1 --prompts "an astronaut riding a horse" --seeds 41509644783027 --output-path output --inference-steps 30 --guidance-scales 10
     stabilityai/stable-diffusion-2-1 --prompts "a cowboy riding a horse" --seeds 78553317097366 --output-path output --inference-steps 30 --guidance-scales 10
     stabilityai/stable-diffusion-2-1 --prompts "a martian riding a horse" --seeds 22797399276707 --output-path output --inference-steps 30 --guidance-scales 10
-
+    
     # Guarantee that no file name collisions happen by specifying different output paths for each invocation
-
+    
     stabilityai/stable-diffusion-2-1 --prompts "an astronaut riding a horse" --output-path unique_output_1  --inference-steps 30 --guidance-scales 10
     stabilityai/stable-diffusion-2-1 --prompts "a cowboy riding a horse" --output-path unique_output_2 --inference-steps 30 --guidance-scales 10
-
+    
     # Multiline continuations are possible implicitly for argument
     # switches IE lines starting with '-', space is automatically
     # added to the command in the necessary places so that arguments
     # starting with a dash do not run together unless the argument
     # ends with a slash \ continuation
-
+    
     # when a slash \ character is involved, you must always insure
     # there is a space before the slash if you want the space
     # to persist (posix behavior)
-
+    
     stabilityai/stable-diffusion-2-1 --prompts "a martian riding a horse"
     --output-path unique_output_3  # there can be comments at the end of lines
     --inference-steps 30 \         # this comment is also ignored
-
+    
     # There can be comments or newlines within the continuation
     # but you must provide \ on the previous line to indicate that
     # it is going to happen
-
+    
     --guidance-scales 10
-
+    
     # The continuation ends (on the next line) when the last line does
     # not end in \ or start with -
-
+    
     # the ability to use tail comments means that escaping of the # is sometimes
     # necessary when you want it to appear literally, see: examples/config_syntax/tail-comments-config.dgen
     # for examples.
-
-
+    
+    
     # Configuration directives provide extra functionality in a config, a directive
     # invocation always starts with a backslash
-
+    
     # A clear model cache directive can be used inbetween invocations if cached models that
     # are no longer needed in your generation pipeline start causing out of memory issues
-
+    
     \clear_model_cache
-
+    
     # Additionally these other directives exist to clear user loaded models
     # out of dgenerates in memory cache individually
-
+    
     # Clear specifically diffusion pipelines
-
+    
     \clear_pipeline_cache
-
+    
     # Clear specifically user specified UNet models
-
+    
     \clear_unet_cache
-
+    
     # Clear specifically user specified VAE models
-
+    
     \clear_vae_cache
-
+    
     # Clear specifically user specified Text Encoder models
-
+    
     \clear_text_encoder_cache
-
+    
     # Clear specifically ControlNet models
-
+    
     \clear_controlnet_cache
-
-
+    
+    
     # This model was used before but will have to be fully instantiated from scratch again
     # after a cache flush which may take some time
-
+    
     stabilityai/stable-diffusion-2-1 --prompts "a martian riding a horse"
     --output-path unique_output_4
 
@@ -6002,22 +5963,21 @@ also be mentioned in this output.
 
     #! /usr/bin/env dgenerate --file
     #! dgenerate 4.5.1
-
+    
     # Invocation will proceed as normal
-
+    
     stabilityai/stable-diffusion-2-1 --prompts "a man walking on the moon without a space suit"
-
+    
     # Print all set template variables
-
+    
     \templates_help
-
 
 The ``\templates_help`` output from the above example is:
 
 .. code-block:: text
 
     Config template variables are:
-
+    
         Name: "glob"
             Type: <class 'module'>
             Value: <module 'glob'>
@@ -6092,7 +6052,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_device"
             Type: <class 'str'>
-            Value: 'cuda:1'
+            Value: 'cuda'
         Name: "last_dtype"
             Type: <enum 'DataType'>
             Value: <DataType.AUTO: 0>
@@ -6114,6 +6074,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_guidance_scales"
             Type: collections.abc.Sequence[float]
             Value: [5.0]
+        Name: "last_hi_diffusion"
+            Type: <class 'bool'>
+            Value: False
         Name: "last_image_encoder_cache_memory_constraints"
             Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
@@ -6143,7 +6106,7 @@ The ``\templates_help`` output from the above example is:
             Value: <dgenerate.renderloop.RenderLoop.written_images.<locals>.Iterable object>
         Name: "last_inference_steps"
             Type: collections.abc.Sequence[int]
-            Value: [30]
+            Value: [1]
         Name: "last_ip_adapter_uris"
             Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
@@ -6177,6 +6140,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_offline_mode"
             Type: <class 'bool'>
             Value: False
+        Name: "last_original_config"
+            Type: typing.Optional[str]
+            Value: None
         Name: "last_output_configs"
             Type: <class 'bool'>
             Value: False
@@ -6222,6 +6188,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_prompts"
             Type: collections.abc.Sequence[dgenerate.prompt.Prompt]
             Value: ['a man walking on the moon without a space suit']
+        Name: "last_quantizer_uri"
+            Type: typing.Optional[str]
+            Value: None
         Name: "last_revision"
             Type: <class 'str'>
             Value: 'main'
@@ -6306,6 +6275,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_sdxl_refiner_guidance_scales"
             Type: typing.Optional[collections.abc.Sequence[float]]
             Value: []
+        Name: "last_sdxl_refiner_hi_diffusion"
+            Type: typing.Optional[bool]
+            Value: None
         Name: "last_sdxl_refiner_inference_steps"
             Type: typing.Optional[collections.abc.Sequence[int]]
             Value: []
@@ -6360,6 +6332,12 @@ The ``\templates_help`` output from the above example is:
         Name: "last_sdxl_target_sizes"
             Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
             Value: []
+        Name: "last_second_original_config"
+            Type: typing.Optional[str]
+            Value: None
+        Name: "last_second_quantizer_uri"
+            Type: typing.Optional[str]
+            Value: None
         Name: "last_second_text_encoder_uris"
             Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
@@ -6371,7 +6349,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [56601080900147]
+            Value: [71937225533672]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -6435,7 +6413,7 @@ The following is output from ``\functions_help`` showing every implemented templ
 .. code-block:: text
 
     Available config template functions:
-
+    
         abs(args, kwargs)
         align_size(size: str | tuple, align: int, format_size: bool = True) -> str | tuple
         all(args, kwargs)
@@ -6502,7 +6480,6 @@ The following is output from ``\functions_help`` showing every implemented templ
         unquote(strings: str | collections.abc.Iterable[typing.Any], expand: bool = False) -> list
         zip(args, kwargs)
 
-
 Directives, and applying templating
 -----------------------------------
 
@@ -6517,7 +6494,7 @@ Example output:
 .. code-block:: text
 
     Available config directives:
-
+    
         "\cd"
         "\civitai_links"
         "\clear_adapter_cache"
@@ -6564,7 +6541,6 @@ Example output:
         "\unset_env"
         "\use_modules"
 
-
 Here are examples of other available directives such as ``\set``, ``\setp``, and
 ``\print`` as well as some basic Jinja2 templating usage. This example also covers
 the usage and purpose of ``\save_modules`` for saving and reusing pipeline modules
@@ -6574,179 +6550,179 @@ such as VAEs etc. outside of relying on the caching system.
 
     #! /usr/bin/env dgenerate --file
     #! dgenerate 4.5.1
-
+    
     # You can define your own template variables with the \set directive
     # the \set directive does not do any shell args parsing on its value
     # operand, meaning the quotes will be in the string that is assigned
     # to the variable my_prompt
-
+    
     \set my_prompt "an astronaut riding a horse; bad quality"
-
+    
     # If your variable is long you can use continuation, slash
     # continuations work the same way as a posix shell,
     # no extra space is added to the line
-
+    
     \set my_prompt "my very very very very very very very \
                     very very very very very very very very \
                     long long long long long prompt"
-
+    
     # You can print to the console with templating using the \print directive
     # for debugging purposes
-
+    
     \print {{ my_prompt }}
-
-
+    
+    
     # The \setp directive can be used to define python literal template variables
-
+    
     \setp my_list [1, 2, 3, 4]
-
+    
     \print {{ my_list | join(' ') }}
-
-
+    
+    
     # Literals defined by \setp can reference other template variables by name.
     # the following creates a nested list
-
+    
     \setp my_list [1, 2, my_list, 4]
-
+    
     \print {{ my_list }}
-
-
+    
+    
     # \setp can evaluate template functions
-
+    
     \setp directory_content glob.glob('*')
-
+    
     \setp current_directory cwd()
-
-
+    
+    
     # the \gen_seeds directive can be used to store a list of
     # random seed integers into a template variable.
     # (they are strings for convenience)
-
+    
     \gen_seeds my_seeds 10
-
+    
     \print {{ my_seeds | join(' ') }}
-
-
+    
+    
     # An invocation sets various template variables related to its
     # execution once it is finished running
-
+    
     stabilityai/stable-diffusion-2-1 --prompts {{ my_prompt }} --gen-seeds 5
-
-
+    
+    
     # Print a quoted filename of the last image produced by the last invocation
     # This could potentially be passed to --image-seeds of the next invocation
     # If you wanted to run another pass over the last image that was produced
-
+    
     \print {{ quote(last(last_images)) }}
-
+    
     # you can also get the first image easily with the function "first"
-
+    
     \print {{ quote(first(last_images)) }}
-
-
+    
+    
     # if you want to append a mask image file name
-
+    
     \print "{{ last(last_images) }};my-mask.png"
-
-
+    
+    
     # Print a list of properly quoted filenames produced by the last
     # invocation separated by spaces if there is multiple, this could
     # also be passed to --image-seeds
-
+    
     # in the case that you have generated an animated output with frame
     # output enabled, this will contain paths to the frames
-
+    
     \print {{ quote(last_images) }}
-
-
+    
+    
     # For loops are possible
-
+    
     \print {% for image in last_images %}{{ quote(image) }} {% endfor %}
-
-
+    
+    
     # For loops are possible with normal continuation
     # when not using a heredoc template continuation (mentioned below),
     # such as when the loop occurs in the body of a directive or a
     # dgenerate invocation
-
+    
     # IE this template will be: "{% for image in last_images %} {{ quote(image) }} {% endfor %}"
-
+    
     \print {% for image in last_images %} \
             {{ quote(image) }} \
            {% endfor %}
-
-
+    
+    
     # Access to the last prompt is available in a parsed representation
     # via "last_prompt", which can be formatted properly for reuse
     # by using the function "format_prompt"
-
+    
     stabilityai/stable-diffusion-2-1 --prompts {{ format_prompt(last(last_prompts)) }}
-
+    
     # You can get only the positive or negative part if you want via the "positive"
     # and "negative" properties on a prompt object, these attributes are not
     # quoted so you need to quote them one way or another, preferably using the
     # dgenerate template function "quote" which will shell quote any special
     # characters that the argument parser is not going to understand
-
+    
     stabilityai/stable-diffusion-2-1 --prompts {{ quote(last(last_prompts).positive) }}
-
+    
     # "last_prompts" returns all the prompts used in the last invocation as a list
     # the "format_prompt" function can also work on a list
-
+    
     stabilityai/stable-diffusion-2-1 --prompts "prompt 1" "prompt 2" "prompt 3"
-
+    
     stabilityai/stable-diffusion-2-1 --prompts {{ format_prompt(last_prompts) }}
-
-
+    
+    
     # Execute additional config with full templating.
     # a template continuation is started when a line begins
     # with the character { and is effectively a heredoc, in
     # that all whitespace within is preserved including newlines
-
+    
     {% for image in last_images %}
         stabilityai/stable-diffusion-2-1 --image-seeds {{ quote(image) }} --prompts {{ my_prompt }}
     {% endfor %}
-
-
+    
+    
     # Multiple lines can be used with a template continuation
     # the inside of the template will be expanded to raw config
     # and then be ran, so make sure to use line continuations within
     # where they are necessary as you would do in the top level of
     # a config file.
-
+    
     {% for image in last_images %}
         stabilityai/stable-diffusion-2-1
         --image-seeds {{ quote(image) }}
         --prompts {{ my_prompt }}
     {% endfor %}
-
-
+    
+    
     # The above are both basically equivalent to this
-
+    
     stabilityai/stable-diffusion-2-1 --image-seeds {{ quote(last_images) }} --prompts {{ my_prompt }}
-
-
+    
+    
     # You can save modules from the main pipeline used in the last invocation
     # for later reuse using the \save_modules directive, the first argument
     # is a variable name and the rest of the arguments are diffusers pipeline
     # module names to save to the variable name, this is an advanced usage
     # and requires some understanding of the diffusers library to utilize correctly
-
+    
     stabilityai/stable-diffusion-2-1
     --variant fp16
     --dtype float16
     --prompts "an astronaut walking on the moon"
     --safety-checker
     --output-size 512
-
-
+    
+    
     \save_modules stage_1_modules feature_extractor safety_checker
-
+    
     # that saves the feature_extractor module object in the pipeline above,
     # you can specify multiple module names to save if desired
-
+    
     # Possible Module Names:
-
+    
     # unet
     # vae
     # transformer
@@ -6762,15 +6738,15 @@ such as VAEs etc. outside of relying on the caching system.
     # adapter
     # controlnet
     # scheduler
-
-
+    
+    
     # To use the saved modules in the next invocation use  \use_modules
-
+    
     \use_modules stage_1_modules
-
+    
     # now the next invocation will use those modules instead of loading them from internal
     # in memory cache, disk, or huggingface
-
+    
     stabilityai/stable-diffusion-x4-upscaler
     --variant fp16
     --dtype float16
@@ -6778,16 +6754,15 @@ such as VAEs etc. outside of relying on the caching system.
     --prompts {{ format_prompt(last_prompts) }}
     --image-seeds {{ quote(last_images) }}
     --vae-tiling
-
-
+    
+    
     # you should clear out the saved modules if you no longer need them
     # and your config file is going to continue, or if the dgenerate
     # process is going to be kept alive for some reason such as in
     # some library usage scenarios, or perhaps if you are using it
     # like a server that reads from stdin :)
-
+    
     \clear_modules stage_1_modules
-
 
 Setting template variables, in depth
 ------------------------------------
@@ -6809,34 +6784,33 @@ This is for assigning literal text values to a template variable.
 
     #! /usr/bin/env dgenerate --file
     #! dgenerate 4.5.1
-
+    
     \set my_variable "I am an incomplete string and this is completely fine because I am a raw value
-
+    
     # prints exactly what is above, including the quote at the beginning
-
+    
     \print {{ my_variable }}
-
+    
     # add a quote to the end of the string using templates
-
+    
     \set my_variable {{ my_variable }}"
-
+    
     # prints a fully quoted string
-
+    
     \print {{ my_variable }}
-
+    
     # indirect expansion is allowed
-
+    
     \set var_name template_variable
     \env ENV_VAR_NAMED=env_var_named
-
+    
     \set {{ var_name }} Hello!
     \set $ENV_VAR_NAMED Hi!
-
+    
     # prints Hello!, Hi!
-
+    
     \print {{ template_variable }}
     \print {{ env_var_named }}
-
 
 The ``\sete`` directive can be used to assign the result of shell parsing and expansion to a
 template variable, the value provided will be shell parsed into tokens as if it were a line of
@@ -6847,35 +6821,35 @@ feature to assign template variables.
 
     #! /usr/bin/env dgenerate --file
     #! dgenerate 4.5.1
-
-    # lets pretend the directory "my_files" is full of files
-
-    \sete my_variable --argument my_files/*
-
-    # prints the python array ['--argument', 'my_files/file1', 'my_files/file2', ...]
-
+    
+    
+    \sete my_variable --argument ./*
+    
+    # prints the python array ['--argument', 'file1', 'file2', ...]
+    
     \print {{ my_variable }}
-
+    
     # Templates and environmental variable references
     # are also parsed in the \sete directive, just as they are with \set
-
-    \set directory my_files
-
+    
+    \set directory .
+    
     \sete my_variable --argument {{ directory }}/*
-
+    
     # indirect expansion is allowed
-
+    
     \set var_name template_variable
     \env ENV_VAR_NAMED=env_var_named
-
-    \sete {{ var_name }} my_files/*
-    \sete $ENV_VAR_NAMED my_files/*
-
-    # both print ['my_files/file1', 'my_files/file2', ...]
-
+    
+    \sete {{ var_name }} ./*
+    \sete $ENV_VAR_NAMED ./*
+    
+    # print everything in this directory,
+    # they will be printed as a python array
+    # IE: ['file1', 'file2', ...]
+    
     \print {{ template_variable }}
     \print {{ env_var_named }}
-
 
 The ``\setp`` directive can be used to assign the result of evaluating a limited subset of python
 expressions to a template variable.  This can be used to set a template variable to the result
@@ -6883,72 +6857,70 @@ of a mathematical expression, python literal value such as a list, dictionary, s
 python comprehension, or python ternary statement.  In addition, all template functions
 implemented by dgenerate are available for use in the evaluated expressions.
 
-
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
     #! dgenerate 4.5.1
-
+    
     \setp my_variable 10*10
-
+    
     # prints 100
-
+    
     \print {{ my_variable }}
-
+    
     # you can reference variables defined in the environment
-
+    
     \setp my_variable [my_variable, my_variable*2]
-
+    
     # prints [100, 200]
-
+    
     \print {{ my_variable }}
-
+    
     # all forms of python comprehensions are supported
     # such as list, dict, and set comprehensions
-
+    
     \setp my_variable [i for i in range(0,5)]
-
+    
     # prints [0, 1, 2, 3, 4]
-
+    
     \print {{ my_variable }}
-
+    
     # declare a literal string value
-
+    
     \setp my_variable "my string value"
-
+    
     # prints the string without quotes included, the string was parsed
-
+    
     \print {{ my_variable }}
-
+    
     # templates and environmental variable references
     # are also expanded in \setp values
-
+    
     \setp my_variable [my_variable, "{{ my_variable }}"]
-
+    
     # prints ["my string value", "my string value"]
-
+    
     \print {{ my_variable }}
-
+    
     # my_variable is a literal list so it can be
     # looped over with a jinja template continuation
-
+    
     {% for value in my_variable %}
         \print {{ value }}
     {% endfor %}
-
+    
     # indirect expansion is allowed
-
+    
     \set var_name template_variable
     \env ENV_VAR_NAMED=env_var_named
-
+    
     \setp {{ var_name }} "Hello!"
     \setp $ENV_VAR_NAMED [template_variable]
-
+    
     # prints "Hello!", ["Hello!"]
-
+    
     \print {{ template_variable }}
     \print {{ env_var_named }}
-
 
 Setting environmental variables, in depth
 -----------------------------------------
@@ -6962,50 +6934,48 @@ for debugging purposes.
 
 Indirect expansion is allowed just like with ``\set``, ``\sete``, and ``\setp``.
 
-
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
     #! dgenerate 4.5.1
-
+    
     \env MY_ENV_VAR=1 MY_ENV_VAR2=2
-
+    
     # prints 1 2
-
+    
     \print $MY_ENV_VAR $MY_ENV_VAR2
-
+    
     # indirect expansion is allowed
-
+    
     \set name env_var_name
     \set value Hello!
-
+    
     \set name_holder {{ name }}
-
+    
     \env {{ name_holder }}={{ value }}
-
+    
     # this treats the expansion of {{ name }} as an environmental variable name
-
+    
     \set output ${{ name }}
-
+    
     # prints Hello!
-
+    
     \print {{ output }}
-
+    
     # unset an environmental variable, the names
     # undergo expansion, and are undefined in order
-
+    
     \env NAME_HOLDER=MY_ENV_VAR2
-
+    
     \unset_env MY_ENV_VAR $NAME_HOLDER {{ name }} NAME_HOLDER
-
-
+    
+    
     # prints every defined environmental variable
     # we have undefined everything that we defined
     # above so the names from this script will not
     # be present
-
+    
     \env
-
 
 Globbing and path manipulation
 ------------------------------
@@ -7018,68 +6988,65 @@ globbing.
 
     #! /usr/bin/env dgenerate --file
     #! dgenerate 4.5.1
-
+    
     # globbing can be preformed via shell expansion or using
     # the glob module inside jinja templates
-
+    
     # note that shell globbing and home directory expansion
     # does not occur inside quoted strings
-
+    
     # \echo can be use to show the results of globbing that
-    # occurs during shell expansion. \print does not perform shell
-    # expansion nor does \set or \setp, all other directives do, as well
-    # as dgenerate invocations
-
+    # occurs during shell expansion, \print does not preform shell expansion
+    
     # shell globs which produce 0 files are considered an error
-
+    
     \echo ../media/*.png
-
+    
     \echo ~
-
+    
     # \sete can be used to set a template variable to the result
     # of one or more shell globs
-
+    
     \sete myfiles ../media/*.png
-
-
+    
+    
     # with Jinja2:
-
-
+    
+    
     # The most basic usage is full expansion of every file
-
+    
     \set myfiles {{ quote(glob.glob('../media/*.png')) }}
-
+    
     \print {{ myfiles }}
-
+    
     # If you have a LOT of files, you may want to
     # process them using an iterator like so
-
+    
     {% for file in glob.iglob('../media/*.png') %}
         \print {{ quote(file) }}
     {% endfor %}
-
+    
     # usage of os.path via path
-
+    
     \print {{ path.abspath('.') }}
-
+    
     # Simple inline usage
-
+    
     stabilityai/stable-diffusion-2-1
     --variant fp16
     --dtype float16
     --prompts "In the style of picaso"
     --image-seeds {{ quote(glob.glob('../media/*.png')) }}
     --output-path {{ quote(path.join(path.abspath('.'), 'output')) }}
-
+    
     # equivalent
-
+    
     stabilityai/stable-diffusion-2-1
     --variant fp16
     --dtype float16
     --prompts "In the style of picaso"
     --image-seeds ../media/*.png
     --output-path ./output
-
 
 The \\print and \\echo directive
 --------------------------------
@@ -7527,7 +7494,7 @@ An example for writing config directives can be found in the `writing_plugins/co
 
 Config template functions can also be implemented by plugins, see: `writing_plugins/template_function <https://github.com/Teriks/dgenerate/tree/v4.5.1/examples/writing_plugins/template_function>`_
 
-Currently the only internal directive that is implemented as a plugin is the ``\image_process`` directive, who's source file 
+Currently the only internal directive that is implemented as a plugin is the ``\image_process`` directive, who's source file
 `can be located here <https://github.com/Teriks/dgenerate/blob/v4.5.1/dgenerate/batchprocess/image_process_directive.py>`_.
 
 The source file for the ``\image_process`` directive is terse as most of it is implemented as reusable code.
@@ -7542,7 +7509,7 @@ Sub-command plugins
 -------------------
 
 Reference for writing sub-commands can be found in the `image-process <https://github.com/Teriks/dgenerate/blob/v4.5.1/dgenerate/subcommands/image_process.py>`_
-sub-command implementation, and a plugin skeleton file for sub-commands can be found in the 
+sub-command implementation, and a plugin skeleton file for sub-commands can be found in the
 `writing_plugins/sub_command <https://github.com/Teriks/dgenerate/tree/v4.5.1/examples/writing_plugins/sub_command>`_ example folder.
 
 ~~~~
@@ -7553,21 +7520,19 @@ Prompt weighter plugins
 
 Reference for writing prompt weighters can be found in the `CompelPromptWeighter <https://github.com/Teriks/dgenerate/blob/v4.5.1/dgenerate/promptweighters/compelpromptweighter.py>`_
 and `SdEmbedPromptWeighter <https://github.com/Teriks/dgenerate/blob/v4.5.1/dgenerate/promptweighters/sdembedpromptweighter.py>`_ internal prompt weighter implementations.
- 
-A plugin skeleton file for prompt weighters can be found in the 
+
+A plugin skeleton file for prompt weighters can be found in the
 `writing_plugins/prompt_weighter <https://github.com/Teriks/dgenerate/tree/v4.5.1/examples/writing_plugins/prompt_weighter>`_
 example folder.
 
 ~~~~
 
-
-Auth Tokens (Environment)
-=========================
+Auth Tokens
+===========
 
 dgenerate will automatically append your CivitAI token to CivitAI API links if you set the environmental variable ``CIVIT_AI_TOKEN``
 
 For Hugging Face hub downloads setting ``HF_TOKEN`` is sufficient if you wish to avoid using ``--auth-token`` or related ``token`` URI arguments.
-
 
 File Cache Control
 ==================

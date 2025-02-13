@@ -1,0 +1,10 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 4.5.1
+
+# Invocation will proceed as normal
+
+stabilityai/stable-diffusion-2-1 --prompts "a man walking on the moon without a space suit"
+
+# Print all set template variables
+
+\templates_help
