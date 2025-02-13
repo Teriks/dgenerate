@@ -126,6 +126,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v4.5.1/>`_.
     * `Prompt Weighting and Enhancement`_
         * `The compel prompt weighter`_
         * `The sd-embed prompt weighter`_
+        * `The llm4gen prompt weighter`_
     * `Utilizing CivitAI links and Other Hosted Models`_
     * `Specifying Generation Batch Size`_
     * `Batching Input Images and Inpaint Masks`_
@@ -219,20 +220,21 @@ Help Output
                      [--sdxl-refiner-negative-crops-coords-top-left COORD [COORD ...]] [-hnf FLOAT [FLOAT ...]]
                      [-ri INT [INT ...]] [-rg FLOAT [FLOAT ...]] [-rgr FLOAT [FLOAT ...]] [-sc] [-d DEVICE]
                      [-t DTYPE] [-s SIZE] [-na] [-o PATH] [-op PREFIX] [-ox] [-oc] [-om]
-                     [-pw PROMPT_WEIGHTER_URI] [--prompt-weighter-help [PROMPT_WEIGHTER_NAMES ...]]
-                     [-p PROMPT [PROMPT ...]] [--sd3-max-sequence-length INTEGER]
-                     [--sd3-second-prompts PROMPT [PROMPT ...]] [--sd3-third-prompts PROMPT [PROMPT ...]]
-                     [--flux-second-prompts PROMPT [PROMPT ...]] [--flux-max-sequence-length INTEGER]
-                     [-cs INTEGER [INTEGER ...]] [-se SEED [SEED ...]] [-sei] [-gse COUNT] [-af FORMAT]
-                     [-if FORMAT] [-nf] [-fs FRAME_NUMBER] [-fe FRAME_NUMBER] [-is SEED [SEED ...]]
-                     [-sip PROCESSOR_URI [PROCESSOR_URI ...]] [-mip PROCESSOR_URI [PROCESSOR_URI ...]]
-                     [-cip PROCESSOR_URI [PROCESSOR_URI ...]] [--image-processor-help [PROCESSOR_NAME ...]]
-                     [-pp PROCESSOR_URI [PROCESSOR_URI ...]] [-iss FLOAT [FLOAT ...] | -uns INTEGER
-                     [INTEGER ...]] [-gs FLOAT [FLOAT ...]] [-igs FLOAT [FLOAT ...]] [-gr FLOAT [FLOAT ...]]
-                     [-ifs INTEGER [INTEGER ...]] [-mc EXPR [EXPR ...]] [-pmc EXPR [EXPR ...]]
-                     [-umc EXPR [EXPR ...]] [-vmc EXPR [EXPR ...]] [-cmc EXPR [EXPR ...]] [-tmc EXPR [EXPR ...]]
-                     [-iemc EXPR [EXPR ...]] [-amc EXPR [EXPR ...]] [-tfmc EXPR [EXPR ...]]
-                     [-ipmc EXPR [EXPR ...]] [-ipcc EXPR [EXPR ...]]
+                     [-pw PROMPT_WEIGHTER_URI] [-rpw PROMPT_WEIGHTER_URI] [-dpw PROMPT_WEIGHTER_URI]
+                     [--prompt-weighter-help [PROMPT_WEIGHTER_NAMES ...]] [-p PROMPT [PROMPT ...]]
+                     [--sd3-max-sequence-length INTEGER] [--sd3-second-prompts PROMPT [PROMPT ...]]
+                     [--sd3-third-prompts PROMPT [PROMPT ...]] [--flux-second-prompts PROMPT [PROMPT ...]]
+                     [--flux-max-sequence-length INTEGER] [-cs INTEGER [INTEGER ...]] [-se SEED [SEED ...]]
+                     [-sei] [-gse COUNT] [-af FORMAT] [-if FORMAT] [-nf] [-fs FRAME_NUMBER] [-fe FRAME_NUMBER]
+                     [-is SEED [SEED ...]] [-sip PROCESSOR_URI [PROCESSOR_URI ...]]
+                     [-mip PROCESSOR_URI [PROCESSOR_URI ...]] [-cip PROCESSOR_URI [PROCESSOR_URI ...]]
+                     [--image-processor-help [PROCESSOR_NAME ...]] [-pp PROCESSOR_URI [PROCESSOR_URI ...]]
+                     [-iss FLOAT [FLOAT ...] | -uns INTEGER [INTEGER ...]] [-gs FLOAT [FLOAT ...]]
+                     [-igs FLOAT [FLOAT ...]] [-gr FLOAT [FLOAT ...]] [-ifs INTEGER [INTEGER ...]]
+                     [-mc EXPR [EXPR ...]] [-pmc EXPR [EXPR ...]] [-umc EXPR [EXPR ...]] [-vmc EXPR [EXPR ...]]
+                     [-cmc EXPR [EXPR ...]] [-tmc EXPR [EXPR ...]] [-iemc EXPR [EXPR ...]]
+                     [-amc EXPR [EXPR ...]] [-tfmc EXPR [EXPR ...]] [-ipmc EXPR [EXPR ...]]
+                     [-ipcc EXPR [EXPR ...]]
                      model_path
     
     Batch image generation and manipulation tool supporting Stable Diffusion and related techniques /
@@ -1344,6 +1346,12 @@ Help Output
             weighter-help "name" to see comprehensive documentation for a specific prompt weighter
             implementation.
             ---------------
+      -rpw PROMPT_WEIGHTER_URI, --sdxl-refiner-prompt-weighter PROMPT_WEIGHTER_URI
+            --prompt-weighter URI value that that applies to to --sdxl-refiner.
+            -------------------------------------------------------------------
+      -dpw PROMPT_WEIGHTER_URI, --s-cascade-decoder-prompt-weighter PROMPT_WEIGHTER_URI
+            --prompt-weighter URI value that that applies to to --s-cascade-decoder.
+            ------------------------------------------------------------------------
       --prompt-weighter-help [PROMPT_WEIGHTER_NAMES ...]
             Use this option alone (or with --plugin-modules) and no model specification in order to list
             available prompt weighter names. Specifying one or more prompt weighter names after this option will
@@ -4337,8 +4345,21 @@ and specific documentation for a prompt weighter can be printed py passing its n
 You may also use the config directive ``\prompt_weighter_help`` inside of a config, or
 more likely when you are working inside the `Console UI`_ shell.
 
-There are currently two prompt weighter implementations, the ``compel`` prompt weighter, and
-the ``sd-embed`` prompt weighter.
+There are currently three prompt weighter implementations, the ``compel`` prompt weighter,
+the ``sd-embed`` prompt weighter, and the ``llm4gen`` prompt weighter.
+
+Prompt weighters can be specified via ``--prompt-weighter`` or inside your prompt argument using ``<weighter: (uri here)>``
+anywhere in the prompt.  A prompt weighter specified in the prompt text applies the prompt weighter to just
+that prompt alone (both negative and positive prompts).
+
+You can specify different prompt weighters for the SDXL Refiner or Stable Cascade
+decoder using ``--sdxl-refiner-prompt-weighter`` and ``-s-cascade-decoder-prompt-weighter``, or in the prompt
+arguments ``--sdxl-refiner-prompts`` and ``--s-cascade-decoder-prompts``.
+
+Specifying ``<weighter: (uri here)>`` in a ``--prompts`` value will default
+the secondary models to the same prompt weighter unless you specify otherwise.
+Either by using ``<weighter: (uri here)>`` in their respective prompt arguments,
+or in the respective global prompt-weighter arguments.
 
 
 The compel prompt weighter
@@ -4369,38 +4390,38 @@ features not mentioned in this documentation, that are worth reading about in th
     compel:
         arguments:
             syntax: str = "compel"
-
-        Implements prompt weighting syntax for Stable Diffusion 1/2 and Stable Diffusion XL using
-        compel. The default syntax is "compel" which is analogous to the syntax used by InvokeAI.
-
-        Specifying the syntax "sdwui" will translate your prompt from Stable Diffusion Web UI syntax
-        into compel / InvokeAI syntax before generating the prompt embeddings.
-
-        If you wish to use prompt syntax for weighting tokens that is similar to ComfyUI, Automatic1111,
-        or CivitAI for example, use: 'compel;syntax=sdwui'
-
-        The underlying weighting behavior for tokens is not exactly the same as other software that uses
-        the more common "sdwui" syntax, so your prompt may need adjusting if you are reusing a prompt
-        from those other pieces of software.
-
+    
+        Implements prompt weighting syntax for Stable Diffusion 1/2 and Stable Diffusion XL using compel. The
+        default syntax is "compel" which is analogous to the syntax used by InvokeAI.
+    
+        Specifying the syntax "sdwui" will translate your prompt from Stable Diffusion Web UI syntax into compel /
+        InvokeAI syntax before generating the prompt embeddings.
+    
+        If you wish to use prompt syntax for weighting tokens that is similar to ComfyUI, Automatic1111, or
+        CivitAI for example, use: 'compel;syntax=sdwui'
+    
+        The underlying weighting behavior for tokens is not exactly the same as other software that uses the more
+        common "sdwui" syntax, so your prompt may need adjusting if you are reusing a prompt from those other
+        pieces of software.
+    
         You can read about compel here: https://github.com/damian0815/compel
-
+    
         And InvokeAI here: https://github.com/invoke-ai/InvokeAI
-
+    
         This prompt weighter supports the model types:
-
+    
         --model-type torch
         --model-type torch-pix2pix
         --model-type torch-upscaler-x4
         --model-type torch-sdxl
         --model-type torch-sdxl-pix2pix
         --model-type torch-s-cascade
-
+    
         The secondary prompt option for SDXL --sdxl-second-prompts is supported by this prompt weighter
-        implementation. However, --sdxl-refiner-second-prompts is not supported and will be ignored
-        with a warning message.
-
-    ====================================================================================================
+        implementation. However, --sdxl-refiner-second-prompts is not supported and will be ignored with a warning
+        message.
+    
+    ==============================================================================================================
 
 
 You can enable the ``compel`` prompt weighter by specifying it with the ``--prompt-weighter`` argument.
@@ -4504,23 +4525,23 @@ as the ``compel`` prompt weighter currently does not.
 .. code-block:: text
 
     sd-embed:
-
-        Implements prompt weighting syntax for Stable Diffusion 1/2, Stable Diffusion XL, and Stable
-        Diffusion 3, and Flux using sd_embed.
-
+    
+        Implements prompt weighting syntax for Stable Diffusion 1/2, Stable Diffusion XL, and Stable Diffusion 3,
+        and Flux using sd_embed.
+    
         sd_embed uses a Stable Diffusion Web UI compatible prompt syntax.
-
+    
         See: https://github.com/xhinker/sd_embed
-
+    
         @misc{sd_embed_2024,
           author       = {Shudong Zhu(Andrew Zhu)},
           title        = {Long Prompt Weighted Stable Diffusion Embedding},
           howpublished = {\url{https://github.com/xhinker/sd_embed}},
           year         = {2024},
         }
-
+    
         This prompt weighter supports the model types:
-
+    
         --model-type torch
         --model-type torch-pix2pix
         --model-type torch-upscaler-x4
@@ -4529,20 +4550,19 @@ as the ``compel`` prompt weighter currently does not.
         --model-type torch-s-cascade
         --model-type torch-sd3
         --model-type torch-flux
-
+    
         The secondary prompt option for SDXL --sdxl-second-prompts is supported by this prompt weighter
-        implementation. However, --sdxl-refiner-second-prompts is not supported and will be ignored with
-        a warning message.
-
-        The secondary prompt option for SD3 --sd3-second-prompts is not supported by this prompt
-        weighter implementation. Neither is --sd3-third-prompts. The prompts from these arguments will
-        be ignored.
-
+        implementation. However, --sdxl-refiner-second-prompts is not supported and will be ignored with a warning
+        message.
+    
+        The secondary prompt option for SD3 --sd3-second-prompts is not supported by this prompt weighter
+        implementation. Neither is --sd3-third-prompts. The prompts from these arguments will be ignored.
+    
         The secondary prompt option for Flux --flux-second-prompts is supported by this prompt weighter.
-
+    
         Flux does not support negative prompting in either prompt.
-
-    ====================================================================================================
+    
+    ==============================================================================================================
 
 
 You can enable the ``sd-embed`` prompt weighter by specifying it with the ``--prompt-weighter`` argument.
@@ -4568,6 +4588,79 @@ You can enable the ``sd-embed`` prompt weighter by specifying it with the ``--pr
     --prompt-weighter sd-embed \
     --auth-token $HF_TOKEN \
     --prompts "a (man:1.2) standing on the (beach:1.2) looking out in to the water during a (sunset)"
+
+
+The llm4gen prompt weighter
+---------------------------
+
+The llm4gen prompt weighter is designed to enhance semantic understanding of prompts with Stable Diffusion 1.5 models specifically.
+
+It uses a T5 RankGen encoder model and a translation model (CAM, cross adapter model) to extract a representation of a prompt using
+a combination of the LLM model (T5) and the CLIP encoder model that is normally used with Stable Diffusion.
+
+See: `LLM4GEN <https://github.com/YUHANG-Ma/LLM4GEN>`_
+
+.. code-block:: bash
+
+    #!/usr/bin/env bash
+
+    # print out the documentation for the llm4gen prompt weighter
+
+    dgenerate --prompt-weighter-help llm4gen
+
+
+.. code-block:: text
+
+    llm4gen:
+        arguments:
+            encoder: str = "kalpeshk2011/rankgen-t5-xl-all"
+            projector: str = "Shui-VL/LLM4GEN-models"
+            projector-subfolder: Optional[str] = None
+            projector-revision: Optional[str] = None
+            projector-weight-name: str = "projector.pth"
+            local-files-only: bool = False
+            token: Optional[str] = None
+    
+        LLM4GEN prompt weighter specifically for Stable Diffusion 1.5, See: https://github.com/YUHANG-Ma/LLM4GEN
+    
+        Stable Diffusion 2.* is not supported.
+    
+        This prompt weighter supports the model types:
+    
+        --model-type torch
+        --model-type torch-pix2pix
+        --model-type torch-upscaler-x4
+    
+        The "encoder" argument specifies the T5 encoder model (Rank generation model).
+    
+        The encoder specified must be one of:
+    
+        * kalpeshk2011/rankgen-t5-xl-all
+        * kalpeshk2011/rankgen-t5-xl-pg19
+    
+        The "projector" argument specifies a Hugging Face repo or file path to the LLM4GEN projector (CAM) model.
+    
+        The "projector_revision" argument specifies the revision of the Hugging Face projector repository, for
+        example "main".
+    
+        The "projector_subfolder" argument specifies the subfolder for the projector file in a Hugging Face
+        repository.
+    
+        The "projector_weight_name" argument specifies the weight name of the projector file in a Hugging Face
+        repository.
+    
+        The "local_files_only" argument specifies that no attempt should be made to download models from the
+        internet, only look for cached models on disk.
+    
+        The "token" argument allows you to explicitly specify a Hugging Face auth token for downloads.
+    
+        @misc{liu2024llm4genleveragingsemanticrepresentation,
+          title={LLM4GEN: Leveraging Semantic Representation of LLMs for Text-to-Image Generation},
+          author={Mushui Liu and Yuhang Ma and Xinfeng Zhang and Yang Zhen and Zeng Zhao and Zhipeng Hu and Bai Liu and Changjie Fan},
+          year={2024},
+        }
+    
+    ==============================================================================================================
 
 Utilizing CivitAI links and Other Hosted Models
 ===============================================
@@ -6206,6 +6299,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_s_cascade_decoder_inference_steps"
             Type: typing.Optional[collections.abc.Sequence[int]]
             Value: []
+        Name: "last_s_cascade_decoder_prompt_weighter_uri"
+            Type: typing.Optional[str]
+            Value: None
         Name: "last_s_cascade_decoder_prompts"
             Type: typing.Optional[collections.abc.Sequence[dgenerate.prompt.Prompt]]
             Value: []
@@ -6308,6 +6404,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_sdxl_refiner_pag_scales"
             Type: typing.Optional[collections.abc.Sequence[float]]
             Value: []
+        Name: "last_sdxl_refiner_prompt_weighter_uri"
+            Type: typing.Optional[str]
+            Value: None
         Name: "last_sdxl_refiner_prompts"
             Type: typing.Optional[collections.abc.Sequence[dgenerate.prompt.Prompt]]
             Value: []
@@ -6352,7 +6451,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [32112083752032]
+            Value: [32553883108508]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

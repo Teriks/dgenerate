@@ -2125,6 +2125,24 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-rpw', '--sdxl-refiner-prompt-weighter',
+            metavar='PROMPT_WEIGHTER_URI', dest='sdxl_refiner_prompt_weighter_uri', action='store',
+            default=None, type=_type_prompt_weighter,
+            help='--prompt-weighter URI value that that applies to to --sdxl-refiner.'
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-dpw', '--s-cascade-decoder-prompt-weighter',
+            metavar='PROMPT_WEIGHTER_URI', dest='s_cascade_decoder_prompt_weighter_uri', action='store',
+            default=None, type=_type_prompt_weighter,
+            help='--prompt-weighter URI value that that applies to to --s-cascade-decoder.'
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
             '--prompt-weighter-help', metavar='PROMPT_WEIGHTER_NAMES', dest=None, nargs='*',
             help="""Use this option alone (or with --plugin-modules) and no model specification
                  in order to list available prompt weighter names. Specifying one or more

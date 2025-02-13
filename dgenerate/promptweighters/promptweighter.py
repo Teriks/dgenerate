@@ -30,18 +30,16 @@ class PromptWeighter(_plugin.Plugin):
     """
 
     # you cannot specify these via a URI
-    HIDE_ARGS = ['model-type', 'pipeline-type', 'dtype']
+    HIDE_ARGS = ['model-type', 'dtype']
 
     def __init__(self,
                  loaded_by_name: str,
                  model_type: _enums.ModelType,
-                 pipeline_type: _enums.PipelineType,
                  dtype: _enums.DataType,
                  **kwargs):
         """
         :param loaded_by_name: The name the prompt weighter was loaded by
         :param model_type: Model type enum :py:class:`dgenerate.ModelType`
-        :param pipeline_type: Pipeline type enum :py:class:`dgenerate.PipelineType`
         :param dtype: Data type enum :py:class:`dgenerate.DataType`
         :param kwargs: child class forwarded arguments
         """
@@ -50,7 +48,6 @@ class PromptWeighter(_plugin.Plugin):
                          **kwargs)
 
         self._model_type = model_type
-        self._pipeline_type = pipeline_type
         self._dtype = dtype
 
     @property
@@ -60,10 +57,6 @@ class PromptWeighter(_plugin.Plugin):
     @property
     def model_type(self) -> _enums.ModelType:
         return self._model_type
-
-    @property
-    def pipeline_type(self) -> _enums.PipelineType:
-        return self._pipeline_type
 
     def translate_to_embeds(self,
                             pipeline,

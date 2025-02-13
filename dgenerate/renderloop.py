@@ -910,7 +910,6 @@ class RenderLoop:
             model_sequential_offload=self.config.model_sequential_offload,
             sdxl_refiner_cpu_offload=bool(self.config.sdxl_refiner_cpu_offload),
             sdxl_refiner_sequential_offload=bool(self.config.sdxl_refiner_sequential_offload),
-            prompt_weighter_uri=self.config.prompt_weighter_uri,
             prompt_weighter_loader=self.prompt_weighter_loader,
             adetailer_detector_uris=self.config.adetailer_detector_uris,
             adetailer_crop_control_image=bool(self.config.adetailer_crop_control_image),

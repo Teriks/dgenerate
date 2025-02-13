@@ -328,8 +328,8 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
 
         if any(a in forbidden_call_args for a in args.keys()):
             raise _exceptions.PromptWeightingUnsupported(
-                f'Prompt weighting not supported for --model-type: {_enums.get_model_type_string(self.model_type)}, '
-                f'in mode: {_enums.get_pipeline_type_string(self.pipeline_type)}')
+                f'Prompt weighting not supported for --model-type: '
+                f'{_enums.get_model_type_string(self.model_type)} with current configuration.')
 
         if 'clip_skip' in args:
             raise _exceptions.PromptWeightingUnsupported(
@@ -341,8 +341,8 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
             # pipeline does not support passing prompt embeddings directly
 
             raise _exceptions.PromptWeightingUnsupported(
-                f'Prompt weighting not supported for --model-type: {_enums.get_model_type_string(self.model_type)}, '
-                f'in mode: {_enums.get_pipeline_type_string(self.pipeline_type)}')
+                f'Prompt weighting not supported for --model-type: '
+                f'{_enums.get_model_type_string(self.model_type)} with current configuration.')
 
         if not pipeline.__class__.__name__.startswith('StableDiffusion'):
             raise _exceptions.PromptWeightingUnsupported(

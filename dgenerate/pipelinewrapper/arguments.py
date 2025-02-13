@@ -38,6 +38,29 @@ class DiffusionArguments(_types.SetFromMixin):
     Primary prompt
     """
 
+    prompt_weighter_uri: _types.OptionalUri = None
+    """
+    Default prompt weighter plugin to use for all models.
+    """
+
+    sdxl_refiner_prompt_weighter_uri: _types.OptionalUri = None
+    """
+    The URI of a prompt-weighter implementation supported by dgenerate to use with the SDXL refiner.
+    
+    Defaults to :py:attr:`DiffusionArguments.prompt_weighter_uri` if not specified.
+    
+    This corresponds to the ``--sdxl-refiner-prompt-weighter`` argument of the dgenerate command line tool.
+    """
+
+    s_cascade_decoder_prompt_weighter_uri: _types.OptionalUri = None
+    """
+    The URI of a prompt-weighter implementation supported by dgenerate to use with the Stable Cascade decoder.
+    
+    Defaults to :py:attr:`DiffusionArguments.prompt_weighter_uri` if not specified.
+    
+    This corresponds to the ``--s-cascade-prompt-weighter`` argument of the dgenerate command line tool.
+    """
+
     images: _types.Images | None = None
     """
     Images for img2img operations, or the base for inpainting operations.
@@ -561,9 +584,12 @@ class DiffusionArguments(_types.SetFromMixin):
         return _enums.PipelineType.TXT2IMG
 
     @staticmethod
-    def _describe_prompt(prompt_format, prompt: _prompt.Prompt, pos_title, neg_title):
+    def _describe_prompt(prompt_format, prompt: _prompt.Prompt, pos_title, neg_title, weighter_title=None):
         if prompt is None:
             return
+
+        if weighter_title and prompt.weighter:
+            prompt_format.append(f'{weighter_title}: "{prompt.weighter}"')
 
         prompt_wrap_width = _textprocessing.long_text_wrap_width()
         prompt_val = prompt.positive
@@ -597,7 +623,8 @@ class DiffusionArguments(_types.SetFromMixin):
         DiffusionArguments._describe_prompt(
             prompt_format, self.prompt,
             "Prompt",
-            "Negative Prompt")
+            "Negative Prompt",
+            "Prompt Weighter")
 
         DiffusionArguments._describe_prompt(
             prompt_format, self.sd3_second_prompt,
@@ -617,7 +644,8 @@ class DiffusionArguments(_types.SetFromMixin):
         DiffusionArguments._describe_prompt(
             prompt_format, self.s_cascade_decoder_prompt,
             "Stable Cascade Decoder Prompt",
-            "Stable Cascade Decoder Negative Prompt")
+            "Stable Cascade Decoder Negative Prompt"
+            "Stable Cascade Decoder Prompt Weighter")
 
         DiffusionArguments._describe_prompt(
             prompt_format, self.sdxl_second_prompt,
@@ -627,7 +655,8 @@ class DiffusionArguments(_types.SetFromMixin):
         DiffusionArguments._describe_prompt(
             prompt_format, self.sdxl_refiner_prompt,
             "SDXL Refiner Prompt",
-            "SDXL Refiner Negative Prompt")
+            "SDXL Refiner Negative Prompt",
+            "SDXL Refiner Prompt Weighter")
 
         DiffusionArguments._describe_prompt(
             prompt_format, self.sdxl_refiner_second_prompt,
@@ -683,6 +712,18 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.adetailer_mask_blur, "Adetailer Mask Blur:"),
             (self.adetailer_mask_dilation, "Adetailer Mask Dilation:")
         ]
+
+        if not self.prompt.weighter:
+            descriptions.append(
+                (self.prompt_weighter_uri, 'Prompt Weighter'))
+
+        if not self.sdxl_refiner_prompt or not self.sdxl_refiner_prompt.weighter:
+            descriptions.append(
+                (self.sdxl_refiner_prompt_weighter_uri, 'SDXL Refiner Prompt Weighter'))
+
+        if not self.s_cascade_decoder_prompt or not self.s_cascade_decoder_prompt.weighter:
+            descriptions.append(
+                (self.s_cascade_decoder_prompt_weighter_uri, 'Stable Cascade Decoder Prompt Weighter'))
 
         for prompt_val, desc in descriptions:
             if prompt_val is not None:

@@ -23,6 +23,8 @@ __doc__ = """
 Prompt representation object / prompt parsing.
 """
 
+import re
+
 
 class Prompt:
     """
@@ -32,15 +34,28 @@ class Prompt:
     def __init__(self,
                  positive: str | None = None,
                  negative: str | None = None,
-                 delimiter: str = ';'):
+                 delimiter: str = ';',
+                 weighter: str | None = None):
         """
-        :param positive: positive prompt component
-        :param negative: negative prompt component
-        :param delimiter: delimiter for stringification
+        :param positive: positive prompt component.
+        :param negative: negative prompt component.
+        :param delimiter: delimiter for stringification.
+        :param weighter: ``--prompt-weighter`` plugin URI.
         """
+
+        # prevent circular import
+        import dgenerate.textprocessing as _textprocessing
+        import dgenerate.promptweighters as _promptweighters
+
+        if weighter is not None and not _promptweighters.prompt_weighter_exists(weighter):
+            raise ValueError(
+                f'Unknown prompt weighter implementation: {_promptweighters.prompt_weighter_name_from_uri(weighter)}, '
+                f'must be one of: {_textprocessing.oxford_comma(_promptweighters.prompt_weighter_names(), "or")}')
+
         self.positive = positive
         self.negative = negative
         self.delimiter = delimiter
+        self.weighter = weighter
 
     def __str__(self):
         if self.positive and self.negative:
@@ -68,6 +83,15 @@ class Prompt:
         if value is None:
             raise ValueError('Input string may not be None.')
 
+        weighter = None
+
+        def find_weighter(match):
+            nonlocal weighter
+            weighter = match.group(1)
+            return ' '
+
+        value = re.sub(r"\s*<weighter:\s*(.*?)\s*>\s*", find_weighter, value)
+
         parse = value.split(delimiter, 1)
         if len(parse) == 1:
             positive = parse[0].strip()
@@ -81,4 +105,5 @@ class Prompt:
 
         return Prompt(positive=positive,
                       negative=negative,
-                      delimiter=delimiter)
+                      delimiter=delimiter,
+                      weighter=weighter)
