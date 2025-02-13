@@ -58,9 +58,7 @@ class RankGenEncoder:
     def __init__(self, model_path, model_size=None, cache_dir=None, local_files_only=False, use_auth_token=None):
         assert model_path in [
             "kalpeshk2011/rankgen-t5-xl-all",
-            "kalpeshk2011/rankgen-t5-xl-pg19",
-            "kalpeshk2011/rankgen-t5-base-all",
-            "kalpeshk2011/rankgen-t5-large-all"
+            "kalpeshk2011/rankgen-t5-xl-pg19"
         ]
 
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -212,8 +210,6 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
     NOWRAP!
     * kalpeshk2011/rankgen-t5-xl-all
     * kalpeshk2011/rankgen-t5-xl-pg19
-    * kalpeshk2011/rankgen-t5-base-all
-    * kalpeshk2011/rankgen-t5-large-all
 
     The "projector" argument specifies a Hugging Face repo or file path to the LLM4GEN projector (CAM) model.
 
@@ -261,9 +257,7 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
 
         valid_encoders = [
             'kalpeshk2011/rankgen-t5-xl-all',
-            'kalpeshk2011/rankgen-t5-xl-pg19',
-            'kalpeshk2011/rankgen-t5-base-all',
-            'kalpeshk2011/rankgen-t5-large-all'
+            'kalpeshk2011/rankgen-t5-xl-pg19'
         ]
 
         if encoder not in valid_encoders:
