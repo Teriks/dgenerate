@@ -720,7 +720,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     This corresponds to the ``--output-path`` argument of the dgenerate command line tool.
     """
 
-    output_prefix: typing.Optional[str] = None
+    output_prefix: _types.OptionalString = None
     """
     Output filename prefix, add an optional prefix string to all written files.
     This corresponds to the ``--output-prefix`` argument of the dgenerate command line tool.
@@ -781,7 +781,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     This corresponds to the ``--frame-end`` argument of the dgenerate command line tool.
     """
 
-    auth_token: typing.Optional[str] = None
+    auth_token: _types.OptionalString = None
     """
     Optional huggingface API token which will allow the download of restricted repositories 
     that your huggingface account has been granted access to.
