@@ -86,9 +86,19 @@ def _type_dtype(dtype):
         return _pipelinewrapper.get_data_type_enum(dtype)
 
 
-def _type_prompts(prompt):
+def _type_main_prompts(prompt):
     try:
-        return _prompt.Prompt.parse(prompt)
+        prompt = _prompt.Prompt.parse(prompt)
+        prompt.set_embedded_args_on(_pipelinewrapper.DiffusionArguments, validate_only=True)
+        return prompt
+    except (ValueError, _prompt.PromptEmbeddedArgumentError) as e:
+        raise argparse.ArgumentTypeError(
+            f'Prompt parse error: {str(e).strip()}')
+
+
+def _type_secondary_prompts(prompt):
+    try:
+        return _prompt.Prompt.parse(prompt, parse_embedded_args=False)
     except ValueError as e:
         raise argparse.ArgumentTypeError(
             f'Prompt parse error: {str(e).strip()}')
@@ -1613,7 +1623,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     actions.append(
         parser.add_argument(
             '--s-cascade-decoder-prompts', nargs='+', action='store', metavar="PROMPT", default=None,
-            type=_type_prompts,
+            type=_type_secondary_prompts,
             help="""One or more prompts to try with the Stable Cascade decoder model,
                     by default the decoder model gets the primary prompt, this argument
                     overrides that with a prompt of your choosing. The negative prompt
@@ -1744,7 +1754,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--sdxl-second-prompts', nargs='+', action='store', metavar="PROMPT", default=None, type=_type_prompts,
+            '--sdxl-second-prompts', nargs='+', action='store', metavar="PROMPT", default=None, type=_type_secondary_prompts,
             help="""One or more secondary prompts to try using SDXL's secondary text encoder.
                     By default the model is passed the primary prompt for this value, this option
                     allows you to choose a different prompt. The negative prompt component can be
@@ -1856,7 +1866,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--sdxl-refiner-prompts', nargs='+', action='store', metavar="PROMPT", default=None, type=_type_prompts,
+            '--sdxl-refiner-prompts', nargs='+', action='store', metavar="PROMPT", default=None, type=_type_secondary_prompts,
             help="""One or more prompts to try with the SDXL refiner model,
                     by default the refiner model gets the primary prompt, this argument
                     overrides that with a prompt of your choosing. The negative prompt
@@ -1878,7 +1888,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     actions.append(
         parser.add_argument(
             '--sdxl-refiner-second-prompts', nargs='+', action='store', metavar="PROMPT", default=None,
-            type=_type_prompts,
+            type=_type_secondary_prompts,
             help="""One or more prompts to try with the SDXL refiner models secondary
                     text encoder, by default the refiner model gets the primary prompt passed
                     to its second text encoder, this argument overrides that with a prompt
@@ -2155,7 +2165,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     actions.append(
         parser.add_argument(
             '-p', '--prompts', nargs='+', action='store', metavar="PROMPT", default=[_prompt.Prompt()],
-            type=_type_prompts,
+            type=_type_main_prompts,
             help="""One or more prompts to try, an image group is generated for each prompt,
                     prompt data is split by ; (semi-colon). The first value is the positive
                     text influence, things you want to see. The Second value is negative
@@ -2177,7 +2187,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--sd3-second-prompts', nargs='+', action='store', metavar="PROMPT", default=None, type=_type_prompts,
+            '--sd3-second-prompts', nargs='+', action='store', metavar="PROMPT", default=None, type=_type_secondary_prompts,
             help="""One or more secondary prompts to try using the torch-sd3 (Stable Diffusion 3) 
                     secondary text encoder. By default the model is passed the primary prompt for this value,
                     this option allows you to choose a different prompt. The negative prompt component can be
@@ -2187,7 +2197,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--sd3-third-prompts', nargs='+', action='store', metavar="PROMPT", default=None, type=_type_prompts,
+            '--sd3-third-prompts', nargs='+', action='store', metavar="PROMPT", default=None, type=_type_secondary_prompts,
             help="""One or more tertiary prompts to try using the torch-sd3 (Stable Diffusion 3) 
                     tertiary (T5) text encoder. By default the model is passed the primary prompt for this value,
                     this option allows you to choose a different prompt. The negative prompt component can be
@@ -2197,7 +2207,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--flux-second-prompts', nargs='+', action='store', metavar="PROMPT", default=None, type=_type_prompts,
+            '--flux-second-prompts', nargs='+', action='store', metavar="PROMPT", default=None, type=_type_secondary_prompts,
             help="""One or more secondary prompts to try using the torch-flux (Flux) 
                     secondary (T5) text encoder. By default the model is passed the primary prompt for this value,
                     this option allows you to choose a different prompt."""

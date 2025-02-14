@@ -61,7 +61,7 @@ class Prompt:
 
         if weighter is not None and not _promptweighters.prompt_weighter_exists(weighter):
             raise PromptEmbeddedArgumentError(
-                f'Unknown prompt weighter implementation: {_promptweighters.prompt_weighter_name_from_uri(weighter)}, '
+                f'Unknown prompt "weighter" implementation: {_promptweighters.prompt_weighter_name_from_uri(weighter)}, '
                 f'must be one of: {_textprocessing.oxford_comma(_promptweighters.prompt_weighter_names(), "or")}')
 
         self.positive = positive
@@ -88,7 +88,8 @@ class Prompt:
     def set_embedded_args_on(
             self,
             on_object: typing.Any,
-            forbidden_checker: typing.Callable[[str, typing.Any], bool] = None
+            forbidden_checker: typing.Callable[[str, typing.Any], bool] = None,
+            validate_only: bool = False
     ):
         hints = typing.get_type_hints(on_object)
 
@@ -152,7 +153,8 @@ class Prompt:
                         f'argument: {name}, value: {value}'
                     )
 
-                setattr(on_object, name, value)
+                if not validate_only:
+                    setattr(on_object, name, value)
             else:
                 raise PromptEmbeddedArgumentError(
                     f'Unknown embedded prompt argument: {name}'
@@ -172,12 +174,13 @@ class Prompt:
         return re.sub(r"\s*<\s*([a-zA-Z_-][a-zA-Z0-9_-]+)\s*:\s*(.*?)\s*>\s*", find_arg, value), args
 
     @staticmethod
-    def parse(value: str, delimiter=';') -> 'Prompt':
+    def parse(value: str, delimiter=';', parse_embedded_args: bool = True) -> 'Prompt':
         """
         Parse the positive and negative prompt from a string and return a prompt object.
 
         :param value: the string
         :param delimiter: The prompt delimiter character
+        :param parse_embedded_args: parse embedded args? ``< arg: value >``
 
         :raise ValueError: if value is ``None``
 
@@ -186,10 +189,11 @@ class Prompt:
         if value is None:
             raise ValueError('Input string may not be None.')
 
-        value, args = Prompt._get_embeded_args(value)
-        weighter = args.get('weighter', None)
-        if weighter is not None:
-            args.pop('weighter')
+        if parse_embedded_args:
+            value, args = Prompt._get_embeded_args(value)
+            weighter = args.get('weighter', None)
+            if weighter is not None:
+                args.pop('weighter')
 
         parse = value.split(delimiter, 1)
         if len(parse) == 1:
