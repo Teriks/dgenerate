@@ -26,10 +26,7 @@ import os.path
 import traceback
 import types
 import typing
-
 import PIL.Image
-
-import dgenerate.prompt as _prompt
 
 __doc__ = """
 Commonly used static type definitions and utilities for introspecting on objects, functions, types, etc.
@@ -41,6 +38,11 @@ Name = str
 
 Size = tuple[int, int]
 Sizes = collections.abc.Sequence[Size]
+
+Padding = int | tuple[int, int] | tuple[int, int, int, int]
+Paddings = collections.abc.Sequence[Padding]
+OptionalPadding = typing.Optional[Padding]
+OptionalPaddings = typing.Optional[Paddings]
 
 OptionalSize = typing.Optional[Size]
 OptionalSizes = typing.Optional[Sizes]
@@ -78,16 +80,15 @@ OptionalFloats = typing.Optional[Floats]
 
 Version = tuple[int, int, int]
 
-OptionalPrompt = typing.Optional[_prompt.Prompt]
-Prompts = collections.abc.Sequence[_prompt.Prompt]
-
-OptionalPrompts = typing.Optional[Prompts]
 OptionalString = typing.Optional[str]
 
 OptionalBoolean = typing.Optional[bool]
 
+OptionalImage = typing.Optional[PIL.Image]
 Images = collections.abc.Sequence[PIL.Image.Image]
 MutableImages = collections.abc.MutableSequence[PIL.Image.Image]
+OptionalImages = typing.Optional[Images]
+OptionalImagesSequence = typing.Optional[collections.abc.Sequence[Images]]
 
 
 def iterate_attribute_combinations(

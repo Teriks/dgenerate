@@ -32,6 +32,7 @@ import dgenerate.promptweighters as _promptweighters
 import dgenerate.plugin as _plugin
 import dgenerate.renderloop as _renderloop
 import dgenerate.subcommands as _subcommands
+import dgenerate.prompt as _prompt
 
 __doc__ = """
 Functions to invoke dgenerate inside the current process using its command line arguments.
@@ -155,6 +156,7 @@ def invoke_dgenerate_events(
     :raises dgenerate.NonHFModelDownloadError:
     :raises dgenerate.UnsupportedPipelineConfigError:
     :raises dgenerate.PromptWeightingUnsupported:
+    :raises dgenerate.PromptEmbeddedArgumentError:
     :raises dgenerate.PluginNotFoundError:
     :raises dgenerate.PluginArgumentError:
     :raises dgenerate.ModuleFileNotFoundError:
@@ -397,6 +399,7 @@ def invoke_dgenerate_events(
             _pipelinewrapper.SchedulerLoadError,
             _pipelinewrapper.UnsupportedPipelineConfigError,
             _promptweighters.PromptWeightingUnsupported,
+            _prompt.PromptEmbeddedArgumentError,
             _plugin.ModuleFileNotFoundError,
             _plugin.PluginNotFoundError,
             _plugin.PluginArgumentError,
