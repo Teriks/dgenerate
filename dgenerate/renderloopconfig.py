@@ -282,7 +282,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     List of ``--image-seeds`` URI strings.
     """
 
-    parsed_image_seeds: typing.Optional[collections.abc.Sequence[_mediainput.ImageSeedParseResult]] = None
+    parsed_image_seeds: _mediainput.OptionalParsedImageSeeds = None
     """
     The results of parsing URIs mentioned in :py:attr:`.RenderLoopConfig.image_seeds`, 
     will only be available if :py:meth:`.RenderLoopConfig.check` has been called.
