@@ -58,6 +58,7 @@ OptionalPaths = typing.Optional[Paths]
 
 Uris = collections.abc.Sequence[str]
 OptionalUris = typing.Optional[Uris]
+OptionalUriOrUris = typing.Optional[typing.Union[Uri, Uris]]
 
 Names = collections.abc.Sequence[Name]
 OptionalNames = typing.Optional[Names]
