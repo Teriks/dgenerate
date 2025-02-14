@@ -984,6 +984,9 @@ class ImageSeedParseResult:
             and self.adapter_images is None
 
 
+ParsedImageSeeds = collections.abc.Sequence[ImageSeedParseResult]
+OptionalParsedImageSeeds = typing.Optional[ParsedImageSeeds]
+
 _ip_adapter_image_parser = _textprocessing.ConceptUriParser(
     'Adapter Image', ['resize', 'aspect', 'align'], delimiter='|')
 
