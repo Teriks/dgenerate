@@ -123,7 +123,7 @@ try:
 
     from dgenerate.promptweighters import PromptWeightingUnsupported
 
-    from dgenerate.prompt import Prompt
+    from dgenerate.prompt import Prompt, PromptEmbeddedArgumentError
 
     from dgenerate.batchprocess import (
         BatchProcessError,

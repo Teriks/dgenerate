@@ -171,7 +171,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     This corresponds to the ``--s-cascade-prompt-weighter`` argument of the dgenerate command line tool.
     """
 
-    prompts: _types.Prompts
+    prompts: _prompt.Prompts
     """
     List of prompt objects, this corresponds to the ``--prompts`` argument of the dgenerate
     command line tool.
@@ -195,19 +195,19 @@ class RenderLoopConfig(_types.SetFromMixin):
     High values result in more resource usage and processing time.
     """
 
-    sd3_second_prompts: _types.OptionalPrompts = None
+    sd3_second_prompts: _prompt.OptionalPrompts = None
     """
     Optional list of SD3 secondary prompts, this corresponds to the ``--sd3-second-prompts`` argument
     of the dgenerate command line tool.
     """
 
-    sd3_third_prompts: _types.OptionalPrompts = None
+    sd3_third_prompts: _prompt.OptionalPrompts = None
     """
     Optional list of SD3 tertiary prompts, this corresponds to the ``--sd3-third-prompts`` argument
     of the dgenerate command line tool.
     """
 
-    flux_second_prompts: _types.OptionalPrompts = None
+    flux_second_prompts: _prompt.OptionalPrompts = None
     """
     Optional list of Flux secondary prompts, this corresponds to the ``--flux-second-prompts`` argument
     of the dgenerate command line tool.
@@ -221,19 +221,19 @@ class RenderLoopConfig(_types.SetFromMixin):
     to completely render an image. 
     """
 
-    sdxl_second_prompts: _types.OptionalPrompts = None
+    sdxl_second_prompts: _prompt.OptionalPrompts = None
     """
     Optional list of SDXL secondary prompts, this corresponds to the ``--sdxl-second-prompts`` argument
     of the dgenerate command line tool.
     """
 
-    sdxl_refiner_prompts: _types.OptionalPrompts = None
+    sdxl_refiner_prompts: _prompt.OptionalPrompts = None
     """
     Optional list of SDXL refiner prompt overrides, this corresponds to the ``--sdxl-refiner-prompts`` argument
     of the dgenerate command line tool.
     """
 
-    sdxl_refiner_second_prompts: _types.OptionalPrompts = None
+    sdxl_refiner_second_prompts: _prompt.OptionalPrompts = None
     """
     Optional list of SDXL refiner secondary prompt overrides, this corresponds 
     to the ``--sdxl-refiner-second-prompts`` argument of the dgenerate command line tool.
@@ -319,7 +319,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     Stable Cascade model URI, ``--s-cascade-decoder`` argument of dgenerate command line tool.
     """
 
-    s_cascade_decoder_prompts: _types.OptionalPrompts = None
+    s_cascade_decoder_prompts: _prompt.OptionalPrompts = None
     """
     Optional list of Stable Cascade decoder prompt overrides, this corresponds to the ``--s-cascade-decoder-prompts`` 
     argument of the dgenerate command line tool.
@@ -888,8 +888,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     shaped mask, which might be helpful for achieving better blending.
     """
 
-    adetailer_detector_paddings: typing.Optional[
-        collections.abc.Sequence[int | tuple[int, int] | tuple[int, int, int, int]]] = None
+    adetailer_detector_paddings: _types.OptionalPaddings = None
     """
     One or more adetailer detector padding values.
     
@@ -910,8 +909,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     Defaults to [0].
     """
 
-    adetailer_mask_paddings: typing.Optional[
-        collections.abc.Sequence[int | tuple[int, int] | tuple[int, int, int, int]]] = None
+    adetailer_mask_paddings: _types.OptionalPaddings = None
     """
     One or more adetailer mask padding values.
     
@@ -1933,84 +1931,86 @@ class RenderLoopConfig(_types.SetFromMixin):
                 return overrides[n]
             return v
 
-        yield from _iterate_diffusion_args(
-            prompt=ov('prompt', self.prompts),
-            prompt_weighter_uri=ov('prompt_weighter_uri', [self.prompt_weighter_uri]),
-            sdxl_refiner_prompt_weighter_uri=ov('sdxl_refiner_prompt_weighter_uri',
-                                                [self.sdxl_refiner_prompt_weighter_uri]),
-            s_cascade_decoder_prompt_weighter_uri=ov('s_cascade_decoder_prompt_weighter_uri',
-                                                     [self.s_cascade_decoder_prompt_weighter_uri]),
-            sdxl_second_prompt=ov('sdxl_second_prompt',
-                                  self.sdxl_second_prompts),
-            sdxl_refiner_prompt=ov('sdxl_refiner_prompt',
-                                   self.sdxl_refiner_prompts),
-            sdxl_refiner_second_prompt=ov('sdxl_refiner_second_prompt',
-                                          self.sdxl_refiner_second_prompts),
-            sd3_max_sequence_length=ov('sd3_max_sequence_length', [self.sd3_max_sequence_length]),
-            flux_max_sequence_length=ov('flux_max_sequence_length', [self.flux_max_sequence_length]),
-            sd3_second_prompt=ov('sd3_second_prompt',
-                                 self.sd3_second_prompts),
-            sd3_third_prompt=ov('sd3_third_prompt',
-                                self.sd3_third_prompts),
-            flux_second_prompt=ov('flux_second_prompt',
-                                  self.flux_second_prompts),
-            seed=ov('seed', self.seeds),
-            clip_skip=ov('clip_skip', self.clip_skips),
-            sdxl_refiner_clip_skip=ov('sdxl_refiner_clip_skip', self.sdxl_refiner_clip_skips),
-            sdxl_t2i_adapter_factor=ov('sdxl_t2i_adapter_factor', self.sdxl_t2i_adapter_factors),
-            image_seed_strength=ov('image_seed_strength', self.image_seed_strengths),
-            guidance_scale=ov('guidance_scale', self.guidance_scales),
-            hi_diffusion=ov('hi_diffusion', [self.hi_diffusion]),
-            pag_scale=ov('pag_scale', self.pag_scales),
-            pag_adaptive_scale=ov('pag_adaptive_scale', self.pag_adaptive_scales),
-            image_guidance_scale=ov('image_guidance_scale', self.image_guidance_scales),
-            guidance_rescale=ov('guidance_rescale', self.guidance_rescales),
-            inference_steps=ov('inference_steps', self.inference_steps),
-            sdxl_high_noise_fraction=ov('sdxl_high_noise_fraction', self.sdxl_high_noise_fractions),
-            sdxl_refiner_inference_steps=ov('sdxl_refiner_inference_steps', self.sdxl_refiner_inference_steps),
-            sdxl_refiner_guidance_scale=ov('sdxl_refiner_guidance_scale', self.sdxl_refiner_guidance_scales),
-            sdxl_refiner_hi_diffusion=ov('sdxl_refiner_hi_diffusion', [self.sdxl_refiner_hi_diffusion]),
-            sdxl_refiner_pag_scale=ov('sdxl_refiner_pag_scale',
-                                      self.sdxl_refiner_pag_scales),
-            sdxl_refiner_pag_adaptive_scale=ov('sdxl_refiner_pag_adaptive_scale',
-                                               self.sdxl_refiner_pag_adaptive_scales),
+        for arg in _iterate_diffusion_args(
+                prompt=ov('prompt', self.prompts),
+                prompt_weighter_uri=ov('prompt_weighter_uri', [self.prompt_weighter_uri]),
+                sdxl_refiner_prompt_weighter_uri=ov('sdxl_refiner_prompt_weighter_uri',
+                                                    [self.sdxl_refiner_prompt_weighter_uri]),
+                s_cascade_decoder_prompt_weighter_uri=ov('s_cascade_decoder_prompt_weighter_uri',
+                                                         [self.s_cascade_decoder_prompt_weighter_uri]),
+                sdxl_second_prompt=ov('sdxl_second_prompt',
+                                      self.sdxl_second_prompts),
+                sdxl_refiner_prompt=ov('sdxl_refiner_prompt',
+                                       self.sdxl_refiner_prompts),
+                sdxl_refiner_second_prompt=ov('sdxl_refiner_second_prompt',
+                                              self.sdxl_refiner_second_prompts),
+                sd3_max_sequence_length=ov('sd3_max_sequence_length', [self.sd3_max_sequence_length]),
+                flux_max_sequence_length=ov('flux_max_sequence_length', [self.flux_max_sequence_length]),
+                sd3_second_prompt=ov('sd3_second_prompt',
+                                     self.sd3_second_prompts),
+                sd3_third_prompt=ov('sd3_third_prompt',
+                                    self.sd3_third_prompts),
+                flux_second_prompt=ov('flux_second_prompt',
+                                      self.flux_second_prompts),
+                seed=ov('seed', self.seeds),
+                clip_skip=ov('clip_skip', self.clip_skips),
+                sdxl_refiner_clip_skip=ov('sdxl_refiner_clip_skip', self.sdxl_refiner_clip_skips),
+                sdxl_t2i_adapter_factor=ov('sdxl_t2i_adapter_factor', self.sdxl_t2i_adapter_factors),
+                image_seed_strength=ov('image_seed_strength', self.image_seed_strengths),
+                guidance_scale=ov('guidance_scale', self.guidance_scales),
+                hi_diffusion=ov('hi_diffusion', [self.hi_diffusion]),
+                pag_scale=ov('pag_scale', self.pag_scales),
+                pag_adaptive_scale=ov('pag_adaptive_scale', self.pag_adaptive_scales),
+                image_guidance_scale=ov('image_guidance_scale', self.image_guidance_scales),
+                guidance_rescale=ov('guidance_rescale', self.guidance_rescales),
+                inference_steps=ov('inference_steps', self.inference_steps),
+                sdxl_high_noise_fraction=ov('sdxl_high_noise_fraction', self.sdxl_high_noise_fractions),
+                sdxl_refiner_inference_steps=ov('sdxl_refiner_inference_steps', self.sdxl_refiner_inference_steps),
+                sdxl_refiner_guidance_scale=ov('sdxl_refiner_guidance_scale', self.sdxl_refiner_guidance_scales),
+                sdxl_refiner_hi_diffusion=ov('sdxl_refiner_hi_diffusion', [self.sdxl_refiner_hi_diffusion]),
+                sdxl_refiner_pag_scale=ov('sdxl_refiner_pag_scale',
+                                          self.sdxl_refiner_pag_scales),
+                sdxl_refiner_pag_adaptive_scale=ov('sdxl_refiner_pag_adaptive_scale',
+                                                   self.sdxl_refiner_pag_adaptive_scales),
 
-            sdxl_refiner_guidance_rescale=ov('sdxl_refiner_guidance_rescale',
-                                             self.sdxl_refiner_guidance_rescales),
+                sdxl_refiner_guidance_rescale=ov('sdxl_refiner_guidance_rescale',
+                                                 self.sdxl_refiner_guidance_rescales),
 
-            s_cascade_decoder_inference_steps=ov('s_cascade_decoder_inference_steps',
-                                                 self.s_cascade_decoder_inference_steps),
-            s_cascade_decoder_guidance_scale=ov('s_cascade_decoder_guidance_scale',
-                                                self.s_cascade_decoder_guidance_scales),
-            s_cascade_decoder_prompt=ov('s_cascade_decoder_prompt',
-                                        self.s_cascade_decoder_prompts),
-            upscaler_noise_level=ov('upscaler_noise_level', self.upscaler_noise_levels),
-            sdxl_aesthetic_score=ov('sdxl_aesthetic_score', self.sdxl_aesthetic_scores),
-            sdxl_original_size=ov('sdxl_original_size', self.sdxl_original_sizes),
-            sdxl_target_size=ov('sdxl_target_size', self.sdxl_target_sizes),
-            sdxl_crops_coords_top_left=ov('sdxl_crops_coords_top_left', self.sdxl_crops_coords_top_left),
-            sdxl_negative_aesthetic_score=ov('sdxl_negative_aesthetic_score',
-                                             self.sdxl_negative_aesthetic_scores),
-            sdxl_negative_original_size=ov('sdxl_negative_original_size', self.sdxl_negative_original_sizes),
-            sdxl_negative_target_size=ov('sdxl_negative_target_size', self.sdxl_negative_target_sizes),
-            sdxl_negative_crops_coords_top_left=ov('sdxl_negative_crops_coords_top_left',
-                                                   self.sdxl_negative_crops_coords_top_left),
-            sdxl_refiner_aesthetic_score=ov('sdxl_refiner_aesthetic_score', self.sdxl_refiner_aesthetic_scores),
-            sdxl_refiner_original_size=ov('sdxl_refiner_original_size', self.sdxl_refiner_original_sizes),
-            sdxl_refiner_target_size=ov('sdxl_refiner_target_size', self.sdxl_refiner_target_sizes),
-            sdxl_refiner_crops_coords_top_left=ov('sdxl_refiner_crops_coords_top_left',
-                                                  self.sdxl_refiner_crops_coords_top_left),
-            sdxl_refiner_negative_aesthetic_score=ov('sdxl_refiner_negative_aesthetic_score',
-                                                     self.sdxl_refiner_negative_aesthetic_scores),
-            sdxl_refiner_negative_original_size=ov('sdxl_refiner_negative_original_size',
-                                                   self.sdxl_refiner_negative_original_sizes),
-            sdxl_refiner_negative_target_size=ov('sdxl_refiner_negative_target_size',
-                                                 self.sdxl_refiner_negative_target_sizes),
-            sdxl_refiner_negative_crops_coords_top_left=ov('sdxl_refiner_negative_crops_coords_top_left',
-                                                           self.sdxl_refiner_negative_crops_coords_top_left),
-            adetailer_index_filter=ov('adetailer_index_filter', [self.adetailer_index_filter]),
-            adetailer_mask_shape=ov('adetailer_mask_shape', self.adetailer_mask_shapes),
-            adetailer_detector_padding=ov('adetailer_detector_padding', self.adetailer_detector_paddings),
-            adetailer_mask_padding=ov('adetailer_mask_padding', self.adetailer_mask_paddings),
-            adetailer_mask_blur=ov('adetailer_mask_blur', self.adetailer_mask_blurs),
-            adetailer_mask_dilation=ov('adetailer_mask_dilation', self.adetailer_mask_dilations))
+                s_cascade_decoder_inference_steps=ov('s_cascade_decoder_inference_steps',
+                                                     self.s_cascade_decoder_inference_steps),
+                s_cascade_decoder_guidance_scale=ov('s_cascade_decoder_guidance_scale',
+                                                    self.s_cascade_decoder_guidance_scales),
+                s_cascade_decoder_prompt=ov('s_cascade_decoder_prompt',
+                                            self.s_cascade_decoder_prompts),
+                upscaler_noise_level=ov('upscaler_noise_level', self.upscaler_noise_levels),
+                sdxl_aesthetic_score=ov('sdxl_aesthetic_score', self.sdxl_aesthetic_scores),
+                sdxl_original_size=ov('sdxl_original_size', self.sdxl_original_sizes),
+                sdxl_target_size=ov('sdxl_target_size', self.sdxl_target_sizes),
+                sdxl_crops_coords_top_left=ov('sdxl_crops_coords_top_left', self.sdxl_crops_coords_top_left),
+                sdxl_negative_aesthetic_score=ov('sdxl_negative_aesthetic_score',
+                                                 self.sdxl_negative_aesthetic_scores),
+                sdxl_negative_original_size=ov('sdxl_negative_original_size', self.sdxl_negative_original_sizes),
+                sdxl_negative_target_size=ov('sdxl_negative_target_size', self.sdxl_negative_target_sizes),
+                sdxl_negative_crops_coords_top_left=ov('sdxl_negative_crops_coords_top_left',
+                                                       self.sdxl_negative_crops_coords_top_left),
+                sdxl_refiner_aesthetic_score=ov('sdxl_refiner_aesthetic_score', self.sdxl_refiner_aesthetic_scores),
+                sdxl_refiner_original_size=ov('sdxl_refiner_original_size', self.sdxl_refiner_original_sizes),
+                sdxl_refiner_target_size=ov('sdxl_refiner_target_size', self.sdxl_refiner_target_sizes),
+                sdxl_refiner_crops_coords_top_left=ov('sdxl_refiner_crops_coords_top_left',
+                                                      self.sdxl_refiner_crops_coords_top_left),
+                sdxl_refiner_negative_aesthetic_score=ov('sdxl_refiner_negative_aesthetic_score',
+                                                         self.sdxl_refiner_negative_aesthetic_scores),
+                sdxl_refiner_negative_original_size=ov('sdxl_refiner_negative_original_size',
+                                                       self.sdxl_refiner_negative_original_sizes),
+                sdxl_refiner_negative_target_size=ov('sdxl_refiner_negative_target_size',
+                                                     self.sdxl_refiner_negative_target_sizes),
+                sdxl_refiner_negative_crops_coords_top_left=ov('sdxl_refiner_negative_crops_coords_top_left',
+                                                               self.sdxl_refiner_negative_crops_coords_top_left),
+                adetailer_index_filter=ov('adetailer_index_filter', [self.adetailer_index_filter]),
+                adetailer_mask_shape=ov('adetailer_mask_shape', self.adetailer_mask_shapes),
+                adetailer_detector_padding=ov('adetailer_detector_padding', self.adetailer_detector_paddings),
+                adetailer_mask_padding=ov('adetailer_mask_padding', self.adetailer_mask_paddings),
+                adetailer_mask_blur=ov('adetailer_mask_blur', self.adetailer_mask_blurs),
+                adetailer_mask_dilation=ov('adetailer_mask_dilation', self.adetailer_mask_dilations)):
+            arg.prompt.set_embedded_args_on(arg)
+            yield arg

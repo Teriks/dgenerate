@@ -98,7 +98,7 @@ class AdetailerDetectorUri:
         return self._confidence
 
     @property
-    def mask_padding(self) -> typing.Optional[int | tuple[int, int] | tuple[int, int, int, int]]:
+    def mask_padding(self) -> _types.OptionalPadding:
         """
         Optional mask padding
 
@@ -109,7 +109,7 @@ class AdetailerDetectorUri:
         return self._mask_padding
 
     @property
-    def detector_padding(self) -> typing.Optional[int | tuple[int, int] | tuple[int, int, int, int]]:
+    def detector_padding(self) -> _types.OptionalPadding:
         """
         Optional detector padding
 
@@ -167,9 +167,9 @@ class AdetailerDetectorUri:
                  subfolder: _types.OptionalPath = None,
                  weight_name: _types.OptionalName = None,
                  confidence: float = 0.3,
-                 detector_padding: typing.Optional[int | tuple[int, int] | tuple[int, int, int, int]] = None,
+                 detector_padding: _types.OptionalPadding = None,
                  mask_shape: _types.OptionalName = None,
-                 mask_padding: typing.Optional[int | tuple[int, int] | tuple[int, int, int, int]] = None,
+                 mask_padding: _types.OptionalPadding = None,
                  mask_blur: _types.OptionalInteger = None,
                  mask_dilation: _types.OptionalInteger = None,
                  index_filter: _types.OptionalIntegers = None,

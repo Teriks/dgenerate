@@ -18,11 +18,8 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import collections.abc
+
 import typing
-
-import PIL.Image
-
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.prompt as _prompt
 import dgenerate.textprocessing as _textprocessing
@@ -33,7 +30,7 @@ class DiffusionArguments(_types.SetFromMixin):
     """
     Represents all possible arguments for a :py:class:`.DiffusionPipelineWrapper` call.
     """
-    prompt: _types.OptionalPrompt = None
+    prompt: _prompt.OptionalPrompt = None
     """
     Primary prompt
     """
@@ -61,7 +58,7 @@ class DiffusionArguments(_types.SetFromMixin):
     This corresponds to the ``--s-cascade-prompt-weighter`` argument of the dgenerate command line tool.
     """
 
-    images: _types.Images | None = None
+    images: _types.OptionalImages = None
     """
     Images for img2img operations, or the base for inpainting operations.
     
@@ -72,7 +69,7 @@ class DiffusionArguments(_types.SetFromMixin):
     All other pipelines interpret multiple image inputs as a batching request.
     """
 
-    mask_images: _types.Images | None = None
+    mask_images: _types.OptionalImages = None
     """
     Mask images for inpainting operations.
     
@@ -84,7 +81,7 @@ class DiffusionArguments(_types.SetFromMixin):
     this case. All other pipelines interpret multiple image inputs as a batching request.
     """
 
-    control_images: _types.Images | None = None
+    control_images: _types.OptionalImages = None
     """
     ControlNet guidance images to use if ``controlnet_uris`` were given to the 
     constructor of :py:class:`.DiffusionPipelineWrapper`.
@@ -92,7 +89,7 @@ class DiffusionArguments(_types.SetFromMixin):
     All input images involved in a generation must match in dimension and be aligned by 8 pixels.
     """
 
-    ip_adapter_images: collections.abc.Sequence[_types.Images] | None = None
+    ip_adapter_images: _types.OptionalImagesSequence = None
     """
     IP Adapter images to use if ``ip_adapter_uris`` were given to the
     constructor of :py:class:`.DiffusionPipelineWrapper`.
@@ -104,7 +101,7 @@ class DiffusionArguments(_types.SetFromMixin):
     Multiple IP Adapter URIs can be provided, each IP Adapter can get its own set of images.
     """
 
-    floyd_image: PIL.Image.Image | None = None
+    floyd_image: _types.OptionalImage = None
     """
     The output image of the last stage when preforming img2img or 
     inpainting generation with Deep Floyd. When preforming txt2img 
@@ -151,7 +148,7 @@ class DiffusionArguments(_types.SetFromMixin):
     command line tool.
     """
 
-    s_cascade_decoder_prompt: _types.OptionalPrompt = None
+    s_cascade_decoder_prompt: _prompt.OptionalPrompt = None
     """
     Primary prompt for the Stable Cascade decoder when a decoder URI is specified in the 
     constructor of :py:class:`.DiffusionPipelineWrapper`. Usually the ``prompt``
@@ -177,21 +174,21 @@ class DiffusionArguments(_types.SetFromMixin):
     High values result in more resource usage and processing time.
     """
 
-    sd3_second_prompt: _types.OptionalPrompt = None
+    sd3_second_prompt: _prompt.OptionalPrompt = None
     """
     Secondary prompt for the SD3 main pipeline. Usually the ``prompt``
     attribute of this object is used, unless you override it by giving 
     this attribute a value.
     """
 
-    sd3_third_prompt: _types.OptionalPrompt = None
+    sd3_third_prompt: _prompt.OptionalPrompt = None
     """
     Tertiary (T5) prompt for the SD3 main pipeline. Usually the ``prompt``
     attribute of this object is used, unless you override it by giving 
     this attribute a value.
     """
 
-    flux_second_prompt: _types.OptionalPrompt = None
+    flux_second_prompt: _prompt.OptionalPrompt = None
     """
     Secondary prompt for the Flux pipeline. Usually the ``prompt`` attribute
     of this object is used, unless you override it by giving this attribute a
@@ -203,7 +200,7 @@ class DiffusionArguments(_types.SetFromMixin):
     Force the SDXL refiner to operate in edit mode instead of cooperative denoising mode.
     """
 
-    sdxl_second_prompt: _types.OptionalPrompt = None
+    sdxl_second_prompt: _prompt.OptionalPrompt = None
     """
     Secondary prompt for the SDXL main pipeline when a refiner URI is specified in the 
     constructor of :py:class:`.DiffusionPipelineWrapper`. Usually the ``prompt``
@@ -211,7 +208,7 @@ class DiffusionArguments(_types.SetFromMixin):
     a value.
     """
 
-    sdxl_refiner_prompt: _types.OptionalPrompt = None
+    sdxl_refiner_prompt: _prompt.OptionalPrompt = None
     """
     Primary prompt for the SDXL refiner when a refiner URI is specified in the 
     constructor of :py:class:`.DiffusionPipelineWrapper`. Usually the ``prompt``
@@ -219,7 +216,7 @@ class DiffusionArguments(_types.SetFromMixin):
     a value.
     """
 
-    sdxl_refiner_second_prompt: _types.OptionalPrompt = None
+    sdxl_refiner_second_prompt: _prompt.OptionalPrompt = None
     """
     Secondary prompt for the SDXL refiner when a refiner URI is specified in the 
     constructor of :py:class:`.DiffusionPipelineWrapper`. Usually the **sdxl_refiner_prompt**
@@ -493,11 +490,7 @@ class DiffusionArguments(_types.SetFromMixin):
     shaped mask, which might be helpful for achieving better blending.
     """
 
-    adetailer_detector_padding: typing.Optional[
-        int |
-        tuple[int, int] |
-        tuple[int, int, int, int]
-        ] = None
+    adetailer_detector_padding: _types.OptionalPadding = None
     """
     This value specifies the amount of padding
     that will be added to the detection rectangle which is used to
@@ -516,11 +509,7 @@ class DiffusionArguments(_types.SetFromMixin):
     Defaults to 0.
     """
 
-    adetailer_mask_padding: typing.Optional[
-        int |
-        tuple[int, int] |
-        tuple[int, int, int, int]
-        ] = None
+    adetailer_mask_padding: _types.OptionalPadding = None
     """
     This value indicates how much padding to place around the masked 
     area when cropping out the image to be inpainted, this value must be large

@@ -429,7 +429,6 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
                 prompt_weighter = loader.load(
                     self._prompt_weighter,
                     model_type=model_type,
-                    pipeline_type=_enums.PipelineType.INPAINT,
                     dtype=encoder_dtype)
             except Exception as e:
                 raise self.argument_error(str(e))
