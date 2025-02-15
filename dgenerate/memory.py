@@ -188,7 +188,7 @@ def memory_constraints(expressions: collections.abc.Iterable[str],
 
         _messages.debug_log(f'CPU MEMORY CONSTRAINT RESULT: {value}')
         return value
-    except (Exception, NameError):
+    except (Exception, NameError) as e:
         raise MemoryConstraintSyntaxError(
             f'Memory constraint syntax error: {e}')
 

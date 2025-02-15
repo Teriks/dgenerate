@@ -82,7 +82,6 @@ try:
     from dgenerate.renderloop import (
         RenderLoop,
         RenderLoopConfig,
-        RenderLoopSchedulerSet,
         RenderLoopConfigError,
         RenderLoopEvent,
         RenderLoopEventStream,

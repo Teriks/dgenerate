@@ -1454,7 +1454,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '-sch',
             '--scheduler',
             '--schedulers',
-            dest='scheduler',
+            dest='scheduler_uri',
             action='store', nargs='+', default=None, metavar="SCHEDULER_URI",
             help=f"""Specify a scheduler (sampler) by URI. Passing "help" to this argument
                     will print the compatible schedulers for a model without generating any images. Passing "helpargs" 
@@ -1463,6 +1463,22 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                     You may pass multiple scheduler URIs to this argument, each URI will be tried in turn.
                     """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--scheduler2',
+            '--schedulers2',
+            dest='second_scheduler_uri',
+            nargs='+', action='store', default=None, metavar="SCHEDULER_URI",
+            help="""Specify a scheduler (sampler) by URI for the SDXL Refiner or Stable Cascade Decoder pass. 
+                 Operates the exact same way as --scheduler including the "help" option. Passing 'helpargs' will 
+                 yield a help message with a list of overridable arguments for each scheduler and their 
+                 typical defaults. Defaults to the value of --scheduler.
+                 
+                 You may pass multiple scheduler URIs to this argument, each URI will be tried in turn.
+                 """
         )
     )
 
@@ -1561,6 +1577,32 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         )
     )
 
+    _model_offload_group2 = parser.add_mutually_exclusive_group()
+
+    actions.append(
+        _model_offload_group2.add_argument(
+            '-mqo2', '--model-sequential-offload2',
+            dest='second_model_sequential_offload',
+            action='store_true', default=False,
+            help="""Force sequential model offloading for the SDXL Refiner or Stable Cascade Decoder pipeline, 
+                    this may drastically reduce memory consumption and allow large models to run when they would 
+                    otherwise not fit in your GPUs VRAM. Inference will be much slower. 
+                    Mutually exclusive with --model-cpu-offload2"""
+        )
+    )
+
+    actions.append(
+        _model_offload_group2.add_argument(
+            '-mco2', '--model-cpu-offload2',
+            dest='second_model_cpu_offload',
+            action='store_true', default=False,
+            help="""Force model cpu offloading for the SDXL Refiner or Stable Cascade Decoder pipeline,
+                    this may reduce memory consumption and allow large models to run when they would 
+                    otherwise not fit in your GPUs VRAM. Inference will be slower. Mutually 
+                    exclusive with --model-sequential-offload2"""
+        )
+    )
+
     actions.append(
         parser.add_argument(
             '--s-cascade-decoder', action='store', default=None, metavar="MODEL_URI", dest='s_cascade_decoder_uri',
@@ -1600,26 +1642,6 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         )
     )
 
-    _second_pass_offload_group = parser.add_mutually_exclusive_group()
-
-    actions.append(
-        _second_pass_offload_group.add_argument(
-            '-dqo', '--s-cascade-decoder-sequential-offload', action='store_true', default=False,
-            help="""Force sequential model offloading for the Stable Cascade decoder pipeline, this may drastically
-                    reduce memory consumption and allow large models to run when they would otherwise not fit in
-                    your GPUs VRAM. Inference will be much slower. Mutually exclusive with --s-cascade-decoder-cpu-offload"""
-        )
-    )
-
-    actions.append(
-        _second_pass_offload_group.add_argument(
-            '-dco', '--s-cascade-decoder-cpu-offload', action='store_true', default=False,
-            help="""Force model cpu offloading for the Stable Cascade decoder pipeline, this may reduce memory consumption
-                    and allow large models to run when they would otherwise not fit in your GPUs VRAM.
-                    Inference will be slower. Mutually exclusive with --s-cascade-decoder-sequential-offload"""
-        )
-    )
-
     actions.append(
         parser.add_argument(
             '--s-cascade-decoder-prompts', nargs='+', action='store', metavar="PROMPT", default=None,
@@ -1648,22 +1670,6 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             type=_type_guidance_scale, metavar="INTEGER",
             help=f"""One or more guidance scale values to try with the Stable Cascade decoder.
                      (default: [{_pipelinewrapper.DEFAULT_S_CASCADE_DECODER_GUIDANCE_SCALE}])"""
-        )
-    )
-
-    actions.append(
-        parser.add_argument(
-            '--s-cascade-decoder-scheduler',
-            '--s-cascade-decoder-schedulers',
-            dest='s_cascade_decoder_scheduler',
-            nargs='+', action='store', default=None, metavar="SCHEDULER_URI",
-            help="""Specify a scheduler (sampler) by URI for the Stable Cascade decoder pass.
-                    Operates the exact same way as --scheduler including the "help" option. Passing 'helpargs' 
-                    will yield a help message with a list of overridable arguments for each scheduler and
-                    their typical defaults. Defaults to the value of --scheduler.
-                    
-                    You may pass multiple scheduler URIs to this argument, each URI will be tried in turn.
-                    """
         )
     )
 
@@ -1707,38 +1713,6 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         )
     )
 
-    _second_pass_offload_group.add_argument(
-        '-rqo', '--sdxl-refiner-sequential-offload', action='store_true', default=False,
-        help="""Force sequential model offloading for the SDXL refiner pipeline, this may drastically
-                reduce memory consumption and allow large models to run when they would otherwise not fit in
-                your GPUs VRAM. Inference will be much slower. Mutually exclusive with --refiner-cpu-offload"""
-    )
-
-    actions.append(
-        _second_pass_offload_group.add_argument(
-            '-rco', '--sdxl-refiner-cpu-offload', action='store_true', default=False,
-            help="""Force model cpu offloading for the SDXL refiner pipeline, this may reduce memory consumption
-                    and allow large models to run when they would otherwise not fit in your GPUs VRAM.
-                    Inference will be slower. Mutually exclusive with --refiner-sequential-offload"""
-        )
-    )
-
-    actions.append(
-        parser.add_argument(
-            '--sdxl-refiner-scheduler',
-            '--sdxl-refiner-schedulers',
-            dest='sdxl_refiner_scheduler',
-            nargs='+', action='store', default=None, metavar="SCHEDULER_URI",
-            help="""Specify a scheduler (sampler) by URI for the SDXL refiner pass. Operates the exact
-                 same way as --scheduler including the "help" option. Passing 'helpargs' will yield a help
-                 message with a list of overridable arguments for each scheduler and their typical defaults.
-                 Defaults to the value of --scheduler.
-                 
-                 You may pass multiple scheduler URIs to this argument, each URI will be tried in turn.
-                 """
-        )
-    )
-
     actions.append(
         parser.add_argument(
             '--sdxl-refiner-edit', action='store_true', default=None,
@@ -1754,7 +1728,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--sdxl-second-prompts', nargs='+', action='store', metavar="PROMPT", default=None, type=_type_secondary_prompts,
+            '--sdxl-second-prompts', nargs='+', action='store', metavar="PROMPT", default=None,
+            type=_type_secondary_prompts,
             help="""One or more secondary prompts to try using SDXL's secondary text encoder.
                     By default the model is passed the primary prompt for this value, this option
                     allows you to choose a different prompt. The negative prompt component can be
@@ -1866,7 +1841,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--sdxl-refiner-prompts', nargs='+', action='store', metavar="PROMPT", default=None, type=_type_secondary_prompts,
+            '--sdxl-refiner-prompts', nargs='+', action='store', metavar="PROMPT", default=None,
+            type=_type_secondary_prompts,
             help="""One or more prompts to try with the SDXL refiner model,
                     by default the refiner model gets the primary prompt, this argument
                     overrides that with a prompt of your choosing. The negative prompt
@@ -2135,19 +2111,12 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '-rpw', '--sdxl-refiner-prompt-weighter',
-            metavar='PROMPT_WEIGHTER_URI', dest='sdxl_refiner_prompt_weighter_uri', action='store',
+            '-pw2', '--prompt-weighter2',
+            metavar='PROMPT_WEIGHTER_URI',
+            dest='second_prompt_weighter',
+            action='store',
             default=None, type=_type_prompt_weighter,
-            help='--prompt-weighter URI value that that applies to to --sdxl-refiner.'
-        )
-    )
-
-    actions.append(
-        parser.add_argument(
-            '-dpw', '--s-cascade-decoder-prompt-weighter',
-            metavar='PROMPT_WEIGHTER_URI', dest='s_cascade_decoder_prompt_weighter_uri', action='store',
-            default=None, type=_type_prompt_weighter,
-            help='--prompt-weighter URI value that that applies to to --s-cascade-decoder.'
+            help='--prompt-weighter URI value that that applies to to --sdxl-refiner or --s-cascade-decoder.'
         )
     )
 
@@ -2187,7 +2156,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--sd3-second-prompts', nargs='+', action='store', metavar="PROMPT", default=None, type=_type_secondary_prompts,
+            '--sd3-second-prompts', nargs='+', action='store', metavar="PROMPT", default=None,
+            type=_type_secondary_prompts,
             help="""One or more secondary prompts to try using the torch-sd3 (Stable Diffusion 3) 
                     secondary text encoder. By default the model is passed the primary prompt for this value,
                     this option allows you to choose a different prompt. The negative prompt component can be
@@ -2197,7 +2167,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--sd3-third-prompts', nargs='+', action='store', metavar="PROMPT", default=None, type=_type_secondary_prompts,
+            '--sd3-third-prompts', nargs='+', action='store', metavar="PROMPT", default=None,
+            type=_type_secondary_prompts,
             help="""One or more tertiary prompts to try using the torch-sd3 (Stable Diffusion 3) 
                     tertiary (T5) text encoder. By default the model is passed the primary prompt for this value,
                     this option allows you to choose a different prompt. The negative prompt component can be
@@ -2207,7 +2178,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--flux-second-prompts', nargs='+', action='store', metavar="PROMPT", default=None, type=_type_secondary_prompts,
+            '--flux-second-prompts', nargs='+', action='store', metavar="PROMPT", default=None,
+            type=_type_secondary_prompts,
             help="""One or more secondary prompts to try using the torch-flux (Flux) 
                     secondary (T5) text encoder. By default the model is passed the primary prompt for this value,
                     this option allows you to choose a different prompt."""

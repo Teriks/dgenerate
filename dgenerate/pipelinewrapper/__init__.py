@@ -164,26 +164,24 @@ from .enums import (
     model_type_is_flux,
     model_type_is_kolors
 )
-# Pipelines
-from .pipelines import (
-    InvalidModelFileError,
+from .schedulers import (
     SchedulerLoadError,
     SchedulerArgumentError,
     InvalidSchedulerNameError,
+    get_scheduler_uri_schema,
+    load_scheduler
+)
+
+# Pipelines
+from .pipelines import (
+    InvalidModelFileError,
     TorchPipelineFactory,
     TorchPipelineCreationResult,
     PipelineCreationResult,
-    ArgumentHelpException,
-    SchedulerHelpException,
-    TextEncodersHelpException,
     set_vae_slicing_tiling,
     get_torch_pipeline_class,
     create_torch_diffusion_pipeline,
     estimate_pipeline_memory_use,
-    get_scheduler_uri_schema,
-    load_scheduler,
-    scheduler_is_help,
-    text_encoder_is_help,
     UnsupportedPipelineConfigError,
     get_torch_pipeline_modules,
     is_model_cpu_offload_enabled,
@@ -197,6 +195,14 @@ from .pipelines import (
     get_last_called_pipeline,
     destroy_last_called_pipeline
 )
+
+from .help import (
+    text_encoder_help,
+    text_encoder_is_help,
+    scheduler_is_help,
+    get_scheduler_help
+)
+
 # URI Errors and Types
 from .uris import (
     InvalidModelUriError,
@@ -241,7 +247,8 @@ from .util import (
 from .wrapper import (
     PipelineWrapperResult,
     DiffusionPipelineWrapper,
-    DiffusionArguments
+    DiffusionArguments,
+    DiffusionArgumentsHelpException
 )
 
 __doc__ = """

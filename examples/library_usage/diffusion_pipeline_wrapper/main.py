@@ -25,12 +25,11 @@ wrapper = dgenerate.DiffusionPipelineWrapper(
     model_type=dgenerate.ModelType.TORCH_SDXL,
     dtype=dgenerate.DataType.FLOAT16,
     variant='fp16',
-    device=device,
-    prompt_weighter_uri='sd-embed'
+    device=device
 )
 
 args = dgenerate.DiffusionArguments()
-
+args.prompt_weighter_uri = 'sd-embed'
 args.inference_steps = 30
 args.guidance_scale = 4
 args.prompt = dgenerate.Prompt.parse('a man standing by a river, (photo:1.3); (painting)')

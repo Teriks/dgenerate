@@ -23,8 +23,8 @@ anywhere in the prompt.  A prompt weighter specified in the prompt text applies 
 that prompt alone (both negative and positive prompts).
 
 You can specify different prompt weighters for the SDXL Refiner or Stable Cascade
-decoder using ``--sdxl-refiner-prompt-weighter`` and ``-s-cascade-decoder-prompt-weighter``, or in the prompt
-arguments ``--sdxl-refiner-prompts`` and ``--s-cascade-decoder-prompts``.
+decoder using ``--prompt-weighter2``, or in the prompt arguments
+``--sdxl-refiner-prompts`` and ``--s-cascade-decoder-prompts``.
 
 Specifying ``<weighter: (uri here)>`` in a ``--prompts`` value will default
 the secondary models to the same prompt weighter unless you specify otherwise.

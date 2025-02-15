@@ -12,8 +12,8 @@ stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
 
 --sdxl-refiner-inference-steps 100  \ # This will result in 20 refiner steps in img2img mode, image seed strength of 0.2 (1.0 - HNF)
 
---sdxl-refiner-scheduler UniPCMultistepScheduler \ # LCMScheduler will not work for the refiner
-                                                   # because the refiner does not use a LoRA
+--scheduler2 UniPCMultistepScheduler \ # LCMScheduler will not work for the refiner
+                                       # because the refiner does not use a LoRA
 
 --scheduler LCMScheduler # the main model uses the LCMScheduler
 --model-cpu-offload

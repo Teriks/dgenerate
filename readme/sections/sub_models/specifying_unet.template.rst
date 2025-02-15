@@ -63,7 +63,7 @@ UNet models which have a smaller memory footprint using ``--unet`` and ``--unet2
     --unet "stabilityai/stable-cascade-prior;subfolder=prior_lite" \
     --unet2 "stabilityai/stable-cascade;subfolder=decoder_lite" \
     --model-cpu-offload \
-    --s-cascade-decoder-cpu-offload \
+    --model-cpu-offload2 \
     --s-cascade-decoder "stabilityai/stable-cascade;dtype=float16" \
     --inference-steps 20 \
     --guidance-scales 4 \
