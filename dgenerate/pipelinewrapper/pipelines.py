@@ -18,11 +18,9 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import ast
 import collections.abc
 import gc
 import inspect
-import itertools
 import os.path
 import typing
 
@@ -31,7 +29,6 @@ import diffusers
 import diffusers.loaders
 import diffusers.loaders.single_file_utils
 import huggingface_hub
-import numpy
 import torch.nn
 import torch.nn
 import transformers.utils.quantization_config
@@ -44,6 +41,7 @@ import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.cache as _cache
 import dgenerate.pipelinewrapper.enums as _enums
+import dgenerate.pipelinewrapper.schedulers as _schedulers
 import dgenerate.pipelinewrapper.uris as _uris
 import dgenerate.pipelinewrapper.util as _util
 import dgenerate.promptweighters as _promptweighters
@@ -67,56 +65,6 @@ class InvalidModelFileError(Exception):
     This indicates that was a problem loading the primary diffusion model,
     This could also refer to an SDXL refiner model or Stable Cascade decoder
     model which are considered primary models.
-    """
-    pass
-
-
-class SchedulerLoadError(Exception):
-    """
-    Base class for scheduler loading exceptions.
-    """
-
-
-class SchedulerArgumentError(SchedulerLoadError):
-    """
-    Scheduler URI argument error.
-    """
-    pass
-
-
-class InvalidSchedulerNameError(SchedulerLoadError):
-    """
-    Unknown scheduler name used.
-    """
-    pass
-
-
-class ArgumentHelpException(Exception):
-    """
-    Not an error, runtime argument help was requested by
-    passing "help" or a special value to an argument of
-    :py:meth:`.DiffusionPipelineWrapper.__init__` which
-    supports a help query.
-    """
-    pass
-
-
-class SchedulerHelpException(ArgumentHelpException):
-    """
-    Not an error, runtime scheduler help was requested by passing "help" to a scheduler name
-    argument of :py:meth:`.DiffusionPipelineWrapper.__init__` such as ``scheduler`` or ``sdxl_refiner_scheduler``.
-    Upon calling :py:meth:`.DiffusionPipelineWrapper.__call__` info was printed using :py:meth:`dgenerate.messages.log`,
-    then this exception raised to get out of the call stack.
-    """
-    pass
-
-
-class TextEncodersHelpException(ArgumentHelpException):
-    """
-    Not an error, runtime text encoder help was requested by passing "help" to a text encoder URI
-    argument of :py:meth:`.DiffusionPipelineWrapper.__init__` such as ``text_encoder_uris`` or ``second_text_encoder_uris``.
-    Upon calling :py:meth:`.DiffusionPipelineWrapper.__call__` info was printed using :py:meth:`dgenerate.messages.log`,
-    then this exception raised to get out of the call stack.
     """
     pass
 
@@ -152,281 +100,6 @@ def _set_floyd_safety_checker(pipeline: diffusers.DiffusionPipeline, safety_chec
     if not safety_checker:
         if hasattr(pipeline, 'safety_checker') and pipeline.safety_checker is not None:
             pipeline.safety_checker = _floyd_disabled_safety_checker
-
-
-def scheduler_is_help(name: str | None):
-    """
-    This scheduler name is simply a request for help?, IE: "help"?
-
-    :param name: string to test
-    :return: ``True`` or ``False``
-    """
-    if name is None:
-        return False
-    lname = name.strip().lower()
-
-    return lname == 'help' or lname == 'helpargs'
-
-
-def text_encoder_is_help(text_encoder_uris: _types.OptionalUris):
-    """
-    Text encoder uris specification is simply a request for help?, IE: "help"?
-
-    :param text_encoder_uris: list of text encoder URIs to test
-    :return: ``True`` or ``False``
-    """
-    if text_encoder_uris is None:
-        return False
-    return any(t == 'help' for t in text_encoder_uris)
-
-
-def get_scheduler_uri_schema(scheduler: type[diffusers.SchedulerMixin] | list[type[diffusers.SchedulerMixin]]):
-    """
-    Return a schema describing initialization arguments from a ``diffusers`` scheduler type, or list of scheduler types.
-
-    This returns a set of schemas keyed by scheduler name, which are identical to the schema format returned by
-    :py:meth:`dgenerate.plugin.Plugin.get_accepted_args_schema`.
-
-    Arguments which cannot be passed through a URI such as class references are omitted.
-
-    :param scheduler: ``diffusers`` scheduler type, or list of them.
-
-    :return: ``dict`` schema.
-    """
-    if not isinstance(scheduler, list):
-        scheduler = [scheduler]
-
-    schema = dict()
-
-    for class_type in scheduler:
-        parameter_schema = dict()
-        schema[class_type.__name__] = parameter_schema
-
-        def _type_name(t):
-            return (str(t) if t.__module__ != 'builtins' else t.__name__).strip()
-
-        def _resolve_union(t):
-            t_name = _type_name(t)
-            if t_name.startswith('typing.Union') or \
-                    t_name.startswith('typing.Optional'):
-                return set(itertools.chain.from_iterable(
-                    [_resolve_union(t) for t in parameter.annotation.__args__]))
-            return [t_name]
-
-        def _filter_types(typs):
-            o = set()
-            for t in typs:
-                if t.startswith('typing.List'):
-                    o.add('list')
-                elif t == "<class 'numpy.ndarray'>":
-                    o.add('list')
-                elif t.startswith("<class"):
-                    pass
-                else:
-                    o.add(t)
-            return list(o)
-
-        for parameter_name, parameter in inspect.signature(class_type.__init__).parameters.items():
-            if parameter_name == 'self':
-                continue
-
-            parameter_details = dict()
-
-            type_name = _type_name(parameter.annotation)
-
-            if type_name.startswith('typing.Union') or \
-                    type_name.startswith('typing.Optional'):
-                union_args = _resolve_union(parameter.annotation)
-                if 'NoneType' in union_args:
-                    parameter_details['optional'] = True
-                    union_args.remove('NoneType')
-
-                filtered_types = _filter_types(list(sorted(union_args)))
-                if not filtered_types:
-                    continue
-                parameter_details['types'] = filtered_types
-
-            else:
-                filtered_types = _filter_types([type_name])
-                if not filtered_types:
-                    continue
-                parameter_details['optional'] = False
-                parameter_details['types'] = filtered_types
-
-            if isinstance(parameter.default, list):
-                if not all(isinstance(i, typing.SupportsIndex) or
-                           not isinstance(i, typing.Iterable) for i in parameter.default):
-                    # cannot support multiple dimensions
-                    continue
-            if isinstance(parameter.default, numpy.ndarray):
-                if parameter.default.ndim != 1:
-                    # cannot support multiple dimensions
-                    continue
-
-            if parameter.default is not inspect.Parameter.empty:
-                parameter_details['default'] = parameter.default
-
-            parameter_schema[_textprocessing.dashup(parameter_name)] = parameter_details
-    return schema
-
-
-def load_scheduler(pipeline: diffusers.DiffusionPipeline,
-                   scheduler_name=None, model_path: str | None = None):
-    """
-    Load a specific compatible scheduler class name onto a huggingface diffusers pipeline object.
-
-    :raises SchedulerHelpException: if "help" is passed as a scheduler name.
-    :raises SchedulerArgumentError: If invalid arguments are supplied to the scheduler via the URI.
-    :raises InvalidSchedulerNameError: If an invalid scheduler name is specified specifically.
-
-
-    :param pipeline: pipeline object
-    :param scheduler_name: compatible scheduler class name, pass "help" to receive a print out to STDOUT
-        and raise :py:exc:`.SchedulerHelpException`, this argument can accept a URI in typical dgenerate format,
-        for overriding the schedulers constructor parameters.
-    :param model_path: Optional model path to be used in the message to STDOUT produced by passing "help"
-    :return:
-    """
-
-    if scheduler_name is None:
-        return
-
-    compatibles = list(pipeline.scheduler.compatibles)
-
-    if isinstance(pipeline, (diffusers.loaders.StableDiffusionLoraLoaderMixin,
-                             diffusers.loaders.StableDiffusionXLLoraLoaderMixin)):
-        compatibles.append(diffusers.LCMScheduler)
-
-    if isinstance(pipeline, diffusers.StableDiffusionLatentUpscalePipeline):
-        # Seems to only work with this scheduler
-        compatibles = [c for c in compatibles if c.__name__ == 'EulerDiscreteScheduler']
-
-    if isinstance(pipeline, (diffusers.IFPipeline,
-                             diffusers.IFInpaintingPipeline,
-                             diffusers.IFImg2ImgPipeline,
-                             diffusers.IFSuperResolutionPipeline,
-                             diffusers.IFInpaintingSuperResolutionPipeline,
-                             diffusers.IFImg2ImgSuperResolutionPipeline)):
-        # same here
-        compatibles = [c for c in compatibles if c.__name__ == 'DDPMScheduler']
-
-    compatibles = sorted(compatibles, key=lambda c: c.__name__)
-
-    help_name = scheduler_name.strip().lower()
-
-    if help_name == 'help':
-        help_string = f'Compatible schedulers for "{model_path}" are:' + '\n\n'
-        help_string += '\n'.join((" " * 4) + _textprocessing.quote(i.__name__) for i in compatibles) + '\n'
-        _messages.log(help_string)
-        raise SchedulerHelpException(help_string)
-
-    if help_name == 'helpargs':
-        schemas = get_scheduler_uri_schema(compatibles)
-
-        help_string = f'Compatible schedulers for "{model_path}" are:' + '\n\n'
-        for s_idx, (scheduler_name, arg_schema) in enumerate(schemas.items()):
-            help_string += (" " * 4) + scheduler_name + ":\n"
-            is_end = s_idx == len(schemas) - 1
-            for d_idx, (arg, details) in enumerate(arg_schema.items()):
-                is_args_end = d_idx == len(arg_schema) - 1
-                help_string += (" " * 8) + arg + "=" + str(details['default']) + (
-                    '' if is_end and is_args_end else '\n')
-            help_string += '\n'
-
-        _messages.log(help_string)
-        raise SchedulerHelpException(help_string)
-
-    def _get_uri_arg_value(
-            scheduler: str,
-            value: typing.Any,
-            arg_name: str,
-            optional: bool,
-            types: list):
-
-        if isinstance(value, list):
-            return value
-        elif optional and value.lower() == 'none':
-            return None
-        elif any(t == 'list' for t in types):
-            try:
-                val = ast.literal_eval(value)
-                if not isinstance(val, (list, tuple, set)):
-                    return [val]
-                else:
-                    return val
-            except (ValueError, SyntaxError):
-                raise SchedulerArgumentError(
-                    f'{scheduler} argument "{arg_name}" '
-                    f'must be a singular literal, list, '
-                    f'tuple, or set value in python syntax.'
-                )
-        elif any(t == 'float' for t in types):
-            try:
-                return float(value)
-            except ValueError:
-                raise SchedulerArgumentError(
-                    f'{scheduler} argument "{arg_name}" '
-                    f'must be a floating point value.'
-                )
-        elif any(t == 'int' for t in types):
-            try:
-                return int(value)
-            except ValueError:
-                raise SchedulerArgumentError(
-                    f'{scheduler} argument "{arg_name}" '
-                    f'must be an integer value.'
-                )
-        elif any(t == 'bool' for t in types):
-            try:
-                return _types.parse_bool(value)
-            except ValueError:
-                raise SchedulerArgumentError(
-                    f'{scheduler} argument "{arg_name}" '
-                    f'must be a boolean value.'
-                )
-
-        try:
-            # string literal?
-            return ast.literal_eval(value)
-        except (ValueError, SyntaxError):
-            # token (string)
-            return value
-
-    for scheduler_type in compatibles:
-        if scheduler_type.__name__.startswith(scheduler_name.split(';')[0].strip()):
-            schema = get_scheduler_uri_schema(scheduler_type)[scheduler_type.__name__]
-
-            parser = _textprocessing.ConceptUriParser(
-                'Scheduler',
-                known_args=list(schema.keys()),
-                args_raw=[k for k, v in schema.items()
-                          if any(t == 'list' for t in v['types'])])
-
-            try:
-                result = parser.parse(scheduler_name)
-            except _textprocessing.ConceptUriParseError as e:
-                raise SchedulerArgumentError(e)
-
-            args = {_textprocessing.dashdown(k): _get_uri_arg_value(
-                scheduler_type.__name__, v, k, schema[k]['optional'], schema[k]['types'])
-                for k, v in result.args.items()}
-
-            _messages.debug_log(f'Constructing Scheduler: "{scheduler_type.__name__}", Args: {args}')
-
-            try:
-                pipeline.scheduler = scheduler_type.from_config(pipeline.scheduler.config, **args)
-            except Exception as e:
-                raise SchedulerArgumentError(
-                    f'Error constructing scheduler "{scheduler_type.__name__}" '
-                    f'with given URI argument values, encountered error: {e}')
-
-            # found a matching scheduler, return
-            return
-
-    raise InvalidSchedulerNameError(
-        f'Scheduler named "{scheduler_name}" is not a valid compatible scheduler, '
-        'options are:\n\n' + '\n'.join(
-            sorted(' ' * 4 + _textprocessing.quote(i.__name__.split('.')[-1]) for i in compatibles)))
 
 
 def estimate_pipeline_memory_use(
@@ -1336,6 +1009,11 @@ class TorchPipelineCreationResult(PipelineCreationResult):
         """
         return super().pipeline
 
+    model_path: _types.OptionalPath
+    """
+    Path the model was loaded from.
+    """
+
     parsed_unet_uri: _uris.UNetUri | None
     """
     Parsed UNet URI if one was present
@@ -1381,7 +1059,25 @@ class TorchPipelineCreationResult(PipelineCreationResult):
     Parsed Transformer URI if one was present
     """
 
+    def load_scheduler(self, scheduler_uri: _types.Uri):
+        """
+        Load a scheduler onto the pipeline using a URI specification.
+
+        :param scheduler_uri: The scheduler URI
+        """
+        _schedulers.load_scheduler(self.pipeline, scheduler_uri)
+
+    def set_vae_slicing_and_tiling(self, vae_tiling: bool, vae_slicing: bool):
+        """
+        Set the VAE slicing and tiling status of the pipeline.
+
+        :param vae_tiling: vae tiling?
+        :param vae_slicing: vae slicing?
+        """
+        set_vae_slicing_tiling(self.pipeline, vae_tiling, vae_slicing)
+
     def __init__(self,
+                 model_path: _types.Path,
                  pipeline: diffusers.DiffusionPipeline,
                  parsed_unet_uri: _uris.UNetUri | None,
                  parsed_transformer_uri: _uris.TransformerUri | None,
@@ -1393,6 +1089,7 @@ class TorchPipelineCreationResult(PipelineCreationResult):
                  parsed_controlnet_uris: collections.abc.Sequence[_uris.ControlNetUri],
                  parsed_t2i_adapter_uris: collections.abc.Sequence[_uris.T2IAdapterUri]):
         super().__init__(pipeline)
+        self.model_path = model_path
         self.parsed_unet_uri = parsed_unet_uri
         self.parsed_vae_uri = parsed_vae_uri
         self.parsed_lora_uris = parsed_lora_uris
@@ -1441,7 +1138,6 @@ def create_torch_diffusion_pipeline(
         controlnet_uris: _types.OptionalUris = None,
         t2i_adapter_uris: _types.OptionalUris = None,
         quantizer_uri: _types.OptionalUri = None,
-        scheduler: _types.OptionalString = None,
         pag: bool = False,
         safety_checker: bool = False,
         original_config: _types.OptionalString = None,
@@ -1478,9 +1174,6 @@ def create_torch_diffusion_pipeline(
     :param controlnet_uris: Optional ``--control-nets`` URI strings for specifying ControlNet models
     :param t2i_adapter_uris: Optional ``--t2i-adapters`` URI strings for specifying T2IAdapter models
     :param quantizer_uri: Optional ``--quantizer`` URI value
-    :param scheduler: Optional scheduler (sampler) class name, unqualified, or "help" / "helpargs" to print supported values
-        to STDOUT and raise :py:exc:`dgenerate.pipelinewrapper.SchedulerHelpException`.  Dgenerate URI syntax is supported
-        for overriding the schedulers constructor parameter defaults.
     :param pag: Use perturbed attention guidance?
     :param safety_checker: Safety checker enabled? default is ``False``
     :param original_config: Optional original training config .yaml file path when loading a single file checkpoint.
@@ -1541,7 +1234,6 @@ class TorchPipelineFactory:
                  t2i_adapter_uris: _types.OptionalUris = None,
                  text_encoder_uris: _types.OptionalUris = None,
                  quantizer_uri: _types.OptionalUri = None,
-                 scheduler: _types.OptionalString = None,
                  pag: bool = False,
                  safety_checker: bool = False,
                  original_config: _types.OptionalString = None,
@@ -1550,15 +1242,10 @@ class TorchPipelineFactory:
                  extra_modules: dict[str, typing.Any] | None = None,
                  model_cpu_offload: bool = False,
                  sequential_cpu_offload: bool = False,
-                 local_files_only: bool = False,
-                 vae_tiling=False,
-                 vae_slicing=False):
+                 local_files_only: bool = False):
         self._args = {k: v for k, v in
                       _types.partial_deep_copy_container(locals()).items()
-                      if k not in {'self', 'vae_tiling', 'vae_slicing'}}
-
-        self._vae_tiling = vae_tiling
-        self._vae_slicing = vae_slicing
+                      if k not in {'self'}}
 
     def __call__(self) -> TorchPipelineCreationResult:
         """
@@ -1573,21 +1260,7 @@ class TorchPipelineFactory:
         :return: :py:class:`.TorchPipelineCreationResult`
         """
         r = create_torch_diffusion_pipeline(**self._args)
-        set_vae_slicing_tiling(r.pipeline,
-                               vae_tiling=self._vae_tiling,
-                               vae_slicing=self._vae_slicing)
         return r
-
-
-def _text_encoder_help(pipeline_class):
-    _messages.log(
-        'Text encoder type help:\n\n' +
-        ' ' * 4 + (('\n' + ' ' * 4).join(
-            str(idx) + ' = ' + n for idx, n in
-            enumerate(v[1].__name__ for v in
-                      typing.get_type_hints(pipeline_class.__init__).items()
-                      if v[0].startswith('text_encoder')))))
-    raise ArgumentHelpException()
 
 
 def _format_pipeline_creation_debug_arg(arg_name, v):
@@ -1714,11 +1387,10 @@ def get_torch_pipeline_class(
         image_encoder_uri: _types.OptionalUri = None,
         ip_adapter_uris: _types.OptionalUris = None,
         textual_inversion_uris: _types.OptionalUris = None,
-        text_encoder_uris: _types.OptionalUris = None,
         controlnet_uris: _types.OptionalUris = None,
         t2i_adapter_uris: _types.OptionalUris = None,
-        scheduler: _types.OptionalString = None,
-        pag: bool = False
+        pag: bool = False,
+        help_mode: bool = False
 ) -> typing.Type[diffusers.DiffusionPipeline]:
     """
     Get an appropriate ``diffusers`` pipeline class for the provided arguments.
@@ -1733,15 +1405,10 @@ def get_torch_pipeline_class(
     :param image_encoder_uri: Optional ``--image-encoder`` URI for use with IP Adapter weights or Stable Cascade
     :param ip_adapter_uris: Optional ``--ip-adapters`` URI strings for specifying IP Adapter weights
     :param textual_inversion_uris: Optional ``--textual-inversions`` URI strings for specifying Textual Inversion weights
-    :param text_encoder_uris: Optional user specified ``--text-encoders`` URIs that will be loaded on to the
-        pipeline in order. A uri value of ``+`` or ``None`` indicates use default, a string value of ``null``
-        indicates to explicitly not load any encoder all
     :param controlnet_uris: Optional ``--control-nets`` URI strings for specifying ControlNet models
     :param t2i_adapter_uris: Optional ``--t2i-adapters`` URI strings for specifying T2IAdapter models
-    :param scheduler: Optional scheduler (sampler) class name, unqualified, or "help" / "helpargs" to print supported values
-        to STDOUT and raise :py:exc:`dgenerate.pipelinewrapper.SchedulerHelpException`.  Dgenerate URI syntax is supported
-        for overriding the schedulers constructor parameter defaults.
     :param pag: Use perturbed attention guidance?
+    :param help_mode: Return the class even if it does not support the selected ``pipeline_type``
 
     :raises UnsupportedPipelineConfigError:
     """
@@ -1901,7 +1568,7 @@ def get_torch_pipeline_class(
         if image_encoder_uri:
             raise UnsupportedPipelineConfigError(
                 'Upscaler models are not compatible with --image-encoder.')
-        if pipeline_type != _enums.PipelineType.IMG2IMG and not scheduler_is_help(scheduler):
+        if pipeline_type != _enums.PipelineType.IMG2IMG and not help_mode:
             raise UnsupportedPipelineConfigError(
                 'Upscaler models only work with img2img generation, IE: --image-seeds (with no image masks).')
 
@@ -1913,7 +1580,7 @@ def get_torch_pipeline_class(
     else:
         if pipeline_type == _enums.PipelineType.TXT2IMG:
             if is_pix2pix:
-                if not (scheduler_is_help(scheduler) or text_encoder_is_help(text_encoder_uris)):
+                if not help_mode:
                     raise UnsupportedPipelineConfigError(
                         'Pix2Pix models only work in img2img mode and cannot work without --image-seeds.')
                 else:
@@ -1927,7 +1594,7 @@ def get_torch_pipeline_class(
             if model_type == _enums.ModelType.TORCH_IF:
                 pipeline_class = diffusers.IFPipeline
             elif model_type == _enums.ModelType.TORCH_IFS:
-                if not (scheduler_is_help(scheduler) or text_encoder_is_help(text_encoder_uris)):
+                if not help_mode:
                     raise UnsupportedPipelineConfigError(
                         'Deep Floyd IF super-resolution (IFS) only works in '
                         'img2img mode and cannot work without --image-seeds.')
@@ -2234,7 +1901,6 @@ def _create_torch_diffusion_pipeline(
         controlnet_uris: _types.OptionalUris = None,
         t2i_adapter_uris: _types.OptionalUris = None,
         quantizer_uri: _types.OptionalUri = None,
-        scheduler: _types.OptionalString = None,
         pag: bool = False,
         safety_checker: bool = False,
         original_config: _types.OptionalString = None,
@@ -2321,10 +1987,8 @@ def _create_torch_diffusion_pipeline(
         image_encoder_uri=image_encoder_uri,
         ip_adapter_uris=ip_adapter_uris,
         textual_inversion_uris=textual_inversion_uris,
-        text_encoder_uris=text_encoder_uris,
         controlnet_uris=controlnet_uris,
         t2i_adapter_uris=t2i_adapter_uris,
-        scheduler=scheduler,
         pag=pag
     )
 
@@ -2333,8 +1997,6 @@ def _create_torch_diffusion_pipeline(
 
     if not text_encoder_uris:
         text_encoder_uris = []
-    elif text_encoder_is_help(text_encoder_uris):
-        _text_encoder_help(pipeline_class)
 
     if len(text_encoder_uris) > text_encoder_count:
         raise UnsupportedPipelineConfigError('To many text encoder URIs specified.')
@@ -2365,7 +2027,6 @@ def _create_torch_diffusion_pipeline(
     adapter_override = 'adapter' in extra_modules
     image_encoder_override = 'image_encoder' in extra_modules
     safety_checker_override = 'safety_checker' in extra_modules
-    scheduler_override = 'scheduler' in extra_modules
     transformer_override = 'transformer' in extra_modules
 
     if 'text_encoder' in extra_modules and text_encoder_count == 0:
@@ -2842,13 +2503,6 @@ def _create_torch_diffusion_pipeline(
         except (ValueError, TypeError, NameError, OSError) as e:
             _handle_generic_pipeline_load_failure(e)
 
-    # Select Scheduler
-
-    if not scheduler_override:
-        load_scheduler(pipeline=pipeline,
-                       model_path=model_path,
-                       scheduler_name=scheduler)
-
     if hasattr(pipeline, 'vae') and \
             _enums.model_type_is_sd3(model_type):
         # patch to enable tiling at all resolutions
@@ -2924,6 +2578,7 @@ def _create_torch_diffusion_pipeline(
     _messages.debug_log(f'Finished Creating Torch Pipeline: "{pipeline_class.__name__}"')
 
     return TorchPipelineCreationResult(
+        model_path=model_path,
         pipeline=pipeline,
         parsed_unet_uri=parsed_unet_uri,
         parsed_transformer_uri=parsed_transformer_uri,

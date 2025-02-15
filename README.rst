@@ -191,17 +191,14 @@ Help Output
                      [-lrfs LORA_FUSE_SCALE] [-ie IMAGE_ENCODER_URI] [-ipa IP_ADAPTER_URI [IP_ADAPTER_URI ...]]
                      [-ti URI [URI ...]] [-cn CONTROLNET_URI [CONTROLNET_URI ...] | -t2i T2I_ADAPTER_URI
                      [T2I_ADAPTER_URI ...]] [-q QUANTIZER_URI] [-q2 QUANTIZER_URI]
-                     [-sch SCHEDULER_URI [SCHEDULER_URI ...]] [-hd] [-rhd] [-pag] [-pags FLOAT [FLOAT ...]]
-                     [-pagas FLOAT [FLOAT ...]] [-rpag] [-rpags FLOAT [FLOAT ...]] [-rpagas FLOAT [FLOAT ...]]
-                     [-mqo | -mco] [--s-cascade-decoder MODEL_URI] [-dqo] [-dco]
-                     [--s-cascade-decoder-prompts PROMPT [PROMPT ...]]
+                     [-sch SCHEDULER_URI [SCHEDULER_URI ...]] [--scheduler2 SCHEDULER_URI [SCHEDULER_URI ...]]
+                     [-hd] [-rhd] [-pag] [-pags FLOAT [FLOAT ...]] [-pagas FLOAT [FLOAT ...]] [-rpag]
+                     [-rpags FLOAT [FLOAT ...]] [-rpagas FLOAT [FLOAT ...]] [-mqo | -mco] [-mqo2 | -mco2]
+                     [--s-cascade-decoder MODEL_URI] [--s-cascade-decoder-prompts PROMPT [PROMPT ...]]
                      [--s-cascade-decoder-inference-steps INTEGER [INTEGER ...]]
-                     [--s-cascade-decoder-guidance-scales INTEGER [INTEGER ...]]
-                     [--s-cascade-decoder-scheduler SCHEDULER_URI [SCHEDULER_URI ...]]
-                     [--sdxl-refiner MODEL_URI] [-rqo] [-rco]
-                     [--sdxl-refiner-scheduler SCHEDULER_URI [SCHEDULER_URI ...]] [--sdxl-refiner-edit]
-                     [--sdxl-second-prompts PROMPT [PROMPT ...]] [--sdxl-t2i-adapter-factors FLOAT [FLOAT ...]]
-                     [--sdxl-aesthetic-scores FLOAT [FLOAT ...]]
+                     [--s-cascade-decoder-guidance-scales INTEGER [INTEGER ...]] [--sdxl-refiner MODEL_URI]
+                     [--sdxl-refiner-edit] [--sdxl-second-prompts PROMPT [PROMPT ...]]
+                     [--sdxl-t2i-adapter-factors FLOAT [FLOAT ...]] [--sdxl-aesthetic-scores FLOAT [FLOAT ...]]
                      [--sdxl-crops-coords-top-left COORD [COORD ...]] [--sdxl-original-size SIZE [SIZE ...]]
                      [--sdxl-target-size SIZE [SIZE ...]] [--sdxl-negative-aesthetic-scores FLOAT [FLOAT ...]]
                      [--sdxl-negative-original-sizes SIZE [SIZE ...]]
@@ -220,7 +217,7 @@ Help Output
                      [--sdxl-refiner-negative-crops-coords-top-left COORD [COORD ...]] [-hnf FLOAT [FLOAT ...]]
                      [-ri INT [INT ...]] [-rg FLOAT [FLOAT ...]] [-rgr FLOAT [FLOAT ...]] [-sc] [-d DEVICE]
                      [-t DTYPE] [-s SIZE] [-na] [-o PATH] [-op PREFIX] [-ox] [-oc] [-om]
-                     [-pw PROMPT_WEIGHTER_URI] [-rpw PROMPT_WEIGHTER_URI] [-dpw PROMPT_WEIGHTER_URI]
+                     [-pw PROMPT_WEIGHTER_URI] [-pw2 PROMPT_WEIGHTER_URI]
                      [--prompt-weighter-help [PROMPT_WEIGHTER_NAMES ...]] [-p PROMPT [PROMPT ...]]
                      [--sd3-max-sequence-length INTEGER] [--sd3-second-prompts PROMPT [PROMPT ...]]
                      [--sd3-third-prompts PROMPT [PROMPT ...]] [--flux-second-prompts PROMPT [PROMPT ...]]
@@ -982,6 +979,14 @@ Help Output
             
             You may pass multiple scheduler URIs to this argument, each URI will be tried in turn.
             --------------------------------------------------------------------------------------
+      --scheduler2 SCHEDULER_URI [SCHEDULER_URI ...], --schedulers2 SCHEDULER_URI [SCHEDULER_URI ...]
+            Specify a scheduler (sampler) by URI for the SDXL Refiner or Stable Cascade Decoder pass. Operates
+            the exact same way as --scheduler including the "help" option. Passing 'helpargs' will yield a help
+            message with a list of overridable arguments for each scheduler and their typical defaults. Defaults
+            to the value of --scheduler.
+            
+            You may pass multiple scheduler URIs to this argument, each URI will be tried in turn.
+            --------------------------------------------------------------------------------------
       -hd, --hi-diffusion
             Activate HiDiffusion for the primary model?
             -------------------------------------------
@@ -1022,6 +1027,16 @@ Help Output
             models to run when they would otherwise not fit in your GPUs VRAM. Inference will be slower.
             Mutually exclusive with --model-sequential-offload
             --------------------------------------------------
+      -mqo2, --model-sequential-offload2
+            Force sequential model offloading for the SDXL Refiner or Stable Cascade Decoder pipeline, this may
+            drastically reduce memory consumption and allow large models to run when they would otherwise not
+            fit in your GPUs VRAM. Inference will be much slower. Mutually exclusive with --model-cpu-offload2
+            --------------------------------------------------------------------------------------------------
+      -mco2, --model-cpu-offload2
+            Force model cpu offloading for the SDXL Refiner or Stable Cascade Decoder pipeline, this may reduce
+            memory consumption and allow large models to run when they would otherwise not fit in your GPUs
+            VRAM. Inference will be slower. Mutually exclusive with --model-sequential-offload2
+            -----------------------------------------------------------------------------------
       --s-cascade-decoder MODEL_URI
             Specify a Stable Cascade (torch-s-cascade) decoder model path using a URI. This should be a Hugging
             Face repository slug / blob link, path to model file on disk (for example, a .pt, .pth, .bin, .ckpt,
@@ -1054,16 +1069,6 @@ Help Output
             syntax: --s-cascade-decoder "https://huggingface.co/UserName/repository-
             name/blob/main/decoder.safetensors", the "revision" argument may be used with this syntax.
             ------------------------------------------------------------------------------------------
-      -dqo, --s-cascade-decoder-sequential-offload
-            Force sequential model offloading for the Stable Cascade decoder pipeline, this may drastically
-            reduce memory consumption and allow large models to run when they would otherwise not fit in your
-            GPUs VRAM. Inference will be much slower. Mutually exclusive with --s-cascade-decoder-cpu-offload
-            -------------------------------------------------------------------------------------------------
-      -dco, --s-cascade-decoder-cpu-offload
-            Force model cpu offloading for the Stable Cascade decoder pipeline, this may reduce memory
-            consumption and allow large models to run when they would otherwise not fit in your GPUs VRAM.
-            Inference will be slower. Mutually exclusive with --s-cascade-decoder-sequential-offload
-            ----------------------------------------------------------------------------------------
       --s-cascade-decoder-prompts PROMPT [PROMPT ...]
             One or more prompts to try with the Stable Cascade decoder model, by default the decoder model gets
             the primary prompt, this argument overrides that with a prompt of your choosing. The negative prompt
@@ -1075,14 +1080,6 @@ Help Output
       --s-cascade-decoder-guidance-scales INTEGER [INTEGER ...]
             One or more guidance scale values to try with the Stable Cascade decoder. (default: [0])
             ----------------------------------------------------------------------------------------
-      --s-cascade-decoder-scheduler SCHEDULER_URI [SCHEDULER_URI ...], --s-cascade-decoder-schedulers SCHEDULER_URI [SCHEDULER_URI ...]
-            Specify a scheduler (sampler) by URI for the Stable Cascade decoder pass. Operates the exact same
-            way as --scheduler including the "help" option. Passing 'helpargs' will yield a help message with a
-            list of overridable arguments for each scheduler and their typical defaults. Defaults to the value
-            of --scheduler.
-            
-            You may pass multiple scheduler URIs to this argument, each URI will be tried in turn.
-            --------------------------------------------------------------------------------------
       --sdxl-refiner MODEL_URI
             Specify a Stable Diffusion XL (torch-sdxl) refiner model path using a URI. This should be a Hugging
             Face repository slug / blob link, path to model file on disk (for example, a .pt, .pth, .bin, .ckpt,
@@ -1116,24 +1113,6 @@ Help Output
             syntax: --sdxl-refiner "https://huggingface.co/UserName/repository-
             name/blob/main/refiner_model.safetensors", the "revision" argument may be used with this syntax.
             ------------------------------------------------------------------------------------------------
-      -rqo, --sdxl-refiner-sequential-offload
-            Force sequential model offloading for the SDXL refiner pipeline, this may drastically reduce memory
-            consumption and allow large models to run when they would otherwise not fit in your GPUs VRAM.
-            Inference will be much slower. Mutually exclusive with --refiner-cpu-offload
-            ----------------------------------------------------------------------------
-      -rco, --sdxl-refiner-cpu-offload
-            Force model cpu offloading for the SDXL refiner pipeline, this may reduce memory consumption and
-            allow large models to run when they would otherwise not fit in your GPUs VRAM. Inference will be
-            slower. Mutually exclusive with --refiner-sequential-offload
-            ------------------------------------------------------------
-      --sdxl-refiner-scheduler SCHEDULER_URI [SCHEDULER_URI ...], --sdxl-refiner-schedulers SCHEDULER_URI [SCHEDULER_URI ...]
-            Specify a scheduler (sampler) by URI for the SDXL refiner pass. Operates the exact same way as
-            --scheduler including the "help" option. Passing 'helpargs' will yield a help message with a list of
-            overridable arguments for each scheduler and their typical defaults. Defaults to the value of
-            --scheduler.
-            
-            You may pass multiple scheduler URIs to this argument, each URI will be tried in turn.
-            --------------------------------------------------------------------------------------
       --sdxl-refiner-edit
             Force the SDXL refiner to operate in edit mode instead of cooperative denoising mode as it would
             normally do for inpainting and ControlNet usage. The main model will perform the full amount of
@@ -1346,12 +1325,9 @@ Help Output
             weighter-help "name" to see comprehensive documentation for a specific prompt weighter
             implementation.
             ---------------
-      -rpw PROMPT_WEIGHTER_URI, --sdxl-refiner-prompt-weighter PROMPT_WEIGHTER_URI
-            --prompt-weighter URI value that that applies to to --sdxl-refiner.
-            -------------------------------------------------------------------
-      -dpw PROMPT_WEIGHTER_URI, --s-cascade-decoder-prompt-weighter PROMPT_WEIGHTER_URI
-            --prompt-weighter URI value that that applies to to --s-cascade-decoder.
-            ------------------------------------------------------------------------
+      -pw2 PROMPT_WEIGHTER_URI, --prompt-weighter2 PROMPT_WEIGHTER_URI
+            --prompt-weighter URI value that that applies to to --sdxl-refiner or --s-cascade-decoder.
+            ------------------------------------------------------------------------------------------
       --prompt-weighter-help [PROMPT_WEIGHTER_NAMES ...]
             Use this option alone (or with --plugin-modules) and no model specification in order to list
             available prompt weighter names. Specifying one or more prompt weighter names after this option will
@@ -2737,16 +2713,13 @@ Specifying a Scheduler (sampler)
 
 A scheduler (otherwise known as a sampler) for the main model can be selected via the use of ``--scheduler``.
 
-And in the case of SDXL the refiner's scheduler can be selected independently with ``--sdxl-refiner-scheduler``.
-
-For Stable Cascade the decoder scheduler can be specified via the argument ``-s-cascade-decoder-scheduler``
-however only one scheduler type is supported for Stable Cascade (``DDPMWuerstchenScheduler``).
+And in the case of SDXL and Stable Cascade the refiner / decoder scheduler can be
+selected independently with ``--scheduler2``.
 
 Both of these default to the value of ``--scheduler``, which in turn defaults to automatic selection.
 
 Available schedulers for a specific combination of dgenerate arguments can be
-queried using ``--scheduler help``, ``--sdxl-refiner-scheduler help``, or ``--s-cascade-decoder-scheduler help``
-though they cannot be queried simultaneously.
+queried using ``--scheduler help`` or ``--scheduler2 help``.
 
 In order to use the query feature it is ideal that you provide all the other arguments
 that you plan on using while making the query, as different combinations of arguments
@@ -2895,7 +2868,7 @@ output file name, in the order: ``(scheduler)_(refiner / decoder scheduler)``
     --variant fp16 \
     --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
     --schedulers EulerAncestralDiscreteScheduler EulerDiscreteScheduler \
-    --sdxl-refiner-schedulers KDPM2AncestralDiscreteScheduler KDPM2DiscreteScheduler \
+    --schedulers2 KDPM2AncestralDiscreteScheduler KDPM2DiscreteScheduler \
     --inference-steps 30 \
     --guidance-scales 5 \
     --prompts "a horse standing in a field"
@@ -3142,7 +3115,7 @@ UNet models which have a smaller memory footprint using ``--unet`` and ``--unet2
     --unet "stabilityai/stable-cascade-prior;subfolder=prior_lite" \
     --unet2 "stabilityai/stable-cascade;subfolder=decoder_lite" \
     --model-cpu-offload \
-    --s-cascade-decoder-cpu-offload \
+    --model-cpu-offload2 \
     --s-cascade-decoder "stabilityai/stable-cascade;dtype=float16" \
     --inference-steps 20 \
     --guidance-scales 4 \
@@ -3356,7 +3329,7 @@ model as mentioned above.
     --variant bf16 \
     --dtype bfloat16 \
     --model-cpu-offload \
-    --s-cascade-decoder-cpu-offload \
+    --model-cpu-offload2 \
     --s-cascade-decoder "stabilityai/stable-cascade;dtype=float16" \
     --inference-steps 20 \
     --guidance-scales 4 \
@@ -4353,8 +4326,8 @@ anywhere in the prompt.  A prompt weighter specified in the prompt text applies 
 that prompt alone (both negative and positive prompts).
 
 You can specify different prompt weighters for the SDXL Refiner or Stable Cascade
-decoder using ``--sdxl-refiner-prompt-weighter`` and ``-s-cascade-decoder-prompt-weighter``, or in the prompt
-arguments ``--sdxl-refiner-prompts`` and ``--s-cascade-decoder-prompts``.
+decoder using ``--prompt-weighter2``, or in the prompt arguments
+``--sdxl-refiner-prompts`` and ``--s-cascade-decoder-prompts``.
 
 Specifying ``<weighter: (uri here)>`` in a ``--prompts`` value will default
 the secondary models to the same prompt weighter unless you specify otherwise.
@@ -6290,34 +6263,22 @@ The ``\templates_help`` output from the above example is:
         Name: "last_revision"
             Type: <class 'str'>
             Value: 'main'
-        Name: "last_s_cascade_decoder_cpu_offload"
-            Type: typing.Optional[bool]
-            Value: None
         Name: "last_s_cascade_decoder_guidance_scales"
             Type: typing.Optional[collections.abc.Sequence[float]]
             Value: []
         Name: "last_s_cascade_decoder_inference_steps"
             Type: typing.Optional[collections.abc.Sequence[int]]
             Value: []
-        Name: "last_s_cascade_decoder_prompt_weighter_uri"
-            Type: typing.Optional[str]
-            Value: None
         Name: "last_s_cascade_decoder_prompts"
             Type: typing.Optional[collections.abc.Sequence[dgenerate.prompt.Prompt]]
             Value: []
-        Name: "last_s_cascade_decoder_scheduler"
-            Type: typing.Union[str, collections.abc.Sequence[str], NoneType]
-            Value: None
-        Name: "last_s_cascade_decoder_sequential_offload"
-            Type: typing.Optional[bool]
-            Value: None
         Name: "last_s_cascade_decoder_uri"
             Type: typing.Optional[str]
             Value: None
         Name: "last_safety_checker"
             Type: <class 'bool'>
             Value: False
-        Name: "last_scheduler"
+        Name: "last_scheduler_uri"
             Type: typing.Union[str, collections.abc.Sequence[str], NoneType]
             Value: None
         Name: "last_sd3_max_sequence_length"
@@ -6359,9 +6320,6 @@ The ``\templates_help`` output from the above example is:
         Name: "last_sdxl_refiner_clip_skips"
             Type: typing.Optional[collections.abc.Sequence[int]]
             Value: []
-        Name: "last_sdxl_refiner_cpu_offload"
-            Type: typing.Optional[bool]
-            Value: None
         Name: "last_sdxl_refiner_crops_coords_top_left"
             Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
             Value: []
@@ -6404,21 +6362,12 @@ The ``\templates_help`` output from the above example is:
         Name: "last_sdxl_refiner_pag_scales"
             Type: typing.Optional[collections.abc.Sequence[float]]
             Value: []
-        Name: "last_sdxl_refiner_prompt_weighter_uri"
-            Type: typing.Optional[str]
-            Value: None
         Name: "last_sdxl_refiner_prompts"
             Type: typing.Optional[collections.abc.Sequence[dgenerate.prompt.Prompt]]
             Value: []
-        Name: "last_sdxl_refiner_scheduler"
-            Type: typing.Union[str, collections.abc.Sequence[str], NoneType]
-            Value: None
         Name: "last_sdxl_refiner_second_prompts"
             Type: typing.Optional[collections.abc.Sequence[dgenerate.prompt.Prompt]]
             Value: []
-        Name: "last_sdxl_refiner_sequential_offload"
-            Type: typing.Optional[bool]
-            Value: None
         Name: "last_sdxl_refiner_target_sizes"
             Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
             Value: []
@@ -6434,11 +6383,23 @@ The ``\templates_help`` output from the above example is:
         Name: "last_sdxl_target_sizes"
             Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
             Value: []
+        Name: "last_second_model_cpu_offload"
+            Type: typing.Optional[bool]
+            Value: None
+        Name: "last_second_model_sequential_offload"
+            Type: typing.Optional[bool]
+            Value: None
         Name: "last_second_original_config"
+            Type: typing.Optional[str]
+            Value: None
+        Name: "last_second_prompt_weighter_uri"
             Type: typing.Optional[str]
             Value: None
         Name: "last_second_quantizer_uri"
             Type: typing.Optional[str]
+            Value: None
+        Name: "last_second_scheduler_uri"
+            Type: typing.Union[str, collections.abc.Sequence[str], NoneType]
             Value: None
         Name: "last_second_text_encoder_uris"
             Type: typing.Optional[collections.abc.Sequence[str]]
@@ -6451,7 +6412,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [32553883108508]
+            Value: [20761584657531]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

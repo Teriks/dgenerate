@@ -7,8 +7,8 @@ title: Stable Cascade (UNet lite)
 --variant bf16
 --dtype bfloat16
 @uri[{"label":"Decoder Path / URI", "dir":true, "arg":"--s-cascade-decoder", "default":"stabilityai/stable-cascade;dtype=float16", "file-types":["models"]}]
-@karrasscheduler[{"label": "Decoder Scheduler", "arg": "--s-cascade-decoder-scheduler", "filter": ["DDPMWuerstchenScheduler"]}]
-@switchradio[{"labels":["Decoder CPU Offload", "Decoder Sequential Offload"], "args":["--s-cascade-decoder-cpu-offload", "--s-cascade-decoder-sequential-offload"], "default":0, "divider-after":true}]
+@karrasscheduler[{"label": "Decoder Scheduler", "arg": "--scheduler2", "filter": ["DDPMWuerstchenScheduler"]}]
+@switchradio[{"labels":["Decoder CPU Offload", "Decoder Sequential Offload"], "args":["--model-cpu-offload2", "--model-sequential-offload2"], "default":0, "divider-after":true}]
 @dir[{"label":"UNet Directory / URI", "arg":"--unet", "default":"stabilityai/stable-cascade-prior;subfolder=prior_lite"}]
 @dir[{"label":"Decoder UNet Directory / URI", "arg":"--unet2", "default":"stabilityai/stable-cascade;subfolder=decoder_lite", "divider-after":true}]
 @file[{"label":"Image Seed", "arg":"--image-seeds", "file-types":["images-in", "videos-in"]}]

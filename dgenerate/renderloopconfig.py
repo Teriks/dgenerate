@@ -66,35 +66,6 @@ class RenderLoopConfigError(Exception):
     pass
 
 
-class RenderLoopSchedulerSet:
-    """
-    Represents a possible combination of schedulers to use for rendering.
-    """
-
-    scheduler: _types.OptionalUri
-    """
-    Primary model scheduler.
-    """
-
-    sdxl_refiner_scheduler: _types.OptionalUri
-    """
-    SDXL Refiner model scheduler.
-    """
-
-    s_cascade_decoder_scheduler: _types.OptionalUri
-    """
-    Stable Cascade Decoder model scheduler.
-    """
-
-    def __init__(self,
-                 scheduler: _types.OptionalUri,
-                 sdxl_refiner_scheduler: _types.OptionalUri,
-                 s_cascade_decoder_scheduler: _types.OptionalUri):
-        self.scheduler = scheduler
-        self.sdxl_refiner_scheduler = sdxl_refiner_scheduler
-        self.s_cascade_decoder_scheduler = s_cascade_decoder_scheduler
-
-
 class RenderLoopConfig(_types.SetFromMixin):
     """
     This object represents configuration for :py:class:`RenderLoop`.
@@ -153,22 +124,14 @@ class RenderLoopConfig(_types.SetFromMixin):
     This corresponds to the ``--prompt-weighter`` argument of the dgenerate command line tool.
     """
 
-    sdxl_refiner_prompt_weighter_uri: _types.OptionalUri = None
+    second_prompt_weighter_uri: _types.OptionalUri = None
     """
-    The URI of a prompt-weighter implementation supported by dgenerate to use with the SDXL refiner.
+    The URI of a prompt-weighter implementation supported by dgenerate to 
+    use with the SDXL refiner or Stable Cascade decoder.
     
     Defaults to :py:attr:`RenderLoopConfig.prompt_weighter_uri` if not specified.
     
-    This corresponds to the ``--sdxl-refiner-prompt-weighter`` argument of the dgenerate command line tool.
-    """
-
-    s_cascade_decoder_prompt_weighter_uri: _types.OptionalUri = None
-    """
-    The URI of a prompt-weighter implementation supported by dgenerate to use with the Stable Cascade decoder.
-    
-    Defaults to :py:attr:`RenderLoopConfig.prompt_weighter_uri` if not specified.
-    
-    This corresponds to the ``--s-cascade-prompt-weighter`` argument of the dgenerate command line tool.
+    This corresponds to the ``--prompt-weighter2`` argument of the dgenerate command line tool.
     """
 
     prompts: _prompt.Prompts
@@ -587,7 +550,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     (SDXL Refiner, Stable Cascade Decoder).
     """
 
-    scheduler: _types.OptionalUriOrUris = None
+    scheduler_uri: _types.OptionalUriOrUris = None
     """
     Optional primary model scheduler/sampler class name specification, this corresponds to the ``--scheduler``
     argument of the dgenerate command line tool. Setting this to 'help' will yield a help message to stdout
@@ -641,24 +604,13 @@ class RenderLoopConfig(_types.SetFromMixin):
     this corresponds to the ``--sdxl-refiner-pag-adaptive-scales`` argument of the dgenerate command line tool.
     """
 
-    sdxl_refiner_scheduler: _types.OptionalUriOrUris = None
+    second_scheduler_uri: _types.OptionalUriOrUris = None
     """
-    Optional SDXL refiner model scheduler/sampler class name specification, this corresponds to the 
-    ``--sdxl-refiner-scheduler`` argument of the dgenerate command line tool. Setting this to 'help' 
-    will yield a help message to stdout describing scheduler names compatible with the current 
-    configuration upon running. Passing 'helpargs' will yield a help message with a list of overridable 
-    arguments for each scheduler and their typical defaults.
-    
-    This may be a list of schedulers, indicating to try each scheduler in turn.
-    """
-
-    s_cascade_decoder_scheduler: _types.OptionalUriOrUris = None
-    """
-    Optional Stable Cascade decoder model scheduler/sampler class name specification, this corresponds to the 
-    ``--s-cascade-decoder-scheduler`` argument of the dgenerate command line tool. Setting this to 'help' 
-    will yield a help message to stdout describing scheduler names compatible with the current 
-    configuration upon running. Passing 'helpargs' will yield a help message with a list of overridable 
-    arguments for each scheduler and their typical defaults.
+    Optional SDXL Refiner / Stable Cascade Decoder model scheduler/sampler class name specification, 
+    this corresponds to the ``--scheduler2`` argument of the dgenerate command line tool. 
+    Setting this to 'help' will yield a help message to stdout describing scheduler names compatible 
+    with the current configuration upon running. Passing 'helpargs' will yield a help message with a 
+    list of overridable arguments for each scheduler and their typical defaults.
     
     This may be a list of schedulers, indicating to try each scheduler in turn.
     """
@@ -831,34 +783,20 @@ class RenderLoopConfig(_types.SetFromMixin):
     Inference will be much slower. Mutually exclusive with :py:attr:`RenderLoopConfig.model_cpu_offload`
     """
 
-    sdxl_refiner_cpu_offload: _types.OptionalBoolean = None
+    second_model_cpu_offload: _types.OptionalBoolean = None
     """
-    Force model cpu offloading for the SDXL refiner pipeline, this may reduce memory consumption
-    and allow large models to run when they would otherwise not fit in your GPUs VRAM. 
-    Inference will be slower. Mutually exclusive with :py:attr:`RenderLoopConfig.sdxl_refiner_sequential_offload`
-    """
-
-    sdxl_refiner_sequential_offload: _types.OptionalBoolean = None
-    """
-    Force sequential model offloading for the SDXL refiner pipeline, this may drastically
-    reduce memory consumption and allow large models to run when they would otherwise not fit in 
-    your GPUs VRAM. Inference will be much slower. Mutually exclusive with :py:attr:`RenderLoopConfig.sdxl_refiner_cpu_offload`
+    Force model cpu offloading for the SDXL refiner or Stable Cascade decoder pipeline, 
+    this may reduce memory consumption and allow large models to run when they would 
+    otherwise not fit in your GPUs VRAM. Inference will be slower. Mutually exclusive 
+    with :py:attr:`RenderLoopConfig.second_model_sequential_offload`
     """
 
-    s_cascade_decoder_cpu_offload: _types.OptionalBoolean = None
+    second_model_sequential_offload: _types.OptionalBoolean = None
     """
-    Force model cpu offloading for the Stable Cascade decoder pipeline, this may reduce memory consumption
-    and allow large models to run when they would otherwise not fit in your GPUs VRAM. 
-    Inference will be slower. Mutually exclusive with 
-    :py:attr:`RenderLoopConfig.s_cascade_decoder_sequential_offload`
-    """
-
-    s_cascade_decoder_sequential_offload: _types.OptionalBoolean = None
-    """
-    Force sequential model offloading for the Stable Cascade decoder pipeline, this may drastically
-    reduce memory consumption and allow large models to run when they would otherwise not fit in 
-    your GPUs VRAM. Inference will be much slower. Mutually exclusive with 
-    :py:attr:`RenderLoopConfig.s_cascade_decoder_cpu_offload`
+    Force sequential model offloading for the SDXL refiner or Stable Cascade decoder pipeline,
+    this may drastically reduce memory consumption and allow large models to run when they 
+    would otherwise not fit in your GPUs VRAM. Inference will be much slower. Mutually exclusive
+    with :py:attr:`RenderLoopConfig.second_model_cpu_offload`
     """
 
     adetailer_index_filter: _types.OptionalIntegers = None
@@ -976,7 +914,9 @@ class RenderLoopConfig(_types.SetFromMixin):
     def _check(self, attribute_namer: typing.Callable[[str], str] = None):
 
         def non_null_attr_that_start_with(s):
-            return (a for a in dir(self) if a.startswith(s) and getattr(self, a) is not None)
+            if not isinstance(s, list):
+                s = [s]
+            return (a for a in dir(self) if any(a.startswith(k) for k in s) and getattr(self, a) is not None)
 
         def non_null_attr_that_end_with(s):
             return (a for a in dir(self) if a.endswith(s) and getattr(self, a) is not None)
@@ -991,8 +931,23 @@ class RenderLoopConfig(_types.SetFromMixin):
         except ValueError as e:
             raise RenderLoopConfigError(e)
 
-        schedulers = [self.scheduler] if isinstance(self.scheduler, (_types.Uri, type(None))) else self.scheduler
+        # help arg usages and --scheduler2 --text-encoders2
+
+        schedulers = [self.scheduler_uri] if \
+            isinstance(self.scheduler_uri, (_types.Uri, type(None))) else self.scheduler_uri
         scheduler_help = any(_pipelinewrapper.scheduler_is_help(s) for s in schedulers)
+
+        second_schedulers = [self.second_scheduler_uri] if \
+            isinstance(self.second_scheduler_uri, (_types.Uri, type(None))) else self.second_scheduler_uri
+        second_scheduler_help = any(_pipelinewrapper.scheduler_is_help(s) for s in second_schedulers)
+
+        text_encoder_help = _pipelinewrapper.text_encoder_is_help(self.text_encoder_uris)
+        second_text_encoder_help = _pipelinewrapper.text_encoder_is_help(self.second_text_encoder_uris)
+
+        help_mode = scheduler_help or \
+                    second_scheduler_help or \
+                    text_encoder_help or \
+                    second_text_encoder_help
 
         if scheduler_help and len(schedulers) > 1:
             raise RenderLoopConfigError(
@@ -1000,29 +955,46 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'with multiple values involved.'
             )
 
-        sdxl_refiner_schedulers = \
-            [self.sdxl_refiner_scheduler] if \
-                isinstance(self.sdxl_refiner_scheduler, (_types.Uri, type(None))) else self.sdxl_refiner_scheduler
-        sdxl_refiner_scheduler_help = any(_pipelinewrapper.scheduler_is_help(s) for s in sdxl_refiner_schedulers)
-
-        if sdxl_refiner_scheduler_help and len(sdxl_refiner_schedulers) > 1:
+        if second_scheduler_help and len(second_schedulers) > 1:
             raise RenderLoopConfigError(
-                f'You cannot specify "help" or "helpargs" to {a_namer("sdxl_refiner_scheduler")} '
+                f'You cannot specify "help" or "helpargs" to {a_namer("second_scheduler")} '
                 f'with multiple values involved.'
             )
 
-        s_cascade_decoder_schedulers = \
-            [self.s_cascade_decoder_scheduler] if \
-                isinstance(self.s_cascade_decoder_scheduler,
-                           (_types.Uri, type(None))) else self.s_cascade_decoder_scheduler
-        s_cascade_decoder_scheduler_help = any(
-            _pipelinewrapper.scheduler_is_help(s) for s in s_cascade_decoder_schedulers)
-
-        if s_cascade_decoder_scheduler_help and len(s_cascade_decoder_schedulers) > 1:
+        if text_encoder_help and len(self.text_encoder_uris) > 1:
             raise RenderLoopConfigError(
-                f'You cannot specify "help" or "helpargs" to {a_namer("s_cascade_decoder_scheduler")} '
+                f'You cannot specify "help" or "helpargs" to {a_namer("text_encoders")} '
                 f'with multiple values involved.'
             )
+
+        if second_text_encoder_help and len(self.second_text_encoder_uris) > 1:
+            raise RenderLoopConfigError(
+                f'You cannot specify "help" or "helpargs" to {a_namer("second_text_encoders")} '
+                f'with multiple values involved.'
+            )
+
+        if self.second_text_encoder_uris and not \
+                (_pipelinewrapper.model_type_is_sdxl(self.model_type) or
+                 _pipelinewrapper.model_type_is_s_cascade(self.model_type)):
+            raise RenderLoopConfigError(f'Cannot use {a_namer("second_text_encoder_uris")} with '
+                                        f'{a_namer("model_type")} '
+                                        f'{_pipelinewrapper.get_model_type_string(self.model_type)}')
+
+        if not self.sdxl_refiner_uri and not self.s_cascade_decoder_uri:
+            if self.second_scheduler_uri:
+                raise RenderLoopConfigError(
+                    f'Cannot use {a_namer("second_scheduler")} if {a_namer("sdxl_refiner_uri")} '
+                    f'or {a_namer("s_cascade_decoder_uri")} is not specified.')
+
+            if self.second_text_encoder_uris:
+                raise RenderLoopConfigError(
+                    f'Cannot use {a_namer("second_text_encoder_uris")} if {a_namer("sdxl_refiner_uri")} '
+                    f'or {a_namer("s_cascade_decoder_uri")} is not specified.'
+                )
+
+        # ===
+
+        # --original-config and --original-config2
 
         if not _pipelinewrapper_util.is_single_file_model_load(self.model_path):
             if self.original_config:
@@ -1054,6 +1026,8 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'when the {a_namer("s_cascade_decoder_uri")} model is not a '
                     f'single file checkpoint.'
                 )
+
+        # ===
 
         adetailer_args_used = list(non_null_attr_that_start_with('adetailer'))
 
@@ -1092,11 +1066,10 @@ class RenderLoopConfig(_types.SetFromMixin):
                     image_encoder_uri=self.image_encoder_uri,
                     ip_adapter_uris=self.ip_adapter_uris,
                     textual_inversion_uris=self.textual_inversion_uris,
-                    text_encoder_uris=self.text_encoder_uris,
                     controlnet_uris=self.controlnet_uris,
                     t2i_adapter_uris=self.t2i_adapter_uris,
-                    scheduler=self.scheduler,
-                    pag=self.pag
+                    pag=self.pag,
+                    help_mode=help_mode
                 )
             except _pipelinewrapper.UnsupportedPipelineConfigError as e:
                 raise RenderLoopConfigError(str(e))
@@ -1141,17 +1114,10 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'Unknown prompt weighter implementation: {_promptweighters.prompt_weighter_name_from_uri(self.prompt_weighter_uri)}, '
                 f'must be one of: {_textprocessing.oxford_comma(_promptweighters.prompt_weighter_names(), "or")}')
 
-        if self.sdxl_refiner_prompt_weighter_uri is not None \
-                and not _promptweighters.prompt_weighter_exists(self.sdxl_refiner_prompt_weighter_uri):
+        if self.second_prompt_weighter_uri is not None \
+                and not _promptweighters.prompt_weighter_exists(self.second_prompt_weighter_uri):
             raise RenderLoopConfigError(
-                f'Unknown prompt weighter implementation for SDXL Refiner: '
-                f'{_promptweighters.prompt_weighter_name_from_uri(self.prompt_weighter_uri)}, '
-                f'must be one of: {_textprocessing.oxford_comma(_promptweighters.prompt_weighter_names(), "or")}')
-
-        if self.s_cascade_decoder_prompt_weighter_uri is not None \
-                and not _promptweighters.prompt_weighter_exists(self.s_cascade_decoder_prompt_weighter_uri):
-            raise RenderLoopConfigError(
-                f'Unknown prompt weighter implementation for Stable Cascade Decoder: '
+                f'Unknown prompt weighter implementation for secondary model: '
                 f'{_promptweighters.prompt_weighter_name_from_uri(self.prompt_weighter_uri)}, '
                 f'must be one of: {_textprocessing.oxford_comma(_promptweighters.prompt_weighter_names(), "or")}')
 
@@ -1180,14 +1146,9 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'{a_namer("model_cpu_offload")} and {a_namer("model_sequential_offload")} '
                 f'may not be enabled simultaneously.')
 
-        if self.sdxl_refiner_cpu_offload and self.sdxl_refiner_sequential_offload:
+        if self.second_model_cpu_offload and self.second_model_sequential_offload:
             raise RenderLoopConfigError(
-                f'{a_namer("refiner_cpu_offload")} and {a_namer("refiner_sequential_offload")} '
-                f'may not be enabled simultaneously.')
-
-        if self.s_cascade_decoder_cpu_offload and self.s_cascade_decoder_sequential_offload:
-            raise RenderLoopConfigError(
-                f'{a_namer("s_cascade_decoder_cpu_offload")} and {a_namer("s_cascade_decoder_sequential_offload")} '
+                f'{a_namer("second_model_cpu_offload")} and {a_namer("second_model_sequential_offload")} '
                 f'may not be enabled simultaneously.')
 
         if self.model_type == _pipelinewrapper.ModelType.TORCH_S_CASCADE_DECODER:
@@ -1256,25 +1217,21 @@ class RenderLoopConfig(_types.SetFromMixin):
                                         f'"torch", "torch-sdxl", or "torch-sd3"')
 
         if not self.image_seeds:
-            args_help = scheduler_help or \
-                        _pipelinewrapper.text_encoder_is_help(self.text_encoder_uris)
+            args_help = scheduler_help or text_encoder_help or second_text_encoder_help
 
-            if _pipelinewrapper.model_type_is_floyd_ifs(self.model_type) and \
-                    not args_help:
+            if _pipelinewrapper.model_type_is_floyd_ifs(self.model_type) and not args_help:
                 raise RenderLoopConfigError(
                     f'you cannot specify Deep Floyd IF super-resolution '
                     f'({a_namer("model_type")} "{self.model_type})" without {a_namer("image_seeds")}'
                 )
 
-            if _pipelinewrapper.model_type_is_upscaler(self.model_type) and \
-                    not args_help:
+            if _pipelinewrapper.model_type_is_upscaler(self.model_type) and not args_help:
                 raise RenderLoopConfigError(
                     f'you cannot specify an upscaler model '
                     f'({a_namer("model_type")} "{self.model_type})" without {a_namer("image_seeds")}.'
                 )
 
-            if _pipelinewrapper.model_type_is_pix2pix(self.model_type) and \
-                    not args_help:
+            if _pipelinewrapper.model_type_is_pix2pix(self.model_type) and not args_help:
                 raise RenderLoopConfigError(
                     f'you cannot specify a pix2pix model '
                     f'({a_namer("model_type")} "{self.model_type})" without {a_namer("image_seeds")}.'
@@ -1413,7 +1370,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         else:
             if not self.sdxl_refiner_uri:
                 invalid_self = []
-                for sdxl_self in non_null_attr_that_start_with('sdxl_refiner'):
+                for sdxl_self in non_null_attr_that_start_with(['sdxl_refiner', 'second']):
                     invalid_self.append(f'you cannot specify {a_namer(sdxl_self)} '
                                         f'without {a_namer("sdxl_refiner_uri")}.')
                 if invalid_self:
@@ -1427,51 +1384,6 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise RenderLoopConfigError(
                     f'{a_namer("vae_tiling")}/{a_namer("vae_slicing")} not supported for '
                     f'non torch model type, see: {a_namer("model_type")}.')
-
-        # help args
-
-        if self.second_text_encoder_uris and not \
-                (_pipelinewrapper.model_type_is_sdxl(self.model_type) or
-                 _pipelinewrapper.model_type_is_s_cascade(self.model_type)):
-            raise RenderLoopConfigError(f'Cannot use {a_namer("second_text_encoder_uris")} with '
-                                        f'{a_namer("model_type")} '
-                                        f'{_pipelinewrapper.get_model_type_string(self.model_type)}')
-
-        if sdxl_refiner_scheduler_help and not self.sdxl_refiner_uri:
-            raise RenderLoopConfigError(f'Cannot use {a_namer("sdxl_refiner_scheduler")} value '
-                                        f'"help" / "helpargs" if no refiner is specified.')
-
-        if s_cascade_decoder_scheduler_help and not self.s_cascade_decoder_uri:
-            raise RenderLoopConfigError(f'Cannot use {a_namer("s_cascade_decoder_scheduler")} value '
-                                        f'"help" / "helpargs" if no decoder is specified.')
-
-        if _pipelinewrapper.model_type_is_sdxl(self.model_type):
-            if _pipelinewrapper.text_encoder_is_help(self.second_text_encoder_uris) \
-                    and not self.sdxl_refiner_uri:
-                raise RenderLoopConfigError(
-                    f'Cannot use {a_namer("second_text_encoder_uris")} value '
-                    f'"help" if no refiner is specified.')
-
-        if _pipelinewrapper.model_type_is_s_cascade(self.model_type):
-            if _pipelinewrapper.text_encoder_is_help(self.second_text_encoder_uris) \
-                    and not self.s_cascade_decoder_uri:
-                raise RenderLoopConfigError(
-                    f'Cannot use {a_namer("second_text_encoder_uris")} value '
-                    f'"help" if no decoder is specified.')
-
-        helps_used = [
-            scheduler_help,
-            sdxl_refiner_scheduler_help,
-            s_cascade_decoder_scheduler_help,
-            _pipelinewrapper.text_encoder_is_help(self.text_encoder_uris),
-            _pipelinewrapper.text_encoder_is_help(self.second_text_encoder_uris)
-        ]
-
-        if helps_used.count(True) > 1:
-            raise RenderLoopConfigError(
-                'Cannot use the "help" / "helpargs" option value '
-                'with multiple arguments simultaneously.')
-
         # ===
 
         if self.image_seeds:
@@ -1527,11 +1439,10 @@ class RenderLoopConfig(_types.SetFromMixin):
                         image_encoder_uri=self.image_encoder_uri,
                         ip_adapter_uris=self.ip_adapter_uris,
                         textual_inversion_uris=self.textual_inversion_uris,
-                        text_encoder_uris=self.text_encoder_uris,
                         controlnet_uris=self.controlnet_uris,
                         t2i_adapter_uris=self.t2i_adapter_uris,
-                        scheduler=self.scheduler,
-                        pag=self.pag
+                        pag=self.pag,
+                        help_mode=help_mode
                     )
             except _pipelinewrapper.UnsupportedPipelineConfigError as e:
                 raise RenderLoopConfigError(str(e))
@@ -1821,9 +1732,7 @@ class RenderLoopConfig(_types.SetFromMixin):
             self.adetailer_mask_dilations
         ]
 
-        schedulers, \
-            sdxl_refiner_schedulers, \
-            s_cascade_decoder_schedulers = self._normalized_schedulers()
+        schedulers, second_schedulers = self._normalized_schedulers()
 
         product = 1
         for lst in optional_factors:
@@ -1835,61 +1744,17 @@ class RenderLoopConfig(_types.SetFromMixin):
                 len(self.guidance_scales) *
                 len(self.inference_steps) *
                 len(schedulers) *
-                len(sdxl_refiner_schedulers) *
-                len(s_cascade_decoder_schedulers))
+                len(second_schedulers))
 
     def _normalized_schedulers(self):
-        schedulers = self.scheduler
-        sdxl_refiner_schedulers = self.sdxl_refiner_scheduler
-        s_cascade_decoder_schedulers = self.s_cascade_decoder_scheduler
+        schedulers = self.scheduler_uri
+        second_schedulers = self.second_scheduler_uri
 
         if isinstance(schedulers, (_types.Uri, type(None))):
             schedulers = [schedulers]
-        if isinstance(self.sdxl_refiner_scheduler, (_types.Uri, type(None))):
-            sdxl_refiner_schedulers = [sdxl_refiner_schedulers]
-        if isinstance(self.s_cascade_decoder_scheduler, (_types.Uri, type(None))):
-            s_cascade_decoder_schedulers = [s_cascade_decoder_schedulers]
-        return schedulers, sdxl_refiner_schedulers, s_cascade_decoder_schedulers
-
-    def scheduler_combination_count(self):
-        """
-        Get the number of scheduler combinations involved in the configuration.
-
-        If no scheduler URIs where explicitly specified, this returns 0.
-
-        :return: number of combinations
-        """
-
-        normalized_schedulers = self._normalized_schedulers()
-
-        if all(len(s) == 1 and s[0] is None for s in normalized_schedulers):
-            return 0
-
-        prod = 1
-        for s in normalized_schedulers:
-            prod *= len(s)
-        return prod
-
-    def iterate_schedulers(self) -> collections.abc.Iterator[RenderLoopSchedulerSet]:
-        """
-        Iterate over :py:class:`dgenerate.renderloopconfig.RenderLoopSchedulerSet` objects
-        using the provided scheduler URIs. This represents all possible combinations of
-        schedulers to be used for rendering.
-
-        :return: an iterator over :py:class:`dgenerate.renderloopconfig.RenderLoopSchedulerSet`
-        """
-
-        schedulers, \
-            sdxl_refiner_schedulers, \
-            s_cascade_decoder_schedulers = self._normalized_schedulers()
-
-        for scheduler in schedulers:
-            for sdxl_refiner_scheduler in sdxl_refiner_schedulers:
-                for s_cascade_decoder_scheduler in s_cascade_decoder_schedulers:
-                    yield RenderLoopSchedulerSet(
-                        scheduler,
-                        sdxl_refiner_scheduler,
-                        s_cascade_decoder_scheduler)
+        if isinstance(self.second_scheduler_uri, (_types.Uri, type(None))):
+            second_schedulers = [second_schedulers]
+        return schedulers, second_schedulers
 
     def iterate_diffusion_args(self, **overrides) -> collections.abc.Iterator[_pipelinewrapper.DiffusionArguments]:
         """
@@ -1931,27 +1796,32 @@ class RenderLoopConfig(_types.SetFromMixin):
                 return overrides[n]
             return v
 
+        schedulers = [self.scheduler_uri] if \
+            isinstance(self.scheduler_uri, (str, type(None))) else \
+            self.scheduler_uri
+
+        second_schedulers = [self.second_scheduler_uri] if \
+            isinstance(self.second_scheduler_uri, (str, type(None))) else \
+            self.second_scheduler_uri
+
         for arg in _iterate_diffusion_args(
                 prompt=ov('prompt', self.prompts),
                 prompt_weighter_uri=ov('prompt_weighter_uri', [self.prompt_weighter_uri]),
-                sdxl_refiner_prompt_weighter_uri=ov('sdxl_refiner_prompt_weighter_uri',
-                                                    [self.sdxl_refiner_prompt_weighter_uri]),
-                s_cascade_decoder_prompt_weighter_uri=ov('s_cascade_decoder_prompt_weighter_uri',
-                                                         [self.s_cascade_decoder_prompt_weighter_uri]),
-                sdxl_second_prompt=ov('sdxl_second_prompt',
-                                      self.sdxl_second_prompts),
-                sdxl_refiner_prompt=ov('sdxl_refiner_prompt',
-                                       self.sdxl_refiner_prompts),
-                sdxl_refiner_second_prompt=ov('sdxl_refiner_second_prompt',
-                                              self.sdxl_refiner_second_prompts),
+                vae_tiling=ov('vae_tiling', [self.vae_tiling]),
+                vae_slicing=ov('vae_slicing', [self.vae_slicing]),
+                scheduler_uri=ov('scheduler_uri', schedulers),
+                second_scheduler_uri=
+                ov('second_scheduler_uri', second_schedulers),
+                second_prompt_weighter_uri=
+                ov('second_prompt_weighter_uri', [self.second_prompt_weighter_uri]),
+                sdxl_second_prompt=ov('sdxl_second_prompt', self.sdxl_second_prompts),
+                sdxl_refiner_prompt=ov('sdxl_refiner_prompt', self.sdxl_refiner_prompts),
+                sdxl_refiner_second_prompt=ov('sdxl_refiner_second_prompt', self.sdxl_refiner_second_prompts),
                 sd3_max_sequence_length=ov('sd3_max_sequence_length', [self.sd3_max_sequence_length]),
                 flux_max_sequence_length=ov('flux_max_sequence_length', [self.flux_max_sequence_length]),
-                sd3_second_prompt=ov('sd3_second_prompt',
-                                     self.sd3_second_prompts),
-                sd3_third_prompt=ov('sd3_third_prompt',
-                                    self.sd3_third_prompts),
-                flux_second_prompt=ov('flux_second_prompt',
-                                      self.flux_second_prompts),
+                sd3_second_prompt=ov('sd3_second_prompt', self.sd3_second_prompts),
+                sd3_third_prompt=ov('sd3_third_prompt', self.sd3_third_prompts),
+                flux_second_prompt=ov('flux_second_prompt', self.flux_second_prompts),
                 seed=ov('seed', self.seeds),
                 clip_skip=ov('clip_skip', self.clip_skips),
                 sdxl_refiner_clip_skip=ov('sdxl_refiner_clip_skip', self.sdxl_refiner_clip_skips),

@@ -35,27 +35,39 @@ class DiffusionArguments(_types.SetFromMixin):
     Primary prompt
     """
 
+    scheduler_uri: _types.OptionalUri = None
+    """
+    Primary model scheduler URI
+    """
+
+    second_scheduler_uri: _types.OptionalUri = None
+    """
+    SDXL refiner scheduler / Stable Cascade Decoder URI, if not specified, defaults to :py:attr:`DiffusionArguments.scheduler`
+    """
+
     prompt_weighter_uri: _types.OptionalUri = None
     """
     Default prompt weighter plugin to use for all models.
     """
 
-    sdxl_refiner_prompt_weighter_uri: _types.OptionalUri = None
+    second_prompt_weighter_uri: _types.OptionalUri = None
     """
-    The URI of a prompt-weighter implementation supported by dgenerate to use with the SDXL refiner.
+    The URI of a prompt-weighter implementation supported by dgenerate 
+    to use with the SDXL refiner or Stable Cascade Decoder.
     
     Defaults to :py:attr:`DiffusionArguments.prompt_weighter_uri` if not specified.
     
-    This corresponds to the ``--sdxl-refiner-prompt-weighter`` argument of the dgenerate command line tool.
+    This corresponds to the ``--prompt-weighter2`` argument of the dgenerate command line tool.
     """
 
-    s_cascade_decoder_prompt_weighter_uri: _types.OptionalUri = None
+    vae_slicing: bool = False
     """
-    The URI of a prompt-weighter implementation supported by dgenerate to use with the Stable Cascade decoder.
-    
-    Defaults to :py:attr:`DiffusionArguments.prompt_weighter_uri` if not specified.
-    
-    This corresponds to the ``--s-cascade-prompt-weighter`` argument of the dgenerate command line tool.
+    Enable VAE slicing?
+    """
+
+    vae_tiling: bool = False
+    """
+    Enable VAE tiling?
     """
 
     images: _types.OptionalImages = None
@@ -656,9 +668,12 @@ class DiffusionArguments(_types.SetFromMixin):
         if prompt_format:
             prompt_format = '\n' + prompt_format
 
-        inputs = [f'Seed: {self.seed}']
+        inputs = []
 
         descriptions = [
+            (self.scheduler_uri, "Scheduler:"),
+            (self.second_scheduler_uri, "Second Scheduler:"),
+            (self.seed, "Seed:"),
             (self.clip_skip, "Clip Skip:"),
             (self.sdxl_refiner_clip_skip, "SDXL Refiner Clip Skip:"),
             (self.image_seed_strength, "Image Seed Strength:"),
@@ -708,18 +723,18 @@ class DiffusionArguments(_types.SetFromMixin):
 
         if not self.sdxl_refiner_prompt or not self.sdxl_refiner_prompt.weighter:
             descriptions.append(
-                (self.sdxl_refiner_prompt_weighter_uri, 'SDXL Refiner Prompt Weighter'))
+                (self.second_prompt_weighter_uri, 'SDXL Refiner Prompt Weighter'))
 
         if not self.s_cascade_decoder_prompt or not self.s_cascade_decoder_prompt.weighter:
             descriptions.append(
-                (self.s_cascade_decoder_prompt_weighter_uri, 'Stable Cascade Decoder Prompt Weighter'))
+                (self.second_prompt_weighter_uri, 'Stable Cascade Decoder Prompt Weighter'))
 
-        for prompt_val, desc in descriptions:
-            if prompt_val is not None:
-                if isinstance(prompt_val, tuple):
-                    inputs.append(desc + ' ' + _textprocessing.format_size(prompt_val))
+        for val, desc in descriptions:
+            if val is not None:
+                if isinstance(val, tuple):
+                    inputs.append(desc + ' ' + _textprocessing.format_size(val))
                 else:
-                    inputs.append(desc + ' ' + str(prompt_val))
+                    inputs.append(desc + ' ' + str(val))
 
         inputs = '\n'.join(inputs)
 
