@@ -957,7 +957,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         if second_scheduler_help and len(second_schedulers) > 1:
             raise RenderLoopConfigError(
-                f'You cannot specify "help" or "helpargs" to {a_namer("second_scheduler")} '
+                f'You cannot specify "help" or "helpargs" to {a_namer("second_scheduler_uri")} '
                 f'with multiple values involved.'
             )
 
@@ -983,7 +983,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         if not self.sdxl_refiner_uri and not self.s_cascade_decoder_uri:
             if self.second_scheduler_uri:
                 raise RenderLoopConfigError(
-                    f'Cannot use {a_namer("second_scheduler")} if {a_namer("sdxl_refiner_uri")} '
+                    f'Cannot use {a_namer("second_scheduler_uri")} if {a_namer("sdxl_refiner_uri")} '
                     f'or {a_namer("s_cascade_decoder_uri")} is not specified.')
 
             if self.second_text_encoder_uris:
