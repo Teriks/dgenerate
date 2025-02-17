@@ -513,6 +513,16 @@ class DiffusionArguments(_types.SetFromMixin):
     see: cv2.dilate. Defaults to 4.
     """
 
+    @staticmethod
+    def prompt_embedded_arg_checker(name):
+        """
+        Checks if a class member is forbidden to use
+        with a prompt embedded argument specification.
+
+        :param name: the argument name
+        """
+        return 'prompt' in name
+
     def get_pipeline_wrapper_kwargs(self):
         """
         Get the arguments dictionary needed to call :py:class:`.DiffusionPipelineWrapper`

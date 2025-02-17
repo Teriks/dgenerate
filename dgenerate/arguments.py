@@ -88,7 +88,10 @@ def _type_dtype(dtype):
 def _type_main_prompts(prompt):
     try:
         prompt = _prompt.Prompt.parse(prompt)
-        prompt.set_embedded_args_on(_pipelinewrapper.DiffusionArguments, validate_only=True)
+        prompt.set_embedded_args_on(
+            _pipelinewrapper.DiffusionArguments,
+            forbidden_checker=_pipelinewrapper.DiffusionArguments.prompt_embedded_arg_checker,
+            validate_only=True)
         return prompt
     except (ValueError, _prompt.PromptEmbeddedArgumentError) as e:
         raise argparse.ArgumentTypeError(
