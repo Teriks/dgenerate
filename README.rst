@@ -3113,7 +3113,7 @@ The ``--second-model-unet`` option can be used to specify a UNet for the
 `SDXL Refiner <#specifying-an-sdxl-refiner>`_ or `Stable Cascade Decoder <#specifying-a-stable-cascade-decoder>`_,
 and uses the same syntax as ``--unet``.
 
-The ``quantizer`` argument may be used to set ``--quantizer`` URI (quantization backend)
+The ``quantizer`` argument may be used to set a ``--quantizer`` URI (quantization backend)
 specifically for the UNet model.
 
 Here is an example of using the ``lite`` variants of Stable Cascade's
