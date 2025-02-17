@@ -316,7 +316,8 @@ def load_scheduler(pipeline: diffusers.DiffusionPipeline, scheduler_uri: _types.
                 scheduler_type.__name__, v, k, schema[k]['optional'], schema[k]['types'])
                 for k, v in result.args.items()}
 
-            _messages.debug_log(f'Constructing Scheduler: "{scheduler_type.__name__}", Args: {args}')
+            _messages.debug_log(
+                f'Constructing Scheduler: "{scheduler_type.__name__}", URI Args: {args}')
 
             try:
                 pipeline.scheduler = scheduler_type.from_config(pipeline.scheduler.config, **args)
@@ -324,6 +325,10 @@ def load_scheduler(pipeline: diffusers.DiffusionPipeline, scheduler_uri: _types.
                 raise SchedulerArgumentError(
                     f'Error constructing scheduler "{scheduler_type.__name__}" '
                     f'with given URI argument values, encountered error: {e}')
+
+            _messages.debug_log(
+                f'Scheduler: "{scheduler_type.__name__}", '
+                f'Successfully added to pipeline: {pipeline.__class__.__name__}')
 
             # found a matching scheduler, return
             return

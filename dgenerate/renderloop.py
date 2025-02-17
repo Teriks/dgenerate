@@ -429,8 +429,8 @@ class RenderLoop:
         if diffusion_args.scheduler_uri:
             scheduler_components.append(diffusion_args.scheduler_uri)
 
-        if diffusion_args.second_scheduler_uri:
-            scheduler_components.append(diffusion_args.second_scheduler_uri)
+        if diffusion_args.second_model_scheduler_uri:
+            scheduler_components.append(diffusion_args.second_model_scheduler_uri)
 
         args = scheduler_components + ['s', diffusion_args.seed]
 
@@ -857,9 +857,9 @@ class RenderLoop:
             variant=self.config.variant,
             subfolder=self.config.subfolder,
             original_config=self.config.original_config,
-            second_original_config=self.config.second_original_config,
+            second_model_original_config=self.config.second_model_original_config,
             unet_uri=self.config.unet_uri,
-            second_unet_uri=self.config.second_unet_uri,
+            second_model_unet_uri=self.config.second_model_unet_uri,
             transformer_uri=self.config.transformer_uri,
             vae_uri=self.config.vae_uri,
             lora_uris=self.config.lora_uris,
@@ -868,7 +868,7 @@ class RenderLoop:
             ip_adapter_uris=self.config.ip_adapter_uris,
             textual_inversion_uris=self.config.textual_inversion_uris,
             text_encoder_uris=self.config.text_encoder_uris,
-            second_text_encoder_uris=self.config.second_text_encoder_uris,
+            second_model_text_encoder_uris=self.config.second_model_text_encoder_uris,
             controlnet_uris=
             self.config.controlnet_uris if self.config.image_seeds else [],
             t2i_adapter_uris=

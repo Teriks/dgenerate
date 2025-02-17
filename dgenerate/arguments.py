@@ -25,8 +25,6 @@ import sys
 import typing
 from argparse import Action
 
-import optimum.quanto
-
 import dgenerate
 import dgenerate.imageprocessors.constants as _imgp_constants
 import dgenerate.mediaoutput as _mediaoutput
@@ -37,6 +35,7 @@ import dgenerate.pipelinewrapper as _pipelinewrapper
 import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 import dgenerate.prompt as _prompt
 import dgenerate.promptweighters as _promptweighters
+import dgenerate.promptupscalers as _promptupscalers
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 
@@ -110,6 +109,15 @@ def _type_prompt_weighter(uri):
         raise argparse.ArgumentTypeError(
             f'Unknown prompt weighter implementation: {_promptweighters.prompt_weighter_name_from_uri(uri)}, '
             f'must be one of: {_textprocessing.oxford_comma(_promptweighters.prompt_weighter_names(), "or")}')
+    return uri
+
+
+def _type_prompt_upscaler(uri):
+    uri = str(uri)
+    if not _promptupscalers.prompt_upscaler_exists(uri):
+        raise argparse.ArgumentTypeError(
+            f'Unknown prompt upscaler implementation: {_promptupscalers.prompt_upscaler_name_from_uri(uri)}, '
+            f'must be one of: {_textprocessing.oxford_comma(_promptupscalers.prompt_upscaler_names(), "or")}')
     return uri
 
 
@@ -628,7 +636,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '-olc2', '--original-config2', default=None, metavar="FILE", dest='second_original_config',
+            '-olc2', '--second-model-original-config', default=None, metavar="FILE",
+            dest='second_model_original_config',
             help="""This argument can be used to supply an original LDM config .yaml file 
             that was provided with a single file checkpoint for the secondary model, 
             i.e. the SDXL Refiner or Stable Cascade Decoder.""")
@@ -948,8 +957,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '-te2', '--text-encoders2', nargs='+', type=_type_text_encoder, action='store', default=None,
-            metavar='TEXT_ENCODER_URIS', dest='second_text_encoder_uris',
+            '-te2', '--second-model-text-encoders', nargs='+', type=_type_text_encoder, action='store', default=None,
+            metavar='TEXT_ENCODER_URIS', dest='second_model_text_encoder_uris',
             help="""--text-encoders but for the SDXL refiner or Stable Cascade decoder model."""
         )
     )
@@ -992,7 +1001,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '-un2', '--unet2', action='store', default=None, metavar="UNET_URI", dest='second_unet_uri',
+            '-un2', '--second-model-unet', action='store', default=None, metavar="UNET_URI",
+            dest='second_model_unet_uri',
             help=f"""Specify a second UNet, this is only valid when using SDXL or Stable Cascade
                     model types. This UNet will be used for the SDXL refiner, or Stable Cascade decoder model."""
         )
@@ -1441,8 +1451,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '-q2', '--quantizer2',
-            action='store', default=None, metavar="QUANTIZER_URI", dest='second_quantizer_uri',
+            '-q2', '--second-model-quantizer',
+            action='store', default=None, metavar="QUANTIZER_URI", dest='second_model_quantizer_uri',
             help=f"""
             Global quantization configuration via URI for the secondary model, 
             such as the SDXL Refiner or Stable Cascade decoder. See --quantizer for syntax examples."""
@@ -1468,9 +1478,9 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--scheduler2',
-            '--schedulers2',
-            dest='second_scheduler_uri',
+            '--second-model-scheduler',
+            '--second-model-schedulers',
+            dest='second_model_scheduler_uri',
             nargs='+', action='store', default=None, metavar="SCHEDULER_URI",
             help="""Specify a scheduler (sampler) by URI for the SDXL Refiner or Stable Cascade Decoder pass. 
                  Operates the exact same way as --scheduler including the "help" option. Passing 'helpargs' will 
@@ -1581,25 +1591,25 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         _model_offload_group2.add_argument(
-            '-mqo2', '--model-sequential-offload2',
+            '-mqo2', '--second-model-sequential-offload',
             dest='second_model_sequential_offload',
             action='store_true', default=False,
             help="""Force sequential model offloading for the SDXL Refiner or Stable Cascade Decoder pipeline, 
                     this may drastically reduce memory consumption and allow large models to run when they would 
                     otherwise not fit in your GPUs VRAM. Inference will be much slower. 
-                    Mutually exclusive with --model-cpu-offload2"""
+                    Mutually exclusive with --second-model-cpu-offload"""
         )
     )
 
     actions.append(
         _model_offload_group2.add_argument(
-            '-mco2', '--model-cpu-offload2',
+            '-mco2', '--second-model-cpu-offload',
             dest='second_model_cpu_offload',
             action='store_true', default=False,
             help="""Force model cpu offloading for the SDXL Refiner or Stable Cascade Decoder pipeline,
                     this may reduce memory consumption and allow large models to run when they would 
                     otherwise not fit in your GPUs VRAM. Inference will be slower. Mutually 
-                    exclusive with --model-sequential-offload2"""
+                    exclusive with --second-model-sequential-offload"""
         )
     )
 
@@ -1639,17 +1649,6 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     loading syntax: --s-cascade-decoder
                     "https://huggingface.co/UserName/repository-name/blob/main/decoder.safetensors",
                     the "revision" argument may be used with this syntax."""
-        )
-    )
-
-    actions.append(
-        parser.add_argument(
-            '--s-cascade-decoder-prompts', nargs='+', action='store', metavar="PROMPT", default=None,
-            type=_type_secondary_prompts,
-            help="""One or more prompts to try with the Stable Cascade decoder model,
-                    by default the decoder model gets the primary prompt, this argument
-                    overrides that with a prompt of your choosing. The negative prompt
-                    component can be specified with the same syntax as --prompts"""
         )
     )
 
@@ -1725,17 +1724,6 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     )
 
     # SDXL Main pipeline
-
-    actions.append(
-        parser.add_argument(
-            '--sdxl-second-prompts', nargs='+', action='store', metavar="PROMPT", default=None,
-            type=_type_secondary_prompts,
-            help="""One or more secondary prompts to try using SDXL's secondary text encoder.
-                    By default the model is passed the primary prompt for this value, this option
-                    allows you to choose a different prompt. The negative prompt component can be
-                    specified with the same syntax as --prompts"""
-        )
-    )
 
     actions.append(
         parser.add_argument(
@@ -1834,42 +1822,6 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     crop coordinates. Part of SDXL's micro-conditioning as explained in section 2.2 of
                     [https://huggingface.co/papers/2307.01952]. For more information, refer
                     to this issue thread: https://github.com/huggingface/diffusers/issues/4208."""
-        )
-    )
-
-    # SDXL Refiner pipeline
-
-    actions.append(
-        parser.add_argument(
-            '--sdxl-refiner-prompts', nargs='+', action='store', metavar="PROMPT", default=None,
-            type=_type_secondary_prompts,
-            help="""One or more prompts to try with the SDXL refiner model,
-                    by default the refiner model gets the primary prompt, this argument
-                    overrides that with a prompt of your choosing. The negative prompt
-                    component can be specified with the same syntax as --prompts"""
-        )
-    )
-
-    actions.append(
-        parser.add_argument(
-            '--sdxl-refiner-clip-skips',
-
-            nargs='+', action='store', metavar="INTEGER", default=None, type=_type_clip_skip,
-            help="""One or more clip skip override values to try for the SDXL refiner,
-                    which normally uses the clip skip value for the main model when it is
-                    defined by --clip-skips."""
-        )
-    )
-
-    actions.append(
-        parser.add_argument(
-            '--sdxl-refiner-second-prompts', nargs='+', action='store', metavar="PROMPT", default=None,
-            type=_type_secondary_prompts,
-            help="""One or more prompts to try with the SDXL refiner models secondary
-                    text encoder, by default the refiner model gets the primary prompt passed
-                    to its second text encoder, this argument overrides that with a prompt
-                    of your choosing. The negative prompt component can be specified with the
-                    same syntax as --prompts"""
         )
     )
 
@@ -2111,9 +2063,9 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '-pw2', '--prompt-weighter2',
+            '-pw2', '--second-model-prompt-weighter',
             metavar='PROMPT_WEIGHTER_URI',
-            dest='second_prompt_weighter',
+            dest='second_model_prompt_weighter',
             action='store',
             default=None, type=_type_prompt_weighter,
             help='--prompt-weighter URI value that that applies to to --sdxl-refiner or --s-cascade-decoder.'
@@ -2133,6 +2085,74 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-pu',
+            '--prompt-upscaler',
+            metavar='PROMPT_UPSCALER_URI', dest='prompt_upscaler_uri', action='store', nargs='+',
+            default=None, type=_type_prompt_upscaler,
+            help="""Specify a prompt upscaler implementation by URI, for example: --prompt-weighter dynamicprompts.
+                    Prompt upscaler plugins can preform pure text processing and expansion on incoming prompt text, 
+                    possibly resulting in more generation steps (variations) if the prompt upscaler returns multiple 
+                    prompts per input prompt.
+                    
+                    You may specify multiple upscaler URIs and they will be chained together sequentially.
+                    """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-pu2',
+            '--second-model-prompt-upscaler',
+            metavar='PROMPT_UPSCALER_URI', dest='second_model_prompt_upscaler_uri', action='store', nargs='+',
+            default=None, type=_type_prompt_upscaler,
+            help='Specify a --prompt-upscaler URI that will affect --second-model-prompts only, by default '
+                 'the prompt upscaler specified by --prompt-upscaler will be used.'
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--second-model-second-prompt-upscaler',
+            metavar='PROMPT_UPSCALER_URI', dest='second_model_second_prompt_upscaler_uri', action='store', nargs='+',
+            default=None, type=_type_prompt_upscaler,
+            help='Specify a --prompt-upscaler URI that will affect --second-model-second-prompts only, by default '
+                 'the prompt upscaler specified by --prompt-upscaler will be used.'
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--second-prompt-upscaler',
+            metavar='PROMPT_UPSCALER_URI', dest='second_prompt_upscaler_uri', action='store', nargs='+',
+            default=None, type=_type_prompt_upscaler,
+            help='Specify a --prompt-upscaler URI that will affect --second-prompts only, by default '
+                 'the prompt upscaler specified by --prompt-upscaler will be used.'
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--third-prompt-upscaler',
+            metavar='PROMPT_UPSCALER_URI', dest='third_prompt_upscaler_uri', action='store', nargs='+',
+            default=None, type=_type_prompt_upscaler,
+            help='Specify a --prompt-upscaler URI that will affect --third-prompts only, by default '
+                 'the prompt upscaler specified by --prompt-upscaler will be used.'
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--prompt-upscaler-help', metavar='PROMPT_UPSCALER_NAMES', dest=None, nargs='*',
+            help="""Use this option alone (or with --plugin-modules) and no model specification
+                 in order to list available prompt upscaler names. Specifying one or more
+                 prompt upscaler names after this option will cause usage documentation for the specified
+                 prompt upscalers to be printed. When used with --plugin-modules, prompt upscalers
+                 implemented by the specified plugins will also be listed."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
             '-p', '--prompts', nargs='+', action='store', metavar="PROMPT", default=[_prompt.Prompt()],
             type=_type_main_prompts,
             help="""One or more prompts to try, an image group is generated for each prompt,
@@ -2146,53 +2166,59 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--sd3-max-sequence-length', action='store', metavar='INTEGER', default=None, type=_max_sequence_length,
-            help="""The maximum amount of prompt tokens that the T5EncoderModel
-                    (third text encoder) of Stable Diffusion 3 can handle. This should be
-                    an integer value between 1 and 512 inclusive. The higher the value
-                    the more resources and time are required for processing. (default: 256)"""
-        )
-    )
-
-    actions.append(
-        parser.add_argument(
-            '--sd3-second-prompts', nargs='+', action='store', metavar="PROMPT", default=None,
+            '--second-prompts', nargs='+', action='store', metavar="PROMPT", default=None,
             type=_type_secondary_prompts,
             help="""One or more secondary prompts to try using the torch-sd3 (Stable Diffusion 3) 
-                    secondary text encoder. By default the model is passed the primary prompt for this value,
-                    this option allows you to choose a different prompt. The negative prompt component can be
-                    specified with the same syntax as --prompts"""
+                    or torch-flux (Flux) secondary text encoder. By default the model is passed the 
+                    primary prompt for this value, this option allows you to choose a different prompt. 
+                    The negative prompt component can be specified with the same syntax as --prompts"""
         )
     )
 
     actions.append(
         parser.add_argument(
-            '--sd3-third-prompts', nargs='+', action='store', metavar="PROMPT", default=None,
+            '--third-prompts', nargs='+', action='store', metavar="PROMPT", default=None,
             type=_type_secondary_prompts,
             help="""One or more tertiary prompts to try using the torch-sd3 (Stable Diffusion 3) 
-                    tertiary (T5) text encoder. By default the model is passed the primary prompt for this value,
-                    this option allows you to choose a different prompt. The negative prompt component can be
-                    specified with the same syntax as --prompts"""
+                    tertiary (T5) text encoder, Flux does not support this argument. By default the 
+                    model is passed the primary prompt for this value, this option allows you to choose 
+                    a different prompt. The negative prompt component can be specified with the 
+                    same syntax as --prompts"""
         )
     )
 
     actions.append(
         parser.add_argument(
-            '--flux-second-prompts', nargs='+', action='store', metavar="PROMPT", default=None,
+            '--second-model-prompts', nargs='+', action='store', metavar="PROMPT", default=None,
             type=_type_secondary_prompts,
-            help="""One or more secondary prompts to try using the torch-flux (Flux) 
-                    secondary (T5) text encoder. By default the model is passed the primary prompt for this value,
-                    this option allows you to choose a different prompt."""
+            help="""One or more prompts to try with the SDXL Refiner or Stable Cascade decoder model,
+                    by default the decoder model gets the primary prompt, this argument
+                    overrides that with a prompt of your choosing. The negative prompt
+                    component can be specified with the same syntax as --prompts"""
         )
     )
 
     actions.append(
         parser.add_argument(
-            '--flux-max-sequence-length', action='store', metavar='INTEGER', default=None, type=_max_sequence_length,
+            '--second-model-second-prompts', nargs='+', action='store', metavar="PROMPT", default=None,
+            type=_type_secondary_prompts,
+            help="""One or more prompts to try with the SDXL refiner models secondary
+                    text encoder (Stable Cascade Decoder is not supported), by default the 
+                    SDXL refiner model gets the primary prompt passed to its second text encoder, 
+                    this argument overrides that with a prompt of your choosing. The negative prompt 
+                    component can be specified with the same syntax as --prompts
+                    """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--max-sequence-length', action='store', metavar='INTEGER', default=None, type=_max_sequence_length,
             help="""The maximum amount of prompt tokens that the T5EncoderModel
-                    (second text encoder) of Flux can handle. This should be
+                    (third text encoder) of Stable Diffusion 3 or Flux can handle. This should be
                     an integer value between 1 and 512 inclusive. The higher the value
-                    the more resources and time are required for processing. (default: 512)"""
+                    the more resources and time are required for processing. 
+                    (default: 256 for SD3, 512 for Flux)"""
         )
     )
 
@@ -2249,7 +2275,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '-if', '--image-format', action='store', default='png', type=_type_image_format, metavar="FORMAT",
             help=f"""Output format when writing static images. Any selection other than "png" is not
-                    compatible with --output-metadata. Value must be one of: {_SUPPORTED_STATIC_IMAGE_OUTPUT_FORMATS_PRETTY}. (default: png)"""
+                    compatible with --output-metadata. Value must be one of: 
+                    {_SUPPORTED_STATIC_IMAGE_OUTPUT_FORMATS_PRETTY}. (default: png)"""
         )
     )
 
@@ -2445,7 +2472,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     this option for --model-type torch-upscaler-x2 will produce an error message.
                     The higher this value the more noise is added to the image before upscaling
                     (similar to --image-seed-strengths). (default: [20 for x4, 250 for
-                    torch-ifs/torch-ifs-img2img, 0 for torch-ifs inpainting mode])"""
+                    torch-ifs/torch-ifs-img2img, 0 for torch-ifs inpainting mode])
+                    """
         )
     )
 
@@ -2989,6 +3017,35 @@ def parse_prompt_weighter_help(
         _check_unknown_args(unknown, log_error)
 
     return parsed.prompt_weighter_help, unknown
+
+
+def parse_prompt_upscaler_help(
+        args: collections.abc.Sequence[str] | None = None,
+        throw_unknown: bool = False,
+        log_error: bool = False) -> tuple[list[str] | None, list[str]]:
+    """
+    Retrieve the ``--prompt-upscaler-help`` argument value
+
+    :param args: command line arguments
+
+    :param throw_unknown: Raise :py:class:`DgenerateUsageError` if any other
+     specified argument is not a valid dgenerate argument? This treats the
+     primary model argument as optional, and only goes into effect if the
+     specific argument is detected.
+
+    :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
+
+    :return: (values | ``None``, unknown_args_list)
+    """
+
+    parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
+    parser.add_argument('--prompt-upscaler-help', action='store', nargs='*', default=None)
+    parsed, unknown = parser.parse_known_args(args)
+
+    if parsed.prompt_upscaler_help is not None and throw_unknown:
+        _check_unknown_args(unknown, log_error)
+
+    return parsed.prompt_upscaler_help, unknown
 
 
 def parse_sub_command(

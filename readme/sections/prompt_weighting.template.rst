@@ -1,5 +1,5 @@
-Prompt Weighting and Enhancement
-================================
+Prompt Weighting
+================
 
 By default, the prompt token weighting syntax that you may be familiar with from other software such as
 `ComfyUI <https://github.com/comfyanonymous/ComfyUI>`_, `Stable Diffusion Web UI <Stable_Diffusion_Web_UI_1_>`_,
@@ -23,8 +23,8 @@ anywhere in the prompt.  A prompt weighter specified in the prompt text applies 
 that prompt alone (both negative and positive prompts).
 
 You can specify different prompt weighters for the SDXL Refiner or Stable Cascade
-decoder using ``--prompt-weighter2``, or in the prompt arguments
-``--sdxl-refiner-prompts`` and ``--s-cascade-decoder-prompts``.
+decoder using ``--second-model-prompt-weighter``, or in the prompt arguments
+``--second-model-prompts`` and ``---second-model-prompts``.
 
 Specifying ``<weighter: (uri here)>`` in a ``--prompts`` value will default
 the secondary models to the same prompt weighter unless you specify otherwise.

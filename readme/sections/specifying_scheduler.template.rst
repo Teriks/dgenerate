@@ -4,12 +4,12 @@ Specifying a Scheduler (sampler)
 A scheduler (otherwise known as a sampler) for the main model can be selected via the use of ``--scheduler``.
 
 And in the case of SDXL and Stable Cascade the refiner / decoder scheduler can be
-selected independently with ``--scheduler2``.
+selected independently with ``--second-model-scheduler``.
 
 Both of these default to the value of ``--scheduler``, which in turn defaults to automatic selection.
 
 Available schedulers for a specific combination of dgenerate arguments can be
-queried using ``--scheduler help`` or ``--scheduler2 help``.
+queried using ``--scheduler help`` or ``--second-model-scheduler help``.
 
 In order to use the query feature it is ideal that you provide all the other arguments
 that you plan on using while making the query, as different combinations of arguments
@@ -158,7 +158,7 @@ output file name, in the order: ``(scheduler)_(refiner / decoder scheduler)``
     --variant fp16 \
     --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
     --schedulers EulerAncestralDiscreteScheduler EulerDiscreteScheduler \
-    --schedulers2 KDPM2AncestralDiscreteScheduler KDPM2DiscreteScheduler \
+    --second-model-schedulers KDPM2AncestralDiscreteScheduler KDPM2DiscreteScheduler \
     --inference-steps 30 \
     --guidance-scales 5 \
     --prompts "a horse standing in a field"

@@ -14,7 +14,7 @@ black-forest-labs/FLUX.1-schnell
 --dtype bfloat16
 --model-sequential-offload
 --loras veryVANYA/ps1-style-flux;scale=1.0
---flux-max-sequence-length 256
+--max-sequence-length 256
 --inference-steps 4
 --guidance-scales 0
 --seeds 72214959011787

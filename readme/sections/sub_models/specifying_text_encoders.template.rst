@@ -7,7 +7,7 @@ for instance uses 3 text encoder sub models, all of which can be
 individually specified from the command line if desired.
 
 To specify a Text Encoder models directly use ``--text-encoders`` for
-the primary model and ``--text-encoders2`` for the SDXL Refiner or
+the primary model and ``--second-model-text-encoders`` for the SDXL Refiner or
 Stable Cascade decoder.
 
 Text Encoder URIs do not support loading from blob links or a single file,
@@ -40,7 +40,7 @@ Available encoder classes are:
 * T5EncoderModel
 
 You can query the text encoder types and position for a model by passing ``help``
-as an argument to ``--text-encoders`` or ``--text-encoders2``. This feature
+as an argument to ``--text-encoders`` or ``--second-model-text-encoders``. This feature
 may not be used for both arguments simultaneously, and also may not be used
 when passing ``help`` or ``helpargs`` to any ``--scheduler`` type argument.
 

@@ -45,12 +45,12 @@ Loading arguments available when specifying a UNet are: ``revision``, ``variant`
 In the case of ``--unet`` the ``variant`` loading argument defaults to the value
 of ``--variant`` if you do not specify it in the URI.
 
-The ``--unet2`` option can be used to specify a UNet for the
+The ``--second-model-unet`` option can be used to specify a UNet for the
 `SDXL Refiner <#specifying-an-sdxl-refiner>`_ or `Stable Cascade Decoder <#specifying-a-stable-cascade-decoder>`_,
 and uses the same syntax as ``--unet``.
 
 Here is an example of using the ``lite`` variants of Stable Cascade's
-UNet models which have a smaller memory footprint using ``--unet`` and ``--unet2``.
+UNet models which have a smaller memory footprint using ``--unet`` and ``--second-model-unet``.
 
 .. code-block:: bash
 
@@ -61,9 +61,9 @@ UNet models which have a smaller memory footprint using ``--unet`` and ``--unet2
     --variant bf16 \
     --dtype bfloat16 \
     --unet "stabilityai/stable-cascade-prior;subfolder=prior_lite" \
-    --unet2 "stabilityai/stable-cascade;subfolder=decoder_lite" \
+    --second-model-unet "stabilityai/stable-cascade;subfolder=decoder_lite" \
     --model-cpu-offload \
-    --model-cpu-offload2 \
+    --second-model-cpu-offload \
     --s-cascade-decoder "stabilityai/stable-cascade;dtype=float16" \
     --inference-steps 20 \
     --guidance-scales 4 \

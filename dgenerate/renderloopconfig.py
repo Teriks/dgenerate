@@ -29,6 +29,7 @@ import dgenerate.pipelinewrapper as _pipelinewrapper
 import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 import dgenerate.prompt as _prompt
 import dgenerate.promptweighters as _promptweighters
+import dgenerate.promptupscalers as _promptupscalers
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 
@@ -90,7 +91,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     This option can be used to supply an original LDM config .yaml file that was provided with a single file checkpoint.
     """
 
-    second_original_config: _types.OptionalPath = None
+    second_model_original_config: _types.OptionalPath = None
     """
     This option can be used to supply an original LDM config .yaml file that was provided with a single file checkpoint 
     for the secondary model, i.e. the SDXL Refiner or Stable Cascade Decoder.
@@ -124,14 +125,74 @@ class RenderLoopConfig(_types.SetFromMixin):
     This corresponds to the ``--prompt-weighter`` argument of the dgenerate command line tool.
     """
 
-    second_prompt_weighter_uri: _types.OptionalUri = None
+    second_model_prompt_weighter_uri: _types.OptionalUri = None
     """
     The URI of a prompt-weighter implementation supported by dgenerate to 
     use with the SDXL refiner or Stable Cascade decoder.
     
     Defaults to :py:attr:`RenderLoopConfig.prompt_weighter_uri` if not specified.
     
-    This corresponds to the ``--prompt-weighter2`` argument of the dgenerate command line tool.
+    This corresponds to the ``--second-model-prompt-weighter`` argument of the dgenerate command line tool.
+    """
+
+    prompt_upscaler_uri: _types.OptionalUriOrUris = None
+    """
+    The URI of a prompt-upscaler implementation supported by dgenerate.
+    
+    This may also be a list of URIs, the prompt upscalers will be chained together sequentially.
+    
+    This corresponds to the ``--prompt-upscaler`` argument of the dgenerate command line tool.
+    """
+
+    second_model_prompt_upscaler_uri: _types.OptionalUriOrUris = None
+    """
+    The URI of a prompt-upscaler implementation supported by dgenerate to 
+    use with the SDXL refiner or Stable Cascade decoder.
+    
+    Defaults to :py:attr:`RenderLoopConfig.prompt_upscaler_uri` if not specified.
+    
+    This may also be a list of URIs, the prompt upscalers will be chained together sequentially.
+    
+    This corresponds to the ``--second-model-prompt-upscaler`` argument of the dgenerate command line tool.
+    """
+
+    second_prompt_upscaler_uri: _types.OptionalUriOrUris = None
+    """
+    The URI of a prompt-upscaler implementation supported by dgenerate
+    that applies to :py:attr:`RenderLoopConfig.second_prompts`
+    
+    Defaults to :py:attr:`RenderLoopConfig.prompt_upscaler_uri` if not specified.
+    
+    This may also be a list of URIs, the prompt upscalers will be chained together sequentially.
+    
+    This corresponds to the ``--second-prompt-upscaler`` argument of the dgenerate command line tool.
+    """
+
+    second_model_second_prompt_upscaler_uri: _types.OptionalUriOrUris = None
+    """
+    The URI of a prompt-upscaler implementation supported by dgenerate to 
+    use with the SDXL refiner ``--second-prompts`` value. 
+    
+    Or rather :py:attr:`RenderLoopConfig.second_model_second_prompts`
+    
+    Defaults to :py:attr:`RenderLoopConfig.prompt_upscaler_uri` if not specified.
+    
+    This may also be a list of URIs, the prompt upscalers will be chained together sequentially.
+    
+    This corresponds to the ``--second-model-second-prompt-upscaler`` argument of the 
+    dgenerate command line tool.
+    """
+
+    third_prompt_upscaler_uri: _types.OptionalUriOrUris = None
+    """
+    The URI of a prompt-upscaler implementation supported by dgenerate
+    that applies to :py:attr:`RenderLoopConfig.third_prompts`
+    
+    Defaults to :py:attr:`RenderLoopConfig.prompt_upscaler_uri` if not specified.
+    
+    This may also be a list of URIs, the prompt upscalers will be chained together sequentially.
+    
+    This corresponds to the ``--third-prompt-upscaler`` argument of the dgenerate command line tool.
     """
 
     prompts: _prompt.Prompts
@@ -140,40 +201,27 @@ class RenderLoopConfig(_types.SetFromMixin):
     command line tool.
     """
 
-    sd3_max_sequence_length: _types.OptionalInteger = None
+    max_sequence_length: _types.OptionalInteger = None
     """
-    Max number of prompt tokens that the T5EncoderModel (text encoder 3) of Stable Diffusion 3 can handle.
+    Max number of prompt tokens that the T5EncoderModel (text encoder 3) of Stable Diffusion 3 or Flux can handle.
     
-    This defaults to 256 when not specified, and the maximum value is 512 and the minimum value is 1.
+    This defaults to 256 for SD3 when not specified, and 512 for Flux.
     
-    High values result in more resource usage and processing time.
-    """
-
-    flux_max_sequence_length: _types.OptionalInteger = None
-    """
-    Max number of prompt tokens that the T5EncoderModel (text encoder 2) of Flux can handle.
-    
-    This defaults to 512 when not specified, and the maximum value is 512 and the minimum value is 1.
+    The maximum value is 512 and the minimum value is 1.
     
     High values result in more resource usage and processing time.
     """
 
-    sd3_second_prompts: _prompt.OptionalPrompts = None
+    second_prompts: _prompt.OptionalPrompts = None
     """
-    Optional list of SD3 secondary prompts, this corresponds to the ``--sd3-second-prompts`` argument
+    Optional list of SD3 / Flux secondary prompts, this corresponds to the ``--second-prompts`` argument
     of the dgenerate command line tool.
     """
 
-    sd3_third_prompts: _prompt.OptionalPrompts = None
+    third_prompts: _prompt.OptionalPrompts = None
     """
-    Optional list of SD3 tertiary prompts, this corresponds to the ``--sd3-third-prompts`` argument
-    of the dgenerate command line tool.
-    """
-
-    flux_second_prompts: _prompt.OptionalPrompts = None
-    """
-    Optional list of Flux secondary prompts, this corresponds to the ``--flux-second-prompts`` argument
-    of the dgenerate command line tool.
+    Optional list of SD3 tertiary prompts, this corresponds to the ``--third-prompts`` argument
+    of the dgenerate command line tool. Flux does not support this argument.
     """
 
     sdxl_t2i_adapter_factors: _types.OptionalFloats = None
@@ -184,22 +232,19 @@ class RenderLoopConfig(_types.SetFromMixin):
     to completely render an image. 
     """
 
-    sdxl_second_prompts: _prompt.OptionalPrompts = None
+    second_model_prompts: _prompt.OptionalPrompts = None
     """
-    Optional list of SDXL secondary prompts, this corresponds to the ``--sdxl-second-prompts`` argument
-    of the dgenerate command line tool.
-    """
-
-    sdxl_refiner_prompts: _prompt.OptionalPrompts = None
-    """
-    Optional list of SDXL refiner prompt overrides, this corresponds to the ``--sdxl-refiner-prompts`` argument
-    of the dgenerate command line tool.
+    Optional list of SDXL refiner or Stable Cascade decoder prompt overrides, 
+    this corresponds to the ``--second-model-prompts`` argument of the dgenerate 
+    command line tool.
     """
 
-    sdxl_refiner_second_prompts: _prompt.OptionalPrompts = None
+    second_model_second_prompts: _prompt.OptionalPrompts = None
     """
-    Optional list of SDXL refiner secondary prompt overrides, this corresponds 
-    to the ``--sdxl-refiner-second-prompts`` argument of the dgenerate command line tool.
+    Optional list of SDXL refiner secondary prompt overrides, this 
+    corresponds to the ``--second-model-second-prompts`` argument of the 
+    dgenerate command line tool.  The Stable Cascade Decoder does not 
+    support this argument.
     """
 
     seeds: _types.Integers
@@ -280,12 +325,6 @@ class RenderLoopConfig(_types.SetFromMixin):
     s_cascade_decoder_uri: _types.OptionalUri = None
     """
     Stable Cascade model URI, ``--s-cascade-decoder`` argument of dgenerate command line tool.
-    """
-
-    s_cascade_decoder_prompts: _prompt.OptionalPrompts = None
-    """
-    Optional list of Stable Cascade decoder prompt overrides, this corresponds to the ``--s-cascade-decoder-prompts`` 
-    argument of the dgenerate command line tool.
     """
 
     s_cascade_decoder_inference_steps: _types.OptionalIntegers = None
@@ -436,9 +475,9 @@ class RenderLoopConfig(_types.SetFromMixin):
     Optional user specified UNet URI, this corresponds to the ``--unet`` argument of the dgenerate command line tool.
     """
 
-    second_unet_uri: _types.OptionalUri = None
+    second_model_unet_uri: _types.OptionalUri = None
     """
-    Optional user specified second UNet URI, this corresponds to the ``--unet2`` argument of the dgenerate 
+    Optional user specified second UNet URI, this corresponds to the ``--second-model-unet`` argument of the dgenerate 
     command line tool. This UNet uri will be used for the SDXL refiner or Stable Cascade decoder model.
     """
 
@@ -512,9 +551,9 @@ class RenderLoopConfig(_types.SetFromMixin):
     argument of the dgenerate command line tool.
     """
 
-    second_text_encoder_uris: _types.OptionalUris = None
+    second_model_text_encoder_uris: _types.OptionalUris = None
     """
-    Optional user specified Text Encoder URIs, this corresponds to the ``--text-encoders2``
+    Optional user specified Text Encoder URIs, this corresponds to the ``--second-model-text-encoders``
     argument of the dgenerate command line tool. This specifies text encoders for the SDXL
     refiner or Stable Cascade decoder.
     """
@@ -540,10 +579,10 @@ class RenderLoopConfig(_types.SetFromMixin):
     on the the most appropriate models associated with the main diffusion pipeline.
     """
 
-    second_quantizer_uri: _types.OptionalUri = None
+    second_model_quantizer_uri: _types.OptionalUri = None
     """
     Global quantizer URI for secondary pipeline (SDXL Refiner or Stable Cascade decoder), 
-    this corresponds to the ``--quantizer2`` argument of the dgenerate command line tool.
+    this corresponds to the ``--second-model-quantizer`` argument of the dgenerate command line tool.
     
     The quantization backend and settings specified by this URI will be used globally 
     on the the most appropriate models associated with the secondary diffusion pipeline 
@@ -604,10 +643,10 @@ class RenderLoopConfig(_types.SetFromMixin):
     this corresponds to the ``--sdxl-refiner-pag-adaptive-scales`` argument of the dgenerate command line tool.
     """
 
-    second_scheduler_uri: _types.OptionalUriOrUris = None
+    second_model_scheduler_uri: _types.OptionalUriOrUris = None
     """
     Optional SDXL Refiner / Stable Cascade Decoder model scheduler/sampler class name specification, 
-    this corresponds to the ``--scheduler2`` argument of the dgenerate command line tool. 
+    this corresponds to the ``--second-model-scheduler`` argument of the dgenerate command line tool. 
     Setting this to 'help' will yield a help message to stdout describing scheduler names compatible 
     with the current configuration upon running. Passing 'helpargs' will yield a help message with a 
     list of overridable arguments for each scheduler and their typical defaults.
@@ -921,6 +960,23 @@ class RenderLoopConfig(_types.SetFromMixin):
         def non_null_attr_that_end_with(s):
             return (a for a in dir(self) if a.endswith(s) and getattr(self, a) is not None)
 
+        def non_null_second_model_arguments(prefix=None):
+            def check(a):
+                if prefix and a.startswith(prefix):
+                    return True
+                if a.startswith('second_model'):
+                    # short circuit and include
+                    # second model prompt arguments
+                    return True
+                if a.startswith('second') and not \
+                        (a.endswith('prompts') or a.endswith('prompt_upscaler')):
+                    # reject primary model 'second_prompts' and `second_prompt_upscaler`
+                    # and include everything else
+                    return True
+                return False
+
+            return (a for a in dir(self) if check(a) and getattr(self, a) is not None)
+
         def a_namer(attr_name):
             if attribute_namer:
                 return attribute_namer(attr_name)
@@ -931,23 +987,23 @@ class RenderLoopConfig(_types.SetFromMixin):
         except ValueError as e:
             raise RenderLoopConfigError(e)
 
-        # help arg usages and --scheduler2 --text-encoders2
+        # help arg usages and --second-model-scheduler --second-model-text-encoders
 
         schedulers = [self.scheduler_uri] if \
             isinstance(self.scheduler_uri, (_types.Uri, type(None))) else self.scheduler_uri
         scheduler_help = any(_pipelinewrapper.scheduler_is_help(s) for s in schedulers)
 
-        second_schedulers = [self.second_scheduler_uri] if \
-            isinstance(self.second_scheduler_uri, (_types.Uri, type(None))) else self.second_scheduler_uri
-        second_scheduler_help = any(_pipelinewrapper.scheduler_is_help(s) for s in second_schedulers)
+        second_model_schedulers = [self.second_model_scheduler_uri] if \
+            isinstance(self.second_model_scheduler_uri, (_types.Uri, type(None))) else self.second_model_scheduler_uri
+        second_model_scheduler_help = any(_pipelinewrapper.scheduler_is_help(s) for s in second_model_schedulers)
 
         text_encoder_help = _pipelinewrapper.text_encoder_is_help(self.text_encoder_uris)
-        second_text_encoder_help = _pipelinewrapper.text_encoder_is_help(self.second_text_encoder_uris)
+        second_model_text_encoder_help = _pipelinewrapper.text_encoder_is_help(self.second_model_text_encoder_uris)
 
         help_mode = scheduler_help or \
-                    second_scheduler_help or \
+                    second_model_scheduler_help or \
                     text_encoder_help or \
-                    second_text_encoder_help
+                    second_model_text_encoder_help
 
         if scheduler_help and len(schedulers) > 1:
             raise RenderLoopConfigError(
@@ -955,9 +1011,9 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'with multiple values involved.'
             )
 
-        if second_scheduler_help and len(second_schedulers) > 1:
+        if second_model_scheduler_help and len(second_model_schedulers) > 1:
             raise RenderLoopConfigError(
-                f'You cannot specify "help" or "helpargs" to {a_namer("second_scheduler_uri")} '
+                f'You cannot specify "help" or "helpargs" to {a_namer("second_model_scheduler_uri")} '
                 f'with multiple values involved.'
             )
 
@@ -967,34 +1023,35 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'with multiple values involved.'
             )
 
-        if second_text_encoder_help and len(self.second_text_encoder_uris) > 1:
+        if second_model_text_encoder_help and len(self.second_model_text_encoder_uris) > 1:
             raise RenderLoopConfigError(
-                f'You cannot specify "help" or "helpargs" to {a_namer("second_text_encoders")} '
+                f'You cannot specify "help" or "helpargs" to {a_namer("second_model_text_encoders")} '
                 f'with multiple values involved.'
             )
 
-        if self.second_text_encoder_uris and not \
+        # exit early if we know
+        if self.second_model_text_encoder_uris and not \
                 (_pipelinewrapper.model_type_is_sdxl(self.model_type) or
                  _pipelinewrapper.model_type_is_s_cascade(self.model_type)):
-            raise RenderLoopConfigError(f'Cannot use {a_namer("second_text_encoder_uris")} with '
+            raise RenderLoopConfigError(f'Cannot use {a_namer("second_model_text_encoder_uris")} with '
                                         f'{a_namer("model_type")} '
                                         f'{_pipelinewrapper.get_model_type_string(self.model_type)}')
 
         if not self.sdxl_refiner_uri and not self.s_cascade_decoder_uri:
-            if self.second_scheduler_uri:
+            if self.second_model_scheduler_uri:
                 raise RenderLoopConfigError(
-                    f'Cannot use {a_namer("second_scheduler_uri")} if {a_namer("sdxl_refiner_uri")} '
+                    f'Cannot use {a_namer("second_model_scheduler_uri")} if {a_namer("sdxl_refiner_uri")} '
                     f'or {a_namer("s_cascade_decoder_uri")} is not specified.')
 
-            if self.second_text_encoder_uris:
+            if self.second_model_text_encoder_uris:
                 raise RenderLoopConfigError(
-                    f'Cannot use {a_namer("second_text_encoder_uris")} if {a_namer("sdxl_refiner_uri")} '
+                    f'Cannot use {a_namer("second_model_text_encoder_uris")} if {a_namer("sdxl_refiner_uri")} '
                     f'or {a_namer("s_cascade_decoder_uri")} is not specified.'
                 )
 
         # ===
 
-        # --original-config and --original-config2
+        # --original-config and --second-model-original-config
 
         if not _pipelinewrapper_util.is_single_file_model_load(self.model_path):
             if self.original_config:
@@ -1003,10 +1060,10 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'model is not a a single file checkpoint.'
                 )
 
-        if self.second_original_config:
+        if self.second_model_original_config:
             if not self.sdxl_refiner_uri and not self.s_cascade_decoder_uri:
                 raise RenderLoopConfigError(
-                    f'You cannot specify {a_namer("second_original_config")} '
+                    f'You cannot specify {a_namer("second_model_original_config")} '
                     f'without {a_namer("sdxl_refiner_uri")} or {a_namer("s_cascade_decoder_uri")}.'
                 )
 
@@ -1014,7 +1071,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                     not _pipelinewrapper_util.is_single_file_model_load(
                         _pipelinewrapper.uris.SDXLRefinerUri.parse(self.sdxl_refiner_uri).model):
                 raise RenderLoopConfigError(
-                    f'You cannot specify {a_namer("second_original_config")} '
+                    f'You cannot specify {a_namer("second_model_original_config")} '
                     f'when the {a_namer("sdxl_refiner_uri")} model is not a '
                     f'single file checkpoint.'
                 )
@@ -1022,12 +1079,14 @@ class RenderLoopConfig(_types.SetFromMixin):
                     not _pipelinewrapper_util.is_single_file_model_load(
                         _pipelinewrapper.uris.SCascadeDecoderUri.parse(self.s_cascade_decoder_uri).model):
                 raise RenderLoopConfigError(
-                    f'You cannot specify {a_namer("second_original_config")} '
+                    f'You cannot specify {a_namer("second_model_original_config")} '
                     f'when the {a_namer("s_cascade_decoder_uri")} model is not a '
                     f'single file checkpoint.'
                 )
 
         # ===
+
+        # check for adetailer pipeline model compatibility
 
         adetailer_args_used = list(non_null_attr_that_start_with('adetailer'))
 
@@ -1049,11 +1108,83 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'{a_namer("adetailer_detector_uris")} is only compatible with '
                 f'{a_namer("model_type")} torch, torch-sdxl, torch-kolors, torch-sd3, and torch-flux')
 
+        # Check for argument combinations which require image seeds
+        # also validate that we can construct a valid txt2img pipeline
+        # using this config
+
         if not self.image_seeds:
+            args_help = scheduler_help or text_encoder_help or second_model_text_encoder_help
+
+            if _pipelinewrapper.model_type_is_floyd_ifs(self.model_type) and not args_help:
+                raise RenderLoopConfigError(
+                    f'you cannot specify Deep Floyd IF super-resolution '
+                    f'({a_namer("model_type")} "{self.model_type})" without {a_namer("image_seeds")}'
+                )
+
+            if _pipelinewrapper.model_type_is_upscaler(self.model_type) and not args_help:
+                raise RenderLoopConfigError(
+                    f'you cannot specify an upscaler model '
+                    f'({a_namer("model_type")} "{self.model_type})" without {a_namer("image_seeds")}.'
+                )
+
+            if _pipelinewrapper.model_type_is_pix2pix(self.model_type) and not args_help:
+                raise RenderLoopConfigError(
+                    f'you cannot specify a pix2pix model '
+                    f'({a_namer("model_type")} "{self.model_type})" without {a_namer("image_seeds")}.'
+                )
+
+            if self.model_type == _pipelinewrapper.ModelType.TORCH_FLUX_FILL:
+                raise RenderLoopConfigError(
+                    f'you cannot use {a_namer("model_type")} '
+                    f'torch-flux-fill without {a_namer("image_seeds")}.'
+                )
+
             if self.adetailer_detector_uris:
                 raise RenderLoopConfigError(
-                    f'You cannot specify {a_namer("adetailer_detector_uris")} without {a_namer("image_seeds")}.'
+                    f'You cannot specify {a_namer("adetailer_detector_uris")} '
+                    f'without {a_namer("image_seeds")}.'
                 )
+
+            if self.image_seed_strengths:
+                raise RenderLoopConfigError(
+                    f'you cannot specify {a_namer("image_seed_strengths")} '
+                    f'without {a_namer("image_seeds")}.')
+
+            if self.seeds_to_images:
+                raise RenderLoopConfigError(
+                    f'{a_namer("seeds_to_images")} cannot be specified '
+                    f'without {a_namer("image_seeds")}.')
+
+            if self.controlnet_uris:
+                raise RenderLoopConfigError(
+                    f'you cannot specify {a_namer("controlnet_uris")} '
+                    f'without {a_namer("image_seeds")}.')
+
+            if self.t2i_adapter_uris:
+                raise RenderLoopConfigError(
+                    f'you cannot specify {a_namer("t2i_adapter_uris")} '
+                    f'without {a_namer("image_seeds")}.')
+
+            if self.ip_adapter_uris:
+                raise RenderLoopConfigError(
+                    f'you cannot specify {a_namer("ip_adapter_uris")} '
+                    f'without {a_namer("image_seeds")}.')
+
+            # Check that we do not try to use image processor arguments
+            # without any image seeds
+
+            invalid_self = []
+            for processor_self in non_null_attr_that_end_with('image_processors'):
+                invalid_self.append(
+                    f'you cannot specify {a_namer(processor_self)} '
+                    f'without {a_namer("image_seeds")}.')
+
+            if invalid_self:
+                raise RenderLoopConfigError('\n'.join(invalid_self))
+
+            # Check that the config makes sense for constructing
+            # a pipeline and that there is a class available
+            # to handle what was requested
 
             try:
                 _pipelinewrapper.get_torch_pipeline_class(
@@ -1114,8 +1245,8 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'Unknown prompt weighter implementation: {_promptweighters.prompt_weighter_name_from_uri(self.prompt_weighter_uri)}, '
                 f'must be one of: {_textprocessing.oxford_comma(_promptweighters.prompt_weighter_names(), "or")}')
 
-        if self.second_prompt_weighter_uri is not None \
-                and not _promptweighters.prompt_weighter_exists(self.second_prompt_weighter_uri):
+        if self.second_model_prompt_weighter_uri is not None \
+                and not _promptweighters.prompt_weighter_exists(self.second_model_prompt_weighter_uri):
             raise RenderLoopConfigError(
                 f'Unknown prompt weighter implementation for secondary model: '
                 f'{_promptweighters.prompt_weighter_name_from_uri(self.prompt_weighter_uri)}, '
@@ -1216,47 +1347,6 @@ class RenderLoopConfig(_types.SetFromMixin):
                                         f'{a_namer("model_type")} values other than '
                                         f'"torch", "torch-sdxl", or "torch-sd3"')
 
-        if not self.image_seeds:
-            args_help = scheduler_help or text_encoder_help or second_text_encoder_help
-
-            if _pipelinewrapper.model_type_is_floyd_ifs(self.model_type) and not args_help:
-                raise RenderLoopConfigError(
-                    f'you cannot specify Deep Floyd IF super-resolution '
-                    f'({a_namer("model_type")} "{self.model_type})" without {a_namer("image_seeds")}'
-                )
-
-            if _pipelinewrapper.model_type_is_upscaler(self.model_type) and not args_help:
-                raise RenderLoopConfigError(
-                    f'you cannot specify an upscaler model '
-                    f'({a_namer("model_type")} "{self.model_type})" without {a_namer("image_seeds")}.'
-                )
-
-            if _pipelinewrapper.model_type_is_pix2pix(self.model_type) and not args_help:
-                raise RenderLoopConfigError(
-                    f'you cannot specify a pix2pix model '
-                    f'({a_namer("model_type")} "{self.model_type})" without {a_namer("image_seeds")}.'
-                )
-
-            if self.image_seed_strengths:
-                raise RenderLoopConfigError(
-                    f'you cannot specify {a_namer("image_seed_strengths")} without {a_namer("image_seeds")}.')
-
-            if self.seeds_to_images:
-                raise RenderLoopConfigError(
-                    f'{a_namer("seeds_to_images")} cannot be specified without {a_namer("image_seeds")}.')
-
-            if self.controlnet_uris:
-                raise RenderLoopConfigError(
-                    f'you cannot specify {a_namer("controlnet_uris")} without {a_namer("image_seeds")}.')
-
-            if self.t2i_adapter_uris:
-                raise RenderLoopConfigError(
-                    f'you cannot specify {a_namer("t2i_adapter_uris")} without {a_namer("image_seeds")}.')
-
-            if self.ip_adapter_uris:
-                raise RenderLoopConfigError(
-                    f'you cannot specify {a_namer("ip_adapter_uris")} without {a_namer("image_seeds")}.')
-
         upscaler_noise_levels_default_set = False
         if not _pipelinewrapper.model_type_is_upscaler(self.model_type) \
                 and not _pipelinewrapper.model_type_is_floyd_ifs(self.model_type):
@@ -1283,27 +1373,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         elif not self.image_guidance_scales:
             self.image_guidance_scales = [_pipelinewrapper.DEFAULT_IMAGE_GUIDANCE_SCALE]
 
-        if self.control_image_processors:
-            if not self.image_seeds:
-                raise RenderLoopConfigError(
-                    f'you cannot specify {a_namer("control_image_processors")} '
-                    f'without {a_namer("image_seeds")}.')
-
-        if not self.image_seeds:
-            if self.model_type == _pipelinewrapper.ModelType.TORCH_FLUX_FILL:
-                raise RenderLoopConfigError(
-                    f'you cannot use {a_namer("model_type")} '
-                    f'torch-flux-fill without {a_namer("image_seeds")}.'
-                )
-
-            invalid_self = []
-            for processor_self in non_null_attr_that_end_with('image_processors'):
-                invalid_self.append(
-                    f'you cannot specify {a_namer(processor_self)} '
-                    f'without {a_namer("image_seeds")}.')
-
-            if invalid_self:
-                raise RenderLoopConfigError('\n'.join(invalid_self))
+        # Verify we can use a transformer
 
         if self.transformer_uri:
             if not _pipelinewrapper.model_type_is_sd3(self.model_type) \
@@ -1311,6 +1381,9 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise _pipelinewrapper.UnsupportedPipelineConfigError(
                     f'{a_namer("transformer_uri")} is only supported for '
                     f'{a_namer("model_type")} torch-sd3 and torch-flux.')
+
+        # check for invalid specification of --flux-* args
+        # and Flux related arguments such as max_sequence_length
 
         if not _pipelinewrapper.model_type_is_flux(self.model_type):
             invalid_self = []
@@ -1320,12 +1393,15 @@ class RenderLoopConfig(_types.SetFromMixin):
             if invalid_self:
                 raise RenderLoopConfigError('\n'.join(invalid_self))
         else:
-            if self.flux_max_sequence_length is not None:
-                if self.flux_max_sequence_length < 1 or self.flux_max_sequence_length > 512:
+            if self.max_sequence_length is not None:
+                if self.max_sequence_length < 1 or self.max_sequence_length > 512:
                     raise RenderLoopConfigError(
-                        f'{a_namer("flux_max_sequence_length")} must be greater than or equal '
+                        f'{a_namer("max_sequence_length")} must be greater than or equal '
                         f'to 1 and less than or equal to 512.'
                     )
+
+        # check for invalid specification of --sd3-* args
+        # and SD3 related arguments such as max_sequence_length
 
         if not _pipelinewrapper.model_type_is_sd3(self.model_type):
             invalid_self = []
@@ -1335,15 +1411,15 @@ class RenderLoopConfig(_types.SetFromMixin):
             if invalid_self:
                 raise RenderLoopConfigError('\n'.join(invalid_self))
         else:
-            if self.sd3_max_sequence_length is not None:
+            if self.max_sequence_length is not None:
                 if self.controlnet_uris:
                     raise RenderLoopConfigError(
-                        f'{a_namer("sd3_max_sequence_length")} is not supported when '
+                        f'{a_namer("max_sequence_length")} is not supported when '
                         f'{a_namer("controlnet_uris")} is specified.')
 
-                if self.sd3_max_sequence_length < 1 or self.sd3_max_sequence_length > 512:
+                if self.max_sequence_length < 1 or self.max_sequence_length > 512:
                     raise RenderLoopConfigError(
-                        f'{a_namer("sd3_max_sequence_length")} must be greater than or equal '
+                        f'{a_namer("max_sequence_length")} must be greater than or equal '
                         f'to 1 and less than or equal to 512.'
                     )
 
@@ -1352,10 +1428,13 @@ class RenderLoopConfig(_types.SetFromMixin):
                     raise RenderLoopConfigError(
                         f'Stable Diffusion 3 requires {a_namer("output_size")} to be aligned to 16.')
 
-            if self.unet_uri or self.second_unet_uri:
+            if self.unet_uri or self.second_model_unet_uri:
                 raise RenderLoopConfigError(
                     f'Stable Diffusion 3 does not support the '
-                    f'use of {a_namer("unet_uri")}/{a_namer("second_unet_uri")}.')
+                    f'use of {a_namer("unet_uri")}/{a_namer("second_model_unet_uri")}.')
+
+        # check for invalid specification of --sdxl-* args
+        # and --second-model-* args in the context of torch-sdxl use
 
         if not (_pipelinewrapper.model_type_is_sdxl(self.model_type) or
                 _pipelinewrapper.model_type_is_kolors(self.model_type)):
@@ -1370,14 +1449,22 @@ class RenderLoopConfig(_types.SetFromMixin):
         else:
             if not self.sdxl_refiner_uri:
                 invalid_self = []
-                for sdxl_self in non_null_attr_that_start_with(['sdxl_refiner', 'second']):
-                    invalid_self.append(f'you cannot specify {a_namer(sdxl_self)} '
-                                        f'without {a_namer("sdxl_refiner_uri")}.')
+                for sdxl_self in non_null_second_model_arguments('sdxl_refiner'):
+                    invalid_self.append(
+                        f'you cannot specify {a_namer(sdxl_self)} '
+                        f'without {a_namer("sdxl_refiner_uri")}.')
+                if self.sdxl_high_noise_fractions is not None:
+                    invalid_self.append(
+                        f'you cannot specify {a_namer("sdxl_high_noise_fractions")} '
+                        f'without {a_namer("sdxl_refiner_uri")}.')
                 if invalid_self:
                     raise RenderLoopConfigError('\n'.join(invalid_self))
             elif self.sdxl_high_noise_fractions is None:
                 # Default value
                 self.sdxl_high_noise_fractions = [_pipelinewrapper.DEFAULT_SDXL_HIGH_NOISE_FRACTION]
+
+        # will not happen currently, but reminder for future
+        # non torch based pipelines
 
         if not _pipelinewrapper.model_type_is_torch(self.model_type):
             if self.vae_tiling or self.vae_slicing:
@@ -1388,6 +1475,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         if self.image_seeds:
 
+            # these pipelines do not use image strength
             no_seed_strength = (_pipelinewrapper.model_type_is_upscaler(self.model_type) or
                                 _pipelinewrapper.model_type_is_pix2pix(self.model_type) or
                                 _pipelinewrapper.model_type_is_s_cascade(self.model_type) or
@@ -1398,10 +1486,11 @@ class RenderLoopConfig(_types.SetFromMixin):
             if self.image_seed_strengths is None:
                 if not no_seed_strength:
                     image_seed_strengths_default_set = True
-                    # Default value
+                    # Default value because the user did not specify
                     self.image_seed_strengths = [_pipelinewrapper.DEFAULT_IMAGE_SEED_STRENGTH]
             else:
                 if no_seed_strength:
+                    # cannot specify strength
                     raise RenderLoopConfigError(
                         f'{a_namer("image_seed_strengths")} '
                         f'cannot be used with pix2pix, upscaler, or stablecascade models.')
@@ -1417,6 +1506,8 @@ class RenderLoopConfig(_types.SetFromMixin):
                         image_seed_strengths_default_set=image_seed_strengths_default_set,
                         upscaler_noise_levels_default_set=upscaler_noise_levels_default_set))
 
+            # verify that a pipeline can actually be built for this
+            # combination of arguments
             try:
                 for image_seed in parsed_image_seeds:
                     is_control_guidance_spec = \
@@ -1429,6 +1520,9 @@ class RenderLoopConfig(_types.SetFromMixin):
                     else:
                         pipeline_type = _pipelinewrapper.PipelineType.TXT2IMG
 
+                    # if there is no class that can handle
+                    # the operation described by the config
+                    # then this will throw
                     _pipelinewrapper.get_torch_pipeline_class(
                         model_type=self.model_type,
                         pipeline_type=pipeline_type,
@@ -1447,11 +1541,17 @@ class RenderLoopConfig(_types.SetFromMixin):
             except _pipelinewrapper.UnsupportedPipelineConfigError as e:
                 raise RenderLoopConfigError(str(e))
 
+            # check that we do not specify inpaint masks with adetailer options
+
             if self.adetailer_detector_uris and any(p.mask_images is not None for p in parsed_image_seeds):
                 raise RenderLoopConfigError(
                     f'Cannot specify inpaint masks when using {a_namer("adetailer_detector_uris")}, inpaint masks '
                     f'are generated automatically with this option.'
                 )
+
+            # check that we do not try to use an image seed strength value
+            # when there are no actual image inputs that are treated
+            # as an initial noise image
 
             if all(p.images is None for p in parsed_image_seeds):
                 if image_seed_strengths_default_set:
@@ -1463,12 +1563,18 @@ class RenderLoopConfig(_types.SetFromMixin):
                         f'cannot be used unless an img2img operation exists '
                         f'in at least one {a_namer("image_seeds")} definition.')
 
+            # check that we do not try to use flux-fill for anything
+            # other than inpainting operations
+
             if not all(p.mask_images is not None for p in parsed_image_seeds):
                 if self.model_type == _pipelinewrapper.ModelType.TORCH_FLUX_FILL \
                         and not self.adetailer_detector_uris:
                     raise RenderLoopConfigError(
                         f'Only inpainting {a_namer("image_seeds")} '
                         f'definitions can be used with {a_namer("model_type")} torch-flux-fill.')
+
+            # image seed strength can only be used with this deep floyd
+            # upscaler if in inpainting mode
 
             if all(p.mask_images is None for p in parsed_image_seeds):
                 if self.model_type == _pipelinewrapper.ModelType.TORCH_IFS:
@@ -1684,12 +1790,10 @@ class RenderLoopConfig(_types.SetFromMixin):
         :return: int
         """
         optional_factors = [
-            self.sdxl_second_prompts,
-            self.sdxl_refiner_prompts,
-            self.sdxl_refiner_second_prompts,
-            self.sd3_second_prompts,
-            self.sd3_third_prompts,
-            self.flux_second_prompts,
+            self.second_model_prompts,
+            self.second_model_second_prompts,
+            self.second_prompts,
+            self.third_prompts,
             self.image_guidance_scales,
             self.image_seeds,
             self.image_seed_strengths,
@@ -1717,7 +1821,6 @@ class RenderLoopConfig(_types.SetFromMixin):
             self.sdxl_refiner_negative_crops_coords_top_left,
             self.s_cascade_decoder_inference_steps,
             self.s_cascade_decoder_guidance_scales,
-            self.s_cascade_decoder_prompts,
             self.pag_scales,
             self.pag_adaptive_scales,
             self.sdxl_refiner_pag_scales,
@@ -1732,7 +1835,7 @@ class RenderLoopConfig(_types.SetFromMixin):
             self.adetailer_mask_dilations
         ]
 
-        schedulers, second_schedulers = self._normalized_schedulers()
+        schedulers, second_model_schedulers = self._normalized_schedulers()
 
         product = 1
         for lst in optional_factors:
@@ -1744,17 +1847,57 @@ class RenderLoopConfig(_types.SetFromMixin):
                 len(self.guidance_scales) *
                 len(self.inference_steps) *
                 len(schedulers) *
-                len(second_schedulers))
+                len(second_model_schedulers))
 
     def _normalized_schedulers(self):
         schedulers = self.scheduler_uri
-        second_schedulers = self.second_scheduler_uri
+        second_model_schedulers = self.second_model_scheduler_uri
 
         if isinstance(schedulers, (_types.Uri, type(None))):
             schedulers = [schedulers]
-        if isinstance(self.second_scheduler_uri, (_types.Uri, type(None))):
-            second_schedulers = [second_schedulers]
-        return schedulers, second_schedulers
+        if isinstance(self.second_model_scheduler_uri, (_types.Uri, type(None))):
+            second_model_schedulers = [second_model_schedulers]
+        return schedulers, second_model_schedulers
+
+    def apply_prompt_upscalers(self):
+        """
+        Apply requested prompt upscaling operations to all prompts in the configuration.
+
+        This potentially modifies the configuration in place, specifically the prompt arguments.
+        """
+
+        upscalers_by_uri = {}
+
+        def upscale_prompts(prompts, default_upscaler_uri):
+            nonlocal upscalers_by_uri
+            return _promptupscalers.upscale_prompts(
+                prompts=prompts,
+                default_upscaler_uri=default_upscaler_uri,
+                device=self.device,
+                upscaler_cache=upscalers_by_uri
+            )
+
+        self.prompts = upscale_prompts(self.prompts, self.prompt_upscaler_uri)
+
+        if self.second_prompts:
+            self.second_prompts = upscale_prompts(
+                self.second_prompts, _types.default(
+                    self.second_prompt_upscaler_uri, self.prompt_upscaler_uri))
+
+        if self.third_prompts:
+            self.third_prompts = upscale_prompts(
+                self.third_prompts, _types.default(
+                    self.third_prompt_upscaler_uri, self.prompt_upscaler_uri))
+
+        if self.second_model_prompts:
+            self.second_model_prompts = upscale_prompts(
+                self.second_model_prompts, _types.default(
+                    self.second_model_prompt_upscaler_uri, self.prompt_upscaler_uri))
+
+        if self.second_model_second_prompts:
+            self.second_model_second_prompts = upscale_prompts(
+                self.second_model_second_prompts, _types.default(
+                    self.second_model_second_prompt_upscaler_uri, self.prompt_upscaler_uri))
 
     def iterate_diffusion_args(self, **overrides) -> collections.abc.Iterator[_pipelinewrapper.DiffusionArguments]:
         """
@@ -1800,9 +1943,9 @@ class RenderLoopConfig(_types.SetFromMixin):
             isinstance(self.scheduler_uri, (str, type(None))) else \
             self.scheduler_uri
 
-        second_schedulers = [self.second_scheduler_uri] if \
-            isinstance(self.second_scheduler_uri, (str, type(None))) else \
-            self.second_scheduler_uri
+        second_model_schedulers = [self.second_model_scheduler_uri] if \
+            isinstance(self.second_model_scheduler_uri, (str, type(None))) else \
+            self.second_model_scheduler_uri
 
         for arg in _iterate_diffusion_args(
                 prompt=ov('prompt', self.prompts),
@@ -1810,18 +1953,15 @@ class RenderLoopConfig(_types.SetFromMixin):
                 vae_tiling=ov('vae_tiling', [self.vae_tiling]),
                 vae_slicing=ov('vae_slicing', [self.vae_slicing]),
                 scheduler_uri=ov('scheduler_uri', schedulers),
-                second_scheduler_uri=
-                ov('second_scheduler_uri', second_schedulers),
-                second_prompt_weighter_uri=
-                ov('second_prompt_weighter_uri', [self.second_prompt_weighter_uri]),
-                sdxl_second_prompt=ov('sdxl_second_prompt', self.sdxl_second_prompts),
-                sdxl_refiner_prompt=ov('sdxl_refiner_prompt', self.sdxl_refiner_prompts),
-                sdxl_refiner_second_prompt=ov('sdxl_refiner_second_prompt', self.sdxl_refiner_second_prompts),
-                sd3_max_sequence_length=ov('sd3_max_sequence_length', [self.sd3_max_sequence_length]),
-                flux_max_sequence_length=ov('flux_max_sequence_length', [self.flux_max_sequence_length]),
-                sd3_second_prompt=ov('sd3_second_prompt', self.sd3_second_prompts),
-                sd3_third_prompt=ov('sd3_third_prompt', self.sd3_third_prompts),
-                flux_second_prompt=ov('flux_second_prompt', self.flux_second_prompts),
+                second_model_scheduler_uri=
+                ov('second_model_scheduler_uri', second_model_schedulers),
+                second_model_prompt_weighter_uri=
+                ov('second_model_prompt_weighter_uri', [self.second_model_prompt_weighter_uri]),
+                second_prompt=ov('second_prompt', self.second_prompts),
+                third_prompt=ov('third_prompt', self.third_prompts),
+                second_model_prompt=ov('second_model_prompt', self.second_model_prompts),
+                second_model_second_prompt=ov('second_model_second_prompt', self.second_model_second_prompts),
+                max_sequence_length=ov('max_sequence_length', [self.max_sequence_length]),
                 seed=ov('seed', self.seeds),
                 clip_skip=ov('clip_skip', self.clip_skips),
                 sdxl_refiner_clip_skip=ov('sdxl_refiner_clip_skip', self.sdxl_refiner_clip_skips),
@@ -1850,8 +1990,6 @@ class RenderLoopConfig(_types.SetFromMixin):
                                                      self.s_cascade_decoder_inference_steps),
                 s_cascade_decoder_guidance_scale=ov('s_cascade_decoder_guidance_scale',
                                                     self.s_cascade_decoder_guidance_scales),
-                s_cascade_decoder_prompt=ov('s_cascade_decoder_prompt',
-                                            self.s_cascade_decoder_prompts),
                 upscaler_noise_level=ov('upscaler_noise_level', self.upscaler_noise_levels),
                 sdxl_aesthetic_score=ov('sdxl_aesthetic_score', self.sdxl_aesthetic_scores),
                 sdxl_original_size=ov('sdxl_original_size', self.sdxl_original_sizes),

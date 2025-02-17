@@ -44,7 +44,7 @@ config.device = device
 config.model_sequential_offload = True
 
 # further reduce resource usage / memory consumption
-config.flux_max_sequence_length = 256
+config.max_sequence_length = 256
 
 # One seed will be randomly generated for you if none are specified
 
