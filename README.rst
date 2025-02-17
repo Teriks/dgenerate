@@ -4323,7 +4323,7 @@ per prompt by using the ``<upscaler: ...>`` embedded prompt argument.
 
 Prompt upscalers can be chained together sequentially, simply by specifying multiple plugin URIs.
 
-This works even when prompt upscalers that expand your original prompt into multiple prompts.
+This works even with prompt upscalers that expand your original prompt into multiple prompts.
 
 You can see which prompt upscalers dgenerate implements via: ``dgenerate --prompt-upscaler-help``
 or ``\prompt_upscaler_help`` from within a config script.
