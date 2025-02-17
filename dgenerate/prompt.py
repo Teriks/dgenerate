@@ -157,7 +157,7 @@ class Prompt:
                         value = _textprocessing.parse_dimensions(value)
                         if len(value) == 1:
                             value = value
-                    elif any(hint is h for h in {_types.Integer, _types.OptionalFloat, _types.OptionalFloats}):
+                    elif any(hint is h for h in {_types.Float, _types.OptionalFloat, _types.OptionalFloats}):
                         value = ast.literal_eval(value)
                         if isinstance(value, typing.Iterable):
                             value = list(value)
@@ -173,7 +173,9 @@ class Prompt:
                                 value[idx] = int(v)
                         else:
                             value = int(value)
-                    elif any(hint is h for h in {_types.OptionalUri, _types.OptionalUris}):
+                    elif any(hint is h for h in {_types.OptionalString, _types.OptionalName,
+                                                 _types.OptionalNames, _types.OptionalUri,
+                                                 _types.OptionalUris}):
                         try:
                             value = ast.literal_eval(value)
                             if isinstance(value, typing.Iterable):

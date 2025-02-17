@@ -129,6 +129,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v4.5.1/>`_.
         * `The compel prompt weighter`_
         * `The sd-embed prompt weighter`_
         * `The llm4gen prompt weighter`_
+    * `Embedded Prompt Arguments`_
     * `Utilizing CivitAI links and Other Hosted Models`_
     * `Specifying Generation Batch Size`_
     * `Batching Input Images and Inpaint Masks`_
@@ -4801,6 +4802,99 @@ See: `LLM4GEN <https://github.com/YUHANG-Ma/LLM4GEN>`_
         }
     
     ==============================================================================================================
+
+Embedded Prompt Arguments
+=========================
+
+You can embed certain diffusion arguments into your prompt on a per-prompt basis.
+
+Meaning those arguments only apply to that prompt.
+
+Notably, the special embedded arguments ``<weighter: ...>`` and ``<upscaler: ...>`` can be used
+to define the ``--prompt-weighter`` and ``--prompt-upscaler`` plugins that act on your prompt.
+
+``<upscaler: ...>`` is unlike other embedded arguments in that it can be mentioned multiple times
+in a row to create a chain of prompt upscaling operations using different prompt upscaler plugin URIs.
+
+The rest of the specifiable arguments are select members of the `DiffusionArguments <https://dgenerate.readthedocs.io/en/v4.5.1/dgenerate_submodules.html#dgenerate.pipelinewrapper.DiffusionArguments>`_
+class from dgenerates library API.
+
+You may not specify prompt related arguments aside from the aforementioned ``weighter`` and ``upscaler``.
+
+You may not specify arguments related to image inputs either.
+
+All other arguments are fair game, for example ``inference_steps``
+
+.. code-block:: jinja
+
+    # override inference steps for the
+    # second prompt variation in particular
+
+    stabilityai/stable-diffusion-2-1
+    --inference-steps 30
+    --guidance-scales 5
+    --clip-skips 0
+    --gen-seeds 1
+    --output-path output
+    --output-size 512x512
+    --prompts "hello world!" "<inference-steps: 50> hello world!"
+
+
+Of the arguments mentioned in the `DiffusionArguments <https://dgenerate.readthedocs.io/en/v4.5.1/dgenerate_submodules.html#dgenerate.pipelinewrapper.DiffusionArguments>`_ class,
+these are the arguments that are available for use:
+
+.. code-block:: text
+
+    scheduler-uri: str
+    second-model-scheduler-uri: str
+    prompt-weighter-uri: str
+    second-model-prompt-weighter-uri: str
+    width: int
+    height: int
+    batch-size: int
+    s-cascade-decoder-inference-steps: int
+    s-cascade-decoder-guidance-scale: float
+    max-sequence-length: int
+    seed: int
+    image-seed-strength: float
+    sdxl-t2i-adapter-factor: float
+    upscaler-noise-level: int
+    sdxl-high-noise-fraction: float
+    sdxl-refiner-inference-steps: int
+    sdxl-refiner-guidance-scale: float
+    sdxl-refiner-guidance-rescale: float
+    sdxl-aesthetic-score: float
+    sdxl-original-size: Size: WxH
+    sdxl-target-size: Size: WxH
+    sdxl-crops-coords-top-left: Size: WxH
+    sdxl-negative-aesthetic-score: float
+    sdxl-negative-original-size: Size: WxH
+    sdxl-negative-target-size: Size: WxH
+    sdxl-negative-crops-coords-top-left: Size: WxH
+    sdxl-refiner-aesthetic-score: float
+    sdxl-refiner-original-size: Size: WxH
+    sdxl-refiner-target-size: Size: WxH
+    sdxl-refiner-crops-coords-top-left: Size: WxH
+    sdxl-refiner-negative-aesthetic-score: float
+    sdxl-refiner-negative-original-size: Size: WxH
+    sdxl-refiner-negative-target-size: Size: WxH
+    sdxl-refiner-negative-crops-coords-top-left: Size: WxH
+    guidance-scale: float
+    pag-scale: float
+    pag-adaptive-scale: float
+    sdxl-refiner-pag-scale: float
+    sdxl-refiner-pag-adaptive-scale: float
+    image-guidance-scale: float
+    guidance-rescale: float
+    inference-steps: int
+    clip-skip: int
+    sdxl-refiner-clip-skip: int
+    adetailer-index-filter: [int, ...]
+    adetailer-mask-shape: str
+    adetailer-detector-padding: Padding: P, WxH, LxTxRxB
+    adetailer-mask-padding: Padding: P, WxH, LxTxRxB
+    adetailer-mask-blur: int
+    adetailer-mask-dilation: int
 
 Utilizing CivitAI links and Other Hosted Models
 ===============================================

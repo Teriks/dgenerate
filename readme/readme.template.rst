@@ -158,6 +158,8 @@ Help Output
 
 @INCLUDE[sections/prompt_weighting.template.rst]
 
+@INCLUDE[sections/embedded_prompt_arguments.template.rst]
+
 @INCLUDE[sections/utilizing_civitai_links_and_hosted_models.template.rst]
 
 @INCLUDE[sections/specifying_generation_batch_size.template.rst]
