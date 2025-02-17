@@ -4378,7 +4378,7 @@ The following is an example making use of the ``dynamicprompts`` upscaler.
     # in the previous invocation if we want, this is just to demonstrate the chaining
     # behaviour that occurs when you specify multiple prompt upscalers
     
-    # below, a 2 variants of a magic prompt will be generated, and then random prompt
+    # below, 2 variants of a magic prompt will be generated, and then random prompt
     # attention values will be added, we need to use --prompt-weighter sd-embed
     # for these attention values to be understood, they are output in SD Web UI syntax,
     # you could also use: compel;syntax=sdwui if desired
