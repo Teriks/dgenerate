@@ -11,8 +11,8 @@ to define the ``--prompt-weighter`` and ``--prompt-upscaler`` plugins that act o
 ``<upscaler: ...>`` is unlike other embedded arguments in that it can be mentioned multiple times
 in a row to create a chain of prompt upscaling operations using different prompt upscaler plugin URIs.
 
-The rest of the specifiable arguments are select members of the `DiffusionArguments <https://dgenerate.readthedocs.io/en/v4.5.1/dgenerate_submodules.html#dgenerate.pipelinewrapper.DiffusionArguments>`_
-class from dgenerates library API.
+The rest of the specifiable arguments are select members of the `DiffusionArguments <https://dgenerate.readthedocs.io/en/v@VERSION/dgenerate_submodules.html#dgenerate.pipelinewrapper.DiffusionArguments>`_
+class from dgenerate's library API.
 
 You may not specify prompt related arguments aside from the aforementioned ``weighter`` and ``upscaler``.
 
