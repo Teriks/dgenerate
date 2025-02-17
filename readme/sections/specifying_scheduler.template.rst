@@ -124,7 +124,7 @@ As an example, you may override the mentioned arguments for any scheduler in thi
     --output-size 1024 \
     --gen-seeds 2 \
     --prompts "none" \
-    --scheduler PNDMScheduler;prediction-type=v_prediction
+    --scheduler "PNDMScheduler;prediction-type=v_prediction"
 
 In the case of list / array arguments such as ``trained-betas`` you may use python
 literal syntax, i.e: ``[1, 2, 3]`` or CSV (tuple) ``1,2,3``.

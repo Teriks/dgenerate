@@ -36,7 +36,7 @@ This example nearly duplicates an image created with a code snippet in the diffu
     --output-path basic \
     --model-cpu-offload \
     --image-seeds "adapter: https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/ip_adapter_diner.png" \
-    --ip-adapters h94/IP-Adapter;subfolder=sdxl_models;weight-name=ip-adapter_sdxl.bin \
+    --ip-adapters "h94/IP-Adapter;subfolder=sdxl_models;weight-name=ip-adapter_sdxl.bin" \
     --output-size 1024x1024 \
     --prompts "a polar bear sitting in a chair drinking a milkshake; \
                deformed, ugly, wrong proportion, low res, bad anatomy, worst quality, low quality"

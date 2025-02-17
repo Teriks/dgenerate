@@ -18,17 +18,14 @@ The syntax for specifying text encoders is similar to that of ``--vae``
 
 The URI syntax for ``--text-encoders`` is ``TextEncoderClass;model=(huggingface repository slug or folder path)``
 
-Loading arguments available when specifying a Text Encoder are: ``model``, ``revision``, ``variant``, ``subfolder``, ``dtype``, and ``quantize``
+Loading arguments available when specifying a Text Encoder are: ``model``, ``revision``, ``variant``, ``subfolder``, ``dtype``, and ``quantizer``
 
 The ``variant`` argument defaults to the value of ``--variant``
 
 The ``dtype`` argument defaults to the value of ``--dtype``
 
-The ``quantize`` URI argument enables weights quantization via the `optimum-quanto
-library <optimum-quanto_library_1_>`_, allowing for lower GPU memory usage.
-This is useful when generating with Flux models. ``quantize`` may be passed the
-values ``qint2``, ``qint4``, ``qint8``, ``qfloat8_e4m3fn``, ``qfloat8_e5m2``, or ``qfloat8``,
-to indicate the quantization data type.
+The ``quantizer`` URI argument can be used to specify a quantization backend
+for the text encoder using the same URI syntax as ``--quantizer``
 
 The other named arguments are available when loading from a huggingface repository or folder
 that may or may not be a local git repository on disk.
@@ -97,7 +94,7 @@ repository on huggingface.
     --inference-steps 30 \
     --guidance-scales 5.00 \
     --text-encoders + + \
-        T5EncoderModel;model=stabilityai/stable-diffusion-3-medium-diffusers;subfolder=text_encoder_3 \
+        "T5EncoderModel;model=stabilityai/stable-diffusion-3-medium-diffusers;subfolder=text_encoder_3" \
     --clip-skips 0 \
     --gen-seeds 2 \
     --output-path output \
