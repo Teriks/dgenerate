@@ -10,7 +10,7 @@ stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
 --output-size 1024
 --prompt-weighter compel
 --prompts "Photo+ of a horse+ standing near the (open door)+ of a (red barn)+, (high resolution)++; artwork"
---sdxl-second-prompts "In the style of (picasso)1.3"
+--second-prompts "In the style of (picasso)1.3"
 --output-path compel_2_prompt
 
 # Translate our prompt into compel from Stable Diffusion Web UI syntax
@@ -24,5 +24,5 @@ stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
 --output-size 1024
 --prompt-weighter compel;syntax=sdwui
 --prompts "(Photo) of a (horse) standing near the (open door) of a (red barn), (high resolution:1.2); artwork"
---sdxl-second-prompts "In the style of (picasso:1.3)"
+--second-prompts "In the style of (picasso:1.3)"
 --output-path compel_sdwui_2_prompt

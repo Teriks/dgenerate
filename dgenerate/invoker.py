@@ -29,6 +29,7 @@ import dgenerate.mediainput as _mediainput
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
 import dgenerate.promptweighters as _promptweighters
+import dgenerate.promptupscalers as _promptupscalers
 import dgenerate.plugin as _plugin
 import dgenerate.renderloop as _renderloop
 import dgenerate.subcommands as _subcommands
@@ -211,6 +212,29 @@ def invoke_dgenerate_events(
         return
 
     try:
+        prompt_upscaler_help, _ = _arguments.parse_prompt_upscaler_help(
+            args, throw_unknown=True, log_error=log_error)
+    except _arguments.DgenerateUsageError:
+        if throw:
+            raise
+        yield DgenerateExitEvent(invoke_dgenerate_events, 1)
+        return
+
+    if prompt_upscaler_help is not None:
+        try:
+            yield DgenerateExitEvent(
+                origin=invoke_dgenerate_events,
+                return_code=_promptupscalers.prompt_upscaler_help(
+                    names=prompt_upscaler_help,
+                    log_error=False,
+                    throw=True))
+
+        except (_promptupscalers.PromptUpscalerNotFoundError,
+                _plugin.ModuleFileNotFoundError) as e:
+            yield rethrow_with_message(e)
+        return
+
+    try:
         image_processor_help, _ = _arguments.parse_image_processor_help(
             args, throw_unknown=True, log_error=log_error)
     except _arguments.DgenerateUsageError:
@@ -377,6 +401,8 @@ def invoke_dgenerate_events(
                 exec(f"{global_var} = arg_value")
 
         render_loop.config = arguments
+
+        render_loop.config.apply_prompt_upscalers()
 
         if arguments.verbose:
             _messages.push_level(_messages.DEBUG)

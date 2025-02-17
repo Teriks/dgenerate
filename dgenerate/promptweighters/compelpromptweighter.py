@@ -177,8 +177,8 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
     --model-type torch-sdxl-pix2pix
     --model-type torch-s-cascade
 
-    The secondary prompt option for SDXL --sdxl-second-prompts is supported by this prompt weighter
-    implementation. However, --sdxl-refiner-second-prompts is not supported and will be ignored
+    The secondary prompt option for SDXL --second-prompts is supported by this prompt weighter
+    implementation. However, --second-model-second-prompts is not supported and will be ignored
     with a warning message.
     """
 
@@ -375,7 +375,7 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
                 if positive_2 or negative_2:
                     _messages.log(
                         f'Prompt weighting is not supported by --prompt-weighter '
-                        f'"compel" for --sdxl-refiner-second-prompts, that prompt is being ignored.',
+                        f'"compel" for --second-model-second-prompts, that prompt is being ignored.',
                         level=_messages.WARNING)
 
                 original_clip_layers_2 = pipeline.text_encoder_2.text_model.encoder.layers

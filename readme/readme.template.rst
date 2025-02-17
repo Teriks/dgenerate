@@ -154,7 +154,9 @@ Help Output
 
 @INCLUDE[sections/sub_models/specifying_text_encoders.template.rst]
 
-@INCLUDE[sections/prompt_weighting_and_enhancement.template.rst]
+@INCLUDE[sections/prompt_upscaling.template.rst]
+
+@INCLUDE[sections/prompt_weighting.template.rst]
 
 @INCLUDE[sections/utilizing_civitai_links_and_hosted_models.template.rst]
 

@@ -16,7 +16,7 @@ model as mentioned above.
     --variant bf16 \
     --dtype bfloat16 \
     --model-cpu-offload \
-    --model-cpu-offload2 \
+    --second-model-cpu-offload \
     --s-cascade-decoder "stabilityai/stable-cascade;dtype=float16" \
     --inference-steps 20 \
     --guidance-scales 4 \

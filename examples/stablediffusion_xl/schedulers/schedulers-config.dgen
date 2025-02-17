@@ -4,8 +4,8 @@
 # try out different schedulers (samplers)
 
 # Note that --schedulers is simply an alias of --scheduler
-# They both have the same syntax, same with --scheduler2
-# and --schedulers2
+# They both have the same syntax, same with --second-model-scheduler
+# and --second-model-schedulers
 
 
 # List out possible scheduler names for the main model
@@ -17,7 +17,7 @@ stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl --scheduler hel
 stabilityai/stable-diffusion-xl-base-1.0
 --model-type torch-sdxl
 --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0
---scheduler2 help
+--second-model-scheduler help
 
 
 # Try every combination of these schedulers for the main model and refiner.
@@ -27,7 +27,7 @@ stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
 --variant fp16 --dtype float16
 --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0
 --schedulers EulerAncestralDiscreteScheduler KDPM2AncestralDiscreteScheduler
---schedulers2 EulerAncestralDiscreteScheduler KDPM2AncestralDiscreteScheduler
+--second-model-schedulers EulerAncestralDiscreteScheduler KDPM2AncestralDiscreteScheduler
 --sdxl-high-noise-fractions 0.8
 --inference-steps 40
 --output-size 1024

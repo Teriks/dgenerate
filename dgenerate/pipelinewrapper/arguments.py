@@ -35,12 +35,32 @@ class DiffusionArguments(_types.SetFromMixin):
     Primary prompt
     """
 
+    second_prompt: _prompt.OptionalPrompt = None
+    """
+    Secondary Prompt for SDXL, SD3, Flux.
+    """
+
+    second_model_prompt: _prompt.OptionalPrompt = None
+    """
+    Primary prompt for SDXL Refiner or Stable Cascade Decoder.
+    """
+
+    second_model_second_prompt: _prompt.OptionalPrompt = None
+    """
+    Secondary Prompt for SDXL Refiner, the Stable Cascade Decoder does not support this argument.
+    """
+
+    third_prompt: _prompt.OptionalPrompt = None
+    """
+    Tertiary Prompt for SD3.
+    """
+
     scheduler_uri: _types.OptionalUri = None
     """
     Primary model scheduler URI
     """
 
-    second_scheduler_uri: _types.OptionalUri = None
+    second_model_scheduler_uri: _types.OptionalUri = None
     """
     SDXL refiner scheduler / Stable Cascade Decoder URI, if not specified, defaults to :py:attr:`DiffusionArguments.scheduler`
     """
@@ -50,14 +70,14 @@ class DiffusionArguments(_types.SetFromMixin):
     Default prompt weighter plugin to use for all models.
     """
 
-    second_prompt_weighter_uri: _types.OptionalUri = None
+    second_model_prompt_weighter_uri: _types.OptionalUri = None
     """
     The URI of a prompt-weighter implementation supported by dgenerate 
     to use with the SDXL refiner or Stable Cascade Decoder.
     
     Defaults to :py:attr:`DiffusionArguments.prompt_weighter_uri` if not specified.
     
-    This corresponds to the ``--prompt-weighter2`` argument of the dgenerate command line tool.
+    This corresponds to the ``--second-model-prompt-weighter`` argument of the dgenerate command line tool.
     """
 
     vae_slicing: bool = False
@@ -160,80 +180,20 @@ class DiffusionArguments(_types.SetFromMixin):
     command line tool.
     """
 
-    s_cascade_decoder_prompt: _prompt.OptionalPrompt = None
+    max_sequence_length: _types.OptionalInteger = None
     """
-    Primary prompt for the Stable Cascade decoder when a decoder URI is specified in the 
-    constructor of :py:class:`.DiffusionPipelineWrapper`. Usually the ``prompt``
-    attribute of this object is used, unless you override it by giving this attribute
-    a value.
-    """
-
-    sd3_max_sequence_length: _types.OptionalInteger = None
-    """
-    Max number of prompt tokens that the T5EncoderModel (text encoder 3) of Stable Diffusion 3 can handle.
+    Max number of prompt tokens that the T5EncoderModel (text encoder 3) of Stable Diffusion 3 or Flux can handle.
     
-    This defaults to 256 when not specified, and the maximum value is 512 and the minimum value is 1.
+    This defaults to 256 for SD3 when not specified, and 512 for Flux.
+    
+    The maximum value is 512 and the minimum value is 1.
     
     High values result in more resource usage and processing time.
-    """
-
-    flux_max_sequence_length: _types.OptionalInteger = None
-    """
-    Max number of prompt tokens that the T5EncoderModel (text encoder 2) of Flux can handle.
-    
-    This defaults to 512 when not specified, and the maximum value is 512 and the minimum value is 1.
-    
-    High values result in more resource usage and processing time.
-    """
-
-    sd3_second_prompt: _prompt.OptionalPrompt = None
-    """
-    Secondary prompt for the SD3 main pipeline. Usually the ``prompt``
-    attribute of this object is used, unless you override it by giving 
-    this attribute a value.
-    """
-
-    sd3_third_prompt: _prompt.OptionalPrompt = None
-    """
-    Tertiary (T5) prompt for the SD3 main pipeline. Usually the ``prompt``
-    attribute of this object is used, unless you override it by giving 
-    this attribute a value.
-    """
-
-    flux_second_prompt: _prompt.OptionalPrompt = None
-    """
-    Secondary prompt for the Flux pipeline. Usually the ``prompt`` attribute
-    of this object is used, unless you override it by giving this attribute a
-    value.
     """
 
     sdxl_refiner_edit: _types.OptionalBoolean = None
     """
     Force the SDXL refiner to operate in edit mode instead of cooperative denoising mode.
-    """
-
-    sdxl_second_prompt: _prompt.OptionalPrompt = None
-    """
-    Secondary prompt for the SDXL main pipeline when a refiner URI is specified in the 
-    constructor of :py:class:`.DiffusionPipelineWrapper`. Usually the ``prompt``
-    attribute of this object is used, unless you override it by giving this attribute
-    a value.
-    """
-
-    sdxl_refiner_prompt: _prompt.OptionalPrompt = None
-    """
-    Primary prompt for the SDXL refiner when a refiner URI is specified in the 
-    constructor of :py:class:`.DiffusionPipelineWrapper`. Usually the ``prompt``
-    attribute of this object is used, unless you override it by giving this attribute
-    a value.
-    """
-
-    sdxl_refiner_second_prompt: _prompt.OptionalPrompt = None
-    """
-    Secondary prompt for the SDXL refiner when a refiner URI is specified in the 
-    constructor of :py:class:`.DiffusionPipelineWrapper`. Usually the **sdxl_refiner_prompt**
-    attribute of this object is used, unless you override it by giving this attribute
-    a value.
     """
 
     seed: _types.OptionalInteger = None
@@ -628,41 +588,24 @@ class DiffusionArguments(_types.SetFromMixin):
             "Prompt Weighter")
 
         DiffusionArguments._describe_prompt(
-            prompt_format, self.sd3_second_prompt,
-            "SD3 Second Prompt",
-            "SD3 Second Negative Prompt")
+            prompt_format, self.second_prompt,
+            "Secondary Prompt",
+            "Secondary Negative Prompt")
 
         DiffusionArguments._describe_prompt(
-            prompt_format, self.sd3_third_prompt,
-            "SD3 Third Prompt",
-            "SD3 Third Negative Prompt")
+            prompt_format, self.third_prompt,
+            "Tertiary Prompt",
+            "Tertiary Negative Prompt")
 
         DiffusionArguments._describe_prompt(
-            prompt_format, self.flux_second_prompt,
-            "Flux Second Prompt",
-            "Flux Second Negative Prompt")
+            prompt_format, self.second_model_prompt,
+            "Second Model Prompt",
+            "Second Model Negative Prompt")
 
         DiffusionArguments._describe_prompt(
-            prompt_format, self.s_cascade_decoder_prompt,
-            "Stable Cascade Decoder Prompt",
-            "Stable Cascade Decoder Negative Prompt"
-            "Stable Cascade Decoder Prompt Weighter")
-
-        DiffusionArguments._describe_prompt(
-            prompt_format, self.sdxl_second_prompt,
-            "SDXL Second Prompt",
-            "SDXL Second Negative Prompt")
-
-        DiffusionArguments._describe_prompt(
-            prompt_format, self.sdxl_refiner_prompt,
-            "SDXL Refiner Prompt",
-            "SDXL Refiner Negative Prompt",
-            "SDXL Refiner Prompt Weighter")
-
-        DiffusionArguments._describe_prompt(
-            prompt_format, self.sdxl_refiner_second_prompt,
-            "SDXL Refiner Second Prompt",
-            "SDXL Refiner Second Negative Prompt")
+            prompt_format, self.second_model_second_prompt,
+            "Second Model Second Prompt",
+            "Second Model Second Negative Prompt")
 
         prompt_format = '\n'.join(prompt_format)
         if prompt_format:
@@ -672,7 +615,7 @@ class DiffusionArguments(_types.SetFromMixin):
 
         descriptions = [
             (self.scheduler_uri, "Scheduler:"),
-            (self.second_scheduler_uri, "Second Scheduler:"),
+            (self.second_model_scheduler_uri, "Second Model Scheduler:"),
             (self.seed, "Seed:"),
             (self.clip_skip, "Clip Skip:"),
             (self.sdxl_refiner_clip_skip, "SDXL Refiner Clip Skip:"),
@@ -721,13 +664,9 @@ class DiffusionArguments(_types.SetFromMixin):
             descriptions.append(
                 (self.prompt_weighter_uri, 'Prompt Weighter'))
 
-        if not self.sdxl_refiner_prompt or not self.sdxl_refiner_prompt.weighter:
+        if not self.second_model_prompt or not self.second_model_prompt.weighter:
             descriptions.append(
-                (self.second_prompt_weighter_uri, 'SDXL Refiner Prompt Weighter'))
-
-        if not self.s_cascade_decoder_prompt or not self.s_cascade_decoder_prompt.weighter:
-            descriptions.append(
-                (self.second_prompt_weighter_uri, 'Stable Cascade Decoder Prompt Weighter'))
+                (self.second_model_prompt_weighter_uri, 'Second Model Prompt Weighter'))
 
         for val, desc in descriptions:
             if val is not None:

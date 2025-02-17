@@ -103,8 +103,8 @@ There are template variables for prompts, containing the previous prompt values:
 
 * ``{{ last_prompts }}`` (List of prompt objects with the un-quoted attributes 'positive' and 'negative')
 * ``{{ last_sdxl_second_prompts }}``
-* ``{{ last_sdxl_refiner_prompts }}``
-* ``{{ last_sdxl_refiner_second_prompts }}``
+* ``{{ last_second_model_prompts }}``
+* ``{{ last_second_model_second_prompts }}``
 
 Some available custom jinja2 functions/filters are:
 

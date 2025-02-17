@@ -9,7 +9,7 @@ stabilityai/stable-cascade-prior
 --batch-size 4
 --batch-grid-size 2x2
 --output-size 512
---model-cpu-offload2
+--second-model-cpu-offload
 --s-cascade-decoder "stabilityai/stable-cascade;dtype=float16"
 --inference-steps 20
 --guidance-scales 4

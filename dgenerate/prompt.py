@@ -28,9 +28,7 @@ import collections.abc
 import re
 import typing
 import dgenerate.types as _types
-
 import dgenerate.textprocessing as _textprocessing
-import dgenerate.promptweighters as _promptweighters
 
 
 class PromptEmbeddedArgumentError(Exception):
@@ -50,40 +48,82 @@ class Prompt:
                  negative: str | None = None,
                  delimiter: str = ';',
                  weighter: _types.OptionalUri = None,
-                 args: dict[str, str] | None = None):
+                 upscaler: _types.OptionalUriOrUris = None,
+                 embedded_args: dict[str, str] | None = None):
         """
         :param positive: positive prompt component.
         :param negative: negative prompt component.
         :param delimiter: delimiter for stringification.
         :param weighter: ``--prompt-weighter`` plugin URI.
-        :param args: embedded prompt arguments parsed from ``<argument: value_text>``.
+        :param upscaler: ``--prompt-upscaler`` plugin URI.
+        :param embedded_args: embedded prompt arguments parsed from ``<argument: value_text>``.
         """
+
+        import dgenerate.promptupscalers as _promptupscalers
+        import dgenerate.promptweighters as _promptweighters
 
         if weighter is not None and not _promptweighters.prompt_weighter_exists(weighter):
             raise PromptEmbeddedArgumentError(
                 f'Unknown prompt "weighter" implementation: {_promptweighters.prompt_weighter_name_from_uri(weighter)}, '
                 f'must be one of: {_textprocessing.oxford_comma(_promptweighters.prompt_weighter_names(), "or")}')
 
-        self.positive = positive
-        self.negative = negative
-        self.delimiter = delimiter
-        self.weighter = weighter
+        if upscaler is not None:
+            if isinstance(upscaler, str):
+                check_upscalers = [upscaler]
+            else:
+                check_upscalers = upscaler
 
-        if args is not None:
-            self.args = args
+            for u in check_upscalers:
+                if not _promptupscalers.prompt_upscaler_exists(u):
+                    raise PromptEmbeddedArgumentError(
+                        f'Unknown prompt "upscaler" implementation: {_promptupscalers.prompt_upscaler_name_from_uri(u)}, '
+                        f'must be one of: {_textprocessing.oxford_comma(_promptupscalers.prompt_upscaler_names(), "or")}'
+                    )
+
+        self._positive = positive
+        self._negative = negative
+        self._delimiter = delimiter
+        self._weighter = weighter
+        self._upscaler = upscaler
+
+        if embedded_args is not None:
+            self._embedded_args = embedded_args
         else:
-            self.args = dict()
+            self._embedded_args = dict()
 
     def __str__(self):
-        if self.positive and self.negative:
-            return f'{self.positive}{self.delimiter} {self.negative}'
-        elif self.positive:
-            return self.positive
+        if self._positive and self._negative:
+            return f'{self._positive}{self._delimiter} {self._negative}'
+        elif self._positive:
+            return self._positive
         else:
             return ''
 
+    @property
+    def positive(self) -> str:
+        return self._positive
+
+    @property
+    def negative(self) -> str:
+        return self._negative
+
+    @property
+    def weighter(self) -> _types.OptionalUri:
+        return self._weighter
+
+    @property
+    def upscaler(self) -> _types.OptionalUriOrUris:
+        return self._upscaler
+
+    @property
+    def embedded_args(self) -> list[tuple[str, str]]:
+        return list(self._embedded_args.items())
+
     def __repr__(self):
         return f"'{str(self)}'"
+
+    def copy_embedded_args_from(self, prompt: 'Prompt'):
+        self._embedded_args = prompt._embedded_args.copy()
 
     def set_embedded_args_on(
             self,
@@ -98,7 +138,7 @@ class Prompt:
                 return forbidden_checker(name, value)
             return False
 
-        for name, value in self.args.items():
+        for name, value in self._embedded_args.items():
             name = _textprocessing.dashdown(name)
 
             if verboten(name, value):
@@ -162,16 +202,30 @@ class Prompt:
 
     @staticmethod
     def _get_embeded_args(value):
-        args = dict()
+        embedded_args = {}
 
         def find_arg(match):
-            nonlocal args
+            nonlocal embedded_args
             name = match.group(1)
             arg_value = match.group(2)
-            args[name] = arg_value
+
+            if name == 'upscaler':
+                # If upscaler is already set, convert it to a list
+                if name in embedded_args:
+                    if isinstance(embedded_args[name], list):
+                        embedded_args[name].append(arg_value)
+                    else:
+                        embedded_args[name] = [embedded_args[name], arg_value]
+                else:
+                    embedded_args[name] = arg_value
+            else:
+                embedded_args[name] = arg_value
+
             return ' '
 
-        return re.sub(r"\s*<\s*([a-zA-Z_-][a-zA-Z0-9_-]+)\s*:\s*(.*?)\s*>\s*", find_arg, value), args
+        cleaned_value = re.sub(r"\s*<\s*([a-zA-Z_-][a-zA-Z0-9_-]+)\s*:\s*(.*?)\s*>\s*", find_arg, value)
+
+        return cleaned_value.strip(), embedded_args
 
     @staticmethod
     def parse(value: str, delimiter=';', parse_embedded_args: bool = True) -> 'Prompt':
@@ -189,11 +243,18 @@ class Prompt:
         if value is None:
             raise ValueError('Input string may not be None.')
 
+        weighter = None
+        upscaler = None
+        embedded_args = None
+
         if parse_embedded_args:
-            value, args = Prompt._get_embeded_args(value)
-            weighter = args.get('weighter', None)
+            value, embedded_args = Prompt._get_embeded_args(value)
+            weighter = embedded_args.get('weighter', None)
             if weighter is not None:
-                args.pop('weighter')
+                embedded_args.pop('weighter')
+            upscaler = embedded_args.get('upscaler', None)
+            if upscaler is not None:
+                embedded_args.pop('upscaler')
 
         parse = value.split(delimiter, 1)
         if len(parse) == 1:
@@ -210,7 +271,8 @@ class Prompt:
                       negative=negative,
                       delimiter=delimiter,
                       weighter=weighter,
-                      args=args)
+                      upscaler=upscaler,
+                      embedded_args=embedded_args)
 
 
 OptionalPrompt = typing.Optional[Prompt]

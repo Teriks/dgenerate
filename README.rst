@@ -123,7 +123,8 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v4.5.1/>`_.
         * `quoting IP Adapter image URLs with plus symbols`_
         * `animated inputs & combinatorics`_
     * `Specifying Text Encoders`_
-    * `Prompt Weighting and Enhancement`_
+    * `Prompt Upscaling`_
+    * `Prompt Weighting`_
         * `The compel prompt weighter`_
         * `The sd-embed prompt weighter`_
         * `The llm4gen prompt weighter`_
@@ -191,22 +192,19 @@ Help Output
                      [-lrfs LORA_FUSE_SCALE] [-ie IMAGE_ENCODER_URI] [-ipa IP_ADAPTER_URI [IP_ADAPTER_URI ...]]
                      [-ti URI [URI ...]] [-cn CONTROLNET_URI [CONTROLNET_URI ...] | -t2i T2I_ADAPTER_URI
                      [T2I_ADAPTER_URI ...]] [-q QUANTIZER_URI] [-q2 QUANTIZER_URI]
-                     [-sch SCHEDULER_URI [SCHEDULER_URI ...]] [--scheduler2 SCHEDULER_URI [SCHEDULER_URI ...]]
-                     [-hd] [-rhd] [-pag] [-pags FLOAT [FLOAT ...]] [-pagas FLOAT [FLOAT ...]] [-rpag]
-                     [-rpags FLOAT [FLOAT ...]] [-rpagas FLOAT [FLOAT ...]] [-mqo | -mco] [-mqo2 | -mco2]
-                     [--s-cascade-decoder MODEL_URI] [--s-cascade-decoder-prompts PROMPT [PROMPT ...]]
+                     [-sch SCHEDULER_URI [SCHEDULER_URI ...]]
+                     [--second-model-scheduler SCHEDULER_URI [SCHEDULER_URI ...]] [-hd] [-rhd] [-pag]
+                     [-pags FLOAT [FLOAT ...]] [-pagas FLOAT [FLOAT ...]] [-rpag] [-rpags FLOAT [FLOAT ...]]
+                     [-rpagas FLOAT [FLOAT ...]] [-mqo | -mco] [-mqo2 | -mco2] [--s-cascade-decoder MODEL_URI]
                      [--s-cascade-decoder-inference-steps INTEGER [INTEGER ...]]
                      [--s-cascade-decoder-guidance-scales INTEGER [INTEGER ...]] [--sdxl-refiner MODEL_URI]
-                     [--sdxl-refiner-edit] [--sdxl-second-prompts PROMPT [PROMPT ...]]
-                     [--sdxl-t2i-adapter-factors FLOAT [FLOAT ...]] [--sdxl-aesthetic-scores FLOAT [FLOAT ...]]
+                     [--sdxl-refiner-edit] [--sdxl-t2i-adapter-factors FLOAT [FLOAT ...]]
+                     [--sdxl-aesthetic-scores FLOAT [FLOAT ...]]
                      [--sdxl-crops-coords-top-left COORD [COORD ...]] [--sdxl-original-size SIZE [SIZE ...]]
                      [--sdxl-target-size SIZE [SIZE ...]] [--sdxl-negative-aesthetic-scores FLOAT [FLOAT ...]]
                      [--sdxl-negative-original-sizes SIZE [SIZE ...]]
                      [--sdxl-negative-target-sizes SIZE [SIZE ...]]
                      [--sdxl-negative-crops-coords-top-left COORD [COORD ...]]
-                     [--sdxl-refiner-prompts PROMPT [PROMPT ...]]
-                     [--sdxl-refiner-clip-skips INTEGER [INTEGER ...]]
-                     [--sdxl-refiner-second-prompts PROMPT [PROMPT ...]]
                      [--sdxl-refiner-aesthetic-scores FLOAT [FLOAT ...]]
                      [--sdxl-refiner-crops-coords-top-left COORD [COORD ...]]
                      [--sdxl-refiner-original-sizes SIZE [SIZE ...]]
@@ -218,20 +216,26 @@ Help Output
                      [-ri INT [INT ...]] [-rg FLOAT [FLOAT ...]] [-rgr FLOAT [FLOAT ...]] [-sc] [-d DEVICE]
                      [-t DTYPE] [-s SIZE] [-na] [-o PATH] [-op PREFIX] [-ox] [-oc] [-om]
                      [-pw PROMPT_WEIGHTER_URI] [-pw2 PROMPT_WEIGHTER_URI]
-                     [--prompt-weighter-help [PROMPT_WEIGHTER_NAMES ...]] [-p PROMPT [PROMPT ...]]
-                     [--sd3-max-sequence-length INTEGER] [--sd3-second-prompts PROMPT [PROMPT ...]]
-                     [--sd3-third-prompts PROMPT [PROMPT ...]] [--flux-second-prompts PROMPT [PROMPT ...]]
-                     [--flux-max-sequence-length INTEGER] [-cs INTEGER [INTEGER ...]] [-se SEED [SEED ...]]
-                     [-sei] [-gse COUNT] [-af FORMAT] [-if FORMAT] [-nf] [-fs FRAME_NUMBER] [-fe FRAME_NUMBER]
-                     [-is SEED [SEED ...]] [-sip PROCESSOR_URI [PROCESSOR_URI ...]]
-                     [-mip PROCESSOR_URI [PROCESSOR_URI ...]] [-cip PROCESSOR_URI [PROCESSOR_URI ...]]
-                     [--image-processor-help [PROCESSOR_NAME ...]] [-pp PROCESSOR_URI [PROCESSOR_URI ...]]
-                     [-iss FLOAT [FLOAT ...] | -uns INTEGER [INTEGER ...]] [-gs FLOAT [FLOAT ...]]
-                     [-igs FLOAT [FLOAT ...]] [-gr FLOAT [FLOAT ...]] [-ifs INTEGER [INTEGER ...]]
-                     [-mc EXPR [EXPR ...]] [-pmc EXPR [EXPR ...]] [-umc EXPR [EXPR ...]] [-vmc EXPR [EXPR ...]]
-                     [-cmc EXPR [EXPR ...]] [-tmc EXPR [EXPR ...]] [-iemc EXPR [EXPR ...]]
-                     [-amc EXPR [EXPR ...]] [-tfmc EXPR [EXPR ...]] [-ipmc EXPR [EXPR ...]]
-                     [-ipcc EXPR [EXPR ...]]
+                     [--prompt-weighter-help [PROMPT_WEIGHTER_NAMES ...]]
+                     [-pu PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]]
+                     [-pu2 PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]]
+                     [--second-model-second-prompt-upscaler PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]]
+                     [--second-prompt-upscaler PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]]
+                     [--third-prompt-upscaler PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]]
+                     [--prompt-upscaler-help [PROMPT_UPSCALER_NAMES ...]] [-p PROMPT [PROMPT ...]]
+                     [--second-prompts PROMPT [PROMPT ...]] [--third-prompts PROMPT [PROMPT ...]]
+                     [--second-model-prompts PROMPT [PROMPT ...]]
+                     [--second-model-second-prompts PROMPT [PROMPT ...]] [--max-sequence-length INTEGER]
+                     [-cs INTEGER [INTEGER ...]] [-se SEED [SEED ...]] [-sei] [-gse COUNT] [-af FORMAT]
+                     [-if FORMAT] [-nf] [-fs FRAME_NUMBER] [-fe FRAME_NUMBER] [-is SEED [SEED ...]]
+                     [-sip PROCESSOR_URI [PROCESSOR_URI ...]] [-mip PROCESSOR_URI [PROCESSOR_URI ...]]
+                     [-cip PROCESSOR_URI [PROCESSOR_URI ...]] [--image-processor-help [PROCESSOR_NAME ...]]
+                     [-pp PROCESSOR_URI [PROCESSOR_URI ...]] [-iss FLOAT [FLOAT ...] | -uns INTEGER
+                     [INTEGER ...]] [-gs FLOAT [FLOAT ...]] [-igs FLOAT [FLOAT ...]] [-gr FLOAT [FLOAT ...]]
+                     [-ifs INTEGER [INTEGER ...]] [-mc EXPR [EXPR ...]] [-pmc EXPR [EXPR ...]]
+                     [-umc EXPR [EXPR ...]] [-vmc EXPR [EXPR ...]] [-cmc EXPR [EXPR ...]] [-tmc EXPR [EXPR ...]]
+                     [-iemc EXPR [EXPR ...]] [-amc EXPR [EXPR ...]] [-tfmc EXPR [EXPR ...]]
+                     [-ipmc EXPR [EXPR ...]] [-ipcc EXPR [EXPR ...]]
                      model_path
     
     Batch image generation and manipulation tool supporting Stable Diffusion and related techniques /
@@ -341,7 +345,7 @@ Help Output
             This argument can be used to supply an original LDM config .yaml file that was provided with a
             single file checkpoint.
             -----------------------
-      -olc2 FILE, --original-config2 FILE
+      -olc2 FILE, --second-model-original-config FILE
             This argument can be used to supply an original LDM config .yaml file that was provided with a
             single file checkpoint for the secondary model, i.e. the SDXL Refiner or Stable Cascade Decoder.
             ------------------------------------------------------------------------------------------------
@@ -557,7 +561,7 @@ Help Output
             they exist in, which should also contain the config.json file for the Text Encoder. For example, a
             downloaded repository folder from Hugging Face.
             -----------------------------------------------
-      -te2 TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...], --text-encoders2 TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]
+      -te2 TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...], --second-model-text-encoders TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]
             --text-encoders but for the SDXL refiner or Stable Cascade decoder model.
             -------------------------------------------------------------------------
       -un UNET_URI, --unet UNET_URI
@@ -592,7 +596,7 @@ Help Output
             they exist in, which should also contain the config.json file for the UNet. For example, a
             downloaded repository folder from Hugging Face.
             -----------------------------------------------
-      -un2 UNET_URI, --unet2 UNET_URI
+      -un2 UNET_URI, --second-model-unet UNET_URI
             Specify a second UNet, this is only valid when using SDXL or Stable Cascade model types. This UNet
             will be used for the SDXL refiner, or Stable Cascade decoder model.
             -------------------------------------------------------------------
@@ -967,7 +971,7 @@ Help Output
             The only configuration argument used with the torchao backend is "type", which is a string
             indicating the quantization datatype for loading.
             -------------------------------------------------
-      -q2 QUANTIZER_URI, --quantizer2 QUANTIZER_URI
+      -q2 QUANTIZER_URI, --second-model-quantizer QUANTIZER_URI
             Global quantization configuration via URI for the secondary model, such as the SDXL Refiner or
             Stable Cascade decoder. See --quantizer for syntax examples.
             ------------------------------------------------------------
@@ -979,7 +983,7 @@ Help Output
             
             You may pass multiple scheduler URIs to this argument, each URI will be tried in turn.
             --------------------------------------------------------------------------------------
-      --scheduler2 SCHEDULER_URI [SCHEDULER_URI ...], --schedulers2 SCHEDULER_URI [SCHEDULER_URI ...]
+      --second-model-scheduler SCHEDULER_URI [SCHEDULER_URI ...], --second-model-schedulers SCHEDULER_URI [SCHEDULER_URI ...]
             Specify a scheduler (sampler) by URI for the SDXL Refiner or Stable Cascade Decoder pass. Operates
             the exact same way as --scheduler including the "help" option. Passing 'helpargs' will yield a help
             message with a list of overridable arguments for each scheduler and their typical defaults. Defaults
@@ -1027,16 +1031,17 @@ Help Output
             models to run when they would otherwise not fit in your GPUs VRAM. Inference will be slower.
             Mutually exclusive with --model-sequential-offload
             --------------------------------------------------
-      -mqo2, --model-sequential-offload2
+      -mqo2, --second-model-sequential-offload
             Force sequential model offloading for the SDXL Refiner or Stable Cascade Decoder pipeline, this may
             drastically reduce memory consumption and allow large models to run when they would otherwise not
-            fit in your GPUs VRAM. Inference will be much slower. Mutually exclusive with --model-cpu-offload2
-            --------------------------------------------------------------------------------------------------
-      -mco2, --model-cpu-offload2
+            fit in your GPUs VRAM. Inference will be much slower. Mutually exclusive with --second-model-cpu-
+            offload
+            -------
+      -mco2, --second-model-cpu-offload
             Force model cpu offloading for the SDXL Refiner or Stable Cascade Decoder pipeline, this may reduce
             memory consumption and allow large models to run when they would otherwise not fit in your GPUs
-            VRAM. Inference will be slower. Mutually exclusive with --model-sequential-offload2
-            -----------------------------------------------------------------------------------
+            VRAM. Inference will be slower. Mutually exclusive with --second-model-sequential-offload
+            -----------------------------------------------------------------------------------------
       --s-cascade-decoder MODEL_URI
             Specify a Stable Cascade (torch-s-cascade) decoder model path using a URI. This should be a Hugging
             Face repository slug / blob link, path to model file on disk (for example, a .pt, .pth, .bin, .ckpt,
@@ -1069,11 +1074,6 @@ Help Output
             syntax: --s-cascade-decoder "https://huggingface.co/UserName/repository-
             name/blob/main/decoder.safetensors", the "revision" argument may be used with this syntax.
             ------------------------------------------------------------------------------------------
-      --s-cascade-decoder-prompts PROMPT [PROMPT ...]
-            One or more prompts to try with the Stable Cascade decoder model, by default the decoder model gets
-            the primary prompt, this argument overrides that with a prompt of your choosing. The negative prompt
-            component can be specified with the same syntax as --prompts
-            ------------------------------------------------------------
       --s-cascade-decoder-inference-steps INTEGER [INTEGER ...]
             One or more inference steps values to try with the Stable Cascade decoder. (default: [10])
             ------------------------------------------------------------------------------------------
@@ -1120,11 +1120,6 @@ Help Output
             refiner model and processed with an image seed strength in img2img mode determined by (1.0 - high-
             noise-fraction)
             ---------------
-      --sdxl-second-prompts PROMPT [PROMPT ...]
-            One or more secondary prompts to try using SDXL's secondary text encoder. By default the model is
-            passed the primary prompt for this value, this option allows you to choose a different prompt. The
-            negative prompt component can be specified with the same syntax as --prompts
-            ----------------------------------------------------------------------------
       --sdxl-t2i-adapter-factors FLOAT [FLOAT ...]
             One or more SDXL specific T2I adapter factors to try, this controls the amount of time-steps for
             which a T2I adapter applies guidance to an image, this is a value between 0.0 and 1.0. A value of
@@ -1185,21 +1180,6 @@ Help Output
             [https://huggingface.co/papers/2307.01952]. For more information, refer to this issue thread:
             https://github.com/huggingface/diffusers/issues/4208.
             -----------------------------------------------------
-      --sdxl-refiner-prompts PROMPT [PROMPT ...]
-            One or more prompts to try with the SDXL refiner model, by default the refiner model gets the
-            primary prompt, this argument overrides that with a prompt of your choosing. The negative prompt
-            component can be specified with the same syntax as --prompts
-            ------------------------------------------------------------
-      --sdxl-refiner-clip-skips INTEGER [INTEGER ...]
-            One or more clip skip override values to try for the SDXL refiner, which normally uses the clip skip
-            value for the main model when it is defined by --clip-skips.
-            ------------------------------------------------------------
-      --sdxl-refiner-second-prompts PROMPT [PROMPT ...]
-            One or more prompts to try with the SDXL refiner models secondary text encoder, by default the
-            refiner model gets the primary prompt passed to its second text encoder, this argument overrides
-            that with a prompt of your choosing. The negative prompt component can be specified with the same
-            syntax as --prompts
-            -------------------
       --sdxl-refiner-aesthetic-scores FLOAT [FLOAT ...]
             See: --sdxl-aesthetic-scores, applied to SDXL refiner pass.
             -----------------------------------------------------------
@@ -1325,7 +1305,7 @@ Help Output
             weighter-help "name" to see comprehensive documentation for a specific prompt weighter
             implementation.
             ---------------
-      -pw2 PROMPT_WEIGHTER_URI, --prompt-weighter2 PROMPT_WEIGHTER_URI
+      -pw2 PROMPT_WEIGHTER_URI, --second-model-prompt-weighter PROMPT_WEIGHTER_URI
             --prompt-weighter URI value that that applies to to --sdxl-refiner or --s-cascade-decoder.
             ------------------------------------------------------------------------------------------
       --prompt-weighter-help [PROMPT_WEIGHTER_NAMES ...]
@@ -1334,39 +1314,70 @@ Help Output
             cause usage documentation for the specified prompt weighters to be printed. When used with --plugin-
             modules, prompt weighters implemented by the specified plugins will also be listed.
             -----------------------------------------------------------------------------------
+      -pu PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...], --prompt-upscaler PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]
+            Specify a prompt upscaler implementation by URI, for example: --prompt-weighter dynamicprompts.
+            Prompt upscaler plugins can preform pure text processing and expansion on incoming prompt text,
+            possibly resulting in more generation steps (variations) if the prompt upscaler returns multiple
+            prompts per input prompt.
+            
+            You may specify multiple upscaler URIs and they will be chained together sequentially.
+            --------------------------------------------------------------------------------------
+      -pu2 PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...], --second-model-prompt-upscaler PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]
+            Specify a --prompt-upscaler URI that will affect --second-model-prompts only, by default the prompt
+            upscaler specified by --prompt-upscaler will be used.
+            -----------------------------------------------------
+      --second-model-second-prompt-upscaler PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]
+            Specify a --prompt-upscaler URI that will affect --second-model-second-prompts only, by default the
+            prompt upscaler specified by --prompt-upscaler will be used.
+            ------------------------------------------------------------
+      --second-prompt-upscaler PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]
+            Specify a --prompt-upscaler URI that will affect --second-prompts only, by default the prompt
+            upscaler specified by --prompt-upscaler will be used.
+            -----------------------------------------------------
+      --third-prompt-upscaler PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]
+            Specify a --prompt-upscaler URI that will affect --third-prompts only, by default the prompt
+            upscaler specified by --prompt-upscaler will be used.
+            -----------------------------------------------------
+      --prompt-upscaler-help [PROMPT_UPSCALER_NAMES ...]
+            Use this option alone (or with --plugin-modules) and no model specification in order to list
+            available prompt upscaler names. Specifying one or more prompt upscaler names after this option will
+            cause usage documentation for the specified prompt upscalers to be printed. When used with --plugin-
+            modules, prompt upscalers implemented by the specified plugins will also be listed.
+            -----------------------------------------------------------------------------------
       -p PROMPT [PROMPT ...], --prompts PROMPT [PROMPT ...]
             One or more prompts to try, an image group is generated for each prompt, prompt data is split by ;
             (semi-colon). The first value is the positive text influence, things you want to see. The Second
             value is negative influence IE. things you don't want to see. Example: --prompts "photo of a horse
             in a field; artwork, painting, rain". (default: [(empty string)])
             -----------------------------------------------------------------
-      --sd3-max-sequence-length INTEGER
-            The maximum amount of prompt tokens that the T5EncoderModel (third text encoder) of Stable Diffusion
-            3 can handle. This should be an integer value between 1 and 512 inclusive. The higher the value the
-            more resources and time are required for processing. (default: 256)
-            -------------------------------------------------------------------
-      --sd3-second-prompts PROMPT [PROMPT ...]
-            One or more secondary prompts to try using the torch-sd3 (Stable Diffusion 3) secondary text
-            encoder. By default the model is passed the primary prompt for this value, this option allows you to
-            choose a different prompt. The negative prompt component can be specified with the same syntax as
-            --prompts
-            ---------
-      --sd3-third-prompts PROMPT [PROMPT ...]
+      --second-prompts PROMPT [PROMPT ...]
+            One or more secondary prompts to try using the torch-sd3 (Stable Diffusion 3) or torch-flux (Flux)
+            secondary text encoder. By default the model is passed the primary prompt for this value, this
+            option allows you to choose a different prompt. The negative prompt component can be specified with
+            the same syntax as --prompts
+            ----------------------------
+      --third-prompts PROMPT [PROMPT ...]
             One or more tertiary prompts to try using the torch-sd3 (Stable Diffusion 3) tertiary (T5) text
-            encoder. By default the model is passed the primary prompt for this value, this option allows you to
-            choose a different prompt. The negative prompt component can be specified with the same syntax as
-            --prompts
-            ---------
-      --flux-second-prompts PROMPT [PROMPT ...]
-            One or more secondary prompts to try using the torch-flux (Flux) secondary (T5) text encoder. By
-            default the model is passed the primary prompt for this value, this option allows you to choose a
-            different prompt.
-            -----------------
-      --flux-max-sequence-length INTEGER
-            The maximum amount of prompt tokens that the T5EncoderModel (second text encoder) of Flux can
-            handle. This should be an integer value between 1 and 512 inclusive. The higher the value the more
-            resources and time are required for processing. (default: 512)
-            --------------------------------------------------------------
+            encoder, Flux does not support this argument. By default the model is passed the primary prompt for
+            this value, this option allows you to choose a different prompt. The negative prompt component can
+            be specified with the same syntax as --prompts
+            ----------------------------------------------
+      --second-model-prompts PROMPT [PROMPT ...]
+            One or more prompts to try with the SDXL Refiner or Stable Cascade decoder model, by default the
+            decoder model gets the primary prompt, this argument overrides that with a prompt of your choosing.
+            The negative prompt component can be specified with the same syntax as --prompts
+            --------------------------------------------------------------------------------
+      --second-model-second-prompts PROMPT [PROMPT ...]
+            One or more prompts to try with the SDXL refiner models secondary text encoder (Stable Cascade
+            Decoder is not supported), by default the SDXL refiner model gets the primary prompt passed to its
+            second text encoder, this argument overrides that with a prompt of your choosing. The negative
+            prompt component can be specified with the same syntax as --prompts
+            -------------------------------------------------------------------
+      --max-sequence-length INTEGER
+            The maximum amount of prompt tokens that the T5EncoderModel (third text encoder) of Stable Diffusion
+            3 or Flux can handle. This should be an integer value between 1 and 512 inclusive. The higher the
+            value the more resources and time are required for processing. (default: 256 for SD3, 512 for Flux)
+            ---------------------------------------------------------------------------------------------------
       -cs INTEGER [INTEGER ...], --clip-skips INTEGER [INTEGER ...]
             One or more clip skip values to try. Clip skip is the number of layers to be skipped from CLIP while
             computing the prompt embeddings, it must be a value greater than or equal to zero. A value of 1
@@ -2714,12 +2725,12 @@ Specifying a Scheduler (sampler)
 A scheduler (otherwise known as a sampler) for the main model can be selected via the use of ``--scheduler``.
 
 And in the case of SDXL and Stable Cascade the refiner / decoder scheduler can be
-selected independently with ``--scheduler2``.
+selected independently with ``--second-model-scheduler``.
 
 Both of these default to the value of ``--scheduler``, which in turn defaults to automatic selection.
 
 Available schedulers for a specific combination of dgenerate arguments can be
-queried using ``--scheduler help`` or ``--scheduler2 help``.
+queried using ``--scheduler help`` or ``--second-model-scheduler help``.
 
 In order to use the query feature it is ideal that you provide all the other arguments
 that you plan on using while making the query, as different combinations of arguments
@@ -2868,7 +2879,7 @@ output file name, in the order: ``(scheduler)_(refiner / decoder scheduler)``
     --variant fp16 \
     --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
     --schedulers EulerAncestralDiscreteScheduler EulerDiscreteScheduler \
-    --schedulers2 KDPM2AncestralDiscreteScheduler KDPM2DiscreteScheduler \
+    --second-model-schedulers KDPM2AncestralDiscreteScheduler KDPM2DiscreteScheduler \
     --inference-steps 30 \
     --guidance-scales 5 \
     --prompts "a horse standing in a field"
@@ -3097,12 +3108,12 @@ Loading arguments available when specifying a UNet are: ``revision``, ``variant`
 In the case of ``--unet`` the ``variant`` loading argument defaults to the value
 of ``--variant`` if you do not specify it in the URI.
 
-The ``--unet2`` option can be used to specify a UNet for the
+The ``--second-model-unet`` option can be used to specify a UNet for the
 `SDXL Refiner <#specifying-an-sdxl-refiner>`_ or `Stable Cascade Decoder <#specifying-a-stable-cascade-decoder>`_,
 and uses the same syntax as ``--unet``.
 
 Here is an example of using the ``lite`` variants of Stable Cascade's
-UNet models which have a smaller memory footprint using ``--unet`` and ``--unet2``.
+UNet models which have a smaller memory footprint using ``--unet`` and ``--second-model-unet``.
 
 .. code-block:: bash
 
@@ -3113,9 +3124,9 @@ UNet models which have a smaller memory footprint using ``--unet`` and ``--unet2
     --variant bf16 \
     --dtype bfloat16 \
     --unet "stabilityai/stable-cascade-prior;subfolder=prior_lite" \
-    --unet2 "stabilityai/stable-cascade;subfolder=decoder_lite" \
+    --second-model-unet "stabilityai/stable-cascade;subfolder=decoder_lite" \
     --model-cpu-offload \
-    --model-cpu-offload2 \
+    --second-model-cpu-offload \
     --s-cascade-decoder "stabilityai/stable-cascade;dtype=float16" \
     --inference-steps 20 \
     --guidance-scales 4 \
@@ -3329,7 +3340,7 @@ model as mentioned above.
     --variant bf16 \
     --dtype bfloat16 \
     --model-cpu-offload \
-    --model-cpu-offload2 \
+    --second-model-cpu-offload \
     --s-cascade-decoder "stabilityai/stable-cascade;dtype=float16" \
     --inference-steps 20 \
     --guidance-scales 4 \
@@ -4129,7 +4140,7 @@ for instance uses 3 text encoder sub models, all of which can be
 individually specified from the command line if desired.
 
 To specify a Text Encoder models directly use ``--text-encoders`` for
-the primary model and ``--text-encoders2`` for the SDXL Refiner or
+the primary model and ``--second-model-text-encoders`` for the SDXL Refiner or
 Stable Cascade decoder.
 
 Text Encoder URIs do not support loading from blob links or a single file,
@@ -4162,7 +4173,7 @@ Available encoder classes are:
 * T5EncoderModel
 
 You can query the text encoder types and position for a model by passing ``help``
-as an argument to ``--text-encoders`` or ``--text-encoders2``. This feature
+as an argument to ``--text-encoders`` or ``--second-model-text-encoders``. This feature
 may not be used for both arguments simultaneously, and also may not be used
 when passing ``help`` or ``helpargs`` to any ``--scheduler`` type argument.
 
@@ -4301,8 +4312,92 @@ and using ``null`` will override it.
     --model-sequential-offload
     --prompts "a horse outside a barn"
 
-Prompt Weighting and Enhancement
-================================
+Prompt Upscaling
+================
+
+Prompt upscaler plugins can preprocess your prompt text, and or expand the number of prompts used automatically
+by the use of txt2txt LLMs or other methods.
+
+They can be specified globally with the ``--prompt-upscaler`` related arguments of dgenerate, or
+per prompt by using the ``<upscaler: ...>`` embedded prompt argument.
+
+Prompt upscalers can be chained together sequentially, simply by specifying multiple plugin URIs.
+
+This works even when prompt upscalers that expand your original prompt into multiple prompts.
+
+You can see which prompt upscalers dgenerate implements via: ``dgenerate --prompt-upscaler-help``
+or ``\prompt_upscaler_help`` from within a config script.
+
+Specifying: ``dgenerate --prompt-upscaler-help NAME1 NAME2`` will return help for the named upscaler plugins.
+
+The following is an example making use of the ``dynamicprompts`` upscaler.
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 4.5.1
+    
+    # prompt upscaler plugins can preprocess and expand prompts, allowing
+    # for LLM based txt2txt enhancement or prompt expansion resulting
+    # in additional prompt variations being produced
+    
+    # prompt upscalers can be specified using prompt embedded arguments or with the --prompt-upscaler
+    # argument, and related arguments of dgenerate
+    
+    # --prompt-upscaler will set the prompt upscaler for all prompts globally, you can further
+    # fine tune which prompts are affected by using the various --prompt-upscaler options
+    # of dgenerate related to secondary and tertiary prompts etc. or by narrowing it down
+    # to a single prompt by using prompt embedded argument syntax in the affected prompt
+    
+    # below we use the embedded argument syntax to specify the dynamicprompts upscaler
+    # which is capable of producing prompt variations in a combinatorial or random fashion
+    # depending on configuration
+    
+    # multiple prompt upscalers can be specified if you desire, their results will be chained
+    # together sequentially, this will be handled correctly even if the prompt upscaler
+    # returns multiple prompts via expansion
+    
+    
+    \prompt_upscaler_help dynamicprompts  # print the plugin help / doc
+    
+    
+    stabilityai/stable-diffusion-xl-base-1.0
+    --model-type torch-sdxl
+    --dtype float16
+    --variant fp16
+    --inference-steps 30
+    --guidance-scales 5
+    --clip-skips 0
+    --gen-seeds 1
+    --output-path output
+    --output-size 1024x1024
+    --prompts "<upscaler: dynamicprompts;magic=True> a large {horse|dog} in a field"
+    
+    
+    # we do not have to chain for this functionality, we can just specify attention=True
+    # in the previous invocation if we want, this is just to demonstrate the chaining
+    # behaviour that occurs when you specify multiple prompt upscalers
+    
+    # below, a 2 variants of a magic prompt will be generated, and then random prompt
+    # attention values will be added, we need to use --prompt-weighter sd-embed
+    # for these attention values to be understood, they are output in SD Web UI syntax,
+    # you could also use: compel;syntax=sdwui if desired
+    
+    stabilityai/stable-diffusion-xl-base-1.0
+    --model-type torch-sdxl
+    --dtype float16
+    --variant fp16
+    --inference-steps 30
+    --guidance-scales 5
+    --clip-skips 0
+    --gen-seeds 1
+    --output-path output
+    --output-size 1024x1024
+    --prompt-weighter sd-embed
+    --prompts "<upscaler: dynamicprompts;magic=True> <upscaler: dynamicprompts;attention=True> a large {horse|dog} in a field"
+
+Prompt Weighting
+================
 
 By default, the prompt token weighting syntax that you may be familiar with from other software such as
 `ComfyUI <https://github.com/comfyanonymous/ComfyUI>`_, `Stable Diffusion Web UI <Stable_Diffusion_Web_UI_1_>`_,
@@ -4326,8 +4421,8 @@ anywhere in the prompt.  A prompt weighter specified in the prompt text applies 
 that prompt alone (both negative and positive prompts).
 
 You can specify different prompt weighters for the SDXL Refiner or Stable Cascade
-decoder using ``--prompt-weighter2``, or in the prompt arguments
-``--sdxl-refiner-prompts`` and ``--s-cascade-decoder-prompts``.
+decoder using ``--second-model-prompt-weighter``, or in the prompt arguments
+``--second-model-prompts`` and ``---second-model-prompts``.
 
 Specifying ``<weighter: (uri here)>`` in a ``--prompts`` value will default
 the secondary models to the same prompt weighter unless you specify otherwise.
@@ -4390,9 +4485,8 @@ features not mentioned in this documentation, that are worth reading about in th
         --model-type torch-sdxl-pix2pix
         --model-type torch-s-cascade
     
-        The secondary prompt option for SDXL --sdxl-second-prompts is supported by this prompt weighter
-        implementation. However, --sdxl-refiner-second-prompts is not supported and will be ignored with a warning
-        message.
+        The secondary prompt option for SDXL --second-prompts is supported by this prompt weighter implementation.
+        However, --second-model-second-prompts is not supported and will be ignored with a warning message.
     
     ==============================================================================================================
 
@@ -4524,14 +4618,13 @@ as the ``compel`` prompt weighter currently does not.
         --model-type torch-sd3
         --model-type torch-flux
     
-        The secondary prompt option for SDXL --sdxl-second-prompts is supported by this prompt weighter
-        implementation. However, --sdxl-refiner-second-prompts is not supported and will be ignored with a warning
-        message.
+        The secondary prompt option for SDXL --second-prompts is supported by this prompt weighter implementation.
+        However, --second-model-second-prompts is not supported and will be ignored with a warning message.
     
-        The secondary prompt option for SD3 --sd3-second-prompts is not supported by this prompt weighter
-        implementation. Neither is --sd3-third-prompts. The prompts from these arguments will be ignored.
+        The secondary prompt option for SD3 --second-prompts is not supported by this prompt weighter
+        implementation. Neither is --third-prompts. The prompts from these arguments will be ignored.
     
-        The secondary prompt option for Flux --flux-second-prompts is supported by this prompt weighter.
+        The secondary prompt option for Flux --second-prompts is supported by this prompt weighter.
     
         Flux does not support negative prompting in either prompt.
     
@@ -5987,8 +6080,8 @@ There are template variables for prompts, containing the previous prompt values:
 
 * ``{{ last_prompts }}`` (List of prompt objects with the un-quoted attributes 'positive' and 'negative')
 * ``{{ last_sdxl_second_prompts }}``
-* ``{{ last_sdxl_refiner_prompts }}``
-* ``{{ last_sdxl_refiner_second_prompts }}``
+* ``{{ last_second_model_prompts }}``
+* ``{{ last_second_model_second_prompts }}``
 
 Some available custom jinja2 functions/filters are:
 
@@ -6125,12 +6218,6 @@ The ``\templates_help`` output from the above example is:
         Name: "last_dtype"
             Type: <enum 'DataType'>
             Value: <DataType.AUTO: 0>
-        Name: "last_flux_max_sequence_length"
-            Type: typing.Optional[int]
-            Value: None
-        Name: "last_flux_second_prompts"
-            Type: typing.Optional[collections.abc.Sequence[dgenerate.prompt.Prompt]]
-            Value: []
         Name: "last_frame_end"
             Type: typing.Optional[int]
             Value: None
@@ -6188,6 +6275,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_mask_image_processors"
             Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
+        Name: "last_max_sequence_length"
+            Type: typing.Optional[int]
+            Value: None
         Name: "last_model_cpu_offload"
             Type: <class 'bool'>
             Value: False
@@ -6251,6 +6341,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_post_processors"
             Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
+        Name: "last_prompt_upscaler_uri"
+            Type: typing.Union[str, collections.abc.Sequence[str], NoneType]
+            Value: None
         Name: "last_prompt_weighter_uri"
             Type: typing.Optional[str]
             Value: None
@@ -6269,9 +6362,6 @@ The ``\templates_help`` output from the above example is:
         Name: "last_s_cascade_decoder_inference_steps"
             Type: typing.Optional[collections.abc.Sequence[int]]
             Value: []
-        Name: "last_s_cascade_decoder_prompts"
-            Type: typing.Optional[collections.abc.Sequence[dgenerate.prompt.Prompt]]
-            Value: []
         Name: "last_s_cascade_decoder_uri"
             Type: typing.Optional[str]
             Value: None
@@ -6281,15 +6371,6 @@ The ``\templates_help`` output from the above example is:
         Name: "last_scheduler_uri"
             Type: typing.Union[str, collections.abc.Sequence[str], NoneType]
             Value: None
-        Name: "last_sd3_max_sequence_length"
-            Type: typing.Optional[int]
-            Value: None
-        Name: "last_sd3_second_prompts"
-            Type: typing.Optional[collections.abc.Sequence[dgenerate.prompt.Prompt]]
-            Value: []
-        Name: "last_sd3_third_prompts"
-            Type: typing.Optional[collections.abc.Sequence[dgenerate.prompt.Prompt]]
-            Value: []
         Name: "last_sdxl_aesthetic_scores"
             Type: typing.Optional[collections.abc.Sequence[float]]
             Value: []
@@ -6362,21 +6443,12 @@ The ``\templates_help`` output from the above example is:
         Name: "last_sdxl_refiner_pag_scales"
             Type: typing.Optional[collections.abc.Sequence[float]]
             Value: []
-        Name: "last_sdxl_refiner_prompts"
-            Type: typing.Optional[collections.abc.Sequence[dgenerate.prompt.Prompt]]
-            Value: []
-        Name: "last_sdxl_refiner_second_prompts"
-            Type: typing.Optional[collections.abc.Sequence[dgenerate.prompt.Prompt]]
-            Value: []
         Name: "last_sdxl_refiner_target_sizes"
             Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
             Value: []
         Name: "last_sdxl_refiner_uri"
             Type: typing.Optional[str]
             Value: None
-        Name: "last_sdxl_second_prompts"
-            Type: typing.Optional[collections.abc.Sequence[dgenerate.prompt.Prompt]]
-            Value: []
         Name: "last_sdxl_t2i_adapter_factors"
             Type: typing.Optional[collections.abc.Sequence[float]]
             Value: []
@@ -6386,33 +6458,51 @@ The ``\templates_help`` output from the above example is:
         Name: "last_second_model_cpu_offload"
             Type: typing.Optional[bool]
             Value: None
+        Name: "last_second_model_original_config"
+            Type: typing.Optional[str]
+            Value: None
+        Name: "last_second_model_prompt_upscaler_uri"
+            Type: typing.Union[str, collections.abc.Sequence[str], NoneType]
+            Value: None
+        Name: "last_second_model_prompt_weighter_uri"
+            Type: typing.Optional[str]
+            Value: None
+        Name: "last_second_model_prompts"
+            Type: typing.Optional[collections.abc.Sequence[dgenerate.prompt.Prompt]]
+            Value: []
+        Name: "last_second_model_quantizer_uri"
+            Type: typing.Optional[str]
+            Value: None
+        Name: "last_second_model_scheduler_uri"
+            Type: typing.Union[str, collections.abc.Sequence[str], NoneType]
+            Value: None
+        Name: "last_second_model_second_prompt_upscaler_uri"
+            Type: typing.Union[str, collections.abc.Sequence[str], NoneType]
+            Value: None
+        Name: "last_second_model_second_prompts"
+            Type: typing.Optional[collections.abc.Sequence[dgenerate.prompt.Prompt]]
+            Value: []
         Name: "last_second_model_sequential_offload"
             Type: typing.Optional[bool]
             Value: None
-        Name: "last_second_original_config"
-            Type: typing.Optional[str]
-            Value: None
-        Name: "last_second_prompt_weighter_uri"
-            Type: typing.Optional[str]
-            Value: None
-        Name: "last_second_quantizer_uri"
-            Type: typing.Optional[str]
-            Value: None
-        Name: "last_second_scheduler_uri"
-            Type: typing.Union[str, collections.abc.Sequence[str], NoneType]
-            Value: None
-        Name: "last_second_text_encoder_uris"
+        Name: "last_second_model_text_encoder_uris"
             Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
-        Name: "last_second_unet_uri"
+        Name: "last_second_model_unet_uri"
             Type: typing.Optional[str]
             Value: None
+        Name: "last_second_prompt_upscaler_uri"
+            Type: typing.Union[str, collections.abc.Sequence[str], NoneType]
+            Value: None
+        Name: "last_second_prompts"
+            Type: typing.Optional[collections.abc.Sequence[dgenerate.prompt.Prompt]]
+            Value: []
         Name: "last_seed_image_processors"
             Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [20761584657531]
+            Value: [66602283008414]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -6430,6 +6520,12 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_textual_inversion_uris"
             Type: typing.Optional[collections.abc.Sequence[str]]
+            Value: []
+        Name: "last_third_prompt_upscaler_uri"
+            Type: typing.Union[str, collections.abc.Sequence[str], NoneType]
+            Value: None
+        Name: "last_third_prompts"
+            Type: typing.Optional[collections.abc.Sequence[dgenerate.prompt.Prompt]]
             Value: []
         Name: "last_transformer_cache_memory_constraints"
             Type: typing.Optional[collections.abc.Sequence[str]]
@@ -6588,6 +6684,7 @@ Example output:
         "\mv"
         "\popd"
         "\print"
+        "\prompt_upscaler_help"
         "\prompt_weighter_help"
         "\pushd"
         "\pwd"

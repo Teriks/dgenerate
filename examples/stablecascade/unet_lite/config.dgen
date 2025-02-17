@@ -6,9 +6,9 @@ stabilityai/stable-cascade-prior
 --variant bf16
 --dtype bfloat16
 --unet "stabilityai/stable-cascade-prior;subfolder=prior_lite"
---unet2 "stabilityai/stable-cascade;subfolder=decoder_lite"
+--second-model-unet "stabilityai/stable-cascade;subfolder=decoder_lite"
 --model-cpu-offload
---model-cpu-offload2
+--second-model-cpu-offload
 --s-cascade-decoder "stabilityai/stable-cascade;dtype=float16"
 --inference-steps 20
 --guidance-scales 4

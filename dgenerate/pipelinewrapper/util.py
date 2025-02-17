@@ -774,7 +774,7 @@ def estimate_model_memory_use(repo_id: str,
                               subfolder: str | None = None,
                               weight_name: str | None = None,
                               safety_checker: bool = False,
-                              include_unet: bool = True,
+                              include_unet_or_transformer: bool = True,
                               include_vae: bool = True,
                               include_text_encoder: bool = True,
                               include_text_encoder_2: bool = True,
@@ -798,7 +798,7 @@ def estimate_model_memory_use(repo_id: str,
     :param subfolder: subfolder in the repo where the models exist
     :param weight_name: look for a specific model file name
     :param safety_checker: include the safety checker model if it exists?
-    :param include_unet: include the unet model if it exists?
+    :param include_unet_or_transformer: include the unet / transformer model if it exists?
     :param include_vae: include the vae model if it exists?
     :param include_text_encoder: include the text encoder model if it exists?
     :param include_text_encoder_2: include the second text encoder model if it exists?
@@ -866,7 +866,7 @@ def estimate_model_memory_use(repo_id: str,
             if 'prior' in directories:
                 important_directories.add('image_encoder')
 
-            if include_unet:
+            if include_unet_or_transformer:
                 important_directories.add('unet')
                 important_directories.add('prior')
                 important_directories.add('decoder')

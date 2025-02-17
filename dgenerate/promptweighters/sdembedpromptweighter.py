@@ -62,14 +62,14 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
     --model-type torch-sd3
     --model-type torch-flux
 
-    The secondary prompt option for SDXL --sdxl-second-prompts is supported by this prompt weighter
-    implementation. However, --sdxl-refiner-second-prompts is not supported and will be ignored
+    The secondary prompt option for SDXL --second-prompts is supported by this prompt weighter
+    implementation. However, --second-model-second-prompts is not supported and will be ignored
     with a warning message.
 
-    The secondary prompt option for SD3 --sd3-second-prompts is not supported by this prompt weighter
-    implementation. Neither is --sd3-third-prompts. The prompts from these arguments will be ignored.
+    The secondary prompt option for SD3 --second-prompts is not supported by this prompt weighter
+    implementation. Neither is --third-prompts. The prompts from these arguments will be ignored.
 
-    The secondary prompt option for Flux --flux-second-prompts is supported by this prompt weighter.
+    The secondary prompt option for Flux --second-prompts is supported by this prompt weighter.
 
     Flux does not support negative prompting in either prompt.
     """
@@ -147,7 +147,7 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
         if args.get('prompt_3') or args.get('negative_prompt_3'):
             _messages.log(
                 f'Prompt weighting is not supported by --prompt-weighter '
-                f'"sd-embed" for --sd3-third-prompts, that prompt is being ignored.',
+                f'"sd-embed" for --third-prompts, that prompt is being ignored.',
                 level=_messages.WARNING)
 
         prompt_args = re.compile(r'^(prompt|negative_prompt)(_\d+)?$')
@@ -187,7 +187,7 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
             if positive_2 or negative_2:
                 _messages.log(
                     f'Prompt weighting is not supported by --prompt-weighter '
-                    f'"sd-embed" for --sd3-second-prompts, that prompt is being ignored.',
+                    f'"sd-embed" for --second-prompts, that prompt is being ignored.',
                     level=_messages.WARNING)
 
             original_clip_layers = pipeline.text_encoder.text_model.encoder.layers
@@ -282,7 +282,7 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
                 if positive_2 or negative_2:
                     _messages.log(
                         f'Prompt weighting is not supported by --prompt-weighter '
-                        f'"sd-embed" for --sdxl-refiner-second-prompts, that prompt is being ignored.',
+                        f'"sd-embed" for --second-model-second-prompts, that prompt is being ignored.',
                         level=_messages.WARNING)
 
                 original_clip_layers_2 = pipeline.text_encoder_2.text_model.encoder.layers

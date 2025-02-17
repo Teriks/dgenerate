@@ -46,6 +46,7 @@ import dgenerate.pipelinewrapper.util as _util
 import dgenerate.extras.asdff.base as _asdff_base
 import dgenerate.extras.hidiffusion as _hidiffusion
 import dgenerate.pipelinewrapper.help as _help
+import dgenerate.pipelinewrapper.schedulers as _schedulers
 
 
 class DiffusionArgumentsHelpException(Exception):
@@ -171,7 +172,7 @@ class DiffusionPipelineWrapper:
                  subfolder: _types.OptionalName = None,
                  dtype: _enums.DataType | str = _enums.DataType.AUTO,
                  unet_uri: _types.OptionalUri = None,
-                 second_unet_uri: _types.OptionalUri = None,
+                 second_model_unet_uri: _types.OptionalUri = None,
                  transformer_uri: _types.OptionalUri = None,
                  vae_uri: _types.OptionalUri = None,
                  lora_uris: _types.OptionalUris = None,
@@ -180,17 +181,17 @@ class DiffusionPipelineWrapper:
                  ip_adapter_uris: _types.OptionalUris = None,
                  textual_inversion_uris: _types.OptionalUris = None,
                  text_encoder_uris: _types.OptionalUris = None,
-                 second_text_encoder_uris: _types.OptionalUris = None,
+                 second_model_text_encoder_uris: _types.OptionalUris = None,
                  controlnet_uris: _types.OptionalUris = None,
                  t2i_adapter_uris: _types.OptionalUris = None,
                  sdxl_refiner_uri: _types.OptionalUri = None,
                  s_cascade_decoder_uri: _types.OptionalUri = None,
                  quantizer_uri: _types.OptionalUri = None,
-                 second_quantizer_uri: _types.OptionalUri = None,
+                 second_model_quantizer_uri: _types.OptionalUri = None,
                  device: str = _util.default_device(),
                  safety_checker: bool = False,
                  original_config: _types.OptionalString = None,
-                 second_original_config: _types.OptionalString = None,
+                 second_model_original_config: _types.OptionalString = None,
                  auth_token: _types.OptionalString = None,
                  local_files_only: bool = False,
                  model_extra_modules: dict[str, typing.Any] = None,
@@ -221,7 +222,7 @@ class DiffusionPipelineWrapper:
         :param subfolder: main model subfolder (huggingface or disk)
         :param dtype: main model dtype
         :param unet_uri: main model UNet URI string
-        :param second_unet_uri: secondary model unet uri (SDXL Refiner, Stable Cascade decoder)
+        :param second_model_unet_uri: secondary model unet uri (SDXL Refiner, Stable Cascade decoder)
         :param transformer_uri: Optional transformer URI string for specifying a specific Transformer,
             currently this is only supported for Stable Diffusion 3 models.
         :param vae_uri: main model VAE URI string
@@ -235,7 +236,7 @@ class DiffusionPipelineWrapper:
         :param textual_inversion_uris: One or more Textual Inversion URI strings
         :param text_encoder_uris: One or more Text Encoder URIs
             ("+", or None for default. Or "null" indicating do not load) for the main model
-        :param second_text_encoder_uris:  One or more Text Encoder URIs
+        :param second_model_text_encoder_uris:  One or more Text Encoder URIs
             ("+", or None for default. Or "null" indicating do not load) for the secondary
             model (SDXL Refiner or Stable Cascade decoder)
         :param controlnet_uris: One or more ControlNet URI strings
@@ -243,11 +244,11 @@ class DiffusionPipelineWrapper:
         :param sdxl_refiner_uri: SDXL Refiner model URI string
         :param s_cascade_decoder_uri: Stable Cascade decoder URI string
         :param quantizer_uri: Global --quantizer URI value
-        :param second_quantizer_uri: Global --quantizer2 URI value
+        :param second_model_quantizer_uri: Global --second-model-quantizer URI value
         :param device: Rendering device string, example: ``cuda:0`` or ``cuda``
         :param safety_checker: Use safety checker model if available? (antiquated, for SD 1/2, Deep Floyd etc.)
         :param original_config: Optional original LDM config .yaml file path when loading a single file checkpoint.
-        :param second_original_config: Optional original LDM config .yaml file path when loading a single file checkpoint
+        :param second_model_original_config: Optional original LDM config .yaml file path when loading a single file checkpoint
             for the secondary model (SDXL Refiner, Stable Cascade Decoder).
         :param auth_token: huggingface authentication token.
         :param local_files_only: Do not attempt to download files from huggingface?
@@ -290,7 +291,7 @@ class DiffusionPipelineWrapper:
             subfolder: _types.OptionalName = None,
             dtype: _enums.DataType = _enums.DataType.AUTO,
             unet_uri: _types.OptionalUri = None,
-            second_unet_uri: _types.OptionalUri = None,
+            second_model_unet_uri: _types.OptionalUri = None,
             transformer_uri: _types.OptionalUri = None,
             vae_uri: _types.OptionalUri = None,
             lora_uris: _types.OptionalUris = None,
@@ -299,17 +300,17 @@ class DiffusionPipelineWrapper:
             ip_adapter_uris: _types.OptionalUris = None,
             textual_inversion_uris: _types.OptionalUris = None,
             text_encoder_uris: _types.OptionalUris = None,
-            second_text_encoder_uris: _types.OptionalUris = None,
+            second_model_text_encoder_uris: _types.OptionalUris = None,
             controlnet_uris: _types.OptionalUris = None,
             t2i_adapter_uris: _types.OptionalUris = None,
             sdxl_refiner_uri: _types.OptionalUri = None,
             s_cascade_decoder_uri: _types.OptionalUri = None,
             quantizer_uri: _types.OptionalUri = None,
-            second_quantizer_uri: _types.OptionalUri = None,
+            second_model_quantizer_uri: _types.OptionalUri = None,
             device: str = _util.default_device(),
             safety_checker: bool = False,
             original_config: _types.OptionalString = None,
-            second_original_config: _types.OptionalString = None,
+            second_model_original_config: _types.OptionalString = None,
             auth_token: _types.OptionalString = None,
             local_files_only: bool = False,
             model_extra_modules: dict[str, typing.Any] = None,
@@ -346,9 +347,9 @@ class DiffusionPipelineWrapper:
 
         # Text encoder check
         if not sdxl_refiner_uri and not s_cascade_decoder_uri:
-            if second_text_encoder_uris:
+            if second_model_text_encoder_uris:
                 raise _pipelines.UnsupportedPipelineConfigError(
-                    'Cannot use "second_text_encoder_uris" if "sdxl_refiner_uri" '
+                    'Cannot use "second_model_text_encoder_uris" if "sdxl_refiner_uri" '
                     'or "s_cascade_decoder_uri" is not specified.'
                 )
 
@@ -371,10 +372,10 @@ class DiffusionPipelineWrapper:
                     'model is not a a single file checkpoint.'
                 )
 
-        if second_original_config:
+        if second_model_original_config:
             if not sdxl_refiner_uri and not s_cascade_decoder_uri:
                 raise _pipelines.UnsupportedPipelineConfigError(
-                    'You cannot specify "second_original_config" '
+                    'You cannot specify "second_model_original_config" '
                     'without "sdxl_refiner_uri" or "s_cascade_decoder_uri".'
                 )
 
@@ -382,7 +383,7 @@ class DiffusionPipelineWrapper:
                     not _util.is_single_file_model_load(
                         _uris.SDXLRefinerUri.parse(sdxl_refiner_uri).model):
                 raise _pipelines.UnsupportedPipelineConfigError(
-                    'You cannot specify "second_original_config" '
+                    'You cannot specify "second_model_original_config" '
                     'when the "sdxl_refiner_uri" model is not a '
                     'single file checkpoint.'
                 )
@@ -390,7 +391,7 @@ class DiffusionPipelineWrapper:
                     not _util.is_single_file_model_load(
                         _uris.SCascadeDecoderUri.parse(s_cascade_decoder_uri).model):
                 raise _pipelines.UnsupportedPipelineConfigError(
-                    'You cannot specify "second_original_config" '
+                    'You cannot specify "second_model_original_config" '
                     'when the "s_cascade_decoder_uri" model is not a '
                     'single file checkpoint.'
                 )
@@ -433,14 +434,14 @@ class DiffusionPipelineWrapper:
             except ValueError as e:
                 raise _pipelines.UnsupportedPipelineConfigError(str(e))
 
-        if second_quantizer_uri is not None:
+        if second_model_quantizer_uri is not None:
             try:
-                _util.get_quantizer_uri_class(second_quantizer_uri)
+                _util.get_quantizer_uri_class(second_model_quantizer_uri)
             except ValueError as e:
                 raise _pipelines.UnsupportedPipelineConfigError(str(e))
 
         self._quantizer_uri = quantizer_uri
-        self._second_quantizer_uri = second_quantizer_uri
+        self._second_model_quantizer_uri = second_model_quantizer_uri
         self._subfolder = subfolder
         self._device = device
         self._model_type = _enums.get_model_type_enum(model_type)
@@ -451,14 +452,14 @@ class DiffusionPipelineWrapper:
         self._dtype = _enums.get_data_type_enum(dtype)
         self._device = device
         self._unet_uri = unet_uri
-        self._second_unet_uri = second_unet_uri
+        self._second_model_unet_uri = second_model_unet_uri
         self._transformer_uri = transformer_uri
         self._image_encoder_uri = image_encoder_uri
         self._vae_uri = vae_uri
         self._safety_checker = safety_checker
 
         self._original_config = original_config
-        self._second_original_config = second_original_config
+        self._second_model_original_config = second_model_original_config
 
         self._second_model_cpu_offload = second_model_cpu_offload
         self._second_model_sequential_offload = second_model_sequential_offload
@@ -468,7 +469,7 @@ class DiffusionPipelineWrapper:
         self._ip_adapter_uris = ip_adapter_uris
         self._textual_inversion_uris = textual_inversion_uris
         self._text_encoder_uris = text_encoder_uris
-        self._second_text_encoder_uris = second_text_encoder_uris
+        self._second_model_text_encoder_uris = second_model_text_encoder_uris
         self._controlnet_uris = controlnet_uris
         self._t2i_adapter_uris = t2i_adapter_uris
         self._parsed_controlnet_uris = []
@@ -606,11 +607,11 @@ class DiffusionPipelineWrapper:
         return list(self._text_encoder_uris) if self._text_encoder_uris else []
 
     @property
-    def second_text_encoder_uris(self) -> _types.OptionalUris:
+    def second_model_text_encoder_uris(self) -> _types.OptionalUris:
         """
-        List of supplied ``--text-encoders2`` URI strings or an empty list.
+        List of supplied ``--second-model-text-encoders`` URI strings or an empty list.
         """
-        return list(self._second_text_encoder_uris) if self._second_text_encoder_uris else []
+        return list(self._second_model_text_encoder_uris) if self._second_model_text_encoder_uris else []
 
     @property
     def adetailer_detector_uris(self) -> _types.OptionalUris:
@@ -715,11 +716,11 @@ class DiffusionPipelineWrapper:
         return self._unet_uri
 
     @property
-    def second_unet_uri(self) -> _types.OptionalUri:
+    def second_model_unet_uri(self) -> _types.OptionalUri:
         """
-        Selected ``--unet2`` uri for the SDXL refiner or Stable Cascade decoder model or ``None``.
+        Selected ``--second-model-unet`` uri for the SDXL refiner or Stable Cascade decoder model or ``None``.
         """
-        return self._second_unet_uri
+        return self._second_model_unet_uri
 
     @property
     def lora_uris(self) -> _types.OptionalUris:
@@ -759,14 +760,14 @@ class DiffusionPipelineWrapper:
     @property
     def second_model_sequential_offload(self) -> bool:
         """
-        Current ``--model-sequential-offload2`` value.
+        Current ``--second-model-sequential-offload`` value.
         """
         return self._second_model_sequential_offload
 
     @property
     def second_model_cpu_offload(self) -> bool:
         """
-        Current ``--model-cpu-offload2`` value.
+        Current ``--second-model-cpu-offload`` value.
         """
         return self._second_model_cpu_offload
 
@@ -778,11 +779,11 @@ class DiffusionPipelineWrapper:
         return self._quantizer_uri
 
     @property
-    def second_quantizer_uri(self) -> _types.OptionalUri:
+    def second_model_quantizer_uri(self) -> _types.OptionalUri:
         """
-        Current ``--quantizer2`` value.
+        Current ``--second-model-quantizer`` value.
         """
-        return self._second_quantizer_uri
+        return self._second_model_quantizer_uri
 
     @property
     def original_config(self) -> _types.OptionalPath:
@@ -792,11 +793,11 @@ class DiffusionPipelineWrapper:
         return self._original_config
 
     @property
-    def second_original_config(self) -> _types.OptionalPath:
+    def second_model_original_config(self) -> _types.OptionalPath:
         """
-        Current ``--original-config2`` value.
+        Current ``--second-model-original-config`` value.
         """
-        return self._second_original_config
+        return self._second_model_original_config
 
     def reconstruct_dgenerate_opts(self,
                                    args: DiffusionArguments | None = None,
@@ -847,14 +848,14 @@ class DiffusionPipelineWrapper:
         if self.original_config:
             opts.append(('--original-config', self.original_config))
 
-        if self.second_original_config:
-            opts.append(('--original-config2', self.second_original_config))
+        if self.second_model_original_config:
+            opts.append(('--second-model-original-config', self.second_model_original_config))
 
         if self.quantizer_uri:
             opts.append(('--quantizer', self.quantizer_uri))
 
-        if self.second_quantizer_uri:
-            opts.append(('--quantizer2', self.quantizer_uri))
+        if self.second_model_quantizer_uri:
+            opts.append(('--second-model-quantizer', self.quantizer_uri))
 
         if not omit_device:
             opts.append(('--device', self._device))
@@ -878,41 +879,32 @@ class DiffusionPipelineWrapper:
         if args.prompt_weighter_uri:
             opts.append(('--prompt-weighter', args.prompt_weighter_uri))
 
-        if args.second_prompt_weighter_uri:
-            opts.append(('--prompt-weighter2', args.second_prompt_weighter_uri))
+        if args.second_model_prompt_weighter_uri:
+            opts.append(('--second-model-prompt-weighter', args.second_model_prompt_weighter_uri))
 
         if args.prompt is not None:
             opts.append(('--prompts', args.prompt))
 
-        if args.sd3_max_sequence_length is not None:
-            opts.append(('--sd3-max-sequence-length', args.sd3_max_sequence_length))
+        if args.second_prompt is not None:
+            opts.append(('--second-prompts', args.second_prompt))
 
-        if args.sd3_second_prompt is not None:
-            opts.append(('--sd3-second-prompts', args.sd3_second_prompt))
+        if args.third_prompt is not None:
+            opts.append(('--third-prompts', args.third_prompt))
 
-        if args.sd3_third_prompt is not None:
-            opts.append(('--sd3-third-prompts', args.sd3_third_prompt))
+        if args.second_model_prompt is not None:
+            opts.append(('--second-model-prompts', args.second_model_prompt))
 
-        if args.flux_max_sequence_length is not None:
-            opts.append(('--flux-max-sequence-length', args.flux_max_sequence_length))
+        if args.second_model_second_prompt is not None:
+            opts.append(('--second-model-second-prompts', args.second_model_second_prompt))
 
-        if args.flux_second_prompt is not None:
-            opts.append(('--flux-second-prompts', args.flux_second_prompt))
+        if args.max_sequence_length is not None:
+            opts.append(('--max-sequence-length', args.max_sequence_length))
 
         if args.clip_skip is not None:
             opts.append(('--clip-skips', args.clip_skip))
 
-        if args.sdxl_second_prompt is not None:
-            opts.append(('--sdxl-second-prompts', args.sdxl_second_prompt))
-
-        if args.sdxl_refiner_prompt is not None:
-            opts.append(('--sdxl-refiner-prompts', args.sdxl_refiner_prompt))
-
         if args.sdxl_refiner_clip_skip is not None:
             opts.append(('--sdxl-refiner-clip-skips', args.sdxl_refiner_clip_skip))
-
-        if args.sdxl_refiner_second_prompt is not None:
-            opts.append(('--sdxl-refiner-second-prompts', args.sdxl_refiner_second_prompt))
 
         if self._adetailer_detector_uris:
             opts.append(('--adetailer-detectors', self._adetailer_detector_uris))
@@ -944,8 +936,9 @@ class DiffusionPipelineWrapper:
         if self._text_encoder_uris:
             opts.append(('--text-encoders', ['+' if x is None else x for x in self._text_encoder_uris]))
 
-        if self._second_text_encoder_uris:
-            opts.append(('--text-encoders2', ['+' if x is None else x for x in self._second_text_encoder_uris]))
+        if self._second_model_text_encoder_uris:
+            opts.append(('--second-model-text-encoders',
+                         ['+' if x is None else x for x in self._second_model_text_encoder_uris]))
 
         if self._s_cascade_decoder_uri is not None:
             opts.append(('--s-cascade-decoder', self._s_cascade_decoder_uri))
@@ -955,9 +948,6 @@ class DiffusionPipelineWrapper:
 
         if args.s_cascade_decoder_guidance_scale is not None:
             opts.append(('--s-cascade-decoder-guidance-scales', args.s_cascade_decoder_guidance_scale))
-
-        if args.s_cascade_decoder_prompt is not None:
-            opts.append(('--s-cascade-decoder-prompts', args.s_cascade_decoder_prompt))
 
         if self._revision is not None and self._revision != 'main':
             opts.append(('--revision', self._revision))
@@ -971,8 +961,8 @@ class DiffusionPipelineWrapper:
         if self._unet_uri is not None:
             opts.append(('--unet', self._unet_uri))
 
-        if self._second_unet_uri is not None:
-            opts.append(('--unet2', self._second_unet_uri))
+        if self._second_model_unet_uri is not None:
+            opts.append(('--second-model-unet', self._second_model_unet_uri))
 
         if self._transformer_uri is not None:
             opts.append(('--transformer', self._transformer_uri))
@@ -993,10 +983,10 @@ class DiffusionPipelineWrapper:
             opts.append(('--model-sequential-offload',))
 
         if self._second_model_cpu_offload:
-            opts.append(('--model-cpu-offload2',))
+            opts.append(('--second-model-cpu-offload',))
 
         if self._second_model_sequential_offload:
-            opts.append(('--model-sequential-offload2',))
+            opts.append(('--second-model-sequential-offload',))
 
         if self._sdxl_refiner_uri is not None:
             opts.append(('--sdxl-refiner', self._sdxl_refiner_uri))
@@ -1028,9 +1018,9 @@ class DiffusionPipelineWrapper:
         if args.scheduler_uri is not None:
             opts.append(('--scheduler', args.scheduler_uri))
 
-        if args.second_scheduler_uri is not None:
-            if args.second_scheduler_uri != args.scheduler_uri:
-                opts.append(('--scheduler2', args.second_scheduler_uri))
+        if args.second_model_scheduler_uri is not None:
+            if args.second_model_scheduler_uri != args.scheduler_uri:
+                opts.append(('--second-model-scheduler', args.second_model_scheduler_uri))
 
         if args.hi_diffusion:
             opts.append(('--hi-diffusion',))
@@ -1787,13 +1777,13 @@ class DiffusionPipelineWrapper:
             raise _pipelines.UnsupportedPipelineConfigError('Flux does not support clip skip.')
 
         prompt: _prompt.Prompt() = _types.default(user_args.prompt, _prompt.Prompt())
-        prompt_2: _prompt.Prompt() = _types.default(user_args.flux_second_prompt, _prompt.Prompt())
+        prompt_2: _prompt.Prompt() = _types.default(user_args.second_prompt, _prompt.Prompt())
 
         pipeline_args['prompt'] = prompt.positive if prompt.positive else ''
         pipeline_args['prompt_2'] = prompt_2.positive if prompt.positive else ''
 
-        if user_args.flux_max_sequence_length is not None:
-            pipeline_args['max_sequence_length'] = user_args.flux_max_sequence_length
+        if user_args.max_sequence_length is not None:
+            pipeline_args['max_sequence_length'] = user_args.max_sequence_length
 
         if prompt.negative:
             _messages.log(
@@ -1966,8 +1956,8 @@ class DiffusionPipelineWrapper:
         else:
             image_embeddings = prior.image_embeddings
 
-        if user_args.s_cascade_decoder_prompt:
-            prompt: _prompt.Prompt() = user_args.s_cascade_decoder_prompt
+        if user_args.second_model_prompt:
+            prompt: _prompt.Prompt() = user_args.second_model_prompt
             pipeline_args['prompt'] = prompt.positive if prompt.positive else ''
             pipeline_args['negative_prompt'] = prompt.negative
 
@@ -1977,7 +1967,7 @@ class DiffusionPipelineWrapper:
             image_embeddings=image_embeddings,
             pipeline=self._s_cascade_decoder_pipeline,
             device=self._device,
-            prompt_weighter=self._get_s_cascade_decoder_prompt_weighter(user_args),
+            prompt_weighter=self._get_second_model_prompt_weighter(user_args),
             **pipeline_args).images)
 
     def _call_torch(self, pipeline_args, user_args: DiffusionArguments):
@@ -1994,44 +1984,44 @@ class DiffusionPipelineWrapper:
 
             self._set_non_universal_pipeline_arg(self._pipeline,
                                                  pipeline_args, user_args,
-                                                 'max_sequence_length', 'sd3_max_sequence_length',
-                                                 '--sd3-max-sequence-length')
+                                                 'max_sequence_length', 'max_sequence_length',
+                                                 '--max-sequence-length')
 
             self._set_non_universal_pipeline_arg(self._pipeline,
                                                  pipeline_args, user_args,
-                                                 'prompt_2', 'sd3_second_prompt',
-                                                 '--sd3-second-prompts',
+                                                 'prompt_2', 'second_prompt',
+                                                 '--second-prompts',
                                                  transform=lambda p: p.positive)
 
             self._set_non_universal_pipeline_arg(self._pipeline,
                                                  pipeline_args, user_args,
-                                                 'prompt_3', 'sd3_third_prompt',
-                                                 '--sd3-third-prompts',
-                                                 transform=lambda p: p.positive)
-
-            self._set_non_universal_pipeline_arg(self._pipeline,
-                                                 pipeline_args, user_args,
-                                                 'negative_prompt_2', 'sd3_second_prompt',
-                                                 '--sd3-second-prompts',
+                                                 'negative_prompt_2', 'second_prompt',
+                                                 '--second-prompts',
                                                  transform=lambda p: p.negative)
 
             self._set_non_universal_pipeline_arg(self._pipeline,
                                                  pipeline_args, user_args,
-                                                 'negative_prompt_3', 'sd3_third_prompt',
-                                                 '--sd3-third-prompts',
+                                                 'prompt_3', 'third_prompt',
+                                                 '--third-prompts',
+                                                 transform=lambda p: p.positive)
+
+            self._set_non_universal_pipeline_arg(self._pipeline,
+                                                 pipeline_args, user_args,
+                                                 'negative_prompt_3', 'third_prompt',
+                                                 '--third-prompts',
                                                  transform=lambda p: p.negative)
 
         else:
             self._set_non_universal_pipeline_arg(self._pipeline,
                                                  pipeline_args, user_args,
-                                                 'prompt_2', 'sdxl_second_prompt',
-                                                 '--sdxl-second-prompts',
+                                                 'prompt_2', 'second_prompt',
+                                                 '--second-prompts',
                                                  transform=lambda p: p.positive)
 
             self._set_non_universal_pipeline_arg(self._pipeline,
                                                  pipeline_args, user_args,
-                                                 'negative_prompt_2', 'sdxl_second_prompt',
-                                                 '--sdxl-second-prompts',
+                                                 'negative_prompt_2', 'second_prompt',
+                                                 '--second-prompts',
                                                  transform=lambda p: p.negative)
 
         self._set_non_universal_pipeline_arg(self._pipeline,
@@ -2243,32 +2233,32 @@ class DiffusionPipelineWrapper:
         pipeline_args.pop('strength', None)
 
         # We do not want to override the refiner secondary prompt
-        # with that of --sdxl-second-prompts by default
+        # with that of --second-prompts by default
         pipeline_args.pop('prompt_2', None)
         pipeline_args.pop('negative_prompt_2', None)
 
         self._set_non_universal_pipeline_arg(self._pipeline,
                                              pipeline_args, user_args,
-                                             'prompt', 'sdxl_refiner_prompt',
-                                             '--sdxl-refiner-prompts',
+                                             'prompt', 'second_model_prompt',
+                                             '--second-model-prompts',
                                              transform=lambda p: p.positive)
 
         self._set_non_universal_pipeline_arg(self._pipeline,
                                              pipeline_args, user_args,
-                                             'negative_prompt', 'sdxl_refiner_prompt',
-                                             '--sdxl-refiner-prompts',
+                                             'negative_prompt', 'second_model_prompt',
+                                             '--second-model-prompts',
                                              transform=lambda p: p.negative)
 
         self._set_non_universal_pipeline_arg(self._pipeline,
                                              pipeline_args, user_args,
-                                             'prompt_2', 'sdxl_refiner_second_prompt',
-                                             '--sdxl-refiner-second-prompts',
+                                             'prompt_2', 'second_model_second_prompt',
+                                             '--second-model-second-prompts',
                                              transform=lambda p: p.positive)
 
         self._set_non_universal_pipeline_arg(self._pipeline,
                                              pipeline_args, user_args,
-                                             'negative_prompt_2', 'sdxl_refiner_second_prompt',
-                                             '--sdxl-refiner-second-prompts',
+                                             'negative_prompt_2', 'second_model_second_prompt',
+                                             '--second-model-second-prompts',
                                              transform=lambda p: p.negative)
 
         self._get_sdxl_conditioning_args(self._sdxl_refiner_pipeline,
@@ -2357,7 +2347,7 @@ class DiffusionPipelineWrapper:
                 _pipelines.call_pipeline(
                     pipeline=self._sdxl_refiner_pipeline,
                     device=self._device,
-                    prompt_weighter=self._get_sdxl_refiner_prompt_weighter(user_args),
+                    prompt_weighter=self._get_second_model_prompt_weighter(user_args),
                     **pipeline_args, **i_start).images)
 
     def recall_main_pipeline(self) -> _pipelines.PipelineCreationResult:
@@ -2399,11 +2389,6 @@ class DiffusionPipelineWrapper:
 
         pag = args.pag_scale is not None or args.pag_adaptive_scale is not None
         sdxl_refiner_pag = args.sdxl_refiner_pag_scale is not None or args.sdxl_refiner_pag_adaptive_scale is not None
-        scheduler = args.scheduler_uri
-        second_scheduler = args.second_scheduler_uri
-        vae_slicing = args.vae_slicing
-        vae_tiling = args.vae_tiling
-
         pipeline_type = args.determine_pipeline_type()
 
         if self._pipeline is not None:
@@ -2466,9 +2451,6 @@ class DiffusionPipelineWrapper:
                 extra_modules=self._model_extra_modules
             )
             creation_result = self._recall_main_pipeline()
-            if scheduler:
-                creation_result.load_scheduler(scheduler)
-            creation_result.set_vae_slicing_and_tiling(vae_slicing, vae_tiling)
             self._pipeline = creation_result.pipeline
 
             self._recall_s_cascade_decoder_pipeline = _pipelines.TorchPipelineFactory(
@@ -2477,9 +2459,9 @@ class DiffusionPipelineWrapper:
                 pipeline_type=_enums.PipelineType.TXT2IMG,
                 subfolder=self._parsed_s_cascade_decoder_uri.subfolder,
                 revision=self._parsed_s_cascade_decoder_uri.revision,
-                unet_uri=self._second_unet_uri,
-                text_encoder_uris=self._second_text_encoder_uris,
-                quantizer_uri=self._second_quantizer_uri,
+                unet_uri=self._second_model_unet_uri,
+                text_encoder_uris=self._second_model_text_encoder_uris,
+                quantizer_uri=self._second_model_quantizer_uri,
 
                 variant=self._parsed_s_cascade_decoder_uri.variant if
                 self._parsed_s_cascade_decoder_uri.variant is not None else self._variant,
@@ -2487,7 +2469,7 @@ class DiffusionPipelineWrapper:
                 dtype=self._parsed_s_cascade_decoder_uri.dtype if
                 self._parsed_s_cascade_decoder_uri.dtype is not None else self._dtype,
 
-                original_config=self._second_original_config,
+                original_config=self._second_model_original_config,
                 safety_checker=self._safety_checker,
                 extra_modules=self._second_model_extra_modules,
                 auth_token=self._auth_token,
@@ -2497,10 +2479,6 @@ class DiffusionPipelineWrapper:
                 sequential_cpu_offload=self._second_model_sequential_offload)
 
             creation_result = self._recall_s_cascade_decoder_pipeline()
-            decoder_scheduler = scheduler if not second_scheduler else second_scheduler
-            if decoder_scheduler:
-                creation_result.load_scheduler(decoder_scheduler)
-            creation_result.set_vae_slicing_and_tiling(vae_slicing, vae_tiling)
             self._s_cascade_decoder_pipeline = creation_result.pipeline
 
         elif self._sdxl_refiner_uri is not None:
@@ -2535,9 +2513,6 @@ class DiffusionPipelineWrapper:
                 sequential_cpu_offload=self._model_sequential_offload)
 
             creation_result = self._recall_main_pipeline()
-            if scheduler:
-                creation_result.load_scheduler(scheduler)
-            creation_result.set_vae_slicing_and_tiling(vae_slicing, vae_tiling)
             self._pipeline = creation_result.pipeline
             self._parsed_controlnet_uris = creation_result.parsed_controlnet_uris
             self._parsed_t2i_adapter_uris = creation_result.parsed_t2i_adapter_uris
@@ -2567,9 +2542,9 @@ class DiffusionPipelineWrapper:
                 pipeline_type=refiner_pipeline_type,
                 subfolder=self._parsed_sdxl_refiner_uri.subfolder,
                 revision=self._parsed_sdxl_refiner_uri.revision,
-                unet_uri=self._second_unet_uri,
-                text_encoder_uris=self._second_text_encoder_uris,
-                quantizer_uri=self._second_quantizer_uri,
+                unet_uri=self._second_model_unet_uri,
+                text_encoder_uris=self._second_model_text_encoder_uris,
+                quantizer_uri=self._second_model_quantizer_uri,
 
                 variant=self._parsed_sdxl_refiner_uri.variant if
                 self._parsed_sdxl_refiner_uri.variant is not None else self._variant,
@@ -2577,7 +2552,7 @@ class DiffusionPipelineWrapper:
                 dtype=self._parsed_sdxl_refiner_uri.dtype if
                 self._parsed_sdxl_refiner_uri.dtype is not None else self._dtype,
 
-                original_config=self._second_original_config,
+                original_config=self._second_model_original_config,
                 pag=sdxl_refiner_pag,
                 safety_checker=self._safety_checker,
                 auth_token=self._auth_token,
@@ -2587,11 +2562,6 @@ class DiffusionPipelineWrapper:
                 model_cpu_offload=self._second_model_cpu_offload,
                 sequential_cpu_offload=self._second_model_sequential_offload
             )
-            creation_result = self._recall_refiner_pipeline()
-            refiner_scheduler = scheduler if not second_scheduler else second_scheduler
-            if refiner_scheduler:
-                creation_result.load_scheduler(refiner_scheduler)
-            creation_result.set_vae_slicing_and_tiling(vae_slicing, vae_tiling)
             self._sdxl_refiner_pipeline = self._recall_refiner_pipeline().pipeline
         else:
             self._recall_main_pipeline = _pipelines.TorchPipelineFactory(
@@ -2626,9 +2596,6 @@ class DiffusionPipelineWrapper:
             )
 
             creation_result = self._recall_main_pipeline()
-            if scheduler:
-                creation_result.load_scheduler(scheduler)
-            creation_result.set_vae_slicing_and_tiling(vae_slicing, vae_tiling)
             self._pipeline = creation_result.pipeline
             self._parsed_controlnet_uris = creation_result.parsed_controlnet_uris
             self._parsed_t2i_adapter_uris = creation_result.parsed_t2i_adapter_uris
@@ -2678,34 +2645,24 @@ class DiffusionPipelineWrapper:
             args.prompt_weighter_uri
         )
 
-    def _get_sdxl_refiner_prompt_weighter(self, args: DiffusionArguments):
+    def _get_second_model_prompt_weighter(self, args: DiffusionArguments):
         # prioritize in descending order
         return self._default_prompt_weighter(
-            args.sdxl_refiner_prompt,
-            args.second_prompt_weighter_uri,
-            args.prompt,
-            args.prompt_weighter_uri,
-
-        )
-
-    def _get_s_cascade_decoder_prompt_weighter(self, args: DiffusionArguments):
-        # prioritize in descending order
-        return self._default_prompt_weighter(
-            args.s_cascade_decoder_prompt,
-            args.second_prompt_weighter_uri,
+            args.second_model_prompt,
+            args.second_model_prompt_weighter_uri,
             args.prompt,
             args.prompt_weighter_uri
         )
 
     def _argument_help_check(self, args: DiffusionArguments):
         scheduler_help = _help.scheduler_is_help(args.scheduler_uri)
-        second_scheduler_help = _help.scheduler_is_help(args.second_scheduler_uri)
+        second_model_scheduler_help = _help.scheduler_is_help(args.second_model_scheduler_uri)
         text_encoder_help = _help.text_encoder_is_help(self.text_encoder_uris)
-        second_text_encoder_help = _help.text_encoder_is_help(self.second_text_encoder_uris)
+        second_model_text_encoder_help = _help.text_encoder_is_help(self.second_model_text_encoder_uris)
         help_text = []
         model_path = self.model_path
 
-        if scheduler_help or second_scheduler_help:
+        if scheduler_help or second_model_scheduler_help:
             pipe_class = _pipelines.get_torch_pipeline_class(
                 model_type=self.model_type,
                 pipeline_type=args.determine_pipeline_type(),
@@ -2738,29 +2695,29 @@ class DiffusionPipelineWrapper:
                         indent=4
                     ))
 
-        if second_scheduler_help or second_text_encoder_help:
+        if second_model_scheduler_help or second_model_text_encoder_help:
             second_pipe_class = _pipelines.get_torch_pipeline_class(
                 model_type=_enums.ModelType.TORCH_SDXL if
                 self.sdxl_refiner_uri else _enums.ModelType.TORCH_S_CASCADE_DECODER,
                 pipeline_type=_enums.PipelineType.IMG2IMG,
-                unet_uri=self.second_unet_uri,
+                unet_uri=self.second_model_unet_uri,
                 vae_uri=self.vae_uri,
                 pag=args.pag_scale is not None or args.pag_adaptive_scale is not None,
                 help_mode=True
             )
             second_model_path = self.sdxl_refiner_uri or self.s_cascade_decoder_uri
 
-            if second_scheduler_help:
+            if second_model_scheduler_help:
                 help_text.append(
                     f'Schedulers compatible with: {second_model_path}\n\n' +
                     _help.get_scheduler_help(
                         second_pipe_class,
                         help_args=_help.scheduler_is_help_args(
-                            args.second_scheduler_uri),
+                            args.second_model_scheduler_uri),
                         indent=4
                     ))
 
-            if second_text_encoder_help:
+            if second_model_text_encoder_help:
                 help_text.append(
                     f'Text encoders compatible with: {second_model_path}\n\n' +
                     _help.text_encoder_help(
@@ -2769,6 +2726,32 @@ class DiffusionPipelineWrapper:
                     ))
 
         return '\n\n'.join(help_text)
+
+    def _set_scheduler_and_vae_settings(self, args):
+        second_model_scheduler_uri = _types.default(
+            args.second_model_scheduler_uri,
+            args.scheduler_uri
+        )
+        if args.scheduler_uri:
+            _schedulers.load_scheduler(
+                pipeline=self._pipeline,
+                scheduler_uri=args.scheduler_uri
+            )
+        if self._sdxl_refiner_pipeline and second_model_scheduler_uri:
+            _schedulers.load_scheduler(
+                pipeline=self._sdxl_refiner_pipeline,
+                scheduler_uri=second_model_scheduler_uri
+            )
+        if self._s_cascade_decoder_pipeline and second_model_scheduler_uri:
+            _schedulers.load_scheduler(
+                pipeline=self._s_cascade_decoder_pipeline,
+                scheduler_uri=second_model_scheduler_uri
+            )
+        _pipelines.set_vae_tiling_and_slicing(
+            pipeline=self._pipeline,
+            tiling=args.vae_tiling,
+            slicing=args.vae_slicing
+        )
 
     def __call__(self, args: DiffusionArguments | None = None, **kwargs) -> PipelineWrapperResult:
         """
@@ -2808,6 +2791,11 @@ class DiffusionPipelineWrapper:
         _cache.enforce_cache_constraints()
 
         loaded_new = self._lazy_init_pipeline(copy_args)
+
+        # this needs to happen even if a cached pipeline
+        # was loaded, since the settings for scheduler
+        # and vae tiling / slicing may be different
+        self._set_scheduler_and_vae_settings(args)
 
         if loaded_new:
             _cache.enforce_cache_constraints()

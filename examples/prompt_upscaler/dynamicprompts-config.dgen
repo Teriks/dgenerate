@@ -1,0 +1,61 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 4.5.1
+
+# prompt upscaler plugins can preprocess and expand prompts, allowing
+# for LLM based txt2txt enhancement or prompt expansion resulting
+# in additional prompt variations being produced
+
+# prompt upscalers can be specified using prompt embedded arguments or with the --prompt-upscaler
+# argument, and related arguments of dgenerate
+
+# --prompt-upscaler will set the prompt upscaler for all prompts globally, you can further
+# fine tune which prompts are affected by using the various --prompt-upscaler options
+# of dgenerate related to secondary and tertiary prompts etc. or by narrowing it down
+# to a single prompt by using prompt embedded argument syntax in the affected prompt
+
+# below we use the embedded argument syntax to specify the dynamicprompts upscaler
+# which is capable of producing prompt variations in a combinatorial or random fashion
+# depending on configuration
+
+# multiple prompt upscalers can be specified if you desire, their results will be chained
+# together sequentially, this will be handled correctly even if the prompt upscaler
+# returns multiple prompts via expansion
+
+
+\prompt_upscaler_help dynamicprompts  # print the plugin help / doc
+
+
+stabilityai/stable-diffusion-xl-base-1.0
+--model-type torch-sdxl
+--dtype float16
+--variant fp16
+--inference-steps 30
+--guidance-scales 5
+--clip-skips 0
+--gen-seeds 1
+--output-path output
+--output-size 1024x1024
+--prompts "<upscaler: dynamicprompts;magic=True> a large {horse|dog} in a field"
+
+
+# we do not have to chain for this functionality, we can just specify attention=True
+# in the previous invocation if we want, this is just to demonstrate the chaining
+# behaviour that occurs when you specify multiple prompt upscalers
+
+# below, a 2 variants of a magic prompt will be generated, and then random prompt
+# attention values will be added, we need to use --prompt-weighter sd-embed
+# for these attention values to be understood, they are output in SD Web UI syntax,
+# you could also use: compel;syntax=sdwui if desired
+
+stabilityai/stable-diffusion-xl-base-1.0
+--model-type torch-sdxl
+--dtype float16
+--variant fp16
+--inference-steps 30
+--guidance-scales 5
+--clip-skips 0
+--gen-seeds 1
+--output-path output
+--output-size 1024x1024
+--prompt-weighter sd-embed
+--prompts "<upscaler: dynamicprompts;magic=True> <upscaler: dynamicprompts;attention=True> a large {horse|dog} in a field"

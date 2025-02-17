@@ -102,43 +102,37 @@ def _set_floyd_safety_checker(pipeline: diffusers.DiffusionPipeline, safety_chec
             pipeline.safety_checker = _floyd_disabled_safety_checker
 
 
-def estimate_pipeline_memory_use(
+def estimate_pipeline_cache_footprint(
         model_path: str,
         model_type: _enums.ModelType,
-        pipeline_type: _enums.PipelineType = _enums.PipelineType.TXT2IMG,
         revision: _types.Name = 'main',
         variant: _types.OptionalName = None,
         subfolder: _types.OptionalPath = None,
-        unet_uri: _types.OptionalUri = None,
-        transformer_uri: _types.OptionalUri = None,
-        vae_uri: _types.OptionalUri = None,
         lora_uris: _types.OptionalUris = None,
         image_encoder_uri: _types.OptionalUri = None,
         ip_adapter_uris: _types.OptionalUris = None,
         textual_inversion_uris: _types.OptionalUris = None,
-        text_encoder_uris: _types.OptionalUris = None,
         safety_checker: bool = False,
         auth_token: str | None = None,
         extra_args: dict[str, typing.Any] | None = None,
-        local_files_only: bool = False):
+        local_files_only: bool = False
+):
     """
-    Estimate the CPU side memory use of a pipeline.
+    Estimate the CPU side cache memory use of a pipeline.
+
+    This does not include the UNet / Transformer, VAE, or Text Encoders
+    as those have their own individual caches.
 
     :param model_path: huggingface slug, blob link, path to folder on disk, path to model file.
     :param model_type: :py:class:`dgenerate.pipelinewrapper.ModelType`
-    :param pipeline_type: :py:class:`dgenerate.pipelinewrapper.PipelineType`
     :param revision: huggingface repo revision if using a huggingface slug
     :param variant: model file variant desired, for example "fp16"
     :param subfolder: huggingface repo subfolder if using a huggingface slug
-    :param unet_uri: optional user specified ``--unet`` URI that will be loaded on to the pipeline
-    :param transformer_uri: optional user specified ``--transformer`` URI that will be loaded on to the pipeline,
         this is currently only supported for Stable Diffusion 3 and Flux models.
-    :param vae_uri: optional user specified ``--vae`` URI that will be loaded on to the pipeline
     :param lora_uris: optional user specified ``--loras`` URIs that will be loaded on to the pipeline
     :param image_encoder_uri: optional user specified ``--image-encoder`` URI that will be loaded on to the pipeline
     :param ip_adapter_uris: optional user specified ``--ip-adapters`` URIs that will be loaded on to the pipeline
     :param textual_inversion_uris: optional user specified ``--textual-inversion`` URIs that will be loaded on to the pipeline
-    :param text_encoder_uris: optional user specified ``--text-encoders`` URIs that will be loaded on to the pipeline
     :param safety_checker: consider the safety checker? dgenerate usually loads the safety checker and then retroactively
         disables it if needed, so it usually considers the size of the safety checker model.
     :param auth_token: optional huggingface auth token to access restricted repositories that your account has access to.
@@ -151,41 +145,21 @@ def estimate_pipeline_memory_use(
     if extra_args is None:
         extra_args = dict()
 
-    if text_encoder_uris is None:
-        text_encoder_uris = []
-
-    include_text_encoder = 'text_encoder' not in extra_args and (
-            len(text_encoder_uris) == 0 or not text_encoder_uris[0])
-    include_text_encoder_2 = 'text_encoder_2' not in extra_args and (
-            len(text_encoder_uris) < 2 or not text_encoder_uris[1])
-    include_text_encoder_3 = 'text_encoder_3' not in extra_args and (
-            len(text_encoder_uris) < 3 or not text_encoder_uris[2])
-
     usage = _util.estimate_model_memory_use(
         repo_id=_util.download_non_hf_model(model_path),
         revision=revision,
         variant=variant,
         subfolder=subfolder,
-        include_unet=not unet_uri or 'unet' not in extra_args,
-        include_vae=not vae_uri or 'vae' not in extra_args,
+        include_unet_or_transformer=False,
+        include_vae=False,
         safety_checker=safety_checker and 'safety_checker' not in extra_args,
-        include_text_encoder=include_text_encoder,
-        include_text_encoder_2=include_text_encoder_2,
-        include_text_encoder_3=include_text_encoder_3,
+        include_text_encoder=False,
+        include_text_encoder_2=False,
+        include_text_encoder_3=False,
         use_auth_token=auth_token,
         local_files_only=local_files_only,
         sentencepiece=_enums.model_type_is_floyd(model_type)
     )
-
-    if transformer_uri:
-        parsed = _uris.TransformerUri.parse(transformer_uri)
-        usage += _util.estimate_model_memory_use(
-            repo_id=_util.download_non_hf_model(parsed.model),
-            revision=parsed.revision,
-            subfolder=parsed.subfolder,
-            use_auth_token=auth_token,
-            local_files_only=local_files_only
-        )
 
     if image_encoder_uri:
         parsed = _uris.ImageEncoderUri.parse(image_encoder_uri)
@@ -236,41 +210,29 @@ def estimate_pipeline_memory_use(
                 local_files_only=local_files_only
             )
 
-    if text_encoder_uris:
-        for text_encoder_uri in text_encoder_uris:
-            if not _text_encoder_not_default(text_encoder_uri):
-                continue
-
-            parsed = _uris.TextEncoderUri.parse(text_encoder_uri)
-
-            usage += _util.estimate_model_memory_use(
-                repo_id=parsed.model,
-                revision=parsed.revision,
-                subfolder=parsed.subfolder,
-                use_auth_token=auth_token,
-                local_files_only=local_files_only)
-
     return usage
 
 
-def set_vae_slicing_tiling(pipeline: diffusers.DiffusionPipeline,
-                           vae_tiling: bool,
-                           vae_slicing: bool):
+def set_vae_tiling_and_slicing(
+        pipeline: diffusers.DiffusionPipeline,
+        tiling: bool,
+        slicing: bool
+):
     """
-    Set the vae_slicing and vae_tiling status on a created huggingface diffusers pipeline.
+    Set the ``vae_slicing`` and ``vae_tiling`` status on a diffusers pipeline.
 
     :raises UnsupportedPipelineConfigError: if the pipeline does not support one or both
         of the provided values for ``vae_tiling`` and ``vae_slicing``
 
     :param pipeline: pipeline object
-    :param vae_tiling: tiling status
-    :param vae_slicing: slicing status
+    :param tiling: tiling status
+    :param slicing: slicing status
     """
 
     has_vae = hasattr(pipeline, 'vae') and pipeline.vae is not None
     pipeline_class = pipeline.__class__
 
-    if vae_tiling:
+    if tiling:
         if has_vae:
             if hasattr(pipeline.vae, 'enable_tiling'):
                 _messages.debug_log(f'Enabling VAE tiling on Pipeline: "{pipeline_class.__name__}",',
@@ -289,7 +251,7 @@ def set_vae_slicing_tiling(pipeline: diffusers.DiffusionPipeline,
                                 f'VAE: "{pipeline.vae.__class__.__name__}"')
             pipeline.vae.disable_tiling()
 
-    if vae_slicing:
+    if slicing:
         if has_vae:
             if hasattr(pipeline.vae, 'enable_slicing'):
                 _messages.debug_log(f'Enabling VAE slicing on Pipeline: "{pipeline_class.__name__}",',
@@ -1067,14 +1029,14 @@ class TorchPipelineCreationResult(PipelineCreationResult):
         """
         _schedulers.load_scheduler(self.pipeline, scheduler_uri)
 
-    def set_vae_slicing_and_tiling(self, vae_tiling: bool, vae_slicing: bool):
+    def set_vae_tiling_and_slicing(self, vae_tiling: bool, vae_slicing: bool):
         """
-        Set the VAE slicing and tiling status of the pipeline.
+        Set the VAE tiling and slicing status of the pipeline.
 
         :param vae_tiling: vae tiling?
         :param vae_slicing: vae slicing?
         """
-        set_vae_slicing_tiling(self.pipeline, vae_tiling, vae_slicing)
+        set_vae_tiling_and_slicing(self.pipeline, tiling=vae_tiling, slicing=vae_slicing)
 
     def __init__(self,
                  model_path: _types.Path,
@@ -1210,8 +1172,8 @@ def create_torch_diffusion_pipeline(
 
 class TorchPipelineFactory:
     """
-    Combines :py:func:`.create_torch_diffusion_pipeline` and :py:func:`.set_vae_slicing_tiling` into a factory
-    that can recreate the same Torch pipeline over again, possibly from cache.
+    Turns :py:func:`.create_torch_diffusion_pipeline` into a factory that can
+    repeatedly create a pipeline with the same arguments, possibly from cache.
     """
 
     def __init__(self,
@@ -1259,8 +1221,7 @@ class TorchPipelineFactory:
 
         :return: :py:class:`.TorchPipelineCreationResult`
         """
-        r = create_torch_diffusion_pipeline(**self._args)
-        return r
+        return create_torch_diffusion_pipeline(**self._args)
 
 
 def _format_pipeline_creation_debug_arg(arg_name, v):
@@ -2059,20 +2020,15 @@ def _create_torch_diffusion_pipeline(
     if len(text_encoders) > 2 and text_encoder_3_override:
         text_encoders[2] = None
 
-    estimated_memory_usage = estimate_pipeline_memory_use(
-        pipeline_type=pipeline_type,
+    estimated_memory_usage = estimate_pipeline_cache_footprint(
         model_type=model_type,
         model_path=model_path,
         revision=revision,
         variant=variant,
         subfolder=subfolder,
-        unet_uri=unet_uri if not unet_override else None,
-        transformer_uri=transformer_uri if not transformer_override else None,
-        vae_uri=vae_uri if not vae_override else None,
         lora_uris=lora_uris,
         image_encoder_uri=image_encoder_uri,
         ip_adapter_uris=ip_adapter_uris,
-        text_encoder_uris=text_encoders,
         textual_inversion_uris=textual_inversion_uris,
         safety_checker=safety_checker and not safety_checker_override,
         auth_token=auth_token,
@@ -2480,7 +2436,7 @@ def _create_torch_diffusion_pipeline(
             msg = str(e)
             if 'text_encoder' in msg:
                 raise UnsupportedPipelineConfigError(
-                    f'Single file load error, missing --text-encoders / --text-encoders2:\n{e}')
+                    f'Single file load error, missing --text-encoders / --second-model-text-encoders:\n{e}')
             else:
                 raise UnsupportedPipelineConfigError(
                     f'Single file load error, missing component:\n{e}')

@@ -173,7 +173,7 @@ class VAEUriLoadError(ModelUriLoadError):
 
 class UNetUriLoadError(ModelUriLoadError):
     """
-    Error while loading model file in ``--unet / --unet2`` uri
+    Error while loading model file in ``--unet / --second-model-unet`` uri
     """
     pass
 
