@@ -34,7 +34,7 @@ The controlnet "mode" option may be set to one of:
     --model-type torch-flux \
     --dtype bfloat16 \
     --model-sequential-offload \
-    --control-nets InstantX/FLUX.1-dev-Controlnet-Union;scale=0.8;mode=pose \
+    --control-nets "InstantX/FLUX.1-dev-Controlnet-Union;scale=0.8;mode=pose" \
     --image-seeds examples/media/man-fighting-pose.jpg \
     --control-image-processors openpose \
     --inference-steps 4 \

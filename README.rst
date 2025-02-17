@@ -2846,7 +2846,7 @@ As an example, you may override the mentioned arguments for any scheduler in thi
     --output-size 1024 \
     --gen-seeds 2 \
     --prompts "none" \
-    --scheduler PNDMScheduler;prediction-type=v_prediction
+    --scheduler "PNDMScheduler;prediction-type=v_prediction"
 
 In the case of list / array arguments such as ``trained-betas`` you may use python
 literal syntax, i.e: ``[1, 2, 3]`` or CSV (tuple) ``1,2,3``.
@@ -3147,10 +3147,8 @@ A specific transformer model can be specified using the ``--transformer`` argume
 This argument is nearly identical to ``--unet``, however it can support single file loads
 from safetensors files or huggingface blob links if desired.
 
-In addition to the arguments that ``--unet`` supports, ``--transformer`` supports the ``quantize``
-URI argument to enable weights quantization via the `optimum-quanto library <optimum-quanto_library_1_>`_,
-allowing for lower GPU memory usage. ``quantize`` may be passed the values ``qint2``, ``qint4``, ``qint8``,
-``qfloat8_e4m3fn``, ``qfloat8_e5m2``, or ``qfloat8``, to indicate the quantization data type.
+In addition to the arguments that ``--unet`` supports, ``--transformer`` supports the ``quantizer``
+URI argument for enabling a quantization backend using the same URI syntax as ``--quantizer``.
 
 SD3 Example:
 
@@ -3162,7 +3160,7 @@ SD3 Example:
 
     dgenerate stabilityai/stable-diffusion-3-medium-diffusers \
     --model-type torch-sd3 \
-    --transformer stabilityai/stable-diffusion-3-medium-diffusers;subfolder=transformer \
+    --transformer "stabilityai/stable-diffusion-3-medium-diffusers;subfolder=transformer" \
     --variant fp16 \
     --dtype float16 \
     --inference-steps 30 \
@@ -3179,19 +3177,18 @@ Flux Example:
 
     #!/usr/bin/env bash
 
-    # use Flux with quantized transformer and text encoder (qfloat8)
+    # use Flux with quantized transformer and T5 text encoder (bitsandbytes, 4 bits)
 
     dgenerate black-forest-labs/FLUX.1-dev \
     --model-type torch-flux \
     --dtype bfloat16 \
-    --transformer https://huggingface.co/Kijai/flux-fp8/blob/main/flux1-dev-fp8.safetensors;quantize=qfloat8 \
-    --text-encoders + T5EncoderModel;model=black-forest-labs/FLUX.1-dev;subfolder=text_encoder_2;quantize=qfloat8 \
+    --transformer "black-forest-labs/FLUX.1-dev;subfolder=transformer;quantizer='bnb;bits=4;bits4_compute_dtype=bfloat16'" \
+    --text-encoders + "T5EncoderModel;model=black-forest-labs/FLUX.1-dev;subfolder=text_encoder_2;quantizer='bnb;bits=4;bits4_compute_dtype=bfloat16'" \
     --model-cpu-offload \
     --inference-steps 20 \
     --guidance-scales 3.5 \
     --gen-seeds 1 \
     --output-path output \
-    --output-size 512x512 \
     --prompts "Photo of a horse standing near the open door of a red barn, high resolution"
 
 Specifying an SDXL Refiner
@@ -3839,7 +3836,7 @@ The controlnet "mode" option may be set to one of:
     --model-type torch-flux \
     --dtype bfloat16 \
     --model-sequential-offload \
-    --control-nets InstantX/FLUX.1-dev-Controlnet-Union;scale=0.8;mode=pose \
+    --control-nets "InstantX/FLUX.1-dev-Controlnet-Union;scale=0.8;mode=pose" \
     --image-seeds examples/media/man-fighting-pose.jpg \
     --control-image-processors openpose \
     --inference-steps 4 \
@@ -4007,7 +4004,7 @@ This example nearly duplicates an image created with a code snippet in the diffu
     --output-path basic \
     --model-cpu-offload \
     --image-seeds "adapter: https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/ip_adapter_diner.png" \
-    --ip-adapters h94/IP-Adapter;subfolder=sdxl_models;weight-name=ip-adapter_sdxl.bin \
+    --ip-adapters "h94/IP-Adapter;subfolder=sdxl_models;weight-name=ip-adapter_sdxl.bin" \
     --output-size 1024x1024 \
     --prompts "a polar bear sitting in a chair drinking a milkshake; \
                deformed, ugly, wrong proportion, low res, bad anatomy, worst quality, low quality"
@@ -4152,17 +4149,14 @@ The syntax for specifying text encoders is similar to that of ``--vae``
 
 The URI syntax for ``--text-encoders`` is ``TextEncoderClass;model=(huggingface repository slug or folder path)``
 
-Loading arguments available when specifying a Text Encoder are: ``model``, ``revision``, ``variant``, ``subfolder``, ``dtype``, and ``quantize``
+Loading arguments available when specifying a Text Encoder are: ``model``, ``revision``, ``variant``, ``subfolder``, ``dtype``, and ``quantizer``
 
 The ``variant`` argument defaults to the value of ``--variant``
 
 The ``dtype`` argument defaults to the value of ``--dtype``
 
-The ``quantize`` URI argument enables weights quantization via the `optimum-quanto
-library <optimum-quanto_library_1_>`_, allowing for lower GPU memory usage.
-This is useful when generating with Flux models. ``quantize`` may be passed the
-values ``qint2``, ``qint4``, ``qint8``, ``qfloat8_e4m3fn``, ``qfloat8_e5m2``, or ``qfloat8``,
-to indicate the quantization data type.
+The ``quantizer`` URI argument can be used to specify a quantization backend
+for the text encoder using the same URI syntax as ``--quantizer``
 
 The other named arguments are available when loading from a huggingface repository or folder
 that may or may not be a local git repository on disk.
@@ -4231,7 +4225,7 @@ repository on huggingface.
     --inference-steps 30 \
     --guidance-scales 5.00 \
     --text-encoders + + \
-        T5EncoderModel;model=stabilityai/stable-diffusion-3-medium-diffusers;subfolder=text_encoder_3 \
+        "T5EncoderModel;model=stabilityai/stable-diffusion-3-medium-diffusers;subfolder=text_encoder_3" \
     --clip-skips 0 \
     --gen-seeds 2 \
     --output-path output \
