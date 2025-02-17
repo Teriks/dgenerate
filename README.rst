@@ -3104,7 +3104,7 @@ The latent consistency UNet for SDXL can be specified with the ``--unet`` argume
     --output-size 1024 \
     --prompts "a close-up picture of an old man standing in the rain"
 
-Loading arguments available when specifying a UNet are: ``revision``, ``variant``, ``subfolder``, and ``dtype``
+Loading arguments available when specifying a UNet are: ``revision``, ``variant``, ``subfolder``, ``dtype``, and ``quantizer``
 
 In the case of ``--unet`` the ``variant`` loading argument defaults to the value
 of ``--variant`` if you do not specify it in the URI.
@@ -3112,6 +3112,9 @@ of ``--variant`` if you do not specify it in the URI.
 The ``--second-model-unet`` option can be used to specify a UNet for the
 `SDXL Refiner <#specifying-an-sdxl-refiner>`_ or `Stable Cascade Decoder <#specifying-a-stable-cascade-decoder>`_,
 and uses the same syntax as ``--unet``.
+
+The ``quantizer`` argument may be used to set ``--quantizer`` URI (quantization backend)
+specifically for the UNet model.
 
 Here is an example of using the ``lite`` variants of Stable Cascade's
 UNet models which have a smaller memory footprint using ``--unet`` and ``--second-model-unet``.
