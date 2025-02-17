@@ -124,6 +124,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v4.5.1/>`_.
         * `animated inputs & combinatorics`_
     * `Specifying Text Encoders`_
     * `Prompt Upscaling`_
+        * `The dynamicprompts prompt upscaler`_
     * `Prompt Weighting`_
         * `The compel prompt weighter`_
         * `The sd-embed prompt weighter`_
@@ -4330,7 +4331,83 @@ or ``\prompt_upscaler_help`` from within a config script.
 
 Specifying: ``dgenerate --prompt-upscaler-help NAME1 NAME2`` will return help for the named upscaler plugins.
 
-The following is an example making use of the ``dynamicprompts`` upscaler.
+The dynamicprompts prompt upscaler
+----------------------------------
+
+`dynamicprompts <https://github.com/adieyal/dynamicprompts>`_ is a library for generating combinatorial
+prompt variations using a special prompting syntax.
+
+It also features the ability to use the `Magic Prompt <https://huggingface.co/Gustavosta/MagicPrompt-Stable-Diffusion>`_ LLM model
+to create good quality continuations of the text in your prompt automatically.
+
+.. code-block:: bash
+
+    #!/usr/bin/env bash
+
+    # print out the documentation for the dynamicprompts prompt upscaler
+
+    dgenerate --prompt-upscaler-help dynamicprompts
+
+
+.. code-block:: text
+
+    dynamicprompts:
+        arguments:
+            magic: bool = False
+            magic-model: str = "Gustavosta/MagicPrompt-Stable-Diffusion"
+            magic-seed: Optional[int] = None
+            magic-max-length: int = 100
+            attention: bool = False
+            attention-min: int = 0.1
+            attention-max: int = 0.9
+            random: bool = False
+            random-seed: Optional[int] = None
+            variations: Optional[int] = None
+            wildcards: Optional[str] = None
+            seed: Optional[int] = None
+    
+        Upscale prompts with the dynamicprompts library.
+    
+        See: https://github.com/adieyal/dynamicprompts
+    
+        The "magic" argument enables magicprompt, which generates a continuation of your prompt using the model
+        "Gustavosta/MagicPrompt-Stable-Diffusion".
+    
+        The "magic_model" specifies the model path for magicprompt, the default value is:
+        "Gustavosta/MagicPrompt-Stable-Diffusion". This can be a folder on disk or a Hugging Face repository slug.
+    
+        The "magic_seed" argument can be used to specify a seed for just the "magic" prompt generation, this
+        overrides "seed".
+    
+        The "magic_max_length" arguments the max prompt length for a magicprompt generated prompt, this value
+        defaults to 100.
+    
+        The "attention" argument enables random token attention values, this requires the use of the "sd-embed"
+        prompt weighter or "compel" in SD Web UI syntax mode, i.e. "compel;syntax=sdwui"
+    
+        The "attention_min" argument sets the minimum value for random attention added by "attention=True". The
+        default value is 0.1
+    
+        The "attention_max" argument sets the maximum value for random attention added by "attention=True" The
+        Default value is 0.9
+    
+        The "random" argument specifies that instead of strictly combinatorial output, dynamicprompts should
+        produce N random variations of you prompt given the possibilities you have provided.
+    
+        The "random_seed" argument can be used to specify a seed for just the "random" prompt generation, this
+        overrides "seed".
+    
+        The "variations" argument specifies how many variations should be produced when "random" is set to true.
+        This argument cannot be used without specifying "random".
+    
+        The "wildcards" argument can be used to specify a wildcards directory for dynamicprompt's wildcard syntax.
+    
+        The "seed" argument can be used to specify a seed for the "random" prompt generation as well as the
+        "magic" prompt generation simultaneously. The same seed will be used for both generators.
+    
+    ==============================================================================================================
+
+The following is an example making use of the ``dynamicprompts`` prompt upscaler plugin.
 
 .. code-block:: jinja
 

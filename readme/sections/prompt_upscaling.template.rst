@@ -16,6 +16,26 @@ or ``\prompt_upscaler_help`` from within a config script.
 
 Specifying: ``dgenerate --prompt-upscaler-help NAME1 NAME2`` will return help for the named upscaler plugins.
 
-The following is an example making use of the ``dynamicprompts`` upscaler.
+The dynamicprompts prompt upscaler
+----------------------------------
+
+`dynamicprompts <https://github.com/adieyal/dynamicprompts>`_ is a library for generating combinatorial
+prompt variations using a special prompting syntax.
+
+It also features the ability to use the `Magic Prompt <https://huggingface.co/Gustavosta/MagicPrompt-Stable-Diffusion>`_ LLM model
+to create good quality continuations of the text in your prompt automatically.
+
+.. code-block:: bash
+
+    #!/usr/bin/env bash
+
+    # print out the documentation for the dynamicprompts prompt upscaler
+
+    dgenerate --prompt-upscaler-help dynamicprompts
+
+
+@COMMAND_OUTPUT[dgenerate --no-stdin --prompt-upscaler-help dynamicprompts]
+
+The following is an example making use of the ``dynamicprompts`` prompt upscaler plugin.
 
 @EXAMPLE[../../examples/prompt_upscaler/dynamicprompts-config.dgen]
