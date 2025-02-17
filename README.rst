@@ -4817,7 +4817,7 @@ to define the ``--prompt-weighter`` and ``--prompt-upscaler`` plugins that act o
 in a row to create a chain of prompt upscaling operations using different prompt upscaler plugin URIs.
 
 The rest of the specifiable arguments are select members of the `DiffusionArguments <https://dgenerate.readthedocs.io/en/v4.5.1/dgenerate_submodules.html#dgenerate.pipelinewrapper.DiffusionArguments>`_
-class from dgenerates library API.
+class from dgenerate's library API.
 
 You may not specify prompt related arguments aside from the aforementioned ``weighter`` and ``upscaler``.
 
@@ -4847,8 +4847,6 @@ these are the arguments that are available for use:
 
     scheduler-uri: str
     second-model-scheduler-uri: str
-    prompt-weighter-uri: str
-    second-model-prompt-weighter-uri: str
     width: int
     height: int
     batch-size: int
@@ -6670,7 +6668,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [66602283008414]
+            Value: [33218002396296]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

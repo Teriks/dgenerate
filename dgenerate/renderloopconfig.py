@@ -2020,5 +2020,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                 adetailer_mask_padding=ov('adetailer_mask_padding', self.adetailer_mask_paddings),
                 adetailer_mask_blur=ov('adetailer_mask_blur', self.adetailer_mask_blurs),
                 adetailer_mask_dilation=ov('adetailer_mask_dilation', self.adetailer_mask_dilations)):
-            arg.prompt.set_embedded_args_on(arg)
+            arg.prompt.set_embedded_args_on(
+                on_object=arg,
+                forbidden_checker=_pipelinewrapper.DiffusionArguments.prompt_embedded_arg_checker)
             yield arg

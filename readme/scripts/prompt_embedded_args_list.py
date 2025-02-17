@@ -23,4 +23,5 @@ supported_types = {
 
 for name, hint in hints.items():
     if any(hint is h for h in supported_types):
-        print(_textprocessing.dashup(name)+": "+supported_types[hint])
+        if not dgenerate.DiffusionArguments.prompt_embedded_arg_checker(name):
+            print(_textprocessing.dashup(name)+": "+supported_types[hint])
