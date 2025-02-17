@@ -4390,13 +4390,13 @@ to create good quality continuations of the text in your prompt automatically.
         Default value is 0.9
     
         The "random" argument specifies that instead of strictly combinatorial output, dynamicprompts should
-        produce N random variations of you prompt given the possibilities you have provided.
+        produce N random variations of your prompt given the possibilities you have provided.
     
         The "random_seed" argument can be used to specify a seed for just the "random" prompt generation, this
         overrides "seed".
     
         The "variations" argument specifies how many variations should be produced when "random" is set to true.
-        This argument cannot be used without specifying "random".
+        This argument cannot be used without specifying "random". The default value is 1.
     
         The "wildcards" argument can be used to specify a wildcards directory for dynamicprompt's wildcard syntax.
     
@@ -6668,7 +6668,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [33218002396296]
+            Value: [93373787292205]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

@@ -62,7 +62,7 @@ class DynamicPromptsPromptUpscaler(_promptupscaler.PromptUpscaler):
     attention added by "attention=True" The Default value is 0.9
 
     The "random" argument specifies that instead of strictly combinatorial
-    output, dynamicprompts should produce N random variations of you
+    output, dynamicprompts should produce N random variations of your
     prompt given the possibilities you have provided.
     
     The "random_seed" argument can be used to specify a seed for just the
@@ -70,7 +70,7 @@ class DynamicPromptsPromptUpscaler(_promptupscaler.PromptUpscaler):
 
     The "variations" argument specifies how many variations should
     be produced when "random" is set to true. This argument cannot
-    be used without specifying "random".
+    be used without specifying "random". The default value is 1.
 
     The "wildcards" argument can be used to specify a wildcards directory
     for dynamicprompt's wildcard syntax.
