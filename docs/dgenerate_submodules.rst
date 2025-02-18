@@ -19,6 +19,17 @@ dgenerate.batchprocess module
    :show-inheritance:
    :special-members: __call__, __init__
 
+
+dgenerate.devicecache module
+----------------------------
+
+.. automodule:: dgenerate.devicecache
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :special-members: __call__, __init__
+
+
 dgenerate.filecache module
 --------------------------
 
