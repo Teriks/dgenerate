@@ -31,14 +31,6 @@ import dgenerate.types as _types
 from dgenerate.plugin import PluginArg as _Pa
 
 
-def _cache_debug_hit(key, hit):
-    _memoize.simple_cache_hit_debug("Image Processor", key, hit)
-
-
-def _cache_debug_miss(key, new):
-    _memoize.simple_cache_miss_debug("Image Processor", key, new)
-
-
 _image_processor_cache = _memoize.create_object_cache(
     'image_processor',
     cache_type=_memory.SizedConstrainedObjectCache
@@ -86,22 +78,12 @@ class ImageProcessorLoader(_plugin.PluginLoader):
         """
         s = super()
 
-        @_memoize.memoize(_image_processor_cache,
-                          on_hit=_cache_debug_hit,
-                          on_create=_cache_debug_miss,
-                          exceptions={'self', 'device'})
-        def super_load(uri, **kwargs):
-            processor: _imageprocessor.ImageProcessor = typing.cast(
-                _imageprocessor.ImageProcessor, s.load(uri, **kwargs)
-            )
-            return processor, _memoize.CachedObjectMetadata(size=processor.size_estimate)
-
         if uri is None:
             raise ValueError('uri must not be None')
 
         if isinstance(uri, str):
             return typing.cast(
-                _imageprocessor.ImageProcessor, super_load(uri, device=device, **kwargs))
+                _imageprocessor.ImageProcessor, s.load(uri, device=device, **kwargs))
 
         paths = list(uri)
 
@@ -110,11 +92,11 @@ class ImageProcessorLoader(_plugin.PluginLoader):
 
         if len(paths) == 1:
             return typing.cast(
-                _imageprocessor.ImageProcessor, super_load(paths[0], device=device, **kwargs))
+                _imageprocessor.ImageProcessor, s.load(paths[0], device=device, **kwargs))
 
         return _imageprocessorchain.ImageProcessorChain(
             typing.cast(
-                _imageprocessor.ImageProcessor, super_load(i, device=device, **kwargs)) for i in paths)
+                _imageprocessor.ImageProcessor, s.load(i, device=device, **kwargs)) for i in paths)
 
 
 __all__ = _types.module_all()

@@ -40,6 +40,14 @@ import dgenerate.memoize as _memoize
 import dgenerate.devicecache as _devicecache
 
 
+def _cache_debug_hit(key, hit):
+    _memoize.simple_cache_hit_debug("Image Processor Model", key, hit)
+
+
+def _cache_debug_miss(key, new):
+    _memoize.simple_cache_miss_debug("Image Processor Model", key, new)
+
+
 class ImageProcessor(_plugin.Plugin):
     """
     Abstract base class for image processor implementations.
@@ -134,6 +142,30 @@ class ImageProcessor(_plugin.Plugin):
         :return: ``['RGB']``
         """
         return ['RGB']
+
+    def load_model_cached(self, model_tag, estimated_size, method: typing.Callable):
+        """
+        Load a potentially large model into the CPU side ``image_processor`` object cache.
+
+        :param model_tag: A unique string within the context of the image
+            processor implementation constructor.
+        :param estimated_size: Estimated size of the model in RAM.
+        :param method: A method which loads and returns the model object.
+        :return: The loaded model object
+        """
+        cache = _memoize.get_object_cache('image_processor')
+
+        @_memoize.memoize(
+            cache,
+            on_hit=_cache_debug_hit,
+            on_create=_cache_debug_miss)
+        def load_cached(
+                loaded_by_name=self.loaded_by_name,
+                model_tag=model_tag
+        ):
+            return method(), _memoize.CachedObjectMetadata(size=estimated_size)
+
+        return load_cached()
 
     def set_size_estimate(self, size_bytes: int):
         """

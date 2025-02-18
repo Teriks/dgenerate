@@ -94,7 +94,10 @@ class LineArtAnimeProcessor(_imageprocessor.ImageProcessor):
             self._detect_resolution = None
 
         self.set_size_estimate(218 * (1000**2))  # 218 MB netG.pth
-        self._lineart = _cna.LineartAnimeDetector.from_pretrained("lllyasviel/Annotators")
+        self._lineart = self.load_model_cached(
+            "lllyasviel/Annotators",
+            self.size_estimate,
+            lambda: _cna.LineartAnimeDetector.from_pretrained("lllyasviel/Annotators"))
         self.register_module(self._lineart)
 
     def __str__(self):

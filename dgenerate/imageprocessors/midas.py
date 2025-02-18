@@ -97,7 +97,12 @@ class MidasDepthProcessor(_imageprocessor.ImageProcessor):
             self._detect_resolution = None
 
         self.set_size_estimate(493 * (1000 ** 2))  # 493 MB dpt_hybrid-midas-501f0c75.pt
-        self._midas = _cna.MidasDetector.from_pretrained("lllyasviel/Annotators")
+
+        self._midas = self.load_model_cached(
+            "lllyasviel/Annotators",
+            self.size_estimate,
+            lambda: _cna.MidasDetector.from_pretrained("lllyasviel/Annotators"))
+
         self.register_module(self._midas)
 
     def __str__(self):

@@ -99,7 +99,10 @@ class LineArtProcessor(_imageprocessor.ImageProcessor):
             self._detect_resolution = None
 
         self.set_size_estimate(34.4 * (1000**2))  # 34.4 MB sk_model.pth + sk_model2.pth
-        self._lineart = _cna.LineartDetector.from_pretrained("lllyasviel/Annotators")
+        self._lineart = self.load_model_cached(
+            "lllyasviel/Annotators",
+            self.size_estimate,
+            lambda: _cna.LineartDetector.from_pretrained("lllyasviel/Annotators"))
         self.register_module(self._lineart)
 
     def __str__(self):

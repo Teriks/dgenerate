@@ -102,7 +102,10 @@ class LeresDepthProcessor(_imageprocessor.ImageProcessor):
         # this is the size of res101.pth['depth_model'] + latest_net_G.pth in bytes
         self.set_size_estimate(780273156)
 
-        self._leres = _cna.LeresDetector.from_pretrained("lllyasviel/Annotators")
+        self._leres = self.load_model_cached(
+            "lllyasviel/Annotators",
+            self.size_estimate,
+            lambda: _cna.LeresDetector.from_pretrained("lllyasviel/Annotators"))
         self.register_module(self._leres)
 
     def __str__(self):

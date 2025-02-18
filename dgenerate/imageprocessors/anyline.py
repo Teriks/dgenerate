@@ -114,8 +114,11 @@ class AnylineProcessor(_imageprocessor.ImageProcessor):
 
         self.set_size_estimate(248 * 1000)  # 248 KB -> bytes
 
-        self._anyline = _cna.AnylineDetector.from_pretrained(
-            'TheMistoAI/MistoLine', filename='MTEED.pth', subfolder='Anyline')
+        self._anyline = self.load_model_cached(
+            "TheMistoAI/MistoLine;weight-name=MTEED.pth;subfolder=Anyline",
+            self.size_estimate,
+            lambda: _cna.AnylineDetector.from_pretrained(
+                'TheMistoAI/MistoLine', filename='MTEED.pth', subfolder='Anyline'))
 
         self.register_module(self._anyline)
 

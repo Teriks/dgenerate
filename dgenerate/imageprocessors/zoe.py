@@ -89,7 +89,11 @@ class ZoeDepthProcessor(_imageprocessor.ImageProcessor):
             self._detect_resolution = None
 
         self.set_size_estimate(1443288172)  # 1.443288172 GB ZoeD_M12_N.pt['model']
-        self._zoe = _cna.ZoeDetector.from_pretrained("lllyasviel/Annotators")
+        self._zoe = self.load_model_cached(
+            "lllyasviel/Annotators",
+            self.size_estimate,
+            lambda: _cna.ZoeDetector.from_pretrained("lllyasviel/Annotators")
+        )
         self.register_module(self._zoe)
 
     def __str__(self):
