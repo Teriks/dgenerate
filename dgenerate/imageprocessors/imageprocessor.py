@@ -48,6 +48,12 @@ def _cache_debug_miss(key, new):
     _memoize.simple_cache_miss_debug("Image Processor Model", key, new)
 
 
+_image_processor_cache = _memoize.create_object_cache(
+    'image_processor',
+    cache_type=_memory.SizedConstrainedObjectCache
+)
+
+
 class ImageProcessor(_plugin.Plugin):
     """
     Abstract base class for image processor implementations.
@@ -153,10 +159,9 @@ class ImageProcessor(_plugin.Plugin):
         :param method: A method which loads and returns the model object.
         :return: The loaded model object
         """
-        cache = _memoize.get_object_cache('image_processor')
 
         @_memoize.memoize(
-            cache,
+            _image_processor_cache,
             on_hit=_cache_debug_hit,
             on_create=_cache_debug_miss)
         def load_cached(
@@ -187,11 +192,7 @@ class ImageProcessor(_plugin.Plugin):
 
         self.__size_estimate = int(size_bytes)
 
-        # noinspection PyTypeChecker
-        image_processor_cache: _memory.SizedConstrainedObjectCache \
-            = _memoize.get_object_cache('image_processor')
-
-        image_processor_cache.enforce_cpu_mem_constraints(
+        _image_processor_cache.enforce_cpu_mem_constraints(
             _constants.IMAGE_PROCESSOR_CACHE_MEMORY_CONSTRAINTS,
             size_var='processor_size',
             new_object_size=self.__size_estimate
@@ -614,16 +615,12 @@ class ImageProcessor(_plugin.Plugin):
         _devicecache.clear_device_cache(self.device)
 
     def __to(self, device: torch.device | str, attempt=0):
-        # noinspection PyTypeChecker
-        image_processor_cache: _memory.SizedConstrainedObjectCache \
-            = _memoize.get_object_cache('image_processor')
-
         device = torch.device(device)
 
         if device.type != 'cpu':
-            image_processor_cache.size -= self.__size_estimate
+            _image_processor_cache.size -= self.__size_estimate
         else:
-            image_processor_cache.size += self.__size_estimate
+            _image_processor_cache.size += self.__size_estimate
 
         self.__modules_device = device
 
