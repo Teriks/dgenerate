@@ -25,16 +25,22 @@ import transformers
 import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
-import dgenerate.pipelinewrapper.cache as _cache
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.util as _util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
+from dgenerate.pipelinewrapper import constants as _constants
+from dgenerate.pipelinewrapper.uris import util as _uri_util
 
 _image_encoder_uri_parser = _textprocessing.ConceptUriParser(
     'ImageEncoder', ['revision', 'variant', 'subfolder', 'dtype'])
+
+
+_image_encoder_cache = _d_memoize.create_object_cache(
+    'image_encoder', cache_type=_memory.SizedConstrainedObjectCache
+)
 
 
 class ImageEncoderUri:
@@ -116,7 +122,7 @@ class ImageEncoderUri:
              use_auth_token: _types.OptionalString = None,
              local_files_only: bool = False,
              sequential_cpu_offload_member: bool = False,
-             model_cpu_offload_member: bool = False):
+             model_cpu_offload_member: bool = False) -> transformers.CLIPVisionModelWithProjection:
         """
         Load an Image Encoder Model of type :py:class:`transformers.CLIPVisionModelWithProjection`
 
@@ -146,7 +152,14 @@ class ImageEncoderUri:
             raise _exceptions.ImageEncoderUriLoadError(
                 f'error loading Image Encoder "{self.model}": {e}')
 
-    @_memoize(_cache._IMAGE_ENCODER_CACHE,
+    @staticmethod
+    def _enforce_cache_size(new_image_encoder_size):
+        _image_encoder_cache.enforce_cpu_mem_constraints(
+            _constants.IMAGE_ENCODER_CACHE_MEMORY_CONSTRAINTS,
+            size_var='image_encoder_size',
+            new_object_size=new_image_encoder_size)
+
+    @_memoize(_image_encoder_cache,
               exceptions={'local_files_only'},
               hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _d_memoize.struct_hasher}),
               on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("ImageEncoder", key, hit),
@@ -156,7 +169,7 @@ class ImageEncoderUri:
               use_auth_token: _types.OptionalString = None,
               local_files_only: bool = False,
               sequential_cpu_offload_member: bool = False,
-              model_cpu_offload_member: bool = False):
+              model_cpu_offload_member: bool = False) -> transformers.CLIPVisionModelWithProjection:
 
         if sequential_cpu_offload_member and model_cpu_offload_member:
             # these are used for cache differentiation only
@@ -178,7 +191,7 @@ class ImageEncoderUri:
             use_auth_token=use_auth_token
         )
 
-        _cache.enforce_image_encoder_cache_constraints(new_image_encoder_size=estimated_memory_use)
+        self._enforce_cache_size(estimated_memory_use)
 
         if self.subfolder:
 
@@ -199,10 +212,12 @@ class ImageEncoderUri:
         _messages.debug_log('Estimated Image Encoder Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_use))
 
-        _cache.image_encoder_create_update_cache_info(image_encoder=image_encoder,
-                                                      estimated_size=estimated_memory_use)
+        self._enforce_cache_size(estimated_memory_use)
 
-        return image_encoder
+        _uri_util._patch_module_to_for_sized_cache(_image_encoder_cache, image_encoder)
+
+        # noinspection PyTypeChecker
+        return image_encoder, _d_memoize.CachedObjectMetadata(size=estimated_memory_use)
 
     @staticmethod
     def parse(uri: _types.Uri) -> 'ImageEncoderUri':

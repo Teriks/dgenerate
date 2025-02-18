@@ -56,33 +56,33 @@ stabilityai/stable-diffusion-2-1 --prompts "a martian riding a horse"
 # Configuration directives provide extra functionality in a config, a directive
 # invocation always starts with a backslash
 
-# A clear model cache directive can be used inbetween invocations if cached models that
+# A clear object cache directive can be used inbetween invocations if cached models that
 # are no longer needed in your generation pipeline start causing out of memory issues
 
-\clear_model_cache
+\clear_object_cache
 
 # Additionally these other directives exist to clear user loaded models
 # out of dgenerates in memory cache individually
 
-# Clear specifically diffusion pipelines
+# Clear specifically torch diffusion pipelines
 
-\clear_pipeline_cache
+\clear_object_cache pipeline
 
 # Clear specifically user specified UNet models
 
-\clear_unet_cache
+\clear_object_cache unet
 
 # Clear specifically user specified VAE models
 
-\clear_vae_cache
+\clear_object_cache vae
 
 # Clear specifically user specified Text Encoder models
 
-\clear_text_encoder_cache
+\clear_object_cache text_encoder
 
 # Clear specifically ControlNet models
 
-\clear_controlnet_cache
+\clear_object_cache controlnet
 
 
 # This model was used before but will have to be fully instantiated from scratch again

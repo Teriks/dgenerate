@@ -33,11 +33,11 @@ import dgenerate.imageprocessors.constants as _constants
 import dgenerate.imageprocessors.exceptions as _exceptions
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
-import dgenerate.pipelinewrapper.cache as _m_cache
-import dgenerate.pipelinewrapper.pipelines as _pipelines
 import dgenerate.pipelinewrapper.util as _util
 import dgenerate.plugin as _plugin
 import dgenerate.types
+import dgenerate.memoize as _memoize
+import dgenerate.devicecache as _devicecache
 
 
 class ImageProcessor(_plugin.Plugin):
@@ -155,18 +155,28 @@ class ImageProcessor(_plugin.Plugin):
 
         self.__size_estimate = int(size_bytes)
 
+        # noinspection PyTypeChecker
+        image_processor_cache: _memory.SizedConstrainedObjectCache \
+            = _memoize.get_object_cache('image_processor')
+
+        image_processor_cache.enforce_cpu_mem_constraints(
+            _constants.IMAGE_PROCESSOR_CACHE_MEMORY_CONSTRAINTS,
+            size_var='processor_size',
+            new_object_size=self.__size_estimate
+        )
+
         if (_memory.memory_constraints(
-                _constants.IMAGE_PROCESSOR_MEMORY_CONSTRAINTS,
+                _constants.IMAGE_PROCESSOR_CPU_CACHE_GC_CONSTRAINTS,
                 extra_vars={'processor_size': self.__size_estimate})):
             # wipe out the cpu side diffusion pipelines cache
             # and do a GC pass to free up cpu side memory since
             # we are nearly out of memory anyway
 
             _messages.debug_log(
-                f'Image processor "{self.__class__.__name__}" is clearing the entire CPU side diffusion '
-                f'model cache due to CPU side memory constraint evaluating to to True.')
+                f'Image processor "{self.__class__.__name__}" is clearing the CPU side object '
+                f'cache due to CPU side memory constraint evaluating to to True.')
 
-            _m_cache.clear_model_cache()
+            _memoize.clear_object_caches()
 
     @property
     def size_estimate(self) -> int:
@@ -537,7 +547,6 @@ class ImageProcessor(_plugin.Plugin):
                 _constants.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS,
                 extra_vars={'processor_size': self.size_estimate},
                 device=device)):
-
             # if there is a diffusion pipeline cached in
             # VRAM on the device we are moving to, it is guaranteed
             # to be a huge chunk of VRAM.
@@ -556,31 +565,33 @@ class ImageProcessor(_plugin.Plugin):
             # execution speed for the next invocation of the diffusion
             # model
 
-            active_pipe = _pipelines.get_last_called_pipeline()
+            import dgenerate.objectcache as _objectcache
 
-            if active_pipe is not None \
-                    and _pipelines.get_torch_device(active_pipe).index == device.index:
-                # get rid of this reference immediately
-                # noinspection PyUnusedLocal
-                active_pipe = None
+            _messages.debug_log(
+                f'Image processor "{self.__class__.__name__}" is clearing the GPU side object '
+                f'cache for device {device} due to GPU side memory constraint evaluating to to True.')
 
-                _messages.debug_log(
-                    f'Image processor "{self.__class__.__name__}" is attempting to evacuate any previously '
-                    f'called diffusion pipeline in VRAM due to cuda memory constraint evaluating '
-                    f'to True.')
-
-                # potentially free up VRAM on the GPU we are
-                # about to move to
-                _pipelines.destroy_last_called_pipeline()
+            _devicecache.clear_device_cache(device)
 
     def __flush_diffusion_pipeline_after_oom(self):
+
         _messages.debug_log(
-            f'Image processor "{self.__class__.__name__}" is attempting to evacuate any previously '
-            f'called diffusion pipeline in VRAM due to initial cuda out of memory condition.')
-        _pipelines.destroy_last_called_pipeline()
+            f'Image processor "{self.__class__.__name__}" is clearing the GPU side object '
+            f'cache for device {self.device} due to VRAM out of memory condition.')
+
+        _devicecache.clear_device_cache(self.device)
 
     def __to(self, device: torch.device | str, attempt=0):
+        # noinspection PyTypeChecker
+        image_processor_cache: _memory.SizedConstrainedObjectCache \
+            = _memoize.get_object_cache('image_processor')
+
         device = torch.device(device)
+
+        if device.type != 'cpu':
+            image_processor_cache.size -= self.__size_estimate
+        else:
+            image_processor_cache.size += self.__size_estimate
 
         self.__modules_device = device
 
@@ -635,7 +646,6 @@ class ImageProcessor(_plugin.Plugin):
         :param device: The device string, or torch device object
         :return: the image processor itself
         """
-
         return self.__to(device)
 
 

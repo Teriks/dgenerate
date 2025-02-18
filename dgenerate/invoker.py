@@ -389,7 +389,8 @@ def invoke_dgenerate_events(
         "transformer_cache_memory_constraints": "_pipelinewrapper.TRANSFORMER_CACHE_MEMORY_CONSTRAINTS",
         "text_encoder_cache_memory_constraints": "_pipelinewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS",
         "image_encoder_cache_memory_constraints": "_pipelinewrapper.IMAGE_ENCODER_CACHE_MEMORY_CONSTRAINTS",
-        "image_processor_memory_constraints": "_imageprocessors.IMAGE_PROCESSOR_MEMORY_CONSTRAINTS",
+        "image_processor_cpu_cache_gc_constraints": "_imageprocessors.IMAGE_PROCESSOR_CPU_CACHE_GC_CONSTRAINTS",
+        "image_processor_cache_memory_constraints": "_imageprocessors.IMAGE_PROCESSOR_CACHE_MEMORY_CONSTRAINTS",
         "image_processor_cuda_memory_constraints": "_imageprocessors.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS"
     }
 

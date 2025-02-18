@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import collections.abc
+import gc
 import glob
 import inspect
 import os
@@ -43,11 +44,14 @@ import dgenerate.batchprocess.util as _util
 import dgenerate.files as _files
 import dgenerate.invoker as _invoker
 import dgenerate.messages as _messages
-import dgenerate.pipelinewrapper as _pipelinewrapper
 import dgenerate.plugin as _plugin
 import dgenerate.renderloop as _renderloop
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
+import dgenerate.memoize as _memoize
+import dgenerate.devicecache as _devicecache
+import dgenerate.memory as _memory
+import dgenerate.pipelinewrapper.util as _pipelinewraper_util
 
 
 class ConfigRunner(_batchprocessor.BatchProcessor):
@@ -180,37 +184,9 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'image_processor_help': self._image_processor_help_directive,
             'prompt_weighter_help': self._prompt_weighter_help_directive,
             'prompt_upscaler_help': self._prompt_upscaler_help_directive,
-            'clear_model_cache': return_zero(
-                _pipelinewrapper.clear_model_cache,
-                help_text='Clear all user specified models from the in memory cache.'),
-            'clear_pipeline_cache': return_zero(
-                _pipelinewrapper.clear_pipeline_cache,
-                help_text='Clear all diffusers pipelines from the in memory cache, '
-                          'this will not clear user specified VAEs, UNets, and ControlNet models, '
-                          'just pipeline objects which may or may not have automatically loaded those for you.'),
-            'clear_unet_cache': return_zero(
-                _pipelinewrapper.clear_unet_cache,
-                help_text='Clear all user specified UNet models from the in memory cache.'),
-            'clear_vae_cache': return_zero(
-                _pipelinewrapper.clear_vae_cache,
-                help_text='Clear all user specified VAE models from the in memory cache.'),
-            'clear_text_encoder_cache': return_zero(
-                _pipelinewrapper.clear_text_encoder_cache,
-                help_text='Clear all user specified Text Encoder models from the in memory cache.'),
-            'clear_controlnet_cache': return_zero(
-                _pipelinewrapper.clear_controlnet_cache,
-                help_text='Clear all user specified ControlNet models from the in memory cache.'),
-            'clear_adapter_cache': return_zero(
-                _pipelinewrapper.clear_adapter_cache,
-                help_text='Clear all user specified T2I adapter models from the in memory cache.'),
-            'clear_image_encoder_cache': return_zero(
-                _pipelinewrapper.clear_image_encoder_cache,
-                help_text='Clear all user specified ImageEncoder models from the in memory cache.'
-            ),
-            'clear_transformer_cache': return_zero(
-                _pipelinewrapper.clear_transformer_cache,
-                help_text='Clear all user specified Transformer models from the in memory cache.'
-            ),
+            'clear_object_cache': self._clear_object_cache,
+            'list_object_caches': self._list_object_caches,
+            'clear_device_cache': self._clear_device_cache,
             'save_modules': self._save_modules_directive,
             'use_modules': self._use_modules_directive,
             'clear_modules': self._clear_modules_directive,
@@ -283,6 +259,69 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                 f'\\exit return code must be an integer value, received: {args[0]}')
 
         sys.exit(return_code)
+
+    @staticmethod
+    def _clear_device_cache(args: collections.abc.Sequence[str]):
+        """
+        Clear any objects cached by dgenerate that may actively exist on an accelerator device.
+
+        You must specify the device or devices as arguments.
+        """
+
+        if len(args) < 1:
+            raise _batchprocessor.BatchProcessError(
+                f'\\clear_device_cache must receive at least one argument, for example: cuda:0')
+
+        for arg in args:
+            if not _pipelinewraper_util.is_valid_device_string(arg):
+                raise _batchprocessor.BatchProcessError(
+                    f'\\clear_device_cache unknown device: {arg}')
+
+        for arg in set(args):
+            _devicecache.clear_device_cache(arg)
+
+        _memory.torch_gc()
+
+        return 0
+
+    @staticmethod
+    def _clear_object_cache(args: collections.abc.Sequence[str]):
+        """
+        Clear a specific dgenerate object cache, such as: unet, vae, text_encoder, etc.
+
+        Calling with no arguments clears all object caches.
+
+        See: \\list_object_caches, for a list of valid object cache names.
+        """
+
+        if len(args) == 0:
+            _memoize.clear_object_caches()
+        else:
+
+            valid_names = _memoize.get_object_cache_names()
+            for arg in args:
+                if arg not in valid_names:
+                    raise _batchprocessor.BatchProcessError(
+                        f'\\clear_object_cache, object cache "{arg}" does not exist.')
+
+            for arg in args:
+                _memoize.get_object_cache(arg).clear(collect=False)
+
+            gc.collect()
+
+        return 0
+
+    @staticmethod
+    def _list_object_caches(args: collections.abc.Sequence[str]):
+        """
+        List object cache names that may be cleared with \\clear_object_cache.
+        """
+
+        _messages.log('Object cache names:\n')
+        for object_cache in _memoize.get_object_cache_names():
+            _messages.log(' ' * 4 + '"' + object_cache + '"')
+
+        return 0
 
     def _save_modules_directive(self, args: collections.abc.Sequence[str]):
         """

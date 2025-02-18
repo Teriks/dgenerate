@@ -27,13 +27,14 @@ import transformers.models.clip
 import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
-import dgenerate.pipelinewrapper.cache as _cache
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.util as _util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
+import dgenerate.pipelinewrapper.constants as _constants
+from dgenerate.pipelinewrapper.uris import util as _uri_util
 
 _text_encoder_uri_parser = _textprocessing.ConceptUriParser(
     'TextEncoder', [
@@ -44,6 +45,10 @@ _text_encoder_uri_parser = _textprocessing.ConceptUriParser(
         'dtype',
         'quantizer'
     ]
+)
+
+_text_encoder_cache = _d_memoize.create_object_cache(
+    'text_encoder', cache_type=_memory.SizedConstrainedObjectCache
 )
 
 
@@ -207,7 +212,14 @@ class TextEncoderUri:
             raise _exceptions.TextEncoderUriLoadError(
                 f'error loading text encoder "{self.model}": {e}')
 
-    @_memoize(_cache._TEXT_ENCODER_CACHE,
+    @staticmethod
+    def _enforce_cache_size(new_text_encoder_size):
+        _text_encoder_cache.enforce_cpu_mem_constraints(
+            _constants.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS,
+            size_var='text_encoder_size',
+            new_object_size=new_text_encoder_size)
+
+    @_memoize(_text_encoder_cache,
               exceptions={'local_files_only'},
               hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _d_memoize.struct_hasher}),
               on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Torch TextEncoder", key, hit),
@@ -273,9 +285,7 @@ class TextEncoderUri:
                 use_auth_token=use_auth_token
             )
 
-            _cache.enforce_text_encoder_cache_constraints(
-                new_text_encoder_size=estimated_memory_use
-            )
+            self._enforce_cache_size(estimated_memory_use)
 
             try:
                 text_encoder = _util.single_file_load_sub_module(
@@ -310,8 +320,7 @@ class TextEncoderUri:
                 use_auth_token=use_auth_token
             )
 
-            _cache.enforce_text_encoder_cache_constraints(
-                new_text_encoder_size=estimated_memory_use)
+            self._enforce_cache_size(estimated_memory_use)
 
             text_encoder = encoder.from_pretrained(
                 model_path,
@@ -327,11 +336,10 @@ class TextEncoderUri:
         _messages.debug_log('Estimated Torch TextEncoder Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_use))
 
-        _cache.text_encoder_create_update_cache_info(
-            text_encoder=text_encoder,
-            estimated_size=estimated_memory_use)
+        _uri_util._patch_module_to_for_sized_cache(_text_encoder_cache, text_encoder)
 
-        return text_encoder
+        # noinspection PyTypeChecker
+        return text_encoder, _d_memoize.CachedObjectMetadata(size=estimated_memory_use)
 
     @staticmethod
     def parse(uri: _types.Uri) -> 'TextEncoderUri':

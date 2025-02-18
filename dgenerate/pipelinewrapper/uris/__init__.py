@@ -62,4 +62,9 @@ from .transformeruri import TransformerUri
 from .uneturi import UNetUri
 from .vaeuri import VAEUri
 
+from .util import (
+    uri_hash_with_parser,
+    uri_list_hash_with_parser
+)
+
 __all__ = _types.module_all()

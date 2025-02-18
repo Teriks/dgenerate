@@ -39,7 +39,6 @@ import dgenerate.extras.kolors
 import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
-import dgenerate.pipelinewrapper.cache as _cache
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.schedulers as _schedulers
 import dgenerate.pipelinewrapper.uris as _uris
@@ -48,6 +47,7 @@ import dgenerate.promptweighters as _promptweighters
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
+from dgenerate.pipelinewrapper import constants as _constants
 
 
 class UnsupportedPipelineConfigError(Exception):
@@ -67,6 +67,11 @@ class InvalidModelFileError(Exception):
     model which are considered primary models.
     """
     pass
+
+
+_torch_pipeline_cache = _d_memoize.create_object_cache(
+    'pipeline', cache_type=_memory.SizedConstrainedObjectCache
+)
 
 
 def _disabled_safety_checker(images, clip_input):
@@ -496,10 +501,35 @@ def _pipeline_to(pipeline, device: torch.device | str | None):
             f'pipeline_on_device={pipeline_on_device}, all_modules_on_device={all_modules_on_device}.')
 
     if pipeline_device != to_device:
-        if to_device.type != 'cpu':
-            _cache.pipeline_off_cpu_update_cache_info(pipeline)
-        else:
-            _cache.pipeline_to_cpu_update_cache_info(pipeline)
+        try:
+            cache_metadata = _torch_pipeline_cache.get_metadata(pipeline)
+
+            if to_device.type != 'cpu':
+                _torch_pipeline_cache.size -= cache_metadata.size
+
+                _messages.debug_log(
+                    f'Cached {_types.class_and_id_string(pipeline)} Size = '
+                    f'{cache_metadata} Bytes '
+                    f'({_memory.bytes_best_human_unit(cache_metadata.size)}) '
+                    f'is leaving CPU side memory, '
+                    f'cache size is now '
+                    f'{cache_metadata.size} Bytes '
+                    f'({_memory.bytes_best_human_unit(cache_metadata.size)})')
+
+            else:
+                _messages.debug_log(
+                    f'Cached {_types.class_and_id_string(pipeline)} Size = '
+                    f'{cache_metadata} Bytes '
+                    f'({_memory.bytes_best_human_unit(cache_metadata.size)}) '
+                    f'is entering CPU side memory, '
+                    f'cache size is now '
+                    f'{cache_metadata.size} Bytes '
+                    f'({_memory.bytes_best_human_unit(cache_metadata.size)})')
+
+                _torch_pipeline_cache.size += cache_metadata.size
+        except _d_memoize.ObjectCacheKeyError:
+            # does not exist in the cache
+            pass
 
     for name, value in get_torch_pipeline_modules(pipeline).items():
 
@@ -540,22 +570,6 @@ def _pipeline_to(pipeline, device: torch.device | str | None):
                 f'pipeline_to() Not moving module "{name} = {value.__class__.__name__}" to "{device}" '
                 f'as it has cpu offload enabled and can only move to cpu.')
             continue
-
-        cache_meth = None
-        if current_device.type == 'cpu' and to_device.type != 'cpu':
-            cache_meth = '_off_cpu_update_cache_info'
-        elif current_device.type != 'cpu' and to_device.type == 'cpu':
-            cache_meth = '_to_cpu_update_cache_info'
-
-        if cache_meth:
-            if name.startswith('text_encoder'):
-                getattr(_cache, 'text_encoder' + cache_meth)(value)
-            else:
-                try:
-                    getattr(_cache, name + cache_meth)(value)
-                except AttributeError:
-                    _messages.debug_log(
-                        f'pipeline_to() No cache update method for module "{name}".')
 
         _messages.debug_log(
             f'pipeline_to() Moving module "{name}" of pipeline {_types.fullname(pipeline)} '
@@ -1279,21 +1293,21 @@ def _torch_args_hasher(args):
     quantizer_uri = args['quantizer_uri']
 
     custom_hashes = {
-        'unet_uri': _cache.uri_hash_with_parser(_uris.UNetUri.parse),
-        'transformer_uri': _cache.uri_hash_with_parser(_uris.TransformerUri),
-        'vae_uri': _cache.uri_hash_with_parser(_uris.VAEUri.parse),
-        'image_encoder_uri': _cache.uri_hash_with_parser(_uris.ImageEncoderUri),
-        'lora_uris': _cache.uri_list_hash_with_parser(_uris.LoRAUri.parse),
-        'ip_adapter_uris': _cache.uri_list_hash_with_parser(_uris.IPAdapterUri),
-        'textual_inversion_uris': _cache.uri_list_hash_with_parser(_uris.TextualInversionUri.parse),
-        'text_encoder_uris': _cache.uri_list_hash_with_parser(text_encoder_uri_parse),
-        'controlnet_uris': _cache.uri_list_hash_with_parser(
+        'unet_uri': _uris.uri_hash_with_parser(_uris.UNetUri.parse),
+        'transformer_uri': _uris.uri_hash_with_parser(_uris.TransformerUri),
+        'vae_uri': _uris.uri_hash_with_parser(_uris.VAEUri.parse),
+        'image_encoder_uri': _uris.uri_hash_with_parser(_uris.ImageEncoderUri),
+        'lora_uris': _uris.uri_list_hash_with_parser(_uris.LoRAUri.parse),
+        'ip_adapter_uris': _uris.uri_list_hash_with_parser(_uris.IPAdapterUri),
+        'textual_inversion_uris': _uris.uri_list_hash_with_parser(_uris.TextualInversionUri.parse),
+        'text_encoder_uris': _uris.uri_list_hash_with_parser(text_encoder_uri_parse),
+        'controlnet_uris': _uris.uri_list_hash_with_parser(
             lambda s: _uris.ControlNetUri.parse(s, model_type=args['model_type']),
             exclude={'scale', 'start', 'end'}),
-        't2i_adapter_uris': _cache.uri_list_hash_with_parser(_uris.T2IAdapterUri.parse,
-                                                             exclude={'scale'}),
+        't2i_adapter_uris': _uris.uri_list_hash_with_parser(_uris.T2IAdapterUri.parse,
+                                                            exclude={'scale'}),
         'quantizer_uri':
-            _cache.uri_hash_with_parser(
+            _uris.uri_hash_with_parser(
                 _util.get_quantizer_uri_class(quantizer_uri).parse)
             if quantizer_uri else lambda x: None
     }
@@ -1837,9 +1851,17 @@ def get_torch_pipeline_class(
     return pipeline_class
 
 
-@_memoize(_cache._PIPELINE_CACHE,
+def _enforce_torch_pipeline_cache_size(new_pipeline_size):
+    _torch_pipeline_cache.enforce_cpu_mem_constraints(
+        _constants.PIPELINE_CACHE_MEMORY_CONSTRAINTS,
+        size_var='pipeline_size',
+        new_object_size=new_pipeline_size)
+
+
+@_memoize(_torch_pipeline_cache,
           exceptions={'local_files_only'},
           hasher=_torch_args_hasher,
+          extra_identities=[lambda m: m.pipeline],
           on_hit=_torch_on_hit,
           on_create=_torch_on_create)
 def _create_torch_diffusion_pipeline(
@@ -2040,8 +2062,7 @@ def _create_torch_diffusion_pipeline(
         f'Creating Torch Pipeline: "{pipeline_class.__name__}", '
         f'Estimated CPU Side Memory Use: {_memory.bytes_best_human_unit(estimated_memory_usage)}')
 
-    _cache.enforce_pipeline_cache_constraints(
-        new_pipeline_size=estimated_memory_usage)
+    _enforce_torch_pipeline_cache_size(estimated_memory_usage)
 
     # ControlNet and VAE loading
 
@@ -2529,10 +2550,9 @@ def _create_torch_diffusion_pipeline(
         elif model_cpu_offload:
             enable_model_cpu_offload(pipeline, device)
 
-    _cache.pipeline_create_update_cache_info(pipeline=pipeline,
-                                             estimated_size=estimated_memory_usage)
     _messages.debug_log(f'Finished Creating Torch Pipeline: "{pipeline_class.__name__}"')
 
+    # noinspection PyTypeChecker
     return TorchPipelineCreationResult(
         model_path=model_path,
         pipeline=pipeline,
@@ -2545,7 +2565,7 @@ def _create_torch_diffusion_pipeline(
         parsed_textual_inversion_uris=parsed_textual_inversion_uris,
         parsed_controlnet_uris=parsed_controlnet_uris,
         parsed_t2i_adapter_uris=parsed_t2i_adapter_uris
-    )
+    ), _d_memoize.CachedObjectMetadata(size=estimated_memory_usage)
 
 
 __all__ = _types.module_all()

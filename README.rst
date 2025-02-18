@@ -237,7 +237,7 @@ Help Output
                      [-ifs INTEGER [INTEGER ...]] [-mc EXPR [EXPR ...]] [-pmc EXPR [EXPR ...]]
                      [-umc EXPR [EXPR ...]] [-vmc EXPR [EXPR ...]] [-cmc EXPR [EXPR ...]] [-tmc EXPR [EXPR ...]]
                      [-iemc EXPR [EXPR ...]] [-amc EXPR [EXPR ...]] [-tfmc EXPR [EXPR ...]]
-                     [-ipmc EXPR [EXPR ...]] [-ipcc EXPR [EXPR ...]]
+                     [-ipcgc EXPR [EXPR ...]] [-ipmc EXPR [EXPR ...]] [-ipcc EXPR [EXPR ...]]
                      model_path
     
     Batch image generation and manipulation tool supporting Stable Diffusion and related techniques /
@@ -1580,12 +1580,11 @@ Help Output
             quality and or change image content. (default: [30])
             ----------------------------------------------------
       -mc EXPR [EXPR ...], --cache-memory-constraints EXPR [EXPR ...]
-            Cache constraint expressions describing when to clear all model caches automatically
-            (DiffusionPipeline, UNet, VAE, ControlNet, and Text Encoder) considering current memory usage. If
-            any of these constraint expressions are met all models cached in memory will be cleared. Example,
-            and default value: "used_percent > 70" For Syntax See: [https://dgenerate.readthedocs.io/en/v4.5.1/d
-            generate_submodules.html#dgenerate.pipelinewrapper.CACHE_MEMORY_CONSTRAINTS]
-            ----------------------------------------------------------------------------
+            Cache constraint expressions describing when to clear all object caches automatically considering
+            current memory usage. If any of these constraint expressions are met all objects in memory will be
+            cleared. Example, and default value: "used_percent > 70" For Syntax See: [https://dgenerate.readthed
+            ocs.io/en/v4.5.1/dgenerate_submodules.html#dgenerate.pipelinewrapper.CACHE_MEMORY_CONSTRAINTS]
+            ----------------------------------------------------------------------------------------------
       -pmc EXPR [EXPR ...], --pipeline-cache-memory-constraints EXPR [EXPR ...]
             Cache constraint expressions describing when to automatically clear the in memory DiffusionPipeline
             cache considering current memory usage, and estimated memory usage of new models that are about to
@@ -1650,14 +1649,22 @@ Help Output
             Syntax See: [https://dgenerate.readthedocs.io/en/v4.5.1/dgenerate_submodules.html#dgenerate.pipeline
             wrapper.TRANSFORMER_CACHE_MEMORY_CONSTRAINTS]
             ---------------------------------------------
-      -ipmc EXPR [EXPR ...], --image-processor-memory-constraints EXPR [EXPR ...]
-            Cache constraint expressions describing when to automatically clear the entire in memory diffusion
-            model cache considering current memory usage, and estimated memory usage of new image processor
-            models that are about to enter memory. If any of these constraint expressions are met all diffusion
-            related models cached in memory will be cleared. Example, and default value: "processor_size >
-            (available * 0.70)" For Syntax See: [https://dgenerate.readthedocs.io/en/v4.5.1/dgenerate_submodules
-            .html#dgenerate.imageprocessors.IMAGE_PROCESSOR_MEMORY_CONSTRAINTS]
-            -------------------------------------------------------------------
+      -ipcgc EXPR [EXPR ...], --image-processor-cpu-cache-gc-constraints EXPR [EXPR ...]
+            Cache constraint expressions describing when to automatically clear the entire object cache
+            considering current memory usage, and estimated memory usage of new image processor models that are
+            about to enter memory. If any of these constraint expressions are met ALL objects cached in CPU side
+            memory will be cleared. Example, and default value: "processor_size > (available * 0.70)" For Syntax
+            See: [https://dgenerate.readthedocs.io/en/v4.5.1/dgenerate_submodules.html#dgenerate.imageprocessors
+            .IMAGE_PROCESSOR_CPU_CACHE_GC_CONSTRAINTS]
+            ------------------------------------------
+      -ipmc EXPR [EXPR ...], --image-processor-cache-memory-constraints EXPR [EXPR ...]
+            Cache constraint expressions describing when to automatically clear the in memory Image Processor
+            cache considering current memory usage, and estimated memory usage of new Image Processor models
+            that are about to enter memory. If any of these constraint expressions are met all Image Processors
+            cached in memory will be cleared. Example, and default value: "processor_size > (available * 0.70)"
+            For Syntax See: [https://dgenerate.readthedocs.io/en/v4.5.1/dgenerate_submodules.html#dgenerate.imag
+            eprocessors.IMAGE_PROCESSOR_CACHE_MEMORY_CONSTRAINTS]
+            -----------------------------------------------------
       -ipcc EXPR [EXPR ...], --image-processor-cuda-memory-constraints EXPR [EXPR ...]
             Cache constraint expressions describing when to automatically clear the last active diffusion model
             from VRAM considering current GPU memory usage, and estimated GPU memory usage of new image
@@ -6080,18 +6087,17 @@ any pipeline subcomponents when you have specified them explicitly with a URI.
 A number of things effect cache hit or miss upon a dgenerate invocation, extensive information
 regarding runtime caching behavior of a pipelines and other models can be observed using ``-v/--verbose``
 
-When loading multiple different models be aware that they will all be retained in memory for
-the duration of program execution, unless all models are flushed using the ``\clear_model_cache`` directive or
-individually using one of:
+When loading multiple different models be aware that they will all be retained in CPU side memory for
+the duration of program execution, unless all models are flushed using the ``\clear_object_cache``
+directive.
 
-    * ``\clear_pipeline_cache``
-    * ``\clear_unet_cache``
-    * ``\clear_vae_cache``
-    * ``\clear_text_encoder_cache``
-    * ``\clear_image_encoder_cache``
-    * ``\clear_controlnet_cache``
-    * ``\clear_adapter_cache``
-    * ``\clear_transformer_cache``
+You can also specify which caches you want to flush individually with ``\clear_object_cache NAME1 NAME2``,
+for instance ``\clear_object_cache unet`` clears all cached ``unet`` objects.
+
+See: ``\list_object_caches`` for a list of object cache names.
+
+To clear any models cached in VRAM, use ``\clear_device_cache DEVICE_NAME1 DEVICE_NAME2``, where ``DEVICE_NAME``
+is the name of a torch device, i.g: ``cuda:0``, ``cuda:1`` etc.
 
 dgenerate uses heuristics to clear the in memory cache automatically when needed, including a size estimation
 of models before they enter system memory, however by default it will use system memory very aggressively
@@ -6196,33 +6202,33 @@ The following is a config file example that covers the most basic syntax concept
     # Configuration directives provide extra functionality in a config, a directive
     # invocation always starts with a backslash
     
-    # A clear model cache directive can be used inbetween invocations if cached models that
+    # A clear object cache directive can be used inbetween invocations if cached models that
     # are no longer needed in your generation pipeline start causing out of memory issues
     
-    \clear_model_cache
+    \clear_object_cache
     
     # Additionally these other directives exist to clear user loaded models
     # out of dgenerates in memory cache individually
     
-    # Clear specifically diffusion pipelines
+    # Clear specifically torch diffusion pipelines
     
-    \clear_pipeline_cache
+    \clear_object_cache pipeline
     
     # Clear specifically user specified UNet models
     
-    \clear_unet_cache
+    \clear_object_cache unet
     
     # Clear specifically user specified VAE models
     
-    \clear_vae_cache
+    \clear_object_cache vae
     
     # Clear specifically user specified Text Encoder models
     
-    \clear_text_encoder_cache
+    \clear_object_cache text_encoder
     
     # Clear specifically ControlNet models
     
-    \clear_controlnet_cache
+    \clear_object_cache controlnet
     
     
     # This model was used before but will have to be fully instantiated from scratch again
@@ -6411,10 +6417,13 @@ The ``\templates_help`` output from the above example is:
         Name: "last_image_guidance_scales"
             Type: typing.Optional[collections.abc.Sequence[float]]
             Value: []
-        Name: "last_image_processor_cuda_memory_constraints"
+        Name: "last_image_processor_cache_memory_constraints"
             Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
-        Name: "last_image_processor_memory_constraints"
+        Name: "last_image_processor_cpu_cache_gc_constraints"
+            Type: typing.Optional[collections.abc.Sequence[str]]
+            Value: []
+        Name: "last_image_processor_cuda_memory_constraints"
             Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
         Name: "last_image_seed_strengths"
@@ -6668,7 +6677,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [93373787292205]
+            Value: [56139153105505]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -6822,16 +6831,9 @@ Example output:
     
         "\cd"
         "\civitai_links"
-        "\clear_adapter_cache"
-        "\clear_controlnet_cache"
-        "\clear_image_encoder_cache"
-        "\clear_model_cache"
+        "\clear_device_cache"
         "\clear_modules"
-        "\clear_pipeline_cache"
-        "\clear_text_encoder_cache"
-        "\clear_transformer_cache"
-        "\clear_unet_cache"
-        "\clear_vae_cache"
+        "\clear_object_cache"
         "\cp"
         "\directives_help"
         "\download"
@@ -6845,6 +6847,7 @@ Example output:
         "\image_process"
         "\image_processor_help"
         "\import_plugins"
+        "\list_object_caches"
         "\ls"
         "\mkdir"
         "\mv"

@@ -163,6 +163,10 @@ try:
         PluginArgumentError,
     )
 
+    from dgenerate.devicecache import (
+        clear_device_cache
+    )
+
     from dgenerate.textprocessing import format_image_seed_uri
 
     import dgenerate.messages

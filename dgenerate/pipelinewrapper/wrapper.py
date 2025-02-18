@@ -32,7 +32,6 @@ import torch
 
 import dgenerate.image as _image
 import dgenerate.messages as _messages
-import dgenerate.pipelinewrapper.cache as _cache
 import dgenerate.pipelinewrapper.constants as _constants
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.pipelines as _pipelines
@@ -47,6 +46,8 @@ import dgenerate.extras.asdff.base as _asdff_base
 import dgenerate.extras.hidiffusion as _hidiffusion
 import dgenerate.pipelinewrapper.help as _help
 import dgenerate.pipelinewrapper.schedulers as _schedulers
+import dgenerate.memory as _memory
+import dgenerate.memoize as _memoize
 
 
 class DiffusionArgumentsHelpException(Exception):
@@ -58,6 +59,18 @@ class DiffusionArgumentsHelpException(Exception):
     This exception returns the help string to the caller.
     """
     pass
+
+
+def _enforce_cache_constraints():
+    if _memory.memory_constraints(_constants.CACHE_MEMORY_CONSTRAINTS):
+        _messages.debug_log(f'dgenerate.pipelinewrapper.constants.CACHE_MEMORY_CONSTRAINTS '
+                            f'{_constants.CACHE_MEMORY_CONSTRAINTS} met, '
+                            f'calling {_types.fullname(_memoize.clear_object_caches)}.')
+
+        _memoize.clear_object_caches()
+        return True
+
+    return False
 
 
 class PipelineWrapperResult:
@@ -2788,7 +2801,7 @@ class DiffusionPipelineWrapper:
                             lambda: _textprocessing.debug_format_args(
                                 copy_args.get_pipeline_wrapper_kwargs()))
 
-        _cache.enforce_cache_constraints()
+        _enforce_cache_constraints()
 
         loaded_new = self._lazy_init_pipeline(copy_args)
 
@@ -2798,7 +2811,7 @@ class DiffusionPipelineWrapper:
         self._set_scheduler_and_vae_settings(args)
 
         if loaded_new:
-            _cache.enforce_cache_constraints()
+            _enforce_cache_constraints()
 
         pipeline_args = \
             self._get_pipeline_defaults(user_args=copy_args)

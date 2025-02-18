@@ -30,18 +30,17 @@ any pipeline subcomponents when you have specified them explicitly with a URI.
 A number of things effect cache hit or miss upon a dgenerate invocation, extensive information
 regarding runtime caching behavior of a pipelines and other models can be observed using ``-v/--verbose``
 
-When loading multiple different models be aware that they will all be retained in memory for
-the duration of program execution, unless all models are flushed using the ``\clear_model_cache`` directive or
-individually using one of:
+When loading multiple different models be aware that they will all be retained in CPU side memory for
+the duration of program execution, unless all models are flushed using the ``\clear_object_cache``
+directive.
 
-    * ``\clear_pipeline_cache``
-    * ``\clear_unet_cache``
-    * ``\clear_vae_cache``
-    * ``\clear_text_encoder_cache``
-    * ``\clear_image_encoder_cache``
-    * ``\clear_controlnet_cache``
-    * ``\clear_adapter_cache``
-    * ``\clear_transformer_cache``
+You can also specify which caches you want to flush individually with ``\clear_object_cache NAME1 NAME2``,
+for instance ``\clear_object_cache unet`` clears all cached ``unet`` objects.
+
+See: ``\list_object_caches`` for a list of object cache names.
+
+To clear any models cached in VRAM, use ``\clear_device_cache DEVICE_NAME1 DEVICE_NAME2``, where ``DEVICE_NAME``
+is the name of a torch device, i.g: ``cuda:0``, ``cuda:1`` etc.
 
 dgenerate uses heuristics to clear the in memory cache automatically when needed, including a size estimation
 of models before they enter system memory, however by default it will use system memory very aggressively

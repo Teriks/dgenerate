@@ -25,13 +25,14 @@ import huggingface_hub
 import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
-import dgenerate.pipelinewrapper.cache as _cache
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.util as _util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
+from dgenerate.pipelinewrapper import constants as _constants
+from dgenerate.pipelinewrapper.uris import util as _uri_util
 
 _unet_uri_parser = _textprocessing.ConceptUriParser(
     'UNet', [
@@ -41,6 +42,10 @@ _unet_uri_parser = _textprocessing.ConceptUriParser(
         'dtype',
         'quantizer'
     ]
+)
+
+_unet_cache = _d_memoize.create_object_cache(
+    'unet', cache_type=_memory.SizedConstrainedObjectCache
 )
 
 
@@ -171,7 +176,14 @@ class UNetUri:
             raise _exceptions.UNetUriLoadError(
                 f'error loading unet "{self.model}": {e}')
 
-    @_memoize(_cache._UNET_CACHE,
+    @staticmethod
+    def _enforce_cache_size(new_unet_size):
+        _unet_cache.enforce_cpu_mem_constraints(
+            _constants.UNET_CACHE_MEMORY_CONSTRAINTS,
+            size_var='unet_size',
+            new_object_size=new_unet_size)
+
+    @_memoize(_unet_cache,
               exceptions={'local_files_only'},
               hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _d_memoize.struct_hasher}),
               on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Torch UNet", key, hit),
@@ -225,19 +237,7 @@ class UNetUri:
                 use_auth_token=use_auth_token
             )
 
-            _cache.enforce_text_encoder_cache_constraints(
-                new_text_encoder_size=estimated_memory_use)
-
-            estimated_memory_use = _util.estimate_model_memory_use(
-                repo_id=model_path,
-                revision=self.revision,
-                local_files_only=local_files_only,
-                use_auth_token=use_auth_token
-            )
-
-            _cache.enforce_text_encoder_cache_constraints(
-                new_text_encoder_size=estimated_memory_use
-            )
+            self._enforce_cache_size(estimated_memory_use)
 
             try:
                 unet = _util.single_file_load_sub_module(
@@ -271,7 +271,7 @@ class UNetUri:
                 use_auth_token=use_auth_token
             )
 
-            _cache.enforce_unet_cache_constraints(new_unet_size=estimated_memory_use)
+            self._enforce_cache_size(estimated_memory_use)
 
             unet = unet_class.from_pretrained(
                 model_path,
@@ -288,10 +288,9 @@ class UNetUri:
         _messages.debug_log('Estimated Torch UNet Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_use))
 
-        _cache.unet_create_update_cache_info(unet=unet,
-                                             estimated_size=estimated_memory_use)
+        _uri_util._patch_module_to_for_sized_cache(_unet_cache, unet)
 
-        return unet
+        return unet, _d_memoize.CachedObjectMetadata(size=estimated_memory_use)
 
     @staticmethod
     def parse(uri: _types.Uri) -> 'UNetUri':

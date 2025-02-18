@@ -26,16 +26,21 @@ import huggingface_hub
 import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
-import dgenerate.pipelinewrapper.cache as _cache
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.util as _util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
+from dgenerate.pipelinewrapper import constants as _constants
+from dgenerate.pipelinewrapper.uris import util as _uri_util
 
 _controlnet_uri_parser = _textprocessing.ConceptUriParser(
     'ControlNet', ['scale', 'start', 'end', 'mode', 'revision', 'variant', 'subfolder', 'dtype'])
+
+_controlnet_cache = _d_memoize.create_object_cache(
+    'controlnet', cache_type=_memory.SizedConstrainedObjectCache
+)
 
 
 class FluxControlNetUriModes(enum.IntEnum):
@@ -202,10 +207,10 @@ class ControlNetUri:
              type[diffusers.ControlNetUnionModel] |
              type[diffusers.SD3ControlNetModel] |
              type[diffusers.FluxControlNetModel] | None = None) -> \
-                diffusers.ControlNetModel | \
-                diffusers.ControlNetUnionModel | \
-                diffusers.SD3ControlNetModel | \
-                diffusers.FluxControlNetModel:
+            diffusers.ControlNetModel | \
+            diffusers.ControlNetUnionModel | \
+            diffusers.SD3ControlNetModel | \
+            diffusers.FluxControlNetModel:
         """
         Load a :py:class:`diffusers.ControlNetModel` from this URI.
 
@@ -256,7 +261,14 @@ class ControlNetUri:
             raise _exceptions.ControlNetUriLoadError(
                 f'error loading controlnet "{self.model}": {e}')
 
-    @_memoize(_cache._CONTROLNET_CACHE,
+    @staticmethod
+    def _enforce_cache_size(new_controlnet_size):
+        _controlnet_cache.enforce_cpu_mem_constraints(
+            _constants.CONTROLNET_CACHE_MEMORY_CONSTRAINTS,
+            size_var='controlnet_size',
+            new_object_size=new_controlnet_size)
+
+    @_memoize(_controlnet_cache,
               exceptions={'local_files_only'},
               hasher=lambda args: _d_memoize.args_cache_key(
                   args, {'self': lambda o: _d_memoize.struct_hasher(
@@ -274,10 +286,10 @@ class ControlNetUri:
               type[diffusers.ControlNetUnionModel] |
               type[diffusers.SD3ControlNetModel] |
               type[diffusers.FluxControlNetModel] = diffusers.ControlNetModel) -> \
-                diffusers.ControlNetModel | \
-                diffusers.ControlNetUnionModel | \
-                diffusers.SD3ControlNetModel | \
-                diffusers.FluxControlNetModel:
+            diffusers.ControlNetModel | \
+            diffusers.ControlNetUnionModel | \
+            diffusers.SD3ControlNetModel | \
+            diffusers.FluxControlNetModel:
 
         if sequential_cpu_offload_member and model_cpu_offload_member:
             # these are used for cache differentiation only
@@ -306,8 +318,7 @@ class ControlNetUri:
                 local_files_only=local_files_only
             )
 
-            _cache.enforce_controlnet_cache_constraints(
-                new_controlnet_size=estimated_memory_usage)
+            self._enforce_cache_size(estimated_memory_usage)
 
             new_net = model_class.from_single_file(
                 model_path,
@@ -326,8 +337,7 @@ class ControlNetUri:
                 local_files_only=local_files_only
             )
 
-            _cache.enforce_controlnet_cache_constraints(
-                new_controlnet_size=estimated_memory_usage)
+            self._enforce_cache_size(estimated_memory_usage)
 
             new_net = model_class.from_pretrained(
                 model_path,
@@ -341,11 +351,10 @@ class ControlNetUri:
         _messages.debug_log('Estimated Torch ControlNet Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_usage))
 
-        _cache.controlnet_create_update_cache_info(
-            controlnet=new_net,
-            estimated_size=estimated_memory_usage)
+        _uri_util._patch_module_to_for_sized_cache(_controlnet_cache, new_net)
 
-        return new_net
+        # noinspection PyTypeChecker
+        return new_net, _d_memoize.CachedObjectMetadata(size=estimated_memory_usage)
 
     @staticmethod
     def parse(uri: _types.Uri,

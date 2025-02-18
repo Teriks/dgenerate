@@ -193,3 +193,99 @@ DEFAULT_SDXL_REFINER_PAG_ADAPTIVE_SCALE: float = 0.0
 """
 Default sdxl refiner pag adaptive scale
 """
+
+CACHE_MEMORY_CONSTRAINTS: list[str] = ['used_percent > 70']
+"""
+Cache constraint expressions for when to clear all object caches, syntax provided via :py:func:`dgenerate.memory.memory_constraints`
+
+If any of these constraints are met, all cached objects will be garbage collected.
+"""
+
+PIPELINE_CACHE_MEMORY_CONSTRAINTS: list[str] = ['pipeline_size > (available * 0.75)']
+"""
+Cache constraint expressions for when to clear the diffusion pipeline cache, 
+syntax provided via :py:func:`dgenerate.memory.memory_constraints`
+
+If any of these constraints are met, all cached pipelines will be garbage collected.
+
+Extra variables include: ``cache_size`` (the current estimated cache size in bytes), 
+and ``pipeline_size`` (the estimated size of the new pipeline before it is brought into memory, in bytes)
+"""
+
+UNET_CACHE_MEMORY_CONSTRAINTS: list[str] = ['unet_size > (available * 0.75)']
+"""
+Cache constraint expressions for when to clear UNet cache, 
+syntax provided via :py:func:`dgenerate.memory.memory_constraints`
+
+If any of these constraints are met, all cached unet objects will be garbage collected.
+
+Extra variables include: ``cache_size`` (the current estimated cache size in bytes), 
+and ``unet_size`` (the estimated size of the new UNet before it is brought into memory, in bytes)
+"""
+
+VAE_CACHE_MEMORY_CONSTRAINTS: list[str] = ['vae_size > (available * 0.75)']
+"""
+Cache constraint expressions for when to clear VAE cache, 
+syntax provided via :py:func:`dgenerate.memory.memory_constraints`
+
+If any of these constraints are met, all cached vae objects will be garbage collected.
+
+Extra variables include: ``cache_size`` (the current estimated cache size in bytes), 
+and ``vae_size`` (the estimated size of the new VAE before it is brought into memory, in bytes)
+"""
+
+CONTROLNET_CACHE_MEMORY_CONSTRAINTS: list[str] = ['controlnet_size > (available * 0.75)']
+"""
+Cache constraint expressions for when to clear the ControlNet cache, 
+syntax provided via :py:func:`dgenerate.memory.memory_constraints`
+
+If any of these constraints are met, all cached controlnet objects will be garbage collected.
+
+Extra variables include: ``cache_size`` (the current estimated cache size in bytes), 
+and ``controlnet_size`` (the estimated size of the new ControlNet before it is brought into memory, in bytes)
+"""
+
+ADAPTER_CACHE_MEMORY_CONSTRAINTS: list[str] = ['adapter_size > (available * 0.75)']
+"""
+Cache constraint expressions for when to clear the T2IAdapter cache, 
+syntax provided via :py:func:`dgenerate.memory.memory_constraints`
+
+If any of these constraints are met, all cached T2I Adapter objects will be garbage collected.
+
+Extra variables include: ``cache_size`` (the current estimated cache size in bytes), 
+and ``adapter_size`` (the estimated size of the new T2IAdapter before it is brought into memory, in bytes)
+"""
+
+TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS: list[str] = ['text_encoder_size > (available * 0.75)']
+"""
+Cache constraint expressions for when to clear the Text Encoder cache, 
+syntax provided via :py:func:`dgenerate.memory.memory_constraints`
+
+If any of these constraints are met, all cached text encoder objects will be garbage collected.
+
+Extra variables include: ``cache_size`` (the current estimated cache size in bytes), 
+and ``text_encoder_size`` (the estimated size of the new Text Encoder before it is brought into memory, in bytes)
+"""
+
+IMAGE_ENCODER_CACHE_MEMORY_CONSTRAINTS: list[str] = ['image_encoder_size > (available * 0.75)']
+"""
+Cache constraint expressions for when to clear the Image Encoder cache, 
+syntax provided via :py:func:`dgenerate.memory.memory_constraints`
+
+If any of these constraints are met, all cached image encoder objects will be garbage collected.
+
+Extra variables include: ``cache_size`` (the current estimated cache size in bytes), 
+and ``image_encoder_size`` (the estimated size of the new Image Encoder before it is brought into memory, in bytes)
+"""
+
+TRANSFORMER_CACHE_MEMORY_CONSTRAINTS: list[str] = ['transformer_size > (available * 0.75)']
+"""
+Cache constraint expressions for when to clear the transformer model cache, 
+syntax provided via :py:func:`dgenerate.memory.memory_constraints`
+
+If any of these constraints are met, all cached transformer objects will be garbage collected.
+
+Extra variables include: ``cache_size`` (the current estimated cache size in bytes), 
+and ``transformer_size`` (the estimated size of the new transformer model before it is brought into memory, in bytes)
+"""
+
