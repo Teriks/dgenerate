@@ -27,6 +27,7 @@ import pathlib
 import re
 
 import diffusers.loaders.single_file as _single_file
+import diffusers.loaders.single_file_utils as _single_file_utils
 import diffusers.pipelines
 import huggingface_hub
 import huggingface_hub.errors
@@ -986,153 +987,79 @@ def _patch_sd21_clip_from_ldm():
     that is thrown by load_model_dict_into_meta and then reloads the clip model
     using that dimension instead.
     """
-    og_func = diffusers.loaders.single_file.create_diffusers_clip_model_from_ldm
-    diffusers.loaders.single_file.create_diffusers_clip_model_from_ldm = _create_diffusers_clip_model_from_ldm
+    og_func = diffusers.loaders.single_file_utils.convert_open_clip_checkpoint
+    diffusers.loaders.single_file_utils.convert_open_clip_checkpoint = _convert_open_clip_checkpoint
     try:
         yield
     finally:
-        diffusers.loaders.single_file.create_diffusers_clip_model_from_ldm = og_func
+        diffusers.loaders.single_file_utils.convert_open_clip_checkpoint = og_func
 
 
-def _create_diffusers_clip_model_from_ldm(
-        cls,
+def _convert_open_clip_checkpoint(
+        text_model,
         checkpoint,
-        subfolder="",
-        config=None,
-        torch_dtype=None,
-        local_files_only=None,
-        is_legacy_loading=False
+        prefix="cond_stage_model.model.",
 ):
-    logger = diffusers.models.modeling_utils.logger
 
-    from diffusers.utils import (
-        is_accelerate_available,
-    )
+    text_model_dict = {}
+    text_proj_key = prefix + "text_projection"
 
-    from diffusers.loaders.single_file_utils import (
-        fetch_diffusers_config,
-        is_clip_model,
-        is_clip_sdxl_model,
-        is_clip_sd3_model,
-        load_model_dict_into_meta,
-        is_open_clip_model,
-        is_open_clip_sd3_model,
-        convert_open_clip_checkpoint,
-        is_open_clip_sdxl_refiner_model,
-        is_open_clip_sdxl_model,
-        init_empty_weights,
-        convert_ldm_clip_checkpoint,
-        CHECKPOINT_KEY_NAMES
-    )
-
-    if config:
-        config = {"pretrained_model_name_or_path": config}
+    if text_proj_key in checkpoint:
+        text_proj_dim = int(checkpoint[text_proj_key].shape[1])
+    elif hasattr(text_model.config, "hidden_size"):
+        text_proj_dim = text_model.config.hidden_size
     else:
-        config = fetch_diffusers_config(checkpoint)
+        text_proj_dim = _single_file_utils.LDM_OPEN_CLIP_TEXT_PROJECTION_DIM
 
-    # For backwards compatibility
-    # Older versions of `from_single_file` expected CLIP configs to be placed in their original transformers model repo
-    # in the cache_dir, rather than in a subfolder of the Diffusers model
-    if is_legacy_loading:
-        logger.warning(
-            (
-                "Detected legacy CLIP loading behavior. Please run `from_single_file` with `local_files_only=False once to update "
-                "the local cache directory with the necessary CLIP model config files. "
-                "Attempting to load CLIP model from legacy cache directory."
-            )
-        )
+    keys = list(checkpoint.keys())
+    keys_to_ignore = _single_file_utils.SD_2_TEXT_ENCODER_KEYS_TO_IGNORE
 
-        if is_clip_model(checkpoint) or is_clip_sdxl_model(checkpoint):
-            clip_config = "openai/clip-vit-large-patch14"
-            config["pretrained_model_name_or_path"] = clip_config
-            subfolder = ""
-
-        elif is_open_clip_model(checkpoint):
-            clip_config = "stabilityai/stable-diffusion-2"
-            config["pretrained_model_name_or_path"] = clip_config
-            subfolder = "text_encoder"
+    openclip_diffusers_ldm_map = _single_file_utils.DIFFUSERS_TO_LDM_MAPPING["openclip"]["layers"]
+    for diffusers_key, ldm_key in openclip_diffusers_ldm_map.items():
+        ldm_key = prefix + ldm_key
+        if ldm_key not in checkpoint:
+            continue
+        if ldm_key in keys_to_ignore:
+            continue
+        if ldm_key.endswith("text_projection"):
+            text_model_dict[diffusers_key] = checkpoint[ldm_key].T.contiguous()
         else:
-            clip_config = "laion/CLIP-ViT-bigG-14-laion2B-39B-b160k"
-            config["pretrained_model_name_or_path"] = clip_config
-            subfolder = ""
+            text_model_dict[diffusers_key] = checkpoint[ldm_key]
 
-    if is_open_clip_model(checkpoint):
-        # infer projection_dim for the text_encoder using the checkpoint.
-        # should fix SD2.X LDM checkpoint loads from CivitAI and similar.
-        # The configuration on the hub is often (or always) incorrect for these models
-        # which need projection_dim=1024 and not projection_dim=512
-        if 'cond_stage_model.model.transformer.resblocks.0.mlp.c_proj.weight' in checkpoint:
-            config['projection_dim'] = \
-                checkpoint['cond_stage_model.model.transformer.resblocks.0.mlp.c_proj.weight'].shape[0]
+    for key in keys:
+        if key in keys_to_ignore:
+            continue
 
-    model_config = cls.config_class.from_pretrained(**config, subfolder=subfolder, local_files_only=local_files_only)
+        if not key.startswith(prefix + "transformer."):
+            continue
 
-    ctx = init_empty_weights if is_accelerate_available() else contextlib.nullcontext
-    with ctx():
-        model = cls(model_config)
+        diffusers_key = key.replace(prefix + "transformer.", "")
+        transformer_diffusers_to_ldm_map = _single_file_utils.DIFFUSERS_TO_LDM_MAPPING["openclip"]["transformer"]
+        for new_key, old_key in transformer_diffusers_to_ldm_map.items():
+            diffusers_key = (
+                diffusers_key.replace(old_key, new_key).replace(".in_proj_weight", "").replace(".in_proj_bias", "")
+            )
 
-    position_embedding_dim = model.text_model.embeddings.position_embedding.weight.shape[-1]
+        if key.endswith(".in_proj_weight"):
+            weight_value = checkpoint.get(key)
 
-    if is_clip_model(checkpoint):
-        diffusers_format_checkpoint = convert_ldm_clip_checkpoint(checkpoint)
+            text_model_dict[diffusers_key + ".q_proj.weight"] = weight_value[:text_proj_dim, :].clone().detach()
+            text_model_dict[diffusers_key + ".k_proj.weight"] = (
+                weight_value[text_proj_dim: text_proj_dim * 2, :].clone().detach()
+            )
+            text_model_dict[diffusers_key + ".v_proj.weight"] = weight_value[text_proj_dim * 2:, :].clone().detach()
 
-    elif (
-            is_clip_sdxl_model(checkpoint)
-            and checkpoint[CHECKPOINT_KEY_NAMES["clip_sdxl"]].shape[-1] == position_embedding_dim
-    ):
-        diffusers_format_checkpoint = convert_ldm_clip_checkpoint(checkpoint)
+        elif key.endswith(".in_proj_bias"):
+            weight_value = checkpoint.get(key)
+            text_model_dict[diffusers_key + ".q_proj.bias"] = weight_value[:text_proj_dim].clone().detach()
+            text_model_dict[diffusers_key + ".k_proj.bias"] = (
+                weight_value[text_proj_dim: text_proj_dim * 2].clone().detach()
+            )
+            text_model_dict[diffusers_key + ".v_proj.bias"] = weight_value[text_proj_dim * 2:].clone().detach()
+        else:
+            text_model_dict[diffusers_key] = checkpoint.get(key)
 
-    elif (
-            is_clip_sd3_model(checkpoint)
-            and checkpoint[CHECKPOINT_KEY_NAMES["clip_sd3"]].shape[-1] == position_embedding_dim
-    ):
-        diffusers_format_checkpoint = convert_ldm_clip_checkpoint(checkpoint, "text_encoders.clip_l.transformer.")
-        diffusers_format_checkpoint["text_projection.weight"] = torch.eye(position_embedding_dim)
-
-    elif is_open_clip_model(checkpoint):
-        prefix = "cond_stage_model.model."
-        diffusers_format_checkpoint = convert_open_clip_checkpoint(model, checkpoint, prefix=prefix)
-
-    elif (
-            is_open_clip_sdxl_model(checkpoint)
-            and checkpoint[CHECKPOINT_KEY_NAMES["open_clip_sdxl"]].shape[-1] == position_embedding_dim
-    ):
-        prefix = "conditioner.embedders.1.model."
-        diffusers_format_checkpoint = convert_open_clip_checkpoint(model, checkpoint, prefix=prefix)
-
-    elif is_open_clip_sdxl_refiner_model(checkpoint):
-        prefix = "conditioner.embedders.0.model."
-        diffusers_format_checkpoint = convert_open_clip_checkpoint(model, checkpoint, prefix=prefix)
-
-    elif (
-            is_open_clip_sd3_model(checkpoint)
-            and checkpoint[CHECKPOINT_KEY_NAMES["open_clip_sd3"]].shape[-1] == position_embedding_dim
-    ):
-        diffusers_format_checkpoint = convert_ldm_clip_checkpoint(checkpoint, "text_encoders.clip_g.transformer.")
-
-    else:
-        raise ValueError("The provided checkpoint does not seem to contain a valid CLIP model.")
-
-    if is_accelerate_available():
-        unexpected_keys = load_model_dict_into_meta(model, diffusers_format_checkpoint, dtype=torch_dtype)
-    else:
-        _, unexpected_keys = model.load_state_dict(diffusers_format_checkpoint, strict=False)
-
-    if model._keys_to_ignore_on_load_unexpected is not None:
-        for pat in model._keys_to_ignore_on_load_unexpected:
-            unexpected_keys = [k for k in unexpected_keys if re.search(pat, k) is None]
-
-    if len(unexpected_keys) > 0:
-        logger.warning(
-            f"Some weights of the model checkpoint were not used when initializing {cls.__name__}: \n {[', '.join(unexpected_keys)]}"
-        )
-
-    if torch_dtype is not None:
-        model.to(torch_dtype)
-
-    model.eval()
-
-    return model
+    return text_model_dict
 
 
 __all__ = _types.module_all()
