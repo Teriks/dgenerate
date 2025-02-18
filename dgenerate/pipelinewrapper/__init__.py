@@ -21,85 +21,7 @@
 
 
 import dgenerate.types as _types
-# Cache constants
-from .cache import (
-    CACHE_MEMORY_CONSTRAINTS,
-    PIPELINE_CACHE_MEMORY_CONSTRAINTS,
-    VAE_CACHE_MEMORY_CONSTRAINTS,
-    UNET_CACHE_MEMORY_CONSTRAINTS,
-    CONTROLNET_CACHE_MEMORY_CONSTRAINTS,
-    TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS,
-    ADAPTER_CACHE_MEMORY_CONSTRAINTS,
-    IMAGE_ENCODER_CACHE_MEMORY_CONSTRAINTS,
-    TRANSFORMER_CACHE_MEMORY_CONSTRAINTS
-)
-# Clear Cache Functions
-from .cache import (
-    clear_vae_cache,
-    clear_unet_cache,
-    clear_text_encoder_cache,
-    clear_model_cache,
-    clear_pipeline_cache,
-    clear_controlnet_cache,
-    clear_adapter_cache,
-    clear_image_encoder_cache,
-    clear_transformer_cache
-)
-# Enforce Cache Constraints Functions
-from .cache import (
-    enforce_cache_constraints,
-    enforce_pipeline_cache_constraints,
-    enforce_vae_cache_constraints,
-    enforce_unet_cache_constraints,
-    enforce_controlnet_cache_constraints,
-    enforce_adapter_cache_constraints,
-    enforce_text_encoder_cache_constraints,
-    enforce_image_encoder_cache_constraints,
-    enforce_transformer_cache_constraints
-)
-# Cache Info Update Functions
-from .cache import (
-    pipeline_create_update_cache_info,
-    pipeline_off_cpu_update_cache_info,
-    pipeline_to_cpu_update_cache_info,
-    vae_create_update_cache_info,
-    vae_to_cpu_update_cache_info,
-    vae_off_cpu_update_cache_info,
-    unet_create_update_cache_info,
-    unet_to_cpu_update_cache_info,
-    unet_off_cpu_update_cache_info,
-    controlnet_create_update_cache_info,
-    controlnet_to_cpu_update_cache_info,
-    controlnet_off_cpu_update_cache_info,
-    adapter_create_update_cache_info,
-    adapter_to_cpu_update_cache_info,
-    adapter_off_cpu_update_cache_info,
-    text_encoder_create_update_cache_info,
-    text_encoder_to_cpu_update_cache_info,
-    text_encoder_off_cpu_update_cache_info,
-    image_encoder_create_update_cache_info,
-    image_encoder_to_cpu_update_cache_info,
-    image_encoder_off_cpu_update_cache_info,
-    transformer_create_update_cache_info,
-    transformer_to_cpu_update_cache_info,
-    transformer_off_cpu_update_cache_info
-)
-# Utility Functions
-from .cache import (
-    uri_hash_with_parser,
-    uri_list_hash_with_parser
-)
-# Cache Size Functions
-from .cache import (
-    vae_cache_size,
-    unet_cache_size,
-    text_encoder_cache_size,
-    pipeline_cache_size,
-    controlnet_cache_size,
-    adapter_cache_size,
-    image_encoder_cache_size,
-    transformer_cache_size
-)
+
 # Constants
 from .constants import (
     DEFAULT_SDXL_OUTPUT_WIDTH,
@@ -134,7 +56,18 @@ from .constants import (
     DEFAULT_PAG_SCALE,
     DEFAULT_PAG_ADAPTIVE_SCALE,
     DEFAULT_SDXL_REFINER_PAG_ADAPTIVE_SCALE,
-    DEFAULT_SDXL_REFINER_PAG_SCALE
+    DEFAULT_SDXL_REFINER_PAG_SCALE,
+    DEFAULT_KOLORS_OUTPUT_HEIGHT,
+    DEFAULT_KOLORS_OUTPUT_WIDTH,
+    CONTROLNET_CACHE_MEMORY_CONSTRAINTS,
+    TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS,
+    ADAPTER_CACHE_MEMORY_CONSTRAINTS,
+    IMAGE_ENCODER_CACHE_MEMORY_CONSTRAINTS,
+    TRANSFORMER_CACHE_MEMORY_CONSTRAINTS,
+    UNET_CACHE_MEMORY_CONSTRAINTS,
+    CACHE_MEMORY_CONSTRAINTS,
+    PIPELINE_CACHE_MEMORY_CONSTRAINTS,
+    VAE_CACHE_MEMORY_CONSTRAINTS
 )
 # Enums
 from .enums import (

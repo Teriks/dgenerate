@@ -19,52 +19,49 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import dgenerate.messages as _messages
+import dgenerate.pipelinewrapper.pipelines as _pipelines
 import dgenerate.types as _types
-from .adetailerdetectoruri import AdetailerDetectorUri
-from .bnbquantizeruri import BNBQuantizerUri
-from .controlneturi import ControlNetUri, FluxControlNetUriModes
-from .exceptions import (
-    ModelUriLoadError,
-    ControlNetUriLoadError,
-    TextualInversionUriLoadError,
-    InvalidControlNetUriError,
-    InvalidSCascadeDecoderUriError,
-    InvalidSDXLRefinerUriError,
-    InvalidTextualInversionUriError,
-    VAEUriLoadError,
-    InvalidModelUriError,
-    LoRAUriLoadError,
-    UNetUriLoadError,
-    InvalidVaeUriError,
-    InvalidLoRAUriError,
-    InvalidUNetUriError,
-    TextEncoderUriLoadError,
-    InvalidTextEncoderUriError,
-    T2IAdapterUriLoadError,
-    InvalidT2IAdapterUriError,
-    ImageEncoderUriLoadError,
-    InvalidImageEncoderUriError,
-    IPAdapterUriLoadError,
-    InvalidIPAdapterUriError,
-    InvalidTransformerUriError,
-    TransformerUriLoadError
-)
-from .imageencoderuri import ImageEncoderUri
-from .ipadapteruri import IPAdapterUri
-from .lorauri import LoRAUri
-from .scascadedecoderuri import SCascadeDecoderUri
-from .sdxlrefineruri import SDXLRefinerUri
-from .t2iadapteruri import T2IAdapterUri
-from .textencoderuri import TextEncoderUri
-from .textualinversionuri import TextualInversionUri
-from .torchaoquantizeruri import TorchAOQuantizerUri
-from .transformeruri import TransformerUri
-from .uneturi import UNetUri
-from .vaeuri import VAEUri
+import torch
 
-from .util import (
-    uri_hash_with_parser,
-    uri_list_hash_with_parser
-)
+__doc__ = """
+High level utilitys for interacting with objects cached by dgenerate in GPU side memory.
+
+These objects may be cached in small quantity by various dgenerate sub-modules.
+"""
+
+
+def clear_device_cache(device: torch.device | str):
+    """
+    Clear every object cached by dgenerate in its GPU side cache for a specific device.
+
+    :param device: The device the objects are cached on.
+    """
+
+    device = torch.device(device)
+
+    active_pipe = _pipelines.get_last_called_pipeline()
+
+    current_device_index = torch.cuda.current_device()
+
+    pipe_device_index = _types.default(
+        _pipelines.get_torch_device(active_pipe).index, current_device_index)
+
+    device_index = _types.default(
+        device.index, current_device_index)
+
+    if active_pipe is not None and pipe_device_index == device_index:
+        # get rid of this reference immediately
+        # noinspection PyUnusedLocal
+        active_pipe = None
+
+        _messages.debug_log(
+            f'{_types.fullname(clear_device_cache)} is attempting to evacuate any previously '
+            f'called diffusion pipeline in the VRAM of device: {device}.')
+
+        # potentially free up VRAM on the GPU we are
+        # about to move to
+        _pipelines.destroy_last_called_pipeline()
+
 
 __all__ = _types.module_all()

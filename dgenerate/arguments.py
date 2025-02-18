@@ -2536,10 +2536,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '-mc', '--cache-memory-constraints', action='store', nargs='+', default=None, type=_type_expression,
             metavar="EXPR",
-            help=f"""Cache constraint expressions describing when to clear all model caches
-                    automatically (DiffusionPipeline, UNet, VAE, ControlNet, and Text Encoder) considering current memory
-                    usage. If any of these constraint expressions are met all models cached in memory will be cleared.
-                    Example, and default value: {' '.join(_textprocessing.quote_spaces(_pipelinewrapper.CACHE_MEMORY_CONSTRAINTS))}"""
+            help=f"""Cache constraint expressions describing when to clear all object caches
+                    automatically considering current memory usage. If any of these constraint expressions are met 
+                    all objects in memory will be cleared. Example, and default value: 
+                    {' '.join(_textprocessing.quote_spaces(_pipelinewrapper.CACHE_MEMORY_CONSTRAINTS))}"""
                  f' For Syntax See: [https://dgenerate.readthedocs.io/en/v{dgenerate.__version__}/'
                  f'dgenerate_submodules.html#dgenerate.pipelinewrapper.CACHE_MEMORY_CONSTRAINTS]'
         )
@@ -2660,15 +2660,29 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '-ipmc', '--image-processor-memory-constraints', action='store', nargs='+', default=None,
+            '-ipcgc', '--image-processor-cpu-cache-gc-constraints', action='store', nargs='+', default=None,
             type=_type_expression, metavar="EXPR",
-            help=f"""Cache constraint expressions describing when to automatically clear the entire in memory
-                    diffusion model cache considering current memory usage, and estimated memory usage of new
-                    image processor models that are about to enter memory. If any of these constraint expressions
-                    are met all diffusion related models cached in memory will be cleared. Example, and default
-                    value: {' '.join(_textprocessing.quote_spaces(_imgp_constants.IMAGE_PROCESSOR_MEMORY_CONSTRAINTS))}"""
+            help=f"""Cache constraint expressions describing when to automatically clear the entire 
+                    object cache considering current memory usage, and estimated memory usage of new image 
+                    processor models that are about to enter memory. If any of these constraint expressions 
+                    are met ALL objects cached in CPU side memory will be cleared. Example, and default
+                    value: {' '.join(_textprocessing.quote_spaces(_imgp_constants.IMAGE_PROCESSOR_CPU_CACHE_GC_CONSTRAINTS))}"""
                  f' For Syntax See: [https://dgenerate.readthedocs.io/en/v{dgenerate.__version__}/'
-                 f'dgenerate_submodules.html#dgenerate.imageprocessors.IMAGE_PROCESSOR_MEMORY_CONSTRAINTS]'
+                 f'dgenerate_submodules.html#dgenerate.imageprocessors.IMAGE_PROCESSOR_CPU_CACHE_GC_CONSTRAINTS]'
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-ipmc', '--image-processor-cache-memory-constraints', action='store', nargs='+', default=None,
+            type=_type_expression, metavar="EXPR",
+            help=f"""Cache constraint expressions describing when to automatically clear the in memory Image Processor
+                    cache considering current memory usage, and estimated memory usage of new Image Processor models that
+                    are about to enter memory. If any of these constraint expressions are met all Image Processors cached in 
+                    memory will be cleared. Example, and default
+                    value: {' '.join(_textprocessing.quote_spaces(_imgp_constants.IMAGE_PROCESSOR_CACHE_MEMORY_CONSTRAINTS))}"""
+                 f' For Syntax See: [https://dgenerate.readthedocs.io/en/v{dgenerate.__version__}/'
+                 f'dgenerate_submodules.html#dgenerate.imageprocessors.IMAGE_PROCESSOR_CACHE_MEMORY_CONSTRAINTS]'
         )
     )
 
@@ -2757,9 +2771,14 @@ class DgenerateArguments(dgenerate.RenderLoopConfig):
     See: :py:attr:`dgenerate.pipelinewrapper.IMAGE_ENCODER_CACHE_MEMORY_CONSTRAINTS`
     """
 
-    image_processor_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
+    image_processor_cpu_cache_gc_constraints: typing.Optional[collections.abc.Sequence[str]] = None
     """
-    See: :py:attr:`dgenerate.imageprocessors.IMAGE_PROCESSOR_MEMORY_CONSTRAINTS`
+    See: :py:attr:`dgenerate.imageprocessors.IMAGE_PROCESSOR_CPU_CACHE_GC_CONSTRAINTS`
+    """
+
+    image_processor_cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
+    """
+    See: :py:attr:`dgenerate.imageprocessors.IMAGE_PROCESSOR_CACHE_MEMORY_CONSTRAINTS`
     """
 
     image_processor_cuda_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None

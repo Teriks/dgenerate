@@ -21,6 +21,7 @@
 import ast
 import collections.abc
 import os
+import typing
 
 import asteval
 import psutil
@@ -29,6 +30,7 @@ import torch
 import dgenerate.messages as _messages
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
+import dgenerate.memoize as _memoize
 
 __doc__ = """
 System memory information and memory constraint expressions.
@@ -178,7 +180,7 @@ def memory_constraints(expressions: collections.abc.Iterable[str],
     _messages.debug_log(
         f'CPU MEMORY CONSTRAINT TEST: {_types.fullname(memory_constraints)} constraint = '
         f'[{", ".join(_textprocessing.quote_spaces(expressions))}], '
-        f'vars = {str(variables)}')
+        f'vars = {str(variables)}, mode={mode.__name__}')
 
     try:
         value = mode(interpreter(
@@ -483,7 +485,7 @@ def cuda_memory_constraints(expressions: collections.abc.Iterable[str],
     _messages.debug_log(
         f'GPU MEMORY CONSTRAINT TEST: {_types.fullname(cuda_memory_constraints)} constraint = '
         f'[{", ".join(_textprocessing.quote_spaces(expressions))}], '
-        f'vars = {str(variables)}')
+        f'vars = {str(variables)}, mode={mode.__name__}')
 
     try:
         value = mode(interpreter(
@@ -496,6 +498,107 @@ def cuda_memory_constraints(expressions: collections.abc.Iterable[str],
     except (Exception, NameError) as e:
         raise MemoryConstraintSyntaxError(
             f'Memory constraint syntax error: {e}')
+
+
+class SizedConstrainedObjectCache(_memoize.ObjectCache):
+    """
+    An object cache that can track cache memory use via the cached objects returned metadata.
+
+    Your memoized function should return at least: ``object, dgenerate.memoize.CachedObjectMetadata(size=the_size)``
+
+    You must return a metadata object with the attribute ``size`` at the minimum.
+
+    You may attach other metadata to the object as needed.
+    """
+
+    def __init__(self, name):
+        super().__init__(name)
+        self._size = 0
+        self.register_on_un_cache(self._on_un_cache)
+        self.register_on_cache(self._on_cache)
+        self.register_on_clear(self._on_clear)
+
+    @property
+    def size(self):
+        """
+        Return the current cache size.
+        """
+        return self._size
+
+    @size.setter
+    def size(self, value):
+        """
+        Set the current cache size.
+        """
+        self._size = value
+        if self._size < 0:
+            self._size = 0
+
+    def enforce_cpu_mem_constraints(
+            self,
+            constraints: typing.Iterable[str],
+            size_var: str,
+            new_object_size,
+            mode=any
+    ):
+        """
+        Clear the cache if these CPU side memory constraints are met.
+
+        See: :py:func:`memory_constraints`
+
+        :param constraints:
+        :param size_var: Memory constraint expression variable name containing the ``new_object_size`` value.
+        :param new_object_size: Size of the new object.
+        :param mode: Logical and/or function on contraint expressions, ``any`` for or, ``all`` for and.
+        :return: ``True`` if the cache was cleared, ``False`` otherwise
+        """
+
+        _messages.debug_log(
+            f'Object Cache: "{self.name}", enforcing CPU side memory constraints: {constraints}, mode={mode.__name__}')
+
+        if memory_constraints(constraints, {size_var: new_object_size}, mode=mode):
+            _messages.debug_log(
+                f'Object Cache: "{self.name}", cleared due to CPU side memory constraints being met.')
+            self.clear()
+            return True
+        return False
+
+    def enforce_cuda_mem_constraints(
+            self,
+            constraints: typing.Iterable[str],
+            size_var: str,
+            new_object_size,
+            mode=any
+    ):
+        """
+        Clear the cache if these GPU side memory constraints are met.
+
+        See: :py:func:`cuda_memory_constraints`
+
+        :param constraints:
+        :param size_var: Memory constraint expression variable name containing the ``new_object_size`` value.
+        :param new_object_size: Size of the new object.
+        :param mode: Logical and/or function on contraint expressions, ``any`` for or, ``all`` for and.
+        :return: ``True`` if the cache was cleared, ``False`` otherwise
+        """
+        _messages.debug_log(
+            f'Object Cache: "{self.name}", enforcing GPU side memory constraints: {constraints}, mode={mode.__name__}')
+
+        if cuda_memory_constraints(constraints, {size_var: new_object_size}, mode=mode):
+            _messages.debug_log(
+                f'Object Cache: "{self.name}", cleared due to GPU side memory constraints being met.')
+            self.clear()
+            return True
+        return False
+
+    def _on_un_cache(self, cache, cached_object):
+        self.size -= self.get_metadata(cached_object).size
+
+    def _on_clear(self, cache):
+        self.size = 0
+
+    def _on_cache(self, cache, cached_object):
+        self.size += self.get_metadata(cached_object).size
 
 
 def torch_gc():

@@ -33,16 +33,29 @@ The only available extra variable is: ``pipeline_size`` (the estimated size
 of the image processor module that needs to enter VRAM, in bytes)
 """
 
-IMAGE_PROCESSOR_MEMORY_CONSTRAINTS = ['processor_size > (available * 0.70)']
+IMAGE_PROCESSOR_CPU_CACHE_GC_CONSTRAINTS = ['processor_size > (available * 0.70)']
 """
 Cache constraint expressions for when to attempt to fully clear CPU side ram before 
 the initial loading of an image processor module into ram, syntax provided via
 :py:func:`dgenerate.memory.memory_constraints`
 
-If any of these constraints are met, an effort is made to clear modules out of 
+If any of these constraints are met, an effort is made to clear objects out of 
 cpu side ram which are cached for fast repeat usage but are okay to flush,
 prior to loading an image processor model.
 
-The only available extra variable is: ``pipeline_size`` (the estimated size 
+The only available extra variable is: ``processor_size`` (the estimated size 
+of the image processor module that needs to enter ram, in bytes)
+"""
+
+IMAGE_PROCESSOR_CACHE_MEMORY_CONSTRAINTS = ['processor_size > (available * 0.70)']
+"""
+Cache constraint expressions for when to attempt to clear the image processor
+cache before bringing a new image processor online, this cache caches image processor
+objects for reuse. :py:func:`dgenerate.memory.memory_constraints`
+
+If any of these constraints are met, all image processor 
+objects are cleared from the CPU cache.
+
+The only available extra variable is: ``processor_size`` (the estimated size 
 of the image processor module that needs to enter ram, in bytes)
 """

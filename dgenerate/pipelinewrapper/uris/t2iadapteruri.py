@@ -25,16 +25,21 @@ import huggingface_hub
 import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
-import dgenerate.pipelinewrapper.cache as _cache
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.util as _util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
+import dgenerate.pipelinewrapper.constants as _constants
+from dgenerate.pipelinewrapper.uris import util as _uri_util
 
 _t2i_adapter_uri_parser = _textprocessing.ConceptUriParser(
     'T2IAdapter', ['scale', 'revision', 'variant', 'subfolder', 'dtype']
+)
+
+_t2i_adapter_cache = _d_memoize.create_object_cache(
+    'adapter', cache_type=_memory.SizedConstrainedObjectCache
 )
 
 
@@ -155,7 +160,14 @@ class T2IAdapterUri:
             raise _exceptions.T2IAdapterUriLoadError(
                 f'error loading t2i adapter "{self.model}": {e}')
 
-    @_memoize(_cache._ADAPTER_CACHE,
+    @staticmethod
+    def _enforce_cache_size(new_adapter_size):
+        _t2i_adapter_cache.enforce_cpu_mem_constraints(
+            _constants.ADAPTER_CACHE_MEMORY_CONSTRAINTS,
+            size_var='adapter_size',
+            new_object_size=new_adapter_size)
+
+    @_memoize(_t2i_adapter_cache,
               exceptions={'local_files_only'},
               hasher=lambda args: _d_memoize.args_cache_key(
                   args, {'self': lambda o: _d_memoize.struct_hasher(
@@ -189,8 +201,7 @@ class T2IAdapterUri:
                 local_files_only=local_files_only
             )
 
-            _cache.enforce_adapter_cache_constraints(
-                new_adapter_size=estimated_memory_usage)
+            self._enforce_cache_size(estimated_memory_usage)
 
             new_adapter = diffusers.T2IAdapter.from_single_file(
                 model_path,
@@ -209,8 +220,7 @@ class T2IAdapterUri:
                 local_files_only=local_files_only
             )
 
-            _cache.enforce_adapter_cache_constraints(
-                new_adapter_size=estimated_memory_usage)
+            self._enforce_cache_size(estimated_memory_usage)
 
             new_adapter = diffusers.T2IAdapter.from_pretrained(
                 model_path,
@@ -224,11 +234,10 @@ class T2IAdapterUri:
         _messages.debug_log('Estimated Torch T2IAdapter Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_usage))
 
-        _cache.adapter_create_update_cache_info(
-            adapter=new_adapter,
-            estimated_size=estimated_memory_usage)
+        _uri_util._patch_module_to_for_sized_cache(_t2i_adapter_cache, new_adapter)
 
-        return new_adapter
+        # noinspection PyTypeChecker
+        return new_adapter, _d_memoize.CachedObjectMetadata(size=estimated_memory_usage)
 
     @staticmethod
     def parse(uri: _types.Uri) -> 'T2IAdapterUri':

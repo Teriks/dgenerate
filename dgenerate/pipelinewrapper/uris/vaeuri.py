@@ -27,13 +27,14 @@ import huggingface_hub
 import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
-import dgenerate.pipelinewrapper.cache as _cache
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.util as _util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
+from dgenerate.pipelinewrapper import constants as _constants
+from dgenerate.pipelinewrapper.uris import util as _uri_util
 
 _vae_uri_parser = _textprocessing.ConceptUriParser(
     'VAE', [
@@ -43,6 +44,10 @@ _vae_uri_parser = _textprocessing.ConceptUriParser(
         'subfolder',
         'dtype'
     ]
+)
+
+_vae_cache = _d_memoize.create_object_cache(
+    'vae', cache_type=_memory.SizedConstrainedObjectCache
 )
 
 
@@ -212,7 +217,14 @@ class VAEUri:
                 huggingface_hub.utils.HfHubHTTPError) as e:
             raise _util.ModelNotFoundError(e)
 
-    @_memoize(_cache._VAE_CACHE,
+    @staticmethod
+    def _enforce_cache_size(new_vae_size):
+        _vae_cache.enforce_cpu_mem_constraints(
+            _constants.VAE_CACHE_MEMORY_CONSTRAINTS,
+            size_var='vae_size',
+            new_object_size=new_vae_size)
+
+    @_memoize(_vae_cache,
               exceptions={'local_files_only'},
               hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _d_memoize.struct_hasher}),
               on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Torch VAE", key, hit),
@@ -261,7 +273,7 @@ class VAEUri:
                 use_auth_token=use_auth_token
             )
 
-            _cache.enforce_vae_cache_constraints(new_vae_size=estimated_memory_use)
+            self._enforce_cache_size(estimated_memory_use)
 
             if not self.extract:
                 if encoder is diffusers.AutoencoderKL:
@@ -317,7 +329,7 @@ class VAEUri:
                 use_auth_token=use_auth_token
             )
 
-            _cache.enforce_vae_cache_constraints(new_vae_size=estimated_memory_use)
+            self._enforce_cache_size(estimated_memory_use)
 
             vae = encoder.from_pretrained(
                 model_path,
@@ -331,10 +343,10 @@ class VAEUri:
         _messages.debug_log('Estimated Torch VAE Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_use))
 
-        _cache.vae_create_update_cache_info(vae=vae,
-                                            estimated_size=estimated_memory_use)
+        _uri_util._patch_module_to_for_sized_cache(_vae_cache, vae)
 
-        return vae
+        # noinspection PyTypeChecker
+        return vae, _d_memoize.CachedObjectMetadata(size=estimated_memory_use)
 
     @staticmethod
     def parse(uri: _types.Uri) -> 'VAEUri':
