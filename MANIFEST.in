@@ -3,3 +3,4 @@ include dgenerate/config_icon.ico
 recursive-include dgenerate/console/themes *.toml
 recursive-include dgenerate/console/schemas *.json
 recursive-include dgenerate/console/recipes *.recipe
+recursive-include dgenerate/extras/hidiffusion/sd_module_key *.txt
