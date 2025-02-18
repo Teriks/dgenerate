@@ -24,17 +24,9 @@ import typing
 import dgenerate.imageprocessors.exceptions as _exceptions
 import dgenerate.imageprocessors.imageprocessor as _imageprocessor
 import dgenerate.imageprocessors.imageprocessorchain as _imageprocessorchain
-import dgenerate.memoize as _memoize
-import dgenerate.memory as _memory
 import dgenerate.plugin as _plugin
 import dgenerate.types as _types
 from dgenerate.plugin import PluginArg as _Pa
-
-
-_image_processor_cache = _memoize.create_object_cache(
-    'image_processor',
-    cache_type=_memory.SizedConstrainedObjectCache
-)
 
 
 class ImageProcessorLoader(_plugin.PluginLoader):
