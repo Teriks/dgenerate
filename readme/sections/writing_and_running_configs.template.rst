@@ -19,7 +19,7 @@ If another invocation of the model occurs with creation parameters that are iden
 loaded out of an in memory cache, which greatly increases the speed of the invocation.
 
 Diffusion Pipelines, user specified UNets, VAEs, Text Encoders, Image Encoders, ControlNet,
-and IP Adapter models are cached individually.
+and T2I Adapter models are cached individually.
 
 All user specifiable model objects can be reused by diffusion pipelines in certain
 situations and this is taken advantage of by using an in memory cache of these objects.
