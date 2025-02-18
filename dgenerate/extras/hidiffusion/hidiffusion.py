@@ -1,3 +1,5 @@
+import importlib.resources
+
 import torch
 import math
 import os
@@ -102,16 +104,15 @@ aggressive_step = 8
 inpainting_is_aggressive_raunet = False
 playground_is_aggressive_raunet = False
 
-current_path = os.path.dirname(__file__)
-module_key_path = os.path.join(current_path, "sd_module_key")
-with open(os.path.join(module_key_path, 'sd15_module_key.txt'), 'r') as f:
+
+with importlib.resources.open_text('dgenerate.extras.hidiffusion.sd_module_key', 'sd15_module_key.txt', 'utf-8') as f:
     sd15_module_key = f.read().splitlines()
 
-with open(os.path.join(module_key_path, 'sdxl_module_key.txt'), 'r') as f:
+with importlib.resources.open_text('dgenerate.extras.hidiffusion.sd_module_key', 'sdxl_module_key.txt', 'utf-8') as f:
     sdxl_module_key = f.read().splitlines()
 
-def make_diffusers_sdxl_contrtolnet_ppl(block_class):
 
+def make_diffusers_sdxl_contrtolnet_ppl(block_class):
 
     class sdxl_controlnet_ppl(block_class):
         # Save for unpatching later
