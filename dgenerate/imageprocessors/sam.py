@@ -94,7 +94,16 @@ class SegmentAnythingProcessor(_imageprocessor.ImageProcessor):
             self._detect_resolution = None
 
         self.set_size_estimate(2564363480)  # 2.56436348 GB
-        self._sam = self._from_pretrained('ybelkada/segment-anything', subfolder='checkpoints')
+
+        self._sam: _cna.SamDetector = self.load_model_cached(
+            "ybelkada/segment-anything;subfolder=checkpoints",
+            self.size_estimate,
+            lambda: self._from_pretrained(
+                "ybelkada/segment-anything", subfolder="checkpoints")
+        )
+
+        self.register_module(
+            self._sam.mask_generator.predictor.model)
 
     def _from_pretrained(self,
                          pretrained_model_or_path,
@@ -111,7 +120,6 @@ class SegmentAnythingProcessor(_imageprocessor.ImageProcessor):
                 cache_dir=cache_dir)
 
         sam = _cna.segment_anything.build_sam.sam_model_registry[model_type](checkpoint=model_path)
-        self.register_module(sam)
 
         mask_generator = _cna.segment_anything.SamAutomaticMaskGenerator(sam)
 

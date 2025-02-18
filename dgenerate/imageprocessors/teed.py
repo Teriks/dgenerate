@@ -84,12 +84,17 @@ class TEEDProcessor(_imageprocessor.ImageProcessor):
             try:
                 self._detect_resolution = _textprocessing.parse_image_size(detect_resolution)
             except ValueError as e:
-                raise self.argument_error(f'Could not parse the "detect-resolution" argument as an image dimension: {e}')
+                raise self.argument_error(
+                    f'Could not parse the "detect-resolution" argument as an image dimension: {e}')
         else:
             self._detect_resolution = None
 
         self.set_size_estimate(249000)  # 249 KB
-        self._teed = _cna.TEEDdetector.from_pretrained("fal-ai/teed", filename="5_model.pth")
+        self._teed = self.load_model_cached(
+            "fal-ai/teed;weight-name=5_model.pth",
+            self.size_estimate,
+            lambda: _cna.TEEDdetector.from_pretrained("fal-ai/teed", filename="5_model.pth")
+        )
         self.register_module(self._teed)
 
     def __str__(self):
