@@ -127,7 +127,7 @@ def _patch_module_to_for_sized_cache(cache: _memory.SizedConstrainedObjectCache,
                 # does not exist in the cache
                 pass
 
-        old_to(*args, **kwargs)
+        return old_to(*args, **kwargs)
 
     module.to = new_to
 
