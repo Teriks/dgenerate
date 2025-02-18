@@ -981,11 +981,6 @@ def _patch_sd21_clip_from_ldm():
     for single file checkpoints, this fixes loading SD2.1 CivitAI checkpoints
     with StableDiffusionPipeline.from_single_file, and also loading a text encoder
     individually via checkpoint extraction using dgenerates TextEncoderUri class.
-
-    The projection_dim chosen for these models in the standard configs on HuggingFace hub
-    is usually wrong, this just detects the correct dimension needed from the exception
-    that is thrown by load_model_dict_into_meta and then reloads the clip model
-    using that dimension instead.
     """
     og_func = diffusers.loaders.single_file_utils.convert_open_clip_checkpoint
     diffusers.loaders.single_file_utils.convert_open_clip_checkpoint = _convert_open_clip_checkpoint
