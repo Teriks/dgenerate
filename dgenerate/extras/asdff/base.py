@@ -108,9 +108,6 @@ class AdPipelineBase:
                 feature_extractor=self.pipe.feature_extractor if hasattr(self.pipe, 'feature_extractor') else None,
             )
 
-        if hasattr(self.pipe, 'DGENERATE_SIZE_ESTIMATE'):
-            pipe.DGENERATE_SIZE_ESTIMATE = self.pipe.DGENERATE_SIZE_ESTIMATE
-
         _messages.debug_log(
             f'AdPipelineBase (adetailer pipeline) initialized pipeline class: {pipe.__class__.__name__}')
 
