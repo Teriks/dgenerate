@@ -39,7 +39,7 @@ _t2i_adapter_uri_parser = _textprocessing.ConceptUriParser(
 )
 
 _t2i_adapter_cache = _d_memoize.create_object_cache(
-    'adapter', cache_type=_memory.SizedConstrainedObjectCache
+    't2i_adapter', cache_type=_memory.SizedConstrainedObjectCache
 )
 
 
