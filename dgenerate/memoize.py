@@ -392,7 +392,7 @@ def memoize(cache: dict[str, typing.Any] | ObjectCache,
     """
     Decorator used to Memoize a function using a dictionary as a value cache.
 
-    :param cache: The dictionary or py:class:`ObjectCache` to serve as a cache
+    :param cache: The dictionary or :py:class:`ObjectCache` to serve as a cache
     :param exceptions: Function arguments to ignore
     :param hasher: Responsible for hashing arguments and argument values
     :param extra_identities: List of functions which return member objects of
