@@ -6214,15 +6214,15 @@ The following is a config file example that covers the most basic syntax concept
     
     \clear_object_cache pipeline
     
-    # Clear specifically user specified UNet models
+    # Clear specifically UNet models
     
     \clear_object_cache unet
     
-    # Clear specifically user specified VAE models
+    # Clear specifically VAE models
     
     \clear_object_cache vae
     
-    # Clear specifically user specified Text Encoder models
+    # Clear specifically Text Encoder models
     
     \clear_object_cache text_encoder
     
