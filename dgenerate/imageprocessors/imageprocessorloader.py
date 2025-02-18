@@ -91,7 +91,10 @@ class ImageProcessorLoader(_plugin.PluginLoader):
                           on_create=_cache_debug_miss,
                           exceptions={'self', 'device'})
         def super_load(uri, **kwargs):
-            return s.load(uri, **kwargs)
+            processor: _imageprocessor.ImageProcessor = typing.cast(
+                _imageprocessor.ImageProcessor, s.load(uri, **kwargs)
+            )
+            return processor, _memoize.CachedObjectMetadata(size=processor.size_estimate)
 
         if uri is None:
             raise ValueError('uri must not be None')
