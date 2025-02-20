@@ -202,6 +202,11 @@ class ImageProcessor(_plugin.Plugin):
                     _constants.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS,
                     extra_vars={'memory_required': memory_required},
                     device=device):
+
+                _messages.debug_log(
+                    f'Image Processor "{self.__class__.__name__}" is clearing the GPU side object '
+                    f'cache due to GPU side memory constraint evaluating to to True.')
+
                 _devicecache.clear_device_cache(device)
                 cleared = True
 
@@ -623,37 +628,6 @@ class ImageProcessor(_plugin.Plugin):
         """
         self.__modules.append(module)
 
-    def __gpu_memory_fence_to(self, device: torch.device | str):
-        if (device.type == 'cuda' and _memory.cuda_memory_constraints(
-                _constants.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS,
-                extra_vars={'processor_size': self.size_estimate},
-                device=device)):
-            # if there is a diffusion pipeline cached in
-            # VRAM on the device we are moving to, it is guaranteed
-            # to be a huge chunk of VRAM.
-            #
-            # Cacheing the last called diffusion pipeline on the GPU is
-            # only to enhance the speed of execution, and it is
-            # not required to be on the GPU if we are running
-            # low on VRAM while trying to have it there next
-            # to an image processor
-            #
-            # So we can fence the GPU when it is low on memory
-            # IE: remove the pipeline and put the processor on
-            #
-            # when executing image processing after calling a large
-            # diffusion model, this can prevent OOM at the cost of
-            # execution speed for the next invocation of the diffusion
-            # model
-
-            import dgenerate.objectcache as _objectcache
-
-            _messages.debug_log(
-                f'Image processor "{self.__class__.__name__}" is clearing the GPU side object '
-                f'cache for device {device} due to GPU side memory constraint evaluating to to True.')
-
-            _devicecache.clear_device_cache(device)
-
     def __flush_diffusion_pipeline_after_oom(self):
 
         _messages.debug_log(
@@ -677,7 +651,7 @@ class ImageProcessor(_plugin.Plugin):
         for m in self.__modules:
             if not hasattr(m, '_DGENERATE_IMAGE_PROCESSOR_DEVICE') or m._DGENERATE_IMAGE_PROCESSOR_DEVICE != device:
 
-                self.__gpu_memory_fence_to(device)
+                self.memory_guard_device(device, self.size_estimate)
 
                 m._DGENERATE_IMAGE_PROCESSOR_DEVICE = device
                 _messages.debug_log(

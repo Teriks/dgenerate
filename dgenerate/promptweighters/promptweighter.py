@@ -132,6 +132,11 @@ class PromptWeighter(_plugin.Plugin):
                     _constants.PROMPT_WEIGHTER_CUDA_MEMORY_CONSTRAINTS,
                     extra_vars={'memory_required': memory_required},
                     device=device):
+
+                _messages.debug_log(
+                    f'Prompt Weighter "{self.__class__.__name__}" is clearing the GPU side object '
+                    f'cache due to GPU side memory constraint evaluating to to True.')
+
                 _devicecache.clear_device_cache(device)
                 cleared = True
 
