@@ -71,14 +71,20 @@ class PromptUpscaler(_plugin.Plugin):
 
         self.__device = device
         self.__local_files_only = local_files_only
+        self.__size_estimate = 0
 
-    @staticmethod
-    def memory_fence_device(device: str | torch.device, memory_required: int):
+    def memory_fence_device(self, device: str | torch.device, memory_required: int):
         """
         Check a specific device against an amount of memory in bytes.
 
-        If any of the memory constraints specified by :py:attr:`dgenerate.promptupscalers.constants.PROMPT_UPSCALER_CUDA_MEMORY_CONSTRAINTS`
-        are met on that device, attempt to remove cached objects off the device to free space.
+        If the device is a cuda device and any of the memory constraints specified by
+        :py:attr:`dgenerate.promptupscalers.constants.PROMPT_UPSCALER_CUDA_MEMORY_CONSTRAINTS`
+        are met on that device, attempt to remove cached objects off the cuda device to free space.
+
+        If the device is a cpu and any of the memory constraints specified by
+        :py:attr:`dgenerate.promptupscalers.constants.PROMPT_UPSCALER_CACHE_GC_CONSTRAINTS`
+        are met, attempt to remove cached prompt upscaler objects off the device to free space.
+        Then, enforce :py:attr:`dgenerate.promptupscalers.constants.PROMPT_UPSCALER_CACHE_MEMORY_CONSTRAINTS`.
 
         :param device: the device
         :param memory_required: the amount of memory required on the device in bytes
@@ -86,14 +92,37 @@ class PromptUpscaler(_plugin.Plugin):
         """
 
         device = torch.device(device)
+        cleared = False
 
-        if (device.type == 'cuda' and _memory.cuda_memory_constraints(
-                _constants.PROMPT_UPSCALER_CUDA_MEMORY_CONSTRAINTS,
-                extra_vars={'memory_required': memory_required},
-                device=device)):
-            _devicecache.clear_device_cache(device)
-            return True
-        return False
+        if device.type == 'cuda':
+            if _memory.cuda_memory_constraints(
+                    _constants.PROMPT_UPSCALER_CUDA_MEMORY_CONSTRAINTS,
+                    extra_vars={'memory_required': memory_required},
+                    device=device):
+                _devicecache.clear_device_cache(device)
+                cleared = True
+
+        elif device.type == 'cpu':
+            if (_memory.memory_constraints(
+                    _constants.PROMPT_UPSCALER_CACHE_GC_CONSTRAINTS,
+                    extra_vars={'upscaler_size': memory_required})):
+                # wipe out the cpu side diffusion pipelines cache
+                # and do a GC pass to free up cpu side memory since
+                # we are nearly out of memory anyway
+
+                _messages.debug_log(
+                    f'Prompt upscaler "{self.__class__.__name__}" is clearing the CPU side object '
+                    f'cache due to CPU side memory constraint evaluating to to True.')
+
+                _memoize.clear_object_caches()
+                cleared = True
+
+            cleared = cleared or _prompt_upscaler_cache.enforce_cpu_mem_constraints(
+                _constants.PROMPT_UPSCALER_CACHE_MEMORY_CONSTRAINTS,
+                size_var='upscaler_size',
+                new_object_size=memory_required
+            )
+        return cleared
 
     def set_size_estimate(self, size_bytes: int):
         """
@@ -115,26 +144,12 @@ class PromptUpscaler(_plugin.Plugin):
 
         self.__size_estimate = int(size_bytes)
 
-        _prompt_upscaler_cache.enforce_cpu_mem_constraints(
-            _constants.PROMPT_UPSCALER_CACHE_MEMORY_CONSTRAINTS,
-            size_var='upscaler_size',
-            new_object_size=self.__size_estimate
-        )
-
-        if (_memory.memory_constraints(
-                _constants.PROMPT_UPSCALER_CACHE_GC_CONSTRAINTS,
-                extra_vars={'upscaler_size': self.__size_estimate})):
-            # wipe out the cpu side diffusion pipelines cache
-            # and do a GC pass to free up cpu side memory since
-            # we are nearly out of memory anyway
-
-            _messages.debug_log(
-                f'Prompt upscaler "{self.__class__.__name__}" is clearing the CPU side object '
-                f'cache due to CPU side memory constraint evaluating to to True.')
-
-            _memoize.clear_object_caches()
-
-    def load_object_cached(self, tag: str, estimated_size: int, method: typing.Callable):
+    def load_object_cached(self,
+                           tag: str,
+                           estimated_size: int,
+                           method: typing.Callable,
+                           memory_fence_device: str | torch.device | None = 'cpu'
+                           ):
         """
         Load a potentially large object into the CPU side ``prompt_upscaler`` object cache.
 
@@ -142,6 +157,8 @@ class PromptUpscaler(_plugin.Plugin):
             processor implementation constructor.
         :param estimated_size: Estimated size in bytes of the object in RAM.
         :param method: A method which loads and returns the object.
+        :param memory_fence_device: call :py:meth:`PromptUpscaler.memory_fence_device` on the
+            specified device before the object is loaded (on cache miss)
         :return: The loaded object
         """
 
@@ -150,6 +167,8 @@ class PromptUpscaler(_plugin.Plugin):
             on_hit=_cache_debug_hit,
             on_create=_cache_debug_miss)
         def load_cached(loaded_by_name=self.loaded_by_name, tag=tag):
+            if memory_fence_device is not None:
+                self.memory_fence_device(memory_fence_device, estimated_size)
             return method(), _memoize.CachedObjectMetadata(size=estimated_size)
 
         return load_cached()
@@ -168,10 +187,18 @@ class PromptUpscaler(_plugin.Plugin):
         """
         return self.__local_files_only
 
-    def upscale(self, prompt: _prompt.Prompt) -> _prompt.Prompts:
+    @property
+    def size_estimate(self) -> int:
+        """
+        Estimated size of the models / objects used by this prompt upscaler.
+        :return: size in bytes
+        """
+        return self.__size_estimate
+
+    def upscale(self, prompt: _prompt.Prompt) -> _prompt.PromptOrPrompts:
         """
         Upscale a prompt and return it modified
         :param prompt: The incoming prompt
-        :return: Modified prompts, you may return multiple prompts to indicate expansion
+        :return: Modified prompt / prompts, you may return multiple prompts (an iterable) to indicate expansion
         """
-        return [prompt]
+        return prompt

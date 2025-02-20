@@ -20,6 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import contextlib
 import gc
+import itertools
 import os.path
 
 import huggingface_hub
@@ -71,6 +72,9 @@ class DynamicPromptsPromptUpscaler(_promptupscaler.PromptUpscaler):
 
     See: https://github.com/adieyal/dynamicprompts
 
+    The "part" argument indicates which parts of the prompt to act on,
+    possible values are: "both", "positive", and "negative"
+
     The "magic" argument enables magicprompt, which generates a continuation
     of your prompt using the model "Gustavosta/MagicPrompt-Stable-Diffusion".
 
@@ -119,6 +123,7 @@ class DynamicPromptsPromptUpscaler(_promptupscaler.PromptUpscaler):
     NAMES = ['dynamicprompts']
 
     def __init__(self,
+                 part: str = 'both',
                  magic: bool = False,
                  magic_model: str = _MAGIC_DEFAULT_MODEL,
                  magic_seed: int | None = None,
@@ -139,42 +144,40 @@ class DynamicPromptsPromptUpscaler(_promptupscaler.PromptUpscaler):
         """
         super().__init__(**kwargs)
 
+        part = part.lower()
+
+        if part not in {'both', 'positive', 'negative'}:
+            raise self.argument_error(
+                'Argument "part" must be one of: "both", "positive", or "negative"')
+
         if not magic and magic_seed is not None:
             raise self.argument_error(
-                'Prompt upscaler dynamicprompts cannot specify '
-                '"magic-seed" without "magic=True".'
+                'Cannot specify "magic-seed" without "magic=True".'
             )
 
         if magic_max_length < 1:
             raise self.argument_error(
-                'Prompt upscaler dynamicprompts cannot specify '
-                '"magic-max-length" less than 1.'
+                'Cannot specify "magic-max-length" less than 1.'
             )
 
         if not random:
             if random_seed:
                 raise self.argument_error(
-                    'Prompt upscaler dynamicprompts cannot specify '
-                    '"random-seed" without "random=True".'
+                    'Cannot specify "random-seed" without "random=True".'
                 )
 
             if variations is not None:
                 raise self.argument_error(
-                    'Prompt upscaler dynamicprompts cannot specify '
-                    '"variations" without "random=True".')
+                    'Cannot specify "variations" without "random=True".')
 
         if variations is not None and variations < 1:
             raise self.argument_error(
-                'Prompt upscaler dynamicprompts "variations" '
-                'may not be less than 1.')
-
-        self._variations = variations
+                'Argument "variations" may not be less than 1.')
 
         if wildcards:
             if not os.path.isdir(wildcards):
                 raise self.argument_error(
-                    'Prompt upscaler dynamicprompts "wildcards" '
-                    'argument must be a path to an exiting directory.'
+                    'Argument "wildcards" must be a path to an exiting directory.'
                 )
 
             wildcard_manager = _WildcardManager(wildcards)
@@ -187,11 +190,6 @@ class DynamicPromptsPromptUpscaler(_promptupscaler.PromptUpscaler):
                 seed=_types.default(random_seed, seed)
             )
         else:
-            if seed is not None:
-                raise self.argument_error(
-                    'Prompt upscaler dynamicprompts cannot utilize '
-                    'the "seed" argument in combinatorial mode.')
-
             self._gen = _CombinatorialPromptGenerator(
                 wildcard_manager=wildcard_manager
             )
@@ -216,6 +214,9 @@ class DynamicPromptsPromptUpscaler(_promptupscaler.PromptUpscaler):
                 min_attention=attention_min,
                 max_attention=attention_max
             )
+
+        self._variations = variations
+        self._part = part
 
     def _load_magic_generator(
             self,
@@ -284,11 +285,14 @@ class DynamicPromptsPromptUpscaler(_promptupscaler.PromptUpscaler):
             f'Estimated the size of MagicPromptGenerator model: '
             f'{magic_model_path}, as: {estimated_size} Bytes ({_memory.bytes_best_human_unit(estimated_size)})')
 
+        self.set_size_estimate(estimated_size)
+
         self._magic_gen = self.load_object_cached(
             tag=magic_model_path,
-            estimated_size=model_files[0][1],
+            estimated_size=self.size_estimate,
             method=load_method
         )
+
         generator = self._magic_gen._generator
 
         if generator.__call__.__name__ != 'gen_patch':
@@ -302,6 +306,7 @@ class DynamicPromptsPromptUpscaler(_promptupscaler.PromptUpscaler):
     def _with_magic_device(self):
         if self._magic_gen is not None:
             try:
+                self.memory_fence_device(self.device, self.size_estimate)
                 self._magic_gen._generator.model.to(self.device)
                 yield
             finally:
@@ -311,7 +316,7 @@ class DynamicPromptsPromptUpscaler(_promptupscaler.PromptUpscaler):
         else:
             yield
 
-    def upscale(self, prompt: _prompt.Prompt) -> _prompt.Prompts:
+    def upscale(self, prompt: _prompt.Prompt) -> _prompt.PromptOrPrompts:
         """
         Upscale a prompt and return it modified.
 
@@ -324,21 +329,32 @@ class DynamicPromptsPromptUpscaler(_promptupscaler.PromptUpscaler):
             args['num_images'] = self._variations
 
         with self._with_magic_device():
-            generated_prompts = self._gen.generate(str(prompt), **args)
+            if self._part in {'both', 'positive'}:
+                generated_pos_prompts = self._gen.generate(prompt.positive, **args)
+            else:
+                generated_pos_prompts = [None]
+
+            if prompt.negative and self._part in {'both', 'negative'}:
+                generated_neg_prompts = self._gen.generate(prompt.negative, **args)
+            else:
+                generated_neg_prompts = [None]
 
         output = []
-        for generated_prompt in generated_prompts:
-            # Reparse the generated prompt into an object
-            # dgenerate understands
-            prompt_obj = _prompt.Prompt.parse(generated_prompt)
+        for generated_pos_prompt in generated_pos_prompts:
 
-            # We need to preserve the embedded diffusion
-            # arguments from the original incoming prompt
-            # that were parsed out by dgenerate
-            prompt_obj.copy_embedded_args_from(prompt)
+            for generated_neg_prompt in generated_neg_prompts:
+                prompt_obj = _prompt.Prompt(
+                    positive=_types.default(generated_pos_prompt, prompt.positive),
+                    negative=_types.default(generated_neg_prompt, prompt.negative)
+                )
 
-            # append the generated prompt to the expanded
-            # output list of prompts
-            output.append(prompt_obj)
+                # We need to preserve the embedded diffusion
+                # arguments from the original incoming prompt
+                # that were parsed out by dgenerate
+                prompt_obj.copy_embedded_args_from(prompt)
+
+                # append the generated prompt to the expanded
+                # output list of prompts
+                output.append(prompt_obj)
 
         return output

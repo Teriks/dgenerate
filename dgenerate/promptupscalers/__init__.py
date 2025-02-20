@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import typing
 
 import dgenerate.plugin as _plugin
 import dgenerate.types as _types
@@ -168,6 +169,8 @@ def upscale_prompts(
             next_prompts = []
             for p in current_prompts:
                 new_results = upscaler.upscale(p)
+                if not isinstance(new_results, typing.Iterable):
+                    new_results = [new_results]
 
                 # ensure each generated prompt is only processed once per upscaler
                 next_prompts.extend(new_results)

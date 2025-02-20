@@ -100,12 +100,20 @@ class Prompt:
             return ''
 
     @property
-    def positive(self) -> str:
+    def positive(self) -> str | None:
         return self._positive
 
+    @positive.setter
+    def positive(self, value):
+        self._positive = value
+
     @property
-    def negative(self) -> str:
+    def negative(self) -> str | None:
         return self._negative
+
+    @negative.setter
+    def negative(self, value):
+        self._negative = value
 
     @property
     def weighter(self) -> _types.OptionalUri:
@@ -230,6 +238,18 @@ class Prompt:
         return cleaned_value.strip(), embedded_args
 
     @staticmethod
+    def copy(prompt: 'Prompt'):
+        """
+        Return a copy of another prompt.
+
+        :param prompt: The prompt to copy.
+        :return: A copy of the provided prompt.
+        """
+        prompt = Prompt.parse(str(prompt))
+        prompt.copy_embedded_args_from(prompt)
+        return prompt
+
+    @staticmethod
     def parse(value: str, delimiter=';', parse_embedded_args: bool = True) -> 'Prompt':
         """
         Parse the positive and negative prompt from a string and return a prompt object.
@@ -279,6 +299,8 @@ class Prompt:
 
 OptionalPrompt = typing.Optional[Prompt]
 Prompts = collections.abc.Sequence[Prompt]
+PromptOrPrompts = typing.Union[Prompt, collections.abc.Sequence[Prompt]]
 OptionalPrompts = typing.Optional[Prompts]
+OptionalPromptOrPrompts = typing.Optional[PromptOrPrompts]
 
 __all__ = _types.module_all()

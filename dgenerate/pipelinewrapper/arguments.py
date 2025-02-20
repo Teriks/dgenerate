@@ -672,11 +672,11 @@ class DiffusionArguments(_types.SetFromMixin):
 
         if not self.prompt.weighter:
             descriptions.append(
-                (self.prompt_weighter_uri, 'Prompt Weighter'))
+                (self.prompt_weighter_uri, 'Prompt Weighter:'))
 
         if not self.second_model_prompt or not self.second_model_prompt.weighter:
             descriptions.append(
-                (self.second_model_prompt_weighter_uri, 'Second Model Prompt Weighter'))
+                (self.second_model_prompt_weighter_uri, 'Second Model Prompt Weighter:'))
 
         for val, desc in descriptions:
             if val is not None:
