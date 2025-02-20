@@ -21,13 +21,13 @@ class MyPromptWeighter(_promptweighter.PromptWeighter):
         # free up any objects dgenerate has cached
         # if we need to make space in RAM
 
-        # self.memory_fence_device('cpu', 1024)
+        # self.memory_guard_device('cpu', 1024)
 
         # same with objects cached in VRAM, this can
         # accept an ordinal, i.e. you can specify
         # which GPU to fence
 
-        # self.memory_fence_device('cuda', 1024)
+        # self.memory_guard_device('cuda', 1024)
 
         # load a large object into CPU side memory
         # with caching and auto memory fencing
@@ -36,7 +36,7 @@ class MyPromptWeighter(_promptweighter.PromptWeighter):
         #     tag='unique_tag_in_this_constructor1',
         #     estimated_size=1024,
         #     method=lambda: load_my_object(),
-        #     memory_fence_device='cpu'
+        #     memory_guard_device='cpu'
         # )
 
         # load a large object into GPU side memory
@@ -46,7 +46,7 @@ class MyPromptWeighter(_promptweighter.PromptWeighter):
         #     tag='unique_tag_in_this_constructor2',
         #     estimated_size=1024,
         #     method=lambda: load_my_object(),
-        #     memory_fence_device='gpu'
+        #     memory_guard_device='gpu'
         # )
 
     def translate_to_embeds(self,
