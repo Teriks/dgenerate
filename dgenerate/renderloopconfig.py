@@ -1864,17 +1864,17 @@ class RenderLoopConfig(_types.SetFromMixin):
         Apply requested prompt upscaling operations to all prompts in the configuration.
 
         This potentially modifies the configuration in place, specifically the prompt arguments.
+
+        :raises dgenerate.promptupscalers.PromptUpscalerNotFoundError:
+        :raises dgenerate.promptupscalers.PromptUpscalerArgumentError:
+        :raises dgenerate.promptupscalers.PromptUpscalerProcessingError:
         """
 
-        upscalers_by_uri = {}
-
         def upscale_prompts(prompts, default_upscaler_uri):
-            nonlocal upscalers_by_uri
             return _promptupscalers.upscale_prompts(
                 prompts=prompts,
                 default_upscaler_uri=default_upscaler_uri,
                 device=self.device,
-                upscaler_cache=upscalers_by_uri,
                 local_files_only=self.offline_mode
             )
 
