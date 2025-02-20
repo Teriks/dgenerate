@@ -4264,6 +4264,7 @@ to create good quality continuations of the text in your prompt automatically.
 
     dynamicprompts:
         arguments:
+            part: str = "both"
             magic: bool = False
             magic-model: str = "Gustavosta/MagicPrompt-Stable-Diffusion"
             magic-seed: int | None = None
@@ -4281,6 +4282,9 @@ to create good quality continuations of the text in your prompt automatically.
         Upscale prompts with the dynamicprompts library.
     
         See: https://github.com/adieyal/dynamicprompts
+    
+        The "part" argument indicates which parts of the prompt to act on, possible values are: "both",
+        "positive", and "negative"
     
         The "magic" argument enables magicprompt, which generates a continuation of your prompt using the model
         "Gustavosta/MagicPrompt-Stable-Diffusion".
@@ -4773,6 +4777,7 @@ these are the arguments that are available for use:
     s-cascade-decoder-inference-steps: int
     s-cascade-decoder-guidance-scale: float
     max-sequence-length: int
+    sdxl-refiner-edit: bool
     seed: int
     image-seed-strength: float
     sdxl-t2i-adapter-factor: float
@@ -4798,6 +4803,8 @@ these are the arguments that are available for use:
     sdxl-refiner-negative-target-size: Size: WxH
     sdxl-refiner-negative-crops-coords-top-left: Size: WxH
     guidance-scale: float
+    hi-diffusion: bool
+    sdxl-refiner-hi-diffusion: bool
     pag-scale: float
     pag-adaptive-scale: float
     sdxl-refiner-pag-scale: float
@@ -6574,7 +6581,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [75672317885614]
+            Value: [33355465943707]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

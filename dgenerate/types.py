@@ -81,8 +81,12 @@ OptionalFloats = typing.Optional[Floats]
 
 Version = tuple[int, int, int]
 
+String = str
+Strings = collections.abc.Sequence[str]
 OptionalString = typing.Optional[str]
+OptionalStrings = typing.Optional[collections.abc.Sequence[str]]
 
+Boolean = str
 OptionalBoolean = typing.Optional[bool]
 
 OptionalImage = typing.Optional[PIL.Image]

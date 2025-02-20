@@ -25,6 +25,7 @@ Prompt representation object / prompt parsing.
 
 import ast
 import collections.abc
+import functools
 import re
 import typing
 import dgenerate.types as _types
@@ -100,7 +101,17 @@ class Prompt:
             return ''
 
     @property
+    def delimiter(self) -> str:
+        """
+        Positive / Negative delimiter for this prompt, for example ";"
+        """
+        return self._delimiter
+
+    @property
     def positive(self) -> str | None:
+        """
+        Positive prompt value.
+        """
         return self._positive
 
     @positive.setter
@@ -109,6 +120,9 @@ class Prompt:
 
     @property
     def negative(self) -> str | None:
+        """
+        Negative prompt value.
+        """
         return self._negative
 
     @negative.setter
@@ -117,98 +131,196 @@ class Prompt:
 
     @property
     def weighter(self) -> _types.OptionalUri:
+        """
+        Embedded prompt weighter URI argument for this prompt if any.
+        """
         return self._weighter
 
     @property
     def upscaler(self) -> _types.OptionalUriOrUris:
+        """
+        Embedded prompt upscaler URI argument for this prompt if any.
+        """
         return self._upscaler
 
     @property
     def embedded_args(self) -> list[tuple[str, str]]:
+        """
+        Other embedded arguments parsed out of the prompt.
+        """
         return list(self._embedded_args.items())
 
     def __repr__(self):
         return f"'{str(self)}'"
 
     def copy_embedded_args_from(self, prompt: 'Prompt'):
+        self._weighter = prompt._weighter
+        self._upscaler = prompt._upscaler
         self._embedded_args = prompt._embedded_args.copy()
 
     def set_embedded_args_on(
             self,
             on_object: typing.Any,
-            forbidden_checker: typing.Callable[[str, typing.Any], bool] = None,
+            forbidden_checker: typing.Optional[typing.Callable[[str, typing.Any], bool]] = None,
             validate_only: bool = False
     ):
+        """
+        Set the other embedded arguments parsed out of a prompt on to an object.
+
+        The object should be type hinted using types from :py:mod:`dgenerate.types`
+
+        Specifically, any of:
+
+        * :py:class:`dgenerate.types.Size`
+        * :py:class:`dgenerate.types.Sizes`
+        * :py:class:`dgenerate.types.OptionalSize`
+        * :py:class:`dgenerate.types.OptionalSizes`
+        * :py:class:`dgenerate.types.Padding`
+        * :py:class:`dgenerate.types.Paddings`
+        * :py:class:`dgenerate.types.OptionalPadding`
+        * :py:class:`dgenerate.types.OptionalPaddings`
+        * :py:class:`dgenerate.types.Boolean`
+        * :py:class:`dgenerate.types.OptionalBoolean`
+        * :py:class:`dgenerate.types.Float`
+        * :py:class:`dgenerate.types.Floats`
+        * :py:class:`dgenerate.types.OptionalFloat`
+        * :py:class:`dgenerate.types.OptionalFloats`
+        * :py:class:`dgenerate.types.Integer`
+        * :py:class:`dgenerate.types.Integers`
+        * :py:class:`dgenerate.types.OptionalInteger`
+        * :py:class:`dgenerate.types.OptionalIntegers`
+        * :py:class:`dgenerate.types.String`
+        * :py:class:`dgenerate.types.Strings`
+        * :py:class:`dgenerate.types.OptionalString`
+        * :py:class:`dgenerate.types.OptionalStrings`
+        * :py:class:`dgenerate.types.Name`
+        * :py:class:`dgenerate.types.Names`
+        * :py:class:`dgenerate.types.OptionalName`
+        * :py:class:`dgenerate.types.OptionalNames`
+        * :py:class:`dgenerate.types.Uri`
+        * :py:class:`dgenerate.types.Uris`
+        * :py:class:`dgenerate.types.OptionalUri`
+        * :py:class:`dgenerate.types.OptionalUris`
+
+
+        :raise PromptEmbeddedArgumentError: If there was a problem applying the embedded arguments to the object.
+
+        :param on_object: The object to set values on.
+        :param forbidden_checker: This is a function that should return ``True`` if an argument name / value is forbidden to use.
+        :param validate_only: Only run validation and do not set any values?
+        """
+        if forbidden_checker and not callable(forbidden_checker):
+            raise ValueError('forbidden_checker must be a callable function')
+
         hints = typing.get_type_hints(on_object)
 
-        def verboten(name, value):
-            if forbidden_checker is not None:
-                return forbidden_checker(name, value)
-            return False
+        def is_forbidden(name, value):
+            return forbidden_checker(name, value) if forbidden_checker else False
+
+        def parse_padding(value):
+            parsed_value = _textprocessing.parse_dimensions(value)
+
+            length = len(parsed_value)
+
+            if length > 4:
+                raise ValueError('too many padding values.')
+
+            if length == 3:
+                raise ValueError('3 values is invalid for padding specification.')
+
+            return parsed_value if length > 1 else parsed_value[0]
+
+        def list_of(the_type, v):
+            try:
+                values = ast.literal_eval(v)
+                if not isinstance(values, typing.Iterable):
+                    raise ValueError()
+                values = list(values)
+                for idx, v in enumerate(values):
+                    values[idx] = the_type(v)
+                return values
+            except (ValueError, SyntaxError) as e:
+                raise ValueError(f"Invalid value, expected iterable and got: {v}") from e
+
+        def optional(the_type, v):
+            return None if v == 'None' else the_type(v)
+
+        type_parsers = {
+            # dimensions
+            _types.Size: _textprocessing.parse_image_size,
+            _types.Sizes: functools.partial(
+                list_of, _textprocessing.parse_image_size),
+            _types.OptionalSize: functools.partial(
+                optional, _textprocessing.parse_image_size),
+            _types.OptionalSizes: functools.partial(
+                optional, functools.partial(list_of, _textprocessing.parse_image_size)),
+
+            # paddings
+            _types.Padding: parse_padding,
+            _types.Paddings: functools.partial(list_of, parse_padding),
+            _types.OptionalPadding: functools.partial(optional, parse_padding),
+            _types.OptionalPaddings: functools.partial(optional, functools.partial(list_of, parse_padding)),
+
+            # bool
+            _types.Boolean: _types.parse_bool,
+            _types.OptionalBoolean: functools.partial(optional, _types.parse_bool),
+
+            # float
+            _types.Float: float,
+            _types.Floats: functools.partial(list_of, float),
+            _types.OptionalFloat: functools.partial(optional, float),
+            _types.OptionalFloats: functools.partial(optional, functools.partial(list_of, float)),
+
+            # int
+            _types.Integer: int,
+            _types.Integers: functools.partial(list_of, int),
+            _types.OptionalInteger: functools.partial(optional, int),
+            _types.OptionalIntegers: functools.partial(optional, functools.partial(list_of, int)),
+
+            # string
+            _types.String: str,
+            _types.Strings: functools.partial(list_of, str),
+            _types.OptionalString: functools.partial(optional, str),
+            _types.OptionalStrings: functools.partial(optional, functools.partial(list_of, str)),
+
+            # name
+            _types.Name: str,
+            _types.Names: functools.partial(list_of, str),
+            _types.OptionalName: functools.partial(optional, str),
+            _types.OptionalNames: functools.partial(optional, functools.partial(list_of, str)),
+
+            # uri
+            _types.Uri: str,
+            _types.Uris: functools.partial(optional, functools.partial(list_of, str)),
+            _types.OptionalUri: functools.partial(optional, str),
+            _types.OptionalUris: functools.partial(optional, functools.partial(list_of, str)),
+        }
 
         for name, value in self._embedded_args.items():
             name = _textprocessing.dashdown(name)
 
-            if verboten(name, value):
+            if is_forbidden(name, value):
                 raise PromptEmbeddedArgumentError(
-                    f'Setting diffusion argument "{name}" '
-                    'from the prompt is forbidden.'
-                )
+                    f'Setting diffusion argument "{name}" from the prompt is forbidden.')
 
-            if hasattr(on_object, name):
-                hint = hints[name]
+            if not hasattr(on_object, name):
+                raise PromptEmbeddedArgumentError(
+                    f'Unknown embedded prompt argument: {name}')
 
-                try:
-                    if hint is _types.OptionalSize:
-                        value = _textprocessing.parse_dimensions(value)
-                    elif hint is _types.OptionalPadding:
-                        value = _textprocessing.parse_dimensions(value)
-                        if len(value) == 1:
-                            value = value
-                    elif any(hint is h for h in {_types.Float, _types.OptionalFloat, _types.OptionalFloats}):
-                        value = ast.literal_eval(value)
-                        if isinstance(value, typing.Iterable):
-                            value = list(value)
-                            for idx, v in value:
-                                value[idx] = float(v)
-                        else:
-                            value = float(value)
-                    elif any(hint is h for h in {_types.Integer, _types.OptionalInteger, _types.OptionalIntegers}):
-                        value = ast.literal_eval(value)
-                        if isinstance(value, typing.Iterable):
-                            value = list(value)
-                            for idx, v in enumerate(value):
-                                value[idx] = int(v)
-                        else:
-                            value = int(value)
-                    elif any(hint is h for h in {_types.OptionalString, _types.OptionalName,
-                                                 _types.OptionalNames, _types.OptionalUri,
-                                                 _types.OptionalUris}):
-                        try:
-                            value = ast.literal_eval(value)
-                            if isinstance(value, typing.Iterable):
-                                value = list(value)
-                                for idx, v in enumerate(value):
-                                    value[idx] = str(v)
-                        except SyntaxError:
-                            value = value
-                    else:
-                        raise PromptEmbeddedArgumentError(
-                            f'Setting diffusion argument "{name}" '
-                            'from the prompt is forbidden.'
-                        )
-                except (ValueError, SyntaxError):
+            hint = hints.get(name, None)
+
+            try:
+                if hint in type_parsers:
+                    value = type_parsers[hint](value)
+                else:
                     raise PromptEmbeddedArgumentError(
-                        f'Could not parse embedded prompt '
-                        f'argument: {name}, value: {value}'
-                    )
-
-                if not validate_only:
-                    setattr(on_object, name, value)
-            else:
+                        f'Setting diffusion argument "{name}" from the prompt is forbidden.')
+            except (ValueError, SyntaxError):
                 raise PromptEmbeddedArgumentError(
-                    f'Unknown embedded prompt argument: {name}'
-                )
+                    f'Could not parse embedded prompt argument: {name}, value: {value}, into type: {hint}')
+
+            if not validate_only:
+                setattr(on_object, name, value)
 
     @staticmethod
     def _get_embeded_args(value):

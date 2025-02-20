@@ -168,7 +168,8 @@ def upscale_prompts(
             # apply upscaler exactly once per prompt
             next_prompts = []
             for p in current_prompts:
-                new_results = upscaler.upscale(p)
+                new_results = upscaler.upscale(_prompt.Prompt.copy(p))
+
                 if not isinstance(new_results, typing.Iterable):
                     new_results = [new_results]
 
