@@ -108,17 +108,20 @@ class AnylineProcessor(_imageprocessor.ImageProcessor):
             try:
                 self._detect_resolution = _textprocessing.parse_image_size(detect_resolution)
             except ValueError as e:
-                raise self.argument_error(f'Could not parse the "detect-resolution" argument as an image dimension: {e}')
+                raise self.argument_error(
+                    f'Could not parse the "detect-resolution" argument as an image dimension: {e}')
         else:
             self._detect_resolution = None
 
         self.set_size_estimate(248 * 1000)  # 248 KB -> bytes
 
-        self._anyline = self.load_model_cached(
-            "TheMistoAI/MistoLine;weight-name=MTEED.pth;subfolder=Anyline",
-            self.size_estimate,
-            lambda: _cna.AnylineDetector.from_pretrained(
-                'TheMistoAI/MistoLine', filename='MTEED.pth', subfolder='Anyline'))
+        self._anyline = self.load_object_cached(
+            tag="TheMistoAI/MistoLine;weight-name=MTEED.pth;subfolder=Anyline",
+            estimated_size=self.size_estimate,
+            method=lambda:
+            _cna.AnylineDetector.from_pretrained(
+                'TheMistoAI/MistoLine', filename='MTEED.pth', subfolder='Anyline')
+        )
 
         self.register_module(self._anyline)
 

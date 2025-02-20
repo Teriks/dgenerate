@@ -95,11 +95,11 @@ class SegmentAnythingProcessor(_imageprocessor.ImageProcessor):
 
         self.set_size_estimate(2564363480)  # 2.56436348 GB
 
-        self._sam: _cna.SamDetector = self.load_model_cached(
-            "ybelkada/segment-anything;subfolder=checkpoints",
-            self.size_estimate,
-            lambda: self._from_pretrained(
-                "ybelkada/segment-anything", subfolder="checkpoints")
+        self._sam: _cna.SamDetector = self.load_object_cached(
+            tag="ybelkada/segment-anything;subfolder=checkpoints",
+            estimated_size=self.size_estimate,
+            method=lambda:
+            self._from_pretrained("ybelkada/segment-anything", subfolder="checkpoints")
         )
 
         self.register_module(

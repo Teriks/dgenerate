@@ -19,7 +19,6 @@ dgenerate.batchprocess module
    :show-inheritance:
    :special-members: __call__, __init__
 
-
 dgenerate.devicecache module
 ----------------------------
 
@@ -28,7 +27,6 @@ dgenerate.devicecache module
    :undoc-members:
    :show-inheritance:
    :special-members: __call__, __init__
-
 
 dgenerate.filecache module
 --------------------------
@@ -52,6 +50,15 @@ dgenerate.files module
 ----------------------
 
 .. automodule:: dgenerate.files
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :special-members: __call__, __init__
+
+dgenerate.gcconfig module
+----------------------
+
+.. automodule:: dgenerate.gcconfig
    :members:
    :undoc-members:
    :show-inheritance:
@@ -169,6 +176,15 @@ dgenerate.prompt module
    :show-inheritance:
    :special-members: __call__, __init__, __str__
 
+dgenerate.promptupscalers module
+--------------------------------
+
+.. automodule:: dgenerate.promptupscalers
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :special-members: __call__, __init__
+
 dgenerate.promptweighters module
 --------------------------------
 
@@ -177,6 +193,8 @@ dgenerate.promptweighters module
    :undoc-members:
    :show-inheritance:
    :special-members: __call__, __init__
+
+.. include:: promptweighters_constants.rst
 
 dgenerate.pygments module
 -------------------------

@@ -98,10 +98,11 @@ class MidasDepthProcessor(_imageprocessor.ImageProcessor):
 
         self.set_size_estimate(493 * (1000 ** 2))  # 493 MB dpt_hybrid-midas-501f0c75.pt
 
-        self._midas = self.load_model_cached(
-            "lllyasviel/Annotators",
-            self.size_estimate,
-            lambda: _cna.MidasDetector.from_pretrained("lllyasviel/Annotators"))
+        self._midas = self.load_object_cached(
+            tag="lllyasviel/Annotators",
+            estimated_size=self.size_estimate,
+            method=lambda: _cna.MidasDetector.from_pretrained("lllyasviel/Annotators")
+        )
 
         self.register_module(self._midas)
 

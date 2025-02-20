@@ -598,6 +598,14 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-gcc', '--gc-config', action='store', default=None,
+            metavar="FILE",
+            help="""Provide a json, yaml, or toml file to configure dgenerates garbage collection settings."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
             '-mt', '--model-type', action='store', default='torch', type=_model_type,
             help=f"""Use when loading different model types.
                      Currently supported: {_SUPPORTED_MODEL_TYPES_PRETTY}. (default: torch)"""
@@ -2532,174 +2540,6 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         )
     )
 
-    actions.append(
-        parser.add_argument(
-            '-mc', '--cache-memory-constraints', action='store', nargs='+', default=None, type=_type_expression,
-            metavar="EXPR",
-            help=f"""Cache constraint expressions describing when to clear all object caches
-                    automatically considering current memory usage. If any of these constraint expressions are met 
-                    all objects in memory will be cleared. Example, and default value: 
-                    {' '.join(_textprocessing.quote_spaces(_pipelinewrapper.CACHE_MEMORY_CONSTRAINTS))}"""
-                 f' For Syntax See: [https://dgenerate.readthedocs.io/en/v{dgenerate.__version__}/'
-                 f'dgenerate_submodules.html#dgenerate.pipelinewrapper.CACHE_MEMORY_CONSTRAINTS]'
-        )
-    )
-
-    actions.append(
-        parser.add_argument(
-            '-pmc', '--pipeline-cache-memory-constraints', action='store', nargs='+', default=None,
-            type=_type_expression, metavar="EXPR",
-            help=f"""Cache constraint expressions describing when to automatically clear the in memory
-                    DiffusionPipeline cache considering current memory usage, and estimated memory usage of
-                    new models that are about to enter memory. If any of these constraint expressions are
-                    met all DiffusionPipeline objects cached in memory will be cleared. Example, and default
-                    value: {' '.join(_textprocessing.quote_spaces(_pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS))}"""
-                 f' For Syntax See: [https://dgenerate.readthedocs.io/en/v{dgenerate.__version__}/'
-                 f'dgenerate_submodules.html#dgenerate.pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS]'
-        )
-    )
-
-    actions.append(
-        parser.add_argument(
-            '-umc', '--unet-cache-memory-constraints', action='store', nargs='+', default=None, type=_type_expression,
-            metavar="EXPR",
-            help=f"""Cache constraint expressions describing when to automatically clear the in memory UNet
-                    cache considering current memory usage, and estimated memory usage of new UNet models that
-                    are about to enter memory. If any of these constraint expressions are met all UNet
-                    models cached in memory will be cleared. Example, and default
-                    value: {' '.join(_textprocessing.quote_spaces(_pipelinewrapper.UNET_CACHE_MEMORY_CONSTRAINTS))}"""
-                 f' For Syntax See: [https://dgenerate.readthedocs.io/en/v{dgenerate.__version__}/'
-                 f'dgenerate_submodules.html#dgenerate.pipelinewrapper.UNET_CACHE_MEMORY_CONSTRAINTS]'
-        )
-    )
-
-    actions.append(
-        parser.add_argument(
-            '-vmc', '--vae-cache-memory-constraints', action='store', nargs='+', default=None, type=_type_expression,
-            metavar="EXPR",
-            help=f"""Cache constraint expressions describing when to automatically clear the in memory VAE
-                    cache considering current memory usage, and estimated memory usage of new VAE models that
-                    are about to enter memory. If any of these constraint expressions are met all VAE
-                    models cached in memory will be cleared. Example, and default
-                    value: {' '.join(_textprocessing.quote_spaces(_pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS))}"""
-                 f' For Syntax See: [https://dgenerate.readthedocs.io/en/v{dgenerate.__version__}/'
-                 f'dgenerate_submodules.html#dgenerate.pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS]'
-        )
-    )
-
-    actions.append(
-        parser.add_argument(
-            '-cmc', '--control-net-cache-memory-constraints', action='store', nargs='+', default=None,
-            type=_type_expression, metavar="EXPR",
-            help=f"""Cache constraint expressions describing when to automatically clear the in memory ControlNet
-                    cache considering current memory usage, and estimated memory usage of new ControlNet models that
-                    are about to enter memory. If any of these constraint expressions are met all ControlNet
-                    models cached in memory will be cleared. Example, and default
-                    value: {' '.join(_textprocessing.quote_spaces(_pipelinewrapper.CONTROLNET_CACHE_MEMORY_CONSTRAINTS))}"""
-                 f' For Syntax See: [https://dgenerate.readthedocs.io/en/v{dgenerate.__version__}/'
-                 f'dgenerate_submodules.html#dgenerate.pipelinewrapper.CONTROLNET_CACHE_MEMORY_CONSTRAINTS]'
-        )
-    )
-
-    actions.append(
-        parser.add_argument(
-            '-tmc', '--text-encoder-cache-memory-constraints', action='store', nargs='+', default=None,
-            type=_type_expression, metavar="EXPR",
-            help=f"""Cache constraint expressions describing when to automatically clear the in memory Text Encoder
-                    cache considering current memory usage, and estimated memory usage of new Text Encoder models that
-                    are about to enter memory. If any of these constraint expressions are met all Text Encoder
-                    models cached in memory will be cleared. Example, and default
-                    value: {' '.join(_textprocessing.quote_spaces(_pipelinewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS))}"""
-                 f' For Syntax See: [https://dgenerate.readthedocs.io/en/v{dgenerate.__version__}/'
-                 f'dgenerate_submodules.html#dgenerate.pipelinewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS]'
-        )
-    )
-
-    actions.append(
-        parser.add_argument(
-            '-iemc', '--image-encoder-cache-memory-constraints', action='store', nargs
-
-            ='+', default=None, type=_type_expression, metavar="EXPR",
-            help=f"""Cache constraint expressions describing when to automatically clear the in memory Image Encoder
-                    cache considering current memory usage, and estimated memory usage of new Image Encoder models that
-                    are about to enter memory. If any of these constraint expressions are met all Image Encoder
-                    models cached in memory will be cleared. Example, and default
-                    value: {' '.join(_textprocessing.quote_spaces(_pipelinewrapper.IMAGE_ENCODER_CACHE_MEMORY_CONSTRAINTS))}"""
-                 f' For Syntax See: [https://dgenerate.readthedocs.io/en/v{dgenerate.__version__}/'
-                 f'dgenerate_submodules.html#dgenerate.pipelinewrapper.IMAGE_ENCODER_CACHE_MEMORY_CONSTRAINTS]'
-        )
-    )
-
-    actions.append(
-        parser.add_argument(
-            '-amc', '--adapter-cache-memory-constraints', action='store', nargs='+', default=None,
-            type=_type_expression, metavar="EXPR",
-            help=f"""Cache constraint expressions describing when to automatically clear the in memory T2I Adapter
-                    cache considering current memory usage, and estimated memory usage of new T2I Adapter models that
-                    are about to enter memory. If any of these constraint expressions are met all T2I Adapter
-                    models cached in memory will be cleared. Example, and default
-                    value: {' '.join(_textprocessing.quote_spaces(_pipelinewrapper.ADAPTER_CACHE_MEMORY_CONSTRAINTS))}"""
-                 f' For Syntax See: [https://dgenerate.readthedocs.io/en/v{dgenerate.__version__}/'
-                 f'dgenerate_submodules.html#dgenerate.pipelinewrapper.ADAPTER_CACHE_MEMORY_CONSTRAINTS]'
-        )
-    )
-
-    actions.append(
-        parser.add_argument(
-            '-tfmc', '--transformer-cache-memory-constraints', action='store', nargs='+', default=None,
-            type=_type_expression, metavar="EXPR",
-            help=f"""Cache constraint expressions describing when to automatically clear the in memory Transformer
-                    cache considering current memory usage, and estimated memory usage of new Transformer models that
-                    are about to enter memory. If any of these constraint expressions are met all Transformer
-                    models cached in memory will be cleared. Example, and default
-                    value: {' '.join(_textprocessing.quote_spaces(_pipelinewrapper.TRANSFORMER_CACHE_MEMORY_CONSTRAINTS))}"""
-                 f' For Syntax See: [https://dgenerate.readthedocs.io/en/v{dgenerate.__version__}/'
-                 f'dgenerate_submodules.html#dgenerate.pipelinewrapper.TRANSFORMER_CACHE_MEMORY_CONSTRAINTS]'
-        )
-    )
-
-    actions.append(
-        parser.add_argument(
-            '-ipcgc', '--image-processor-cpu-cache-gc-constraints', action='store', nargs='+', default=None,
-            type=_type_expression, metavar="EXPR",
-            help=f"""Cache constraint expressions describing when to automatically clear the entire 
-                    object cache considering current memory usage, and estimated memory usage of new image 
-                    processor models that are about to enter memory. If any of these constraint expressions 
-                    are met ALL objects cached in CPU side memory will be cleared. Example, and default
-                    value: {' '.join(_textprocessing.quote_spaces(_imgp_constants.IMAGE_PROCESSOR_CPU_CACHE_GC_CONSTRAINTS))}"""
-                 f' For Syntax See: [https://dgenerate.readthedocs.io/en/v{dgenerate.__version__}/'
-                 f'dgenerate_submodules.html#dgenerate.imageprocessors.IMAGE_PROCESSOR_CPU_CACHE_GC_CONSTRAINTS]'
-        )
-    )
-
-    actions.append(
-        parser.add_argument(
-            '-ipmc', '--image-processor-cache-memory-constraints', action='store', nargs='+', default=None,
-            type=_type_expression, metavar="EXPR",
-            help=f"""Cache constraint expressions describing when to automatically clear the in memory Image Processor
-                    cache considering current memory usage, and estimated memory usage of new Image Processor models that
-                    are about to enter memory. If any of these constraint expressions are met all Image Processors cached in 
-                    memory will be cleared. Example, and default
-                    value: {' '.join(_textprocessing.quote_spaces(_imgp_constants.IMAGE_PROCESSOR_CACHE_MEMORY_CONSTRAINTS))}"""
-                 f' For Syntax See: [https://dgenerate.readthedocs.io/en/v{dgenerate.__version__}/'
-                 f'dgenerate_submodules.html#dgenerate.imageprocessors.IMAGE_PROCESSOR_CACHE_MEMORY_CONSTRAINTS]'
-        )
-    )
-
-    actions.append(
-        parser.add_argument(
-            '-ipcc', '--image-processor-cuda-memory-constraints', action='store', nargs='+', default=None,
-            type=_type_expression, metavar="EXPR",
-            help=f"""Cache constraint expressions describing when to automatically clear the last active
-                    diffusion model from VRAM considering current GPU memory usage, and estimated GPU memory
-                    usage of new image processor models that are about to enter VRAM. If any of these
-                    constraint expressions are met the last active diffusion model in VRAM will be destroyed.
-                    Example, and default value: {' '.join(_textprocessing.quote_spaces(_imgp_constants.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS))}"""
-                 f' For Syntax See: [https://dgenerate.readthedocs.io/en/v{dgenerate.__version__}/'
-                 f'dgenerate_submodules.html#dgenerate.imageprocessors.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS]'
-        )
-    )
-
     return parser, actions
 
 
@@ -2726,64 +2566,9 @@ class DgenerateArguments(dgenerate.RenderLoopConfig):
     Enable debug output? ``-v/--verbose``
     """
 
-    cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
+    gc_config: _types.OptionalPath = None
     """
-    See: :py:attr:`dgenerate.pipelinewrapper.CACHE_MEMORY_CONSTRAINTS`
-    """
-
-    pipeline_cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
-    """
-    See: :py:attr:`dgenerate.pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS`
-    """
-
-    unet_cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
-    """
-    See: :py:attr:`dgenerate.pipelinewrapper.UNET_CACHE_MEMORY_CONSTRAINTS`
-    """
-
-    vae_cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
-    """
-    See: :py:attr:`dgenerate.pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS`
-    """
-
-    controlnet_cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
-    """
-    See: :py:attr:`dgenerate.pipelinewrapper.CONTROLNET_CACHE_MEMORY_CONSTRAINTS`
-    """
-
-    adapter_cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
-    """
-    See: :py:attr:`dgenerate.pipelinewrapper.ADAPTER_CACHE_MEMORY_CONSTRAINTS`
-    """
-
-    transformer_cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
-    """
-    See: :py:attr:`dgenerate.pipelinewrapper.TRANSFORMER_CACHE_MEMORY_CONSTRAINTS`
-    """
-
-    text_encoder_cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
-    """
-    See: :py:attr:`dgenerate.pipelinewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS`
-    """
-
-    image_encoder_cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
-    """
-    See: :py:attr:`dgenerate.pipelinewrapper.IMAGE_ENCODER_CACHE_MEMORY_CONSTRAINTS`
-    """
-
-    image_processor_cpu_cache_gc_constraints: typing.Optional[collections.abc.Sequence[str]] = None
-    """
-    See: :py:attr:`dgenerate.imageprocessors.IMAGE_PROCESSOR_CPU_CACHE_GC_CONSTRAINTS`
-    """
-
-    image_processor_cache_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
-    """
-    See: :py:attr:`dgenerate.imageprocessors.IMAGE_PROCESSOR_CACHE_MEMORY_CONSTRAINTS`
-    """
-
-    image_processor_cuda_memory_constraints: typing.Optional[collections.abc.Sequence[str]] = None
-    """
-    See: :py:attr:`dgenerate.imageprocessors.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS`
+    Garbage collector config file path.
     """
 
     def __init__(self):

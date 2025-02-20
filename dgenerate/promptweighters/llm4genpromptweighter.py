@@ -55,10 +55,18 @@ class T5EncoderWithProjection(transformers.T5PreTrainedModel):
 
 
 class RankGenEncoder:
-    def __init__(self, model_path, model_size=None, cache_dir=None, local_files_only=False, use_auth_token=None):
+    def __init__(self,
+                 model_path,
+                 model_size=None,
+                 cache_dir=None,
+                 local_files_only=False,
+                 use_auth_token=None,
+                 torch_dtype=torch.float32):
         assert model_path in [
             "kalpeshk2011/rankgen-t5-xl-all",
-            "kalpeshk2011/rankgen-t5-xl-pg19"
+            "kalpeshk2011/rankgen-t5-xl-pg19",
+            'kalpeshk2011/rankgen-t5-large-all',
+            'kalpeshk2011/rankgen-t5-large-pg19'
         ]
 
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -76,14 +84,17 @@ class RankGenEncoder:
             f"google/t5-v1_1-{self.model_size}",
             cache_dir=cache_dir,
             local_files_only=local_files_only,
-            use_auth_token=use_auth_token
+            use_auth_token=use_auth_token,
+            torch_dtype=torch_dtype
+
         )
 
         self.model = T5EncoderWithProjection.from_pretrained(
             model_path,
             trust_remote_code=True,
             local_files_only=local_files_only,
-            use_auth_token=use_auth_token
+            use_auth_token=use_auth_token,
+            torch_dtype=torch_dtype
         )
 
     def to(self, device, **kwargs):
@@ -190,6 +201,27 @@ class LLMFusionModule(torch.nn.Module):
         return clip_text
 
 
+def _cam_size_estimate_32bit(llama_dim, dim, heads):
+    # Parameters for each layer
+    llm_proj_params = llama_dim * dim
+    q_proj_params = k_proj_params = v_proj_params = out_proj_params = dim * dim
+    ffn_params1 = dim * (4 * dim)
+    ffn_params2 = (4 * dim) * dim
+    norm_params = 3 * (2 * dim)  # For q_norm, kv_norm, norm
+
+    # Total parameters
+    total_params = (llm_proj_params +
+                    4 * q_proj_params +
+                    ffn_params1 +
+                    ffn_params2 +
+                    norm_params)
+
+    # Memory size in bytes for float32 (4 bytes per parameter)
+    memory_size_float32 = total_params * 4  # 4 bytes per parameter
+
+    return memory_size_float32
+
+
 class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
     r"""
     LLM4GEN prompt weighter specifically for Stable Diffusion 1.5, See: https://github.com/YUHANG-Ma/LLM4GEN
@@ -203,13 +235,15 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
     --model-type torch-pix2pix
     --model-type torch-upscaler-x4
 
-    The "encoder" argument specifies the T5 encoder model (Rank generation model).
+    The "encoder" argument specifies the T5 encoder model variant.
 
-    The encoder specified must be one of:
+    The encoder variant specified must be one of:
 
     NOWRAP!
-    * kalpeshk2011/rankgen-t5-xl-all
-    * kalpeshk2011/rankgen-t5-xl-pg19
+    * large-all
+    * large-pg19
+    * xl-all
+    * xl-pg19
 
     The "projector" argument specifies a Hugging Face repo or file path to the LLM4GEN projector (CAM) model.
 
@@ -218,6 +252,9 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
     The "projector_subfolder" argument specifies the subfolder for the projector file in a Hugging Face repository.
 
     The "projector_weight_name" argument specifies the weight name of the projector file in a Hugging Face repository.
+
+    The "llm-dtype" argument specifies the precision for the rankgen encoder and llm4gen CAM projector model,
+    changing this to 'float16' or 'bfloat16' will cut memory use in half at the possible cost of output quality.
 
     The "local_files_only" argument specifies that no attempt should be made to download
     models from the internet, only look for cached models on disk.
@@ -235,11 +272,12 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
     NAMES = ['llm4gen']
 
     def __init__(self,
-                 encoder: str = "kalpeshk2011/rankgen-t5-xl-all",
+                 encoder: str = "xl-all",
                  projector: str = 'Shui-VL/LLM4GEN-models',
                  projector_subfolder: typing.Optional[str] = None,
                  projector_revision: typing.Optional[str] = None,
                  projector_weight_name: str = 'projector.pth',
+                 llm_dtype: str = 'float32',
                  local_files_only: bool = False,
                  token: typing.Optional[str] = None,
                  **kwargs):
@@ -251,25 +289,29 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
             _enums.ModelType.TORCH_UPSCALER_X4
         }
 
+        encoder = encoder.lower()
+        llm_dtype = llm_dtype.lower()
+
+        if llm_dtype not in {'bfloat16', 'float16', 'float32'}:
+            raise self.argument_error(
+                'llm4gen prompt-weighter "llm-dtype" argument must '
+                'be one of: bfloat16, float16, or float32')
+
         if self.model_type not in supported:
             raise _exceptions.PromptWeightingUnsupported(
                 f'Prompt weighting not supported for --model-type: {_enums.get_model_type_string(self.model_type)}')
 
         valid_encoders = [
-            'kalpeshk2011/rankgen-t5-xl-all',
-            'kalpeshk2011/rankgen-t5-xl-pg19'
+            'xl-all',
+            'xl-pg19',
+            'large-all',
+            'large-pg19'
         ]
 
         if encoder not in valid_encoders:
             raise _exceptions.PromptWeightingUnsupported(
                 f'llm4gen prompt-weighter "encoder" argument must be one of: '
                 f'{_textprocessing.oxford_comma(valid_encoders, "or")}')
-
-        self.t5_model = RankGenEncoder(
-            encoder,
-            local_files_only=local_files_only,
-            use_auth_token=token
-        )
 
         self.llm_projector_path = self._get_projector_path(
             projector,
@@ -280,8 +322,83 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
             use_auth_token=token
         )
 
-        self.llm_projector = LLMFusionModule(768, self.t5_model.model.config.d_model, 8)
-        self.llm_projector.load_state_dict(torch.load(self.llm_projector_path))
+        self._llm_dtype = _enums.get_torch_dtype(llm_dtype)
+
+        # XL encoder around 12 gigs, Large encoder around 3.08 gigs
+        rankgen_size_estimate = int(12 * 1024 ** 3) if 'xl' in encoder else int(3.08 * 1024 ** 3)
+
+        if llm_dtype != 'float32':
+            # transformers can actually load in 16 bit can cut the
+            # memory overhead in half
+            rankgen_size_estimate = rankgen_size_estimate // 2
+
+        # Assume 32 bit, because it is being loaded in 32 bit and
+        # then converted and we need space to do that
+        cam_size_estimate = _cam_size_estimate_32bit(768, 2048 if 'xl' in encoder else 1024, 8)
+
+        self.set_size_estimate(rankgen_size_estimate + cam_size_estimate)
+
+        encoder_model_path = 'kalpeshk2011/rankgen-t5-' + encoder
+
+        # the cached status should be linked to the
+        # dtype of the model, so append that to the tag
+
+        self.t5_model = self.load_object_cached(
+            tag=encoder_model_path + llm_dtype,
+            estimated_size=rankgen_size_estimate,
+            method=lambda: RankGenEncoder(
+                encoder_model_path,
+                local_files_only=local_files_only,
+                use_auth_token=token,
+                torch_dtype=self._llm_dtype
+            )
+        )
+
+        def load_llm_projector():
+            llm_projector = LLMFusionModule(
+                clip_dim=768,
+                llm_dim=self.t5_model.model.config.d_model,
+                num_heads=8
+            )
+
+            projector_state_dict = torch.load(self.llm_projector_path)
+
+            # Shape usually [768, 2048] for the author provided CAM model,
+            # large variants of the rank encoder models need [768, 1024]
+            llm_proj_weight = projector_state_dict["CrossFusionModule.0.llm_proj.weight"]
+
+            required_cam_model_dim = self.t5_model.model.config.d_model
+
+            if llm_proj_weight.shape[1] > required_cam_model_dim:
+                # check if we need to truncate
+
+                new_llm_proj_weight = torch.zeros(768, required_cam_model_dim)
+                new_llm_proj_weight[:, :required_cam_model_dim] = llm_proj_weight[:, :required_cam_model_dim]
+
+                # Replace in the state_dict
+                projector_state_dict["CrossFusionModule.0.llm_proj.weight"] = new_llm_proj_weight
+            elif llm_proj_weight.shape[1] < required_cam_model_dim:
+                raise self.argument_error(
+                    f'llm4gen prompt-weighter, bad llm_proj.weight in specified CAM model, '
+                    f'cannot upscale projection weight tensor dimension [1] to: {required_cam_model_dim}')
+
+            llm_projector.load_state_dict(projector_state_dict)
+            llm_projector.to(self._llm_dtype)
+
+            return llm_projector
+
+        # the tag should represent that this models
+        # "cached" status is linked to the type of
+        # encoder model picked, because its parameters
+        # depend on the encoder type, also the dtype
+        # since we do not want to be repeatedly
+        # upcasting and down-casting a cached model
+
+        self.llm_projector = self.load_object_cached(
+            tag=self.llm_projector_path + encoder_model_path + llm_dtype,
+            estimated_size=cam_size_estimate,
+            method=load_llm_projector
+        )
 
         self._tensors = list()
 
@@ -376,6 +493,8 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
                 module.dim = dim
                 module.head_dim = head_dim
 
+            self.memory_fence_device(device, self.size_estimate)
+
             self.llm_projector.to(device).eval()
             self.t5_model.to(device).eval()
 
@@ -388,10 +507,13 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
             input_ids = pipeline.tokenizer(
                 positive, return_tensors="pt", truncation=True, padding="max_length", max_length=77).input_ids
 
+            embeds_dtype = _enums.get_torch_dtype(self.dtype)
+
             input_ids = input_ids.to(device)
             self._tensors.append(input_ids)
             clip_embed = pipeline.text_encoder(input_ids, return_dict=False)[0]
-            pos_conditioning = self.llm_projector(clip_embed, llm_embed)
+            pos_conditioning = self.llm_projector(
+                clip_embed.to(self._llm_dtype), llm_embed).to(embeds_dtype)
 
             neg_llm_embed = self.t5_model.encode(negative, max_length=llm_embed.shape[1])
 
@@ -406,7 +528,8 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
             self._tensors.append(negative_ids)
 
             neg_clip_embeds = pipeline.text_encoder(negative_ids, return_dict=False)[0]
-            neg_conditioning = self.llm_projector(neg_clip_embeds, neg_llm_embed)
+            neg_conditioning = self.llm_projector(
+                neg_clip_embeds.to(self._llm_dtype), neg_llm_embed).to(embeds_dtype)
         finally:
             self.t5_model.to('cpu')
             self.llm_projector.cpu()

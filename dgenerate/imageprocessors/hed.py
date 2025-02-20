@@ -105,10 +105,11 @@ class HEDProcessor(_imageprocessor.ImageProcessor):
             self._detect_resolution = None
 
         self.set_size_estimate(29.4 * (1000 ** 2))  # 29.4 MB -> bytes
-        self._hed = self.load_model_cached(
-            "lllyasviel/Annotators",
-            self.size_estimate,
-            lambda: _cna.HEDdetector.from_pretrained("lllyasviel/Annotators"))
+        self._hed = self.load_object_cached(
+            tag="lllyasviel/Annotators",
+            estimated_size=self.size_estimate,
+            method=lambda: _cna.HEDdetector.from_pretrained("lllyasviel/Annotators")
+        )
         self.register_module(self._hed)
 
     def __str__(self):

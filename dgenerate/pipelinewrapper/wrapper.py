@@ -62,9 +62,9 @@ class DiffusionArgumentsHelpException(Exception):
 
 
 def _enforce_cache_constraints():
-    if _memory.memory_constraints(_constants.CACHE_MEMORY_CONSTRAINTS):
-        _messages.debug_log(f'dgenerate.pipelinewrapper.constants.CACHE_MEMORY_CONSTRAINTS '
-                            f'{_constants.CACHE_MEMORY_CONSTRAINTS} met, '
+    if _memory.memory_constraints(_constants.PIPELINE_WRAPPER_CACHE_GC_CONSTRAINTS):
+        _messages.debug_log(f'dgenerate.pipelinewrapper.constants.PIPELINE_WRAPPER_CACHE_GC_CONSTRAINTS '
+                            f'{_constants.PIPELINE_WRAPPER_CACHE_GC_CONSTRAINTS} met, '
                             f'calling {_types.fullname(_memoize.clear_object_caches)}.')
 
         _memoize.clear_object_caches()

@@ -40,18 +40,18 @@ import dgenerate.memoize as _memoize
 import dgenerate.devicecache as _devicecache
 
 
+_image_processor_cache = _memoize.create_object_cache(
+    'image_processor',
+    cache_type=_memory.SizedConstrainedObjectCache
+)
+
+
 def _cache_debug_hit(key, hit):
     _memoize.simple_cache_hit_debug("Image Processor Model", key, hit)
 
 
 def _cache_debug_miss(key, new):
     _memoize.simple_cache_miss_debug("Image Processor Model", key, new)
-
-
-_image_processor_cache = _memoize.create_object_cache(
-    'image_processor',
-    cache_type=_memory.SizedConstrainedObjectCache
-)
 
 
 class ImageProcessor(_plugin.Plugin):
@@ -149,38 +149,15 @@ class ImageProcessor(_plugin.Plugin):
         """
         return ['RGB']
 
-    def load_model_cached(self, model_tag, estimated_size, method: typing.Callable):
-        """
-        Load a potentially large model into the CPU side ``image_processor`` object cache.
-
-        :param model_tag: A unique string within the context of the image
-            processor implementation constructor.
-        :param estimated_size: Estimated size of the model in RAM.
-        :param method: A method which loads and returns the model object.
-        :return: The loaded model object
-        """
-
-        @_memoize.memoize(
-            _image_processor_cache,
-            on_hit=_cache_debug_hit,
-            on_create=_cache_debug_miss)
-        def load_cached(
-                loaded_by_name=self.loaded_by_name,
-                model_tag=model_tag
-        ):
-            return method(), _memoize.CachedObjectMetadata(size=estimated_size)
-
-        return load_cached()
-
     def set_size_estimate(self, size_bytes: int):
         """
-        Set the estimated size of this model in bytes for memory management
-        heuristics, this is intended to be used by implementors of the
-        :py:class:`ImageProcessor` plugin class.
+        Set the estimated size of this plugin in bytes for memory
+        management heuristics, this is intended to be used by implementors
+        of the :py:class:`ImageProcessor` plugin class.
 
         For the best memory optimization, this value should be set very
-        shortly before the model even enters CPU side ram, IE: before it
-        is loaded at all.
+        shortly before any associated model even enters CPU side ram, IE:
+        before it is loaded at all.
 
         :raise ValueError: if ``size_bytes`` is less than zero.
 
@@ -199,7 +176,7 @@ class ImageProcessor(_plugin.Plugin):
         )
 
         if (_memory.memory_constraints(
-                _constants.IMAGE_PROCESSOR_CPU_CACHE_GC_CONSTRAINTS,
+                _constants.IMAGE_PROCESSOR_CACHE_GC_CONSTRAINTS,
                 extra_vars={'processor_size': self.__size_estimate})):
             # wipe out the cpu side diffusion pipelines cache
             # and do a GC pass to free up cpu side memory since
@@ -210,6 +187,26 @@ class ImageProcessor(_plugin.Plugin):
                 f'cache due to CPU side memory constraint evaluating to to True.')
 
             _memoize.clear_object_caches()
+
+    def load_object_cached(self, tag: str, estimated_size: int, method: typing.Callable):
+        """
+        Load a potentially large object into the CPU side ``image_processor`` object cache.
+
+        :param tag: A unique string within the context of the image
+            processor implementation constructor.
+        :param estimated_size: Estimated size in bytes of the object in RAM.
+        :param method: A method which loads and returns the object.
+        :return: The loaded object
+        """
+
+        @_memoize.memoize(
+            _image_processor_cache,
+            on_hit=_cache_debug_hit,
+            on_create=_cache_debug_miss)
+        def load_cached(loaded_by_name=self.loaded_by_name, tag=tag):
+            return method(), _memoize.CachedObjectMetadata(size=estimated_size)
+
+        return load_cached()
 
     @property
     def size_estimate(self) -> int:

@@ -33,7 +33,7 @@ The only available extra variable is: ``pipeline_size`` (the estimated size
 of the image processor module that needs to enter VRAM, in bytes)
 """
 
-IMAGE_PROCESSOR_CPU_CACHE_GC_CONSTRAINTS = ['processor_size > (available * 0.70)']
+IMAGE_PROCESSOR_CACHE_GC_CONSTRAINTS = ['processor_size > (available * 0.70)']
 """
 Cache constraint expressions for when to attempt to fully clear CPU side ram before 
 the initial loading of an image processor module into ram, syntax provided via

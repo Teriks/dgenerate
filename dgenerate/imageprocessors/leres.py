@@ -95,17 +95,19 @@ class LeresDepthProcessor(_imageprocessor.ImageProcessor):
             try:
                 self._detect_resolution = _textprocessing.parse_image_size(detect_resolution)
             except ValueError as e:
-                raise self.argument_error(f'Could not parse the "detect-resolution" argument as an image dimension: {e}')
+                raise self.argument_error(
+                    f'Could not parse the "detect-resolution" argument as an image dimension: {e}')
         else:
             self._detect_resolution = None
 
         # this is the size of res101.pth['depth_model'] + latest_net_G.pth in bytes
         self.set_size_estimate(780273156)
 
-        self._leres = self.load_model_cached(
-            "lllyasviel/Annotators",
-            self.size_estimate,
-            lambda: _cna.LeresDetector.from_pretrained("lllyasviel/Annotators"))
+        self._leres = self.load_object_cached(
+            tag="lllyasviel/Annotators",
+            estimated_size=self.size_estimate,
+            method=lambda: _cna.LeresDetector.from_pretrained("lllyasviel/Annotators")
+        )
         self.register_module(self._leres)
 
     def __str__(self):

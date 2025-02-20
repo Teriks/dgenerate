@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import contextlib
 import os
 import sys
 import typing
@@ -70,7 +71,7 @@ _level_stack = []
 
 def push_level(level):
     """
-    Set :py:attr:`LEVEL` and save the previous value to a stack.
+    Set :py:attr:`dgenerate.messages.LEVEL` and save the previous value to a stack.
 
     :param level: one of :py:attr:`.INFO`, :py:attr:`.WARNING`, :py:attr:`.ERROR`, , :py:attr:`.DEBUG`
     """
@@ -81,7 +82,7 @@ def push_level(level):
 
 def pop_level():
     """
-    Pop ``LEVEL`` value last saved by :py:func:`.push_level` and assign it to :py:attr:`.LEVEL`.
+    Pop ``dgenerate.messages.LEVEL`` value last saved by :py:func:`.push_level` and assign it to :py:attr:`.LEVEL`.
 
     If no previous level was saved, no-op.
     """
@@ -90,6 +91,23 @@ def pop_level():
 
     if _level_stack:
         LEVEL = _level_stack.pop()
+
+
+@contextlib.contextmanager
+def with_level(level):
+    """
+    Context manager which pushes a ``dgenerate.messages.LEVEL`` to
+    the stack and pops it when the ``with`` context ends.
+
+    This affects logging output level within the context.
+
+    :param level: log level
+    """
+    try:
+        push_level(level)
+        yield
+    finally:
+        pop_level()
 
 
 def set_error_file(file: typing.TextIO):

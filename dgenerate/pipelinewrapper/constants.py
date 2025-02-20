@@ -194,7 +194,7 @@ DEFAULT_SDXL_REFINER_PAG_ADAPTIVE_SCALE: float = 0.0
 Default sdxl refiner pag adaptive scale
 """
 
-CACHE_MEMORY_CONSTRAINTS: list[str] = ['used_percent > 70']
+PIPELINE_WRAPPER_CACHE_GC_CONSTRAINTS: list[str] = ['used_percent > 70']
 """
 Cache constraint expressions for when to clear all object caches, syntax provided via :py:func:`dgenerate.memory.memory_constraints`
 

@@ -106,10 +106,10 @@ class PidiNetProcessor(_imageprocessor.ImageProcessor):
 
         self.set_size_estimate(2.87 * (1000 ** 2))  # 2.87 MB table5_pidinet.pth
 
-        self._pidi = self.load_model_cached(
-            "lllyasviel/Annotators",
-            self.size_estimate,
-            lambda: _cna.PidiNetDetector.from_pretrained("lllyasviel/Annotators")
+        self._pidi = self.load_object_cached(
+            tag="lllyasviel/Annotators",
+            estimated_size=self.size_estimate,
+            method=lambda: _cna.PidiNetDetector.from_pretrained("lllyasviel/Annotators")
         )
 
         self.register_module(self._pidi)

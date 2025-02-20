@@ -110,10 +110,11 @@ class OpenPoseProcessor(_imageprocessor.ImageProcessor):
             self._detect_resolution = None
 
         self.set_size_estimate(510 * (1000 ** 2))  # 510 MB body_pose_model.pth + hand_pose_model.pth + facenet.pth
-        self._openpose = self.load_model_cached(
-            "lllyasviel/Annotators",
-            self.size_estimate,
-            lambda: _cna.OpenposeDetector.from_pretrained("lllyasviel/Annotators"))
+        self._openpose = self.load_object_cached(
+            tag="lllyasviel/Annotators",
+            estimated_size=self.size_estimate,
+            method=lambda: _cna.OpenposeDetector.from_pretrained("lllyasviel/Annotators")
+        )
         self.register_module(self._openpose)
 
     def __str__(self):
