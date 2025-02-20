@@ -307,7 +307,7 @@ class DynamicPromptsPromptUpscaler(_promptupscaler.PromptUpscaler):
     def _with_magic_device(self):
         if self._magic_gen is not None:
             try:
-                self.memory_fence_device(self.device, self.size_estimate)
+                self.memory_guard_device(self.device, self.size_estimate)
                 self._magic_gen._generator.model.to(self.device)
                 yield
             finally:

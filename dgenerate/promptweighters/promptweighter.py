@@ -106,7 +106,7 @@ class PromptWeighter(_plugin.Plugin):
         """
         return self.__size_estimate
 
-    def memory_fence_device(self, device: str | torch.device, memory_required: int):
+    def memory_guard_device(self, device: str | torch.device, memory_required: int):
         """
         Check a specific device against an amount of memory in bytes.
 
@@ -178,7 +178,7 @@ class PromptWeighter(_plugin.Plugin):
                            tag: str,
                            estimated_size: int,
                            method: typing.Callable,
-                           memory_fence_device: str | torch.device | None = 'cpu'
+                           memory_guard_device: str | torch.device | None = 'cpu'
                            ):
         """
         Load a potentially large object into the CPU side ``prompt_weighter`` object cache.
@@ -187,7 +187,7 @@ class PromptWeighter(_plugin.Plugin):
             processor implementation constructor.
         :param estimated_size: Estimated size in bytes of the object in RAM.
         :param method: A method which loads and returns the object.
-        :param memory_fence_device: call :py:meth:`PromptWeighter.memory_fence_device` on the
+        :param memory_guard_device: call :py:meth:`PromptWeighter.memory_guard_device` on the
             specified device before the object is loaded (on cache miss)
         :return: The loaded object
         """
@@ -197,8 +197,8 @@ class PromptWeighter(_plugin.Plugin):
             on_hit=_cache_debug_hit,
             on_create=_cache_debug_miss)
         def load_cached(loaded_by_name=self.loaded_by_name, tag=tag):
-            if memory_fence_device is not None:
-                self.memory_fence_device(memory_fence_device, estimated_size)
+            if memory_guard_device is not None:
+                self.memory_guard_device(memory_guard_device, estimated_size)
             return method(), _memoize.CachedObjectMetadata(size=estimated_size)
 
         return load_cached()

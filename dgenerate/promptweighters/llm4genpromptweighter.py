@@ -488,7 +488,7 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
                 module.dim = dim
                 module.head_dim = head_dim
 
-            self.memory_fence_device(device, self.size_estimate)
+            self.memory_guard_device(device, self.size_estimate)
 
             self.llm_projector.to(device).eval()
             self.t5_model.to(device).eval()

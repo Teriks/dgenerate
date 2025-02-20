@@ -22,13 +22,13 @@ class MyPromptUpscaler(_promptupscaler.PromptUpscaler):
         # free up any objects dgenerate has cached
         # if we need to make space in RAM
 
-        # self.memory_fence_device('cpu', 1024)
+        # self.memory_guard_device('cpu', 1024)
 
         # same with objects cached in VRAM, this can
         # accept an ordinal, i.e. you can specify
         # which GPU to fence
 
-        # self.memory_fence_device('cuda', 1024)
+        # self.memory_guard_device('cuda', 1024)
 
         # load a large object into CPU side memory
         # with caching and auto memory fencing
@@ -37,7 +37,7 @@ class MyPromptUpscaler(_promptupscaler.PromptUpscaler):
         #     tag='unique_tag_in_this_constructor1',
         #     estimated_size=1024,
         #     method=lambda: load_my_object(),
-        #     memory_fence_device='cpu'
+        #     memory_guard_device='cpu'
         # )
 
         # load a large object into GPU side memory
@@ -47,7 +47,7 @@ class MyPromptUpscaler(_promptupscaler.PromptUpscaler):
         #     tag='unique_tag_in_this_constructor2',
         #     estimated_size=1024,
         #     method=lambda: load_my_object(),
-        #     memory_fence_device='gpu'
+        #     memory_guard_device='gpu'
         # )
 
     def upscale(self, prompt: _prompt.Prompt) -> _prompt.PromptOrPrompts:
