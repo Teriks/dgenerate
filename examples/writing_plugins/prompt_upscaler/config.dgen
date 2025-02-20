@@ -1,0 +1,8 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 4.5.1
+
+\import_plugins demo_plugin
+
+"Lykon/dreamshaper-8"
+--prompt-upscaler my-upscaler
+--prompts "hello world"

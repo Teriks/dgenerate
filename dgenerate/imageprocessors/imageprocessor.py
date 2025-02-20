@@ -176,26 +176,60 @@ class ImageProcessor(_plugin.Plugin):
 
         self.__size_estimate = int(size_bytes)
 
-        _image_processor_cache.enforce_cpu_mem_constraints(
-            _constants.IMAGE_PROCESSOR_CACHE_MEMORY_CONSTRAINTS,
-            size_var='processor_size',
-            new_object_size=self.__size_estimate
-        )
+    def memory_fence_device(self, device: str | torch.device, memory_required: int):
+        """
+        Check a specific device against an amount of memory in bytes.
 
-        if (_memory.memory_constraints(
-                _constants.IMAGE_PROCESSOR_CACHE_GC_CONSTRAINTS,
-                extra_vars={'processor_size': self.__size_estimate})):
-            # wipe out the cpu side diffusion pipelines cache
-            # and do a GC pass to free up cpu side memory since
-            # we are nearly out of memory anyway
+        If the device is a cuda device and any of the memory constraints specified by
+        :py:attr:`dgenerate.imageprocessors.constants.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS`
+        are met on that device, attempt to remove cached objects off the cuda device to free space.
 
-            _messages.debug_log(
-                f'Image processor "{self.__class__.__name__}" is clearing the CPU side object '
-                f'cache due to CPU side memory constraint evaluating to to True.')
+        If the device is a cpu and any of the memory constraints specified by
+        :py:attr:`dgenerate.imageprocessors.constants.IMAGE_PROCESSOR_CACHE_GC_CONSTRAINTS`
+        are met, attempt to remove cached image processor objects off the device to free space.
+        Then, enforce :py:attr:`dgenerate.imageprocessors.constants.IMAGE_PROCESSOR_CACHE_MEMORY_CONSTRAINTS`.
 
-            _memoize.clear_object_caches()
+        :param device: the device
+        :param memory_required: the amount of memory required on the device in bytes
+        :return: ``True`` if an attempt was made to free memory, ``False`` otherwise.
+        """
 
-    def load_object_cached(self, tag: str, estimated_size: int, method: typing.Callable):
+        device = torch.device(device)
+        cleared = False
+
+        if device.type == 'cuda':
+            if _memory.cuda_memory_constraints(
+                    _constants.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS,
+                    extra_vars={'memory_required': memory_required},
+                    device=device):
+                _devicecache.clear_device_cache(device)
+                cleared = True
+
+        elif device.type == 'cpu':
+
+            if (_memory.memory_constraints(
+                    _constants.IMAGE_PROCESSOR_CACHE_GC_CONSTRAINTS,
+                    extra_vars={'processor_size': memory_required})):
+                _messages.debug_log(
+                    f'Image Processor "{self.__class__.__name__}" is clearing the CPU side object '
+                    f'cache due to CPU side memory constraint evaluating to to True.')
+
+                _memoize.clear_object_caches()
+                cleared = True
+
+            cleared = cleared or _image_processor_cache.enforce_cpu_mem_constraints(
+                _constants.IMAGE_PROCESSOR_CACHE_MEMORY_CONSTRAINTS,
+                size_var='processor_size',
+                new_object_size=memory_required
+            )
+        return cleared
+
+    def load_object_cached(self,
+                           tag: str,
+                           estimated_size: int,
+                           method: typing.Callable,
+                           memory_fence_device: str | torch.device | None = 'cpu'
+                           ):
         """
         Load a potentially large object into the CPU side ``image_processor`` object cache.
 
@@ -203,6 +237,8 @@ class ImageProcessor(_plugin.Plugin):
             processor implementation constructor.
         :param estimated_size: Estimated size in bytes of the object in RAM.
         :param method: A method which loads and returns the object.
+        :param memory_fence_device: call :py:meth:`ImageProcessor.memory_fence_device` on the
+            specified device before the object is loaded (on cache miss)
         :return: The loaded object
         """
 
@@ -211,6 +247,8 @@ class ImageProcessor(_plugin.Plugin):
             on_hit=_cache_debug_hit,
             on_create=_cache_debug_miss)
         def load_cached(loaded_by_name=self.loaded_by_name, tag=tag):
+            if memory_fence_device is not None:
+                self.memory_fence_device(memory_fence_device, estimated_size)
             return method(), _memoize.CachedObjectMetadata(size=estimated_size)
 
         return load_cached()
@@ -218,9 +256,8 @@ class ImageProcessor(_plugin.Plugin):
     @property
     def size_estimate(self) -> int:
         """
-        Get the estimated size of this model in bytes.
-
-        :return: size bytes
+        Estimated size of the models / objects used by this image processor.
+        :return: size in bytes
         """
         return self.__size_estimate
 

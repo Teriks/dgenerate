@@ -301,10 +301,10 @@ Help Output
             by the specified plugins will also be listed.
             ---------------------------------------------
       -ofm, --offline-mode
-            Whether dgenerate should try to download Hugging Face models that do not exist in the disk cache, or
-            only use what is available in the cache. Referencing a model on Hugging Face that has not been
-            cached because it was not previously downloaded will result in a failure when using this option.
-            ------------------------------------------------------------------------------------------------
+            Prevent dgenerate from downloading Hugging Face models that do not exist in the disk cache or a
+            folder on disk. Referencing a model on Hugging Face hub that has not been cached because it was not
+            previously downloaded will result in a failure when using this option.
+            ----------------------------------------------------------------------
       --templates-help [VARIABLE_NAME ...]
             Print a list of template variables available in the interpreter environment used for dgenerate
             config scripts, particularly the variables set after a dgenerate invocation occurs. When used as a
@@ -4266,16 +4266,17 @@ to create good quality continuations of the text in your prompt automatically.
         arguments:
             magic: bool = False
             magic-model: str = "Gustavosta/MagicPrompt-Stable-Diffusion"
-            magic-seed: Optional[int] = None
+            magic-seed: int | None = None
             magic-max-length: int = 100
+            magic-temperature: float = 0.7
             attention: bool = False
             attention-min: int = 0.1
             attention-max: int = 0.9
             random: bool = False
-            random-seed: Optional[int] = None
-            variations: Optional[int] = None
-            wildcards: Optional[str] = None
-            seed: Optional[int] = None
+            random-seed: int | None = None
+            variations: int | None = None
+            wildcards: str | None = None
+            seed: int | None = None
     
         Upscale prompts with the dynamicprompts library.
     
@@ -4284,28 +4285,31 @@ to create good quality continuations of the text in your prompt automatically.
         The "magic" argument enables magicprompt, which generates a continuation of your prompt using the model
         "Gustavosta/MagicPrompt-Stable-Diffusion".
     
-        The "magic_model" specifies the model path for magicprompt, the default value is:
+        The "magic-model" specifies the model path for magicprompt, the default value is:
         "Gustavosta/MagicPrompt-Stable-Diffusion". This can be a folder on disk or a Hugging Face repository slug.
     
-        The "magic_seed" argument can be used to specify a seed for just the "magic" prompt generation, this
+        The "magic-seed" argument can be used to specify a seed for just the "magic" prompt generation, this
         overrides "seed".
     
-        The "magic_max_length" arguments the max prompt length for a magicprompt generated prompt, this value
+        The "magic-max-length" arguments the max prompt length for a magicprompt generated prompt, this value
         defaults to 100.
+    
+        The "magic-temperature" argument sets the sampling temperature to use when generating prompts with
+        magicprompt.
     
         The "attention" argument enables random token attention values, this requires the use of the "sd-embed"
         prompt weighter or "compel" in SD Web UI syntax mode, i.e. "compel;syntax=sdwui"
     
-        The "attention_min" argument sets the minimum value for random attention added by "attention=True". The
+        The "attention-min" argument sets the minimum value for random attention added by "attention=True". The
         default value is 0.1
     
-        The "attention_max" argument sets the maximum value for random attention added by "attention=True" The
+        The "attention-max" argument sets the maximum value for random attention added by "attention=True" The
         Default value is 0.9
     
         The "random" argument specifies that instead of strictly combinatorial output, dynamicprompts should
         produce N random variations of your prompt given the possibilities you have provided.
     
-        The "random_seed" argument can be used to specify a seed for just the "random" prompt generation, this
+        The "random-seed" argument can be used to specify a seed for just the "random" prompt generation, this
         overrides "seed".
     
         The "variations" argument specifies how many variations should be produced when "random" is set to true.
@@ -4669,12 +4673,11 @@ See: `LLM4GEN <https://github.com/YUHANG-Ma/LLM4GEN>`_
         arguments:
             encoder: str = "xl-all"
             projector: str = "Shui-VL/LLM4GEN-models"
-            projector-subfolder: Optional[str] = None
-            projector-revision: Optional[str] = None
+            projector-subfolder: str | None = None
+            projector-revision: str | None = None
             projector-weight-name: str = "projector.pth"
             llm-dtype: str = "float32"
-            local-files-only: bool = False
-            token: Optional[str] = None
+            token: str | None = None
     
         LLM4GEN prompt weighter specifically for Stable Diffusion 1.5, See: https://github.com/YUHANG-Ma/LLM4GEN
     
@@ -4709,9 +4712,6 @@ See: `LLM4GEN <https://github.com/YUHANG-Ma/LLM4GEN>`_
         The "llm-dtype" argument specifies the precision for the rankgen encoder and llm4gen CAM projector model,
         changing this to 'float16' or 'bfloat16' will cut memory use in half at the possible cost of output
         quality.
-    
-        The "local_files_only" argument specifies that no attempt should be made to download models from the
-        internet, only look for cached models on disk.
     
         The "token" argument allows you to explicitly specify a Hugging Face auth token for downloads.
     
@@ -5232,7 +5232,7 @@ The help output of ``image-process`` is as follows:
 
     usage: image-process [-h] [-p PROCESSORS [PROCESSORS ...]] [--plugin-modules PATH [PATH ...]]
                          [-o OUTPUT [OUTPUT ...]] [-ff FRAME_FORMAT] [-ox] [-r RESIZE] [-na] [-al ALIGN]
-                         [-d DEVICE] [-fs FRAME_NUMBER] [-fe FRAME_NUMBER] [-nf | -naf]
+                         [-d DEVICE] [-fs FRAME_NUMBER] [-fe FRAME_NUMBER] [-nf | -naf] [-ofm]
                          input [input ...]
     
     This command allows you to use dgenerate image processors directly on files of your choosing.
@@ -5300,6 +5300,11 @@ The help output of ``image-process`` is as follows:
       -naf, --no-animation-file
             Do not write an animation file, only frames. Cannot be used with --no-frames.
             -----------------------------------------------------------------------------
+      -ofm, --offline-mode
+            Prevent dgenerate from downloading Hugging Face hub models that do not exist in the disk cache or a
+            folder on disk. Referencing a model on Hugging Face hub that has not been cached because it was not
+            previously downloaded will result in a failure when using this option.
+            ----------------------------------------------------------------------
 
 
 Overview of specifying ``image-process`` inputs and outputs
@@ -6569,7 +6574,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [23538804247224]
+            Value: [75672317885614]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

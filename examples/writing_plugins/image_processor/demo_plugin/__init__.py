@@ -69,17 +69,43 @@ class FooBarImageProcessor(dgenerate.imageprocessors.ImageProcessor):
 
         # raise self.argument_error('My argument error message')
 
-        # if we are using a large model of some sort
-        # we can set a size estimate before proceeding to
-        # load it into memory, dgenerate will try to
-        # free up space for it if any image processor
-        # cpu side memory constraints have been met
-        #
-        # it will also use this estimate to try
-        # to free up cached objects in VRAM when
-        # the processor is moving modules to a device
+        # This should be set if you are loading
+        # large models, for cache statistics
 
         # self.set_size_estimate(1024)
+
+        # if we are using a large model of some sort
+        # we can fence cpu side memory in order to
+        # free up any objects dgenerate has cached
+        # if we need to make space in RAM
+
+        # self.memory_fence_device('cpu', 1024)
+
+        # same with objects cached in VRAM, this can
+        # accept an ordinal, i.e. you can specify
+        # which GPU to fence
+
+        # self.memory_fence_device('cuda', 1024)
+
+        # load a large object into CPU side memory
+        # with caching and auto memory fencing
+
+        # self._big_model1 = self.load_object_cached(
+        #     tag='unique_tag_in_this_constructor1',
+        #     estimated_size=1024,
+        #     method=lambda: load_my_object(),
+        #     memory_fence_device='cpu'
+        # )
+
+        # load a large object into GPU side memory
+        # with caching and auto memory fencing
+
+        # self._big_model2 = self.load_object_cached(
+        #     tag='unique_tag_in_this_constructor2',
+        #     estimated_size=1024,
+        #     method=lambda: load_my_object(),
+        #     memory_fence_device='gpu'
+        # )
 
         # register anything that needs to
         # move onto the device requested by the user
