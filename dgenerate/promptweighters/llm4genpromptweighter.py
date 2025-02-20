@@ -295,7 +295,7 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
         if llm_dtype not in {'bfloat16', 'float16', 'float32'}:
             raise self.argument_error(
                 'llm4gen prompt-weighter "llm-dtype" argument must '
-                'be one of: bfloat16, float16, or float32')
+                'be one of: float32, float16, or bfloat16')
 
         if self.model_type not in supported:
             raise _exceptions.PromptWeightingUnsupported(
