@@ -557,11 +557,11 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '-ofm', '--offline-mode', action='store_true', default=False,
-            help="""Whether dgenerate should try to download Hugging Face models that do not
-                    exist in the disk cache, or only use what is available in the cache. Referencing
-                    a model on Hugging Face that has not been cached because it was not previously
-                    downloaded will result in a failure when using this option."""
+            '-ofm', '--offline-mode', action='store_true',
+            help="""Prevent dgenerate from downloading Hugging Face models that do not
+                    exist in the disk cache or a folder on disk. Referencing a model on 
+                    Hugging Face hub that has not been cached because it was not 
+                    previously downloaded will result in a failure when using this option."""
         )
     )
 

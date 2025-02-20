@@ -1,4 +1,5 @@
 import sys
+import typing
 import unittest
 
 import dgenerate.plugin as _plugin
@@ -346,6 +347,79 @@ class TestPluginLoading(unittest.TestCase):
         set_defaults()
         PluginTypedArguments.ARG7 = 'string'
         loader.load('typed-arguments;arg7=string')
+
+    def test_union_arguments(self):
+        runner = self
+
+        class PluginTypedArguments(_plugin.Plugin):
+            NAMES = ['union-arguments']
+
+            def __init__(self,
+                         arg1: str | int,
+                         arg2: typing.Union[str, float, None] = None,
+                         **kwargs):
+                super().__init__(**kwargs)
+
+                runner.assertIsInstance(arg1, int)
+                runner.assertIsInstance(arg2, str)
+
+        loader = _plugin.PluginLoader()
+
+        loader.add_class(PluginTypedArguments)
+
+        loader.load('union-arguments;arg1=5;arg2=test')
+
+        class PluginTypedArguments(_plugin.Plugin):
+            NAMES = ['union-arguments']
+
+            def __init__(self,
+                         arg1: str | int,
+                         arg2: typing.Union[str, int, None] = None,
+                         **kwargs):
+                super().__init__(**kwargs)
+
+                runner.assertNotIsInstance(arg1, str)
+                runner.assertNotIsInstance(arg2, str)
+
+        loader = _plugin.PluginLoader()
+
+        loader.add_class(PluginTypedArguments)
+
+        with self.assertRaises(_plugin.PluginArgumentError):
+            loader.load('union-arguments;arg1=5.5')
+
+        with self.assertRaises(_plugin.PluginArgumentError):
+            loader.load('union-arguments;arg2=1.5')
+
+        loader.load('union-arguments;arg1=5')
+
+        loader.load('union-arguments;arg1=2;arg2=1')
+
+        class PluginTypedArguments(_plugin.Plugin):
+            NAMES = ['union-arguments']
+
+            def __init__(self,
+                         arg1: str | set,
+                         arg2: typing.Union[str, set, None],
+                         **kwargs):
+                super().__init__(**kwargs)
+
+                runner.assertNotIsInstance(arg1, str)
+                runner.assertNotIsInstance(arg2, str)
+
+        loader = _plugin.PluginLoader()
+
+        loader.add_class(PluginTypedArguments)
+
+        with self.assertRaises(_plugin.PluginArgumentError):
+            loader.load('union-arguments;arg1=4;arg2=None')
+
+        with self.assertRaises(_plugin.PluginArgumentError):
+            loader.load('union-arguments;arg1=5;arg2={1,1}')
+
+        loader.load('union-arguments;arg1={1,1};arg2=None')
+
+        loader.load('union-arguments;arg1={1,1};arg2={1,1}')
 
     def test_typed_arguments_defaults_positionals(self):
         runner = self

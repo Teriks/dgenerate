@@ -2621,27 +2621,12 @@ class DiffusionPipelineWrapper:
             model_type: _enums.ModelType,
             dtype: _enums.DataType
     ):
-        # these may load large models on init,
-        # make sure to reuse them when possible
-
-        cache_key = locals()
-        cache_key.pop('self')
-        cache_key = str(cache_key)
-
-        if cache_key in self._prompt_weighter_cache:
-            weighter = self._prompt_weighter_cache[cache_key]
-            _messages.debug_log(
-                f'{self.__class__.__name__} loaded prompt-weighter (from cache): {weighter.__class__.__name__}')
-        else:
-            weighter = self._prompt_weighter_loader.load(
-                uri,
-                model_type=model_type,
-                dtype=dtype
-            )
-            _messages.debug_log(
-                f'{self.__class__.__name__} loaded prompt-weighter: {weighter.__class__.__name__}')
-            self._prompt_weighter_cache[cache_key] = weighter
-        return weighter
+        return self._prompt_weighter_loader.load(
+            uri,
+            model_type=model_type,
+            dtype=dtype,
+            local_files_only=self.local_files_only
+        )
 
     def _default_prompt_weighter(self, *sources):
         for source in sources:

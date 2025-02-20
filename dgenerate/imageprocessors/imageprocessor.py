@@ -39,7 +39,6 @@ import dgenerate.types
 import dgenerate.memoize as _memoize
 import dgenerate.devicecache as _devicecache
 
-
 _image_processor_cache = _memoize.create_object_cache(
     'image_processor',
     cache_type=_memory.SizedConstrainedObjectCache
@@ -58,6 +57,9 @@ class ImageProcessor(_plugin.Plugin):
     """
     Abstract base class for image processor implementations.
     """
+
+    # you cannot specify these via a URI
+    HIDE_ARGS = ['local-files-only']
 
     @classmethod
     def inheritable_help(cls, subclass, loaded_by_name):
@@ -99,10 +101,11 @@ class ImageProcessor(_plugin.Plugin):
 
     def __init__(self,
                  loaded_by_name: str,
-                 device: typing.Optional[str] = None,
+                 device: str | None = None,
                  output_file: dgenerate.types.OptionalPath = None,
                  output_overwrite: bool = False,
                  model_offload: bool = False,
+                 local_files_only: bool = False,
                  **kwargs):
         """
         :param loaded_by_name: The name the processor was loaded by
@@ -113,6 +116,9 @@ class ImageProcessor(_plugin.Plugin):
         :param model_offload: if ``True``, any torch modules that the processor
             has registered are offloaded to the CPU immediately after processing an
             image
+        :param local_files_only: if ``True``, the plugin should never try to download
+            models from the internet automatically, and instead only look
+            for them in cache / on disk.
         :param kwargs: child class forwarded arguments
         """
 
@@ -136,6 +142,7 @@ class ImageProcessor(_plugin.Plugin):
         self.__modules_device = torch.device('cpu')
         self.__model_offload = model_offload
         self.__size_estimate = 0
+        self.__local_files_only = local_files_only
 
     # noinspection PyMethodMayBeStatic
     @property
@@ -228,6 +235,13 @@ class ImageProcessor(_plugin.Plugin):
         :return: device string, for example "cuda", "cuda:N", or "cpu"
         """
         return self.__device
+
+    @property
+    def local_files_only(self) -> bool:
+        """
+        Is this image processor only going to look for Hugging Face hub model files in cache / on disk?
+        """
+        return self.__local_files_only
 
     @property
     def modules_device(self) -> torch.device:

@@ -19,10 +19,8 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import os
-import typing
 import torch
 import PIL.Image
-import cv2
 import huggingface_hub
 import numpy
 
@@ -31,6 +29,7 @@ import controlnet_aux.util as _cna_util
 import dgenerate.image as _image
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
+import dgenerate.imageprocessors.util as _util
 from dgenerate.imageprocessors import imageprocessor as _imageprocessor
 
 
@@ -59,7 +58,7 @@ class SegmentAnythingProcessor(_imageprocessor.ImageProcessor):
     NAMES = ['sam']
 
     def __init__(self,
-                 detect_resolution: typing.Optional[str] = None,
+                 detect_resolution: str | None = None,
                  detect_aspect: bool = True,
                  detect_align: int = 1,
                  pre_resize: bool = False,
@@ -95,12 +94,13 @@ class SegmentAnythingProcessor(_imageprocessor.ImageProcessor):
 
         self.set_size_estimate(2564363480)  # 2.56436348 GB
 
-        self._sam: _cna.SamDetector = self.load_object_cached(
-            tag="ybelkada/segment-anything;subfolder=checkpoints",
-            estimated_size=self.size_estimate,
-            method=lambda:
-            self._from_pretrained("ybelkada/segment-anything", subfolder="checkpoints")
-        )
+        with _util._with_hf_local_files_only(self.local_files_only):
+            self._sam: _cna.SamDetector = self.load_object_cached(
+                tag="ybelkada/segment-anything;subfolder=checkpoints",
+                estimated_size=self.size_estimate,
+                method=lambda:
+                self._from_pretrained("ybelkada/segment-anything", subfolder="checkpoints")
+            )
 
         self.register_module(
             self._sam.mask_generator.predictor.model)

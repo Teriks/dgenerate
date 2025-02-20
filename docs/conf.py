@@ -4,6 +4,7 @@ import ast
 import inspect
 import textwrap
 import dgenerate.pygments
+import dgenerate.promptupscalers
 import sphinx.highlighting
 from importlib.machinery import SourceFileLoader
 
@@ -104,6 +105,12 @@ convert_constants_to_rst(
     dgenerate.pipelinewrapper.constants,
     'dgenerate.pipelinewrapper',
     'pipelinewrapper_constants.rst'
+)
+
+convert_constants_to_rst(
+    dgenerate.promptupscalers.constants,
+    'dgenerate.promptupscalers',
+    'promptupscalers_constants.rst'
 )
 
 convert_constants_to_rst(

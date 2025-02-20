@@ -19,7 +19,6 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import os
-import typing
 
 import PIL.Image
 import spandrel
@@ -79,7 +78,7 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
 
     def __init__(self,
                  model: str,
-                 tile: typing.Union[int, str] = 512,
+                 tile: int | str = 512,
                  overlap: int = 32,
                  force_tiling: bool = False,
                  dtype: str = 'float32',

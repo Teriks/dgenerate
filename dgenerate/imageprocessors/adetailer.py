@@ -200,22 +200,21 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
     def __init__(self,
                  model: str,
                  prompt: str,
-                 negative_prompt: typing.Optional[str] = None,
-                 prompt_weighter: typing.Optional[str] = None,
-                 weight_name: typing.Optional[str] = None,
-                 subfolder: typing.Optional[str] = None,
-                 revision: typing.Optional[str] = None,
-                 token: typing.Optional[str] = None,
-                 local_files_only: bool = False,
-                 seed: typing.Optional[int] = None,
+                 negative_prompt: str | None = None,
+                 prompt_weighter: str | None = None,
+                 weight_name: str | None = None,
+                 subfolder: str | None = None,
+                 revision: str | None = None,
+                 token: str | None = None,
+                 seed: int | None = None,
                  inference_steps: int = 30,
                  guidance_scale: float = 5,
-                 pag_scale: typing.Optional[float] = None,
-                 pag_adaptive_scale: typing.Optional[float] = None,
+                 pag_scale: float | None = None,
+                 pag_adaptive_scale: float | None = None,
                  strength: float = 0.4,
                  detector_padding: str = "0",
                  mask_shape: str = 'rectangle',
-                 index_filter: typing.Optional[int | list | tuple] = None,
+                 index_filter: int | list | tuple | None = None,
                  mask_padding: str = str(_constants.DEFAULT_ADETAILER_MASK_PADDING),
                  mask_blur: int = _constants.DEFAULT_ADETAILER_MASK_BLUR,
                  mask_dilation: int = _constants.DEFAULT_ADETAILER_MASK_DILATION,
@@ -331,7 +330,7 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
                 weight_name=weight_name
             ).get_model_path(
                 use_auth_token=token,
-                local_files_only=local_files_only)
+                local_files_only=self.local_files_only)
         except Exception as e:
             raise self.argument_error(str(e))
 
@@ -429,7 +428,8 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
                 prompt_weighter = loader.load(
                     self._prompt_weighter,
                     model_type=model_type,
-                    dtype=encoder_dtype)
+                    dtype=encoder_dtype,
+                    local_files_only=self.local_files_only)
             except Exception as e:
                 raise self.argument_error(str(e))
 

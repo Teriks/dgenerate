@@ -185,6 +185,8 @@ dgenerate.promptupscalers module
    :show-inheritance:
    :special-members: __call__, __init__
 
+.. include:: promptupscalers_constants.rst
+
 dgenerate.promptweighters module
 --------------------------------
 

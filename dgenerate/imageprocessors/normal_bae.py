@@ -18,10 +18,8 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import typing
 
 import PIL.Image
-import cv2
 import einops
 import numpy
 import torch
@@ -31,6 +29,7 @@ import controlnet_aux.util as _cna_util
 import dgenerate.image as _image
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
+import dgenerate.imageprocessors.util as _util
 from dgenerate.imageprocessors import imageprocessor as _imageprocessor
 
 
@@ -56,7 +55,7 @@ class NormalBaeProcessor(_imageprocessor.ImageProcessor):
     NAMES = ['normal-bae']
 
     def __init__(self,
-                 detect_resolution: typing.Optional[str] = None,
+                 detect_resolution: str | None = None,
                  detect_aspect: bool = True,
                  pre_resize: bool = False,
                  **kwargs):
@@ -84,11 +83,12 @@ class NormalBaeProcessor(_imageprocessor.ImageProcessor):
             self._detect_resolution = None
 
         self.set_size_estimate(291 * (1000 ** 2))  # 6.34 MB scannet.pt
-        self._normal_bae = self.load_object_cached(
-            tag="lllyasviel/Annotators",
-            estimated_size=self.size_estimate,
-            method=lambda: _cna.NormalBaeDetector.from_pretrained("lllyasviel/Annotators")
-        )
+        with _util._with_hf_local_files_only(self.local_files_only):
+            self._normal_bae = self.load_object_cached(
+                tag="lllyasviel/Annotators",
+                estimated_size=self.size_estimate,
+                method=lambda: _cna.NormalBaeDetector.from_pretrained("lllyasviel/Annotators")
+            )
         self.register_module(self._normal_bae)
 
     def __str__(self):

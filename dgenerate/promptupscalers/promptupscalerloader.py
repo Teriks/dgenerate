@@ -33,23 +33,29 @@ class PromptUpscalerLoader(_plugin.PluginLoader):
     """
 
     def __init__(self):
-        """"""
 
         # The empty string above disables sphinx inherited doc
         super().__init__(base_class=_promptupscaler.PromptUpscaler,
                          description='prompt upscaler',
-                         reserved_args=[_Pa('device', type=str, default='cpu')],
+                         reserved_args=[_Pa('device', type=str, default='cpu'),
+                                        _Pa('local-files-only', type=bool, default=False)],
                          argument_error_type=_exceptions.PromptUpscalerArgumentError,
                          not_found_error_type=_exceptions.PromptUpscalerNotFoundError)
 
         self.add_search_module_string('dgenerate.promptupscalers')
 
-    def load(self, uri: _types.Uri, device: str = 'cpu', **kwargs) -> _promptupscaler.PromptUpscaler:
+    def load(self, uri: _types.Uri,
+             device: str = 'cpu',
+             local_files_only: bool = False,
+             **kwargs
+             ) -> _promptupscaler.PromptUpscaler:
         """
-
         :param uri: prompt upscaler URI
         :param device: Device used for any text processing models.
+        :param local_files_only: Should the prompt upscaler avoid downloading
+            files from Hugging Face hub and only check the cache or local directories?
         :param kwargs: Additional plugin arguments
         :return: :py:class:`dgenerate.promptupscalers.PromptUpscaler`
         """
-        return typing.cast(_promptupscaler.PromptUpscaler, super().load(uri, device=device, **kwargs))
+        return typing.cast(_promptupscaler.PromptUpscaler, super().load(
+            uri, device=device, local_files_only=local_files_only, **kwargs))

@@ -989,9 +989,15 @@ class RenderLoop:
                 processor_chain.append([])
 
         if len(processor_chain) == 1:
-            r = self.image_processor_loader.load(processor_chain[0], device=self.config.device)
+            r = self.image_processor_loader.load(
+                processor_chain[0],
+                device=self.config.device,
+                local_files_only=self.config.offline_mode)
         else:
-            r = [self.image_processor_loader.load(p, device=self.config.device) for p in processor_chain]
+            r = [self.image_processor_loader.load(p,
+                                                  device=self.config.device,
+                                                  local_files_only=self.config.offline_mode)
+                 for p in processor_chain]
 
         return r
 

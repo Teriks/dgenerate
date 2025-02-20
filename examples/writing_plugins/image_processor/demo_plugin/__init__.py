@@ -49,12 +49,13 @@ class FooBarImageProcessor(dgenerate.imageprocessors.ImageProcessor):
 
     # The type hint typing.Union[...] may also be used with multiple types present
 
-    # Python type hint syntax using the | operator to declare type hints is not supported
+    # You can also | operator to declare union type hints
     def __init__(self,
                  my_argument: str,
                  my_argument_2: bool = False,
                  my_argument_3: float = 1.0,
                  my_argument_4: typing.Optional[float] = None,
+                 my_argument_5: str | int | None = None,
                  **kwargs):
         super().__init__(**kwargs)
 
@@ -62,6 +63,7 @@ class FooBarImageProcessor(dgenerate.imageprocessors.ImageProcessor):
         self._my_argument_2 = my_argument_2
         self._my_argument_3 = my_argument_3
         self._my_argument_4 = my_argument_4
+        self._my_argument_5 = my_argument_5
 
         # you can raise custom argument errors with self.argument_error
 

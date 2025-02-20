@@ -803,9 +803,9 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     offline_mode: bool = False
     """
-    Avoid ever connecting to the huggingface API? this can be used if all your models are cached or
-    if you are only ever using models that exist on disk. Corresponds to the
-    ``--offline-mode`` argument of the dgenerate command line tool.
+    Avoid ever connecting to Hugging Face hub to download models? this can be used if 
+    all your models are cached or if you are only ever using hub models that exist on disk. 
+    Corresponds to the ``--offline-mode`` argument of the dgenerate command line tool.
     """
 
     model_cpu_offload: bool = False
@@ -1874,7 +1874,8 @@ class RenderLoopConfig(_types.SetFromMixin):
                 prompts=prompts,
                 default_upscaler_uri=default_upscaler_uri,
                 device=self.device,
-                upscaler_cache=upscalers_by_uri
+                upscaler_cache=upscalers_by_uri,
+                local_files_only=self.offline_mode
             )
 
         self.prompts = upscale_prompts(self.prompts, self.prompt_upscaler_uri)

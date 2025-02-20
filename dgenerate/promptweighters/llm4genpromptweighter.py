@@ -256,9 +256,6 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
     The "llm-dtype" argument specifies the precision for the rankgen encoder and llm4gen CAM projector model,
     changing this to 'float16' or 'bfloat16' will cut memory use in half at the possible cost of output quality.
 
-    The "local_files_only" argument specifies that no attempt should be made to download
-    models from the internet, only look for cached models on disk.
-
     The "token" argument allows you to explicitly specify a Hugging Face auth token for downloads.
 
     NOWRAP!
@@ -274,12 +271,11 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
     def __init__(self,
                  encoder: str = "xl-all",
                  projector: str = 'Shui-VL/LLM4GEN-models',
-                 projector_subfolder: typing.Optional[str] = None,
-                 projector_revision: typing.Optional[str] = None,
+                 projector_subfolder: str | None = None,
+                 projector_revision: str | None = None,
                  projector_weight_name: str = 'projector.pth',
                  llm_dtype: str = 'float32',
-                 local_files_only: bool = False,
-                 token: typing.Optional[str] = None,
+                 token: str | None = None,
                  **kwargs):
         super().__init__(**kwargs)
 
@@ -294,7 +290,7 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
 
         if llm_dtype not in {'bfloat16', 'float16', 'float32'}:
             raise self.argument_error(
-                'llm4gen prompt-weighter "llm-dtype" argument must '
+                'Argument "llm-dtype" must '
                 'be one of: float32, float16, or bfloat16')
 
         if self.model_type not in supported:
@@ -310,7 +306,7 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
 
         if encoder not in valid_encoders:
             raise _exceptions.PromptWeightingUnsupported(
-                f'llm4gen prompt-weighter "encoder" argument must be one of: '
+                f'Argument "encoder" must be one of: '
                 f'{_textprocessing.oxford_comma(valid_encoders, "or")}')
 
         self.llm_projector_path = self._get_projector_path(
@@ -318,7 +314,7 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
             weight_name=projector_weight_name,
             subfolder=projector_subfolder,
             revision=projector_revision,
-            local_files_only=local_files_only,
+            local_files_only=self.local_files_only,
             use_auth_token=token
         )
 
@@ -348,7 +344,7 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
             estimated_size=rankgen_size_estimate,
             method=lambda: RankGenEncoder(
                 encoder_model_path,
-                local_files_only=local_files_only,
+                local_files_only=self.local_files_only,
                 use_auth_token=token,
                 torch_dtype=self._llm_dtype
             )
@@ -379,7 +375,7 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
                 projector_state_dict["CrossFusionModule.0.llm_proj.weight"] = new_llm_proj_weight
             elif llm_proj_weight.shape[1] < required_cam_model_dim:
                 raise self.argument_error(
-                    f'llm4gen prompt-weighter, bad llm_proj.weight in specified CAM model, '
+                    f'Argument "projector" and related, bad llm_proj.weight in specified CAM model, '
                     f'cannot upscale projection weight tensor dimension [1] to: {required_cam_model_dim}')
 
             llm_projector.load_state_dict(projector_state_dict)
@@ -414,8 +410,6 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
                 if os.path.exists(model):
                     return model
                 else:
-                    if local_files_only:
-                        raise self.argument_error(f'Could not find projector model: {model}')
                     return _util.download_non_hf_model(model)
             else:
                 return huggingface_hub.hf_hub_download(
@@ -427,7 +421,8 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
                     local_files_only=local_files_only)
         except Exception as e:
             raise self.argument_error(
-                f'Could not find projector model: {e}')
+                f'Argument "projector" and related, '
+                f'could not find projector model: {e}')
 
     @torch.inference_mode()
     def translate_to_embeds(self,
@@ -480,7 +475,7 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
         negative = negative if negative else ""
 
         if isinstance(pipeline.unet.config.attention_head_dim, list):
-            raise self.argument_error(
+            raise _exceptions.PromptWeightingUnsupported(
                 'llm4gen prompt-weighter does not support Stable Diffusion 2.* models.')
         else:
             heads = pipeline.unet.config.attention_head_dim

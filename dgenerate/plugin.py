@@ -56,7 +56,7 @@ class PluginArg:
         return _types.get_type_of_optional(self.type, get_origin=False)
 
     @property
-    def base_type(self):
+    def base_type(self) -> type:
         if self.is_hinted_optional:
             return _types.get_type(self.hinted_optional_type)
         else:
@@ -124,7 +124,7 @@ class PluginArg:
                     return evaled
                 return base_type(value)
 
-            if base_type is typing.Union:
+            if _types.is_union(base_type):
                 try:
                     evaled = ast.literal_eval(value)
                 except (ValueError, SyntaxError):
@@ -353,16 +353,14 @@ class Plugin:
 
             def _resolve_union(t):
                 name = _type_name(t)
-                if name.startswith('typing.Union') or \
-                        name.startswith('typing.Optional'):
+                if _types.is_union(t):
                     return set(itertools.chain.from_iterable(
                         [_resolve_union(t) for t in arg.type.__args__]))
                 return [name]
 
             type_name = _type_name(arg.type)
 
-            if type_name.startswith('typing.Union') or \
-                    type_name.startswith('typing.Optional'):
+            if _types.is_union(arg.type):
                 union_args = _resolve_union(arg.type)
                 if 'NoneType' in union_args:
                     entry['optional'] = True
@@ -401,15 +399,19 @@ class Plugin:
 
         :return: hidden argument names
         """
-        args_hidden = []
-        if hasattr(cls, 'HIDE_ARGS'):
-            if isinstance(cls.HIDE_ARGS, dict):
-                if loaded_by_name in cls.HIDE_ARGS:
-                    args_hidden = cls.HIDE_ARGS[loaded_by_name]
-            else:
-                args_hidden = cls.HIDE_ARGS
+        args_hidden = set()
 
-        return set(_textprocessing.dashup(name) for name in args_hidden)
+        for base in cls.mro():
+            if hasattr(base, 'HIDE_ARGS'):
+                if isinstance(base.HIDE_ARGS, dict):
+                    if loaded_by_name in base.HIDE_ARGS:
+                        for arg in base.HIDE_ARGS[loaded_by_name]:
+                            args_hidden.add(_textprocessing.dashup(arg))
+                else:
+                    for arg in base.HIDE_ARGS:
+                        args_hidden.add(_textprocessing.dashup(arg))
+
+        return args_hidden
 
     @classmethod
     def get_accepted_args(cls, loaded_by_name: str, include_bases: bool = False):

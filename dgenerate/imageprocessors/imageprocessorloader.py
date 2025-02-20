@@ -35,7 +35,6 @@ class ImageProcessorLoader(_plugin.PluginLoader):
     """
 
     def __init__(self):
-        """"""
 
         # The empty string above disables sphinx inherited doc
         super().__init__(base_class=_imageprocessor.ImageProcessor,
@@ -43,13 +42,17 @@ class ImageProcessorLoader(_plugin.PluginLoader):
                          reserved_args=[_Pa('output-file', type=str, default=None),
                                         _Pa('output-overwrite', type=bool, default=False),
                                         _Pa('device', type=str, default='cpu'),
-                                        _Pa('model-offload', type=bool, default=False)],
+                                        _Pa('model-offload', type=bool, default=False),
+                                        _Pa('local-files-only', type=bool, default=False)],
                          argument_error_type=_exceptions.ImageProcessorArgumentError,
                          not_found_error_type=_exceptions.ImageProcessorNotFoundError)
 
         self.add_search_module_string('dgenerate.imageprocessors')
 
-    def load(self, uri: _types.Uri | collections.abc.Iterable[_types.Uri], device: str = 'cpu',
+    def load(self,
+             uri: _types.Uri | collections.abc.Iterable[_types.Uri],
+             device: str = 'cpu',
+             local_files_only: bool = False,
              **kwargs) -> _imageprocessor.ImageProcessor | _imageprocessorchain.ImageProcessorChain | None:
         """
         Load an image processor or multiple image processors. They are loaded by URI, which
@@ -64,7 +67,9 @@ class ImageProcessorLoader(_plugin.PluginLoader):
 
         :param uri: Processor URI or list of URIs
         :param device: Request a specific rendering device, default is CPU
-        :param kwargs: Default argument values, will be overriden by arguments specified in the URI
+        :param local_files_only: Should the image processor(s) avoid downloading
+            files from Hugging Face hub and only check the cache or local directories?
+        :param kwargs: Default argument values, will be overridden by arguments specified in the URI
         :return: :py:class:`dgenerate.imageprocessors.ImageProcessor` or
             :py:class:`dgenerate.imageprocessors.ImageProcessorChain`
         """
@@ -75,7 +80,8 @@ class ImageProcessorLoader(_plugin.PluginLoader):
 
         if isinstance(uri, str):
             return typing.cast(
-                _imageprocessor.ImageProcessor, s.load(uri, device=device, **kwargs))
+                _imageprocessor.ImageProcessor,
+                s.load(uri, device=device, local_files_only=local_files_only, **kwargs))
 
         paths = list(uri)
 
@@ -84,11 +90,13 @@ class ImageProcessorLoader(_plugin.PluginLoader):
 
         if len(paths) == 1:
             return typing.cast(
-                _imageprocessor.ImageProcessor, s.load(paths[0], device=device, **kwargs))
+                _imageprocessor.ImageProcessor,
+                s.load(paths[0], device=device, local_files_only=local_files_only, **kwargs))
 
         return _imageprocessorchain.ImageProcessorChain(
             typing.cast(
-                _imageprocessor.ImageProcessor, s.load(i, device=device, **kwargs)) for i in paths)
+                _imageprocessor.ImageProcessor,
+                s.load(i, device=device, local_files_only=local_files_only, **kwargs)) for i in paths)
 
 
 __all__ = _types.module_all()

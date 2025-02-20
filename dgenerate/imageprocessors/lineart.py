@@ -31,6 +31,7 @@ import controlnet_aux.util as _cna_util
 import dgenerate.image as _image
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
+import dgenerate.imageprocessors.util as _util
 from dgenerate.imageprocessors import imageprocessor as _imageprocessor
 
 
@@ -62,7 +63,7 @@ class LineArtProcessor(_imageprocessor.ImageProcessor):
 
     def __init__(self,
                  course: bool = False,
-                 detect_resolution: typing.Optional[str] = None,
+                 detect_resolution: str | None = None,
                  detect_aspect: bool = True,
                  detect_align: int = 1,
                  pre_resize: bool = False,
@@ -99,11 +100,12 @@ class LineArtProcessor(_imageprocessor.ImageProcessor):
             self._detect_resolution = None
 
         self.set_size_estimate(34.4 * (1000**2))  # 34.4 MB sk_model.pth + sk_model2.pth
-        self._lineart = self.load_object_cached(
-            tag="lllyasviel/Annotators",
-            estimated_size=self.size_estimate,
-            method=lambda: _cna.LineartDetector.from_pretrained("lllyasviel/Annotators")
-        )
+        with _util._with_hf_local_files_only(self.local_files_only):
+            self._lineart = self.load_object_cached(
+                tag="lllyasviel/Annotators",
+                estimated_size=self.size_estimate,
+                method=lambda: _cna.LineartDetector.from_pretrained("lllyasviel/Annotators")
+            )
         self.register_module(self._lineart)
 
     def __str__(self):

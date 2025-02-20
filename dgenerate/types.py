@@ -157,7 +157,7 @@ def get_public_members(obj) -> dict[str, typing.Any]:
             if not k.startswith("_")}
 
 
-def is_type(hinted_type, comparison_type):
+def is_type(hinted_type, comparison_type) -> bool:
     """
     Check if a hinted type is equal to a comparison type.
 
@@ -176,7 +176,7 @@ def is_type(hinted_type, comparison_type):
     return False
 
 
-def is_type_or_optional(hinted_type, comparison_type):
+def is_type_or_optional(hinted_type, comparison_type) -> bool:
     """
     Check if a hinted type is equal to a comparison type, even if the type hint is
     ``typing.Optional[]`` (compare the inside if necessary).
@@ -188,11 +188,11 @@ def is_type_or_optional(hinted_type, comparison_type):
     if hinted_type == comparison_type:
         return True
 
-    origin = typing.get_origin(hinted_type)
+    origin: type = typing.get_origin(hinted_type)
 
     if origin is comparison_type:
         return True
-    if origin is typing.Union:
+    if origin is typing.Union or origin is types.UnionType:
         union_args = typing.get_args(hinted_type)
         if len(union_args) == 2:
             for a in union_args:
@@ -201,7 +201,7 @@ def is_type_or_optional(hinted_type, comparison_type):
     return False
 
 
-def get_type(hinted_type):
+def get_type(hinted_type) -> type:
     """
     Get the basic type of hinted type
 
@@ -215,17 +215,17 @@ def get_type(hinted_type):
     return o
 
 
-def is_optional(hinted_type):
+def is_optional(hinted_type) -> bool:
     """
-    Check if a hinted type is ``typing.Optional[]``
+    Check if a hinted type is ``typing.Optional[]``, or an equivalent union.
 
     :param hinted_type: The hinted type
     :return: bool
     """
 
-    origin = typing.get_origin(hinted_type)
+    origin: type = typing.get_origin(hinted_type)
 
-    if origin is typing.Union:
+    if origin is typing.Union or origin is types.UnionType:
         union_args = typing.get_args(hinted_type)
         if len(union_args) == 2:
             for a in union_args:
@@ -234,7 +234,20 @@ def is_optional(hinted_type):
     return False
 
 
-def get_type_of_optional(hinted_type: type, get_origin=True):
+def is_union(hinted_type) -> bool:
+    """
+    Check if a hinted type is ``typing.Union`` or ``types.UnionType``
+    :return: ``True`` if the type is one of ``typing.Union`` or ``types.UnionType`` else ``False``
+    """
+    if hinted_type is typing.Union or hinted_type is types.UnionType:
+        return True
+
+    origin: type = typing.get_origin(hinted_type)
+
+    return origin is typing.Union or origin is types.UnionType
+
+
+def get_type_of_optional(hinted_type: type, get_origin=True) -> type:
     """
     Get the first possible type for an ``typing.Optional[]`` type hint
 
@@ -244,7 +257,7 @@ def get_type_of_optional(hinted_type: type, get_origin=True):
     """
 
     origin = typing.get_origin(hinted_type)
-    if origin is typing.Union:
+    if origin is typing.Union or origin is types.UnionType:
         union_args = typing.get_args(hinted_type)
         if len(union_args) == 2:
             for a in union_args:
@@ -255,19 +268,19 @@ def get_type_of_optional(hinted_type: type, get_origin=True):
     return None
 
 
-def is_typing_hint(obj):
+def is_typing_hint(obj) -> bool:
     """
-    Does a type hint object originate from the the builtin ``typing`` module?
+    Does a type hint object originate from the the builtin ``typing`` or ``types`` module?
 
     :param obj: type hint
     :return: ``True`` or ``False``
     """
     if obj is None:
         return False
-    return obj.__module__ == 'typing'
+    return obj.__module__ == 'typing' or obj.__module__ == 'types'
 
 
-def parse_bool(string_or_bool: str | bool):
+def parse_bool(string_or_bool: str | bool) -> bool:
     """
     Parse a case insensitive boolean value from a string, for example "true" or "false"
 
@@ -288,7 +301,7 @@ def parse_bool(string_or_bool: str | bool):
             f'"{string_or_bool}" is not a boolean value')
 
 
-def fullname(obj):
+def fullname(obj) -> str:
     """
     Get the fully qualified name of an obj or function or type/class
 
@@ -430,7 +443,7 @@ def type_check_struct(obj,
     """
     Preform some basic type checks on a struct like objects attributes using their type hints.
 
-    This function can only handle ``typing.Union`` constructs in a very basic capacity.
+    This function can only handle ``typing.Union`` and ``types.UnionType`` constructs in a very basic capacity.
 
     :raise ValueError: on type checking failure
 
@@ -513,7 +526,7 @@ def type_check_struct(obj,
                 _is_tuple(attr, v, hint)
             elif is_type(hint, typing.Literal):
                 _is_literal(attr, v, hint)
-            elif is_type(hint, typing.Union):
+            elif is_union(hint):
                 _is_union(hint, attr, v)
             else:
                 _is(get_type(hint), attr, v)
@@ -564,7 +577,7 @@ def format_function_signature(func: typing.Callable,
     return f"{name}({', '.join(param_strs)}){return_type_str}"
 
 
-def get_null_call_name(e):
+def get_null_call_name(e) -> str | None:
     """
     If a ``TypeError`` occurred due to calling a ``NoneType`` value, get the exact
     name of the value (variable ID) that was ``None``
@@ -673,7 +686,7 @@ def get_null_call_name(e):
     return None
 
 
-def get_null_attr_name(e):
+def get_null_attr_name(e) -> str | None:
     """
     If an ``AttributeError`` occurred due to accessing an attribute of a ``NoneType`` value,
     get the exact name of the value (variable ID) that was ``None``.
@@ -784,16 +797,5 @@ def get_all_base_classes(cls) -> list[typing.Type]:
     :type cls: class object
     :return: A list of all base classes.
     """
-    base_classes = set()
-    base_classes_seq = list()
-    stack = [cls]
 
-    while stack:
-        current_cls = stack.pop()
-        for base in current_cls.__bases__:
-            if base not in base_classes:
-                base_classes.add(base)
-                base_classes_seq.append(base)
-                stack.append(base)
-
-    return base_classes_seq
+    return cls.mro()[1:]

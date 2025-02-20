@@ -319,8 +319,8 @@ class ResizeProcessor(_imageprocessor.ImageProcessor):
     HIDE_ARGS = ['device', 'model-offload']
 
     def __init__(self,
-                 size: typing.Optional[str] = None,
-                 align: typing.Optional[int] = None,
+                 size: str | None = None,
+                 align: int | None = None,
                  aspect_correct: bool = True,
                  algo: str = 'auto',
                  **kwargs):
@@ -423,8 +423,8 @@ class LetterboxProcessor(_imageprocessor.ImageProcessor):
     def __init__(self,
                  box_size: str,
                  box_is_padding: bool = False,
-                 box_color: typing.Optional[str] = None,
-                 inner_size: typing.Optional[str] = None,
+                 box_color: str | None = None,
+                 inner_size: str | None = None,
                  aspect_correct: bool = True,
                  pre_resize: bool = False,
                  **kwargs):

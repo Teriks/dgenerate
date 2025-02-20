@@ -110,19 +110,24 @@ def prompt_weighter_exists(uri):
 
 def create_prompt_weighter(uri,
                            model_type: _enums.ModelType,
-                           dtype: _enums.DataType) -> PromptWeighter:
+                           dtype: _enums.DataType,
+                           local_files_only: bool = False,
+                           ) -> PromptWeighter:
     """
     Create a prompt weighter implementation using the default :py:class:`PromptWeighterLoader` instance.
 
     :param uri: The prompt weighter URI
     :param model_type: Model type the prompt weighter is expected to handle
     :param dtype: The dtype of the pipeline
+    :param local_files_only: Should the prompt weighter avoid downloading
+        files from Hugging Face hub and only check the cache or local directories?
     :return: A :py:class:`PromptWeighter` implementation
     """
     return PromptWeighterLoader().load(
         uri,
         model_type=model_type,
-        dtype=dtype
+        dtype=dtype,
+        local_files_only=local_files_only
     )
 
 
