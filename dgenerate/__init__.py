@@ -121,6 +121,7 @@ try:
     from dgenerate.exceptions import OutOfMemoryError
 
     from dgenerate.promptweighters import PromptWeightingUnsupported
+    from dgenerate.promptupscalers import PromptUpscalerProcessingError
 
     from dgenerate.prompt import Prompt, PromptEmbeddedArgumentError
 

@@ -30,6 +30,7 @@ from .dynamicpromptspromptupscaler import DynamicPromptsPromptUpscaler
 from .exceptions import (
     PromptUpscalerNotFoundError,
     PromptUpscalerArgumentError,
+    PromptUpscalerProcessingError
 )
 
 from .constants import (

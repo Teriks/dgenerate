@@ -37,3 +37,11 @@ class PromptUpscalerArgumentError(_plugin.PluginArgumentError):
     implementation is loaded with an invalid argument.
     """
     pass
+
+
+class PromptUpscalerProcessingError(_plugin.PluginArgumentError):
+    """
+    Thrown when a :py:class:`dgenerate.promptupscalers.PromptUpscaler`
+    implementation runs into an issue processing a promt.
+    """
+    pass

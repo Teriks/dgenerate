@@ -20,14 +20,15 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import contextlib
 import gc
-import itertools
 import os.path
 
 import huggingface_hub
+import pyparsing
 import torch
 import transformers
 
 import dgenerate.promptupscalers.promptupscaler as _promptupscaler
+import dgenerate.promptupscalers.exceptions as _exceptions
 import dgenerate.prompt as _prompt
 from dynamicprompts.generators import CombinatorialPromptGenerator as _CombinatorialPromptGenerator
 from dynamicprompts.generators import RandomPromptGenerator as _RandomPromptGenerator
@@ -328,16 +329,21 @@ class DynamicPromptsPromptUpscaler(_promptupscaler.PromptUpscaler):
         if self._variations is not None:
             args['num_images'] = self._variations
 
-        with self._with_magic_device():
-            if self._part in {'both', 'positive'}:
-                generated_pos_prompts = self._gen.generate(prompt.positive, **args)
-            else:
-                generated_pos_prompts = [None]
+        try:
+            with self._with_magic_device():
+                if self._part in {'both', 'positive'}:
+                    generated_pos_prompts = self._gen.generate(prompt.positive, **args)
+                else:
+                    generated_pos_prompts = [None]
 
-            if prompt.negative and self._part in {'both', 'negative'}:
-                generated_neg_prompts = self._gen.generate(prompt.negative, **args)
-            else:
-                generated_neg_prompts = [None]
+                if prompt.negative and self._part in {'both', 'negative'}:
+                    generated_neg_prompts = self._gen.generate(prompt.negative, **args)
+                else:
+                    generated_neg_prompts = [None]
+        except pyparsing.ParseException as e:
+            raise _exceptions.PromptUpscalerProcessingError(
+                f'dynamicprompts prompt upscaler could '
+                f'not parse prompt: "{prompt}", reason: {e}')
 
         output = []
         for generated_pos_prompt in generated_pos_prompts:
