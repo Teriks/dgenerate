@@ -18,10 +18,31 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import typing
+
+import torch
 
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.promptweighters.exceptions as _exceptions
 import dgenerate.plugin as _plugin
+import dgenerate.memoize as _memoize
+import dgenerate.memory as _memory
+import dgenerate.promptweighters.constants as _constants
+import dgenerate.messages as _messages
+import dgenerate.devicecache as _devicecache
+
+_prompt_weighter_cache = _memoize.create_object_cache(
+    'prompt_weighter',
+    cache_type=_memory.SizedConstrainedObjectCache
+)
+
+
+def _cache_debug_hit(key, hit):
+    _memoize.simple_cache_hit_debug("Prompt Weighter Model", key, hit)
+
+
+def _cache_debug_miss(key, new):
+    _memoize.simple_cache_miss_debug("Prompt Weighter Model", key, new)
 
 
 class PromptWeighter(_plugin.Plugin):
@@ -47,16 +68,102 @@ class PromptWeighter(_plugin.Plugin):
                          argument_error_type=_exceptions.PromptWeighterArgumentError,
                          **kwargs)
 
-        self._model_type = model_type
-        self._dtype = dtype
+        self.__model_type = model_type
+        self.__dtype = dtype
 
     @property
     def dtype(self) -> _enums.DataType:
-        return self._dtype
+        return self.__dtype
 
     @property
     def model_type(self) -> _enums.ModelType:
-        return self._model_type
+        return self.__model_type
+
+    @property
+    def size_estimate(self) -> int:
+        return self.__size_estimate
+
+    @staticmethod
+    def memory_fence_device(device: str | torch.device, memory_required: int):
+        """
+        Check a specific device against an amount of memory in bytes.
+
+        If any of the memory constraints specified by :py:attr:`dgenerate.promptweighters.constants.PROMPT_WEIGHTER_CUDA_MEMORY_CONSTRAINTS`
+        are met on that device, attempt to remove cached objects off the device to free space.
+
+        :param device: the device
+        :param memory_required: the amount of memory required on the device in bytes
+        :return: ``True`` if an attempt was made to free memory, ``False`` otherwise.
+        """
+
+        device = torch.device(device)
+
+        if (device.type == 'cuda' and _memory.cuda_memory_constraints(
+                _constants.PROMPT_WEIGHTER_CUDA_MEMORY_CONSTRAINTS,
+                extra_vars={'memory_required': memory_required},
+                device=device)):
+            _devicecache.clear_device_cache(device)
+            return True
+        return False
+
+    def set_size_estimate(self, size_bytes: int):
+        """
+        Set the estimated size of this plugin in bytes for memory management
+        heuristics, this is intended to be used by implementors of the
+        :py:class:`PromptWeighter` plugin class.
+
+        For the best memory optimization, this value should be set very
+        shortly before any associated model even enters CPU side ram,
+        IE: before it is loaded at all.
+
+        :raise ValueError: if ``size_bytes`` is less than zero.
+
+        :param size_bytes: the size in bytes
+        """
+        if size_bytes < 0:
+            raise ValueError(
+                'prompt weighter size estimate cannot be less than zero.')
+
+        self.__size_estimate = int(size_bytes)
+
+        _prompt_weighter_cache.enforce_cpu_mem_constraints(
+            _constants.PROMPT_WEIGHTER_CACHE_MEMORY_CONSTRAINTS,
+            size_var='weighter_size',
+            new_object_size=self.__size_estimate
+        )
+
+        if (_memory.memory_constraints(
+                _constants.PROMPT_WEIGHTER_CACHE_GC_CONSTRAINTS,
+                extra_vars={'weighter_size': self.__size_estimate})):
+            # wipe out the cpu side diffusion pipelines cache
+            # and do a GC pass to free up cpu side memory since
+            # we are nearly out of memory anyway
+
+            _messages.debug_log(
+                f'Prompt weighter "{self.__class__.__name__}" is clearing the CPU side object '
+                f'cache due to CPU side memory constraint evaluating to to True.')
+
+            _memoize.clear_object_caches()
+
+    def load_object_cached(self, tag: str, estimated_size: int, method: typing.Callable):
+        """
+        Load a potentially large object into the CPU side ``prompt_weighter`` object cache.
+
+        :param tag: A unique string within the context of the image
+            processor implementation constructor.
+        :param estimated_size: Estimated size in bytes of the object in RAM.
+        :param method: A method which loads and returns the object.
+        :return: The loaded object
+        """
+
+        @_memoize.memoize(
+            _prompt_weighter_cache,
+            on_hit=_cache_debug_hit,
+            on_create=_cache_debug_miss)
+        def load_cached(loaded_by_name=self.loaded_by_name, tag=tag):
+            return method(), _memoize.CachedObjectMetadata(size=estimated_size)
+
+        return load_cached()
 
     def translate_to_embeds(self,
                             pipeline,

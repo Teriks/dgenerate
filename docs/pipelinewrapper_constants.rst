@@ -1,11 +1,11 @@
 .. py:currentmodule:: dgenerate.pipelinewrapper
 
-.. data:: CACHE_MEMORY_CONSTRAINTS
+.. data:: PIPELINE_WRAPPER_CACHE_GC_CONSTRAINTS
     :annotation: = ['used_percent > 70']
 
     Cache constraint expressions for when to clear all object caches, syntax provided via :py:func:`dgenerate.memory.memory_constraints`
 
-    If any of these constraints are met, all cached objects will be garbage collected.
+    If any of these constraints are met upon calling a pipeline, all cached objects will be garbage collected.
 
 .. data:: PIPELINE_CACHE_MEMORY_CONSTRAINTS
     :annotation: = ['pipeline_size > (available * 0.75)']

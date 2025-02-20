@@ -84,10 +84,11 @@ class NormalBaeProcessor(_imageprocessor.ImageProcessor):
             self._detect_resolution = None
 
         self.set_size_estimate(291 * (1000 ** 2))  # 6.34 MB scannet.pt
-        self._normal_bae = self.load_model_cached(
-            "lllyasviel/Annotators",
-            self.size_estimate,
-            lambda: _cna.NormalBaeDetector.from_pretrained("lllyasviel/Annotators"))
+        self._normal_bae = self.load_object_cached(
+            tag="lllyasviel/Annotators",
+            estimated_size=self.size_estimate,
+            method=lambda: _cna.NormalBaeDetector.from_pretrained("lllyasviel/Annotators")
+        )
         self.register_module(self._normal_bae)
 
     def __str__(self):

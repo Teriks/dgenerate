@@ -179,7 +179,7 @@ Help Output
     usage: dgenerate [-h] [-v] [--version] [--file | --shell | --no-stdin | --console]
                      [--plugin-modules PATH [PATH ...]] [--sub-command SUB_COMMAND]
                      [--sub-command-help [SUB_COMMAND ...]] [-ofm] [--templates-help [VARIABLE_NAME ...]]
-                     [--directives-help [DIRECTIVE_NAME ...]] [--functions-help [FUNCTION_NAME ...]]
+                     [--directives-help [DIRECTIVE_NAME ...]] [--functions-help [FUNCTION_NAME ...]] [-gcc FILE]
                      [-mt MODEL_TYPE] [-rev BRANCH] [-var VARIANT] [-sbf SUBFOLDER] [-olc FILE] [-olc2 FILE]
                      [-atk TOKEN] [-bs INTEGER] [-bgs SIZE]
                      [-ad ADETAILER_DETECTOR_URIS [ADETAILER_DETECTOR_URIS ...]] [-adi INTEGER [INTEGER ...]]
@@ -234,10 +234,7 @@ Help Output
                      [-cip PROCESSOR_URI [PROCESSOR_URI ...]] [--image-processor-help [PROCESSOR_NAME ...]]
                      [-pp PROCESSOR_URI [PROCESSOR_URI ...]] [-iss FLOAT [FLOAT ...] | -uns INTEGER
                      [INTEGER ...]] [-gs FLOAT [FLOAT ...]] [-igs FLOAT [FLOAT ...]] [-gr FLOAT [FLOAT ...]]
-                     [-ifs INTEGER [INTEGER ...]] [-mc EXPR [EXPR ...]] [-pmc EXPR [EXPR ...]]
-                     [-umc EXPR [EXPR ...]] [-vmc EXPR [EXPR ...]] [-cmc EXPR [EXPR ...]] [-tmc EXPR [EXPR ...]]
-                     [-iemc EXPR [EXPR ...]] [-amc EXPR [EXPR ...]] [-tfmc EXPR [EXPR ...]]
-                     [-ipcgc EXPR [EXPR ...]] [-ipmc EXPR [EXPR ...]] [-ipcc EXPR [EXPR ...]]
+                     [-ifs INTEGER [INTEGER ...]]
                      model_path
     
     Batch image generation and manipulation tool supporting Stable Diffusion and related techniques /
@@ -326,6 +323,9 @@ Help Output
             function names. When used with --plugin-modules, functions implemented by the specified plugins will
             also be listed.
             ---------------
+      -gcc FILE, --gc-config FILE
+            Provide a json, yaml, or toml file to configure dgenerates garbage collection settings.
+            ---------------------------------------------------------------------------------------
       -mt MODEL_TYPE, --model-type MODEL_TYPE
             Use when loading different model types. Currently supported: torch, torch-pix2pix, torch-sdxl,
             torch-sdxl-pix2pix, torch-kolors, torch-upscaler-x2, torch-upscaler-x4, torch-if, torch-ifs, torch-
@@ -1579,100 +1579,6 @@ Help Output
             content of the image. Values between 30-40 produce good results, higher values may improve image
             quality and or change image content. (default: [30])
             ----------------------------------------------------
-      -mc EXPR [EXPR ...], --cache-memory-constraints EXPR [EXPR ...]
-            Cache constraint expressions describing when to clear all object caches automatically considering
-            current memory usage. If any of these constraint expressions are met all objects in memory will be
-            cleared. Example, and default value: "used_percent > 70" For Syntax See: [https://dgenerate.readthed
-            ocs.io/en/v4.5.1/dgenerate_submodules.html#dgenerate.pipelinewrapper.CACHE_MEMORY_CONSTRAINTS]
-            ----------------------------------------------------------------------------------------------
-      -pmc EXPR [EXPR ...], --pipeline-cache-memory-constraints EXPR [EXPR ...]
-            Cache constraint expressions describing when to automatically clear the in memory DiffusionPipeline
-            cache considering current memory usage, and estimated memory usage of new models that are about to
-            enter memory. If any of these constraint expressions are met all DiffusionPipeline objects cached in
-            memory will be cleared. Example, and default value: "pipeline_size > (available * 0.75)" For Syntax
-            See: [https://dgenerate.readthedocs.io/en/v4.5.1/dgenerate_submodules.html#dgenerate.pipelinewrapper
-            .PIPELINE_CACHE_MEMORY_CONSTRAINTS]
-            -----------------------------------
-      -umc EXPR [EXPR ...], --unet-cache-memory-constraints EXPR [EXPR ...]
-            Cache constraint expressions describing when to automatically clear the in memory UNet cache
-            considering current memory usage, and estimated memory usage of new UNet models that are about to
-            enter memory. If any of these constraint expressions are met all UNet models cached in memory will
-            be cleared. Example, and default value: "unet_size > (available * 0.75)" For Syntax See: [https://dg
-            enerate.readthedocs.io/en/v4.5.1/dgenerate_submodules.html#dgenerate.pipelinewrapper.UNET_CACHE_MEMO
-            RY_CONSTRAINTS]
-            ---------------
-      -vmc EXPR [EXPR ...], --vae-cache-memory-constraints EXPR [EXPR ...]
-            Cache constraint expressions describing when to automatically clear the in memory VAE cache
-            considering current memory usage, and estimated memory usage of new VAE models that are about to
-            enter memory. If any of these constraint expressions are met all VAE models cached in memory will be
-            cleared. Example, and default value: "vae_size > (available * 0.75)" For Syntax See: [https://dgener
-            ate.readthedocs.io/en/v4.5.1/dgenerate_submodules.html#dgenerate.pipelinewrapper.VAE_CACHE_MEMORY_CO
-            NSTRAINTS]
-            ----------
-      -cmc EXPR [EXPR ...], --control-net-cache-memory-constraints EXPR [EXPR ...]
-            Cache constraint expressions describing when to automatically clear the in memory ControlNet cache
-            considering current memory usage, and estimated memory usage of new ControlNet models that are about
-            to enter memory. If any of these constraint expressions are met all ControlNet models cached in
-            memory will be cleared. Example, and default value: "controlnet_size > (available * 0.75)" For
-            Syntax See: [https://dgenerate.readthedocs.io/en/v4.5.1/dgenerate_submodules.html#dgenerate.pipeline
-            wrapper.CONTROLNET_CACHE_MEMORY_CONSTRAINTS]
-            --------------------------------------------
-      -tmc EXPR [EXPR ...], --text-encoder-cache-memory-constraints EXPR [EXPR ...]
-            Cache constraint expressions describing when to automatically clear the in memory Text Encoder cache
-            considering current memory usage, and estimated memory usage of new Text Encoder models that are
-            about to enter memory. If any of these constraint expressions are met all Text Encoder models cached
-            in memory will be cleared. Example, and default value: "text_encoder_size > (available * 0.75)" For
-            Syntax See: [https://dgenerate.readthedocs.io/en/v4.5.1/dgenerate_submodules.html#dgenerate.pipeline
-            wrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS]
-            ----------------------------------------------
-      -iemc EXPR [EXPR ...], --image-encoder-cache-memory-constraints EXPR [EXPR ...]
-            Cache constraint expressions describing when to automatically clear the in memory Image Encoder
-            cache considering current memory usage, and estimated memory usage of new Image Encoder models that
-            are about to enter memory. If any of these constraint expressions are met all Image Encoder models
-            cached in memory will be cleared. Example, and default value: "image_encoder_size > (available *
-            0.75)" For Syntax See: [https://dgenerate.readthedocs.io/en/v4.5.1/dgenerate_submodules.html#dgenera
-            te.pipelinewrapper.IMAGE_ENCODER_CACHE_MEMORY_CONSTRAINTS]
-            ----------------------------------------------------------
-      -amc EXPR [EXPR ...], --adapter-cache-memory-constraints EXPR [EXPR ...]
-            Cache constraint expressions describing when to automatically clear the in memory T2I Adapter cache
-            considering current memory usage, and estimated memory usage of new T2I Adapter models that are
-            about to enter memory. If any of these constraint expressions are met all T2I Adapter models cached
-            in memory will be cleared. Example, and default value: "adapter_size > (available * 0.75)" For
-            Syntax See: [https://dgenerate.readthedocs.io/en/v4.5.1/dgenerate_submodules.html#dgenerate.pipeline
-            wrapper.ADAPTER_CACHE_MEMORY_CONSTRAINTS]
-            -----------------------------------------
-      -tfmc EXPR [EXPR ...], --transformer-cache-memory-constraints EXPR [EXPR ...]
-            Cache constraint expressions describing when to automatically clear the in memory Transformer cache
-            considering current memory usage, and estimated memory usage of new Transformer models that are
-            about to enter memory. If any of these constraint expressions are met all Transformer models cached
-            in memory will be cleared. Example, and default value: "transformer_size > (available * 0.75)" For
-            Syntax See: [https://dgenerate.readthedocs.io/en/v4.5.1/dgenerate_submodules.html#dgenerate.pipeline
-            wrapper.TRANSFORMER_CACHE_MEMORY_CONSTRAINTS]
-            ---------------------------------------------
-      -ipcgc EXPR [EXPR ...], --image-processor-cpu-cache-gc-constraints EXPR [EXPR ...]
-            Cache constraint expressions describing when to automatically clear the entire object cache
-            considering current memory usage, and estimated memory usage of new image processor models that are
-            about to enter memory. If any of these constraint expressions are met ALL objects cached in CPU side
-            memory will be cleared. Example, and default value: "processor_size > (available * 0.70)" For Syntax
-            See: [https://dgenerate.readthedocs.io/en/v4.5.1/dgenerate_submodules.html#dgenerate.imageprocessors
-            .IMAGE_PROCESSOR_CPU_CACHE_GC_CONSTRAINTS]
-            ------------------------------------------
-      -ipmc EXPR [EXPR ...], --image-processor-cache-memory-constraints EXPR [EXPR ...]
-            Cache constraint expressions describing when to automatically clear the in memory Image Processor
-            cache considering current memory usage, and estimated memory usage of new Image Processor models
-            that are about to enter memory. If any of these constraint expressions are met all Image Processors
-            cached in memory will be cleared. Example, and default value: "processor_size > (available * 0.70)"
-            For Syntax See: [https://dgenerate.readthedocs.io/en/v4.5.1/dgenerate_submodules.html#dgenerate.imag
-            eprocessors.IMAGE_PROCESSOR_CACHE_MEMORY_CONSTRAINTS]
-            -----------------------------------------------------
-      -ipcc EXPR [EXPR ...], --image-processor-cuda-memory-constraints EXPR [EXPR ...]
-            Cache constraint expressions describing when to automatically clear the last active diffusion model
-            from VRAM considering current GPU memory usage, and estimated GPU memory usage of new image
-            processor models that are about to enter VRAM. If any of these constraint expressions are met the
-            last active diffusion model in VRAM will be destroyed. Example, and default value: "processor_size >
-            (available * 0.70)" For Syntax See: [https://dgenerate.readthedocs.io/en/v4.5.1/dgenerate_submodules
-            .html#dgenerate.imageprocessors.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS]
-            ------------------------------------------------------------------------
 
 Windows Install
 ===============
@@ -4761,11 +4667,12 @@ See: `LLM4GEN <https://github.com/YUHANG-Ma/LLM4GEN>`_
 
     llm4gen:
         arguments:
-            encoder: str = "kalpeshk2011/rankgen-t5-xl-all"
+            encoder: str = "xl-all"
             projector: str = "Shui-VL/LLM4GEN-models"
             projector-subfolder: Optional[str] = None
             projector-revision: Optional[str] = None
             projector-weight-name: str = "projector.pth"
+            llm-dtype: str = "float32"
             local-files-only: bool = False
             token: Optional[str] = None
     
@@ -4779,12 +4686,14 @@ See: `LLM4GEN <https://github.com/YUHANG-Ma/LLM4GEN>`_
         --model-type torch-pix2pix
         --model-type torch-upscaler-x4
     
-        The "encoder" argument specifies the T5 encoder model (Rank generation model).
+        The "encoder" argument specifies the T5 encoder model variant.
     
-        The encoder specified must be one of:
+        The encoder variant specified must be one of:
     
-        * kalpeshk2011/rankgen-t5-xl-all
-        * kalpeshk2011/rankgen-t5-xl-pg19
+        * large-all
+        * large-pg19
+        * xl-all
+        * xl-pg19
     
         The "projector" argument specifies a Hugging Face repo or file path to the LLM4GEN projector (CAM) model.
     
@@ -4796,6 +4705,10 @@ See: `LLM4GEN <https://github.com/YUHANG-Ma/LLM4GEN>`_
     
         The "projector_weight_name" argument specifies the weight name of the projector file in a Hugging Face
         repository.
+    
+        The "llm-dtype" argument specifies the precision for the rankgen encoder and llm4gen CAM projector model,
+        changing this to 'float16' or 'bfloat16' will cut memory use in half at the possible cost of output
+        quality.
     
         The "local_files_only" argument specifies that no attempt should be made to download models from the
         internet, only look for cached models on disk.
@@ -6327,9 +6240,6 @@ The ``\templates_help`` output from the above example is:
         Name: "injected_verbose"
             Type: typing.Optional[bool]
             Value: False
-        Name: "last_adapter_cache_memory_constraints"
-            Type: typing.Optional[collections.abc.Sequence[str]]
-            Value: []
         Name: "last_adetailer_crop_control_image"
             Type: typing.Optional[bool]
             Value: None
@@ -6369,16 +6279,10 @@ The ``\templates_help`` output from the above example is:
         Name: "last_batch_size"
             Type: typing.Optional[int]
             Value: None
-        Name: "last_cache_memory_constraints"
-            Type: typing.Optional[collections.abc.Sequence[str]]
-            Value: []
         Name: "last_clip_skips"
             Type: typing.Optional[collections.abc.Sequence[int]]
             Value: []
         Name: "last_control_image_processors"
-            Type: typing.Optional[collections.abc.Sequence[str]]
-            Value: []
-        Name: "last_controlnet_cache_memory_constraints"
             Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
         Name: "last_controlnet_uris"
@@ -6396,6 +6300,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_frame_start"
             Type: <class 'int'>
             Value: 0
+        Name: "last_gc_config"
+            Type: typing.Optional[str]
+            Value: None
         Name: "last_guidance_rescales"
             Type: typing.Optional[collections.abc.Sequence[float]]
             Value: []
@@ -6405,9 +6312,6 @@ The ``\templates_help`` output from the above example is:
         Name: "last_hi_diffusion"
             Type: <class 'bool'>
             Value: False
-        Name: "last_image_encoder_cache_memory_constraints"
-            Type: typing.Optional[collections.abc.Sequence[str]]
-            Value: []
         Name: "last_image_encoder_uri"
             Type: typing.Optional[str]
             Value: None
@@ -6416,15 +6320,6 @@ The ``\templates_help`` output from the above example is:
             Value: 'png'
         Name: "last_image_guidance_scales"
             Type: typing.Optional[collections.abc.Sequence[float]]
-            Value: []
-        Name: "last_image_processor_cache_memory_constraints"
-            Type: typing.Optional[collections.abc.Sequence[str]]
-            Value: []
-        Name: "last_image_processor_cpu_cache_gc_constraints"
-            Type: typing.Optional[collections.abc.Sequence[str]]
-            Value: []
-        Name: "last_image_processor_cuda_memory_constraints"
-            Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
         Name: "last_image_seed_strengths"
             Type: typing.Optional[collections.abc.Sequence[float]]
@@ -6506,9 +6401,6 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_parsed_image_seeds"
             Type: typing.Optional[collections.abc.Sequence[dgenerate.mediainput.ImageSeedParseResult]]
-            Value: []
-        Name: "last_pipeline_cache_memory_constraints"
-            Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
         Name: "last_plugin_module_paths"
             Type: collections.abc.Sequence[str]
@@ -6677,7 +6569,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [56139153105505]
+            Value: [23538804247224]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -6685,9 +6577,6 @@ The ``\templates_help`` output from the above example is:
             Type: typing.Optional[str]
             Value: None
         Name: "last_t2i_adapter_uris"
-            Type: typing.Optional[collections.abc.Sequence[str]]
-            Value: []
-        Name: "last_text_encoder_cache_memory_constraints"
             Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
         Name: "last_text_encoder_uris"
@@ -6702,23 +6591,14 @@ The ``\templates_help`` output from the above example is:
         Name: "last_third_prompts"
             Type: typing.Optional[collections.abc.Sequence[dgenerate.prompt.Prompt]]
             Value: []
-        Name: "last_transformer_cache_memory_constraints"
-            Type: typing.Optional[collections.abc.Sequence[str]]
-            Value: []
         Name: "last_transformer_uri"
             Type: typing.Optional[str]
             Value: None
-        Name: "last_unet_cache_memory_constraints"
-            Type: typing.Optional[collections.abc.Sequence[str]]
-            Value: []
         Name: "last_unet_uri"
             Type: typing.Optional[str]
             Value: None
         Name: "last_upscaler_noise_levels"
             Type: typing.Optional[collections.abc.Sequence[int]]
-            Value: []
-        Name: "last_vae_cache_memory_constraints"
-            Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
         Name: "last_vae_slicing"
             Type: <class 'bool'>

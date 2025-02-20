@@ -90,10 +90,10 @@ class TEEDProcessor(_imageprocessor.ImageProcessor):
             self._detect_resolution = None
 
         self.set_size_estimate(249000)  # 249 KB
-        self._teed = self.load_model_cached(
-            "fal-ai/teed;weight-name=5_model.pth",
-            self.size_estimate,
-            lambda: _cna.TEEDdetector.from_pretrained("fal-ai/teed", filename="5_model.pth")
+        self._teed = self.load_object_cached(
+            tag="fal-ai/teed;weight-name=5_model.pth",
+            estimated_size=self.size_estimate,
+            method=lambda: _cna.TEEDdetector.from_pretrained("fal-ai/teed", filename="5_model.pth")
         )
         self.register_module(self._teed)
 

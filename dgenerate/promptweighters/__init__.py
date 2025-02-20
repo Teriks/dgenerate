@@ -30,6 +30,12 @@ from .exceptions import (
     PromptWeightingUnsupported
 )
 
+from .constants import (
+    PROMPT_WEIGHTER_CACHE_MEMORY_CONSTRAINTS,
+    PROMPT_WEIGHTER_CACHE_GC_CONSTRAINTS,
+    PROMPT_WEIGHTER_CUDA_MEMORY_CONSTRAINTS
+)
+
 from .promptweighter import PromptWeighter
 from .promptweighterloader import PromptWeighterLoader
 from .sdembedpromptweighter import SdEmbedPromptWeighter

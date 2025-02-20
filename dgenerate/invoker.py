@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import collections.abc
+import os.path
 import typing
 
 import dgenerate.exceptions as _d_exceptions
@@ -34,6 +35,7 @@ import dgenerate.plugin as _plugin
 import dgenerate.renderloop as _renderloop
 import dgenerate.subcommands as _subcommands
 import dgenerate.prompt as _prompt
+import dgenerate.gcconfig as _gcconfig
 
 __doc__ = """
 Functions to invoke dgenerate inside the current process using its command line arguments.
@@ -364,8 +366,6 @@ def invoke_dgenerate_events(
         yield DgenerateExitEvent(invoke_dgenerate_events, 0)
         return
 
-    constraint_lists = []
-
     try:
         arguments = _arguments.parse_args(args, log_error=log_error, help_raises=True)
     except _arguments.DgenerateHelpException:
@@ -379,68 +379,49 @@ def invoke_dgenerate_events(
         yield DgenerateExitEvent(invoke_dgenerate_events, 1)
         return
 
-    cache_memory_constraints = {
-        "cache_memory_constraints": "_pipelinewrapper.CACHE_MEMORY_CONSTRAINTS",
-        "pipeline_cache_memory_constraints": "_pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS",
-        "unet_cache_memory_constraints": "_pipelinewrapper.UNET_CACHE_MEMORY_CONSTRAINTS",
-        "vae_cache_memory_constraints": "_pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS",
-        "controlnet_cache_memory_constraints": "_pipelinewrapper.CONTROLNET_CACHE_MEMORY_CONSTRAINTS",
-        "adapter_cache_memory_constraints": "_pipelinewrapper.ADAPTER_CACHE_MEMORY_CONSTRAINTS",
-        "transformer_cache_memory_constraints": "_pipelinewrapper.TRANSFORMER_CACHE_MEMORY_CONSTRAINTS",
-        "text_encoder_cache_memory_constraints": "_pipelinewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS",
-        "image_encoder_cache_memory_constraints": "_pipelinewrapper.IMAGE_ENCODER_CACHE_MEMORY_CONSTRAINTS",
-        "image_processor_cpu_cache_gc_constraints": "_imageprocessors.IMAGE_PROCESSOR_CPU_CACHE_GC_CONSTRAINTS",
-        "image_processor_cache_memory_constraints": "_imageprocessors.IMAGE_PROCESSOR_CACHE_MEMORY_CONSTRAINTS",
-        "image_processor_cuda_memory_constraints": "_imageprocessors.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS"
-    }
+    message_level = _messages.DEBUG if arguments.verbose else _messages.INFO
 
-    try:
-        for arg_name, global_var in cache_memory_constraints.items():
-            arg_value = getattr(arguments, arg_name, None)
-            if arg_value is not None:
-                constraint_lists.append(eval(global_var))
-                exec(f"{global_var} = arg_value")
+    with _messages.with_level(message_level), \
+            _gcconfig.restore_config_context():
 
-        render_loop.config = arguments
+        if arguments.gc_config is not None:
+            gc_config_ext = os.path.splitext(arguments.gc_config)[1]
+            try:
+                with open(arguments.gc_config, 'r') as gc_config_file:
+                    _gcconfig.load_config(gc_config_file, mode=gc_config_ext)
+            except Exception as e:
+                _messages.log(f'Could not load GC config file: {e}')
+                yield DgenerateExitEvent(invoke_dgenerate_events, 1)
+                return
 
-        render_loop.config.apply_prompt_upscalers()
+        try:
+            render_loop.config = arguments
 
-        if arguments.verbose:
-            _messages.push_level(_messages.DEBUG)
-        else:
-            # enable setting and unsetting in batch processing
-            _messages.push_level(_messages.INFO)
+            render_loop.config.apply_prompt_upscalers()
 
-        yield from render_loop.events()
+            yield from render_loop.events()
 
-    except (_mediainput.ImageSeedError,
-            _mediainput.UnknownMimetypeError,
-            _mediainput.MediaIdentificationError,
-            _mediainput.FrameStartOutOfBounds,
-            _pipelinewrapper.ModelNotFoundError,
-            _pipelinewrapper.NonHFModelDownloadError,
-            _pipelinewrapper.NonHFConfigDownloadError,
-            _pipelinewrapper.InvalidModelFileError,
-            _pipelinewrapper.InvalidModelUriError,
-            _pipelinewrapper.ModelUriLoadError,
-            _pipelinewrapper.SchedulerLoadError,
-            _pipelinewrapper.UnsupportedPipelineConfigError,
-            _promptweighters.PromptWeightingUnsupported,
-            _prompt.PromptEmbeddedArgumentError,
-            _plugin.ModuleFileNotFoundError,
-            _plugin.PluginNotFoundError,
-            _plugin.PluginArgumentError,
-            _d_exceptions.OutOfMemoryError,
-            OSError) as e:
-        yield rethrow_with_message(e)
-        return
-    finally:
-        _messages.pop_level()
-
-        if arguments is not None:
-            for arg_name, global_var in reversed(cache_memory_constraints.items()):
-                if getattr(arguments, arg_name, None) is not None:
-                    exec(f"{global_var} = constraint_lists.pop()")
+        except (_mediainput.ImageSeedError,
+                _mediainput.UnknownMimetypeError,
+                _mediainput.MediaIdentificationError,
+                _mediainput.FrameStartOutOfBounds,
+                _pipelinewrapper.ModelNotFoundError,
+                _pipelinewrapper.NonHFModelDownloadError,
+                _pipelinewrapper.NonHFConfigDownloadError,
+                _pipelinewrapper.InvalidModelFileError,
+                _pipelinewrapper.InvalidModelUriError,
+                _pipelinewrapper.ModelUriLoadError,
+                _pipelinewrapper.SchedulerLoadError,
+                _pipelinewrapper.UnsupportedPipelineConfigError,
+                _promptweighters.PromptWeightingUnsupported,
+                _prompt.PromptEmbeddedArgumentError,
+                _plugin.ModuleFileNotFoundError,
+                _plugin.PluginNotFoundError,
+                _plugin.PluginArgumentError,
+                _d_exceptions.OutOfMemoryError,
+                OSError) as e:
+            yield rethrow_with_message(e)
+            return
 
     # Return the template environment for pipelining
     yield DgenerateExitEvent(invoke_dgenerate_events, 0)

@@ -19,43 +19,44 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS = ['processor_size > (available * 0.70)']
+
+PROMPT_WEIGHTER_CUDA_MEMORY_CONSTRAINTS = ['memory_required > (available * 0.70)']
 """
-Cache constraint expressions for when to attempt to fully clear cuda VRAM before 
-moving an image processor on to a cuda device, syntax provided via
-:py:func:`dgenerate.memory.cuda_memory_constraints`
+Cache constraint expressions for when to attempt to fully clear cuda VRAM 
+upon a prompt weighter plugin requesting a device memory fence, syntax 
+provided via :py:func:`dgenerate.memory.cuda_memory_constraints`
 
-If any of these constraints are met, an effort is made to clear modules off the GPU 
-which are cached for fast repeat usage but are okay to flush, prior to moving
-an image processor to the GPU.
+If any of these constraints are met, an effort is made to clear modules off a GPU 
+which are cached for fast repeat usage but are okay to flush.
 
-The only available extra variable is: ``pipeline_size`` (the estimated size 
-of the image processor module that needs to enter VRAM, in bytes)
+The only available extra variable is: ``memory_required``, which is the
+amount of memory the prompt weighter plugin requested to fence the device
+for.
 """
 
-IMAGE_PROCESSOR_CACHE_GC_CONSTRAINTS = ['processor_size > (available * 0.70)']
+PROMPT_WEIGHTER_CACHE_GC_CONSTRAINTS = ['weighter_size > (available * 0.70)']
 """
 Cache constraint expressions for when to attempt to fully clear CPU side ram before 
-the initial loading of an image processor module into ram, syntax provided via
+the initial loading of a prompt weighter module into ram, syntax provided via
 :py:func:`dgenerate.memory.memory_constraints`
 
 If any of these constraints are met, an effort is made to clear objects out of 
 cpu side ram which are cached for fast repeat usage but are okay to flush,
-prior to loading an image processor model.
+prior to loading a prompt weighter model.
 
-The only available extra variable is: ``processor_size`` (the estimated size 
-of the image processor module that needs to enter ram, in bytes)
+The only available extra variable is: ``weighter_size`` (the estimated size 
+of the prompt weighter module that needs to enter ram, in bytes)
 """
 
-IMAGE_PROCESSOR_CACHE_MEMORY_CONSTRAINTS = ['processor_size > (available * 0.70)']
+PROMPT_WEIGHTER_CACHE_MEMORY_CONSTRAINTS = ['weighter_size > (available * 0.70)']
 """
-Cache constraint expressions for when to attempt to clear the image processor
-cache before bringing a new image processor online, this cache caches image processor
-objects for reuse. :py:func:`dgenerate.memory.memory_constraints`
+Cache constraint expressions for when to attempt to clear the prompt weighter
+cache before bringing a new prompt weighter online, this cache caches prompt 
+weighter objects for reuse. :py:func:`dgenerate.memory.memory_constraints`
 
-If any of these constraints are met, all image processor 
+If any of these constraints are met, all prompt weighter
 objects are cleared from the CPU cache.
 
-The only available extra variable is: ``processor_size`` (the estimated size 
-of the image processor module that needs to enter ram, in bytes)
+The only available extra variable is: ``weighter_size`` (the estimated size 
+of the prompt weighter module that needs to enter ram, in bytes)
 """

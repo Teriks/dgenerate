@@ -38,11 +38,6 @@ import dgenerate.exceptions as _d_exceptions
 spandrel.MAIN_REGISTRY.add(*spandrel_extra_arches.EXTRA_REGISTRY)
 
 
-class _UnsupportedModelError(Exception):
-    """chaiNNer model is not of a supported type."""
-    pass
-
-
 class UpscalerProcessor(_imageprocessor.ImageProcessor):
     """
     Implements tiled upscaling with chaiNNer compatible upscaler models.
@@ -107,10 +102,13 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
 
         self._model_path = model
 
-        try:
-            self._model = self._load_upscaler_model(model)
-        except _UnsupportedModelError as e:
-            raise self.argument_error(f'Unsupported model file format: {e}')
+        dtype = dtype.lower()
+        if dtype not in {'float32', 'float16'}:
+            raise self.argument_error('Argument "dtype" must be either float32 or float16.')
+
+        self._dtype = torch.float32 if dtype == 'float32' else torch.float16
+
+        self._model = self._load_upscaler_model(model, self._dtype)
 
         if isinstance(tile, str):
             tile = tile.lower()
@@ -130,41 +128,22 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
         if overlap < 0:
             raise self.argument_error('Argument "overlap" must be greater than or equal to 0.')
 
-        dtype = dtype.lower()
-        if dtype not in {'float32', 'float16'}:
-            raise self.argument_error('Argument "dtype" must be either float32 or float16.')
-
-        self._dtype = torch.float32 if dtype == 'float32' else torch.float16
         self._tile = tile
         self._overlap = overlap
         self._pre_resize = pre_resize
         self._force_tiling = force_tiling
 
-        # hack
-        class UpscalerModel:
-            def __init__(self, plugin, m, d):
-                self._model = m
-                self._dtype = d
-                self._plugin = plugin
+        self.register_module(self._model)
 
-            def to(self, device):
-                try:
-                    self._model.to(device=device, dtype=self._dtype)
-                except spandrel.UnsupportedDtypeError:
-                    raise self._plugin.argument_error(
-                        f'Argument "dtype" value "{dtype}" not supported for '
-                        f'upscaler model architecture "{_types.fullname(self._model.architecture)}" '
-                        f'used with model file: "{model}"')
-
-        self.register_module(UpscalerModel(self, self._model, self._dtype))
-
-    def _load_upscaler_model(self, model_path) -> spandrel.ImageModelDescriptor:
+    def _load_upscaler_model(self, model_path, dtype) -> spandrel.ImageModelDescriptor:
         """
         Load an upscaler model from a file path or URL.
 
         :param model_path: path
         :return: model
         """
+        og_path = model_path
+
         if _webcache.is_downloadable_url(model_path):
             # Any mimetype
             _, model_path = _webcache.create_web_cache_file(model_path)
@@ -172,16 +151,33 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
         # use the model file size as a heuristic
         self.set_size_estimate(os.path.getsize(model_path))
 
-        try:
-            model = spandrel.ModelLoader().load_from_file(model_path).eval()
-        except (ValueError,
-                RuntimeError,
-                TypeError,
-                AttributeError) as e:
-            raise _UnsupportedModelError(e)
+        def load_method():
+            try:
+                upscaler_model = spandrel.ModelLoader().load_from_file(model_path).eval()
+                upscaler_model.to(dtype)
+            except spandrel.UnsupportedDtypeError:
+                raise self.argument_error(
+                    f'Argument "dtype" value "{dtype}" not supported for '
+                    f'upscaler model architecture "{_types.fullname(self._model.architecture)}" '
+                    f'used with model file: "{og_path}"')
+            except (ValueError,
+                    RuntimeError,
+                    TypeError,
+                    AttributeError) as e:
+                raise self.argument_error(
+                    f'Unsupported model file format: {e}')
 
-        if not isinstance(model, spandrel.ImageModelDescriptor):
-            raise _UnsupportedModelError("Upscale model must be a single-image model.")
+            if not isinstance(upscaler_model, spandrel.ImageModelDescriptor):
+                raise self.argument_error(
+                    f'Unsupported model file format: Upscale model must be a single-image model.')
+            return upscaler_model
+
+        # make sure dtype is part of the cache tag
+        model = self.load_object_cached(
+            tag=model_path + str(dtype).split('.')[1],
+            estimated_size=self.size_estimate,
+            method=load_method
+        )
 
         _messages.debug_log(
             f'{_types.fullname(UpscalerProcessor._load_upscaler_model)}("{model_path}") -> {model.__class__.__name__}')
