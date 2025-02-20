@@ -345,7 +345,8 @@ class DynamicPromptsPromptUpscaler(_promptupscaler.PromptUpscaler):
             for generated_neg_prompt in generated_neg_prompts:
                 prompt_obj = _prompt.Prompt(
                     positive=_types.default(generated_pos_prompt, prompt.positive),
-                    negative=_types.default(generated_neg_prompt, prompt.negative)
+                    negative=_types.default(generated_neg_prompt, prompt.negative),
+                    delimiter=prompt.delimiter
                 )
 
                 # We need to preserve the embedded diffusion

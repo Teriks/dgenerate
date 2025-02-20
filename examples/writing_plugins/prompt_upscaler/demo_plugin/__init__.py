@@ -55,9 +55,7 @@ class MyPromptUpscaler(_promptupscaler.PromptUpscaler):
         Upscale the prompt, possibly return multiple prompt variations if you want
         """
 
-        new_prompt = _prompt.Prompt.copy(prompt)
+        if not prompt.negative:
+            prompt.negative = 'very low quality image'
 
-        if not new_prompt.negative:
-            new_prompt.negative = 'very low quality image'
-
-        return new_prompt
+        return prompt
