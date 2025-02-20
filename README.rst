@@ -2812,6 +2812,7 @@ VAEs are supported for these model types:
     * ``--model-type torch-upscaler-x4``
     * ``--model-type torch-sdxl``
     * ``--model-type torch-sdxl-pix2pix``
+    * ``--model-type kolors``
     * ``--model-type torch-sd3``
     * ``--model-type torch-flux``
 
@@ -2993,6 +2994,7 @@ UNets are supported for these model types:
     * ``--model-type torch-upscaler-x4``
     * ``--model-type torch-sdxl``
     * ``--model-type torch-sdxl-pix2pix``
+    * ``--model-type kolors``
     * ``--model-type torch-s-cascade``
 
 This is useful in particular for using the latent consistency scheduler as well as the
@@ -6581,7 +6583,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [33355465943707]
+            Value: [17193605098547]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

@@ -414,6 +414,7 @@ def invoke_dgenerate_events(
                 _pipelinewrapper.SchedulerLoadError,
                 _pipelinewrapper.UnsupportedPipelineConfigError,
                 _promptweighters.PromptWeightingUnsupported,
+                _promptupscalers.PromptUpscalerProcessingError,
                 _prompt.PromptEmbeddedArgumentError,
                 _plugin.ModuleFileNotFoundError,
                 _plugin.PluginNotFoundError,
