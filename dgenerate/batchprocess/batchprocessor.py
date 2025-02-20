@@ -787,7 +787,15 @@ class BatchProcessor:
             raise BatchProcessError(e)
 
         for arg in self.injected_args:
-            shell_lexed.append(arg)
+            arg = arg.strip()
+            if arg:
+                shell_lexed.append(
+                    _textprocessing.shell_parse(
+                        arg,
+                        expand_glob=False,
+                        expand_vars=False,
+                        expand_home=False)[0]
+                )
 
         raw_injected_args = ' '.join(str(a) for a in self.injected_args)
 

@@ -948,23 +948,23 @@ Help Output
             
             Example:
             
-            --quantizer bnb;bits=4;bits4_compute_dtype=float16
+            --quantizer bnb;bits=4;bits4-compute-dtype=float16
             
             or:
             
-            --quantizer bnb;bits=4;bits4_compute_dtype=float16
+            --quantizer bnb;bits=4;bits4-compute-dtype=float16
             
             The bitsandbytes backend URI possesses these arguments and defaults:
             
             * bits: int = 8 (must be 4 or 8)
             
-            * bits4_compute_dtype: str = None
+            * bits4-compute-dtype: str = None
             
-            * bits4_quant_type: str = "fp4"
+            * bits4-quant-type: str = "fp4"
             
-            * bits4_use_double_quant = False,
+            * bits4-use-double-quant = False,
             
-            * bits4_quant_storage: str = None
+            * bits4-quant-storage: str = None
             
             torchao may be specified using this syntax:
             
@@ -6583,7 +6583,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [17193605098547]
+            Value: [30453931836921]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

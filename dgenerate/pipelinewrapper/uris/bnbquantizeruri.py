@@ -27,7 +27,7 @@ from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 
 _bnb_quantizer_uri_parser = _textprocessing.ConceptUriParser(
     'BNB Quantizer',
-    ['bits', 'bits4_compute_dtype', 'bits4_quant_type', 'bits4_use_double_quant', 'bits4_quant_storage'])
+    ['bits', 'bits4-compute-dtype', 'bits4-quant-type', 'bits4-use-double-quant', 'bits4-quant-storage'])
 
 
 class BNBQuantizerUri:
@@ -86,10 +86,10 @@ class BNBQuantizerUri:
                 )
 
             bits = int(r.args.get('bits', 8))
-            bits4_compute_dtype = r.args.get('bits4_compute_dtype')
-            bits4_quant_type = r.args.get('bits4_quant_type', 'fp4')
-            bits4_use_double_quant = _types.parse_bool(r.args.get('bits4_use_double_quant', False))
-            bits4_quant_storage = r.args.get('bits4_quant_storage')
+            bits4_compute_dtype = r.args.get('bits4-compute-dtype')
+            bits4_quant_type = r.args.get('bits4-quant-type', 'fp4')
+            bits4_use_double_quant = _types.parse_bool(r.args.get('bits4-use-double-quant', False))
+            bits4_quant_storage = r.args.get('bits4-quant-storage')
 
             return BNBQuantizerUri(
                 bits=bits,

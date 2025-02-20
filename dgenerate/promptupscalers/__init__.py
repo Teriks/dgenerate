@@ -123,7 +123,6 @@ def upscale_prompts(
         prompts: _prompt.Prompts,
         default_upscaler_uri: _types.OptionalUriOrUris = None,
         device: str = 'cpu',
-        upscaler_cache: dict = None,
         local_files_only: bool = False
 ):
     """
@@ -132,16 +131,10 @@ def upscale_prompts(
     :param prompts: Input prompt objects.
     :param default_upscaler_uri: The default upscaler plugin URI, or a list of URIs (chain upscalers together sequentially)
     :param device: Execution device for upscalers that can utilize hardware acceleration
-    :param upscaler_cache: Optional dictionary for externally caching the created upscaler
-        objects by the URI they were loaded with, this can be useful if they load large models.
-        This dictionary will be mutated by this function.
     :param local_files_only: Should all prompt upscalers involved avoid downloading
         files from Hugging Face hub and only check the cache or local directories?
     :return: Altered prompts list
     """
-
-    if upscaler_cache is None:
-        upscaler_cache = dict()
 
     upscaled_prompts = []
 
@@ -159,12 +152,9 @@ def upscale_prompts(
         current_prompts = [prompt]
 
         for upscaler_uri in upscaler_uris:
-            if upscaler_uri not in upscaler_cache:
-                upscaler_cache[upscaler_uri] = create_prompt_upscaler(
-                    upscaler_uri, device=device, local_files_only=local_files_only
-                )
-
-            upscaler = upscaler_cache[upscaler_uri]
+            upscaler = create_prompt_upscaler(
+                upscaler_uri, device=device, local_files_only=local_files_only
+            )
 
             # apply upscaler exactly once per prompt
             next_prompts = []
