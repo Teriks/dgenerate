@@ -11,6 +11,7 @@ VAEs are supported for these model types:
     * ``--model-type torch-upscaler-x4``
     * ``--model-type torch-sdxl``
     * ``--model-type torch-sdxl-pix2pix``
+    * ``--model-type kolors``
     * ``--model-type torch-sd3``
     * ``--model-type torch-flux``
 
