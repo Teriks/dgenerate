@@ -15,6 +15,7 @@ UNets are supported for these model types:
     * ``--model-type torch-upscaler-x4``
     * ``--model-type torch-sdxl``
     * ``--model-type torch-sdxl-pix2pix``
+    * ``--model-type kolors``
     * ``--model-type torch-s-cascade``
 
 This is useful in particular for using the latent consistency scheduler as well as the
