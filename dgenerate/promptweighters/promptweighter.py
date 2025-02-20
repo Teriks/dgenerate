@@ -51,17 +51,21 @@ class PromptWeighter(_plugin.Plugin):
     """
 
     # you cannot specify these via a URI
-    HIDE_ARGS = ['model-type', 'dtype']
+    HIDE_ARGS = ['model-type', 'dtype', 'local-files-only']
 
     def __init__(self,
                  loaded_by_name: str,
                  model_type: _enums.ModelType,
                  dtype: _enums.DataType,
+                 local_files_only: bool = False,
                  **kwargs):
         """
         :param loaded_by_name: The name the prompt weighter was loaded by
         :param model_type: Model type enum :py:class:`dgenerate.ModelType`
         :param dtype: Data type enum :py:class:`dgenerate.DataType`
+        :param local_files_only: if ``True``, the plugin should never try to download
+            models from the internet automatically, and instead only look
+            for them in cache / on disk.
         :param kwargs: child class forwarded arguments
         """
         super().__init__(loaded_by_name=loaded_by_name,
@@ -70,14 +74,28 @@ class PromptWeighter(_plugin.Plugin):
 
         self.__model_type = model_type
         self.__dtype = dtype
+        self.__local_files_only = local_files_only
 
     @property
     def dtype(self) -> _enums.DataType:
+        """
+        Embeddings data type.
+        """
         return self.__dtype
 
     @property
     def model_type(self) -> _enums.ModelType:
+        """
+        Model type that will use the embeddings.
+        """
         return self.__model_type
+
+    @property
+    def local_files_only(self) -> bool:
+        """
+        Is this prompt weighter only going to look for Hugging Face hub model files in cache / on disk?
+        """
+        return self.__local_files_only
 
     @property
     def size_estimate(self) -> int:

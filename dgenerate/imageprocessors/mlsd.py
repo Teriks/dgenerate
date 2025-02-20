@@ -30,6 +30,7 @@ import controlnet_aux.util as _cna_util
 import dgenerate.image as _image
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
+import dgenerate.imageprocessors.util as _util
 from dgenerate.imageprocessors import imageprocessor as _imageprocessor
 
 
@@ -65,7 +66,7 @@ class MLSDProcessor(_imageprocessor.ImageProcessor):
     def __init__(self,
                  threshold_score: float = 0.1,
                  threshold_distance: float = 0.1,
-                 detect_resolution: typing.Optional[str] = None,
+                 detect_resolution: str | None = None,
                  detect_aspect: bool = True,
                  detect_align: int = 1,
                  pre_resize: bool = False,
@@ -104,11 +105,12 @@ class MLSDProcessor(_imageprocessor.ImageProcessor):
             self._detect_resolution = None
 
         self.set_size_estimate(6.34 * (1000 ** 2))  # 6.34 MB mlsd_large_512_fp32.pth
-        self._mlsd = self.load_object_cached(
-            tag="lllyasviel/Annotators",
-            estimated_size=self.size_estimate,
-            method=lambda: _cna.MLSDdetector.from_pretrained("lllyasviel/Annotators")
-        )
+        with _util._with_hf_local_files_only(self.local_files_only):
+            self._mlsd = self.load_object_cached(
+                tag="lllyasviel/Annotators",
+                estimated_size=self.size_estimate,
+                method=lambda: _cna.MLSDdetector.from_pretrained("lllyasviel/Annotators")
+            )
         self.register_module(self._mlsd)
 
     def __str__(self):

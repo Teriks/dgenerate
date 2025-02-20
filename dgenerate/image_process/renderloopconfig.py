@@ -104,6 +104,14 @@ class ImageProcessRenderLoopConfig(_types.SetFromMixin):
     Corresponds to ``-naf/--no-animation-file``
     """
 
+    offline_mode: bool = False
+    """
+    Setting to true prevents dgenerate from downloading Hugging Face hub models 
+    that do not exist in the disk cache or a folder on disk. Referencing a model on 
+    Hugging Face hub that has not been cached because it was not previously downloaded will result 
+    in a failure when using this option.
+    """
+
     def __init__(self):
         self.input = []
 

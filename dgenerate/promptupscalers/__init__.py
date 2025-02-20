@@ -31,6 +31,12 @@ from .exceptions import (
     PromptUpscalerArgumentError,
 )
 
+from .constants import (
+    PROMPT_UPSCALER_CUDA_MEMORY_CONSTRAINTS,
+    PROMPT_UPSCALER_CACHE_GC_CONSTRAINTS,
+    PROMPT_UPSCALER_CACHE_MEMORY_CONSTRAINTS
+)
+
 
 def prompt_upscaler_help(names: _types.Names,
                          plugin_module_paths: _types.OptionalPaths = None,
@@ -98,22 +104,25 @@ def prompt_upscaler_exists(uri):
     return prompt_upscaler_name_from_uri(uri) in prompt_upscaler_names()
 
 
-def create_prompt_upscaler(uri, device: str = 'cpu') -> PromptUpscaler:
+def create_prompt_upscaler(uri, device: str = 'cpu', local_files_only: bool = False) -> PromptUpscaler:
     """
     Create a prompt upscaler implementation using the default :py:class:`PromptUpscalerLoader` instance.
 
     :param uri: The prompt upscaler URI
     :param device: Device used for any text processing models.
+    :param local_files_only: Should the prompt upscaler avoid downloading
+        files from Hugging Face hub and only check the cache or local directories?
     :return: A :py:class:`PromptUpscaler` implementation
     """
-    return PromptUpscalerLoader().load(uri, device=device)
+    return PromptUpscalerLoader().load(uri, device=device, local_files_only=local_files_only)
 
 
 def upscale_prompts(
         prompts: _prompt.Prompts,
         default_upscaler_uri: _types.OptionalUriOrUris = None,
         device: str = 'cpu',
-        upscaler_cache: dict = None
+        upscaler_cache: dict = None,
+        local_files_only: bool = False
 ):
     """
     Apply prompt upscaling to a list of prompts and return a possibly expanded list of prompts.
@@ -124,7 +133,8 @@ def upscale_prompts(
     :param upscaler_cache: Optional dictionary for externally caching the created upscaler
         objects by the URI they were loaded with, this can be useful if they load large models.
         This dictionary will be mutated by this function.
-
+    :param local_files_only: Should all prompt upscalers involved avoid downloading
+        files from Hugging Face hub and only check the cache or local directories?
     :return: Altered prompts list
     """
 
@@ -149,7 +159,7 @@ def upscale_prompts(
         for upscaler_uri in upscaler_uris:
             if upscaler_uri not in upscaler_cache:
                 upscaler_cache[upscaler_uri] = create_prompt_upscaler(
-                    upscaler_uri, device=device
+                    upscaler_uri, device=device, local_files_only=local_files_only
                 )
 
             upscaler = upscaler_cache[upscaler_uri]

@@ -66,7 +66,7 @@ class LineArtStandardProcessor(_imageprocessor.ImageProcessor):
     def __init__(self,
                  gaussian_sigma: float = 6.0,
                  intensity_threshold: int = 8,
-                 detect_resolution: typing.Optional[str] = None,
+                 detect_resolution: str | None = None,
                  detect_aspect: bool = True,
                  detect_align: int = 1,
                  pre_resize: bool = False,

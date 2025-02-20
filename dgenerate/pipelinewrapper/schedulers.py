@@ -119,7 +119,7 @@ def get_compatible_schedulers(pipeline_cls: type[diffusers.DiffusionPipeline]) -
             compatible_schedulers.add(param_type)
 
         # Case 2: Union type hint (e.g., `Union[DDIMScheduler, EulerScheduler]`)
-        elif typing.get_origin(param_type) is typing.Union:
+        elif _types.is_union(param_type):
             for sub_type in typing.get_args(param_type):
                 if inspect.isclass(sub_type) and issubclass(sub_type, diffusers.schedulers.SchedulerMixin):
                     compatible_schedulers.add(sub_type)
@@ -165,8 +165,7 @@ def get_scheduler_uri_schema(scheduler: type[diffusers.SchedulerMixin] | list[ty
 
         def _resolve_union(t):
             t_name = _type_name(t)
-            if t_name.startswith('typing.Union') or \
-                    t_name.startswith('typing.Optional'):
+            if _types.is_union(t):
                 return set(itertools.chain.from_iterable(
                     [_resolve_union(t) for t in parameter.annotation.__args__]))
             return [t_name]
@@ -192,8 +191,7 @@ def get_scheduler_uri_schema(scheduler: type[diffusers.SchedulerMixin] | list[ty
 
             type_name = _type_name(parameter.annotation)
 
-            if type_name.startswith('typing.Union') or \
-                    type_name.startswith('typing.Optional'):
+            if _types.is_union(parameter.annotation):
                 union_args = _resolve_union(parameter.annotation)
                 if 'NoneType' in union_args:
                     parameter_details['optional'] = True

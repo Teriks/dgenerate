@@ -31,6 +31,7 @@ import controlnet_aux.util as _cna_util
 import dgenerate.image as _image
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
+import dgenerate.imageprocessors.util as _util
 from dgenerate.imageprocessors import imageprocessor as _imageprocessor
 
 
@@ -65,7 +66,7 @@ class MidasDepthProcessor(_imageprocessor.ImageProcessor):
                  normals: bool = False,
                  alpha: float = numpy.pi * 2.0,
                  background_threshold: float = 0.1,
-                 detect_resolution: typing.Optional[str] = None,
+                 detect_resolution: str | None = None,
                  detect_aspect: bool = True,
                  pre_resize: bool = False,
                  **kwargs):
@@ -97,12 +98,12 @@ class MidasDepthProcessor(_imageprocessor.ImageProcessor):
             self._detect_resolution = None
 
         self.set_size_estimate(493 * (1000 ** 2))  # 493 MB dpt_hybrid-midas-501f0c75.pt
-
-        self._midas = self.load_object_cached(
-            tag="lllyasviel/Annotators",
-            estimated_size=self.size_estimate,
-            method=lambda: _cna.MidasDetector.from_pretrained("lllyasviel/Annotators")
-        )
+        with _util._with_hf_local_files_only(self.local_files_only):
+            self._midas = self.load_object_cached(
+                tag="lllyasviel/Annotators",
+                estimated_size=self.size_estimate,
+                method=lambda: _cna.MidasDetector.from_pretrained("lllyasviel/Annotators")
+            )
 
         self.register_module(self._midas)
 

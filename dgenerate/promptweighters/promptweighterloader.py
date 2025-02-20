@@ -34,17 +34,27 @@ class PromptWeighterLoader(_plugin.PluginLoader):
     """
 
     def __init__(self):
-        """"""
-
         # The empty string above disables sphinx inherited doc
         super().__init__(base_class=_promptweighter.PromptWeighter,
                          description='prompt weighter',
                          reserved_args=[_Pa('model-type', type=_enums.ModelType),
-                                        _Pa('dtype', type=_enums.DataType)],
+                                        _Pa('dtype', type=_enums.DataType),
+                                        _Pa('local-files-only', type=bool, default=False)],
                          argument_error_type=_exceptions.PromptWeighterArgumentError,
                          not_found_error_type=_exceptions.PromptWeighterNotFoundError)
 
         self.add_search_module_string('dgenerate.promptweighters')
 
-    def load(self, uri: _types.Uri, **kwargs) -> _promptweighter.PromptWeighter:
-        return typing.cast(_promptweighter.PromptWeighter, super().load(uri, **kwargs))
+    def load(self,
+             uri: _types.Uri,
+             local_files_only: bool = False,
+             **kwargs) -> _promptweighter.PromptWeighter:
+        """
+        :param uri: prompt weighter URI
+        :param local_files_only: Should the prompt weighter avoid downloading
+            files from Hugging Face hub and only check the cache or local directories?
+        :param kwargs: Additional plugin arguments
+        :return: :py:class:`dgenerate.promptweighters.PromptWeighter`
+        """
+        return typing.cast(_promptweighter.PromptWeighter, super().load(
+            uri, local_files_only=local_files_only, **kwargs))

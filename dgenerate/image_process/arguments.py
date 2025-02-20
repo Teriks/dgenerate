@@ -173,6 +173,13 @@ def _create_arg_parser(prog, description):
         '-naf', '--no-animation-file', action='store_true',
         help='Do not write an animation file, only frames. Cannot be used with --no-frames.'))
 
+    actions.append(parser.add_argument(
+        '-ofm', '--offline-mode', action='store_true',
+        help="""Prevent dgenerate from downloading Hugging Face hub models that do not
+                exist in the disk cache or a folder on disk. Referencing a model on 
+                Hugging Face hub that has not been cached because it was not 
+                previously downloaded will result in a failure when using this option."""))
+
     return parser, actions
 
 

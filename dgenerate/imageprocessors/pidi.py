@@ -18,10 +18,8 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import typing
 
 import PIL.Image
-import cv2
 import einops
 import numpy
 import torch
@@ -31,6 +29,7 @@ import controlnet_aux.util as _cna_util
 import dgenerate.image as _image
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
+import dgenerate.imageprocessors.util as _util
 from dgenerate.imageprocessors import imageprocessor as _imageprocessor
 
 
@@ -65,7 +64,7 @@ class PidiNetProcessor(_imageprocessor.ImageProcessor):
     def __init__(self,
                  apply_filter: bool = False,
                  safe: bool = False,
-                 detect_resolution: typing.Optional[str] = None,
+                 detect_resolution: str | None = None,
                  detect_aspect: bool = True,
                  detect_align: int = 1,
                  pre_resize: bool = False,
@@ -105,12 +104,12 @@ class PidiNetProcessor(_imageprocessor.ImageProcessor):
             self._detect_resolution = None
 
         self.set_size_estimate(2.87 * (1000 ** 2))  # 2.87 MB table5_pidinet.pth
-
-        self._pidi = self.load_object_cached(
-            tag="lllyasviel/Annotators",
-            estimated_size=self.size_estimate,
-            method=lambda: _cna.PidiNetDetector.from_pretrained("lllyasviel/Annotators")
-        )
+        with _util._with_hf_local_files_only(self.local_files_only):
+            self._pidi = self.load_object_cached(
+                tag="lllyasviel/Annotators",
+                estimated_size=self.size_estimate,
+                method=lambda: _cna.PidiNetDetector.from_pretrained("lllyasviel/Annotators")
+            )
 
         self.register_module(self._pidi)
 

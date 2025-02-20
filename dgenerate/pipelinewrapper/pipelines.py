@@ -2185,7 +2185,7 @@ def _create_torch_diffusion_pipeline(
 
             vae_encoder_name = vae_param.__name__
 
-            if _types.get_type(vae_param) is typing.Union:
+            if _types.is_union(vae_param):
                 try:
                     vae_encoder_name = model_index['vae'][1]
                 except (KeyError, IndexError):

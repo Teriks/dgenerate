@@ -32,6 +32,7 @@ import torch
 import dgenerate.image as _image
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
+import dgenerate.imageprocessors.util as _util
 from dgenerate.imageprocessors import imageprocessor as _imageprocessor
 
 
@@ -65,7 +66,7 @@ class AnylineProcessor(_imageprocessor.ImageProcessor):
     def __init__(self,
                  gaussian_sigma: float = 2.0,
                  intensity_threshold: int = 2,
-                 detect_resolution: typing.Optional[str] = None,
+                 detect_resolution: str | None = None,
                  detect_aspect: bool = True,
                  detect_align: int = 1,
                  pre_resize: bool = False,
@@ -115,13 +116,14 @@ class AnylineProcessor(_imageprocessor.ImageProcessor):
 
         self.set_size_estimate(248 * 1000)  # 248 KB -> bytes
 
-        self._anyline = self.load_object_cached(
-            tag="TheMistoAI/MistoLine;weight-name=MTEED.pth;subfolder=Anyline",
-            estimated_size=self.size_estimate,
-            method=lambda:
-            _cna.AnylineDetector.from_pretrained(
-                'TheMistoAI/MistoLine', filename='MTEED.pth', subfolder='Anyline')
-        )
+        with _util._with_hf_local_files_only(self.local_files_only):
+            self._anyline = self.load_object_cached(
+                tag="TheMistoAI/MistoLine;weight-name=MTEED.pth;subfolder=Anyline",
+                estimated_size=self.size_estimate,
+                method=lambda:
+                _cna.AnylineDetector.from_pretrained(
+                    'TheMistoAI/MistoLine', filename='MTEED.pth', subfolder='Anyline')
+            )
 
         self.register_module(self._anyline)
 

@@ -476,7 +476,11 @@ class ImageProcessRenderLoop:
             return os.path.isdir(path) or path[-1] in '/\\'
 
         if self.config.processors:
-            processor = self.image_processor_loader.load(self.config.processors, device=self.config.device)
+            processor = self.image_processor_loader.load(
+                self.config.processors,
+                device=self.config.device,
+                local_files_only=self.config.offline_mode
+            )
         else:
             processor = None
 
