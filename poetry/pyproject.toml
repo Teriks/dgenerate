@@ -17,7 +17,6 @@ accelerate = "1.3.0"
 dynamicprompts = "0.31.0"
 spacy = "3.8.4"
 ultralytics = {version = "8.3.65", platform = "not_darwin"}
-optimum-quanto = "0.2.6"
 pytorch-lightning = "^2.5.0"
 lightning-utilities = "^0.12.0"
 lightning-fabric = "^2.5.0"
