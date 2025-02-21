@@ -956,12 +956,6 @@ class DiffusionPipelineWrapper:
         if self._s_cascade_decoder_uri is not None:
             opts.append(('--s-cascade-decoder', self._s_cascade_decoder_uri))
 
-        if args.s_cascade_decoder_inference_steps is not None:
-            opts.append(('--s-cascade-decoder-inference-steps', args.s_cascade_decoder_inference_steps))
-
-        if args.s_cascade_decoder_guidance_scale is not None:
-            opts.append(('--s-cascade-decoder-guidance-scales', args.s_cascade_decoder_guidance_scale))
-
         if self._revision is not None and self._revision != 'main':
             opts.append(('--revision', self._revision))
 
@@ -1061,11 +1055,11 @@ class DiffusionPipelineWrapper:
         if args.sdxl_high_noise_fraction is not None:
             opts.append(('--sdxl-high-noise-fractions', args.sdxl_high_noise_fraction))
 
-        if args.sdxl_refiner_inference_steps is not None:
-            opts.append(('--sdxl-refiner-inference-steps', args.sdxl_refiner_inference_steps))
+        if args.second_model_inference_steps is not None:
+            opts.append(('--second-model-inference-steps', args.second_model_inference_steps))
 
-        if args.sdxl_refiner_guidance_scale is not None:
-            opts.append(('--sdxl-refiner-guidance-scales', args.sdxl_refiner_guidance_scale))
+        if args.second_model_guidance_scale is not None:
+            opts.append(('--second-model-guidance-scales', args.second_model_guidance_scale))
 
         if args.sdxl_refiner_guidance_rescale is not None:
             opts.append(('--sdxl-refiner-guidance-rescales', args.sdxl_refiner_guidance_rescale))
@@ -1957,8 +1951,8 @@ class DiffusionPipelineWrapper:
             prompt_weighter=self._get_prompt_weighter(user_args),
             **pipeline_args)
 
-        pipeline_args['num_inference_steps'] = user_args.s_cascade_decoder_inference_steps
-        pipeline_args['guidance_scale'] = user_args.s_cascade_decoder_guidance_scale
+        pipeline_args['num_inference_steps'] = user_args.second_model_inference_steps
+        pipeline_args['guidance_scale'] = user_args.second_model_guidance_scale
         pipeline_args.pop('height')
         pipeline_args.pop('width')
         pipeline_args.pop('images', None)
@@ -2283,8 +2277,8 @@ class DiffusionPipelineWrapper:
                                              'guidance_rescale', 'sdxl_refiner_guidance_rescale',
                                              '--sdxl-refiner-guidance-rescales')
 
-        if user_args.sdxl_refiner_inference_steps is not None:
-            pipeline_args['num_inference_steps'] = user_args.sdxl_refiner_inference_steps
+        if user_args.second_model_inference_steps is not None:
+            pipeline_args['num_inference_steps'] = user_args.second_model_inference_steps
 
         if user_args.sdxl_refiner_pag_scale is not None:
             pipeline_args['pag_scale'] = user_args.sdxl_refiner_pag_scale
@@ -2292,8 +2286,8 @@ class DiffusionPipelineWrapper:
         if user_args.sdxl_refiner_pag_adaptive_scale is not None:
             pipeline_args['pag_adaptive_scale'] = user_args.sdxl_refiner_pag_adaptive_scale
 
-        if user_args.sdxl_refiner_guidance_scale is not None:
-            pipeline_args['guidance_scale'] = user_args.sdxl_refiner_guidance_scale
+        if user_args.second_model_guidance_scale is not None:
+            pipeline_args['guidance_scale'] = user_args.second_model_guidance_scale
 
         if user_args.sdxl_refiner_guidance_rescale is not None:
             pipeline_args['guidance_rescale'] = user_args.sdxl_refiner_guidance_rescale

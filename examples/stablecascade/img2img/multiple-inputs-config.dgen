@@ -34,8 +34,8 @@ stabilityai/stable-cascade-prior
 --s-cascade-decoder "stabilityai/stable-cascade;dtype=float16"
 --inference-steps 50
 --guidance-scales 2
---s-cascade-decoder-inference-steps 10
---s-cascade-decoder-guidance-scales 0
+--second-model-inference-steps 10
+--second-model-guidance-scales 0
 --gen-seeds 2
 --output-path multiple-inputs
 --output-size 1024

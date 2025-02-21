@@ -71,7 +71,7 @@ UNet models which have a smaller memory footprint using ``--unet`` and ``--secon
     --s-cascade-decoder "stabilityai/stable-cascade;dtype=float16" \
     --inference-steps 20 \
     --guidance-scales 4 \
-    --s-cascade-decoder-inference-steps 10 \
-    --s-cascade-decoder-guidance-scales 0 \
+    --second-model-inference-steps 10 \
+    --second-model-guidance-scales 0 \
     --gen-seeds 2 \
     --prompts "an image of a shiba inu, donning a spacesuit and helmet"
