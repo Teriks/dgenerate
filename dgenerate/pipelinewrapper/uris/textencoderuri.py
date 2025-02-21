@@ -339,7 +339,10 @@ class TextEncoderUri:
         _uri_util._patch_module_to_for_sized_cache(_text_encoder_cache, text_encoder)
 
         # noinspection PyTypeChecker
-        return text_encoder, _d_memoize.CachedObjectMetadata(size=estimated_memory_use)
+        return text_encoder, _d_memoize.CachedObjectMetadata(
+            size=estimated_memory_use,
+            skip=model_cpu_offload_member or sequential_cpu_offload_member or self.quantizer
+        )
 
     @staticmethod
     def parse(uri: _types.Uri) -> 'TextEncoderUri':

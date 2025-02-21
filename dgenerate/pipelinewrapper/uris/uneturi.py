@@ -290,7 +290,10 @@ class UNetUri:
 
         _uri_util._patch_module_to_for_sized_cache(_unet_cache, unet)
 
-        return unet, _d_memoize.CachedObjectMetadata(size=estimated_memory_use)
+        return unet, _d_memoize.CachedObjectMetadata(
+            size=estimated_memory_use,
+            skip=model_cpu_offload_member or sequential_cpu_offload_member or self.quantizer
+        )
 
     @staticmethod
     def parse(uri: _types.Uri) -> 'UNetUri':

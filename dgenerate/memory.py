@@ -546,17 +546,21 @@ class SizedConstrainedObjectCache(_memoize.ObjectCache):
 
         See: :py:func:`memory_constraints`
 
+        The constraint variable ``cache_size`` equates to the current cache size.
+
         :param constraints:
         :param size_var: Memory constraint expression variable name containing the ``new_object_size`` value.
         :param new_object_size: Size of the new object.
-        :param mode: Logical and/or function on contraint expressions, ``any`` for or, ``all`` for and.
+        :param mode: Logical and/or function on constraint expressions, ``any`` for or, ``all`` for and.
         :return: ``True`` if the cache was cleared, ``False`` otherwise
         """
 
         _messages.debug_log(
             f'Object Cache: "{self.name}", enforcing CPU side memory constraints: {constraints}, mode={mode.__name__}')
 
-        if memory_constraints(constraints, {size_var: new_object_size}, mode=mode):
+        if memory_constraints(constraints,
+                              {size_var: new_object_size, 'cache_size': self.size},
+                              mode=mode):
             _messages.debug_log(
                 f'Object Cache: "{self.name}", cleared due to CPU side memory constraints being met.')
             self.clear()
@@ -568,6 +572,7 @@ class SizedConstrainedObjectCache(_memoize.ObjectCache):
             constraints: typing.Iterable[str],
             size_var: str,
             new_object_size,
+            device: str,
             mode=any
     ):
         """
@@ -575,16 +580,21 @@ class SizedConstrainedObjectCache(_memoize.ObjectCache):
 
         See: :py:func:`cuda_memory_constraints`
 
+        The constraint variable ``cache_size`` equates to the current cache size.
+
         :param constraints:
         :param size_var: Memory constraint expression variable name containing the ``new_object_size`` value.
         :param new_object_size: Size of the new object.
-        :param mode: Logical and/or function on contraint expressions, ``any`` for or, ``all`` for and.
+        :param device: Device to check
+        :param mode: Logical and/or function on constraint expressions, ``any`` for or, ``all`` for and.
         :return: ``True`` if the cache was cleared, ``False`` otherwise
         """
         _messages.debug_log(
             f'Object Cache: "{self.name}", enforcing GPU side memory constraints: {constraints}, mode={mode.__name__}')
 
-        if cuda_memory_constraints(constraints, {size_var: new_object_size}, mode=mode):
+        if cuda_memory_constraints(constraints,
+                                   {size_var: new_object_size, 'cache_size': self.size},
+                                   mode=mode, device=device):
             _messages.debug_log(
                 f'Object Cache: "{self.name}", cleared due to GPU side memory constraints being met.')
             self.clear()

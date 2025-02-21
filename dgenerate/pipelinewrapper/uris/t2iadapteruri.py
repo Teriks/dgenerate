@@ -237,7 +237,10 @@ class T2IAdapterUri:
         _uri_util._patch_module_to_for_sized_cache(_t2i_adapter_cache, new_adapter)
 
         # noinspection PyTypeChecker
-        return new_adapter, _d_memoize.CachedObjectMetadata(size=estimated_memory_usage)
+        return new_adapter, _d_memoize.CachedObjectMetadata(
+            size=estimated_memory_usage,
+            skip=model_cpu_offload_member or sequential_cpu_offload_member
+        )
 
     @staticmethod
     def parse(uri: _types.Uri) -> 'T2IAdapterUri':

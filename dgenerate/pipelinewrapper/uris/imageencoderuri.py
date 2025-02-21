@@ -217,7 +217,10 @@ class ImageEncoderUri:
         _uri_util._patch_module_to_for_sized_cache(_image_encoder_cache, image_encoder)
 
         # noinspection PyTypeChecker
-        return image_encoder, _d_memoize.CachedObjectMetadata(size=estimated_memory_use)
+        return image_encoder, _d_memoize.CachedObjectMetadata(
+            size=estimated_memory_use,
+            skip=model_cpu_offload_member or sequential_cpu_offload_member
+        )
 
     @staticmethod
     def parse(uri: _types.Uri) -> 'ImageEncoderUri':

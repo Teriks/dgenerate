@@ -354,7 +354,10 @@ class ControlNetUri:
         _uri_util._patch_module_to_for_sized_cache(_controlnet_cache, new_net)
 
         # noinspection PyTypeChecker
-        return new_net, _d_memoize.CachedObjectMetadata(size=estimated_memory_usage)
+        return new_net, _d_memoize.CachedObjectMetadata(
+            size=estimated_memory_usage,
+            skip=model_cpu_offload_member or sequential_cpu_offload_member
+        )
 
     @staticmethod
     def parse(uri: _types.Uri,

@@ -40,8 +40,9 @@ class CachedObjectMetadata:
     This object is a namespace, you can access the metadata attributes using the dot operator.
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, skip=False, **kwargs):
         self._metadata = kwargs
+        self.skip = skip
 
     def __str__(self):
         return str(self._metadata)
@@ -110,6 +111,12 @@ class ObjectCache:
         :param action: callback action, accepts :py:class:`ObjectClass`, and the object exiting cache.
         """
         self.__on_un_cache.append(action)
+
+    def values(self):
+        """
+        Return all cached objects in a list.
+        """
+        return list(self.__cache.values())
 
     def clear(self, collect=True):
         """
@@ -180,6 +187,11 @@ class ObjectCache:
         identity = id(value)
         if identity in self.__id_to_key:
             raise ObjectCacheKeyError(f'Object: {value}, is already in object cache: {self.name}')
+
+        if metadata is not None and metadata.skip:
+            return
+
+        _messages.debug_log(f'Entering object cache "{self.name}": {_types.fullname(value)}')
 
         self.__cache[key] = value
         self.__id_to_key[identity] = key
@@ -385,6 +397,7 @@ def disable_memoization_context(disabled=True):
 
 def memoize(cache: dict[str, typing.Any] | ObjectCache,
             exceptions: set[str] = None,
+            skip_check: typing.Callable[[typing.Any], bool] = None,
             hasher: typing.Callable[[dict[str, typing.Any]], str] = args_cache_key,
             extra_identities: list[typing.Callable[[typing.Any], typing.Any]] = None,
             on_hit: typing.Callable[[str, typing.Any], None] = None,
@@ -394,6 +407,8 @@ def memoize(cache: dict[str, typing.Any] | ObjectCache,
 
     :param cache: The dictionary or :py:class:`ObjectCache` to serve as a cache
     :param exceptions: Function arguments to ignore
+    :param skip_check: Check the created object itself to determine if caching should proceed,
+        should return ``True`` if you want to skip caching of the object.
     :param hasher: Responsible for hashing arguments and argument values
     :param extra_identities: List of functions which return member objects of
         the cached object, that can be used as extra identifiers for the object
@@ -413,6 +428,11 @@ def memoize(cache: dict[str, typing.Any] | ObjectCache,
     def _on_create(key, new):
         if on_create is not None:
             on_create(key, new)
+
+    def _skip_check(new):
+        if skip_check is not None:
+            return skip_check(new)
+        return False
 
     def decorate(func):
         def wrapper(*args, **kwargs):
@@ -471,14 +491,26 @@ def memoize(cache: dict[str, typing.Any] | ObjectCache,
                         val, metadata = _pop_tuple_item(val, meta_index[0])
                         val = val if len(val) > 1 else val[0]
                         _assert_memory_id(val, func)
+                        if _skip_check(val):
+                            return val
+
+                        if metadata.skip:
+                            return val
+
                         cache.cache(cache_key, val, metadata, extra_identities)
                     else:
                         _assert_memory_id(val, func)
+                        if _skip_check(val):
+                            return val
                         cache.cache(cache_key, val, extra_identities)
                 else:
                     _assert_memory_id(val, func)
+                    if _skip_check(val):
+                        return val
                     cache.cache(cache_key, val, extra_identities)
             else:
+                if _skip_check(val):
+                    return val
                 cache[cache_key] = val
 
             _on_create(cache_key, val)

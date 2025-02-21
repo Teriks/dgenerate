@@ -346,7 +346,10 @@ class VAEUri:
         _uri_util._patch_module_to_for_sized_cache(_vae_cache, vae)
 
         # noinspection PyTypeChecker
-        return vae, _d_memoize.CachedObjectMetadata(size=estimated_memory_use)
+        return vae, _d_memoize.CachedObjectMetadata(
+            size=estimated_memory_use,
+            skip=model_cpu_offload_member or sequential_cpu_offload_member
+        )
 
     @staticmethod
     def parse(uri: _types.Uri) -> 'VAEUri':
