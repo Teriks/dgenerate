@@ -964,8 +964,8 @@ class RenderLoopConfig(_types.SetFromMixin):
                     # second model prompt arguments
                     return True
                 if a.startswith('second') and not \
-                        (a.endswith('prompts') or a.endswith('prompt_upscaler')):
-                    # reject primary model 'second_prompts' and `second_prompt_upscaler`
+                        (a.endswith('prompts') or a.endswith('prompt_upscaler_uri')):
+                    # reject primary model 'second_prompts' and `second_prompt_upscaler_uri`
                     # and include everything else
                     return True
                 return False
@@ -1024,13 +1024,20 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'with multiple values involved.'
             )
 
-        # exit early if we know
-        if self.second_model_text_encoder_uris and not \
-                (_pipelinewrapper.model_type_is_sdxl(self.model_type) or
-                 _pipelinewrapper.model_type_is_s_cascade(self.model_type)):
-            raise RenderLoopConfigError(f'Cannot use {a_namer("second_model_text_encoder_uris")} with '
-                                        f'{a_namer("model_type")} '
-                                        f'{_pipelinewrapper.get_model_type_string(self.model_type)}')
+        # exit early if we know there is no possibility
+        # of second model arguments being valid
+        if not (_pipelinewrapper.model_type_is_sdxl(self.model_type) or
+                _pipelinewrapper.model_type_is_kolors(self.model_type) or
+                _pipelinewrapper.model_type_is_s_cascade(self.model_type)):
+            errors = []
+            for arg in non_null_second_model_arguments():
+                errors.append(
+                    f'Cannot use {a_namer(arg)} with '
+                    f'{a_namer("model_type")} '
+                    f'{_pipelinewrapper.get_model_type_string(self.model_type)}'
+                )
+            if errors:
+                raise RenderLoopConfigError('\n'.join(errors))
 
         if not self.sdxl_refiner_uri and not self.s_cascade_decoder_uri:
             if self.second_model_scheduler_uri:
