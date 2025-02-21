@@ -131,8 +131,8 @@ def get_compatible_schedulers(pipeline_cls: type[diffusers.DiffusionPipeline]) -
     # Expand using _compatibles
     compatibles = _expand_with_compatibles(compatible_schedulers)
 
-    if any(pipeline_cls is x for x in (diffusers.loaders.StableDiffusionLoraLoaderMixin,
-                                       diffusers.loaders.StableDiffusionXLLoraLoaderMixin)):
+    if issubclass(pipeline_cls, (diffusers.loaders.StableDiffusionLoraLoaderMixin,
+                                 diffusers.loaders.StableDiffusionXLLoraLoaderMixin)):
         compatibles.append(diffusers.LCMScheduler)
 
     return compatibles
