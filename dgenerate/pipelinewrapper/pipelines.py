@@ -113,6 +113,9 @@ def estimate_pipeline_cache_footprint(
         revision: _types.Name = 'main',
         variant: _types.OptionalName = None,
         subfolder: _types.OptionalPath = None,
+        include_unet_or_transformer: bool = False,
+        include_vae: bool = False,
+        include_text_encoders: bool = False,
         lora_uris: _types.OptionalUris = None,
         image_encoder_uri: _types.OptionalUri = None,
         ip_adapter_uris: _types.OptionalUris = None,
@@ -134,6 +137,14 @@ def estimate_pipeline_cache_footprint(
     :param variant: model file variant desired, for example "fp16"
     :param subfolder: huggingface repo subfolder if using a huggingface slug
         this is currently only supported for Stable Diffusion 3 and Flux models.
+    :param include_unet_or_transformer: Include the unet / transformer?
+        Under most conditions this is loaded separately and put into
+        a cache of its own.
+    :param include_text_encoders: Include text encoders?
+        Under most conditions these are loaded separately and put into
+        a cache of their own.
+    :param include_vae: Include VAE? Under most conditions this is
+        loaded separately and put into a cache its own.
     :param lora_uris: optional user specified ``--loras`` URIs that will be loaded on to the pipeline
     :param image_encoder_uri: optional user specified ``--image-encoder`` URI that will be loaded on to the pipeline
     :param ip_adapter_uris: optional user specified ``--ip-adapters`` URIs that will be loaded on to the pipeline
@@ -155,12 +166,12 @@ def estimate_pipeline_cache_footprint(
         revision=revision,
         variant=variant,
         subfolder=subfolder,
-        include_unet_or_transformer=False,
-        include_vae=False,
+        include_unet_or_transformer=include_unet_or_transformer,
+        include_vae=include_vae,
         safety_checker=safety_checker and 'safety_checker' not in extra_args,
-        include_text_encoder=False,
-        include_text_encoder_2=False,
-        include_text_encoder_3=False,
+        include_text_encoder=include_text_encoders,
+        include_text_encoder_2=include_text_encoders,
+        include_text_encoder_3=include_text_encoders,
         use_auth_token=auth_token,
         local_files_only=local_files_only,
         sentencepiece=_enums.model_type_is_floyd(model_type)
@@ -2042,12 +2053,22 @@ def _create_torch_diffusion_pipeline(
     if len(text_encoders) > 2 and text_encoder_3_override:
         text_encoders[2] = None
 
+    # If we are not auto caching UNet/Transformer, VAE, and text encoders
+    # into other caches, we should estimate a cache size for the pipeline
+    # that includes them
+
+    pipeline_cached_with_submodules = \
+        model_cpu_offload or sequential_cpu_offload or quantizer_uri
+
     estimated_memory_usage = estimate_pipeline_cache_footprint(
         model_type=model_type,
         model_path=model_path,
         revision=revision,
         variant=variant,
         subfolder=subfolder,
+        include_unet_or_transformer=pipeline_cached_with_submodules,
+        include_vae=pipeline_cached_with_submodules,
+        include_text_encoders=pipeline_cached_with_submodules,
         lora_uris=lora_uris,
         image_encoder_uri=image_encoder_uri,
         ip_adapter_uris=ip_adapter_uris,
@@ -2554,8 +2575,7 @@ def _create_torch_diffusion_pipeline(
         parsed_textual_inversion_uris=parsed_textual_inversion_uris,
         parsed_controlnet_uris=parsed_controlnet_uris,
         parsed_t2i_adapter_uris=parsed_t2i_adapter_uris
-    ), _d_memoize.CachedObjectMetadata(size=estimated_memory_usage,
-                                       skip=model_cpu_offload or sequential_cpu_offload or quantizer_uri)
+    ), _d_memoize.CachedObjectMetadata(size=estimated_memory_usage)
 
 
 __all__ = _types.module_all()
