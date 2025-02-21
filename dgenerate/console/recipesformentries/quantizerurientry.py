@@ -19,9 +19,9 @@ class _QuantizerEntry(_entry._Entry):
         if importlib.util.find_spec('bitsandbytes') is not None:
             opts += [
                 'bnb;bits=8',
-                'bnb;bits=4;bits4_compute_dtype=float16',
-                'bnb;bits=4;bits4_compute_dtype=bloat16',
-                'bnb;bits=4;bits4_compute_dtype=float32'
+                'bnb;bits=4;bits4-compute-dtype=float16',
+                'bnb;bits=4;bits4-compute-dtype=bloat16',
+                'bnb;bits=4;bits4-compute-dtype=float32'
             ]
 
         if importlib.util.find_spec('torchao') is not None:
