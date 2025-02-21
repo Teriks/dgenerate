@@ -1088,7 +1088,7 @@ class TorchPipelineCreationResult(PipelineCreationResult):
         self.parsed_transformer_uri = parsed_transformer_uri
 
     def call(self,
-             device: str | None = _util.default_device(),
+             device: torch.device | str | None = _util.default_device(),
              prompt_weighter: _promptweighters.PromptWeighter | None = None,
              **kwargs) -> diffusers.utils.BaseOutput:
         """
