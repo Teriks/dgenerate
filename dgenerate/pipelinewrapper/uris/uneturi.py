@@ -322,6 +322,7 @@ class UNetUri:
                 revision=r.args.get('revision', None),
                 variant=r.args.get('variant', None),
                 dtype=dtype,
-                subfolder=r.args.get('subfolder', None))
+                subfolder=r.args.get('subfolder', None),
+                quantizer=r.args.get('quantizer', None))
         except _textprocessing.ConceptUriParseError as e:
             raise _exceptions.InvalidUNetUriError(e)
