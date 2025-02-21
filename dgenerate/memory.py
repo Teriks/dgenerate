@@ -421,10 +421,11 @@ def cuda_memory_constraints(expressions: collections.abc.Iterable[str],
         memory_constraint_syntax_check(expr)
 
     if isinstance(device, str):
+        device = device.strip()
         if not device.startswith('cuda'):
             return False
         if ':' in device:
-            device_index = int(device.split(':')[1])
+            device_index = int(device.split(':')[1].strip())
         else:
             device_index = 0  # default to device 0 if no index is specified
     elif isinstance(device, torch.device):
@@ -538,8 +539,8 @@ class SizedConstrainedObjectCache(_memoize.ObjectCache):
             self,
             constraints: typing.Iterable[str],
             size_var: str,
-            new_object_size,
-            mode=any
+            new_object_size: int,
+            mode: typing.Callable[[typing.Iterable], bool] = any
     ):
         """
         Clear the cache if these CPU side memory constraints are met.
@@ -571,9 +572,9 @@ class SizedConstrainedObjectCache(_memoize.ObjectCache):
             self,
             constraints: typing.Iterable[str],
             size_var: str,
-            new_object_size,
-            device: str,
-            mode=any
+            new_object_size: int,
+            device: str | torch.device,
+            mode: typing.Callable[[typing.Iterable], bool] = any
     ):
         """
         Clear the cache if these GPU side memory constraints are met.
