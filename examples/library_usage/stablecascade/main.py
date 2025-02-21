@@ -20,8 +20,8 @@ config.dtype = DataType.BFLOAT16
 config.s_cascade_decoder_uri = 'stabilityai/stable-cascade;dtype=float16'
 config.inference_steps = [20]
 config.guidance_scales = [4]
-config.s_cascade_decoder_inference_steps = [10]
-config.s_cascade_decoder_guidance_scales = [0]
+config.second_model_inference_steps = [10]
+config.second_model_guidance_scales = [0]
 config.prompts = [Prompt.parse('an image of a shiba inu, donning a spacesuit and helmet')]
 config.device = device
 

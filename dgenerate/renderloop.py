@@ -441,6 +441,9 @@ class RenderLoop:
 
         args += ['g', diffusion_args.guidance_scale]
 
+        if diffusion_args.second_model_guidance_scale is not None:
+            args += ['g2', diffusion_args.second_model_guidance_scale]
+
         if diffusion_args.guidance_rescale is not None:
             args += ['gr', diffusion_args.guidance_rescale]
 
@@ -454,6 +457,9 @@ class RenderLoop:
             args += ['pas', diffusion_args.pag_adaptive_scale]
 
         args += ['i', diffusion_args.inference_steps]
+
+        if diffusion_args.second_model_inference_steps is not None:
+            args += ['i2', diffusion_args.second_model_inference_steps]
 
         if diffusion_args.clip_skip is not None:
             args += ['cs', diffusion_args.clip_skip]
@@ -485,20 +491,8 @@ class RenderLoop:
         if diffusion_args.sdxl_refiner_pag_adaptive_scale is not None:
             args += ['rpas', diffusion_args.sdxl_refiner_pag_adaptive_scale]
 
-        if diffusion_args.sdxl_refiner_guidance_scale is not None:
-            args += ['rg', diffusion_args.sdxl_refiner_guidance_scale]
-
         if diffusion_args.sdxl_refiner_guidance_rescale is not None:
             args += ['rgr', diffusion_args.sdxl_refiner_guidance_rescale]
-
-        if diffusion_args.sdxl_refiner_inference_steps is not None:
-            args += ['ri', diffusion_args.sdxl_refiner_inference_steps]
-
-        if diffusion_args.s_cascade_decoder_guidance_scale is not None:
-            args += ['scdg', diffusion_args.s_cascade_decoder_guidance_scale]
-
-        if diffusion_args.s_cascade_decoder_inference_steps is not None:
-            args += ['scdi', diffusion_args.s_cascade_decoder_inference_steps]
 
         return args
 

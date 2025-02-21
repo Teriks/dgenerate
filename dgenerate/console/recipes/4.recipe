@@ -31,7 +31,7 @@ title: Stable Diffusion XL (LCM UNet)
 @float[{"label":"PAG Scale", "arg":"--pag-scales", "min":0}]
 @float[{"label":"Adaptive PAG Scale", "arg":"--pag-adaptive-scales", "min":0}]
 @float[{"label":"SDXL High Noise Fraction", "arg":"--sdxl-high-noise-fractions", "default":0.8, "min":0.001, "max":0.99}]
-@int[{"label":"Refiner Inference Steps", "arg":"--sdxl-refiner-inference-steps", "default":50, "min":1}]
+@int[{"label":"Refiner Inference Steps", "arg":"--second-model-inference-steps", "default":50, "min":1}]
 @int[{"label":"Clip Skip", "arg":"--clip-skips", "default":0, "min":0}]
 @seeds[{"label":"Seeds"}]
 @int[{"label":"Batch Size", "arg":"--batch-size", "default":"", "min":1}]

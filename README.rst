@@ -198,10 +198,8 @@ Help Output
                      [--second-model-scheduler SCHEDULER_URI [SCHEDULER_URI ...]] [-hd] [-rhd] [-pag]
                      [-pags FLOAT [FLOAT ...]] [-pagas FLOAT [FLOAT ...]] [-rpag] [-rpags FLOAT [FLOAT ...]]
                      [-rpagas FLOAT [FLOAT ...]] [-mqo | -mco] [-mqo2 | -mco2] [--s-cascade-decoder MODEL_URI]
-                     [--s-cascade-decoder-inference-steps INTEGER [INTEGER ...]]
-                     [--s-cascade-decoder-guidance-scales INTEGER [INTEGER ...]] [--sdxl-refiner MODEL_URI]
-                     [--sdxl-refiner-edit] [--sdxl-t2i-adapter-factors FLOAT [FLOAT ...]]
-                     [--sdxl-aesthetic-scores FLOAT [FLOAT ...]]
+                     [--sdxl-refiner MODEL_URI] [--sdxl-refiner-edit]
+                     [--sdxl-t2i-adapter-factors FLOAT [FLOAT ...]] [--sdxl-aesthetic-scores FLOAT [FLOAT ...]]
                      [--sdxl-crops-coords-top-left COORD [COORD ...]] [--sdxl-original-size SIZE [SIZE ...]]
                      [--sdxl-target-size SIZE [SIZE ...]] [--sdxl-negative-aesthetic-scores FLOAT [FLOAT ...]]
                      [--sdxl-negative-original-sizes SIZE [SIZE ...]]
@@ -215,9 +213,8 @@ Help Output
                      [--sdxl-refiner-negative-original-sizes SIZE [SIZE ...]]
                      [--sdxl-refiner-negative-target-sizes SIZE [SIZE ...]]
                      [--sdxl-refiner-negative-crops-coords-top-left COORD [COORD ...]] [-hnf FLOAT [FLOAT ...]]
-                     [-ri INT [INT ...]] [-rg FLOAT [FLOAT ...]] [-rgr FLOAT [FLOAT ...]] [-sc] [-d DEVICE]
-                     [-t DTYPE] [-s SIZE] [-na] [-o PATH] [-op PREFIX] [-ox] [-oc] [-om]
-                     [-pw PROMPT_WEIGHTER_URI] [-pw2 PROMPT_WEIGHTER_URI]
+                     [-rgr FLOAT [FLOAT ...]] [-sc] [-d DEVICE] [-t DTYPE] [-s SIZE] [-na] [-o PATH]
+                     [-op PREFIX] [-ox] [-oc] [-om] [-pw PROMPT_WEIGHTER_URI] [-pw2 PROMPT_WEIGHTER_URI]
                      [--prompt-weighter-help [PROMPT_WEIGHTER_NAMES ...]]
                      [-pu PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]]
                      [-pu2 PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]]
@@ -234,7 +231,7 @@ Help Output
                      [-cip PROCESSOR_URI [PROCESSOR_URI ...]] [--image-processor-help [PROCESSOR_NAME ...]]
                      [-pp PROCESSOR_URI [PROCESSOR_URI ...]] [-iss FLOAT [FLOAT ...] | -uns INTEGER
                      [INTEGER ...]] [-gs FLOAT [FLOAT ...]] [-igs FLOAT [FLOAT ...]] [-gr FLOAT [FLOAT ...]]
-                     [-ifs INTEGER [INTEGER ...]]
+                     [-ifs INTEGER [INTEGER ...]] [-ifs2 INT [INT ...]] [-gs2 FLOAT [FLOAT ...]]
                      model_path
     
     Batch image generation and manipulation tool supporting Stable Diffusion and related techniques /
@@ -995,10 +992,17 @@ Help Output
             --------------------------------------------------------------------------------------
       -hd, --hi-diffusion
             Activate HiDiffusion for the primary model?
-            -------------------------------------------
+            
+            This can increase the resolution at which the model can output images while retaining quality with
+            no overhead, and possibly improved performance.
+            
+            See: https://github.com/megvii-research/HiDiffusion
+            
+            This is supported for --model-type torch, torch-sdxl, and --torch-kolors.
+            -------------------------------------------------------------------------
       -rhd, --sdxl-refiner-hi-diffusion
-            Activate HiDiffusion for the SDXL refiner?
-            ------------------------------------------
+            Activate HiDiffusion for the SDXL refiner?, See: --hi-diffusion
+            ---------------------------------------------------------------
       -pag, --pag
             Use perturbed attention guidance? This is supported for --model-type torch, torch-sdxl, and torch-
             sd3 for most use cases. This enables PAG for the main model using default scale values.
@@ -1076,12 +1080,6 @@ Help Output
             syntax: --s-cascade-decoder "https://huggingface.co/UserName/repository-
             name/blob/main/decoder.safetensors", the "revision" argument may be used with this syntax.
             ------------------------------------------------------------------------------------------
-      --s-cascade-decoder-inference-steps INTEGER [INTEGER ...]
-            One or more inference steps values to try with the Stable Cascade decoder. (default: [10])
-            ------------------------------------------------------------------------------------------
-      --s-cascade-decoder-guidance-scales INTEGER [INTEGER ...]
-            One or more guidance scale values to try with the Stable Cascade decoder. (default: [0])
-            ----------------------------------------------------------------------------------------
       --sdxl-refiner MODEL_URI
             Specify a Stable Diffusion XL (torch-sdxl) refiner model path using a URI. This should be a Hugging
             Face repository slug / blob link, path to model file on disk (for example, a .pt, .pth, .bin, .ckpt,
@@ -1215,14 +1213,6 @@ Help Output
             becomes the --image-seed-strengths input to the SDXL refiner in plain img2img mode. Edit mode may be
             forced with the option --sdxl-refiner-edit (default: [0.8])
             -----------------------------------------------------------
-      -ri INT [INT ...], --sdxl-refiner-inference-steps INT [INT ...]
-            One or more inference steps values for the SDXL refiner when in use. Override the number of
-            inference steps used by the SDXL refiner, which defaults to the value taken from --inference-steps.
-            ---------------------------------------------------------------------------------------------------
-      -rg FLOAT [FLOAT ...], --sdxl-refiner-guidance-scales FLOAT [FLOAT ...]
-            One or more guidance scale values for the SDXL refiner when in use. Override the guidance scale
-            value used by the SDXL refiner, which defaults to the value taken from --guidance-scales.
-            -----------------------------------------------------------------------------------------
       -rgr FLOAT [FLOAT ...], --sdxl-refiner-guidance-rescales FLOAT [FLOAT ...]
             One or more guidance rescale values for the SDXL refiner when in use. Override the guidance rescale
             value used by the SDXL refiner, which defaults to the value taken from --guidance-rescales.
@@ -1578,6 +1568,16 @@ Help Output
             clarity to a degree, higher values bring the image closer to what the AI is targeting for the
             content of the image. Values between 30-40 produce good results, higher values may improve image
             quality and or change image content. (default: [30])
+            ----------------------------------------------------
+      -ifs2 INT [INT ...], --second-model-inference-steps INT [INT ...]
+            One or more inference steps values for the SDXL refiner or Stable Cascade decoder when in use.
+            Override the number of inference steps used by the second model, which defaults to the value taken
+            from --inference-steps for SDXL and 10 for Stable Cascade.
+            ----------------------------------------------------------
+      -gs2 FLOAT [FLOAT ...], --second-model-guidance-scales FLOAT [FLOAT ...]
+            One or more inference steps values for the SDXL refiner or Stable Cascade decoder when in use.
+            Override the guidance scale value used by the second model, which defaults to the value taken from
+            --guidance-scales for SDXL and 0 for Stable Cascade.
             ----------------------------------------------------
 
 Windows Install
@@ -3050,8 +3050,8 @@ UNet models which have a smaller memory footprint using ``--unet`` and ``--secon
     --s-cascade-decoder "stabilityai/stable-cascade;dtype=float16" \
     --inference-steps 20 \
     --guidance-scales 4 \
-    --s-cascade-decoder-inference-steps 10 \
-    --s-cascade-decoder-guidance-scales 0 \
+    --second-model-inference-steps 10 \
+    --second-model-guidance-scales 0 \
     --gen-seeds 2 \
     --prompts "an image of a shiba inu, donning a spacesuit and helmet"
 
@@ -3261,8 +3261,8 @@ model as mentioned above.
     --s-cascade-decoder "stabilityai/stable-cascade;dtype=float16" \
     --inference-steps 20 \
     --guidance-scales 4 \
-    --s-cascade-decoder-inference-steps 10 \
-    --s-cascade-decoder-guidance-scales 0 \
+    --second-model-inference-steps 10 \
+    --second-model-guidance-scales 0 \
     --gen-seeds 2 \
     --prompts "an image of a shiba inu, donning a spacesuit and helmet"
 
@@ -4776,8 +4776,6 @@ these are the arguments that are available for use:
     width: int
     height: int
     batch-size: int
-    s-cascade-decoder-inference-steps: int
-    s-cascade-decoder-guidance-scale: float
     max-sequence-length: int
     sdxl-refiner-edit: bool
     seed: int
@@ -4785,8 +4783,8 @@ these are the arguments that are available for use:
     sdxl-t2i-adapter-factor: float
     upscaler-noise-level: int
     sdxl-high-noise-fraction: float
-    sdxl-refiner-inference-steps: int
-    sdxl-refiner-guidance-scale: float
+    second-model-inference-steps: int
+    second-model-guidance-scale: float
     sdxl-refiner-guidance-rescale: float
     sdxl-aesthetic-score: float
     sdxl-original-size: Size: WxH
@@ -6437,12 +6435,6 @@ The ``\templates_help`` output from the above example is:
         Name: "last_revision"
             Type: <class 'str'>
             Value: 'main'
-        Name: "last_s_cascade_decoder_guidance_scales"
-            Type: typing.Optional[collections.abc.Sequence[float]]
-            Value: []
-        Name: "last_s_cascade_decoder_inference_steps"
-            Type: typing.Optional[collections.abc.Sequence[int]]
-            Value: []
         Name: "last_s_cascade_decoder_uri"
             Type: typing.Optional[str]
             Value: None
@@ -6491,15 +6483,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_sdxl_refiner_guidance_rescales"
             Type: typing.Optional[collections.abc.Sequence[float]]
             Value: []
-        Name: "last_sdxl_refiner_guidance_scales"
-            Type: typing.Optional[collections.abc.Sequence[float]]
-            Value: []
         Name: "last_sdxl_refiner_hi_diffusion"
             Type: typing.Optional[bool]
             Value: None
-        Name: "last_sdxl_refiner_inference_steps"
-            Type: typing.Optional[collections.abc.Sequence[int]]
-            Value: []
         Name: "last_sdxl_refiner_negative_aesthetic_scores"
             Type: typing.Optional[collections.abc.Sequence[float]]
             Value: []
@@ -6539,6 +6525,12 @@ The ``\templates_help`` output from the above example is:
         Name: "last_second_model_cpu_offload"
             Type: typing.Optional[bool]
             Value: None
+        Name: "last_second_model_guidance_scales"
+            Type: typing.Optional[collections.abc.Sequence[float]]
+            Value: []
+        Name: "last_second_model_inference_steps"
+            Type: typing.Optional[collections.abc.Sequence[int]]
+            Value: []
         Name: "last_second_model_original_config"
             Type: typing.Optional[str]
             Value: None
@@ -6583,7 +6575,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [69716150120898]
+            Value: [92035294466630]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

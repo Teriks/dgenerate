@@ -167,19 +167,6 @@ class DiffusionArguments(_types.SetFromMixin):
     Number of images to produce in a single generation step on the same GPU.
     """
 
-    s_cascade_decoder_inference_steps: _types.OptionalInteger = None
-    """
-    Inference steps value for the Stable Cascade decoder, this corresponds 
-    to the ``--s-cascade-decoder-inference-steps`` argument of the dgenerate command line tool.
-    """
-
-    s_cascade_decoder_guidance_scale: _types.OptionalFloat = None
-    """
-    Guidance scale value for the Stable Cascade decoder, this 
-    corresponds to the ``--s-cascade-decoder-guidance-scales`` argument of the dgenerate
-    command line tool.
-    """
-
     max_sequence_length: _types.OptionalInteger = None
     """
     Max number of prompt tokens that the T5EncoderModel (text encoder 3) of Stable Diffusion 3 or Flux can handle.
@@ -238,19 +225,14 @@ class DiffusionArguments(_types.SetFromMixin):
     (image_seed_strength * inference_steps).
     """
 
-    sdxl_refiner_inference_steps: _types.OptionalInteger = None
+    second_model_inference_steps: _types.OptionalInteger = None
     """
-    Override the default amount of inference steps preformed by the SDXL refiner. 
-    Which is normally set to the value for the primary model.
-    
-    The attribute :py:attr:`.DiffusionArguments.sdxl_high_noise_fraction` still 
-    factors in to the actual amount of inference steps preformed.
+    Override the default amount of inference steps preformed by the SDXL refiner or Stable Cascade decoder.
     """
 
-    sdxl_refiner_guidance_scale: _types.OptionalFloat = None
+    second_model_guidance_scale: _types.OptionalFloat = None
     """
-    Override the guidance scale used by the SDXL refiner, which is normally set to the value of
-    :py:attr:`.DiffusionArguments.guidance_scale`.
+    Override the guidance scale used by the SDXL refiner or Stable Cascade decoder.
     """
 
     sdxl_refiner_guidance_rescale: _types.OptionalFloat = None
@@ -377,12 +359,20 @@ class DiffusionArguments(_types.SetFromMixin):
 
     hi_diffusion: _types.OptionalBoolean = None
     """
-    Activate HiDiffusion for this generation?
+    Activate HiDiffusion for the primary model? 
+            
+    This can increase the resolution at which the model can
+    output images while retaining quality with no overhead, and 
+    possibly improved performance.
+    
+    See: https://github.com/megvii-research/HiDiffusion
+    
+    This is supported for: ``--model-type torch, torch-sdxl, and --torch-kolors``.
     """
 
     sdxl_refiner_hi_diffusion: _types.OptionalBoolean = None
     """
-    Activate HiDiffusion on the SDXL refiner for this generation?
+    Activate HiDiffusion on the SDXL refiner for this generation?, See: :py:attr:`DiffusionArguments.hi_diffusion`
     """
 
     pag_scale: _types.OptionalFloat = None
@@ -631,14 +621,12 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.sdxl_refiner_clip_skip, "SDXL Refiner Clip Skip:"),
             (self.image_seed_strength, "Image Seed Strength:"),
             (self.upscaler_noise_level, "Upscaler Noise Level:"),
-            (self.s_cascade_decoder_inference_steps, 'Stable Cascade Decoder Inference Steps:'),
-            (self.s_cascade_decoder_guidance_scale, 'Stable Cascade Decoder Guidance Scale:'),
+            (self.second_model_inference_steps, 'Second Model Inference Steps:'),
+            (self.second_model_guidance_scale, 'Second Model Guidance Scale:'),
             (self.sdxl_high_noise_fraction, "SDXL High Noise Fraction:"),
             (self.sdxl_t2i_adapter_factor, "SDXL T2I Adapter Factor:"),
-            (self.sdxl_refiner_inference_steps, "SDXL Refiner Inference Steps:"),
             (self.sdxl_refiner_pag_scale, 'SDXL Refiner PAG Scale:'),
             (self.sdxl_refiner_pag_adaptive_scale, 'SDXL Refiner PAG Adaptive Scale:'),
-            (self.sdxl_refiner_guidance_scale, "SDXL Refiner Guidance Scale:"),
             (self.sdxl_refiner_guidance_rescale, "SDXL Refiner Guidance Rescale:"),
             (self.sdxl_aesthetic_score, "SDXL Aesthetic Score:"),
             (self.sdxl_original_size, "SDXL Original Size:"),

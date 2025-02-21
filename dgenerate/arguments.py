@@ -1507,7 +1507,16 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '-hd', '--hi-diffusion',
             action='store_true', default=False, dest='hi_diffusion',
-            help=f"""Activate HiDiffusion for the primary model?"""
+            help=f"""Activate HiDiffusion for the primary model? 
+            
+                     This can increase the resolution at which the model can
+                     output images while retaining quality with no overhead, and 
+                     possibly improved performance.
+                     
+                     See: https://github.com/megvii-research/HiDiffusion
+                     
+                     This is supported for --model-type torch, torch-sdxl, and --torch-kolors.
+                     """
         )
     )
 
@@ -1515,7 +1524,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '-rhd', '--sdxl-refiner-hi-diffusion',
             action='store_true', default=False, dest='sdxl_refiner_hi_diffusion',
-            help=f"""Activate HiDiffusion for the SDXL refiner?"""
+            help=f"""Activate HiDiffusion for the SDXL refiner?, See: --hi-diffusion"""
         )
     )
 
@@ -1660,26 +1669,6 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     loading syntax: --s-cascade-decoder
                     "https://huggingface.co/UserName/repository-name/blob/main/decoder.safetensors",
                     the "revision" argument may be used with this syntax."""
-        )
-    )
-
-    actions.append(
-        parser.add_argument(
-            '--s-cascade-decoder-inference-steps', action='store', nargs='+',
-            default=[_pipelinewrapper.DEFAULT_S_CASCADE_DECODER_INFERENCE_STEPS], type=_type_inference_steps,
-            metavar="INTEGER",
-            help=f"""One or more inference steps values to try with the Stable Cascade decoder.
-                    (default: [{_pipelinewrapper.DEFAULT_S_CASCADE_DECODER_INFERENCE_STEPS}])"""
-        )
-    )
-
-    actions.append(
-        parser.add_argument(
-            '--s-cascade-decoder-guidance-scales', action='store', nargs='+',
-            default=[_pipelinewrapper.DEFAULT_S_CASCADE_DECODER_GUIDANCE_SCALE],
-            type=_type_guidance_scale, metavar="INTEGER",
-            help=f"""One or more guidance scale values to try with the Stable Cascade decoder.
-                     (default: [{_pipelinewrapper.DEFAULT_S_CASCADE_DECODER_GUIDANCE_SCALE}])"""
         )
     )
 
@@ -1909,26 +1898,6 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     proportion of this value IE: (1.0 - high-noise-fraction) becomes the --image-seed-strengths
                     input to the SDXL refiner in plain img2img mode. Edit mode may be forced with the 
                     option --sdxl-refiner-edit (default: [0.8])"""
-        )
-    )
-
-    actions.append(
-        parser.add_argument(
-            '-ri', '--sdxl-refiner-inference-steps', action='store', nargs='+', default=None, metavar="INT",
-            type=_type_inference_steps,
-            help="""One or more inference steps values for the SDXL refiner when in use.
-                    Override the number of inference steps used by the SDXL refiner,
-                    which defaults to the value taken from --inference-steps."""
-        )
-    )
-
-    actions.append(
-        parser.add_argument(
-            '-rg', '--sdxl-refiner-guidance-scales', action='store', nargs='+', default=None, metavar="FLOAT",
-            type=_type_guidance_scale,
-            help="""One or more guidance scale values for the SDXL refiner when in use.
-                    Override the guidance scale value used by the SDXL refiner,
-                    which defaults to the value taken from --guidance-scales."""
         )
     )
 
@@ -2537,6 +2506,30 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     the AI is targeting for the content of the image. Values between 30-40
                     produce good results, higher values may improve image quality and or
                     change image content. (default: [30])"""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-ifs2', '--second-model-inference-steps', action='store', nargs='+', default=None, metavar="INT",
+            type=_type_inference_steps,
+            help=f"""One or more inference steps values for the SDXL refiner or Stable Cascade decoder
+                     when in use. Override the number of inference steps used by the second model,
+                     which defaults to the value taken from --inference-steps for SDXL and 
+                     {_pipelinewrapper.DEFAULT_S_CASCADE_DECODER_INFERENCE_STEPS} for Stable Cascade.
+                     """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-gs2', '--second-model-guidance-scales', action='store', nargs='+', default=None, metavar="FLOAT",
+            type=_type_guidance_scale,
+            help=f"""One or more inference steps values for the SDXL refiner or Stable Cascade decoder
+                     when in use. Override the guidance scale value used by the second model,
+                     which defaults to the value taken from --guidance-scales for SDXL and 
+                     {_pipelinewrapper.DEFAULT_S_CASCADE_DECODER_GUIDANCE_SCALE} for Stable Cascade.
+                     """
         )
     )
 

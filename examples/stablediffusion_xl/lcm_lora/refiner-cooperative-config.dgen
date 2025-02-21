@@ -13,7 +13,7 @@ stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
 --sdxl-high-noise-fractions 0.8 # HNF = 0.8
 --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
 
---sdxl-refiner-inference-steps 100  \ # This will result in around 20 refiner steps with HNF=0.8, 100 * 0.2 with rounding error
+--second-model-inference-steps 100  \ # This will result in around 20 refiner steps with HNF=0.8, 100 * 0.2 with rounding error
 
 --second-model-scheduler UniPCMultistepScheduler \ # LCMScheduler will not work for the refiner
                                                    # because the refiner does not use a LoRA

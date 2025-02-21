@@ -327,19 +327,6 @@ class RenderLoopConfig(_types.SetFromMixin):
     Stable Cascade model URI, ``--s-cascade-decoder`` argument of dgenerate command line tool.
     """
 
-    s_cascade_decoder_inference_steps: _types.OptionalIntegers = None
-    """
-    List of inference steps values for the Stable Cascade decoder, this corresponds 
-    to the ``--s-cascade-decoder-inference-steps`` argument of the dgenerate command line tool.
-    """
-
-    s_cascade_decoder_guidance_scales: _types.OptionalFloats = None
-    """
-    List of guidance scale values for the Stable Cascade decoder, this 
-    corresponds to the ``--s-cascade-decoder-guidance-scales`` argument of the dgenerate
-    command line tool.
-    """
-
     sdxl_high_noise_fractions: _types.OptionalFloats = None
     """
     Optional list of SDXL refiner high noise fractions (floats), this value is the fraction of inference steps
@@ -347,22 +334,22 @@ class RenderLoopConfig(_types.SetFromMixin):
     This corresponds to the ``--sdxl-high-noise-fractions`` argument of the dgenerate command line tool.
     """
 
-    sdxl_refiner_inference_steps: _types.OptionalIntegers = None
+    second_model_inference_steps: _types.OptionalIntegers = None
     """
     Optional list of inference steps value overrides for the SDXL refiner, this corresponds 
-    to the ``--sdxl-refiner-inference-steps`` argument of the dgenerate command line tool.
+    to the ``--second-model-inference-steps`` argument of the dgenerate command line tool.
     """
 
-    sdxl_refiner_guidance_scales: _types.OptionalFloats = None
+    second_model_guidance_scales: _types.OptionalFloats = None
     """
-    Optional list of guidance scale value overrides for the SDXL refiner, this corresponds 
-    to the ``--sdxl-refiner-guidance-scales`` argument of the dgenerate command line tool.
+    Optional list of guidance scale value overrides for the SDXL refiner or Stable Cascade decoder, 
+    this corresponds to the ``--second-model-guidance-scales`` argument of the dgenerate command line tool.
     """
 
     sdxl_refiner_guidance_rescales: _types.OptionalFloats = None
     """
-    Optional list of guidance rescale value overrides for the SDXL refiner, this corresponds 
-    to the ``--sdxl-refiner-guidance-rescales`` argument of the dgenerate command line tool.
+    Optional list of guidance rescale value overrides for the SDXL refiner or Stable Cascade decoder, 
+    this corresponds to the ``--sdxl-refiner-guidance-rescales`` argument of the dgenerate command line tool.
     """
 
     sdxl_aesthetic_scores: _types.OptionalFloats = None
@@ -601,12 +588,20 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     hi_diffusion: bool = False
     """
-    Activate HiDiffusion for the primary model?
+    Activate HiDiffusion for the primary model? 
+            
+    This can increase the resolution at which the model can
+    output images while retaining quality with no overhead, and 
+    possibly improved performance.
+    
+    See: https://github.com/megvii-research/HiDiffusion
+    
+    This is supported for: ``--model-type torch, torch-sdxl, and --torch-kolors``.
     """
 
     sdxl_refiner_hi_diffusion: _types.OptionalBoolean = None
     """
-    Activate HiDiffusion for the SDXL refiner?
+    Activate HiDiffusion for the SDXL refiner? See: :py:attr:`RenderLoopConfig.hi_diffusion`
     """
 
     pag: bool = False
@@ -1288,12 +1283,17 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         if self.model_type == _pipelinewrapper.ModelType.TORCH_S_CASCADE:
 
-            if not self.s_cascade_decoder_guidance_scales:
-                self.s_cascade_decoder_guidance_scales = [
+            if self.hi_diffusion is not None:
+                raise RenderLoopConfigError(
+                    f'{a_namer("hi_diffusion")} is not supported with Stable Cascade.'
+                )
+
+            if not self.second_model_guidance_scales:
+                self.second_model_guidance_scales = [
                     _pipelinewrapper.DEFAULT_S_CASCADE_DECODER_GUIDANCE_SCALE]
 
-            if not self.s_cascade_decoder_inference_steps:
-                self.s_cascade_decoder_inference_steps = [
+            if not self.second_model_inference_steps:
+                self.second_model_inference_steps = [
                     _pipelinewrapper.DEFAULT_S_CASCADE_DECODER_INFERENCE_STEPS]
 
             if self.output_size is not None and not _image.is_aligned(self.output_size, 128):
@@ -1303,12 +1303,6 @@ class RenderLoopConfig(_types.SetFromMixin):
         elif self.s_cascade_decoder_uri:
             raise RenderLoopConfigError(
                 f'{a_namer("s_cascade_decoder_uri")} may only be used with "torch-s-cascade"')
-        elif self.s_cascade_decoder_inference_steps is not None:
-            raise RenderLoopConfigError(
-                f'{a_namer("s_cascade_decoder_inference_steps")} may only be used with "torch-s-cascade"')
-        elif self.s_cascade_decoder_guidance_scales is not None:
-            raise RenderLoopConfigError(
-                f'{a_namer("s_cascade_decoder_guidance_scales")} may only be used with "torch-s-cascade"')
 
         if self.model_path is None:
             raise RenderLoopConfigError(
@@ -1393,6 +1387,10 @@ class RenderLoopConfig(_types.SetFromMixin):
             if invalid_self:
                 raise RenderLoopConfigError('\n'.join(invalid_self))
         else:
+            if self.hi_diffusion:
+                raise RenderLoopConfigError(
+                    f'{a_namer("hi_diffusion")} is not supported with Flux.'
+                )
             if self.max_sequence_length is not None:
                 if self.max_sequence_length < 1 or self.max_sequence_length > 512:
                     raise RenderLoopConfigError(
@@ -1411,6 +1409,11 @@ class RenderLoopConfig(_types.SetFromMixin):
             if invalid_self:
                 raise RenderLoopConfigError('\n'.join(invalid_self))
         else:
+            if self.hi_diffusion:
+                raise RenderLoopConfigError(
+                    f'{a_namer("hi_diffusion")} is not supported with Stable Diffusion 3.'
+                )
+            
             if self.max_sequence_length is not None:
                 if self.controlnet_uris:
                     raise RenderLoopConfigError(
@@ -1819,14 +1822,12 @@ class RenderLoopConfig(_types.SetFromMixin):
             self.sdxl_refiner_negative_original_sizes,
             self.sdxl_refiner_negative_target_sizes,
             self.sdxl_refiner_negative_crops_coords_top_left,
-            self.s_cascade_decoder_inference_steps,
-            self.s_cascade_decoder_guidance_scales,
             self.pag_scales,
             self.pag_adaptive_scales,
             self.sdxl_refiner_pag_scales,
             self.sdxl_refiner_pag_adaptive_scales,
-            self.sdxl_refiner_inference_steps,
-            self.sdxl_refiner_guidance_scales,
+            self.second_model_inference_steps,
+            self.second_model_guidance_scales,
             self.sdxl_refiner_guidance_rescales,
             self.adetailer_mask_shapes,
             self.adetailer_detector_paddings,
@@ -1976,8 +1977,8 @@ class RenderLoopConfig(_types.SetFromMixin):
                 guidance_rescale=ov('guidance_rescale', self.guidance_rescales),
                 inference_steps=ov('inference_steps', self.inference_steps),
                 sdxl_high_noise_fraction=ov('sdxl_high_noise_fraction', self.sdxl_high_noise_fractions),
-                sdxl_refiner_inference_steps=ov('sdxl_refiner_inference_steps', self.sdxl_refiner_inference_steps),
-                sdxl_refiner_guidance_scale=ov('sdxl_refiner_guidance_scale', self.sdxl_refiner_guidance_scales),
+                second_model_inference_steps=ov('second_model_inference_steps', self.second_model_inference_steps),
+                second_model_guidance_scale=ov('second_model_guidance_scale', self.second_model_guidance_scales),
                 sdxl_refiner_hi_diffusion=ov('sdxl_refiner_hi_diffusion', [self.sdxl_refiner_hi_diffusion]),
                 sdxl_refiner_pag_scale=ov('sdxl_refiner_pag_scale',
                                           self.sdxl_refiner_pag_scales),
@@ -1986,11 +1987,6 @@ class RenderLoopConfig(_types.SetFromMixin):
 
                 sdxl_refiner_guidance_rescale=ov('sdxl_refiner_guidance_rescale',
                                                  self.sdxl_refiner_guidance_rescales),
-
-                s_cascade_decoder_inference_steps=ov('s_cascade_decoder_inference_steps',
-                                                     self.s_cascade_decoder_inference_steps),
-                s_cascade_decoder_guidance_scale=ov('s_cascade_decoder_guidance_scale',
-                                                    self.s_cascade_decoder_guidance_scales),
                 upscaler_noise_level=ov('upscaler_noise_level', self.upscaler_noise_levels),
                 sdxl_aesthetic_score=ov('sdxl_aesthetic_score', self.sdxl_aesthetic_scores),
                 sdxl_original_size=ov('sdxl_original_size', self.sdxl_original_sizes),
