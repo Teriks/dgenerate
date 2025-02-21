@@ -1934,6 +1934,12 @@ def _create_torch_diffusion_pipeline(
                 'when loading from a Hugging Face repo.'
             )
 
+    if _enums.model_type_is_kolors(model_type) and quantizer_uri:
+        raise UnsupportedPipelineConfigError(
+            f'--model-type {_enums.get_model_type_string(model_type)} '
+            f'does not support using a quantization backend.'
+        )
+
     if original_config:
         original_config = _util.download_non_hf_config(original_config)
 
@@ -2256,6 +2262,12 @@ def _create_torch_diffusion_pipeline(
 
         if unet_uri is not None:
             parsed_unet_uri = _uris.UNetUri.parse(unet_uri)
+
+            if _enums.model_type_is_kolors(model_type) and parsed_unet_uri.quantizer:
+                raise UnsupportedPipelineConfigError(
+                    f'--model-type {_enums.get_model_type_string(model_type)} does not support '
+                    f'loading a --unet with quantization applied.'
+                )
 
             creation_kwargs[unet_parameter] = load_unet(
                 parsed_unet_uri, unet_class=unet_class
