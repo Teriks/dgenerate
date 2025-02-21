@@ -214,7 +214,8 @@ class ImageProcessor(_plugin.Plugin):
 
             if (_memory.memory_constraints(
                     _constants.IMAGE_PROCESSOR_CACHE_GC_CONSTRAINTS,
-                    extra_vars={'processor_size': memory_required})):
+                    extra_vars={'memory_required': memory_required})):
+
                 _messages.debug_log(
                     f'Image Processor "{self.__class__.__name__}" is clearing the CPU side object '
                     f'cache due to CPU side memory constraint evaluating to to True.')
@@ -224,7 +225,7 @@ class ImageProcessor(_plugin.Plugin):
 
             cleared = cleared or _image_processor_cache.enforce_cpu_mem_constraints(
                 _constants.IMAGE_PROCESSOR_CACHE_MEMORY_CONSTRAINTS,
-                size_var='processor_size',
+                size_var='memory_required',
                 new_object_size=memory_required
             )
         return cleared

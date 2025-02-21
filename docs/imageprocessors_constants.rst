@@ -1,42 +1,41 @@
 .. py:currentmodule:: dgenerate.imageprocessors
 
 .. data:: IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS
-    :annotation: = ['processor_size > (available * 0.70)']
+    :annotation: = ['memory_required > (available * 0.70)']
 
-    Cache constraint expressions for when to attempt to fully clear cuda VRAM before 
-    moving an image processor on to a cuda device, syntax provided via
-    :py:func:`dgenerate.memory.cuda_memory_constraints`
+    Cache constraint expressions for when to attempt to clear cuda VRAM
+    upon a image processor plugin calling :py:meth:`dgenerate.imageprocessors.ImageProcessor.memory_guard_device`
+    on a cuda device, syntax provided via :py:func:`dgenerate.memory.cuda_memory_constraints`
 
-    If any of these constraints are met, an effort is made to clear modules off the GPU 
-    which are cached for fast repeat usage but are okay to flush, prior to moving
-    an image processor to the GPU.
+    If any of these constraints are met, an effort is made to clear modules off a GPU
+    which are cached for fast repeat usage but are okay to flush.
 
-    The only available extra variable is: ``pipeline_size`` (the estimated size 
-    of the image processor module that needs to enter VRAM, in bytes)
+    The only available extra variable is: ``memory_required``, which is the
+    amount of memory the image processor plugin requested to be available.
 
 .. data:: IMAGE_PROCESSOR_CACHE_GC_CONSTRAINTS
-    :annotation: = ['processor_size > (available * 0.70)']
+    :annotation: = ['memory_required > (available * 0.70)']
 
-    Cache constraint expressions for when to attempt to fully clear CPU side ram before 
-    the initial loading of an image processor module into ram, syntax provided via
-    :py:func:`dgenerate.memory.memory_constraints`
+    Cache constraint expressions for when to attempt to clear objects out of any CPU side cache
+    upon a image processor plugin calling :py:meth:`dgenerate.imageprocessors.ImageProcessor.memory_guard_device`
+    on the cpu, syntax provided via :py:func:`dgenerate.memory.memory_constraints`
 
-    If any of these constraints are met, an effort is made to clear objects out of 
-    cpu side ram which are cached for fast repeat usage but are okay to flush,
-    prior to loading an image processor model.
+    If any of these constraints are met, an effort is made to clear 
+    objects out of any named CPU side cache.
 
-    The only available extra variable is: ``processor_size`` (the estimated size 
-    of the image processor module that needs to enter ram, in bytes)
+    The only available extra variable is: ``memory_required``, which is the
+    amount of memory the image processor plugin requested to be available.
 
 .. data:: IMAGE_PROCESSOR_CACHE_MEMORY_CONSTRAINTS
-    :annotation: = ['processor_size > (available * 0.70)']
+    :annotation: = ['memory_required > (available * 0.70)']
 
-    Cache constraint expressions for when to attempt to clear the image processor
-    cache before bringing a new image processor online, this cache caches image processor
-    objects for reuse. :py:func:`dgenerate.memory.memory_constraints`
+    Cache constraint expressions for when to attempt to clear specifically the image processor 
+    object cache upon a image processor plugin calling :py:meth:`dgenerate.imageprocessors.ImageProcessor.memory_guard_device`
+    on the cpu, syntax provided via :py:func:`dgenerate.memory.memory_constraints`
 
-    If any of these constraints are met, all image processor 
-    objects are cleared from the CPU cache.
+    If any of these constraints are met, an effort is made to clear objects 
+    out of the image processor object cache.
 
-    The only available extra variable is: ``processor_size`` (the estimated size 
-    of the image processor module that needs to enter ram, in bytes)
+    Available extra variables are: ``memory_required``, which is the
+    amount of memory the image processor plugin requested to be available,
+    and ``cache_size`` which is the current size of the image processor object cache.

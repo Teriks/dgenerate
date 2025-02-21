@@ -2153,9 +2153,6 @@ def _create_torch_diffusion_pipeline(
                 encoder_subfolder = name
             else:
                 encoder_subfolder = os.path.join(subfolder, name) if subfolder else name
-            _messages.debug_log(
-                f"Text Encoder \"{name}\" is being auto loaded "
-                f"into dgenerate's CPU side cache by inference.")
             creation_kwargs[name] = load_text_encoder(
                 _uris.TextEncoderUri(
                     encoder=param[1],
@@ -2204,8 +2201,6 @@ def _create_torch_diffusion_pipeline(
 
             if vae_encoder_name is not None:
                 vae_extract_from_checkpoint = _util.is_single_file_model_load(model_path)
-                _messages.debug_log(
-                    "VAE is being auto loaded into dgenerate's CPU side cache by inference.")
                 try:
                     creation_kwargs['vae'] = \
                         load_vae(_uris.VAEUri(
@@ -2254,9 +2249,6 @@ def _create_torch_diffusion_pipeline(
             else:
                 unet_subfolder = os.path.join(subfolder, unet_parameter) if subfolder else unet_parameter
 
-            _messages.debug_log(
-                "UNet is being auto loaded into dgenerate's CPU side cache by inference.")
-
             creation_kwargs['unet'] = \
                 load_unet(
                     _uris.UNetUri(
@@ -2295,9 +2287,6 @@ def _create_torch_diffusion_pipeline(
                 transformer_subfolder = 'transformer'
             else:
                 transformer_subfolder = os.path.join(subfolder, 'transformer') if subfolder else 'transformer'
-
-            _messages.debug_log(
-                "Transformer is being auto loaded into dgenerate's CPU side cache by inference.")
 
             creation_kwargs['transformer'] = load_transformer(
                 _uris.TransformerUri(
@@ -2565,7 +2554,8 @@ def _create_torch_diffusion_pipeline(
         parsed_textual_inversion_uris=parsed_textual_inversion_uris,
         parsed_controlnet_uris=parsed_controlnet_uris,
         parsed_t2i_adapter_uris=parsed_t2i_adapter_uris
-    ), _d_memoize.CachedObjectMetadata(size=estimated_memory_usage)
+    ), _d_memoize.CachedObjectMetadata(size=estimated_memory_usage,
+                                       skip=model_cpu_offload or sequential_cpu_offload or quantizer_uri)
 
 
 __all__ = _types.module_all()

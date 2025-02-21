@@ -143,7 +143,7 @@ class PromptWeighter(_plugin.Plugin):
         elif device.type == 'cpu':
             if (_memory.memory_constraints(
                     _constants.PROMPT_WEIGHTER_CACHE_GC_CONSTRAINTS,
-                    extra_vars={'weighter_size': memory_required})):
+                    extra_vars={'memory_required': memory_required})):
 
                 _messages.debug_log(
                     f'Prompt weighter "{self.__class__.__name__}" is clearing the CPU side object '
@@ -154,7 +154,7 @@ class PromptWeighter(_plugin.Plugin):
 
             cleared = cleared or _prompt_weighter_cache.enforce_cpu_mem_constraints(
                 _constants.PROMPT_WEIGHTER_CACHE_MEMORY_CONSTRAINTS,
-                size_var='weighter_size',
+                size_var='memory_required',
                 new_object_size=memory_required
             )
         return cleared

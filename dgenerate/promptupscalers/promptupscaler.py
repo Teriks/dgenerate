@@ -108,10 +108,7 @@ class PromptUpscaler(_plugin.Plugin):
         elif device.type == 'cpu':
             if (_memory.memory_constraints(
                     _constants.PROMPT_UPSCALER_CACHE_GC_CONSTRAINTS,
-                    extra_vars={'upscaler_size': memory_required})):
-                # wipe out the cpu side diffusion pipelines cache
-                # and do a GC pass to free up cpu side memory since
-                # we are nearly out of memory anyway
+                    extra_vars={'memory_required': memory_required})):
 
                 _messages.debug_log(
                     f'Prompt upscaler "{self.__class__.__name__}" is clearing the CPU side object '
@@ -122,7 +119,7 @@ class PromptUpscaler(_plugin.Plugin):
 
             cleared = cleared or _prompt_upscaler_cache.enforce_cpu_mem_constraints(
                 _constants.PROMPT_UPSCALER_CACHE_MEMORY_CONSTRAINTS,
-                size_var='upscaler_size',
+                size_var='memory_required',
                 new_object_size=memory_required
             )
         return cleared
