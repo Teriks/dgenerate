@@ -1290,7 +1290,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         if self.model_type == _pipelinewrapper.ModelType.TORCH_S_CASCADE:
 
-            if self.hi_diffusion is not None:
+            if self.hi_diffusion:
                 raise RenderLoopConfigError(
                     f'{a_namer("hi_diffusion")} is not supported with Stable Cascade.'
                 )
