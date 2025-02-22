@@ -55,10 +55,10 @@ dgenerate.files module
    :show-inheritance:
    :special-members: __call__, __init__
 
-dgenerate.gcconfig module
+dgenerate.globalconfig module
 ----------------------
 
-.. automodule:: dgenerate.gcconfig
+.. automodule:: dgenerate.globalconfig
    :members:
    :undoc-members:
    :show-inheritance:
@@ -90,7 +90,10 @@ dgenerate.imageprocessors module
    :undoc-members:
    :show-inheritance:
    :special-members: __call__, __init__
-   
+
+dgenerate.imageprocessors.constants module
+------------------------------------------
+
 .. include:: imageprocessors_constants.rst
 
 dgenerate.invoker module
@@ -155,7 +158,10 @@ dgenerate.pipelinewrapper module
    :undoc-members:
    :show-inheritance:
    :special-members: __call__, __init__
-   
+
+dgenerate.pipelinewrapper.constants module
+------------------------------------------
+
 .. include:: pipeline_wrapper_constants.rst
 
 dgenerate.plugin module
@@ -185,7 +191,12 @@ dgenerate.promptupscalers module
    :show-inheritance:
    :special-members: __call__, __init__
 
+
+dgenerate.promptupscalers.constants module
+------------------------------------------
+
 .. include:: promptupscalers_constants.rst
+
 
 dgenerate.promptweighters module
 --------------------------------
@@ -195,6 +206,9 @@ dgenerate.promptweighters module
    :undoc-members:
    :show-inheritance:
    :special-members: __call__, __init__
+
+dgenerate.promptweighters.constants module
+------------------------------------------
 
 .. include:: promptweighters_constants.rst
 

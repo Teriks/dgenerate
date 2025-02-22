@@ -79,23 +79,6 @@ try:
     import diffusers
     import transformers
 
-    from dgenerate.renderloop import (
-        RenderLoop,
-        RenderLoopConfig,
-        RenderLoopConfigError,
-        RenderLoopEvent,
-        RenderLoopEventStream,
-        ImageGeneratedEvent,
-        ImageFileSavedEvent,
-        StartingAnimationFileEvent,
-        StartingAnimationEvent,
-        AnimationFinishedEvent,
-        AnimationFileFinishedEvent,
-        AnimationETAEvent,
-        StartingGenerationStepEvent,
-        gen_seeds,
-    )
-
     from dgenerate.pipelinewrapper import (
         InvalidModelFileError,
         InvalidModelUriError,
@@ -118,10 +101,27 @@ try:
         default_device
     )
 
-    from dgenerate.exceptions import OutOfMemoryError
+    from dgenerate.renderloop import (
+        RenderLoop,
+        RenderLoopConfig,
+        RenderLoopConfigError,
+        RenderLoopEvent,
+        RenderLoopEventStream,
+        ImageGeneratedEvent,
+        ImageFileSavedEvent,
+        StartingAnimationFileEvent,
+        StartingAnimationEvent,
+        AnimationFinishedEvent,
+        AnimationFileFinishedEvent,
+        AnimationETAEvent,
+        StartingGenerationStepEvent,
+        gen_seeds,
+    )
 
-    from dgenerate.promptweighters import PromptWeightingUnsupported
     from dgenerate.promptupscalers import PromptUpscalerProcessingError
+    from dgenerate.promptweighters import PromptWeightingUnsupported
+
+    from dgenerate.exceptions import OutOfMemoryError
 
     from dgenerate.prompt import Prompt, PromptEmbeddedArgumentError
 

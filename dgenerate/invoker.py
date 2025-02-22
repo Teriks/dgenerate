@@ -35,7 +35,7 @@ import dgenerate.plugin as _plugin
 import dgenerate.renderloop as _renderloop
 import dgenerate.subcommands as _subcommands
 import dgenerate.prompt as _prompt
-import dgenerate.gcconfig as _gcconfig
+import dgenerate.globalconfig as _globalconfig
 
 __doc__ = """
 Functions to invoke dgenerate inside the current process using its command line arguments.
@@ -382,15 +382,15 @@ def invoke_dgenerate_events(
     message_level = _messages.DEBUG if arguments.verbose else _messages.INFO
 
     with _messages.with_level(message_level), \
-            _gcconfig.restore_config_context():
+            _globalconfig.restore_config_context():
 
-        if arguments.gc_config is not None:
-            gc_config_ext = os.path.splitext(arguments.gc_config)[1]
+        if arguments.global_config is not None:
+            global_config_ext = os.path.splitext(arguments.global_config)[1]
             try:
-                with open(arguments.gc_config, 'r') as gc_config_file:
-                    _gcconfig.load_config(gc_config_file, mode=gc_config_ext)
+                with open(arguments.global_config, 'r') as global_config_file:
+                    _globalconfig.load_config(global_config_file, mode=global_config_ext)
             except Exception as e:
-                _messages.log(f'Could not load GC config file: {e}')
+                _messages.log(f'Could not load global config file: {e}')
                 yield DgenerateExitEvent(invoke_dgenerate_events, 1)
                 return
 

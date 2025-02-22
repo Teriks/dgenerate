@@ -1,4 +1,4 @@
-.. py:currentmodule:: dgenerate.imageprocessors
+.. py:currentmodule:: dgenerate.imageprocessors.constants
 
 .. data:: IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS
     :annotation: = ['memory_required > (available * 0.70)']

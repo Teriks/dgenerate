@@ -33,11 +33,7 @@ from .exceptions import (
     PromptUpscalerProcessingError
 )
 
-from .constants import (
-    PROMPT_UPSCALER_CUDA_MEMORY_CONSTRAINTS,
-    PROMPT_UPSCALER_CACHE_GC_CONSTRAINTS,
-    PROMPT_UPSCALER_CACHE_MEMORY_CONSTRAINTS
-)
+import dgenerate.promptupscalers.constants
 
 
 def prompt_upscaler_help(names: _types.Names,

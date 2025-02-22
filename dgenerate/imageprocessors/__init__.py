@@ -63,11 +63,7 @@ from .linart_standard import LineArtStandardProcessor
 from .anyline import AnylineProcessor
 from .adetailer import AdetailerProcessor
 
-from .constants import (
-    IMAGE_PROCESSOR_CACHE_MEMORY_CONSTRAINTS,
-    IMAGE_PROCESSOR_CACHE_GC_CONSTRAINTS,
-    IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS
-)
+import dgenerate.imageprocessors.constants
 
 try:
     import ncnn
