@@ -42,6 +42,9 @@ def clear_device_cache(device: torch.device | str):
 
     active_pipe = _pipelines.get_last_called_pipeline()
 
+    if active_pipe is None:
+        return
+
     current_device_index = torch.cuda.current_device()
 
     pipe_device_index = _types.default(
@@ -50,7 +53,7 @@ def clear_device_cache(device: torch.device | str):
     device_index = _types.default(
         device.index, current_device_index)
 
-    if active_pipe is not None and pipe_device_index == device_index:
+    if pipe_device_index == device_index:
         # get rid of this reference immediately
         # noinspection PyUnusedLocal
         active_pipe = None
