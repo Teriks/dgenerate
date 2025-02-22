@@ -1,4 +1,4 @@
-.. py:currentmodule:: dgenerate.promptweighters
+.. py:currentmodule:: dgenerate.promptweighters.constants
 
 .. data:: PROMPT_WEIGHTER_CUDA_MEMORY_CONSTRAINTS
     :annotation: = ['memory_required > (available * 0.70)']

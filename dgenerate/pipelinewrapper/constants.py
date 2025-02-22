@@ -19,6 +19,8 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import dgenerate.globalconfig
+
 DEFAULT_INFERENCE_STEPS: int = 30
 """
 Default value for inference steps.
@@ -301,3 +303,5 @@ Extra variables include: ``cache_size`` (the current estimated cache size in byt
 and ``transformer_size`` (the estimated size of the new transformer model before it is brought into memory, in bytes)
 """
 
+
+dgenerate.globalconfig.register_all()

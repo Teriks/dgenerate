@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import dgenerate.globalconfig
 
 PROMPT_WEIGHTER_CUDA_MEMORY_CONSTRAINTS = ['memory_required > (available * 0.70)']
 """
@@ -59,3 +60,5 @@ Available extra variables are: ``memory_required``, which is the
 amount of memory the prompt weighter plugin requested to be available,
 and ``cache_size`` which is the current size of the prompt weighter object cache.
 """
+
+dgenerate.globalconfig.register_all()

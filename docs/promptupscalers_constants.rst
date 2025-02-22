@@ -1,4 +1,4 @@
-.. py:currentmodule:: dgenerate.promptupscalers
+.. py:currentmodule:: dgenerate.promptupscalers.constants
 
 .. data:: PROMPT_UPSCALER_CUDA_MEMORY_CONSTRAINTS
     :annotation: = ['memory_required > (available * 0.70)']

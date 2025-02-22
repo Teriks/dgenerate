@@ -569,14 +569,14 @@ class UnquoteSyntaxError(Exception):
 
 
 def unquote(string: str,
-            escapes_in_quoted=True,
+            escapes_in_quoted=False,
             escapes_in_unquoted=False,
             single_quotes_raw=False,
             double_quotes_raw=False) -> str:
     """
     Remove quotes from a string, including single quotes.
 
-    Unquoted strings will have leading an trailing whitespace stripped.
+    Unquoted strings will have leading and trailing whitespace stripped.
 
     Quoted strings will have leading and trailing whitespace stripped up to where the quotes were.
 

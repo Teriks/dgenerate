@@ -26,7 +26,6 @@ import typing
 from argparse import Action
 
 import dgenerate
-import dgenerate.imageprocessors.constants as _imgp_constants
 import dgenerate.mediaoutput as _mediaoutput
 import dgenerate.memoize as _memoize
 import dgenerate.memory as _memory
@@ -598,9 +597,11 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '-gcc', '--gc-config', action='store', default=None,
+            '-gc', '--global-config', action='store', default=None,
             metavar="FILE",
-            help="""Provide a json, yaml, or toml file to configure dgenerates garbage collection settings."""
+            help="""Provide a json, yaml, or toml file to configure dgenerates global settings.
+                    These settings include various default values for generation and garbage
+                    collection settings for the in memory caches."""
         )
     )
 
@@ -2459,7 +2460,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '-gs', '--guidance-scales', action='store', nargs='+', default=[_pipelinewrapper.DEFAULT_GUIDANCE_SCALE],
+            '-gs', '--guidance-scales', action='store', nargs='+', default=[_pipelinewrapper.constants.DEFAULT_GUIDANCE_SCALE],
             metavar="FLOAT", type=_type_guidance_scale,
             help="""One or more guidance scale values to try. Guidance scale effects how much your
                     text prompt is considered. Low values draw more data from images unrelated
@@ -2499,7 +2500,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '-ifs', '--inference-steps', action='store', nargs='+', default=[_pipelinewrapper.DEFAULT_INFERENCE_STEPS],
+            '-ifs', '--inference-steps', action='store', nargs='+', default=[_pipelinewrapper.constants.DEFAULT_INFERENCE_STEPS],
             type=_type_inference_steps, metavar="INTEGER",
             help="""One or more inference steps values to try. The amount of inference (de-noising) steps
                     effects image clarity to a degree, higher values bring the image closer to what
@@ -2516,7 +2517,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             help=f"""One or more inference steps values for the SDXL refiner or Stable Cascade decoder
                      when in use. Override the number of inference steps used by the second model,
                      which defaults to the value taken from --inference-steps for SDXL and 
-                     {_pipelinewrapper.DEFAULT_S_CASCADE_DECODER_INFERENCE_STEPS} for Stable Cascade.
+                     {_pipelinewrapper.constants.DEFAULT_S_CASCADE_DECODER_INFERENCE_STEPS} for Stable Cascade.
                      """
         )
     )
@@ -2528,7 +2529,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             help=f"""One or more inference steps values for the SDXL refiner or Stable Cascade decoder
                      when in use. Override the guidance scale value used by the second model,
                      which defaults to the value taken from --guidance-scales for SDXL and 
-                     {_pipelinewrapper.DEFAULT_S_CASCADE_DECODER_GUIDANCE_SCALE} for Stable Cascade.
+                     {_pipelinewrapper.constants.DEFAULT_S_CASCADE_DECODER_GUIDANCE_SCALE} for Stable Cascade.
                      """
         )
     )
@@ -2559,9 +2560,9 @@ class DgenerateArguments(dgenerate.RenderLoopConfig):
     Enable debug output? ``-v/--verbose``
     """
 
-    gc_config: _types.OptionalPath = None
+    global_config: _types.OptionalPath = None
     """
-    Garbage collector config file path.
+    global config file path.
     """
 
     def __init__(self):

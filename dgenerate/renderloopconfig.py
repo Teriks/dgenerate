@@ -926,8 +926,8 @@ class RenderLoopConfig(_types.SetFromMixin):
     """
 
     def __init__(self):
-        self.guidance_scales = [_pipelinewrapper.DEFAULT_GUIDANCE_SCALE]
-        self.inference_steps = [_pipelinewrapper.DEFAULT_INFERENCE_STEPS]
+        self.guidance_scales = [_pipelinewrapper.constants.DEFAULT_GUIDANCE_SCALE]
+        self.inference_steps = [_pipelinewrapper.constants.DEFAULT_INFERENCE_STEPS]
         self.prompts = [_prompt.Prompt()]
         self.seeds = gen_seeds(1)
 
@@ -1214,30 +1214,30 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         if self.pag:
             if not (self.pag_scales or self.pag_adaptive_scales):
-                self.pag_scales = [_pipelinewrapper.DEFAULT_PAG_SCALE]
-                self.pag_adaptive_scales = [_pipelinewrapper.DEFAULT_PAG_ADAPTIVE_SCALE]
+                self.pag_scales = [_pipelinewrapper.constants.DEFAULT_PAG_SCALE]
+                self.pag_adaptive_scales = [_pipelinewrapper.constants.DEFAULT_PAG_ADAPTIVE_SCALE]
 
         if self.sdxl_refiner_pag and self.sdxl_refiner_uri:
             if not (self.sdxl_refiner_pag_scales or
                     self.sdxl_refiner_pag_adaptive_scales):
-                self.sdxl_refiner_pag_scales = [_pipelinewrapper.DEFAULT_SDXL_REFINER_PAG_SCALE]
-                self.sdxl_refiner_pag_adaptive_scales = [_pipelinewrapper.DEFAULT_SDXL_REFINER_PAG_ADAPTIVE_SCALE]
+                self.sdxl_refiner_pag_scales = [_pipelinewrapper.constants.DEFAULT_SDXL_REFINER_PAG_SCALE]
+                self.sdxl_refiner_pag_adaptive_scales = [_pipelinewrapper.constants.DEFAULT_SDXL_REFINER_PAG_ADAPTIVE_SCALE]
 
         if self.adetailer_detector_uris:
             if self.adetailer_mask_shapes is None:
-                self.adetailer_mask_shapes = [_pipelinewrapper.DEFAULT_ADETAILER_MASK_SHAPE]
+                self.adetailer_mask_shapes = [_pipelinewrapper.constants.DEFAULT_ADETAILER_MASK_SHAPE]
 
             if self.adetailer_mask_paddings is None:
-                self.adetailer_mask_paddings = [_pipelinewrapper.DEFAULT_ADETAILER_MASK_PADDING]
+                self.adetailer_mask_paddings = [_pipelinewrapper.constants.DEFAULT_ADETAILER_MASK_PADDING]
 
             if self.adetailer_detector_paddings is None:
-                self.adetailer_detector_paddings = [_pipelinewrapper.DEFAULT_ADETAILER_DETECTOR_PADDING]
+                self.adetailer_detector_paddings = [_pipelinewrapper.constants.DEFAULT_ADETAILER_DETECTOR_PADDING]
 
             if self.adetailer_mask_blurs is None:
-                self.adetailer_mask_blurs = [_pipelinewrapper.DEFAULT_ADETAILER_MASK_BLUR]
+                self.adetailer_mask_blurs = [_pipelinewrapper.constants.DEFAULT_ADETAILER_MASK_BLUR]
 
             if self.adetailer_mask_dilations is None:
-                self.adetailer_mask_dilations = [_pipelinewrapper.DEFAULT_ADETAILER_MASK_DILATION]
+                self.adetailer_mask_dilations = [_pipelinewrapper.constants.DEFAULT_ADETAILER_MASK_DILATION]
 
         # Detect logically incorrect config and set certain defaults
 
@@ -1297,11 +1297,11 @@ class RenderLoopConfig(_types.SetFromMixin):
 
             if not self.second_model_guidance_scales:
                 self.second_model_guidance_scales = [
-                    _pipelinewrapper.DEFAULT_S_CASCADE_DECODER_GUIDANCE_SCALE]
+                    _pipelinewrapper.constants.DEFAULT_S_CASCADE_DECODER_GUIDANCE_SCALE]
 
             if not self.second_model_inference_steps:
                 self.second_model_inference_steps = [
-                    _pipelinewrapper.DEFAULT_S_CASCADE_DECODER_INFERENCE_STEPS]
+                    _pipelinewrapper.constants.DEFAULT_S_CASCADE_DECODER_INFERENCE_STEPS]
 
             if self.output_size is not None and not _image.is_aligned(self.output_size, 128):
                 raise RenderLoopConfigError(
@@ -1358,7 +1358,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         elif self.upscaler_noise_levels is None:
             if self.model_type == _pipelinewrapper.ModelType.TORCH_UPSCALER_X4:
                 upscaler_noise_levels_default_set = True
-                self.upscaler_noise_levels = [_pipelinewrapper.DEFAULT_X4_UPSCALER_NOISE_LEVEL]
+                self.upscaler_noise_levels = [_pipelinewrapper.constants.DEFAULT_X4_UPSCALER_NOISE_LEVEL]
         elif self.model_type != _pipelinewrapper.ModelType.TORCH_UPSCALER_X4 and \
                 not _pipelinewrapper.model_type_is_floyd_ifs(self.model_type):
             raise RenderLoopConfigError(
@@ -1372,7 +1372,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'argument {a_namer("image_guidance_scales")} only valid with '
                     f'pix2pix models, see: {a_namer("model_type")}.')
         elif not self.image_guidance_scales:
-            self.image_guidance_scales = [_pipelinewrapper.DEFAULT_IMAGE_GUIDANCE_SCALE]
+            self.image_guidance_scales = [_pipelinewrapper.constants.DEFAULT_IMAGE_GUIDANCE_SCALE]
 
         # Verify we can use a transformer
 
@@ -1471,7 +1471,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                     raise RenderLoopConfigError('\n'.join(invalid_self))
             elif self.sdxl_high_noise_fractions is None:
                 # Default value
-                self.sdxl_high_noise_fractions = [_pipelinewrapper.DEFAULT_SDXL_HIGH_NOISE_FRACTION]
+                self.sdxl_high_noise_fractions = [_pipelinewrapper.constants.DEFAULT_SDXL_HIGH_NOISE_FRACTION]
 
         # will not happen currently, but reminder for future
         # non torch based pipelines
@@ -1497,7 +1497,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                 if not no_seed_strength:
                     image_seed_strengths_default_set = True
                     # Default value because the user did not specify
-                    self.image_seed_strengths = [_pipelinewrapper.DEFAULT_IMAGE_SEED_STRENGTH]
+                    self.image_seed_strengths = [_pipelinewrapper.constants.DEFAULT_IMAGE_SEED_STRENGTH]
             else:
                 if no_seed_strength:
                     # cannot specify strength

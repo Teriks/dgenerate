@@ -103,24 +103,24 @@ sphinx.highlighting.lexers['jinja'] = dgenerate.pygments.DgenerateLexer()
 
 convert_constants_to_rst(
     dgenerate.pipelinewrapper.constants,
-    'dgenerate.pipelinewrapper',
+    'dgenerate.pipelinewrapper.constants',
     'pipelinewrapper_constants.rst'
 )
 
 convert_constants_to_rst(
     dgenerate.promptupscalers.constants,
-    'dgenerate.promptupscalers',
+    'dgenerate.promptupscalers.constants',
     'promptupscalers_constants.rst'
 )
 
 convert_constants_to_rst(
     dgenerate.promptweighters.constants,
-    'dgenerate.promptweighters',
+    'dgenerate.promptweighters.constants',
     'promptweighters_constants.rst'
 )
 
 convert_constants_to_rst(
     dgenerate.imageprocessors.constants,
-    'dgenerate.imageprocessors',
+    'dgenerate.imageprocessors.constants',
     'imageprocessors_constants.rst'
 )

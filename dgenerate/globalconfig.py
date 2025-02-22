@@ -20,32 +20,50 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-__doc__ = "Configure dgenerate's model garbage collection heuristics."
+__doc__ = "Configure dgenerate's global constants."
 
 import contextlib
 import importlib
+import inspect
 import json
+import types
+
 import yaml
 import toml
 import dgenerate.types as _types
 
-_cache_memory_constraints = {
-    "pipeline_wrapper_cache_gc_constraints": "dgenerate.pipelinewrapper.PIPELINE_WRAPPER_CACHE_GC_CONSTRAINTS",
-    "pipeline_cache_memory_constraints": "dgenerate.pipelinewrapper.PIPELINE_CACHE_MEMORY_CONSTRAINTS",
-    "unet_cache_memory_constraints": "dgenerate.pipelinewrapper.UNET_CACHE_MEMORY_CONSTRAINTS",
-    "vae_cache_memory_constraints": "dgenerate.pipelinewrapper.VAE_CACHE_MEMORY_CONSTRAINTS",
-    "controlnet_cache_memory_constraints": "dgenerate.pipelinewrapper.CONTROLNET_CACHE_MEMORY_CONSTRAINTS",
-    "adapter_cache_memory_constraints": "dgenerate.pipelinewrapper.ADAPTER_CACHE_MEMORY_CONSTRAINTS",
-    "transformer_cache_memory_constraints": "dgenerate.pipelinewrapper.TRANSFORMER_CACHE_MEMORY_CONSTRAINTS",
-    "text_encoder_cache_memory_constraints": "dgenerate.pipelinewrapper.TEXT_ENCODER_CACHE_MEMORY_CONSTRAINTS",
-    "image_encoder_cache_memory_constraints": "dgenerate.pipelinewrapper.IMAGE_ENCODER_CACHE_MEMORY_CONSTRAINTS",
-    "image_processor_cache_gc_constraints": "dgenerate.imageprocessors.IMAGE_PROCESSOR_CACHE_GC_CONSTRAINTS",
-    "image_processor_cache_memory_constraints": "dgenerate.imageprocessors.IMAGE_PROCESSOR_CACHE_MEMORY_CONSTRAINTS",
-    "image_processor_cuda_memory_constraints": "dgenerate.imageprocessors.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS",
-    "prompt_weighter_cache_gc_constraints": "dgenerate.promptweighters.PROMPT_WEIGHTER_CACHE_GC_CONSTRAINTS",
-    "prompt_weighter_cache_memory_constraints": "dgenerate.promptweighters.PROMPT_WEIGHTER_CACHE_MEMORY_CONSTRAINTS",
-    "prompt_weighter_cuda_memory_constraints": "dgenerate.promptweighters.PROMPT_WEIGHTER_CUDA_MEMORY_CONSTRAINTS"
-}
+_config_variable_map = dict()
+
+
+def register_config_variable(module: str | types.ModuleType,
+                             variable_name: str,
+                             config_variable_name: str | None = None):
+    """
+    Register a global config variable that exists inside an arbitrary module.
+
+    :param module: The module name or object reference.
+    :param variable_name: Name of the variable inside the module.
+    :param config_variable_name: Name to represent the variable in the global
+        config file, if left ``None`` this will be ``variable_name`` in lowercase.
+    """
+    if isinstance(module, types.ModuleType):
+        module = module.__name__
+
+    config_variable_name = variable_name.lower() \
+        if not config_variable_name else config_variable_name
+
+    _config_variable_map[config_variable_name] = module + '.' + variable_name
+
+
+def register_all():
+    """
+    Register all public non-module type global objects inside the current module as config variables.
+    """
+    frame = inspect.currentframe().f_back
+    module = inspect.getmodule(frame)
+    for name, value in frame.f_globals.items():
+        if not name.startswith('_') and not isinstance(value, types.ModuleType):
+            register_config_variable(module, name)
 
 
 def _get_constant_by_string(path: str):
@@ -76,14 +94,14 @@ def _set_constant_by_string(path: str, value):
 
 def _get_config_dict():
     config_dict = dict()
-    for name, location in _cache_memory_constraints.items():
+    for name, location in _config_variable_map.items():
         config_dict[name] = _get_constant_by_string(location)
     return config_dict
 
 
 def get_config_dict():
     """
-    Return a dictionary representation of the GC configuration.
+    Return a dictionary representation of the global configuration.
 
     :return: config dictionary
     """
@@ -92,7 +110,7 @@ def get_config_dict():
 
 def set_from_config_dict(config_dict: dict):
     """
-    Set the current GC config from a dictionary object.
+    Set the current global config from a dictionary object.
 
     This dictionary may be partial, i.e. an incomplete set of settings
     as long as the key names mentioned are correct.
@@ -101,12 +119,12 @@ def set_from_config_dict(config_dict: dict):
     :raise KeyError: If a configuration key name is not valid.
     """
     for name, value in config_dict.items():
-        _set_constant_by_string(_cache_memory_constraints[name], value)
+        _set_constant_by_string(_config_variable_map[name], value)
 
 
 def serialize_current_config(stream=None, mode: str = 'json') -> str | None:
     """
-    Serialize the current GC config.
+    Serialize the current global config.
 
     :param stream: File like object, if not provided this function will return a string.
     :param mode: ``json``, ``yaml``, or ``toml``
@@ -160,7 +178,7 @@ def pop_config():
 @contextlib.contextmanager
 def restore_config_context():
     """
-    Context manager which pushes the current GC configuration to the stack
+    Context manager which pushes the current global configuration to the stack
     and pops it when the ``with`` context ends.
     """
     try:
@@ -172,7 +190,7 @@ def restore_config_context():
 
 def load_config(content_or_stream, mode: str = 'json'):
     """
-    Load GC config from a string.
+    Load global config from a string.
 
     :param content_or_stream: string content or file like object.
     :param mode: ``json``, ``yaml``, or ``toml``
@@ -189,7 +207,7 @@ def load_config(content_or_stream, mode: str = 'json'):
         raise ValueError(f'Unknown deserialization mode: {mode}')
 
     for name, value in config.items():
-        _set_constant_by_string(_cache_memory_constraints[name], value)
+        _set_constant_by_string(_config_variable_map[name], value)
 
 
 __all__ = _types.module_all()

@@ -1,4 +1,4 @@
-.. py:currentmodule:: dgenerate.pipelinewrapper
+.. py:currentmodule:: dgenerate.pipelinewrapper.constants
 
 .. data:: DEFAULT_INFERENCE_STEPS
     :annotation: = 30
