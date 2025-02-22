@@ -8,14 +8,9 @@
     \exit
 {% endif %}
 
-{% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 15 %}
-    \set optimization --quantizer bnb;bits=4;bits4-compute-dtype=bfloat16
-{% else %}
-    \set optimization --model-sequential-offload
-{% endif %}
 
 black-forest-labs/FLUX.1-schnell
---model-type torch-flux {{ optimization }}
+--model-type torch-flux --model-sequential-offload
 --dtype bfloat16
 --inference-steps 4
 --guidance-scales 0
