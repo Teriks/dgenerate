@@ -8,12 +8,20 @@
     \exit
 {% endif %}
 
+
+{% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 15 %}
+    \set optimization --quantizer bnb;bits=8
+{% else %}
+    \set optimization --model-sequential-offload
+{% endif %}
+
+
 # Stable Diffusion 3 can run without using the T5 encoder
 # this is an example of disabling it entirely by using 
 # the value "null" in place of a text encoder URI
 
 https://huggingface.co/stabilityai/stable-diffusion-3-medium/blob/main/sd3_medium_incl_clips.safetensors
---model-type torch-sd3
+--model-type torch-sd3 {{ optimization }}
 --variant fp16
 --dtype float16
 --inference-steps 30
@@ -22,5 +30,4 @@ https://huggingface.co/stabilityai/stable-diffusion-3-medium/blob/main/sd3_mediu
 --clip-skips 0
 --gen-seeds 2
 --output-path without_t5
---model-sequential-offload
 --prompts "a horse outside a barn"

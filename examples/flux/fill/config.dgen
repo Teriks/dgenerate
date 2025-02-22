@@ -9,14 +9,20 @@
     \exit
 {% endif %}
 
+{% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 15 %}
+    \set optimization --quantizer bnb;bits=4;bits4-compute-dtype=bfloat16
+{% else %}
+    \set optimization --model-sequential-offload
+{% endif %}
+
+
 \setp image "https://huggingface.co/datasets/diffusers/diffusers-images-docs/resolve/main/cup.png"
 \setp mask "https://huggingface.co/datasets/diffusers/diffusers-images-docs/resolve/main/cup_mask.png"
 
 
 black-forest-labs/FLUX.1-Fill-dev
---model-type torch-flux-fill
+--model-type torch-flux-fill {{ optimization }}
 --dtype bfloat16
---model-sequential-offload
 --output-size 768
 --inference-steps 50
 --guidance-scales 30

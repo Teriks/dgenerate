@@ -12,11 +12,16 @@
     \exit
 {% endif %}
 
+{% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 20 %}
+    \set optimization --quantizer bnb;bits=4;bits4-compute-dtype=bfloat16
+{% else %}
+    \set optimization --model-sequential-offload
+{% endif %}
+
 
 black-forest-labs/FLUX.1-schnell
---model-type torch-flux
+--model-type torch-flux {{ optimization }}
 --dtype bfloat16
---model-sequential-offload
 --inference-steps 4
 --guidance-scales 0
 --prompts "Detailed watercolor painting of a woman sitting, facing the viewer, bright"

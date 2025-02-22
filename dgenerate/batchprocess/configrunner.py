@@ -164,7 +164,10 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'download': _configrunnerbuiltins.download,
             'have_feature': _configrunnerbuiltins.have_feature,
             'platform': _configrunnerbuiltins.platform,
-            'frange': _configrunnerbuiltins.frange
+            'frange': _configrunnerbuiltins.frange,
+            'have_cuda': _configrunnerbuiltins.have_cuda,
+            'total_memory': _configrunnerbuiltins.total_memory,
+            'default_device': _configrunnerbuiltins.default_device
         }
 
         def return_zero(func, help_text):

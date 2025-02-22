@@ -8,13 +8,21 @@
     \exit
 {% endif %}
 
+
+{% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 15 %}
+    \set optimization --quantizer bnb;bits=8
+{% else %}
+    \set optimization --model-sequential-offload
+{% endif %}
+
+
 # multiple loras can be loaded with SD3 but lora scale
 # is currently not supported, there are very few loras
 # for SD3 on huggingface at the moment. This generates
 # a dog made out of yarn.
 
 stabilityai/stable-diffusion-3-medium-diffusers
---model-type torch-sd3
+--model-type torch-sd3 {{ optimization }}
 --variant fp16
 --dtype float16
 --loras linoyts/Yarn_art_SD3_LoRA
@@ -23,5 +31,4 @@ stabilityai/stable-diffusion-3-medium-diffusers
 --clip-skips 0
 --gen-seeds 2
 --output-path single
---model-sequential-offload
 --prompts "a photo of TOK yarn art dog"

@@ -7,6 +7,14 @@
     \print Set HF_TOKEN environmental variable or --auth-token to run this example!
     \exit
 {% endif %}
+
+
+{% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 15 %}
+    \set optimization --quantizer bnb;bits=8
+{% else %}
+    \set optimization --model-sequential-offload
+{% endif %}
+
     
 # this model will load all three text encoders,
 # they are not cached individually as we did not explicitly
@@ -14,7 +22,7 @@
 # as a whole
 
 stabilityai/stable-diffusion-3-medium-diffusers
---model-type torch-sd3
+--model-type torch-sd3 {{ optimization }}
 --variant fp16
 --dtype float16
 --inference-steps 30
@@ -22,7 +30,6 @@ stabilityai/stable-diffusion-3-medium-diffusers
 --clip-skips 0
 --gen-seeds 2
 --output-path share_encoders
---model-sequential-offload
 --prompts "a horse outside a barn"
 
 # store all the text encoders from the last pipeline
@@ -39,7 +46,7 @@ stabilityai/stable-diffusion-3-medium-diffusers
 # of memory
 
 stabilityai/stable-diffusion-3-medium-diffusers
---model-type torch-sd3
+--model-type torch-sd3 {{ optimization }}
 --variant fp16
 --dtype float16
 --inference-steps 30
@@ -48,5 +55,4 @@ stabilityai/stable-diffusion-3-medium-diffusers
 --text-encoders + + null 
 --gen-seeds 2
 --output-path share_encoders
---model-sequential-offload
 --prompts "a horse outside a barn"

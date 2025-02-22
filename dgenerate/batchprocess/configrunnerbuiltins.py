@@ -30,11 +30,13 @@ import PIL.Image
 import fake_useragent
 import pyrfc6266
 import requests
+import torch
 import tqdm
 import platform as _platform
 
 import dgenerate.batchprocess.batchprocessor as _batchprocessor
 import dgenerate.image as _image
+import dgenerate.memory
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
@@ -480,3 +482,44 @@ def frange(start, stop=None, step=0.1):
     while current < stop:
         yield round(current, 10)
         current += step
+
+
+def default_device() -> str:
+    """
+    Return the name of the default accelerator device on the system.
+    """
+    return dgenerate.default_device()
+
+
+def have_cuda() -> bool:
+    """
+    Check if CUDA is available.
+    """
+    return torch.cuda.is_available()
+
+
+def total_memory(device: str | None = None, unit: str = 'b'):
+    """
+    Get the total ram that a specific device possesses.
+
+    This will always return 0 for "mps".
+
+    The "device" argument specifies the device, if none is
+    specified, the systems default accelerator will be used,
+    if a GPU is installed, it will be the first GPU.
+
+    The "unit" argument specifies the unit you want returned,
+    must be one of (case insensitive): b (bytes), kb (kilobytes),
+    mb (megabytes), gb (gigabytes), kib (kibibytes),
+    mib (mebibytes), gib (gibibytes)
+    """
+
+    if device is None:
+        device = dgenerate.default_device()
+
+    device = torch.device(device)
+
+    if device.type == 'cpu':
+        return dgenerate.memory.get_total_memory(unit)
+    else:
+        return dgenerate.memory.get_cuda_total_memory(device, unit)

@@ -8,18 +8,25 @@
     \exit
 {% endif %}
 
+
+{% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 20 %}
+    \set optimization --quantizer bnb;bits=8
+{% else %}
+    \set optimization --model-sequential-offload
+{% endif %}
+
+
 # Use the built in mirror and canny processor action to process
 # the image for you before using it for generation. This mirrors
 # the image horizontally and then runs canny edge detection on it
 
 stabilityai/stable-diffusion-3-medium-diffusers
---model-type torch-sd3
+--model-type torch-sd3 {{ optimization }}
 --variant fp16
 --dtype float16
 --inference-steps 40
 --guidance-scales 8
 --gen-seeds 2
---model-sequential-offload
 --prompts "Detailed watercolor painting of a woman sitting, facing the viewer, bright; dark"
 --control-nets InstantX/SD3-Controlnet-Canny;scale=0.8
 --image-seeds "../../media/monalisa.png"

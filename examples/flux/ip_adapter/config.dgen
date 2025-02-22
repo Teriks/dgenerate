@@ -1,14 +1,22 @@
-# Flux requires a huggingface auth token to access
-# you must request access to the repository
+#! /usr/bin/env dgenerate --file
+#! dgenerate 4.5.1
 
-\setp auth_token "$HF_TOKEN"
+\set token %HF_TOKEN%
 
-\set auth_token {{ '--auth-token ' + quote(auth_token) if auth_token else '' }}
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+{% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 15 %}
+    \set optimization --quantizer bnb;bits=4;bits4-compute-dtype=bfloat16
+{% else %}
+    \set optimization --model-sequential-offload
+{% endif %}
 
 black-forest-labs/FLUX.1-schnell
---model-type torch-flux {{ auth_token }}
+--model-type torch-flux {{ optimization }}
 --dtype bfloat16
---model-sequential-offload
 --inference-steps 4
 --guidance-scales 0
 --gen-seeds 1
