@@ -206,7 +206,7 @@ _MEM_FACTORS = {
 }
 
 
-def get_used_memory(unit='b', pid: int | None = None) -> int:
+def get_used_memory(unit: str = 'b', pid: int | None = None):
     """
     Get the memory used by a process in a selectable unit.
 
@@ -259,7 +259,7 @@ def get_used_memory_percent(pid: int | None = None) -> float:
     return (used / (used + available)) * 100.0
 
 
-def get_available_memory(unit='b'):
+def get_available_memory(unit: str = 'b'):
     """
     Get the available memory remaining on the system in a selectable unit.
 
@@ -272,7 +272,7 @@ def get_available_memory(unit='b'):
     return psutil.virtual_memory().available / _MEM_FACTORS[unit.strip().lower()]
 
 
-def get_total_memory(unit='b'):
+def get_total_memory(unit: str = 'b'):
     """
     Get the total physical memory on the system.
 
@@ -284,6 +284,147 @@ def get_total_memory(unit='b'):
     """
 
     return psutil.virtual_memory().total / _MEM_FACTORS[unit.strip().lower()]
+
+
+def get_cuda_total_memory(device: str | torch.device, unit: str = 'b'):
+    """
+    Return the total memory processed by a cuda device.
+
+    Devices other than "cuda" always return 0.
+
+    Passing "cpu" raises ``ValueError``
+
+    :raise ValueError: If device "cpu" is passed.
+
+    :param device: The device.
+    :param unit: one of (case insensitive): b (bytes), kb (kilobytes),
+        mb (megabytes), gb (gigabytes), kib (kibibytes),
+        mib (mebibytes), gib (gibibytes)
+    :return: Requested value.
+    """
+    if isinstance(device, str):
+        device = device.strip()
+        if not device.startswith('cuda'):
+            return 0
+        if ':' in device:
+            device_index = int(device.split(':')[1].strip())
+        else:
+            device_index = 0  # default to device 0 if no index is specified
+    elif isinstance(device, torch.device):
+        if device.type != 'cuda':
+            return 0
+        device_index = device.index if device.index is not None else 0
+    else:
+        raise ValueError('device must be a str or torch.device object.')
+
+    return torch.cuda.get_device_properties(device_index).total_memory / _MEM_FACTORS[unit.strip().lower()]
+
+
+def get_cuda_allocated_memory(device: str | torch.device, unit: str = 'b'):
+    """
+    Return the total memory allocated on a cuda device.
+
+    Devices other than "cuda" always return 0.
+
+    Passing "cpu" raises ``ValueError``
+
+    :raise ValueError: If device "cpu" is passed.
+
+    :param device: The device.
+    :param unit: one of (case insensitive): b (bytes), kb (kilobytes),
+        mb (megabytes), gb (gigabytes), kib (kibibytes),
+        mib (mebibytes), gib (gibibytes)
+    :return: Requested value.
+    """
+    if isinstance(device, str):
+        device = device.strip()
+        if not device.startswith('cuda'):
+            return 0
+        if ':' in device:
+            device_index = int(device.split(':')[1].strip())
+        else:
+            device_index = 0  # default to device 0 if no index is specified
+    elif isinstance(device, torch.device):
+        if device.type != 'cuda':
+            return 0
+        device_index = device.index if device.index is not None else 0
+    else:
+        raise ValueError('device must be a str or torch.device object.')
+
+    with torch.cuda.device(device_index):
+        return torch.cuda.memory_allocated() / _MEM_FACTORS[unit.strip().lower()]
+
+
+def get_cuda_free_memory(device: str | torch.device, unit: str = 'b'):
+    """
+    Return the amount of free memory available on a cuda device.
+
+    Devices other than "cuda" always return 0.
+
+    Passing "cpu" raises ``ValueError``
+
+    :raise ValueError: If device "cpu" is passed.
+
+    :param device: The device.
+    :param unit: one of (case insensitive): b (bytes), kb (kilobytes),
+        mb (megabytes), gb (gigabytes), kib (kibibytes),
+        mib (mebibytes), gib (gibibytes)
+    :return: Requested value.
+    """
+    if isinstance(device, str):
+        device = device.strip()
+        if not device.startswith('cuda'):
+            return 0
+        if ':' in device:
+            device_index = int(device.split(':')[1].strip())
+        else:
+            device_index = 0  # default to device 0 if no index is specified
+    elif isinstance(device, torch.device):
+        if device.type != 'cuda':
+            return 0
+        device_index = device.index if device.index is not None else 0
+    else:
+        raise ValueError('device must be a str or torch.device object.')
+
+    total_memory = torch.cuda.get_device_properties(device_index).total_memory
+    with torch.cuda.device(device_index):
+        reserved_memory = torch.cuda.memory_reserved()
+        return (total_memory - reserved_memory) / _MEM_FACTORS[unit.strip().lower()]
+
+
+def get_cuda_reserved_memory(device: str | torch.device, unit: str = 'b'):
+    """
+    Return the amount of reserved memory on a cuda device.
+
+    Devices other than "cuda" always return 0.
+
+    Passing "cpu" raises ``ValueError``
+
+    :raise ValueError: If device "cpu" is passed.
+
+    :param device: The device.
+    :param unit: one of (case insensitive): b (bytes), kb (kilobytes),
+        mb (megabytes), gb (gigabytes), kib (kibibytes),
+        mib (mebibytes), gib (gibibytes)
+    :return: Requested value.
+    """
+    if isinstance(device, str):
+        device = device.strip()
+        if not device.startswith('cuda'):
+            return 0
+        if ':' in device:
+            device_index = int(device.split(':')[1].strip())
+        else:
+            device_index = 0  # default to device 0 if no index is specified
+    elif isinstance(device, torch.device):
+        if device.type != 'cuda':
+            return 0
+        device_index = device.index if device.index is not None else 0
+    else:
+        raise ValueError('device must be a str or torch.device object.')
+
+    with torch.cuda.device(device_index):
+        return torch.cuda.memory_reserved() / _MEM_FACTORS[unit.strip().lower()]
 
 
 def bytes_best_human_unit(byte_count: int, delimiter='') -> str:

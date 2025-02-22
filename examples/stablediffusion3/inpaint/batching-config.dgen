@@ -9,6 +9,13 @@
 {% endif %}
 
 
+{% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 20 %}
+    \set optimization --quantizer bnb;bits=8
+{% else %}
+    \set optimization --model-sequential-offload
+{% endif %}
+
+
 # We can run this same prompt over multiple images in batch on the GPU
 # by using the "images: ..." syntax of --image-seeds
 
@@ -27,7 +34,7 @@
 # If we wanted we could use --batch-grid-size to put these images into a grid
 
 stabilityai/stable-diffusion-3-medium-diffusers
---model-type torch-sd3
+--model-type torch-sd3 {{ optimization }}
 --variant fp16
 --dtype float16
 --inference-steps 30
@@ -37,5 +44,4 @@ stabilityai/stable-diffusion-3-medium-diffusers
 --vae-tiling
 --vae-slicing
 --output-path batching
---model-sequential-offload
 --prompts "A fluffy orange cat, realistic, high quality; deformed, scary"

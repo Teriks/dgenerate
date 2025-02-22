@@ -8,14 +8,19 @@
     \exit
 {% endif %}
 
+{% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 15 %}
+    \set optimization --quantizer bnb;bits=8
+{% else %}
+    \set optimization --model-sequential-offload
+{% endif %}
+
 
 stabilityai/stable-diffusion-3-medium-diffusers
---model-type torch-sd3
+--model-type torch-sd3 {{ optimization }}
 --variant fp16
 --dtype float16
 --inference-steps 30
 --guidance-scales 5.00
---model-sequential-offload
 --image-seeds ../../../media/monalisa.png
 --adetailer-detectors Bingsu/adetailer;weight-name=face_yolov8n.pt
 --adetailer-mask-shapes rectangle circle

@@ -9,14 +9,20 @@
     \exit
 {% endif %}
 
+{% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 20 %}
+    \set optimization --quantizer bnb;bits=4;bits4-compute-dtype=bfloat16
+{% else %}
+    \set optimization --model-sequential-offload
+{% endif %}
+
+
 # Use a similar method to: examples/adetailer/flux/mono-face-swap-config.dgen
 
 # Use a depth controlnet to help orient the face without duplicating features
 
 black-forest-labs/FLUX.1-dev
---model-type torch-flux {{ auth_token }}
+--model-type torch-flux {{ optimization }}
 --dtype bfloat16
---model-sequential-offload
 --image-seeds ../../../media/monalisa.png;control=../../../media/monalisa.png
 --adetailer-detectors Bingsu/adetailer;weight-name=face_yolov8n.pt
 --control-nets "InstantX/FLUX.1-dev-Controlnet-Union;scale=0.4;mode=depth"

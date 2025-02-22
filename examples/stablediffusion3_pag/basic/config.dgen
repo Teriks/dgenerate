@@ -9,8 +9,15 @@
 {% endif %}
 
 
+{% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 15 %}
+    \set optimization --quantizer bnb;bits=8
+{% else %}
+    \set optimization --model-sequential-offload
+{% endif %}
+
+
 stabilityai/stable-diffusion-3-medium-diffusers
---model-type torch-sd3
+--model-type torch-sd3 {{ optimization }}
 --variant fp16
 --dtype float16
 --pag
@@ -19,5 +26,4 @@ stabilityai/stable-diffusion-3-medium-diffusers
 --clip-skips 0
 --gen-seeds 2
 --output-path output
---model-sequential-offload
 --prompts "Photo of a horse standing near the open door of a red barn, high resolution; artwork"

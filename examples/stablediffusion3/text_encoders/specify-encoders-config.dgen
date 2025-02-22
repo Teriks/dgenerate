@@ -8,6 +8,14 @@
     \exit
 {% endif %}
 
+
+{% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 15 %}
+    \set optimization --quantizer bnb;bits=8
+{% else %}
+    \set optimization --model-sequential-offload
+{% endif %}
+
+
 # This is an example of individually specifying text encoders
 # specifically for stable diffusion 3, this model from the blob
 # link includes the clip encoders, so we only need to specify
@@ -16,7 +24,7 @@
 # loaded from the checkpoint file for the main model
 
 https://huggingface.co/stabilityai/stable-diffusion-3-medium/blob/main/sd3_medium_incl_clips.safetensors
---model-type torch-sd3
+--model-type torch-sd3 {{ optimization }}
 --variant fp16
 --dtype float16
 --inference-steps 30
@@ -26,5 +34,4 @@ https://huggingface.co/stabilityai/stable-diffusion-3-medium/blob/main/sd3_mediu
 --clip-skips 0
 --gen-seeds 2
 --output-path specify_encoders
---model-sequential-offload
 --prompts "a horse outside a barn"
