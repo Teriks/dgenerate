@@ -3,7 +3,7 @@
 
 # The sd-embed prompt weighter natively supports Stable Diffusion Web UI syntax
 
-{% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 15 %}
+{% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 20 %}
     \set optimization --quantizer bnb;bits=8
 {% else %}
     \set optimization --model-sequential-offload
