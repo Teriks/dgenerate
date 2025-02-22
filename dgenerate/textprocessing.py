@@ -906,7 +906,7 @@ class ConceptUriParser:
                             f'Syntax error parsing argument "{name}" for '
                             f'{self.concept_name} concept "{concept}", missing assignment value.')
 
-                    args[name] = unquote(vals[1])
+                    args[name] = unquote(vals[1], escapes_in_quoted=True)
 
             except (TokenizedSplitSyntaxError, UnquoteSyntaxError) as e:
                 raise ConceptUriParseError(

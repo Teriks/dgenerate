@@ -179,7 +179,7 @@ Help Output
     usage: dgenerate [-h] [-v] [--version] [--file | --shell | --no-stdin | --console]
                      [--plugin-modules PATH [PATH ...]] [--sub-command SUB_COMMAND]
                      [--sub-command-help [SUB_COMMAND ...]] [-ofm] [--templates-help [VARIABLE_NAME ...]]
-                     [--directives-help [DIRECTIVE_NAME ...]] [--functions-help [FUNCTION_NAME ...]] [-gcc FILE]
+                     [--directives-help [DIRECTIVE_NAME ...]] [--functions-help [FUNCTION_NAME ...]] [-gc FILE]
                      [-mt MODEL_TYPE] [-rev BRANCH] [-var VARIANT] [-sbf SUBFOLDER] [-olc FILE] [-olc2 FILE]
                      [-atk TOKEN] [-bs INTEGER] [-bgs SIZE]
                      [-ad ADETAILER_DETECTOR_URIS [ADETAILER_DETECTOR_URIS ...]] [-adi INTEGER [INTEGER ...]]
@@ -320,9 +320,10 @@ Help Output
             function names. When used with --plugin-modules, functions implemented by the specified plugins will
             also be listed.
             ---------------
-      -gcc FILE, --gc-config FILE
-            Provide a json, yaml, or toml file to configure dgenerates garbage collection settings.
-            ---------------------------------------------------------------------------------------
+      -gc FILE, --global-config FILE
+            Provide a json, yaml, or toml file to configure dgenerates global settings. These settings include
+            various default values for generation and garbage collection settings for the in memory caches.
+            -----------------------------------------------------------------------------------------------
       -mt MODEL_TYPE, --model-type MODEL_TYPE
             Use when loading different model types. Currently supported: torch, torch-pix2pix, torch-sdxl,
             torch-sdxl-pix2pix, torch-kolors, torch-upscaler-x2, torch-upscaler-x4, torch-if, torch-ifs, torch-
@@ -6312,7 +6313,7 @@ The ``\templates_help`` output from the above example is:
         Name: "last_frame_start"
             Type: <class 'int'>
             Value: 0
-        Name: "last_gc_config"
+        Name: "last_global_config"
             Type: typing.Optional[str]
             Value: None
         Name: "last_guidance_rescales"
@@ -6575,7 +6576,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [92035294466630]
+            Value: [11728438512168]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -6647,6 +6648,7 @@ The following is output from ``\functions_help`` showing every implemented templ
         chr(args, kwargs)
         complex(args, kwargs)
         cwd() -> str
+        default_device() -> str
         dict(args, kwargs)
         divmod(args, kwargs)
         download(url: str, output: str | None = None, overwrite: bool = False, text: bool = False) -> str
@@ -6665,6 +6667,7 @@ The following is output from ``\functions_help`` showing every implemented templ
         getattr(args, kwargs)
         hasattr(args, kwargs)
         hash(args, kwargs)
+        have_cuda() -> bool
         have_feature(feature_name: str) -> bool
         hex(args, kwargs)
         image_size(file: str, format_size: bool = True) -> str | tuple[int, int]
@@ -6695,6 +6698,7 @@ The following is output from ``\functions_help`` showing every implemented templ
         sorted(args, kwargs)
         str(args, kwargs)
         sum(args, kwargs)
+        total_memory(device: str | None = None, unit: str = 'b')
         tuple(args, kwargs)
         type(args, kwargs)
         unquote(strings: str | collections.abc.Iterable[typing.Any], expand: bool = False) -> list
