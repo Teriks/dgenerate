@@ -4454,7 +4454,7 @@ Here is an example using `Phi-3 Mini Abliterated by failspy <https://huggingface
     
     # Set a seed for consistent LLM output across prompt variations
     
-    # Use dynamic prompts before the magic prompt plugin to generate combinatorial variations using dynamicprompts syntax
+    # Use dynamicprompts before the magicprompt plugin to generate combinatorial variations using dynamicprompts syntax
     
     stabilityai/stable-diffusion-xl-base-1.0
     --model-type torch-sdxl
