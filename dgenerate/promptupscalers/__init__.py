@@ -25,7 +25,8 @@ import dgenerate.types as _types
 import dgenerate.prompt as _prompt
 from .promptupscalerloader import PromptUpscalerLoader
 from .promptupscaler import PromptUpscaler
-from .dynamicpromptspromptupscaler import DynamicPromptsPromptUpscaler
+from .dynamicpromptsupscaler import DynamicPromptsUpscaler
+from .magicpromptupscaler import MagicPromptUpscaler
 
 from .exceptions import (
     PromptUpscalerNotFoundError,

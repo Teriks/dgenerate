@@ -125,6 +125,9 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v4.5.1/>`_.
     * `Specifying Text Encoders`_
     * `Prompt Upscaling`_
         * `The dynamicprompts prompt upscaler`_
+        * `The magicprompt prompt upscaler`_
+        * `Basic prompt upscaling example`_
+        * `Prompt upscaling with any LLM`_
     * `Prompt Weighting`_
         * `The compel prompt weighter`_
         * `The sd-embed prompt weighter`_
@@ -4251,9 +4254,6 @@ The dynamicprompts prompt upscaler
 `dynamicprompts <https://github.com/adieyal/dynamicprompts>`_ is a library for generating combinatorial
 prompt variations using a special prompting syntax.
 
-It also features the ability to use the `Magic Prompt <https://huggingface.co/Gustavosta/MagicPrompt-Stable-Diffusion>`_ LLM model
-to create good quality continuations of the text in your prompt automatically.
-
 .. code-block:: bash
 
     #!/usr/bin/env bash
@@ -4268,41 +4268,23 @@ to create good quality continuations of the text in your prompt automatically.
     dynamicprompts:
         arguments:
             part: str = "both"
-            magic: bool = False
-            magic-model: str = "Gustavosta/MagicPrompt-Stable-Diffusion"
-            magic-seed: int | None = None
-            magic-max-length: int = 100
-            magic-temperature: float = 0.7
             attention: bool = False
             attention-min: int = 0.1
             attention-max: int = 0.9
             random: bool = False
-            random-seed: int | None = None
+            seed: int | None = None
             variations: int | None = None
             wildcards: str | None = None
-            seed: int | None = None
     
         Upscale prompts with the dynamicprompts library.
+    
+        This upscaler allows you to use a special syntax for combinatorial prompt variations, and can also add
+        random attention values to your prompt.
     
         See: https://github.com/adieyal/dynamicprompts
     
         The "part" argument indicates which parts of the prompt to act on, possible values are: "both",
         "positive", and "negative"
-    
-        The "magic" argument enables magicprompt, which generates a continuation of your prompt using the model
-        "Gustavosta/MagicPrompt-Stable-Diffusion".
-    
-        The "magic-model" specifies the model path for magicprompt, the default value is:
-        "Gustavosta/MagicPrompt-Stable-Diffusion". This can be a folder on disk or a Hugging Face repository slug.
-    
-        The "magic-seed" argument can be used to specify a seed for just the "magic" prompt generation, this
-        overrides "seed".
-    
-        The "magic-max-length" arguments the max prompt length for a magicprompt generated prompt, this value
-        defaults to 100.
-    
-        The "magic-temperature" argument sets the sampling temperature to use when generating prompts with
-        magicprompt.
     
         The "attention" argument enables random token attention values, this requires the use of the "sd-embed"
         prompt weighter or "compel" in SD Web UI syntax mode, i.e. "compel;syntax=sdwui"
@@ -4316,18 +4298,78 @@ to create good quality continuations of the text in your prompt automatically.
         The "random" argument specifies that instead of strictly combinatorial output, dynamicprompts should
         produce N random variations of your prompt given the possibilities you have provided.
     
-        The "random-seed" argument can be used to specify a seed for just the "random" prompt generation, this
-        overrides "seed".
+        The "seed" argument can be used to specify a seed for the "random" prompt generation.
     
         The "variations" argument specifies how many variations should be produced when "random" is set to true.
         This argument cannot be used without specifying "random". The default value is 1.
     
-        The "wildcards" argument can be used to specify a wildcards directory for dynamicprompt's wildcard syntax.
+        The "wildcards" argument can be used to specify a wildcards directory for dynamicprompts wildcard syntax.
     
-        The "seed" argument can be used to specify a seed for the "random" prompt generation as well as the
-        "magic" prompt generation simultaneously. The same seed will be used for both generators.
+    =============================================================================================================
+
+
+The magicprompt prompt upscaler
+-------------------------------
+
+The ``magicprompt`` upscaler can make use of LLMs to enhance your prompt text.
+
+The default model used is: `MagicPrompt <https://huggingface.co/Gustavosta/MagicPrompt-Stable-Diffusion>`_
+
+Which is a GPT2 finetune focused specifically on prompt generation.
+
+
+.. code-block:: bash
+
+    #!/usr/bin/env bash
+
+    # print out the documentation for the dynamicprompts prompt upscaler
+
+    dgenerate --prompt-upscaler-help magicprompt
+
+
+.. code-block:: text
+
+    magicprompt:
+        arguments:
+            part: str = "both"
+            model: str = "Gustavosta/MagicPrompt-Stable-Diffusion"
+            seed: int | None = None
+            variations: int = 1
+            max-length: int = 100
+            temperature: float = 0.7
+            system: str | None = None
+            preamble: str | None = None
+            remove-prompt: bool = False
+    
+        Upscale prompts using magicprompt or other LLMs.
+    
+        The "part" argument indicates which parts of the prompt to act on, possible values are: "both",
+        "positive", and "negative"
+    
+        The "model" specifies the model path for magicprompt, the default value is:
+        "Gustavosta/MagicPrompt-Stable-Diffusion". This can be a folder on disk or a Hugging Face repository slug.
+    
+        The "seed" argument can be used to specify a seed for prompt generation.
+    
+        The "variations" argument specifies how many variations should be produced.
+    
+        The "max-length" arguments the max prompt length for a magicprompt generated prompt, this value defaults
+        to 100.
+    
+        The "temperature" argument sets the sampling temperature to use when generating prompts with magicprompt.
+    
+        The "system" set the system instruction for the LLM.
+    
+        The "preamble" set a text input preamble for the LLM, this preamble will be removed from the output
+        generated by the LLM.
+    
+        The "remove-prompt" remove the original prompt from the generated text?
     
     ==============================================================================================================
+
+
+Basic prompt upscaling example
+------------------------------
 
 The following is an example making use of the ``dynamicprompts`` prompt upscaler plugin.
 
@@ -4350,37 +4392,28 @@ The following is an example making use of the ``dynamicprompts`` prompt upscaler
     
     # below we use the embedded argument syntax to specify the dynamicprompts upscaler
     # which is capable of producing prompt variations in a combinatorial or random fashion
-    # depending on configuration
+    # depending on configuration, as well as the magicprompt upscaler which can enhance
+    # prompts using an LLM
     
     # multiple prompt upscalers can be specified if you desire, their results will be chained
     # together sequentially, this will be handled correctly even if the prompt upscaler
     # returns multiple prompts via expansion
     
     
-    \prompt_upscaler_help dynamicprompts  # print the plugin help / doc
+    # this example uses both the dynamicprompts plugin
+    # and the magicprompt plugin
+    
+    \prompt_upscaler_help dynamicprompts magicprompt
     
     
-    stabilityai/stable-diffusion-xl-base-1.0
-    --model-type torch-sdxl
-    --dtype float16
-    --variant fp16
-    --inference-steps 30
-    --guidance-scales 5
-    --clip-skips 0
-    --gen-seeds 1
-    --output-path output
-    --output-size 1024x1024
-    --prompts "<upscaler: dynamicprompts;magic=True> a large {horse|dog} in a field"
+    # 2 variants of a combinatorial prompt will be generated using dynamicprompts
     
+    # then each prompt will be upscaled using a ChatGPT-2 finetune
+    # that is the default for the magicprompt plugin: "Gustavosta/MagicPrompt-Stable-Diffusion",
+    # the 2 prompts will be upscaled by the LLM as variations with different text, as
+    # the seed argument of magicprompt has not been set
     
-    # we do not have to chain for this functionality, we can just specify attention=True
-    # in the previous invocation if we want, this is just to demonstrate the chaining
-    # behaviour that occurs when you specify multiple prompt upscalers
-    
-    # below, 2 variants of a magic prompt will be generated, and then random prompt
-    # attention values will be added, we need to use --prompt-weighter sd-embed
-    # for these attention values to be understood, they are output in SD Web UI syntax,
-    # you could also use: compel;syntax=sdwui if desired
+    # then dynamicprompts will add random attention values to the resulting prompts
     
     stabilityai/stable-diffusion-xl-base-1.0
     --model-type torch-sdxl
@@ -4393,7 +4426,49 @@ The following is an example making use of the ``dynamicprompts`` prompt upscaler
     --output-path output
     --output-size 1024x1024
     --prompt-weighter sd-embed
-    --prompts "<upscaler: dynamicprompts;magic=True> <upscaler: dynamicprompts;attention=True> a large {horse|dog} in a field"
+    --prompts "<upscaler: dynamicprompts> <upscaler: magicprompt> <upscaler: dynamicprompts;attention=True> a large {horse|dog} in a field, cloudy day"
+
+
+Prompt upscaling with any LLM
+-----------------------------
+
+Pretty much any LLM that is supported by ``transformers`` can be used to upscale prompts.
+
+Here is an example using `Phi-3 Mini Abliterated by failspy <https://huggingface.co/failspy/Phi-3-mini-128k-instruct-abliterated-v3>`_
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 4.5.1
+    
+    # Use Phi-3 abliterated as a prompt text enhancer
+    
+    # Any LLM that transformers can run, can be used.
+    
+    # The "preamble" text is inserted at the beginning of your prompt, and then removed from the LLMs output
+    
+    # This is less sophisticated than using the "system" argument of the magicprompt plugin to add a
+    # system instruction to the prompt, but seems to work well for this model (sometimes)
+    # You can try tweaking "preamble" or "system" to achieve better results, though a "system"
+    # prompt has a high chance of generating rejection responses
+    
+    # Set a seed for consistent LLM output across prompt variations
+    
+    # Use dynamic prompts before the magic prompt plugin to generate combinatorial variations using dynamicprompts syntax
+    
+    stabilityai/stable-diffusion-xl-base-1.0
+    --model-type torch-sdxl
+    --dtype float16
+    --variant fp16
+    --inference-steps 30
+    --guidance-scales 5
+    --clip-skips 0
+    --gen-seeds 1
+    --output-path output
+    --output-size 1024x1024
+    --prompt-weighter sd-embed
+    --prompt-upscaler dynamicprompts magicprompt;model='failspy/Phi-3-mini-128k-instruct-abliterated-v3';preamble='Enhance this photo description:';seed=32
+    --prompts "a {horse|cow|dog} in a field on a cloudy day in the mountains"
 
 Prompt Weighting
 ================
@@ -6576,7 +6651,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [11728438512168]
+            Value: [63875100619536]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
