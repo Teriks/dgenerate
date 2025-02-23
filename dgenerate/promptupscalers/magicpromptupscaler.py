@@ -179,12 +179,12 @@ class _MagicPromptGenerator:
 
         self._device = 'cpu'
 
-    def generate(self, prompts: list[str] | str, default='') -> list[str]:
+    def generate(self, prompts: list[str] | str) -> list[str]:
         if not isinstance(prompts, list):
             prompts = [prompts]
 
         if all(not p for p in prompts):
-            return [default] * len(prompts)
+            return ['']
 
         return self._generate_magic_prompts(prompts)
 
@@ -398,14 +398,14 @@ class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
         try:
             with self._with_magic_settings():
                 if self._part in {'both', 'positive'}:
-                    generated_pos_prompts = self._gen.generate([p.positive for p in prompt], default='')
+                    generated_pos_prompts = self._gen.generate([p.positive for p in prompt])
                 else:
-                    generated_pos_prompts = [p.positive for p in prompt]
+                    generated_pos_prompts = [None]
 
                 if self._part in {'both', 'negative'}:
-                    generated_neg_prompts = self._gen.generate([p.negative for p in prompt], default=None)
+                    generated_neg_prompts = self._gen.generate([p.negative for p in prompt])
                 else:
-                    generated_neg_prompts = [p.negative for p in prompt]
+                    generated_neg_prompts = [None]
         except Exception as e:
             raise _exceptions.PromptUpscalerProcessingError(
                 f'magicprompts prompt upscaler could '
@@ -415,8 +415,8 @@ class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
         for generated_pos_prompt in generated_pos_prompts:
             for generated_neg_prompt in generated_neg_prompts:
                 prompt_obj = _prompt.Prompt(
-                    positive=generated_pos_prompt,
-                    negative=generated_neg_prompt,
+                    positive=_types.default(generated_pos_prompt, prompt[0].positive),
+                    negative=_types.default(generated_neg_prompt, prompt[0].negative),
                     delimiter=prompt[0].delimiter
                 )
 
