@@ -1595,6 +1595,14 @@ install with pipx, (or pip if you want) as described below.
 Manual Install
 --------------
 
+Install Visual Studios build tools, make sure "Desktop development with C++" is selected, unselect anything you do not need.
+
+https://aka.ms/vs/17/release/vs_BuildTools.exe
+
+Install rust compiler using rustup-init.exe (x64), use the default install options.
+
+https://www.rust-lang.org/tools/install
+
 Install Python:
 
 https://www.python.org/ftp/python/3.12.9/python-3.12.9-amd64.exe
