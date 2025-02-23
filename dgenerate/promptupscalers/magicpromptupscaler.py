@@ -20,6 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import contextlib
 import gc
+import typing
 
 import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 import dgenerate.promptupscalers.promptupscaler as _promptupscaler
@@ -182,6 +183,9 @@ class _MagicPromptGenerator:
         if not isinstance(prompts, list):
             prompts = [prompts]
 
+        if all(not p for p in prompts):
+            return ['']
+
         return self._generate_magic_prompts(prompts)
 
     def to(self, device: str | torch.device):
@@ -246,7 +250,7 @@ class _MagicPromptGenerator:
             max_length=self.max_prompt_length,
             temperature=self.temperature,
             do_sample=True,
-            batch_size=self.variations,
+            batch_size=len(orig_prompts),
         )
 
         prompts = [p[0]["generated_text"] for p in prompts]
@@ -382,16 +386,24 @@ class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
             gc.collect()
             _memory.torch_gc()
 
-    def upscale(self, prompt: _prompt.Prompt) -> _prompt.PromptOrPrompts:
+    @property
+    def accepts_batch(self):
+        """
+        This prompt upscaler can accept a batch of prompts for efficient execution.
+        :return: ``True``
+        """
+        return True
+
+    def upscale(self, prompt: _prompt.Prompts) -> _prompt.PromptOrPrompts:
         try:
             with self._with_magic_settings():
-                if prompt.positive and self._part in {'both', 'positive'}:
-                    generated_pos_prompts = self._gen.generate(prompt.positive)
+                if self._part in {'both', 'positive'}:
+                    generated_pos_prompts = self._gen.generate([p.positive for p in prompt])
                 else:
                     generated_pos_prompts = [None]
 
-                if prompt.negative and self._part in {'both', 'negative'}:
-                    generated_neg_prompts = self._gen.generate(prompt.negative)
+                if self._part in {'both', 'negative'}:
+                    generated_neg_prompts = self._gen.generate([p.negative for p in prompt])
                 else:
                     generated_neg_prompts = [None]
         except Exception as e:
@@ -403,15 +415,15 @@ class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
         for generated_pos_prompt in generated_pos_prompts:
             for generated_neg_prompt in generated_neg_prompts:
                 prompt_obj = _prompt.Prompt(
-                    positive=_types.default(generated_pos_prompt, prompt.positive),
-                    negative=_types.default(generated_neg_prompt, prompt.negative),
-                    delimiter=prompt.delimiter
+                    positive=_types.default(generated_pos_prompt, prompt[0].positive),
+                    negative=_types.default(generated_neg_prompt, prompt[0].negative),
+                    delimiter=prompt[0].delimiter
                 )
 
                 # We need to preserve the embedded diffusion
                 # arguments from the original incoming prompt
                 # that were parsed out by dgenerate
-                prompt_obj.copy_embedded_args_from(prompt)
+                prompt_obj.copy_embedded_args_from(prompt[0])
 
                 # append the generated prompt to the expanded
                 # output list of prompts
