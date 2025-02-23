@@ -13,6 +13,10 @@ Install Visual Studios build tools, make sure "Desktop development with C++" is 
 
 https://aka.ms/vs/17/release/vs_BuildTools.exe
 
+Or
+
+https://visualstudio.microsoft.com/downloads/
+
 Install rust compiler using rustup-init.exe (x64), use the default install options.
 
 https://www.rust-lang.org/tools/install
