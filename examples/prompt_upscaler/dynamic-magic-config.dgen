@@ -15,37 +15,28 @@
 
 # below we use the embedded argument syntax to specify the dynamicprompts upscaler
 # which is capable of producing prompt variations in a combinatorial or random fashion
-# depending on configuration
+# depending on configuration, as well as the magicprompt upscaler which can enhance
+# prompts using an LLM
 
 # multiple prompt upscalers can be specified if you desire, their results will be chained
 # together sequentially, this will be handled correctly even if the prompt upscaler
 # returns multiple prompts via expansion
 
 
-\prompt_upscaler_help dynamicprompts  # print the plugin help / doc
+# this example uses both the dynamicprompts plugin
+# and the magicprompt plugin
+
+\prompt_upscaler_help dynamicprompts magicprompt
 
 
-stabilityai/stable-diffusion-xl-base-1.0
---model-type torch-sdxl
---dtype float16
---variant fp16
---inference-steps 30
---guidance-scales 5
---clip-skips 0
---gen-seeds 1
---output-path output
---output-size 1024x1024
---prompts "<upscaler: dynamicprompts;magic=True> a large {horse|dog} in a field"
+# 2 variants of a combinatorial prompt will be generated using dynamicprompts
 
+# then each prompt will be upscaled using a ChatGPT-2 finetune
+# that is the default for the magicprompt plugin: "Gustavosta/MagicPrompt-Stable-Diffusion",
+# the 2 prompts will be upscaled by the LLM as variations with different text, as
+# the seed argument of magicprompt has not been set
 
-# we do not have to chain for this functionality, we can just specify attention=True
-# in the previous invocation if we want, this is just to demonstrate the chaining
-# behaviour that occurs when you specify multiple prompt upscalers
-
-# below, 2 variants of a magic prompt will be generated, and then random prompt
-# attention values will be added, we need to use --prompt-weighter sd-embed
-# for these attention values to be understood, they are output in SD Web UI syntax,
-# you could also use: compel;syntax=sdwui if desired
+# then dynamicprompts will add random attention values to the resulting prompts
 
 stabilityai/stable-diffusion-xl-base-1.0
 --model-type torch-sdxl
@@ -58,4 +49,4 @@ stabilityai/stable-diffusion-xl-base-1.0
 --output-path output
 --output-size 1024x1024
 --prompt-weighter sd-embed
---prompts "<upscaler: dynamicprompts;magic=True> <upscaler: dynamicprompts;attention=True> a large {horse|dog} in a field"
+--prompts "<upscaler: dynamicprompts> <upscaler: magicprompt> <upscaler: dynamicprompts;attention=True> a large {horse|dog} in a field, cloudy day"

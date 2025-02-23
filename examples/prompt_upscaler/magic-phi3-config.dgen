@@ -1,0 +1,31 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 4.5.1
+
+# Use Phi-3 abliterated as a prompt text enhancer
+
+# Any LLM that transformers can run, can be used.
+
+# The "preamble" text is inserted at the beginning of your prompt, and then removed from the LLMs output
+
+# This is less sophisticated than using the "system" argument of the magicprompt plugin to add a
+# system instruction to the prompt, but seems to work well for this model (sometimes)
+# You can try tweaking "preamble" or "system" to achieve better results, though a "system"
+# prompt has a high chance of generating rejection responses
+
+# Set a seed for consistent LLM output across prompt variations
+
+# Use dynamic prompts before the magic prompt plugin to generate combinatorial variations using dynamicprompts syntax
+
+stabilityai/stable-diffusion-xl-base-1.0
+--model-type torch-sdxl
+--dtype float16
+--variant fp16
+--inference-steps 30
+--guidance-scales 5
+--clip-skips 0
+--gen-seeds 1
+--output-path output
+--output-size 1024x1024
+--prompt-weighter sd-embed
+--prompt-upscaler dynamicprompts magicprompt;model='failspy/Phi-3-mini-128k-instruct-abliterated-v3';preamble='Enhance this photo description:';seed=32
+--prompts "a {horse|cow|dog} in a field on a cloudy day in the mountains"
