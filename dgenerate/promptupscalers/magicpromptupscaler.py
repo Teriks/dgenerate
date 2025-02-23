@@ -183,9 +183,6 @@ class _MagicPromptGenerator:
         if not isinstance(prompts, list):
             prompts = [prompts]
 
-        if all(not p for p in prompts):
-            return ['']
-
         return self._generate_magic_prompts(prompts)
 
     def to(self, device: str | torch.device):
@@ -395,38 +392,36 @@ class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
         return True
 
     def upscale(self, prompt: _prompt.Prompts) -> _prompt.PromptOrPrompts:
-        try:
-            with self._with_magic_settings():
-                if self._part in {'both', 'positive'}:
-                    generated_pos_prompts = self._gen.generate([p.positive for p in prompt])
-                else:
-                    generated_pos_prompts = [None]
+        with self._with_magic_settings():
+            if self._part in {'both', 'positive'}:
+                generated_pos_prompts = self._gen.generate([p.positive for p in prompt])
+            else:
+                generated_pos_prompts = [None] * len(prompt)
 
-                if self._part in {'both', 'negative'}:
-                    generated_neg_prompts = self._gen.generate([p.negative for p in prompt])
-                else:
-                    generated_neg_prompts = [None]
-        except Exception as e:
-            raise _exceptions.PromptUpscalerProcessingError(
-                f'magicprompts prompt upscaler could '
-                f'not generate prompt: "{prompt}", reason: {e}')
+            if self._part in {'both', 'negative'}:
+                generated_neg_prompts = self._gen.generate([p.negative for p in prompt])
+            else:
+                generated_neg_prompts = [None] * len(prompt)
 
         output = []
-        for generated_pos_prompt in generated_pos_prompts:
-            for generated_neg_prompt in generated_neg_prompts:
-                prompt_obj = _prompt.Prompt(
-                    positive=_types.default(generated_pos_prompt, prompt[0].positive),
-                    negative=_types.default(generated_neg_prompt, prompt[0].negative),
-                    delimiter=prompt[0].delimiter
-                )
+        for idx, (generated_pos_prompt, generated_neg_prompt) in enumerate(zip(generated_pos_prompts, generated_neg_prompts)):
+            orig_idx = idx % len(prompt)
+            orig_prompt_pos = generated_pos_prompt
+            orig_prompt_neg = generated_neg_prompt
 
-                # We need to preserve the embedded diffusion
-                # arguments from the original incoming prompt
-                # that were parsed out by dgenerate
-                prompt_obj.copy_embedded_args_from(prompt[0])
+            prompt_obj = _prompt.Prompt(
+                positive=_types.default(orig_prompt_pos, prompt[orig_idx].positive),
+                negative=_types.default(orig_prompt_neg, prompt[orig_idx].negative),
+                delimiter=prompt[orig_idx].delimiter
+            )
 
-                # append the generated prompt to the expanded
-                # output list of prompts
-                output.append(prompt_obj)
+            # We need to preserve the embedded diffusion
+            # arguments from the original incoming prompt
+            # that were parsed out by dgenerate
+            prompt_obj.copy_embedded_args_from(prompt[orig_idx])
+
+            # append the generated prompt to the expanded
+            # output list of prompts
+            output.append(prompt_obj)
 
         return output
