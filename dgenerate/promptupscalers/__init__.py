@@ -155,14 +155,18 @@ def upscale_prompts(
 
             # apply upscaler exactly once per prompt
             next_prompts = []
-            for p in current_prompts:
-                new_results = upscaler.upscale(_prompt.Prompt.copy(p))
+            if upscaler.accepts_batch:
+                next_prompts.extend(
+                    upscaler.upscale([_prompt.Prompt.copy(p) for p in current_prompts]))
+            else:
+                for p in current_prompts:
+                    new_results = upscaler.upscale(_prompt.Prompt.copy(p))
 
-                if not isinstance(new_results, typing.Iterable):
-                    new_results = [new_results]
+                    if not isinstance(new_results, typing.Iterable):
+                        new_results = [new_results]
 
-                # ensure each generated prompt is only processed once per upscaler
-                next_prompts.extend(new_results)
+                    # ensure each generated prompt is only processed once per upscaler
+                    next_prompts.extend(new_results)
 
             current_prompts = next_prompts  # Move forward in the pipeline
 

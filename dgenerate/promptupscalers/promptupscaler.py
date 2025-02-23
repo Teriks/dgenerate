@@ -195,10 +195,22 @@ class PromptUpscaler(_plugin.Plugin):
         """
         return self.__size_estimate
 
-    def upscale(self, prompt: _prompt.Prompt) -> _prompt.PromptOrPrompts:
+    @property
+    def accepts_batch(self):
         """
-        Upscale a prompt and return it modified
-        :param prompt: The incoming prompt
+        Can this prompt upscaler accept a batch of prompts?
+
+        The implementor must override this property, this is a
+        default implementation.
+
+        :return: Default: ``False``
+        """
+        return False
+
+    def upscale(self, prompt: _prompt.PromptOrPrompts) -> _prompt.PromptOrPrompts:
+        """
+        Upscale a prompt / prompts and return them modified
+        :param prompt: The incoming prompt or prompts
         :return: Modified prompt / prompts, you may return multiple prompts (an iterable) to indicate expansion
         """
         return prompt
