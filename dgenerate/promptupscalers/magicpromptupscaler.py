@@ -20,13 +20,11 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import contextlib
 import gc
-import typing
 
 import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 import dgenerate.promptupscalers.promptupscaler as _promptupscaler
 import dgenerate.promptupscalers.exceptions as _exceptions
 import dgenerate.prompt as _prompt
-import dgenerate.types as _types
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 
@@ -149,8 +147,7 @@ class _MagicPromptGenerator:
             max_prompt_length: int = 100,
             temperature: float = 0.7,
             seed: int | None = None,
-            blocklist_regex: str | None = None,
-            batch_size: int = 1
+            blocklist_regex: str | None = None
     ) -> None:
         """
         :param model_name: The name of the model to use. Defaults to `"Gustavosta/MagicPrompt-Stable-Diffusion"`.
@@ -158,7 +155,6 @@ class _MagicPromptGenerator:
         :param temperature: The sampling temperature to use when generating prompts.
         :param seed: The seed to use when generating prompts.
         :param blocklist_regex: A regex to use to filter out prompts that match it.
-        :param batch_size: The batch size to use when generating prompts.
         """
         self._model_name = model_name
         self.pipeline = None
@@ -169,8 +165,8 @@ class _MagicPromptGenerator:
         self.seed = seed
         self.system = None
         self.preamble = None
-        self.variations = batch_size
         self.remove_prompt = False
+        self.enable_batching = True
 
         if blocklist_regex:
             self._blocklist_regex = re.compile(blocklist_regex, re.IGNORECASE)
@@ -240,15 +236,24 @@ class _MagicPromptGenerator:
         else:
             orig_prompts = [build_query(query) for query in orig_prompts]
 
-        orig_prompts *= self.variations
-
-        prompts = self.pipeline(
-            orig_prompts,
-            max_length=self.max_prompt_length,
-            temperature=self.temperature,
-            do_sample=True,
-            batch_size=len(orig_prompts),
-        )
+        if not self.enable_batching:
+            prompts = []
+            for ptext in orig_prompts:
+                prompts.extend(self.pipeline(
+                    [ptext],
+                    max_length=self.max_prompt_length,
+                    temperature=self.temperature,
+                    do_sample=True,
+                    batch_size=1,
+                ))
+        else:
+            prompts = self.pipeline(
+                orig_prompts,
+                max_length=self.max_prompt_length,
+                temperature=self.temperature,
+                do_sample=True,
+                batch_size=len(orig_prompts),
+            )
 
         prompts = [p[0]["generated_text"] for p in prompts]
 
@@ -376,7 +381,9 @@ class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
         self._gen.max_prompt_length = max_length
         self._gen.variations = variations
         self._gen.temperature = temperature
+        self._gen.enable_batching = batch
 
+        self._variations = variations
         self._accepts_batch = batch
         self._part = part
 
@@ -409,6 +416,8 @@ class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
                 f'magicprompt prompt upscaler cannot accept batch input when '
                 f'the argument "batch" is set to False.'
             )
+
+        prompts = list(prompts) * self._variations
 
         try:
             with self._with_magic_settings():
@@ -458,7 +467,6 @@ class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
         output = []
         for idx, (generated_pos_prompt, generated_neg_prompt) in \
                 enumerate(zip(generated_pos_prompts, generated_neg_prompts)):
-
             orig_idx = idx % len(prompts)
 
             prompt_obj = _prompt.Prompt(
