@@ -98,7 +98,7 @@ class Prompt:
         elif self._positive:
             return self._positive
         elif self._negative:
-            return ';'+self._negative
+            return self._delimiter+self._negative
         else:
             return ''
 
