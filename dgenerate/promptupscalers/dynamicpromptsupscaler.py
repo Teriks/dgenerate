@@ -73,6 +73,8 @@ class DynamicPromptsUpscaler(_promptupscaler.PromptUpscaler):
 
     NAMES = ['dynamicprompts']
 
+    HIDE_ARGS = ['device']
+
     def __init__(self,
                  part: str = 'both',
                  attention: bool = False,
