@@ -22,6 +22,7 @@ import typing
 
 import torch
 
+import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 import dgenerate.promptupscalers.exceptions as _exceptions
 import dgenerate.plugin as _plugin
 import dgenerate.prompt as _prompt
@@ -53,13 +54,30 @@ class PromptUpscaler(_plugin.Plugin):
     # you cannot specify these via a URI
     HIDE_ARGS = ['local-files-only']
 
+    @classmethod
+    def inheritable_help(cls, subclass, loaded_by_name):
+        hidden_args = subclass.get_hidden_args(loaded_by_name)
+        help_messages = {
+            'device': (
+                'The "device" argument can be used to set the device '
+                'the prompt upscaler will run any models on, for example: cpu, cuda, cuda:1. '
+                'this argument will default to the value of the dgenerate argument --device.'
+            )
+        }
+
+        help_str = '\n\n'.join(
+            message for arg, message in help_messages.items() if arg not in hidden_args)
+        return help_str
+
     def __init__(self,
                  loaded_by_name: str,
-                 device: str,
+                 device: str | None = None,
                  local_files_only: bool = False,
                  **kwargs):
         """
         :param loaded_by_name: The name the prompt upscaler was loaded by
+        :param device: Torch device string for running any models, passing
+            ``None`` defaults the device to ``cpu``
         :param local_files_only: if ``True``, the plugin should never try to download
             models from the internet automatically, and instead only look
             for them in cache / on disk.
@@ -69,7 +87,16 @@ class PromptUpscaler(_plugin.Plugin):
                          argument_error_type=_exceptions.PromptUpscalerArgumentError,
                          **kwargs)
 
-        self.__device = device
+        if device is not None:
+            try:
+                if not _pipelinewrapper_util.is_valid_device_string(device):
+                    raise _exceptions.PromptUpscalerArgumentError(
+                        f'Invalid device argument: "{device}" is not a valid device string.')
+            except _pipelinewrapper_util.InvalidDeviceOrdinalException as e:
+                raise _exceptions.PromptUpscalerArgumentError(
+                    f'Invalid device argument: {e}')
+
+        self.__device = device if device else 'cpu'
         self.__local_files_only = local_files_only
         self.__size_estimate = 0
 

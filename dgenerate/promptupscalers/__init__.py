@@ -62,6 +62,7 @@ def prompt_upscaler_help(names: _types.Names,
             title_plural='prompt upscalers',
             plugin_module_paths=plugin_module_paths,
             throw=True,
+            include_bases=True,
             log_error=log_error)
     except (PromptUpscalerNotFoundError, _plugin.ModuleFileNotFoundError) as e:
         if throw:
@@ -149,6 +150,9 @@ def upscale_prompts(
     for upscaler_uris, batch_prompts in unique_upscaler_chains.items():
 
         for upscaler_uri in upscaler_uris:
+            if upscaler_uri is None:
+                continue
+
             upscaler = create_prompt_upscaler(
                 upscaler_uri, device=device, local_files_only=local_files_only
             )
