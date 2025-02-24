@@ -133,45 +133,49 @@ def upscale_prompts(
     :return: Altered prompts list
     """
 
-    upscaled_prompts = []
+    if not prompts:
+        return []
+
+    unique_upscaler_chains = {}
 
     for prompt in prompts:
-
         upscaler_uris = _types.default(prompt.upscaler, default_upscaler_uri)
-        if not upscaler_uris:
-            upscaled_prompts.append(prompt)
-            continue
-
         if not isinstance(upscaler_uris, list):
             upscaler_uris = [upscaler_uris]
+        unique_upscaler_chains.setdefault(tuple(upscaler_uris), []).append(prompt)
 
-        # start processing with the original prompt
-        current_prompts = [prompt]
+    upscaled_prompts = []
+
+    for upscaler_uris, batch_prompts in unique_upscaler_chains.items():
 
         for upscaler_uri in upscaler_uris:
             upscaler = create_prompt_upscaler(
                 upscaler_uri, device=device, local_files_only=local_files_only
             )
 
-            # apply upscaler exactly once per prompt
             next_prompts = []
+
             if upscaler.accepts_batch:
-                next_prompts.extend(
-                    upscaler.upscale([_prompt.Prompt.copy(p) for p in current_prompts]))
+                batch_inputs = [_prompt.Prompt.copy(p) for p in batch_prompts]
+                batch_outputs = upscaler.upscale(batch_inputs)
+
+                if not isinstance(batch_outputs, typing.Iterable):
+                    batch_outputs = [batch_outputs]
+
+                next_prompts.extend(batch_outputs)
+
             else:
-                for p in current_prompts:
+                for p in batch_prompts:
                     new_results = upscaler.upscale(_prompt.Prompt.copy(p))
 
                     if not isinstance(new_results, typing.Iterable):
                         new_results = [new_results]
 
-                    # ensure each generated prompt is only processed once per upscaler
                     next_prompts.extend(new_results)
 
-            current_prompts = next_prompts  # Move forward in the pipeline
+            batch_prompts = next_prompts
 
-        # collect final results after all upscalers have been applied in sequence
-        upscaled_prompts.extend(current_prompts)
+        upscaled_prompts.extend(batch_prompts)
 
     return upscaled_prompts
 
