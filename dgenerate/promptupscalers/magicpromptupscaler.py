@@ -295,6 +295,12 @@ class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
 
     The "remove-prompt" remove the original prompt
     from the generated text?
+
+    The "batch" argument enables and disables batching
+    prompt text into the LLM, setting this to False tells
+    the plugin that you only want the LLM to ever process
+    one prompt at a time, this might be useful if you are
+    memory constrained but processing is much slower.
     """
 
     NAMES = ['magicprompt']
@@ -309,6 +315,7 @@ class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
                  system: str | None = None,
                  preamble: str | None = None,
                  remove_prompt: bool = False,
+                 batch: bool = True,
                  **kwargs
                  ):
         """
@@ -370,6 +377,7 @@ class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
         self._gen.variations = variations
         self._gen.temperature = temperature
 
+        self._accepts_batch = batch
         self._part = part
 
     @contextlib.contextmanager
@@ -387,38 +395,83 @@ class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
     def accepts_batch(self):
         """
         This prompt upscaler can accept a batch of prompts for efficient execution.
-        :return: ``True``
+        :return: ``True``, unless the constructor argument ``batch`` was passed ``False``
         """
-        return True
+        return self._accepts_batch
 
-    def upscale(self, prompt: _prompt.Prompts) -> _prompt.PromptOrPrompts:
-        with self._with_magic_settings():
-            if self._part in {'both', 'positive'}:
-                generated_pos_prompts = self._gen.generate([p.positive for p in prompt])
-            else:
-                generated_pos_prompts = [None] * len(prompt)
+    def upscale(self, prompts: _prompt.PromptOrPrompts) -> _prompt.PromptOrPrompts:
 
-            if self._part in {'both', 'negative'}:
-                generated_neg_prompts = self._gen.generate([p.negative for p in prompt])
-            else:
-                generated_neg_prompts = [None] * len(prompt)
+        if isinstance(prompts, _prompt.Prompt):
+            prompts = [prompts]
+
+        if len(prompts) > 1 and not self.accepts_batch:
+            raise _exceptions.PromptUpscalerProcessingError(
+                f'magicprompt prompt upscaler cannot accept batch input when '
+                f'the argument "batch" is set to False.'
+            )
+
+        try:
+            with self._with_magic_settings():
+                generated_pos_prompts = [p.positive for p in prompts]
+                generated_neg_prompts = [p.negative for p in prompts]
+
+                if self._part in {'both', 'positive'}:
+                    non_empty_idx = [idx for idx, p in enumerate(prompts) if p.positive]
+
+                    pos_prompts = [p.positive for p in prompts if p.positive]
+
+                    if pos_prompts:
+                        generated = self._gen.generate(pos_prompts)
+
+                        for idx, non_empty_idx in enumerate(non_empty_idx):
+                            generated_pos_prompts[non_empty_idx] = generated[idx]
+
+                if self._part in {'both', 'negative'}:
+                    non_empty_idx = [idx for idx, p in enumerate(prompts) if p.negative]
+
+                    neg_prompts = [p.negative for p in prompts if p.negative]
+
+                    if neg_prompts:
+
+                        generated = self._gen.generate(neg_prompts)
+
+                        for idx, non_empty_idx in enumerate(non_empty_idx):
+                            generated_neg_prompts[non_empty_idx] = generated[idx]
+
+        except torch.cuda.OutOfMemoryError:
+            prompt_count = len(prompts)
+            if prompt_count > 1:
+                raise _exceptions.PromptUpscalerProcessingError(
+                    f'magicprompt prompt upscaler could not '
+                    f'process {len(prompts)} incoming prompt(s) due to CUDA '
+                    f'out of memory error, try using the argument "batch=False" '
+                    f'to process only one prompt at a time (this is slow).')
+            raise _exceptions.PromptUpscalerProcessingError(
+                f'magicprompt prompt upscaler could not '
+                f'process prompt due to CUDA out of memory error: {prompts[0]}'
+            )
+        except transformers.pipelines.PipelineException as e:
+            raise _exceptions.PromptUpscalerProcessingError(
+                f'magicprompt prompt upscaler could not process prompt(s) due '
+                f'to transformers pipeline exception: {e}'
+            )
 
         output = []
-        for idx, (generated_pos_prompt, generated_neg_prompt) in enumerate(zip(generated_pos_prompts, generated_neg_prompts)):
-            orig_idx = idx % len(prompt)
-            orig_prompt_pos = generated_pos_prompt
-            orig_prompt_neg = generated_neg_prompt
+        for idx, (generated_pos_prompt, generated_neg_prompt) in \
+                enumerate(zip(generated_pos_prompts, generated_neg_prompts)):
+
+            orig_idx = idx % len(prompts)
 
             prompt_obj = _prompt.Prompt(
-                positive=_types.default(orig_prompt_pos, prompt[orig_idx].positive),
-                negative=_types.default(orig_prompt_neg, prompt[orig_idx].negative),
-                delimiter=prompt[orig_idx].delimiter
+                positive=generated_pos_prompt,
+                negative=generated_neg_prompt,
+                delimiter=prompts[orig_idx].delimiter
             )
 
             # We need to preserve the embedded diffusion
             # arguments from the original incoming prompt
             # that were parsed out by dgenerate
-            prompt_obj.copy_embedded_args_from(prompt[orig_idx])
+            prompt_obj.copy_embedded_args_from(prompts[orig_idx])
 
             # append the generated prompt to the expanded
             # output list of prompts

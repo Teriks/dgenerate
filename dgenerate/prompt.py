@@ -97,6 +97,8 @@ class Prompt:
             return f'{self._positive}{self._delimiter} {self._negative}'
         elif self._positive:
             return self._positive
+        elif self._negative:
+            return self._negative
         else:
             return ''
 
@@ -357,7 +359,12 @@ class Prompt:
         :param prompt: The prompt to copy.
         :return: A copy of the provided prompt.
         """
-        prompt = Prompt.parse(str(prompt))
+        prompt = Prompt(
+            positive=prompt.positive,
+            negative=prompt.negative,
+            delimiter=prompt.delimiter
+        )
+
         prompt.copy_embedded_args_from(prompt)
         return prompt
 
