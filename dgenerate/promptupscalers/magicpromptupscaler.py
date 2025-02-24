@@ -432,7 +432,6 @@ class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
                     neg_prompts = [p.negative for p in prompts if p.negative]
 
                     if neg_prompts:
-
                         generated = self._gen.generate(neg_prompts)
 
                         for idx, non_empty_idx in enumerate(non_empty_idx):
