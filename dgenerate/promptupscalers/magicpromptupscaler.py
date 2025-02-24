@@ -467,18 +467,17 @@ class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
         output = []
         for idx, (generated_pos_prompt, generated_neg_prompt) in \
                 enumerate(zip(generated_pos_prompts, generated_neg_prompts)):
-            orig_idx = idx % len(prompts)
 
             prompt_obj = _prompt.Prompt(
                 positive=generated_pos_prompt,
                 negative=generated_neg_prompt,
-                delimiter=prompts[orig_idx].delimiter
+                delimiter=prompts[idx].delimiter
             )
 
             # We need to preserve the embedded diffusion
             # arguments from the original incoming prompt
             # that were parsed out by dgenerate
-            prompt_obj.copy_embedded_args_from(prompts[orig_idx])
+            prompt_obj.copy_embedded_args_from(prompts[idx])
 
             # append the generated prompt to the expanded
             # output list of prompts
