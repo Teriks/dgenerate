@@ -69,12 +69,6 @@ class GPT4ALLPromptUpscaler(_promptupscaler.PromptUpscaler):
     models, the original prompt will be prepended with a
     space at the end.
 
-    The "batch" argument enables and disables batching
-    prompt text into the LLM, setting this to False tells
-    the plugin that you only want the LLM to ever process
-    one prompt at a time, this might be useful if you are
-    memory constrained, but processing is much slower.
-
     The "compute" argument lets you specify the GPT4ALL
     device string, this is distinct from torch device names,
     hence it is called "compute" here.
