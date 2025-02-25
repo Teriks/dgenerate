@@ -20,7 +20,9 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import contextlib
 import gc
+import typing
 
+from dgenerate.pipelinewrapper.util import get_quantizer_uri_class as _get_quantizer_uri_class
 import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 import dgenerate.promptupscalers.promptupscaler as _promptupscaler
 import dgenerate.promptupscalers.exceptions as _exceptions
@@ -99,10 +101,12 @@ def _clean_up_magic_prompt(orig_prompt: str, prompt: str, remove_system: str, re
 class _MagicPromptGenerator:
     _blocklist_regex: re.Pattern | None = None
 
-    def _load_pipeline(self, model_name: str) -> transformers.Pipeline:
+    def _load_pipeline(self, model_name: str, quantization_config: typing.Optional = None) -> transformers.Pipeline:
 
+        model = transformers.AutoModelForCausalLM.from_pretrained(
+            model_name, trust_remote_code=True,
+            quantization_config=quantization_config)
         tokenizer = transformers.AutoTokenizer.from_pretrained(model_name)
-        model = transformers.AutoModelForCausalLM.from_pretrained(model_name, trust_remote_code=True)
         tokenizer.pad_token_id = model.config.eos_token_id
 
         og_model_generate = model.generate
@@ -110,24 +114,26 @@ class _MagicPromptGenerator:
         def generator_patch(*args, **kwargs):
             args = list(args)
 
-            for name, val in kwargs.items():
-                if hasattr(val, 'to'):
-                    kwargs[name] = val.to(self._device)
+            if quantization_config is None:
+                for name, val in kwargs.items():
+                    if hasattr(val, 'to'):
+                        kwargs[name] = val.to(self._device)
 
-            for idx, val in enumerate(args):
-                if hasattr(val, 'to'):
-                    args[idx] = val.to(self._device)
+                for idx, val in enumerate(args):
+                    if hasattr(val, 'to'):
+                        args[idx] = val.to(self._device)
 
             with _with_seed(self.seed):
                 result = og_model_generate(*args, **kwargs)
 
-            for val in args:
-                if hasattr(val, 'to'):
-                    val.to('cpu')
+            if quantization_config is None:
+                for val in args:
+                    if hasattr(val, 'to'):
+                        val.to('cpu')
 
-            for val in kwargs.values():
-                if hasattr(val, 'to'):
-                    val.to('cpu')
+                for val in kwargs.values():
+                    if hasattr(val, 'to'):
+                        val.to('cpu')
 
             return result
 
@@ -137,7 +143,7 @@ class _MagicPromptGenerator:
             task="text-generation",
             tokenizer=tokenizer,
             model=model,
-            device='cpu',
+            device='cpu' if quantization_config is None else None,
             pad_token_id=tokenizer.eos_token_id,
         )
 
@@ -147,7 +153,8 @@ class _MagicPromptGenerator:
             max_prompt_length: int = 100,
             temperature: float = 0.7,
             seed: int | None = None,
-            blocklist_regex: str | None = None
+            blocklist_regex: str | None = None,
+            quantization_config: typing.Optional = None
     ) -> None:
         """
         :param model_name: The name of the model to use. Defaults to `"Gustavosta/MagicPrompt-Stable-Diffusion"`.
@@ -155,10 +162,11 @@ class _MagicPromptGenerator:
         :param temperature: The sampling temperature to use when generating prompts.
         :param seed: The seed to use when generating prompts.
         :param blocklist_regex: A regex to use to filter out prompts that match it.
+        :param quantization_config: transformers quantization config object.
         """
         self._model_name = model_name
         self.pipeline = None
-        self.pipeline = self._load_pipeline(model_name)
+        self.pipeline = self._load_pipeline(model_name, quantization_config)
 
         self.max_prompt_length = max_prompt_length
         self.temperature = float(temperature)
@@ -306,6 +314,10 @@ class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
     the plugin that you only want the LLM to ever process
     one prompt at a time, this might be useful if you are
     memory constrained, but processing is much slower.
+
+    The "quantizer" argument allows you to specify a quantization
+    backend for loading the LLM, this is the same syntax and supported
+    backends as with the dgenerate --quantizer argument.
     """
 
     NAMES = ['magicprompt']
@@ -321,6 +333,7 @@ class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
                  preamble: str | None = None,
                  remove_prompt: bool = False,
                  batch: bool = True,
+                 quantizer: str | None = None,
                  **kwargs
                  ):
         """
@@ -329,6 +342,14 @@ class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
         super().__init__(**kwargs)
 
         part = part.lower()
+
+        if quantizer:
+            try:
+                quantization_config = _get_quantizer_uri_class(quantizer).parse(quantizer).to_config()
+            except Exception as e:
+                raise self.argument_error(f'Error loading "quantizer" argument "{quantizer}": {e}')
+        else:
+            quantization_config = None
 
         if part not in {'both', 'positive', 'negative'}:
             raise self.argument_error(
@@ -364,12 +385,14 @@ class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
             f'{model}, as: {estimated_size} Bytes ({_memory.bytes_best_human_unit(estimated_size)})')
 
         def load_method():
-            return _MagicPromptGenerator(model)
+            if quantization_config is not None:
+                self.memory_guard_device(self.device, self.size_estimate)
+            return _MagicPromptGenerator(model, quantization_config=quantization_config)
 
         self.set_size_estimate(estimated_size)
 
         self._gen = self.load_object_cached(
-            tag=model,
+            tag=model + (quantizer if quantizer else ''),
             estimated_size=estimated_size,
             method=load_method
         )
@@ -386,17 +409,23 @@ class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
         self._variations = variations
         self._accepts_batch = batch
         self._part = part
+        self._quantizer = quantizer
 
     @contextlib.contextmanager
     def _with_magic_settings(self):
-        try:
-            self.memory_guard_device(self.device, self.size_estimate)
-            self._gen.to(self.device)
+        if self._quantizer:
             yield
-        finally:
-            self._gen.to('cpu')
             gc.collect()
             _memory.torch_gc()
+        else:
+            try:
+                self.memory_guard_device(self.device, self.size_estimate)
+                self._gen.to(self.device)
+                yield
+            finally:
+                self._gen.to('cpu')
+                gc.collect()
+                _memory.torch_gc()
 
     @property
     def accepts_batch(self):
@@ -467,7 +496,6 @@ class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
         output = []
         for idx, (generated_pos_prompt, generated_neg_prompt) in \
                 enumerate(zip(generated_pos_prompts, generated_neg_prompts)):
-
             prompt_obj = _prompt.Prompt(
                 positive=generated_pos_prompt,
                 negative=generated_neg_prompt,

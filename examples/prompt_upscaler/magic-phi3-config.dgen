@@ -16,6 +16,17 @@
 
 # Use dynamicprompts before the magicprompt plugin to generate combinatorial variations using dynamicprompts syntax
 
+{% if have_cuda() and have_feature('bitsandbytes') %}
+    \set llm_optimization ;quantizer='bnb;bits=8'
+{% endif %}
+
+\set llm_model 'failspy/Phi-3-mini-128k-instruct-abliterated-v3'
+
+\set llm_preamble 'Enhance this photo description:'
+
+\set llm_seed 32
+
+
 stabilityai/stable-diffusion-xl-base-1.0
 --model-type torch-sdxl
 --dtype float16
@@ -27,5 +38,5 @@ stabilityai/stable-diffusion-xl-base-1.0
 --output-path output
 --output-size 1024x1024
 --prompt-weighter sd-embed
---prompt-upscaler dynamicprompts magicprompt;model='failspy/Phi-3-mini-128k-instruct-abliterated-v3';preamble='Enhance this photo description:';seed=32
+--prompt-upscaler dynamicprompts magicprompt;model={{ llm_model }};preamble={{ llm_preamble }};seed={{ llm_seed }}{{ llm_optimization }}
 --prompts "a {horse|cow|dog} in a field on a cloudy day in the mountains"
