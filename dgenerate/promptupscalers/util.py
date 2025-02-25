@@ -33,10 +33,17 @@ def clean_up_llm_prompt(orig_prompt: str,
         generated_prompt = generated_prompt[len(orig_prompt):]
         removed_prompt_prefix = True
 
+    print(generated_prompt)
+
     # get rid of special tokens
     generated_prompt = re.sub(
-        r"<\|.*?\|>",
-        " ", re.sub(r" <\|.*?\|> ", " ", generated_prompt)).strip()
+        r"</?[|/].*?[|/]/?>",
+        " ", re.sub(r" </?[|/].*?[|/]/?> ", " ", generated_prompt)).strip()
+
+    # half baked special token
+    generated_prompt = re.sub(
+        r"</?[|/](user|assistant|system)", " ", generated_prompt
+    ).strip()
 
     # old-style weight elevation
     generated_prompt = generated_prompt.translate(str.maketrans("{}", "()")).strip()
