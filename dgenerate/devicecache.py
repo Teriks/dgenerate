@@ -18,17 +18,30 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-import dgenerate.messages as _messages
-import dgenerate.pipelinewrapper.pipelines as _pipelines
+import gc
+import typing
 import dgenerate.types as _types
 import torch
+import dgenerate.memory as _memory
 
 __doc__ = """
 High level utilitys for interacting with objects cached by dgenerate in GPU side memory.
 
 These objects may be cached in small quantity by various dgenerate sub-modules.
 """
+
+__eviction_methods = []
+
+
+def register_eviction_method(method: typing.Callable[[torch.device], None]):
+    """
+    Register a method for evicting an object cached on the GPU.
+
+    This will be called upon calling :py:meth:`clear_device_cache`.
+
+    :param method: Eviction method, first argument is the ``torch.device`` being considered.
+    """
+    __eviction_methods.append(method)
 
 
 def clear_device_cache(device: torch.device | str):
@@ -40,31 +53,11 @@ def clear_device_cache(device: torch.device | str):
 
     device = torch.device(device)
 
-    active_pipe = _pipelines.get_last_called_pipeline()
+    for method in __eviction_methods:
+        method(device)
 
-    if active_pipe is None:
-        return
-
-    current_device_index = torch.cuda.current_device()
-
-    pipe_device_index = _types.default(
-        _pipelines.get_torch_device(active_pipe).index, current_device_index)
-
-    device_index = _types.default(
-        device.index, current_device_index)
-
-    if pipe_device_index == device_index:
-        # get rid of this reference immediately
-        # noinspection PyUnusedLocal
-        active_pipe = None
-
-        _messages.debug_log(
-            f'{_types.fullname(clear_device_cache)} is attempting to evacuate any previously '
-            f'called diffusion pipeline in the VRAM of device: {device}.')
-
-        # potentially free up VRAM on the GPU we are
-        # about to move to
-        _pipelines.destroy_last_called_pipeline()
+    _memory.torch_gc()
+    gc.collect()
 
 
 __all__ = _types.module_all()

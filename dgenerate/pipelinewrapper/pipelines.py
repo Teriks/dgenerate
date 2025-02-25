@@ -48,6 +48,7 @@ import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper import constants as _constants
+import dgenerate.devicecache as _devicecache
 
 
 class UnsupportedPipelineConfigError(Exception):
@@ -714,6 +715,37 @@ def destroy_last_called_pipeline(collect=True):
         if collect:
             gc.collect()
             _memory.torch_gc()
+
+
+def _evict_last_pipeline(device: torch.device):
+    active_pipe = get_last_called_pipeline()
+
+    if active_pipe is None:
+        return
+
+    current_device_index = torch.cuda.current_device()
+
+    pipe_device_index = _types.default(
+        get_torch_device(active_pipe).index, current_device_index)
+
+    device_index = _types.default(
+        device.index, current_device_index)
+
+    if pipe_device_index == device_index:
+        # get rid of this reference immediately
+        # noinspection PyUnusedLocal
+        active_pipe = None
+
+        _messages.debug_log(
+            f'{_types.fullname(_devicecache.clear_device_cache)} is attempting to evacuate any previously '
+            f'called diffusion pipeline in the VRAM of device: {device}.')
+
+        # potentially free up VRAM on the GPU we are
+        # about to move to
+        destroy_last_called_pipeline()
+
+
+_devicecache.register_eviction_method(_evict_last_pipeline)
 
 
 # noinspection PyCallingNonCallable
