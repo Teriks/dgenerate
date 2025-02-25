@@ -18,49 +18,34 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import contextlib
-import gc
-import typing
 
-from dgenerate.pipelinewrapper.util import get_quantizer_uri_class as _get_quantizer_uri_class
-import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
+import os
+import re
+
+try:
+    import gpt4all
+except ImportError:
+    gpt4all = None
+
 import dgenerate.promptupscalers.promptupscaler as _promptupscaler
 import dgenerate.promptupscalers.exceptions as _exceptions
 import dgenerate.prompt as _prompt
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
+import dgenerate.webcache as _webcache
 import dgenerate.promptupscalers.util as _util
 
-import re
-import torch
-import transformers
 
-
-@contextlib.contextmanager
-def _with_seed(seed: int | None):
-    if seed is None:
-        yield
-    else:
-        orig_state = torch.random.get_rng_state()
-        torch.manual_seed(seed)
-        try:
-            yield
-        finally:
-            torch.random.set_rng_state(orig_state)
-
-
-class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
+class GPT4ALLPromptUpscaler(_promptupscaler.PromptUpscaler):
     """
-    Upscale prompts using magicprompt or other LLMs via transformers.
+    Upscale prompts using LLMs loadable by GPT4ALL.
 
     The "part" argument indicates which parts of the prompt to act on,
     possible values are: "both", "positive", and "negative"
 
-    The "model" specifies the model path for magicprompt, the
-    default value is: "Gustavosta/MagicPrompt-Stable-Diffusion". This
-    can be a folder on disk or a Hugging Face repository slug.
-
-    The "seed" argument can be used to specify a seed for prompt generation.
+    The "model" specifies the model path for gpt4all, the
+    default value is: "https://huggingface.co/failspy/Phi-3-mini-128k-instruct-abliterated-v3-GGUF/resolve/main/Phi-3-mini-128k-instruct-abliterated-v3_q4.gguf".
+    This can be a path to a GGUF file or a URL pointing to one.
 
     The "variations" argument specifies how many variations should be produced.
 
@@ -90,9 +75,18 @@ class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
     one prompt at a time, this might be useful if you are
     memory constrained, but processing is much slower.
 
-    The "quantizer" argument allows you to specify a quantization
-    backend for loading the LLM, this is the same syntax and supported
-    backends as with the dgenerate --quantizer argument.
+    The "compute" argument lets you specify the GPT4ALL
+    device string, this is distinct from torch device names,
+    hence it is called "compute" here.
+
+    This may be one of:
+
+    NOWRAP!
+    * "cpu": Model will run on the central processing unit.
+    * "gpu": Use Metal on ARM64 macOS, otherwise the same as "kompute".
+    * "kompute": Use the best GPU provided by the Kompute backend.
+    * "cuda": Use the best GPU provided by the CUDA backend.
+    * "amd", "nvidia": Use the best GPU provided by the Kompute backend from this vendor.
 
     The "block-regex" argument is a python syntax regex that will
     block prompts that match the regex, the prompt will be regenerated
@@ -101,14 +95,19 @@ class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
 
     The "max-attempts" argument specifies how many times to reattempt
     to generate a prompt if it is blocked by "block-regex"
+
+    The "context-tokens" argument specifies the amount of context
+    tokens the model was trained on, you may need to adjust this
+    if GPT4ALL warns about the number of specified context tokens.
     """
 
-    NAMES = ['magicprompt']
+    NAMES = ['gpt4all']
+
+    HIDE_ARGS = ['device']
 
     def __init__(self,
                  part: str = 'both',
-                 model: str = "Gustavosta/MagicPrompt-Stable-Diffusion",
-                 seed: int | None = None,
+                 model: str = "https://huggingface.co/failspy/Phi-3-mini-128k-instruct-abliterated-v3-GGUF/resolve/main/Phi-3-mini-128k-instruct-abliterated-v3_q4.gguf",
                  variations: int = 1,
                  max_length: int = 100,
                  temperature: float = 0.7,
@@ -116,10 +115,10 @@ class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
                  preamble: str | None = None,
                  remove_prompt: bool = False,
                  prepend_prompt: bool = False,
-                 batch: bool = True,
-                 quantizer: str | None = None,
+                 compute: str | None = 'cpu',
                  block_regex: str | None = None,
                  max_attempts: int = 10,
+                 context_tokens: int = 2048,
                  **kwargs
                  ):
         """
@@ -127,15 +126,11 @@ class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
         """
         super().__init__(**kwargs)
 
-        part = part.lower()
+        if gpt4all is None:
+            raise self.argument_error(
+                'Cannot use gpt4all prompt upscaler without gpt4all being installed.')
 
-        if quantizer:
-            try:
-                quantization_config = _get_quantizer_uri_class(quantizer).parse(quantizer).to_config()
-            except Exception as e:
-                raise self.argument_error(f'Error loading "quantizer" argument "{quantizer}": {e}')
-        else:
-            quantization_config = None
+        part = part.lower()
 
         if part not in {'both', 'positive', 'negative'}:
             raise self.argument_error(
@@ -163,109 +158,51 @@ class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
         else:
             self._blocklist_regex = None
 
-        model_files = list(
-            _pipelinewrapper_util.fetch_model_files_with_size(
-                model,
-                local_files_only=self.local_files_only,
-                extensions={'.safetensors', '.bin'})
-        )
+        if _webcache.is_downloadable_url(model):
+            # Any mimetype
+            _, model = _webcache.create_web_cache_file(model)
+        else:
+            if not os.path.exists(model):
+                raise self.argument_error(
+                    'Argument "model" must be a path to a GGUF file on disk if not a URL.')
+            model = os.path.abspath(model)
 
-        if len(model_files) > 1:
-            model_files = [m for m in model_files if m[0].endswith('.safetensors')]
-
-        estimated_size = 0
-
-        for model_entry in model_files:
-            estimated_size += model_entry[1]
+        estimated_size = os.stat(model).st_size
 
         _messages.debug_log(
             f'Estimated the size of LLM model: '
             f'{model}, as: {estimated_size} Bytes ({_memory.bytes_best_human_unit(estimated_size)})')
 
         def load_method():
-            if quantization_config is not None:
-                self.memory_guard_device(self.device, self.size_estimate)
-            return self._load_pipeline(model, quantization_config=quantization_config)
+            if compute in {'cuda', 'gpu', 'kompute', 'amd'}:
+                self.memory_guard_device(self.device, estimated_size)
+            return gpt4all.GPT4All(model, device=compute, n_ctx=context_tokens)
 
         self.set_size_estimate(estimated_size)
 
-        self._pipeline = self.load_object_cached(
-            tag=model + (quantizer if quantizer else ''),
+        self._gpt4all: gpt4all.GPT4All = self.load_object_cached(
+            tag=model + str(context_tokens) + compute,
             estimated_size=estimated_size,
             method=load_method
         )
 
-        self._system = system
         self._preamble = preamble
         self._remove_prompt = remove_prompt
-        self._seed = seed
-        self._max_length = max_length
+        self._max_prompt_length = max_length
         self._temperature = temperature
 
+        self._system = system
         self._variations = variations
-        self._accepts_batch = batch
         self._part = part
-        self._quantizer = quantizer
-        self._device = 'cpu'
         self._max_attempts = max_attempts
         self._prepend_prompt = prepend_prompt
-
-    def _load_pipeline(self, model_name: str, quantization_config: typing.Optional = None) -> transformers.Pipeline:
-
-        model = transformers.AutoModelForCausalLM.from_pretrained(
-            model_name, trust_remote_code=True,
-            quantization_config=quantization_config)
-        tokenizer = transformers.AutoTokenizer.from_pretrained(model_name)
-        tokenizer.pad_token_id = model.config.eos_token_id
-
-        og_model_generate = model.generate
-
-        def generator_patch(*args, **kwargs):
-            args = list(args)
-
-            if quantization_config is None:
-                for name, val in kwargs.items():
-                    if hasattr(val, 'to'):
-                        kwargs[name] = val.to(self._device)
-
-                for idx, val in enumerate(args):
-                    if hasattr(val, 'to'):
-                        args[idx] = val.to(self._device)
-
-            with _with_seed(self._seed):
-                result = og_model_generate(*args, **kwargs)
-
-            if quantization_config is None:
-                for val in args:
-                    if hasattr(val, 'to'):
-                        val.to('cpu')
-
-                for val in kwargs.values():
-                    if hasattr(val, 'to'):
-                        val.to('cpu')
-
-            return result
-
-        model.generate = generator_patch
-
-        return transformers.pipeline(
-            task="text-generation",
-            tokenizer=tokenizer,
-            model=model,
-            device='cpu' if quantization_config is None else None,
-            pad_token_id=tokenizer.eos_token_id,
-        )
-
-    def _to(self, device: str | torch.device):
-        self._device = device
-        self._pipeline.model.to(device)
 
     def _generate(self, prompts: list[str] | str) -> list[str]:
         if not isinstance(prompts, list):
             prompts = [prompts]
 
         generated_prompts = self._generate_prompts(prompts)
-        return self._regenerate_blocked_prompts(prompts, generated_prompts, 10)
+        return self._regenerate_blocked_prompts(prompts, generated_prompts, self._max_attempts)
 
     def _regenerate_blocked_prompts(
             self,
@@ -316,26 +253,14 @@ class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
         else:
             orig_prompts = [build_query(query) for query in orig_prompts]
 
-        if not self._accepts_batch:
-            prompts = []
-            for ptext in orig_prompts:
-                prompts.extend(self._pipeline(
-                    [ptext],
-                    max_length=self._max_length,
-                    temperature=self._temperature,
-                    do_sample=True,
-                    batch_size=1,
-                ))
-        else:
-            prompts = self._pipeline(
-                orig_prompts,
-                max_length=self._max_length,
-                temperature=self._temperature,
-                do_sample=True,
-                batch_size=len(orig_prompts),
-            )
+        prompts = []
 
-        prompts = [p[0]["generated_text"] for p in prompts]
+        for ptext in orig_prompts:
+            prompts.append(self._gpt4all.generate(
+                ptext,
+                max_tokens=self._max_prompt_length,
+                temp=self._temperature
+            ))
 
         prompts = [
             (user_prompt.rstrip() + ' ' if self._prepend_prompt else '') +
@@ -351,29 +276,13 @@ class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
 
         return prompts
 
-    @contextlib.contextmanager
-    def _with_device(self):
-        if self._quantizer:
-            yield
-            gc.collect()
-            _memory.torch_gc()
-        else:
-            try:
-                self.memory_guard_device(self.device, self.size_estimate)
-                self._to(self.device)
-                yield
-            finally:
-                self._to('cpu')
-                gc.collect()
-                _memory.torch_gc()
-
     @property
     def accepts_batch(self):
         """
-        This prompt upscaler can accept a batch of prompts for efficient execution.
-        :return: ``True``, unless the constructor argument ``batch`` was passed ``False``
+        Returns ``True``, this prompt upscaler can always accept a batch of prompts.
+        :return: ``True``
         """
-        return self._accepts_batch
+        return True
 
     def upscale(self, prompts: _prompt.PromptOrPrompts) -> _prompt.PromptOrPrompts:
 
@@ -382,54 +291,42 @@ class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
 
         if len(prompts) > 1 and not self.accepts_batch:
             raise _exceptions.PromptUpscalerProcessingError(
-                f'magicprompt prompt upscaler cannot accept batch input when '
+                f'gpt4all prompt upscaler cannot accept batch input when '
                 f'the argument "batch" is set to False.'
             )
 
         prompts = list(prompts) * self._variations
 
         try:
-            with self._with_device():
-                generated_pos_prompts = [p.positive for p in prompts]
-                generated_neg_prompts = [p.negative for p in prompts]
 
-                if self._part in {'both', 'positive'}:
-                    non_empty_idx = [idx for idx, p in enumerate(prompts) if p.positive]
+            generated_pos_prompts = [p.positive for p in prompts]
+            generated_neg_prompts = [p.negative for p in prompts]
 
-                    pos_prompts = [p.positive for p in prompts if p.positive]
+            if self._part in {'both', 'positive'}:
+                non_empty_idx = [idx for idx, p in enumerate(prompts) if p.positive]
 
-                    if pos_prompts:
-                        generated = self._generate(pos_prompts)
+                pos_prompts = [p.positive for p in prompts if p.positive]
 
-                        for idx, non_empty_idx in enumerate(non_empty_idx):
-                            generated_pos_prompts[non_empty_idx] = generated[idx]
+                if pos_prompts:
+                    generated = self._generate(pos_prompts)
 
-                if self._part in {'both', 'negative'}:
-                    non_empty_idx = [idx for idx, p in enumerate(prompts) if p.negative]
+                    for idx, non_empty_idx in enumerate(non_empty_idx):
+                        generated_pos_prompts[non_empty_idx] = generated[idx]
 
-                    neg_prompts = [p.negative for p in prompts if p.negative]
+            if self._part in {'both', 'negative'}:
+                non_empty_idx = [idx for idx, p in enumerate(prompts) if p.negative]
 
-                    if neg_prompts:
-                        generated = self._generate(neg_prompts)
+                neg_prompts = [p.negative for p in prompts if p.negative]
 
-                        for idx, non_empty_idx in enumerate(non_empty_idx):
-                            generated_neg_prompts[non_empty_idx] = generated[idx]
+                if neg_prompts:
+                    generated = self._generate(neg_prompts)
 
-        except torch.cuda.OutOfMemoryError:
-            prompt_count = len(prompts)
-            if prompt_count > 1:
-                raise _exceptions.PromptUpscalerProcessingError(
-                    f'magicprompt prompt upscaler could not '
-                    f'process {len(prompts)} incoming prompt(s) due to CUDA '
-                    f'out of memory error, try using the argument "batch=False" '
-                    f'to process only one prompt at a time (this is slow).')
+                    for idx, non_empty_idx in enumerate(non_empty_idx):
+                        generated_neg_prompts[non_empty_idx] = generated[idx]
+
+        except Exception as e:
             raise _exceptions.PromptUpscalerProcessingError(
-                f'magicprompt prompt upscaler could not '
-                f'process prompt due to CUDA out of memory error: {prompts[0]}'
-            )
-        except transformers.pipelines.PipelineException as e:
-            raise _exceptions.PromptUpscalerProcessingError(
-                f'magicprompt prompt upscaler could not process prompt(s) due '
+                f'gpt4all prompt upscaler could not process prompt(s) due '
                 f'to transformers pipeline exception: {e}'
             )
 

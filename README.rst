@@ -4352,10 +4352,14 @@ Which is a GPT2 finetune focused specifically on prompt generation.
             system: str | None = None
             preamble: str | None = None
             remove-prompt: bool = False
+            prepend-prompt: bool = False
             batch: bool = True
+            quantizer: str | None = None
+            block-regex: str | None = None
+            max-attempts: int = 10
             device: str | None = None
     
-        Upscale prompts using magicprompt or other LLMs.
+        Upscale prompts using magicprompt or other LLMs via transformers.
     
         The "part" argument indicates which parts of the prompt to act on, possible values are: "both",
         "positive", and "negative"
@@ -4367,10 +4371,9 @@ Which is a GPT2 finetune focused specifically on prompt generation.
     
         The "variations" argument specifies how many variations should be produced.
     
-        The "max-length" argument is the max prompt length for a magicprompt generated prompt, this value defaults
-        to 100.
+        The "max-length" argument is the max prompt length for a generated prompt, this value defaults to 100.
     
-        The "temperature" argument sets the sampling temperature to use when generating prompts with magicprompt.
+        The "temperature" argument sets the sampling temperature to use when generating prompts.
     
         The "system" argument sets the system instruction for the LLM.
     
@@ -4379,9 +4382,23 @@ Which is a GPT2 finetune focused specifically on prompt generation.
     
         The "remove-prompt" argument specifies whether to remove the original prompt from the generated text.
     
+        The "prepend-prompt" argument specifies whether to forcefully prepend the original prompt to the generated
+        prompt, this might be necessary if you want a continuation with some models, the original prompt will be
+        prepended with a space at the end.
+    
         The "batch" argument enables and disables batching prompt text into the LLM, setting this to False tells
         the plugin that you only want the LLM to ever process one prompt at a time, this might be useful if you
         are memory constrained, but processing is much slower.
+    
+        The "quantizer" argument allows you to specify a quantization backend for loading the LLM, this is the
+        same syntax and supported backends as with the dgenerate --quantizer argument.
+    
+        The "block-regex" argument is a python syntax regex that will block prompts that match the regex, the
+        prompt will be regenerated until the regex does not match, up to "max-attempts". This regex is
+        case-insensitive.
+    
+        The "max-attempts" argument specifies how many times to reattempt to generate a prompt if it is blocked by
+        "block-regex"
     
         The "device" argument can be used to set the device the prompt upscaler will run any models on, for
         example: cpu, cuda, cuda:1. this argument will default to the value of the dgenerate argument --device.
@@ -4477,6 +4494,17 @@ Here is an example using `Phi-3 Mini Abliterated by failspy <https://huggingface
     
     # Use dynamicprompts before the magicprompt plugin to generate combinatorial variations using dynamicprompts syntax
     
+    {% if have_cuda() and have_feature('bitsandbytes') %}
+        \set llm_optimization ;quantizer='bnb;bits=8'
+    {% endif %}
+    
+    \set llm_model 'failspy/Phi-3-mini-128k-instruct-abliterated-v3'
+    
+    \set llm_preamble 'Enhance this photo description:'
+    
+    \set llm_seed 32
+    
+    
     stabilityai/stable-diffusion-xl-base-1.0
     --model-type torch-sdxl
     --dtype float16
@@ -4488,7 +4516,7 @@ Here is an example using `Phi-3 Mini Abliterated by failspy <https://huggingface
     --output-path output
     --output-size 1024x1024
     --prompt-weighter sd-embed
-    --prompt-upscaler dynamicprompts magicprompt;model='failspy/Phi-3-mini-128k-instruct-abliterated-v3';preamble='Enhance this photo description:';seed=32
+    --prompt-upscaler dynamicprompts magicprompt;model={{ llm_model }};preamble={{ llm_preamble }};seed={{ llm_seed }}{{ llm_optimization }}
     --prompts "a {horse|cow|dog} in a field on a cloudy day in the mountains"
 
 Prompt Weighting
@@ -6672,7 +6700,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [25502688805147]
+            Value: [3222193863466]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

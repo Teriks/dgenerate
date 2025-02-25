@@ -438,12 +438,14 @@ def have_feature(feature_name: str) -> bool:
 
     NOWRAP!
     "ncnn": Do we have ncnn installed?
+    "gpt4all": Do we have gpt4all installed?
     "torchao": Do we have torchao installed?
     "bitsandbytes": Do we have bitsandbytes installed?
     """
 
     known_flags = [
         'ncnn',
+        'gpt4all',
         'torchao',
         'bitsandbytes'
     ]

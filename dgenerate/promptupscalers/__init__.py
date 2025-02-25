@@ -27,6 +27,7 @@ from .promptupscalerloader import PromptUpscalerLoader
 from .promptupscaler import PromptUpscaler
 from .dynamicpromptsupscaler import DynamicPromptsUpscaler
 from .magicpromptupscaler import MagicPromptUpscaler
+from .gpt4allpromptupscaler import GPT4ALLPromptUpscaler
 
 from .exceptions import (
     PromptUpscalerNotFoundError,
