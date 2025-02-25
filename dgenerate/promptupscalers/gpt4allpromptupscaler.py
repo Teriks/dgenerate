@@ -188,7 +188,7 @@ class GPT4ALLPromptUpscaler(_promptupscaler.PromptUpscaler):
 
         self._preamble = preamble
         self._remove_prompt = remove_prompt
-        self._max_prompt_length = max_length
+        self._max_length = max_length
         self._temperature = temperature
 
         self._system = system
@@ -258,7 +258,7 @@ class GPT4ALLPromptUpscaler(_promptupscaler.PromptUpscaler):
         for ptext in orig_prompts:
             prompts.append(self._gpt4all.generate(
                 ptext,
-                max_tokens=self._max_prompt_length,
+                max_tokens=self._max_length,
                 temp=self._temperature
             ))
 
@@ -298,7 +298,6 @@ class GPT4ALLPromptUpscaler(_promptupscaler.PromptUpscaler):
         prompts = list(prompts) * self._variations
 
         try:
-
             generated_pos_prompts = [p.positive for p in prompts]
             generated_neg_prompts = [p.negative for p in prompts]
 
@@ -327,7 +326,7 @@ class GPT4ALLPromptUpscaler(_promptupscaler.PromptUpscaler):
         except Exception as e:
             raise _exceptions.PromptUpscalerProcessingError(
                 f'gpt4all prompt upscaler could not process prompt(s) due '
-                f'to transformers pipeline exception: {e}'
+                f'to pipeline exception: {e}'
             )
 
         output = []
