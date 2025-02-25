@@ -273,6 +273,8 @@ if __name__ != 'setup_as_library':
           install_requires=pyproject_requirements,
           extras_require={
               'ncnn': ['ncnn==1.0.20240820'],
+              'gpt4all': ['gpt4all==2.8.2'],
+              'gpt4all_cuda': ['gpt4all[cuda]==2.8.2'],
               'dev': ['pandoc==2.3',
                       'pyinstaller==6.11.0',
                       'sphinx==7.2.6',

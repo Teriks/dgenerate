@@ -1,0 +1,28 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 4.5.1
+
+# show plugin help
+
+
+\prompt_upscaler_help gpt4all
+
+
+# Use The original MagicPrompt model with gpt4all
+
+
+\set llm_model https://huggingface.co/QuantFactory/MagicPrompt-Stable-Diffusion-GGUF/resolve/main/MagicPrompt-Stable-Diffusion.Q4_0.gguf
+
+
+stabilityai/stable-diffusion-xl-base-1.0
+--model-type torch-sdxl
+--dtype float16
+--variant fp16
+--inference-steps 30
+--guidance-scales 5
+--clip-skips 0
+--gen-seeds 1
+--output-path output
+--output-size 1024x1024
+--prompt-weighter sd-embed
+--prompt-upscaler dynamicprompts gpt4all;model={{ llm_model }};compute='cpu';context-tokens=1024;prepend-prompt=True
+--prompts "a {horse|cow|dog} in a field on a cloudy day in the mountains"

@@ -29,6 +29,7 @@ import dgenerate.promptupscalers.exceptions as _exceptions
 import dgenerate.prompt as _prompt
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
+import dgenerate.promptupscalers.util as _util
 
 import re
 import torch
@@ -48,241 +49,9 @@ def _with_seed(seed: int | None):
             torch.random.set_rng_state(orig_state)
 
 
-def _clean_up_magic_prompt(orig_prompt: str, prompt: str, remove_system: str, remove_preamble: str,
-                           remove_prompt: bool) -> str:
-    # remove the original prompt to keep it out of the MP fixes
-    removed_prompt_prefix = False
-    if prompt.startswith(orig_prompt):
-        prompt = prompt[len(orig_prompt):]
-        removed_prompt_prefix = True
-
-    # old-style weight elevation
-    prompt = prompt.translate(str.maketrans("{}", "()")).strip()
-
-    # useless non-word characters at the begin/end
-    prompt = re.sub(r"^\W+|\W+$", "", prompt)
-
-    # clean up whitespace in weighted parens
-    prompt = re.sub(r"\(\s+", "(", prompt)
-    prompt = re.sub(r"\s+\)", ")", prompt)
-
-    # clean up whitespace in hyphens between words
-    prompt = re.sub(r"\b\s+\-\s+\b", "-", prompt)
-    # other analogues to ', '
-    prompt = re.sub(r"\s*[,;\.]+\s*(?=[a-zA-Z(])", ", ", prompt)
-    # useless underscores between phrases
-    prompt = re.sub(r"\s+_+\s+", " ", prompt)
-    # empty phrases
-    prompt = re.sub(r"\b,\s*,\s*\b", ", ", prompt)
-
-    # Translate bangs into proper weight modifiers
-    for match in re.findall(r"\b([\w\s\-]+)(\!+)", prompt):
-        phrase = match[0]
-        full_match = match[0] + match[1]
-        weight = round(pow(1.1, len(match[1])), 2)
-
-        prompt = prompt.replace(full_match, f"({phrase}:{weight})")
-
-    # Put the original prompt back in
-    if removed_prompt_prefix and not remove_prompt:
-        prompt = f"{orig_prompt} {prompt}"
-
-    if remove_system is not None:
-        prompt = re.sub(
-            r"<\|.*?\|>",
-            " ", re.sub(r" <\|.*?\|> ", " ", prompt)).lstrip().removeprefix(remove_system).lstrip()
-
-    if remove_preamble is not None:
-        prompt = prompt.removeprefix(remove_preamble).lstrip()
-
-    return prompt
-
-
-class _MagicPromptGenerator:
-    _blocklist_regex: re.Pattern | None = None
-
-    def _load_pipeline(self, model_name: str, quantization_config: typing.Optional = None) -> transformers.Pipeline:
-
-        model = transformers.AutoModelForCausalLM.from_pretrained(
-            model_name, trust_remote_code=True,
-            quantization_config=quantization_config)
-        tokenizer = transformers.AutoTokenizer.from_pretrained(model_name)
-        tokenizer.pad_token_id = model.config.eos_token_id
-
-        og_model_generate = model.generate
-
-        def generator_patch(*args, **kwargs):
-            args = list(args)
-
-            if quantization_config is None:
-                for name, val in kwargs.items():
-                    if hasattr(val, 'to'):
-                        kwargs[name] = val.to(self._device)
-
-                for idx, val in enumerate(args):
-                    if hasattr(val, 'to'):
-                        args[idx] = val.to(self._device)
-
-            with _with_seed(self.seed):
-                result = og_model_generate(*args, **kwargs)
-
-            if quantization_config is None:
-                for val in args:
-                    if hasattr(val, 'to'):
-                        val.to('cpu')
-
-                for val in kwargs.values():
-                    if hasattr(val, 'to'):
-                        val.to('cpu')
-
-            return result
-
-        model.generate = generator_patch
-
-        return transformers.pipeline(
-            task="text-generation",
-            tokenizer=tokenizer,
-            model=model,
-            device='cpu' if quantization_config is None else None,
-            pad_token_id=tokenizer.eos_token_id,
-        )
-
-    def __init__(
-            self,
-            model_name: str = "Gustavosta/MagicPrompt-Stable-Diffusion",
-            max_prompt_length: int = 100,
-            temperature: float = 0.7,
-            seed: int | None = None,
-            blocklist_regex: str | None = None,
-            quantization_config: typing.Optional = None
-    ) -> None:
-        """
-        :param model_name: The name of the model to use. Defaults to `"Gustavosta/MagicPrompt-Stable-Diffusion"`.
-        :param max_prompt_length: The maximum length of the prompt to generate.
-        :param temperature: The sampling temperature to use when generating prompts.
-        :param seed: The seed to use when generating prompts.
-        :param blocklist_regex: A regex to use to filter out prompts that match it.
-        :param quantization_config: transformers quantization config object.
-        """
-        self._model_name = model_name
-        self.pipeline = None
-        self.pipeline = self._load_pipeline(model_name, quantization_config)
-
-        self.max_prompt_length = max_prompt_length
-        self.temperature = float(temperature)
-        self.seed = seed
-        self.system = None
-        self.preamble = None
-        self.remove_prompt = False
-        self.enable_batching = True
-
-        if blocklist_regex:
-            self._blocklist_regex = re.compile(blocklist_regex, re.IGNORECASE)
-        else:
-            self._blocklist_regex = None
-
-        self._device = 'cpu'
-
-    def generate(self, prompts: list[str] | str) -> list[str]:
-        if not isinstance(prompts, list):
-            prompts = [prompts]
-
-        return self._generate_magic_prompts(prompts)
-
-    def to(self, device: str | torch.device):
-        self._device = device
-        self.pipeline.model.to(device)
-
-    def _regenerate_blocked_prompts(
-            self,
-            original_prompts: list[str],
-            magic_prompts: list[str],
-            max_attempts: int,
-    ) -> list[str]:
-        indexed_prompts_to_regenerate = []
-        if self._blocklist_regex:
-            for _ in range(max_attempts):
-                indexed_prompts_to_regenerate = [
-                    (i, prompt)
-                    for i, prompt in enumerate(magic_prompts)
-                    if self._blocklist_regex.search(prompt)
-                ]
-
-                if not indexed_prompts_to_regenerate:
-                    break
-                indexes = [x[0] for x in indexed_prompts_to_regenerate]
-                prompts_to_regenerate = [original_prompts[index] for index in indexes]
-                regenerated_prompts = self._generate_magic_prompts(
-                    prompts_to_regenerate,
-                )
-                for i, prompt in zip(indexes, regenerated_prompts):
-                    magic_prompts[i] = prompt
-
-            if len(indexed_prompts_to_regenerate) > 0:
-                _messages.log(
-                    f"Could not generate magic prompts for "
-                    f"{len(indexed_prompts_to_regenerate)} prompts after {max_attempts} attempts.",
-                    level=_messages.WARNING
-                )
-        return magic_prompts
-
-    def _generate_magic_prompts(self, orig_prompts: list[str]) -> list[str]:
-        """
-        Given a list of prompts, generate a list of magic prompts in a batch
-        """
-
-        def build_query(text):
-            if self.preamble:
-                return self.preamble + (' ' if not self.preamble.endswith(' ') else '') + text
-            return text
-
-        if self.system:
-            orig_prompts = [
-                f"<|system|> {self.system} <|user|> {build_query(query)} <|assistant|>"
-                for query in orig_prompts
-            ]
-        else:
-            orig_prompts = [build_query(query) for query in orig_prompts]
-
-        if not self.enable_batching:
-            prompts = []
-            for ptext in orig_prompts:
-                prompts.extend(self.pipeline(
-                    [ptext],
-                    max_length=self.max_prompt_length,
-                    temperature=self.temperature,
-                    do_sample=True,
-                    batch_size=1,
-                ))
-        else:
-            prompts = self.pipeline(
-                orig_prompts,
-                max_length=self.max_prompt_length,
-                temperature=self.temperature,
-                do_sample=True,
-                batch_size=len(orig_prompts),
-            )
-
-        prompts = [p[0]["generated_text"] for p in prompts]
-
-        # Clean up the magic prompts
-        prompts = [
-            _clean_up_magic_prompt(
-                orig_prompt,
-                prompt,
-                remove_system=self.system,
-                remove_preamble=self.preamble,
-                remove_prompt=self.remove_prompt
-            )
-            for orig_prompt, prompt in zip(orig_prompts, prompts)
-        ]
-
-        return prompts
-
-
 class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
     """
-    Upscale prompts using magicprompt or other LLMs.
+    Upscale prompts using magicprompt or other LLMs via transformers.
 
     The "part" argument indicates which parts of the prompt to act on,
     possible values are: "both", "positive", and "negative"
@@ -295,11 +64,11 @@ class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
 
     The "variations" argument specifies how many variations should be produced.
 
-    The "max-length" argument is the max prompt length for a magicprompt
+    The "max-length" argument is the max prompt length for a
     generated prompt, this value defaults to 100.
 
     The "temperature" argument sets the sampling temperature
-    to use when generating prompts with magicprompt.
+    to use when generating prompts.
 
     The "system" argument sets the system instruction for the LLM.
 
@@ -308,6 +77,12 @@ class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
 
     The "remove-prompt" argument specifies whether to remove the
     original prompt from the generated text.
+
+    The "prepend-prompt" argument specifies whether to forcefully
+    prepend the original prompt to the generated prompt, this
+    might be necessary if you want a continuation with some
+    models, the original prompt will be prepended with a
+    space at the end.
 
     The "batch" argument enables and disables batching
     prompt text into the LLM, setting this to False tells
@@ -318,6 +93,14 @@ class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
     The "quantizer" argument allows you to specify a quantization
     backend for loading the LLM, this is the same syntax and supported
     backends as with the dgenerate --quantizer argument.
+
+    The "block-regex" argument is a python syntax regex that will
+    block prompts that match the regex, the prompt will be regenerated
+    until the regex does not match, up to "max-attempts". This
+    regex is case-insensitive.
+
+    The "max-attempts" argument specifies how many times to reattempt
+    to generate a prompt if it is blocked by "block-regex"
     """
 
     NAMES = ['magicprompt']
@@ -332,8 +115,11 @@ class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
                  system: str | None = None,
                  preamble: str | None = None,
                  remove_prompt: bool = False,
+                 prepend_prompt: bool = False,
                  batch: bool = True,
                  quantizer: str | None = None,
+                 block_regex: str | None = None,
+                 max_attempts: int = 10,
                  **kwargs
                  ):
         """
@@ -358,12 +144,24 @@ class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
 
         if max_length < 1:
             raise self.argument_error(
-                'Cannot specify "magic-max-length" less than 1.'
+                'Cannot specify "max-length" less than 1.'
             )
 
         if variations < 1:
             raise self.argument_error(
                 'Argument "variations" may not be less than 1.')
+
+        if max_attempts < 1:
+            raise self.argument_error(
+                'Argument "max_attempts" may not be less than 1.')
+
+        if block_regex:
+            try:
+                self._blocklist_regex = re.compile(block_regex, re.IGNORECASE)
+            except Exception as e:
+                raise self.argument_error(f'Could not compile "block-regex": {e}')
+        else:
+            self._blocklist_regex = None
 
         model_files = list(
             _pipelinewrapper_util.fetch_model_files_with_size(
@@ -387,32 +185,174 @@ class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
         def load_method():
             if quantization_config is not None:
                 self.memory_guard_device(self.device, self.size_estimate)
-            return _MagicPromptGenerator(model, quantization_config=quantization_config)
+            return self._load_pipeline(model, quantization_config=quantization_config)
 
         self.set_size_estimate(estimated_size)
 
-        self._gen = self.load_object_cached(
+        self._pipeline = self.load_object_cached(
             tag=model + (quantizer if quantizer else ''),
             estimated_size=estimated_size,
             method=load_method
         )
 
-        self._gen.system = system
-        self._gen.preamble = preamble
-        self._gen.remove_prompt = remove_prompt
-        self._gen.seed = seed
-        self._gen.max_prompt_length = max_length
-        self._gen.variations = variations
-        self._gen.temperature = temperature
-        self._gen.enable_batching = batch
+        self._system = system
+        self._preamble = preamble
+        self._remove_prompt = remove_prompt
+        self._seed = seed
+        self._max_length = max_length
+        self._temperature = temperature
 
         self._variations = variations
         self._accepts_batch = batch
         self._part = part
         self._quantizer = quantizer
+        self._device = 'cpu'
+        self._max_attempts = max_attempts
+        self._prepend_prompt = prepend_prompt
+
+    def _load_pipeline(self, model_name: str, quantization_config: typing.Optional = None) -> transformers.Pipeline:
+
+        model = transformers.AutoModelForCausalLM.from_pretrained(
+            model_name, trust_remote_code=True,
+            quantization_config=quantization_config)
+        tokenizer = transformers.AutoTokenizer.from_pretrained(model_name)
+        tokenizer.pad_token_id = model.config.eos_token_id
+
+        og_model_generate = model.generate
+
+        def generator_patch(*args, **kwargs):
+            args = list(args)
+
+            if quantization_config is None:
+                for name, val in kwargs.items():
+                    if hasattr(val, 'to'):
+                        kwargs[name] = val.to(self._device)
+
+                for idx, val in enumerate(args):
+                    if hasattr(val, 'to'):
+                        args[idx] = val.to(self._device)
+
+            with _with_seed(self._seed):
+                result = og_model_generate(*args, **kwargs)
+
+            if quantization_config is None:
+                for val in args:
+                    if hasattr(val, 'to'):
+                        val.to('cpu')
+
+                for val in kwargs.values():
+                    if hasattr(val, 'to'):
+                        val.to('cpu')
+
+            return result
+
+        model.generate = generator_patch
+
+        return transformers.pipeline(
+            task="text-generation",
+            tokenizer=tokenizer,
+            model=model,
+            device='cpu' if quantization_config is None else None,
+            pad_token_id=tokenizer.eos_token_id,
+        )
+
+    def _to(self, device: str | torch.device):
+        self._device = device
+        self._pipeline.model.to(device)
+
+    def _generate(self, prompts: list[str] | str) -> list[str]:
+        if not isinstance(prompts, list):
+            prompts = [prompts]
+
+        generated_prompts = self._generate_prompts(prompts)
+        return self._regenerate_blocked_prompts(prompts, generated_prompts, 10)
+
+    def _regenerate_blocked_prompts(
+            self,
+            original_prompts: list[str],
+            generated_prompts: list[str],
+            max_attempts: int,
+    ) -> list[str]:
+        indexed_prompts_to_regenerate = []
+        if self._blocklist_regex:
+            for _ in range(max_attempts):
+                indexed_prompts_to_regenerate = [
+                    (i, prompt)
+                    for i, prompt in enumerate(generated_prompts)
+                    if self._blocklist_regex.search(prompt)
+                ]
+
+                if not indexed_prompts_to_regenerate:
+                    break
+                indexes = [x[0] for x in indexed_prompts_to_regenerate]
+                prompts_to_regenerate = [original_prompts[index] for index in indexes]
+                regenerated_prompts = self._generate_prompts(
+                    prompts_to_regenerate,
+                )
+                for i, prompt in zip(indexes, regenerated_prompts):
+                    generated_prompts[i] = prompt
+
+            if len(indexed_prompts_to_regenerate) > 0:
+                _messages.log(
+                    f"Could not generate prompts for "
+                    f"{len(indexed_prompts_to_regenerate)} prompts after {max_attempts} attempts.",
+                    level=_messages.WARNING
+                )
+        return generated_prompts
+
+    def _generate_prompts(self, orig_prompts: list[str]) -> list[str]:
+        def build_query(text):
+            if self._preamble:
+                return self._preamble + (' ' if not self._preamble.endswith(' ') else '') + text
+            return text
+
+        user_prompts = orig_prompts.copy()
+
+        if self._system:
+            orig_prompts = [
+                f"<|system|> {self._system} <|user|> {build_query(query)} <|assistant|>"
+                for query in orig_prompts
+            ]
+        else:
+            orig_prompts = [build_query(query) for query in orig_prompts]
+
+        if not self._accepts_batch:
+            prompts = []
+            for ptext in orig_prompts:
+                prompts.extend(self._pipeline(
+                    [ptext],
+                    max_length=self._max_length,
+                    temperature=self._temperature,
+                    do_sample=True,
+                    batch_size=1,
+                ))
+        else:
+            prompts = self._pipeline(
+                orig_prompts,
+                max_length=self._max_length,
+                temperature=self._temperature,
+                do_sample=True,
+                batch_size=len(orig_prompts),
+            )
+
+        prompts = [p[0]["generated_text"] for p in prompts]
+
+        prompts = [
+            (user_prompt.rstrip() + ' ' if self._prepend_prompt else '') +
+            _util.clean_up_llm_prompt(
+                orig_prompt,
+                prompt,
+                remove_system=self._system,
+                remove_preamble=self._preamble,
+                remove_prompt=self._remove_prompt
+            )
+            for orig_prompt, prompt, user_prompt in zip(orig_prompts, prompts, user_prompts)
+        ]
+
+        return prompts
 
     @contextlib.contextmanager
-    def _with_magic_settings(self):
+    def _with_device(self):
         if self._quantizer:
             yield
             gc.collect()
@@ -420,10 +360,10 @@ class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
         else:
             try:
                 self.memory_guard_device(self.device, self.size_estimate)
-                self._gen.to(self.device)
+                self._to(self.device)
                 yield
             finally:
-                self._gen.to('cpu')
+                self._to('cpu')
                 gc.collect()
                 _memory.torch_gc()
 
@@ -449,7 +389,7 @@ class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
         prompts = list(prompts) * self._variations
 
         try:
-            with self._with_magic_settings():
+            with self._with_device():
                 generated_pos_prompts = [p.positive for p in prompts]
                 generated_neg_prompts = [p.negative for p in prompts]
 
@@ -459,7 +399,7 @@ class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
                     pos_prompts = [p.positive for p in prompts if p.positive]
 
                     if pos_prompts:
-                        generated = self._gen.generate(pos_prompts)
+                        generated = self._generate(pos_prompts)
 
                         for idx, non_empty_idx in enumerate(non_empty_idx):
                             generated_pos_prompts[non_empty_idx] = generated[idx]
@@ -470,7 +410,7 @@ class MagicPromptUpscaler(_promptupscaler.PromptUpscaler):
                     neg_prompts = [p.negative for p in prompts if p.negative]
 
                     if neg_prompts:
-                        generated = self._gen.generate(neg_prompts)
+                        generated = self._generate(neg_prompts)
 
                         for idx, non_empty_idx in enumerate(non_empty_idx):
                             generated_neg_prompts[non_empty_idx] = generated[idx]
