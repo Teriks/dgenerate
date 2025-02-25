@@ -33,16 +33,14 @@ def clean_up_llm_prompt(orig_prompt: str,
         generated_prompt = generated_prompt[len(orig_prompt):]
         removed_prompt_prefix = True
 
-    print(generated_prompt)
-
     # get rid of special tokens
     generated_prompt = re.sub(
-        r"</?[|/].*?[|/]/?>",
-        " ", re.sub(r" </?[|/].*?[|/]/?> ", " ", generated_prompt)).strip()
+        r"</?[|/]?.*?[|/]?/?[>)]",
+        " ", re.sub(r" </?[|/]?.*?[|/]?/?[>)] ", " ", generated_prompt)).strip()
 
     # half baked special token
     generated_prompt = re.sub(
-        r"</?[|/](user|assistant|system)", " ", generated_prompt
+        r"</?[|/]?[a-zA-Z-_]+", " ", generated_prompt
     ).strip()
 
     # old-style weight elevation
@@ -82,4 +80,4 @@ def clean_up_llm_prompt(orig_prompt: str,
     if remove_preamble is not None:
         generated_prompt = generated_prompt.removeprefix(remove_preamble).lstrip()
 
-    return generated_prompt
+    return ' '.join(generated_prompt.split())
