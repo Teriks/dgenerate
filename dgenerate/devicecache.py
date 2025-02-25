@@ -56,8 +56,8 @@ def clear_device_cache(device: torch.device | str):
     for method in __eviction_methods:
         method(device)
 
-    _memory.torch_gc()
     gc.collect()
+    _memory.torch_gc()
 
 
 __all__ = _types.module_all()
