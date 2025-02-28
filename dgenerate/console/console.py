@@ -41,6 +41,7 @@ import dgenerate.console.finddialog as _finddialog
 import dgenerate.console.imageprocessorselect as _imageprocessorselect
 import dgenerate.console.imageseedselect as _imageseedselect
 import dgenerate.console.karrasschedulerselect as _karrasschedulerselect
+import dgenerate.console.promptupscalerselect as _promptupscalerselect
 import dgenerate.console.recipesform as _recipesform
 import dgenerate.console.argumentselect as _argumentselect
 import dgenerate.console.resources as _resources
@@ -171,6 +172,8 @@ class DgenerateConsole(tk.Tk):
                                     command=self._input_text_insert_karras_scheduler)
         self._edit_menu.add_command(label='Insert Image Processor URI',
                                     command=self._input_text_insert_image_processor)
+        self._edit_menu.add_command(label='Insert Prompt Upscaler URI',
+                                    command=self._input_text_insert_prompt_upscaler)
 
         # Run menu
 
@@ -439,6 +442,8 @@ class DgenerateConsole(tk.Tk):
                                              command=self._input_text_insert_karras_scheduler)
         self._input_text_context.add_command(label='Insert Image Processor URI',
                                              command=self._input_text_insert_image_processor)
+        self._input_text_context.add_command(label='Insert Prompt Upscaler URI',
+                                             command=self._input_text_insert_prompt_upscaler)
 
         self._paned_window_vertical.add(self._input_text)
 
@@ -598,21 +603,21 @@ class DgenerateConsole(tk.Tk):
 
         self._output_text.text.insert(
             '1.0',
-            'This console provides a REPL for dgenerates configuration language.\n\n'
-            f'Enter configuration above and hit enter to submit, or use {multiline_enter_mode}\n'
-            'to enter multiline input mode (indicated by the presence of line numbers). You must\n'
-            'exit multiline input mode to submit configuration with the enter key, or instead\n'
-            f'use {run_key} / the run menu.\n\n'
-            'Command history is supported via the up and down arrow keys when not in multiline\n'
-            'input mode. Right clicking the input or output pane will reveal further menu options.\n\n'
-            'To get started quickly with image generation, see the menu option: Edit -> Insert Recipe.\n\n'
-            'Enter --help or the alias \\help to print dgenerates help text. All lines which\n'
-            'are not directives (starting with \\ ) or top level templates (starting with { )\n'
-            'are processed as arguments to dgenerate.\n\n'
-            'See: \\directives_help or \\directives_help (directive) for help with config directives.\n'
-            'See: \\functions_help or \\functions_help (function) for help with template functions.\n'
-            'See: \\templates_help or \\templates_help (variable name) for help with template variables.\n'
-            '============================================================\n\n')
+            "This console provides a REPL for dgenerate's configuration language.\n\n"
+            f"Enter configuration above and hit enter to submit, or use {multiline_enter_mode}\n"
+            "to enter multiline input mode (indicated by the presence of line numbers). You must\n"
+            "exit multiline input mode to submit configuration with the enter key, or instead\n"
+            f"use {run_key} / the run menu.\n\n"
+            "Command history is supported via the up and down arrow keys when not in multiline\n"
+            "input mode. Right clicking the input or output pane will reveal further menu options.\n\n"
+            "To get started quickly with image generation, see the menu option: Edit -> Insert Recipe.\n\n"
+            "Enter --help or the alias \\help to print dgenerate's help text. All lines which\n"
+            "are not directives (starting with \\ ) or top level templates (starting with { )\n"
+            "are processed as arguments to dgenerate.\n\n"
+            "See: \\directives_help or \\directives_help (directive) for help with config directives.\n"
+            "See: \\functions_help or \\functions_help (function) for help with template functions.\n"
+            "See: \\templates_help or \\templates_help (variable name) for help with template variables.\n"
+            "============================================================\n\n")
 
         self._output_text.text.config(state=tk.DISABLED)
 
@@ -784,6 +789,15 @@ class DgenerateConsole(tk.Tk):
 
     def _input_text_insert_image_processor(self):
         s = _imageprocessorselect.request_uri(
+            master=self)
+
+        if s is None or not s.strip():
+            return
+
+        self._insert_or_replace_input_text(s)
+
+    def _input_text_insert_prompt_upscaler(self):
+        s = _promptupscalerselect.request_uri(
             master=self)
 
         if s is None or not s.strip():

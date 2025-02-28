@@ -1,5 +1,5 @@
 #! /usr/bin/env python3
-
+import glob
 # Copyright (c) 2023, Teriks
 #
 # dgenerate is distributed under the following BSD 3-Clause License
@@ -68,7 +68,7 @@ def create_portable_environment():
         shutil.rmtree('build')
 
     subprocess.run([python_exe,
-                    '-m', 'pip', 'install', '.[win-installer, ncnn]',
+                    '-m', 'pip', 'install', '.[win-installer, ncnn, gpt4all_cuda]',
                     '--extra-index-url', 'https://download.pytorch.org/whl/cu124/'], env=env)
 
     if args.custom_diffusers:
@@ -79,6 +79,17 @@ def create_portable_environment():
 
     # Build a executable and distributable environment
     subprocess.run([python_exe, '-m', 'PyInstaller', 'dgenerate.spec', '--clean'], env=env)
+
+    gpt4all_lib_dir = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        'dist', 'dgenerate', '_internal', 'gpt4all', 'llmodel_DO_NOT_MODIFY', 'build')
+
+    for dll in glob.glob(os.path.join(gpt4all_lib_dir, '*.dll')):
+
+        name = os.path.basename(dll)
+        new_path = os.path.join(gpt4all_lib_dir, 'lib'+name)
+        print(dll, '->', new_path)
+        os.rename(dll, new_path)
 
 
 # Remove old artifacts

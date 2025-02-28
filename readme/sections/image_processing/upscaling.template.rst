@@ -57,7 +57,7 @@ Upscaling with chaiNNer Compatible Torch Upscaler Models
 --------------------------------------------------------
 
 `chaiNNer <chaiNNer_1_>`_ compatible torch upscaler models from https://openmodeldb.info/
-and elsewhere can be utilized for tiled upscaling using dgenerates ``upscaler`` image processor and the
+and elsewhere can be utilized for tiled upscaling using dgenerate's ``upscaler`` image processor and the
 ``--post-processors`` option.  The ``upscaler`` image processor can also be used for processing
 input images via the other options mentioned in `Image Processors`_ such as ``--seed-image-processors``
 
@@ -177,7 +177,7 @@ is ignored by this image processor.
      #! /usr/bin/env bash
 
      # this auto downloads x2 upscaler models from the upscayl repository into
-     # dgenerates web cache, and then use them
+     # dgenerate's web cache, and then use them
 
      MODEL=https://github.com/upscayl/upscayl/raw/main/models/realesr-animevideov3-x2.bin
      PARAM=https://github.com/upscayl/upscayl/raw/main/models/realesr-animevideov3-x2.param
@@ -196,7 +196,7 @@ This argument can be an integer quantity of threads, the keyword ``auto``
      #! /usr/bin/env bash
 
      # this auto downloads x2 upscaler models from the upscayl repository into
-     # dgenerates web cache, and then use them
+     # dgenerate's web cache, and then use them
 
      MODEL=https://github.com/upscayl/upscayl/raw/main/models/realesr-animevideov3-x2.bin
      PARAM=https://github.com/upscayl/upscayl/raw/main/models/realesr-animevideov3-x2.param

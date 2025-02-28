@@ -19,7 +19,6 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import os.path
-import typing
 
 import PIL.Image
 import numpy
@@ -28,12 +27,16 @@ import tqdm.auto
 
 import dgenerate
 import dgenerate.imageprocessors.imageprocessor as _imageprocessor
-import dgenerate.imageprocessors.ncnn_model as _ncnn_model
+try:
+    import dgenerate.imageprocessors.ncnn_model as _ncnn_model
+except ImportError:
+    _ncnn_model = None
 import dgenerate.imageprocessors.upscale_tiler as _upscale_tiler
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.pipelines as _pipelines
 import dgenerate.types as _types
 import dgenerate.webcache as _webcache
+import dgenerate.imageprocessors.exceptions as _exceptions
 
 
 class _UnsupportedModelError(Exception):
@@ -176,6 +179,10 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
         """
 
         super().__init__(**kwargs)
+
+        if _ncnn_model is None:
+            raise _exceptions.ImageProcessorError(
+                'Cannot use ncnn-upscaler without ncnn installed.')
 
         if isinstance(tile, str):
             tile = tile.lower()

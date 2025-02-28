@@ -1441,7 +1441,7 @@ def create_web_cache_file(url,
                           mimetype_is_supported: typing.Callable[[str], bool] | None = mimetype_is_supported) \
         -> tuple[str, str]:
     """
-    Download a file from a url and add it to dgenerates temporary web cache that is
+    Download a file from a url and add it to dgenerate's temporary web cache that is
     available to all concurrent dgenerate processes.
 
     If the file exists in the cache already, return information for the existing file.
@@ -1967,7 +1967,7 @@ class MediaReader(AnimationReader):
     Static images are treated as an animation with a single frame.
 
     With the default path opener, URLs will be downloaded,
-    dgenerates temporary web cache will be utilized.
+    dgenerate's temporary web cache will be utilized.
 
     All images produced from this reader will be aligned to 8 pixels by default.
     """

@@ -36,14 +36,16 @@ Single point of access to the global dgenerate web cache.
 
 def get_web_cache_directory() -> str:
     """
-    Get the default web cache directory or the value of the environmental variable ``DGENERATE_WEB_CACHE``
+    Get the default web cache directory.
+
+    Or the value of the environmental variable ``DGENERATE_CACHE`` joined with ``web``.
 
     :return: string (directory path)
     """
-    user_cache_path = os.environ.get('DGENERATE_WEB_CACHE')
+    user_cache_path = os.environ.get('DGENERATE_CACHE')
 
     if user_cache_path is not None:
-        path = user_cache_path
+        path = os.path.join(user_cache_path, 'web')
     else:
         path = os.path.expanduser(os.path.join('~', '.cache', 'dgenerate', 'web'))
 
@@ -92,7 +94,7 @@ def create_web_cache_file(url,
                           tqdm_pbar=tqdm.tqdm) \
         -> tuple[str, str]:
     """
-    Download a file from a url and add it to dgenerates temporary web cache that is
+    Download a file from a url and add it to dgenerate's temporary web cache that is
     available to all concurrent dgenerate processes.
 
     If the file exists in the cache already, return information for the existing file.

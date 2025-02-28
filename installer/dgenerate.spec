@@ -1,5 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
-
+import glob
+import os
 import re
 from importlib.machinery import SourceFileLoader
 from importlib.metadata import PackageNotFoundError
@@ -20,14 +21,23 @@ with open('Product.wix', 'r') as f:
 
 block_cipher = None
 
-exclude_from_forced_collection = {'triton', 'cmake', 'lit', 'opencv-python', 'opencv-contrib-python'}
 # the cv2 hook works properly, other mentioned deps just are not needed
+exclude_from_collection = {
+    'triton',
+    'cmake',
+    'lit',
+    'opencv-python',
+    'opencv-contrib-python',
+    'tzdata'
+}
 
+# these packages have names that do not align with their folder name
+# or have needed source files
 requires_extra_data_forced = [
     'dgenerate',
+    'gpt4all',
     'controlnet_aux',
     'fake_useragent',
-    'skimage',
     'fontTools',
     'antlr4',
     'bs4',
@@ -38,8 +48,25 @@ requires_extra_data_forced = [
     'win32com',
     'win32comext',
     'win32ctypes']
-# these packages have names that do not align with their folder name
-# or have needed source files
+
+# these packages require source code to work properly
+require_source = {
+    'dgenerate',
+    'transformers',
+    'controlnet_aux',
+    'diffusers',
+    'ultralytics',
+    'spandrel',
+    'spandrel_extra_arches',
+    'timm',
+    'torch',
+    'torchvision',
+    'torchsde',
+    'numpy',
+    'scipy',
+    'matplotlib',
+    'pandas'
+}
 
 datas = []
 binaries = []
@@ -47,7 +74,7 @@ module_collection_mode = {}
 
 required_package_names = \
     list(setup.get_poetry_lockfile_as_pip_requires(
-        exclude=exclude_from_forced_collection).keys()) + requires_extra_data_forced
+        exclude=exclude_from_collection).keys()) + requires_extra_data_forced
 
 for package_name in required_package_names:
 
@@ -63,29 +90,27 @@ for package_name in required_package_names:
         package_name = package_name.replace('-', '_')
 
     print(f'Data Collection For: {package_name}')
-    module_collection_mode[package_name] = 'pyz+py'
-    datas += collect_data_files(package_name, include_py_files=True,
-                                includes=['**/*.py',
-                                          '**/*.pyi',
-                                          '**/*.info',
-                                          '**/*.c',
-                                          '**/*.cpp',
-                                          '**/*.cu',
-                                          '**/*.cuh',
-                                          '**/*.h',
-                                          '**/*.json',
-                                          '**/*.jsonl',
-                                          '**/*.toml',
-                                          '**/*.yaml',
-                                          '**/*.yml'])
+    include_source = package_name in require_source
+    module_collection_mode[package_name] = 'pyz+py' if include_source else 'pyz'
+    datas += collect_data_files(
+        package_name,
+        include_py_files=include_source,
+        includes=['**/*.info',
+                  '**/*.recipe',
+                  '**/*.txt',
+                  '**/*.c',
+                  '**/*.cpp',
+                  '**/*.cu',
+                  '**/*.cuh',
+                  '**/*.h',
+                  '**/*.json',
+                  '**/*.jsonl',
+                  '**/*.toml',
+                  '**/*.yaml',
+                  '**/*.yml'] +
+                 (['**/*.py', '**/*.pyi']
+                  if include_source else []))
     binaries += collect_dynamic_libs(package_name, search_patterns=['*.dll', '*.pyd'])
-
-# recipes
-datas += collect_data_files('dgenerate', subdir='console/recipes', includes=['*.recipe'])
-
-# module keys from HiDiffusion
-datas += collect_data_files('dgenerate', subdir='dgenerate/extras/hidiffusion/sd_module_key', includes=['*.txt'])
-
 
 a = Analysis(
     ['../dgenerate/dgenerate.py'],
@@ -97,7 +122,7 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=['tzdata'],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,

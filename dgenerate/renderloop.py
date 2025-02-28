@@ -253,7 +253,7 @@ Event stream created by :py:meth:`.RenderLoop.events`
 
 class RenderLoop:
     """
-    Render loop which implements the bulk of dgenerates rendering capability.
+    Render loop which implements the bulk of dgenerate's rendering capability.
 
     This object handles the scatter gun iteration over requested diffusion parameters,
     the generation of animations, and writing images and media to disk or providing

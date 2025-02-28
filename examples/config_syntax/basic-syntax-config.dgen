@@ -62,7 +62,7 @@ stabilityai/stable-diffusion-2-1 --prompts "a martian riding a horse"
 \clear_object_cache
 
 # Additionally these other directives exist to clear user loaded models
-# out of dgenerates in memory cache individually
+# out of dgenerate's in memory cache individually
 
 # Clear specifically torch diffusion pipelines
 

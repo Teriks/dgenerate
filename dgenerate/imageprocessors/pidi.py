@@ -20,16 +20,16 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import PIL.Image
+import controlnet_aux.util as _cna_util
 import einops
 import numpy
 import torch
 
 import dgenerate.extras.controlnet_aux as _cna
-import controlnet_aux.util as _cna_util
 import dgenerate.image as _image
+import dgenerate.imageprocessors.util as _util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
-import dgenerate.imageprocessors.util as _util
 from dgenerate.imageprocessors import imageprocessor as _imageprocessor
 
 

@@ -51,7 +51,7 @@ class _TemplateContinuationInternalError(Exception):
 
 class BatchProcessor:
     """
-    Implements dgenerates batch processing scripts in a generified manner.
+    Implements dgenerate's batch processing scripts in a generified manner.
 
     This is the bare-bones implementation of the shell with nothing
     implemented for you except for:

@@ -22,14 +22,21 @@
 import dgenerate.plugin as _plugin
 
 
-class SubCommandArgumentError(_plugin.PluginArgumentError):
+class SubCommandError(Exception):
+    """
+    Generic sub-command error base exception.
+    """
+    pass
+
+
+class SubCommandArgumentError(_plugin.PluginArgumentError, SubCommandError):
     """
     Raised when a sub-command receives invalid arguments.
     """
     pass
 
 
-class SubCommandNotFoundError(_plugin.PluginNotFoundError):
+class SubCommandNotFoundError(_plugin.PluginNotFoundError, SubCommandError):
     """
     Raised when a reference to an unknown sub-command name is made.
     """

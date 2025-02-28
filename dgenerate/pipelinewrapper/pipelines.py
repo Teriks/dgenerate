@@ -1167,7 +1167,7 @@ def create_torch_diffusion_pipeline(
         sequential_cpu_offload: bool = False,
         local_files_only: bool = False) -> TorchPipelineCreationResult:
     """
-    Create a :py:class:`diffusers.DiffusionPipeline` in dgenerates in memory cacheing system.
+    Create a :py:class:`diffusers.DiffusionPipeline` in dgenerate's in memory cacheing system.
 
     :param model_type:  :py:class:`dgenerate.pipelinewrapper.ModelType` enum value
     :param model_path: huggingface slug, huggingface blob link, path to folder on disk, path to file on disk

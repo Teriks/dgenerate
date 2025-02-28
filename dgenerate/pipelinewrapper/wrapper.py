@@ -822,7 +822,7 @@ class DiffusionPipelineWrapper:
                                    **kwargs) -> \
             list[tuple[str] | tuple[str, typing.Any]]:
         """
-        Reconstruct dgenerates command line arguments from a particular set of pipeline wrapper call arguments.
+        Reconstruct dgenerate's command line arguments from a particular set of pipeline wrapper call arguments.
         
         This does not reproduce ``--image-seeds``, you must include that value in ``extra_opts``, 
         this is because there is not enough information in :py:class:`.DiffusionArguments` to

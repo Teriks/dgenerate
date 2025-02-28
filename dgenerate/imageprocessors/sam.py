@@ -19,17 +19,18 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import os
-import torch
-import PIL.Image
-import huggingface_hub
-import numpy
 
+import PIL.Image
 import controlnet_aux as _cna
 import controlnet_aux.util as _cna_util
+import huggingface_hub
+import numpy
+import torch
+
 import dgenerate.image as _image
+import dgenerate.imageprocessors.util as _util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
-import dgenerate.imageprocessors.util as _util
 from dgenerate.imageprocessors import imageprocessor as _imageprocessor
 
 

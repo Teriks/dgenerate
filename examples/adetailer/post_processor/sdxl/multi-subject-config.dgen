@@ -21,7 +21,7 @@
 # in this seed is a woman, and the face on the right
 # is a man
 
-# this example makes use of dgenerates special
+# this example makes use of dgenerate's special
 # line continuation syntax to specify 2 post processor
 # steps with documentation interleaved between
 

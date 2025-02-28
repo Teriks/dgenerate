@@ -26,7 +26,7 @@ config.guidance_scales = [5]
 # which includes things like variant specification, which defaults to the
 # main models variant specification above in this case.
 # the syntax supported by _uri config options aligns one to one with
-# dgenerates command line usage for the corresponding options
+# dgenerate's command line usage for the corresponding options
 
 config.sdxl_refiner_uri = 'stabilityai/stable-diffusion-xl-refiner-1.0'
 

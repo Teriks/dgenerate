@@ -690,7 +690,7 @@ def shell_parse(string,
         analogous to `os.path.expandvars`
     :param glob_include_hidden: Should globs include hidden directories?
     :param shlex_compatible: ensure shlex compatibility? This removes all quotes, instead
-        of just quotes at the ends of strings that exist on word boundaries. dgenerates
+        of just quotes at the ends of strings that exist on word boundaries. dgenerate's
         configuration script shell parsing only removes quotes from strings that are not mixed
         together next to other tokens by default, this is to preserve important quoting
         inside URI arguments.

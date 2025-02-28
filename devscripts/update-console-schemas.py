@@ -12,7 +12,8 @@ import inspect
 
 import diffusers
 
-import dgenerate.imageprocessors.imageprocessorloader as _loader
+import dgenerate.imageprocessors.imageprocessorloader as _imageprocessorloader
+import dgenerate.promptupscalers.promptupscalerloader as _promptupscalerloader
 import dgenerate.mediainput as _mediainput
 import dgenerate.mediaoutput as _mediaoutput
 import dgenerate.arguments as _arguments
@@ -24,7 +25,7 @@ os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 # Schema for image processors and accepted arguments
 
 with open('dgenerate/console/schemas/imageprocessors.json', 'w') as file:
-    plugin_loader = _loader.ImageProcessorLoader()
+    plugin_loader = _imageprocessorloader.ImageProcessorLoader()
     schema = plugin_loader.get_accepted_args_schema(include_bases=True)
 
     # sort by processor name, this affects json output
@@ -32,6 +33,20 @@ with open('dgenerate/console/schemas/imageprocessors.json', 'w') as file:
 
     for plugin in schema.keys():
         schema[plugin].update({'PROCESSOR_HELP': plugin_loader.get_help(
+            plugin, wrap_width=100, include_bases=True)})
+
+    json.dump(schema, file)
+
+
+with open('dgenerate/console/schemas/promptupscalers.json', 'w') as file:
+    plugin_loader = _promptupscalerloader.PromptUpscalerLoader()
+    schema = plugin_loader.get_accepted_args_schema(include_bases=True)
+
+    # sort by processor name, this affects json output
+    schema = dict(sorted(schema.items(), key=lambda x: x[0]))
+
+    for plugin in schema.keys():
+        schema[plugin].update({'PROMPT_UPSCALER_HELP': plugin_loader.get_help(
             plugin, wrap_width=100, include_bases=True)})
 
     json.dump(schema, file)

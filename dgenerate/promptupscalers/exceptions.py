@@ -23,7 +23,14 @@
 import dgenerate.plugin as _plugin
 
 
-class PromptUpscalerNotFoundError(_plugin.PluginNotFoundError):
+class PromptUpscalerError(Exception):
+    """
+    Generic Prompt Upscaler error base exception.
+    """
+    pass
+
+
+class PromptUpscalerNotFoundError(_plugin.PluginNotFoundError, PromptUpscalerError):
     """
     Thrown when a :py:class:`dgenerate.promptupscalers.PromptUpscaler`
     implementation could not be found for a given name.
@@ -31,7 +38,7 @@ class PromptUpscalerNotFoundError(_plugin.PluginNotFoundError):
     pass
 
 
-class PromptUpscalerArgumentError(_plugin.PluginArgumentError):
+class PromptUpscalerArgumentError(_plugin.PluginArgumentError, PromptUpscalerError):
     """
     Thrown when a :py:class:`dgenerate.promptupscalers.PromptUpscaler`
     implementation is loaded with an invalid argument.
@@ -39,7 +46,7 @@ class PromptUpscalerArgumentError(_plugin.PluginArgumentError):
     pass
 
 
-class PromptUpscalerProcessingError(Exception):
+class PromptUpscalerProcessingError(PromptUpscalerError):
     """
     Thrown when a :py:class:`dgenerate.promptupscalers.PromptUpscaler`
     implementation runs into an issue processing a promt.

@@ -19,20 +19,19 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import dgenerate.imageprocessors.constants
 import dgenerate.plugin as _plugin
 import dgenerate.types as _types
-
+from .adetailer import AdetailerProcessor
+from .anyline import AnylineProcessor
 from .canny import CannyEdgeDetectProcessor
-
 from .exceptions import (
     ImageProcessorNotFoundError,
     ImageProcessorArgumentError,
     ImageProcessorImageModeError,
     ImageProcessorError,
 )
-
 from .hed import HEDProcessor
-
 from .imageops import (
     PosterizeProcessor,
     SolarizeProcessor,
@@ -41,14 +40,13 @@ from .imageops import (
     LetterboxProcessor,
     ResizeProcessor
 )
-
 from .imageprocessor import ImageProcessor
 from .imageprocessorchain import ImageProcessorChain
 from .imageprocessorloader import ImageProcessorLoader
 from .imageprocessormixin import ImageProcessorMixin
-
 from .leres import LeresDepthProcessor
 from .linart_anime import LineArtAnimeProcessor
+from .linart_standard import LineArtStandardProcessor
 from .lineart import LineArtProcessor
 from .midas import MidasDepthProcessor
 from .mlsd import MLSDProcessor
@@ -56,14 +54,9 @@ from .normal_bae import NormalBaeProcessor
 from .openpose import OpenPoseProcessor
 from .pidi import PidiNetProcessor
 from .sam import SegmentAnythingProcessor
+from .teed import TEEDProcessor
 from .upscaler import UpscalerProcessor
 from .zoe import ZoeDepthProcessor
-from .teed import TEEDProcessor
-from .linart_standard import LineArtStandardProcessor
-from .anyline import AnylineProcessor
-from .adetailer import AdetailerProcessor
-
-import dgenerate.imageprocessors.constants
 
 try:
     import ncnn
