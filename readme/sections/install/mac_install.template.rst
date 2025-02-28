@@ -40,6 +40,8 @@ global python site packages.
     # install dgenerate into an isolated
     # environment with pipx
 
+    # possible dgenerate package extras: ncnn, gpt4all
+
     pipx install dgenerate==@VERSION
     pipx ensurepath
 
@@ -90,6 +92,8 @@ of your own creation.
     source dgenerate_venv/bin/activate
 
     # install dgenerate into an isolated environment
+
+    # possible dgenerate package extras: ncnn, gpt4all
 
     pip3 install dgenerate==@VERSION
 

@@ -50,4 +50,4 @@ stabilityai/stable-diffusion-xl-base-1.0
 --output-path output
 --output-size 1024x1024
 --prompt-weighter sd-embed
---prompts "<upscaler: dynamicprompts> <upscaler: magicprompt> <upscaler: dynamicprompts> <upscaler: attention> a large {horse|dog} in a field, cloudy day"
+--prompts "<upscaler: dynamicprompts> <upscaler: magicprompt> <upscaler: attention> a large {horse|dog} in a field, cloudy day"

@@ -1643,6 +1643,8 @@ Install dgenerate:
 
 .. code-block:: bash
 
+    # possible dgenerate package extras: ncnn, gpt4all, gpt4all_cuda
+
     pipx install dgenerate ^
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu124/"
 
@@ -1683,6 +1685,8 @@ a cloned repository like this:
     venv\Scripts\activate
 
     # Install with pip into the environment
+
+    # possible dgenerate package extras: ncnn, gpt4all, gpt4all_cuda
 
     pip install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu124/
 
@@ -1770,6 +1774,8 @@ Install dgenerate
 .. code-block:: bash
 
     #!/usr/bin/env bash
+
+    # possible dgenerate package extras: ncnn, gpt4all, gpt4all_cuda
 
     # install with just support for torch
 
@@ -1958,6 +1964,8 @@ global python site packages.
     # install dgenerate into an isolated
     # environment with pipx
 
+    # possible dgenerate package extras: ncnn, gpt4all
+
     pipx install dgenerate==4.5.1
     pipx ensurepath
 
@@ -2008,6 +2016,8 @@ of your own creation.
     source dgenerate_venv/bin/activate
 
     # install dgenerate into an isolated environment
+
+    # possible dgenerate package extras: ncnn, gpt4all
 
     pip3 install dgenerate==4.5.1
 
@@ -4612,7 +4622,7 @@ The following is an example making use of the ``dynamicprompts``, ``magicprompt`
     --output-path output
     --output-size 1024x1024
     --prompt-weighter sd-embed
-    --prompts "<upscaler: dynamicprompts> <upscaler: magicprompt> <upscaler: dynamicprompts> <upscaler: attention> a large {horse|dog} in a field, cloudy day"
+    --prompts "<upscaler: dynamicprompts> <upscaler: magicprompt> <upscaler: attention> a large {horse|dog} in a field, cloudy day"
 
 
 Prompt upscaling with LLMs (transformers)
@@ -4677,7 +4687,7 @@ Prompt upscaling with LLMs (gpt4all)
 
 Any LLM that is supported by ``gpt4all==2.8.2`` can be used to upscale prompts via the ``gpt4all`` prompt upscaler plugin.
 
-This plugin supports loading LLM models in ``gguf`` format and uses a native inference backed provided by ``gpt4all``
+This plugin supports loading LLM models in ``gguf`` format and uses a native inference backend provided by ``gpt4all``
 for memory efficient inference on the cpu or gpu.
 
 Here is an example using `Phi-3 Mini Abliterated Q4 GGUF by failspy <https://huggingface.co/failspy/Phi-3-mini-128k-instruct-abliterated-v3-GGUF>`_
@@ -6907,7 +6917,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [33693648659014]
+            Value: [74777563822476]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
