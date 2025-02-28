@@ -133,7 +133,7 @@ Prompt upscaling with LLMs (gpt4all)
 
 Any LLM that is supported by ``gpt4all==2.8.2`` can be used to upscale prompts via the ``gpt4all`` prompt upscaler plugin.
 
-This plugin supports loading LLM models in ``gguf`` format and uses a native inference backed provided by ``gpt4all``
+This plugin supports loading LLM models in ``gguf`` format and uses a native inference backend provided by ``gpt4all``
 for memory efficient inference on the cpu or gpu.
 
 Here is an example using `Phi-3 Mini Abliterated Q4 GGUF by failspy <https://huggingface.co/failspy/Phi-3-mini-128k-instruct-abliterated-v3-GGUF>`_

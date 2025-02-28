@@ -63,6 +63,8 @@ Install dgenerate
 
     #!/usr/bin/env bash
 
+    # possible dgenerate package extras: ncnn, gpt4all, gpt4all_cuda
+
     # install with just support for torch
 
     pipx install dgenerate \

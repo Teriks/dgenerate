@@ -51,6 +51,8 @@ Install dgenerate:
 
 .. code-block:: bash
 
+    # possible dgenerate package extras: ncnn, gpt4all, gpt4all_cuda
+
     pipx install dgenerate ^
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu124/"
 
@@ -91,6 +93,8 @@ a cloned repository like this:
     venv\Scripts\activate
 
     # Install with pip into the environment
+
+    # possible dgenerate package extras: ncnn, gpt4all, gpt4all_cuda
 
     pip install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu124/
 
