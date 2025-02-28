@@ -30,7 +30,6 @@ import dgenerate.prompt as _prompt
 from dynamicprompts.generators import CombinatorialPromptGenerator as _CombinatorialPromptGenerator
 from dynamicprompts.generators import RandomPromptGenerator as _RandomPromptGenerator
 from dynamicprompts.wildcards.wildcard_manager import WildcardManager as _WildcardManager
-from dynamicprompts.generators.attentiongenerator import AttentionGenerator as _AttentionGenerator
 import dgenerate.types as _types
 
 
@@ -38,23 +37,13 @@ class DynamicPromptsUpscaler(_promptupscaler.PromptUpscaler):
     """
     Upscale prompts with the dynamicprompts library.
 
-    This upscaler allows you to use a special syntax for combinatorial
-    prompt variations, and can also add random attention values to your prompt.
+    This upscaler allows you to use a special syntax for
+    combinatorial prompt variations.
 
     See: https://github.com/adieyal/dynamicprompts
 
     The "part" argument indicates which parts of the prompt to act on,
     possible values are: "both", "positive", and "negative"
-
-    The "attention" argument enables random token attention values,
-    this requires the use of the "sd-embed" prompt weighter or "compel" in
-    SD Web UI syntax mode, i.e. "compel;syntax=sdwui"
-    
-    The "attention-min" argument sets the minimum value for random
-    attention added by "attention=True". The default value is 0.1
-    
-    The "attention-max" argument sets the maximum value for random
-    attention added by "attention=True" The Default value is 0.9
 
     The "random" argument specifies that instead of strictly combinatorial
     output, dynamicprompts should produce N random variations of your
@@ -77,9 +66,6 @@ class DynamicPromptsUpscaler(_promptupscaler.PromptUpscaler):
 
     def __init__(self,
                  part: str = 'both',
-                 attention: bool = False,
-                 attention_min: int = 0.1,
-                 attention_max: int = 0.9,
                  random: bool = False,
                  seed: int | None = None,
                  variations: int | None = None,
@@ -129,13 +115,6 @@ class DynamicPromptsUpscaler(_promptupscaler.PromptUpscaler):
         else:
             self._gen = _CombinatorialPromptGenerator(
                 wildcard_manager=wildcard_manager
-            )
-
-        if attention:
-            self._gen = _AttentionGenerator(
-                self._gen,
-                min_attention=attention_min,
-                max_attention=attention_max
             )
 
         self._seed = seed
