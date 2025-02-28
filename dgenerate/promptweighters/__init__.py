@@ -25,6 +25,7 @@ import dgenerate.types as _types
 from .compelpromptweighter import CompelPromptWeighter
 
 from .exceptions import (
+    PromptWeighterError,
     PromptWeighterArgumentError,
     PromptWeighterNotFoundError,
     PromptWeightingUnsupported

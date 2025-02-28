@@ -23,7 +23,7 @@ Currently adetailer supports these model types:
 In effect, adetailer is supported by most pipelines that support any kind of inpainting, except for
 DeepFloyd related model types.
 
-dgenerates adetailer implementation can be used to very selectively detail specific detections, the
+dgenerate's adetailer implementation can be used to very selectively detail specific detections, the
 implementation includes features that allow using different prompts and settings on different faces / hands in
 an image etc. Allowing for pinpoint use on images with multiple characters or objects of interest.
 

@@ -26,18 +26,18 @@ import typing
 import PIL.Image
 import torch
 
+import dgenerate.devicecache as _devicecache
 import dgenerate.exceptions as _d_exceptions
 import dgenerate.filelock as _filelock
 import dgenerate.image as _image
 import dgenerate.imageprocessors.constants as _constants
 import dgenerate.imageprocessors.exceptions as _exceptions
+import dgenerate.memoize as _memoize
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.util as _util
 import dgenerate.plugin as _plugin
 import dgenerate.types
-import dgenerate.memoize as _memoize
-import dgenerate.devicecache as _devicecache
 
 _image_processor_cache = _memoize.create_object_cache(
     'image_processor',

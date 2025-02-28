@@ -173,6 +173,9 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v4.5.1/>`_.
         * `Prompt weighter plugins`_
     * `Auth Tokens`_
     * `File Cache Control`_
+        * `Web Cache`_
+        * `spaCy Model Cache`_
+        * `Hugging Face Cache`_
 
 Help Output
 ===========
@@ -324,7 +327,7 @@ Help Output
             also be listed.
             ---------------
       -gc FILE, --global-config FILE
-            Provide a json, yaml, or toml file to configure dgenerates global settings. These settings include
+            Provide a json, yaml, or toml file to configure dgenerate's global settings. These settings include
             various default values for generation and garbage collection settings for the in memory caches.
             -----------------------------------------------------------------------------------------------
       -mt MODEL_TYPE, --model-type MODEL_TYPE
@@ -654,7 +657,7 @@ Help Output
             disk with the model configuration and model file(s).
             
             If an AutoencoderKL VAE model file exists at a URL which serves the file as a raw download, you may
-            provide an http/https link to it and it will be downloaded to dgenerates web cache.
+            provide an http/https link to it and it will be downloaded to dgenerate's web cache.
             
             Aside from the "model" argument, there are four other optional arguments that can be specified,
             these are: "revision", "variant", "subfolder", "dtype".
@@ -709,7 +712,7 @@ Help Output
             containing model files.
             
             If a LoRA model file exists at a URL which serves the file as a raw download, you may provide an
-            http/https link to it and it will be downloaded to dgenerates web cache.
+            http/https link to it and it will be downloaded to dgenerate's web cache.
             
             Hugging Face blob links are not supported, see "subfolder" and "weight-name" below instead.
             
@@ -780,7 +783,7 @@ Help Output
             folder containing model files.
             
             If an IP Adapter model file exists at a URL which serves the file as a raw download, you may provide
-            an http/https link to it and it will be downloaded to dgenerates web cache.
+            an http/https link to it and it will be downloaded to dgenerate's web cache.
             
             Hugging Face blob links are not supported, see "subfolder" and "weight-name" below instead.
             
@@ -811,7 +814,7 @@ Help Output
             model folder containing model files.
             
             If a Textual Inversion model file exists at a URL which serves the file as a raw download, you may
-            provide an http/https link to it and it will be downloaded to dgenerates web cache.
+            provide an http/https link to it and it will be downloaded to dgenerate's web cache.
             
             Hugging Face blob links are not supported, see "subfolder" and "weight-name" below instead.
             
@@ -845,7 +848,7 @@ Help Output
             or model folder containing model files.
             
             If a ControlNet model file exists at a URL which serves the file as a raw download, you may provide
-            an http/https link to it and it will be downloaded to dgenerates web cache.
+            an http/https link to it and it will be downloaded to dgenerate's web cache.
             
             Optional arguments can be provided after the ControlNet model specification, these are: "scale",
             "start", "end", "revision", "variant", "subfolder", and "dtype".
@@ -896,7 +899,7 @@ Help Output
             or model folder containing model files.
             
             If a T2IAdapter model file exists at a URL which serves the file as a raw download, you may provide
-            an http/https link to it and it will be downloaded to dgenerates web cache.
+            an http/https link to it and it will be downloaded to dgenerate's web cache.
             
             Optional arguments can be provided after the T2IAdapter model specification, these are: "scale",
             "revision", "variant", "subfolder", and "dtype".
@@ -2395,7 +2398,7 @@ For more information about this see: `Specifying ControlNets`_
 
 And also: `Specifying T2I Adapters`_
 
-As well as the information about ``--image-seeds`` from dgenerates ``--help``
+As well as the information about ``--image-seeds`` from dgenerate's ``--help``
 output.
 
 IP Adapter images can also be animated inputs see: `Specifying IP Adapters`_
@@ -5115,7 +5118,7 @@ Image Processors
 
 Images provided through ``--image-seeds`` can be processed before being used for image generation
 through the use of the arguments ``--seed-image-processors``, ``--mask-image-processors``, and
-``--control-image-processors``. In addition, dgenerates output can be post processed with the
+``--control-image-processors``. In addition, dgenerate's output can be post processed with the
 used of the ``--post-processors`` argument, which is useful for using the ``upscaler`` processor.
 An important note about ``--post-processors`` is that post processing occurs before any image grid
 rendering is preformed when ``--batch-grid-size`` is specified with a ``--batch-size`` greater than one,
@@ -5454,7 +5457,7 @@ Overview of specifying ``image-process`` inputs and outputs
     # More file formats than .png are supported for static image output, all
     # extensions mentioned in the image-process --help documentation for --frame-format
     # are supported, the supported formats are identical to that mentioned in the --image-format
-    # option help section of dgenerates --help output
+    # option help section of dgenerate's --help output
 
     # my_file.png -> my_file_processed_1.png
 
@@ -5695,7 +5698,7 @@ Upscaling with chaiNNer Compatible Torch Upscaler Models
 --------------------------------------------------------
 
 `chaiNNer <chaiNNer_1_>`_ compatible torch upscaler models from https://openmodeldb.info/
-and elsewhere can be utilized for tiled upscaling using dgenerates ``upscaler`` image processor and the
+and elsewhere can be utilized for tiled upscaling using dgenerate's ``upscaler`` image processor and the
 ``--post-processors`` option.  The ``upscaler`` image processor can also be used for processing
 input images via the other options mentioned in `Image Processors`_ such as ``--seed-image-processors``
 
@@ -5815,7 +5818,7 @@ is ignored by this image processor.
      #! /usr/bin/env bash
 
      # this auto downloads x2 upscaler models from the upscayl repository into
-     # dgenerates web cache, and then use them
+     # dgenerate's web cache, and then use them
 
      MODEL=https://github.com/upscayl/upscayl/raw/main/models/realesr-animevideov3-x2.bin
      PARAM=https://github.com/upscayl/upscayl/raw/main/models/realesr-animevideov3-x2.param
@@ -5834,7 +5837,7 @@ This argument can be an integer quantity of threads, the keyword ``auto``
      #! /usr/bin/env bash
 
      # this auto downloads x2 upscaler models from the upscayl repository into
-     # dgenerates web cache, and then use them
+     # dgenerate's web cache, and then use them
 
      MODEL=https://github.com/upscayl/upscayl/raw/main/models/realesr-animevideov3-x2.bin
      PARAM=https://github.com/upscayl/upscayl/raw/main/models/realesr-animevideov3-x2.param
@@ -5882,7 +5885,7 @@ Currently adetailer supports these model types:
 In effect, adetailer is supported by most pipelines that support any kind of inpainting, except for
 DeepFloyd related model types.
 
-dgenerates adetailer implementation can be used to very selectively detail specific detections, the
+dgenerate's adetailer implementation can be used to very selectively detail specific detections, the
 implementation includes features that allow using different prompts and settings on different faces / hands in
 an image etc. Allowing for pinpoint use on images with multiple characters or objects of interest.
 
@@ -6258,7 +6261,7 @@ The following is a config file example that covers the most basic syntax concept
     \clear_object_cache
     
     # Additionally these other directives exist to clear user loaded models
-    # out of dgenerates in memory cache individually
+    # out of dgenerate's in memory cache individually
     
     # Clear specifically torch diffusion pipelines
     
@@ -6700,7 +6703,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [3222193863466]
+            Value: [75241727839506]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -7510,7 +7513,7 @@ Arbitrary files can be downloaded via the ``\download`` directive.
 This directive can be used to download a file and assign its
 downloaded path to a template variable.
 
-Files can either be inserted into dgenerates web cache or
+Files can either be inserted into dgenerate's web cache or
 downloaded to a specific directory or absolute path.
 
 This directive is designed with using cached files in mind,
@@ -7880,13 +7883,17 @@ For Hugging Face hub downloads setting ``HF_TOKEN`` is sufficient if you wish to
 File Cache Control
 ==================
 
+The base directory for files cached by dgenerate can be controlled with the environmental
+variable ``DGENERATE_CACHE``, which defaults to: ``~/.cache/dgenerate``, on Windows this equates
+to: ``%USERPROFILE%\.cache\dgenerate``.
+
+
+Web Cache
+---------
+
 dgenerate will cache downloaded non hugging face models, downloaded ``--image-seeds`` files,
 files downloaded by the ``\download`` directive, ``download`` template function, and downloaded
-files used by image processors in the directory ``~/.cache/dgenerate/web``
-
-On Windows this equates to: ``%USERPROFILE%\.cache\dgenerate\web``
-
-You can control where these files are cached with the environmental variable ``DGENERATE_WEB_CACHE``.
+files used by image processors in the directory ``$DGENERATE_CACHE/web``
 
 Files are cleared from the web cache automatically after an expiry time upon running dgenerate or
 when downloading additional files, the default value is after 12 hours.
@@ -7900,6 +7907,23 @@ seperated by semicolons.
 For example: ``DGENERATE_WEB_CACHE_EXPIRY_DELTA="days=5;hours=6"``
 
 Specifying ``"forever"`` or an empty string will disable cache expiration for every downloaded file.
+
+spaCy Model Cache
+-----------------
+
+spaCy models that need to be downloaded by dgenerate for NLP tasks are stored under ``$DGENERATE_CACHE/spacy``.
+
+These models cannot be stored in the python environments ``site-packages`` as is normal for spaCy.
+
+spaCy relies on ``pip`` to install these models which are packaged as wheel files, and they cannot be installed
+in degenerate's frozen Windows installer environment created by ``pyinstaller``.
+
+Instead of being installed by ``pip``, the models are extracted into this directory by dgenerate and loaded
+directly.
+
+
+Hugging Face Cache
+------------------
 
 Files downloaded from huggingface by the diffusers/huggingface_hub library will be cached under
 ``~/.cache/huggingface/``, on Windows this equates to ``%USERPROFILE%\.cache\huggingface\``.

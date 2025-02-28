@@ -27,12 +27,12 @@ import torch
 import torchvision
 import tqdm.auto
 
+import dgenerate.exceptions as _d_exceptions
 import dgenerate.imageprocessors.imageprocessor as _imageprocessor
 import dgenerate.imageprocessors.upscale_tiler as _upscale_tiler
 import dgenerate.messages as _messages
 import dgenerate.types as _types
 import dgenerate.webcache as _webcache
-import dgenerate.exceptions as _d_exceptions
 
 spandrel.MAIN_REGISTRY.add(*spandrel_extra_arches.EXTRA_REGISTRY)
 

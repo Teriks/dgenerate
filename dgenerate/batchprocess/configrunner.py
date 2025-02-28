@@ -554,12 +554,12 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                                  'file to this template variable name.')
         parser.add_argument('url', help='URL of the file to download.')
         parser.add_argument('-o', '--output', default=None, metavar='PATH',
-                            help='Path to download the file to. '
-                                 'If none is provided the file is placed in dgenerates '
-                                 'web cache. If this path ends with a forward slash or '
-                                 'backslash it is considered to be a directory, the file '
-                                 'name will be determined by the URL or content disposition '
-                                 'of the http/https request if available.')
+                            help="Path to download the file to. "
+                                 "If none is provided the file is placed in dgenerate's "
+                                 "web cache. If this path ends with a forward slash or "
+                                 "backslash it is considered to be a directory, the file "
+                                 "name will be determined by the URL or content disposition "
+                                 "of the http/https request if available.")
         parser.add_argument('-x', '--overwrite',
                             action='store_true',
                             default=False,

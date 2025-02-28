@@ -71,7 +71,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     """
     This object represents configuration for :py:class:`RenderLoop`.
 
-    It nearly directly maps to dgenerates command line arguments.
+    It nearly directly maps to dgenerate's command line arguments.
 
     See subclass :py:class:`dgenerate.arguments.DgenerateArguments`
     """

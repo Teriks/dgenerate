@@ -21,7 +21,7 @@
 
 import dgenerate.plugin as _plugin
 import dgenerate.types as _types
-from .exceptions import SubCommandArgumentError, SubCommandNotFoundError
+from .exceptions import SubCommandError, SubCommandArgumentError, SubCommandNotFoundError
 from .image_process import ImageProcessSubCommand
 from .civitai_links import CivitAILinksSubCommand
 from .subcommand import SubCommand

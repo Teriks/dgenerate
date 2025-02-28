@@ -31,6 +31,7 @@ import tkinter as tk
 import typing
 import webbrowser
 import packaging.version
+import importlib.util
 
 import PIL.Image
 import PIL.ImageTk
@@ -67,8 +68,10 @@ def get_file_dialog_args(file_types: list):
         dialog_args['filetypes'] = type_desc
         file_type_mappings = {
             'models': ('Models', supported_torch_model_formats_open),
+            'config': ('Config', lambda: ['toml', 'yaml', 'yml', 'json']),
+            'toml': ('Config', lambda: ['toml']),
             'yaml': ('Config', lambda: ['yaml', 'yml']),
-            'json': ('Config', lambda: ['json', 'json']),
+            'json': ('Config', lambda: ['json']),
             'images-in': ('Images', lambda: schema['images-in']),
             'videos-in': ('Videos', lambda: schema['videos-in']),
             'images-out': ('Images', lambda: schema['images-out']),
@@ -98,6 +101,24 @@ def get_recipes():
         _RECIPES[title.split(':', 1)[1].strip()] = rest.strip()
 
     return _RECIPES
+
+
+def get_quantizer_recipes():
+    opts = []
+    if importlib.util.find_spec('bitsandbytes') is not None:
+        opts += [
+            'bnb;bits=8',
+            'bnb;bits=4;bits4-compute-dtype=float16',
+            'bnb;bits=4;bits4-compute-dtype=bloat16',
+            'bnb;bits=4;bits4-compute-dtype=float32'
+        ]
+
+    if importlib.util.find_spec('torchao') is not None:
+        opts += [
+            'torchao;type=int8wo',
+            'torchao;type=int4wo',
+        ]
+    return opts
 
 
 def check_latest_release() -> ReleaseInfo | None:
@@ -167,11 +188,31 @@ def get_dgenerate_arguments() -> dict[str, str]:
     return get_schema('arguments')
 
 
-def get_torch_vae_types()-> list[str]:
+def get_torch_vae_types() -> list[str]:
     return ["AutoencoderKL",
             "AsymmetricAutoencoderKL",
             "AutoencoderTiny",
             "ConsistencyDecoderVAE"]
+
+
+def get_gpt4all_compute_devices() -> list[str]:
+    """
+    - "cpu": Model will run on the central processing unit.
+    - "gpu": Use Metal on ARM64 macOS, otherwise the same as "kompute".
+    - "kompute": Use the best GPU provided by the Kompute backend.
+    - "cuda": Use the best GPU provided by the CUDA backend.
+    - "amd", "nvidia": Use the best GPU provided by the Kompute backend from this vendor.
+    """
+
+    opts = ['cpu', 'gpu', 'kompute']
+
+    if shutil.which('nvidia-smi'):
+        opts.append('cuda')
+
+    if shutil.which('rocm-smi'):
+        opts.append('amd')
+
+    return opts
 
 
 def get_torch_devices() -> list[str]:

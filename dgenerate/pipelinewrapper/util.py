@@ -980,7 +980,7 @@ def _patch_sd21_clip_from_ldm():
     A context manager which temporarily patches diffusers clip / text_encoder model loading
     for single file checkpoints, this fixes loading SD2.1 CivitAI checkpoints
     with StableDiffusionPipeline.from_single_file, and also loading a text encoder
-    individually via checkpoint extraction using dgenerates TextEncoderUri class.
+    individually via checkpoint extraction using dgenerate's TextEncoderUri class.
     """
     og_func = diffusers.loaders.single_file_utils.convert_open_clip_checkpoint
     diffusers.loaders.single_file_utils.convert_open_clip_checkpoint = _convert_open_clip_checkpoint

@@ -47,7 +47,7 @@ Overview of specifying ``image-process`` inputs and outputs
     # More file formats than .png are supported for static image output, all
     # extensions mentioned in the image-process --help documentation for --frame-format
     # are supported, the supported formats are identical to that mentioned in the --image-format
-    # option help section of dgenerates --help output
+    # option help section of dgenerate's --help output
 
     # my_file.png -> my_file_processed_1.png
 

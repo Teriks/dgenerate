@@ -23,7 +23,14 @@
 import dgenerate.plugin as _plugin
 
 
-class PromptWeighterNotFoundError(_plugin.PluginNotFoundError):
+class PromptWeighterError(Exception):
+    """
+    Generic Prompt Weighter error base exception.
+    """
+    pass
+
+
+class PromptWeighterNotFoundError(_plugin.PluginNotFoundError, PromptWeighterError):
     """
     Thrown when a :py:class:`dgenerate.promptweighters.PromptWeighter`
     implementation could not be found for a given name.
@@ -31,7 +38,7 @@ class PromptWeighterNotFoundError(_plugin.PluginNotFoundError):
     pass
 
 
-class PromptWeighterArgumentError(_plugin.PluginArgumentError):
+class PromptWeighterArgumentError(_plugin.PluginArgumentError, PromptWeighterError):
     """
     Thrown when a :py:class:`dgenerate.promptweighters.PromptWeighter`
     implementation is loaded with an invalid argument.
@@ -39,7 +46,7 @@ class PromptWeighterArgumentError(_plugin.PluginArgumentError):
     pass
 
 
-class PromptWeightingUnsupported(Exception):
+class PromptWeightingUnsupported(PromptWeighterError):
     """
     Thrown when a :py:class:`dgenerate.promptweighters.PromptWeighter`
     implementation cannot handle a specific pipeline or combination of pipeline arguments.

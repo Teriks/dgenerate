@@ -27,9 +27,9 @@ import numpy
 import torch
 
 import dgenerate.image as _image
+import dgenerate.imageprocessors.util as _util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
-import dgenerate.imageprocessors.util as _util
 from dgenerate.imageprocessors import imageprocessor as _imageprocessor
 
 

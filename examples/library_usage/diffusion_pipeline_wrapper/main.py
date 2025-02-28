@@ -10,7 +10,7 @@ if device is None:
 # that uses SDXL
 
 # It is useful for generating singular images
-# and utilizes dgenerates pipeline memory
+# and utilizes dgenerate's pipeline memory
 # management and caching features
 
 # this is designed in a way where it is friendly to

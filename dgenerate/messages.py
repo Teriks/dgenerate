@@ -112,7 +112,7 @@ def with_level(level):
 
 def set_error_file(file: typing.TextIO):
     """
-    Set a file stream or file like object for dgenerates error output.
+    Set a file stream or file like object for dgenerate's error output.
 
     :param file: The file stream
     """
@@ -122,7 +122,7 @@ def set_error_file(file: typing.TextIO):
 
 def set_message_file(file: typing.TextIO):
     """
-    Set a file stream or file like object for dgenerates normal (non error) output.
+    Set a file stream or file like object for dgenerate's normal (non error) output.
 
     :param file: The file stream
     """
@@ -132,7 +132,7 @@ def set_message_file(file: typing.TextIO):
 
 def get_error_file():
     """
-    Get the file stream or file like object for dgenerates error output.
+    Get the file stream or file like object for dgenerate's error output.
 
     """
     global _ERROR_FILE
@@ -141,7 +141,7 @@ def get_error_file():
 
 def get_message_file():
     """
-    Get the file stream or file like object for dgenerates normal (non error) output.
+    Get the file stream or file like object for dgenerate's normal (non error) output.
 
     """
     global _MESSAGE_FILE
@@ -150,7 +150,7 @@ def get_message_file():
 
 def messages_to_null():
     """
-    Force dgenerates normal output to a null file.
+    Force dgenerate's normal output to a null file.
     """
     global _MESSAGE_FILE
     _MESSAGE_FILE = open(os.devnull, "w")
@@ -158,7 +158,7 @@ def messages_to_null():
 
 def errors_to_null():
     """
-    Force dgenerates error output to a null file.
+    Force dgenerate's error output to a null file.
     """
     global _ERROR_FILE
     _ERROR_FILE = open(os.devnull, "w")
@@ -184,7 +184,7 @@ def remove_logging_handler(callback: typing.Callable[[typing.ParamSpecArgs, int,
 
 def log(*args: typing.Any, level=INFO, underline=False, underline_char='='):
     """
-    Write a message to dgenerates log
+    Write a message to dgenerate's log
 
     :param args: args, objects that will be stringified and joined with a space
     :param level: Log level, one of:

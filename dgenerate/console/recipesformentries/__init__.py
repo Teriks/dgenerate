@@ -40,5 +40,6 @@ from .urientry import _UriEntry
 from .imageseedentry import _ImageSeedEntry
 from .fluxcontrolnetentry import _FluxControlNetEntry
 from .quantizerurientry import _QuantizerEntry
+from .promptupscalerentry import _PromptUpscalerEntry
 
 from .entry import DIVIDER_YPAD, ROW_XPAD

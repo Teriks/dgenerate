@@ -19,24 +19,22 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import typing
-
 import PIL.Image
 import PIL.ImageOps
 import diffusers
 import torch
 
+import dgenerate.extras.asdff.base as _asdff
+import dgenerate.image as _image
 import dgenerate.imageprocessors.imageprocessor as _imageprocessor
 import dgenerate.messages
-import dgenerate.types as _types
-import dgenerate.extras.asdff.base as _asdff
 import dgenerate.pipelinewrapper as _pipelinewrapper
-import dgenerate.image as _image
-import dgenerate.promptweighters as _promptweighters
+import dgenerate.pipelinewrapper.constants as _constants
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.uris as _uris
-import dgenerate.pipelinewrapper.constants as _constants
+import dgenerate.promptweighters as _promptweighters
 import dgenerate.textprocessing as _textprocessing
+import dgenerate.types as _types
 
 
 class AdetailerProcessor(_imageprocessor.ImageProcessor):

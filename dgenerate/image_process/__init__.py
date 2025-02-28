@@ -56,7 +56,7 @@ from .renderloopconfig import (
 )
 
 __doc__ = """
-Implements the behaviors of dgenerates ``image-process`` sub-command and ``\\image_process`` config directive.
+Implements the behaviors of dgenerate's ``image-process`` sub-command and ``\\image_process`` config directive.
 """
 
 __all__ = dgenerate.types.module_all()

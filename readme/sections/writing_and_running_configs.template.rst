@@ -358,7 +358,7 @@ Arbitrary files can be downloaded via the ``\download`` directive.
 This directive can be used to download a file and assign its
 downloaded path to a template variable.
 
-Files can either be inserted into dgenerates web cache or
+Files can either be inserted into dgenerate's web cache or
 downloaded to a specific directory or absolute path.
 
 This directive is designed with using cached files in mind,

@@ -82,12 +82,12 @@ render_loop = RenderLoop(
 render_loop.image_processor_loader.add_class(MyProcessor)
 
 # Find processor classes in a module and add them, this module
-# enters dgenerates plugin cache
+# enters dgenerate's plugin cache
 
 # render_loop.image_processor_loader.load_plugin_modules(['my_python_module'])
 
 # Find processor classes in a file and add them, this file enters
-# dgenerates plugin cache
+# dgenerate's plugin cache
 
 # render_loop.image_processor_loader.load_plugin_modules(['my_python_file.py'])
 

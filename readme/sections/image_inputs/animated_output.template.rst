@@ -50,7 +50,7 @@ For more information about this see: `Specifying ControlNets`_
 
 And also: `Specifying T2I Adapters`_
 
-As well as the information about ``--image-seeds`` from dgenerates ``--help``
+As well as the information about ``--image-seeds`` from dgenerate's ``--help``
 output.
 
 IP Adapter images can also be animated inputs see: `Specifying IP Adapters`_

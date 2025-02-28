@@ -225,6 +225,15 @@ dgenerate.pygments module
 
    .. automethod:: get_tokens_unprocessed
 
+dgenerate.spacycache module
+---------------------------
+
+.. automodule:: dgenerate.spacycache
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :special-members: __call__, __init__
+
 dgenerate.renderloop module
 ---------------------------
 

@@ -599,7 +599,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '-gc', '--global-config', action='store', default=None,
             metavar="FILE",
-            help="""Provide a json, yaml, or toml file to configure dgenerates global settings.
+            help="""Provide a json, yaml, or toml file to configure dgenerate's global settings.
                     These settings include various default values for generation and garbage
                     collection settings for the in memory caches."""
         )
@@ -1078,7 +1078,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                     If an AutoencoderKL VAE model file exists at a URL which serves the file as
                     a raw download, you may provide an http/https link to it and it will be
-                    downloaded to dgenerates web cache.
+                    downloaded to dgenerate's web cache.
                     
                     Aside from the "model" argument, there are four other optional arguments that can be specified,
                     these are: "revision", "variant", "subfolder", "dtype".
@@ -1148,7 +1148,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                     If a LoRA model file exists at a URL which serves the file as
                     a raw download, you may provide an http/https link to it and it will be
-                    downloaded to dgenerates web cache.
+                    downloaded to dgenerate's web cache.
                     
                     Hugging Face blob links are not supported, see "subfolder" and "weight-name" below instead.
                     
@@ -1233,7 +1233,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                     If an IP Adapter model file exists at a URL which serves the file as
                     a raw download, you may provide an http/https link to it and it will be
-                    downloaded to dgenerates web cache.
+                    downloaded to dgenerate's web cache.
                     
                     Hugging Face blob links are not supported, see "subfolder" and "weight-name" below instead.
                     
@@ -1271,7 +1271,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                     If a Textual Inversion model file exists at a URL which serves the file as
                     a raw download, you may provide an http/https link to it and it will be
-                    downloaded to dgenerates web cache.
+                    downloaded to dgenerate's web cache.
                     
                     Hugging Face blob links are not supported, see "subfolder" and "weight-name" below instead.
                     
@@ -1315,7 +1315,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                     If a ControlNet model file exists at a URL which serves the file as
                     a raw download, you may provide an http/https link to it and it will be
-                    downloaded to dgenerates web cache.
+                    downloaded to dgenerate's web cache.
                     
                     Optional arguments can be provided after the ControlNet model specification,
                     these are: "scale", "start", "end", "revision", "variant", "subfolder", and "dtype".
@@ -1374,7 +1374,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                     If a T2IAdapter model file exists at a URL which serves the file as
                     a raw download, you may provide an http/https link to it and it will be
-                    downloaded to dgenerates web cache.
+                    downloaded to dgenerate's web cache.
                     
                     Optional arguments can be provided after the T2IAdapter model specification,
                     these are: "scale", "revision", "variant", "subfolder", and "dtype".
@@ -2546,7 +2546,7 @@ class DgenerateUsageError(Exception):
 
 class DgenerateArguments(dgenerate.RenderLoopConfig):
     """
-    Represents dgenerates parsed command line arguments, can be used
+    Represents dgenerate's parsed command line arguments, can be used
     as a configuration object for :py:class:`dgenerate.renderloop.RenderLoop`.
     """
 
@@ -2972,7 +2972,7 @@ def parse_known_args(args: collections.abc.Sequence[str] | None = None,
     """
     Parse only known arguments off the command line.
 
-    Ignores dgenerates only required argument ``model_path`` by default.
+    Ignores dgenerate's only required argument ``model_path`` by default.
 
     No logical validation is performed, :py:meth:`DgenerateArguments.check()` is not called by this function,
     only argument parsing and simple type validation is performed by this function.
@@ -3026,7 +3026,7 @@ def parse_args(args: collections.abc.Sequence[str] | None = None,
                log_error: bool = True,
                help_raises: bool = False) -> DgenerateArguments | None:
     """
-    Parse dgenerates command line arguments and return a configuration object.
+    Parse dgenerate's command line arguments and return a configuration object.
 
     :param args: arguments list, as in args taken from sys.argv, or in that format
     :param throw: throw :py:exc:`.DgenerateUsageError` on error? defaults to ``True``
