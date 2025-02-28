@@ -16,17 +16,18 @@
 # below we use the embedded argument syntax to specify the dynamicprompts upscaler
 # which is capable of producing prompt variations in a combinatorial or random fashion
 # depending on configuration, as well as the magicprompt upscaler which can enhance
-# prompts using an LLM
+# prompts using an LLM, then we use the attention upscaler to add random attention
+# values to the prompt tokens
 
 # multiple prompt upscalers can be specified if you desire, their results will be chained
 # together sequentially, this will be handled correctly even if the prompt upscaler
 # returns multiple prompts via expansion
 
 
-# this example uses both the dynamicprompts plugin
-# and the magicprompt plugin
+# this example uses the dynamicprompts plugin,
+# the magicprompt plugin, and the attention plugin
 
-\prompt_upscaler_help dynamicprompts magicprompt
+\prompt_upscaler_help dynamicprompts magicprompt attention
 
 
 # 2 variants of a combinatorial prompt will be generated using dynamicprompts
@@ -36,7 +37,7 @@
 # the 2 prompts will be upscaled by the LLM as variations with different text, as
 # the seed argument of magicprompt has not been set
 
-# then dynamicprompts will add random attention values to the resulting prompts
+# then the attention upscaler will add random attention values to the resulting prompts
 
 stabilityai/stable-diffusion-xl-base-1.0
 --model-type torch-sdxl
@@ -49,4 +50,4 @@ stabilityai/stable-diffusion-xl-base-1.0
 --output-path output
 --output-size 1024x1024
 --prompt-weighter sd-embed
---prompts "<upscaler: dynamicprompts> <upscaler: magicprompt> <upscaler: dynamicprompts;attention=True> a large {horse|dog} in a field, cloudy day"
+--prompts "<upscaler: dynamicprompts> <upscaler: magicprompt> <upscaler: dynamicprompts> <upscaler: attention> a large {horse|dog} in a field, cloudy day"

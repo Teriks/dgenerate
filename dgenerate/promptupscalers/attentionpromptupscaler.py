@@ -18,58 +18,59 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-import os.path
+import random
 import typing
 
 import pyparsing
+
 import dgenerate.promptupscalers.promptupscaler as _promptupscaler
 import dgenerate.promptupscalers.exceptions as _exceptions
 import dgenerate.prompt as _prompt
-
-from dynamicprompts.generators import CombinatorialPromptGenerator as _CombinatorialPromptGenerator
-from dynamicprompts.generators import RandomPromptGenerator as _RandomPromptGenerator
-from dynamicprompts.wildcards.wildcard_manager import WildcardManager as _WildcardManager
 import dgenerate.types as _types
+import dgenerate.spacycache as _spacycache
 
 
-class DynamicPromptsUpscaler(_promptupscaler.PromptUpscaler):
+class AttentionUpscaler(_promptupscaler.PromptUpscaler):
     """
-    Upscale prompts with the dynamicprompts library.
+    Add random attention values to your prompt tokens.
 
-    This upscaler allows you to use a special syntax for
-    combinatorial prompt variations.
-
-    See: https://github.com/adieyal/dynamicprompts
+    This is ment for use with --prompt-weighter plugins such as "sd-embed" or "compel"
 
     The "part" argument indicates which parts of the prompt to act on,
     possible values are: "both", "positive", and "negative"
 
-    The "random" argument specifies that instead of strictly combinatorial
-    output, dynamicprompts should produce N random variations of your
-    prompt given the possibilities you have provided.
+    The "min" argument sets the minimum value for random
+    attention added. The default value is 0.1
+
+    The "max" argument sets the maximum value for random
+    attention added. The Default value is 0.9
 
     The "seed" argument can be used to specify a seed for
-    the "random" prompt generation.
+    the random attenuation values that are added to your prompt.
 
-    The "variations" argument specifies how many variations should
-    be produced when "random" is set to true. This argument cannot
-    be used without specifying "random". The default value is 1.
+    The "lang" argument can be used to specify the prompt language,
+    the default value is 'en' for english, this can be one of: 'en',
+    'de', 'fr', 'es', 'it', 'nl', 'pt', 'ru', 'zh'.
 
-    The "wildcards" argument can be used to specify a wildcards directory
-    for dynamicprompts wildcard syntax.
+    The "syntax" argument specifies the token attention value syntax,
+    this can be one of "sd-embed" (SD Web UI Syntax) or "compel"
+    (InvokeAI Syntax).
     """
 
-    NAMES = ['dynamicprompts']
+    NAMES = ['attention']
 
     HIDE_ARGS = ['device']
 
+    # these are languages where noun chunking is supported
+    _langs = ['en', 'de', 'fr', 'es', 'it', 'nl', 'pt', 'ru', 'zh']
+
     def __init__(self,
                  part: str = 'both',
-                 random: bool = False,
+                 min: int = 0.1,
+                 max: int = 0.9,
                  seed: int | None = None,
-                 variations: int | None = None,
-                 wildcards: str | None = None,
+                 lang: str = 'en',
+                 syntax: str = 'sd-embed',
                  **kwargs
                  ):
         """
@@ -83,63 +84,60 @@ class DynamicPromptsUpscaler(_promptupscaler.PromptUpscaler):
             raise self.argument_error(
                 'Argument "part" must be one of: "both", "positive", or "negative"')
 
-        if not random:
-            if seed:
-                raise self.argument_error(
-                    'Cannot specify "seed" without "random=True".'
-                )
-
-            if variations is not None:
-                raise self.argument_error(
-                    'Cannot specify "variations" without "random=True".')
-
-        if variations is not None and variations < 1:
+        lang = lang.lower()
+        if lang not in self._langs:
             raise self.argument_error(
-                'Argument "variations" may not be less than 1.')
+                f'Argument "lang" must be one of: {", ".join(self._langs)}')
 
-        if wildcards:
-            if not os.path.isdir(wildcards):
-                raise self.argument_error(
-                    'Argument "wildcards" must be a path to an exiting directory.'
-                )
+        syntax = syntax.lower()
+        if syntax not in {'sd-embed', 'compel'}:
+            raise self.argument_error(
+                'Argument "syntax" must be one of: sd-embed, or compel')
 
-            wildcard_manager = _WildcardManager(wildcards)
-        else:
-            wildcard_manager = None
+        self._min, self._max = sorted(
+            (min, max),
+        )
 
-        if random:
-            self._gen = _RandomPromptGenerator(
-                wildcard_manager=wildcard_manager,
-                seed=seed
-            )
-        else:
-            self._gen = _CombinatorialPromptGenerator(
-                wildcard_manager=wildcard_manager
-            )
-
-        self._seed = seed
-        self._variations = variations
         self._part = part
+        self._syntax = syntax
+        self._rng = random.Random(seed)
+
+        try:
+            self._nlp = _spacycache.load_spacy_model(f"{lang.lower()}_core_web_sm")
+        except _spacycache.SpacyModelNotFoundException as e:
+            raise _exceptions.PromptUpscalerProcessingError(f'Could not load spaCy model: {e}')
+
+    def _find_noun_chunks(self, text: str) -> list[str, ...]:
+        return [str(chunk) for chunk in self._nlp(text).noun_chunks]
+
+    def _generate(self, prompt: str):
+        keywords = self._find_noun_chunks(prompt)
+        if not keywords:
+            return prompt
+
+        keyword = random.choice(keywords)
+        attention = round(self._rng.uniform(self._min, self._max), 2)
+
+        if self._syntax == 'sd-embed':
+            return prompt.replace(str(keyword), f"({keyword}:{attention})")
+        else:
+            return prompt.replace(str(keyword), f"({keyword}){attention}")
 
     def upscale(self, prompt: _prompt.Prompt) -> _prompt.PromptOrPrompts:
 
         if isinstance(prompt, typing.Iterable):
             raise _exceptions.PromptUpscalerProcessingError(
-                'dynamicprompts prompt upscaler cannot handle batch prompt input.'
+                'attention prompt upscaler cannot handle batch prompt input.'
             )
-
-        args = {}
-        if self._variations is not None:
-            args['num_images'] = self._variations
 
         try:
             if prompt.positive and self._part in {'both', 'positive'}:
-                generated_pos_prompts = self._gen.generate(prompt.positive, **args)
+                generated_pos_prompts = [self._generate(prompt.positive)]
             else:
                 generated_pos_prompts = [None]
 
             if prompt.negative and self._part in {'both', 'negative'}:
-                generated_neg_prompts = self._gen.generate(prompt.negative, **args)
+                generated_neg_prompts = [self._generate(prompt.negative)]
             else:
                 generated_neg_prompts = [None]
         except pyparsing.ParseException as e:

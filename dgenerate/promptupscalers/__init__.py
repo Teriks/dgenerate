@@ -27,6 +27,7 @@ from .promptupscalerloader import PromptUpscalerLoader
 from .promptupscaler import PromptUpscaler
 from .dynamicpromptsupscaler import DynamicPromptsUpscaler
 from .magicpromptupscaler import MagicPromptUpscaler
+from .attentionpromptupscaler import AttentionUpscaler
 
 try:
     import gpt4all

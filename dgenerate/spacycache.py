@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import contextlib
 import importlib.metadata
 import json
 import os
@@ -26,6 +27,7 @@ import re
 import shutil
 import types
 import sys
+import typing
 import urllib.parse
 import zipfile
 import email.parser
@@ -190,13 +192,29 @@ def _install_whl(model_name, filepath, install_dir):
         whl.extractall(install_dir)
 
 
-def load_spacy_model(model_name: str, local_files_only: bool = False) -> spacy.Language:
+def load_spacy_model(
+        name: str,
+        *,
+        vocab: spacy.Vocab | bool = True,
+        disable: str | typing.Iterable[str] = spacy.util._DEFAULT_EMPTY_PIPES,
+        enable: str | typing.Iterable[str] = spacy.util._DEFAULT_EMPTY_PIPES,
+        exclude: str | typing.Iterable[str] = spacy.util._DEFAULT_EMPTY_PIPES,
+        config: dict[str, typing.Any] | spacy.Config = spacy.util.SimpleFrozenDict(),
+        local_files_only: bool = False
+) -> spacy.Language:
     """
     Load a spaCy model, possibly downloading it if needed.
 
-    :param model_name: Name of the spaCy model.
+    :param name: Name of the spaCy model.
+    :param vocab: A Vocab object. If True, a vocab is created.
+    :param disable: Name(s) of pipeline component(s) to disable. Disabled pipes will be loaded but
+        won't be run unless explicitly enabled using ``nlp.enable_pipe``.
+    :param enable: Name(s) of pipeline component(s) to enable. All other pipes will be disabled but
+        can be enabled later using ``nlp.enable_pipe``.
+    :param exclude: Name(s) of pipeline component(s) to exclude. Excluded components won't be loaded.
+    :param config: Config overrides as a nested dict or a dict keyed by section values in dot notation.
     :param local_files_only: Avoid connecting to the internet? look in the cache only.
-    :return: :py:class:`spacy.Language`
+    :return: The loaded nlp object. :py:class:`spacy.Language`
     """
     import spacy.cli.download as _download_module
     import spacy.about as _about
@@ -209,15 +227,15 @@ def load_spacy_model(model_name: str, local_files_only: bool = False) -> spacy.L
     with _filelock.temp_file_lock(os.path.join(spacy_cache_dir, '.lock')):
 
         filename = _download_module.get_model_filename(
-            model_name, _get_version(model_name, _get_compatibility(local_files_only)))
+            name, _get_version(name, _get_compatibility(local_files_only)))
 
-        model_site_package = os.path.join(spacy_cache_dir, model_name)
+        model_site_package = os.path.join(spacy_cache_dir, name)
 
         if not os.path.isdir(model_site_package):
 
             if local_files_only:
                 raise SpacyModelNotFoundException(
-                    f'Cannot find spaCy model "{model_name}" in the spaCy model cache, '
+                    f'Cannot find spaCy model "{name}" in the spaCy model cache, '
                     f'offline mode is active and it may need to be downloaded.')
 
             base_url = _about.__download_url__
@@ -230,13 +248,13 @@ def load_spacy_model(model_name: str, local_files_only: bool = False) -> spacy.L
             whl_download_to = os.path.join(spacy_cache_dir, os.path.basename(filename))
 
             try:
-                _download_whl_file(model_name, download_url, whl_download_to)
+                _download_whl_file(name, download_url, whl_download_to)
             except requests.RequestException as e:
                 raise SpacyModelNotFoundException(
-                    f'Unable to downloaded spaCy model "{model_name}", reason: {e}')
+                    f'Unable to downloaded spaCy model "{name}", reason: {e}')
 
             try:
-                _install_whl(model_name, whl_download_to, spacy_cache_dir)
+                _install_whl(name, whl_download_to, spacy_cache_dir)
             except Exception as e:
                 raise SpacyModelNotFoundException(
                     f'Unable to extract spaCy model whl file "{whl_download_to}", reason: {e}'
@@ -244,8 +262,16 @@ def load_spacy_model(model_name: str, local_files_only: bool = False) -> spacy.L
 
             os.unlink(whl_download_to)
 
+        model_path = os.path.join(os.path.abspath(model_site_package), os.path.dirname(filename))
+
         return spacy.load(
-            os.path.join(os.path.abspath(model_site_package), os.path.dirname(filename)))
+            model_path,
+            vocab=vocab,
+            disable=disable,
+            enable=enable,
+            exclude=exclude,
+            config=config
+        )
 
 
 __all__ = _types.module_all()
