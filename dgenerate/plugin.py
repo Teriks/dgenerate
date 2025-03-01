@@ -184,8 +184,7 @@ class Plugin:
         :param kwargs: Additional arguments that may arise when using an ``ARGS`` static signature definition
             with multiple ``NAMES`` in your implementation.
         """
-        super().__init__(**kwargs)
-        
+
         self.__loaded_by_name = loaded_by_name
         self.__argument_error_type = argument_error_type
 

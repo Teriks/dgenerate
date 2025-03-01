@@ -49,7 +49,7 @@ def _with_seed(seed: int | None):
             torch.random.set_rng_state(orig_state)
 
 
-class MagicPromptUpscaler(_promptupscaler.PromptUpscaler, _llmupscalermixin.LLMPromptUpscalerMixin):
+class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupscaler.PromptUpscaler):
     """
     Upscale prompts using magicprompt or other LLMs via transformers.
 
@@ -277,12 +277,12 @@ class MagicPromptUpscaler(_promptupscaler.PromptUpscaler, _llmupscalermixin.LLMP
             for ptext in formatted_prompts:
                 generated_prompts.extend(
                     self._pipeline(
-                    [ptext],
-                    max_length=self._max_length,
-                    temperature=self._temperature,
-                    do_sample=True,
-                    batch_size=1,
-                ))
+                        [ptext],
+                        max_length=self._max_length,
+                        temperature=self._temperature,
+                        do_sample=True,
+                        batch_size=1,
+                    ))
         else:
             generated_prompts = self._pipeline(
                 formatted_prompts,
