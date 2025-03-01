@@ -79,6 +79,8 @@ class LLMPromptUpscalerMixin(abc.ABC):
         self._cleanup_mode = cleanup_mode
         self._smart_truncate = smart_truncate
 
+        self._custom_cleanup_operations = None
+
         if cleanup_config:
             cleanup_config_operations = self._load_custom_cleanup_operations(cleanup_config)
             self._validate_custom_cleanup_operations(cleanup_config_operations)
