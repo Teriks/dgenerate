@@ -184,13 +184,13 @@ The python function in ``cleanup.py``, would be defined as so:
 
 .. code-block:: python
 
-    def my_function(text: str) -> str
+    def my_function(text: str) -> str:
         # modify the text here and return it
 
         return text
 
 
-    def my_function2(text: str) -> str
+    def my_function2(text: str) -> str:
         # modify the text here and return it
 
         return text
