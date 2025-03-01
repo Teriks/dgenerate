@@ -638,23 +638,25 @@ def shell_expandvars(string: str) -> str:
     return result
 
 
-def shell_quote(string: str):
+def shell_quote(string: str, strict: bool = False):
     """
     Shell quote a string, compatible with dgenerate config shell syntax.
 
     :param string: The input string.
+
+    :param strict: Setting this to true disallows text from being
+        intermixed next to complete strings, for example: ```test'string'``
+        would be fully quoted, even though the shell can normally parse
+        this as a single token.  URI arguments do now allow intermixed
+        strings, so this is useful for quoting URI argument values.
     :return: The quoted string.
     """
     try:
-        result = shell_parse(
-            string,
-            expand_home=False,
-            expand_vars=False,
-            expand_glob=False,
-            expand_vars_func=lambda x: x
-        )
+        result = tokenized_split(string, ' ',
+                                 strict=strict,
+                                 remove_stray_separators=True)
         needs_quoting = len(result) > 1
-    except ShellParseSyntaxError:
+    except TokenizedSplitSyntaxError:
         needs_quoting = True
 
     if needs_quoting:

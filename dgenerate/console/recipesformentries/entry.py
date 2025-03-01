@@ -44,11 +44,11 @@ def replace_first(text, old, new):
 
 
 def shell_quote_if(text):
-    if text and ' ' in text \
+    if text and ' ' in text or "'" in text \
             and '{%' not in text \
             and '{{' not in text \
             and '{#' not in text:
-        return _textprocessing.shell_quote(text)
+        return _textprocessing.shell_quote(text, strict=True)
     return text
 
 
