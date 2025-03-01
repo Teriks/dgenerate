@@ -43,12 +43,12 @@ def replace_first(text, old, new):
     return '\n'.join(out)
 
 
-def shell_quote_if(text):
-    if text and ' ' in text or "'" in text \
+def shell_quote_if(text, strict: bool = False):
+    if text and ' ' in text or "'" in text or '"' in text \
             and '{%' not in text \
             and '{{' not in text \
             and '{#' not in text:
-        return _textprocessing.shell_quote(text, strict=True)
+        return _textprocessing.shell_quote(text, strict=strict)
     return text
 
 
