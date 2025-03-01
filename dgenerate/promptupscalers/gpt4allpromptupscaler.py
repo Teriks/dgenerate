@@ -35,7 +35,7 @@ import dgenerate.webcache as _webcache
 import dgenerate.promptupscalers.llmupscalermixin as _llmupscalermixin
 
 
-class GPT4ALLPromptUpscaler(_promptupscaler.PromptUpscaler, _llmupscalermixin.LLMPromptUpscalerMixin):
+class GPT4ALLPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupscaler.PromptUpscaler):
     """
     Upscale prompts using LLMs loadable by GPT4ALL.
 

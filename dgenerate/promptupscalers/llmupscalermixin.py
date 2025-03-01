@@ -74,8 +74,10 @@ class LLMPromptUpscalerMixin(abc.ABC):
     def _generate_prompts(self, orig_prompts: list[str]):
         pass
 
-    @abc.abstractmethod
     def argument_error(self, message: str) -> type[Exception]:
+        """
+        Override me.
+        """
         pass
 
     def _generate(self, prompts: list[str] | str) -> list[str]:
