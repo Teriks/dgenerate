@@ -20,7 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-import shlex
+import dgenerate.textprocessing as _textprocessing
 import typing
 
 ROW_XPAD = (5, 2)
@@ -48,7 +48,7 @@ def shell_quote_if(text):
             and '{%' not in text \
             and '{{' not in text \
             and '{#' not in text:
-        return shlex.quote(text)
+        return _textprocessing.shell_quote(text)
     return text
 
 

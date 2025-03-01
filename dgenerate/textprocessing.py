@@ -638,6 +638,32 @@ def shell_expandvars(string: str) -> str:
     return result
 
 
+def shell_quote(string: str):
+    """
+    Shell quote a string, compatible with dgenerate config shell syntax.
+
+    :param string: The input string.
+    :return: The quoted string.
+    """
+    try:
+        result = shell_parse(
+            string,
+            expand_home=False,
+            expand_vars=False,
+            expand_glob=False,
+            expand_vars_func=lambda x: x
+        )
+        needs_quoting = len(result) > 1
+    except ShellParseSyntaxError:
+        needs_quoting = True
+
+    if needs_quoting:
+        string = string.replace("'", "\\'")
+        return f"'{string}'"
+
+    return string
+
+
 def shell_parse(string,
                 expand_home: bool = True,
                 expand_vars: bool = True,
