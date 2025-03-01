@@ -21,6 +21,7 @@
 import collections.abc
 import gc
 import inspect
+import itertools
 import os.path
 import typing
 
@@ -717,7 +718,7 @@ def destroy_last_called_pipeline(collect=True):
             _memory.torch_gc()
 
 
-def _evict_last_pipeline(device: torch.device):
+def _evict_last_pipeline(device: torch.device | None):
     active_pipe = get_last_called_pipeline()
 
     if active_pipe is None:
@@ -725,11 +726,15 @@ def _evict_last_pipeline(device: torch.device):
 
     current_device_index = torch.cuda.current_device()
 
-    pipe_device_index = _types.default(
-        get_torch_device(active_pipe).index, current_device_index)
+    if device is None:
+        pipe_device_index = 0
+        device_index = 0
+    else:
+        pipe_device_index = _types.default(
+            get_torch_device(active_pipe).index, current_device_index)
 
-    device_index = _types.default(
-        device.index, current_device_index)
+        device_index = _types.default(
+            device.index, current_device_index)
 
     if pipe_device_index == device_index:
         # get rid of this reference immediately
@@ -757,7 +762,6 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline,
     """
     Call a diffusers pipeline, offload the last called pipeline to CPU before
     doing so if the last pipeline is not being called in succession
-
 
 
     :param pipeline: The pipeline
@@ -2122,6 +2126,21 @@ def _create_torch_diffusion_pipeline(
         f'Estimated CPU Side Memory Use: {_memory.bytes_best_human_unit(estimated_memory_usage)}')
 
     _enforce_torch_pipeline_cache_size(estimated_memory_usage)
+
+    uri_quant_check: list[typing.Any] = [
+        _uris.TextEncoderUri.parse(uri) for uri in text_encoder_uris
+    ]
+
+    if transformer_uri:
+        uri_quant_check.append(_uris.TransformerUri.parse(transformer_uri))
+    if unet_uri:
+        uri_quant_check.append(_uris.UNetUri.parse(unet_uri))
+
+    if quantizer_uri or any(p.quantizer for p in itertools.chain.from_iterable(uri_quant_check)):
+        # for now, just knock out anything cached on the gpu, such as the last pipeline
+        # the quantized pipeline modules are likely going to go straight onto the GPU
+        # immediately, and they are guaranteed to be of non-trivial size
+        _devicecache.clear_device_cache(device)
 
     # ControlNet and VAE loading
 

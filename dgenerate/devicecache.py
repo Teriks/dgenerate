@@ -33,22 +33,23 @@ These objects may be cached in small quantity by various dgenerate sub-modules.
 __eviction_methods = []
 
 
-def register_eviction_method(method: typing.Callable[[torch.device], None]):
+def register_eviction_method(method: typing.Callable[[torch.device | None], None]):
     """
     Register a method for evicting an object cached on the GPU.
 
     This will be called upon calling :py:meth:`clear_device_cache`.
 
-    :param method: Eviction method, first argument is the ``torch.device`` being considered.
+    :param method: Eviction method, first argument is the ``torch.device`` being considered,
+        if this value is ``None``, any torch device with cached objects should be considered.
     """
     __eviction_methods.append(method)
 
 
-def clear_device_cache(device: torch.device | str):
+def clear_device_cache(device: torch.device | str | None = None):
     """
     Clear every object cached by dgenerate in its GPU side cache for a specific device.
 
-    :param device: The device the objects are cached on.
+    :param device: The device the objects are cached on, specifying ``None`` clears all devices.
     """
 
     device = torch.device(device)
