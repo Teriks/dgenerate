@@ -32,6 +32,7 @@ import typing
 import webbrowser
 import packaging.version
 import importlib.util
+import bisect
 
 import PIL.Image
 import PIL.ImageTk
@@ -94,11 +95,17 @@ def get_recipes():
     if _RECIPES:
         return _RECIPES
 
-    for file in sorted(importlib.resources.files('dgenerate.console').joinpath('recipes').iterdir(),
-                       key=lambda f: int(os.path.splitext(f.name)[0])):
+    recipes = []
+
+    for file in importlib.resources.files('dgenerate.console').joinpath('recipes').iterdir():
         text = file.read_text()
-        title, rest = text.split('\n', 1)
-        _RECIPES[title.split(':', 1)[1].strip()] = rest.strip()
+        title, order, rest = text.split('\n', 2)
+        title = title.split(':', 1)[1].strip()
+        order = int(order.split(':', 1)[1].strip())
+        bisect.insort(recipes, (order, title, rest), key=lambda x: x[0])
+
+    for recipe in recipes:
+        _RECIPES[recipe[1]] = recipe[2]
 
     return _RECIPES
 

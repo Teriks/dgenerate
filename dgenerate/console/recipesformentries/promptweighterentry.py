@@ -19,42 +19,26 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import tkinter as tk
-import typing
 
-import dgenerate.console.recipesformentries.entry as _entry
-import dgenerate.console.resources as _resources
 import dgenerate.console.recipesformentries.pluginschemaentry as _schemaentry
+import dgenerate.console.resources as _resources
 
 
-class _KarrasSchedulerEntry(_schemaentry._PluginSchemaEntry):
-    NAME = 'karrasscheduler'
+class _PromptWeighterEntry(_schemaentry._PluginSchemaEntry):
+    NAME = 'promptweighter'
 
     def __init__(self, *args, **kwargs):
+        schema = _resources.get_schema('promptweighters')
 
-        super().__init__(
-            *args,
-            label='Karras Scheduler',
-            help_button=False,
-            schema=_resources.get_schema('karrasschedulers'),
-            **kwargs)
+        config = kwargs.get('config', {})
 
-    def _create_entry_single_type(self,
-                                  param_name: str,
-                                  param_type: str,
-                                  default_value: typing.Any,
-                                  optional: bool,
-                                  row: int) -> _schemaentry._PluginArgEntry:
+        hidden_args = set()
+        if config.get('hide-device', False):
+            hidden_args.add('device')
 
-        created_simple_type, entry = self._create_int_float_bool_entries(param_type, default_value, optional, row)
-        if created_simple_type:
-            return entry
-        elif param_name == 'prediction-type':
-            default_value = str(default_value)
-            variable = tk.StringVar(value=default_value)
-            entry = tk.OptionMenu(
-                self.master, variable, *_resources.get_karras_scheduler_prediction_types())
-            entry.grid(row=row, column=1, sticky='we', padx=_entry.ROW_XPAD)
-            return _schemaentry._PluginArgEntry(raw=False, widgets=[entry], variable=variable)
-        else:
-            return self._create_raw_type_entry(param_type, default_value, optional, row)
+        super().__init__(*args,
+                         label='Prompt Weighter',
+                         hidden_args=hidden_args,
+                         help_button=True,
+                         schema_help_node='PROMPT_WEIGHTER_HELP',
+                         schema=schema, **kwargs)

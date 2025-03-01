@@ -1,4 +1,5 @@
 title: Deep Floyd
+order: 12
 
 # DeepFloyd requires a multistage generation process involving 
 # multiple models and more advanced use of dgenerate
@@ -23,29 +24,31 @@ title: Deep Floyd
 \set auth_token {{ '--auth-token ' + quote(auth_token) if auth_token else '' }}
 
 @uri[{"label":"Stage 1 Model Path / HF Slug", "default": "DeepFloyd/IF-I-M-v1.0", "optional":false, "dir":true, "file-types":["models"]}]
-@karrasscheduler[{"label":"Stage 1 Scheduler", "filter": ["DDPMScheduler"]}]
---variant fp16
---dtype float16
 --model-type torch-if
---model-sequential-offload
+@dropdown[{"label":"Stage 1 Model dtype", "arg":"--dtype", "options":["float16", "float32"], "default":"float16"}]
+@dropdown[{"label":"Stage 1 Model variant", "arg":"--variant", "options":["fp16"], "default":"fp16"}]
+@karrasscheduler[{"label":"Stage 1 Scheduler", "arg":"--scheduler", "filter": ["DDPMScheduler"]}]
+@switchradio[{"labels":["Stage 1 Model CPU Offload", "Stage 1 Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "default":1}]
 @int[{"label":"Stage 1 Inference Steps", "arg":"--inference-steps", "default":60, "min":1}]
 @float[{"label":"Stage 1 Guidance Scale", "arg":"--guidance-scales", "default":7, "min":0}]
 --output-size 64
-@seeds[{"label":"Seeds", "divider-after":true}]
+@seeds[{"label":"Seeds"}]
+@quantizer[{"label":"Stage 1 Quantizer", "divider-after":true}]
 --prompts {{ prompt }}
 --output-prefix stage1 {{ device }} {{ output_dir }} {{ auth_token }}
 
 \save_modules stage_1_modules feature_extractor
 
 @uri[{"label":"Stage 2 Model Path / HF Slug", "default": "DeepFloyd/IF-II-M-v1.0", "optional":false, "dir":true, "file-types":["models"]}]
-@karrasscheduler[{"label":"Stage 2 Scheduler", "filter": ["DDPMScheduler"]}]
---variant fp16
---dtype float16
 --model-type torch-ifs
---model-sequential-offload
+@dropdown[{"label":"Stage 2 Model dtype", "arg":"--dtype", "options":["float16", "float32"], "default":"float16"}]
+@dropdown[{"label":"Stage 2 Model variant", "arg":"--variant", "options":["fp16"], "default":"fp16"}]
+@karrasscheduler[{"label":"Stage 2 Scheduler", "arg":"--scheduler", "filter": ["DDPMScheduler"]}]
+@switchradio[{"labels":["Stage 2 Model CPU Offload", "Stage 2 Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "default":1}]
 @int[{"label":"Stage 2 Inference Steps", "arg":"--inference-steps", "default":30, "min":1}]
 @float[{"label":"Stage 2 Guidance Scale", "arg":"--guidance-scales", "default":4, "min":0}]
-@int[{"label":"Stage 2 Upscaler Noise Level", "arg":"--upscaler-noise-levels", "default":250, "min":1, "divider-after":true}]
+@int[{"label":"Stage 2 Upscaler Noise Level", "arg":"--upscaler-noise-levels", "default":250, "min":1}]
+@quantizer[{"label":"Stage 2 Quantizer", "divider-after":true}]
 --prompts {{ format_prompt(last_prompts) }}
 --seeds {{ last_seeds | join(' ') }}
 --seeds-to-images
@@ -55,10 +58,11 @@ title: Deep Floyd
 \use_modules stage_1_modules
 
 @uri[{"label":"Stage 3 - x4 Upscaler Model Path / HF Slug", "default": "stabilityai/stable-diffusion-x4-upscaler", "optional":false, "dir":true, "file-types":["models"]}]
---variant fp16
---dtype float16
 --model-type torch-upscaler-x4
-@karrasscheduler[{"label":"Stage 3 Scheduler"}]
+@dropdown[{"label":"Stage 3 Model dtype", "arg":"--dtype", "options":["float16", "float32"], "default":"float16"}]
+@dropdown[{"label":"Stage 3 Model variant", "arg":"--variant", "options":["fp16"], "default":"fp16"}]
+@karrasscheduler[{"label":"Stage 3 Scheduler", "arg":"--scheduler"}]
+@switchradio[{"labels":["Stage 3 Model CPU Offload", "Stage 3 Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"]}]
 @torchvae[{"label":"Stage 3 VAE File / URI", "dir":true, "file-types":["models"]}]
 @int[{"label":"Stage 3 Inference Steps", "arg":"--inference-steps", "default":30, "min":1}]
 @float[{"label":"Stage 3 Guidance Scale", "arg":"--guidance-scales", "default":9, "min":0}]
@@ -66,7 +70,8 @@ title: Deep Floyd
 --seeds {{ last_seeds | join(' ') }}
 --seeds-to-images
 --image-seeds {{ quote(last_images) }}
-@int[{"label":"Stage 3 Upscaler Noise Level", "arg":"--upscaler-noise-levels", "default":20, "min":1, "divider-after":true}]
+@int[{"label":"Stage 3 Upscaler Noise Level", "arg":"--upscaler-noise-levels", "default":20, "min":1}]
+@quantizer[{"label":"Stage 3 Quantizer", "divider-after":true}]
 @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
 --output-prefix stage3 {{ device }} {{ output_dir }} {{ auth_token }}
 

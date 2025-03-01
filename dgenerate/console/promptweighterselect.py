@@ -23,11 +23,11 @@ import dgenerate.console.recipesformentries as _entries
 import dgenerate.console.pluginuriselector as _pluginuriselector
 
 
-class _PromptUpscalerSelect(_pluginuriselector._PluginUriSelect):
+class _PromptWeighterSelect(_pluginuriselector._PluginUriSelect):
     def __init__(self, master=None, position: tuple[int, int] = None):
         super().__init__(
-            title='Insert Prompt Upscaler URI',
-            plugin_entry_class=_entries._PromptUpscalerEntry,
+            title='Insert Prompt Weighter URI',
+            plugin_entry_class=_entries._PromptWeighterEntry,
             master=master,
             position=position
         )
@@ -39,7 +39,7 @@ _last_pos = None
 def request_uri(master):
     global _last_pos
 
-    window = _PromptUpscalerSelect(master, position=_last_pos)
+    window = _PromptWeighterSelect(master, position=_last_pos)
 
     og_destroy = window.destroy
 
