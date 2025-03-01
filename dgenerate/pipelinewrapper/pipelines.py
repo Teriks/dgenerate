@@ -2129,6 +2129,7 @@ def _create_torch_diffusion_pipeline(
 
     uri_quant_check: list[typing.Any] = [
         _uris.TextEncoderUri.parse(uri) for uri in text_encoder_uris
+        if uri and uri.lower() not in {'+', 'help', 'null'}
     ]
 
     if transformer_uri:
