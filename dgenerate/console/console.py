@@ -834,7 +834,7 @@ class DgenerateConsole(tk.Tk):
         if d is None:
             return
 
-        self._insert_or_replace_input_text(shlex.quote(d))
+        self._insert_or_replace_input_text(_textprocessing.shell_quote(d))
 
     def _input_text_insert_file_path(self):
         f = _filedialog.open_file_dialog(
@@ -843,7 +843,7 @@ class DgenerateConsole(tk.Tk):
         if f is None:
             return
 
-        self._insert_or_replace_input_text(shlex.quote(f))
+        self._insert_or_replace_input_text(_textprocessing.shell_quote(f))
 
     def _input_text_insert_file_path_save(self):
         f = _filedialog.open_file_save_dialog(
@@ -852,7 +852,7 @@ class DgenerateConsole(tk.Tk):
         if f is None:
             return
 
-        self._insert_or_replace_input_text(shlex.quote(f))
+        self._insert_or_replace_input_text(_textprocessing.shell_quote(f))
 
     def _update_image_pane_visibility(self):
         if not self._image_pane_visible_var.get():

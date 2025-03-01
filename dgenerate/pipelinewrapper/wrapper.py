@@ -1127,7 +1127,7 @@ class DiffusionPipelineWrapper:
                 if len(option) > 1:
                     name, value = option
                     if isinstance(value, (str, _prompt.Prompt)):
-                        opts[idx] = (name, shlex.quote(str(value)))
+                        opts[idx] = (name, _textprocessing.shell_quote(str(value)))
                     elif isinstance(value, tuple):
                         opts[idx] = (name, _textprocessing.format_size(value))
                     else:
@@ -1136,7 +1136,7 @@ class DiffusionPipelineWrapper:
                     solo_val = str(option[0])
                     if not solo_val.startswith('-'):
                         # not a solo switch option, some value
-                        opts[idx] = (shlex.quote(solo_val),)
+                        opts[idx] = (_textprocessing.shell_quote(solo_val),)
 
         return opts
 
@@ -1145,12 +1145,12 @@ class DiffusionPipelineWrapper:
         if isinstance(val, tuple):
             return _textprocessing.format_size(val)
         if isinstance(val, str):
-            return shlex.quote(str(val))
+            return _textprocessing.shell_quote(str(val))
 
         try:
             val_iter = iter(val)
         except TypeError:
-            return shlex.quote(str(val))
+            return _textprocessing.shell_quote(str(val))
 
         return ' '.join(DiffusionPipelineWrapper._set_opt_value_syntax(v) for v in val_iter)
 
@@ -1163,7 +1163,7 @@ class DiffusionPipelineWrapper:
                 header_len = len(opt_name) + 2
                 prompt_text = \
                     _textprocessing.wrap(
-                        shlex.quote(str(opt_value)),
+                        _textprocessing.shell_quote(str(opt_value)),
                         subsequent_indent=' ' * header_len,
                         width=75)
 
@@ -1183,7 +1183,7 @@ class DiffusionPipelineWrapper:
             return solo_val
 
         # Not a switch option, some value
-        return shlex.quote(solo_val)
+        return _textprocessing.shell_quote(solo_val)
 
     def gen_dgenerate_config(self,
                              args: DiffusionArguments | None = None,

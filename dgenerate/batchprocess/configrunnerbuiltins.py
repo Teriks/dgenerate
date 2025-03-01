@@ -54,8 +54,8 @@ def _format_prompt_single(prompt):
         raise _batchprocessor.BatchProcessError('Attempt to format a prompt with no positive prompt value.')
 
     if pos and neg:
-        return shlex.quote(f"{pos}; {neg}")
-    return shlex.quote(pos)
+        return _textprocessing.shell_quote(f"{pos}; {neg}")
+    return _textprocessing.shell_quote(pos)
 
 
 def format_prompt(
@@ -80,8 +80,8 @@ def quote(strings: str | collections.abc.Iterable[typing.Any]) -> str:
     Shell quote a string or iterable of strings
     """
     if isinstance(strings, str):
-        return shlex.quote(strings)
-    return ' '.join(shlex.quote(str(s)) for s in strings)
+        return _textprocessing.shell_quote(strings)
+    return ' '.join(_textprocessing.shell_quote(str(s)) for s in strings)
 
 
 def unquote(strings: str | collections.abc.Iterable[typing.Any], expand: bool = False) -> list:
