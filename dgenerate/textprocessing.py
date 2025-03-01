@@ -35,6 +35,7 @@ import packaging.version
 
 import dgenerate.files as _files
 import dgenerate.types as _types
+import dgenerate.memoize as _memoize
 
 __doc__ = """
 Text processing, console text rendering, and parsing utilities. URI parser, and reusable tokenization.
@@ -69,6 +70,9 @@ class ConceptUri:
 
     def __str__(self):
         return f"{self.concept}: {self.args}"
+
+    def copy(self):
+        return ConceptUri(self.concept, self.args.copy())
 
 
 class TokenizedSplitSyntaxError(Exception):
@@ -142,6 +146,7 @@ def tokenized_split(string: str,
 
     :return: parsed fields
     """
+
     if remove_quotes and remove_boundary_quotes:
         raise ValueError(
             'cannot use "remove_quotes" and "remove_boundary_quotes" together, redundant.')
@@ -748,6 +753,9 @@ def shell_parse(string,
         raise ShellParseSyntaxError(e)
 
 
+_concept_uri_parse_cache = dict()
+
+
 class ConceptUriParser:
     """
     Parser for dgenerate concept paths with arguments, IE: ``concept;arg1="a";arg2="b"``
@@ -847,6 +855,16 @@ class ConceptUriParser:
 
         :return: :py:class:`.ConceptPath`
         """
+        val = self._parse(uri).copy()
+
+        if len(_concept_uri_parse_cache) > 128:
+            _concept_uri_parse_cache.clear()
+
+        return val
+
+    @_memoize.memoize(cache=_concept_uri_parse_cache)
+    def _parse(self, uri: _types.Uri) -> ConceptUri:
+
         args = dict()
 
         if uri is None:
