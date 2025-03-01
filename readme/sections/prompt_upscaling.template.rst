@@ -175,8 +175,8 @@ For example, in ``.json``, you would specify a list of text processing operation
       }
     ]
 
-These operations occur in the order that you specify, python files are loaded relative to the
-working directory of dgenerate unless you specify an absolute path.
+These operations occur in the order that you specify, python files are loaded relative
+to the directory of the config unless you specify an absolute path.
 
 The options ``ignore_case`` and ``multiline`` of the pattern operation are optional, and both default to ``false``.
 

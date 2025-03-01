@@ -58,6 +58,10 @@ class _PromptUpscalerEntry(_schemaentry._PluginSchemaEntry):
             elif self.plugin_name_var.get() == 'magicprompt':
                 entry.directory = True
             entry.raw = False
+        if param_name == 'cleanup-config':
+            if self.plugin_name_var.get() in {'gpt4all', 'magicprompt'}:
+                entry.file_types = {'filetypes': [('Cleanup Config', ('*.json', '*.toml', '*.yaml', '*.yml'))]}
+                entry.raw = False
         return entry
 
     def _create_entry_single_type(self,

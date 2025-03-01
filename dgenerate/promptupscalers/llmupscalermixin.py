@@ -80,11 +80,12 @@ class LLMPromptUpscalerMixin(abc.ABC):
         self._smart_truncate = smart_truncate
 
         if cleanup_config:
-            cleanup_config_operations = self._load_cleanup_operations(cleanup_config)
-            self._validate_cleanup_operations(cleanup_config_operations)
+            cleanup_config_operations = self._load_custom_cleanup_operations(cleanup_config)
+            self._validate_custom_cleanup_operations(cleanup_config_operations)
             self._custom_cleanup_operations = cleanup_config_operations
+            self._cleanup_config_path = cleanup_config
 
-    def _validate_cleanup_operations(self, operations: list[dict, [str, typing.Any]]) -> bool:
+    def _validate_custom_cleanup_operations(self, operations: list[dict, [str, typing.Any]]) -> bool:
         for operation in operations:
             if 'function' in operation:
                 if not isinstance(operation['function'], str) or ':' not in operation['function']:
@@ -106,13 +107,17 @@ class LLMPromptUpscalerMixin(abc.ABC):
                     'either "function" or both "pattern" and "substitution"')
         return True
 
-    def _load_cleanup_module(self, module_path: str, cache: dict[str, typing.Any]):
+    def _load_custom_cleanup_module(self, module_path: str, cache: dict[str, typing.Any]):
         if module_path in cache:
             return cache[module_path]
 
-        abs_path = os.path.abspath(module_path)
-        module_name = os.path.splitext(os.path.basename(abs_path))[0]
-        spec = importlib.util.spec_from_file_location(module_name, abs_path)
+        if not os.path.isabs(module_path):
+            base_dir = os.path.dirname(os.path.abspath(self._cleanup_config_path))
+            module_path = os.path.abspath(os.path.join(base_dir, module_path))
+
+        module_name = os.path.splitext(os.path.basename(module_path))[0]
+        spec = importlib.util.spec_from_file_location(module_name, module_path)
+
         if spec and spec.loader:
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
@@ -121,13 +126,16 @@ class LLMPromptUpscalerMixin(abc.ABC):
         raise self.argument_error(
             f'Argument "cleanup-config", could not load module mentioned in config: {module_path}')
 
-    def _execute_cleanup_operations(self, operations: list[dict, [str, typing.Any]], text: str) -> str:
+    def _execute_custom_cleanup_operations(self, text: str) -> str:
+        if not self._custom_cleanup_operations:
+            return text
+
         module_cache = {}
 
-        for operation in operations:
+        for operation in self._custom_cleanup_operations:
             if 'function' in operation:
                 module_path, function_name = operation['function'].split(':')
-                module = self._load_cleanup_module(module_path, module_cache)
+                module = self._load_custom_cleanup_module(module_path, module_cache)
                 if not hasattr(module, function_name):
                     raise self.argument_error(
                         f'Argument "cleanup-config", config module '
@@ -151,7 +159,7 @@ class LLMPromptUpscalerMixin(abc.ABC):
 
         return text
 
-    def _load_cleanup_operations(self, file_path: str) -> list[dict, [str, typing.Any]]:
+    def _load_custom_cleanup_operations(self, file_path: str) -> list[dict, [str, typing.Any]]:
         with open(file_path, 'r', encoding='utf-8') as f:
             if file_path.endswith('.json'):
                 return json.load(f)
@@ -345,10 +353,7 @@ class LLMPromptUpscalerMixin(abc.ABC):
 
                 generated_prompt = generated_prompt.replace(full_match, f"({phrase}:{weight})")
 
-        if self._custom_cleanup_operations:
-            generated_prompt = self._execute_cleanup_operations(
-                self._custom_cleanup_operations, generated_prompt
-            )
+        generated_prompt = self._execute_custom_cleanup_operations(generated_prompt)
 
         # Put the original prompt back in if removed it from
         # the model output, and there was no explicit request
