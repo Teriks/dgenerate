@@ -52,7 +52,20 @@ class GPT4ALLPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptups
     generated prompt, this value defaults to 100.
 
     The "temperature" argument sets the sampling temperature
-    to use when generating prompts.
+    to use when generating prompts. Larger values increase
+    creativity but decrease factuality.
+
+    The "top_k" argument sets the "top_k" generation value, i.e.
+    randomly sample from the "top_k" most likely tokens at each generation step.
+    Set this to 1 for greedy decoding.
+
+    The "top_p" argument sets the "top_p" generation value, i.e.
+    randomly sample at each generation step from the top most likely
+    tokens whose probabilities add up to "top_p".
+
+    The "min_p" argument sets the "min_p" generation value, i.e. randomly
+    sample at each generation step from the top most likely tokens
+    whose probabilities are at least "min_p".
 
     The "system" argument sets the system instruction for the LLM.
 
@@ -115,6 +128,9 @@ class GPT4ALLPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptups
                  variations: int = 1,
                  max_length: int = 100,
                  temperature: float = 0.7,
+                 top_k: int = 40,
+                 top_p: float = 0.4,
+                 min_p: float = 0.0,
                  system: str | None = None,
                  preamble: str | None = None,
                  remove_prompt: bool = False,
@@ -153,6 +169,30 @@ class GPT4ALLPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptups
             raise self.argument_error(
                 'Argument "variations" may not be less than 1.')
 
+        if temperature < 0.0:
+            raise self.argument_error(
+                'Argument "temperature" may not be less than 1.')
+
+        if top_k < 1:
+            raise self.argument_error(
+                'Argument "top_k" may not be less than 1.')
+
+        if top_p < 0.0:
+            raise self.argument_error(
+                'Argument "top_p" may not be less than 0.')
+
+        if top_p > 1.0:
+            raise self.argument_error(
+                'Argument "top_p" may not be greater than 1.')
+
+        if min_p < 0.0:
+            raise self.argument_error(
+                'Argument "min_p" may not be less than 0.')
+
+        if min_p > 1.0:
+            raise self.argument_error(
+                'Argument "min_p" may not be greater than 1.')
+
         if _webcache.is_downloadable_url(model):
             # Any mimetype
             _, model = _webcache.create_web_cache_file(model)
@@ -188,6 +228,9 @@ class GPT4ALLPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptups
         self._remove_prompt = remove_prompt
         self._max_length = max_length
         self._temperature = temperature
+        self._top_k = top_k
+        self._top_p = top_p
+        self._min_p = min_p
 
         self._system = system
         self._variations = variations
@@ -216,7 +259,10 @@ class GPT4ALLPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptups
                 self._gpt4all.generate(
                     ptext,
                     max_tokens=self._max_length,
-                    temp=self._temperature
+                    temp=self._temperature,
+                    top_k=self._top_k,
+                    top_p=self._top_p,
+                    min_p=self._min_p
                 ))
 
         generated_prompts = [

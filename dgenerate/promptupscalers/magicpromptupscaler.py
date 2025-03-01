@@ -67,7 +67,16 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
     generated prompt, this value defaults to 100.
 
     The "temperature" argument sets the sampling temperature
-    to use when generating prompts.
+    to use when generating prompts. Larger values increase
+    creativity but decrease factuality.
+
+    The "top_k" argument sets the "top_k" generation value, i.e.
+    randomly sample from the "top_k" most likely tokens at each generation step.
+    Set this to 1 for greedy decoding.
+
+    The "top_p" argument sets the "top_p" generation value, i.e.
+    randomly sample at each generation step from the top most likely
+    tokens whose probabilities add up to "top_p".
 
     The "system" argument sets the system instruction for the LLM.
 
@@ -122,6 +131,8 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
                  variations: int = 1,
                  max_length: int = 100,
                  temperature: float = 0.7,
+                 top_k: int = 50,
+                 top_p: float = 1.0,
                  system: str | None = None,
                  preamble: str | None = None,
                  remove_prompt: bool = False,
@@ -169,6 +180,22 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
             raise self.argument_error(
                 'Argument "variations" may not be less than 1.')
 
+        if temperature < 0.0:
+            raise self.argument_error(
+                'Argument "temperature" may not be less than 1.')
+
+        if top_k < 1:
+            raise self.argument_error(
+                'Argument "top_k" may not be less than 1.')
+
+        if top_p < 0.0:
+            raise self.argument_error(
+                'Argument "top_p" may not be less than 0.')
+
+        if top_p > 1.0:
+            raise self.argument_error(
+                'Argument "top_p" may not be greater than 1.')
+
         model_files = list(
             _pipelinewrapper_util.fetch_model_files_with_size(
                 model,
@@ -207,6 +234,8 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
         self._seed = seed
         self._max_length = max_length
         self._temperature = temperature
+        self._top_k = top_k
+        self._top_p = top_p
 
         self._variations = variations
         self._accepts_batch = batch
@@ -288,6 +317,8 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
                         [ptext],
                         max_length=self._max_length,
                         temperature=self._temperature,
+                        top_k=self._top_k,
+                        top_p=self._top_p,
                         do_sample=True,
                         batch_size=1,
                     ))
@@ -296,6 +327,8 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
                 formatted_prompts,
                 max_length=self._max_length,
                 temperature=self._temperature,
+                top_k=self._top_k,
+                top_p=self._top_p,
                 do_sample=True,
                 batch_size=len(formatted_prompts),
             )

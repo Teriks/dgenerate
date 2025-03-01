@@ -4353,6 +4353,8 @@ Which is a GPT2 finetune focused specifically on prompt generation.
             variations: int = 1
             max-length: int = 100
             temperature: float = 0.7
+            top-k: int = 50
+            top-p: float = 1.0
             system: str | None = None
             preamble: str | None = None
             remove-prompt: bool = False
@@ -4379,7 +4381,14 @@ Which is a GPT2 finetune focused specifically on prompt generation.
     
         The "max-length" argument is the max prompt length for a generated prompt, this value defaults to 100.
     
-        The "temperature" argument sets the sampling temperature to use when generating prompts.
+        The "temperature" argument sets the sampling temperature to use when generating prompts. Larger values
+        increase creativity but decrease factuality.
+    
+        The "top_k" argument sets the "top_k" generation value, i.e. randomly sample from the "top_k" most likely
+        tokens at each generation step. Set this to 1 for greedy decoding.
+    
+        The "top_p" argument sets the "top_p" generation value, i.e. randomly sample at each generation step from
+        the top most likely tokens whose probabilities add up to "top_p".
     
         The "system" argument sets the system instruction for the LLM.
     
@@ -4456,6 +4465,9 @@ This prompt upscaler use the ``gpt4all`` python binding to perform inference on 
             variations: int = 1
             max-length: int = 100
             temperature: float = 0.7
+            top-k: int = 40
+            top-p: float = 0.4
+            min-p: float = 0.0
             system: str | None = None
             preamble: str | None = None
             remove-prompt: bool = False
@@ -4480,7 +4492,17 @@ This prompt upscaler use the ``gpt4all`` python binding to perform inference on 
     
         The "max-length" argument is the max prompt length for a generated prompt, this value defaults to 100.
     
-        The "temperature" argument sets the sampling temperature to use when generating prompts.
+        The "temperature" argument sets the sampling temperature to use when generating prompts. Larger values
+        increase creativity but decrease factuality.
+    
+        The "top_k" argument sets the "top_k" generation value, i.e. randomly sample from the "top_k" most likely
+        tokens at each generation step. Set this to 1 for greedy decoding.
+    
+        The "top_p" argument sets the "top_p" generation value, i.e. randomly sample at each generation step from
+        the top most likely tokens whose probabilities add up to "top_p".
+    
+        The "min_p" argument sets the "min_p" generation value, i.e. randomly sample at each generation step from
+        the top most likely tokens whose probabilities are at least "min_p".
     
         The "system" argument sets the system instruction for the LLM.
     
@@ -4784,8 +4806,8 @@ For example, in ``.json``, you would specify a list of text processing operation
       }
     ]
 
-These operations occur in the order that you specify, python files are loaded relative to the
-working directory of dgenerate unless you specify an absolute path.
+These operations occur in the order that you specify, python files are loaded relative
+to the directory of the config unless you specify an absolute path.
 
 The options ``ignore_case`` and ``multiline`` of the pattern operation are optional, and both default to ``false``.
 
@@ -7026,7 +7048,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [41790917627426]
+            Value: [44109675402421]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
