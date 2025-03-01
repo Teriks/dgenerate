@@ -1,0 +1,18 @@
+[
+  {
+    "function": "cleanup.py:lowercase"
+  },
+  {
+    "pattern": "\\bcat\\b",
+    "substitution": "dog",
+    "ignore_case": true,
+    "multiline": false
+  },
+  {
+    "pattern": "\\bfeline\\b",
+    "substitution": "canine"
+  },
+  {
+    "function": "cleanup.py:remove_periods"
+  }
+]

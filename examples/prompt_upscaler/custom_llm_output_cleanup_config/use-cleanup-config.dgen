@@ -1,0 +1,36 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 4.5.1
+
+# Demo custom LLM output cleanup using the "cleanup-config" argument,
+# this works for the "magicprompt" prompt upscaler as well.
+
+# Something a bit smarter, but not too big.
+
+\set llm_model 'https://huggingface.co/MaziyarPanahi/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct.Q4_K_M.gguf'
+
+# these configurations are all identical, just different formats, they each use a function
+# to lowercase the text, then simple regex substitutions to replace "cat" with "dog" and "feline" with "canine",
+# then the last function in the config removes all periods.
+
+\setp cleanup_configs ['cleanup-example.json', 'cleanup-example.toml', 'cleanup-example.yaml']
+
+
+# Try all the configs, just to test serialization and function.
+
+{% for cleanup_config in cleanup_configs %}
+
+    stabilityai/stable-diffusion-xl-base-1.0
+    --model-type torch-sdxl
+    --dtype float16
+    --variant fp16
+    --inference-steps 30
+    --guidance-scales 5
+    --clip-skips 0
+    --gen-seeds 1
+    --output-path output
+    --output-size 1024x1024
+    --prompt-weighter sd-embed
+    --prompt-upscaler gpt4all;model={{ llm_model }};cleanup-config={{ cleanup_config }};smart-truncate=True;compute='cpu';remove-prompt=True
+    --prompts "Write a terse description of a random cat, in the form of an image generation prompt. Only give me the prompt text with no quotes around it."
+
+{% endfor %}
