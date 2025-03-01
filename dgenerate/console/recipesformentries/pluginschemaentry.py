@@ -426,7 +426,7 @@ class _PluginSchemaEntry(_entry._Entry):
         for param_name, (_, variable, default_value, _) in self.entries.items():
             current_value = self._normalize_value(variable.get())
             if current_value != self._normalize_value(default_value) and current_value.strip():
-                uri_parts.append(f"{param_name}={_entry.shell_quote_if(current_value)}")
+                uri_parts.append(f"{param_name}={_entry.shell_quote_if(current_value, strict=True)}")
         return ';'.join(uri_parts)
 
     def template(self, content):

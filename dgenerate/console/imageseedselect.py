@@ -117,9 +117,9 @@ class _ImageSeedSelect(tk.Toplevel):
 
     def _insert_click(self):
 
-        image_seed = _entry.shell_quote_if(self.seed_image_entry.get().strip())
-        mask_image = _entry.shell_quote_if(self.mask_image_entry.get().strip())
-        control_image = _entry.shell_quote_if(self.control_image_entry.get().strip())
+        image_seed = _entry.shell_quote_if(self.seed_image_entry.get().strip(), strict=True)
+        mask_image = _entry.shell_quote_if(self.mask_image_entry.get().strip(), strict=True)
+        control_image = _entry.shell_quote_if(self.control_image_entry.get().strip(), strict=True)
 
         # Validate that image seed is specified if inpaint image is provided
         if mask_image and not image_seed:
