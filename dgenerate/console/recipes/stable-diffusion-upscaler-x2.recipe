@@ -1,8 +1,9 @@
 title: Upscaling (Stable Diffusion x2)
+order: 18
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "stabilityai/sd-x2-latent-upscaler", "optional":false, "file-types":["models"]}]
 @file[{"label": "Original Config (yaml)", "arg": "--original-config", "file-types": ["yaml"]}]
-@karrasscheduler[{"filter": ["EulerDiscreteScheduler"]}]
+@karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "filter": ["EulerDiscreteScheduler"]}]
 @switch[{"label":"Use HiDiffusion", "arg":"--hi-diffusion"}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "divider-after":true}]
 --model-type torch-upscaler-x2
@@ -18,6 +19,7 @@ title: Upscaling (Stable Diffusion x2)
 @imagesize[{"label":"Batch Grid Size (CxR)", "arg":"--batch-grid-size", "default":"", "divider-after":true}]
 @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
 @imagesize[{"label":"Input Resize (WxH)", "arg":"--output-size", "default":""}]
+@promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
 @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
 @quantizer[{}]
 @device[{}]

@@ -14,6 +14,7 @@ import diffusers
 
 import dgenerate.imageprocessors.imageprocessorloader as _imageprocessorloader
 import dgenerate.promptupscalers.promptupscalerloader as _promptupscalerloader
+import dgenerate.promptweighters.promptweighterloader as _promptweighterloader
 import dgenerate.mediainput as _mediainput
 import dgenerate.mediaoutput as _mediaoutput
 import dgenerate.arguments as _arguments
@@ -37,7 +38,6 @@ with open('dgenerate/console/schemas/imageprocessors.json', 'w') as file:
 
     json.dump(schema, file)
 
-
 with open('dgenerate/console/schemas/promptupscalers.json', 'w') as file:
     plugin_loader = _promptupscalerloader.PromptUpscalerLoader()
     schema = plugin_loader.get_accepted_args_schema(include_bases=True)
@@ -51,6 +51,18 @@ with open('dgenerate/console/schemas/promptupscalers.json', 'w') as file:
 
     json.dump(schema, file)
 
+with open('dgenerate/console/schemas/promptweighters.json', 'w') as file:
+    plugin_loader = _promptweighterloader.PromptWeighterLoader()
+    schema = plugin_loader.get_accepted_args_schema(include_bases=True)
+
+    # sort by processor name, this affects json output
+    schema = dict(sorted(schema.items(), key=lambda x: x[0]))
+
+    for plugin in schema.keys():
+        schema[plugin].update({'PROMPT_WEIGHTER_HELP': plugin_loader.get_help(
+            plugin, wrap_width=100, include_bases=True)})
+
+    json.dump(schema, file)
 
 with open('dgenerate/console/schemas/karrasschedulers.json', 'w') as file:
     scheduler_names = sorted(
@@ -59,7 +71,6 @@ with open('dgenerate/console/schemas/karrasschedulers.json', 'w') as file:
 
     schema = _pipelinewrapper.get_scheduler_uri_schema([getattr(diffusers, n) for n in scheduler_names])
     json.dump(schema, file)
-
 
 with open('dgenerate/console/schemas/mediaformats.json', 'w') as file:
     schema = dict()
@@ -74,9 +85,9 @@ with open('dgenerate/console/schemas/mediaformats.json', 'w') as file:
 
     json.dump(schema, file)
 
-
 with open('dgenerate/console/schemas/arguments.json', 'w') as file:
     schema = dict()
+
 
     def _opt_name(a):
         if len(a.option_strings) == 1:

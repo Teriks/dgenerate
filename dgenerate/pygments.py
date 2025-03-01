@@ -131,7 +131,8 @@ _SCHEDULER_KEYWORDS = sorted((
     "LMSDiscreteScheduler",
     "PNDMScheduler",
     "UniPCMultistepScheduler",
-    "DDPMWuerstchenScheduler"
+    "DDPMWuerstchenScheduler",
+    "FlowMatchEulerDiscreteScheduler"
 ), key=lambda s: len(s), reverse=True)
 
 _CLASS_KEYWORDS = sorted((

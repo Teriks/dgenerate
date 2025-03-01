@@ -1,17 +1,19 @@
-title: Kolors (no refiner)
+title: Stable Diffusion 2
+order: 1
 
-@uri[{"label":"Model Path / HF Slug", "dir":true, "default": "Kwai-Kolors/Kolors-diffusers", "optional":false, "file-types":["models"]}]
---model-type torch-kolors
-@dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "float32"], "default":"float16"}]
-@dropdown[{"label":"Model variant", "arg":"--variant", "options":["fp16"], "default":"fp16"}]
-@karrasscheduler[{}]
+@uri[{"label":"Model Path / HF Slug", "dir":true, "default": "stabilityai/stable-diffusion-2-1", "optional":false, "file-types":["models"]}]
+@file[{"label": "Original Config (yaml)", "arg": "--original-config", "file-types": ["yaml"]}]
+@dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "float32"]}]
+@dropdown[{"label":"Model variant", "arg":"--variant", "options":["fp16"]}]
+@karrasscheduler[{"label":"Scheduler", "arg":"--scheduler"}]
 @switch[{"label":"Use HiDiffusion", "arg":"--hi-diffusion"}]
-@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "divider-after":true, "default": 1}]
+@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "divider-after":true}]
 @torchvae[{"label":"VAE Path / URI", "dir":true, "file-types":["models"]}]
 @switch[{"label":"VAE Tiling", "arg":"--vae-tiling"}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing", "divider-after":true}]
 @uriwithfloat[{"label":"LoRA Path / URI", "float-label":"LoRA Scale", "arg":"--loras", "float-arg":"scale", "dir":true, "file-types":["models"]}]
 @uriwithfloat[{"label":"ControlNet Path / URI", "float-label":"ControlNet Scale", "arg":"--control-nets", "float-arg":"scale", "dir":true, "file-types":["models"]}]
+@uriwithfloat[{"label":"T2I Adapter Path / URI", "float-label":"T2I Adapter Scale", "arg":"--t2i-adapters", "float-arg":"scale", "dir":true, "file-types":["models"]}]
 @dir[{"label":"UNet Directory / URI", "arg":"--unet", "divider-after":true}]
 @imageseed[{"label":"Image Seed", "arg":"--image-seeds", "file-types":["images-in", "videos-in"], "float-label":"Image Seed Strength", "float-arg":"--image-seed-strengths", "min":0.01, "max":1, "default":"", "float":""}]
 @switch[{"label":"No Aspect Correction?", "arg":"--no-aspect"}]
@@ -22,11 +24,15 @@ title: Kolors (no refiner)
 @float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":5, "min":0}]
 @float[{"label":"PAG Scale", "arg":"--pag-scales", "min":0}]
 @float[{"label":"Adaptive PAG Scale", "arg":"--pag-adaptive-scales", "min":0}]
+@int[{"label":"Clip Skip", "arg":"--clip-skips", "default":0, "min":0}]
 @seeds[{"label":"Seeds"}]
 @int[{"label":"Batch Size", "arg":"--batch-size", "default":"", "min":1}]
 @imagesize[{"label":"Batch Grid Size (CxR)", "arg":"--batch-grid-size", "default":"", "divider-after":true}]
 @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
-@imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"1024x1024"}]
+@imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"512x512"}]
+@promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
+@promptweighter[{"label":"Prompt Weighter", "arg":"--prompt-weighter", "filter":["compel", "sd-embed"]}]
 @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
+@quantizer[{}]
 @device[{}]
 --prompts "add your prompt here"

@@ -1,7 +1,8 @@
-title: Stable Cascade (UNet lite)
+title: Stable Cascade
+order: 13
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "stabilityai/stable-cascade-prior", "optional":false, "file-types":["models"]}]
-@karrasscheduler[{"filter": ["DDPMWuerstchenScheduler"]}]
+@karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "filter": ["DDPMWuerstchenScheduler"]}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "default":0, "divider-after":true}]
 --model-type torch-s-cascade
 --variant bf16
@@ -9,8 +10,8 @@ title: Stable Cascade (UNet lite)
 @uri[{"label":"Decoder Path / URI", "dir":true, "arg":"--s-cascade-decoder", "default":"stabilityai/stable-cascade;dtype=float16", "file-types":["models"]}]
 @karrasscheduler[{"label": "Decoder Scheduler", "arg": "--second-model-scheduler", "filter": ["DDPMWuerstchenScheduler"]}]
 @switchradio[{"labels":["Decoder CPU Offload", "Decoder Sequential Offload"], "args":["--second-model-cpu-offload", "--second-model-sequential-offload"], "default":0, "divider-after":true}]
-@dir[{"label":"UNet Directory / URI", "arg":"--unet", "default":"stabilityai/stable-cascade-prior;subfolder=prior_lite"}]
-@dir[{"label":"Decoder UNet Directory / URI", "arg":"--second-model-unet", "default":"stabilityai/stable-cascade;subfolder=decoder_lite", "divider-after":true}]
+@dir[{"label":"UNet Directory / URI", "arg":"--unet"}]
+@dir[{"label":"Decoder UNet Directory / URI", "arg":"--second-model-unet", "divider-after":true}]
 @file[{"label":"Image Seed", "arg":"--image-seeds", "file-types":["images-in", "videos-in"]}]
 @imageprocessor[{"arg":"--seed-image-processors", "label":"Seed Image Processor", "divider-after":true}]
 @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":20, "min":1}]
@@ -22,7 +23,8 @@ title: Stable Cascade (UNet lite)
 @imagesize[{"label":"Batch Grid Size (CxR)", "arg":"--batch-grid-size", "default":"", "divider-after":true}]
 @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
 @imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"1024x1024"}]
-@dropdown[{"label":"Prompt Weighter", "arg":"--prompt-weighter", "options":["compel", "compel;syntax=sdwui", "sd-embed"]}]
+@promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
+@promptweighter[{"label":"Prompt Weighter", "arg":"--prompt-weighter", "filter":["compel", "sd-embed"]}]
 @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
 @device[{}]
 --prompts "add your prompt here"

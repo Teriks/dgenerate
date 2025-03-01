@@ -19,65 +19,18 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-import tkinter as tk
-
 import dgenerate.console.recipesformentries as _entries
-import dgenerate.console.util as _util
+import dgenerate.console.pluginuriselector as _pluginuriselector
 
 
-class _ImageProcessorSelect(tk.Toplevel):
+class _ImageProcessorSelect(_pluginuriselector._PluginUriSelect):
     def __init__(self, master=None, position: tuple[int, int] = None):
-        super().__init__(master)
-        self.title('Insert Image Processor URI')
-
-        self.transient(master)
-        self.grab_set()
-        self.resizable(True, False)
-
-        self._insert = False
-
-        self.processor_frame = tk.Frame(self)
-
-        self.processor = _entries._ImageProcessorEntry(
-            recipe_form=self,
-            master=self.processor_frame,
-            config={"optional": False, "internal-divider": False},
-            placeholder='URI',
-            row=1)
-
-        self.processor_frame.grid(row=0, pady=(5, 5), padx=(5, 5), sticky='nsew')
-
-        self.button = tk.Button(self, text='Insert', command=self._insert_action)
-
-        self.button.grid(row=1, pady=(0, 5))
-
-        self.processor_frame.grid_columnconfigure(1, weight=1)
-        self.grid_columnconfigure(0, weight=1)
-
-        def processor_updated():
-            self.update_idletasks()
-            self.minsize(self.winfo_reqwidth(), self.winfo_reqheight())
-
-        self.processor.on_updated_callback = processor_updated
-
-        _util.position_toplevel(master, self, position=position)
-
-    def _insert_action(self):
-        if not self.processor.is_valid():
-            self.processor.invalid()
-            return
-        else:
-            self.processor.valid()
-
-        self._insert = True
-        self.destroy()
-
-    def get_uri(self):
-        self.wait_window(self)
-        if not self._insert:
-            return None
-        return self.processor.template('URI')
+        super().__init__(
+            title='Insert Image Processor URI',
+            plugin_entry_class=_entries._ImageProcessorEntry,
+            master=master,
+            position=position
+        )
 
 
 _last_pos = None
