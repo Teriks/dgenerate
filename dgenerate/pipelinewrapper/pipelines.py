@@ -2127,17 +2127,18 @@ def _create_torch_diffusion_pipeline(
 
     _enforce_torch_pipeline_cache_size(estimated_memory_usage)
 
-    uri_quant_check: list[typing.Any] = [
-        _uris.TextEncoderUri.parse(uri) for uri in text_encoder_uris
-        if uri and uri.lower() not in {'+', 'help', 'null'}
-    ]
+    uri_quant_check = []
+
+    for text_encoder_uri in text_encoder_uris:
+        if text_encoder_uri and text_encoder_uri.lower() not in {'+', 'help', 'null'}:
+            uri_quant_check.append(_uris.TextEncoderUri.parse(text_encoder_uri))
 
     if transformer_uri:
         uri_quant_check.append(_uris.TransformerUri.parse(transformer_uri))
     if unet_uri:
         uri_quant_check.append(_uris.UNetUri.parse(unet_uri))
 
-    if quantizer_uri or any(p.quantizer for p in itertools.chain.from_iterable(uri_quant_check)):
+    if quantizer_uri or any(p.quantizer for p in uri_quant_check):
         # for now, just knock out anything cached on the gpu, such as the last pipeline
         # the quantized pipeline modules are likely going to go straight onto the GPU
         # immediately, and they are guaranteed to be of non-trivial size

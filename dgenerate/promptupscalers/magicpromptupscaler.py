@@ -31,7 +31,6 @@ import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.promptupscalers.llmupscalermixin as _llmupscalermixin
 
-import re
 import torch
 import transformers
 
