@@ -1,0 +1,16 @@
+[[operations]]
+function = "cleanup.py:lowercase"
+
+[[operations]]
+pattern = "\\bcat\\b"
+substitution = "dog"
+ignore_case = true # optional
+multiline = false  # optional
+
+
+[[operations]]
+pattern = "\\bfeline\\b"
+substitution = "canine"
+
+[[operations]]
+function = "cleanup.py:remove_periods"

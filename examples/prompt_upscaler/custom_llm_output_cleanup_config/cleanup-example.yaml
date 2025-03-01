@@ -1,0 +1,11 @@
+- function: "cleanup.py:lowercase"
+
+- pattern: "\\bcat\\b"
+  substitution: "dog"
+  ignore_case: true  # optional
+  multiline: false  # optional
+
+- pattern: "\\bfeline\\b"
+  substitution: "canine"
+
+- function: "cleanup.py:remove_periods"

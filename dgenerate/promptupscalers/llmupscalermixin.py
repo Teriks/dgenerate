@@ -19,7 +19,14 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import abc
+import importlib.util
+import json
+import os
 import re
+import typing
+
+import toml
+import yaml
 
 import dgenerate.spacycache as _spacycache
 import spacy.pipeline
@@ -34,6 +41,7 @@ class LLMPromptUpscalerMixin(abc.ABC):
                  block_regex: str,
                  max_attempts: int,
                  cleanup_mode: str,
+                 cleanup_config: str,
                  smart_truncate: bool = False,
                  **kwargs):
         """
@@ -41,6 +49,7 @@ class LLMPromptUpscalerMixin(abc.ABC):
         :param block_regex: Regenerated prompts that match this regex.
         :param max_attempts: Max regeneration attempts.
         :param cleanup_mode: "magic", or anything else currently.
+        :param cleanup_config: Path to .json, .toml, or .yaml cleanup config.
         :param kwargs: Mixin args.
         """
 
@@ -70,14 +79,97 @@ class LLMPromptUpscalerMixin(abc.ABC):
         self._cleanup_mode = cleanup_mode
         self._smart_truncate = smart_truncate
 
+        if cleanup_config:
+            cleanup_config_operations = self._load_cleanup_operations(cleanup_config)
+            self._validate_cleanup_operations(cleanup_config_operations)
+            self._custom_cleanup_operations = cleanup_config_operations
+
+    def _validate_cleanup_operations(self, operations: list[dict, [str, typing.Any]]) -> bool:
+        for operation in operations:
+            if 'function' in operation:
+                if not isinstance(operation['function'], str) or ':' not in operation['function']:
+                    raise self.argument_error(
+                        f'Argument "cleanup-config", config contains invalid function format: {operation["function"]}')
+
+                module_path, function_name = operation['function'].split(':')
+
+                if not os.path.isfile(module_path):
+                    raise self.argument_error(
+                        f'Argument "cleanup-config", config module file not found: {module_path}')
+            elif 'pattern' in operation and 'substitution' in operation:
+                if not isinstance(operation['pattern'], str) or not isinstance(operation['substitution'], str):
+                    raise self.argument_error(
+                        'Argument "cleanup-config", config pattern and substitution must be strings')
+            else:
+                raise self.argument_error(
+                    'Argument "cleanup-config", each config operation must contain '
+                    'either "function" or both "pattern" and "substitution"')
+        return True
+
+    def _load_cleanup_module(self, module_path: str, cache: dict[str, typing.Any]):
+        if module_path in cache:
+            return cache[module_path]
+
+        abs_path = os.path.abspath(module_path)
+        module_name = os.path.splitext(os.path.basename(abs_path))[0]
+        spec = importlib.util.spec_from_file_location(module_name, abs_path)
+        if spec and spec.loader:
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            cache[module_path] = module
+            return module
+        raise self.argument_error(
+            f'Argument "cleanup-config", could not load module mentioned in config: {module_path}')
+
+    def _execute_cleanup_operations(self, operations: list[dict, [str, typing.Any]], text: str) -> str:
+        module_cache = {}
+
+        for operation in operations:
+            if 'function' in operation:
+                module_path, function_name = operation['function'].split(':')
+                module = self._load_cleanup_module(module_path, module_cache)
+                if not hasattr(module, function_name):
+                    raise self.argument_error(
+                        f'Argument "cleanup-config", config module '
+                        f'"{module_path}" has no function "{function_name}"')
+
+                func = getattr(module, function_name)
+                if not callable(func):
+                    raise self.argument_error(
+                        f'Argument "cleanup-config", cleanup function '
+                        f'"{function_name}" in "{module_path}" is not callable')
+
+                text = func(text)
+            elif 'pattern' in operation and 'substitution' in operation:
+                flags = 0
+                if operation.get('ignore_case', False):
+                    flags |= re.IGNORECASE
+                if operation.get('multiline', False):
+                    flags |= re.MULTILINE
+
+                text = re.sub(operation['pattern'], operation['substitution'], text, flags=flags)
+
+        return text
+
+    def _load_cleanup_operations(self, file_path: str) -> list[dict, [str, typing.Any]]:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            if file_path.endswith('.json'):
+                return json.load(f)
+            elif file_path.endswith('.toml'):
+                try:
+                    return toml.load(f)['operations']
+                except KeyError:
+                    raise self.argument_error(
+                        'Argument "cleanup-config", .toml does not contain any [[operations]]'
+                    )
+            elif file_path.endswith('.yaml') or file_path.endswith('.yml'):
+                return yaml.safe_load(f)
+            else:
+                raise self.argument_error(
+                    'Argument "cleanup-config", unsupported file format. Use .json, .toml, or .yaml/.yml')
+
     @abc.abstractmethod
     def _generate_prompts(self, orig_prompts: list[str]):
-        pass
-
-    def argument_error(self, message: str) -> type[Exception]:
-        """
-        Override me.
-        """
         pass
 
     def _generate(self, prompts: list[str] | str) -> list[str]:
@@ -186,7 +278,13 @@ class LLMPromptUpscalerMixin(abc.ABC):
         if sentences and not sentences[-1].strip().endswith(end_punctuation):
             sentences.pop()
 
-        return ' '.join(' '.join(sentences).split())
+        result = ' '.join(sentences)
+
+        if not result.strip():
+            _messages.log('smart-truncate resulted in empty prompt, using original text.', level=_messages.WARNING)
+            return text
+
+        return result
 
     def _clean_prompt(self,
                       formatted_prompt: str,
@@ -214,7 +312,10 @@ class LLMPromptUpscalerMixin(abc.ABC):
             r"</?[|/]?[a-zA-Z-_]+", " ", generated_prompt
         ).strip()
 
-        if self._cleanup_mode == 'magic':
+        if self._smart_truncate:
+            generated_prompt = self._do_smart_truncate(generated_prompt)
+
+        if self._cleanup_mode == 'magic' and not self._custom_cleanup_operations:
             # MagicPrompt output specific cleanup
 
             # old-style weight elevation
@@ -243,6 +344,11 @@ class LLMPromptUpscalerMixin(abc.ABC):
                 weight = round(pow(1.1, len(match[1])), 2)
 
                 generated_prompt = generated_prompt.replace(full_match, f"({phrase}:{weight})")
+
+        if self._custom_cleanup_operations:
+            generated_prompt = self._execute_cleanup_operations(
+                self._custom_cleanup_operations, generated_prompt
+            )
 
         # Put the original prompt back in if removed it from
         # the model output, and there was no explicit request
@@ -286,7 +392,4 @@ class LLMPromptUpscalerMixin(abc.ABC):
             generated_prompt = generated_prompt[1:].lstrip()
 
         # normalize whitespace between tokens to a single space
-        if self._smart_truncate:
-            return self._do_smart_truncate(generated_prompt)
-        else:
-            return ' '.join(generated_prompt.split())
+        return ' '.join(generated_prompt.split())
