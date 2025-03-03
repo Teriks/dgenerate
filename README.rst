@@ -5179,13 +5179,13 @@ See: `LLM4GEN <https://github.com/YUHANG-Ma/LLM4GEN>`_
     
         The "projector" argument specifies a Hugging Face repo or file path to the LLM4GEN projector (CAM) model.
     
-        The "projector_revision" argument specifies the revision of the Hugging Face projector repository, for
+        The "projector-revision" argument specifies the revision of the Hugging Face projector repository, for
         example "main".
     
-        The "projector_subfolder" argument specifies the subfolder for the projector file in a Hugging Face
+        The "projector-subfolder" argument specifies the subfolder for the projector file in a Hugging Face
         repository.
     
-        The "projector_weight_name" argument specifies the weight name of the projector file in a Hugging Face
+        The "projector-weight-name" argument specifies the weight name of the projector file in a Hugging Face
         repository.
     
         The "llm-dtype" argument specifies the precision for the rankgen encoder and llm4gen CAM projector model,
@@ -7048,7 +7048,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [44109675402421]
+            Value: [678168228536]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

@@ -48,6 +48,53 @@ def _with_seed(seed: int | None):
             torch.random.set_rng_state(orig_state)
 
 
+class _TextGenerationPipeline:
+    def __init__(self, model, tokenizer, quantized: bool):
+        self.model = model
+        self.tokenizer = tokenizer
+        self.quantized = quantized
+
+    def to(self, device):
+        if not self.quantized:
+            self.model.to(device)
+
+    def __call__(self,
+                 prompts: list[str],
+                 batch_size: int = 1,
+                 max_length: int = 100,
+                 **kwargs
+                 ):
+        results = []
+        for i in range(0, len(prompts), batch_size):
+            batch = prompts[i: i + batch_size]
+
+            inputs = self.tokenizer(
+                batch,
+                return_tensors="pt",
+                padding=True,
+                truncation=True,
+                max_length=max_length)
+
+            model_device = self.model.device
+
+            inputs = inputs.to(model_device)
+
+            with torch.no_grad():
+                outputs = self.model.generate(
+                    **inputs,
+                    max_length=max_length, **kwargs)
+
+            if model_device.type != 'cpu':
+                inputs.to('cpu')
+
+            del inputs
+
+            results.extend(
+                [self.tokenizer.decode(output) for output in outputs])
+
+        return results
+
+
 class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupscaler.PromptUpscaler):
     """
     Upscale prompts using magicprompt or other LLMs via transformers.
@@ -241,59 +288,24 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
         self._accepts_batch = batch
         self._part = part
         self._quantizer = quantizer
-        self._device = 'cpu'
         self._max_attempts = max_attempts
         self._prepend_prompt = prepend_prompt
 
-    def _load_pipeline(self, model_name: str, quantization_config: typing.Optional = None) -> transformers.Pipeline:
-
+    def _load_pipeline(self, model_name: str, quantization_config: typing.Optional = None) -> _TextGenerationPipeline:
         model = transformers.AutoModelForCausalLM.from_pretrained(
             model_name, trust_remote_code=True,
             quantization_config=quantization_config)
+
         tokenizer = transformers.AutoTokenizer.from_pretrained(model_name)
         tokenizer.pad_token_id = model.config.eos_token_id
 
-        og_model_generate = model.generate
-
-        def generator_patch(*args, **kwargs):
-            args = list(args)
-
-            if quantization_config is None:
-                for name, val in kwargs.items():
-                    if hasattr(val, 'to'):
-                        kwargs[name] = val.to(self._device)
-
-                for idx, val in enumerate(args):
-                    if hasattr(val, 'to'):
-                        args[idx] = val.to(self._device)
-
-            with _with_seed(self._seed):
-                result = og_model_generate(*args, **kwargs)
-
-            if quantization_config is None:
-                for val in args:
-                    if hasattr(val, 'to'):
-                        val.to('cpu')
-
-                for val in kwargs.values():
-                    if hasattr(val, 'to'):
-                        val.to('cpu')
-
-            return result
-
-        model.generate = generator_patch
-
-        return transformers.pipeline(
-            task="text-generation",
-            tokenizer=tokenizer,
-            model=model,
-            device='cpu' if quantization_config is None else None,
-            pad_token_id=tokenizer.eos_token_id,
+        return _TextGenerationPipeline(
+            model, tokenizer,
+            quantized=quantization_config is not None
         )
 
     def _to(self, device: str | torch.device):
-        self._device = device
-        self._pipeline.model.to(device)
+        self._pipeline.to(device)
 
     def _generate_prompts(self, original_prompts: list[str]) -> list[str]:
         def build_query(text):
@@ -320,7 +332,7 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
                         top_k=self._top_k,
                         top_p=self._top_p,
                         do_sample=True,
-                        batch_size=1,
+                        batch_size=1
                     ))
         else:
             generated_prompts = self._pipeline(
@@ -330,10 +342,8 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
                 top_k=self._top_k,
                 top_p=self._top_p,
                 do_sample=True,
-                batch_size=len(formatted_prompts),
+                batch_size=len(formatted_prompts)
             )
-
-        generated_prompts = [p[0]["generated_text"] for p in generated_prompts]
 
         generated_prompts = [
             self._clean_prompt(
@@ -388,7 +398,7 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
         prompts = list(prompts) * self._variations
 
         try:
-            with self._with_device():
+            with _with_seed(self._seed), self._with_device():
                 return self._process_prompts(prompts)
         except torch.cuda.OutOfMemoryError:
             prompt_count = len(prompts)
