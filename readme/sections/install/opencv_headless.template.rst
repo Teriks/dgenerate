@@ -22,7 +22,7 @@ then reinstall ``opencv-python-headless``.
 
     pip uninstall opencv-python-headless opencv-python
 
-    pip install opencv-python-headless==@COMMAND_OUTPUT[{"command": "python ../../scripts/get_cur_headless_opencv_ver.py", "block":false}]
+    pip install opencv-python-headless~=@COMMAND_OUTPUT[{"command": "python ../../scripts/get_cur_headless_opencv_ver.py", "block":false}]
 
 
 This work around is needed because some of dgenerates dependencies depend on ``opencv-python`` and pip
