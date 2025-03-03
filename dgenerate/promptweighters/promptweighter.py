@@ -216,6 +216,8 @@ class PromptWeighter(_plugin.Plugin):
         :param device: The desired device.
         """
         for name, module in _pipelinewrapper.get_torch_pipeline_modules(pipeline).items():
+            # module will never be None, _pipelinewrapper.get_torch_pipeline_modules
+            # filters that out for you
             if name.startswith('text_encoder'):
                 module.to(device)
 

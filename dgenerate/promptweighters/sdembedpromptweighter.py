@@ -31,7 +31,6 @@ import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.promptweighters.exceptions as _exceptions
 import dgenerate.promptweighters.promptweighter as _promptweighter
 import dgenerate.memory as _memory
-import dgenerate.pipelinewrapper as _pipelinewrapper
 
 
 
