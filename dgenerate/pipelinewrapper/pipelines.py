@@ -493,7 +493,7 @@ def _pipeline_to(pipeline, device: torch.device | str | None):
     all_modules_on_device = all(
         _util.devices_equal(device, get_torch_device(m)) for m in get_torch_pipeline_modules(pipeline).values())
 
-    pipeline_on_device = get_torch_device(pipeline) == pipeline_device
+    pipeline_on_device = _util.devices_equal(get_torch_device(pipeline), pipeline_device)
 
     if pipeline_on_device and all_modules_on_device:
         _messages.debug_log(
