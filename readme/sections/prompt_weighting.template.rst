@@ -2,8 +2,8 @@ Prompt Weighting
 ================
 
 By default, the prompt token weighting syntax that you may be familiar with from other software such as
-`ComfyUI <https://github.com/comfyanonymous/ComfyUI>`_, `Stable Diffusion Web UI <Stable_Diffusion_Web_UI_1_>`_,
-and `CivitAI <CivitAI_1_>`_ etc. is not enabled, and prompts over ``77`` tokens in length are not supported.
+`ComfyUI <https://github.com/comfyanonymous/ComfyUI>`_, `Stable Diffusion Web UI <https://github.com/AUTOMATIC1111/stable-diffusion-webui>`_,
+and `CivitAI <https://civitai.com/>`_ etc. is not enabled, and prompts over ``77`` tokens in length are not supported.
 
 However! dgenerate implements prompt weighting and prompt enhancements through internal plugins
 called prompt weighters, which can be selectively enabled to process your prompts. They support
@@ -41,7 +41,7 @@ Stable Diffusion 1/2, and Stable Diffusion XL.
 
 You can read about InvokeAI prompt syntax here: `Invoke AI prompting documentation <https://invoke-ai.github.io/InvokeAI/features/PROMPTS/>`_
 
-It is a bit different than `Stable Diffusion Web UI <Stable_Diffusion_Web_UI_1_>`_ syntax,
+It is a bit different than `Stable Diffusion Web UI <https://github.com/AUTOMATIC1111/stable-diffusion-webui>`_ syntax,
 which is a syntax used by the majority of other image generation software. It possesses some neat
 features not mentioned in this documentation, that are worth reading about in the links provided above.
 
@@ -135,12 +135,12 @@ The sd-embed prompt weighter
 ----------------------------
 
 The ``sd-embed`` prompt weighter uses the `sd_embed <https://github.com/xhinker/sd_embed>`_ library to support
-`Stable Diffusion Web UI <Stable_Diffusion_Web_UI_1_>`_ style prompt token
+`Stable Diffusion Web UI <https://github.com/AUTOMATIC1111/stable-diffusion-webui>`_ style prompt token
 weighting syntax for Stable Diffusion 1/2, Stable Diffusion XL, and Stable Diffusion 3.
 
 
 The syntax that ``sd-embed`` uses is the more wide spread prompt syntax used by software such as
-`Stable Diffusion Web UI <Stable_Diffusion_Web_UI_1_>`_ and `CivitAI <CivitAI_1_>`_
+`Stable Diffusion Web UI <https://github.com/AUTOMATIC1111/stable-diffusion-webui>`_ and `CivitAI <https://civitai.com/>`_
 
 
 Quite notably, the ``sd-embed`` prompt weighter supports Stable Diffusion 3 and Flux, where

@@ -41,10 +41,12 @@ pip_cache_local = os.path.abspath(os.path.join(script_path, '..', 'docker_cache'
 
 print('hf_cache_local:', hf_cache_local)
 print('dgenerate_cache_local:', dgenerate_cache_local)
+print('pip_cache_local:', pip_cache_local)
 print('image_working_dir:', image_working_dir)
 
 os.makedirs(hf_cache_local, exist_ok=True)
 os.makedirs(dgenerate_cache_local, exist_ok=True)
+os.makedirs(pip_cache_local, exist_ok=True)
 
 env_defs = []
 

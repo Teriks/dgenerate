@@ -40,35 +40,38 @@ def find_and_condense_links(rst_content):
     print('Condensing links...')
 
     link_pattern = re.compile(r'`([^`]+) <(https?://[^>]+)>`_')
-    links = defaultdict(set)  # Use a set to ensure uniqueness
+    link_counts = defaultdict(int)
 
-    # Find and store all links
+    # Count occurrences of each (title, URL) pair
     for title, url in link_pattern.findall(rst_content):
-        links[title].add(url)
+        link_counts[(title, url)] += 1
 
-    duplicates = {title: urls for title, urls in links.items() if len(urls) > 1}
+    # Identify links that appear more than once
+    duplicates = {key: count for key, count in link_counts.items() if count > 1}
     if not duplicates:
         print("No duplicate links found.")
         return rst_content
 
     ref_map = {}
-    condensed_links = [
-        f".. _{title.replace(' ', '_')}_{idx}: {url}"
-        for title, urls in duplicates.items()
-        for idx, url in enumerate(urls, 1)
-    ]
-    for title, urls in duplicates.items():
-        for idx, url in enumerate(urls, 1):
-            ref_map[url] = f"{title.replace(' ', '_')}_{idx}"
+    reference_definitions = []
+
+    for (title, url), count in duplicates.items():
+        ref_name = title.replace(' ', '_')
+        if ref_name in ref_map:
+            ref_name += f"_{len(ref_map)}"
+        ref_map[url] = ref_name
+        reference_definitions.append(f".. _{ref_name}: {url}")
 
     def link_replacer(match):
         title, url = match.groups()
-        return f"`{title} <{ref_map.get(url, url)}_>`_"
+        if url in ref_map:
+            return f"`{title} <{ref_map[url]}_>`_"
+        return match.group(0)
 
     new_text = link_pattern.sub(link_replacer, rst_content)
 
-    print(f'Condensed {len(condensed_links)} links.')
-    return '\n'.join(condensed_links) + '\n\n' + new_text
+    print(f'Condensed {len(reference_definitions)} links.')
+    return '\n'.join(reference_definitions) + '\n\n' + new_text
 
 
 def execute_command(base_dir, settings):
@@ -225,7 +228,15 @@ def render_templates(rst_content, filename=None):
 
     def command_replacer(command):
         command_output = execute_command(base_dir, command).strip()
-        return render_code_block('text', command_output)
+        if isinstance(command, dict):
+            block = command.get('block', True)
+        else:
+            block = True
+
+        if block:
+            return render_code_block('text', command_output)
+        else:
+            return command_output.strip()
 
     def include_replacer(include_path):
         if not isinstance(include_path, str):

@@ -66,7 +66,7 @@ at which the controlnet model stops applying guidance. It defaults to 1.0, meani
 stop at the last inference step.
 
 
-These examples use: `vermeer_canny_edged.png <vermeer_canny_edged.png_1_>`_
+These examples use: `vermeer_canny_edged.png <https://raw.githubusercontent.com/Teriks/dgenerate/v@VERSION/examples/media/vermeer_canny_edged.png>`_
 
 
 .. code-block:: bash

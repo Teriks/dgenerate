@@ -50,7 +50,7 @@ Install Python >=3.10,<3.13 (Debian / Ubuntu) and pipx
 
     #!/usr/bin/env bash
 
-    sudo apt install python3 python3-pip pipx python3-venv python3-wheel
+    sudo apt install python3 python3-pip python3-wheel python3-venv python3-tk
     pipx ensurepath
 
     source ~/.bashrc
@@ -72,13 +72,6 @@ Install dgenerate
 
     # With NCNN upscaler support
 
-    # be aware that the ncnn python package depends on
-    # the non headless version of python-opencv and it may
-    # cause issues on headless systems without a window manager such
-    # as not being able to find the native library: libGL
-    # in addition you are going to probably have to do some work
-    # to get Vulkan driver support
-
     pipx install dgenerate[ncnn] \
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu124/"
 
@@ -97,8 +90,8 @@ Install dgenerate
 
 
 It is recommended to install dgenerate with pipx if you are just intending
-to use it as a command line program, if you want to develop you can install it from
-a cloned repository like this:
+to use it as a command line program, if you want to install into your own
+virtual environment you can do so like this:
 
 .. code-block:: bash
 
@@ -110,9 +103,13 @@ a cloned repository like this:
     python3 -m venv venv
     source venv/bin/activate
 
-    # Install with pip into the environment
+    # Install with pip into the environment (editable, for development)
 
     pip3 install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu124/
+
+    # Install with pip into the environment (non-editable)
+
+    pip3 install . --extra-index-url https://download.pytorch.org/whl/cu124/
 
 
 Run ``dgenerate`` to generate images:
@@ -131,6 +128,30 @@ Run ``dgenerate`` to generate images:
     --output-path output \
     --inference-steps 40 \
     --guidance-scales 10
+
+Headless opencv (libGL.so.1 issues)
+-----------------------------------
+
+If you are running into issues with OpenCV being unable to load ``libGL.so.1``
+because your system is headless.
+
+If it is applicable, install these: ``libgl1 libglib2.0-0``
+
+.. code-block:: bash
+
+    sudo apt install libgl1 libglib2.0-0
+
+If that does not sound reasonable for your systems setup, install dgenerate into
+a virtual environment as described above, activate the environment and remove
+``python-opencv`` and ``python-opencv-headless``, then reinstall ``python-opencv-headless``.
+
+.. code-block:: bash
+
+    source venv\bin\activate
+
+    pip uninstall python-opencv-headless python-opencv
+
+    pip install python-opencv-headless==@COMMAND_OUTPUT[{"command": "python ../../scripts/get_cur_headless_opencv_ver.py", "block":false}]
 
 
 Linux with ROCm (AMD Cards)
