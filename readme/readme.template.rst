@@ -88,6 +88,8 @@ Help Output
 
 @INCLUDE[sections/install/linux_install.template.rst]
 
+@INCLUDE[sections/install/opencv_headless.template.rst]
+
 @INCLUDE[sections/install/mac_install.template.rst]
 
 @INCLUDE[sections/install/google_colab_install.template.rst]
