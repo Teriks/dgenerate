@@ -68,7 +68,6 @@ class RankGenEncoder:
             'kalpeshk2011/rankgen-t5-large-pg19'
         ]
 
-        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         if model_size is None:
             if "t5-large" in model_path or "t5_large" in model_path:
                 self.model_size = "large"
@@ -97,7 +96,6 @@ class RankGenEncoder:
         )
 
     def to(self, device, **kwargs):
-        self.device = device
         return self.model.to(device, **kwargs)
 
     def eval(self):
@@ -125,7 +123,7 @@ class RankGenEncoder:
             tokenized_inputs['input_ids'] = torch.cat([tokenized_inputs['input_ids'], padding_tokens], dim=1)
             tokenized_inputs['attention_mask'] = torch.cat([tokenized_inputs['attention_mask'], padding_tokens], dim=1)
 
-        tokenized_inputs = tokenized_inputs.to(self.device)
+        tokenized_inputs = tokenized_inputs.to(self.model.device)
         with torch.no_grad():
             batch_embeddings = self.model.t5_encoder(**tokenized_inputs).last_hidden_state
         return batch_embeddings
@@ -489,6 +487,10 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
 
             self.memory_guard_device(device, self.size_estimate)
 
+            # encoder is not guaranteed to be on
+            # the device yet, move it
+            pipeline.text_encoder.to(device)
+
             self.llm_projector.to(device).eval()
             self.t5_model.to(device).eval()
 
@@ -505,6 +507,9 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
 
             input_ids = input_ids.to(device)
             self._tensors.append(input_ids)
+
+            pipeline.text_encoder.to(device)
+
             clip_embed = pipeline.text_encoder(input_ids, return_dict=False)[0]
             pos_conditioning = self.llm_projector(
                 clip_embed.to(self._llm_dtype), llm_embed).to(embeds_dtype)

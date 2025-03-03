@@ -522,7 +522,7 @@ def _pipeline_to(pipeline, device: torch.device | str | None):
 
                 _messages.debug_log(
                     f'Cached {_types.class_and_id_string(pipeline)} Size = '
-                    f'{cache_metadata} Bytes '
+                    f'{cache_metadata.size} Bytes '
                     f'({_memory.bytes_best_human_unit(cache_metadata.size)}) '
                     f'is leaving CPU side memory, '
                     f'cache size is now '
@@ -532,7 +532,7 @@ def _pipeline_to(pipeline, device: torch.device | str | None):
             else:
                 _messages.debug_log(
                     f'Cached {_types.class_and_id_string(pipeline)} Size = '
-                    f'{cache_metadata} Bytes '
+                    f'{cache_metadata.size} Bytes '
                     f'({_memory.bytes_best_human_unit(cache_metadata.size)}) '
                     f'is entering CPU side memory, '
                     f'cache size is now '
@@ -846,9 +846,12 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline,
                 if not prompt_warning_issued:
                     _warn_prompt_lengths(pipeline, **kwargs)
                     prompt_warning_issued = True
+                pipeline_to(pipeline, device)
                 pipe_result = pipeline(**kwargs)
             else:
-                pipe_result = pipeline(**_call_prompt_weighter())
+                args = _call_prompt_weighter()
+                pipeline_to(pipeline, device)
+                pipe_result = pipeline(**args)
                 prompt_weighter.cleanup()
             return pipe_result
         except TypeError as e:
@@ -922,7 +925,6 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline,
                 f'of memory condition and cleanup.')
 
             # retry after memory cleanup
-            pipeline_to(pipeline, device)
             result = _call_pipeline()
             _LAST_CALLED_PIPELINE = pipeline
             return result
@@ -935,7 +937,6 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline,
         pipeline_to(_LAST_CALLED_PIPELINE, 'cpu')
 
     try:
-        pipeline_to(pipeline, device)
         result = _call_pipeline()
     except _d_exceptions.OutOfMemoryError:
         if not enable_retry_pipe:
@@ -946,7 +947,6 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline,
             f'of memory condition and cleanup.')
         # allow for memory cleanup and try again
         # might be able to run now
-        pipeline_to(pipeline, device)
         result = _call_pipeline()
 
     _LAST_CALLED_PIPELINE = pipeline

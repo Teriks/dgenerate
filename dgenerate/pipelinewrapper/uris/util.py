@@ -105,7 +105,7 @@ def _patch_module_to_for_sized_cache(cache: _memory.SizedConstrainedObjectCache,
 
                     _messages.debug_log(
                         f'Cached {_types.class_and_id_string(module)} Size = '
-                        f'{metadata} Bytes '
+                        f'{metadata.size} Bytes '
                         f'({_memory.bytes_best_human_unit(metadata.size)}) '
                         f'is leaving CPU side memory, '
                         f'cache size is now '
@@ -116,7 +116,7 @@ def _patch_module_to_for_sized_cache(cache: _memory.SizedConstrainedObjectCache,
 
                     _messages.debug_log(
                         f'Cached {_types.class_and_id_string(module)} Size = '
-                        f'{metadata} Bytes '
+                        f'{metadata.size} Bytes '
                         f'({_memory.bytes_best_human_unit(metadata.size)}) '
                         f'is entering CPU side memory, '
                         f'cache size is now '
