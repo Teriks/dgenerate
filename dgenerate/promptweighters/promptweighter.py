@@ -30,6 +30,7 @@ import dgenerate.memory as _memory
 import dgenerate.promptweighters.constants as _constants
 import dgenerate.messages as _messages
 import dgenerate.devicecache as _devicecache
+import dgenerate.pipelinewrapper as _pipelinewrapper
 
 _prompt_weighter_cache = _memoize.create_object_cache(
     'prompt_weighter',
@@ -132,7 +133,6 @@ class PromptWeighter(_plugin.Plugin):
                     _constants.PROMPT_WEIGHTER_CUDA_MEMORY_CONSTRAINTS,
                     extra_vars={'memory_required': memory_required},
                     device=device):
-
                 _messages.debug_log(
                     f'Prompt Weighter "{self.__class__.__name__}" is clearing the GPU side object '
                     f'cache due to GPU side memory constraint evaluating to to True.')
@@ -144,7 +144,6 @@ class PromptWeighter(_plugin.Plugin):
             if (_memory.memory_constraints(
                     _constants.PROMPT_WEIGHTER_CACHE_GC_CONSTRAINTS,
                     extra_vars={'memory_required': memory_required})):
-
                 _messages.debug_log(
                     f'Prompt weighter "{self.__class__.__name__}" is clearing the CPU side object '
                     f'cache due to CPU side memory constraint evaluating to to True.')
@@ -207,6 +206,18 @@ class PromptWeighter(_plugin.Plugin):
             return method(), _memoize.CachedObjectMetadata(size=estimated_size)
 
         return load_cached()
+
+    @staticmethod
+    def move_text_encoders(pipeline, device: str):
+        """
+        Utility for moving all of a pipelines text encoders to a device.
+
+        :param pipeline: The diffusion pipeline.
+        :param device: The desired device.
+        """
+        for name, module in _pipelinewrapper.get_torch_pipeline_modules(pipeline).items():
+            if name.startswith('text_encoder'):
+                module.to(device)
 
     def translate_to_embeds(self,
                             pipeline,

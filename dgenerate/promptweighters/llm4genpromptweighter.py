@@ -487,9 +487,7 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
 
             self.memory_guard_device(device, self.size_estimate)
 
-            # encoder is not guaranteed to be on
-            # the device yet, move it
-            pipeline.text_encoder.to(device)
+            self.move_text_encoders(pipeline, device)
 
             self.llm_projector.to(device).eval()
             self.t5_model.to(device).eval()

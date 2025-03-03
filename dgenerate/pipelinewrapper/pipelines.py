@@ -486,11 +486,13 @@ def _pipeline_to(pipeline, device: torch.device | str | None):
             f'"{device}" as it has no to() method.')
         return
 
-    to_device = torch.device(device)
+    device = torch.device(device)
 
     pipeline_device = get_torch_device(pipeline)
 
-    all_modules_on_device = all(to_device == get_torch_device(m) for m in get_torch_pipeline_modules(pipeline).values())
+    all_modules_on_device = all(
+        _util.devices_equal(device, get_torch_device(m)) for m in get_torch_pipeline_modules(pipeline).values())
+
     pipeline_on_device = get_torch_device(pipeline) == pipeline_device
 
     if pipeline_on_device and all_modules_on_device:
@@ -513,11 +515,11 @@ def _pipeline_to(pipeline, device: torch.device | str | None):
             f'pipeline_to() Moving pipeline "{pipeline.__class__.__name__}" to "{device}", '
             f'pipeline_on_device={pipeline_on_device}, all_modules_on_device={all_modules_on_device}.')
 
-    if pipeline_device != to_device:
+    if not _util.devices_equal(pipeline_device, device):
         try:
             cache_metadata = _torch_pipeline_cache.get_metadata(pipeline)
 
-            if to_device.type != 'cpu':
+            if device.type != 'cpu':
                 _torch_pipeline_cache.size -= cache_metadata.size
 
                 _messages.debug_log(
@@ -572,13 +574,13 @@ def _pipeline_to(pipeline, device: torch.device | str | None):
             )
             continue
 
-        if current_device == to_device:
+        if _util.devices_equal(current_device, device):
             _messages.debug_log(
                 f'pipeline_to() Not moving module "{name} = {value.__class__.__name__}" to "{device}" '
                 f'as it is already on that device.')
             continue
 
-        if is_model_cpu_offload_enabled(value) and to_device.type != 'cpu':
+        if is_model_cpu_offload_enabled(value) and device.type != 'cpu':
             _messages.debug_log(
                 f'pipeline_to() Not moving module "{name} = {value.__class__.__name__}" to "{device}" '
                 f'as it has cpu offload enabled and can only move to cpu.')
@@ -586,11 +588,11 @@ def _pipeline_to(pipeline, device: torch.device | str | None):
 
         _messages.debug_log(
             f'pipeline_to() Moving module "{name}" of pipeline {_types.fullname(pipeline)} '
-            f'from device "{current_device}" to device "{to_device}"')
+            f'from device "{current_device}" to device "{device}"')
 
         value.to(device)
 
-    if device == 'cpu':
+    if device.type == 'cpu':
         _memory.torch_gc()
 
 
@@ -724,19 +726,7 @@ def _evict_last_pipeline(device: torch.device | None):
     if active_pipe is None:
         return
 
-    current_device_index = torch.cuda.current_device()
-
-    if device is None:
-        pipe_device_index = 0
-        device_index = 0
-    else:
-        pipe_device_index = _types.default(
-            get_torch_device(active_pipe).index, current_device_index)
-
-        device_index = _types.default(
-            device.index, current_device_index)
-
-    if pipe_device_index == device_index:
+    if device is None or _util.devices_equal(get_torch_device(active_pipe), device):
         # get rid of this reference immediately
         # noinspection PyUnusedLocal
         active_pipe = None
