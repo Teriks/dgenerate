@@ -10,7 +10,7 @@ The default device on MacOS is ``mps`` unless specified otherwise.
 You can install on MacOS by first installing python from the universal ``pkg`` installer
 located at: https://www.python.org/downloads/release/python-3126/
 
-It is also possible to install Python using `homebrew <homebrew_1_>`_, though tkinter will
+It is also possible to install Python using `homebrew <https://brew.sh/>`_, though tkinter will
 not be available meaning that you cannot run the Console UI.
 
 Once you have done so, you can install using ``pipx`` (recommended), or create a virtual

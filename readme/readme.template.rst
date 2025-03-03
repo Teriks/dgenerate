@@ -1,15 +1,3 @@
-.. _homebrew_1: https://brew.sh/
-
-.. _optimum-quanto_library_1: https://github.com/huggingface/optimum-quanto
-.. _vermeer_canny_edged.png_1: https://raw.githubusercontent.com/Teriks/dgenerate/v@VERSION/examples/media/vermeer_canny_edged.png
-
-.. _spandrel_1: https://github.com/chaiNNer-org/spandrel
-.. _ncnn_1: https://github.com/Tencent/ncnn
-
-.. _Stable_Diffusion_Web_UI_1: https://github.com/AUTOMATIC1111/stable-diffusion-webui
-.. _CivitAI_1: https://civitai.com/
-.. _chaiNNer_1: https://github.com/chaiNNer-org/chaiNNer
-
 .. |Documentation| image:: https://readthedocs.org/projects/dgenerate/badge/?version=v@VERSION
    :target: http://dgenerate.readthedocs.io/en/v@VERSION/
 

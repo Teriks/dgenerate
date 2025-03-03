@@ -1,14 +1,11 @@
-.. _homebrew_1: https://brew.sh/
-
-.. _optimum-quanto_library_1: https://github.com/huggingface/optimum-quanto
-.. _vermeer_canny_edged.png_1: https://raw.githubusercontent.com/Teriks/dgenerate/v4.5.1/examples/media/vermeer_canny_edged.png
-
-.. _spandrel_1: https://github.com/chaiNNer-org/spandrel
-.. _ncnn_1: https://github.com/Tencent/ncnn
-
-.. _Stable_Diffusion_Web_UI_1: https://github.com/AUTOMATIC1111/stable-diffusion-webui
-.. _CivitAI_1: https://civitai.com/
-.. _chaiNNer_1: https://github.com/chaiNNer-org/chaiNNer
+.. _vermeer_canny_edged.png: https://raw.githubusercontent.com/Teriks/dgenerate/v4.5.1/examples/media/vermeer_canny_edged.png
+.. _Phi-3_Mini_Abliterated_Q4_GGUF_by_failspy: https://huggingface.co/failspy/Phi-3-mini-128k-instruct-abliterated-v3-GGUF
+.. _Stable_Diffusion_Web_UI: https://github.com/AUTOMATIC1111/stable-diffusion-webui
+.. _CivitAI: https://civitai.com/
+.. _DiffusionArguments: https://dgenerate.readthedocs.io/en/v4.5.1/dgenerate_submodules.html#dgenerate.pipelinewrapper.DiffusionArguments
+.. _spandrel: https://github.com/chaiNNer-org/spandrel
+.. _ncnn: https://github.com/Tencent/ncnn
+.. _chaiNNer: https://github.com/chaiNNer-org/chaiNNer
 
 .. |Documentation| image:: https://readthedocs.org/projects/dgenerate/badge/?version=v4.5.1
    :target: http://dgenerate.readthedocs.io/en/v4.5.1/
@@ -1763,7 +1760,7 @@ Install Python >=3.10,<3.13 (Debian / Ubuntu) and pipx
 
     #!/usr/bin/env bash
 
-    sudo apt install python3 python3-pip pipx python3-venv python3-wheel
+    sudo apt install python3 python3-pip python3-wheel python3-venv python3-tk
     pipx ensurepath
 
     source ~/.bashrc
@@ -1785,13 +1782,6 @@ Install dgenerate
 
     # With NCNN upscaler support
 
-    # be aware that the ncnn python package depends on
-    # the non headless version of python-opencv and it may
-    # cause issues on headless systems without a window manager such
-    # as not being able to find the native library: libGL
-    # in addition you are going to probably have to do some work
-    # to get Vulkan driver support
-
     pipx install dgenerate[ncnn] \
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu124/"
 
@@ -1810,8 +1800,8 @@ Install dgenerate
 
 
 It is recommended to install dgenerate with pipx if you are just intending
-to use it as a command line program, if you want to develop you can install it from
-a cloned repository like this:
+to use it as a command line program, if you want to install into your own
+virtual environment you can do so like this:
 
 .. code-block:: bash
 
@@ -1823,9 +1813,13 @@ a cloned repository like this:
     python3 -m venv venv
     source venv/bin/activate
 
-    # Install with pip into the environment
+    # Install with pip into the environment (editable, for development)
 
     pip3 install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu124/
+
+    # Install with pip into the environment (non-editable)
+
+    pip3 install . --extra-index-url https://download.pytorch.org/whl/cu124/
 
 
 Run ``dgenerate`` to generate images:
@@ -1844,6 +1838,30 @@ Run ``dgenerate`` to generate images:
     --output-path output \
     --inference-steps 40 \
     --guidance-scales 10
+
+Headless opencv (libGL.so.1 issues)
+-----------------------------------
+
+If you are running into issues with OpenCV being unable to load ``libGL.so.1``
+because your system is headless.
+
+If it is applicable, install these: ``libgl1 libglib2.0-0``
+
+.. code-block:: bash
+
+    sudo apt install libgl1 libglib2.0-0
+
+If that does not sound reasonable for your systems setup, install dgenerate into
+a virtual environment as described above, activate the environment and remove
+``python-opencv`` and ``python-opencv-headless``, then reinstall ``python-opencv-headless``.
+
+.. code-block:: bash
+
+    source venv\bin\activate
+
+    pip uninstall python-opencv-headless python-opencv
+
+    pip install python-opencv-headless==4.11.0.86
 
 
 Linux with ROCm (AMD Cards)
@@ -1935,7 +1953,7 @@ The default device on MacOS is ``mps`` unless specified otherwise.
 You can install on MacOS by first installing python from the universal ``pkg`` installer
 located at: https://www.python.org/downloads/release/python-3126/
 
-It is also possible to install Python using `homebrew <homebrew_1_>`_, though tkinter will
+It is also possible to install Python using `homebrew <https://brew.sh/>`_, though tkinter will
 not be available meaning that you cannot run the Console UI.
 
 Once you have done so, you can install using ``pipx`` (recommended), or create a virtual
@@ -3591,7 +3609,7 @@ at which the controlnet model stops applying guidance. It defaults to 1.0, meani
 stop at the last inference step.
 
 
-These examples use: `vermeer_canny_edged.png <vermeer_canny_edged.png_1_>`_
+These examples use: `vermeer_canny_edged.png <vermeer_canny_edged.png_>`_
 
 
 .. code-block:: bash
@@ -3851,7 +3869,7 @@ over the first half of the time-steps needed to generate the image.
 
 When using multiple T2I Adapters, this value applies to all T2I Adapter models mentioned.
 
-These examples use: `vermeer_canny_edged.png <vermeer_canny_edged.png_1_>`_
+These examples use: `vermeer_canny_edged.png <vermeer_canny_edged.png_>`_
 
 .. code-block:: bash
 
@@ -4434,7 +4452,7 @@ The gpt4all prompt upscaler
 
 The ``gpt4all`` upscaler can make use of LLMs via ``gpt4all`` to enhance your prompt text.
 
-The default model used is: `Phi-3 Mini Abliterated Q4 GGUF by failspy <https://huggingface.co/failspy/Phi-3-mini-128k-instruct-abliterated-v3-GGUF>`_
+The default model used is: `Phi-3 Mini Abliterated Q4 GGUF by failspy <Phi-3_Mini_Abliterated_Q4_GGUF_by_failspy_>`_
 
 This prompt upscaler can support any LLM model supported by ``gpt4all==2.8.2``.
 
@@ -4725,7 +4743,7 @@ Any LLM that is supported by ``gpt4all==2.8.2`` can be used to upscale prompts v
 This plugin supports loading LLM models in ``gguf`` format and uses a native inference backend provided by ``gpt4all``
 for memory efficient inference on the cpu or gpu.
 
-Here is an example using `Phi-3 Mini Abliterated Q4 GGUF by failspy <https://huggingface.co/failspy/Phi-3-mini-128k-instruct-abliterated-v3-GGUF>`_
+Here is an example using `Phi-3 Mini Abliterated Q4 GGUF by failspy <Phi-3_Mini_Abliterated_Q4_GGUF_by_failspy_>`_
 
 .. code-block:: jinja
 
@@ -4871,8 +4889,8 @@ Prompt Weighting
 ================
 
 By default, the prompt token weighting syntax that you may be familiar with from other software such as
-`ComfyUI <https://github.com/comfyanonymous/ComfyUI>`_, `Stable Diffusion Web UI <Stable_Diffusion_Web_UI_1_>`_,
-and `CivitAI <CivitAI_1_>`_ etc. is not enabled, and prompts over ``77`` tokens in length are not supported.
+`ComfyUI <https://github.com/comfyanonymous/ComfyUI>`_, `Stable Diffusion Web UI <Stable_Diffusion_Web_UI_>`_,
+and `CivitAI <CivitAI_>`_ etc. is not enabled, and prompts over ``77`` tokens in length are not supported.
 
 However! dgenerate implements prompt weighting and prompt enhancements through internal plugins
 called prompt weighters, which can be selectively enabled to process your prompts. They support
@@ -4910,7 +4928,7 @@ Stable Diffusion 1/2, and Stable Diffusion XL.
 
 You can read about InvokeAI prompt syntax here: `Invoke AI prompting documentation <https://invoke-ai.github.io/InvokeAI/features/PROMPTS/>`_
 
-It is a bit different than `Stable Diffusion Web UI <Stable_Diffusion_Web_UI_1_>`_ syntax,
+It is a bit different than `Stable Diffusion Web UI <Stable_Diffusion_Web_UI_>`_ syntax,
 which is a syntax used by the majority of other image generation software. It possesses some neat
 features not mentioned in this documentation, that are worth reading about in the links provided above.
 
@@ -5039,12 +5057,12 @@ The sd-embed prompt weighter
 ----------------------------
 
 The ``sd-embed`` prompt weighter uses the `sd_embed <https://github.com/xhinker/sd_embed>`_ library to support
-`Stable Diffusion Web UI <Stable_Diffusion_Web_UI_1_>`_ style prompt token
+`Stable Diffusion Web UI <Stable_Diffusion_Web_UI_>`_ style prompt token
 weighting syntax for Stable Diffusion 1/2, Stable Diffusion XL, and Stable Diffusion 3.
 
 
 The syntax that ``sd-embed`` uses is the more wide spread prompt syntax used by software such as
-`Stable Diffusion Web UI <Stable_Diffusion_Web_UI_1_>`_ and `CivitAI <CivitAI_1_>`_
+`Stable Diffusion Web UI <Stable_Diffusion_Web_UI_>`_ and `CivitAI <CivitAI_>`_
 
 
 Quite notably, the ``sd-embed`` prompt weighter supports Stable Diffusion 3 and Flux, where
@@ -5215,7 +5233,7 @@ to define the ``--prompt-weighter`` and ``--prompt-upscaler`` plugins that act o
 ``<upscaler: ...>`` is unlike other embedded arguments in that it can be mentioned multiple times
 in a row to create a chain of prompt upscaling operations using different prompt upscaler plugin URIs.
 
-The rest of the specifiable arguments are select members of the `DiffusionArguments <https://dgenerate.readthedocs.io/en/v4.5.1/dgenerate_submodules.html#dgenerate.pipelinewrapper.DiffusionArguments>`_
+The rest of the specifiable arguments are select members of the `DiffusionArguments <DiffusionArguments_>`_
 class from dgenerate's library API.
 
 You may not specify prompt related arguments aside from the aforementioned ``weighter`` and ``upscaler``.
@@ -5239,7 +5257,7 @@ All other arguments are fair game, for example ``inference_steps``
     --prompts "hello world!" "<inference-steps: 50> hello world!"
 
 
-Of the arguments mentioned in the `DiffusionArguments <https://dgenerate.readthedocs.io/en/v4.5.1/dgenerate_submodules.html#dgenerate.pipelinewrapper.DiffusionArguments>`_ class,
+Of the arguments mentioned in the `DiffusionArguments <DiffusionArguments_>`_ class,
 these are the arguments that are available for use:
 
 .. code-block:: text
@@ -5991,13 +6009,13 @@ dgenerate implements four different methods of upscaling images, animated images
 
 Upscaling with the Stable Diffusion based x2 and x4 upscalers from the `diffusers <https://github.com/huggingface/diffusers>`_ library.
 
-With the ``upscale`` image processor, which is compatible with torch models implemented in the `spandrel <spandrel_1_>`_ library.
+With the ``upscale`` image processor, which is compatible with torch models implemented in the `spandrel <spandrel_>`_ library.
 
-And with the ``upscaler-ncnn`` image processor, which implements upscaling with generic NCNN upscaling models using the `ncnn <ncnn_1_>`_ library.
+And with the ``upscaler-ncnn`` image processor, which implements upscaling with generic NCNN upscaling models using the `ncnn <ncnn_>`_ library.
 
-The `spandrel <spandrel_1_>`_ library supports the use of most torch models on: https://openmodeldb.info/
+The `spandrel <spandrel_>`_ library supports the use of most torch models on: https://openmodeldb.info/
 
-The `ncnn <ncnn_1_>`_ library supports models compatible with `upscayl <https://github.com/upscayl/upscayl>`_ as well as `chaiNNer <chaiNNer_1_>`_.
+The `ncnn <ncnn_>`_ library supports models compatible with `upscayl <https://github.com/upscayl/upscayl>`_ as well as `chaiNNer <chaiNNer_>`_.
 
 ONNX upscaler models can be converted to NCNN format for use with the ``upscaler-ncnn`` image processor.
 
@@ -6042,7 +6060,7 @@ The image used in the example below is this `low resolution cat <https://raw.git
 Upscaling with chaiNNer Compatible Torch Upscaler Models
 --------------------------------------------------------
 
-`chaiNNer <chaiNNer_1_>`_ compatible torch upscaler models from https://openmodeldb.info/
+`chaiNNer <chaiNNer_>`_ compatible torch upscaler models from https://openmodeldb.info/
 and elsewhere can be utilized for tiled upscaling using dgenerate's ``upscaler`` image processor and the
 ``--post-processors`` option.  The ``upscaler`` image processor can also be used for processing
 input images via the other options mentioned in `Image Processors`_ such as ``--seed-image-processors``
@@ -7048,7 +7066,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [678168228536]
+            Value: [50684805827665]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

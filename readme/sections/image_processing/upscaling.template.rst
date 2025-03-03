@@ -5,13 +5,13 @@ dgenerate implements four different methods of upscaling images, animated images
 
 Upscaling with the Stable Diffusion based x2 and x4 upscalers from the `diffusers <https://github.com/huggingface/diffusers>`_ library.
 
-With the ``upscale`` image processor, which is compatible with torch models implemented in the `spandrel <spandrel_1_>`_ library.
+With the ``upscale`` image processor, which is compatible with torch models implemented in the `spandrel <https://github.com/chaiNNer-org/spandrel>`_ library.
 
-And with the ``upscaler-ncnn`` image processor, which implements upscaling with generic NCNN upscaling models using the `ncnn <ncnn_1_>`_ library.
+And with the ``upscaler-ncnn`` image processor, which implements upscaling with generic NCNN upscaling models using the `ncnn <https://github.com/Tencent/ncnn>`_ library.
 
-The `spandrel <spandrel_1_>`_ library supports the use of most torch models on: https://openmodeldb.info/
+The `spandrel <https://github.com/chaiNNer-org/spandrel>`_ library supports the use of most torch models on: https://openmodeldb.info/
 
-The `ncnn <ncnn_1_>`_ library supports models compatible with `upscayl <https://github.com/upscayl/upscayl>`_ as well as `chaiNNer <chaiNNer_1_>`_.
+The `ncnn <https://github.com/Tencent/ncnn>`_ library supports models compatible with `upscayl <https://github.com/upscayl/upscayl>`_ as well as `chaiNNer <https://github.com/chaiNNer-org/chaiNNer>`_.
 
 ONNX upscaler models can be converted to NCNN format for use with the ``upscaler-ncnn`` image processor.
 
@@ -56,7 +56,7 @@ The image used in the example below is this `low resolution cat <https://raw.git
 Upscaling with chaiNNer Compatible Torch Upscaler Models
 --------------------------------------------------------
 
-`chaiNNer <chaiNNer_1_>`_ compatible torch upscaler models from https://openmodeldb.info/
+`chaiNNer <https://github.com/chaiNNer-org/chaiNNer>`_ compatible torch upscaler models from https://openmodeldb.info/
 and elsewhere can be utilized for tiled upscaling using dgenerate's ``upscaler`` image processor and the
 ``--post-processors`` option.  The ``upscaler`` image processor can also be used for processing
 input images via the other options mentioned in `Image Processors`_ such as ``--seed-image-processors``
