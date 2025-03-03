@@ -129,30 +129,6 @@ Run ``dgenerate`` to generate images:
     --inference-steps 40 \
     --guidance-scales 10
 
-Headless opencv (libGL.so.1 issues)
------------------------------------
-
-If you are running into issues with OpenCV being unable to load ``libGL.so.1``
-because your system is headless.
-
-If it is applicable, install these: ``libgl1 libglib2.0-0``
-
-.. code-block:: bash
-
-    sudo apt install libgl1 libglib2.0-0
-
-If that does not sound reasonable for your systems setup, install dgenerate into
-a virtual environment as described above, activate the environment and remove
-``python-opencv`` and ``python-opencv-headless``, then reinstall ``python-opencv-headless``.
-
-.. code-block:: bash
-
-    source venv\bin\activate
-
-    pip uninstall python-opencv-headless python-opencv
-
-    pip install python-opencv-headless==@COMMAND_OUTPUT[{"command": "python ../../scripts/get_cur_headless_opencv_ver.py", "block":false}]
-
 
 Linux with ROCm (AMD Cards)
 ===========================
