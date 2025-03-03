@@ -22,7 +22,6 @@
 import gc
 import inspect
 import re
-import typing
 
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.promptweighters.exceptions as _exceptions
@@ -247,11 +246,11 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
 
     The "projector" argument specifies a Hugging Face repo or file path to the LLM4GEN projector (CAM) model.
 
-    The "projector_revision" argument specifies the revision of the Hugging Face projector repository, for example "main".
+    The "projector-revision" argument specifies the revision of the Hugging Face projector repository, for example "main".
 
-    The "projector_subfolder" argument specifies the subfolder for the projector file in a Hugging Face repository.
+    The "projector-subfolder" argument specifies the subfolder for the projector file in a Hugging Face repository.
 
-    The "projector_weight_name" argument specifies the weight name of the projector file in a Hugging Face repository.
+    The "projector-weight-name" argument specifies the weight name of the projector file in a Hugging Face repository.
 
     The "llm-dtype" argument specifies the precision for the rankgen encoder and llm4gen CAM projector model,
     changing this to 'float16' or 'bfloat16' will cut memory use in half at the possible cost of output quality.

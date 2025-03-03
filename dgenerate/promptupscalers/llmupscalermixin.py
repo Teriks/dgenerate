@@ -312,6 +312,11 @@ class LLMPromptUpscalerMixin(abc.ABC):
             generated_prompt = generated_prompt[len(formatted_prompt):]
             removed_prompt_prefix = True
 
+        # rid the input prompt of ChatML tokens
+        formatted_prompt = re.sub(
+            r"</?[|/]?.*?[|/]?/?[>)]",
+            " ", re.sub(r" </?[|/]?.*?[|/]?/?[>)] ", " ", formatted_prompt)).strip()
+
         # get rid of special tokens from the LLM output
         generated_prompt = re.sub(
             r"</?[|/]?.*?[|/]?/?[>)]",
