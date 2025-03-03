@@ -100,6 +100,29 @@ def is_valid_device_string(device, raise_ordinal=True):
     return False
 
 
+def devices_equal(device1: torch.device | str, device2: torch.device | str):
+    """
+    Compare if two devices are the same device.
+
+    This considers ``cuda`` and ``cuda:{torch.cuda.current_device()}`` to be the same device.
+
+    :param device1: Device 1.
+    :param device2: Device 2.
+    :return: Equality?
+    """
+    d1 = torch.device(device1)
+    d2 = torch.device(device2)
+
+    default_device_index = torch.cuda.current_device()
+
+    if d1.type == 'cuda' and d1.index is None:
+        d1 = torch.device(f'cuda:{default_device_index}')
+    if d2.type == 'cuda' and d2.index is None:
+        d2 = torch.device(f'cuda:{default_device_index}')
+
+    return d1 == d2
+
+
 @contextlib.contextmanager
 def _disable_tqdm():
     huggingface_hub.utils.enable_progress_bars()
@@ -995,7 +1018,6 @@ def _convert_open_clip_checkpoint(
         checkpoint,
         prefix="cond_stage_model.model.",
 ):
-
     text_model_dict = {}
     text_proj_key = prefix + "text_projection"
 

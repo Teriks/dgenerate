@@ -32,6 +32,7 @@ import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.promptweighters.exceptions as _exceptions
 import dgenerate.promptweighters.promptweighter as _promptweighter
 import dgenerate.memory as _memory
+import dgenerate.pipelinewrapper as _pipelinewrapper
 
 _Attention = typing.List[typing.Tuple[str, float]]
 
@@ -300,6 +301,8 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
         neg_conditioning = None
         pos_pooled = None
         neg_pooled = None
+
+        self.move_text_encoders(pipeline, device)
 
         if pipeline.__class__.__name__.startswith('StableDiffusionXL'):
 
