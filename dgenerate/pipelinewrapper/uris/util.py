@@ -88,6 +88,7 @@ def _patch_module_to_for_sized_cache(cache: _memory.SizedConstrainedObjectCache,
 
     # prevent recursive import
     from dgenerate.pipelinewrapper import get_torch_device
+    from dgenerate.pipelinewrapper.util import devices_equal
 
     def new_to(*args, **kwargs):
         device = None
@@ -97,7 +98,7 @@ def _patch_module_to_for_sized_cache(cache: _memory.SizedConstrainedObjectCache,
         elif 'device' in kwargs:
             device = torch.device(kwargs['device'])
 
-        if device is not None and get_torch_device(module) != device:
+        if device is not None and not devices_equal(get_torch_device(module), device):
             try:
                 metadata = cache.get_metadata(module)
                 if device.type != 'cpu':
