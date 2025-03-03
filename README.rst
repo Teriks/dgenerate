@@ -84,19 +84,9 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v4.5.1/>`_.
 
 * How To Install
     * `Windows Install`_
-        * `Manual Install`_
-        * `Install dgenerate`_
     * `Linux or WSL Install`_
-        * `Install Python >=3.10,<3.13 (Debian / Ubuntu) and pipx`_
-        * `Install dgenerate`_
-        * `Headless opencv (libGL.so.1 issues)`_
     * `Linux with ROCm (AMD Cards)`_
-        * `Install Python >=3.10,<3.13 (Debian / Ubuntu) and pipx`_
-        * `Setup Environment`_
-        * `Install dgenerate`_
     * `MacOS Install (Apple Silicon Only)`_
-        * `MacOS pipx install`_
-        * `MacOS venv install`_
 
 * Usage Manual
     * `Basic Usage`_
