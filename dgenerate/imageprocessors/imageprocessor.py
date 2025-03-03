@@ -638,6 +638,8 @@ class ImageProcessor(_plugin.Plugin):
         _devicecache.clear_device_cache(self.device)
 
     def __to(self, device: torch.device | str, attempt=0):
+        from dgenerate.pipelinewrapper.util import devices_equal
+
         device = torch.device(device)
 
         if device.type != 'cpu':
@@ -650,7 +652,7 @@ class ImageProcessor(_plugin.Plugin):
         try_again = False
 
         for m in self.__modules:
-            if not hasattr(m, '_DGENERATE_IMAGE_PROCESSOR_DEVICE') or m._DGENERATE_IMAGE_PROCESSOR_DEVICE != device:
+            if not hasattr(m, '_DGENERATE_IMAGE_PROCESSOR_DEVICE') or not devices_equal(m._DGENERATE_IMAGE_PROCESSOR_DEVICE, device):
 
                 self.memory_guard_device(device, self.size_estimate)
 
