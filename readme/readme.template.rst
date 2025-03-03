@@ -74,7 +74,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v@VERSION/>`_.
 * `Diffusion Feature Table <https://github.com/Teriks/dgenerate/blob/v@VERSION/FEATURE_TABLE.rst>`_
 
 * How To Install
-@TOC[{"from_index": "Windows Install", "to_index": "Google Colab Install", "indent": 4, "max_depth": 1}]
+@TOC[{"from_index": "Windows Install", "to_index": "Google Colab Install", "indent": 4}]
 
 * Usage Manual
 @TOC[{"from_index": "Basic Usage", "indent": 4}]
