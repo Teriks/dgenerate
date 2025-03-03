@@ -1942,7 +1942,7 @@ then reinstall ``opencv-python-headless``.
 
     pip uninstall opencv-python-headless opencv-python
 
-    pip install opencv-python-headless==4.11.0.86
+    pip install opencv-python-headless~=4.11.0.86
 
 
 This work around is needed because some of dgenerates dependencies depend on ``opencv-python`` and pip
