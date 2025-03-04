@@ -289,6 +289,7 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
                  token: str | None = None,
                  **kwargs):
         super().__init__(**kwargs)
+        import dgenerate.promptweighters as _promptweighters
 
         supported = {
             _enums.ModelType.TORCH,
@@ -299,10 +300,16 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
         encoder = encoder.lower()
         llm_dtype = llm_dtype.lower()
 
-        if weighter and weighter not in {'sd-embed', 'compel'}:
-            raise self.argument_error(
-                'Argument "weighter" must be one of: sd-embed, or compel'
-            )
+        if weighter:
+            if not (weighter.startswith('sd-embed') or weighter.startswith('compel')):
+                raise self.argument_error(
+                    'Argument "weighter" must be one of: sd-embed, or compel'
+                )
+
+            if not _promptweighters.prompt_weighter_exists(weighter):
+                raise self.argument_error(
+                    'Argument "weighter" must be one of: sd-embed, or compel'
+                )
 
         if llm_dtype not in {'bfloat16', 'float16', 'float32'}:
             raise self.argument_error(
@@ -411,8 +418,6 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
             estimated_size=cam_size_estimate,
             method=load_llm_projector
         )
-
-        import dgenerate.promptweighters as _promptweighters
 
         if weighter:
             self._weighter = _promptweighters.create_prompt_weighter(
@@ -535,10 +540,11 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
         if self._weighter is None:
             # filtering not required, no weighting syntax expected
             return text
-        elif self._weighter.loaded_by_name == 'sd-embed':
+        elif self._weighter.loaded_by_name == 'sd-embed' or \
+                (self._weighter.loaded_by_name == 'compel' and self._weighter._syntax == 'sdwui'):
             # easy
             import dgenerate.extras.sd_embed.prompt_parser as _parser
-            result = ' '.join([token.strip() for token, _ in _parser.parse_prompt_attention(text)])
+            result = ' '.join(t for t in (token.strip() for token, _ in _parser.parse_prompt_attention(text)) if t)
 
         elif self._weighter.loaded_by_name == 'compel':
             # hard, blends get duplicated, and its ambiguous how
