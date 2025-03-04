@@ -5208,8 +5208,8 @@ See: `LLM4GEN <https://github.com/YUHANG-Ma/LLM4GEN>`_
     
         The encoder variant specified must be one of:
     
+        * base-all
         * large-all
-        * large-pg19
         * xl-all
         * xl-pg19
     
@@ -7090,7 +7090,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [18154676966975]
+            Value: [14721853192483]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
