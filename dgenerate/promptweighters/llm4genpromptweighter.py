@@ -66,8 +66,8 @@ class RankGenEncoder:
         assert model_path in [
             "kalpeshk2011/rankgen-t5-xl-all",
             "kalpeshk2011/rankgen-t5-xl-pg19",
-            'kalpeshk2011/rankgen-t5-large-all',
-            'kalpeshk2011/rankgen-t5-large-pg19'
+            'kalpeshk2011/rankgen-t5-base-all',
+            'kalpeshk2011/rankgen-t5-large-all'
         ]
 
         if model_size is None:
@@ -242,8 +242,8 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
     The encoder variant specified must be one of:
 
     NOWRAP!
+    * base-all
     * large-all
-    * large-pg19
     * xl-all
     * xl-pg19
 
@@ -321,10 +321,10 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
                 f'Prompt weighting not supported for --model-type: {_enums.get_model_type_string(self.model_type)}')
 
         valid_encoders = [
-            'xl-all',
-            'xl-pg19',
+            'base-all',
             'large-all',
-            'large-pg19'
+            'xl-all',
+            'xl-pg19'
         ]
 
         if encoder not in valid_encoders:
