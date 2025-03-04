@@ -18,14 +18,14 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
+import abc
 import collections.abc
 
 import dgenerate.plugin as _plugin
 import dgenerate.subcommands.exceptions as _exceptions
 
 
-class SubCommand(_plugin.Plugin):
+class SubCommand(_plugin.Plugin, abc.ABC):
     """
     Abstract base class for sub-command implementations.
     """
@@ -52,5 +52,13 @@ class SubCommand(_plugin.Plugin):
     def args(self) -> collections.abc.Sequence:
         return self.__args
 
+    @abc.abstractmethod
     def __call__(self) -> int:
+        """
+        Inheritor must implement.
+
+        Preform the sub-command functionality and return a return code.
+
+        :return: return code.
+        """
         return 0

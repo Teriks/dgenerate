@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import abc
 import typing
 
 import torch
@@ -46,7 +47,7 @@ def _cache_debug_miss(key, new):
     _memoize.simple_cache_miss_debug("Prompt Weighter Model", key, new)
 
 
-class PromptWeighter(_plugin.Plugin):
+class PromptWeighter(_plugin.Plugin, abc.ABC):
     """
     Abstract base class for prompt weighter implementations.
     """
@@ -106,6 +107,39 @@ class PromptWeighter(_plugin.Plugin):
         :return: size in bytes
         """
         return self.__size_estimate
+
+    def get_extra_supported_args(self) -> list[str]:
+        """
+        Overridable method.
+
+        Return a list of extra supported prompt arguments that are not
+        typically supported by the given model that embed generation
+        is occurring for.
+
+        This can be used to make use of the ``--second-prompts``, ``--third-prompts``,
+        ``--second-model-second-prompts``, or ``--second-model-third-prompts`` arguments
+        for additional textual inputs to the prompt weighter plugin.
+
+        This works even if the model you are generating embeds for would
+        normally reject these inputs.
+
+        Particularly for arguments that :py:class:`dgenerate.pipelinewrapper.DiffusionPipelineWrapper`
+        will automatically reject based on the underlying pipeline argument signature.
+
+        You should return a list of pipeline argument names, the values can be any of the following:
+
+        * ``prompt_2``
+        * ``negative_prompt_2``
+        * ``prompt_3``
+        * ``negative_prompt_3``
+
+        If you return a value outside the set of values listed here,
+        a :py:exc:`RuntimeError` will be raised by :py:class:`dgenerate.pipelinewrapper.DiffusionPipelineWrapper`
+        upon attempting to consume the values from this method when calling a pipeline.
+
+        :return: List of pipeline argument names.
+        """
+        return []
 
     def memory_guard_device(self, device: str | torch.device, memory_required: int):
         """
@@ -221,11 +255,14 @@ class PromptWeighter(_plugin.Plugin):
             if name.startswith('text_encoder'):
                 module.to(device)
 
+    @abc.abstractmethod
     def translate_to_embeds(self,
                             pipeline,
                             device: str,
                             args: dict[str, any]):
         """
+        Override me to implement.
+
         Translate the pipeline prompt arguments to ``prompt_embeds`` and ``pooled_prompt_embeds`` as needed.
 
         :param pipeline: The pipeline object

@@ -33,7 +33,6 @@ import dgenerate.promptweighters.promptweighter as _promptweighter
 import dgenerate.memory as _memory
 
 
-
 class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
     r"""
     Implements prompt weighting syntax for Stable Diffusion 1/2, Stable Diffusion XL,

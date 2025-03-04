@@ -1692,21 +1692,67 @@ class DiffusionPipelineWrapper:
                     raise _pipelines.UnsupportedPipelineConfigError(
                         f'{arg} may only be used with Stable Cascade models.')
 
+    @staticmethod
+    def _set_prompt_weighter_extra_supported_args(
+            pipeline_args: dict,
+            prompt_weighter: _promptweighters.PromptWeighter | None,
+            diffusion_args: DiffusionArguments,
+            second_model: bool,
+    ) -> list[str]:
+        if prompt_weighter is None:
+            return []
+
+        poppable_args = []
+        second_prompt_arg = 'second_prompt' if not second_model else 'second_model_second_prompt'
+
+        arg_map = {
+            'prompt_2': second_prompt_arg,
+            'negative_prompt_2': second_prompt_arg,
+            'prompt_3': 'third_prompt',
+            'negative_prompt_3': 'third_prompt'
+        }
+
+        prompt_weighter_extra_args = prompt_weighter.get_extra_supported_args()
+
+        for arg_name in prompt_weighter_extra_args:
+
+            if arg_name not in arg_map:
+                raise RuntimeError(
+                    f'Prompt weighter plugin: {prompt_weighter.__class__.__name__}, '
+                    f'returned invalid "get_extra_supported_args()" value: {arg_name}.  '
+                    f'This is a bug, acceptible values are: {", ".join(arg_map.keys())}')
+
+            source = arg_map[arg_name]
+            if 'negative' in arg_name:
+                user_value = getattr(diffusion_args, source, None)
+                if user_value:
+                    pipeline_args[arg_name] = user_value.negative
+                    poppable_args.append(arg_name)
+            else:
+                user_value = getattr(diffusion_args, source, None)
+                if user_value:
+                    pipeline_args[arg_name] = user_value.positive
+                    poppable_args.append(arg_name)
+
+        return poppable_args
+
     def _set_non_universal_pipeline_arg(self,
                                         pipeline,
-                                        pipeline_args,
+                                        pipeline_args: dict,
                                         user_args: DiffusionArguments,
-                                        pipeline_arg_name,
-                                        user_arg_name,
-                                        option_name,
-                                        transform=None):
+                                        pipeline_arg_name: str,
+                                        user_arg_name: str,
+                                        option_name: str,
+                                        transform: typing.Callable[
+                                            [typing.Any], typing.Any] = None):
+
+        pipeline_kwargs = user_args.get_pipeline_wrapper_kwargs()
+
         if pipeline.__call__.__wrapped__ is not None:
             # torch.no_grad()
             func = pipeline.__call__.__wrapped__
         else:
             func = pipeline.__call__
-
-        pipeline_kwargs = user_args.get_pipeline_wrapper_kwargs()
 
         if pipeline_arg_name in inspect.getfullargspec(func).args:
             if user_arg_name in pipeline_kwargs:
@@ -1716,6 +1762,10 @@ class DiffusionPipelineWrapper:
                 val = val if not transform else transform(val)
                 pipeline_args[pipeline_arg_name] = val
         else:
+            if pipeline_arg_name in pipeline_args:
+                # we are forcing it to be allowed.
+                return
+
             val = _types.default(getattr(user_args, user_arg_name), None)
             if val is not None:
                 raise _pipelines.UnsupportedPipelineConfigError(
@@ -1723,7 +1773,8 @@ class DiffusionPipelineWrapper:
                     f'{_enums.get_pipeline_type_string(self._pipeline_type)} mode with the current '
                     f'combination of arguments and model.')
 
-    def _get_sdxl_conditioning_args(self, pipeline, pipeline_args, user_args: DiffusionArguments, user_prefix=None):
+    def _get_sdxl_conditioning_args(self, pipeline, pipeline_args: dict, user_args: DiffusionArguments,
+                                    user_prefix=None):
         if user_prefix:
             user_prefix += '_'
             option_prefix = _textprocessing.dashup(user_prefix)
@@ -1835,19 +1886,35 @@ class DiffusionPipelineWrapper:
             pipeline_args['control_mode'] = \
                 self._get_controlnet_mode()
 
+        prompt_weighter = self._get_prompt_weighter(user_args)
+
+        self._set_prompt_weighter_extra_supported_args(
+            pipeline_args=pipeline_args,
+            prompt_weighter=prompt_weighter,
+            diffusion_args=user_args,
+            second_model=False
+        )
+
         if self._parsed_adetailer_detector_uris:
             return self._call_asdff(
                 user_args=user_args,
                 pipeline_args=pipeline_args,
-                batch_size=batch_size)
+                batch_size=batch_size,
+                prompt_weighter=prompt_weighter
+            )
         else:
             return PipelineWrapperResult(_pipelines.call_pipeline(
                 pipeline=self._pipeline,
-                prompt_weighter=self._get_prompt_weighter(user_args),
+                prompt_weighter=prompt_weighter,
                 device=self._device,
                 **pipeline_args).images)
 
-    def _call_asdff(self, user_args: DiffusionArguments, pipeline_args: dict[str, typing.Any], batch_size: int):
+    def _call_asdff(self,
+                    user_args: DiffusionArguments,
+                    prompt_weighter: _promptweighters.PromptWeighter,
+                    pipeline_args: dict[str, typing.Any],
+                    batch_size: int
+                    ):
         asdff_pipe = _asdff_base.AdPipelineBase(self._pipeline)
 
         # use the provided pipe as is, it must be
@@ -1918,7 +1985,7 @@ class DiffusionPipelineWrapper:
                 device=self._device,
                 detector_device=_types.default(detector_uri.device, self._device),
                 confidence=detector_uri.confidence,
-                prompt_weighter=self._get_prompt_weighter(user_args),
+                prompt_weighter=prompt_weighter,
                 index_filter=index_filter,
                 mask_blur=mask_blur,
                 mask_shape=mask_shape,
@@ -1945,10 +2012,19 @@ class DiffusionPipelineWrapper:
             torch.Generator(device=self._device).manual_seed(
                 _types.default(user_args.seed, _constants.DEFAULT_SEED))
 
+        prompt_weighter = self._get_prompt_weighter(user_args)
+
+        self._set_prompt_weighter_extra_supported_args(
+            pipeline_args=pipeline_args,
+            prompt_weighter=prompt_weighter,
+            diffusion_args=user_args,
+            second_model=False
+        )
+
         prior = _pipelines.call_pipeline(
             pipeline=self._pipeline,
             device=self._device,
-            prompt_weighter=self._get_prompt_weighter(user_args),
+            prompt_weighter=prompt_weighter,
             **pipeline_args)
 
         pipeline_args['num_inference_steps'] = user_args.second_model_inference_steps
@@ -1986,6 +2062,15 @@ class DiffusionPipelineWrapper:
         pipeline_args['negative_prompt'] = prompt.negative
 
         self._get_sdxl_conditioning_args(self._pipeline, pipeline_args, user_args)
+
+        prompt_weighter = self._get_prompt_weighter(user_args)
+
+        prompt_weighter_pop_args = self._set_prompt_weighter_extra_supported_args(
+            pipeline_args=pipeline_args,
+            prompt_weighter=prompt_weighter,
+            diffusion_args=user_args,
+            second_model=False
+        )
 
         if _enums.model_type_is_sd3(self.model_type):
 
@@ -2160,7 +2245,9 @@ class DiffusionPipelineWrapper:
             return self._call_asdff(
                 user_args=user_args,
                 pipeline_args=pipeline_args,
-                batch_size=batch_size)
+                batch_size=batch_size,
+                prompt_weighter=prompt_weighter
+            )
 
         if self._sdxl_refiner_pipeline is None:
             with _hi_diffusion(self._pipeline,
@@ -2171,7 +2258,7 @@ class DiffusionPipelineWrapper:
                 else:
                     return PipelineWrapperResult(_pipelines.call_pipeline(
                         pipeline=self._pipeline,
-                        prompt_weighter=self._get_prompt_weighter(user_args),
+                        prompt_weighter=prompt_weighter,
                         device=self._device,
                         **pipeline_args).images)
 
@@ -2200,7 +2287,7 @@ class DiffusionPipelineWrapper:
                 image = _pipelines.call_pipeline(
                     pipeline=self._pipeline,
                     device=self._device,
-                    prompt_weighter=self._get_prompt_weighter(user_args),
+                    prompt_weighter=prompt_weighter,
                     **pipeline_args,
                     **i_end,
                     output_type=output_type).images
@@ -2243,6 +2330,20 @@ class DiffusionPipelineWrapper:
         # with that of --second-prompts by default
         pipeline_args.pop('prompt_2', None)
         pipeline_args.pop('negative_prompt_2', None)
+
+        if prompt_weighter_pop_args:
+            for arg_name in prompt_weighter_pop_args:
+                if arg_name in pipeline_args:
+                    pipeline_args.pop(arg_name)
+
+        second_model_prompt_weighter = self._get_second_model_prompt_weighter(user_args)
+
+        self._set_prompt_weighter_extra_supported_args(
+            pipeline_args=pipeline_args,
+            prompt_weighter=second_model_prompt_weighter,
+            diffusion_args=user_args,
+            second_model=True
+        )
 
         self._set_non_universal_pipeline_arg(self._pipeline,
                                              pipeline_args, user_args,
