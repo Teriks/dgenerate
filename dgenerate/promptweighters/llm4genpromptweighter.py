@@ -647,10 +647,8 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
                 device
             )
 
-            filtered_rankgen_pos = self._filter_rankgen_prompt(
-                _types.default(positive_2, positive), 'positive')
-            filtered_rankgen_neg = self._filter_rankgen_prompt(
-                _types.default(negative_2, negative), 'negative')
+            filtered_rankgen_pos = self._filter_rankgen_prompt(positive, 'positive') if not positive_2 else positive_2
+            filtered_rankgen_neg = self._filter_rankgen_prompt(negative, 'negative') if not negative_2 else negative_2
 
             llm_embed = self.t5_model.encode(filtered_rankgen_pos)
             neg_llm_embed = self.t5_model.encode(filtered_rankgen_neg, max_length=llm_embed.shape[1])
