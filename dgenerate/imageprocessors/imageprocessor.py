@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import abc
 import gc
 import itertools
 import os
@@ -53,7 +54,7 @@ def _cache_debug_miss(key, new):
     _memoize.simple_cache_miss_debug("Image Processor Model", key, new)
 
 
-class ImageProcessor(_plugin.Plugin):
+class ImageProcessor(_plugin.Plugin, abc.ABC):
     """
     Abstract base class for image processor implementations.
     """
@@ -202,7 +203,6 @@ class ImageProcessor(_plugin.Plugin):
                     _constants.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS,
                     extra_vars={'memory_required': memory_required},
                     device=device):
-
                 _messages.debug_log(
                     f'Image Processor "{self.__class__.__name__}" is clearing the GPU side object '
                     f'cache due to GPU side memory constraint evaluating to to True.')
@@ -215,7 +215,6 @@ class ImageProcessor(_plugin.Plugin):
             if (_memory.memory_constraints(
                     _constants.IMAGE_PROCESSOR_CACHE_GC_CONSTRAINTS,
                     extra_vars={'memory_required': memory_required})):
-
                 _messages.debug_log(
                     f'Image Processor "{self.__class__.__name__}" is clearing the CPU side object '
                     f'cache due to CPU side memory constraint evaluating to to True.')
@@ -513,6 +512,8 @@ class ImageProcessor(_plugin.Plugin):
 
     def get_alignment(self) -> int | None:
         """
+        Overridable method.
+
         Get required input image alignment, which will be forcefully applied.
 
         If this function returns ``None``, specific alignment is not required and will never be forced.
@@ -582,9 +583,11 @@ class ImageProcessor(_plugin.Plugin):
 
         return self._process_post_resize(image)
 
-    def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: dgenerate.types.OptionalSize):
+    @abc.abstractmethod
+    def impl_pre_resize(self, image: PIL.Image.Image,
+                        resize_resolution: dgenerate.types.OptionalSize) -> PIL.Image.Image:
         """
-        Implementation of pre_resize that does nothing. Inheritor must implement.
+        Inheritor must implement.
 
         This method should not be invoked directly, use the class method
         :py:meth:`.ImageProcessor.call_pre_resize` to invoke it.
@@ -599,9 +602,10 @@ class ImageProcessor(_plugin.Plugin):
         """
         return image
 
-    def impl_post_resize(self, image: PIL.Image.Image):
+    @abc.abstractmethod
+    def impl_post_resize(self, image: PIL.Image.Image) -> PIL.Image.Image:
         """
-        Implementation of post_resize that does nothing. Inheritor must implement.
+        Inheritor must implement.
 
         This method should not be invoked directly, use the class method
         :py:meth:`.ImageProcessor.call_post_resize` to invoke it.
@@ -652,7 +656,8 @@ class ImageProcessor(_plugin.Plugin):
         try_again = False
 
         for m in self.__modules:
-            if not hasattr(m, '_DGENERATE_IMAGE_PROCESSOR_DEVICE') or not devices_equal(m._DGENERATE_IMAGE_PROCESSOR_DEVICE, device):
+            if not hasattr(m, '_DGENERATE_IMAGE_PROCESSOR_DEVICE') or \
+                    not devices_equal(m._DGENERATE_IMAGE_PROCESSOR_DEVICE, device):
 
                 self.memory_guard_device(device, self.size_estimate)
 

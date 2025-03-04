@@ -2149,10 +2149,11 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '--second-prompts', nargs='+', action='store', metavar="PROMPT", default=None,
             type=_type_secondary_prompts,
-            help="""One or more secondary prompts to try using the torch-sd3 (Stable Diffusion 3) 
-                    or torch-flux (Flux) secondary text encoder. By default the model is passed the 
-                    primary prompt for this value, this option allows you to choose a different prompt. 
-                    The negative prompt component can be specified with the same syntax as --prompts"""
+            help="""One or more secondary prompts to try using the torch-sdxl (SDXL), torch-sd3 
+                    (Stable Diffusion 3) or torch-flux (Flux) secondary text encoder. By default 
+                    the model is passed the primary prompt for this value, this option allows you 
+                    to choose a different prompt. The negative prompt component can be specified 
+                    with the same syntax as --prompts"""
         )
     )
 

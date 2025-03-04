@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import abc
 import typing
 
 import torch
@@ -46,7 +47,7 @@ def _cache_debug_miss(key, new):
     _memoize.simple_cache_miss_debug("Prompt Upscaler Model", key, new)
 
 
-class PromptUpscaler(_plugin.Plugin):
+class PromptUpscaler(_plugin.Plugin, abc.ABC):
     """
     Abstract base class for prompt upscaler implementations.
     """
@@ -136,7 +137,6 @@ class PromptUpscaler(_plugin.Plugin):
             if (_memory.memory_constraints(
                     _constants.PROMPT_UPSCALER_CACHE_GC_CONSTRAINTS,
                     extra_vars={'memory_required': memory_required})):
-
                 _messages.debug_log(
                     f'Prompt upscaler "{self.__class__.__name__}" is clearing the CPU side object '
                     f'cache due to CPU side memory constraint evaluating to to True.')
@@ -234,9 +234,11 @@ class PromptUpscaler(_plugin.Plugin):
         """
         return False
 
+    @abc.abstractmethod
     def upscale(self, prompt: _prompt.PromptOrPrompts) -> _prompt.PromptOrPrompts:
         """
-        Upscale a prompt / prompts and return them modified
+        Upscale a prompt / prompts and return them modified.
+
         :param prompt: The incoming prompt or prompts
         :return: Modified prompt / prompts, you may return multiple prompts (an iterable) to indicate expansion
         """

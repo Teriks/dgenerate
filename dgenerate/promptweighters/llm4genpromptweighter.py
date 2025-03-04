@@ -23,12 +23,14 @@ import gc
 import inspect
 import re
 
+import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.promptweighters.exceptions as _exceptions
 import dgenerate.promptweighters.promptweighter as _promptweighter
 import dgenerate.memory as _memory
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.pipelinewrapper.util as _util
+import dgenerate.types as _types
 import os
 
 import torch
@@ -232,6 +234,9 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
     --model-type torch-pix2pix
     --model-type torch-upscaler-x4
 
+    You may use the --second-prompts argument of dgenerate to pass a prompt
+    explicitly to the T5 rankgen encoder, which uses the primary prompt by default otherwise.
+
     The "encoder" argument specifies the T5 encoder model variant.
 
     The encoder variant specified must be one of:
@@ -250,6 +255,12 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
 
     The "projector-weight-name" argument specifies the weight name of the projector file in a Hugging Face repository.
 
+    The "weighter" argument can be used to specify a prompt weighter that will be used for CLIP embedding generation,
+    this may be one of "sd-embed" or "compel". Weighting does not occur for the rankgen encoder, and if you do
+    not pass --second-prompts to dgenerate while using this argument, the rankgen encoder will receive
+    the primary prompt with all weighting syntax filtered out. This automatic filtering only occurs
+    when you specify "weighter" without specifying --second-prompts to dgenerate.
+
     The "llm-dtype" argument specifies the precision for the rankgen encoder and llm4gen CAM projector model,
     changing this to 'float16' or 'bfloat16' will cut memory use in half at the possible cost of output quality.
 
@@ -265,12 +276,15 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
 
     NAMES = ['llm4gen']
 
+    _weighter: _promptweighter.PromptWeighter | None
+
     def __init__(self,
                  encoder: str = "xl-all",
                  projector: str = 'Shui-VL/LLM4GEN-models',
                  projector_subfolder: str | None = None,
                  projector_revision: str | None = None,
                  projector_weight_name: str = 'projector.pth',
+                 weighter: str | None = None,
                  llm_dtype: str = 'float32',
                  token: str | None = None,
                  **kwargs):
@@ -284,6 +298,11 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
 
         encoder = encoder.lower()
         llm_dtype = llm_dtype.lower()
+
+        if weighter and weighter not in {'sd-embed', 'compel'}:
+            raise self.argument_error(
+                'Argument "weighter" must be one of: sd-embed, or compel'
+            )
 
         if llm_dtype not in {'bfloat16', 'float16', 'float32'}:
             raise self.argument_error(
@@ -393,6 +412,18 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
             method=load_llm_projector
         )
 
+        import dgenerate.promptweighters as _promptweighters
+
+        if weighter:
+            self._weighter = _promptweighters.create_prompt_weighter(
+                weighter,
+                model_type=_enums.ModelType.TORCH,
+                dtype=self.dtype,
+                local_files_only=self.local_files_only
+            )
+        else:
+            self._weighter = None
+
         self._tensors = list()
 
     def _get_projector_path(self,
@@ -420,6 +451,112 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
             raise self.argument_error(
                 f'Argument "projector" and related, '
                 f'could not find projector model: {e}')
+
+    def get_extra_supported_args(self) -> list[str]:
+        # override and support passing the rankgen prompt
+        # separately from the clip prompt using --second-prompts,
+        # this is telling dgenerate that the pipeline can now
+        # support accepting these arguments in particular due to our
+        # custom embedding generation, normally, SD1.5 cannot
+        # accept these as it only uses one encoder.
+
+        # This allows dgenerate to generate these pipeline
+        # arguments using --second-prompts and pass them
+        # into the prompt weighter without runtime validation
+        # errors occuring.
+        return ['prompt_2', 'negative_prompt_2']
+
+    def _generate_clip_embeds(self, pipeline, positive: str, negative: str, device: str):
+        if not self._weighter:
+
+            if hasattr(pipeline, 'maybe_convert_prompt'):
+                if positive:
+                    positive = pipeline.maybe_convert_prompt(positive, tokenizer=pipeline.tokenizer)
+
+            input_ids = pipeline.tokenizer(
+                positive, return_tensors="pt", truncation=True, padding="max_length", max_length=77).input_ids
+
+            input_ids = input_ids.to(device)
+            pipeline.text_encoder.to(device)
+
+            positive_embeds = pipeline.text_encoder(input_ids, return_dict=False)[0]
+            input_ids.to('cpu')
+
+            if hasattr(pipeline, 'maybe_convert_prompt'):
+                if negative:
+                    negative = pipeline.maybe_convert_prompt(negative, tokenizer=pipeline.tokenizer)
+
+            input_ids = pipeline.tokenizer(
+                negative, return_tensors="pt", truncation=True, padding="max_length", max_length=77).input_ids
+
+            input_ids = input_ids.to(device)
+            negative_embeds = pipeline.text_encoder(input_ids, return_dict=False)[0]
+            input_ids.to('cpu')
+
+            return positive_embeds, negative_embeds
+
+        else:
+            result = self._weighter.translate_to_embeds(
+                pipeline, device, {'prompt': positive, 'negative_prompt': negative})
+            return result['prompt_embeds'], result['negative_prompt_embeds']
+
+    @staticmethod
+    def _remove_compel_prompting_syntax(text: str) -> str:
+        import compel.prompt_parser as _parser
+        parser = _parser.PromptParser()
+        conjunction = parser.parse_conjunction(text)
+        plain_text_fragments = []
+
+        def extract_plain_text(node):
+            if isinstance(node, _parser.Fragment):
+                plain_text_fragments.append(node.text)
+            elif isinstance(node, _parser.FlattenedPrompt):
+                for child in node.children:
+                    extract_plain_text(child)
+            elif isinstance(node, _parser.Conjunction):
+                for prompt in node.prompts:
+                    extract_plain_text(prompt)
+            elif isinstance(node, _parser.Blend):
+                for prompt in node.prompts:
+                    extract_plain_text(prompt)
+            elif isinstance(node, _parser.Attention):
+                for child in node.children:
+                    extract_plain_text(child)
+            elif isinstance(node, _parser.CrossAttentionControlSubstitute):
+                for child in node.original:
+                    extract_plain_text(child)
+                for child in node.edited:
+                    extract_plain_text(child)
+
+        extract_plain_text(conjunction)
+        return ' '.join(plain_text_fragments)
+
+    def _filter_rankgen_prompt(self, text: str, part: str):
+        if self._weighter is None:
+            # filtering not required, no weighting syntax expected
+            return text
+        elif self._weighter.loaded_by_name == 'sd-embed':
+            # easy
+            import dgenerate.extras.sd_embed.prompt_parser as _parser
+            result = ' '.join([token.strip() for token, _ in _parser.parse_prompt_attention(text)])
+
+        elif self._weighter.loaded_by_name == 'compel':
+            # hard, blends get duplicated, and its ambiguous how
+            # the prompt should actually be
+
+            # really, the user should specify --second-prompts
+            # and not allow this to happen with complex weighting
+            result = self._remove_compel_prompting_syntax(text)
+        else:
+            raise RuntimeError(
+                'llm4gen prompt weighter, impossible branch, invalid weighter name.')
+
+        if result:
+            _messages.debug_log(
+                f'llm4gen prompt weighter auto filtered weighting '
+                f'syntax out of rankgen {part} prompt, result: "{result}"')
+
+        return result
 
     @torch.inference_mode()
     def translate_to_embeds(self,
@@ -462,6 +599,9 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
         positive = args.get('prompt')
         negative = args.get('negative_prompt')
 
+        positive_2 = args.get('prompt_2')
+        negative_2 = args.get('negative_prompt_2')
+
         prompt_args = re.compile(r'^(prompt|negative_prompt)(_\d+)?$')
 
         for name in args.keys():
@@ -492,39 +632,26 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
             self.llm_projector.to(device).eval()
             self.t5_model.to(device).eval()
 
-            llm_embed = self.t5_model.encode(positive)
-
-            if hasattr(pipeline, 'maybe_convert_prompt'):
-                if positive:
-                    positive = pipeline.maybe_convert_prompt(positive, tokenizer=pipeline.tokenizer)
-
-            input_ids = pipeline.tokenizer(
-                positive, return_tensors="pt", truncation=True, padding="max_length", max_length=77).input_ids
-
             embeds_dtype = _enums.get_torch_dtype(self.dtype)
 
-            input_ids = input_ids.to(device)
-            self._tensors.append(input_ids)
+            clip_embed, neg_clip_embeds = self._generate_clip_embeds(
+                pipeline,
+                positive,
+                negative,
+                device
+            )
 
-            pipeline.text_encoder.to(device)
+            filtered_rankgen_pos = self._filter_rankgen_prompt(
+                _types.default(positive_2, positive), 'positive')
+            filtered_rankgen_neg = self._filter_rankgen_prompt(
+                _types.default(negative_2, negative), 'negative')
 
-            clip_embed = pipeline.text_encoder(input_ids, return_dict=False)[0]
+            llm_embed = self.t5_model.encode(filtered_rankgen_pos)
+            neg_llm_embed = self.t5_model.encode(filtered_rankgen_neg, max_length=llm_embed.shape[1])
+
             pos_conditioning = self.llm_projector(
                 clip_embed.to(self._llm_dtype), llm_embed).to(embeds_dtype)
 
-            neg_llm_embed = self.t5_model.encode(negative, max_length=llm_embed.shape[1])
-
-            if hasattr(pipeline, 'maybe_convert_prompt'):
-                if negative:
-                    negative = pipeline.maybe_convert_prompt(negative, tokenizer=pipeline.tokenizer)
-
-            negative_ids = pipeline.tokenizer(
-                negative, truncation=True, return_tensors="pt", padding="max_length", max_length=77).input_ids
-
-            negative_ids = negative_ids.to(device)
-            self._tensors.append(negative_ids)
-
-            neg_clip_embeds = pipeline.text_encoder(negative_ids, return_dict=False)[0]
             neg_conditioning = self.llm_projector(
                 neg_clip_embeds.to(self._llm_dtype), neg_llm_embed).to(embeds_dtype)
         finally:
@@ -542,6 +669,9 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
         return output
 
     def cleanup(self):
+        if self._weighter is not None:
+            self._weighter.cleanup()
+
         for tensor in self._tensors:
             tensor.to('cpu')
             del tensor

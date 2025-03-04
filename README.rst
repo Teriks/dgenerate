@@ -1352,11 +1352,11 @@ Help Output
             in a field; artwork, painting, rain". (default: [(empty string)])
             -----------------------------------------------------------------
       --second-prompts PROMPT [PROMPT ...]
-            One or more secondary prompts to try using the torch-sd3 (Stable Diffusion 3) or torch-flux (Flux)
-            secondary text encoder. By default the model is passed the primary prompt for this value, this
-            option allows you to choose a different prompt. The negative prompt component can be specified with
-            the same syntax as --prompts
-            ----------------------------
+            One or more secondary prompts to try using the torch-sdxl (SDXL), torch-sd3 (Stable Diffusion 3) or
+            torch-flux (Flux) secondary text encoder. By default the model is passed the primary prompt for this
+            value, this option allows you to choose a different prompt. The negative prompt component can be
+            specified with the same syntax as --prompts
+            -------------------------------------------
       --third-prompts PROMPT [PROMPT ...]
             One or more tertiary prompts to try using the torch-sd3 (Stable Diffusion 3) tertiary (T5) text
             encoder, Flux does not support this argument. By default the model is passed the primary prompt for
@@ -5187,6 +5187,7 @@ See: `LLM4GEN <https://github.com/YUHANG-Ma/LLM4GEN>`_
             projector-subfolder: str | None = None
             projector-revision: str | None = None
             projector-weight-name: str = "projector.pth"
+            weighter: str | None = None
             llm-dtype: str = "float32"
             token: str | None = None
     
@@ -5199,6 +5200,9 @@ See: `LLM4GEN <https://github.com/YUHANG-Ma/LLM4GEN>`_
         --model-type torch
         --model-type torch-pix2pix
         --model-type torch-upscaler-x4
+    
+        You may use the --second-prompts argument of dgenerate to pass a prompt explicitly to the T5 rankgen
+        encoder, which uses the primary prompt by default otherwise.
     
         The "encoder" argument specifies the T5 encoder model variant.
     
@@ -5219,6 +5223,12 @@ See: `LLM4GEN <https://github.com/YUHANG-Ma/LLM4GEN>`_
     
         The "projector-weight-name" argument specifies the weight name of the projector file in a Hugging Face
         repository.
+    
+        The "weighter" argument can be used to specify a prompt weighter that will be used for CLIP embedding
+        generation, this may be one of "sd-embed" or "compel". Weighting does not occur for the rankgen encoder,
+        and if you do not pass --second-prompts to dgenerate while using this argument, the rankgen encoder will
+        receive the primary prompt with all weighting syntax filtered out. This automatic filtering only occurs
+        when you specify "weighter" without specifying --second-prompts to dgenerate.
     
         The "llm-dtype" argument specifies the precision for the rankgen encoder and llm4gen CAM projector model,
         changing this to 'float16' or 'bfloat16' will cut memory use in half at the possible cost of output
@@ -7080,7 +7090,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [50684805827665]
+            Value: [18154676966975]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
