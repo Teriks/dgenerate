@@ -19,9 +19,14 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+__doc__ = """
+huggingface diffusers pipeline wrapper / driver interface.
 
+All functionality needed from the diffusers library is behind this interface.
+"""
+
+import dgenerate.pipelinewrapper.constants
 import dgenerate.types as _types
-
 # Enums
 from .enums import (
     ModelType,
@@ -48,16 +53,17 @@ from .enums import (
     get_pipeline_type_enum,
     supported_model_type_strings,
     model_type_is_flux,
-    model_type_is_kolors
+    model_type_is_kolors,
+    model_type_is_sd2,
+    model_type_is_sd15
 )
-from .schedulers import (
-    SchedulerLoadError,
-    SchedulerArgumentError,
-    InvalidSchedulerNameError,
-    get_scheduler_uri_schema,
-    load_scheduler
+from .help import (
+    text_encoder_help,
+    text_encoder_is_help,
+    scheduler_is_help,
+    scheduler_is_help_args,
+    get_scheduler_help,
 )
-
 # Pipelines
 from .pipelines import (
     InvalidModelFileError,
@@ -82,43 +88,92 @@ from .pipelines import (
     destroy_last_called_pipeline
 )
 
-from .help import (
-    text_encoder_help,
-    text_encoder_is_help,
-    scheduler_is_help,
-    get_scheduler_help
+from .schedulers import (
+    SchedulerLoadError,
+    SchedulerArgumentError,
+    InvalidSchedulerNameError,
+    get_compatible_schedulers,
+    get_scheduler_uri_schema,
+    load_scheduler
 )
 
 # URI Errors and Types
 from .uris import (
+    # General Model URI Errors
     InvalidModelUriError,
-    LoRAUri,
-    TextualInversionUri,
-    SDXLRefinerUri,
     ModelUriLoadError,
-    InvalidControlNetUriError,
-    ControlNetUriLoadError,
+
+    # LoRA
+    LoRAUri,
     InvalidLoRAUriError,
     LoRAUriLoadError,
-    InvalidSDXLRefinerUriError,
+
+    # Textual Inversion
+    TextualInversionUri,
     InvalidTextualInversionUriError,
     TextualInversionUriLoadError,
-    InvalidUNetUriError,
-    UNetUriLoadError,
+
+    # SDXL Refiner
+    SDXLRefinerUri,
+    InvalidSDXLRefinerUriError,
+
+    # ControlNet
+    ControlNetUri,
+    InvalidControlNetUriError,
+    ControlNetUriLoadError,
+    FluxControlNetUnionUriModes,
+    SDXLControlNetUnionUriModes,
+
+    # VAE
+    VAEUri,
     InvalidVaeUriError,
     VAEUriLoadError,
-    ControlNetUri,
-    VAEUri,
+
+    # UNet
     UNetUri,
+    InvalidUNetUriError,
+    UNetUriLoadError,
+
+    # Transformer
+    TransformerUri,
+    TransformerUriLoadError,
+    InvalidTransformerUriError,
+
+    # Image Encoder
+    ImageEncoderUri,
+    InvalidImageEncoderUriError,
+    ImageEncoderUriLoadError,
+
+    # IP Adapter
     IPAdapterUri,
+    InvalidIPAdapterUriError,
+    IPAdapterUriLoadError,
+
+    # T2I Adapter
     T2IAdapterUri,
-    T2IAdapterUriLoadError,
     InvalidT2IAdapterUriError,
-    TextEncoderUriLoadError,
+    T2IAdapterUriLoadError,
+
+    # Text Encoder
     TextEncoderUri,
-    InvalidSCascadeDecoderUriError,
     InvalidTextEncoderUriError,
-    SCascadeDecoderUri
+    TextEncoderUriLoadError,
+
+    # SCascade Decoder
+    SCascadeDecoderUri,
+    InvalidSCascadeDecoderUriError,
+
+    # Quantizer URIs
+    BNBQuantizerUri,
+    InvalidBNBQuantizerUriError,
+
+    TorchAOQuantizerUri,
+    InvalidTorchAOQuantizerUriError,
+
+    # Adetailer
+    AdetailerDetectorUri,
+    InvalidAdetailerDetectorUriError,
+    AdetailerDetectorUriLoadError
 )
 
 # Utility
@@ -126,8 +181,6 @@ from .util import (
     ModelNotFoundError,
     NonHFModelDownloadError,
     NonHFConfigDownloadError,
-    InvalidDeviceOrdinalException,
-    is_valid_device_string
 )
 # Wrapper
 from .wrapper import (
@@ -136,13 +189,5 @@ from .wrapper import (
     DiffusionArguments,
     DiffusionArgumentsHelpException
 )
-
-import dgenerate.pipelinewrapper.constants
-
-__doc__ = """
-huggingface diffusers pipeline wrapper / driver interface.
-
-All functionality needed from the diffusers library is behind this interface.
-"""
 
 __all__ = _types.module_all()

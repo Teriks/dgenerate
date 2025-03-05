@@ -32,6 +32,7 @@ import dgenerate.promptweighters as _promptweighters
 import dgenerate.promptupscalers as _promptupscalers
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
+import dgenerate.torchutil as _torchutil
 
 IMAGE_PROCESSOR_SEP = '+'
 """
@@ -659,7 +660,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     Corresponds to the ``--model-type`` argument of the dgenerate command line tool.
     """
 
-    device: _types.Name = _pipelinewrapper_util.default_device()
+    device: _types.Name = _torchutil.default_device()
     """
     Processing device specification, for example "cuda" or "cuda:N" where N is an 
     alternate GPU id as reported by nvidia-smi if you want to specify a specific GPU.
@@ -1269,7 +1270,7 @@ class RenderLoopConfig(_types.SetFromMixin):
             supported_model_types = _textprocessing.oxford_comma(_pipelinewrapper.supported_model_type_strings(), "or")
             raise RenderLoopConfigError(
                 f'{a_namer("model_type")} must be one of: {supported_model_types}')
-        if not _pipelinewrapper.is_valid_device_string(self.device):
+        if not _torchutil.is_valid_device_string(self.device):
             raise RenderLoopConfigError(
                 f'{a_namer("device")} must be "cuda" (optionally with a device ordinal "cuda:N") or "cpu", '
                 f'or other device supported by torch.')

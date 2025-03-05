@@ -21,15 +21,15 @@
 
 import ast
 import os.path
-import typing
 
 import huggingface_hub
 
-import dgenerate.pipelinewrapper.util as _util
+import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 import dgenerate.textprocessing as _textprocessing
+import dgenerate.torchutil as _torchutil
 import dgenerate.types as _types
-from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 import dgenerate.webcache as _webcache
+from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 
 _lora_uri_parser = _textprocessing.ConceptUriParser(
     'Adetailer Detector', [
@@ -230,7 +230,7 @@ class AdetailerDetectorUri:
         if self._device is not None:
             device = str(device)
 
-            if _util.is_valid_device_string(device):
+            if _torchutil.is_valid_device_string(device):
                 self._device = device
             else:
                 self._device = None
@@ -252,7 +252,7 @@ class AdetailerDetectorUri:
             else:
                 ext = ''
 
-            if _util.is_single_file_model_load(self.model) or ext in {'.yaml', '.yml'}:
+            if _pipelinewrapper_util.is_single_file_model_load(self.model) or ext in {'.yaml', '.yml'}:
                 if os.path.exists(self.model):
                     return self.model
                 else:

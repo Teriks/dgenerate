@@ -22,7 +22,6 @@
 import argparse
 import collections.abc
 import typing
-import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 
 import dgenerate.arguments as _arguments
 import dgenerate.image_process.renderloopconfig as _renderloopconfig
@@ -30,6 +29,7 @@ import dgenerate.mediaoutput as _mediaoutput
 import dgenerate.messages as _messages
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
+import dgenerate.torchutil as _torchutil
 
 
 class ImageProcessUsageError(Exception):
@@ -146,7 +146,7 @@ def _create_arg_parser(prog, description):
 
     actions.append(parser.add_argument(
         '-d', '--device',
-        default=_pipelinewrapper_util.default_device(),
+        default=_torchutil.default_device(),
         type=_arguments._type_device,
         help='Processing device, for example "cuda", "cuda:1". '
              'Or "mps" on MacOS. (default: cuda, mps on MacOS)'))

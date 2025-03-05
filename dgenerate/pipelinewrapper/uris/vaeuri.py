@@ -28,13 +28,14 @@ import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.enums as _enums
-import dgenerate.pipelinewrapper.util as _util
+import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 import dgenerate.textprocessing as _textprocessing
+import dgenerate.torchutil as _torchutil
 import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
-from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 from dgenerate.pipelinewrapper import constants as _constants
-from dgenerate.pipelinewrapper.uris import util as _uri_util
+from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
+from dgenerate.pipelinewrapper.uris import util as _util
 
 _vae_uri_parser = _textprocessing.ConceptUriParser(
     'VAE', [
@@ -144,7 +145,7 @@ class VAEUri:
                 f'Unknown VAE encoder class {encoder}, must be one of: {_textprocessing.oxford_comma(self._encoders.keys(), "or")}')
 
         can_single_file_load = hasattr(self._encoders[encoder], 'from_single_file')
-        single_file_load_path = _util.is_single_file_model_load(model)
+        single_file_load_path = _pipelinewrapper_util.is_single_file_model_load(model)
 
         if single_file_load_path and not can_single_file_load and not extract:
             raise _exceptions.InvalidVaeUriError(
@@ -215,7 +216,7 @@ class VAEUri:
             return self._load(**args)
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
-            raise _util.ModelNotFoundError(e)
+            raise _pipelinewrapper_util.ModelNotFoundError(e)
 
     @staticmethod
     def _enforce_cache_size(new_vae_size):
@@ -254,19 +255,20 @@ class VAEUri:
 
         encoder = self._encoders[self.encoder]
 
-        model_path = _util.download_non_hf_model(self.model)
+        model_path = _pipelinewrapper_util.download_non_hf_model(self.model)
 
-        single_file_load_path = _util.is_single_file_model_load(model_path)
+        single_file_load_path = _pipelinewrapper_util.is_single_file_model_load(model_path)
 
         if single_file_load_path:
             try:
-                original_config = _util.download_non_hf_config(original_config) if original_config else None
-            except _util.NonHFConfigDownloadError as e:
+                original_config = _pipelinewrapper_util.download_non_hf_config(
+                    original_config) if original_config else None
+            except _pipelinewrapper_util.NonHFConfigDownloadError as e:
                 raise _exceptions.VAEUriLoadError(
                     f'original config file "{original_config}" for VAE could not be downloaded: {e}'
                 )
 
-            estimated_memory_use = _util.estimate_model_memory_use(
+            estimated_memory_use = _pipelinewrapper_util.estimate_model_memory_use(
                 repo_id=model_path,
                 revision=self.revision,
                 local_files_only=local_files_only,
@@ -297,7 +299,7 @@ class VAEUri:
 
             else:
                 try:
-                    vae = _util.single_file_load_sub_module(
+                    vae = _pipelinewrapper_util.single_file_load_sub_module(
                         path=model_path,
                         class_name=self.encoder,
                         library_name='diffusers',
@@ -310,17 +312,16 @@ class VAEUri:
                     )
                 except FileNotFoundError as e:
                     # cannot find configs
-                    raise _util.ModelNotFoundError(e)
+                    raise _pipelinewrapper_util.ModelNotFoundError(e)
 
-                estimated_memory_use = _util.estimate_memory_usage(vae)
-
+                estimated_memory_use = _torchutil.estimate_module_memory_usage(vae)
         else:
             if original_config:
                 raise _exceptions.VAEUriLoadError(
                     'specifying original_config file for VAE '
                     'is only supported for single file loads.')
 
-            estimated_memory_use = _util.estimate_model_memory_use(
+            estimated_memory_use = _pipelinewrapper_util.estimate_model_memory_use(
                 repo_id=model_path,
                 revision=self.revision,
                 variant=self.variant,
@@ -343,7 +344,7 @@ class VAEUri:
         _messages.debug_log('Estimated Torch VAE Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_use))
 
-        _uri_util._patch_module_to_for_sized_cache(_vae_cache, vae)
+        _util._patch_module_to_for_sized_cache(_vae_cache, vae)
 
         # noinspection PyTypeChecker
         return vae, _d_memoize.CachedObjectMetadata(

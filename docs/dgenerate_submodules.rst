@@ -252,6 +252,17 @@ dgenerate.textprocessing module
    :show-inheritance:
    :special-members: __call__, __init__
 
+
+dgenerate.torchutil module
+--------------------------
+
+.. automodule:: dgenerate.torchutil
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :special-members: __call__, __init__
+
+
 dgenerate.types module
 ----------------------
 

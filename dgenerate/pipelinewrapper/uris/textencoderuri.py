@@ -27,14 +27,15 @@ import transformers.models.clip
 import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
+import dgenerate.pipelinewrapper.constants as _constants
 import dgenerate.pipelinewrapper.enums as _enums
-import dgenerate.pipelinewrapper.util as _util
+import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 import dgenerate.textprocessing as _textprocessing
+import dgenerate.torchutil as _torchutil
 import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
-import dgenerate.pipelinewrapper.constants as _constants
-from dgenerate.pipelinewrapper.uris import util as _uri_util
+from dgenerate.pipelinewrapper.uris import util as _util
 
 _text_encoder_uri_parser = _textprocessing.ConceptUriParser(
     'TextEncoder', [
@@ -142,7 +143,7 @@ class TextEncoderUri:
             raise _exceptions.InvalidTextEncoderUriError(
                 f'Unknown TextEncoder encoder class {encoder}, must be one of: {_textprocessing.oxford_comma(self._encoders.keys(), "or")}')
 
-        if _util.is_single_file_model_load(model):
+        if _pipelinewrapper_util.is_single_file_model_load(model):
             if quantizer:
                 raise _exceptions.InvalidTextEncoderUriError(
                     'specifying a Text Encoder quantizer URI is only supported for Hugging Face '
@@ -207,7 +208,7 @@ class TextEncoderUri:
             return self._load(**args)
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
-            raise _util.ModelNotFoundError(e)
+            raise _pipelinewrapper_util.ModelNotFoundError(e)
         except Exception as e:
             raise _exceptions.TextEncoderUriLoadError(
                 f'error loading text encoder "{self.model}": {e}')
@@ -263,26 +264,27 @@ class TextEncoderUri:
 
         encoder = self._encoders[self.encoder]
 
-        model_path = _util.download_non_hf_model(self.model)
+        model_path = _pipelinewrapper_util.download_non_hf_model(self.model)
 
         if self.quantizer:
-            quant_config = _util.get_quantizer_uri_class(
+            quant_config = _pipelinewrapper_util.get_quantizer_uri_class(
                 self.quantizer,
                 _exceptions.InvalidTextEncoderUriError
             ).parse(self.quantizer).to_config()
         else:
             quant_config = None
 
-        if _util.is_single_file_model_load(model_path):
+        if _pipelinewrapper_util.is_single_file_model_load(model_path):
 
             try:
-                original_config = _util.download_non_hf_config(original_config) if original_config else None
-            except _util.NonHFConfigDownloadError as e:
+                original_config = _pipelinewrapper_util.download_non_hf_config(
+                    original_config) if original_config else None
+            except _pipelinewrapper_util.NonHFConfigDownloadError as e:
                 raise _exceptions.TextEncoderUriLoadError(
                     f'original config file "{original_config}" for Text Encoder could not be downloaded: {e}'
                 )
 
-            estimated_memory_use = _util.estimate_model_memory_use(
+            estimated_memory_use = _pipelinewrapper_util.estimate_model_memory_use(
                 repo_id=model_path,
                 revision=self.revision,
                 local_files_only=local_files_only,
@@ -292,7 +294,7 @@ class TextEncoderUri:
             self._enforce_cache_size(estimated_memory_use)
 
             try:
-                text_encoder = _util.single_file_load_sub_module(
+                text_encoder = _pipelinewrapper_util.single_file_load_sub_module(
                     path=model_path,
                     class_name=self.encoder,
                     library_name=encoder_library,
@@ -305,9 +307,9 @@ class TextEncoderUri:
                 )
             except FileNotFoundError as e:
                 # cannot find configs
-                raise _util.ModelNotFoundError(e)
+                raise _pipelinewrapper_util.ModelNotFoundError(e)
 
-            estimated_memory_use = _util.estimate_memory_usage(text_encoder)
+            estimated_memory_use = _torchutil.estimate_module_memory_usage(text_encoder)
 
         else:
             if original_config:
@@ -315,7 +317,7 @@ class TextEncoderUri:
                     'specifying original_config file for Text Encoder '
                     'is only supported for single file loads.')
 
-            estimated_memory_use = _util.estimate_model_memory_use(
+            estimated_memory_use = _pipelinewrapper_util.estimate_model_memory_use(
                 repo_id=model_path,
                 revision=self.revision,
                 variant=variant,
@@ -340,7 +342,7 @@ class TextEncoderUri:
         _messages.debug_log('Estimated Torch TextEncoder Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_use))
 
-        _uri_util._patch_module_to_for_sized_cache(_text_encoder_cache, text_encoder)
+        _util._patch_module_to_for_sized_cache(_text_encoder_cache, text_encoder)
 
         # noinspection PyTypeChecker
         return text_encoder, _d_memoize.CachedObjectMetadata(

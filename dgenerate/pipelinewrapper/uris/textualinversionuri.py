@@ -26,7 +26,7 @@ import diffusers
 import huggingface_hub
 
 import dgenerate.messages as _messages
-import dgenerate.pipelinewrapper.util as _util
+import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
@@ -192,7 +192,7 @@ class TextualInversionUri:
                 local_files_only=local_files_only)
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
-            raise _util.ModelNotFoundError(e)
+            raise _pipelinewrapper_util.ModelNotFoundError(e)
         except _exceptions.InvalidTextualInversionUriError:
             raise
         except Exception as e:
@@ -211,7 +211,7 @@ class TextualInversionUri:
                 if not isinstance(textual_inversion_uri, TextualInversionUri):
                     textual_inversion_uri = TextualInversionUri.parse(textual_inversion_uri)
 
-                model_path = _util.download_non_hf_model(textual_inversion_uri.model)
+                model_path = _pipelinewrapper_util.download_non_hf_model(textual_inversion_uri.model)
 
                 # this is tricky because there is stupidly a positional argument named 'token'
                 # as well as an accepted kwargs value with the key 'token'

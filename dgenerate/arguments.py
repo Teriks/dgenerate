@@ -37,6 +37,7 @@ import dgenerate.promptweighters as _promptweighters
 import dgenerate.promptupscalers as _promptupscalers
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
+import dgenerate.torchutil as _torchutil
 
 __doc__ = """
 Argument parsing for the dgenerate command line tool.
@@ -229,10 +230,10 @@ def _type_sdxl_high_noise_fractions(val):
 
 def _type_device(device):
     try:
-        if not _pipelinewrapper.is_valid_device_string(device):
+        if not _torchutil.is_valid_device_string(device):
             raise argparse.ArgumentTypeError(
                 f'Must be cuda or cpu, or other device supported by torch. Unknown value: {device}')
-    except _pipelinewrapper.InvalidDeviceOrdinalException as e:
+    except _torchutil.InvalidDeviceOrdinalException as e:
         raise argparse.ArgumentTypeError(e)
 
     return device
@@ -1925,7 +1926,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     actions.append(
         parser.add_argument(
             '-d', '--device', action='store',
-            default=_pipelinewrapper_util.default_device(),
+            default=_torchutil.default_device(),
             help="""cuda / cpu, or other device supported by torch, for example mps on MacOS.
             (default: cuda, mps on MacOS). Use: cuda:0, cuda:1, cuda:2, etc. to specify a specific
             cuda supporting GPU."""

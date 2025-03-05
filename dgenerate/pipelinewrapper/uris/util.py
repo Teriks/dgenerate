@@ -20,9 +20,11 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import torch
-import dgenerate.memory as _memory
+
 import dgenerate.memoize as _memoize
+import dgenerate.memory as _memory
 import dgenerate.messages as _messages
+import dgenerate.torchutil as _torchutil
 import dgenerate.types as _types
 
 
@@ -86,9 +88,7 @@ def _patch_module_to_for_sized_cache(cache: _memory.SizedConstrainedObjectCache,
     """
     old_to = module.to
 
-    # prevent recursive import
-    from dgenerate.pipelinewrapper import get_torch_device
-    from dgenerate.pipelinewrapper.util import devices_equal
+    import dgenerate.pipelinewrapper as _pipelinewrapper
 
     def new_to(*args, **kwargs):
         device = None
@@ -98,7 +98,8 @@ def _patch_module_to_for_sized_cache(cache: _memory.SizedConstrainedObjectCache,
         elif 'device' in kwargs:
             device = torch.device(kwargs['device'])
 
-        if device is not None and not devices_equal(get_torch_device(module), device):
+        if device is not None and not _torchutil.devices_equal(
+                _pipelinewrapper.get_torch_device(module), device):
             try:
                 metadata = cache.get_metadata(module)
                 if device.type != 'cpu':

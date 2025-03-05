@@ -26,7 +26,7 @@ import diffusers
 import huggingface_hub
 
 import dgenerate.messages as _messages
-import dgenerate.pipelinewrapper.util as _util
+import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
@@ -123,7 +123,7 @@ class LoRAUri:
                                       local_files_only=local_files_only)
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
-            raise _util.ModelNotFoundError(e)
+            raise _pipelinewrapper_util.ModelNotFoundError(e)
         except _exceptions.InvalidLoRAUriError:
             raise
         except Exception as e:
@@ -145,7 +145,7 @@ class LoRAUri:
                 if not isinstance(lora_uri, LoRAUri):
                     lora_uri = LoRAUri.parse(lora_uri)
 
-                model_path = _util.download_non_hf_model(lora_uri.model)
+                model_path = _pipelinewrapper_util.download_non_hf_model(lora_uri.model)
 
                 weight_name = lora_uri.weight_name
 
