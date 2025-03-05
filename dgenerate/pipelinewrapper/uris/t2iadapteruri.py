@@ -25,14 +25,14 @@ import huggingface_hub
 import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
+import dgenerate.pipelinewrapper.constants as _constants
 import dgenerate.pipelinewrapper.enums as _enums
-import dgenerate.pipelinewrapper.util as _util
+import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
-import dgenerate.pipelinewrapper.constants as _constants
-from dgenerate.pipelinewrapper.uris import util as _uri_util
+from dgenerate.pipelinewrapper.uris import util as _util
 
 _t2i_adapter_uri_parser = _textprocessing.ConceptUriParser(
     'T2IAdapter', ['scale', 'revision', 'variant', 'subfolder', 'dtype']
@@ -155,7 +155,7 @@ class T2IAdapterUri:
             return self._load(**args)
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
-            raise _util.ModelNotFoundError(e)
+            raise _pipelinewrapper_util.ModelNotFoundError(e)
         except Exception as e:
             raise _exceptions.T2IAdapterUriLoadError(
                 f'error loading t2i adapter "{self.model}": {e}')
@@ -185,16 +185,16 @@ class T2IAdapterUri:
             # these are used for cache differentiation only
             raise ValueError('sequential_cpu_offload_member and model_cpu_offload_member cannot both be True.')
 
-        model_path = _util.download_non_hf_model(self.model)
+        model_path = _pipelinewrapper_util.download_non_hf_model(self.model)
 
-        single_file_load_path = _util.is_single_file_model_load(model_path)
+        single_file_load_path = _pipelinewrapper_util.is_single_file_model_load(model_path)
 
         torch_dtype = _enums.get_torch_dtype(
             dtype_fallback if self.dtype is None else self.dtype)
 
         if single_file_load_path:
 
-            estimated_memory_usage = _util.estimate_model_memory_use(
+            estimated_memory_usage = _pipelinewrapper_util.estimate_model_memory_use(
                 repo_id=model_path,
                 revision=self.revision,
                 use_auth_token=use_auth_token,
@@ -211,7 +211,7 @@ class T2IAdapterUri:
                 local_files_only=local_files_only)
         else:
 
-            estimated_memory_usage = _util.estimate_model_memory_use(
+            estimated_memory_usage = _pipelinewrapper_util.estimate_model_memory_use(
                 repo_id=model_path,
                 revision=self.revision,
                 variant=self.variant,
@@ -234,7 +234,7 @@ class T2IAdapterUri:
         _messages.debug_log('Estimated Torch T2IAdapter Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_usage))
 
-        _uri_util._patch_module_to_for_sized_cache(_t2i_adapter_cache, new_adapter)
+        _util._patch_module_to_for_sized_cache(_t2i_adapter_cache, new_adapter)
 
         # noinspection PyTypeChecker
         return new_adapter, _d_memoize.CachedObjectMetadata(

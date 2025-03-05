@@ -39,90 +39,6 @@ import dgenerate.types as _types
 import dgenerate.webcache as _webcache
 
 
-class InvalidDeviceOrdinalException(Exception):
-    """
-    GPU in device specification (cuda:N) does not exist
-    """
-    pass
-
-
-def default_device() -> str:
-    """
-    Return a string representing the systems default accelerator device.
-
-    Possible Values:
-
-        * ``"cuda"``
-        * ``"mps"``
-        * ``"cpu"``
-
-    :return: ``"cuda"``, ``"mps"``, etc.
-    """
-    if torch.cuda.is_available():
-        return 'cuda'
-    elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
-        return 'mps'
-    else:
-        return 'cpu'
-
-
-def is_valid_device_string(device, raise_ordinal=True):
-    """
-    Is a device string valid? including the device ordinal specified?
-
-    Other than cuda, "mps" (MacOS metal performance shaders) is experimentally supported.
-
-    :param device: device string, such as ``cpu``, or ``cuda``, or ``cuda:N``
-    :param raise_ordinal: Raise :py:exc:`.InvalidDeviceOrdinalException` if
-        a specified CUDA device ordinal is found to not exist?
-
-    :raises InvalidDeviceOrdinalException: If ``raise_ordinal=True`` and a the
-        device ordinal specified in a CUDA device string does not exist.
-
-    :return: ``True`` or ``False``
-    """
-
-    match = re.match(r'^(?:cpu|cuda(?::([0-9]+))?)$', device)
-
-    if match:
-        if match.lastindex:
-            ordinal = int(match[1])
-            valid_ordinal = ordinal < torch.cuda.device_count()
-            if raise_ordinal and not valid_ordinal:
-                raise InvalidDeviceOrdinalException(f'CUDA device ordinal {ordinal} is invalid, no such device exists.')
-            return valid_ordinal
-        return True
-
-    if device == 'mps' and hasattr(torch.backends, 'mps') \
-            and torch.backends.mps.is_available():
-        return True
-
-    return False
-
-
-def devices_equal(device1: torch.device | str, device2: torch.device | str):
-    """
-    Compare if two devices are the same device.
-
-    This considers ``cuda`` and ``cuda:{torch.cuda.current_device()}`` to be the same device.
-
-    :param device1: Device 1.
-    :param device2: Device 2.
-    :return: Equality?
-    """
-    d1 = torch.device(device1)
-    d2 = torch.device(device2)
-
-    default_device_index = torch.cuda.current_device()
-
-    if d1.type == 'cuda' and d1.index is None:
-        d1 = torch.device(f'cuda:{default_device_index}')
-    if d2.type == 'cuda' and d2.index is None:
-        d2 = torch.device(f'cuda:{default_device_index}')
-
-    return d1 == d2
-
-
 @contextlib.contextmanager
 def _disable_tqdm():
     huggingface_hub.utils.enable_progress_bars()
@@ -226,7 +142,7 @@ def single_file_load_sub_module(
 ) -> torch.nn.Module:
     """
     Load a submodule (vae, unet, textencoder, etc..) by name out of an
-    all in one checkpoint file, directory, or Hugging Face repo slug.
+    all-in-one checkpoint file, directory, or Hugging Face repo slug.
 
     :param path: checkpoint file path
     :param class_name: submodule class name
@@ -342,27 +258,6 @@ def get_quantizer_uri_class(uri, exception=ValueError):
         return dgenerate.pipelinewrapper.uris.TorchAOQuantizerUri
     else:
         raise exception(f'Unknown quantization backend: {concept}')
-
-
-def estimate_memory_usage(module: torch.nn.Module) -> str:
-    """
-    Estimate the static memory use of a torch module.
-
-    :param module: the module
-
-    :return: static memory use in bytes
-    """
-
-    dtype = next(module.parameters()).dtype
-    dtype_sizes = {
-        torch.float32: 4,
-        torch.float16: 2,
-        torch.bfloat16: 2,
-        torch.int8: 1
-    }
-    bytes_per_param = dtype_sizes.get(dtype, 4)
-    num_params = sum(p.numel() for p in module.parameters())
-    return num_params * bytes_per_param
 
 
 class ModelNotFoundError(Exception):

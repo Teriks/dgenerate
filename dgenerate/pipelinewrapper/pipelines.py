@@ -21,7 +21,6 @@
 import collections.abc
 import gc
 import inspect
-import itertools
 import os.path
 import typing
 
@@ -50,6 +49,7 @@ import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper import constants as _constants
 import dgenerate.devicecache as _devicecache
+import dgenerate.torchutil as _torchutil
 
 
 class UnsupportedPipelineConfigError(Exception):
@@ -491,9 +491,9 @@ def _pipeline_to(pipeline, device: torch.device | str | None):
     pipeline_device = get_torch_device(pipeline)
 
     all_modules_on_device = all(
-        _util.devices_equal(device, get_torch_device(m)) for m in get_torch_pipeline_modules(pipeline).values())
+        _torchutil.devices_equal(device, get_torch_device(m)) for m in get_torch_pipeline_modules(pipeline).values())
 
-    pipeline_on_device = _util.devices_equal(get_torch_device(pipeline), pipeline_device)
+    pipeline_on_device = _torchutil.devices_equal(get_torch_device(pipeline), pipeline_device)
 
     if pipeline_on_device and all_modules_on_device:
         _messages.debug_log(
@@ -515,7 +515,7 @@ def _pipeline_to(pipeline, device: torch.device | str | None):
             f'pipeline_to() Moving pipeline "{pipeline.__class__.__name__}" to "{device}", '
             f'pipeline_on_device={pipeline_on_device}, all_modules_on_device={all_modules_on_device}.')
 
-    if not _util.devices_equal(pipeline_device, device):
+    if not _torchutil.devices_equal(pipeline_device, device):
         try:
             cache_metadata = _torch_pipeline_cache.get_metadata(pipeline)
 
@@ -574,7 +574,7 @@ def _pipeline_to(pipeline, device: torch.device | str | None):
             )
             continue
 
-        if _util.devices_equal(current_device, device):
+        if _torchutil.devices_equal(current_device, device):
             _messages.debug_log(
                 f'pipeline_to() Not moving module "{name} = {value.__class__.__name__}" to "{device}" '
                 f'as it is already on that device.')
@@ -726,7 +726,7 @@ def _evict_last_pipeline(device: torch.device | None):
     if active_pipe is None:
         return
 
-    if device is None or _util.devices_equal(get_torch_device(active_pipe), device):
+    if device is None or _torchutil.devices_equal(get_torch_device(active_pipe), device):
         # get rid of this reference immediately
         # noinspection PyUnusedLocal
         active_pipe = None
@@ -746,7 +746,7 @@ _devicecache.register_eviction_method(_evict_last_pipeline)
 # noinspection PyCallingNonCallable
 @torch.inference_mode()
 def call_pipeline(pipeline: diffusers.DiffusionPipeline,
-                  device: torch.device | str | None = _util.default_device(),
+                  device: torch.device | str | None = _torchutil.default_device(),
                   prompt_weighter: _promptweighters.PromptWeighter = None,
                   **kwargs):
     """
@@ -1114,7 +1114,7 @@ class TorchPipelineCreationResult(PipelineCreationResult):
         self.parsed_transformer_uri = parsed_transformer_uri
 
     def call(self,
-             device: torch.device | str | None = _util.default_device(),
+             device: torch.device | str | None = _torchutil.default_device(),
              prompt_weighter: _promptweighters.PromptWeighter | None = None,
              **kwargs) -> diffusers.utils.BaseOutput:
         """
@@ -1155,7 +1155,7 @@ def create_torch_diffusion_pipeline(
         safety_checker: bool = False,
         original_config: _types.OptionalString = None,
         auth_token: _types.OptionalString = None,
-        device: str = _util.default_device(),
+        device: str = _torchutil.default_device(),
         extra_modules: dict[str, typing.Any] | None = None,
         model_cpu_offload: bool = False,
         sequential_cpu_offload: bool = False,
@@ -1251,7 +1251,7 @@ class TorchPipelineFactory:
                  safety_checker: bool = False,
                  original_config: _types.OptionalString = None,
                  auth_token: _types.OptionalString = None,
-                 device: str = _util.default_device(),
+                 device: str = _torchutil.default_device(),
                  extra_modules: dict[str, typing.Any] | None = None,
                  model_cpu_offload: bool = False,
                  sequential_cpu_offload: bool = False,
@@ -1925,7 +1925,7 @@ def _create_torch_diffusion_pipeline(
         safety_checker: bool = False,
         original_config: _types.OptionalString = None,
         auth_token: _types.OptionalString = None,
-        device: str = _util.default_device(),
+        device: str = _torchutil.default_device(),
         extra_modules: dict[str, typing.Any] | None = None,
         model_cpu_offload: bool = False,
         sequential_cpu_offload: bool = False,
@@ -1941,7 +1941,7 @@ def _create_torch_diffusion_pipeline(
             'model_cpu_offload and sequential_cpu_offload may not be enabled simultaneously.')
 
     # Device check
-    if not _util.is_valid_device_string(device):
+    if not _torchutil.is_valid_device_string(device):
         raise UnsupportedPipelineConfigError(
             'device must be "cuda" (optionally with a device ordinal "cuda:N") or "cpu", '
             'or other device supported by torch.')

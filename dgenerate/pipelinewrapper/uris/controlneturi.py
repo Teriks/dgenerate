@@ -27,13 +27,13 @@ import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.enums as _enums
-import dgenerate.pipelinewrapper.util as _util
+import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
-from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 from dgenerate.pipelinewrapper import constants as _constants
-from dgenerate.pipelinewrapper.uris import util as _uri_util
+from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
+from dgenerate.pipelinewrapper.uris import util as _util
 
 _controlnet_uri_parser = _textprocessing.ConceptUriParser(
     'ControlNet', ['scale', 'start', 'end', 'mode', 'revision', 'variant', 'subfolder', 'dtype'])
@@ -43,7 +43,7 @@ _controlnet_cache = _d_memoize.create_object_cache(
 )
 
 
-class FluxControlNetUriModes(enum.IntEnum):
+class FluxControlNetUnionUriModes(enum.IntEnum):
     """
     Represents controlnet modes associated with the Flux Union controlnet.
     """
@@ -56,7 +56,7 @@ class FluxControlNetUriModes(enum.IntEnum):
     LQ = 6
 
 
-class SDXLControlNetUriModes(enum.IntEnum):
+class SDXLControlNetUnionUriModes(enum.IntEnum):
     """
     Represents controlnet modes associated with the SDXL Union controlnet.
     """
@@ -158,7 +158,7 @@ class ControlNetUri:
                  scale: float = 1.0,
                  start: float = 0.0,
                  end: float = 1.0,
-                 mode: int | str | FluxControlNetUriModes | None = None,
+                 mode: int | str | FluxControlNetUnionUriModes | None = None,
                  model_type: _enums.ModelType = _enums.ModelType.TORCH):
         """
         :param model: model path
@@ -256,7 +256,7 @@ class ControlNetUri:
                               model_class)
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
-            raise _util.ModelNotFoundError(e)
+            raise _pipelinewrapper_util.ModelNotFoundError(e)
         except Exception as e:
             raise _exceptions.ControlNetUriLoadError(
                 f'error loading controlnet "{self.model}": {e}')
@@ -302,16 +302,16 @@ class ControlNetUri:
                     'with non Flux / SDXL ControlNet Union models.'
                 )
 
-        model_path = _util.download_non_hf_model(self.model)
+        model_path = _pipelinewrapper_util.download_non_hf_model(self.model)
 
-        single_file_load_path = _util.is_single_file_model_load(model_path)
+        single_file_load_path = _pipelinewrapper_util.is_single_file_model_load(model_path)
 
         torch_dtype = _enums.get_torch_dtype(
             dtype_fallback if self.dtype is None else self.dtype)
 
         if single_file_load_path:
 
-            estimated_memory_usage = _util.estimate_model_memory_use(
+            estimated_memory_usage = _pipelinewrapper_util.estimate_model_memory_use(
                 repo_id=model_path,
                 revision=self.revision,
                 use_auth_token=use_auth_token,
@@ -328,7 +328,7 @@ class ControlNetUri:
                 local_files_only=local_files_only)
         else:
 
-            estimated_memory_usage = _util.estimate_model_memory_use(
+            estimated_memory_usage = _pipelinewrapper_util.estimate_model_memory_use(
                 repo_id=model_path,
                 revision=self.revision,
                 variant=self.variant,
@@ -351,7 +351,7 @@ class ControlNetUri:
         _messages.debug_log('Estimated Torch ControlNet Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_usage))
 
-        _uri_util._patch_module_to_for_sized_cache(_controlnet_cache, new_net)
+        _util._patch_module_to_for_sized_cache(_controlnet_cache, new_net)
 
         # noinspection PyTypeChecker
         return new_net, _d_memoize.CachedObjectMetadata(
@@ -439,41 +439,41 @@ class ControlNetUri:
     @staticmethod
     def _sdxl_mode_int_from_str(mode):
         modes = _textprocessing.oxford_comma(
-            [n.name.lower() for n in SDXLControlNetUriModes], "or")
+            [n.name.lower() for n in SDXLControlNetUnionUriModes], "or")
         try:
             try:
                 mode = int(mode)
             except ValueError:
-                mode = SDXLControlNetUriModes[mode.upper()].value
+                mode = SDXLControlNetUnionUriModes[mode.upper()].value
 
         except KeyError as e:
             raise _exceptions.InvalidControlNetUriError(
                 f'Torch SDXL Union ControlNet "mode" must be an integer, '
                 f'or one of: {modes}. received: {mode}')
-        if mode >= len(SDXLControlNetUriModes) or mode < 0:
+        if mode >= len(SDXLControlNetUnionUriModes) or mode < 0:
             raise _exceptions.InvalidControlNetUriError(
                 f'Torch SDXL Union ControlNet "mode" must be less than '
-                f'{len(SDXLControlNetUriModes)} and greater than zero, '
+                f'{len(SDXLControlNetUnionUriModes)} and greater than zero, '
                 f'mode number {mode} does not exist.')
         return mode
 
     @staticmethod
     def _flux_mode_int_from_str(mode):
         modes = _textprocessing.oxford_comma(
-            [n.name.lower() for n in FluxControlNetUriModes], "or")
+            [n.name.lower() for n in FluxControlNetUnionUriModes], "or")
         try:
             try:
                 mode = int(mode)
             except ValueError:
-                mode = FluxControlNetUriModes[mode.upper()].value
+                mode = FluxControlNetUnionUriModes[mode.upper()].value
 
         except KeyError as e:
             raise _exceptions.InvalidControlNetUriError(
                 f'Torch Flux Union ControlNet "mode" must be an integer, '
                 f'or one of: {modes}. received: {mode}')
-        if mode >= len(FluxControlNetUriModes) or mode < 0:
+        if mode >= len(FluxControlNetUnionUriModes) or mode < 0:
             raise _exceptions.InvalidControlNetUriError(
                 f'Torch Flux Union ControlNet "mode" must be less than '
-                f'{len(FluxControlNetUriModes)} and greater than zero, '
+                f'{len(FluxControlNetUnionUriModes)} and greater than zero, '
                 f'mode number {mode} does not exist.')
         return mode

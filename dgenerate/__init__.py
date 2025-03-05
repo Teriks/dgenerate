@@ -97,7 +97,7 @@ try:
         DiffusionArguments
     )
 
-    from dgenerate.pipelinewrapper.util import (
+    from dgenerate.torchutil import (
         default_device
     )
 

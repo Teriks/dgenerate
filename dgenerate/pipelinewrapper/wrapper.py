@@ -23,7 +23,6 @@ import contextlib
 import decimal
 import inspect
 import math
-import shlex
 import typing
 
 import PIL.Image
@@ -48,6 +47,7 @@ import dgenerate.pipelinewrapper.help as _help
 import dgenerate.pipelinewrapper.schedulers as _schedulers
 import dgenerate.memory as _memory
 import dgenerate.memoize as _memoize
+import dgenerate.torchutil as _torchutil
 
 
 class DiffusionArgumentsHelpException(Exception):
@@ -201,7 +201,7 @@ class DiffusionPipelineWrapper:
                  s_cascade_decoder_uri: _types.OptionalUri = None,
                  quantizer_uri: _types.OptionalUri = None,
                  second_model_quantizer_uri: _types.OptionalUri = None,
-                 device: str = _util.default_device(),
+                 device: str = _torchutil.default_device(),
                  safety_checker: bool = False,
                  original_config: _types.OptionalString = None,
                  second_model_original_config: _types.OptionalString = None,
@@ -320,7 +320,7 @@ class DiffusionPipelineWrapper:
             s_cascade_decoder_uri: _types.OptionalUri = None,
             quantizer_uri: _types.OptionalUri = None,
             second_model_quantizer_uri: _types.OptionalUri = None,
-            device: str = _util.default_device(),
+            device: str = _torchutil.default_device(),
             safety_checker: bool = False,
             original_config: _types.OptionalString = None,
             second_model_original_config: _types.OptionalString = None,
@@ -341,7 +341,7 @@ class DiffusionPipelineWrapper:
             raise ValueError('model_path must be specified')
 
         # Check for valid device string
-        if not _util.is_valid_device_string(device):
+        if not _torchutil.is_valid_device_string(device):
             raise _pipelines.UnsupportedPipelineConfigError(
                 'device must be "cuda" (optionally with a device ordinal "cuda:N") or "cpu", '
                 'or other device supported by torch.')

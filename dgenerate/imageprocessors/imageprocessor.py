@@ -39,6 +39,7 @@ import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.util as _util
 import dgenerate.plugin as _plugin
 import dgenerate.types
+import dgenerate.torchutil as _torchutil
 
 _image_processor_cache = _memoize.create_object_cache(
     'image_processor',
@@ -129,10 +130,10 @@ class ImageProcessor(_plugin.Plugin, abc.ABC):
 
         if device is not None:
             try:
-                if not _util.is_valid_device_string(device):
+                if not _torchutil.is_valid_device_string(device):
                     raise _exceptions.ImageProcessorArgumentError(
                         f'Invalid device argument: "{device}" is not a valid device string.')
-            except _util.InvalidDeviceOrdinalException as e:
+            except _torchutil.InvalidDeviceOrdinalException as e:
                 raise _exceptions.ImageProcessorArgumentError(
                     f'Invalid device argument: {e}')
 
@@ -642,7 +643,6 @@ class ImageProcessor(_plugin.Plugin, abc.ABC):
         _devicecache.clear_device_cache(self.device)
 
     def __to(self, device: torch.device | str, attempt=0):
-        from dgenerate.pipelinewrapper.util import devices_equal
 
         device = torch.device(device)
 
@@ -657,7 +657,7 @@ class ImageProcessor(_plugin.Plugin, abc.ABC):
 
         for m in self.__modules:
             if not hasattr(m, '_DGENERATE_IMAGE_PROCESSOR_DEVICE') or \
-                    not devices_equal(m._DGENERATE_IMAGE_PROCESSOR_DEVICE, device):
+                    not _torchutil.devices_equal(m._DGENERATE_IMAGE_PROCESSOR_DEVICE, device):
 
                 self.memory_guard_device(device, self.size_estimate)
 

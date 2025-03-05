@@ -23,7 +23,6 @@ import typing
 
 import torch
 
-import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 import dgenerate.promptupscalers.exceptions as _exceptions
 import dgenerate.plugin as _plugin
 import dgenerate.prompt as _prompt
@@ -32,6 +31,7 @@ import dgenerate.messages as _messages
 import dgenerate.devicecache as _devicecache
 import dgenerate.memoize as _memoize
 import dgenerate.memory as _memory
+import dgenerate.torchutil as _torchutil
 
 _prompt_upscaler_cache = _memoize.create_object_cache(
     'prompt_upscaler',
@@ -90,10 +90,10 @@ class PromptUpscaler(_plugin.Plugin, abc.ABC):
 
         if device is not None:
             try:
-                if not _pipelinewrapper_util.is_valid_device_string(device):
+                if not _torchutil.is_valid_device_string(device):
                     raise _exceptions.PromptUpscalerArgumentError(
                         f'Invalid device argument: "{device}" is not a valid device string.')
-            except _pipelinewrapper_util.InvalidDeviceOrdinalException as e:
+            except _torchutil.InvalidDeviceOrdinalException as e:
                 raise _exceptions.PromptUpscalerArgumentError(
                     f'Invalid device argument: {e}')
 

@@ -22,32 +22,71 @@
 import dgenerate.types as _types
 from .adetailerdetectoruri import AdetailerDetectorUri
 from .bnbquantizeruri import BNBQuantizerUri
-from .controlneturi import ControlNetUri, FluxControlNetUriModes
+from .controlneturi import (
+    ControlNetUri,
+    FluxControlNetUnionUriModes,
+    SDXLControlNetUnionUriModes
+)
 from .exceptions import (
+    # Model-related errors
     ModelUriLoadError,
-    ControlNetUriLoadError,
-    TextualInversionUriLoadError,
-    InvalidControlNetUriError,
-    InvalidSCascadeDecoderUriError,
-    InvalidSDXLRefinerUriError,
-    InvalidTextualInversionUriError,
-    VAEUriLoadError,
     InvalidModelUriError,
-    LoRAUriLoadError,
-    UNetUriLoadError,
+
+    # ControlNet
+    ControlNetUriLoadError,
+    InvalidControlNetUriError,
+
+    # Textual Inversion
+    TextualInversionUriLoadError,
+    InvalidTextualInversionUriError,
+
+    # SDXL Refiner
+    InvalidSDXLRefinerUriError,
+
+    # SCascade Decoder
+    InvalidSCascadeDecoderUriError,
+
+    # VAE
+    VAEUriLoadError,
     InvalidVaeUriError,
+
+    # LoRA
+    LoRAUriLoadError,
     InvalidLoRAUriError,
+
+    # UNet
+    UNetUriLoadError,
     InvalidUNetUriError,
+
+    # Text Encoder
     TextEncoderUriLoadError,
     InvalidTextEncoderUriError,
+
+    # T2I Adapter
     T2IAdapterUriLoadError,
     InvalidT2IAdapterUriError,
+
+    # Image Encoder
     ImageEncoderUriLoadError,
     InvalidImageEncoderUriError,
+
+    # IP Adapter
     IPAdapterUriLoadError,
     InvalidIPAdapterUriError,
+
+    # Transformer
+    TransformerUriLoadError,
     InvalidTransformerUriError,
-    TransformerUriLoadError
+
+    # BNB Quantizer
+    InvalidBNBQuantizerUriError,
+
+    # Adetailer Detector
+    AdetailerDetectorUriLoadError,
+    InvalidAdetailerDetectorUriError,
+
+    # Torch AO Quantizer
+    InvalidTorchAOQuantizerUriError,
 )
 from .imageencoderuri import ImageEncoderUri
 from .ipadapteruri import IPAdapterUri
@@ -60,11 +99,10 @@ from .textualinversionuri import TextualInversionUri
 from .torchaoquantizeruri import TorchAOQuantizerUri
 from .transformeruri import TransformerUri
 from .uneturi import UNetUri
-from .vaeuri import VAEUri
-
 from .util import (
     uri_hash_with_parser,
     uri_list_hash_with_parser
 )
+from .vaeuri import VAEUri
 
 __all__ = _types.module_all()

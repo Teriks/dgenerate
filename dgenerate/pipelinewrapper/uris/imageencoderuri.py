@@ -26,17 +26,16 @@ import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.enums as _enums
-import dgenerate.pipelinewrapper.util as _util
+import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
-from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 from dgenerate.pipelinewrapper import constants as _constants
-from dgenerate.pipelinewrapper.uris import util as _uri_util
+from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
+from dgenerate.pipelinewrapper.uris import util as _util
 
 _image_encoder_uri_parser = _textprocessing.ConceptUriParser(
     'ImageEncoder', ['revision', 'variant', 'subfolder', 'dtype'])
-
 
 _image_encoder_cache = _d_memoize.create_object_cache(
     'image_encoder', cache_type=_memory.SizedConstrainedObjectCache
@@ -101,7 +100,7 @@ class ImageEncoderUri:
             invalid data type string.
         """
 
-        if _util.is_single_file_model_load(model):
+        if _pipelinewrapper_util.is_single_file_model_load(model):
             raise _exceptions.InvalidImageEncoderUriError(
                 'Loading an Image Encoder from a single file is not supported.')
 
@@ -147,7 +146,7 @@ class ImageEncoderUri:
             return self._load(**args)
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
-            raise _util.ModelNotFoundError(e)
+            raise _pipelinewrapper_util.ModelNotFoundError(e)
         except Exception as e:
             raise _exceptions.ImageEncoderUriLoadError(
                 f'error loading Image Encoder "{self.model}": {e}')
@@ -182,7 +181,7 @@ class ImageEncoderUri:
 
         path = self.model
 
-        estimated_memory_use = _util.estimate_model_memory_use(
+        estimated_memory_use = _pipelinewrapper_util.estimate_model_memory_use(
             repo_id=path,
             revision=self.revision,
             variant=self.variant,
@@ -214,7 +213,7 @@ class ImageEncoderUri:
 
         self._enforce_cache_size(estimated_memory_use)
 
-        _uri_util._patch_module_to_for_sized_cache(_image_encoder_cache, image_encoder)
+        _util._patch_module_to_for_sized_cache(_image_encoder_cache, image_encoder)
 
         # noinspection PyTypeChecker
         return image_encoder, _d_memoize.CachedObjectMetadata(

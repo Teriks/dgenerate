@@ -51,7 +51,7 @@ import dgenerate.types as _types
 import dgenerate.memoize as _memoize
 import dgenerate.devicecache as _devicecache
 import dgenerate.memory as _memory
-import dgenerate.pipelinewrapper.util as _pipelinewraper_util
+import dgenerate.torchutil as _torchutil
 
 
 class ConfigRunner(_batchprocessor.BatchProcessor):
@@ -276,7 +276,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                 f'\\clear_device_cache must receive at least one argument, for example: cuda:0')
 
         for arg in args:
-            if not _pipelinewraper_util.is_valid_device_string(arg):
+            if not _torchutil.is_valid_device_string(arg):
                 raise _batchprocessor.BatchProcessError(
                     f'\\clear_device_cache unknown device: {arg}')
 
