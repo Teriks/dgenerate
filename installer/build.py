@@ -22,6 +22,7 @@ import glob
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -34,8 +35,12 @@ if platform.system() != 'Windows':
 
 # Argument parsing
 parser = argparse.ArgumentParser(prog='build')
-parser.add_argument('--wix-only', nargs='*', help='Rebuild MSI, using build cache instead of a clean build.')
-parser.add_argument('--custom-diffusers', help='Custom diffusers pip install package.')
+parser.add_argument('--wix-only', nargs='*',
+                    help='Rebuild MSI, using build cache instead of a clean build.')
+parser.add_argument('--custom-diffusers',
+                    help='Custom diffusers pip install package.')
+parser.add_argument('--max-archive-size',
+                    help='Maximum archive size, split archives larger than this, -v argument of 7zip.', default='1900m')
 
 args = parser.parse_args()
 
@@ -45,6 +50,9 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 # Change to script directory
 
 os.chdir(script_dir)
+
+with open(os.path.join('..', 'dgenerate', '__init__.py')) as _f:
+    VERSION = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]', _f.read(), re.MULTILINE).group(1)
 
 
 def create_portable_environment():
@@ -102,7 +110,9 @@ if not args.wix_only:
 
     # Create a multi-part zip archive
     os.chdir('dist')
-    subprocess.run(['C:\\Program Files\\7-Zip\\7z.exe', '-v1500m', 'a', 'dgenerate_portable.zip', 'dgenerate'])
+    subprocess.run(['C:\\Program Files\\7-Zip\\7z.exe',
+                    f'-v{args.max_archive_size}',
+                    'a', f'dgenerate_{VERSION}_portable.zip', 'dgenerate'])
     os.chdir(script_dir)
 else:
     if not os.path.exists('venv'):
@@ -116,11 +126,13 @@ if not args.wix_only:
     os.chdir('bin\\Release')
     cab_files = [f for f in os.listdir() if f.endswith('.cab')]
     subprocess.run(
-        ['C:\\Program Files\\7-Zip\\7z.exe', '-v1500m', 'a', 'dgenerate_installer.zip', 'dgenerate.msi'] + cab_files)
+        ['C:\\Program Files\\7-Zip\\7z.exe',
+         f'-v{args.max_archive_size}',
+         'a', f'dgenerate_{VERSION}_installer.zip', 'dgenerate.msi'] + cab_files)
     os.chdir(script_dir)
 
     # Move all parts of the multi-part zip archive to 'bin\\Release'
     for root, dirs, files in os.walk('dist'):
         for file in files:
-            if file.startswith('dgenerate_portable.zip'):
+            if file.startswith(f'dgenerate_{VERSION}_portable.zip'):
                 shutil.move(os.path.join(root, file), 'bin\\Release')

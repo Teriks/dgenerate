@@ -30,7 +30,6 @@ import dgenerate.promptweighters.promptweighter as _promptweighter
 import dgenerate.memory as _memory
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.pipelinewrapper.util as _util
-import dgenerate.types as _types
 import os
 
 import torch
