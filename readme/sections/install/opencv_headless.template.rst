@@ -33,4 +33,10 @@ gives no way to prevent it from being installed when installing from a wheel.
 dgenerate does not use anything that requires ``opencv-python`` over ``opencv-python-headless``, so you can
 just replace the package in the environment with the headless version.
 
-This is not compatible with ``pipx`` unfortunately.
+If you are using pipx, you can do this:
+
+.. code-block:: bash
+
+    pipx runpip dgenerate uninstall opencv-python-headless opencv-python
+
+    pipx inject dgenerate opencv-python-headless~=@COMMAND_OUTPUT[{"command": "python ../../scripts/get_cur_headless_opencv_ver.py", "block":false}]
