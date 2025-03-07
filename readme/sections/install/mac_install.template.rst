@@ -36,6 +36,7 @@ global python site packages.
     # install pipx
 
     pip3 install pipx
+    pipx ensurepath
 
     # install dgenerate into an isolated
     # environment with pipx
@@ -43,7 +44,15 @@ global python site packages.
     # possible dgenerate package extras: ncnn, gpt4all
 
     pipx install dgenerate==@VERSION
-    pipx ensurepath
+
+
+    # you can attempt to install the pre-release bitsandbytes
+    # multiplatform version for MacOS, though, I am not sure if it will
+    # function correctly, this will allow use of the --quantizer option
+    # and quantizer URI arguments with bitsandbytes.
+
+    pipx inject dgenerate https://github.com/bitsandbytes-foundation/bitsandbytes/releases/download/continuous-release_multi-backend-refactor/bitsandbytes-0.45.1.dev0-py3-none-macosx_13_1_x86_64.whl
+
 
     # open a new terminal or logout & login
 
@@ -96,6 +105,15 @@ of your own creation.
     # possible dgenerate package extras: ncnn, gpt4all
 
     pip3 install dgenerate==@VERSION
+
+
+    # you can attempt to install the pre-release bitsandbytes
+    # multiplatform version for MacOS, though, I am not sure if it will
+    # function correctly, this will allow use of the --quantizer option
+    # and quantizer URI arguments with bitsandbytes.
+
+    pip3 install https://github.com/bitsandbytes-foundation/bitsandbytes/releases/download/continuous-release_multi-backend-refactor/bitsandbytes-0.45.1.dev0-py3-none-macosx_13_1_x86_64.whl
+
 
     # launch the Console UI to test the install.
     # tkinter will be available when you install

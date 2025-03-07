@@ -50,7 +50,11 @@ Install Python >=3.10,<3.13 (Debian / Ubuntu) and pipx
 
     #!/usr/bin/env bash
 
-    sudo apt install python3 python3-pip python3-wheel python3-venv python3-tk
+    sudo apt install python3 python3-pip python3-wheel python3-venv
+
+    # if you want to use the Tk based GUI, install Tk
+    sudo apt install python-tk
+
     pipx ensurepath
 
     source ~/.bashrc
@@ -63,14 +67,21 @@ Install dgenerate
 
     #!/usr/bin/env bash
 
-    # possible dgenerate package extras: ncnn, gpt4all, gpt4all_cuda
+    # possible dgenerate package extras:
+
+    # * ncnn
+    # * gpt4all
+    # * gpt4all_cuda
+    # * quant (bitsandbytes & torchao)
+    # * bitsandbytes (individual)
+    # * torchao (individual)
 
     # install with just support for torch
 
     pipx install dgenerate \
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu124/"
 
-    # With NCNN upscaler support
+    # With NCNN upscaler support (extra)
 
     pipx install dgenerate[ncnn] \
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu124/"
@@ -153,6 +164,10 @@ Install Python >=3.10,<3.13 (Debian / Ubuntu) and pipx
     #!/usr/bin/env bash
 
     sudo apt install python3 python3-pip pipx python3-venv python3-wheel
+
+    # if you want to use the Tk based GUI, install Tk
+    sudo apt install python-tk
+
     pipx ensurepath
 
     source ~/.bashrc
@@ -184,6 +199,8 @@ Install dgenerate
 
     #!/usr/bin/env bash
 
+    # possible dgenerate package extras: ncnn, gpt4all
+
     # install with just support for torch
 
     pipx install dgenerate \
@@ -199,6 +216,15 @@ Install dgenerate
     pipx install dgenerate==@VERSION \
     --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm6.2.4/"
 
+
+    # you can attempt to install the pre-release bitsandbytes
+    # multiplatform version for Linux + ROCm, though, I am not sure if it will
+    # function correctly, this will allow use of the --quantizer option
+    # and quantizer URI arguments with bitsandbytes.
+
+    pipx inject dgenerate https://github.com/bitsandbytes-foundation/bitsandbytes/releases/download/continuous-release_multi-backend-refactor/bitsandbytes-0.45.3.dev272-py3-none-manylinux_2_24_x86_64.whl
+
+
     # You can install without pipx into your own environment like so
 
     pip3 install dgenerate==@VERSION --extra-index-url https://download.pytorch.org/whl/rocm6.2.4/
@@ -206,3 +232,9 @@ Install dgenerate
     # Or with NCNN
 
     pip3 install dgenerate[ncnn]==@VERSION --extra-index-url https://download.pytorch.org/whl/rocm6.2.4/
+
+
+    # you can attempt to install the pre-release bitsandbytes multiplatform version like so:
+
+    pip3 install https://github.com/bitsandbytes-foundation/bitsandbytes/releases/download/continuous-release_multi-backend-refactor/bitsandbytes-0.45.3.dev272-py3-none-manylinux_2_24_x86_64.whl
+

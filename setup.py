@@ -21,10 +21,10 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import io
+import itertools
 import os
 import platform
 import re
-import shutil
 from ast import literal_eval
 
 from setuptools import setup, find_packages
@@ -40,7 +40,7 @@ poetry_pyproject_path = \
                    os.path.join(setup_path, 'poetry', 'pyproject.toml')).strip('"').strip("'")
 
 dgenerate_platform = \
-    os.environ.get('DGENERATE_PLATFORM', platform.system())
+    os.environ.get('DGENERATE_PLATFORM', platform.system()).lower()
 
 dgenerate_platform_tag = \
     os.environ.get('DGENERATE_PLATFORM_TAG', 'any')
@@ -80,14 +80,12 @@ def poetry_lockfile_deps():
             yield d
 
 
-def get_poetry_lockfile_as_pip_requires(optionals=False, exclude=None):
-    exclude = set() if exclude is None else exclude
+def get_poetry_lockfile_as_pip_requires(optionals=False) -> dict[str, str]:
     return {dep["name"]: '==' + dep["version"] for dep in poetry_lockfile_deps()
-            if dep['optional'] == optionals and dep['name'] not in exclude}
+            if dep['optional'] == optionals and dep['name']}
 
 
-def poetry_pyproject_deps(exclude=None, include_optional=False):
-    exclude = set() if exclude is None else exclude
+def poetry_pyproject_deps(include_optional=False):
     start = False
     with open(poetry_pyproject_path) as f:
         for line in f:
@@ -117,8 +115,6 @@ def poetry_pyproject_deps(exclude=None, include_optional=False):
                 else:
                     version = {'version': spec.strip('"\'')}
 
-                if name in exclude:
-                    continue
                 yield name, version
 
 
@@ -128,11 +124,11 @@ def _pad_version(parts):
             parts.append(0)
 
 
-def _to_version_str(parts):
+def _to_version_str(parts) -> str:
     return '.'.join(str(p) for p in parts)
 
 
-def _version_to_parts(string, cast=True):
+def _version_to_parts(string, cast=True) -> tuple[list[int], str]:
     parts = string.split('+')
 
     extra = ''
@@ -144,7 +140,7 @@ def _version_to_parts(string, cast=True):
     return [int(i) if cast else i for i in version.split('.')], extra
 
 
-def poetry_caret_to_pip(version):
+def poetry_caret_to_pip(version) -> str:
     v, _ = _version_to_parts(version)
     v2 = []
     bumped = False
@@ -161,7 +157,7 @@ def poetry_caret_to_pip(version):
     return f">={_to_version_str(v)},<{_to_version_str(v2)}"
 
 
-def _bump_version_rest(parts):
+def _bump_version_rest(parts) -> list[int]:
     v2 = []
     for idx, p in enumerate(parts):
         if idx == len(parts) - 1:
@@ -171,7 +167,7 @@ def _bump_version_rest(parts):
     return v2
 
 
-def poetry_tilde_to_pip(version):
+def poetry_tilde_to_pip(version) -> str:
     v, _ = _version_to_parts(version)
     if len(v) > 2:
         v = v[:2]
@@ -184,7 +180,7 @@ def poetry_tilde_to_pip(version):
     return f">={_to_version_str(v)},<{_to_version_str(v2)}"
 
 
-def poetry_star_to_pip(version):
+def poetry_star_to_pip(version) -> str:
     v, _ = _version_to_parts(version, cast=False)
     v = v[:v.index('*')]
 
@@ -199,7 +195,7 @@ def poetry_star_to_pip(version):
     return f">={_to_version_str(v)},<{_to_version_str(v2)}"
 
 
-def poetry_version_to_pip_requirement(version):
+def poetry_version_to_pip_requirement(version) -> str:
     if version.startswith('^'):
         return poetry_caret_to_pip(version.lstrip('^'))
     if version.startswith('~'):
@@ -217,36 +213,64 @@ def poetry_version_to_pip_requirement(version):
         return f"=={version}"
 
 
-def get_poetry_pyproject_as_pip_requires(include_optional=False, exclude=None):
+def get_poetry_pyproject_as_pip_requires(include_optional=False) -> dict[str, str]:
     return {name: poetry_version_to_pip_requirement(version.get("version")) for name, version
-            in poetry_pyproject_deps(include_optional=include_optional, exclude=exclude)}
+            in poetry_pyproject_deps(include_optional=include_optional)}
 
 
 if __name__ != 'setup_as_library':
-    requires = get_poetry_pyproject_as_pip_requires()
+    requires = get_poetry_pyproject_as_pip_requires() \
+        if not force_lockfile_requires else get_poetry_lockfile_as_pip_requires()
+
+    def exclude_requires(name):
+        if name in requires:
+            requires.pop(name)
+
+    extras = {
+        'ncnn': ['ncnn==1.0.20241226'],
+        'gpt4all': ['gpt4all==2.8.2'],
+        'dev': ['pyinstaller==6.12.0',
+                'sphinx==8.2.3',
+                'sphinx_rtd_theme==3.0.2',
+                'poetry~=2.1.1',
+                'graphviz~=0.20.3'],
+        'win-installer': ['pyinstaller==6.12.0'],
+        'readthedocs': ['sphinx==7.2.6',
+                        'sphinx_rtd_theme==2.0.0']
+    }
 
     python_requirement = requires.get('python')
 
-    exclude = set()
+    if python_requirement:
+        requires.pop('python')
 
-    if dgenerate_platform.lower() != 'linux':
-        exclude.add('triton')
-        exclude.add('torchao')
+    if dgenerate_platform != 'linux':
+        exclude_requires('triton')
+        exclude_requires('torchao')
 
-    if shutil.which('nvidia-smi') is None:
-        exclude.add('bitsandbytes')
-        exclude.add('torchao')
-        exclude.add('triton')
+    if dgenerate_platform == 'darwin':
+        exclude_requires('bitsandbytes')
 
-    if force_lockfile_requires:
-        # nvidia- packages not actually required on windows
-        pyproject_requirements = [name + spec for name, spec in
-                                  get_poetry_lockfile_as_pip_requires(exclude=exclude).items()
-                                  if not (name.startswith('nvidia-') and dgenerate_platform.lower() == 'windows')]
-    else:
-        pyproject_requirements = [name + spec for name, spec in
-                                  get_poetry_pyproject_as_pip_requires(
-                                      exclude=exclude.union({'python'})).items()]
+    if dgenerate_platform == 'windows':
+        for name in list(requires.keys()):
+            if name.startswith('nvidia-'):
+                requires.pop(name)
+
+    quant_extras = []
+
+    if 'bitsandbytes' in requires:
+        quant_extras.append(['bitsandbytes' + requires.pop('bitsandbytes')])
+        extras['bitsandbytes'] = quant_extras[-1]
+
+    if 'torchao' in requires:
+        quant_extras.append(['torchao' + requires.pop('torchao')])
+        extras['torchao'] = quant_extras[-1]
+
+    if quant_extras:
+        extras['quant'] = list(itertools.chain.from_iterable(quant_extras))
+
+    if dgenerate_platform in {'linux', 'windows'}:
+        extras['gpt4all_cuda'] = 'gpt4all[cuda]==2.8.2'
 
     setup(name='dgenerate',
           python_requires=python_requirement,
@@ -272,22 +296,8 @@ if __name__ != 'setup_as_library':
                       'algorithms, with support for video and animated image processing.',
           long_description=README,
           long_description_content_type="text/x-rst",
-          install_requires=pyproject_requirements,
-          extras_require={
-              'ncnn': ['ncnn==1.0.20240820'],
-              'gpt4all': ['gpt4all==2.8.2'],
-              'gpt4all_cuda': ['gpt4all[cuda]==2.8.2'],
-              'dev': ['pandoc==2.3',
-                      'pyinstaller==6.11.0',
-                      'sphinx==7.2.6',
-                      'sphinx_rtd_theme==2.0.0',
-                      'build==1.0.3',
-                      'poetry~=1.8.3',
-                      'graphviz~=0.20.3'],
-              'win-installer': ['pyinstaller==6.2.0'],
-              'readthedocs': ['sphinx==7.2.6',
-                              'sphinx_rtd_theme==2.0.0']
-          },
+          install_requires=[name + spec for name, spec in requires.items()],
+          extras_require=extras,
           entry_points={
               'console_scripts': [
                   'dgenerate = dgenerate:main'

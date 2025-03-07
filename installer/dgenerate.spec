@@ -113,7 +113,7 @@ for package_name in required_package_names:
     binaries += collect_dynamic_libs(package_name, search_patterns=['*.dll', '*.pyd'])
 
 a = Analysis(
-    ['../dgenerate/dgenerate.py'],
+    ['../dgenerate/__winentry__.py'],
     pathex=[],
     binaries=binaries,
     datas=datas + [('../dgenerate/icon.ico', './dgenerate'),
