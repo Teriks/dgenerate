@@ -236,7 +236,7 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
     You may use the --second-prompts argument of dgenerate to pass a prompt
     explicitly to the T5 rankgen encoder, which uses the primary prompt by default otherwise.
 
-    The "encoder" argument specifies the T5 encoder model variant.
+    The "encoder" argument specifies the T5 rankgen encoder model variant.
 
     The encoder variant specified must be one of:
 

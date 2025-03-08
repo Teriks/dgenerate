@@ -126,6 +126,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v4.5.1/>`_.
         * `The magicprompt prompt upscaler`_
         * `The gpt4all prompt upscaler`_
         * `The attention prompt upscaler`_
+        * `The translate prompt upscaler`_
         * `Basic prompt upscaling example`_
         * `Prompt upscaling with LLMs (transformers)`_
         * `Prompt upscaling with LLMs (gpt4all)`_
@@ -4697,6 +4698,65 @@ This is supported for multiple languages, though, CLIP usually really only under
     ==============================================================================================================
 
 
+The translate prompt upscaler
+-----------------------------
+
+The ``translate`` upscaler can use ``argostranslate`` or `Helsinki-NLP <https://huggingface.co/Helsinki-NLP>`_ opus models via
+``transformers`` to translate your prompts from one language to another locally.
+
+All translation models require a one time download that is preformed when the ``translate`` prompt upscaler is first invoked
+with specific ``input`` and ``output`` values.
+
+The translator upscaler defaults to translating your provided ``input`` language code to english, which is useful for CLIP
+based diffusion models which usually only understand english.
+
+This can be used to translate between any language supported by ``argostranslate`` or ``Helsinki-NLP``.
+
+
+.. code-block:: bash
+
+    #!/usr/bin/env bash
+
+    # print out the documentation for the attention prompt upscaler
+
+    dgenerate --prompt-upscaler-help translate
+
+
+.. code-block:: text
+
+    translate:
+        arguments:
+            input: str
+            output: str = "en"
+            part: str = "both"
+            provider: str = "argos"
+            batch: bool = True
+            device: str | None = None
+    
+        Local language translation using argostranslate or Helsinki-NLP opus (mariana).
+    
+        Please note that translation models require a one time download, so run at least once with --offline-mode
+        disabled to download the desired model.
+    
+        The "input" argument indicates the input language code.
+    
+        The "output" argument indicates the output language code, which defaults to english, i.e: "en".
+    
+        The "provider" argument indicates the translation provider, which may be one of "argos" or "mariana".  The
+        default value is "argos", indicating argostranslate.  argos will only ever use the "cpu" regardless of the
+        current --device or "device" argument value. Mariana will default to using the value of --device which
+        will usually be a GPU.
+    
+        The "batch" argument enables and disables batching prompt text into the translator, setting this to False
+        tells the plugin that you only want to ever process one prompt at a time, this might be useful if you are
+        memory constrained and using the provider "mariana", but processing is much slower.
+    
+        The "device" argument can be used to set the device the prompt upscaler will run any models on, for
+        example: cpu, cuda, cuda:1. this argument will default to the value of the dgenerate argument --device.
+    
+    ==============================================================================================================
+
+
 Basic prompt upscaling example
 ------------------------------
 
@@ -5271,7 +5331,7 @@ See: `LLM4GEN <https://github.com/YUHANG-Ma/LLM4GEN>`_
         You may use the --second-prompts argument of dgenerate to pass a prompt explicitly to the T5 rankgen
         encoder, which uses the primary prompt by default otherwise.
     
-        The "encoder" argument specifies the T5 encoder model variant.
+        The "encoder" argument specifies the T5 rankgen encoder model variant.
     
         The encoder variant specified must be one of:
     

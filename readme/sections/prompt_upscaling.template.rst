@@ -106,12 +106,39 @@ This is supported for multiple languages, though, CLIP usually really only under
 @COMMAND_OUTPUT[dgenerate --no-stdin --prompt-upscaler-help attention]
 
 
+The translate prompt upscaler
+-----------------------------
+
+The ``translate`` upscaler can use ``argostranslate`` or `Helsinki-NLP <https://huggingface.co/Helsinki-NLP>`_ opus models via
+``transformers`` to translate your prompts from one language to another locally.
+
+All translation models require a one time download that is preformed when the ``translate`` prompt upscaler is first invoked
+with specific ``input`` and ``output`` values.
+
+The translator upscaler defaults to translating your provided ``input`` language code to english, which is useful for CLIP
+based diffusion models which usually only understand english.
+
+This can be used to translate between any language supported by ``argostranslate`` or ``Helsinki-NLP``.
+
+
+.. code-block:: bash
+
+    #!/usr/bin/env bash
+
+    # print out the documentation for the attention prompt upscaler
+
+    dgenerate --prompt-upscaler-help translate
+
+
+@COMMAND_OUTPUT[dgenerate --no-stdin --prompt-upscaler-help translate]
+
+
 Basic prompt upscaling example
 ------------------------------
 
 The following is an example making use of the ``dynamicprompts``, ``magicprompt``, and ``attention`` prompt upscaler plugins.
 
-@EXAMPLE[../../examples/prompt_upscaler/basic/dynamic-magic-config.dgen]
+@EXAMPLE[../../examples/prompt_upscaler/basic_llm/dynamic-magic-config.dgen]
 
 
 Prompt upscaling with LLMs (transformers)
@@ -125,7 +152,7 @@ The ``magicprompt`` plugin supports quantization backends when ``bitsandbytes`` 
 
 Quantization backend packages will be installed by dgenerate's packaging on platforms where they are supported.
 
-@EXAMPLE[../../examples/prompt_upscaler/basic/magic-phi3-config.dgen]
+@EXAMPLE[../../examples/prompt_upscaler/basic_llm/magic-phi3-config.dgen]
 
 
 Prompt upscaling with LLMs (gpt4all)
@@ -138,7 +165,7 @@ for memory efficient inference on the cpu or gpu.
 
 Here is an example using `Phi-3 Mini Abliterated Q4 GGUF by failspy <https://huggingface.co/failspy/Phi-3-mini-128k-instruct-abliterated-v3-GGUF>`_
 
-@EXAMPLE[../../examples/prompt_upscaler/basic/gpt4all-phi3-config.dgen]
+@EXAMPLE[../../examples/prompt_upscaler/basic_llm/gpt4all-phi3-config.dgen]
 
 
 Customizing LLM output cleanup

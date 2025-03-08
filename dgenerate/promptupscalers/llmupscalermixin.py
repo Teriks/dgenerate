@@ -25,14 +25,14 @@ import os
 import re
 import typing
 
+import spacy.pipeline
 import toml
 import yaml
 
-import dgenerate.spacycache as _spacycache
-import spacy.pipeline
-
 import dgenerate.messages as _messages
 import dgenerate.prompt as _prompt
+import dgenerate.promptupscalers.util as _util
+import dgenerate.spacycache as _spacycache
 
 
 class LLMPromptUpscalerMixin(abc.ABC):
@@ -190,50 +190,7 @@ class LLMPromptUpscalerMixin(abc.ABC):
         return self._regenerate_blocked_prompts(prompts, generated_prompts, self._max_attempts)
 
     def _process_prompts(self, prompts: _prompt.Prompts) -> _prompt.Prompts:
-        generated_pos_prompts = [p.positive for p in prompts]
-        generated_neg_prompts = [p.negative for p in prompts]
-
-        if self._part in {'both', 'positive'}:
-            non_empty_idx = [idx for idx, p in enumerate(prompts) if p.positive]
-
-            pos_prompts = [p.positive for p in prompts if p.positive]
-
-            if pos_prompts:
-                generated = self._generate(pos_prompts)
-
-                for idx, non_empty_idx in enumerate(non_empty_idx):
-                    generated_pos_prompts[non_empty_idx] = generated[idx]
-
-        if self._part in {'both', 'negative'}:
-            non_empty_idx = [idx for idx, p in enumerate(prompts) if p.negative]
-
-            neg_prompts = [p.negative for p in prompts if p.negative]
-
-            if neg_prompts:
-                generated = self._generate(neg_prompts)
-
-                for idx, non_empty_idx in enumerate(non_empty_idx):
-                    generated_neg_prompts[non_empty_idx] = generated[idx]
-
-        output = []
-        for idx, (generated_pos_prompt, generated_neg_prompt) in \
-                enumerate(zip(generated_pos_prompts, generated_neg_prompts)):
-            prompt_obj = _prompt.Prompt(
-                positive=generated_pos_prompt,
-                negative=generated_neg_prompt,
-                delimiter=prompts[idx].delimiter
-            )
-
-            # We need to preserve the embedded diffusion
-            # arguments from the original incoming prompt
-            # that were parsed out by dgenerate
-            prompt_obj.copy_embedded_args_from(prompts[idx])
-
-            # append the generated prompt to the expanded
-            # output list of prompts
-            output.append(prompt_obj)
-
-        return output
+        return _util.process_prompts_batched(prompts, self._part, self._generate)
 
     def _regenerate_blocked_prompts(
             self,
