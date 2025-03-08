@@ -1,0 +1,18 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 4.5.1
+
+# The default translation provider is argostranslate, which uses compact models on the CPU.
+
+# All models require a one time download to cache.
+
+# Translate to chinese, which Kolors is capable of understanding
+
+Kwai-Kolors/Kolors-diffusers
+--model-type torch-kolors
+--variant fp16
+--dtype float16
+--inference-steps 40
+--gen-seeds 2
+--output-size 1024
+--model-sequential-offload
+--prompts "<upscaler: translate;input=en;output=zh> Photo of a horse standing near the open door of a red barn, high resolution; artwork"

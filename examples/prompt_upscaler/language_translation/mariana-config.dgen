@@ -1,0 +1,25 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 4.5.1
+
+# The mariana translation provider uses Helsinki-NLP opus models, these models are a bit larger
+# but may provide more accurate translations.  The models usually amount to around 512mb in size
+# compared to argostranslates 150mb.
+
+# All models require a one time download to cache.
+
+# The mariana translation provider uses transformers and will process on the device specified
+# by --device by default, in this case since it is unspecified, making it "cuda"
+
+# you can instruct the plugin to use the cpu by passing plugin the URI argument: device="cpu"
+
+# Translate to chinese, which Kolors is capable of understanding
+
+Kwai-Kolors/Kolors-diffusers
+--model-type torch-kolors
+--variant fp16
+--dtype float16
+--inference-steps 40
+--gen-seeds 2
+--output-size 1024
+--model-sequential-offload
+--prompts "<upscaler: translate;provider=mariana;input=en;output=zh> Photo of a horse standing near the open door of a red barn, high resolution; artwork"
