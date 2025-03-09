@@ -19,15 +19,25 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import langcodes
 
-import dgenerate.types as _types
-from .argos import ArgosTranslator
-from .exceptions import TranslatorLoadError, TranslationError
-from .mariana import MarianaTranslator
-from .util import get_language_code
 
-__doc__ = """
-Translation backends for language translation via local inference.
-"""
+def get_language_code(language: str) -> str | None:
+    """
+    Return an IETF language code for the given language name or code.
 
-__all__ = _types.module_all()
+    :param language: Name of the language, or IETF language code.
+    :return: Language code, or None if not found.
+    """
+    try:
+        normalized_language = langcodes.standardize_tag(language)
+        if langcodes.tag_is_valid(normalized_language):
+            return normalized_language
+    except langcodes.tag_parser.LanguageTagError:
+        pass
+
+    try:
+        language_code = langcodes.find(language).language
+        return language_code
+    except LookupError:
+        return None
