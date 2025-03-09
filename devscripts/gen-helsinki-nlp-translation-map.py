@@ -1,6 +1,10 @@
 import json
-import re
 import os
+import pathlib
+import re
+
+import langcodes
+import requests
 
 os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
@@ -1537,17 +1541,81 @@ models = [
     "Helsinki-NLP/opus-mt-he-fr"
 ]
 
+ieft_custom_mappings = {
+    'jap': 'ja'
+}
+
 pattern = re.compile(r"Helsinki-NLP/opus-mt-([a-z]{2,3})-([a-z]{2,3})$")
 
 translation_dict = {}
 
-for model in models:
-    match = pattern.match(model)
-    if match:
-        from_lang, to_lang = match.groups()
-        if from_lang not in translation_dict:
-            translation_dict[from_lang] = {}
-        translation_dict[from_lang][to_lang] = model
 
-with open('dgenerate/translators/data/helsinki-nlp-translation-map.json', 'w') as schema:
-    json.dump(translation_dict, schema)
+def get_ietf_codes():
+    if os.path.exists('devscripts/data/ietf_codes.json'):
+        with open('devscripts/data/ietf_codes.json', 'r') as codes_file:
+            return set(json.load(codes_file))
+    else:
+        pathlib.Path('devscripts/data').mkdir(parents=True, exist_ok=True)
+
+        response = requests.get('https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry')
+        ietf_registry = response.text
+
+        codes = set()
+
+        for line in ietf_registry.split('\n'):
+            if line.startswith('Subtag:'):
+                code = line.split(': ')[1].strip()
+                codes.add(code)
+
+        with open('devscripts/data/ietf_codes.json', 'w') as codes_file:
+            json.dump(list(codes), codes_file)
+
+        return codes
+
+
+def get_ietf_code(iso639_3_code):
+    try:
+        if iso639_3_code in ieft_custom_mappings:
+            return ieft_custom_mappings[iso639_3_code]
+
+        language = langcodes.Language.get(iso639_3_code)
+
+        return language.to_tag()
+    except langcodes.LanguageTagError:
+        return None
+
+
+def main():
+    translated_codes = set()
+    ietf_codes = get_ietf_codes()
+
+    for model in models:
+        match = pattern.match(model)
+        if match:
+            from_lang, to_lang = match.groups()
+
+            if from_lang not in ietf_codes:
+                code = get_ietf_code(from_lang)
+                if from_lang not in translated_codes:
+                    print(f'{from_lang} not in IETF codes, translating to: {code}')
+                translated_codes.add(from_lang)
+                from_lang = code
+
+            if to_lang not in ietf_codes:
+
+                code = get_ietf_code(to_lang)
+                if to_lang not in translated_codes:
+                    print(f'{to_lang} not in IETF codes, translating to: {code}')
+                translated_codes.add(to_lang)
+                to_lang = code
+
+            if from_lang not in translation_dict:
+                translation_dict[from_lang] = {}
+            translation_dict[from_lang][to_lang] = model
+
+    with open('dgenerate/translators/data/helsinki-nlp-translation-map.json', 'w') as schema:
+        json.dump(translation_dict, schema)
+
+
+if __name__ == '__main__':
+    main()
