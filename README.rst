@@ -4460,6 +4460,7 @@ Which is a GPT2 finetune focused specifically on prompt generation.
             remove-prompt: bool = False
             prepend-prompt: bool = False
             batch: bool = True
+            max-batch: int | None = 50
             quantizer: str | None = None
             block-regex: str | None = None
             max-attempts: int = 10
@@ -4504,6 +4505,10 @@ Which is a GPT2 finetune focused specifically on prompt generation.
         The "batch" argument enables and disables batching prompt text into the LLM, setting this to False tells
         the plugin that you only want the LLM to ever process one prompt at a time, this might be useful if you
         are memory constrained, but processing is much slower.
+    
+        The "max-batch" argument allows you to adjust how many prompts can be processed by the LLM simultaneously,
+        processing too many prompts at once will run your system out of memory, processing too little prompts at
+        once will be slow. Specifying "None" indicates unlimited batch size.
     
         The "quantizer" argument allows you to specify a quantization backend for loading the LLM, this is the
         same syntax and supported backends as with the dgenerate --quantizer argument.
@@ -4731,6 +4736,7 @@ This can be used to translate between any language supported by ``argostranslate
             part: str = "both"
             provider: str = "argos"
             batch: bool = True
+            max-batch: int | None = 50
             device: str | None = None
     
         Local language translation using argostranslate or Helsinki-NLP opus (mariana).
@@ -4754,6 +4760,11 @@ This can be used to translate between any language supported by ``argostranslate
         The "batch" argument enables and disables batching prompt text into the translator, setting this to False
         tells the plugin that you only want to ever process one prompt at a time, this might be useful if you are
         memory constrained and using the provider "mariana", but processing is much slower.
+    
+        The "max-batch" argument allows you to adjust how many prompts can be processed by the model
+        simultaneously, processing too many prompts at once will run your system out of memory (specifically for
+        the mariana translation provider), processing too little prompts at once will be slow. Specifying "None"
+        indicates unlimited batch size. This argument has no effect on argostranslate performance.
     
         The "device" argument can be used to set the device the prompt upscaler will run any models on, for
         example: cpu, cuda, cuda:1. this argument will default to the value of the dgenerate argument --device.
@@ -7221,7 +7232,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [23340611614243]
+            Value: [77852991852196]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

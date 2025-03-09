@@ -31,6 +31,9 @@ def process_prompts_batched(
     """
     Process a list of prompts using a text generation function which can accept a batch of strings.
 
+    This handles processing of the positive and negative prompt selectively, and
+    reconstruction of the prompt objects after processing.
+
     :param prompts: Input prompts.
     :param part: Prompt parts to process, "both", "positive", "negative".
     :param generator: The text processing function, should accept a list of strings, and return a list of strings
