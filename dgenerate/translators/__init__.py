@@ -19,15 +19,15 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import dgenerate.types as _types
 
+import dgenerate.types as _types
 from .argos import ArgosTranslator
-from .mariana import MarianaTranslator
 from .exceptions import TranslatorLoadError, TranslationError
+from .mariana import MarianaTranslator
+from .util import get_language_code
 
 __doc__ = """
 Translation backends for language translation via local inference.
 """
-
 
 __all__ = _types.module_all()

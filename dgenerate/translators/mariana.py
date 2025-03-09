@@ -26,7 +26,7 @@ import transformers
 
 import dgenerate.messages as _messages
 import dgenerate.translators.exceptions as _exceptions
-
+import dgenerate.translators.util as _util
 
 class MarianaTranslator:
     """
@@ -39,11 +39,26 @@ class MarianaTranslator:
 
     def __init__(self, from_lang: str, to_lang: str, local_files_only: bool = False):
         """
-        :param from_lang: From language code (IETF)
-        :param to_lang: To language code (IETF)
+        :param from_lang: From language code (IETF), or language name.
+        :param to_lang: To language code (IETF), or language name.
         :param local_files_only: Only use models that have been previously cached?
         :raise dgenerate.translators.TranslatorLoadError: If models cannot be loaded / found.
         """
+
+        norm_from_lang = _util.get_language_code(from_lang)
+
+        if norm_from_lang is None:
+            raise _exceptions.TranslatorLoadError(
+                f'Invalid "from" language / language code: {from_lang}')
+
+        norm_to_lang = _util.get_language_code(to_lang)
+
+        if norm_to_lang is None:
+            raise _exceptions.TranslatorLoadError(
+                f'Invalid "to" language / language code: {to_lang}')
+
+        from_lang = norm_from_lang
+        to_lang = norm_to_lang
 
         if MarianaTranslator._translation_map is None:
             with importlib.resources.open_text(

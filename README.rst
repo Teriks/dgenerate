@@ -4748,9 +4748,11 @@ This can be used to translate between any language supported by ``argostranslate
     
         Helsinki-NLP (mariana) offers slightly more heavy duty (accurate) CPU or GPU inference.
     
-        The "input" argument indicates the input language code.
+        The "input" argument indicates the input language code (IETF) e.g. "en", "zh", or literal name of the
+        language for example: "english", "chinese".
     
-        The "output" argument indicates the output language code, which defaults to english, i.e: "en".
+        The "output" argument indicates the output language code (IETF), or literal name of the language, this
+        value defaults to "en" (English).
     
         The "provider" argument indicates the translation provider, which may be one of "argos" or "mariana".  The
         default value is "argos", indicating argostranslate.  argos will only ever use the "cpu" regardless of the
@@ -7232,7 +7234,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [77852991852196]
+            Value: [59808129665472]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
