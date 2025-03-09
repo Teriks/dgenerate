@@ -263,6 +263,16 @@ dgenerate.torchutil module
    :special-members: __call__, __init__
 
 
+dgenerate.translators module
+----------------------------
+
+.. automodule:: dgenerate.translators
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :special-members: __call__, __init__
+
+
 dgenerate.types module
 ----------------------
 

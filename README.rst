@@ -4738,6 +4738,10 @@ This can be used to translate between any language supported by ``argostranslate
         Please note that translation models require a one time download, so run at least once with --offline-mode
         disabled to download the desired model.
     
+        argostranslate (argos) offers lightweight translation via CPU inference.
+    
+        Helsinki-NLP (mariana) offers slightly more heavy duty (accurate) CPU or GPU inference.
+    
         The "input" argument indicates the input language code.
     
         The "output" argument indicates the output language code, which defaults to english, i.e: "en".
@@ -7217,7 +7221,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [28145141153593]
+            Value: [23340611614243]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
