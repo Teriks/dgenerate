@@ -17,6 +17,7 @@ accelerate = "1.4.0"
 dynamicprompts = "0.31.0"
 spacy = "3.8.4"
 ultralytics = {version = "8.3.65", platform = "not_darwin"}
+langcodes = "^3.5.0"
 argostranslate = "^1.9.6"
 pytorch-lightning = "^2.5.0"
 lightning-utilities = "^0.13.1"

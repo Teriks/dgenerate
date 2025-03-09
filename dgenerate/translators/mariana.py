@@ -142,13 +142,24 @@ class MarianaTranslator:
         if isinstance(texts, str):
             texts = [texts]
 
-        inputs = self.tokenizer(texts, return_tensors="pt", padding=True, truncation=True).to(self.model.device)
+        inputs = self.tokenizer(
+            texts,
+            return_tensors="pt",
+            padding=True,
+            truncation=True
+        ).to(self.model.device)
+
         translated = self.model.generate(**inputs)
         first_pass = self.tokenizer.batch_decode(translated, skip_special_tokens=True)
 
         if self.tokenizer2:
-            inputs = self.tokenizer2(first_pass, return_tensors="pt", padding=True, truncation=True).to(
-                self.model2.device)
+
+            inputs = self.tokenizer2(
+                first_pass,
+                return_tensors="pt",
+                padding=True,
+                truncation=True).to(self.model2.device)
+
             translated = self.model2.generate(**inputs)
             return self.tokenizer2.batch_decode(translated, skip_special_tokens=True)
 
