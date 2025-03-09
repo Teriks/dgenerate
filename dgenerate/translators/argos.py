@@ -197,7 +197,7 @@ class ArgosTranslator:
             f.write(data)
 
     @staticmethod
-    def _argos_download_package(package: argostranslate.package.IPackage):
+    def _argos_download_package(package: argostranslate.package.AvailablePackage):
         try:
             # this actually just throws "Exception" upon download failure.
             return package.download()
