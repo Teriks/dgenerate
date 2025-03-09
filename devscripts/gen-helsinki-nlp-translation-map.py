@@ -1549,5 +1549,5 @@ for model in models:
             translation_dict[from_lang] = {}
         translation_dict[from_lang][to_lang] = model
 
-with open('dgenerate/translators/data/helsinki-nlp-map.json', 'w') as schema:
+with open('dgenerate/translators/data/helsinki-nlp-translation-map.json', 'w') as schema:
     json.dump(translation_dict, schema)
