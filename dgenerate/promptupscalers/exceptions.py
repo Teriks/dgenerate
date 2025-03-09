@@ -49,6 +49,6 @@ class PromptUpscalerArgumentError(_plugin.PluginArgumentError, PromptUpscalerErr
 class PromptUpscalerProcessingError(PromptUpscalerError):
     """
     Thrown when a :py:class:`dgenerate.promptupscalers.PromptUpscaler`
-    implementation runs into an issue processing a promt.
+    implementation runs into an issue processing a prompt.
     """
     pass
