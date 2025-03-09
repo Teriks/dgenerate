@@ -22,17 +22,17 @@ import contextlib
 import gc
 import typing
 
-from dgenerate.pipelinewrapper.util import get_quantizer_uri_class as _get_quantizer_uri_class
-import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
-import dgenerate.promptupscalers.promptupscaler as _promptupscaler
-import dgenerate.promptupscalers.exceptions as _exceptions
-import dgenerate.prompt as _prompt
-import dgenerate.memory as _memory
-import dgenerate.messages as _messages
-import dgenerate.promptupscalers.llmupscalermixin as _llmupscalermixin
-
 import torch
 import transformers
+
+import dgenerate.memory as _memory
+import dgenerate.messages as _messages
+import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
+import dgenerate.prompt as _prompt
+import dgenerate.promptupscalers.exceptions as _exceptions
+import dgenerate.promptupscalers.llmupscalermixin as _llmupscalermixin
+import dgenerate.promptupscalers.promptupscaler as _promptupscaler
+from dgenerate.pipelinewrapper.util import get_quantizer_uri_class as _get_quantizer_uri_class
 
 
 @contextlib.contextmanager
@@ -145,6 +145,12 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
     one prompt at a time, this might be useful if you are
     memory constrained, but processing is much slower.
 
+    The "max-batch" argument allows you to adjust how
+    many prompts can be processed by the LLM simultaneously,
+    processing too many prompts at once will run your system
+    out of memory, processing too little prompts at once will
+    be slow. Specifying "None" indicates unlimited batch size.
+
     The "quantizer" argument allows you to specify a quantization
     backend for loading the LLM, this is the same syntax and supported
     backends as with the dgenerate --quantizer argument.
@@ -185,6 +191,7 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
                  remove_prompt: bool = False,
                  prepend_prompt: bool = False,
                  batch: bool = True,
+                 max_batch: int | None = 50,
                  quantizer: str | None = None,
                  block_regex: str | None = None,
                  max_attempts: int = 10,
@@ -233,15 +240,20 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
 
         if top_k < 1:
             raise self.argument_error(
-                'Argument "top_k" may not be less than 1.')
+                'Argument "top-k" may not be less than 1.')
 
         if top_p < 0.0:
             raise self.argument_error(
-                'Argument "top_p" may not be less than 0.')
+                'Argument "top-p" may not be less than 0.')
 
         if top_p > 1.0:
             raise self.argument_error(
-                'Argument "top_p" may not be greater than 1.')
+                'Argument "top-p" may not be greater than 1.')
+
+        if max_batch is not None and max_batch < 1:
+            raise self.argument_error(
+                'Argument "max-batch" may not be less than 1.')
+
 
         model_files = list(
             _pipelinewrapper_util.fetch_model_files_with_size(
@@ -286,6 +298,7 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
 
         self._variations = variations
         self._accepts_batch = batch
+        self._max_batch = max_batch
         self._part = part
         self._quantizer = quantizer
         self._max_attempts = max_attempts
@@ -324,26 +337,14 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
         if not self._accepts_batch:
             generated_prompts = []
             for ptext in formatted_prompts:
-                generated_prompts.extend(
-                    self._pipeline(
-                        [ptext],
-                        max_length=self._max_length,
-                        temperature=self._temperature,
-                        top_k=self._top_k,
-                        top_p=self._top_p,
-                        do_sample=True,
-                        batch_size=1
-                    ))
+                generated_prompts.extend(self._call_pipeline([ptext]))
+        elif self._max_batch is not None:
+            generated_prompts = []
+            for batch_segment in range(0, len(formatted_prompts), self._max_batch):
+                segment = formatted_prompts[batch_segment:batch_segment + self._max_batch]
+                generated_prompts.extend(self._call_pipeline(segment))
         else:
-            generated_prompts = self._pipeline(
-                formatted_prompts,
-                max_length=self._max_length,
-                temperature=self._temperature,
-                top_k=self._top_k,
-                top_p=self._top_p,
-                do_sample=True,
-                batch_size=len(formatted_prompts)
-            )
+            generated_prompts = self._call_pipeline(formatted_prompts)
 
         generated_prompts = [
             self._clean_prompt(
@@ -359,6 +360,17 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
         ]
 
         return generated_prompts
+
+    def _call_pipeline(self, prompts: list[str]):
+        return self._pipeline(
+            prompts,
+            max_length=self._max_length,
+            temperature=self._temperature,
+            top_k=self._top_k,
+            top_p=self._top_p,
+            do_sample=True,
+            batch_size=len(prompts)
+        )
 
     @contextlib.contextmanager
     def _with_device(self):
@@ -377,7 +389,7 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
                 _memory.torch_gc()
 
     @property
-    def accepts_batch(self):
+    def accepts_batch(self) -> bool:
         """
         This prompt upscaler can accept a batch of prompts for efficient execution.
         :return: ``True``, unless the constructor argument ``batch`` was passed ``False``

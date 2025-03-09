@@ -22,9 +22,9 @@ import importlib.resources
 import json
 
 import torch
+import transformers
 
 import dgenerate.messages as _messages
-import transformers
 import dgenerate.translators.exceptions as _exceptions
 
 
@@ -91,42 +91,35 @@ class MarianaTranslator:
                 f'{from_lang} -> {pivot_model_to} then {pivot_model_to} -> {to_lang}'
             )
 
-            try:
-                self.tokenizer = transformers.MarianTokenizer.from_pretrained(
-                    pivot_model_name, local_files_only=local_files_only)
-                self.model = transformers.MarianMTModel.from_pretrained(
-                    pivot_model_name, local_files_only=local_files_only)
-            except OSError as e:
-                raise _exceptions.TranslatorLoadError(
-                    f'Helsinki-NLP translation model for "{from_lang}" -> "{to_lang}" is not available.') from e
-            except Exception as e:
-                raise _exceptions.TranslatorLoadError(e) from e
+            self.tokenizer, self.model = self._load_mariana(
+                pivot_model_name, from_lang, to_lang, local_files_only
+            )
 
-            try:
-                self.tokenizer2 = transformers.MarianTokenizer.from_pretrained(
-                    model_name, local_files_only=local_files_only)
-                self.model2 = transformers.MarianMTModel.from_pretrained(
-                    model_name, local_files_only=local_files_only)
-            except OSError as e:
-                raise _exceptions.TranslatorLoadError(
-                    f'Helsinki-NLP translation model for "{from_lang}" -> "{to_lang}" is not available.') from e
-            except Exception as e:
-                raise _exceptions.TranslatorLoadError(e) from e
+            self.tokenizer2, self.model2 = self._load_mariana(
+                model_name, from_lang, to_lang, local_files_only
+            )
 
         elif model_name:
-            try:
-                self.tokenizer = transformers.MarianTokenizer.from_pretrained(
-                    model_name, local_files_only=local_files_only)
-                self.model = transformers.MarianMTModel.from_pretrained(
-                    model_name, local_files_only=local_files_only)
-            except OSError as e:
-                raise _exceptions.TranslatorLoadError(
-                    f'Helsinki-NLP translation model for "{from_lang}" -> "{to_lang}" is not available.') from e
-            except Exception as e:
-                raise _exceptions.TranslatorLoadError(e) from e
+            self.tokenizer, self.model = self._load_mariana(
+                model_name, from_lang, to_lang, local_files_only
+            )
         else:
             raise _exceptions.TranslatorLoadError(
                 f'Helsinki-NLP translation model for "{from_lang}" -> "{to_lang}" is not available.')
+
+    @staticmethod
+    def _load_mariana(model_name: str, from_lang: str, to_lang: str, local_files_only: bool):
+        try:
+            tokenizer = transformers.MarianTokenizer.from_pretrained(
+                model_name, local_files_only=local_files_only)
+            model = transformers.MarianMTModel.from_pretrained(
+                model_name, local_files_only=local_files_only)
+            return tokenizer, model
+        except OSError as e:
+            raise _exceptions.TranslatorLoadError(
+                f'Helsinki-NLP translation model for "{from_lang}" -> "{to_lang}" is not available.') from e
+        except Exception as e:
+            raise _exceptions.TranslatorLoadError(e) from e
 
     def to(self, device: str | torch.device):
         """
@@ -149,54 +142,14 @@ class MarianaTranslator:
         if isinstance(texts, str):
             texts = [texts]
 
-        output = []
+        inputs = self.tokenizer(texts, return_tensors="pt", padding=True, truncation=True).to(self.model.device)
+        translated = self.model.generate(**inputs)
+        first_pass = self.tokenizer.batch_decode(translated, skip_special_tokens=True)
 
-        for text in texts:
-            try:
-                if self.tokenizer2:
-                    # pivot model
+        if self.tokenizer2:
+            inputs = self.tokenizer2(first_pass, return_tensors="pt", padding=True, truncation=True).to(
+                self.model2.device)
+            translated = self.model2.generate(**inputs)
+            return self.tokenizer2.batch_decode(translated, skip_special_tokens=True)
 
-                    inputs = self.tokenizer(
-                        text,
-                        return_tensors="pt",
-                        padding=True,
-                        truncation=True
-                    ).to(self.model.device)
-
-                    translated = self.model.generate(**inputs)
-                    translated = self.tokenizer.batch_decode(translated, skip_special_tokens=True)[0]
-
-                    inputs.to('cpu')
-
-                    del inputs
-
-                    # translate out of pivot language
-
-                    inputs = self.tokenizer2(
-                        translated,
-                        return_tensors="pt",
-                        padding=True,
-                        truncation=True
-                    ).to(self.model2.device)
-
-                    translated = self.model2.generate(**inputs)
-                    inputs.to('cpu')
-
-                    del inputs
-
-                    translated = self.tokenizer2.batch_decode(translated, skip_special_tokens=True)[0]
-
-                    output.append(translated)
-                else:
-                    inputs = self.tokenizer(text, return_tensors="pt", padding=True, truncation=True).to(
-                        self.model.device)
-
-                    translated = self.model.generate(**inputs)
-                    inputs.to('cpu')
-
-                    del inputs
-
-                    output.append(self.tokenizer.batch_decode(translated, skip_special_tokens=True)[0])
-            except Exception as e:
-                raise _exceptions.TranslationError(e) from e
-        return output
+        return first_pass

@@ -175,23 +175,23 @@ class GPT4ALLPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptups
 
         if top_k < 1:
             raise self.argument_error(
-                'Argument "top_k" may not be less than 1.')
+                'Argument "top-k" may not be less than 1.')
 
         if top_p < 0.0:
             raise self.argument_error(
-                'Argument "top_p" may not be less than 0.')
+                'Argument "top-p" may not be less than 0.')
 
         if top_p > 1.0:
             raise self.argument_error(
-                'Argument "top_p" may not be greater than 1.')
+                'Argument "top-p" may not be greater than 1.')
 
         if min_p < 0.0:
             raise self.argument_error(
-                'Argument "min_p" may not be less than 0.')
+                'Argument "min-p" may not be less than 0.')
 
         if min_p > 1.0:
             raise self.argument_error(
-                'Argument "min_p" may not be greater than 1.')
+                'Argument "min-p" may not be greater than 1.')
 
         if _webcache.is_downloadable_url(model):
             # Any mimetype
@@ -281,7 +281,7 @@ class GPT4ALLPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptups
         return generated_prompts
 
     @property
-    def accepts_batch(self):
+    def accepts_batch(self) -> bool:
         """
         Returns ``True``, this prompt upscaler can always accept a batch of prompts.
         :return: ``True``

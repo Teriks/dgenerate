@@ -53,6 +53,14 @@ class TranslatePromptsUpscaler(_promptupscaler.PromptUpscaler):
     one prompt at a time, this might be useful if you are
     memory constrained and using the provider "mariana",
     but processing is much slower.
+
+    The "max-batch" argument allows you to adjust how
+    many prompts can be processed by the model simultaneously,
+    processing too many prompts at once will run your system
+    out of memory (specifically for the mariana translation provider),
+    processing too little prompts at once will be slow.
+    Specifying "None" indicates unlimited batch size. This argument
+    has no effect on argostranslate performance.
     """
 
     NAMES = ['translate']
@@ -63,6 +71,7 @@ class TranslatePromptsUpscaler(_promptupscaler.PromptUpscaler):
                  part: str = 'both',
                  provider: str = 'argos',
                  batch: bool = True,
+                 max_batch: int | None = 50,
                  **kwargs
                  ):
         """
@@ -81,6 +90,10 @@ class TranslatePromptsUpscaler(_promptupscaler.PromptUpscaler):
             raise self.argument_error(
                 'Argument "provider" must be one of: "argos" or "mariana"')
 
+        if max_batch is not None and max_batch < 1:
+            raise self.argument_error(
+                'Argument "max-batch" may not be less than 1.')
+
         try:
             self._translator = self.load_object_cached(
                 input + output + provider,
@@ -93,8 +106,19 @@ class TranslatePromptsUpscaler(_promptupscaler.PromptUpscaler):
 
         self._accepts_batch = batch
         self._part = part
+        self._max_batch = max_batch
 
-    def accepts_batch(self):
+    def _translate(self, texts: list[str]) -> list[str]:
+        if self._max_batch is not None and not isinstance(self._translator, _translators.ArgosTranslator):
+            translated = []
+            for batch_segment in range(0, len(texts), self._max_batch):
+                segment = texts[batch_segment:batch_segment + self._max_batch]
+                translated.extend(self._translator.translate(segment))
+            return translated
+        else:
+            return self._translator.translate(texts)
+
+    def accepts_batch(self) -> bool:
         return self._accepts_batch
 
     def upscale(self, prompts: _prompt.Prompts) -> _prompt.PromptOrPrompts:
@@ -104,7 +128,7 @@ class TranslatePromptsUpscaler(_promptupscaler.PromptUpscaler):
         try:
             if hasattr(self._translator, 'to'):
                 self._translator.to(self.device)
-            return _util.process_prompts_batched(prompts, self._part, self._translator.translate)
+            return _util.process_prompts_batched(prompts, self._part, self._translate)
         except _translators.TranslationError as e:
             raise _exceptions.PromptUpscalerProcessingError(e) from e
         finally:
