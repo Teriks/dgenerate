@@ -1,5 +1,5 @@
-Upscaling
-=========
+Upscaling Images
+================
 
 dgenerate implements four different methods of upscaling images, animated images, or video.
 
