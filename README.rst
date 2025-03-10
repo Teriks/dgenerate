@@ -2,6 +2,7 @@
 .. _Phi-3_Mini_Abliterated_Q4_GGUF_by_failspy: https://huggingface.co/failspy/Phi-3-mini-128k-instruct-abliterated-v3-GGUF
 .. _Stable_Diffusion_Web_UI: https://github.com/AUTOMATIC1111/stable-diffusion-webui
 .. _CivitAI: https://civitai.com/
+.. _DiffusionArguments: https://dgenerate.readthedocs.io/en/version_5.0.0/dgenerate_submodules.html#dgenerate.pipelinewrapper.DiffusionArguments
 .. _spandrel: https://github.com/chaiNNer-org/spandrel
 .. _ncnn: https://github.com/Tencent/ncnn
 .. _chaiNNer: https://github.com/chaiNNer-org/chaiNNer
@@ -5401,7 +5402,7 @@ to define the ``--prompt-weighter`` and ``--prompt-upscaler`` plugins that act o
 ``<upscaler: ...>`` is unlike other embedded arguments in that it can be mentioned multiple times
 in a row to create a chain of prompt upscaling operations using different prompt upscaler plugin URIs.
 
-The rest of the specifiable arguments are select members of the `DiffusionArguments <https://dgenerate.readthedocs.io/en/version_5.0.0/dgenerate_submodules.html#dgenerate.pipelinewrapper.DiffusionArguments>`_
+The rest of the specifiable arguments are select members of the `DiffusionArguments <DiffusionArguments_>`_
 class from dgenerate's library API.
 
 You may not specify prompt related arguments aside from the aforementioned ``weighter`` and ``upscaler``.
@@ -5425,7 +5426,7 @@ All other arguments are fair game, for example ``inference_steps``
     --prompts "hello world!" "<inference-steps: 50> hello world!"
 
 
-Of the arguments mentioned in the `DiffusionArguments <https://dgenerate.readthedocs.io/en/v4.5.1/dgenerate_submodules.html#dgenerate.pipelinewrapper.DiffusionArguments>`_ class,
+Of the arguments mentioned in the `DiffusionArguments <DiffusionArguments_>`_ class,
 these are the arguments that are available for use:
 
 .. code-block:: text
