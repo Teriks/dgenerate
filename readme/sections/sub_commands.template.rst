@@ -202,7 +202,7 @@ Prompts can be written to a file or printed to stdout, and in the case of the co
 they can also be written to a config template variable as a python list.
 
 A comprehensive example of the ``\prompt_upscale`` config directive which might be helpful for understanding
-this sub-commands functionality is available in the `examples folder <https://github.com/Teriks/dgenerate/blob/v@VERSION/examples/config_directives/prompt_upscale/prompt-upscale-directive-config.dgen>`_.
+this sub-commands functionality is available in the `examples folder <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/config_directives/prompt_upscale/prompt-upscale-directive-config.dgen>`_.
 
 .. code-block:: text
 

@@ -39,7 +39,7 @@ has taken place prior with a supported ``--model-type`` value involved.
 
 The adetailer image processor has many options and it is recommended to take a look at the output of
 ``dgenerate --image-processor-help adetailer`` and view the examples located at
-`examples/adetailer/post_processor <https://github.com/Teriks/dgenerate/tree/v@VERSION/examples/adetailer/post_processor>`_
+`examples/adetailer/post_processor <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/adetailer/post_processor>`_
 for usage information.
 
 

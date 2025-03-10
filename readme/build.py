@@ -21,11 +21,11 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
+import json
+import os
 import re
 import subprocess
-import os
 import sys
-import json
 from collections import defaultdict
 
 COMMAND_CACHE = dict()
@@ -34,6 +34,29 @@ proj_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 
 with open(os.path.join(proj_dir, 'dgenerate', '__init__.py')) as _f:
     VERSION = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]', _f.read(), re.MULTILINE).group(1)
+
+
+def get_git_revision():
+    try:
+        # Try to get the current tag name
+        tag = subprocess.check_output(
+            ['git', 'describe', '--tags', '--exact-match'],
+            stderr=subprocess.DEVNULL).strip().decode()
+        return tag  # Return the tag name if on a tag
+    except subprocess.CalledProcessError:
+        try:
+            # If not on a tag, return the branch name
+            branch = subprocess.check_output(
+                ['git', 'rev-parse', '--abbrev-ref', 'HEAD']
+            ).strip().decode()
+            return branch
+        except subprocess.CalledProcessError:
+            return 'main'  # If both commands fail, return 'main'
+    except FileNotFoundError:
+        return 'main'  # If git is not installed, return 'main'
+
+
+REVISION = get_git_revision()
 
 
 def find_and_condense_links(rst_content):
@@ -286,7 +309,8 @@ def render_templates(rst_content, filename=None):
         'INCLUDE': include_replacer,
         'EXAMPLE': example_replacer,
         'COMMAND_OUTPUT': command_replacer,
-        'VERSION': lambda: VERSION
+        'VERSION': lambda: VERSION,
+        'REVISION': lambda: REVISION
     })
 
     def toc_replacer(arguments):

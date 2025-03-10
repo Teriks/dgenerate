@@ -45,7 +45,7 @@ over the first half of the time-steps needed to generate the image.
 
 When using multiple T2I Adapters, this value applies to all T2I Adapter models mentioned.
 
-These examples use: `vermeer_canny_edged.png <https://raw.githubusercontent.com/Teriks/dgenerate/v@VERSION/examples/media/vermeer_canny_edged.png>`_
+These examples use: `vermeer_canny_edged.png <https://raw.githubusercontent.com/Teriks/dgenerate/@REVISION/examples/media/vermeer_canny_edged.png>`_
 
 .. code-block:: bash
 

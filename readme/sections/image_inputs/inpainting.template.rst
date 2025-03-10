@@ -22,8 +22,8 @@ however for this example files on disk are used for brevity.
 
 You can download them here:
 
- * `my-image-seed.png <https://raw.githubusercontent.com/Teriks/dgenerate/v@VERSION/examples/media/dog-on-bench.png>`_
- * `my-mask-image.png <https://raw.githubusercontent.com/Teriks/dgenerate/v@VERSION/examples/media/dog-on-bench-mask.png>`_
+ * `my-image-seed.png <https://raw.githubusercontent.com/Teriks/dgenerate/@REVISION/examples/media/dog-on-bench.png>`_
+ * `my-mask-image.png <https://raw.githubusercontent.com/Teriks/dgenerate/@REVISION/examples/media/dog-on-bench-mask.png>`_
 
 The command below generates a cat sitting on a bench with the images from the links above, the mask image masks out
 areas over the dog in the original image, causing the dog to be replaced with an AI generated cat.
