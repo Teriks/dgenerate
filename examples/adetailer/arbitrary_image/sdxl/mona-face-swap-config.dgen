@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 4.5.1
+#! dgenerate 5.0.0
 
 # You can use any SDXL model you want in combination with the adetailer inpainting algorithm
 # this can be preformed on any image of your choosing in this manner

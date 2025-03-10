@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 4.5.1
+#! dgenerate 5.0.0
 
 # The mariana translation provider uses Helsinki-NLP opus models, these models are a bit larger
 # but may provide more accurate translations.  The models usually amount to around 512mb in size

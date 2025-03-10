@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 4.5.1
+#! dgenerate 5.0.0
 
 # Demo custom LLM output cleanup using the "cleanup-config" argument,
 # this works for the "magicprompt" prompt upscaler as well.

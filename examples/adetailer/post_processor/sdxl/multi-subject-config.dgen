@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 4.5.1
+#! dgenerate 5.0.0
 
 # The index-filter argument of the adetailer processor can be
 # used to select which detections to act on, this argument should

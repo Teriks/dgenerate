@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 4.5.1
+#! dgenerate 5.0.0
 
 # The prompt_upscale directive can be use to upscale prompts with prompt upscaler plugins,
 # without preforming any image generation. This directive is designed in the same

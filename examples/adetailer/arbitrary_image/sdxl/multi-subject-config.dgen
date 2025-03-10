@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 4.5.1
+#! dgenerate 5.0.0
 
 # edit multiple adetailer YOLO detected features in one go on an arbitrary image
 # using detector URI arguments to override the prompt and selected detection
