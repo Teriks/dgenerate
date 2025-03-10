@@ -25,12 +25,12 @@ import dgenerate.console.resources as _resources
 _last_pos = None
 
 
-def request_argument(master):
+def request_directive(master):
     global _last_pos
 
     window = _modalselectwithhelp._ModalSelectWithHelp(
-        'Argument',
-        _resources.get_dgenerate_arguments(),
+        'Directive',
+        _resources.get_dgenerate_directives(),
         master, position=_last_pos
     )
 
