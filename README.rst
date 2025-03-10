@@ -7,7 +7,7 @@
 .. _ncnn: https://github.com/Tencent/ncnn
 .. _chaiNNer: https://github.com/chaiNNer-org/chaiNNer
 
-.. |Documentation| image:: https://readthedocs.org/projects/dgenerate/badge/?version=v4.5.1
+.. |Documentation| image:: https://readthedocs.org/projects/dgenerate/badge/?version=v5.0.0
    :target: http://dgenerate.readthedocs.io/en/version_5.0.0/
 
 .. |Latest Release| image:: https://img.shields.io/github/v/release/Teriks/dgenerate
@@ -1662,21 +1662,21 @@ Install dgenerate:
 
     # If you want a specific version
 
-    pipx install dgenerate==4.5.1 ^
+    pipx install dgenerate==5.0.0 ^
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu124/"
 
     # with NCNN upscaler support and a specific version
 
-    pipx install dgenerate[ncnn]==4.5.1 ^
+    pipx install dgenerate[ncnn]==5.0.0 ^
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu124/"
 
     # You can install without pipx into your own environment like so
 
-    pip install dgenerate==4.5.1 --extra-index-url https://download.pytorch.org/whl/cu124/
+    pip install dgenerate==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu124/
 
     # Or with NCNN
 
-    pip install dgenerate[ncnn]==4.5.1 --extra-index-url https://download.pytorch.org/whl/cu124/
+    pip install dgenerate[ncnn]==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu124/
 
 
 It is recommended to install dgenerate with pipx if you are just intending
@@ -1813,16 +1813,16 @@ Install dgenerate
 
     # If you want a specific version
 
-    pipx install dgenerate==4.5.1 \
+    pipx install dgenerate==5.0.0 \
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu124/"
 
     # You can install without pipx into your own environment like so
 
-    pip3 install dgenerate==4.5.1 --extra-index-url https://download.pytorch.org/whl/cu124/
+    pip3 install dgenerate==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu124/
 
     # Or with NCNN
 
-    pip3 install dgenerate[ncnn]==4.5.1 --extra-index-url https://download.pytorch.org/whl/cu124/
+    pip3 install dgenerate[ncnn]==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu124/
 
 
 It is recommended to install dgenerate with pipx if you are just intending
@@ -1938,7 +1938,7 @@ Install dgenerate
 
     # If you want a specific version
 
-    pipx install dgenerate==4.5.1 \
+    pipx install dgenerate==5.0.0 \
     --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm6.2.4/"
 
 
@@ -1952,11 +1952,11 @@ Install dgenerate
 
     # You can install without pipx into your own environment like so
 
-    pip3 install dgenerate==4.5.1 --extra-index-url https://download.pytorch.org/whl/rocm6.2.4/
+    pip3 install dgenerate==5.0.0 --extra-index-url https://download.pytorch.org/whl/rocm6.2.4/
 
     # Or with NCNN
 
-    pip3 install dgenerate[ncnn]==4.5.1 --extra-index-url https://download.pytorch.org/whl/rocm6.2.4/
+    pip3 install dgenerate[ncnn]==5.0.0 --extra-index-url https://download.pytorch.org/whl/rocm6.2.4/
 
 
     # you can attempt to install the pre-release bitsandbytes multiplatform version like so:
@@ -2051,7 +2051,7 @@ global python site packages.
 
     # possible dgenerate package extras: ncnn, gpt4all
 
-    pipx install dgenerate==4.5.1
+    pipx install dgenerate==5.0.0
 
 
     # you can attempt to install the pre-release bitsandbytes
@@ -2085,7 +2085,7 @@ If you want to upgrade dgenerate, uninstall it first and then install the new ve
 .. code-block:: bash
 
     pipx uninstall dgenerate
-    pipx install dgenerate==4.5.1
+    pipx install dgenerate==5.0.0
 
 
 MacOS venv install
@@ -2112,7 +2112,7 @@ of your own creation.
 
     # possible dgenerate package extras: ncnn, gpt4all
 
-    pip3 install dgenerate==4.5.1
+    pip3 install dgenerate==5.0.0
 
 
     # you can attempt to install the pre-release bitsandbytes
@@ -2162,7 +2162,7 @@ Make sure you select a GPU runtime for your notebook, such as the T4 runtime.
 
 .. code-block:: bash
 
-    !source /content/venv/bin/activate; pip install dgenerate==4.5.1 --extra-index-url https://download.pytorch.org/whl/cu121
+    !source /content/venv/bin/activate; pip install dgenerate==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu121
 
 4.) Finally you can run dgenerate, you must prefix all calls to dgenerate with an activation of the virtual environment, as
 the virtual environment is not preserved between cells.  For brevity, and as an example, just print the help text here.
@@ -3815,7 +3815,7 @@ Here is an example making use of ``depth`` and ``openpose``:
 .. code-block:: bash
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 4.5.1
+    #! dgenerate 5.0.0
 
     # You can utilize multiple SDXL ControlNet union models with different modes
 
@@ -4315,7 +4315,7 @@ and using ``null`` will override it.
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 4.5.1
+    #! dgenerate 5.0.0
 
     # this model will load all three text encoders,
     # they are not cached individually as we did not explicitly
@@ -4783,7 +4783,7 @@ The following is an example making use of the ``dynamicprompts``, ``magicprompt`
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 4.5.1
+    #! dgenerate 5.0.0
     
     # prompt upscaler plugins can preprocess and expand prompts, allowing
     # for LLM based txt2txt enhancement or prompt expansion resulting
@@ -4851,7 +4851,7 @@ Quantization backend packages will be installed by dgenerate's packaging on plat
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 4.5.1
+    #! dgenerate 5.0.0
     
     # Use Phi-3 abliterated as a prompt text enhancer
     
@@ -4907,7 +4907,7 @@ Here is an example using `Phi-3 Mini Abliterated Q4 GGUF by failspy <Phi-3_Mini_
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 4.5.1
+    #! dgenerate 5.0.0
     
     # Use Phi-3 abliterated as a prompt text enhancer with gpt4all
     
@@ -6514,7 +6514,7 @@ for usage information.
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 4.5.1
+    #! dgenerate 5.0.0
 
     # quick example showing the adetailer post processor
     # applying detailing to (hopefully) a single face
@@ -6562,7 +6562,7 @@ inpaint multiple types of objects in an image, or different detection indices se
 .. code-block::
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 4.5.1
+    #! dgenerate 5.0.0
 
     stabilityai/stable-diffusion-xl-base-1.0
     --model-type torch-sdxl
@@ -6622,7 +6622,7 @@ original generation, or with  different model types all together.
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 4.5.1
+    #! dgenerate 5.0.0
 
     # first we should generate an image that we want to refine
     # with adetailer using some model, or operation that affects
@@ -6689,7 +6689,7 @@ when specifying detectors with ``--adetailer-detectors``
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 4.5.1
+    #! dgenerate 5.0.0
 
     # edit multiple adetailer YOLO detected features in one go on an arbitrary image
     # using detector URI arguments to override the prompt and selected detection
@@ -6777,7 +6777,7 @@ Environmental variables will be expanded in config scripts using both Unix and W
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 4.5.1
+    #! dgenerate 5.0.0
 
     # these all expand from your system environment
     # if the variable is not set, they expand to nothing
@@ -6804,7 +6804,7 @@ The following is a config file example that covers the most basic syntax concept
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 4.5.1
+    #! dgenerate 5.0.0
     
     # If a hash-bang version is provided in the format above
     # a warning will be produced if the version you are running
@@ -6955,7 +6955,7 @@ also be mentioned in this output.
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 4.5.1
+    #! dgenerate 5.0.0
     
     # Invocation will proceed as normal
     
@@ -7502,7 +7502,7 @@ such as VAEs etc. outside of relying on the caching system.
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 4.5.1
+    #! dgenerate 5.0.0
     
     # You can define your own template variables with the \set directive
     # the \set directive does not do any shell args parsing on its value
@@ -7736,7 +7736,7 @@ This is for assigning literal text values to a template variable.
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 4.5.1
+    #! dgenerate 5.0.0
     
     \set my_variable "I am an incomplete string and this is completely fine because I am a raw value
     
@@ -7773,7 +7773,7 @@ feature to assign template variables.
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 4.5.1
+    #! dgenerate 5.0.0
     
     
     \sete my_variable --argument ./*
@@ -7813,7 +7813,7 @@ implemented by dgenerate are available for use in the evaluated expressions.
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 4.5.1
+    #! dgenerate 5.0.0
     
     \setp my_variable 10*10
     
@@ -7890,7 +7890,7 @@ Indirect expansion is allowed just like with ``\set``, ``\sete``, and ``\setp``.
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 4.5.1
+    #! dgenerate 5.0.0
     
     \env MY_ENV_VAR=1 MY_ENV_VAR2=2
     
@@ -7940,7 +7940,7 @@ globbing.
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 4.5.1
+    #! dgenerate 5.0.0
     
     # globbing can be preformed via shell expansion or using
     # the glob module inside jinja templates
@@ -8013,7 +8013,7 @@ similar to the behavior of ``\set``
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 4.5.1
+    #! dgenerate 5.0.0
 
     # the text after \print(space) will be printed verbatim
 
@@ -8033,7 +8033,7 @@ This can be useful for debugging / displaying the results of a shell expansion.
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 4.5.1
+    #! dgenerate 5.0.0
 
     # lets pretend "directory" is full of files
 
@@ -8059,7 +8059,7 @@ The dgenerate sub-command ``image-process`` has a config directive implementatio
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 4.5.1
+    #! dgenerate 5.0.0
 
     # print the help message of --sub-command image-process, this does
     # not cause the config to exit
@@ -8095,7 +8095,7 @@ config script.
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 4.5.1
+    #! dgenerate 5.0.0
 
     # run dgenerate as a subprocess, read a config
     # and send stdout and stderr to a file
@@ -8155,7 +8155,7 @@ as a template function. See: `The download() template function`_
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 4.5.1
+    #! dgenerate 5.0.0
 
     # download a model into the web cache,
     # assign its path to the variable "path"
@@ -8205,7 +8205,7 @@ control constructs.
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 4.5.1
+    #! dgenerate 5.0.0
 
     \set my_variable {{ download('https://modelhost.com/model.safetensors') }}
 
@@ -8229,7 +8229,7 @@ You can exit a config early if need be using the ``\exit`` directive
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 4.5.1
+    #! dgenerate 5.0.0
 
     # exit the process with return code 0, which indicates success
 
@@ -8243,7 +8243,7 @@ An explicit return code can be provided as well
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 4.5.1
+    #! dgenerate 5.0.0
 
     # exit the process with return code 1, which indicates an error
 
@@ -8334,7 +8334,7 @@ which does not automatically recieve injected arguments, use the
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 4.5.1
+    #! dgenerate 5.0.0
 
     # all injected args
 
