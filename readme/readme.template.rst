@@ -160,7 +160,7 @@ Help Output
 
 @INCLUDE[sections/sub_commands.template.rst]
 
-@INCLUDE[sections/image_processing/upscaling.template.rst]
+@INCLUDE[sections/image_processing/upscaling_images.template.rst]
 
 @INCLUDE[sections/image_processing/adetailer_yolo_based_inpainting.template.rst]
 

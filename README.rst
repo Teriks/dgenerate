@@ -147,7 +147,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/version_5.0.0/>`_.
         * `Sub Command: civitai-links`_
         * `Sub Command: to-diffusers`_
         * `Sub Command: prompt-upscale`_
-    * `Upscaling`_
+    * `Upscaling Images`_
         * `Upscaling with Diffusion Upscaler Models`_
         * `Upscaling with chaiNNer Compatible Torch Upscaler Models`_
         * `Upscaling with NCNN Upscaler Models`_
@@ -6245,8 +6245,8 @@ The help output of ``prompt-upscale`` is as follows:
             --quote "none" will be problematic for multiline prompts.
             ---------------------------------------------------------
 
-Upscaling
-=========
+Upscaling Images
+================
 
 dgenerate implements four different methods of upscaling images, animated images, or video.
 
