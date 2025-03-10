@@ -1,25 +1,26 @@
 # helper script for creating Console UI schema files
 # these are used to display options that are dependent
 # on the default capabilities of the dgenerate library / command
-import argparse
 # generating a static schema for these options is much faster than
 # getting the information dynamically from dgenerate from the
 # Console UI code.
 
+import inspect
+import itertools
 import json
 import os
-import inspect
 
 import diffusers
 
+import dgenerate.arguments as _arguments
+import dgenerate.batchprocess as _batchprocess
 import dgenerate.imageprocessors.imageprocessorloader as _imageprocessorloader
-import dgenerate.promptupscalers.promptupscalerloader as _promptupscalerloader
-import dgenerate.promptweighters.promptweighterloader as _promptweighterloader
 import dgenerate.mediainput as _mediainput
 import dgenerate.mediaoutput as _mediaoutput
-import dgenerate.arguments as _arguments
-import dgenerate.textprocessing as _textprocessing
 import dgenerate.pipelinewrapper as _pipelinewrapper
+import dgenerate.promptupscalers.promptupscalerloader as _promptupscalerloader
+import dgenerate.promptweighters.promptweighterloader as _promptweighterloader
+import dgenerate.textprocessing as _textprocessing
 
 os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
@@ -70,6 +71,26 @@ with open('dgenerate/console/schemas/karrasschedulers.json', 'w') as file:
         ['LCMScheduler', 'FlowMatchEulerDiscreteScheduler', 'DDPMWuerstchenScheduler'])
 
     schema = _pipelinewrapper.get_scheduler_uri_schema([getattr(diffusers, n) for n in scheduler_names])
+    json.dump(schema, file)
+
+config_runner = _batchprocess.ConfigRunner()
+
+with open('dgenerate/console/schemas/directives.json', 'w') as file:
+
+    schema = dict()
+
+    for directive in config_runner.directives.keys():
+        schema['\\' + directive] = config_runner.generate_directives_help([directive])
+
+    json.dump(schema, file)
+
+with open('dgenerate/console/schemas/functions.json', 'w') as file:
+
+    schema = dict()
+
+    for function in itertools.chain(config_runner.template_functions.keys(), config_runner.builtins.keys()):
+        schema[function] = config_runner.generate_functions_help([function])
+
     json.dump(schema, file)
 
 with open('dgenerate/console/schemas/mediaformats.json', 'w') as file:

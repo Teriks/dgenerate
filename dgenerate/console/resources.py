@@ -18,8 +18,10 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import bisect
 import enum
 import importlib.resources
+import importlib.util
 import io
 import json
 import os
@@ -30,12 +32,10 @@ import tkinter
 import tkinter as tk
 import typing
 import webbrowser
-import packaging.version
-import importlib.util
-import bisect
 
 import PIL.Image
 import PIL.ImageTk
+import packaging.version
 import requests
 import toml
 
@@ -193,6 +193,14 @@ def get_karras_schedulers() -> list[str]:
 
 def get_dgenerate_arguments() -> dict[str, str]:
     return get_schema('arguments')
+
+
+def get_dgenerate_directives() -> dict[str, str]:
+    return get_schema('directives')
+
+
+def get_dgenerate_functions() -> dict[str, str]:
+    return get_schema('functions')
 
 
 def get_torch_vae_types() -> list[str]:

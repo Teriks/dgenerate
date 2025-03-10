@@ -25,7 +25,6 @@ import os
 import pathlib
 import platform
 import re
-import shlex
 import shutil
 import signal
 import subprocess
@@ -45,6 +44,8 @@ import dgenerate.console.promptupscalerselect as _promptupscalerselect
 import dgenerate.console.promptweighterselect as _promptweighterselect
 import dgenerate.console.recipesform as _recipesform
 import dgenerate.console.argumentselect as _argumentselect
+import dgenerate.console.directiveselect as _directiveselect
+import dgenerate.console.functionselect as _functionselect
 import dgenerate.console.resources as _resources
 import dgenerate.textprocessing as _textprocessing
 from dgenerate.console.codeview import DgenerateCodeView
@@ -167,6 +168,10 @@ class DgenerateConsole(tk.Tk):
                                     command=self._input_text_insert_recipe)
         self._edit_menu.add_command(label='Insert Argument',
                                     command=self._input_text_insert_argument)
+        self._edit_menu.add_command(label='Insert Directive',
+                                    command=self._input_text_insert_directive)
+        self._edit_menu.add_command(label='Insert Function',
+                                    command=self._input_text_insert_function)
 
         self._edit_menu.add_separator()
 
@@ -444,6 +449,10 @@ class DgenerateConsole(tk.Tk):
                                              command=self._input_text_insert_recipe)
         self._input_text_context.add_command(label='Insert Argument',
                                              command=self._input_text_insert_argument)
+        self._input_text_context.add_command(label='Insert Directive',
+                                             command=self._input_text_insert_directive)
+        self._input_text_context.add_command(label='Insert Function',
+                                             command=self._input_text_insert_function)
 
         self._input_text_context.add_separator()
 
@@ -775,6 +784,24 @@ class DgenerateConsole(tk.Tk):
 
     def _input_text_insert_argument(self):
         s = _argumentselect.request_argument(
+            master=self)
+
+        if s is None or not s.strip():
+            return
+
+        self._insert_or_replace_input_text(s)
+
+    def _input_text_insert_directive(self):
+        s = _directiveselect.request_directive(
+            master=self)
+
+        if s is None or not s.strip():
+            return
+
+        self._insert_or_replace_input_text(s)
+
+    def _input_text_insert_function(self):
+        s = _functionselect.request_function(
             master=self)
 
         if s is None or not s.strip():
