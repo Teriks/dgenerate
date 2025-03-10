@@ -173,10 +173,15 @@ class PluginArgumentError(Exception):
 
 class Plugin:
 
-    def __init__(self, loaded_by_name: str, argument_error_type: type[PluginArgumentError] = PluginArgumentError,
+    def __init__(self,
+                 loaded_by_name: str | None = None,
+                 argument_error_type: type[PluginArgumentError] = PluginArgumentError,
                  **kwargs):
         """
         :param loaded_by_name: The name the plugin was loaded by, will be passed by the loader.
+            If ``None`` is passed, the first name mentioned by the plugin implementation
+            will be used. This can simplify using some plugin classes directly without
+            loading them through a loader implementation.
         :param argument_error_type: This exception type will be raised upon argument errors (invalid arguments)
             when loading a plugin using a :py:class:`.PluginLoader` implementation. It should match the
             ``argument_error_type`` given to the :py:class:`.PluginLoader` implementation being used
@@ -184,6 +189,9 @@ class Plugin:
         :param kwargs: Additional arguments that may arise when using an ``ARGS`` static signature definition
             with multiple ``NAMES`` in your implementation.
         """
+
+        if loaded_by_name is None:
+            loaded_by_name = self.get_names()[0]
 
         self.__loaded_by_name = loaded_by_name
         self.__argument_error_type = argument_error_type
