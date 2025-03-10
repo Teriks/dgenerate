@@ -26,7 +26,7 @@ import dgenerate.promptupscalers.util as _util
 import dgenerate.translators as _translators
 
 
-class TranslatePromptsUpscaler(_promptupscaler.PromptUpscaler):
+class TranslatePromptUpscaler(_promptupscaler.PromptUpscaler):
     """
     Local language translation using argostranslate or Helsinki-NLP opus (mariana).
 
