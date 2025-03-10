@@ -403,19 +403,19 @@ class BatchProcessor:
             version_str = '.'.join(str(i) for i in self.version)
 
             if cur_major_version != config_major_version:
-                _messages.log(
+                _messages.warning(
                     f'Failed version check (major version mismatch) on line {line_idx}, '
                     f'running an incompatible version of {self.name}! You are running version {version_str} '
                     f'and the config file specifies the required version: {config_file_version}',
-                    underline=True, level=_messages.WARNING
+                    underline=True
                 )
             elif cur_minor_version < config_minor_version:
-                _messages.log(
+                _messages.warning(
                     f'Failed version check (current minor version less than requested) '
                     f'on line {line_idx}, running an incompatible version of {self.name}! '
                     f'You are running version {version_str} and the config file specifies '
                     f'the required version: {config_file_version}',
-                    underline=True, level=_messages.WARNING
+                    underline=True
                 )
 
     def user_define_check(self, name: str):

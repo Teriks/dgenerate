@@ -28,8 +28,9 @@ import collections.abc
 import functools
 import re
 import typing
-import dgenerate.types as _types
+
 import dgenerate.textprocessing as _textprocessing
+import dgenerate.types as _types
 
 
 class PromptEmbeddedArgumentError(Exception):
@@ -98,7 +99,7 @@ class Prompt:
         elif self._positive:
             return self._positive
         elif self._negative:
-            return self._delimiter+self._negative
+            return self._delimiter + self._negative
         else:
             return ''
 
@@ -325,7 +326,7 @@ class Prompt:
                 setattr(on_object, name, value)
 
     @staticmethod
-    def _get_embeded_args(value):
+    def _get_embeded_args(value: str, embedded_arg_names: list[str] | None):
         embedded_args = {}
 
         def find_arg(match):
@@ -347,7 +348,12 @@ class Prompt:
 
             return ' '
 
-        cleaned_value = re.sub(r"\s*<\s*([a-zA-Z_-][a-zA-Z0-9_-]+)\s*:\s*(.*?)\s*>\s*", find_arg, value)
+        if embedded_arg_names:
+            cleaned_value = value
+            for arg_name in embedded_arg_names:
+                cleaned_value = re.sub(rf"\s*<\s*{arg_name}\s*:\s*(.*?)\s*>\s*", find_arg, cleaned_value)
+        else:
+            cleaned_value = re.sub(r"\s*<\s*([a-zA-Z_-][a-zA-Z0-9_-]+)\s*:\s*(.*?)\s*>\s*", find_arg, value)
 
         return cleaned_value.strip(), embedded_args
 
@@ -369,13 +375,19 @@ class Prompt:
         return prompt
 
     @staticmethod
-    def parse(value: str, delimiter=';', parse_embedded_args: bool = True) -> 'Prompt':
+    def parse(
+            value: str,
+            delimiter=';',
+            parse_embedded_args: bool = True,
+            embedded_arg_names: list[str] | None = None,
+    ) -> 'Prompt':
         """
         Parse the positive and negative prompt from a string and return a prompt object.
 
         :param value: the string
         :param delimiter: The prompt delimiter character
         :param parse_embedded_args: parse embedded args? ``< arg: value >``
+        :param embedded_arg_names: list of embedded argument names to parse, if ``None``, all are parsed.
 
         :raise ValueError: if value is ``None``
 
@@ -389,7 +401,9 @@ class Prompt:
         embedded_args = None
 
         if parse_embedded_args:
-            value, embedded_args = Prompt._get_embeded_args(value)
+            value, embedded_args = Prompt._get_embeded_args(
+                value, embedded_arg_names
+            )
             weighter = embedded_args.get('weighter', None)
             if weighter is not None:
                 embedded_args.pop('weighter')

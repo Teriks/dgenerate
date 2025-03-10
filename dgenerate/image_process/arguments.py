@@ -232,7 +232,7 @@ def parse_args(args: collections.abc.Sequence[str] | None = None,
             argparse.ArgumentError,
             _ImageProcessUnknownArgumentError) as e:
         if log_error:
-            _messages.log(f'{help_name}: error: {str(e).strip()}', level=_messages.ERROR)
+            _messages.error(f'{help_name}: error: {str(e).strip()}')
         if throw:
             raise ImageProcessUsageError(e)
         return None

@@ -28,6 +28,7 @@ import dgenerate.messages as _messages
 import dgenerate.translators.exceptions as _exceptions
 import dgenerate.translators.util as _util
 
+
 class MarianaTranslator:
     """
     Translate languages locally using Helsinki-NLP opus models on the CPU or GPU.
@@ -168,7 +169,6 @@ class MarianaTranslator:
         first_pass = self.tokenizer.batch_decode(translated, skip_special_tokens=True)
 
         if self.tokenizer2:
-
             inputs = self.tokenizer2(
                 first_pass,
                 return_tensors="pt",

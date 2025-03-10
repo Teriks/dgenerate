@@ -1301,10 +1301,10 @@ class DiffusionPipelineWrapper:
             ifs = int(_types.default(user_args.inference_steps, _constants.DEFAULT_INFERENCE_STEPS))
             if (strength * ifs) < 1.0:
                 strength = 1.0 / ifs
-                _messages.log(
+                _messages.warning(
                     f'image-seed-strength * inference-steps '
-                    f'was calculated at < 1, image-seed-strength defaulting to (1.0 / inference-steps): {strength}',
-                    level=_messages.WARNING)
+                    f'was calculated at < 1, image-seed-strength defaulting to (1.0 / inference-steps): {strength}'
+                )
 
             args['strength'] = strength
 
@@ -1391,9 +1391,10 @@ class DiffusionPipelineWrapper:
 
             if not _image.is_aligned(first_control_image_size, 16):
                 new_size = _image.align_by(first_control_image_size, 16)
-                _messages.log(
+                _messages.warning(
                     f'T2I Adapter control image(s) of size {first_control_image_size} being forcefully '
-                    f'aligned by 16 to {new_size} to prevent errors.', level=_messages.WARNING)
+                    f'aligned by 16 to {new_size} to prevent errors.'
+                )
 
                 for idx, img in enumerate(adapter_control_images):
                     adapter_control_images[idx] = _image.resize_image(img, new_size)
@@ -1433,11 +1434,11 @@ class DiffusionPipelineWrapper:
 
             def check_no_image_seed_strength():
                 if user_args.image_seed_strength is not None:
-                    _messages.log(
+                    _messages.warning(
                         f'image_seed_strength is not supported by model_type '
                         f'"{_enums.get_model_type_string(self._model_type)}" in '
-                        f'mode "{self._pipeline_type.name}" and is being ignored.',
-                        level=_messages.WARNING)
+                        f'mode "{self._pipeline_type.name}" and is being ignored.'
+                    )
 
             if _enums.model_type_is_upscaler(self._model_type):
                 if self._model_type == _enums.ModelType.TORCH_UPSCALER_X4:
@@ -1508,19 +1509,19 @@ class DiffusionPipelineWrapper:
                 for idx, image in enumerate(images):
                     if not _image.is_aligned(image.size, 64):
                         size = _image.align_by(image.size, 64)
-                        _messages.log(
+                        _messages.warning(
                             f'Input image size {image.size} is not aligned by 64. '
-                            f'Output dimensions will be forcefully aligned to 64: {size}.',
-                            level=_messages.WARNING)
+                            f'Output dimensions will be forcefully aligned to 64: {size}.'
+                        )
                         images[idx] = _image.resize_image(image, size)
 
             elif self._model_type == _enums.ModelType.TORCH_S_CASCADE:
                 if not _image.is_aligned(images[0].size, 128):
                     size = _image.align_by(images[0].size, 128)
-                    _messages.log(
+                    _messages.warning(
                         f'Input image size {images[0].size} is not aligned by 128. '
-                        f'Output dimensions will be forcefully aligned to 128: {size}.',
-                        level=_messages.WARNING)
+                        f'Output dimensions will be forcefully aligned to 128: {size}.'
+                    )
                 else:
                     size = images[0].size
 
@@ -1544,10 +1545,10 @@ class DiffusionPipelineWrapper:
                 for idx, image in enumerate(images):
                     if not _image.is_aligned(image.size, 16):
                         size = _image.align_by(image.size, 16)
-                        _messages.log(
+                        _messages.warning(
                             f'Input image size {image.size} is not aligned by 16. '
-                            f'Dimensions will be forcefully aligned to 16: {size}.',
-                            level=_messages.WARNING)
+                            f'Dimensions will be forcefully aligned to 16: {size}.'
+                        )
                         images[idx] = _image.resize_image(image, size)
 
                 if mask_images:
@@ -1557,10 +1558,10 @@ class DiffusionPipelineWrapper:
                     for idx, image in enumerate(mask_images):
                         if not _image.is_aligned(image.size, 16):
                             size = _image.align_by(image.size, 16)
-                            _messages.log(
+                            _messages.warning(
                                 f'Input mask image size {image.size} is not aligned by 16. '
-                                f'Dimensions will be forcefully aligned to 16: {size}.',
-                                level=_messages.WARNING)
+                                f'Dimensions will be forcefully aligned to 16: {size}.'
+                            )
                             mask_images[idx] = _image.resize_image(image, size)
 
                     args['width'] = mask_images[0].size[0]
@@ -1628,10 +1629,10 @@ class DiffusionPipelineWrapper:
                 args['width'] = _types.default(user_args.width, size[0])
                 args['height'] = _types.default(user_args.height, size[1])
 
-                _messages.log(
+                _messages.warning(
                     f'Control image size {img.size} is not aligned by 16. '
-                    f'Output dimensions will be forcefully aligned by 16: {size}.',
-                    level=_messages.WARNING)
+                    f'Output dimensions will be forcefully aligned by 16: {size}.'
+                )
 
                 processed_control_images[idx] = _image.resize_image(img, size)
         return processed_control_images
@@ -1844,14 +1845,16 @@ class DiffusionPipelineWrapper:
             pipeline_args['max_sequence_length'] = user_args.max_sequence_length
 
         if prompt.negative:
-            _messages.log(
+            _messages.warning(
                 'Flux is ignoring the provided negative prompt as it '
-                'does not support negative prompting.', level=_messages.WARNING)
+                'does not support negative prompting.'
+            )
 
         if prompt_2.negative:
-            _messages.log(
+            _messages.warning(
                 'Flux is ignoring the provided second negative prompt as it '
-                'does not support negative prompting.', level=_messages.WARNING)
+                'does not support negative prompting.'
+            )
 
         batch_size = _types.default(user_args.batch_size, 1)
 
@@ -1860,10 +1863,11 @@ class DiffusionPipelineWrapper:
                 batch_size = len(user_args.images)
                 if user_args.batch_size is not None:
                     # only warn if the user specified a value
-                    _messages.log(f'Setting --batch-size to {batch_size} because '
-                                  f'given batch size did not divide evenly with the '
-                                  f'provided number of input images.',
-                                  level=_messages.WARNING)
+                    _messages.warning(
+                        f'Setting --batch-size to {batch_size} because '
+                        f'given batch size did not divide evenly with the '
+                        f'provided number of input images.'
+                    )
 
         pipeline_args['num_images_per_prompt'] = batch_size
 
@@ -2156,10 +2160,11 @@ class DiffusionPipelineWrapper:
                 batch_size = len(user_args.images)
                 if user_args.batch_size is not None:
                     # only warn if the user specified a value
-                    _messages.log(f'Setting --batch-size to {batch_size} because '
-                                  f'given batch size did not divide evenly with the '
-                                  f'provided number of input images.',
-                                  level=_messages.WARNING)
+                    _messages.warning(
+                        f'Setting --batch-size to {batch_size} because '
+                        f'given batch size did not divide evenly with the '
+                        f'provided number of input images.'
+                    )
 
         if self._model_type != _enums.ModelType.TORCH_UPSCALER_X2:
             pipeline_args['num_images_per_prompt'] = batch_size
@@ -2401,9 +2406,10 @@ class DiffusionPipelineWrapper:
 
             if strength <= 0.0:
                 strength = 0.2
-                _messages.log(f'Refiner edit mode image seed strength (1.0 - high-noise-fraction) '
-                              f'was calculated at <= 0.0, defaulting to {strength}',
-                              level=_messages.WARNING)
+                _messages.warning(
+                    f'Refiner edit mode image seed strength (1.0 - high-noise-fraction) '
+                    f'was calculated at <= 0.0, defaulting to {strength}'
+                )
             else:
                 _messages.log(f'Running refiner in edit mode with '
                               f'refiner image seed strength = {strength}, IE: (1.0 - high-noise-fraction)')
@@ -2412,10 +2418,10 @@ class DiffusionPipelineWrapper:
 
             if (strength * inference_steps) < 1.0:
                 strength = 1.0 / inference_steps
-                _messages.log(
+                _messages.warning(
                     f'Refiner edit mode image seed strength (1.0 - high-noise-fraction) * inference-steps '
-                    f'was calculated at < 1, defaulting to (1.0 / inference-steps): {strength}',
-                    level=_messages.WARNING)
+                    f'was calculated at < 1, defaulting to (1.0 / inference-steps): {strength}'
+                )
 
             pipeline_args['strength'] = strength
 
@@ -2429,21 +2435,19 @@ class DiffusionPipelineWrapper:
                 float_limit = strength * original_steps
                 limit = int(math.floor(float_limit))
                 if limit < inference_steps:
-                    _messages.log(
+                    _messages.warning(
                         f'Refiner inference-steps is being reduced to {limit} '
                         f'due to LCMScheduler requirements. "LCMScheduler;original-inference-steps={original_steps}" and '
                         f'refiner inference-steps must less than or equal to "strength" (inverse high-noise-fraction) * original-inference-steps. '
-                        f'i.e. refiner inference-steps <= ({strength} * {original_steps} = {float_limit}).',
-                        level=_messages.WARNING
+                        f'i.e. refiner inference-steps <= ({strength} * {original_steps} = {float_limit}).'
                     )
             else:
                 limit = original_steps
                 if limit < inference_steps:
-                    _messages.log(
+                    _messages.warning(
                         f'Refiner inference-steps is being reduced to {limit} '
                         f'due to LCMScheduler requirements. "LCMScheduler;original-inference-steps={original_steps}" and '
-                        f'refiner inference-steps must less than or equal to that.',
-                        level=_messages.WARNING
+                        f'refiner inference-steps must less than or equal to that.'
                     )
 
             pipeline_args['num_inference_steps'] = limit

@@ -146,6 +146,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/v4.5.1/>`_.
         * `Sub Command: image-process`_
         * `Sub Command: civitai-links`_
         * `Sub Command: to-diffusers`_
+        * `Sub Command: prompt-upscale`_
     * `Upscaling`_
         * `Upscaling with Diffusion Upscaler Models`_
         * `Upscaling with chaiNNer Compatible Torch Upscaler Models`_
@@ -6170,6 +6171,79 @@ The help output of ``to-diffusers`` is as follows:
             Enable debug output?
             --------------------
 
+
+Sub Command: prompt-upscale
+---------------------------
+
+The ``prompt-upscale`` sub-command can be use to run `prompt upscaler plugins <Prompt Upscaling>`_
+on prompt texts without invoking image generation.
+
+This sub-command is designed in the same vein as ``dgenerate --sub-command image-process`` and the ``\image_process`` directive.
+
+This sub-command also exists as the config directive: ``\to_diffusers``
+
+It allows you to output the prompts in various formats such as plain text, or structured json, toml, and yaml.
+
+Prompts can be written to a file or printed to stdout, and in the case of the config directive ``\prompt_upscale``
+they can also be written to a config template variable as a python list.
+
+A comprehensive example of the ``\prompt_upscale`` config directive which might be helpful for understanding
+this sub-commands functionality is available in the `examples folder <https://github.com/Teriks/dgenerate/4.5.1/examples/config_directives/prompt_upscale/prompt-upscale-directive-config.dgen>`_.
+
+.. code-block:: text
+
+    #!/usr/bin/env bash
+
+    # upscale two prompts with magic prompt
+    # using the default accelerator for your system
+    # and print them as structured yaml to stdout
+
+    dgenerate --sub-command prompt-upscale \
+    "a cat sitting on a bench in a park" \
+    "a dog sitting on a bench in a park" \
+    --upscaler magicprompt;variations=10 -of yaml
+
+The help output of ``prompt-upscale`` is as follows:
+
+.. code-block:: text
+
+    usage: prompt-upscale [-h] [-u PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]] [-d DEVICE]
+                          [-of OUTPUT_FORMAT] [-o OUTPUT] [-q QUOTE]
+                          prompts [prompts ...]
+    
+    Upscale prompts without preforming image generation.
+    
+    positional arguments:
+      prompts
+            Prompts, identical to the dgenerate --prompts argument. The embedded prompt argument <upscaler:
+            ...>, is understood. All other embedded prompt arguments are entirely ignored and left in the
+            prompt, be aware of this.
+            -------------------------
+    
+    options:
+      -h, --help
+            show this help message and exit
+            -------------------------------
+      -u PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...], --upscaler PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]
+            Global prompt upscaler(s) to use, identical to the dgenerate --prompt-upscaler argument. Providing
+            multiple prompt upscaler plugin URIs indicates chaining.
+            --------------------------------------------------------
+      -d DEVICE, --device DEVICE
+            Acceleration device to use for prompt upscalers that support acceleration. Defaults to: cuda
+            --------------------------------------------------------------------------------------------
+      -of OUTPUT_FORMAT, --output-format OUTPUT_FORMAT
+            Output format. defaults to "text", can be: "text", "json", "toml", "yaml".
+            --------------------------------------------------------------------------
+      -o OUTPUT, --output OUTPUT
+            Output file path. default to printing to stdout.
+            ------------------------------------------------
+      -q QUOTE, --quote QUOTE
+            Quoting method when --output-format is "text", defaults to "none". May be one of: none (raw
+            strings), shell (shlex.quote), dgenerate (dgenerate config shell syntax). If you are generating
+            output in text mode, and you intend to do something with the output other than just look at it,
+            --quote "none" will be problematic for multiline prompts.
+            ---------------------------------------------------------
+
 Upscaling
 =========
 
@@ -7234,7 +7308,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [59808129665472]
+            Value: [12884892737115]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -7401,6 +7475,7 @@ Example output:
         "\mv"
         "\popd"
         "\print"
+        "\prompt_upscale"
         "\prompt_upscaler_help"
         "\prompt_weighter_help"
         "\pushd"

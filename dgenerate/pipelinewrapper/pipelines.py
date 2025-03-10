@@ -678,9 +678,11 @@ def _warn_prompt_lengths(pipeline, **kwargs):
                     if len(tokenizer.tokenize(p)) > max_length:
                         key = f'{label}{tokenizer_attr}{p}'
                         if key not in warned_prompts:
-                            _messages.log(f'{label} exceeds max token length '
-                                          f'of {max_length} for the model\'s tokenizer '
-                                          f'and will be truncated: "{p}"', level=_messages.WARNING)
+                            _messages.warning(
+                                f'{label} exceeds max token length '
+                                f'of {max_length} for the model\'s tokenizer '
+                                f'and will be truncated: "{p}"'
+                            )
                             warned_prompts[key] = True
 
 

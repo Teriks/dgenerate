@@ -557,9 +557,10 @@ class ImageProcessor(_plugin.Plugin, abc.ABC):
         if forced_alignment is not None:
             if (not _image.is_aligned(image.size, align=forced_alignment)) and align != forced_alignment:
                 align = forced_alignment
-                _messages.log(
+                _messages.warning(
                     f'"{self.loaded_by_name}" image processor requires an image alignment of {align}, '
-                    f'this alignment has been forced to prevent an error.', level=_messages.WARNING)
+                    f'this alignment has been forced to prevent an error.'
+                )
 
         # This is the actual size it will end
         # up being resized to by resize_image

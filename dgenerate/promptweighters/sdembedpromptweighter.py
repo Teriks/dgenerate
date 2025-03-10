@@ -145,10 +145,10 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
         negative_2 = args.get('negative_prompt_2')
 
         if args.get('prompt_3') or args.get('negative_prompt_3'):
-            _messages.log(
+            _messages.warning(
                 f'Prompt weighting is not supported by --prompt-weighter '
-                f'"sd-embed" for --third-prompts, that prompt is being ignored.',
-                level=_messages.WARNING)
+                f'"sd-embed" for --third-prompts, that prompt is being ignored.'
+            )
 
         prompt_args = re.compile(r'^(prompt|negative_prompt)(_\d+)?$')
 
@@ -187,10 +187,10 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
         if pipeline.__class__.__name__.startswith('StableDiffusion3'):
 
             if positive_2 or negative_2:
-                _messages.log(
+                _messages.warning(
                     f'Prompt weighting is not supported by --prompt-weighter '
-                    f'"sd-embed" for --second-prompts, that prompt is being ignored.',
-                    level=_messages.WARNING)
+                    f'"sd-embed" for --second-prompts, that prompt is being ignored.'
+                )
 
             original_clip_layers = pipeline.text_encoder.text_model.encoder.layers
             original_clip_layers_2 = pipeline.text_encoder_2.text_model.encoder.layers
@@ -282,10 +282,10 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
                         pipeline.text_encoder_2.text_model.encoder.layers = original_clip_layers_2
             else:
                 if positive_2 or negative_2:
-                    _messages.log(
+                    _messages.warning(
                         f'Prompt weighting is not supported by --prompt-weighter '
-                        f'"sd-embed" for --second-model-second-prompts, that prompt is being ignored.',
-                        level=_messages.WARNING)
+                        f'"sd-embed" for --second-model-second-prompts, that prompt is being ignored.'
+                    )
 
                 original_clip_layers_2 = pipeline.text_encoder_2.text_model.encoder.layers
 

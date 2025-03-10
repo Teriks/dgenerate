@@ -2634,14 +2634,14 @@ def _check_unknown_args(args: typing.Sequence[str], log_error: bool):
                 # truly erroneous command line
                 if log_error:
                     _messages.log(parser.format_usage().rstrip())
-                    _messages.log(str(e).strip(), level=_messages.ERROR)
+                    _messages.error(str(e).strip())
 
                 raise DgenerateUsageError(str(e))
         else:
             # something other than a missing argument
             if log_error:
                 _messages.log(parser.format_usage().rstrip())
-                _messages.log(str(e).strip(), level=_messages.ERROR)
+                _messages.error(str(e).strip())
 
             raise DgenerateUsageError(str(e))
 
@@ -3017,7 +3017,7 @@ def parse_known_args(args: collections.abc.Sequence[str] | None = None,
             _DgenerateUnknownArgumentError) as e:
         if log_error:
             pass
-            _messages.log(f'dgenerate: error: {str(e).strip()}', level=_messages.ERROR)
+            _messages.error(f'dgenerate: error: {str(e).strip()}')
         if throw:
             raise DgenerateUsageError(e)
         return None
@@ -3053,7 +3053,7 @@ def parse_args(args: collections.abc.Sequence[str] | None = None,
             argparse.ArgumentError,
             _DgenerateUnknownArgumentError) as e:
         if log_error:
-            _messages.log(f'dgenerate: error: {str(e).strip()}', level=_messages.ERROR)
+            _messages.error(f'dgenerate: error: {str(e).strip()}')
         if throw:
             raise DgenerateUsageError(e)
         return None

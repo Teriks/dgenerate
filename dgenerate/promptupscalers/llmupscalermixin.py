@@ -218,10 +218,9 @@ class LLMPromptUpscalerMixin(abc.ABC):
                     generated_prompts[i] = prompt
 
             if len(indexed_prompts_to_regenerate) > 0:
-                _messages.log(
+                _messages.warning(
                     f"Could not generate prompts for "
-                    f"{len(indexed_prompts_to_regenerate)} prompts after {max_attempts} attempts.",
-                    level=_messages.WARNING
+                    f"{len(indexed_prompts_to_regenerate)} prompts after {max_attempts} attempts."
                 )
         return generated_prompts
 
@@ -248,7 +247,7 @@ class LLMPromptUpscalerMixin(abc.ABC):
         result = ' '.join(sentences)
 
         if not result.strip():
-            _messages.log('smart-truncate resulted in empty prompt, using original text.', level=_messages.WARNING)
+            _messages.warning('smart-truncate resulted in empty prompt, using original text.')
             return text
 
         return result

@@ -191,7 +191,6 @@ def log(*args: typing.Any, level=INFO, underline=False, underline_char='='):
         :py:attr:`.INFO`, :py:attr:`.WARNING`, :py:attr:`.ERROR`, :py:attr:`.DEBUG`
     :param underline: Underline this message?
     :param underline_char: Underline character
-    :return:
     """
     global _MESSAGE_FILE, _ERROR_FILE
 
@@ -228,6 +227,28 @@ def log(*args: typing.Any, level=INFO, underline=False, underline_char='='):
                 level=level,
                 underline=underline,
                 underline_char=underline_char)
+
+
+def error(*args: typing.Any, underline=False, underline_char='='):
+    """
+    Write an error message to dgenerate's log
+
+    :param args: args, objects that will be stringified and joined with a space
+    :param underline: Underline this message?
+    :param underline_char: Underline character
+    """
+    log(*args, level=ERROR, underline=underline, underline_char=underline_char)
+
+
+def warning(*args: typing.Any, underline=False, underline_char='='):
+    """
+    Write a warning message to dgenerate's log
+
+    :param args: args, objects that will be stringified and joined with a space
+    :param underline: Underline this message?
+    :param underline_char: Underline character
+    """
+    log(*args, level=WARNING, underline=underline, underline_char=underline_char)
 
 
 def debug_log(*func_or_str: typing.Callable[[], typing.Any] | typing.Any,
