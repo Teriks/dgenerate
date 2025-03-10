@@ -116,7 +116,7 @@ def get_quantizer_recipes():
         opts += [
             'bnb;bits=8',
             'bnb;bits=4;bits4-compute-dtype=float16',
-            'bnb;bits=4;bits4-compute-dtype=bloat16',
+            'bnb;bits=4;bits4-compute-dtype=bfloat16',
             'bnb;bits=4;bits4-compute-dtype=float32'
         ]
 

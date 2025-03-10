@@ -22,17 +22,15 @@ import collections.abc
 import importlib.util
 import itertools
 import os
-import shlex
+import platform as _platform
 import typing
-import re
-import PIL.Image
 
+import PIL.Image
 import fake_useragent
 import pyrfc6266
 import requests
 import torch
 import tqdm
-import platform as _platform
 
 import dgenerate.batchprocess.batchprocessor as _batchprocessor
 import dgenerate.image as _image
@@ -200,9 +198,6 @@ def download(url: str,
 
     You can rectify this by using the template function inside your loop.
     """
-
-    # allow escaping of shell env-vars
-    url = re.sub(r'\\([%$])', r'\1', url)
 
     def mimetype_supported(mimetype):
         if text:

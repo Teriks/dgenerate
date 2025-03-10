@@ -6772,7 +6772,7 @@ and image output in a Unix shell like environment with Jinja2 control constructs
 
 Shell builtins, known as directives, are prefixed with ``\``, for example: ``\print``
 
-Environmental variables will be expanded in config scripts using both Unix and Windows CMD syntax
+Environmental variables not inside of jinja templates will be expanded in config scripts using both Unix and Windows CMD syntax.
 
 .. code-block:: jinja
 
@@ -6785,6 +6785,25 @@ Environmental variables will be expanded in config scripts using both Unix and W
     \print $VARIABLE
     \print ${VARIABLE}
     \print %VARIABLE%
+
+
+To expand environmental variables inside of a jinja template construct, use the special ``env`` namespace.
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 5.0.0
+
+    # this expands from your system environment
+    # if the variable is not set, it expands to
+    # nothing
+
+    \print {{ env.VARIABLE }}
+
+    {% for i in range(0, 10) %}
+        \print {{ env.VARIABLE }}
+    {% endfor %}
+
 
 Empty lines and comments starting with ``#`` will be ignored, comments that occur at the end of lines will also be ignored.
 
@@ -7309,7 +7328,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [12884892737115]
+            Value: [86346809879165]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -7897,6 +7916,10 @@ Indirect expansion is allowed just like with ``\set``, ``\sete``, and ``\setp``.
     # prints 1 2
     
     \print $MY_ENV_VAR $MY_ENV_VAR2
+    
+    # prints 1 2
+    
+    \print {{ env.MY_ENV_VAR }} {{ env.MY_ENV_VAR2 }}
     
     # indirect expansion is allowed
     

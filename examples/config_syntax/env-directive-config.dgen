@@ -7,6 +7,10 @@
 
 \print $MY_ENV_VAR $MY_ENV_VAR2
 
+# prints 1 2
+
+\print {{ env.MY_ENV_VAR }} {{ env.MY_ENV_VAR2 }}
+
 # indirect expansion is allowed
 
 \set name env_var_name
