@@ -6175,8 +6175,9 @@ The help output of ``to-diffusers`` is as follows:
 Sub Command: prompt-upscale
 ---------------------------
 
-The ``prompt-upscale`` sub-command can be use to run :ref:`prompt upscaler plugins <Prompt_Upscaling>`
-on prompt texts without invoking image generation.
+The ``prompt-upscale`` sub-command can be use to run on prompt texts without invoking image generation.
+
+See: `Prompt Upscaling`_ for more information about prompt upscaling plugins.
 
 This sub-command is designed in the same vein as ``dgenerate --sub-command image-process`` and the ``\image_process`` directive.
 
