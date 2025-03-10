@@ -6175,7 +6175,7 @@ The help output of ``to-diffusers`` is as follows:
 Sub Command: prompt-upscale
 ---------------------------
 
-The ``prompt-upscale`` sub-command can be use to run `prompt upscaler plugins <Prompt_Upscaling>`_
+The ``prompt-upscale`` sub-command can be use to run :ref:`prompt upscaler plugins <Prompt_Upscaling>`
 on prompt texts without invoking image generation.
 
 This sub-command is designed in the same vein as ``dgenerate --sub-command image-process`` and the ``\image_process`` directive.
@@ -6188,7 +6188,7 @@ Prompts can be written to a file or printed to stdout, and in the case of the co
 they can also be written to a config template variable as a python list.
 
 A comprehensive example of the ``\prompt_upscale`` config directive which might be helpful for understanding
-this sub-commands functionality is available in the `examples folder <https://github.com/Teriks/dgenerate/tree/v4.5.1/examples/config_directives/prompt_upscale/prompt-upscale-directive-config.dgen>`_.
+this sub-commands functionality is available in the `examples folder <https://github.com/Teriks/dgenerate/blob/v4.5.1/examples/config_directives/prompt_upscale/prompt-upscale-directive-config.dgen>`_.
 
 .. code-block:: text
 
