@@ -498,9 +498,6 @@ class WebFileCache(FileCache):
         :return: The path to the downloaded file.
         """
 
-        # allow escaping of shell env-vars
-        url = re.sub(r'\\([%$])', r'\1', url)
-
         self._clear_old_files()
 
         def _mimetype_is_supported(mimetype):

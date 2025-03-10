@@ -34,8 +34,8 @@ import typing
 import packaging.version
 
 import dgenerate.files as _files
-import dgenerate.types as _types
 import dgenerate.memoize as _memoize
+import dgenerate.types as _types
 
 __doc__ = """
 Text processing, console text rendering, and parsing utilities. URI parser, and reusable tokenization.
@@ -89,13 +89,39 @@ class ShellParseSyntaxError(Exception):
     pass
 
 
+def expand_escape_code(code: str) -> str:
+    """
+    Expand a single escape code character.
+
+    For example: ``expand_escape_code('n')`` will return ``'\n'``.
+
+    :param code: The escape character code.
+    :return: Expanded character.
+    """
+    return fr'\{code}'.encode('utf-8').decode('unicode_escape')
+
+
+def is_escape_code(code: str) -> bool:
+    """
+    Does a character represent an escape code?
+
+    :param code: The character.
+    :return: ``True`` or ``False``.
+    """
+    return code in {'n', 'r', 't', 'b', 'f', '\\'}
+
+
 def tokenized_split(string: str,
                     separator: str | None,
                     remove_quotes: bool = False,
-                    remove_boundary_quotes: bool = False,
+                    remove_boundary_quotes: bool | typing.Callable[[str], str] = False,
                     strict: bool = False,
                     escapes_in_unquoted: bool = False,
+                    escapes_in_unquoted_is_escape: typing.Callable[[str], bool] = is_escape_code,
+                    escapes_in_unquoted_handler: typing.Callable[[str], str] = expand_escape_code,
                     escapes_in_quoted: bool = False,
+                    escapes_in_quoted_is_escape: typing.Callable[[str], bool] = is_escape_code,
+                    escapes_in_quoted_handler: typing.Callable[[str], str] = expand_escape_code,
                     single_quotes_raw: bool = False,
                     double_quotes_raw: bool = False,
                     string_expander: typing.Callable[[str, str], str] = None,
@@ -118,14 +144,36 @@ def tokenized_split(string: str,
     :param string: the string
     :param separator: separator
     :param remove_quotes: remove quotes from quoted string tokens?
+
     :param remove_boundary_quotes: remove quotes only from strings that are not surrounded by other tokens?
+        This may also be a callable that takes a string and returns a string, this function can be used
+        to remove quoting in a customized fashion from standalone strings that are not intermixed with
+        other tokens. The default behavior is to simply remove the quote characters from the edges of the string with
+        no further processing.
+
     :param strict: Text tokens cannot be intermixed with quoted strings? disallow IE: ``"text'string'text"``
+
     :param escapes_in_unquoted: evaluate escape sequences in text tokens (unquoted strings)?
-        The slash is retained by default when escaping quotes, this disables that, and also enables handling of the escapes ``n, r, t, b, f, and \\``.
-        IE: given ``separator =";"`` parse ``\\"token\\"; "a b"`` -> ``['"token"', 'a b']``, instead of ``\\"token\\"; "a b"``-> ``['\\"token\\"', 'a b']``
+        The slash is retained by default when escaping quotes, this disables that, and also
+        enables handling of the escapes ``n, r, t, b, f, and \\``. IE: given ``separator =";"`` parse
+        ``\\"token\\"; "a b"`` -> ``['"token"', 'a b']``, instead of ``\\"token\\"; "a b"``-> ``['\\"token\\"', 'a b']``
+
+    :param escapes_in_unquoted_is_escape: Determine if a character should be expanded with
+        ``escapes_in_unquoted_handler`` when ``escapes_in_unquoted`` is ``True``.
+
+    :param escapes_in_unquoted_handler: Escape character handler for unquoted tokens when
+        ``escapes_in_unquoted`` is ``True``, defaults to ``expand_escape_code``.
+
     :param escapes_in_quoted: evaluate escape sequences in quoted string tokens?
-        The slash is retained by default when escaping quotes, this disables that, and also enables handling of the escapes ``n, r, t, b, f, and \\``.
-        IE given ``separator = ";"`` parse ``token; "a \\" b"`` -> ``['token', 'a " b']``, instead of ``token; "a \\" b"``-> ``['token', 'a \\" b']``
+        The slash is retained by default when escaping quotes, this disables that, and also
+        enables handling of the escapes ``n, r, t, b, f, and \\``. IE given ``separator = ";"`` parse
+        ``token; "a \\" b"`` -> ``['token', 'a " b']``, instead of ``token; "a \\" b"``-> ``['token', 'a \\" b']``
+
+    :param escapes_in_quoted_is_escape: Determine if a character should be expanded with
+        ``escapes_in_quoted_handler`` when ``escapes_in_quoted`` is ``True``.
+
+    :param escapes_in_quoted_handler: Escape character handler for quoted strings when
+        ``escapes_in_quoted`` is ``True``, defaults to ``expand_escape_code``.
 
     :param single_quotes_raw: Never evaluate escape sequences in single-quoted strings?
     :param double_quotes_raw: Never evaluate escape sequences in double-quoted strings?
@@ -194,9 +242,6 @@ def tokenized_split(string: str,
     # accepted quote characters
     QUOTE_CHARS = {'"', "'"}
 
-    # recognized escape codes
-    RECOGNIZED_ESCAPE_CODES = {'n', 'r', 't', 'b', 'f', '\\'}
-
     back_expand = 0
 
     def append_text(text_to_append):
@@ -242,7 +287,7 @@ def tokenized_split(string: str,
     # a string termination condition during normal
     # lexing, when a lookahead is required to determine
     # if the current string token completes in the future
-    # the lexer can reused that information while still
+    # the lexer can reuse that information while still
     # in that string token
     string_lookahead_terminated_memoize = None
 
@@ -255,14 +300,18 @@ def tokenized_split(string: str,
 
         segment = cur_quote + string[cur_idx: len(string)]
         # try to test if where we are at currently is
-        # inside of a terminated string
+        # inside a terminated string
 
         try:
             tokenized_split(segment,
                             separator=separator,
                             strict=strict,
                             escapes_in_unquoted=escapes_in_unquoted,
+                            escapes_in_unquoted_is_escape=escapes_in_unquoted_is_escape,
+                            escapes_in_unquoted_handler=escapes_in_unquoted_handler,
                             escapes_in_quoted=escapes_in_quoted,
+                            escapes_in_quoted_is_escape=escapes_in_quoted_is_escape,
+                            escapes_in_quoted_handler=escapes_in_quoted_handler,
                             escapable_separator=escapable_separator,
                             single_quotes_raw=single_quotes_raw,
                             double_quotes_raw=double_quotes_raw,
@@ -282,9 +331,13 @@ def tokenized_split(string: str,
 
     def rem_boundary_quotes(token):
         if token[0] == '"' and token[-1] == '"':
-            return token[1:-1]
+            return token[1:-1] if not \
+                callable(remove_boundary_quotes) \
+                else remove_boundary_quotes(token)
         if token[0] == "'" and token[-1] == "'":
-            return token[1:-1]
+            return token[1:-1] if not \
+                callable(remove_boundary_quotes) \
+                else remove_boundary_quotes(token)
         return token
 
     def post_process_tokens(tokens):
@@ -298,7 +351,7 @@ def tokenized_split(string: str,
             break
 
         if state == _States.STRING:
-            # inside of a quoted string
+            # inside a quoted string
 
             if c == separator and allow_unterminated_strings:
                 # unescaped seperator, need to lookahead N to
@@ -360,11 +413,11 @@ def tokenized_split(string: str,
             if c in QUOTE_CHARS:
                 # this is an escaped quotation character
                 append_text(c)
-            elif c in RECOGNIZED_ESCAPE_CODES:
-                # this is a character that translates into utf-8 escape code
-                # that we have decided to support
+            elif escapes_in_unquoted_is_escape(c):
+                # this is a character that translates into
+                # an escape code that we have decided to support
                 if escapes_in_unquoted:
-                    append_text(fr'\{c}'.encode('utf-8').decode('unicode_escape'))
+                    append_text(escapes_in_unquoted_handler(c))
                 else:
                     append_text(c)
             elif c == separator and escapable_separator:
@@ -384,15 +437,16 @@ def tokenized_split(string: str,
             if c in QUOTE_CHARS:
                 # this is an escaped quotation character
                 cur_string += c
-            elif c in RECOGNIZED_ESCAPE_CODES:
-                # this is a character that translates into utf-8 escape code
-                # that we have decided to support
+            elif escapes_in_quoted_is_escape(c):
+                # this is a character that translates into an
+                # escape code that we have decided to support
                 if escapes_in_quoted and not \
                         ((single_quotes_raw and cur_quote == "'") or
                          (double_quotes_raw and cur_quote == '"')):
-                    cur_string += fr'\{c}'.encode('utf-8').decode('unicode_escape')
+                    cur_string += escapes_in_quoted_handler(c)
                 else:
                     cur_string += c
+
             elif escapes_in_quoted:
                 # unknown escape code case 1
                 if escapable_separator and allow_unterminated_strings and c == separator:
@@ -574,16 +628,41 @@ class UnquoteSyntaxError(Exception):
 
 
 def unquote(string: str,
-            escapes_in_quoted=False,
-            escapes_in_unquoted=False,
-            single_quotes_raw=False,
-            double_quotes_raw=False) -> str:
+            escapes_in_unquoted: bool = False,
+            escapes_in_unquoted_is_escape: typing.Callable[[str], bool] = is_escape_code,
+            escapes_in_unquoted_handler: typing.Callable[[str], str] = expand_escape_code,
+            escapes_in_quoted: bool = False,
+            escapes_in_quoted_is_escape: typing.Callable[[str], bool] = is_escape_code,
+            escapes_in_quoted_handler: typing.Callable[[str], str] = expand_escape_code,
+            single_quotes_raw: bool = False,
+            double_quotes_raw: bool = False
+            ) -> str:
     """
     Remove quotes from a string, including single quotes.
 
     Unquoted strings will have leading and trailing whitespace stripped.
 
     Quoted strings will have leading and trailing whitespace stripped up to where the quotes were.
+
+    :param escapes_in_unquoted: evaluate escape sequences in text tokens (unquoted strings)?
+        The slash is retained by default when escaping quotes, this disables that, and also
+        enables handling of the escapes ``n, r, t, b, f, and \\``.
+
+    :param escapes_in_unquoted_is_escape: Determine if a character should be expanded with
+        ``escapes_in_unquoted_handler`` when ``escapes_in_unquoted`` is ``True``.
+
+    :param escapes_in_unquoted_handler: Escape character handler for unquoted tokens when
+        ``escapes_in_unquoted`` is ``True``, defaults to ``expand_escape_code``.
+
+    :param escapes_in_quoted: evaluate escape sequences in quoted string tokens?
+        The slash is retained by default when escaping quotes, this disables that, and also
+        enables handling of the escapes ``n, r, t, b, f, and \\``.
+
+    :param escapes_in_quoted_is_escape: Determine if a character should be expanded with
+        ``escapes_in_quoted_handler`` when ``escapes_in_quoted`` is ``True``.
+
+    :param escapes_in_quoted_handler: Escape character handler for quoted strings when
+        ``escapes_in_quoted`` is ``True``, defaults to ``expand_escape_code``.
 
     :param escapes_in_unquoted: Render escape sequences in strings that are unquoted?
     :param escapes_in_quoted: Render escape sequences in strings that are quoted?
@@ -593,9 +672,14 @@ def unquote(string: str,
     :return: The un-quoted string
     """
     try:
-        val = tokenized_split(string,
+        val = tokenized_split(
+            string,
                               escapes_in_quoted=escapes_in_quoted,
+                              escapes_in_quoted_is_escape=escapes_in_quoted_is_escape,
+                              escapes_in_quoted_handler=escapes_in_quoted_handler,
                               escapes_in_unquoted=escapes_in_unquoted,
+                              escapes_in_unquoted_is_escape=escapes_in_unquoted_is_escape,
+                              escapes_in_unquoted_handler=escapes_in_unquoted_handler,
                               single_quotes_raw=single_quotes_raw,
                               double_quotes_raw=double_quotes_raw,
                               strict=True,
@@ -666,20 +750,35 @@ def shell_quote(string: str, strict: bool = False):
     return string
 
 
-def shell_parse(string,
-                expand_home: bool = True,
-                expand_vars: bool = True,
-                expand_glob: bool = True,
-                expand_vars_func: typing.Callable[[str], str] = shell_expandvars,
-                glob_include_hidden: bool = False,
-                shlex_compatible: bool = False) -> list[str]:
+def shell_parse(
+        string,
+        expand_home: bool = True,
+        expand_vars: bool = True,
+        expand_glob: bool = True,
+        expand_vars_func: typing.Callable[[str], str] = shell_expandvars,
+        glob_include_hidden: bool = False
+) -> list[str]:
     """
     Shell command line parsing, implements basic home directory expansion, globbing, and
     environmental variable expansion.
 
     Globbing and home directory expansion do not occur inside strings.
 
-    This can be used in place of ``shlex.split``
+    The shell syntax implemented is compatible with the dgenerate config shell syntax,
+    and is unique to dgenerate.
+
+    Only stand-alone string arguments undergo POSIX like quote removal and escape
+    code evaluation. The characters: $, %, \\, ', and ", are always resolved in double-quote
+    strings when they are escaped with \\, meaning that the backslash used to escape them will
+    be removed. In single quoted strings they are not resolved, i.e. the backslash will remain
+    in the string. This process occurs only for string tokens surrounded by white space.
+
+    Strings that are intermixed with other tokens, for example: plugin;argument="test"
+    are not processed at all, the intermixed tokens are lexed as into a single token
+    with no quote removal or escape code expansion. This allows for internal
+    parsing on complex arguments such as URI values to occur without the loss
+    of quoting and escaping information. dgenerate URIs implement custom
+    escaping and quoting rules.
 
     .. code-block:: python
 
@@ -722,11 +821,6 @@ def shell_parse(string,
     :param expand_vars_func: This function is used to expand shell variables in a string,
         analogous to `os.path.expandvars`
     :param glob_include_hidden: Should globs include hidden directories?
-    :param shlex_compatible: ensure shlex compatibility? This removes all quotes, instead
-        of just quotes at the ends of strings that exist on word boundaries. dgenerate's
-        configuration script shell parsing only removes quotes from strings that are not mixed
-        together next to other tokens by default, this is to preserve important quoting
-        inside URI arguments.
     :return: shell arguments
     """
 
@@ -762,20 +856,36 @@ def shell_parse(string,
             return s
         return s
 
+    def boundary_quote_remover(token):
+
+        # other than resolving \" and \' automatically
+        # we need to resolve the special characters
+        # used for env-vars that can be escaped
+        def is_escape(s):
+            return s in {'\\', '%', '$'}
+
+        # the characters above simply resolve to their
+        # value, i.e. the backslash is just removed
+
+        return unquote(
+            token,
+            escapes_in_quoted=True,
+            escapes_in_quoted_is_escape=is_escape,
+            escapes_in_quoted_handler=lambda x: x,
+        )
+
     try:
         opts = dict()
 
-        if shlex_compatible:
-            opts['remove_quotes'] = True
-        else:
-            opts['remove_boundary_quotes'] = True
-
-        return tokenized_split(string, ' ',
-                               strict=False,
-                               text_expander=text_expander,
-                               string_expander=string_expander,
-                               remove_stray_separators=True,
-                               **opts)
+        return tokenized_split(
+            string, ' ',
+            strict=False,
+            text_expander=text_expander,
+            string_expander=string_expander,
+            remove_boundary_quotes=boundary_quote_remover,
+            remove_stray_separators=True,
+            **opts
+        )
 
     except TokenizedSplitSyntaxError as e:
         raise ShellParseSyntaxError(e)
@@ -934,10 +1044,12 @@ class ConceptUriParser:
                 if self.args_raw is True or (self.args_raw is not None and name in self.args_raw):
                     args[name] = vals[1]
                 elif self.args_lists is True or (self.args_lists is not None and name in self.args_lists):
-                    vals = tokenized_split(vals[1], ',',
-                                           remove_quotes=True,
-                                           strict=True,
-                                           escapes_in_quoted=True)
+                    vals = tokenized_split(
+                        vals[1], ',',
+                        remove_quotes=True,
+                        strict=True,
+                        escapes_in_quoted=True
+                    )
                     if len(vals) > 1:
                         args[name] = vals
                     elif len(vals) == 1 and vals[0]:
@@ -952,7 +1064,10 @@ class ConceptUriParser:
                             f'Syntax error parsing argument "{name}" for '
                             f'{self.concept_name} concept "{concept}", missing assignment value.')
 
-                    args[name] = unquote(vals[1], escapes_in_quoted=True)
+                    args[name] = unquote(
+                        vals[1],
+                        escapes_in_quoted=True
+                    )
 
             except (TokenizedSplitSyntaxError, UnquoteSyntaxError) as e:
                 raise ConceptUriParseError(

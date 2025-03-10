@@ -30,11 +30,16 @@ import asteval
 import jinja2
 
 import dgenerate.arguments as _arguments
+import dgenerate.batchprocess.jinjabalancechecker as _jinjabalancechecker
 import dgenerate.files as _files
 import dgenerate.messages as _messages
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
-import dgenerate.batchprocess.jinjabalancechecker as _jinjabalancechecker
+
+
+class _EnvNamespace:
+    def __getattr__(self, name):
+        return os.environ.get(name, '')
 
 
 class BatchProcessError(Exception):
@@ -365,6 +370,8 @@ class BatchProcessor:
             if len(inspect.signature(func).parameters) > 0:
                 jinja_env.filters[name] = func
 
+        jinja_env.globals['env'] = _EnvNamespace()
+
         if stream:
             def stream_generator():
                 buffer = ''
@@ -374,18 +381,16 @@ class BatchProcessor:
                         buffer += piece
                         while '\n' in buffer:
                             line, buffer = buffer.split('\n', 1)
-                            yield self.expand_vars(line) + '\n'
+                            yield line + '\n'
                     if buffer:
-                        yield self.expand_vars(buffer)
+                        yield buffer
                 except Exception as e:
                     raise BatchProcessError(f'Template Render Error: {str(e).strip()}')
 
             return stream_generator()
         else:
             try:
-                return self.expand_vars(
-                    jinja_env.from_string(string).
-                    render(**self.template_variables))
+                return jinja_env.from_string(string).render(**self.template_variables)
             except Exception as e:
                 raise BatchProcessError(f'Template Render Error: {str(e).strip()}')
 
@@ -434,6 +439,11 @@ class BatchProcessor:
                 f'Cannot define template variable "{name}" on line {self.current_line}, '
                 f'invalid identifier/name token, must be a valid python variable name / identifier.')
 
+        if name == 'env':
+            raise BatchProcessError(
+                f'Cannot define template variable "{name}" on line {self.current_line}, '
+                f'as that name refers to the special namespace used to access '
+                f'environmental variables.')
         if name in self.template_functions:
             raise BatchProcessError(
                 f'Cannot define template variable "{name}" on line {self.current_line}, '
@@ -479,6 +489,11 @@ class BatchProcessor:
                 f'Cannot un-define template variable "{name}" on line {self.current_line}, '
                 f'invalid identifier/name token, must be a valid python variable name / identifier.')
 
+        if name == 'env':
+            raise BatchProcessError(
+                f'Cannot un-define template variable "{name}" on line {self.current_line}, '
+                f'as that name refers to the special namespace used to access '
+                f'environmental variables.')
         if name in self.template_functions:
             raise BatchProcessError(
                 f'Cannot un-define template variable "{name}" on line {self.current_line}, '
@@ -605,9 +620,10 @@ class BatchProcessor:
         if len(directive_args) == 2:
             opts = _textprocessing.shell_parse(
                 self.render_template(directive_args[1].strip()),
-                expand_glob=False,
                 expand_home=False,
-                expand_vars=False)
+                expand_glob=False,
+                expand_vars_func=self.expand_vars
+            )
             for opt in opts:
                 assignment = opt.split('=', 1)
                 value = self.render_template(assignment[1]) if len(assignment) > 1 else ''
@@ -632,9 +648,10 @@ class BatchProcessor:
         if len(directive_args) == 2:
             opts = _textprocessing.shell_parse(
                 self.render_template(directive_args[1].strip()),
-                expand_vars=False,
                 expand_home=False,
-                expand_glob=False)
+                expand_glob=False,
+                expand_vars_func=self.expand_vars
+            )
             for opt in opts:
                 os.environ.pop(opt, None)
         elif line != '\\unset_env':
@@ -649,9 +666,9 @@ class BatchProcessor:
         if len(directive_args) == 3:
             var, value = self._set_split(directive_args, line)
             self.user_define(
-                self.render_template(var),
+                self.expand_vars(self.render_template(var)),
                 self._intepret_setp_value(
-                    self.render_template(value)))
+                    self.expand_vars(self.render_template(value))))
             return True
         else:
             raise BatchProcessError(
@@ -665,10 +682,12 @@ class BatchProcessor:
             try:
                 var, value = self._set_split(directive_args, line)
                 self.user_define(
-                    self.render_template(var),
+                    self.expand_vars(self.render_template(var)),
                     _textprocessing.shell_parse(
                         self.render_template(value),
-                        expand_vars=False))
+                        expand_vars_func=self.expand_vars
+                    )
+                )
             except _textprocessing.ShellParseSyntaxError as e:
                 raise BatchProcessError(e)
             return True
@@ -683,8 +702,9 @@ class BatchProcessor:
         if len(directive_args) == 3:
             var, value = self._set_split(directive_args, line)
             self.user_define(
-                self.render_template(var),
-                self.render_template(value))
+                self.expand_vars(self.render_template(var)),
+                self.expand_vars(self.render_template(value))
+            )
             return True
         else:
             raise BatchProcessError(
@@ -696,7 +716,7 @@ class BatchProcessor:
         directive_args = line.split(' ', 1)
         if len(directive_args) == 2:
             self.user_undefine(
-                self.render_template(directive_args[1].strip()))
+                self.expand_vars(self.render_template(directive_args[1].strip())))
             return True
         elif line != '\\unset':
             raise BatchProcessError(f'Unknown directive "{line}".')
@@ -709,7 +729,7 @@ class BatchProcessor:
         """Handle the \\print directive."""
         directive_args = line.split(' ', 1)
         if len(directive_args) == 2:
-            _messages.log(self.render_template(directive_args[1].strip()))
+            _messages.log(self.expand_vars(self.render_template(directive_args[1].strip())))
         elif line != '\\print':
             raise BatchProcessError(f'Unknown directive "{line}".')
         else:
@@ -721,9 +741,12 @@ class BatchProcessor:
         directive_args = line.split(' ', 1)
         if len(directive_args) == 2:
             try:
-                _messages.log(*_textprocessing.shell_parse(
-                    self.render_template(directive_args[1].strip()),
-                    expand_vars=False))
+                _messages.log(
+                    *_textprocessing.shell_parse(
+                        self.render_template(directive_args[1].strip()),
+                        expand_vars_func=self.expand_vars
+                    )
+                )
             except _textprocessing.ShellParseSyntaxError as e:
                 raise BatchProcessError(e)
         elif line != '\\echo':
@@ -764,7 +787,9 @@ class BatchProcessor:
                 return_code = impl(
                     _textprocessing.shell_parse(
                         self.render_template(directive_args[0].strip()),
-                        expand_vars=False))
+                        expand_vars_func=self.expand_vars
+                    )
+                )
             else:
                 return_code = impl([])
             if return_code != 0:
@@ -782,7 +807,9 @@ class BatchProcessor:
 
         try:
             shell_lexed = _textprocessing.shell_parse(
-                raw_templated_string, expand_vars=False)
+                raw_templated_string,
+                expand_vars_func=self.expand_vars
+            )
         except _textprocessing.ShellParseSyntaxError as e:
             raise BatchProcessError(e)
 
@@ -794,7 +821,8 @@ class BatchProcessor:
                         arg,
                         expand_glob=False,
                         expand_vars=False,
-                        expand_home=False)[0]
+                        expand_home=False
+                    )[0]
                 )
 
         raw_injected_args = ' '.join(str(a) for a in self.injected_args)
