@@ -36,6 +36,7 @@ from .configrunnerpluginloader import (
 from .image_process_directive import ImageProcessDirective
 
 from .civitai_links_directive import CivitAILinksDirective
+from .prompt_upscale_directive import PromptUpscaleDirective
 
 from .to_diffusers_directive import ToDiffusersDirective
 

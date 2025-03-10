@@ -40,10 +40,10 @@ class CivitAILinksSubCommand(_subcommand.SubCommand):
             response.raise_for_status()  # Check for request errors
             return response.json()
         except requests.exceptions.HTTPError as http_err:
-            _messages.log(f"HTTP error occurred: {http_err}", level=_messages.ERROR)
+            _messages.error(f"HTTP error occurred: {http_err}")
             raise
         except requests.exceptions.RequestException as req_err:
-            _messages.log(f"Error occurred during the request: {req_err}", level=_messages.ERROR)
+            _messages.error(f"Error occurred during the request: {req_err}")
             raise
 
     @staticmethod
@@ -116,28 +116,26 @@ class CivitAILinksSubCommand(_subcommand.SubCommand):
         try:
             parsed_url = urllib.parse.urlparse(args.url)
         except Exception as e:
-            _messages.log(f'URL Parsing syntax error: {e}',
-                          level=_messages.ERROR)
+            _messages.error(f'URL Parsing syntax error: {e}')
             return 1
 
         if parsed_url.netloc != 'civitai.com':
-            _messages.log(f'Invalid non civitai.com URL given: {args.url}',
-                          level=_messages.ERROR)
+            _messages.error(f'Invalid non civitai.com URL given: {args.url}')
             return 1
 
         try:
             url_parts = parsed_url.path.strip('/').split('/')
 
             if len(url_parts) < 2:
-                _messages.log(
+                _messages.error(
                     f"Failed to process URL: {args.url}, "
-                    f"could not extract model id.", level=_messages.ERROR)
+                    f"could not extract model id.")
                 return 1
 
             model_id = url_parts[1].strip()
             if not model_id:
-                _messages.log(f"Failed to process URL: {args.url}, "
-                              f"could not extract model id.", level=_messages.ERROR)
+                _messages.error(f"Failed to process URL: {args.url}, "
+                                f"could not extract model id.")
                 return 1
 
             data = self._get_model_data(model_id)
@@ -145,7 +143,7 @@ class CivitAILinksSubCommand(_subcommand.SubCommand):
 
         except (requests.exceptions.HTTPError,
                 requests.exceptions.RequestException) as e:
-            _messages.log(f"Failed API request for: {args.url}", level=_messages.ERROR)
+            _messages.error(f"Failed API request for: {args.url}")
             return 1
 
         _messages.log(f'Models at: {args.url}', underline=True)

@@ -172,8 +172,7 @@ def invoke_dgenerate_events(
 
     def rethrow_with_message(error, usage_error=False):
         if log_error:
-            _messages.log(f'dgenerate: error: {str(error).strip()}',
-                          level=_messages.ERROR)
+            _messages.error(f'dgenerate: error: {str(error).strip()}')
         if throw:
             if usage_error:
                 raise _arguments.DgenerateUsageError(error)

@@ -351,9 +351,9 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
             except _ncnn_model.NCNNExtractionFailure as e:
                 pbar.close()
                 tile //= 2
-                _messages.log(
-                    f'Reducing tile size to {tile} and retrying due to running out of memory.',
-                    level=_messages.WARNING)
+                _messages.warning(
+                    f'Reducing tile size to {tile} and retrying due to running out of memory.'
+                )
                 if tile < 128:
                     raise e
 

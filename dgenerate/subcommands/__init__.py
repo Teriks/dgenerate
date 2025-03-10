@@ -27,6 +27,7 @@ from .civitai_links import CivitAILinksSubCommand
 from .subcommand import SubCommand
 from .subcommandloader import SubCommandLoader
 from .to_diffusers import ToDiffusersSubCommand
+from .prompt_upscale import PromptUpscaleSubCommand
 
 __doc__ = """
 Sub-Commands implemented by the dgenerate command line tool.

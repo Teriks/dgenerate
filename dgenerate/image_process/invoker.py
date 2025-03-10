@@ -165,7 +165,7 @@ def invoke_image_process_events(
             _d_exceptions.OutOfMemoryError,
             EnvironmentError) as e:
         if log_error:
-            _messages.log(f'{help_name}: error: {str(e).strip()}', level=_messages.ERROR)
+            _messages.error(f'{help_name}: error: {str(e).strip()}')
         if throw:
             raise
         yield ImageProcessExitEvent(invoke_image_process_events, 1)

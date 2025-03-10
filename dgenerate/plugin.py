@@ -989,9 +989,9 @@ class PluginLoader:
                 self.load_plugin_modules(plugin_module_paths)
             except ModuleFileNotFoundError as e:
                 if log_error:
-                    _messages.log(
-                        f'Plugin module could not be found: {str(e).strip()}',
-                        level=_messages.ERROR)
+                    _messages.error(
+                        f'Plugin module could not be found: {str(e).strip()}'
+                    )
                 if throw:
                     raise
                 return 1
@@ -1008,9 +1008,9 @@ class PluginLoader:
                 help_strs.append(self.get_help(name, include_bases=include_bases))
             except PluginNotFoundError:
                 if log_error:
-                    _messages.log(
-                        f'An {title} with the name of "{name}" could not be found.',
-                        level=_messages.ERROR)
+                    _messages.error(
+                        f'An {title} with the name of "{name}" could not be found.'
+                    )
                 if throw:
                     raise
                 return 1

@@ -216,12 +216,12 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
         if self._model.input_channels == 4:
             # Fill 4th channel with 1.0s, this is definitely incorrect.
             # Not all models expect this to be an alpha channel
-            _messages.log(
+            _messages.warning(
                 f'Appending 1.0 (opaque) alpha channel RGB -> RGBA for model '
                 f'architecture type "{_types.fullname(self._model.architecture)}" used by model "{self._model_path}" '
                 'which requires 4 input channels. This is not guaranteed to be correct input data for '
-                'this model architecture! If you know how this model is supposed to work, please submit an issue.',
-                level=_messages.WARNING)
+                'this model architecture! If you know how this model is supposed to work, please submit an issue.'
+            )
 
             in_img = torch.cat(
                 (in_img, torch.ones(
@@ -289,9 +289,9 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
 
                 pbar.close()
                 tile //= 2
-                _messages.log(
-                    f'Reducing tile size to {tile} and retrying due to GPU running out of memory.',
-                    level=_messages.WARNING)
+                _messages.warning(
+                    f'Reducing tile size to {tile} and retrying due to GPU running out of memory.'
+                )
                 if tile < 128:
                     raise e
 

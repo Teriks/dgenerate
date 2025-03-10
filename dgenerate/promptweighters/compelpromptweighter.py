@@ -375,10 +375,10 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
 
             else:
                 if positive_2 or negative_2:
-                    _messages.log(
+                    _messages.warning(
                         f'Prompt weighting is not supported by --prompt-weighter '
-                        f'"compel" for --second-model-second-prompts, that prompt is being ignored.',
-                        level=_messages.WARNING)
+                        f'"compel" for --second-model-second-prompts, that prompt is being ignored.'
+                    )
 
                 original_clip_layers_2 = pipeline.text_encoder_2.text_model.encoder.layers
 

@@ -44,32 +44,43 @@ class DirectiveArgumentParser(argparse.ArgumentParser):
         self.return_code = None
         self.formatter_class = _textprocessing.ArgparseParagraphFormatter
 
-    def parse_args(self, args: typing.Sequence[str] | None = ...) -> argparse.Namespace:
+    def parse_args(
+            self,
+            args: typing.Sequence[str] | None = None,
+            namespace: argparse.Namespace | None = None
+    ) -> argparse.Namespace:
+        self.return_code = None
         try:
-            return super().parse_args(args)
+            return super().parse_args(args, namespace)
         except self._ExitException:
             return argparse.Namespace()
 
     def parse_known_args(
-            self, args: typing.Sequence[str] | None = ...,
-            namespace: argparse.Namespace | None = ...
+            self, args: typing.Sequence[str] | None = None,
+            namespace: argparse.Namespace | None = None
     ) -> tuple[argparse.Namespace, list[str]]:
+        self.return_code = None
         try:
             return super().parse_known_args(args, namespace)
         except self._ExitException:
             return argparse.Namespace(), []
 
-    def parse_intermixed_args(self,
-                              args: typing.Sequence[str] | None = ...,
-                              namespace: argparse.Namespace | None = ...) -> argparse.Namespace:
+    def parse_intermixed_args(
+            self,
+            args: typing.Sequence[str] | None = None,
+            namespace: argparse.Namespace | None = None
+    ) -> argparse.Namespace:
+        self.return_code = None
         try:
             return super().parse_intermixed_args(args, namespace)
         except self._ExitException:
             return argparse.Namespace()
 
     def parse_known_intermixed_args(
-            self, args: typing.Sequence[str] | None = ..., namespace: argparse.Namespace | None = ...
+            self, args: typing.Sequence[str] | None = None,
+            namespace: argparse.Namespace | None = None
     ) -> tuple[argparse.Namespace, list[str]]:
+        self.return_code = None
         try:
             return super().parse_known_intermixed_args(args, namespace)
         except self._ExitException:
@@ -80,8 +91,7 @@ class DirectiveArgumentParser(argparse.ArgumentParser):
             return
         if message is not None:
             if status != 0:
-                _messages.log(message.rstrip(),
-                              level=_messages.ERROR)
+                _messages.error(message.rstrip())
             else:
                 _messages.log(message.rstrip())
         self.return_code = status

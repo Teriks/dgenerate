@@ -184,3 +184,39 @@ The help output of ``to-diffusers`` is as follows:
 
 @COMMAND_OUTPUT[dgenerate --no-stdin --sub-command to-diffusers --help]
 
+
+Sub Command: prompt-upscale
+---------------------------
+
+The ``prompt-upscale`` sub-command can be use to run `prompt upscaler plugins <Prompt Upscaling>`_
+on prompt texts without invoking image generation.
+
+This sub-command is designed in the same vein as ``dgenerate --sub-command image-process`` and the ``\image_process`` directive.
+
+This sub-command also exists as the config directive: ``\to_diffusers``
+
+It allows you to output the prompts in various formats such as plain text, or structured json, toml, and yaml.
+
+Prompts can be written to a file or printed to stdout, and in the case of the config directive ``\prompt_upscale``
+they can also be written to a config template variable as a python list.
+
+A comprehensive example of the ``\prompt_upscale`` config directive which might be helpful for understanding
+this sub-commands functionality is available in the `examples folder <https://github.com/Teriks/dgenerate/@VERSION/examples/config_directives/prompt_upscale/prompt-upscale-directive-config.dgen>`_.
+
+.. code-block:: text
+
+    #!/usr/bin/env bash
+
+    # upscale two prompts with magic prompt
+    # using the default accelerator for your system
+    # and print them as structured yaml to stdout
+
+    dgenerate --sub-command prompt-upscale \
+    "a cat sitting on a bench in a park" \
+    "a dog sitting on a bench in a park" \
+    --upscaler magicprompt;variations=10 -of yaml
+
+The help output of ``prompt-upscale`` is as follows:
+
+@COMMAND_OUTPUT[dgenerate --no-stdin --sub-command prompt-upscale --help]
+

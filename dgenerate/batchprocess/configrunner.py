@@ -584,7 +584,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         try:
             file_path = _configrunnerbuiltins.download(args.url, args.output, args.overwrite, args.text)
         except _batchprocessor.BatchProcessError as e:
-            _messages.log(str(e), level=_messages.ERROR)
+            _messages.error(str(e))
             return 1
 
         self.template_variables[args.variable] = file_path
