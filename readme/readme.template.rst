@@ -1,5 +1,5 @@
 .. |Documentation| image:: https://readthedocs.org/projects/dgenerate/badge/?version=v@VERSION
-   :target: http://dgenerate.readthedocs.io/en/v@VERSION/
+   :target: http://dgenerate.readthedocs.io/en/@REVISION/
 
 .. |Latest Release| image:: https://img.shields.io/github/v/release/Teriks/dgenerate
    :target: https://github.com/Teriks/dgenerate/releases/latest
@@ -66,12 +66,12 @@ some operations but extraordinarily slow.
 
 For library documentation, and a better README reading experience which
 includes proper syntax highlighting for examples, and side panel navigation,
-please visit `readthedocs <http://dgenerate.readthedocs.io/en/v@VERSION/>`_.
+please visit `readthedocs <http://dgenerate.readthedocs.io/en/@REVISION/>`_.
 
 ----
 
 * `Help Output`_
-* `Diffusion Feature Table <https://github.com/Teriks/dgenerate/blob/v@VERSION/FEATURE_TABLE.rst>`_
+* `Diffusion Feature Table <https://github.com/Teriks/dgenerate/blob/@REVISION/FEATURE_TABLE.rst>`_
 
 * How To Install
 @TOC[{"from_index": "Windows Install", "to_index": "Google Colab Install", "indent": 4, "max_depth": 1}]

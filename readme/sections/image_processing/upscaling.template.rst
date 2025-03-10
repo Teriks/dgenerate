@@ -24,7 +24,7 @@ Stable diffusion image upscaling models can be used via the model types:
     * ``--model-type torch-upscaler-x2``
     * ``--model-type torch-upscaler-x4``
 
-The image used in the example below is this `low resolution cat <https://raw.githubusercontent.com/Teriks/dgenerate/v@VERSION/examples/media/low_res_cat.png>`_
+The image used in the example below is this `low resolution cat <https://raw.githubusercontent.com/Teriks/dgenerate/@REVISION/examples/media/low_res_cat.png>`_
 
 .. code-block:: bash
 
