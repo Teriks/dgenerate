@@ -6,3 +6,13 @@
 "Lykon/dreamshaper-8"
 --prompt-upscaler my-upscaler
 --prompts "hello world"
+
+
+
+# run the prompt upscaler with \prompt_upscale and set the
+# resulting prompts to a template variable. The value
+# is a python list of dgenerate compatible prompt strings.
+
+\prompt_upscale "hello world" --upscaler my-upscaler --setp prompts_var
+
+\print {{ prompts_var }}
