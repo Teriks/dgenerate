@@ -124,21 +124,6 @@ There are template variables for prompts, containing the previous prompt values:
 * ``{{ last_second_model_prompts }}``
 * ``{{ last_second_model_second_prompts }}``
 
-The dgenerate specific jinja2 functions/filters are:
-
-@COMMAND_OUTPUT[python ../scripts/get_builtin_shell_functions.py]
-
-Functions above which are usable with only one argument, can be used as
-either a function or filter IE: ``{{ "quote_me" | quote }}``
-
-Functions with multiple arguments that have default arguments can be used as a filter,
-as long as it is acceptable to call them with a single argument given their signature.
-
-The option ``--functions-help`` and the directive ``\functions_help`` can be used to print
-documentation for template functions. When the option or directive is used alone all built
-in functions will be printed with their signature, specifying function names as arguments
-will print documentation for those specific functions.
-
 To receive information about Jinja2 template variables that are set after a dgenerate invocation.
 You can use the ``\templates_help`` directive which is similar to the ``--templates-help`` option
 except it will print out all the template variables assigned values instead of just their
@@ -166,9 +151,20 @@ The ``\templates_help`` output from the above example is:
       }
 }]
 
-The following is output from ``\functions_help`` showing every implemented template function signature.
+The dgenerate specific jinja2 functions/filters are:
 
-@COMMAND_OUTPUT[dgenerate --no-stdin --functions-help]
+@COMMAND_OUTPUT[python ../scripts/get_builtin_shell_functions.py]
+
+Functions above which are usable with only one argument, can be used as
+either a function or filter IE: ``{{ "quote_me" | quote }}``
+
+Functions with multiple arguments that have default arguments can be used as a filter,
+as long as it is acceptable to call them with a single argument given their signature.
+
+The option ``--functions-help`` and the directive ``\functions_help`` can be used to print
+documentation for template functions. When the option or directive is used alone all built
+in functions will be printed with their signature, specifying function names as arguments
+will print documentation for those specific functions.
 
 Directives, and applying templating
 -----------------------------------
