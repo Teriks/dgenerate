@@ -14,8 +14,8 @@ focus_border_width = 0
 [general]
 comment = "#3D7B7B" # Comments: teal, italic
 error = "#FF0000" # Errors: red, border
+escape = "#AA5D1F" # Escape: brown, bold
 keyword = "#008000" # Keywords: green, bold
-operator = "#666666" # Operators: dark grey
 name = "#000000" # Names: black
 string = "#BA2121" # Strings: red-brown
 punctuation = "#000000" # Punctuation: black
