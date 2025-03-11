@@ -111,10 +111,19 @@ def is_escape_code(code: str) -> bool:
     return code in {'n', 'r', 't', 'b', 'f', '\\'}
 
 
+def has_unescaped_quotes(string):
+    """
+    Does a string contain unescaped quotes?
+
+    :param string: The string
+    :return: ``True`` or ``False``.
+    """
+    return bool(re.search(r'(?<!\\)(?:\\\\)*["\']', string))
+
+
 def tokenized_split(string: str,
                     separator: str | None,
                     remove_quotes: bool = False,
-                    remove_boundary_quotes: bool | typing.Callable[[str], str] = False,
                     strict: bool = False,
                     escapes_in_unquoted: bool = False,
                     escapes_in_unquoted_is_escape: typing.Callable[[str], bool] = is_escape_code,
@@ -124,6 +133,8 @@ def tokenized_split(string: str,
                     escapes_in_quoted_handler: typing.Callable[[str], str] = expand_escape_code,
                     single_quotes_raw: bool = False,
                     double_quotes_raw: bool = False,
+                    process_string_token: typing.Callable[[str], str] = None,
+                    process_intermixed_token: typing.Callable[[str], str] = None,
                     string_expander: typing.Callable[[str, str], str] = None,
                     text_expander: typing.Callable[[str], str | list[str]] = None,
                     remove_stray_separators: bool = False,
@@ -144,12 +155,6 @@ def tokenized_split(string: str,
     :param string: the string
     :param separator: separator
     :param remove_quotes: remove quotes from quoted string tokens?
-
-    :param remove_boundary_quotes: remove quotes only from strings that are not surrounded by other tokens?
-        This may also be a callable that takes a string and returns a string, this function can be used
-        to remove quoting in a customized fashion from standalone strings that are not intermixed with
-        other tokens. The default behavior is to simply remove the quote characters from the edges of the string with
-        no further processing.
 
     :param strict: Text tokens cannot be intermixed with quoted strings? disallow IE: ``"text'string'text"``
 
@@ -177,11 +182,19 @@ def tokenized_split(string: str,
 
     :param single_quotes_raw: Never evaluate escape sequences in single-quoted strings?
     :param double_quotes_raw: Never evaluate escape sequences in double-quoted strings?
+
+    :param process_string_token: post process standalone string tokens.
+        The function should take a string and return a string.
+
+    :param process_intermixed_token: This can be used to run a custom process on intermixed tokens, which
+        consist of text intermixed with quoted strings. The function should take a string and return a string.
+
     :param string_expander: User post process string expansion hook ``string_expander(quote_char, string) -> str``
     :param text_expander: User post process text token expansion hook ``text_expander(text_token) -> str | list[str]``.
+
         should return a list of new tokens (indicates globbing) or a single token string (indicates no globbing).
     :param remove_stray_separators: Remove consecutive seperator characters with no inner content at the end of the string?
-        In effect, do not create entrys for empty seperators at the end of a string.
+        In effect, do not create entries for empty separators at the end of a string.
     :param escapable_separator: The seperator character may be escaped with a backslash where it would otherwise cause a split?
 
     :param allow_unterminated_strings: Allows the lex to end on an unterminated string without a syntax error being produced.
@@ -195,13 +208,21 @@ def tokenized_split(string: str,
     :return: parsed fields
     """
 
-    if remove_quotes and remove_boundary_quotes:
+    if remove_quotes and process_string_token:
         raise ValueError(
-            'cannot use "remove_quotes" and "remove_boundary_quotes" together, redundant.')
+            'cannot use "remove_quotes" and "process_string_token" together, incompatible.')
 
-    if remove_boundary_quotes and strict:
+    if remove_quotes and process_intermixed_token:
         raise ValueError(
-            'cannot use "remove_boundary_quotes" and "strict" together, incompatible.')
+            'cannot use "remove_quotes" and "process_intermixed_token" together, incompatible.')
+
+    if process_string_token and strict:
+        raise ValueError(
+            'cannot use "process_string_token" and "strict" together, incompatible.')
+
+    if process_intermixed_token and strict:
+        raise ValueError(
+            'cannot use "process_intermixed_token" and "strict" together, incompatible.')
 
     if string_expander is None:
         def string_expander(q, s):
@@ -265,6 +286,18 @@ def tokenized_split(string: str,
                 # nothing on the stack
                 parts.append(text_to_append)
 
+    def post_process_token(token):
+        if process_string_token and token[0] == '"' and token[-1] == '"':
+            return process_string_token(token)
+        elif process_string_token and token[0] == "'" and token[-1] == "'":
+            return process_string_token(token)
+        elif process_intermixed_token and has_unescaped_quotes(token):
+            return process_intermixed_token(token)
+        return token
+
+    def process_back_expansion_string(token):
+        return process_string_token(string_expander(token[0], token))
+
     def separate_here(cur_idx):
         nonlocal parts
         if last_state != _States.STRING:
@@ -275,7 +308,7 @@ def tokenized_split(string: str,
                 parts[-1] = expanded_token[0]
                 parts += expanded_token[1:]
         else:
-            parts[-1] = parts[-1].rstrip()
+            parts[-1] = post_process_token(parts[-1].rstrip())
 
         if remove_stray_separators and not string[cur_idx:].strip(separator):
             state_change(_States.EOL)
@@ -303,20 +336,22 @@ def tokenized_split(string: str,
         # inside a terminated string
 
         try:
-            tokenized_split(segment,
-                            separator=separator,
-                            strict=strict,
-                            escapes_in_unquoted=escapes_in_unquoted,
-                            escapes_in_unquoted_is_escape=escapes_in_unquoted_is_escape,
-                            escapes_in_unquoted_handler=escapes_in_unquoted_handler,
-                            escapes_in_quoted=escapes_in_quoted,
-                            escapes_in_quoted_is_escape=escapes_in_quoted_is_escape,
-                            escapes_in_quoted_handler=escapes_in_quoted_handler,
-                            escapable_separator=escapable_separator,
-                            single_quotes_raw=single_quotes_raw,
-                            double_quotes_raw=double_quotes_raw,
-                            remove_stray_separators=remove_stray_separators,
-                            first_string_halts=True)
+            tokenized_split(
+                segment,
+                separator=separator,
+                strict=strict,
+                escapes_in_unquoted=escapes_in_unquoted,
+                escapes_in_unquoted_is_escape=escapes_in_unquoted_is_escape,
+                escapes_in_unquoted_handler=escapes_in_unquoted_handler,
+                escapes_in_quoted=escapes_in_quoted,
+                escapes_in_quoted_is_escape=escapes_in_quoted_is_escape,
+                escapes_in_quoted_handler=escapes_in_quoted_handler,
+                escapable_separator=escapable_separator,
+                single_quotes_raw=single_quotes_raw,
+                double_quotes_raw=double_quotes_raw,
+                remove_stray_separators=remove_stray_separators,
+                first_string_halts=True
+            )
             # syntactically valid string from this point on
             string_lookahead_terminated_memoize = True
             return True
@@ -328,23 +363,6 @@ def tokenized_split(string: str,
     def syntax_error(msg, cur_idx):
         # create syntax error
         return TokenizedSplitSyntaxError(f'{msg}: \'{string[:cur_idx]}[ERROR HERE>]{string[cur_idx:]}\'')
-
-    def rem_boundary_quotes(token):
-        if token[0] == '"' and token[-1] == '"':
-            return token[1:-1] if not \
-                callable(remove_boundary_quotes) \
-                else remove_boundary_quotes(token)
-        if token[0] == "'" and token[-1] == "'":
-            return token[1:-1] if not \
-                callable(remove_boundary_quotes) \
-                else remove_boundary_quotes(token)
-        return token
-
-    def post_process_tokens(tokens):
-        if remove_boundary_quotes:
-            for i, token_str in enumerate(tokens):
-                tokens[i] = rem_boundary_quotes(token_str)
-        return tokens
 
     for idx, c in enumerate(string):
         if state == _States.EOL:
@@ -377,8 +395,12 @@ def tokenized_split(string: str,
                     cur_string += c
             elif c == cur_quote:
                 # encountered the terminator quote
-                append_text(string_expander(cur_quote,
-                                            cur_string + (c if not remove_quotes else '')))
+                append_text(
+                    string_expander(
+                        cur_quote,
+                        cur_string + (c if not remove_quotes else '')
+                    )
+                )
                 cur_string = ''
 
                 if idx == len(string) - 1:
@@ -430,7 +452,7 @@ def tokenized_split(string: str,
                 # unknown escape code case 3
                 append_text(c)
         elif state == _States.STRING_ESCAPE:
-            # after encountering an escape sequence start inside of a quoted string
+            # after encountering an escape sequence start inside a quoted string
             state_change(_States.STRING)
             # return to string state
 
@@ -501,7 +523,7 @@ def tokenized_split(string: str,
                 state_change(_States.TEXT_TOKEN_STRICT if strict else _States.TEXT_TOKEN)
                 append_text(c)
         elif state == _States.TEXT_TOKEN:
-            # this is the non strict mode parsing state inside a text token
+            # this is the non-strict mode parsing state inside a text token
             if c == '\\':
                 # started an escape sequence in a text token
 
@@ -525,24 +547,23 @@ def tokenized_split(string: str,
                 expanded = text_expander(parts[-1])
 
                 if isinstance(expanded, str):
-                    # if string, just set the token
+                    # if a string, just set the token
                     # to it, no glob involved
                     parts[-1] = expanded
                 else:
                     back_expand = len(expanded)
                     if back_expand > 0:
                         # this is some kind of glob returning
-                        # a non-zero amount of names, need a custom
-                        # token processor to remove quotes from
-                        # any appended text (back expansion syntax)
+                        # a non-zero amount of names, run custom
+                        # post processes any appended text (back expansion syntax)
 
                         if remove_quotes:
                             # already removes them
                             parts[-1] = expanded[0]
                             parts += expanded[1:]
                         else:
-                            parts[-1] = (expanded[0], rem_boundary_quotes)
-                            parts += ((e, rem_boundary_quotes) for e in expanded[1:])
+                            parts[-1] = (expanded[0], process_back_expansion_string)
+                            parts += ((e, process_back_expansion_string) for e in expanded[1:])
 
             elif c == separator:
                 # encountered a separator
@@ -612,12 +633,15 @@ def tokenized_split(string: str,
         # incomplete escapes are not allowed in text tokens
         raise syntax_error(f'un-finished escape sequence: \'{cur_string}\'', len(string))
 
+    if state == _States.EOL and back_expand == 0:
+        parts[-1] = post_process_token(parts[-1])
+
     if remove_stray_separators:
         while parts and parts[-1] == "":
             parts.pop()
-        return post_process_tokens(parts)
+        return parts
 
-    return post_process_tokens(parts)
+    return parts
 
 
 class UnquoteSyntaxError(Exception):
@@ -635,7 +659,8 @@ def unquote(string: str,
             escapes_in_quoted_is_escape: typing.Callable[[str], bool] = is_escape_code,
             escapes_in_quoted_handler: typing.Callable[[str], str] = expand_escape_code,
             single_quotes_raw: bool = False,
-            double_quotes_raw: bool = False
+            double_quotes_raw: bool = False,
+            strict=True,
             ) -> str:
     """
     Remove quotes from a string, including single quotes.
@@ -664,27 +689,29 @@ def unquote(string: str,
     :param escapes_in_quoted_handler: Escape character handler for quoted strings when
         ``escapes_in_quoted`` is ``True``, defaults to ``expand_escape_code``.
 
+    :param strict: Disallow intermixed tokens?
+
     :param escapes_in_unquoted: Render escape sequences in strings that are unquoted?
     :param escapes_in_quoted: Render escape sequences in strings that are quoted?
     :param single_quotes_raw: Never evaluate escape sequences in single-quoted strings?
-    :param double_quotes_raw: Never evaluate escape sequences in double-quoted strings?
+    :param double_quotes_raw: Never evaluate escape sequences in double-quoted strings? T
     :param string: the string
     :return: The un-quoted string
     """
     try:
         val = tokenized_split(
             string,
-                              escapes_in_quoted=escapes_in_quoted,
-                              escapes_in_quoted_is_escape=escapes_in_quoted_is_escape,
-                              escapes_in_quoted_handler=escapes_in_quoted_handler,
-                              escapes_in_unquoted=escapes_in_unquoted,
-                              escapes_in_unquoted_is_escape=escapes_in_unquoted_is_escape,
-                              escapes_in_unquoted_handler=escapes_in_unquoted_handler,
-                              single_quotes_raw=single_quotes_raw,
-                              double_quotes_raw=double_quotes_raw,
-                              strict=True,
-                              remove_quotes=True,
-                              separator=None)
+            escapes_in_quoted=escapes_in_quoted,
+            escapes_in_quoted_is_escape=escapes_in_quoted_is_escape,
+            escapes_in_quoted_handler=escapes_in_quoted_handler,
+            escapes_in_unquoted=escapes_in_unquoted,
+            escapes_in_unquoted_is_escape=escapes_in_unquoted_is_escape,
+            escapes_in_unquoted_handler=escapes_in_unquoted_handler,
+            single_quotes_raw=single_quotes_raw,
+            double_quotes_raw=double_quotes_raw,
+            strict=strict,
+            remove_quotes=True,
+            separator=None)
         if val:
             return val[0]
         return ''
@@ -736,9 +763,11 @@ def shell_quote(string: str, strict: bool = False):
     :return: The quoted string.
     """
     try:
-        result = tokenized_split(string, ' ',
-                                 strict=strict,
-                                 remove_stray_separators=True)
+        result = tokenized_split(
+            string, ' ',
+            strict=strict,
+            remove_stray_separators=True
+        )
         needs_quoting = len(result) > 1
     except TokenizedSplitSyntaxError:
         needs_quoting = True
@@ -824,7 +853,20 @@ def shell_parse(
     :return: shell arguments
     """
 
+    def text_token_processor(token):
+        # the characters above simply resolve to their
+        # value, i.e. the backslash is just removed
+
+        return tokenized_split(
+            token,
+            None,
+            escapes_in_unquoted=True,
+            escapes_in_unquoted_is_escape=is_escape,
+            escapes_in_unquoted_handler=lambda x: x
+        )[0]
+
     def text_expander(token):
+
         if expand_home and '~' in token:
             token = os.path.expanduser(token)
 
@@ -846,8 +888,8 @@ def shell_parse(
                     f'glob expression "{token}" returned zero files.')
             return globs
 
-        # if no globs, return a string
-        return token
+        # if no globs, run standard processing
+        return text_token_processor(token) if token else token
 
     def string_expander(q, s):
         if q == '"':
@@ -856,14 +898,13 @@ def shell_parse(
             return s
         return s
 
-    def boundary_quote_remover(token):
+    # other than resolving \" and \' automatically
+    # we need to resolve the special characters
+    # used for env-vars that can be escaped
+    def is_escape(s):
+        return s in {'\\', '%', '$'}
 
-        # other than resolving \" and \' automatically
-        # we need to resolve the special characters
-        # used for env-vars that can be escaped
-        def is_escape(s):
-            return s in {'\\', '%', '$'}
-
+    def string_token_processor(token):
         # the characters above simply resolve to their
         # value, i.e. the backslash is just removed
 
@@ -882,7 +923,7 @@ def shell_parse(
             strict=False,
             text_expander=text_expander,
             string_expander=string_expander,
-            remove_boundary_quotes=boundary_quote_remover,
+            process_string_token=string_token_processor,
             remove_stray_separators=True,
             **opts
         )

@@ -564,10 +564,10 @@ class BatchProcessor:
     def _set_split(self, directive_args, line):
         name_part = directive_args[1]
         if not name_part.startswith('{{'):
-            return directive_args[1].strip(), directive_args[2].strip()
+            return directive_args[1], directive_args[2]
 
         # Handle the case where the name_part starts with '{{'
-        without_directive = line.split(' ', 1)[1]
+        without_directive = line.split(None, 1)[1]
         t_depth = 0
         var_name = ''
         value_part = ''
@@ -616,17 +616,12 @@ class BatchProcessor:
 
     def _handle_env_directive(self, line: str) -> bool:
         """Handle the \\env directive."""
-        directive_args = line.split(' ', 1)
+        directive_args = line.split(None, 1)
         if len(directive_args) == 2:
-            opts = _textprocessing.shell_parse(
-                self.render_template(directive_args[1].strip()),
-                expand_home=False,
-                expand_glob=False,
-                expand_vars_func=self.expand_vars
-            )
+            opts = self.render_template(directive_args[1]).split()
             for opt in opts:
                 assignment = opt.split('=', 1)
-                value = self.render_template(assignment[1]) if len(assignment) > 1 else ''
+                value = self.expand_vars(self.render_template(assignment[1])) if len(assignment) > 1 else ''
                 try:
                     os.environ[assignment[0]] = value
                 except ValueError:
@@ -644,7 +639,7 @@ class BatchProcessor:
 
     def _handle_unset_env_directive(self, line: str) -> bool:
         """Handle the \\unset_env directive."""
-        directive_args = line.split(' ', 1)
+        directive_args = line.split(None, 1)
         if len(directive_args) == 2:
             opts = _textprocessing.shell_parse(
                 self.render_template(directive_args[1].strip()),
@@ -662,7 +657,7 @@ class BatchProcessor:
 
     def _handle_setp_directive(self, line: str) -> bool:
         """Handle the \\setp directive."""
-        directive_args = line.split(' ', 2)
+        directive_args = line.split(None, 2)
         if len(directive_args) == 3:
             var, value = self._set_split(directive_args, line)
             self.user_define(
@@ -677,7 +672,7 @@ class BatchProcessor:
 
     def _handle_sete_directive(self, line: str) -> bool:
         """Handle the \\sete directive."""
-        directive_args = line.split(' ', 2)
+        directive_args = line.split(None, 2)
         if len(directive_args) == 3:
             try:
                 var, value = self._set_split(directive_args, line)
@@ -698,7 +693,7 @@ class BatchProcessor:
 
     def _handle_set_directive(self, line: str) -> bool:
         """Handle the \\set directive."""
-        directive_args = line.split(' ', 2)
+        directive_args = line.split(None, 2)
         if len(directive_args) == 3:
             var, value = self._set_split(directive_args, line)
             self.user_define(
@@ -713,10 +708,10 @@ class BatchProcessor:
 
     def _handle_unset_directive(self, line: str) -> bool:
         """Handle the \\unset directive."""
-        directive_args = line.split(' ', 1)
+        directive_args = line.split(None, 1)
         if len(directive_args) == 2:
             self.user_undefine(
-                self.expand_vars(self.render_template(directive_args[1].strip())))
+                self.expand_vars(self.render_template(directive_args[1])))
             return True
         elif line != '\\unset':
             raise BatchProcessError(f'Unknown directive "{line}".')
@@ -727,9 +722,9 @@ class BatchProcessor:
 
     def _handle_print_directive(self, line: str) -> bool:
         """Handle the \\print directive."""
-        directive_args = line.split(' ', 1)
+        directive_args = line.split(None, 1)
         if len(directive_args) == 2:
-            _messages.log(self.expand_vars(self.render_template(directive_args[1].strip())))
+            _messages.log(self.expand_vars(self.render_template(directive_args[1])))
         elif line != '\\print':
             raise BatchProcessError(f'Unknown directive "{line}".')
         else:
@@ -738,12 +733,12 @@ class BatchProcessor:
 
     def _handle_echo_directive(self, line: str) -> bool:
         """Handle the \\echo directive."""
-        directive_args = line.split(' ', 1)
+        directive_args = line.split(None, 1)
         if len(directive_args) == 2:
             try:
                 _messages.log(
                     *_textprocessing.shell_parse(
-                        self.render_template(directive_args[1].strip()),
+                        self.render_template(directive_args[1]),
                         expand_vars_func=self.expand_vars
                     )
                 )
@@ -776,7 +771,7 @@ class BatchProcessor:
 
     def _handle_custom_directive(self, line: str) -> bool:
         """Handle custom directives defined by the user."""
-        directive_args = line.split(' ', 1)
+        directive_args = line.split(None, 1)
         directive = directive_args[0].lstrip('\\')
         impl = self.directives.get(directive)
         if impl is None:
@@ -786,7 +781,7 @@ class BatchProcessor:
             if directive_args:
                 return_code = impl(
                     _textprocessing.shell_parse(
-                        self.render_template(directive_args[0].strip()),
+                        self.render_template(directive_args[0]),
                         expand_vars_func=self.expand_vars
                     )
                 )

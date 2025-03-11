@@ -258,6 +258,26 @@ globbing.
 
 @EXAMPLE[../../examples/config_syntax/globbing-config.dgen]
 
+
+String and text escaping behavior
+---------------------------------
+
+The shell language implements unique string and text token escaping behaviors
+that are tailored around the need to handle parseable URI arguments, natural
+language inputs such as prompts, and URLs.
+
+These behaviors are designed so that they do not get in the way
+as much as possible when declaring prompts and URI values.
+
+The shell parsing is not POSIX, string handling is somewhat
+comparable to python for standalone string values in terms
+of quote escaping.
+
+Most if not all behaviors are covered in the example below.
+
+@EXAMPLE[../../examples/config_syntax/token-escaping-config.dgen]
+
+
 The \\print and \\echo directive
 --------------------------------
 
