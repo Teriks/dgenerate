@@ -7302,7 +7302,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [40741161085906]
+            Value: [83720918408378]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -7354,6 +7354,13 @@ The ``\templates_help`` output from the above example is:
         Name: "saved_modules"
             Type: dict[str, dict[str, typing.Any]]
             Value: {}
+
+The option ``--functions-help`` and the directive ``\functions_help`` can be used to print
+documentation for template functions. When the option or directive is used alone all built
+in functions will be printed with their signature, specifying function names as arguments
+will print documentation for those specific functions.
+
+Functions with arguments can be used as either a function or filter IE: ``{{ "quote_me" | quote }}``
 
 The dgenerate specific jinja2 functions/filters are:
 
@@ -7540,16 +7547,373 @@ The dgenerate specific jinja2 functions/filters are:
     
     ====================================================================
 
-Functions above which are usable with only one argument, can be used as
-either a function or filter IE: ``{{ "quote_me" | quote }}``
+In addition to the dgenerate specific jinja2 functions, some python builtins are available:
 
-Functions with multiple arguments that have default arguments can be used as a filter,
-as long as it is acceptable to call them with a single argument given their signature.
+.. code-block:: text
 
-The option ``--functions-help`` and the directive ``\functions_help`` can be used to print
-documentation for template functions. When the option or directive is used alone all built
-in functions will be printed with their signature, specifying function names as arguments
-will print documentation for those specific functions.
+    abs(args, kwargs):
+    
+        Return the absolute value of the argument.
+    
+    ==============================================
+    all(args, kwargs):
+    
+        Return True if bool(x) is True for all values x in the iterable.
+    
+        If the iterable is empty, return True.
+    
+    ====================================================================
+    any(args, kwargs):
+    
+        Return True if bool(x) is True for any x in the iterable.
+    
+        If the iterable is empty, return False.
+    
+    =============================================================
+    ascii(args, kwargs):
+    
+        Return an ASCII-only representation of an object.
+    
+        As repr(), return a string containing a printable representation of an object, but escape the non-ASCII
+        characters in the string returned by repr() using \\x, \\u or \\U escapes. This generates a string similar
+        to that returned by repr() in Python 2.
+    
+    ==============================================================================================================
+    bin(args, kwargs):
+    
+        Return the binary representation of an integer.
+    
+        >>> bin(2796202) '0b1010101010101010101010'
+    
+    ===================================================
+    bool(args, kwargs):
+    
+        bool(x) -> bool
+    
+        Returns True when the argument x is true, False otherwise. The builtins True and False are the only two
+        instances of the class bool. The class bool is a subclass of the class int, and cannot be subclassed.
+    
+    ===========================================================================================================
+    bytearray(args, kwargs):
+    
+        bytearray(iterable_of_ints) -> bytearray bytearray(string, encoding[, errors]) -> bytearray
+        bytearray(bytes_or_buffer) -> mutable copy of bytes_or_buffer bytearray(int) -> bytes array of size given
+        by the parameter initialized with null bytes bytearray() -> empty bytes array
+    
+        Construct a mutable bytearray object from:   - an iterable yielding integers in range(256)   - a text
+        string encoded using the specified encoding   - a bytes or a buffer object   - any object implementing the
+        buffer API.   - an integer
+    
+    ==============================================================================================================
+    bytes(args, kwargs):
+    
+        bytes(iterable_of_ints) -> bytes bytes(string, encoding[, errors]) -> bytes bytes(bytes_or_buffer) ->
+        immutable copy of bytes_or_buffer bytes(int) -> bytes object of size given by the parameter initialized
+        with null bytes bytes() -> empty bytes object
+    
+        Construct an immutable array of bytes from:   - an iterable yielding integers in range(256)   - a text
+        string encoded using the specified encoding   - any object implementing the buffer API.   - an integer
+    
+    ===========================================================================================================
+    callable(args, kwargs):
+    
+        Return whether the object is callable (i.e., some kind of function).
+    
+        Note that classes are callable, as are instances of classes with a __call__() method.
+    
+    =========================================================================================
+    chr(args, kwargs):
+    
+        Return a Unicode string of one character with ordinal i; 0 <= i <= 0x10ffff.
+    
+    ================================================================================
+    complex(args, kwargs):
+    
+        Create a complex number from a real part and an optional imaginary part.
+    
+        This is equivalent to (real + imag*1j) where imag defaults to 0.
+    
+    ============================================================================
+    dict(args, kwargs):
+    
+        dict() -> new empty dictionary dict(mapping) -> new dictionary initialized from a mapping object's
+        (key, value) pairs dict(iterable) -> new dictionary initialized as if via:     d = {}     for k, v in
+        iterable:         d[k] = v dict(**kwargs) -> new dictionary initialized with the name=value pairs     in
+        the keyword argument list.  For example:  dict(one=1, two=2)
+    
+    ============================================================================================================
+    divmod(args, kwargs):
+    
+        Return the tuple (x//y, x%y).  Invariant: div*y + mod == x.
+    
+    ===============================================================
+    enumerate(args, kwargs):
+    
+        Return an enumerate object.
+    
+          iterable     an object supporting iteration
+    
+        The enumerate object yields pairs containing a count (from start, which defaults to zero) and a value
+        yielded by the iterable argument.
+    
+        enumerate is useful for obtaining an indexed list:     (0, seq[0]), (1, seq[1]), (2, seq[2]), ...
+    
+    =========================================================================================================
+    filter(args, kwargs):
+    
+        filter(function or None, iterable) --> filter object
+    
+        Return an iterator yielding those items of iterable for which function(item) is true. If function is None,
+        return the items that are true.
+    
+    ==============================================================================================================
+    float(args, kwargs):
+    
+        Convert a string or number to a floating point number, if possible.
+    
+    =======================================================================
+    format(args, kwargs):
+    
+        Return type(value).__format__(value, format_spec)
+    
+        Many built-in types implement format_spec according to the Format Specification Mini-language. See
+        help('FORMATTING').
+    
+        If type(value) does not supply a method named __format__ and format_spec is empty, then str(value) is
+        returned. See also help('SPECIALMETHODS').
+    
+    =========================================================================================================
+    frozenset(args, kwargs):
+    
+        frozenset() -> empty frozenset object frozenset(iterable) -> frozenset object
+    
+        Build an immutable unordered collection of unique elements.
+    
+    =================================================================================
+    getattr(args, kwargs):
+    
+        Get a named attribute from an object.
+    
+        getattr(x, 'y') is equivalent to x.y When a default argument is given, it is returned when the attribute
+        doesn't exist; without it, an exception is raised in that case.
+    
+    ============================================================================================================
+    hasattr(args, kwargs):
+    
+        Return whether the object has an attribute with the given name.
+    
+        This is done by calling getattr(obj, name) and catching AttributeError.
+    
+    ===========================================================================
+    hash(args, kwargs):
+    
+        Return the hash value for the given object.
+    
+        Two objects that compare equal must also have the same hash value, but the reverse is not necessarily
+        true.
+    
+    =========================================================================================================
+    hex(args, kwargs):
+    
+        Return the hexadecimal representation of an integer.
+    
+        >>> hex(12648430) '0xc0ffee'
+    
+    ========================================================
+    int(args, kwargs):
+    
+        int([x]) -> integer int(x, base=10) -> integer
+    
+        Convert a number or string to an integer, or return 0 if no arguments are given.  If x is a number, return
+        x.__int__().  For floating point numbers, this truncates towards zero.
+    
+        If x is not a number or if base is given, then x must be a string, bytes, or bytearray instance
+        representing an integer literal in the given base.  The literal can be preceded by '+' or '-' and be
+        surrounded by whitespace.  The base defaults to 10.  Valid bases are 0 and 2-36. Base 0 means to interpret
+        the base from the string as an integer literal. >>> int('0b100', base=0) 4
+    
+    ==============================================================================================================
+    iter(args, kwargs):
+    
+        Get an iterator from an object.
+    
+        In the first form, the argument must supply its own iterator, or be a sequence. In the second form, the
+        callable is called until it returns the sentinel.
+    
+    ===========================================================================================================
+    len(args, kwargs):
+    
+        Return the number of items in a container.
+    
+    ==============================================
+    list(args, kwargs):
+    
+        Built-in mutable sequence.
+    
+        If no argument is given, the constructor creates a new empty list. The argument must be an iterable if
+        specified.
+    
+    ==========================================================================================================
+    map(args, kwargs):
+    
+        map(func, *iterables) --> map object
+    
+        Make an iterator that computes the function using arguments from each of the iterables.  Stops when the
+        shortest iterable is exhausted.
+    
+    ===========================================================================================================
+    max(args, kwargs):
+    
+        max(iterable, *[, default=obj, key=func]) -> value max(arg1, arg2, *args, *[, key=func]) -> value
+    
+        With a single iterable argument, return its biggest item. The default keyword-only argument specifies an
+        object to return if the provided iterable is empty. With two or more arguments, return the largest
+        argument.
+    
+    ============================================================================================================
+    min(args, kwargs):
+    
+        min(iterable, *[, default=obj, key=func]) -> value min(arg1, arg2, *args, *[, key=func]) -> value
+    
+        With a single iterable argument, return its smallest item. The default keyword-only argument specifies an
+        object to return if the provided iterable is empty. With two or more arguments, return the smallest
+        argument.
+    
+    =============================================================================================================
+    next(args, kwargs):
+    
+        Return the next item from the iterator.
+    
+        If default is given and the iterator is exhausted, it is returned instead of raising StopIteration.
+    
+    =======================================================================================================
+    object(args, kwargs):
+    
+        The base class of the class hierarchy.
+    
+        When called, it accepts no arguments and returns a new featureless instance that has no instance
+        attributes and cannot be given any.
+    
+    ====================================================================================================
+    oct(args, kwargs):
+    
+        Return the octal representation of an integer.
+    
+        >>> oct(342391) '0o1234567'
+    
+    ==================================================
+    ord(args, kwargs):
+    
+        Return the Unicode code point for a one-character string.
+    
+    =============================================================
+    pow(args, kwargs):
+    
+        Equivalent to base**exp with 2 arguments or base**exp % mod with 3 arguments
+    
+        Some types, such as ints, are able to use a more efficient algorithm when invoked using the three argument
+        form.
+    
+    ==============================================================================================================
+    range(args, kwargs):
+    
+        range(stop) -> range object range(start, stop[, step]) -> range object
+    
+        Return an object that produces a sequence of integers from start (inclusive) to stop (exclusive) by step.
+        range(i, j) produces i, i+1, i+2, ..., j-1. start defaults to 0, and stop is omitted!  range(4) produces
+        0, 1, 2, 3. These are exactly the valid indices for a list of 4 elements. When step is given, it specifies
+        the increment (or decrement).
+    
+    ==============================================================================================================
+    repr(args, kwargs):
+    
+        Return the canonical string representation of the object.
+    
+        For many object types, including most builtins, eval(repr(obj)) == obj.
+    
+    ===========================================================================
+    reversed(args, kwargs):
+    
+        Return a reverse iterator over the values of the given sequence.
+    
+    ====================================================================
+    round(args, kwargs):
+    
+        Round a number to a given precision in decimal digits.
+    
+        The return value is an integer if ndigits is omitted or None.  Otherwise the return value has the same
+        type as the number.  ndigits may be negative.
+    
+    ==========================================================================================================
+    set(args, kwargs):
+    
+        set() -> new empty set object set(iterable) -> new set object
+    
+        Build an unordered collection of unique elements.
+    
+    =================================================================
+    slice(args, kwargs):
+    
+        slice(stop) slice(start, stop[, step])
+    
+        Create a slice object.  This is used for extended slicing (e.g. a[0:10:2]).
+    
+    ===============================================================================
+    sorted(args, kwargs):
+    
+        Return a new list containing all items from the iterable in ascending order.
+    
+        A custom key function can be supplied to customize the sort order, and the reverse flag can be set to
+        request the result in descending order.
+    
+    =========================================================================================================
+    str(args, kwargs):
+    
+        str(object='') -> str str(bytes_or_buffer[, encoding[, errors]]) -> str
+    
+        Create a new string object from the given object. If encoding or errors is specified, then the object must
+        expose a data buffer that will be decoded using the given encoding and error handler. Otherwise, returns
+        the result of object.__str__() (if defined) or repr(object). encoding defaults to
+        sys.getdefaultencoding(). errors defaults to 'strict'.
+    
+    ==============================================================================================================
+    sum(args, kwargs):
+    
+        Return the sum of a 'start' value (default: 0) plus an iterable of numbers
+    
+        When the iterable is empty, return the start value. This function is intended specifically for use with
+        numeric values and may reject non-numeric types.
+    
+    ===========================================================================================================
+    tuple(args, kwargs):
+    
+        Built-in immutable sequence.
+    
+        If no argument is given, the constructor returns an empty tuple. If iterable is specified the tuple is
+        initialized from iterable's items.
+    
+        If the argument is a tuple, the return value is the same object.
+    
+    ==========================================================================================================
+    type(args, kwargs):
+    
+        type(object) -> the object's type type(name, bases, dict, **kwds) -> a new type
+    
+    ===================================================================================
+    zip(args, kwargs):
+    
+        zip(*iterables, strict=False) --> Yield tuples until an input is exhausted.
+    
+           >>> list(zip('abcdefg', range(3), range(4)))    [('a', 0, 0), ('b', 1, 1), ('c', 2, 2)]
+    
+        The zip object yields n-length tuples, where n is the number of iterables passed as positional arguments
+        to zip().  The i-th element in every tuple comes from the i-th iterable argument to zip().  This continues
+        until the shortest argument is exhausted.
+    
+        If strict is true and one of the arguments is exhausted before the others, raise a ValueError.
+    
+    ==============================================================================================================
+
 
 Directives, and applying templating
 -----------------------------------

@@ -151,20 +151,21 @@ The ``\templates_help`` output from the above example is:
       }
 }]
 
-The dgenerate specific jinja2 functions/filters are:
-
-@COMMAND_OUTPUT[python ../scripts/get_builtin_shell_functions.py]
-
-Functions above which are usable with only one argument, can be used as
-either a function or filter IE: ``{{ "quote_me" | quote }}``
-
-Functions with multiple arguments that have default arguments can be used as a filter,
-as long as it is acceptable to call them with a single argument given their signature.
-
 The option ``--functions-help`` and the directive ``\functions_help`` can be used to print
 documentation for template functions. When the option or directive is used alone all built
 in functions will be printed with their signature, specifying function names as arguments
 will print documentation for those specific functions.
+
+Functions with arguments can be used as either a function or filter IE: ``{{ "quote_me" | quote }}``
+
+The dgenerate specific jinja2 functions/filters are:
+
+@COMMAND_OUTPUT[python ../scripts/get_dgenerate_shell_functions.py]
+
+In addition to the dgenerate specific jinja2 functions, some python builtins are available:
+
+@COMMAND_OUTPUT[python ../scripts/get_builtin_shell_functions.py]
+
 
 Directives, and applying templating
 -----------------------------------
