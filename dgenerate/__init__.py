@@ -21,6 +21,9 @@
 
 __version__ = '5.0.0'
 
+import argparse
+import glob
+import itertools
 import os
 import sys
 
@@ -78,6 +81,12 @@ if os.environ.get('DGENERATE_BACKEND_WARNINGS', '0') == '0':
 try:
     import diffusers
     import transformers
+
+    if not hasattr(transformers.DynamicCache, 'get_max_length'):
+        # they changed this, get_max_length no longer exists
+        # this breaks some LLMs with custom modeling code,
+        # and who knows when those repositories will update.
+        transformers.DynamicCache.get_max_length = transformers.DynamicCache.get_max_cache_shape
 
     from dgenerate.pipelinewrapper import (
         InvalidModelFileError,
@@ -212,60 +221,54 @@ def main(args: collections.abc.Sequence[str] | None = None):
 
     # handle meta arguments
 
-    input_file = None
-    shell_mode = '--shell' in args
-    nostdin_mode = '--no-stdin' in args
+    meta_args_parser = argparse.ArgumentParser(prog='dgenerate', add_help=False)
 
-    while '--file' in args:
-        try:
-            pos = args.index('--file')
-        except ValueError:
-            break
-
-        try:
-            input_file = args[pos + 1]
-            if input_file.startswith('-'):
-                raise IndexError
-            args = args[:pos] + args[pos + 2:]
-        except IndexError:
-            dgenerate.messages.log(
-                'dgenerate: error: --file missing argument.')
-            sys.exit(1)
-
-    while '--shell' in args:
-        args.remove('--shell')
-
-    while '--no-stdin' in args:
-        args.remove('--no-stdin')
-
-    if input_file and shell_mode:
-        dgenerate.messages.log(
-            'dgenerate: error: --shell cannot be used with --file.')
+    def _exit(status=0, message=None):
+        if status == 0:
+            pass
+        dgenerate.messages.log(message.strip())
         sys.exit(1)
+
+    meta_args_parser.exit = _exit
+    meta_args_parser.print_usage = lambda x: None
+
+    meta_input_group = meta_args_parser.add_mutually_exclusive_group()
+    meta_input_group.add_argument('--shell', action='store_true')
+    meta_input_group.add_argument('--file', nargs='+')
+
+    meta_args_parser.add_argument('--no-stdin', action='store_true')
+
+    meta_args, args = meta_args_parser.parse_known_args(args)
 
     try:
         render_loop = RenderLoop()
         render_loop.config = DgenerateArguments()
         # ^ this is necessary for --templates-help to
         # render all the correct values
-        if input_file:
+        if meta_args.file:
             runner = ConfigRunner(render_loop=render_loop,
                                   version=__version__,
                                   injected_args=args)
-            try:
-                with open(input_file, 'rt') as file:
-                    runner.run_file(file)
-            except (ModuleFileNotFoundError, FileNotFoundError) as e:
-                dgenerate.messages.log(f'dgenerate: error: {str(e).strip()}',
-                                       level=dgenerate.messages.ERROR)
-                sys.exit(1)
 
-            except BatchProcessError as e:
-                dgenerate.messages.log(f'Config Error: {str(e).strip()}',
-                                       level=dgenerate.messages.ERROR)
-                sys.exit(1)
+            input_files = itertools.chain.from_iterable(
+                [glob.glob(input_file) if '*' in input_file else [input_file] for input_file in meta_args.file])
 
-        elif sys.stdin is not None and (not dgenerate.files.stdin_is_tty() or shell_mode) and not nostdin_mode:
+            for input_file in input_files:
+                try:
+                    with open(input_file, 'rt') as file:
+                        runner.run_file(file)
+                except (ModuleFileNotFoundError, FileNotFoundError) as e:
+                    dgenerate.messages.log(f'dgenerate: error: {str(e).strip()}',
+                                           level=dgenerate.messages.ERROR)
+                    sys.exit(1)
+
+                except BatchProcessError as e:
+                    dgenerate.messages.log(f'Config Error: {str(e).strip()}',
+                                           level=dgenerate.messages.ERROR)
+                    sys.exit(1)
+
+        elif sys.stdin is not None and (
+                not dgenerate.files.stdin_is_tty() or meta_args.shell) and not meta_args.no_stdin:
             # Not a terminal, batch process STDIN
             runner = ConfigRunner(render_loop=render_loop,
                                   version=__version__,
@@ -273,19 +276,19 @@ def main(args: collections.abc.Sequence[str] | None = None):
             while True:
                 try:
                     runner.run_file(sys.stdin)
-                    if not shell_mode:
+                    if not meta_args.shell:
                         sys.exit(0)
                 except ModuleFileNotFoundError as e:
                     # missing plugin file parsed by ConfigRunner out of injected args
                     dgenerate.messages.log(f'dgenerate: error: {str(e).strip()}',
                                            level=dgenerate.messages.ERROR)
-                    if not shell_mode:
+                    if not meta_args.shell:
                         sys.exit(1)
 
                 except BatchProcessError as e:
                     dgenerate.messages.log(f'Config Error: {str(e).strip()}',
                                            level=dgenerate.messages.ERROR)
-                    if not shell_mode:
+                    if not meta_args.shell:
                         sys.exit(1)
         else:
             sys.exit(invoke_dgenerate(args, render_loop=render_loop))
