@@ -481,7 +481,9 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             help="""Convenience argument for reading a configuration script from a file instead
                     of using a pipe. This is a meta argument which can not be used within a
                     configuration script and is only valid from the command line or during a
-                    popen invocation of dgenerate."""
+                    popen invocation of dgenerate. This argument understands glob syntax, 
+                    even on windows, and can accept multiple config file names, which will be
+                    executed in sequence."""
         )
     )
 

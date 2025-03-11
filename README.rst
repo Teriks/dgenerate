@@ -268,8 +268,9 @@ Help Output
       --file
             Convenience argument for reading a configuration script from a file instead of using a pipe. This is
             a meta argument which can not be used within a configuration script and is only valid from the
-            command line or during a popen invocation of dgenerate.
-            -------------------------------------------------------
+            command line or during a popen invocation of dgenerate. This argument understands glob syntax, even
+            on windows, and can accept multiple config file names, which will be executed in sequence.
+            ------------------------------------------------------------------------------------------
       --shell
             When reading configuration from STDIN (a pipe), read forever, even when configuration errors occur.
             This allows dgenerate to run in the background and be controlled by another process sending
@@ -7303,7 +7304,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [83720918408378]
+            Value: [2446688562440]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
