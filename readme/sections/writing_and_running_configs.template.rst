@@ -94,7 +94,7 @@ Empty lines and comments starting with ``#`` will be ignored, comments that occu
 You can create a multiline continuation using ``\`` to indicate that a line continues similar to bash.
 
 Unlike bash, if the next line starts with ``-`` it is considered part of a continuation as well
-even if ``\`` had not been used previously. This allows you to list out many Posix style shell
+even if ``\`` had not been used previously. This allows you to list out many POSIX style shell
 options starting with ``-`` without having to end every line with ``\``.
 
 Comments can be interspersed with invocation or directive arguments
