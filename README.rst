@@ -6934,202 +6934,6 @@ There are template variables for prompts, containing the previous prompt values:
 * ``{{ last_second_model_prompts }}``
 * ``{{ last_second_model_second_prompts }}``
 
-The dgenerate specific jinja2 functions/filters are:
-
-.. code-block:: text
-
-    unquote(strings: str | collections.abc.Iterable[typing.Any], expand: bool = False) -> list:
-    
-        Un-Shell quote a string or iterable of strings (shell parse)
-    
-        The expand argument can be used to indicate that you wish to expand shell globs and the home directory
-        operator
-    
-    ==========================================================================================================
-    quote(strings: str | collections.abc.Iterable[typing.Any]) -> str:
-    
-        Shell quote a string or iterable of strings
-    
-    ===============================================
-    format_prompt(prompts: dgenerate.prompt.Prompt | collections.abc.Iterable[dgenerate.prompt.Prompt]) -> str:
-    
-        Format a prompt object, or a list of prompt objects, into quoted string(s)
-    
-    ==============================================================================
-    format_size(size: collections.abc.Iterable[int]) -> str:
-    
-        Join an iterable of integers into a string seperated by the character 'x', for example (512, 512) ->
-        "512x512"
-    
-    ========================================================================================================
-    align_size(size: str | tuple, align: int, format_size: bool = True) -> str | tuple:
-    
-        Align a string dimension such as "700x700", or a tuple dimension such as (700, 700) to a specific
-        alignment value ("align") and format the result to a string dimension recognized by dgenerate.
-    
-        This function expects a string with the format WIDTHxHEIGHT, or just WIDTH, or a tuple of dimensions.
-    
-        It returns a string in the same format with the dimension aligned to the specified amount, unless
-        "format_size" is False, in which case it will return a tuple.
-    
-    =========================================================================================================
-    pow2_size(size: str | tuple, format_size: bool = True) -> str | tuple:
-    
-        Round a string dimension such as "700x700", or a tuple dimension such as (700, 700) to the nearest power
-        of 2 and format the result to a string dimension recognized by dgenerate.
-    
-        This function expects a string with the format WIDTHxHEIGHT, or just WIDTH, or a tuple of dimensions.
-    
-        It returns a string in the same format with the dimension rounded to the nearest power of 2, unless
-        "format_size" is False, in which case it will return a tuple.
-    
-    ============================================================================================================
-    image_size(file: str, format_size: bool = True) -> str | tuple[int, int]:
-    
-        Return the width and height of an image file on disk.
-    
-        If "format_size" is False, return a tuple instead of a WIDTHxHEIGHT string.
-    
-    ===============================================================================
-    size_is_aligned(size: str | tuple, align: int) -> bool:
-    
-        Check if a string dimension such as "700x700", or a tuple dimension such as (700, 700) is aligned to a
-        specific ("align") value. Returns True or False.
-    
-        This function expects a string with the format WIDTHxHEIGHT, or just WIDTH, or a tuple of dimensions.
-    
-    ==========================================================================================================
-    size_is_pow2(size: str | tuple) -> bool:
-    
-        Check if a string dimension such as "700x700", or a tuple dimension such as (700, 700) is a power of 2
-        dimension. Returns True or False.
-    
-        This function expects a string with the format WIDTHxHEIGHT, or just WIDTH, or a tuple of dimensions.
-    
-    ==========================================================================================================
-    format_model_type(model_type: <enum 'ModelType'>) -> str:
-    
-        Return the string representation of a ModelType enum. This can be used to get command line compatible
-        --model-type string from the last_model_type template variable.
-    
-    =========================================================================================================
-    format_dtype(dtype: <enum 'DataType'>) -> str:
-    
-        Return the string representation of a DataType enum. This can be used to get command line compatible
-        --dtype string from the last_dtype template variable.
-    
-    ========================================================================================================
-    last(iterable: list | collections.abc.Iterable[typing.Any]) -> typing.Any:
-    
-        Return the last element in an iterable collection.
-    
-    ======================================================
-    first(iterable: collections.abc.Iterable[typing.Any]) -> typing.Any:
-    
-        Return the first element in an iterable collection.
-    
-    =======================================================
-    gen_seeds(n: int) -> list[str]:
-    
-        Generate N random integer seeds (as strings) and return a list of them.
-    
-    ===========================================================================
-    cwd() -> str:
-    
-        Return the current working directory as a string.
-    
-    =====================================================
-    download(url: str, output: str | None = None, overwrite: bool = False, text: bool = False) -> str:
-    
-        Download a file from a URL to the web cache or a specified path, and return the file path to the
-        downloaded file.
-    
-        \set my_variable {{ download('https://modelhost.com/model.safetensors' }}
-    
-        \set my_variable {{ download('https://modelhost.com/model.safetensors', output='model.safetensors') }}
-    
-        \set my_variable {{ download('https://modelhost.com/model.safetensors', output='directory/' }}
-    
-        \setp my_variable download('https://modelhost.com/model.safetensors')
-    
-        When an "output" path is specified, if the file already exists it will be reused by default (simple
-        caching behavior), this can be disabled with the argument "overwrite=True" indicating that the file should
-        always be downloaded.
-    
-        "overwrite=True" can also be used to overwrite cached files in the dgenerate web cache.
-    
-        An error will be raised by default if a text mimetype is encountered, this can be overridden with
-        "text=True"
-    
-        Be weary that if you have a long-running loop in your config using a top level jinja template, which
-        refers to your template variable, cache expiry may invalidate the file stored in your variable.
-    
-        You can rectify this by using the template function inside your loop.
-    
-    ==============================================================================================================
-    have_feature(feature_name: str) -> bool:
-    
-        Return a boolean value indicating if dgenerate has a specific feature available.
-    
-        Currently accepted values are:
-    
-        "ncnn": Do we have ncnn installed?
-        "gpt4all": Do we have gpt4all installed?
-        "torchao": Do we have torchao installed?
-        "bitsandbytes": Do we have bitsandbytes installed?
-    
-    ====================================================================================
-    platform() -> str:
-    
-        Return platform.system()
-    
-        Returns the system/OS name, such as 'Linux', 'Darwin', 'Java', 'Windows'.
-    
-        An empty string is returned if the value cannot be determined.
-    
-    =============================================================================
-    frange(start, stop = None, step = 0.1):
-    
-        Like range, but for floating point numbers.
-    
-        The default step value is 0.1
-    
-    ===============================================
-    have_cuda() -> bool:
-    
-        Check if CUDA is available.
-    
-    ===============================
-    total_memory(device: str | None = None, unit: str = 'b'):
-    
-        Get the total ram that a specific device possesses.
-    
-        This will always return 0 for "mps".
-    
-        The "device" argument specifies the device, if none is specified, the systems default accelerator will be
-        used, if a GPU is installed, it will be the first GPU.
-    
-        The "unit" argument specifies the unit you want returned, must be one of (case insensitive): b (bytes), kb
-        (kilobytes), mb (megabytes), gb (gigabytes), kib (kibibytes), mib (mebibytes), gib (gibibytes)
-    
-    ==============================================================================================================
-    default_device() -> str:
-    
-        Return the name of the default accelerator device on the system.
-    
-    ====================================================================
-
-Functions above which are usable with only one argument, can be used as
-either a function or filter IE: ``{{ "quote_me" | quote }}``
-
-Functions with multiple arguments that have default arguments can be used as a filter,
-as long as it is acceptable to call them with a single argument given their signature.
-
-The option ``--functions-help`` and the directive ``\functions_help`` can be used to print
-documentation for template functions. When the option or directive is used alone all built
-in functions will be printed with their signature, specifying function names as arguments
-will print documentation for those specific functions.
-
 To receive information about Jinja2 template variables that are set after a dgenerate invocation.
 You can use the ``\templates_help`` directive which is similar to the ``--templates-help`` option
 except it will print out all the template variables assigned values instead of just their
@@ -7551,80 +7355,201 @@ The ``\templates_help`` output from the above example is:
             Type: dict[str, dict[str, typing.Any]]
             Value: {}
 
-The following is output from ``\functions_help`` showing every implemented template function signature.
+The dgenerate specific jinja2 functions/filters are:
 
 .. code-block:: text
 
-    Available config template functions:
+    unquote(strings: str | collections.abc.Iterable[typing.Any], expand: bool = False) -> list:
     
-        abs(args, kwargs)
-        align_size(size: str | tuple, align: int, format_size: bool = True) -> str | tuple
-        all(args, kwargs)
-        any(args, kwargs)
-        ascii(args, kwargs)
-        bin(args, kwargs)
-        bool(args, kwargs)
-        bytearray(args, kwargs)
-        bytes(args, kwargs)
-        callable(args, kwargs)
-        chr(args, kwargs)
-        complex(args, kwargs)
-        cwd() -> str
-        default_device() -> str
-        dict(args, kwargs)
-        divmod(args, kwargs)
-        download(url: str, output: str | None = None, overwrite: bool = False, text: bool = False) -> str
-        enumerate(args, kwargs)
-        filter(args, kwargs)
-        first(iterable: collections.abc.Iterable[typing.Any]) -> typing.Any
-        float(args, kwargs)
-        format(args, kwargs)
-        format_dtype(dtype: <enum 'DataType'>) -> str
-        format_model_type(model_type: <enum 'ModelType'>) -> str
-        format_prompt(prompts: dgenerate.prompt.Prompt | collections.abc.Iterable[dgenerate.prompt.Prompt]) -> str
-        format_size(size: collections.abc.Iterable[int]) -> str
-        frange(start, stop = None, step = 0.1)
-        frozenset(args, kwargs)
-        gen_seeds(n: int) -> list[str]
-        getattr(args, kwargs)
-        hasattr(args, kwargs)
-        hash(args, kwargs)
-        have_cuda() -> bool
-        have_feature(feature_name: str) -> bool
-        hex(args, kwargs)
-        image_size(file: str, format_size: bool = True) -> str | tuple[int, int]
-        int(args, kwargs)
-        iter(args, kwargs)
-        last(iterable: list | collections.abc.Iterable[typing.Any]) -> typing.Any
-        len(args, kwargs)
-        list(args, kwargs)
-        map(args, kwargs)
-        max(args, kwargs)
-        min(args, kwargs)
-        next(args, kwargs)
-        object(args, kwargs)
-        oct(args, kwargs)
-        ord(args, kwargs)
-        platform() -> str
-        pow(args, kwargs)
-        pow2_size(size: str | tuple, format_size: bool = True) -> str | tuple
-        quote(strings: str | collections.abc.Iterable[typing.Any]) -> str
-        range(args, kwargs)
-        repr(args, kwargs)
-        reversed(args, kwargs)
-        round(args, kwargs)
-        set(args, kwargs)
-        size_is_aligned(size: str | tuple, align: int) -> bool
-        size_is_pow2(size: str | tuple) -> bool
-        slice(args, kwargs)
-        sorted(args, kwargs)
-        str(args, kwargs)
-        sum(args, kwargs)
-        total_memory(device: str | None = None, unit: str = 'b')
-        tuple(args, kwargs)
-        type(args, kwargs)
-        unquote(strings: str | collections.abc.Iterable[typing.Any], expand: bool = False) -> list
-        zip(args, kwargs)
+        Un-Shell quote a string or iterable of strings (shell parse)
+    
+        The expand argument can be used to indicate that you wish to expand shell globs and the home directory
+        operator
+    
+    ==========================================================================================================
+    quote(strings: str | collections.abc.Iterable[typing.Any]) -> str:
+    
+        Shell quote a string or iterable of strings
+    
+    ===============================================
+    format_prompt(prompts: dgenerate.prompt.Prompt | collections.abc.Iterable[dgenerate.prompt.Prompt]) -> str:
+    
+        Format a prompt object, or a list of prompt objects, into quoted string(s)
+    
+    ==============================================================================
+    format_size(size: collections.abc.Iterable[int]) -> str:
+    
+        Join an iterable of integers into a string seperated by the character 'x', for example (512, 512) ->
+        "512x512"
+    
+    ========================================================================================================
+    align_size(size: str | tuple, align: int, format_size: bool = True) -> str | tuple:
+    
+        Align a string dimension such as "700x700", or a tuple dimension such as (700, 700) to a specific
+        alignment value ("align") and format the result to a string dimension recognized by dgenerate.
+    
+        This function expects a string with the format WIDTHxHEIGHT, or just WIDTH, or a tuple of dimensions.
+    
+        It returns a string in the same format with the dimension aligned to the specified amount, unless
+        "format_size" is False, in which case it will return a tuple.
+    
+    =========================================================================================================
+    pow2_size(size: str | tuple, format_size: bool = True) -> str | tuple:
+    
+        Round a string dimension such as "700x700", or a tuple dimension such as (700, 700) to the nearest power
+        of 2 and format the result to a string dimension recognized by dgenerate.
+    
+        This function expects a string with the format WIDTHxHEIGHT, or just WIDTH, or a tuple of dimensions.
+    
+        It returns a string in the same format with the dimension rounded to the nearest power of 2, unless
+        "format_size" is False, in which case it will return a tuple.
+    
+    ============================================================================================================
+    image_size(file: str, format_size: bool = True) -> str | tuple[int, int]:
+    
+        Return the width and height of an image file on disk.
+    
+        If "format_size" is False, return a tuple instead of a WIDTHxHEIGHT string.
+    
+    ===============================================================================
+    size_is_aligned(size: str | tuple, align: int) -> bool:
+    
+        Check if a string dimension such as "700x700", or a tuple dimension such as (700, 700) is aligned to a
+        specific ("align") value. Returns True or False.
+    
+        This function expects a string with the format WIDTHxHEIGHT, or just WIDTH, or a tuple of dimensions.
+    
+    ==========================================================================================================
+    size_is_pow2(size: str | tuple) -> bool:
+    
+        Check if a string dimension such as "700x700", or a tuple dimension such as (700, 700) is a power of 2
+        dimension. Returns True or False.
+    
+        This function expects a string with the format WIDTHxHEIGHT, or just WIDTH, or a tuple of dimensions.
+    
+    ==========================================================================================================
+    format_model_type(model_type: <enum 'ModelType'>) -> str:
+    
+        Return the string representation of a ModelType enum. This can be used to get command line compatible
+        --model-type string from the last_model_type template variable.
+    
+    =========================================================================================================
+    format_dtype(dtype: <enum 'DataType'>) -> str:
+    
+        Return the string representation of a DataType enum. This can be used to get command line compatible
+        --dtype string from the last_dtype template variable.
+    
+    ========================================================================================================
+    last(iterable: list | collections.abc.Iterable[typing.Any]) -> typing.Any:
+    
+        Return the last element in an iterable collection.
+    
+    ======================================================
+    first(iterable: collections.abc.Iterable[typing.Any]) -> typing.Any:
+    
+        Return the first element in an iterable collection.
+    
+    =======================================================
+    gen_seeds(n: int) -> list[str]:
+    
+        Generate N random integer seeds (as strings) and return a list of them.
+    
+    ===========================================================================
+    cwd() -> str:
+    
+        Return the current working directory as a string.
+    
+    =====================================================
+    download(url: str, output: str | None = None, overwrite: bool = False, text: bool = False) -> str:
+    
+        Download a file from a URL to the web cache or a specified path, and return the file path to the
+        downloaded file.
+    
+        \set my_variable {{ download('https://modelhost.com/model.safetensors' }}
+    
+        \set my_variable {{ download('https://modelhost.com/model.safetensors', output='model.safetensors') }}
+    
+        \set my_variable {{ download('https://modelhost.com/model.safetensors', output='directory/' }}
+    
+        \setp my_variable download('https://modelhost.com/model.safetensors')
+    
+        When an "output" path is specified, if the file already exists it will be reused by default (simple
+        caching behavior), this can be disabled with the argument "overwrite=True" indicating that the file should
+        always be downloaded.
+    
+        "overwrite=True" can also be used to overwrite cached files in the dgenerate web cache.
+    
+        An error will be raised by default if a text mimetype is encountered, this can be overridden with
+        "text=True"
+    
+        Be weary that if you have a long-running loop in your config using a top level jinja template, which
+        refers to your template variable, cache expiry may invalidate the file stored in your variable.
+    
+        You can rectify this by using the template function inside your loop.
+    
+    ==============================================================================================================
+    have_feature(feature_name: str) -> bool:
+    
+        Return a boolean value indicating if dgenerate has a specific feature available.
+    
+        Currently accepted values are:
+    
+        "ncnn": Do we have ncnn installed?
+        "gpt4all": Do we have gpt4all installed?
+        "torchao": Do we have torchao installed?
+        "bitsandbytes": Do we have bitsandbytes installed?
+    
+    ====================================================================================
+    platform() -> str:
+    
+        Return platform.system()
+    
+        Returns the system/OS name, such as 'Linux', 'Darwin', 'Java', 'Windows'.
+    
+        An empty string is returned if the value cannot be determined.
+    
+    =============================================================================
+    frange(start, stop = None, step = 0.1):
+    
+        Like range, but for floating point numbers.
+    
+        The default step value is 0.1
+    
+    ===============================================
+    have_cuda() -> bool:
+    
+        Check if CUDA is available.
+    
+    ===============================
+    total_memory(device: str | None = None, unit: str = 'b'):
+    
+        Get the total ram that a specific device possesses.
+    
+        This will always return 0 for "mps".
+    
+        The "device" argument specifies the device, if none is specified, the systems default accelerator will be
+        used, if a GPU is installed, it will be the first GPU.
+    
+        The "unit" argument specifies the unit you want returned, must be one of (case insensitive): b (bytes), kb
+        (kilobytes), mb (megabytes), gb (gigabytes), kib (kibibytes), mib (mebibytes), gib (gibibytes)
+    
+    ==============================================================================================================
+    default_device() -> str:
+    
+        Return the name of the default accelerator device on the system.
+    
+    ====================================================================
+
+Functions above which are usable with only one argument, can be used as
+either a function or filter IE: ``{{ "quote_me" | quote }}``
+
+Functions with multiple arguments that have default arguments can be used as a filter,
+as long as it is acceptable to call them with a single argument given their signature.
+
+The option ``--functions-help`` and the directive ``\functions_help`` can be used to print
+documentation for template functions. When the option or directive is used alone all built
+in functions will be printed with their signature, specifying function names as arguments
+will print documentation for those specific functions.
 
 Directives, and applying templating
 -----------------------------------
