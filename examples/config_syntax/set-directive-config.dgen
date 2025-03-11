@@ -1,6 +1,11 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 5.0.0
 
+# The \set directive behaves like a macro, and does not preform any shell parsing.
+# It preforms template expansion and then environmental variable expansion in that
+# order in all cases
+
+
 \set my_variable "I am an incomplete string and this is completely fine because I am a raw value
 
 # prints exactly what is above, including the quote at the beginning

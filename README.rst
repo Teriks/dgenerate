@@ -161,6 +161,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/version_5.0.0/>`_.
         * `Setting template variables, in depth`_
         * `Setting environmental variables, in depth`_
         * `Globbing and path manipulation`_
+        * `String and text escaping behavior`_
         * `The \\print and \\echo directive`_
         * `The \\image_process directive`_
         * `The \\exec directive`_
@@ -7328,7 +7329,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [86346809879165]
+            Value: [40741161085906]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -7757,6 +7758,11 @@ This is for assigning literal text values to a template variable.
     #! /usr/bin/env dgenerate --file
     #! dgenerate 5.0.0
     
+    # The \set directive behaves like a macro, and does not preform any shell parsing.
+    # It preforms template expansion and then environmental variable expansion in that
+    # order in all cases
+    
+    
     \set my_variable "I am an incomplete string and this is completely fine because I am a raw value
     
     # prints exactly what is above, including the quote at the beginning
@@ -7793,6 +7799,13 @@ feature to assign template variables.
 
     #! /usr/bin/env dgenerate --file
     #! dgenerate 5.0.0
+    
+    # The \sete directive preforms full shell parsing just like \echo, the difference
+    # is that instead of just printing the parsed tokens back, it assigns
+    # them to a template variable as a python array.
+    
+    # You can use this to expand shell globs into a
+    # template variable as a python array, among other things.
     
     
     \sete my_variable --argument ./*
@@ -7833,6 +7846,12 @@ implemented by dgenerate are available for use in the evaluated expressions.
 
     #! /usr/bin/env dgenerate --file
     #! dgenerate 5.0.0
+    
+    # The \setp directive can be used to assign python literals
+    # and python expressions to a template variable. Template expansion
+    # and environmental variable expansion can happen inside of the provided
+    # python expression, template expansion happens first.
+    
     
     \setp my_variable 10*10
     
@@ -8023,6 +8042,177 @@ globbing.
     --prompts "In the style of picaso"
     --image-seeds ../media/*.png
     --output-path ./output
+
+
+String and text escaping behavior
+---------------------------------
+
+The shell language implements unique string and text token escaping behaviors
+that are tailored around the need to handle parseable URI arguments, natural
+language inputs such as prompts, and URLs.
+
+These behaviors are designed so that they do not get in the way
+as much as possible when declaring prompts and URI values.
+
+The shell parsing is not POSIX, string handling is somewhat
+comparable to python for standalone string values in terms
+of quote escaping.
+
+Most if not all behaviors are covered in the example below.
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 5.0.0
+    
+    # dgenerates string escaping rules are something between bash and python
+    # for these examples, \echo will be used.
+    
+    # \echo preforms full shell parsing and prints the result to stdout
+    # so it is useful for showing what escaping or expansion results in
+    
+    # Built in directives such as \set, \setp, \unset, \env, and \unset_env
+    # do not follow these escaping rules as they do not use shell parsing
+    # and instead implement custom parsing, \sete can be used to set a
+    # template variable using shell parsing
+    
+    # The general rule of thumb for built in directives with custom
+    # parsing is that, templates are expanded and then environmental
+    # variable expansion occurs in all cases, they behave more like
+    # a macro and are designed for defining values in raw form
+    
+    # during shell parsing, string characters can be escaped
+    # in text tokens as well as special characters for
+    # environmental variable access outside of template
+    # constructs
+    
+    # this prints: iam'atext"token, if you were invoking
+    # dgenerate, or a custom directive, or using \exec,
+    # that is what would be received in argv exactly
+    
+    \echo iam\'atext\"token
+    
+    # you can escape the special characters $ and %
+    # this prints: https://iamaweird$url/%00%00
+    
+    \echo https://iamaweird\$url/\%00\%00
+    
+    # you can also escape environmental expansions
+    # using single quotes, this is useful for URLs
+    # that use those characters, this prints the
+    # same as the above
+    
+    \echo 'https://iamaweird$url/%00%00'
+    
+    
+    # resolution of the escape characters
+    # ", ', %, and $ always happens in all
+    # types of strings during shell parsing,
+    # even if escaping was not necessary due to
+    # outer quotes type
+    
+    # print: $DO_NOT_EXPAND_ENV_VAR
+    
+    \echo '\$DO_NOT_EXPAND_ENV_VAR'
+    
+    # demonstrate backslash removal in all cases
+    
+    \echo "this backslash is removed \" from the string"
+    
+    \echo 'this backslash is removed \" from the string, even though escaping was not needed.'
+    
+    # how to keep it
+    
+    \echo "I want the backslash \\' to stay in my string."
+    
+    \echo 'I want the backslash \\" to stay in my string.'
+    
+    
+    # Text tokens that intermingle with complete strings are processed differently
+    # Complete strings in these tokens are left un-touched.
+    
+    # This prints: test="stringpart"
+    
+    \echo test="stringpart"
+    
+    
+    # Escaping for ", ', %, and $ only occur in the text portion
+    # of the token, for example, this prints: te'st="strin\"gpart"
+    
+    \echo te\'st="strin\"gpart"
+    
+    # complete strings are left alone in the token in terms of quote
+    # removal and escape sequences, only environmental variable
+    # expansion can occur in strings which are intermixed with text tokens.
+    
+    # this prints: te'st="strin\"gparttest"
+    # and the escape in the textual portion of the token is resolved,
+    # while the one in the string is left alone
+    
+    \env VARIABLE=test
+    
+    \echo te\'st="strin\"gpart$VARIABLE"
+    
+    # You can still escape env-vars by using escape sequences,
+    # however, the backslash will not be stripped out
+    # this prints: test="\$VARIABLE"
+    
+    \echo test="\$VARIABLE"
+    
+    # You can also escape env-var expansion using single quotes
+    # This prints: test='$VARIABLE'
+    
+    \echo test='$VARIABLE'
+    
+    # When an intermixed token is shell parsed, all information about
+    # the structure of strings contained within it is totally preserved
+    # and present in argv, this allows these intermixed tokens be used
+    # for constructing URIs that can be further parsed without information
+    # being lost
+    
+    # prints: test="\% Hello \' World!"
+    
+    \echo test="\% Hello \' World!"
+    
+    
+    # dgenerate's shell language implements a special form of
+    # expansion called back-expansion for globbing. This feature
+    # appends text to the end of every glob result. Globs are not
+    # considered an intermixed token, and the appended string is
+    # handled like a standalone string
+    
+    # prints: devscripts.tar dgenerate.tar docker.tar docs.tar
+    
+    \echo d*'.tar'
+    
+    # The string that is appended undergoes quote removal,
+    # escape resolution, and also env-var expansion
+    
+    # prints: devscripts.test dgenerate.test docker.test docs.test
+    
+    \echo d*'.$VARIABLE'
+    
+    # You can append special characters using escaping
+    
+    # prints: devscripts.$VARIABLE dgenerate.$VARIABLE docker.$VARIABLE docs.$VARIABLE
+    
+    \echo d*".\$VARIABLE"
+    
+    # single quotes prevent env-var expansion, so this is the same as above
+    
+    \echo d*'.$VARIABLE'
+    
+    # you can escape quotes, all escaped quotes will be treated the same
+    # no matter the string type, i.e. the backslash will be removed
+    
+    # prints: devscripts.'hello' dgenerate.'hello' docker.'hello' docs.'hello'
+    
+    \echo d*'.\'hello\''
+    
+    # prints: devscripts."hello" dgenerate."hello" docker."hello" docs."hello"
+    
+    \echo d*'.\"hello\"'
+
 
 The \\print and \\echo directive
 --------------------------------

@@ -1,6 +1,12 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 5.0.0
 
+# The \setp directive can be used to assign python literals
+# and python expressions to a template variable. Template expansion
+# and environmental variable expansion can happen inside of the provided
+# python expression, template expansion happens first.
+
+
 \setp my_variable 10*10
 
 # prints 100
