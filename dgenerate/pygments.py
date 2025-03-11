@@ -182,9 +182,9 @@ _number_patterns = (_number_float_pattern,
 
 def _create_string_continue(name, char, root_state):
     string_token = _token.String.Double if char == '"' else _token.String.Single
+    env_vars = [_env_var_pattern] if char == '"' else []
     return {
-        name: [
-            _env_var_pattern,
+        name: env_vars + [
             _jinja_block_pattern,
             _jinja_comment_pattern,
             _jinja_interpolate_pattern,
@@ -206,8 +206,7 @@ def _create_string_continue(name, char, root_state):
             (r'(\s|\n)+', _token.Whitespace),
             (r'(?<=[-\n\s.])', _token.Whitespace, f'{name}_continue')
         ],
-        f'{name}_continue': [
-            _env_var_pattern,
+        f'{name}_continue': env_vars + [
             _jinja_block_pattern,
             _jinja_comment_pattern,
             _jinja_interpolate_pattern,
@@ -271,6 +270,7 @@ class DgenerateLexer(_lexer.RegexLexer):
             (r'(?<!\w)(\\unset|\\save_modules|\\use_modules|\\clear_modules)(\s+)',
              _lexer.bygroups(_token.Name.Builtin, _token.Text.Whitespace), 'var_then_root'),
             (r'(?<!\w)(\\[a-zA-Z_][a-zA-Z0-9_]*)', _lexer.bygroups(_token.Name.Builtin)),
+            (r'\\[^\s]', _token.Operator),
             (r'(?<!-)\b(%s)\b' % '|'.join(_SCHEDULER_KEYWORDS), _token.Keyword),
             (r'(?<!-)\b(%s)\b' % '|'.join(_CLASS_KEYWORDS), _token.Keyword),
             (r'(?<!-)\b(%s)\b' % '|'.join(_MODEL_TYPE_KEYWORDS), _token.Keyword),
