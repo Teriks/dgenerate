@@ -107,8 +107,8 @@ The following is a config file example that covers the most basic syntax concept
 @EXAMPLE[../../examples/config_syntax/basic-syntax-config.dgen]
 
 
-Built in template variables and functions
------------------------------------------
+Built in template variables
+---------------------------
 
 There is valuable information about the previous invocation of dgenerate that
 is set in the environment and available to use via Jinja2 templating or in
@@ -150,6 +150,10 @@ The ``\templates_help`` output from the above example is:
           "Value: [1]": "Value: [30]"
       }
 }]
+
+
+Built in template functions
+---------------------------
 
 The option ``--functions-help`` and the directive ``\functions_help`` can be used to print
 documentation for template functions. When the option or directive is used alone all built
