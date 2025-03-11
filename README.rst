@@ -8557,16 +8557,16 @@ Most if not all behaviors are covered in the example below.
     \echo iam\'atext\"token
     
     # you can escape the special characters $ and %
-    # this prints: https://iamaweird$url/%00%00
+    # this prints: https://iamaweirdurl.com/%00%00$
     
-    \echo https://iamaweird\$url/\%00\%00
+    \echo https://iamaweirdurl.com/\%00\%00\$
     
     # you can also escape environmental expansions
     # using single quotes, this is useful for URLs
     # that use those characters, this prints the
     # same as the above
     
-    \echo 'https://iamaweird$url/%00%00'
+    \echo 'https://iamaweirdurl.com/%00%00\$'
     
     
     # resolution of the escape characters

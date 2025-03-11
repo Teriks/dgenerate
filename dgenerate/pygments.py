@@ -76,7 +76,7 @@ _SETP_KEYWORDS = sorted((
 ), key=lambda s: len(s), reverse=True)
 
 # Common patterns
-_ecos = r'(\\#|[^/\s\\#=;:{}"\'])'
+_ecos = r'(\\[^\s]|[^/\s\\#=;:{}"\'])'
 _comment_pattern = (r'(?<!\\)(#.*$)', _token.Comment.Single)
 _env_var_pattern = (r'\$(?:\w+|\{\w+\})|%[\w]+%', _token.Name.Constant)
 _jinja_block_pattern = (r'(\{%)(\s*)(\w+)',
@@ -101,8 +101,8 @@ _http_pattern = (r'(?<!\w)(https?://(?:'  # Protocol
                  r'(?:\d{1,3}\.){3}\d{1,3}|'  # IPv4
                  r'\[[a-fA-F0-9:]+\])'  # IPv6
                  r'(?::\d+)?'  # Optional port
-                 r'(?:/[a-zA-Z0-9\-._~%!$&\'()*+,=:@/\\%\\$]*)?'  # Path (including \% and \$)
-                 r'(?:\?[a-zA-Z0-9\-._~%!$&\'()*+,=:@/?\\%\\$]*)?'  # Query parameters (including \% and \$)
+                 r'(?:/(\\[$%\']?|[a-zA-Z0-9\-._~%!$&\'()*+,=:@/])*)?'  # Path (including allowed shell escapes)
+                 r'(?:\?(\\[$%\']?|[a-zA-Z0-9\-._~%!$&\'()*+,=:@/?])*)?'  # Query parameters (including allowed shell escapes)
                  r')',
                  _token.String)
 
