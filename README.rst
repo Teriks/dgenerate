@@ -8566,7 +8566,7 @@ Most if not all behaviors are covered in the example below.
     # that use those characters, this prints the
     # same as the above
     
-    \echo 'https://iamaweirdurl.com/%00%00\$'
+    \echo 'https://iamaweirdurl.com/%00%00$'
     
     
     # resolution of the escape characters
