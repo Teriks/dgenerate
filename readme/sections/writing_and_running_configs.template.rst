@@ -124,27 +124,15 @@ There are template variables for prompts, containing the previous prompt values:
 * ``{{ last_second_model_prompts }}``
 * ``{{ last_second_model_second_prompts }}``
 
-Some available custom jinja2 functions/filters are:
+The dgenerate specific jinja2 functions/filters are:
 
-* ``{{ first(list_of_items) }}`` (First element in a list)
-* ``{{ last(list_of_items) }}`` (Last element in a list)
-* ``{{ unquote('"unescape-me"') }}`` (shell unquote / split, works on strings and lists)
-* ``{{ quote('escape-me') }}`` (shell quote, works on strings and lists)
-* ``{{ format_prompt(prompt_object) }}`` (Format and quote one or more prompt objects with their delimiter, works on single prompts and lists)
-* ``{{ format_size(size_tuple) }}`` (Format a size tuple / iterable, join with "x" character)
-* ``{{ align_size('700x700', 8) }}`` (Align a size string or tuple to a specific alignment, return a formatted string by default)
-* ``{{ pow2_size('700x700', 8) }}`` (Round a size string or tuple to the nearest power of 2, return a formatted string by default)
-* ``{{ size_is_aligned('700x700', 8) }}`` (Check if a size string or tuple is aligned to a specific alignment, return ``True`` or ``False``)
-* ``{{ size_is_pow2('700x700') }}`` (Check if a size string or tuple is a power of 2 dimension, return ``True`` or ``False``)
-* ``{{ format_model_type(last_model_type) }}`` (Format a ``ModelType`` enum to a value to ``--model-type``)
-* ``{{ format_dtype(last_dtype) }}`` (Format a ``DataType`` enum to a value to ``--dtype``)
-* ``{{ gen_seeds(n) }}`` (Return a list of random integer seeds in the form of strings)
-* ``{{ cwd() }}`` (Return the current working directory as a string)
-* ``{{ download(url) }}`` (Download from a url to the web cache and return the file path)
-* ``{{ have_feature(feature_name) }}`` (Check for feature and return bool, value examples: ``ncnn``)
-* ``{{ platform() }}`` (Return platform.system())
+@COMMAND_OUTPUT[python ../scripts/get_builtin_shell_functions.py]
 
-The above functions which possess arguments can be used as either a function or filter IE: ``{{ "quote_me" | quote }}``
+Functions above which are usable with only one argument, can be used as
+either a function or filter IE: ``{{ "quote_me" | quote }}``
+
+Functions with multiple arguments that have default arguments can be used as a filter,
+as long as it is acceptable to call them with a single argument given their signature.
 
 The option ``--functions-help`` and the directive ``\functions_help`` can be used to print
 documentation for template functions. When the option or directive is used alone all built
