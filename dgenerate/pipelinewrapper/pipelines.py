@@ -32,6 +32,7 @@ import huggingface_hub
 import torch.nn
 import torch.nn
 import transformers.utils.quantization_config
+import diffusers.quantizers.quantization_config
 
 import dgenerate.exceptions as _d_exceptions
 import dgenerate.extras.diffusers
@@ -353,6 +354,22 @@ def _disable_to(module, vae=False):
         f'Disabled .to() on module / model containing meta tensors: {_types.fullname(module)}')
 
 
+def _check_bnb_status(module) -> tuple[bool, bool, bool]:
+    is_loaded_in_4bit_bnb = (
+            hasattr(module, "is_loaded_in_4bit")
+            and module.is_loaded_in_4bit
+            and getattr(module, "quantization_method", None) ==
+            diffusers.quantizers.quantization_config.QuantizationMethod.BITS_AND_BYTES
+    )
+    is_loaded_in_8bit_bnb = (
+            hasattr(module, "is_loaded_in_8bit")
+            and module.is_loaded_in_8bit
+            and getattr(module, "quantization_method", None) ==
+            diffusers.quantizers.quantization_config.QuantizationMethod.BITS_AND_BYTES
+    )
+    return is_loaded_in_4bit_bnb or is_loaded_in_8bit_bnb, is_loaded_in_4bit_bnb, is_loaded_in_8bit_bnb
+
+
 def enable_sequential_cpu_offload(pipeline: diffusers.DiffusionPipeline,
                                   device: torch.device | str = "cuda"):
     """
@@ -366,7 +383,9 @@ def enable_sequential_cpu_offload(pipeline: diffusers.DiffusionPipeline,
 
     _set_sequential_cpu_offload_flag(pipeline, True)
     for name, model in get_torch_pipeline_modules(pipeline).items():
-        if name in pipeline._exclude_from_cpu_offload:
+        quant, _, _ = _check_bnb_status(model)
+
+        if name in pipeline._exclude_from_cpu_offload or quant:
             continue
 
         elif not is_sequential_cpu_offload_enabled(model):
@@ -419,12 +438,7 @@ def enable_model_cpu_offload(pipeline: diffusers.DiffusionPipeline,
         if not isinstance(model, torch.nn.Module):
             continue
 
-        is_loaded_in_8bit_bnb = (
-                hasattr(model, "is_loaded_in_8bit")
-                and model.is_loaded_in_8bit
-                and getattr(model, "quantization_method", None) ==
-                transformers.utils.quantization_config.QuantizationMethod.BITS_AND_BYTES
-        )
+        _, _, is_loaded_in_8bit_bnb = _check_bnb_status(model)
 
         if is_loaded_in_8bit_bnb:
             _messages.debug_log(
@@ -1961,12 +1975,6 @@ def _create_torch_diffusion_pipeline(
                 'Loading original config .yaml file is not supported '
                 'when loading from a Hugging Face repo.'
             )
-
-    if _enums.model_type_is_kolors(model_type) and quantizer_uri:
-        raise UnsupportedPipelineConfigError(
-            f'--model-type {_enums.get_model_type_string(model_type)} '
-            f'does not support using a quantization backend.'
-        )
 
     if original_config:
         original_config = _util.download_non_hf_config(original_config)

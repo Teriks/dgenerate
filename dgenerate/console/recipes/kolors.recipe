@@ -38,5 +38,7 @@ order: 10
 @imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"1024x1024"}]
 @promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
 @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
+@quantizer[{}]
+@quantizer[{"label": "Refiner Quantizer", "arg":"--second-model-quantizer"}]
 @device[{}]
 --prompts "add your prompt here"

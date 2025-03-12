@@ -243,10 +243,6 @@ class TextEncoderUri:
             # these are used for cache differentiation only
             raise ValueError('sequential_cpu_offload_member and model_cpu_offload_member cannot both be True.')
 
-        if self.encoder == 'ChatGLMModel' and self.quantizer:
-            raise _exceptions.TextEncoderUriLoadError(
-                'ChatGLMModel does not support loading with a quantization backend.')
-
         if self.dtype is None:
             torch_dtype = _enums.get_torch_dtype(dtype_fallback)
         else:
