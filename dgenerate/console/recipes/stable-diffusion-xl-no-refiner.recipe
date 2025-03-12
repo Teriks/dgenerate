@@ -4,11 +4,12 @@ order: 5
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "stabilityai/stable-diffusion-xl-base-1.0", "optional":false, "file-types":["models"]}]
 @file[{"label": "Original Config (yaml)", "arg": "--original-config", "file-types": ["yaml"]}]
 --model-type torch-sdxl
-@dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "float32"], "default":"float16"}]
+@dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"], "default":"float16"}]
 @dropdown[{"label":"Model variant", "arg":"--variant", "options":["fp16"], "default":"fp16"}]
 @karrasscheduler[{"label":"Scheduler", "arg":"--scheduler"}]
 @switch[{"label":"Use HiDiffusion", "arg":"--hi-diffusion"}]
-@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "divider-after":true}]
+@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"]}]
+@quantizer[{"divider-after": true}]
 @torchvae[{"label":"VAE Path / URI", "dir":true, "file-types":["models"]}]
 @switch[{"label":"VAE Tiling", "arg":"--vae-tiling"}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing", "divider-after":true}]
@@ -34,6 +35,5 @@ order: 5
 @promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
 @promptweighter[{"label":"Prompt Weighter", "arg":"--prompt-weighter", "filter":["compel", "sd-embed"]}]
 @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
-@quantizer[{}]
 @device[{}]
 --prompts "add your prompt here"

@@ -1361,7 +1361,7 @@ def _torch_args_hasher(args):
                                                             exclude={'scale'}),
         'quantizer_uri':
             _uris.uri_hash_with_parser(
-                _util.get_quantizer_uri_class(quantizer_uri).parse)
+                _uris.get_quantizer_uri_class(quantizer_uri).parse)
             if quantizer_uri else lambda x: None
     }
     return _d_memoize.args_cache_key(args, custom_hashes=custom_hashes)

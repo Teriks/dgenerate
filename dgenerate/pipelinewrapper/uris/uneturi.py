@@ -216,7 +216,7 @@ class UNetUri:
         model_path = _pipelinewrapper_util.download_non_hf_model(self.model)
 
         if self.quantizer:
-            quant_config = _pipelinewrapper_util.get_quantizer_uri_class(
+            quant_config = _util.get_quantizer_uri_class(
                 self.quantizer,
                 _exceptions.InvalidUNetUriError
             ).parse(self.quantizer).to_config()

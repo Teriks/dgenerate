@@ -39,7 +39,7 @@ class BNBQuantizerUri:
                  bits: int = 8,
                  bits4_compute_dtype: str = None,
                  bits4_quant_type: str = "fp4",
-                 bits4_use_double_quant=False,
+                 bits4_use_double_quant: bool = False,
                  bits4_quant_storage: str = None):
 
         if bits not in {4, 8}:

@@ -3,7 +3,7 @@ order: 11
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "Kwai-Kolors/Kolors-diffusers", "optional":false, "file-types":["models"]}]
 --model-type torch-kolors
-@dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "float32"], "default":"float16"}]
+@dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"], "default":"float16"}]
 @dropdown[{"label":"Model variant", "arg":"--variant", "options":["fp16"], "default":"fp16"}]
 @karrasscheduler[{"label":"Scheduler", "arg":"--scheduler"}]
 @switch[{"label":"Use HiDiffusion", "arg":"--hi-diffusion"}]
@@ -30,6 +30,5 @@ order: 11
 @imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"1024x1024"}]
 @promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
 @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
-@quantizer[{}]
 @device[{}]
 --prompts "add your prompt here"

@@ -443,13 +443,13 @@ class DiffusionPipelineWrapper:
 
         if quantizer_uri is not None:
             try:
-                _util.get_quantizer_uri_class(quantizer_uri)
+                _uris.get_quantizer_uri_class(quantizer_uri)
             except ValueError as e:
                 raise _pipelines.UnsupportedPipelineConfigError(str(e))
 
         if second_model_quantizer_uri is not None:
             try:
-                _util.get_quantizer_uri_class(second_model_quantizer_uri)
+                _uris.get_quantizer_uri_class(second_model_quantizer_uri)
             except ValueError as e:
                 raise _pipelines.UnsupportedPipelineConfigError(str(e))
 

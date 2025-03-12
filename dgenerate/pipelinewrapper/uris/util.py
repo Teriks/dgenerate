@@ -18,14 +18,20 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import inspect
+import itertools
 
+import diffusers
 import torch
 
 import dgenerate.memoize as _memoize
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
+import dgenerate.pipelinewrapper.uris.bnbquantizeruri as _bnbquantizeruri
+import dgenerate.pipelinewrapper.uris.torchaoquantizeruri as _torchaoquantizeruri
 import dgenerate.torchutil as _torchutil
 import dgenerate.types as _types
+import dgenerate.textprocessing as _textprocessing
 
 
 def uri_hash_with_parser(parser, exclude: set[str] | None = None):
@@ -77,6 +83,84 @@ def uri_list_hash_with_parser(parser, exclude: set[str] | None = None):
         return '[' + ','.join(uri_hash_with_parser(parser, exclude=exclude)(path) for path in paths) + ']'
 
     return hasher
+
+
+def get_uri_accepted_args_schema(uri_cls: type):
+    """
+    Get the accepted arguments as a schema dict for a URI class.
+
+    Keyed by argument ``name``, content keys include:
+
+    ``default`` contains any default value, this key may not exist if the argument has no default value.
+
+    ``types`` contains all accepted types for the argument in string form.
+
+    ``optional`` can the argument accept the value ``None``?
+
+    :return: dict
+    """
+    schema = dict()
+    for name, arg in inspect.signature(uri_cls.__init__).parameters.items():
+        if name == 'self':
+            continue
+
+        name = _textprocessing.dashup(name)
+
+        entry = {}
+        schema[name] = entry
+
+        def _type_name(t):
+            return (str(t) if t.__module__ != 'builtins' else t.__name__).strip()
+
+        def _resolve_union(t):
+            name = _type_name(t)
+            if _types.is_union(t):
+                return set(itertools.chain.from_iterable(
+                    [_resolve_union(t) for t in arg.annotation.__args__]))
+            return [name]
+
+        type_name = _type_name(arg.annotation)
+
+        if _types.is_union(arg.annotation):
+            union_args = _resolve_union(arg.annotation)
+            if 'NoneType' in union_args:
+                entry['optional'] = True
+                union_args.remove('NoneType')
+
+            entry['types'] = list(sorted(union_args))
+
+        else:
+            entry['optional'] = False
+            entry['types'] = [type_name]
+
+        if arg.default is not inspect.Parameter.empty:
+            schema[name]['default'] = arg.default
+    return schema
+
+
+def get_quantizer_uri_class(uri: str, exception: type[Exception] = ValueError):
+    """
+    Get the URI parser class needed for a particular quantizer URI
+    :param uri: The URI
+    :param exception: Exception type to raise on unsupported quantization backend.
+    :return: Class from :py:mod:`dgenerate.pipelinewrapper.uris`
+    """
+
+    concept = uri.split(';')[0].strip()
+    if concept in {'bnb', 'bitsandbytes'}:
+        if not diffusers.utils.is_bitsandbytes_available():
+            raise exception(
+                f'Cannot load quantization backend bitsandbytes, '
+                f'as bitsandbytes is not installed.')
+        return _bnbquantizeruri.BNBQuantizerUri
+    elif concept == 'torchao':
+        if not diffusers.utils.is_torchao_available():
+            raise exception(
+                f'Cannot load quantization backend torchao, '
+                f'as torchao is not installed.')
+        return _torchaoquantizeruri.TorchAOQuantizerUri
+    else:
+        raise exception(f'Unknown quantization backend: {concept}')
 
 
 def _patch_module_to_for_sized_cache(cache: _memory.SizedConstrainedObjectCache, module):

@@ -32,7 +32,7 @@ import dgenerate.prompt as _prompt
 import dgenerate.promptupscalers.exceptions as _exceptions
 import dgenerate.promptupscalers.llmupscalermixin as _llmupscalermixin
 import dgenerate.promptupscalers.promptupscaler as _promptupscaler
-from dgenerate.pipelinewrapper.util import get_quantizer_uri_class as _get_quantizer_uri_class
+from dgenerate.pipelinewrapper.uris import get_quantizer_uri_class as _get_quantizer_uri_class
 
 
 @contextlib.contextmanager

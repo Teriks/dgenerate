@@ -73,6 +73,16 @@ with open('dgenerate/console/schemas/karrasschedulers.json', 'w') as file:
     schema = _pipelinewrapper.get_scheduler_uri_schema([getattr(diffusers, n) for n in scheduler_names])
     json.dump(schema, file)
 
+
+with open('dgenerate/console/schemas/quantizers.json', 'w') as file:
+    schema = {
+        'bnb': _pipelinewrapper.get_uri_accepted_args_schema(_pipelinewrapper.uris.BNBQuantizerUri),
+        'torchao': _pipelinewrapper.get_uri_accepted_args_schema(_pipelinewrapper.uris.TorchAOQuantizerUri)
+    }
+
+    json.dump(schema, file)
+
+
 config_runner = _batchprocess.ConfigRunner()
 
 with open('dgenerate/console/schemas/directives.json', 'w') as file:

@@ -35,23 +35,24 @@ import typing
 import PIL.Image
 import PIL.ImageTk
 
+import dgenerate.console.argumentselect as _argumentselect
+import dgenerate.console.directiveselect as _directiveselect
 import dgenerate.console.filedialog as _filedialog
 import dgenerate.console.finddialog as _finddialog
+import dgenerate.console.functionselect as _functionselect
 import dgenerate.console.imageprocessorselect as _imageprocessorselect
 import dgenerate.console.imageseedselect as _imageseedselect
 import dgenerate.console.karrasschedulerselect as _karrasschedulerselect
 import dgenerate.console.promptupscalerselect as _promptupscalerselect
 import dgenerate.console.promptweighterselect as _promptweighterselect
+import dgenerate.console.quantizerselect as _quantizerselect
 import dgenerate.console.recipesform as _recipesform
-import dgenerate.console.argumentselect as _argumentselect
-import dgenerate.console.directiveselect as _directiveselect
-import dgenerate.console.functionselect as _functionselect
 import dgenerate.console.resources as _resources
 import dgenerate.textprocessing as _textprocessing
 from dgenerate.console.codeview import DgenerateCodeView
+from dgenerate.console.procmon import ProcessMonitor
 from dgenerate.console.scrolledtext import ScrolledText
 from dgenerate.console.stdinpipe import StdinPipeFullError
-from dgenerate.console.procmon import ProcessMonitor
 
 DGENERATE_EXE = \
     os.path.splitext(
@@ -185,6 +186,8 @@ class DgenerateConsole(tk.Tk):
                                     command=self._input_text_insert_prompt_upscaler)
         self._edit_menu.add_command(label='Insert Prompt Weighter URI',
                                     command=self._input_text_insert_prompt_weighter)
+        self._edit_menu.add_command(label='Insert Quantizer URI',
+                                    command=self._input_text_insert_quantizer)
 
         # Run menu
 
@@ -466,6 +469,8 @@ class DgenerateConsole(tk.Tk):
                                              command=self._input_text_insert_prompt_upscaler)
         self._input_text_context.add_command(label='Insert Prompt Weighter URI',
                                              command=self._input_text_insert_prompt_weighter)
+        self._input_text_context.add_command(label='Insert Quantizer URI',
+                                             command=self._input_text_insert_quantizer)
 
         self._paned_window_vertical.add(self._input_text)
 
@@ -847,6 +852,15 @@ class DgenerateConsole(tk.Tk):
 
     def _input_text_insert_prompt_weighter(self):
         s = _promptweighterselect.request_uri(
+            master=self)
+
+        if s is None or not s.strip():
+            return
+
+        self._insert_or_replace_input_text(s)
+
+    def _input_text_insert_quantizer(self):
+        s = _quantizerselect.request_uri(
             master=self)
 
         if s is None or not s.strip():
