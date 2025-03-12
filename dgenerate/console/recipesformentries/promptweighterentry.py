@@ -42,3 +42,6 @@ class _PromptWeighterEntry(_schemaentry._PluginSchemaEntry):
                          help_button=True,
                          schema_help_node='PROMPT_WEIGHTER_HELP',
                          schema=schema, **kwargs)
+
+        if self.arg is None:
+            self.arg = '--prompt-weighter'

@@ -23,8 +23,8 @@ import tkinter as tk
 import typing
 
 import dgenerate.console.recipesformentries.entry as _entry
-import dgenerate.console.resources as _resources
 import dgenerate.console.recipesformentries.pluginschemaentry as _schemaentry
+import dgenerate.console.resources as _resources
 
 
 class _KarrasSchedulerEntry(_schemaentry._PluginSchemaEntry):
@@ -38,6 +38,9 @@ class _KarrasSchedulerEntry(_schemaentry._PluginSchemaEntry):
             help_button=False,
             schema=_resources.get_schema('karrasschedulers'),
             **kwargs)
+
+        if self.arg is None:
+            self.arg = '--scheduler'
 
     def _create_entry_single_type(self,
                                   param_name: str,

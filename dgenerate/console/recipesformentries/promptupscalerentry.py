@@ -51,6 +51,9 @@ class _PromptUpscalerEntry(_schemaentry._PluginSchemaEntry):
                          schema_help_node='PROMPT_UPSCALER_HELP',
                          schema=schema, **kwargs)
 
+        if self.arg is None:
+            self.arg = '--prompt-upscaler'
+
     def _apply_file_dir_selects(self, param_name: str, entry: _schemaentry._PluginArgEntry):
         if param_name == 'model':
             if self.plugin_name_var.get() == 'gpt4all':

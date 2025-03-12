@@ -51,6 +51,8 @@ class _PluginUriSelect(tk.Toplevel):
             row=1
         )
 
+        self.plugin_entry.arg = None
+
         self.plugin_frame.grid(row=0, pady=(5, 5), padx=(5, 5), sticky='nsew')
 
         self.button = tk.Button(self, text='Insert', command=self._insert_action)
