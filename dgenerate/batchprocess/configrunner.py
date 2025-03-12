@@ -1071,12 +1071,13 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
     def _generate_template_variables(self) -> dict[str, typing.Any]:
         return {k: v[1] for k, v in self._generate_template_variables_with_types().items()}
 
-    def generate_directives_help(self, directive_names: typing.Collection[str] | None = None):
+    def generate_directives_help(self, directive_names: typing.Collection[str] | None = None, help_wrap_width: int | None = None):
         """
         Generate the help string for ``--directives-help``
 
-
         :param directive_names: Display help for specific directives, if ``None`` or ``[]`` is specified, display all.
+        :param help_wrap_width: Wrap documentation strings by this amount,
+            if ``None`` use :py:func:`dgenerate.textprocessing.long_text_wrap_width()`
 
         :raise ValueError: if given directive names could not be found
 
@@ -1123,19 +1124,21 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                             doc,
                             initial_indent=' ' * 4,
                             subsequent_indent=' ' * 4,
-                            width=_textprocessing.long_text_wrap_width())
+                            width=_types.default(help_wrap_width, _textprocessing.long_text_wrap_width()))
                     yield name + _textprocessing.underline(':\n\n' + doc + '\n')
 
             help_string += '\n'.join(docs())
 
         return help_string
 
-    def generate_functions_help(self, function_names: typing.Collection[str] | None = None):
+    def generate_functions_help(self, function_names: typing.Collection[str] | None = None, help_wrap_width: int | None = None):
         """
         Generate the help string for ``--functions-help``
 
 
         :param function_names: Display help for specific functions, if ``None`` or ``[]`` is specified, display all.
+        :param help_wrap_width: Wrap documentation strings by this amount,
+            if ``None`` use :py:func:`dgenerate.textprocessing.long_text_wrap_width()`
 
         :raise ValueError: if given directive names could not be found
 
@@ -1186,7 +1189,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                             doc,
                             initial_indent=' ' * 4,
                             subsequent_indent=' ' * 4,
-                            width=_textprocessing.long_text_wrap_width())
+                            width=_types.default(help_wrap_width, _textprocessing.long_text_wrap_width()))
                     yield (_types.format_function_signature(impl, alternate_name=name) if inspect.isfunction(impl)
                            else _types.format_function_signature(impl.__init__,
                                                                  alternate_name=name,
