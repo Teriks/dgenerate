@@ -35,6 +35,7 @@ exclude_from_collection = {
 # or have needed source files
 requires_extra_data_forced = [
     'dgenerate',
+    'bitsandbytes',
     'gpt4all',
     'controlnet_aux',
     'fake_useragent',
@@ -97,6 +98,8 @@ for package_name in required_package_names:
         include_py_files=include_source,
         includes=['**/*.info',
                   '**/*.recipe',
+                  '**/*.csv',
+                  '**/*.marisa',
                   '**/*.txt',
                   '**/*.c',
                   '**/*.cpp',

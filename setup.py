@@ -226,17 +226,17 @@ if __name__ != 'setup_as_library':
         if name in requires:
             requires.pop(name)
 
-    extras = {
+    pyinstaller_requires = ['pyinstaller==6.12.0']
+    sphinx_requires = ['sphinx_rtd_theme==3.0.2', 'sphinx_rtd_theme==3.0.2']
+
+    extras: dict[str, list[str]] = {
         'ncnn': ['ncnn==1.0.20241226'],
         'gpt4all': ['gpt4all==2.8.2'],
-        'dev': ['pyinstaller==6.12.0',
-                'sphinx==8.2.3',
-                'sphinx_rtd_theme==3.0.2',
+        'dev': [*pyinstaller_requires,
+                *sphinx_requires,
                 'poetry~=2.1.1',
                 'graphviz~=0.20.3'],
-        'win-installer': ['pyinstaller==6.12.0'],
-        'readthedocs': ['sphinx==7.2.6',
-                        'sphinx_rtd_theme==2.0.0']
+        'readthedocs': sphinx_requires
     }
 
     python_requirement = requires.get('python')
@@ -259,18 +259,28 @@ if __name__ != 'setup_as_library':
     quant_extras = []
 
     if 'bitsandbytes' in requires:
-        quant_extras.append(['bitsandbytes' + requires.pop('bitsandbytes')])
-        extras['bitsandbytes'] = quant_extras[-1]
+        bitsandbytes_requires = ['bitsandbytes' + requires.pop('bitsandbytes')]
+        quant_extras.extend(bitsandbytes_requires)
+        extras['bitsandbytes'] = bitsandbytes_requires
 
     if 'torchao' in requires:
-        quant_extras.append(['torchao' + requires.pop('torchao')])
-        extras['torchao'] = quant_extras[-1]
+        torchao_requires = ['torchao' + requires.pop('torchao')]
+        quant_extras.extend(torchao_requires)
+        extras['torchao'] = torchao_requires
 
     if quant_extras:
-        extras['quant'] = list(itertools.chain.from_iterable(quant_extras))
+        extras['quant'] = quant_extras
 
     if dgenerate_platform in {'linux', 'windows'}:
-        extras['gpt4all_cuda'] = 'gpt4all[cuda]==2.8.2'
+        extras['gpt4all_cuda'] = ['gpt4all[cuda]==2.8.2']
+
+    if dgenerate_platform == 'windows':
+        extras['win-installer'] = (
+                pyinstaller_requires +
+                extras['ncnn'] +
+                extras['gpt4all_cuda'] +
+                quant_extras
+        )
 
     setup(name='dgenerate',
           python_requires=python_requirement,
