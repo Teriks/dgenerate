@@ -90,7 +90,9 @@ with open('dgenerate/console/schemas/directives.json', 'w') as file:
     schema = dict()
 
     for directive in config_runner.directives.keys():
-        schema['\\' + directive] = config_runner.generate_directives_help([directive])
+        schema['\\' + directive] = config_runner.generate_directives_help(
+            [directive], help_wrap_width=100
+        )
 
     json.dump(schema, file)
 
@@ -99,7 +101,9 @@ with open('dgenerate/console/schemas/functions.json', 'w') as file:
     schema = dict()
 
     for function in itertools.chain(config_runner.template_functions.keys(), config_runner.builtins.keys()):
-        schema[function] = config_runner.generate_functions_help([function])
+        schema[function] = config_runner.generate_functions_help(
+            [function], help_wrap_width=100
+        )
 
     json.dump(schema, file)
 
