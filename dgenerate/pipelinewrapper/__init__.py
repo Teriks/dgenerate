@@ -173,7 +173,12 @@ from .uris import (
     # Adetailer
     AdetailerDetectorUri,
     InvalidAdetailerDetectorUriError,
-    AdetailerDetectorUriLoadError
+    AdetailerDetectorUriLoadError,
+
+    uri_hash_with_parser,
+    uri_list_hash_with_parser,
+    get_uri_accepted_args_schema,
+    get_quantizer_uri_class
 )
 
 # Utility

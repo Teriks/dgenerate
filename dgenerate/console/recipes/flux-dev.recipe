@@ -10,9 +10,10 @@ order: 16
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "black-forest-labs/FLUX.1-dev", "optional":false, "file-types":["models"]}]
 --model-type torch-flux {{ auth_token }}
-@dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["bfloat16", "float16", "float32"], "default":"bfloat16"}]
+@dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"], "default":"bfloat16"}]
 @karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "filter": ["FlowMatchEulerDiscreteScheduler"]}]
-@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "default":1, "divider-after":true}]
+@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "default":1}]
+@quantizer[{"divider-after":true}]
 @torchvae[{"label":"VAE Path / URI", "dir":true, "file-types":["models"]}]
 @switch[{"label":"VAE Tiling", "arg":"--vae-tiling"}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing", "divider-after":true}]
@@ -34,6 +35,5 @@ order: 16
 @promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
 @promptweighter[{"label":"Prompt Weighter", "arg":"--prompt-weighter", "filter":["sd-embed"]}]
 @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
-@quantizer[{}]
 @device[{}]
 --prompts "add your prompt here"

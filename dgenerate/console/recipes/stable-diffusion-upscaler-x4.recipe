@@ -5,7 +5,8 @@ order: 19
 @file[{"label": "Original Config (yaml)", "arg": "--original-config", "file-types": ["yaml"]}]
 @karrasscheduler[{"label":"Scheduler", "arg":"--scheduler"}]
 @switch[{"label":"Use HiDiffusion", "arg":"--hi-diffusion"}]
-@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "divider-after":true}]
+@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"]}]
+@quantizer[{"divider-after": true}]
 --model-type torch-upscaler-x4
 --dtype float16
 --variant fp16
@@ -24,6 +25,5 @@ order: 19
 @promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
 @promptweighter[{"label":"Prompt Weighter", "arg":"--prompt-weighter", "filter":["compel", "sd-embed"]}]
 @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
-@quantizer[{}]
 @device[{}]
 --prompts "your prompt here"

@@ -21,6 +21,8 @@
 import collections.abc
 import contextlib
 import glob
+import inspect
+import itertools
 import json
 import os
 import pathlib
@@ -234,30 +236,6 @@ def single_file_load_sub_module(
         )
 
     return model
-
-
-def get_quantizer_uri_class(uri, exception=ValueError):
-    """
-    Get the URI parser class needed for a particular quantizer URI
-    :param uri: The URI
-    :param exception: Exception type to raise on unsupported quantization backend.
-    :return: Class from :py:mod:`dgenerate.pipelinewrapper.uris`
-    """
-    concept = uri.split(';')[0].strip()
-    if concept in {'bnb', 'bitsandbytes'}:
-        if not diffusers.utils.is_bitsandbytes_available():
-            raise exception(
-                f'Cannot load quantization backend bitsandbytes, '
-                f'as bitsandbytes is not installed.')
-        return dgenerate.pipelinewrapper.uris.BNBQuantizerUri
-    elif concept == 'torchao':
-        if not diffusers.utils.is_torchao_available():
-            raise exception(
-                f'Cannot load quantization backend torchao, '
-                f'as torchao is not installed.')
-        return dgenerate.pipelinewrapper.uris.TorchAOQuantizerUri
-    else:
-        raise exception(f'Unknown quantization backend: {concept}')
 
 
 class ModelNotFoundError(Exception):

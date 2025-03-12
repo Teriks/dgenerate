@@ -18,56 +18,80 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-
-import dgenerate.console.resources as _resources
-import dgenerate.console.recipesformentries.entry as _entry
+import importlib.util
 import tkinter as tk
+import typing
+
+import dgenerate.console.recipesformentries.entry as _entry
+import dgenerate.console.recipesformentries.pluginschemaentry as _schemaentry
+import dgenerate.console.resources as _resources
 
 
-class _QuantizerEntry(_entry._Entry):
+class _QuantizerEntry(_schemaentry._PluginSchemaEntry):
     NAME = 'quantizer'
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs, widget_rows=1)
+
+        schema = _resources.get_schema('quantizers')
+
+        if importlib.util.find_spec('torchao') is None:
+            schema.pop('torchao', None)
+
+        super().__init__(
+            *args,
+            label='Quantizer',
+            help_button=False,
+            schema=schema,
+            **kwargs)
 
         if self.arg is None:
             self.arg = '--quantizer'
 
-        opts = _resources.get_quantizer_recipes()
+    def _create_entry_single_type(self,
+                                  param_name: str,
+                                  param_type: str,
+                                  default_value: typing.Any,
+                                  optional: bool,
+                                  row: int) -> _schemaentry._PluginArgEntry:
+        if param_name == 'bits' and self.plugin_name_var.get() == 'bnb':
+            default_value = str(default_value)
+            variable = tk.StringVar(value=default_value)
+            entry = tk.OptionMenu(
+                self.master, variable, '8', '4')
+            entry.grid(row=row, column=1, sticky='we', padx=_entry.ROW_XPAD)
+            return _schemaentry._PluginArgEntry(raw=False, widgets=[entry], variable=variable)
 
-        options = self.config.get(
-            'options', opts
-        )
+        if 'dtype' in param_name or 'storage' in param_name and self.plugin_name_var.get() == 'bnb':
+            default_value = str(default_value)
+            variable = tk.StringVar(value=default_value)
 
-        if self.optional:
-            options = [''] + options
+            values = ['float16', 'bfloat16', 'float32']
 
-        self.text_var = tk.StringVar(
-            value=self.config.get('default', options[0]))
+            if str(default_value) not in values:
+                values = [str(default_value)] + values
 
-        self.label_widget = tk.Label(
-            self.master,
-            text=self.get_label('Quantizer'), anchor='e')
+            entry = tk.OptionMenu(
+                self.master, variable, *values)
 
-        self.entry = tk.OptionMenu(self.master,
-                                   self.text_var,
-                                   *options)
+            entry.grid(row=row, column=1, sticky='we', padx=_entry.ROW_XPAD)
 
-        if len(opts) <= 1:
-            self.entry.configure(state="disabled")
+            return _schemaentry._PluginArgEntry(raw=False, widgets=[entry], variable=variable)
+        if 'quant-type' in param_name and self.plugin_name_var.get() == 'bnb':
+            default_value = str(default_value)
+            variable = tk.StringVar(value=default_value)
 
-        self.label_widget.grid(row=self.row, column=0, padx=_entry.ROW_XPAD, sticky='e')
-        self.entry.grid(row=self.row, column=1, padx=_entry.ROW_XPAD, sticky='ew')
+            values = ['fp4', 'nf4']
 
-    def invalid(self):
-        _entry.invalid_colors(self.entry)
+            if str(default_value) not in values:
+                values = [str(default_value)] + values
 
-    def valid(self):
-        _entry.valid_colors(self.entry)
+            entry = tk.OptionMenu(
+                self.master, variable, *values)
 
-    def is_empty(self):
-        return self.text_var.get().strip() == ''
-
-    def template(self, content):
-        return self._template(content, self.text_var.get().strip())
+            entry.grid(row=row, column=1, sticky='we', padx=_entry.ROW_XPAD)
+            return _schemaentry._PluginArgEntry(raw=False, widgets=[entry], variable=variable)
+        else:
+            created_simple_type, entry = self._create_int_float_bool_entries(param_type, default_value, optional, row)
+            if created_simple_type:
+                return entry
+            return self._create_raw_type_entry(param_type, default_value, optional, row)
