@@ -11,7 +11,7 @@ order: 2
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "stabilityai/stable-diffusion-3.5-medium-diffusers", "optional":false, "file-types":["models"]}]
 --model-type torch-sd3 {{ auth_token }}
 @dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"], "default":"float16"}]
-@dropdown[{"label":"Model variant", "arg":"--variant", "options":["fp16"], "default":"fp16"}]
+@dropdown[{"label":"Model variant", "arg":"--variant", "options":["fp16", "bf16"], "default":"fp16"}]
 @karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "filter": ["FlowMatchEulerDiscreteScheduler"]}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "default":1}]
 @quantizer[{"divider-after":true}]

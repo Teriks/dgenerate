@@ -5,7 +5,7 @@ order: 7
 @file[{"label": "Original Config (yaml)", "arg": "--original-config", "file-types": ["yaml"]}]
 --model-type torch-sdxl
 @dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"], "default":"float16"}]
-@dropdown[{"label":"Model variant", "arg":"--variant", "options":["fp16"], "default":"fp16"}]
+@dropdown[{"label":"Model variant", "arg":"--variant", "options":["fp16", "bf16"], "default":"fp16"}]
 --scheduler LCMScheduler
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "default":0}]
 @quantizer[{"divider-after":true}]
