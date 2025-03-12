@@ -76,7 +76,7 @@ def create_portable_environment():
         shutil.rmtree('build')
 
     subprocess.run([python_exe,
-                    '-m', 'pip', 'install', '.[win-installer, ncnn, gpt4all_cuda]',
+                    '-m', 'pip', 'install', '.[win-installer]',
                     '--extra-index-url', 'https://download.pytorch.org/whl/cu124/'], env=env)
 
     if args.custom_diffusers:
