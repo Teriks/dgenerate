@@ -2,9 +2,12 @@
 #! dgenerate 5.0.0
 
 
-{% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 15 %}
+\setp can_quant have_cuda() and have_feature('bitsandbytes')
+\setp total_vram total_memory(unit='gib')
+
+{% if can_quant and total_vram > 15 %}
     \set optimization --quantizer bnb;bits=4;bits4-compute-dtype=float16
-{% elif have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 10 %}
+{% elif can_quant and total_vram > 10 %}
     \set optimization --quantizer bnb;bits=4;bits4-compute-dtype=float16;bits4-quant-type=nf4;bits4-use-double-quant=True
 {% else %}
     \set optimization --model-sequential-offload
