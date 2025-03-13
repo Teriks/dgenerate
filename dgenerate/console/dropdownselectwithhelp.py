@@ -21,6 +21,7 @@
 
 import tkinter as tk
 import tkinter.ttk as ttk
+import typing
 
 import dgenerate.console.resources as _resources
 import dgenerate.console.util as _util
@@ -35,8 +36,14 @@ def _adjust_combobox_width(combo, options):
     combo.config(width=max_width + 2)  # Add a couple of characters to avoid tight fit
 
 
-class _ModalSelectWithHelp(tk.Toplevel):
-    def __init__(self, item_name: str, values_to_help: dict[str, str], master=None, position: tuple[int, int] = None):
+class _DropdownSelectWithHelp(tk.Toplevel):
+    def __init__(self,
+                 item_name: str,
+                 values_to_help: dict[str, str],
+                 insert: typing.Callable[[str], None],
+                 master=None,
+                 position: tuple[int, int] = None
+                 ):
         super().__init__(master)
         self.title(f'Insert {item_name}')
         self._item_name = item_name
@@ -49,9 +56,8 @@ class _ModalSelectWithHelp(tk.Toplevel):
         self._content = None
         self._ok = False
         self.transient(master)
-        self.grab_set()
         self.resizable(False, False)
-        self._insert = False
+        self._insert = insert
 
         self._frame = tk.Frame(self)
 
@@ -88,7 +94,7 @@ class _ModalSelectWithHelp(tk.Toplevel):
         if self._current_value.get() not in self._values_dict:
             return
 
-        top = tk.Toplevel(self)
+        top = tk.Toplevel(self.master if self.master else self)
         top.title(f'{self._item_name} Help: {self._current_value.get()}')
         top.attributes('-topmost', 1)
         top.attributes('-topmost', 0)
@@ -139,12 +145,7 @@ class _ModalSelectWithHelp(tk.Toplevel):
         return "break"
 
     def _insert_action(self):
-        self._insert = True
+        value = self._current_value.get()
+        if value.strip():
+            self._insert(value)
         self.destroy()
-
-    def get_value(self):
-        self.wait_window(self)
-        if not self._insert:
-            return None
-
-        return self._current_value.get()
