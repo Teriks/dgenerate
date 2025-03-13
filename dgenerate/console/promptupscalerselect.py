@@ -53,7 +53,7 @@ def request_uri(master, insert: typing.Callable[[str], None]):
     # noinspection PyUnresolvedReferences
     def destroy():
         global _last_pos, _cur_window
-        _last_pos = _last_size = (_cur_window.winfo_x(), _cur_window.winfo_y())
+        _last_pos = (_cur_window.winfo_x(), _cur_window.winfo_y())
         _cur_window = None
         og_destroy()
 
