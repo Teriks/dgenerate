@@ -94,17 +94,16 @@ can be overridden via a URI syntax, for every possible scheduler.
     #    ...
     #
     #    PNDMScheduler:
-    #        num-train-timesteps=1000
-    #        beta-start=0.0001
-    #        beta-end=0.02
-    #        beta-schedule=linear
-    #        trained-betas=None
-    #        skip-prk-steps=False
-    #        set-alpha-to-one=False
-    #        prediction-type=epsilon
-    #        timestep-spacing=leading
-    #        steps-offset=0
-    #
+    #            num-train-timesteps: int = 1000
+    #            beta-start: float = 0.0001
+    #            beta-end: float = 0.02
+    #            beta-schedule: str = linear
+    #            trained-betas: list | None = None
+    #            skip-prk-steps: bool = False
+    #            set-alpha-to-one: bool = False
+    #            prediction-type: str = epsilon
+    #            timestep-spacing: str = leading
+    #            steps-offset: int = 0
     #   ...
 
 
