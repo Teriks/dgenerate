@@ -779,94 +779,54 @@ class DgenerateConsole(tk.Tk):
             self._input_text.text.insert('insert', text)
 
     def _input_text_insert_recipe(self):
-        s = _recipesform.request_recipe(
-            master=self)
-
-        if s is None or not s.strip():
-            return
-
-        self._insert_or_replace_input_text(s)
+        _recipesform.request_recipe(
+            master=self, insert=self._insert_or_replace_input_text
+        )
 
     def _input_text_insert_argument(self):
-        s = _argumentselect.request_argument(
-            master=self)
-
-        if s is None or not s.strip():
-            return
-
-        self._insert_or_replace_input_text(s)
+        _argumentselect.request_argument(
+            master=self, insert=self._insert_or_replace_input_text
+        )
 
     def _input_text_insert_directive(self):
-        s = _directiveselect.request_directive(
-            master=self)
-
-        if s is None or not s.strip():
-            return
-
-        self._insert_or_replace_input_text(s)
+        _directiveselect.request_directive(
+            master=self, insert=self._insert_or_replace_input_text
+        )
 
     def _input_text_insert_function(self):
-        s = _functionselect.request_function(
-            master=self)
-
-        if s is None or not s.strip():
-            return
-
-        self._insert_or_replace_input_text(s)
+        _functionselect.request_function(
+            master=self, insert=self._insert_or_replace_input_text
+        )
 
     def _input_text_insert_image_seed(self):
-        s = _imageseedselect.request_uri(
-            master=self)
-
-        if s is None or not s.strip():
-            return
-
-        self._insert_or_replace_input_text(s)
+        _imageseedselect.request_uri(
+            master=self, insert=self._insert_or_replace_input_text
+        )
 
     def _input_text_insert_karras_scheduler(self):
-        s = _karrasschedulerselect.request_uri(
-            master=self)
-
-        if s is None or not s.strip():
-            return
-
-        self._insert_or_replace_input_text(s)
+        _karrasschedulerselect.request_uri(
+            master=self, insert=self._insert_or_replace_input_text
+        )
 
     def _input_text_insert_image_processor(self):
-        s = _imageprocessorselect.request_uri(
-            master=self)
-
-        if s is None or not s.strip():
-            return
-
-        self._insert_or_replace_input_text(s)
+        _imageprocessorselect.request_uri(
+            master=self, insert=self._insert_or_replace_input_text
+        )
 
     def _input_text_insert_prompt_upscaler(self):
-        s = _promptupscalerselect.request_uri(
-            master=self)
-
-        if s is None or not s.strip():
-            return
-
-        self._insert_or_replace_input_text(s)
+        _promptupscalerselect.request_uri(
+            master=self, insert=self._insert_or_replace_input_text
+        )
 
     def _input_text_insert_prompt_weighter(self):
-        s = _promptweighterselect.request_uri(
-            master=self)
-
-        if s is None or not s.strip():
-            return
-
-        self._insert_or_replace_input_text(s)
+        _promptweighterselect.request_uri(
+            master=self, insert=self._insert_or_replace_input_text
+        )
 
     def _input_text_insert_quantizer(self):
-        s = _quantizerselect.request_uri(
-            master=self)
-
-        if s is None or not s.strip():
-            return
-
-        self._insert_or_replace_input_text(s)
+        _quantizerselect.request_uri(
+            master=self, insert=self._insert_or_replace_input_text
+        )
 
     def _input_text_insert_directory_path(self):
         d = _filedialog.open_directory_dialog(

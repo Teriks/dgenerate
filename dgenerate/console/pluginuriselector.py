@@ -21,14 +21,17 @@
 
 
 import tkinter as tk
+import typing
 
 import dgenerate.console.recipesformentries.pluginschemaentry as _pluginschemaentry
 import dgenerate.console.util as _util
 
 
 class _PluginUriSelect(tk.Toplevel):
-    def __init__(self, title: str,
+    def __init__(self,
+                 title: str,
                  plugin_entry_class: type[_pluginschemaentry._PluginSchemaEntry],
+                 insert: typing.Callable[[str], None],
                  master=None,
                  position: tuple[int, int] = None
                  ):
@@ -36,10 +39,9 @@ class _PluginUriSelect(tk.Toplevel):
         self.title(title)
 
         self.transient(master)
-        self.grab_set()
         self.resizable(True, False)
 
-        self._insert = False
+        self._insert = insert
 
         self.plugin_frame = tk.Frame(self)
 
@@ -77,11 +79,7 @@ class _PluginUriSelect(tk.Toplevel):
         else:
             self.plugin_entry.valid()
 
-        self._insert = True
+        value = self.plugin_entry.template('URI')
+        if value.strip():
+            self._insert(value)
         self.destroy()
-
-    def get_uri(self):
-        self.wait_window(self)
-        if not self._insert:
-            return None
-        return self.plugin_entry.template('URI')

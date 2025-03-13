@@ -84,7 +84,13 @@ def _find_template_tags(text) -> list[_RecipeTemplateTag]:
 
 
 class _RecipesForm(tk.Toplevel):
-    def __init__(self, master=None, position: tuple[int, int] = None, size: tuple[int, int] = None):
+    def __init__(
+            self,
+            insert: typing.Callable[[str], None],
+            master=None,
+            position: tuple[int, int] = None,
+            size: tuple[int, int] = None
+    ):
         super().__init__(master)
         self.title('Insert Recipe')
 
@@ -106,11 +112,9 @@ class _RecipesForm(tk.Toplevel):
         self._entries: list[_recipesformentries._Entry] = []
         self._content: typing.Optional[str] = None
 
-        self._ok: bool = False
-        self._on_submit: list[typing.Callable[[], None]] = []
+        self._insert = insert
 
         self.transient(master)
-        self.grab_set()
 
         self._create_scrollable_form()
 
@@ -126,17 +130,10 @@ class _RecipesForm(tk.Toplevel):
             position=position
         )
 
-    def on_submit(self, callback: typing.Callable[[], None]) -> None:
-        """Register a callback to be called when the form is submitted."""
-        self._on_submit.append(callback)
-
     def _apply_templates(self) -> None:
         """Apply the templates to the form entries."""
         content = self._content
         missing_fields = False
-
-        for callback in self._on_submit:
-            callback()
 
         for entry in self._entries:
             content = entry.template(content)
@@ -151,8 +148,9 @@ class _RecipesForm(tk.Toplevel):
 
         if not missing_fields:
             self._content = content
-            self._ok = True
-            self.master.focus_set()
+            value = ('\n'.join(line.lstrip() for line in self._content.splitlines())).strip()
+            if value:
+                self._insert(value)
             self.destroy()
 
     def _create_scrollable_form(self) -> None:
@@ -270,33 +268,39 @@ class _RecipesForm(tk.Toplevel):
         un_bind_mousewheel(self.canvas.unbind_all)
         super().destroy()
 
-    def get_recipe(self):
-        self.wait_window(self)
-        return ('\n'.join(line.lstrip() for line in self._content.splitlines())).strip() if self._ok else None
-
 
 _last_pos = None
 _last_size = None
+_cur_window = None
 
 
-def request_recipe(master):
-    global _last_size, _last_pos
+def request_recipe(master, insert: typing.Callable[[str], None]):
+    global _last_size, _last_pos, _cur_window
 
-    window = _RecipesForm(master, position=_last_pos, size=_last_size)
+    if _cur_window is not None:
+        _cur_window.focus_set()
+        return
 
-    og_destroy = window.destroy
+    _cur_window = _RecipesForm(
+        insert=insert,
+        master=master,
+        position=_last_pos,
+        size=_last_size
+    )
 
+    og_destroy = _cur_window.destroy
+
+    # noinspection PyUnresolvedReferences
     def destroy():
-        global _last_size, _last_pos
-        _last_size = (window.winfo_width(), window.winfo_height())
-        _last_pos = (window.winfo_x(), window.winfo_y())
+        global _last_size, _last_pos, _cur_window
+        _last_size = (_cur_window.winfo_width(), _cur_window.winfo_height())
+        _last_pos = (_cur_window.winfo_x(), _cur_window.winfo_y())
+        _cur_window = None
         og_destroy()
 
-    window.destroy = destroy
+    _cur_window.destroy = destroy
 
     def on_closing():
-        window.destroy()
+        _cur_window.destroy()
 
-    window.protocol("WM_DELETE_WINDOW", on_closing)
-
-    return window.get_recipe()
+    _cur_window.protocol("WM_DELETE_WINDOW", on_closing)

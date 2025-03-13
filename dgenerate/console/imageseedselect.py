@@ -20,6 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import tkinter as tk
+import typing
 
 import dgenerate.console.filedialog as _filedialog
 import dgenerate.console.recipesformentries.entry as _entry
@@ -30,7 +31,7 @@ import dgenerate.textprocessing as _textprocessing
 
 
 class _ImageSeedSelect(tk.Toplevel):
-    def __init__(self, master=None, position=None):
+    def __init__(self, insert: typing.Callable[[str], None], master=None, position: tuple[int, int] = None):
         super().__init__(master)
         self.title("Insert Image Seed URI")
 
@@ -39,7 +40,6 @@ class _ImageSeedSelect(tk.Toplevel):
         self.configure(pady=5, padx=5)
 
         self.transient(master)
-        self.grab_set()
         self.resizable(True, False)
 
         self.entries = []
@@ -47,7 +47,7 @@ class _ImageSeedSelect(tk.Toplevel):
 
         self.minsize(500, self.winfo_height())
 
-        self.result = None
+        self._insert = insert
 
         _util.position_toplevel(master, self, position=position)
 
@@ -149,7 +149,7 @@ class _ImageSeedSelect(tk.Toplevel):
             _entry.invalid_colors(self.entries[2])
             return
 
-        self.result = _textprocessing.format_image_seed_uri(
+        value = _textprocessing.format_image_seed_uri(
             seed_images=image_seed,
             mask_images=mask_image,
             control_images=control_image,
@@ -158,6 +158,9 @@ class _ImageSeedSelect(tk.Toplevel):
             frame_start=frame_start,
             frame_end=frame_end
         )
+
+        if value:
+            self._insert(value)
 
         self.destroy()
 
@@ -175,31 +178,36 @@ class _ImageSeedSelect(tk.Toplevel):
         for entry in self.entries:
             _entry.valid_colors(entry)
 
-    def get_uri(self):
-        self.wait_window(self)
-        return self.result
-
 
 _last_pos = None
+_cur_window = None
 
 
-def request_uri(master):
-    global _last_pos
+def request_uri(master, insert: typing.Callable[[str], None]):
+    global _last_pos, _cur_window
 
-    window = _ImageSeedSelect(master, position=_last_pos)
+    if _cur_window is not None:
+        _cur_window.focus_set()
+        return
 
-    og_destroy = window.destroy
+    _cur_window = _ImageSeedSelect(
+        insert=insert,
+        master=master,
+        position=_last_pos
+    )
 
+    og_destroy = _cur_window.destroy
+
+    # noinspection PyUnresolvedReferences
     def destroy():
-        global _last_pos
-        _last_pos = (window.winfo_x(), window.winfo_y())
+        global _last_pos, _cur_window
+        _last_pos = (_cur_window.winfo_x(), _cur_window.winfo_y())
+        _cur_window = None
         og_destroy()
 
-    window.destroy = destroy
+    _cur_window.destroy = destroy
 
     def on_closing():
-        window.destroy()
+        _cur_window.destroy()
 
-    window.protocol("WM_DELETE_WINDOW", on_closing)
-
-    return window.get_uri()
+    _cur_window.protocol("WM_DELETE_WINDOW", on_closing)

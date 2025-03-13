@@ -316,7 +316,10 @@ class _PluginSchemaEntry(_entry._Entry):
         self.entries[param_name] = (entry, arg_entry.variable, default_value, optional)
 
     def _show_help(self):
-        top = tk.Toplevel(self.recipe_form)
+        top = tk.Toplevel(
+            self.recipe_form.master if self.recipe_form.master else self.recipe_form
+        )
+
         top.title(f'{self._label} Help: {self.plugin_name_var.get()}')
         top.attributes('-topmost', 1)
         top.attributes('-topmost', 0)
