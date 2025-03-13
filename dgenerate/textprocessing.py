@@ -749,34 +749,42 @@ def shell_expandvars(string: str) -> str:
     return result
 
 
-def shell_quote(string: str, strict: bool = False):
+def shell_quote(
+        string: str,
+        double: bool = False,
+        quotes: bool = True,
+        strict: bool = False,
+):
     """
     Shell quote a string, compatible with dgenerate config shell syntax.
 
     :param string: The input string.
-
-    :param strict: Setting this to true disallows text from being
-        intermixed next to complete strings, for example: ```test'string'``
-        would be fully quoted, even though the shell can normally parse
-        this as a single token.  URI arguments do now allow intermixed
-        strings, so this is useful for quoting URI argument values.
+    :param double: Intended to be a double-quoted string?
+    :param quotes: Add quotes? if ``False`` only add the proper escape sequences and no surrounding quotes.
+    :param strict: Setting this to true disallows text from being intermixed next to complete strings,
+                   for example: ``test'string'`` would be fully quoted, even though the shell can normally
+                   parse this as a single token. URI arguments do not allow intermixed strings,
+                   so this is useful for quoting URI argument values.
     :return: The quoted string.
     """
     try:
         result = tokenized_split(
-            string, ' ',
-            strict=strict,
-            remove_stray_separators=True
+            string, ' ', strict=strict, remove_stray_separators=True
         )
         needs_quoting = len(result) > 1
     except TokenizedSplitSyntaxError:
         needs_quoting = True
 
-    if needs_quoting:
-        string = string.replace("'", "\\'")
-        return f"'{string}'"
+    if not needs_quoting:
+        return string
 
-    return string
+    if not double:
+        processed = re.sub(r"(?<!\\)'", r"\'", string)
+        return f"'{processed}'" if quotes else processed
+
+    else:
+        processed = re.sub(r'(?<!\\)"', r'\"', string)
+        return f'"{processed}"' if quotes else processed
 
 
 def shell_parse(

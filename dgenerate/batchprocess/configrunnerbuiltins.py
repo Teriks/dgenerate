@@ -73,12 +73,26 @@ def format_size(size: collections.abc.Iterable[int]) -> str:
     return _textprocessing.format_size(size)
 
 
-def quote(strings: str | collections.abc.Iterable[typing.Any]) -> str:
+def quote(
+        strings: str | collections.abc.Iterable[typing.Any],
+        double: bool = False,
+        quotes: bool = True
+) -> str:
     """
-    Shell quote a string or iterable of strings
+    Shell quote a string or iterable of strings.
+
+    The "double" argument allows you to change the outer quote character to double quotes.
+
+    The "quotes" argument determines whether to ddd quotes. If ``False``, only add the
+    proper escape sequences and no surrounding quotes. This can be useful for templating
+    extra string content into an existing string.
     """
     if isinstance(strings, str):
-        return _textprocessing.shell_quote(strings)
+        return _textprocessing.shell_quote(
+            strings,
+            double=double,
+            quotes=quotes
+        )
     return ' '.join(_textprocessing.shell_quote(str(s)) for s in strings)
 
 
