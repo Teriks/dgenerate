@@ -40,6 +40,11 @@ args, unknown_args = parser.parse_known_args()
 
 runner = unittest.TextTestRunner()
 
+
+def join_with_globs(args):
+    return ' '.join(arg if '*' in arg else shlex.quote(arg) for arg in args)
+
+
 if runner.run(unittest.defaultTestLoader.discover("tests", pattern='*_test.py')).wasSuccessful():
 
     if not args.examples:
@@ -53,7 +58,7 @@ if runner.run(unittest.defaultTestLoader.discover("tests", pattern='*_test.py'))
         subprocess.run('git clean -f -d -x', shell=True)
         os.chdir('..')
 
-    run_string = f'{sys.executable} examples/run.py {shlex.join(unknown_args)} ' \
+    run_string = f'{sys.executable} examples/run.py {join_with_globs(unknown_args)} ' \
                  f'--short-animations --output-configs --output-metadata -v > {args.examples_log} 2>&1'
 
     print('running:', run_string)

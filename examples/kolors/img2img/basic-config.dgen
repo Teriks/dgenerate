@@ -1,8 +1,16 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 5.0.0
 
+
+{% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 15 %}
+    \set optimization --quantizer bnb;bits=4;bits4-compute-dtype=float16
+{% else %}
+    \set optimization --model-sequential-offload
+{% endif %}
+
+
 Kwai-Kolors/Kolors-diffusers
---model-type torch-kolors
+--model-type torch-kolors {{ optimization }}
 --variant fp16
 --dtype float16
 --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0
@@ -13,5 +21,4 @@ Kwai-Kolors/Kolors-diffusers
 --image-seed-strengths 0.85
 --seeds 24344090316981
 --output-path basic
---model-sequential-offload
 --prompts "A huge tsunami wave about to impact a tropical beach, high resolution, photo, real; fake, artwork, imaginary"

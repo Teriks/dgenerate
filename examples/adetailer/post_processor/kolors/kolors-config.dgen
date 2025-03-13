@@ -1,8 +1,16 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 5.0.0
 
+
+{% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 15 %}
+    \set optimization --quantizer bnb;bits=4;bits4-compute-dtype=float16
+{% else %}
+    \set optimization --model-sequential-offload
+{% endif %}
+
+
 Kwai-Kolors/Kolors-diffusers
---model-type torch-kolors
+--model-type torch-kolors {{ optimization }}
 --dtype float16
 --variant fp16
 --inference-steps 30
@@ -10,7 +18,6 @@ Kwai-Kolors/Kolors-diffusers
 --gen-seeds 1
 --output-path kolors
 --output-size 1024x1024
---model-sequential-offload
 --post-processors adetailer;\
                   model=Bingsu/adetailer;\
                   weight-name=face_yolov8n.pt;\
