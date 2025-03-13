@@ -48,7 +48,22 @@ def get_scheduler_help(pipeline_cls, help_args: bool = False, indent: int = 0):
             is_end = s_idx == len(schemas) - 1
             for d_idx, (arg, details) in enumerate(arg_schema.items()):
                 is_args_end = d_idx == len(arg_schema) - 1
-                help_string += (indent * " ") + (" " * 4) + arg + "=" + str(details['default']) + (
+                type_anno = details.get('types')
+
+                if type_anno:
+                    if details.get('optional'):
+                        type_anno.append('None')
+
+                    if len(type_anno) > 1:
+                        type_anno = ' | '.join(type_anno)
+                    else:
+                        type_anno = type_anno[0]
+
+                    type_anno = f": {type_anno}"
+                else:
+                    type_anno = ''
+
+                help_string += (indent * " ") + (" " * 4) + arg + type_anno + " = " + str(details['default']) + (
                     '' if is_end and is_args_end else '\n')
 
         return help_string
