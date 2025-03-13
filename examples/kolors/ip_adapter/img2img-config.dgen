@@ -9,8 +9,16 @@
 # the amount of combinations possible is quite high, so these examples probably cannot
 # cover all of them
 
+
+{% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 15 %}
+    \set optimization --quantizer bnb;bits=4;bits4-compute-dtype=float16
+{% else %}
+    \set optimization --model-sequential-offload
+{% endif %}
+
+
 Kwai-Kolors/Kolors-diffusers
---model-type torch-kolors
+--model-type torch-kolors {{ optimization }}
 --variant fp16
 --dtype float16
 --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0
@@ -19,7 +27,6 @@ Kwai-Kolors/Kolors-diffusers
 --sdxl-high-noise-fractions 0.8
 --seeds 0
 --output-path img2img
---model-sequential-offload
 --image-seeds "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/ip_adapter_diner.png; \
                adapter=https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/ip_adapter_diner_2.png"
 --image-encoder Kwai-Kolors/Kolors-IP-Adapter-Plus;subfolder=image_encoder
