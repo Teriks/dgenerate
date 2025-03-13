@@ -7304,7 +7304,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [2446688562440]
+            Value: [28865988690433]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -7380,11 +7380,16 @@ The dgenerate specific jinja2 functions/filters are:
         operator
     
     ==========================================================================================================
-    quote(strings: str | collections.abc.Iterable[typing.Any]) -> str:
+    quote(strings: str | collections.abc.Iterable[typing.Any], double: bool = False, quotes: bool = True) -> str:
     
-        Shell quote a string or iterable of strings
+        Shell quote a string or iterable of strings.
     
-    ===============================================
+        The "double" argument allows you to change the outer quote character to double quotes.
+    
+        The "quotes" argument determines whether to ddd quotes. If ``False``, only add the proper escape sequences
+        and no surrounding quotes. This can be useful for templating extra string content into an existing string.
+    
+    ==============================================================================================================
     format_prompt(prompts: dgenerate.prompt.Prompt | collections.abc.Iterable[dgenerate.prompt.Prompt]) -> str:
     
         Format a prompt object, or a list of prompt objects, into quoted string(s)
