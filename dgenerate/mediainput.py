@@ -1678,9 +1678,7 @@ def create_animation_reader(mimetype: str,
     elif mimetype_is_static_image(mimetype):
         with create_image(path_or_file=file,
                           file_source=file_source,
-                          resize_resolution=resize_resolution,
-                          aspect_correct=aspect_correct,
-                          align=align) as img:
+                          align=None) as img:
             return MockImageAnimationReader(img=img,
                                             resize_resolution=resize_resolution,
                                             aspect_correct=aspect_correct,

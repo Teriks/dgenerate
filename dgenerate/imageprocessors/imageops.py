@@ -309,6 +309,9 @@ class ResizeProcessor(_imageprocessor.ImageProcessor):
 
     The "algo" argument is the resize filtering algorithm, which can be one of:
     "auto", "nearest", "box", "bilinear", "hamming", "bicubic", "lanczos"
+
+    The "pre-resize" argument determines if the processing occurs before or after dgenerate resizes the image.
+    This defaults to False, meaning the image is processed after dgenerate is done resizing it.
     """
 
     NAMES = ['resize']
@@ -322,6 +325,7 @@ class ResizeProcessor(_imageprocessor.ImageProcessor):
                  align: int | None = None,
                  aspect_correct: bool = True,
                  algo: str = 'auto',
+                 pre_resize: bool = False,
                  **kwargs):
         super().__init__(**kwargs)
 
@@ -346,25 +350,9 @@ class ResizeProcessor(_imageprocessor.ImageProcessor):
         self._align = align
         self._aspect_correct = aspect_correct
         self._algo = algo
+        self._pre_resize = pre_resize
 
-    def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
-        """
-        Does nothing, no-op.
-
-        :param image: the image.
-        :param resize_resolution: dimension dgenerate will resize to.
-        :return: The same image.
-        """
-        return image
-
-    def impl_post_resize(self, image: PIL.Image.Image):
-        """
-        Preform the resize operation.
-
-        :param image: The image after being resized by dgenerate.
-        :return: The resized image.
-        """
-
+    def _process(self, image: PIL.Image.Image):
         if self._algo == 'auto':
             algo = None
         else:
@@ -375,6 +363,30 @@ class ResizeProcessor(_imageprocessor.ImageProcessor):
                                    aspect_correct=self._aspect_correct,
                                    align=self._align,
                                    algo=algo)
+
+    def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
+        """
+        Does nothing, no-op.
+
+        :param image: the image.
+        :param resize_resolution: dimension dgenerate will resize to.
+        :return: The same image.
+        """
+        if self._pre_resize:
+            return self._process(image)
+        return image
+
+    def impl_post_resize(self, image: PIL.Image.Image):
+        """
+        Preform the resize operation.
+
+        :param image: The image after being resized by dgenerate.
+        :return: The resized image.
+        """
+
+        if not self._pre_resize:
+            return self._process(image)
+        return image
 
     def to(self, device) -> "ResizeProcessor":
         """
@@ -389,12 +401,12 @@ class LetterboxProcessor(_imageprocessor.ImageProcessor):
     """
     Letterbox an image.
 
-    The "box-size" argument is the size of the outer letterbox
+    The "box-size" argument is the size of the outer letterbox.
 
     The "box-is-padding" argument can be used to indicate that "box-size" should be interpreted as padding.
 
     The "box-color" argument specifies the color to use for the letter box background, the default is black.
-    This should be specified as a HEX color code.
+    This should be specified as a HEX color code. e.g. #FFFFFF or #FFF
 
     The "inner-size" argument specifies the size of the inner image.
 
@@ -438,7 +450,7 @@ class LetterboxProcessor(_imageprocessor.ImageProcessor):
         super().__init__(**kwargs)
 
         if box_color is not None and not self._match_hex_color(box_color):
-            raise self.argument_error('box-color must be a HEX color code.')
+            raise self.argument_error('box-color must be a HEX color code, e.g. #FFFFFF or #FFF')
 
         try:
             self._box_size = _textprocessing.parse_image_size(box_size)
@@ -459,6 +471,14 @@ class LetterboxProcessor(_imageprocessor.ImageProcessor):
         self._aspect_correct = aspect_correct
         self._pre_resize = pre_resize
 
+    def _process(self, image: PIL.Image.Image):
+        return _image.letterbox_image(image,
+                                      box_size=self._box_size,
+                                      box_is_padding=self._box_is_padding,
+                                      box_color=self._box_color,
+                                      inner_size=self._inner_size,
+                                      aspect_correct=self._aspect_correct)
+
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         """
         Letterbox operation is preformed by this method if ``pre_resize`` constructor argument was ``True``.
@@ -468,12 +488,7 @@ class LetterboxProcessor(_imageprocessor.ImageProcessor):
         :return: the letterboxed image
         """
         if self._pre_resize:
-            return _image.letterbox_image(image,
-                                          box_size=self._box_size,
-                                          box_is_padding=self._box_is_padding,
-                                          box_color=self._box_color,
-                                          inner_size=self._inner_size,
-                                          aspect_correct=self._aspect_correct)
+            return self._process(image)
         return image
 
     def impl_post_resize(self, image: PIL.Image.Image):
@@ -484,12 +499,7 @@ class LetterboxProcessor(_imageprocessor.ImageProcessor):
         :return: the letterboxed image
         """
         if not self._pre_resize:
-            return _image.letterbox_image(image,
-                                          box_size=self._box_size,
-                                          box_is_padding=self._box_is_padding,
-                                          box_color=self._box_color,
-                                          inner_size=self._inner_size,
-                                          aspect_correct=self._aspect_correct)
+            return self._process(image)
         return image
 
     def to(self, device) -> "LetterboxProcessor":
