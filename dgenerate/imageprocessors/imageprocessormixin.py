@@ -100,23 +100,20 @@ class ImageProcessorMixin:
         if self.image_processor is None or not self.image_processor_enabled:
             # still need to honor resizing requests when there
             # is no processor assigned or the processor is disabled
-            if resize_resolution is not None:
-                calculate_new_size = _image.resize_image_calc(old_size=image.size,
-                                                              new_size=resize_resolution,
-                                                              aspect_correct=aspect_correct,
-                                                              align=align)
-                if calculate_new_size != image.size:
-                    with image:
-                        resized_image = _image.resize_image(img=image,
-                                                            size=resize_resolution,
-                                                            aspect_correct=aspect_correct,
-                                                            align=align)
+            calculate_new_size = _image.resize_image_calc(old_size=image.size,
+                                                          new_size=resize_resolution,
+                                                          aspect_correct=aspect_correct,
+                                                          align=align)
+            if calculate_new_size != image.size:
+                with image:
+                    resized_image = _image.resize_image(img=image,
+                                                        size=resize_resolution,
+                                                        aspect_correct=aspect_correct,
+                                                        align=align)
                     # return a copy of the image, resized
-                    return resized_image
-                # resize not necessary because it would result
-                # in a same sized image
-                return image
-            # no resize resolution given
+                return resized_image
+
+            # no resize operation
             return image
         else:
             return self.image_processor.process(image,
