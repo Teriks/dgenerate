@@ -1,0 +1,18 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 5.0.0
+
+# test the letterbox processor
+
+# white 6 digit hex code
+
+\image_process "../media/monalisa.png"
+-o monalisa-letterbox-white.png
+--processors letterbox;box-size=100x100;box-is-padding=True;box-color='#FFFFFF'
+--align 1
+
+# red, 3 digit short code
+
+\image_process "../media/monalisa.png"
+-o monalisa-letterbox-red.png
+--processors letterbox;box-size=100x100;box-is-padding=True;box-color='#F00'
+--align 1
