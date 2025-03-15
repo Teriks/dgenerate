@@ -111,7 +111,7 @@ class LineArtAnimeProcessor(_imageprocessor.ImageProcessor):
         return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
 
     @torch.inference_mode()
-    def _process(self, image, resize_resolution):
+    def _process(self, image):
         original_size = image.size
 
         with image:
@@ -145,9 +145,6 @@ class LineArtAnimeProcessor(_imageprocessor.ImageProcessor):
 
         detected_map = _cna_util.HWC3(line)
 
-        if resize_resolution is not None:
-            detected_map = _image.cv2_resize_image(detected_map, resize_resolution)
-
         return PIL.Image.fromarray(detected_map)
 
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
@@ -160,7 +157,7 @@ class LineArtAnimeProcessor(_imageprocessor.ImageProcessor):
         """
 
         if self._pre_resize:
-            return self._process(image, resize_resolution)
+            return self._process(image)
         return image
 
     def impl_post_resize(self, image: PIL.Image.Image):
@@ -172,7 +169,7 @@ class LineArtAnimeProcessor(_imageprocessor.ImageProcessor):
         """
 
         if not self._pre_resize:
-            return self._process(image, None)
+            return self._process(image)
         return image
 
 

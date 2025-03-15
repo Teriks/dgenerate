@@ -189,6 +189,9 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
     The "detector-device" argument can be used to specify a device
     override for the YOLO detector, i.e. the GPU / Accelerate device
     the model will run on. Example: cuda:0, cuda:1, cpu
+
+    The "pre-resize" argument determines if the processing occurs before or after dgenerate resizes the image.
+    This defaults to False, meaning the image is processed after dgenerate is done resizing it.
     """
 
     NAMES = ['adetailer']

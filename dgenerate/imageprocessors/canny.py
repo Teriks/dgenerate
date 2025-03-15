@@ -165,7 +165,7 @@ class CannyEdgeDetectProcessor(_imageprocessor.ImageProcessor):
         ]
         return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
 
-    def _process(self, image, resize_resolution):
+    def _process(self, image):
         original_size = image.size
 
         with image:
@@ -210,10 +210,7 @@ class CannyEdgeDetectProcessor(_imageprocessor.ImageProcessor):
 
         detected_map = cv2.cvtColor(edges, convert_back)
 
-        if resize_resolution is not None:
-            detected_map = _image.cv2_resize_image(detected_map, resize_resolution)
-        else:
-            detected_map = _image.cv2_resize_image(detected_map, original_size)
+        detected_map = _image.cv2_resize_image(detected_map, original_size)
 
         return PIL.Image.fromarray(detected_map)
 
@@ -227,7 +224,7 @@ class CannyEdgeDetectProcessor(_imageprocessor.ImageProcessor):
         :return: possibly a canny edge detected image, or the input image
         """
         if self._pre_resize:
-            return self._process(image, resize_resolution)
+            return self._process(image)
         return image
 
     def impl_post_resize(self, image: PIL.Image.Image):
@@ -239,7 +236,7 @@ class CannyEdgeDetectProcessor(_imageprocessor.ImageProcessor):
         :return: possibly a canny edge detected image, or the input image
         """
         if not self._pre_resize:
-            return self._process(image, None)
+            return self._process(image)
         return image
 
     def to(self, device) -> "CannyEdgeDetectProcessor":
