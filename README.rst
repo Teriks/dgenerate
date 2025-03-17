@@ -4452,6 +4452,7 @@ Which is a GPT2 finetune focused specifically on prompt generation.
         arguments:
             part: str = "both"
             model: str = "Gustavosta/MagicPrompt-Stable-Diffusion"
+            dtype: str = "float32"
             seed: int | None = None
             variations: int = 1
             max-length: int = 100
@@ -4478,6 +4479,9 @@ Which is a GPT2 finetune focused specifically on prompt generation.
     
         The "model" specifies the model path for magicprompt, the default value is:
         "Gustavosta/MagicPrompt-Stable-Diffusion". This can be a folder on disk or a Hugging Face repository slug.
+    
+        The "dtype" argument specifies the torch dtype (compute dtype) to load the model with, this defaults to:
+        float32, and may be one of: float32, float16, or bfloat16.
     
         The "seed" argument can be used to specify a seed for prompt generation.
     
@@ -7303,7 +7307,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [73108253944014]
+            Value: [10952807553393]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
