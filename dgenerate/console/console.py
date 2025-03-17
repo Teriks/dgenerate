@@ -108,86 +108,8 @@ class DgenerateConsole(tk.Tk):
                                     command=self._save_input_entry_text)
 
         # Edit menu
-
         self._edit_menu = tk.Menu(self._menu_bar, tearoff=0)
-        self._edit_menu.add_command(
-            label='Undo', accelerator='Ctrl+Z',
-            command=self._undo_input_entry)
-        self._edit_menu.add_command(
-            label='Redo', accelerator='Ctrl+Shift+Z',
-            command=self._redo_input_entry)
-
-        self._edit_menu.add_separator()
-
-        self._edit_menu.add_command(label='Cut', accelerator='Ctrl+X',
-                                    command=self._cut_input_entry_selection)
-        self._edit_menu.add_command(label='Copy', accelerator='Ctrl+C',
-                                    command=self._copy_input_entry_selection)
-        self._edit_menu.add_command(label='Paste', accelerator='Ctrl+V',
-                                    command=self._paste_input_entry)
-        self._edit_menu.add_command(label='Delete', accelerator='DEL',
-                                    command=self._delete_input_entry_selection)
-        self._edit_menu.add_command(label='Select All', accelerator='Ctrl+A',
-                                    command=self._select_all_input_entry)
-
-        self._edit_menu.add_separator()
-
-        self._edit_menu.add_command(label='Find',
-                                    accelerator='Ctrl+F',
-                                    command=lambda:
-                                    _finddialog.open_find_dialog(
-                                        self,
-                                        'Find In Input',
-                                        self._input_text.text))
-
-        self._edit_menu.add_command(label='Replace',
-                                    accelerator='Ctrl+R',
-                                    command=lambda:
-                                    _finddialog.open_find_replace_dialog(
-                                        self,
-                                        'Replace In Input',
-                                        self._input_text.text))
-
-        self._edit_menu.add_separator()
-
-        self._edit_menu.add_command(label='Format Code',
-                                    accelerator='Ctrl+Shift+F',
-                                    command=self._format_code)
-
-        self._edit_menu.add_separator()
-
-        self._edit_menu.add_command(label='Insert File Path (Open)',
-                                    command=self._input_text_insert_file_path)
-        self._edit_menu.add_command(label='Insert File Path (Save)',
-                                    command=self._input_text_insert_file_path_save)
-        self._edit_menu.add_command(label='Insert Directory Path',
-                                    command=self._input_text_insert_directory_path)
-
-        self._edit_menu.add_separator()
-
-        self._edit_menu.add_command(label='Insert Recipe',
-                                    command=self._input_text_insert_recipe)
-        self._edit_menu.add_command(label='Insert Argument',
-                                    command=self._input_text_insert_argument)
-        self._edit_menu.add_command(label='Insert Directive',
-                                    command=self._input_text_insert_directive)
-        self._edit_menu.add_command(label='Insert Function',
-                                    command=self._input_text_insert_function)
-
-        self._edit_menu.add_separator()
-
-        self._edit_menu.add_command(label='Insert Image Seed URI',
-                                    command=self._input_text_insert_image_seed)
-        self._edit_menu.add_command(label='Insert Karras Scheduler URI',
-                                    command=self._input_text_insert_karras_scheduler)
-        self._edit_menu.add_command(label='Insert Image Processor URI',
-                                    command=self._input_text_insert_image_processor)
-        self._edit_menu.add_command(label='Insert Prompt Upscaler URI',
-                                    command=self._input_text_insert_prompt_upscaler)
-        self._edit_menu.add_command(label='Insert Prompt Weighter URI',
-                                    command=self._input_text_insert_prompt_weighter)
-        self._edit_menu.add_command(label='Insert Quantizer URI',
-                                    command=self._input_text_insert_quantizer)
+        self._create_edit_menu(self._edit_menu)
 
         # Run menu
 
@@ -391,7 +313,9 @@ class DgenerateConsole(tk.Tk):
 
         self._input_text.text.focus_set()
 
+        # Create the input text context menu
         self._input_text_context = tk.Menu(self._input_text, tearoff=0)
+        self._create_edit_menu(self._input_text_context)
 
         if platform.system() == 'Darwin':
             # these are not native
@@ -401,76 +325,6 @@ class DgenerateConsole(tk.Tk):
                                        lambda e: self._copy_input_entry_selection())
             self._input_text.text.bind('<Control-v>',
                                        lambda e: self._paste_input_entry())
-
-        self._input_text_context.add_command(label='Cut', accelerator='Ctrl+X',
-                                             command=self._cut_input_entry_selection)
-        self._input_text_context.add_command(label='Copy', accelerator='Ctrl+C',
-                                             command=self._copy_input_entry_selection)
-        self._input_text_context.add_command(label='Paste', accelerator='Ctrl+V',
-                                             command=self._paste_input_entry)
-        self._input_text_context.add_command(label='Delete', accelerator='DEL',
-                                             command=self._delete_input_entry_selection)
-        self._input_text_context.add_command(label='Select All', accelerator='Ctrl+A',
-                                             command=self._select_all_input_entry)
-        self._input_text_context.add_separator()
-
-        self._input_text_context.add_command(label='Find',
-                                             accelerator='Ctrl+F',
-                                             command=lambda:
-                                             _finddialog.open_find_dialog(
-                                                 self,
-                                                 'Find In Input',
-                                                 self._input_text.text))
-
-        self._input_text_context.add_command(label='Replace',
-                                             accelerator='Ctrl+R',
-                                             command=lambda:
-                                             _finddialog.open_find_replace_dialog(
-                                                 self,
-                                                 'Replace In Input',
-                                                 self._input_text.text))
-
-        self._input_text_context.add_separator()
-        self._input_text_context.add_command(label='Format Code',
-                                             accelerator='Ctrl+Shift+F',
-                                             command=self._format_code)
-        self._input_text_context.add_separator()
-
-        self._input_text_context.add_command(label='Load', command=self._load_input_entry_text)
-        self._input_text_context.add_command(label='Save', command=self._save_input_entry_text)
-        self._input_text_context.add_separator()
-        self._input_text_context.add_command(label='Insert File Path (Open)',
-                                             command=self._input_text_insert_file_path)
-        self._input_text_context.add_command(label='Insert File Path (Save)',
-                                             command=self._input_text_insert_file_path_save)
-        self._input_text_context.add_command(label='Insert Directory Path',
-                                             command=self._input_text_insert_directory_path)
-
-        self._input_text_context.add_separator()
-
-        self._input_text_context.add_command(label='Insert Recipe',
-                                             command=self._input_text_insert_recipe)
-        self._input_text_context.add_command(label='Insert Argument',
-                                             command=self._input_text_insert_argument)
-        self._input_text_context.add_command(label='Insert Directive',
-                                             command=self._input_text_insert_directive)
-        self._input_text_context.add_command(label='Insert Function',
-                                             command=self._input_text_insert_function)
-
-        self._input_text_context.add_separator()
-
-        self._input_text_context.add_command(label='Insert Image Seed URI',
-                                             command=self._input_text_insert_image_seed)
-        self._input_text_context.add_command(label='Insert Karras Scheduler URI',
-                                             command=self._input_text_insert_karras_scheduler)
-        self._input_text_context.add_command(label='Insert Image Processor URI',
-                                             command=self._input_text_insert_image_processor)
-        self._input_text_context.add_command(label='Insert Prompt Upscaler URI',
-                                             command=self._input_text_insert_prompt_upscaler)
-        self._input_text_context.add_command(label='Insert Prompt Weighter URI',
-                                             command=self._input_text_insert_prompt_weighter)
-        self._input_text_context.add_command(label='Insert Quantizer URI',
-                                             command=self._input_text_insert_quantizer)
 
         self._paned_window_vertical.add(self._input_text)
 
@@ -511,9 +365,6 @@ class DgenerateConsole(tk.Tk):
         self._output_text_context.add_command(label='Select All',
                                               accelerator='Ctrl+A',
                                               command=self._select_all_output_text)
-        self._output_text_context.add_separator()
-        self._output_text_context.add_command(label='Save Selection', command=self._save_output_text_selection)
-        self._output_text_context.add_command(label='Save All', command=self._save_output_text)
         self._output_text_context.add_separator()
         self._output_text_context.add_command(label='To Top',
                                               accelerator='Ctrl+Up Arrow',
@@ -686,7 +537,14 @@ class DgenerateConsole(tk.Tk):
             self._shell_procmon.close()
 
     def _format_code(self):
-        self._input_text.format_code()
+        try:
+            text = self._input_text.text.get('1.0', 'end-1c')
+            if text.strip():  # check that it's not just whitespace
+                formatted_text = _textprocessing.format_code(text)
+                self._input_text.clear()
+                self._input_text.text.insert('1.0', formatted_text)
+        except Exception as e:
+            self._print(str(e), error=True)
 
     def _set_theme(self, name):
         self._input_text.set_theme(name)
@@ -1015,7 +873,6 @@ class DgenerateConsole(tk.Tk):
 
         with open(fn, mode='w', encoding='utf-8') as f:
             f.write(self._input_text.text.get('1.0', 'end-1c'))
-            f.close()
 
     def _undo_input_entry(self):
         self._input_text.gen_undo_event()
@@ -1271,6 +1128,94 @@ class DgenerateConsole(tk.Tk):
         self.save_settings()
         self.kill_shell_process()
         super().destroy()
+
+    def _create_edit_menu(self, menu):
+        # Edit submenu
+        edit_submenu = tk.Menu(menu, tearoff=0)
+        edit_submenu.add_command(label='Cut', accelerator='Ctrl+X',
+                         command=self._cut_input_entry_selection)
+        edit_submenu.add_command(label='Copy', accelerator='Ctrl+C',
+                         command=self._copy_input_entry_selection)
+        edit_submenu.add_command(label='Paste', accelerator='Ctrl+V',
+                         command=self._paste_input_entry)
+        edit_submenu.add_command(label='Delete', accelerator='DEL',
+                         command=self._delete_input_entry_selection)
+        edit_submenu.add_command(label='Select All', accelerator='Ctrl+A',
+                         command=self._select_all_input_entry)
+        menu.add_cascade(label='Edit', menu=edit_submenu)
+
+        # Undo/Redo submenu
+        undo_submenu = tk.Menu(menu, tearoff=0)
+        undo_submenu.add_command(label='Undo', accelerator='Ctrl+Z',
+            command=self._undo_input_entry)
+        undo_submenu.add_command(label='Redo', accelerator='Ctrl+Shift+Z',
+            command=self._redo_input_entry)
+        menu.add_cascade(label='Undo/Redo', menu=undo_submenu)
+
+        # Search submenu
+        search_submenu = tk.Menu(menu, tearoff=0)
+        search_submenu.add_command(label='Find',
+                         accelerator='Ctrl+F',
+                         command=lambda:
+                         _finddialog.open_find_dialog(
+                             self,
+                             'Find In Input',
+                             self._input_text.text))
+        search_submenu.add_command(label='Replace',
+                         accelerator='Ctrl+R',
+                         command=lambda:
+                         _finddialog.open_find_replace_dialog(
+                             self,
+                             'Replace In Input',
+                             self._input_text.text))
+        menu.add_cascade(label='Find / Replace', menu=search_submenu)
+
+        # Format submenu
+        format_submenu = tk.Menu(menu, tearoff=0)
+        format_submenu.add_command(label='Format Code',
+                         accelerator='Ctrl+Shift+F',
+                         command=self._format_code)
+        menu.add_cascade(label='Format', menu=format_submenu)
+
+        # Insert submenu
+        insert_submenu = tk.Menu(menu, tearoff=0)
+
+        # Special insertion items
+        insert_submenu.add_command(label='Insert Recipe',
+                         command=self._input_text_insert_recipe)
+        insert_submenu.add_command(label='Insert Argument',
+                         command=self._input_text_insert_argument)
+        insert_submenu.add_command(label='Insert Directive',
+                         command=self._input_text_insert_directive)
+        insert_submenu.add_command(label='Insert Function',
+                         command=self._input_text_insert_function)
+        insert_submenu.add_separator()
+
+        # URI insertion items
+        insert_submenu.add_command(label='Insert Image Seed URI',
+                         command=self._input_text_insert_image_seed)
+        insert_submenu.add_command(label='Insert Karras Scheduler URI',
+                         command=self._input_text_insert_karras_scheduler)
+        insert_submenu.add_command(label='Insert Image Processor URI',
+                         command=self._input_text_insert_image_processor)
+        insert_submenu.add_command(label='Insert Prompt Upscaler URI',
+                         command=self._input_text_insert_prompt_upscaler)
+        insert_submenu.add_command(label='Insert Prompt Weighter URI',
+                         command=self._input_text_insert_prompt_weighter)
+        insert_submenu.add_command(label='Insert Quantizer URI',
+                         command=self._input_text_insert_quantizer)
+        insert_submenu.add_separator()
+
+        # Path insertion items
+        insert_submenu.add_command(label='Insert File Path (Open)',
+                         command=self._input_text_insert_file_path)
+        insert_submenu.add_command(label='Insert File Path (Save)',
+                         command=self._input_text_insert_file_path_save)
+        insert_submenu.add_command(label='Insert Directory Path',
+                         command=self._input_text_insert_directory_path)
+        menu.add_cascade(label='Insert', menu=insert_submenu)
+
+        return menu
 
 
 def main(args: collections.abc.Sequence[str]):
