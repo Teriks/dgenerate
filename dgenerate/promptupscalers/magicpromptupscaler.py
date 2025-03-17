@@ -106,6 +106,10 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
     default value is: "Gustavosta/MagicPrompt-Stable-Diffusion". This
     can be a folder on disk or a Hugging Face repository slug.
 
+    The "dtype" argument specifies the torch dtype (compute dtype) to load
+    the model with, this defaults to: float32, and may be one of: float32,
+    float16, or bfloat16.
+
     The "seed" argument can be used to specify a seed for prompt generation.
 
     The "variations" argument specifies how many variations should be produced.
@@ -180,6 +184,7 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
     def __init__(self,
                  part: str = 'both',
                  model: str = "Gustavosta/MagicPrompt-Stable-Diffusion",
+                 dtype: str = 'float32',
                  seed: int | None = None,
                  variations: int = 1,
                  max_length: int = 100,
@@ -210,8 +215,6 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
                          smart_truncate=smart_truncate,
                          cleanup_config=cleanup_config)
 
-        part = part.lower()
-
         if quantizer:
             try:
                 quantization_config = _get_quantizer_uri_class(quantizer).parse(quantizer).to_config()
@@ -220,6 +223,11 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
         else:
             quantization_config = None
 
+        dtype = dtype.lower()
+        if dtype not in {'float32', 'float16', 'bfloat16'}:
+            raise self.argument_error('Argument "dtype" must be either float32, float16, or bfloat16.')
+
+        part = part.lower()
         if part not in {'both', 'positive', 'negative'}:
             raise self.argument_error(
                 'Argument "part" must be one of: "both", "positive", or "negative"'
@@ -254,7 +262,6 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
             raise self.argument_error(
                 'Argument "max-batch" may not be less than 1.')
 
-
         model_files = list(
             _pipelinewrapper_util.fetch_model_files_with_size(
                 model,
@@ -277,12 +284,16 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
         def load_method():
             if quantization_config is not None:
                 self.memory_guard_device(self.device, self.size_estimate)
-            return self._load_pipeline(model, quantization_config=quantization_config)
+            torch_dtype = {'float32': torch.float32,
+                           'float16': torch.float16,
+                           'bfloat16': torch.bfloat16
+                           }[dtype]
+            return self._load_pipeline(model, dtype=torch_dtype, quantization_config=quantization_config)
 
         self.set_size_estimate(estimated_size)
 
         self._pipeline = self.load_object_cached(
-            tag=model + (quantizer if quantizer else ''),
+            tag=model + (quantizer if quantizer else '') + dtype,
             estimated_size=estimated_size,
             method=load_method
         )
@@ -304,9 +315,10 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
         self._max_attempts = max_attempts
         self._prepend_prompt = prepend_prompt
 
-    def _load_pipeline(self, model_name: str, quantization_config: typing.Optional = None) -> _TextGenerationPipeline:
+    def _load_pipeline(self, model_name: str, dtype: torch.dtype,
+                       quantization_config: typing.Optional = None) -> _TextGenerationPipeline:
         model = transformers.AutoModelForCausalLM.from_pretrained(
-            model_name, trust_remote_code=True,
+            model_name, trust_remote_code=True, torch_dtype=dtype,
             quantization_config=quantization_config)
 
         tokenizer = transformers.AutoTokenizer.from_pretrained(model_name)
