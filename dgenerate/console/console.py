@@ -528,6 +528,7 @@ class DgenerateConsole(tk.Tk):
     def _update_debug_mode_state(self):
         self._shell_procmon.popen_args = \
             [[DGENERATE_EXE, '--shell'] + (['-v'] if self._debug_mode_var.get() else [])]
+
         self.kill_shell_process(restart=True)
 
     def kill_shell_process(self, restart=False):
@@ -1130,27 +1131,25 @@ class DgenerateConsole(tk.Tk):
         super().destroy()
 
     def _create_edit_menu(self, menu):
-        # Edit submenu
-        edit_submenu = tk.Menu(menu, tearoff=0)
-        edit_submenu.add_command(label='Cut', accelerator='Ctrl+X',
+        # Standard editing operations
+        menu.add_command(label='Cut', accelerator='Ctrl+X',
                          command=self._cut_input_entry_selection)
-        edit_submenu.add_command(label='Copy', accelerator='Ctrl+C',
+        menu.add_command(label='Copy', accelerator='Ctrl+C',
                          command=self._copy_input_entry_selection)
-        edit_submenu.add_command(label='Paste', accelerator='Ctrl+V',
+        menu.add_command(label='Paste', accelerator='Ctrl+V',
                          command=self._paste_input_entry)
-        edit_submenu.add_command(label='Delete', accelerator='DEL',
+        menu.add_command(label='Delete', accelerator='DEL',
                          command=self._delete_input_entry_selection)
-        edit_submenu.add_command(label='Select All', accelerator='Ctrl+A',
+        menu.add_command(label='Select All', accelerator='Ctrl+A',
                          command=self._select_all_input_entry)
-        menu.add_cascade(label='Edit', menu=edit_submenu)
+        menu.add_separator()
 
-        # Undo/Redo submenu
-        undo_submenu = tk.Menu(menu, tearoff=0)
-        undo_submenu.add_command(label='Undo', accelerator='Ctrl+Z',
+        # Undo/Redo operations
+        menu.add_command(label='Undo', accelerator='Ctrl+Z',
             command=self._undo_input_entry)
-        undo_submenu.add_command(label='Redo', accelerator='Ctrl+Shift+Z',
+        menu.add_command(label='Redo', accelerator='Ctrl+Shift+Z',
             command=self._redo_input_entry)
-        menu.add_cascade(label='Undo / Redo', menu=undo_submenu)
+        menu.add_separator()
 
         # Search submenu
         search_submenu = tk.Menu(menu, tearoff=0)
@@ -1170,50 +1169,49 @@ class DgenerateConsole(tk.Tk):
                              self._input_text.text))
         menu.add_cascade(label='Find / Replace', menu=search_submenu)
 
-        # Format submenu
-        format_submenu = tk.Menu(menu, tearoff=0)
-        format_submenu.add_command(label='Format Code',
+        # Format option
+        menu.add_command(label='Format Code',
                          accelerator='Ctrl+Shift+F',
                          command=self._format_code)
-        menu.add_cascade(label='Format', menu=format_submenu)
+        menu.add_separator()
 
-        # Insert submenu
-        insert_submenu = tk.Menu(menu, tearoff=0)
-
-        # Special insertion items
-        insert_submenu.add_command(label='Insert Recipe',
+        # Code submenu
+        code_submenu = tk.Menu(menu, tearoff=0)
+        code_submenu.add_command(label='Recipe',
                          command=self._input_text_insert_recipe)
-        insert_submenu.add_command(label='Insert Argument',
+        code_submenu.add_command(label='Argument',
                          command=self._input_text_insert_argument)
-        insert_submenu.add_command(label='Insert Directive',
+        code_submenu.add_command(label='Directive',
                          command=self._input_text_insert_directive)
-        insert_submenu.add_command(label='Insert Function',
+        code_submenu.add_command(label='Function',
                          command=self._input_text_insert_function)
-        insert_submenu.add_separator()
+        menu.add_cascade(label='Insert Code', menu=code_submenu)
 
-        # URI insertion items
-        insert_submenu.add_command(label='Insert Image Seed URI',
+        # URI submenu
+        uri_submenu = tk.Menu(menu, tearoff=0)
+        uri_submenu.add_command(label='Image Seed URI',
                          command=self._input_text_insert_image_seed)
-        insert_submenu.add_command(label='Insert Karras Scheduler URI',
+        uri_submenu.add_command(label='Karras Scheduler URI',
                          command=self._input_text_insert_karras_scheduler)
-        insert_submenu.add_command(label='Insert Image Processor URI',
+        uri_submenu.add_command(label='Image Processor URI',
                          command=self._input_text_insert_image_processor)
-        insert_submenu.add_command(label='Insert Prompt Upscaler URI',
+        uri_submenu.add_command(label='Prompt Upscaler URI',
                          command=self._input_text_insert_prompt_upscaler)
-        insert_submenu.add_command(label='Insert Prompt Weighter URI',
+        uri_submenu.add_command(label='Prompt Weighter URI',
                          command=self._input_text_insert_prompt_weighter)
-        insert_submenu.add_command(label='Insert Quantizer URI',
+        uri_submenu.add_command(label='Quantizer URI',
                          command=self._input_text_insert_quantizer)
-        insert_submenu.add_separator()
+        menu.add_cascade(label='Insert URI', menu=uri_submenu)
 
-        # Path insertion items
-        insert_submenu.add_command(label='Insert File Path (Open)',
+        # Path submenu
+        path_submenu = tk.Menu(menu, tearoff=0)
+        path_submenu.add_command(label='File Path (Open)',
                          command=self._input_text_insert_file_path)
-        insert_submenu.add_command(label='Insert File Path (Save)',
+        path_submenu.add_command(label='File Path (Save)',
                          command=self._input_text_insert_file_path_save)
-        insert_submenu.add_command(label='Insert Directory Path',
+        path_submenu.add_command(label='Directory Path',
                          command=self._input_text_insert_directory_path)
-        menu.add_cascade(label='Insert', menu=insert_submenu)
+        menu.add_cascade(label='Insert Path', menu=path_submenu)
 
         return menu
 
