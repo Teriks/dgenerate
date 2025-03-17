@@ -19,12 +19,12 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import importlib.util
 import tkinter as tk
 import typing
 
-import dgenerate.console.recipesformentries.pluginschemaentry as _schemaentry
 import dgenerate.console.recipesformentries.entry as _entry
+import dgenerate.console.recipesformentries.pluginschemaentry as _schemaentry
+import dgenerate.console.recipesformentries.quantizerurientry as _quantizerurientry
 import dgenerate.console.resources as _resources
 
 
@@ -34,9 +34,7 @@ class _PromptUpscalerEntry(_schemaentry._PluginSchemaEntry):
     def __init__(self, *args, **kwargs):
 
         schema = _resources.get_schema('promptupscalers')
-
-        if importlib.util.find_spec('gpt4all') is None:
-            schema.pop('gpt4all', None)
+        quantizers = _resources.get_schema('quantizers')
 
         config = kwargs.get('config', {})
 
@@ -44,12 +42,25 @@ class _PromptUpscalerEntry(_schemaentry._PluginSchemaEntry):
         if config.get('hide-device', False):
             hidden_args.add('device')
 
+        # we want to be able to pop open a quantizer URI select with dynamic widgets
+        # and still be compatible with the recipe form, so grid rows have to be reserved
+        # for it, +2, one for the selection dropdown, and one for the divider
+        # that comes at the end of the widgets, we need the max amount of rows
+        # that will ever be needed when switching through quantizers
+
+        if len(quantizers) != 0:
+            max_additional_rows = max(len(args) for args in quantizers.values()) + 2
+        else:
+            max_additional_rows = 0
+
         super().__init__(*args,
                          label='Prompt Upscaler',
                          hidden_args=hidden_args,
                          help_button=True,
                          schema_help_node='PROMPT_UPSCALER_HELP',
-                         schema=schema, **kwargs)
+                         schema=schema,
+                         max_additional_rows=max_additional_rows,
+                         **kwargs)
 
         if self.arg is None:
             self.arg = '--prompt-upscaler'
@@ -100,13 +111,34 @@ class _PromptUpscalerEntry(_schemaentry._PluginSchemaEntry):
             entry.grid(row=row, column=1, sticky='we', padx=_entry.ROW_XPAD)
             return _schemaentry._PluginArgEntry(raw=False, widgets=[entry], variable=variable)
         elif 'quantizer' == param_name:
-            variable = tk.StringVar(value='')
-            values = _resources.get_quantizer_recipes()
-            if optional:
-                values = [''] + values
-            entry = tk.OptionMenu(self.master, variable, *values)
-            entry.grid(row=row, column=1, sticky='we', padx=_entry.ROW_XPAD)
-            return _schemaentry._PluginArgEntry(raw=False, widgets=[entry], variable=variable)
+            return self._create_quantizer_entry(row)
         else:
             return self._apply_file_dir_selects(
                 param_name, self._create_raw_type_entry(param_type, default_value, optional, row))
+
+    def _create_quantizer_entry(self, row):
+
+        entry = _quantizerurientry._QuantizerEntry(
+            master=self.master,
+            row=row,
+            recipe_form=self.master,
+            placeholder='URI',
+            config={'optional': True}
+        )
+
+        entry.arg = None
+
+        class _Var(tk.Variable):
+            def get(self) -> str:
+                return f"'{entry.template('URI')}'"
+
+            def set(self, value) -> None:
+                entry.plugin_name_var.set(value)
+
+        return _schemaentry._PluginArgEntry(
+            raw=False,
+            widgets=entry.primary_widgets(),
+            variable=_Var(),
+            widget_rows=entry.widget_rows,
+            widgets_delete=entry.destroy_dynamic_widgets
+        )

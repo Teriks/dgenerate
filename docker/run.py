@@ -23,26 +23,25 @@
 
 import os
 import platform
-import re
 import subprocess
 import sys
+from importlib.machinery import SourceFileLoader
 
 args = sys.argv[1:]
 
 script_path = os.path.dirname(os.path.abspath(__file__))
-image_working_dir = os.path.abspath(os.path.join(script_path, '..'))
+project_dir = os.path.abspath(os.path.join(script_path, '..'))
+hf_cache_local = os.path.join(project_dir, 'docker_cache', 'huggingface')
+dgenerate_cache_local = os.path.join(project_dir, 'docker_cache', 'dgenerate')
+pip_cache_local = os.path.join(project_dir, 'docker_cache', 'pip')
 
-with open(os.path.join(image_working_dir, 'dgenerate', '__init__.py')) as _f:
-    container_version = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]', _f.read(), re.MULTILINE).group(1)
-
-hf_cache_local = os.path.abspath(os.path.join(script_path, '..', 'docker_cache', 'huggingface'))
-dgenerate_cache_local = os.path.abspath(os.path.join(script_path, '..', 'docker_cache', 'dgenerate'))
-pip_cache_local = os.path.abspath(os.path.join(script_path, '..', 'docker_cache', 'pip'))
+setup = SourceFileLoader(
+    'setup_as_library', os.path.join(project_dir, 'setup.py')).load_module()
 
 print('hf_cache_local:', hf_cache_local)
 print('dgenerate_cache_local:', dgenerate_cache_local)
 print('pip_cache_local:', pip_cache_local)
-print('image_working_dir:', image_working_dir)
+print('project_dir:', project_dir)
 
 os.makedirs(hf_cache_local, exist_ok=True)
 os.makedirs(dgenerate_cache_local, exist_ok=True)
@@ -97,16 +96,17 @@ else:
     image = 'dgenerate-cuda'
     gpu_opts = ['--gpus', 'all']
 
-subprocess.run(['docker', 'image', 'build', '-f', docker_file, '-t', f'teriks/{image}:{container_version}', '.'])
+subprocess.check_call(['docker', 'image', 'build', '-f', docker_file, '-t', f'teriks/{image}:{setup.VERSION}', '.'])
 
-subprocess.run(['docker', 'rm', '-f', image])
-subprocess.run(['docker', 'run', *env_defs,
-                *gpu_opts, '--name', image,
-                '-e', f"DGENERATE_INSTALL_DEV={1 if dev_mode else 0}",
-                '-e', f"DGENERATE_INSTALL_INDEX={extra_index}",
-                '-v', f"{image_working_dir}:/opt/dgenerate",
-                '-v', f"{hf_cache_local}:/home/dgenerate/.cache/huggingface",
-                '-v', f"{dgenerate_cache_local}:/home/dgenerate/.cache/dgenerate",
-                '-v', f"{pip_cache_local}:/home/dgenerate/.cache/pip",
-                '-it', f'teriks/{image}:{container_version}',
-                'bash', '-c', f"source docker/install.sh; {' '.join(args)}"])
+subprocess.call(['docker', 'rm', '-f', image])
+
+subprocess.call(['docker', 'run', *env_defs,
+                 *gpu_opts, '--name', image,
+                 '-e', f"DGENERATE_INSTALL_DEV={1 if dev_mode else 0}",
+                 '-e', f"DGENERATE_INSTALL_INDEX={extra_index}",
+                 '-v', f"{project_dir}:/opt/dgenerate",
+                 '-v', f"{hf_cache_local}:/home/dgenerate/.cache/huggingface",
+                 '-v', f"{dgenerate_cache_local}:/home/dgenerate/.cache/dgenerate",
+                 '-v', f"{pip_cache_local}:/home/dgenerate/.cache/pip",
+                 '-it', f'teriks/{image}:{setup.VERSION}',
+                 'bash', '-c', f"source docker/install.sh; {' '.join(args)}"])

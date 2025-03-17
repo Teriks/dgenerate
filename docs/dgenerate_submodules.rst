@@ -234,6 +234,16 @@ dgenerate.spacycache module
    :show-inheritance:
    :special-members: __call__, __init__
 
+dgenerate.resources module
+--------------------------
+
+.. automodule:: dgenerate.resources
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :special-members: __call__, __init__
+
+
 dgenerate.renderloop module
 ---------------------------
 

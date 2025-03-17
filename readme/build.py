@@ -27,13 +27,17 @@ import re
 import subprocess
 import sys
 from collections import defaultdict
+from importlib.machinery import SourceFileLoader
 
 COMMAND_CACHE = dict()
 
-proj_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
+script_path = os.path.dirname(os.path.abspath(__file__))
+project_dir = os.path.abspath(os.path.join(script_path, '..'))
 
-with open(os.path.join(proj_dir, 'dgenerate', '__init__.py')) as _f:
-    VERSION = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]', _f.read(), re.MULTILINE).group(1)
+setup = SourceFileLoader(
+    'setup_as_library', os.path.join(project_dir, 'setup.py')).load_module()
+
+VERSION = setup.VERSION
 
 
 def get_git_revision():
@@ -330,7 +334,7 @@ def render_templates(rst_content, filename=None):
     return rst_content
 
 
-command_cache_path = os.path.join(proj_dir, 'readme', 'command.cache.json')
+command_cache_path = os.path.join(project_dir, 'readme', 'command.cache.json')
 
 if '--no-cache' not in sys.argv:
     if os.path.exists(command_cache_path):
@@ -340,8 +344,8 @@ if '--no-cache' not in sys.argv:
 # default command output width
 os.environ['COLUMNS'] = '110'
 
-input_file = os.path.join(proj_dir, 'readme', 'readme.template.rst')
-output_file = os.path.join(proj_dir, 'README.rst')
+input_file = os.path.join(project_dir, 'readme', 'readme.template.rst')
+output_file = os.path.join(project_dir, 'README.rst')
 with open(input_file, 'r') as file:
     content = file.read()
 

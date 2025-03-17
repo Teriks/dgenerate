@@ -26,6 +26,7 @@ Commonly used torch utilities.
 
 import re
 import torch
+import dgenerate.types as _types
 
 
 class InvalidDeviceOrdinalException(Exception):
@@ -131,3 +132,6 @@ def estimate_module_memory_usage(module: torch.nn.Module) -> str:
     bytes_per_param = dtype_sizes.get(dtype, 4)
     num_params = sum(p.numel() for p in module.parameters())
     return num_params * bytes_per_param
+
+
+__all__ = _types.module_all()

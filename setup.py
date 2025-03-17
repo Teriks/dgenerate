@@ -48,8 +48,14 @@ dgenerate_platform_tag = \
 force_lockfile_requires = \
     os.environ.get('DGENERATE_FORCE_LOCKFILE_REQUIRES')
 
-with io.open(os.path.join(setup_path, 'dgenerate', '__init__.py')) as _f:
-    VERSION = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]', _f.read(), re.MULTILINE).group(1)
+
+def version_from_file(path: str):
+    with open(path, 'r') as f:
+        version = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]', f.read(), re.MULTILINE).group(1)
+    return version
+
+
+VERSION = version_from_file(os.path.join(setup_path, 'dgenerate', 'resources.py'))
 
 if not VERSION:
     raise RuntimeError('version is not set')
@@ -292,9 +298,10 @@ if __name__ != 'setup_as_library':
                    ['dgenerate.console.themes',
                     'dgenerate.console.schemas',
                     'dgenerate.console.recipes',
-                    'dgenerate.extras.hidiffusion.sd_module_key'],
+                    'dgenerate.extras.hidiffusion.sd_module_key',
+                    'dgenerate.translators.data'],
           package_data={
-              'dgenerate': ['icon.ico', 'config_icon.ico'],
+              'dgenerate': ['icon.ico', 'config_icon.ico', '*.json'],
               'dgenerate.console.themes': ['*.toml'],
               'dgenerate.console.schemas': ['*.json'],
               'dgenerate.console.recipes': ['*.recipe'],

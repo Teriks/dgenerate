@@ -1,5 +1,9 @@
 In order to build the installer, there are a few tools that need to be installed on Windows.
 
+
+You need to install git for Windows: https://git-scm.com/downloads/win
+
+
 You need to install the .NET SDK:  https://dotnet.microsoft.com/en-us/download
 
 You then need to install WiX v4
