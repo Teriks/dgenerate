@@ -1150,7 +1150,7 @@ class DgenerateConsole(tk.Tk):
             command=self._undo_input_entry)
         undo_submenu.add_command(label='Redo', accelerator='Ctrl+Shift+Z',
             command=self._redo_input_entry)
-        menu.add_cascade(label='Undo/Redo', menu=undo_submenu)
+        menu.add_cascade(label='Undo / Redo', menu=undo_submenu)
 
         # Search submenu
         search_submenu = tk.Menu(menu, tearoff=0)
