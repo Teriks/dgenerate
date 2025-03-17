@@ -19,7 +19,6 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import bisect
-import enum
 import importlib.resources
 import importlib.util
 import io
@@ -35,29 +34,8 @@ import webbrowser
 
 import PIL.Image
 import PIL.ImageTk
-import packaging.version
-import requests
 import toml
-
-
-class ReleaseInfo:
-    tag_name: str
-    release_name: str
-    release_url: str
-
-    def __init__(self,
-                 tag_name: str,
-                 release_name: str,
-                 release_url: str):
-        self.tag_name = tag_name
-        self.release_name = release_name
-        self.release_url = release_url
-
-    def __str__(self):
-        return str(self.__dict__)
-
-    def __repr__(self):
-        return repr(self.__dict__)
+import dgenerate.resources as _d_resources
 
 
 def get_file_dialog_args(file_types: list):
@@ -110,63 +88,16 @@ def get_recipes():
     return _RECIPES
 
 
-def get_quantizer_recipes():
-    opts = []
-    if importlib.util.find_spec('bitsandbytes') is not None:
-        opts += [
-            'bnb;bits=8',
-            'bnb;bits=4;bits4-compute-dtype=float16',
-            'bnb;bits=4;bits4-compute-dtype=bfloat16',
-            'bnb;bits=4;bits4-compute-dtype=float32'
-        ]
-
-    if importlib.util.find_spec('torchao') is not None:
-        opts += [
-            'torchao;type=int8wo',
-            'torchao;type=int4wo',
-        ]
-    return opts
-
-
-def check_latest_release() -> ReleaseInfo | None:
-    """
-    Get the latest software release for this software.
-
-    :return: :py:class:`ReleaseInfo`
-    """
-
-    url = f"https://api.github.com/repos/Teriks/dgenerate/releases/latest"
-
-    headers = {
-        "Accept": "application/vnd.github.v3+json"
-    }
-
-    try:
-        response = requests.get(url, headers=headers, timeout=2)
-        response.raise_for_status()
-        latest_release = response.json()
-
-        tag_name = latest_release['tag_name']
-        release_name = latest_release['name']
-        release_url = latest_release['html_url']
-
-        return ReleaseInfo(tag_name, release_name, release_url)
-
-    except requests.exceptions.RequestException:
-        return None
-
-
 def set_window_icon(window: tkinter.Tk | tkinter.Toplevel):
     if platform.system() == 'Windows':
-        with importlib.resources.path('dgenerate', 'icon.ico') as path:
-            window.iconbitmap(default=path)
+        window.iconbitmap(default=_d_resources.get_icon_path())
     else:
         # noinspection PyTypeChecker
         window.iconphoto(
             True,
             PIL.ImageTk.PhotoImage(
                 PIL.Image.open(
-                    io.BytesIO(importlib.resources.read_binary('dgenerate', 'icon.ico')))))
+                    io.BytesIO(_d_resources.get_icon_data()))))
 
 
 def get_themes():
@@ -177,12 +108,36 @@ def get_themes():
 _LOADED_SCHEMAS = dict()
 
 
+def _schema_filter_quantizers(schema: dict):
+    if importlib.util.find_spec('bitsandbytes') is None:
+        schema.pop('bnb', None)
+
+    if importlib.util.find_spec('torchao') is None:
+        schema.pop('torchao', None)
+    return schema
+
+
+def _schema_filter_imageprocessors(schema: dict):
+    if importlib.util.find_spec('ncnn') is None:
+        schema.pop('upscaler-ncnn', None)
+    return schema
+
+
+def _schema_filter_promptupscalers(schema: dict):
+    if importlib.util.find_spec('gpt4all') is None:
+        schema.pop('gpt4all', None)
+    return schema
+
+
 def get_schema(name):
     if name in _LOADED_SCHEMAS:
         return _LOADED_SCHEMAS.get(name)
-
+    try:
+        filter = globals()[f'_schema_filter_{name}']
+    except KeyError:
+        filter = lambda x: x
     with importlib.resources.open_text('dgenerate.console.schemas', f'{name}.json') as file:
-        schema = json.load(file)
+        schema = filter(json.load(file))
         _LOADED_SCHEMAS[name] = schema
         return schema
 
@@ -288,15 +243,6 @@ def supported_torch_model_formats_open() -> list[str]:
     return ['safetensors', 'pt', 'pth', 'cpkt', 'bin']
 
 
-def release_version():
-    from dgenerate.console import __version__
-    value = __version__
-    if value[0] != 'v':
-        return 'v' + value
-    else:
-        return value
-
-
 _textbox_theme = dict()
 
 
@@ -327,59 +273,21 @@ def set_textbox_theme(**kwargs):
     _textbox_theme = dict(kwargs)
 
 
-class VersionComparison(enum.Enum):
-    V1_NEWER = 0
-    V2_NEWER = 1
-    SAME = 2
-
-
-def _ver_extra(ver: packaging.version.Version) -> tuple[str, int] | None:
-    if ver.is_postrelease:
-        return 'post', ver.post
-    if ver.is_devrelease:
-        return 'dev', ver.dev
-    if ver.is_prerelease:
-        return ver.pre
-    return None
-
-
-def compare_versions(version1, version2) -> VersionComparison:
-    try:
-        version1 = packaging.version.Version(version1)
-        version2 = packaging.version.Version(version2)
-    except packaging.version.InvalidVersion as e:
-        raise ValueError(str(e))
-
-    if version1 > version2:
-        return VersionComparison.V1_NEWER
-    elif version1 < version2:
-        return VersionComparison.V2_NEWER
-    else:
-        extra1 = _ver_extra(version1)
-        extra2 = _ver_extra(version2)
-
-        if extra1 != extra2:
-            # fallback, probably not required
-            if extra1 is not None and extra2 is None:
-                return VersionComparison.V1_NEWER
-            elif extra1 is None and extra2 is not None:
-                return VersionComparison.V2_NEWER
-            elif extra1[1] > extra2[1]:
-                return VersionComparison.V1_NEWER
-            elif extra1[1] < extra2[1]:
-                return VersionComparison.V2_NEWER
-
-        return VersionComparison.SAME
-
-
 def add_help_menu_links(menu: tk.Menu):
-    ver = release_version()
+    release_info = _d_resources.get_release_info()
+
+    if release_info.pre_release:
+        git_tree = release_info.commit
+        read_the_docs = release_info.branch
+    else:
+        git_tree = 'v' + _d_resources.version()
+        read_the_docs = git_tree
 
     menu.add_command(
-        label=f'Homepage ({ver})',
+        label=f'Homepage (pre-release, commit: {git_tree})' if release_info.pre_release else f'Homepage ({git_tree})',
         command=lambda:
         webbrowser.open(
-            f'https://github.com/Teriks/dgenerate/tree/{ver}'))
+            f'https://github.com/Teriks/dgenerate/tree/{git_tree}'))
 
     menu.add_separator()
 
@@ -387,31 +295,33 @@ def add_help_menu_links(menu: tk.Menu):
         label='Config Examples',
         command=lambda:
         webbrowser.open(
-            f'https://github.com/Teriks/dgenerate/tree/{ver}/examples'))
+            f'https://github.com/Teriks/dgenerate/tree/{git_tree}/examples'))
 
     menu.add_command(
         label='Config Documentation',
         command=lambda:
         webbrowser.open(
-            f'https://dgenerate.readthedocs.io/en/{ver}/readme.html#writing-and-running-configs'))
+            f'https://dgenerate.readthedocs.io/en/{read_the_docs}/readme.html#writing-and-running-configs'))
 
     menu.add_command(
         label='Project Documentation',
         command=lambda:
         webbrowser.open(
-            f'https://dgenerate.readthedocs.io/en/{ver}/readme.html'))
+            f'https://dgenerate.readthedocs.io/en/{read_the_docs}/readme.html'))
 
-    release_info = check_latest_release()
-    cur_ver = release_version()
+    if release_info.pre_release:
+        return
+
+    release_info = _d_resources.check_latest_release()
 
     if release_info is not None:
         try:
-            compare_result = compare_versions(release_info.tag_name, cur_ver)
+            compare_result = _d_resources.compare_versions(release_info.tag_name, git_tree)
         except:
             # do not kill the UI just for this.
-            compare_result = VersionComparison.SAME
+            compare_result = _d_resources.VersionComparison.SAME
 
-        if compare_result == VersionComparison.V1_NEWER:
+        if compare_result == _d_resources.VersionComparison.V1_NEWER:
             menu.add_separator()
 
             menu.add_command(

@@ -6,6 +6,7 @@ __pycache__/
 *.so
 
 # Distribution / packaging
+dgenerate/release.json
 bin/
 build/
 develop-eggs/

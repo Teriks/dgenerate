@@ -40,6 +40,7 @@ class _PluginUriSelect(tk.Toplevel):
 
         self.transient(master)
         self.resizable(True, False)
+        self.grid_propagate(True)
 
         self._insert = insert
 
@@ -63,12 +64,6 @@ class _PluginUriSelect(tk.Toplevel):
 
         self.plugin_frame.grid_columnconfigure(1, weight=1)
         self.grid_columnconfigure(0, weight=1)
-
-        def plugin_updated():
-            self.update_idletasks()
-            self.minsize(self.winfo_reqwidth(), self.winfo_reqheight())
-
-        self.plugin_entry.on_updated_callback = plugin_updated
 
         _util.position_toplevel(master, self, position=position)
 

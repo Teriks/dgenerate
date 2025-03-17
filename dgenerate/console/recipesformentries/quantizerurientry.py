@@ -18,7 +18,6 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import importlib.util
 import tkinter as tk
 import typing
 
@@ -33,9 +32,6 @@ class _QuantizerEntry(_schemaentry._PluginSchemaEntry):
     def __init__(self, *args, **kwargs):
 
         schema = _resources.get_schema('quantizers')
-
-        if importlib.util.find_spec('torchao') is None:
-            schema.pop('torchao', None)
 
         super().__init__(
             *args,

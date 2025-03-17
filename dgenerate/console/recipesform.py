@@ -112,6 +112,8 @@ class _RecipesForm(tk.Toplevel):
         self._entries: list[_recipesformentries._Entry] = []
         self._content: typing.Optional[str] = None
 
+        self._last_known_selection = None
+
         self._insert = insert
 
         self.transient(master)
@@ -183,8 +185,12 @@ class _RecipesForm(tk.Toplevel):
 
         self.bind("<Configure>", self._on_resize)
 
-        self._dropdown = tk.OptionMenu(self, self._current_template, *self._template_names,
-                                       command=lambda s: self._update_form(s, preserve_width=True))
+        self._dropdown = tk.OptionMenu(self,
+                                       self._current_template,
+                                       *self._template_names,
+                                       command=lambda s: self._update_form(str(s))
+                                       )
+
         self._dropdown.grid(row=0, column=0, columnspan=2, sticky='ew', padx=5, pady=5)
 
         self.grid_columnconfigure(0, weight=1)
@@ -217,8 +223,14 @@ class _RecipesForm(tk.Toplevel):
         canvas_width = self.winfo_width() - self.scrollbar.winfo_width() - 20
         self.canvas.itemconfig(self.canvas_window, width=canvas_width)
 
-    def _update_form(self, selection: str, preserve_width: bool = False) -> None:
+    def _update_form(self, selection: str) -> None:
         """Update the form based on the selected template."""
+
+        if self._last_known_selection == selection:
+            return
+        else:
+            self._last_known_selection = selection
+
         self.canvas.yview_moveto(0)
 
         for widget in self.scrollable_frame.winfo_children():

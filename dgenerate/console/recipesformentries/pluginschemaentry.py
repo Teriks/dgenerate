@@ -37,7 +37,9 @@ class _PluginArgEntry:
                  variable: tk.Variable,
                  file_types: dict | None = None,
                  file_out: bool = False,
-                 directory: bool = False):
+                 directory: bool = False,
+                 widget_rows: int = 1,
+                 widgets_delete: typing.Optional[typing.Callable] = None):
         """
         :param raw: Display acceptable types to the user in the label?
         :param widgets: Associated controls.
@@ -45,6 +47,10 @@ class _PluginArgEntry:
         :param file_types: File select dialog file types
         :param file_out: Output file dialog?
         :param directory: Directory select?
+        :param widget_rows: The entry uses up this many grid rows.
+        :param widgets_delete: dynamic widgets deletion callback, use this
+            if the entry creates dynamic widgets via interaction that are
+            not in "widgets" initially
         """
         self.raw = raw
         self.widgets = widgets
@@ -52,6 +58,8 @@ class _PluginArgEntry:
         self.file_types = file_types
         self.file_out = file_out
         self.directory = directory
+        self.widget_rows = widget_rows
+        self.widgets_delete = widgets_delete
 
 
 class _PluginSchemaEntry(_entry._Entry):
@@ -62,6 +70,7 @@ class _PluginSchemaEntry(_entry._Entry):
                  schema: dict,
                  schema_help_node: str = 'HELP',
                  hidden_args: set | None = None,
+                 max_additional_rows: int | None = None,
                  **kwargs):
         self.schema = schema
 
@@ -74,7 +83,12 @@ class _PluginSchemaEntry(_entry._Entry):
             'filter', None
         )
 
-        max_rows = max(len(args) for args in self.schema.values()) + (1 if not self.internal_divider else 2)
+        if len(self.schema) == 0:
+            max_rows = 1
+        else:
+            max_rows = (max(len(args) for args in self.schema.values()) +
+                        (1 if not self.internal_divider else 2) +
+                        (max_additional_rows if max_additional_rows is not None else 0))
 
         super().__init__(*args, **kwargs, widget_rows=max_rows)
 
@@ -101,16 +115,20 @@ class _PluginSchemaEntry(_entry._Entry):
         self.current_help_text = ''
 
         if self.declared_optional:
-            self.algorithm_dropdown = tk.OptionMenu(self.master, self.plugin_name_var, '', *values,
-                                                    command=self._on_plugin_change)
+            self.plugin_dropdown = tk.OptionMenu(self.master, self.plugin_name_var, '', *values,
+                                                 command=lambda s: self._on_plugin_change(str(s)))
         else:
             self.plugin_name_var.set(values[0])
 
             if help_button:
                 self.current_help_text = self.schema[values[0]][schema_help_node]
 
-            self.algorithm_dropdown = tk.OptionMenu(self.master, self.plugin_name_var, *values,
-                                                    command=self._on_plugin_change)
+            self.plugin_dropdown = tk.OptionMenu(self.master, self.plugin_name_var, *values,
+                                                 command=lambda s: self._on_plugin_change(str(s)))
+
+        if len(self.schema) == 0:
+            self.plugin_dropdown.config(bg='darkgray')
+            self.plugin_dropdown.configure(state=tk.DISABLED)
 
         if help_button:
             self.plugin_help_button = tk.Button(self.master, text='Help', command=self._show_help)
@@ -119,27 +137,50 @@ class _PluginSchemaEntry(_entry._Entry):
 
         self.dropdown_label.grid(row=self.row, column=0, padx=_entry.ROW_XPAD, sticky="e")
 
-        self.algorithm_dropdown.grid(row=self.row, column=1, padx=_entry.ROW_XPAD, sticky="ew")
+        self.plugin_dropdown.grid(row=self.row, column=1, padx=_entry.ROW_XPAD, sticky="ew")
 
         if not self.declared_optional:
             self._show_help_button()
 
         self.entries = {}
         self.dynamic_widgets = []
+        self._widget_delete_callbacks = []
 
         self.on_updated_callback = None
 
-        if not self.declared_optional:
-            self._on_plugin_change(None)
+        self._last_known_dropdown_value = None
 
-    def _clear_dynamic_widgets(self):
+        if not self.declared_optional:
+            self._on_plugin_change(self.plugin_name_var.get())
+
+    def primary_widgets(self):
+        """
+        Dropdown label, dropdown, help button if active
+        :return: list of widgets
+        """
+        return [self.dropdown_label,
+                self.plugin_dropdown] + (
+            [self.plugin_help_button] if self.plugin_help_button else [])
+
+    def destroy_dynamic_widgets(self):
+        """
+        Destroy any dynamically created widgets
+        """
         for widget in self.dynamic_widgets:
             widget.destroy()
+        for callback in self._widget_delete_callbacks:
+            callback()
+        self._widget_delete_callbacks.clear()
         self.dynamic_widgets.clear()
         self.entries.clear()
 
-    def _on_plugin_change(self, event):
-        self._clear_dynamic_widgets()
+    def _on_plugin_change(self, selected_value: str):
+        if self._last_known_dropdown_value == selected_value:
+            return
+        else:
+            self._last_known_dropdown_value = selected_value
+
+        self.destroy_dynamic_widgets()
 
         algorithm_name = self.plugin_name_var.get()
         if not algorithm_name:
@@ -150,6 +191,7 @@ class _PluginSchemaEntry(_entry._Entry):
         parameters = self.schema.get(algorithm_name, {})
 
         i = 0
+        row_offset = 0
 
         for i, (param_name, param_info) in enumerate(parameters.items()):
             if self._has_help_button and param_name == self._schema_help_node:
@@ -159,11 +201,17 @@ class _PluginSchemaEntry(_entry._Entry):
             if param_name in self._hidden_args:
                 continue
 
-            self._create_widget_for_param(param_name, param_info, self.row + i + 1)
+            entry = self._create_widget_for_param(
+                param_name, param_info, self.row + i + 1 + row_offset)
+
+            # widget_rows is 1 based, 1 widget = 1 row
+            # however we need 0 based here
+            row_offset += entry.widget_rows - 1
 
         if self.internal_divider:
             separator = ttk.Separator(self.master, orient='horizontal')
-            separator.grid(row=self.row + i + 2, column=0, sticky='ew', columnspan=100, pady=_entry.DIVIDER_YPAD)
+            separator.grid(row=self.row + i + 2 + row_offset, column=0, sticky='ew', columnspan=100,
+                           pady=_entry.DIVIDER_YPAD)
             self.dynamic_widgets.append(separator)
 
         if self.on_updated_callback is not None:
@@ -280,12 +328,15 @@ class _PluginSchemaEntry(_entry._Entry):
         else:
             return self._create_raw_type_entry(param_type, default_value, optional, row)
 
-    def _create_widget_for_param(self, param_name: str, param_info: dict, row: int):
+    def _create_widget_for_param(self, param_name: str, param_info: dict, row: int) -> _PluginArgEntry:
         optional: bool = param_info.get('optional', False)
         default_value: typing.Any = param_info.get('default', "")
         param_types: list[str] = param_info['types']
 
         arg_entry = self._create_entry_multi_type(param_name, param_types, default_value, optional, row)
+
+        if arg_entry.widgets_delete is not None:
+            self._widget_delete_callbacks.append(arg_entry.widgets_delete)
 
         entry = arg_entry.widgets[0]
 
@@ -314,6 +365,8 @@ class _PluginSchemaEntry(_entry._Entry):
         arg_entry.variable.trace_add('write', lambda *a, e=entry: e.config(highlightthickness=0))
 
         self.entries[param_name] = (entry, arg_entry.variable, default_value, optional)
+
+        return arg_entry
 
     def _show_help(self):
         top = tk.Toplevel(
