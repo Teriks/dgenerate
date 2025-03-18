@@ -19,10 +19,8 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import tkinter as tk
 import typing
 
-import dgenerate.console.recipesformentries.entry as _entry
 import dgenerate.console.recipesformentries.pluginschemaentry as _schemaentry
 import dgenerate.console.resources as _resources
 
@@ -53,11 +51,11 @@ class _KarrasSchedulerEntry(_schemaentry._PluginSchemaEntry):
         if created_simple_type:
             return entry
         elif param_name == 'prediction-type':
-            default_value = str(default_value)
-            variable = tk.StringVar(value=default_value)
-            entry = tk.OptionMenu(
-                self.master, variable, *_resources.get_karras_scheduler_prediction_types())
-            entry.grid(row=row, column=1, sticky='we', padx=_entry.ROW_XPAD)
-            return _schemaentry._PluginArgEntry(raw=False, widgets=[entry], variable=variable)
+            return self._create_dropdown_entry(
+                _resources.get_karras_scheduler_prediction_types(),
+                default_value,
+                optional,
+                row
+            )
         else:
             return self._create_raw_type_entry(param_type, default_value, optional, row)

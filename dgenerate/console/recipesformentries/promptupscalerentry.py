@@ -22,7 +22,6 @@
 import tkinter as tk
 import typing
 
-import dgenerate.console.recipesformentries.entry as _entry
 import dgenerate.console.recipesformentries.pluginschemaentry as _schemaentry
 import dgenerate.console.recipesformentries.quantizerurientry as _quantizerurientry
 import dgenerate.console.resources as _resources
@@ -89,29 +88,27 @@ class _PromptUpscalerEntry(_schemaentry._PluginSchemaEntry):
         if created_simple_type:
             return entry
         elif 'device' == param_name:
-            variable = tk.StringVar(value='')
-            values = _resources.get_torch_devices()
-            if optional:
-                values = [''] + values
-            entry = tk.OptionMenu(self.master, variable, *values)
-            entry.grid(row=row, column=1, sticky='we', padx=_entry.ROW_XPAD)
-            return _schemaentry._PluginArgEntry(raw=False, widgets=[entry], variable=variable)
+            return self._create_dropdown_entry(
+                _resources.get_torch_devices(),
+                default_value,
+                optional,
+                row
+            )
         elif 'compute' == param_name and self.plugin_name_var.get() == 'gpt4all':
-            variable = tk.StringVar(value='')
-            values = _resources.get_gpt4all_compute_devices()
-            if optional:
-                values = [''] + values
-            entry = tk.OptionMenu(self.master, variable, *values)
-            entry.grid(row=row, column=1, sticky='we', padx=_entry.ROW_XPAD)
-            return _schemaentry._PluginArgEntry(raw=False, widgets=[entry], variable=variable)
+            return self._create_dropdown_entry(
+                _resources.get_gpt4all_compute_devices(),
+                default_value,
+                optional,
+                row
+            )
         elif 'part' == param_name:
-            variable = tk.StringVar(value='both')
             values = ['both', 'positive', 'negative']
-            entry = tk.OptionMenu(self.master, variable, *values)
-            entry.grid(row=row, column=1, sticky='we', padx=_entry.ROW_XPAD)
-            return _schemaentry._PluginArgEntry(raw=False, widgets=[entry], variable=variable)
-        elif 'quantizer' == param_name:
+            return self._create_dropdown_entry(values, default_value, optional, row)
+        elif 'quantizer' in param_name:
             return self._create_quantizer_entry(row)
+        elif 'dtype' in param_name:
+            values = ['float32', 'float16', 'bfloat16']
+            return self._create_dropdown_entry(values, default_value, optional, row)
         else:
             return self._apply_file_dir_selects(
                 param_name, self._create_raw_type_entry(param_type, default_value, optional, row))
