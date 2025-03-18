@@ -25,6 +25,7 @@ import re
 
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.enums as _enums
+from dgenerate.pipelinewrapper.uris import get_quantizer_uri_class as _get_quantizer_uri_class
 import dgenerate.promptweighters.exceptions as _exceptions
 import dgenerate.promptweighters.promptweighter as _promptweighter
 import dgenerate.memory as _memory
@@ -61,7 +62,8 @@ class RankGenEncoder:
                  cache_dir=None,
                  local_files_only=False,
                  use_auth_token=None,
-                 torch_dtype=torch.float32):
+                 torch_dtype=torch.float32,
+                 quantization_config=None):
         assert model_path in [
             "kalpeshk2011/rankgen-t5-xl-all",
             "kalpeshk2011/rankgen-t5-xl-pg19",
@@ -93,11 +95,14 @@ class RankGenEncoder:
             trust_remote_code=True,
             local_files_only=local_files_only,
             use_auth_token=use_auth_token,
-            torch_dtype=torch_dtype
+            torch_dtype=torch_dtype,
+            quantization_config=quantization_config
         )
 
     def to(self, device, **kwargs):
-        return self.model.to(device, **kwargs)
+        if not getattr(self.model, "is_loaded_in_8bit", False):
+            return self.model.to(device, **kwargs)
+        return self
 
     def eval(self):
         return self.model.eval()
@@ -263,6 +268,9 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
     The "llm-dtype" argument specifies the precision for the rankgen encoder and llm4gen CAM projector model,
     changing this to 'float16' or 'bfloat16' will cut memory use in half at the possible cost of output quality.
 
+    The "llm-quantizer" argument specifies the quantization backend to use when loading the rankgen encoder,
+    this argument uses dgenerate --quantizer syntax.
+
     The "token" argument allows you to explicitly specify a Hugging Face auth token for downloads.
 
     NOWRAP!
@@ -285,6 +293,7 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
                  projector_weight_name: str = 'projector.pth',
                  weighter: str | None = None,
                  llm_dtype: str = 'float32',
+                 llm_quantizer: str | None = None,
                  token: str | None = None,
                  **kwargs):
         super().__init__(**kwargs)
@@ -314,6 +323,14 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
             raise self.argument_error(
                 'Argument "llm-dtype" must '
                 'be one of: float32, float16, or bfloat16')
+
+        if llm_quantizer:
+            try:
+                llm_quantization_config = _get_quantizer_uri_class(llm_quantizer).parse(llm_quantizer).to_config()
+            except Exception as e:
+                raise self.argument_error(f'Error loading "llm-quantizer" argument "{llm_quantizer}": {e}')
+        else:
+            llm_quantization_config = None
 
         if self.model_type not in supported:
             raise _exceptions.PromptWeightingUnsupported(
@@ -362,13 +379,14 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
         # dtype of the model, so append that to the tag
 
         self.t5_model = self.load_object_cached(
-            tag=encoder_model_path + llm_dtype,
+            tag=encoder_model_path + (llm_quantizer if llm_quantizer else '') + llm_dtype,
             estimated_size=rankgen_size_estimate,
             method=lambda: RankGenEncoder(
                 encoder_model_path,
                 local_files_only=self.local_files_only,
                 use_auth_token=token,
-                torch_dtype=self._llm_dtype
+                torch_dtype=self._llm_dtype,
+                quantization_config=llm_quantization_config
             )
         )
 
@@ -649,8 +667,8 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
             filtered_rankgen_pos = self._filter_rankgen_prompt(positive, 'positive') if not positive_2 else positive_2
             filtered_rankgen_neg = self._filter_rankgen_prompt(negative, 'negative') if not negative_2 else negative_2
 
-            llm_embed = self.t5_model.encode(filtered_rankgen_pos)
-            neg_llm_embed = self.t5_model.encode(filtered_rankgen_neg, max_length=llm_embed.shape[1])
+            llm_embed = self.t5_model.encode(filtered_rankgen_pos).to(device)
+            neg_llm_embed = self.t5_model.encode(filtered_rankgen_neg, max_length=llm_embed.shape[1]).to(device)
 
             pos_conditioning = self.llm_projector(
                 clip_embed.to(self._llm_dtype), llm_embed).to(embeds_dtype)
