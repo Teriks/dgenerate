@@ -19,10 +19,8 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import tkinter as tk
 import typing
 
-import dgenerate.console.recipesformentries.entry as _entry
 import dgenerate.console.resources as _resources
 import dgenerate.console.recipesformentries.pluginschemaentry as _schemaentry
 
@@ -76,13 +74,12 @@ class _ImageProcessorEntry(_schemaentry._PluginSchemaEntry):
         if created_simple_type:
             return entry
         elif 'device' in param_name:
-            variable = tk.StringVar(value='')
-            values = _resources.get_torch_devices()
-            if optional:
-                values = [''] + values
-            entry = tk.OptionMenu(self.master, variable, *values)
-            entry.grid(row=row, column=1, sticky='we', padx=_entry.ROW_XPAD)
-            return _schemaentry._PluginArgEntry(raw=False, widgets=[entry], variable=variable)
+            return self._create_dropdown_entry(
+                _resources.get_torch_devices(),
+                default_value,
+                optional,
+                row
+            )
         else:
             return self._apply_file_selects(
                 param_name, self._create_raw_type_entry(param_type, default_value, optional, row))

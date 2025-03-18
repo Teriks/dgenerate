@@ -202,8 +202,7 @@ class _PluginSchemaEntry(_entry._Entry):
         self._show_help_button()
         parameters = self.schema.get(algorithm_name, {})
 
-        i = 0
-        row_offset = 0
+        row_offset = 1
 
         for param_name, param_info in parameters.items():
             if param_name == self._schema_help_node:
@@ -214,16 +213,13 @@ class _PluginSchemaEntry(_entry._Entry):
                 continue
 
             entry = self._create_widget_for_param(
-                param_name, param_info, self.row + i + 1 + row_offset)
+                param_name, param_info, self.row + row_offset)
 
-            # widget_rows is 1 based, 1 widget = 1 row
-            # however we need 0 based here
-            row_offset += entry.widget_rows - 1
-            i += 1
+            row_offset += entry.widget_rows
 
         if self.internal_divider:
             separator = ttk.Separator(self.master, orient='horizontal')
-            separator.grid(row=self.row + i + 2 + row_offset, column=0, sticky='ew', columnspan=100,
+            separator.grid(row=self.row + row_offset, column=0, sticky='ew', columnspan=100,
                            pady=_entry.DIVIDER_YPAD)
             self.dynamic_widgets.append(separator)
 
@@ -271,6 +267,17 @@ class _PluginSchemaEntry(_entry._Entry):
         if file_path:
             entry.delete(0, tk.END)
             entry.insert(0, file_path)
+
+    def _create_dropdown_entry(self, values: list[str], default_value: typing.Any, optional: bool, row: int) -> _PluginArgEntry:
+        if default_value:
+            variable = tk.StringVar(value=str(default_value))
+        else:
+            variable = tk.StringVar(value='')
+        if optional:
+            values = [''] + values
+        entry = tk.OptionMenu(self.master, variable, *values)
+        entry.grid(row=row, column=1, sticky='we', padx=_entry.ROW_XPAD)
+        return _PluginArgEntry(raw=False, widgets=[entry], variable=variable)
 
     def _create_int_float_bool_entries(self, param_type: str, default_value: typing.Any, optional: bool, row: int):
         if param_type in ['int', 'float']:

@@ -18,10 +18,9 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import tkinter as tk
+
 import typing
 
-import dgenerate.console.recipesformentries.entry as _entry
 import dgenerate.console.recipesformentries.pluginschemaentry as _schemaentry
 import dgenerate.console.resources as _resources
 
@@ -50,42 +49,14 @@ class _QuantizerEntry(_schemaentry._PluginSchemaEntry):
                                   optional: bool,
                                   row: int) -> _schemaentry._PluginArgEntry:
         if param_name == 'bits' and self.plugin_name_var.get() == 'bnb':
-            default_value = str(default_value)
-            variable = tk.StringVar(value=default_value)
-            entry = tk.OptionMenu(
-                self.master, variable, '8', '4')
-            entry.grid(row=row, column=1, sticky='we', padx=_entry.ROW_XPAD)
-            return _schemaentry._PluginArgEntry(raw=False, widgets=[entry], variable=variable)
-
+            values = ['8', '4']
+            return self._create_dropdown_entry(values, default_value, optional, row)
         if 'dtype' in param_name or 'storage' in param_name and self.plugin_name_var.get() == 'bnb':
-            default_value = str(default_value)
-            variable = tk.StringVar(value=default_value)
-
             values = ['float16', 'bfloat16', 'float32']
-
-            if str(default_value) not in values:
-                values = [str(default_value)] + values
-
-            entry = tk.OptionMenu(
-                self.master, variable, *values)
-
-            entry.grid(row=row, column=1, sticky='we', padx=_entry.ROW_XPAD)
-
-            return _schemaentry._PluginArgEntry(raw=False, widgets=[entry], variable=variable)
+            return self._create_dropdown_entry(values, default_value, optional, row)
         if 'quant-type' in param_name and self.plugin_name_var.get() == 'bnb':
-            default_value = str(default_value)
-            variable = tk.StringVar(value=default_value)
-
             values = ['fp4', 'nf4']
-
-            if str(default_value) not in values:
-                values = [str(default_value)] + values
-
-            entry = tk.OptionMenu(
-                self.master, variable, *values)
-
-            entry.grid(row=row, column=1, sticky='we', padx=_entry.ROW_XPAD)
-            return _schemaentry._PluginArgEntry(raw=False, widgets=[entry], variable=variable)
+            return self._create_dropdown_entry(values, default_value, optional, row)
         else:
             created_simple_type, entry = self._create_int_float_bool_entries(param_type, default_value, optional, row)
             if created_simple_type:
