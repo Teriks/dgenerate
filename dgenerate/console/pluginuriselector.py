@@ -33,7 +33,8 @@ class _PluginUriSelect(tk.Toplevel):
                  plugin_entry_class: type[_pluginschemaentry._PluginSchemaEntry],
                  insert: typing.Callable[[str], None],
                  master=None,
-                 position: tuple[int, int] = None
+                 position: tuple[int, int] = None,
+                 size: tuple[int, int] = None
                  ):
         super().__init__(master)
         self.title(title)
@@ -106,7 +107,12 @@ class _PluginUriSelect(tk.Toplevel):
         else:
             default_size = (600, 400)
 
-        _util.position_toplevel(master, self, position=position, size=default_size)
+        _util.position_toplevel(
+            master,
+            self,
+            position=position,
+            size=size if size else default_size
+        )
 
         self.plugin_entry.on_updated_callback = self._on_plugin_change
 
