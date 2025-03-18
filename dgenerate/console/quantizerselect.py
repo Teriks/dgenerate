@@ -25,22 +25,28 @@ import dgenerate.console.recipesformentries as _entries
 
 
 class _QuantizerSelect(_pluginuriselector._PluginUriSelect):
-    def __init__(self, insert: typing.Callable[[str], None], master=None, position: tuple[int, int] = None):
+    def __init__(self,
+                 insert: typing.Callable[[str], None],
+                 master=None, position: tuple[int, int] | None = None,
+                 size: tuple[int, int] | None = None
+                 ):
         super().__init__(
             title='Insert Quantizer URI',
             plugin_entry_class=_entries._QuantizerEntry,
             master=master,
             position=position,
+            size=size,
             insert=insert
         )
 
 
 _last_pos = None
+_last_size = None
 _cur_window = None
 
 
 def request_uri(master, insert: typing.Callable[[str], None]):
-    global _last_pos, _cur_window
+    global _last_size, _last_pos, _cur_window
 
     if _cur_window is not None:
         _cur_window.focus_set()
@@ -49,14 +55,16 @@ def request_uri(master, insert: typing.Callable[[str], None]):
     _cur_window = _QuantizerSelect(
         insert=insert,
         master=master,
-        position=_last_pos
+        position=_last_pos,
+        size=_last_size
     )
 
     og_destroy = _cur_window.destroy
 
     # noinspection PyUnresolvedReferences
     def destroy():
-        global _last_pos, _cur_window
+        global _last_size, _last_pos, _cur_window
+        _last_size = (_cur_window.winfo_width(), _cur_window.winfo_height())
         _last_pos = (_cur_window.winfo_x(), _cur_window.winfo_y())
         _cur_window = None
         og_destroy()
