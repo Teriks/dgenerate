@@ -24,6 +24,7 @@ import re
 import tkinter as tk
 import dgenerate.console.util as _util
 
+
 class _FindDialog(tk.Toplevel):
     def __init__(self,
                  master,
