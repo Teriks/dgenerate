@@ -72,7 +72,7 @@ class _PromptWeighterEntry(_schemaentry._PluginSchemaEntry):
         created_simple_type, entry = self._create_int_float_bool_entries(param_type, default_value, optional, row)
         if created_simple_type:
             return entry
-        elif 'encoder' in param_name and self.plugin_name_var.get() == 'llm4gen':
+        elif param_name == 'encoder' and self.plugin_name_var.get() == 'llm4gen':
             values = ['base-all', 'large-all', 'xl-all', 'xl-pg19']
             return self._create_dropdown_entry(values, default_value, optional, row)
         elif 'quantizer' in param_name:
