@@ -29,7 +29,7 @@ import typing
 import dgenerate.console.recipesformentries as _recipesformentries
 import dgenerate.console.resources as _resources
 import dgenerate.console.util as _util
-from dgenerate.console.mousewheelbind import bind_mousewheel, un_bind_mousewheel
+from dgenerate.console.mousewheelbind import bind_mousewheel, handle_canvas_scroll, un_bind_mousewheel
 
 
 class _RecipeTemplateTag:
@@ -201,31 +201,13 @@ class _RecipesForm(tk.Toplevel):
         self._update_form(self._current_template.get())
 
     def _on_mouse_wheel(self, event):
-        """Scroll the canvas with the mouse wheel."""
-        viewable_region = self.canvas.bbox("all")
-        if viewable_region is not None:
-            canvas_height = self.canvas.winfo_height()
-            content_height = viewable_region[3] - viewable_region[1]
-
-            if content_height <= canvas_height:
-                return  # Do nothing if there's no overflow
-
-            if event.delta:
-                self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
-            else:
-                if event.num == 4:
-                    self.canvas.yview_scroll(-1, "units")
-                elif event.num == 5:
-                    self.canvas.yview_scroll(1, "units")
+        handle_canvas_scroll(self.canvas, event)
 
     def _on_resize(self, event):
-        """Update the canvas width to match the new window width."""
         canvas_width = self.winfo_width() - self.scrollbar.winfo_width() - 20
         self.canvas.itemconfig(self.canvas_window, width=canvas_width)
 
     def _update_form(self, selection: str) -> None:
-        """Update the form based on the selected template."""
-
         if self._last_known_selection == selection:
             return
         else:

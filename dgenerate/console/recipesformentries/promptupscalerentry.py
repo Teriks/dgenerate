@@ -117,7 +117,6 @@ class _PromptUpscalerEntry(_schemaentry._PluginSchemaEntry):
                 param_name, self._create_raw_type_entry(param_type, default_value, optional, row))
 
     def _create_quantizer_entry(self, row):
-
         entry = _quantizerurientry._QuantizerEntry(
             master=self.master,
             row=row,

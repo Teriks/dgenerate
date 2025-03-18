@@ -22,7 +22,7 @@ import re
 import sys
 import tkinter as tk
 
-from dgenerate.console.mousewheelbind import bind_mousewheel
+from dgenerate.console.mousewheelbind import bind_mousewheel, un_bind_mousewheel
 
 
 class IntSpinbox(tk.Entry):
@@ -130,6 +130,10 @@ class IntSpinbox(tk.Entry):
             return True
         except ValueError:
             return False
+
+    def destroy(self) -> None:
+        un_bind_mousewheel(self.unbind)
+        super().destroy()
 
 
 class FloatSpinbox(tk.Entry):
@@ -313,3 +317,7 @@ class FloatSpinbox(tk.Entry):
         self.real_value.trace_remove('write', self._real_trace_id)
         self.real_value.set(self.display_value.get())
         self._real_trace_id = self.real_value.trace_add('write', self._update_display_value)
+
+    def destroy(self) -> None:
+        un_bind_mousewheel(self.unbind)
+        super().destroy()
