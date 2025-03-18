@@ -37,10 +37,10 @@ class BNBQuantizerUri:
 
     def __init__(self,
                  bits: int = 8,
-                 bits4_compute_dtype: str = None,
+                 bits4_compute_dtype: str | None = None,
                  bits4_quant_type: str = "fp4",
                  bits4_use_double_quant: bool = False,
-                 bits4_quant_storage: str = None):
+                 bits4_quant_storage: str | None = None):
 
         if bits not in {4, 8}:
             raise _exceptions.InvalidBNBQuantizerUriError(
@@ -86,10 +86,10 @@ class BNBQuantizerUri:
                 )
 
             bits = int(r.args.get('bits', 8))
-            bits4_compute_dtype = r.args.get('bits4-compute-dtype')
+            bits4_compute_dtype = r.args.get('bits4-compute-dtype', None)
             bits4_quant_type = r.args.get('bits4-quant-type', 'fp4')
             bits4_use_double_quant = _types.parse_bool(r.args.get('bits4-use-double-quant', False))
-            bits4_quant_storage = r.args.get('bits4-quant-storage')
+            bits4_quant_storage = r.args.get('bits4-quant-storage', None)
 
             return BNBQuantizerUri(
                 bits=bits,
