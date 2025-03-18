@@ -22,6 +22,9 @@ import typing
 
 import dgenerate.console.pluginuriselector as _pluginuriselector
 import dgenerate.console.recipesformentries as _entries
+import dgenerate.console.util as _util
+
+_dialog_state = _util.DialogState(save_position=True, save_size=True)
 
 
 class _PromptUpscalerSelect(_pluginuriselector._PluginUriSelect):
@@ -40,38 +43,10 @@ class _PromptUpscalerSelect(_pluginuriselector._PluginUriSelect):
         )
 
 
-_last_pos = None
-_last_size = None
-_cur_window = None
-
-
 def request_uri(master, insert: typing.Callable[[str], None]):
-    global _last_size, _last_pos, _cur_window
-
-    if _cur_window is not None:
-        _cur_window.focus_set()
-        return
-
-    _cur_window = _PromptUpscalerSelect(
-        insert=insert,
+    return _util.create_singleton_dialog(
         master=master,
-        position=_last_pos,
-        size=_last_size
+        dialog_class=_PromptUpscalerSelect,
+        state=_dialog_state,
+        dialog_kwargs={'insert': insert}
     )
-
-    og_destroy = _cur_window.destroy
-
-    # noinspection PyUnresolvedReferences
-    def destroy():
-        global _last_size, _last_pos, _cur_window
-        _last_size = (_cur_window.winfo_width(), _cur_window.winfo_height())
-        _last_pos = (_cur_window.winfo_x(), _cur_window.winfo_y())
-        _cur_window = None
-        og_destroy()
-
-    _cur_window.destroy = destroy
-
-    def on_closing():
-        _cur_window.destroy()
-
-    _cur_window.protocol("WM_DELETE_WINDOW", on_closing)

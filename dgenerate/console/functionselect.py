@@ -20,41 +20,22 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import typing
 
-import dgenerate.console.dropdownselectwithhelp as _modalselectwithhelp
+import dgenerate.console.dropdownselectwithhelp as _dropdownselectwithhelp
 import dgenerate.console.resources as _resources
+import dgenerate.console.util as _util
 
-_last_pos = None
-_cur_window = None
+_dialog_state = _util.DialogState(save_position=True, save_size=False)
 
 
 def request_function(master, insert: typing.Callable[[str], None]):
-    global _last_pos, _cur_window
-
-    if _cur_window is not None:
-        _cur_window.focus_set()
-        return
-
-    _cur_window = _modalselectwithhelp._DropdownSelectWithHelp(
-        item_name='Function',
-        values_to_help=_resources.get_dgenerate_functions(),
-        insert=insert,
+    return _util.create_singleton_dialog(
         master=master,
-        position=_last_pos
+        dialog_class=_dropdownselectwithhelp._DropdownSelectWithHelp,
+        state=_dialog_state,
+        dialog_kwargs={
+            'item_name': 'Function',
+            'values_to_help': _resources.get_dgenerate_functions(),
+            'insert': insert
+        }
     )
-
-    og_destroy = _cur_window.destroy
-
-    # noinspection PyUnresolvedReferences
-    def destroy():
-        global _last_pos, _cur_window
-        _last_pos = (_cur_window.winfo_x(), _cur_window.winfo_y())
-        _cur_window = None
-        og_destroy()
-
-    _cur_window.destroy = destroy
-
-    def on_closing():
-        _cur_window.destroy()
-
-    _cur_window.protocol("WM_DELETE_WINDOW", on_closing)
 

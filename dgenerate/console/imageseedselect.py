@@ -29,6 +29,8 @@ import dgenerate.console.spinbox as _spinbox
 import dgenerate.console.util as _util
 import dgenerate.textprocessing as _textprocessing
 
+_dialog_state = _util.DialogState(save_position=True, save_size=False)
+
 
 class _ImageSeedSelect(tk.Toplevel):
     def __init__(self, insert: typing.Callable[[str], None], master=None, position: tuple[int, int] = None):
@@ -179,35 +181,10 @@ class _ImageSeedSelect(tk.Toplevel):
             _entry.valid_colors(entry)
 
 
-_last_pos = None
-_cur_window = None
-
-
 def request_uri(master, insert: typing.Callable[[str], None]):
-    global _last_pos, _cur_window
-
-    if _cur_window is not None:
-        _cur_window.focus_set()
-        return
-
-    _cur_window = _ImageSeedSelect(
-        insert=insert,
+    return _util.create_singleton_dialog(
         master=master,
-        position=_last_pos
+        dialog_class=_ImageSeedSelect,
+        state=_dialog_state,
+        dialog_kwargs={'insert': insert}
     )
-
-    og_destroy = _cur_window.destroy
-
-    # noinspection PyUnresolvedReferences
-    def destroy():
-        global _last_pos, _cur_window
-        _last_pos = (_cur_window.winfo_x(), _cur_window.winfo_y())
-        _cur_window = None
-        og_destroy()
-
-    _cur_window.destroy = destroy
-
-    def on_closing():
-        _cur_window.destroy()
-
-    _cur_window.protocol("WM_DELETE_WINDOW", on_closing)
