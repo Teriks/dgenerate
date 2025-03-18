@@ -5340,6 +5340,7 @@ See: `LLM4GEN <https://github.com/YUHANG-Ma/LLM4GEN>`_
             projector-weight-name: str = "projector.pth"
             weighter: str | None = None
             llm-dtype: str = "float32"
+            llm-quantizer: str | None = None
             token: str | None = None
     
         LLM4GEN prompt weighter specifically for Stable Diffusion 1.5, See: https://github.com/YUHANG-Ma/LLM4GEN
@@ -5384,6 +5385,9 @@ See: `LLM4GEN <https://github.com/YUHANG-Ma/LLM4GEN>`_
         The "llm-dtype" argument specifies the precision for the rankgen encoder and llm4gen CAM projector model,
         changing this to 'float16' or 'bfloat16' will cut memory use in half at the possible cost of output
         quality.
+    
+        The "llm-quantizer" argument specifies the quantization backend to use when loading the rankgen encoder,
+        this argument uses dgenerate --quantizer syntax.
     
         The "token" argument allows you to explicitly specify a Hugging Face auth token for downloads.
     
@@ -7307,7 +7311,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [10952807553393]
+            Value: [96429412319105]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
