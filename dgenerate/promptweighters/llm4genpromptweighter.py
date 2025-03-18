@@ -102,7 +102,7 @@ class RankGenEncoder:
     def to(self, device, **kwargs):
         if not getattr(self.model, "is_loaded_in_8bit", False):
             return self.model.to(device, **kwargs)
-        return self
+        return self.model
 
     def eval(self):
         return self.model.eval()
