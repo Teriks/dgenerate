@@ -122,13 +122,20 @@ def create_singleton_dialog(
     dialog = dialog_class(master=master, **dialog_kwargs)
     state.cur_window = dialog
 
-    def on_destroy():
+    og_destroy = dialog.destroy
+
+    def destroy():
         if state.save_position:
             state.last_pos = (dialog.winfo_x(), dialog.winfo_y())
         if state.save_size:
             state.last_size = (dialog.winfo_width(), dialog.winfo_height())
         state.cur_window = None
+        og_destroy()
+
+    dialog.destroy = destroy
+
+    def protocol_delete():
         dialog.destroy()
 
-    dialog.protocol("WM_DELETE_WINDOW", on_destroy)
+    dialog.protocol("WM_DELETE_WINDOW", protocol_delete)
     return dialog
