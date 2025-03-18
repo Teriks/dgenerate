@@ -26,7 +26,7 @@ import typing
 import dgenerate.console.filedialog as _filedialog
 import dgenerate.console.recipesformentries.entry as _entry
 import dgenerate.console.resources as _resources
-from dgenerate.console.mousewheelbind import bind_mousewheel
+from dgenerate.console.mousewheelbind import bind_mousewheel, un_bind_mousewheel
 from dgenerate.console.spinbox import FloatSpinbox, IntSpinbox
 
 
@@ -71,6 +71,8 @@ class _PluginSchemaEntry(_entry._Entry):
                  schema_help_node: str = 'HELP',
                  hidden_args: set | None = None,
                  max_additional_rows: int | None = None,
+                 dropdown_parent: tk.Widget | None = None,
+                 dropdown_row: int | None = None,
                  **kwargs):
         self.schema = schema
 
@@ -111,36 +113,15 @@ class _PluginSchemaEntry(_entry._Entry):
         else:
             values = list(self.schema.keys())
 
-        self.dropdown_label = tk.Label(self.master, text=label)
+        self.dropdown_label = None
+        self.plugin_dropdown = None
+        self.plugin_help_button = None
         self.current_help_text = ''
 
-        if self.declared_optional:
-            self.plugin_dropdown = tk.OptionMenu(self.master, self.plugin_name_var, '', *values,
-                                                 command=lambda s: self._on_plugin_change(str(s)))
-        else:
-            self.plugin_name_var.set(values[0])
+        self._dropdown_row = self.row if not dropdown_parent else dropdown_row
+        self._dropdown_parent = dropdown_parent if dropdown_parent else self.master
 
-            if help_button:
-                self.current_help_text = self.schema[values[0]][schema_help_node]
-
-            self.plugin_dropdown = tk.OptionMenu(self.master, self.plugin_name_var, *values,
-                                                 command=lambda s: self._on_plugin_change(str(s)))
-
-        if len(self.schema) == 0:
-            self.plugin_dropdown.config(bg='darkgray')
-            self.plugin_dropdown.configure(state=tk.DISABLED)
-
-        if help_button:
-            self.plugin_help_button = tk.Button(self.master, text='Help', command=self._show_help)
-        else:
-            self.plugin_help_button = None
-
-        self.dropdown_label.grid(row=self.row, column=0, padx=_entry.ROW_XPAD, sticky="e")
-
-        self.plugin_dropdown.grid(row=self.row, column=1, padx=_entry.ROW_XPAD, sticky="ew")
-
-        if not self.declared_optional:
-            self._show_help_button()
+        self._create_dropdown(label, values)
 
         self.entries = {}
         self.dynamic_widgets = []
@@ -152,6 +133,37 @@ class _PluginSchemaEntry(_entry._Entry):
 
         if not self.declared_optional:
             self._on_plugin_change(self.plugin_name_var.get())
+
+    def _create_dropdown(self, label: str, values: list[str]):
+        self.dropdown_label = tk.Label(self._dropdown_parent, text=label)
+
+        if self.declared_optional:
+            self.plugin_dropdown = tk.OptionMenu(
+                self._dropdown_parent,
+                self.plugin_name_var, '', *values,
+                command=lambda s: self._on_plugin_change(str(s)))
+        else:
+            self.plugin_name_var.set(values[0])
+
+            if self._has_help_button:
+                self.current_help_text = self.schema[values[0]][self._schema_help_node]
+
+            self.plugin_dropdown = tk.OptionMenu(
+                self._dropdown_parent, self.plugin_name_var, *values,
+                command=lambda s: self._on_plugin_change(str(s)))
+
+        if len(self.schema) == 0:
+            self.plugin_dropdown.config(bg='darkgray')
+            self.plugin_dropdown.configure(state=tk.DISABLED)
+
+        if self._has_help_button:
+            self.plugin_help_button = tk.Button(self._dropdown_parent, text='Help', command=self._show_help)
+
+        self.dropdown_label.grid(row=self._dropdown_row, column=0, padx=_entry.ROW_XPAD, sticky="e")
+        self.plugin_dropdown.grid(row=self._dropdown_row, column=1, padx=_entry.ROW_XPAD, sticky="ew")
+
+        if not self.declared_optional:
+            self._show_help_button()
 
     def primary_widgets(self):
         """
@@ -193,8 +205,8 @@ class _PluginSchemaEntry(_entry._Entry):
         i = 0
         row_offset = 0
 
-        for i, (param_name, param_info) in enumerate(parameters.items()):
-            if self._has_help_button and param_name == self._schema_help_node:
+        for param_name, param_info in parameters.items():
+            if param_name == self._schema_help_node:
                 self.current_help_text = param_info
                 continue
 
@@ -207,6 +219,7 @@ class _PluginSchemaEntry(_entry._Entry):
             # widget_rows is 1 based, 1 widget = 1 row
             # however we need 0 based here
             row_offset += entry.widget_rows - 1
+            i += 1
 
         if self.internal_divider:
             separator = ttk.Separator(self.master, orient='horizontal')
@@ -426,16 +439,24 @@ class _PluginSchemaEntry(_entry._Entry):
 
         bind_mousewheel(top.bind, self._on_help_mouse_wheel)
 
+        og_destroy = top.destroy
+
+        def new_destroy():
+            un_bind_mousewheel(top.bind)
+            og_destroy()
+
+        top.destroy = new_destroy
+
     @staticmethod
     def _on_help_mouse_wheel(event):
         return "break"
 
     def _show_help_button(self):
-        if self._has_help_button:
+        if self.plugin_help_button is not None:
             self.plugin_help_button.grid(row=self.row, column=2, padx=_entry.ROW_XPAD, sticky="w")
 
     def _hide_help_button(self):
-        if self._has_help_button:
+        if self.plugin_help_button is not None:
             self.plugin_help_button.grid_forget()
 
     def invalid(self):

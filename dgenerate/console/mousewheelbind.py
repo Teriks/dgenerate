@@ -18,6 +18,8 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import tkinter as tk
+
 
 def bind_mousewheel(bind_func, callback):
     bind_func("<MouseWheel>", callback)
@@ -29,3 +31,30 @@ def un_bind_mousewheel(bind_func):
     bind_func("<MouseWheel>")
     bind_func("<Button-4>")  # Linux
     bind_func("<Button-5>")  # Linux
+
+
+def handle_canvas_scroll(canvas: tk.Canvas, event: tk.Event):
+    canvas_x = canvas.winfo_rootx()
+    canvas_y = canvas.winfo_rooty()
+    canvas_width = canvas.winfo_width()
+    canvas_height = canvas.winfo_height()
+
+    if not (canvas_x <= event.x_root <= canvas_x + canvas_width and
+            canvas_y <= event.y_root <= canvas_y + canvas_height):
+        return
+
+    viewable_region = canvas.bbox("all")
+    if viewable_region is not None:
+        canvas_height = canvas.winfo_height()
+        content_height = viewable_region[3] - viewable_region[1]
+
+        if content_height <= canvas_height:
+            return
+
+        if event.delta:
+            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        else:
+            if event.num == 4:
+                canvas.yview_scroll(-1, "units")
+            elif event.num == 5:
+                canvas.yview_scroll(1, "units")

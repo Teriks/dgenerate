@@ -25,7 +25,7 @@ import typing
 
 import dgenerate.console.resources as _resources
 import dgenerate.console.util as _util
-from dgenerate.console.mousewheelbind import bind_mousewheel
+from dgenerate.console.mousewheelbind import bind_mousewheel, un_bind_mousewheel
 
 
 def _adjust_combobox_width(combo, options):
@@ -139,6 +139,14 @@ class _DropdownSelectWithHelp(tk.Toplevel):
         top.geometry(f'{width}x{height}+{x}+{y}')
 
         bind_mousewheel(top.bind, self._on_help_mouse_wheel)
+
+        og_destroy = top.destroy
+
+        def new_destroy():
+            un_bind_mousewheel(top.bind)
+            og_destroy()
+
+        top.destroy = new_destroy
 
     @staticmethod
     def _on_help_mouse_wheel(event):
