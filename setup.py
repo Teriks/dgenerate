@@ -322,7 +322,6 @@ if __name__ != 'setup_as_library':
               ]
           },
           classifiers=[
-              'License :: OSI Approved :: BSD License',
               'Intended Audience :: Other Audience',
               'Intended Audience :: Science/Research',
               'Intended Audience :: Developers',
