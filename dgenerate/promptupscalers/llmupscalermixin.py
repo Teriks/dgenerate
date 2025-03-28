@@ -72,7 +72,7 @@ class LLMPromptUpscalerMixin(abc.ABC):
 
         if max_attempts < 1:
             raise self.argument_error(
-                'Argument "max_attempts" may not be less than 1.')
+                'Argument "max-attempts" may not be less than 1.')
 
         self._max_attempts = max_attempts
         self._part = part
