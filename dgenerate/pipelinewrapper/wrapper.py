@@ -44,6 +44,8 @@ import dgenerate.pipelinewrapper.util as _util
 import dgenerate.extras.asdff.base as _asdff_base
 import dgenerate.extras.hidiffusion as _hidiffusion
 import dgenerate.extras.teacache.teacache_flux as _teacache_flux
+from dgenerate.extras.ras import sd3_ras_context as _sd3_ras_context
+from dgenerate.extras.ras import RASArgs as _RASArgs
 import dgenerate.pipelinewrapper.help as _help
 import dgenerate.pipelinewrapper.schedulers as _schedulers
 import dgenerate.memory as _memory
@@ -141,15 +143,15 @@ class PipelineWrapperResult:
 
 
 @contextlib.contextmanager
-def _hi_diffusion(pipeline, generator, active: bool):
-    if active:
+def _hi_diffusion(pipeline, generator, enabled: bool):
+    if enabled:
         _messages.debug_log(
             f'Enabling HiDiffusion on pipeline: {pipeline.__class__.__name__}')
         _hidiffusion.apply_hidiffusion(pipeline, generator=generator)
     try:
         yield
     finally:
-        if active:
+        if enabled:
             _messages.debug_log(
                 f'Disabling HiDiffusion on pipeline: {pipeline.__class__.__name__}')
             _hidiffusion.remove_hidiffusion(pipeline)
@@ -1845,8 +1847,8 @@ class DiffusionPipelineWrapper:
         if user_args.clip_skip is not None and user_args.clip_skip > 0:
             raise _pipelines.UnsupportedPipelineConfigError('Flux does not support clip skip.')
 
-        prompt: _prompt.Prompt() = _types.default(user_args.prompt, _prompt.Prompt())
-        prompt_2: _prompt.Prompt() = _types.default(user_args.second_prompt, _prompt.Prompt())
+        prompt: _prompt.Prompt = _types.default(user_args.prompt, _prompt.Prompt())
+        prompt_2: _prompt.Prompt = _types.default(user_args.second_prompt, _prompt.Prompt())
 
         pipeline_args['prompt'] = prompt.positive if prompt.positive else ''
         pipeline_args['prompt_2'] = prompt_2.positive if prompt.positive else ''
@@ -2022,7 +2024,7 @@ class DiffusionPipelineWrapper:
         if user_args.clip_skip is not None and user_args.clip_skip > 0:
             raise _pipelines.UnsupportedPipelineConfigError('Stable Cascade does not support clip skip.')
 
-        prompt: _prompt.Prompt() = _types.default(user_args.prompt, _prompt.Prompt())
+        prompt: _prompt.Prompt = _types.default(user_args.prompt, _prompt.Prompt())
         pipeline_args['prompt'] = prompt.positive if prompt.positive else ''
         pipeline_args['negative_prompt'] = prompt.negative
 
@@ -2060,7 +2062,7 @@ class DiffusionPipelineWrapper:
             image_embeddings = prior.image_embeddings
 
         if user_args.second_model_prompt:
-            prompt: _prompt.Prompt() = user_args.second_model_prompt
+            prompt: _prompt.Prompt = user_args.second_model_prompt
             pipeline_args['prompt'] = prompt.positive if prompt.positive else ''
             pipeline_args['negative_prompt'] = prompt.negative
 
@@ -2076,7 +2078,7 @@ class DiffusionPipelineWrapper:
     def _call_torch(self, pipeline_args, user_args: DiffusionArguments):
         self._check_for_invalid_model_specific_opts(user_args)
 
-        prompt: _prompt.Prompt() = _types.default(user_args.prompt, _prompt.Prompt())
+        prompt: _prompt.Prompt = _types.default(user_args.prompt, _prompt.Prompt())
 
         pipeline_args['prompt'] = prompt.positive if prompt.positive else ''
         pipeline_args['negative_prompt'] = prompt.negative
@@ -2273,7 +2275,15 @@ class DiffusionPipelineWrapper:
         if self._sdxl_refiner_pipeline is None:
             with _hi_diffusion(self._pipeline,
                                generator=generator,
-                               active=user_args.hi_diffusion):
+                               enabled=user_args.hi_diffusion), \
+                    _sd3_ras_context(
+                        self._pipeline,
+                        enabled=user_args.ras,
+                        args=_RASArgs(
+                            num_inference_steps=user_args.inference_steps,
+                            width=_types.default(user_args.width, _constants.DEFAULT_SD3_OUTPUT_WIDTH),
+                            height=_types.default(user_args.height, _constants.DEFAULT_SD3_OUTPUT_HEIGHT)),
+                    ):
                 if self._parsed_adetailer_detector_uris:
                     return generate_asdff()
                 else:
@@ -2301,7 +2311,7 @@ class DiffusionPipelineWrapper:
 
         with _hi_diffusion(self._pipeline,
                            generator=generator,
-                           active=user_args.hi_diffusion):
+                           enabled=user_args.hi_diffusion):
             if self._parsed_adetailer_detector_uris:
                 image = generate_asdff().images
             else:
@@ -2470,7 +2480,7 @@ class DiffusionPipelineWrapper:
 
         with _hi_diffusion(self._sdxl_refiner_pipeline,
                            generator=generator,
-                           active=user_args.sdxl_refiner_hi_diffusion):
+                           enabled=user_args.sdxl_refiner_hi_diffusion):
             return PipelineWrapperResult(
                 _pipelines.call_pipeline(
                     pipeline=self._sdxl_refiner_pipeline,
@@ -2915,6 +2925,16 @@ class DiffusionPipelineWrapper:
 
         pipeline_args = \
             self._get_pipeline_defaults(user_args=copy_args)
+
+        if not _enums.model_type_is_flux(self.model_type):
+            if args.tea_cache:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'TeaCache is only supported for Flux.')
+
+        if not _enums.model_type_is_sd3(self.model_type):
+            if args.ras:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'RAS is only supported for SD3.')
 
         if self.model_type == _enums.ModelType.TORCH_S_CASCADE:
             if args.hi_diffusion:

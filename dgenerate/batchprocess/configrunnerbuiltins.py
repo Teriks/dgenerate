@@ -450,13 +450,17 @@ def have_feature(feature_name: str) -> bool:
     "gpt4all": Do we have gpt4all installed?
     "torchao": Do we have torchao installed?
     "bitsandbytes": Do we have bitsandbytes installed?
+    "flash-attn": Do we have flash-attn installed?
+    "triton": Do we have triton installed?
     """
 
     known_flags = [
         'ncnn',
         'gpt4all',
         'torchao',
-        'bitsandbytes'
+        'bitsandbytes',
+        'flash-attn',
+        'triton',
     ]
 
     if feature_name not in known_flags:
