@@ -600,6 +600,38 @@ class RenderLoopConfig(_types.SetFromMixin):
     This is supported for: ``--model-type torch, torch-sdxl, and --torch-kolors``.
     """
 
+    tea_cache: _types.OptionalBoolean = None
+    """
+    Activate TeaCache for the primary model?
+    
+    This is supported for Flux, teacache uses a novel caching mechanism 
+    in the forward pass of the flux transformer to reduce the amount of
+    computation needed to generate an image, this can speed up inference
+    with small amounts of quality loss.
+    
+    See: https://github.com/ali-vilab/TeaCache
+    
+    Also see: :py:attr:`RenderLoopConfig.tea_cache_rel_l1_thresholds`
+    
+    This is supported for: ``--model-type torch-flux*``.
+    
+    """
+
+    tea_cache_rel_l1_thresholds: _types.OptionalFloats = None
+    """
+    TeaCache relative L1 thresholds to try when :py:attr:`RenderLoopConfig.tea_cache` is enabled.
+            
+    This should be one or more float values between 0.0 and 1.0, each value will be tried in turn.
+    Higher values mean more speedup.
+
+    Defaults to 0.6 (2.0x speedup). 0.25 for 1.5x speedup, 0.4 for 1.8x speedup, 
+    0.6 for 2.0x speedup, 0.8 for 2.25x speedup
+
+    See: https://github.com/ali-vilab/TeaCache
+
+    This is supported for: ``--model-type torch-flux*``.
+    """
+
     sdxl_refiner_hi_diffusion: _types.OptionalBoolean = None
     """
     Activate HiDiffusion for the SDXL refiner? See: :py:attr:`RenderLoopConfig.hi_diffusion`
@@ -1025,6 +1057,16 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'with multiple values involved.'
             )
 
+        # tea_cache and tea_cache_rel_l1_thresholds
+        if self.tea_cache_rel_l1_thresholds and not self.tea_cache:
+            raise RenderLoopConfigError(
+                f'{a_namer("tea_cache_rel_l1_thresholds")} cannot be specified without {a_namer("tea_cache")}'
+            )
+        elif self.tea_cache and not _pipelinewrapper.model_type_is_flux(self.model_type):
+            raise RenderLoopConfigError(
+                f'{a_namer("tea_cache")} is only compatible with {a_namer("model_type")} torch-flux*'
+            )
+
         # exit early if we know there is no possibility
         # of second model arguments being valid
         if not (_pipelinewrapper.model_type_is_sdxl(self.model_type) or
@@ -1222,7 +1264,8 @@ class RenderLoopConfig(_types.SetFromMixin):
             if not (self.sdxl_refiner_pag_scales or
                     self.sdxl_refiner_pag_adaptive_scales):
                 self.sdxl_refiner_pag_scales = [_pipelinewrapper.constants.DEFAULT_SDXL_REFINER_PAG_SCALE]
-                self.sdxl_refiner_pag_adaptive_scales = [_pipelinewrapper.constants.DEFAULT_SDXL_REFINER_PAG_ADAPTIVE_SCALE]
+                self.sdxl_refiner_pag_adaptive_scales = [
+                    _pipelinewrapper.constants.DEFAULT_SDXL_REFINER_PAG_ADAPTIVE_SCALE]
 
         if self.adetailer_detector_uris:
             if self.adetailer_mask_shapes is None:
@@ -1421,7 +1464,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise RenderLoopConfigError(
                     f'{a_namer("hi_diffusion")} is not supported with Stable Diffusion 3.'
                 )
-            
+
             if self.max_sequence_length is not None:
                 if self.controlnet_uris:
                     raise RenderLoopConfigError(
@@ -1844,6 +1887,9 @@ class RenderLoopConfig(_types.SetFromMixin):
             self.adetailer_mask_dilations
         ]
 
+        if self.tea_cache:
+            optional_factors.append(self.tea_cache_rel_l1_thresholds)
+
         schedulers, second_model_schedulers = self._normalized_schedulers()
 
         product = 1
@@ -1979,6 +2025,8 @@ class RenderLoopConfig(_types.SetFromMixin):
                 image_seed_strength=ov('image_seed_strength', self.image_seed_strengths),
                 guidance_scale=ov('guidance_scale', self.guidance_scales),
                 hi_diffusion=ov('hi_diffusion', [self.hi_diffusion]),
+                tea_cache=ov('tea_cache', [self.tea_cache]),
+                tea_cache_rel_l1_threshold=ov('tea_cache_rel_l1_threshold', self.tea_cache_rel_l1_thresholds),
                 pag_scale=ov('pag_scale', self.pag_scales),
                 pag_adaptive_scale=ov('pag_adaptive_scale', self.pag_adaptive_scales),
                 image_guidance_scale=ov('image_guidance_scale', self.image_guidance_scales),

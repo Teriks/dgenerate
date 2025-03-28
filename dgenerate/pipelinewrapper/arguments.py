@@ -370,6 +370,37 @@ class DiffusionArguments(_types.SetFromMixin):
     This is supported for: ``--model-type torch, torch-sdxl, and --torch-kolors``.
     """
 
+    tea_cache: _types.OptionalBoolean = None
+    """
+    Activate TeaCache for the primary model?
+    
+    This is supported for Flux, teacache uses a novel caching mechanism 
+    in the forward pass of the flux transformer to reduce the amount of
+    computation needed to generate an image, this can speed up inference
+    with small amounts of quality loss.
+    
+    See: https://github.com/ali-vilab/TeaCache
+    
+    Also see: :py:attr:`DiffusionArguments.tea_cache_rel_l1_threshold`
+    
+    This is supported for: ``--model-type torch-flux*``.
+    
+    """
+
+    tea_cache_rel_l1_threshold: _types.OptionalFloat = None
+    """
+    TeaCache relative L1 threshold when :py:attr:`DiffusionArguments.tea_cache` is enabled.
+    
+    Higher values mean more speedup.
+    
+    Defaults to 0.6 (2.0x speedup). 0.25 for 1.5x speedup, 0.4 for 1.8x speedup, 
+    0.6 for 2.0x speedup, 0.8 for 2.25x speedup
+    
+    See: https://github.com/ali-vilab/TeaCache
+    
+    This is supported for: ``--model-type torch-flux*``.
+    """
+
     sdxl_refiner_hi_diffusion: _types.OptionalBoolean = None
     """
     Activate HiDiffusion on the SDXL refiner for this generation?, See: :py:attr:`DiffusionArguments.hi_diffusion`
@@ -647,6 +678,7 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.pag_scale, "PAG Scale:"),
             (self.pag_adaptive_scale, "PAG Adaptive Scale:"),
             (self.guidance_scale, "Guidance Scale:"),
+            (self.tea_cache_rel_l1_threshold, "TeaCache Relative L1 Threshold:"),
             (self.image_guidance_scale, "Image Guidance Scale:"),
             (self.guidance_rescale, "Guidance Rescale:"),
             (self.inference_steps, "Inference Steps:"),

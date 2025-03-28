@@ -29,7 +29,10 @@ class _ArgSwitchCheckbox(_entry._Entry):
     NAME = 'switch'
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs, widget_rows=1)
+        if 'widget_rows' not in kwargs:
+            kwargs['widget_rows'] = 1
+
+        super().__init__(*args, **kwargs)
 
         # initialize BooleanVar with a default value from config
         self.bool_var = tk.BooleanVar(value=self.config.get('default', False))

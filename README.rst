@@ -207,11 +207,12 @@ Help Output
                      [-ti URI [URI ...]] [-cn CONTROLNET_URI [CONTROLNET_URI ...] | -t2i T2I_ADAPTER_URI
                      [T2I_ADAPTER_URI ...]] [-q QUANTIZER_URI] [-q2 QUANTIZER_URI]
                      [-sch SCHEDULER_URI [SCHEDULER_URI ...]]
-                     [--second-model-scheduler SCHEDULER_URI [SCHEDULER_URI ...]] [-hd] [-rhd] [-pag]
-                     [-pags FLOAT [FLOAT ...]] [-pagas FLOAT [FLOAT ...]] [-rpag] [-rpags FLOAT [FLOAT ...]]
-                     [-rpagas FLOAT [FLOAT ...]] [-mqo | -mco] [-mqo2 | -mco2] [--s-cascade-decoder MODEL_URI]
-                     [--sdxl-refiner MODEL_URI] [--sdxl-refiner-edit]
-                     [--sdxl-t2i-adapter-factors FLOAT [FLOAT ...]] [--sdxl-aesthetic-scores FLOAT [FLOAT ...]]
+                     [--second-model-scheduler SCHEDULER_URI [SCHEDULER_URI ...]] [-hd] [-tc]
+                     [-tct [TEA_CACHE_REL_L1_THRESHOLDS ...]] [-rhd] [-pag] [-pags FLOAT [FLOAT ...]]
+                     [-pagas FLOAT [FLOAT ...]] [-rpag] [-rpags FLOAT [FLOAT ...]] [-rpagas FLOAT [FLOAT ...]]
+                     [-mqo | -mco] [-mqo2 | -mco2] [--s-cascade-decoder MODEL_URI] [--sdxl-refiner MODEL_URI]
+                     [--sdxl-refiner-edit] [--sdxl-t2i-adapter-factors FLOAT [FLOAT ...]]
+                     [--sdxl-aesthetic-scores FLOAT [FLOAT ...]]
                      [--sdxl-crops-coords-top-left COORD [COORD ...]] [--sdxl-original-size SIZE [SIZE ...]]
                      [--sdxl-target-size SIZE [SIZE ...]] [--sdxl-negative-aesthetic-scores FLOAT [FLOAT ...]]
                      [--sdxl-negative-original-sizes SIZE [SIZE ...]]
@@ -1014,6 +1015,33 @@ Help Output
             
             This is supported for --model-type torch, torch-sdxl, and --torch-kolors.
             -------------------------------------------------------------------------
+      -tc, --tea-cache
+            Activate TeaCache for the primary model?
+            
+            This is supported for Flux, TeaCache uses a novel caching mechanism in the forward pass of the flux
+            transformer to reduce the amount of computation needed to generate an image, this can speed up
+            inference with small amounts of quality loss.
+            
+            See: https://github.com/ali-vilab/TeaCache
+            
+            Also see: --tea-cache-rel-l1-thresholds
+            
+            This is supported for: --model-type torch-flux*.
+            ------------------------------------------------
+      -tct [TEA_CACHE_REL_L1_THRESHOLDS ...], --tea-cache-rel-l1-thresholds [TEA_CACHE_REL_L1_THRESHOLDS ...]
+            TeaCache relative L1 thresholds to try when --tea-cache is enabled.
+            
+            This should be one or more float values between 0.0 and 1.0, each value will be tried in turn.
+            
+            Higher values mean more speedup.
+            
+            Defaults to 0.6 (2.0x speedup). 0.25 for 1.5x speedup, 0.4 for 1.8x speedup, 0.6 for 2.0x speedup,
+            0.8 for 2.25x speedup
+            
+            See: https://github.com/megvii-research/HiDiffusion
+            
+            This is supported for: ``--model-type torch-flux*``.
+            ----------------------------------------------------
       -rhd, --sdxl-refiner-hi-diffusion
             Activate HiDiffusion for the SDXL refiner?, See: --hi-diffusion
             ---------------------------------------------------------------
@@ -5474,6 +5502,8 @@ these are the arguments that are available for use:
     sdxl-refiner-negative-crops-coords-top-left: Size: WxH
     guidance-scale: float
     hi-diffusion: bool
+    tea-cache: bool
+    tea-cache-rel-l1-threshold: float
     sdxl-refiner-hi-diffusion: bool
     pag-scale: float
     pag-adaptive-scale: float
@@ -7311,7 +7341,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [43245774595649]
+            Value: [1478559497748]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -7320,6 +7350,12 @@ The ``\templates_help`` output from the above example is:
             Value: None
         Name: "last_t2i_adapter_uris"
             Type: typing.Optional[collections.abc.Sequence[str]]
+            Value: []
+        Name: "last_tea_cache"
+            Type: typing.Optional[bool]
+            Value: None
+        Name: "last_tea_cache_rel_l1_thresholds"
+            Type: typing.Optional[collections.abc.Sequence[float]]
             Value: []
         Name: "last_text_encoder_uris"
             Type: typing.Optional[collections.abc.Sequence[str]]

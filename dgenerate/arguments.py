@@ -307,6 +307,18 @@ def _type_image_seed_strengths(val):
     return val
 
 
+def _type_tea_cache_rel_l1_thresh(val):
+    try:
+        val = float(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be a floating point number')
+
+    if val < 0 or val > 1:
+        raise argparse.ArgumentTypeError(
+            'Must be greater than or equal to zero, and less than or equal to one.')
+    return val
+
+
 def _type_upscaler_noise_levels(val):
     try:
         val = int(val)
@@ -1526,6 +1538,46 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-tc', '--tea-cache',
+            action='store_true', default=False, dest='tea_cache',
+            help=f"""Activate TeaCache for the primary model?
+    
+                     This is supported for Flux, TeaCache uses a novel caching mechanism 
+                     in the forward pass of the flux transformer to reduce the amount of
+                     computation needed to generate an image, this can speed up inference
+                     with small amounts of quality loss.
+                     
+                     See: https://github.com/ali-vilab/TeaCache
+                     
+                     Also see: --tea-cache-rel-l1-thresholds
+                     
+                     This is supported for: --model-type torch-flux*.
+                     """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-tct', '--tea-cache-rel-l1-thresholds',
+            nargs='*', type=_type_tea_cache_rel_l1_thresh, default=None, dest='tea_cache_rel_l1_thresholds',
+            help=f"""TeaCache relative L1 thresholds to try when --tea-cache is enabled.
+            
+                     This should be one or more float values between 0.0 and 1.0, each value will be tried in turn.
+    
+                     Higher values mean more speedup.
+                    
+                     Defaults to 0.6 (2.0x speedup). 0.25 for 1.5x speedup, 0.4 for 1.8x speedup, 
+                     0.6 for 2.0x speedup, 0.8 for 2.25x speedup
+                    
+                     See: https://github.com/megvii-research/HiDiffusion
+                    
+                     This is supported for: ``--model-type torch-flux*``.
+                     """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
             '-rhd', '--sdxl-refiner-hi-diffusion',
             action='store_true', default=False, dest='sdxl_refiner_hi_diffusion',
             help=f"""Activate HiDiffusion for the SDXL refiner?, See: --hi-diffusion"""
@@ -2464,7 +2516,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '-gs', '--guidance-scales', action='store', nargs='+', default=[_pipelinewrapper.constants.DEFAULT_GUIDANCE_SCALE],
+            '-gs', '--guidance-scales', action='store', nargs='+',
+            default=[_pipelinewrapper.constants.DEFAULT_GUIDANCE_SCALE],
             metavar="FLOAT", type=_type_guidance_scale,
             help="""One or more guidance scale values to try. Guidance scale effects how much your
                     text prompt is considered. Low values draw more data from images unrelated
@@ -2504,7 +2557,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '-ifs', '--inference-steps', action='store', nargs='+', default=[_pipelinewrapper.constants.DEFAULT_INFERENCE_STEPS],
+            '-ifs', '--inference-steps', action='store', nargs='+',
+            default=[_pipelinewrapper.constants.DEFAULT_INFERENCE_STEPS],
             type=_type_inference_steps, metavar="INTEGER",
             help="""One or more inference steps values to try. The amount of inference (de-noising) steps
                     effects image clarity to a degree, higher values bring the image closer to what
