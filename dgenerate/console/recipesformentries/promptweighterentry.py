@@ -89,14 +89,18 @@ class _PromptWeighterEntry(_schemaentry._PluginSchemaEntry):
             row=row,
             recipe_form=self.master,
             placeholder='URI',
-            config={'optional': True}
+            config={'optional': True, 'default': ''}
         )
 
         entry.arg = None
 
         class _Var(tk.Variable):
             def get(self) -> str:
-                return f"'{entry.template('URI')}'"
+                uri_value = entry.template('URI')
+                if uri_value:
+                    return f"'{uri_value}'"
+                else:
+                    return ''
 
             def set(self, value) -> None:
                 entry.plugin_name_var.set(value)
