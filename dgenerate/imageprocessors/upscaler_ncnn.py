@@ -368,23 +368,6 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
         except _ncnn_model.NCNNExtractionFailure as e:
             raise dgenerate.OutOfMemoryError(e)
 
-    def __str__(self):
-        args = [
-            ('model', self._model_path),
-            ('param', self._param_path),
-            ('use-gpu', self._use_gpu),
-            ('gpu-index', self._gpu_index),
-            ('threads', self._threads),
-            ('blocktime', self._blocktime),
-            ('winograd', self._winograd),
-            ('sgemm', self._sgemm),
-            ('tile', self._tile),
-            ('overlap', self._overlap),
-            ('pre_resize', self._pre_resize)
-        ]
-
-        return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
-
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize) -> PIL.Image.Image:
         if self._pre_resize:
             return self._process(image)

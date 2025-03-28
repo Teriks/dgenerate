@@ -64,12 +64,6 @@ class MirrorFlipProcessor(_imageprocessor.ImageProcessor):
 
         self._pre_resize = pre_resize
 
-    def __str__(self):
-        args = [
-            ('pre_resize', self._pre_resize)
-        ]
-        return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
-
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         """
         Mirrors or flips the image depending on what name was used to invoke this
@@ -142,12 +136,6 @@ class SimpleColorProcessor(_imageprocessor.ImageProcessor):
 
         self._pre_resize = pre_resize
 
-    def __str__(self):
-        args = [
-            ('pre_resize', self._pre_resize)
-        ]
-        return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
-
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         """
         Invert or grayscale the image depending on which name was used to invoke this imageprocessor.
@@ -215,13 +203,6 @@ class PosterizeProcessor(_imageprocessor.ImageProcessor):
             raise self.argument_error(
                 f'Argument "bits" must be an integer value from 1 to 8, received {self._bits}.')
 
-    def __str__(self):
-        args = [
-            ('bits', self._bits),
-            ('pre_resize', self._pre_resize)
-        ]
-        return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
-
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         """
         Posterize operation is preformed by this method if ``pre_resize`` constructor argument was ``True``.
@@ -283,13 +264,6 @@ class SolarizeProcessor(_imageprocessor.ImageProcessor):
         if self._threshold < 0 or self._threshold > 255:
             raise self.argument_error(
                 f'Argument "threshold" must be an integer value from 0 to 255, received {self._threshold}.')
-
-    def __str__(self):
-        args = [
-            ('threshold', self._threshold),
-            ('pre_resize', self._pre_resize)
-        ]
-        return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
 
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         """
@@ -377,16 +351,6 @@ class ResizeProcessor(_imageprocessor.ImageProcessor):
         self._aspect_correct = aspect_correct
         self._algo = algo
         self._pre_resize = pre_resize
-
-    def __str__(self):
-        args = [
-            ('size', self._size),
-            ('align', self._align),
-            ('aspect_correct', self._aspect_correct),
-            ('algo', self._algo),
-            ('pre_resize', self._pre_resize)
-        ]
-        return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
 
     def _process(self, image: PIL.Image.Image):
         if self._algo == 'auto':
@@ -506,17 +470,6 @@ class LetterboxProcessor(_imageprocessor.ImageProcessor):
 
         self._aspect_correct = aspect_correct
         self._pre_resize = pre_resize
-
-    def __str__(self):
-        args = [
-            ('box_size', self._box_size),
-            ('box_is_padding', self._box_is_padding),
-            ('box_color', self._box_color),
-            ('inner_size', self._inner_size),
-            ('aspect_correct', self._aspect_correct),
-            ('pre_resize', self._pre_resize)
-        ]
-        return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
 
     def _process(self, image: PIL.Image.Image):
         return _image.letterbox_image(image,

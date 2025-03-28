@@ -335,30 +335,6 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
         except Exception as e:
             raise self.argument_error(str(e))
 
-    def __str__(self):
-        args = [
-            ('model_path', self._model_path),
-            ('prompt', self._prompt),
-            ('negative_prompt', self._negative_prompt),
-            ('prompt_weighter', self._prompt_weighter),
-            ('seed', self._seed),
-            ('inference_steps', self._inference_steps),
-            ('guidance_scale', self._guidance_scale),
-            ('pag_scale', self._pag_scale),
-            ('pag_adaptive_scale', self._pag_adaptive_scale),
-            ('strength', self._strength),
-            ('detector_padding', self._detector_padding),
-            ('mask_shape', self._mask_shape),
-            ('index_filter', self._index_filter),
-            ('mask_padding', self._mask_padding),
-            ('mask_blur', self._mask_blur),
-            ('mask_dilation', self._mask_dilation),
-            ('confidence', self._confidence),
-            ('detector_device', self._detector_device),
-            ('pre_resize', self._pre_resize)
-        ]
-        return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
-
     def _adetailer(self, image):
         i_filename = _image.get_filename(image)
 
