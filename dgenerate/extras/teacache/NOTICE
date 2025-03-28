@@ -1,0 +1,5 @@
+The TeaCache implementation for Flux has been modified here to allow it to be used context manager without global side-effects,
+when the context ends, TeaCache is automatically removed from the pipeline it was applied to.
+
+It uses a closure to store the TeaCache state instead of global variables on the transformer class, which will
+prevent inadvertent side-effects in the transformer implementation.

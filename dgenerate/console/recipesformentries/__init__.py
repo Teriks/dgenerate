@@ -20,6 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from .argswitchcheckbox import _ArgSwitchCheckbox
+from .checkboxwithfloatargentry import _CheckboxWithFloatArgEntry
 from .deviceentry import _DeviceEntry
 from .directoryentry import _DirectoryEntry
 from .dropdownentry import _DropDownEntry

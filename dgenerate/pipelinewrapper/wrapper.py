@@ -43,6 +43,7 @@ from dgenerate.pipelinewrapper.arguments import DiffusionArguments
 import dgenerate.pipelinewrapper.util as _util
 import dgenerate.extras.asdff.base as _asdff_base
 import dgenerate.extras.hidiffusion as _hidiffusion
+import dgenerate.extras.teacache.teacache_flux as _teacache_flux
 import dgenerate.pipelinewrapper.help as _help
 import dgenerate.pipelinewrapper.schedulers as _schedulers
 import dgenerate.memory as _memory
@@ -1022,6 +1023,9 @@ class DiffusionPipelineWrapper:
         if self._t2i_adapter_uris:
             opts.append(('--t2i-adapters', self._t2i_adapter_uris))
 
+        if args.sdxl_t2i_adapter_factor is not None:
+            opts.append(('--sdxl-t2i-adapter-factors', args.sdxl_t2i_adapter_factor))
+
         if args.scheduler_uri is not None:
             opts.append(('--scheduler', args.scheduler_uri))
 
@@ -1034,6 +1038,12 @@ class DiffusionPipelineWrapper:
 
         if args.sdxl_refiner_hi_diffusion:
             opts.append(('--sdxl-refiner-hi-diffusion',))
+
+        if args.tea_cache:
+            opts.append(('--tea-cache',))
+
+        if args.tea_cache_rel_l1_threshold is not None:
+            opts.append(('--tea-cache-rel-l1-thresholds', args.tea_cache_rel_l1_threshold))
 
         if args.pag_scale == 3.0 and args.pag_adaptive_scale == 0.0:
             opts.append(('--pag',))
@@ -1899,19 +1909,25 @@ class DiffusionPipelineWrapper:
             second_model=False
         )
 
-        if self._parsed_adetailer_detector_uris:
-            return self._call_asdff(
-                user_args=user_args,
-                pipeline_args=pipeline_args,
-                batch_size=batch_size,
-                prompt_weighter=prompt_weighter
-            )
-        else:
-            return PipelineWrapperResult(_pipelines.call_pipeline(
-                pipeline=self._pipeline,
-                prompt_weighter=prompt_weighter,
-                device=self._device,
-                **pipeline_args).images)
+        with _teacache_flux.teacache_context(
+                self._pipeline,
+                user_args.inference_steps,
+                rel_l1_thresh=_types.default(user_args.tea_cache_rel_l1_threshold, 0.6),
+                enable=_types.default(user_args.tea_cache, False),
+        ):
+            if self._parsed_adetailer_detector_uris:
+                return self._call_asdff(
+                    user_args=user_args,
+                    pipeline_args=pipeline_args,
+                    batch_size=batch_size,
+                    prompt_weighter=prompt_weighter
+                )
+            else:
+                return PipelineWrapperResult(_pipelines.call_pipeline(
+                    pipeline=self._pipeline,
+                    prompt_weighter=prompt_weighter,
+                    device=self._device,
+                    **pipeline_args).images)
 
     def _call_asdff(self,
                     user_args: DiffusionArguments,

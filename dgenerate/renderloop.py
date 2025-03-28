@@ -456,6 +456,9 @@ class RenderLoop:
         if diffusion_args.pag_adaptive_scale is not None:
             args += ['pas', diffusion_args.pag_adaptive_scale]
 
+        if diffusion_args.tea_cache_rel_l1_threshold is not None:
+            args += ['tct', diffusion_args.tea_cache_rel_l1_threshold]
+
         args += ['i', diffusion_args.inference_steps]
 
         if diffusion_args.second_model_inference_steps is not None:
