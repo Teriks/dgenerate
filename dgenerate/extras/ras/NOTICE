@@ -1,0 +1,6 @@
+See: https://github.com/microsoft/ras
+
+This is a vendored RAS implementation for SD3 that has been slightly modified.
+
+The RAS implementation for Flux has been modified here to allow it to be used context manager without global side-effects,
+when the context ends, RAS is automatically removed from the pipeline it was applied to.

@@ -632,6 +632,17 @@ class RenderLoopConfig(_types.SetFromMixin):
     This is supported for: ``--model-type torch-flux*``.
     """
 
+    ras: _types.OptionalBoolean = None
+    """
+    Activate RAS (Region-Adaptive Sampling) for the primary model? 
+            
+    This can increase inference speed with SD3.
+    
+    See: https://github.com/microsoft/ras
+    
+    This is supported for: ``--model-type torch-sd3``.
+    """
+
     sdxl_refiner_hi_diffusion: _types.OptionalBoolean = None
     """
     Activate HiDiffusion for the SDXL refiner? See: :py:attr:`RenderLoopConfig.hi_diffusion`
@@ -1065,6 +1076,13 @@ class RenderLoopConfig(_types.SetFromMixin):
         elif self.tea_cache and not _pipelinewrapper.model_type_is_flux(self.model_type):
             raise RenderLoopConfigError(
                 f'{a_namer("tea_cache")} is only compatible with {a_namer("model_type")} torch-flux*'
+            )
+
+        # ras
+
+        if self.ras and not _pipelinewrapper.model_type_is_sd3(self.model_type):
+            raise RenderLoopConfigError(
+                f'{a_namer("ras")} is only compatible with {a_namer("model_type")} torch-sd3'
             )
 
         # exit early if we know there is no possibility
@@ -2026,6 +2044,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                 guidance_scale=ov('guidance_scale', self.guidance_scales),
                 hi_diffusion=ov('hi_diffusion', [self.hi_diffusion]),
                 tea_cache=ov('tea_cache', [self.tea_cache]),
+                ras=ov('ras', [self.ras]),
                 tea_cache_rel_l1_threshold=ov('tea_cache_rel_l1_threshold', self.tea_cache_rel_l1_thresholds),
                 pag_scale=ov('pag_scale', self.pag_scales),
                 pag_adaptive_scale=ov('pag_adaptive_scale', self.pag_adaptive_scales),

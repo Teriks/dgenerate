@@ -401,6 +401,17 @@ class DiffusionArguments(_types.SetFromMixin):
     This is supported for: ``--model-type torch-flux*``.
     """
 
+    ras: _types.OptionalBoolean = None
+    """
+    Activate RAS (Region-Adaptive Sampling) for the primary model? 
+            
+    This can increase inference speed with SD3.
+    
+    See: https://github.com/microsoft/ras
+    
+    This is supported for: ``--model-type torch-sd3``.
+    """
+
     sdxl_refiner_hi_diffusion: _types.OptionalBoolean = None
     """
     Activate HiDiffusion on the SDXL refiner for this generation?, See: :py:attr:`DiffusionArguments.hi_diffusion`

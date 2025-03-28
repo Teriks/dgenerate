@@ -208,7 +208,7 @@ Help Output
                      [T2I_ADAPTER_URI ...]] [-q QUANTIZER_URI] [-q2 QUANTIZER_URI]
                      [-sch SCHEDULER_URI [SCHEDULER_URI ...]]
                      [--second-model-scheduler SCHEDULER_URI [SCHEDULER_URI ...]] [-hd] [-tc]
-                     [-tct [TEA_CACHE_REL_L1_THRESHOLDS ...]] [-rhd] [-pag] [-pags FLOAT [FLOAT ...]]
+                     [-tct [TEA_CACHE_REL_L1_THRESHOLDS ...]] [-ras] [-rhd] [-pag] [-pags FLOAT [FLOAT ...]]
                      [-pagas FLOAT [FLOAT ...]] [-rpag] [-rpags FLOAT [FLOAT ...]] [-rpagas FLOAT [FLOAT ...]]
                      [-mqo | -mco] [-mqo2 | -mco2] [--s-cascade-decoder MODEL_URI] [--sdxl-refiner MODEL_URI]
                      [--sdxl-refiner-edit] [--sdxl-t2i-adapter-factors FLOAT [FLOAT ...]]
@@ -1042,6 +1042,15 @@ Help Output
             
             This is supported for: ``--model-type torch-flux*``.
             ----------------------------------------------------
+      -ras, --ras
+            Activate RAS (Region-Adaptive Sampling) for the primary model?
+            
+            This can increase inference speed with SD3.
+            
+            See: https://github.com/microsoft/ras
+            
+            This is supported for: ``--model-type torch-sd3``.
+            --------------------------------------------------
       -rhd, --sdxl-refiner-hi-diffusion
             Activate HiDiffusion for the SDXL refiner?, See: --hi-diffusion
             ---------------------------------------------------------------
@@ -5504,6 +5513,7 @@ these are the arguments that are available for use:
     hi-diffusion: bool
     tea-cache: bool
     tea-cache-rel-l1-threshold: float
+    ras: bool
     sdxl-refiner-hi-diffusion: bool
     pag-scale: float
     pag-adaptive-scale: float
@@ -7198,6 +7208,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_quantizer_uri"
             Type: typing.Optional[str]
             Value: None
+        Name: "last_ras"
+            Type: typing.Optional[bool]
+            Value: None
         Name: "last_revision"
             Type: <class 'str'>
             Value: 'main'
@@ -7341,7 +7354,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [1478559497748]
+            Value: [87948373773061]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -7559,6 +7572,8 @@ The dgenerate specific jinja2 functions/filters are:
         "gpt4all": Do we have gpt4all installed?
         "torchao": Do we have torchao installed?
         "bitsandbytes": Do we have bitsandbytes installed?
+        "flash-attn": Do we have flash-attn installed?
+        "triton": Do we have triton installed?
     
     ====================================================================================
     platform() -> str:

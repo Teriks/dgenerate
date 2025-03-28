@@ -1578,6 +1578,21 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-ras', '--ras',
+            action='store_true', default=False, dest='ras',
+            help=f"""Activate RAS (Region-Adaptive Sampling) for the primary model?
+            
+                     This can increase inference speed with SD3.
+                    
+                     See: https://github.com/microsoft/ras
+                    
+                     This is supported for: ``--model-type torch-sd3``.
+                     """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
             '-rhd', '--sdxl-refiner-hi-diffusion',
             action='store_true', default=False, dest='sdxl_refiner_hi_diffusion',
             help=f"""Activate HiDiffusion for the SDXL refiner?, See: --hi-diffusion"""
