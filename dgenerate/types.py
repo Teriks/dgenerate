@@ -89,7 +89,7 @@ OptionalStrings = typing.Optional[collections.abc.Sequence[str]]
 Boolean = str
 OptionalBoolean = typing.Optional[bool]
 
-OptionalImage = typing.Optional[PIL.Image]
+OptionalImage = typing.Optional[PIL.Image.Image]
 Images = collections.abc.Sequence[PIL.Image.Image]
 MutableImages = collections.abc.MutableSequence[PIL.Image.Image]
 OptionalImages = typing.Optional[Images]
