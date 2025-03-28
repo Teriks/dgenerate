@@ -297,18 +297,6 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
 
         return torchvision.transforms.ToPILImage()(output.squeeze(0))
 
-    def __str__(self):
-        args = [
-            ('model', self._model_path),
-            ('tile', self._tile),
-            ('overlap', self._overlap),
-            ('force_tiling', self._force_tiling),
-            ('dtype', self._dtype),
-            ('pre_resize', self._pre_resize)
-        ]
-
-        return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
-
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize) -> PIL.Image.Image:
         if self._pre_resize:
             return self._process(image)

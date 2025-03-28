@@ -106,17 +106,6 @@ class MidasDepthProcessor(_imageprocessor.ImageProcessor):
 
         self.register_module(self._midas)
 
-    def __str__(self):
-        args = [
-            ('normals', self._normals),
-            ('alpha', self._alpha),
-            ('background_threshold', self._background_threshold),
-            ('detect_resolution', self._detect_resolution),
-            ('detect_aspect', self._detect_aspect),
-            ('pre_resize', self._pre_resize)
-        ]
-        return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
-
     @torch.inference_mode()
     def _process(self, image):
         original_size = image.size

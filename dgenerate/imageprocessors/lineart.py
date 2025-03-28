@@ -106,16 +106,6 @@ class LineArtProcessor(_imageprocessor.ImageProcessor):
             )
         self.register_module(self._lineart)
 
-    def __str__(self):
-        args = [
-            ('course', self._course),
-            ('detect_resolution', self._detect_resolution),
-            ('detect_aspect', self._detect_aspect),
-            ('detect_align', self._detect_align),
-            ('pre_resize', self._pre_resize)
-        ]
-        return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
-
     @torch.inference_mode()
     def _process(self, image):
         original_size = image.size

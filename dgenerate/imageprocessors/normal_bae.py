@@ -91,14 +91,6 @@ class NormalBaeProcessor(_imageprocessor.ImageProcessor):
             )
         self.register_module(self._normal_bae)
 
-    def __str__(self):
-        args = [
-            ('detect_resolution', self._detect_resolution),
-            ('detect_aspect', self._detect_aspect),
-            ('pre_resize', self._pre_resize)
-        ]
-        return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
-
     @torch.inference_mode()
     def _process(self, image):
         original_size = image.size

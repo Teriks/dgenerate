@@ -196,6 +196,16 @@ class Plugin:
         self.__loaded_by_name = loaded_by_name
         self.__argument_error_type = argument_error_type
 
+        # Store the constructor arguments for __str__ method
+        self.__constructor_args_strs = {'loaded-by-name': loaded_by_name}
+
+        for arg in self.__class__.get_accepted_args(loaded_by_name):
+            snake_name = _textprocessing.dashdown(arg.name)
+            if snake_name in kwargs:
+                self.__constructor_args_strs[arg.name] = str(kwargs[snake_name])
+            elif arg.have_default:
+                self.__constructor_args_strs[arg.name] = str(arg.default)
+
     def argument_error(self, msg: str):
         """
         Return an constructed exception that is suitable for raising
@@ -509,6 +519,21 @@ class Plugin:
         :return: name
         """
         return self.__loaded_by_name
+
+    def __str__(self):
+        """
+        Return a string representation of this plugin instance, showing all constructor arguments.
+
+        Format: ClassName(arg1=value1, arg2=value2, ...)
+
+        Child classes can override this method if needed.
+
+        :return: string representation
+        """
+        return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in self.__constructor_args_strs.items())})'
+
+    def __repr__(self):
+        return str(self)
 
 
 class ModuleFileNotFoundError(FileNotFoundError):

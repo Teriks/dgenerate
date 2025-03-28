@@ -149,22 +149,6 @@ class CannyEdgeDetectProcessor(_imageprocessor.ImageProcessor):
     def _get_range(self, threshold):
         return int(max(0, (1 - self._sigma) * threshold)), int(min(255, (1 + self._sigma) * threshold))
 
-    def __str__(self):
-        args = [
-            ('lower', self._lower),
-            ('upper', self._upper),
-            ('aperture_size', self._aperture_size),
-            ('L2_gradient', self._L2_gradient),
-            ('blur', self._blur),
-            ('threshold_algo', self._threshold_algo),
-            ('sigma', self._sigma),
-            ('detect_resolution', self._detect_resolution),
-            ('detect_aspect', self._detect_aspect),
-            ('detect_align', self._detect_align),
-            ('pre_resize', self._pre_resize),
-        ]
-        return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
-
     def _process(self, image):
         original_size = image.size
 

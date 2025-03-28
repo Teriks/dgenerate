@@ -110,17 +110,6 @@ class LeresDepthProcessor(_imageprocessor.ImageProcessor):
             )
         self.register_module(self._leres)
 
-    def __str__(self):
-        args = [
-            ('threshold_near', self._threshold_near),
-            ('threshold_far', self._threshold_far),
-            ('boost', self._boost),
-            ('detect_resolution', self._detect_resolution),
-            ('detect_aspect', self._detect_aspect),
-            ('pre_resize', self._pre_resize)
-        ]
-        return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
-
     @torch.inference_mode()
     def _process(self, image):
         original_size = image.size

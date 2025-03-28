@@ -112,17 +112,6 @@ class LineArtStandardProcessor(_imageprocessor.ImageProcessor):
         else:
             self._detect_resolution = None
 
-    def __str__(self):
-        args = [
-            ('gaussian_sigma', self._gaussian_sigma),
-            ('intensity_threshold', self._intensity_threshold),
-            ('detect_resolution', self._detect_resolution),
-            ('detect_aspect', self._detect_aspect),
-            ('detect_align', self._detect_align),
-            ('pre_resize', self._pre_resize)
-        ]
-        return f'{self.__class__.__name__}({", ".join(f"{k}={v}" for k, v in args)})'
-
     def _process(self, image):
         original_size = image.size
 
