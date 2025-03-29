@@ -64,6 +64,9 @@ class _DropdownSelectWithHelp(tk.Toplevel):
         # Create dropdown
         self._value_dropdown = ttk.Combobox(
             self._frame, textvariable=self._current_value, values=self._values)
+        self._value_dropdown.bind('<KeyRelease>', self._filter_values)
+        self._value_dropdown.bind('<<ComboboxSelected>>', self._on_select)
+        self._value_dropdown.bind('<<Paste>>', lambda e: self.after(1, self._filter_values, None))
 
         _adjust_combobox_width(self._value_dropdown, self._values)
 
@@ -84,11 +87,25 @@ class _DropdownSelectWithHelp(tk.Toplevel):
         # Grid layout
         self._value_dropdown.grid(row=0, column=1, sticky="we")
         self._help_button.grid(row=0, column=2, padx=(5, 5))
-        self._insert_button.grid(row=2, column=0, columnspan=2, pady=(5, 0))
+        self._insert_button.grid(row=1, column=0, columnspan=2, pady=(5, 0))
 
         self._frame.pack(pady=(5, 5), padx=(5, 5))
 
         _util.position_toplevel(master, self, position=position)
+
+    def _filter_values(self, event):
+        if event is not None and event.keysym in ('Up', 'Down', 'Return', 'Escape'):
+            return
+        
+        current_text = self._current_value.get().lower()
+        if current_text:
+            filtered_values = [v for v in self._values if current_text in v.lower()]
+        else:
+            filtered_values = self._values
+        self._value_dropdown['values'] = filtered_values
+
+    def _on_select(self, event):
+        self._value_dropdown['values'] = self._values
 
     def _show_help(self):
         if self._current_value.get() not in self._values_dict:
