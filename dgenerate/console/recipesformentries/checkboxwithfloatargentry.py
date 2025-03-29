@@ -114,6 +114,6 @@ class _CheckboxWithFloatArgEntry(_entry._Entry):
             new_content = self.arg if self.arg else ''
             if float_val:
                 arg_part = (self.float_arg if self.float_arg else '')
-                new_content += '\n' + arg_part + (' ' if arg_part else '') + float_val
+                new_content += ('\n' if self.arg else '') + arg_part + (' ' if arg_part else '') + float_val
 
         return _entry.replace_first(content, self.placeholder, new_content)
