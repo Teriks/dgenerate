@@ -357,7 +357,7 @@ class DiffusionArguments(_types.SetFromMixin):
     when :py:attr:`.DiffusionArguments.guidance_scale`  > 1
     """
 
-    hi_diffusion: _types.OptionalBoolean = None
+    hi_diffusion: bool = False
     """
     Activate HiDiffusion for the primary model? 
             
@@ -374,7 +374,7 @@ class DiffusionArguments(_types.SetFromMixin):
     """
     Activate TeaCache for the primary model?
     
-    This is supported for Flux, teacache uses a novel caching mechanism 
+    This is supported for Flux, TeaCache uses a novel caching mechanism 
     in the forward pass of the flux transformer to reduce the amount of
     computation needed to generate an image, this can speed up inference
     with small amounts of quality loss.
@@ -398,6 +398,8 @@ class DiffusionArguments(_types.SetFromMixin):
     
     See: https://github.com/ali-vilab/TeaCache
     
+    Supplying any value implies that :py:attr:`DiffusionArguments.tea_cache` is enabled.
+    
     This is supported for: ``--model-type torch-flux*``.
     """
 
@@ -420,7 +422,9 @@ class DiffusionArguments(_types.SetFromMixin):
     
     See: https://github.com/microsoft/ras
     
-    This is supported for: ``--model-type torch-sd3`` when RAS is enabled.
+    Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
+    
+    This is supported for: ``--model-type torch-sd3``.
     """
 
     ras_patch_size: _types.OptionalInteger = None
@@ -430,17 +434,21 @@ class DiffusionArguments(_types.SetFromMixin):
     This controls the size of patches used for region-adaptive sampling.
     Default is 2.
     
-    This is supported for: ``--model-type torch-sd3`` when RAS is enabled.
+    Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
+    
+    This is supported for: ``--model-type torch-sd3``.
     """
 
     ras_sample_ratio: _types.OptionalFloat = None
     """
     Average sample ratio for each RAS step.
     
-    For instance, setting this to 0.5 on a sequence of 4096 tokens will result in the noise of averagely 2048 tokens to be updated during each RAS step.
-    Must be between 0 and 1.
+    For instance, setting this to 0.5 on a sequence of 4096 tokens will result in 
+    the noise of averagely 2048 tokens to be updated during each RAS step. Must be between 0.0 and 1.0.
     
-    This is supported for: ``--model-type torch-sd3`` when RAS is enabled.
+    Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
+    
+    This is supported for: ``--model-type torch-sd3``.
     """
 
     ras_high_ratio: _types.OptionalFloat = None
@@ -448,21 +456,26 @@ class DiffusionArguments(_types.SetFromMixin):
     Ratio of high value tokens to be cached in RAS.
     
     Based on the metric selected, the ratio of the high value chosen to be cached.
-    Default value is 1.0, but can be set between 0 and 1 to balance the sample ratio between the main subject and the background.
+    Default value is 1.0, but can be set between 0.0 and 1.0 to balance the sample ratio
+    between the main subject and the background.
     
-    This is supported for: ``--model-type torch-sd3`` when RAS is enabled.
+    Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
+    
+    This is supported for: ``--model-type torch-sd3``.
     """
 
     ras_starvation_scale: _types.OptionalFloat = None
     """
     Starvation scale for RAS patch selection.
     
-    RAS tracks how often a token is dropped and incorporates this count as a scaling factor in the metric for selecting tokens.
-    This scale factor prevents excessive blurring or noise in the final generated image.
-    Larger scaling factor will result in more uniform sampling.
-    Usually set between 0 and 1.
+    RAS tracks how often a token is dropped and incorporates this count as a scaling factor in the
+    metric for selecting tokens. This scale factor prevents excessive blurring or noise in the 
+    final generated image. Larger scaling factor will result in more uniform sampling.
+    Usually set between 0.0 and 1.0.
     
-    This is supported for: ``--model-type torch-sd3`` when RAS is enabled.
+    Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
+    
+    This is supported for: ``--model-type torch-sd3``.
     """
 
     ras_error_reset_steps: _types.OptionalString = None
@@ -472,7 +485,9 @@ class DiffusionArguments(_types.SetFromMixin):
     The dense sampling steps inserted between the RAS steps to reset the accumulated error.
     Should be a comma-separated string of step numbers, e.g. "12,22".
     
-    This is supported for: ``--model-type torch-sd3`` when RAS is enabled.
+    Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
+    
+    This is supported for: ``--model-type torch-sd3``.
     """
 
     sdxl_refiner_hi_diffusion: _types.OptionalBoolean = None
