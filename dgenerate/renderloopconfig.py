@@ -1980,6 +1980,15 @@ class RenderLoopConfig(_types.SetFromMixin):
         if self.tea_cache:
             optional_factors.append(self.tea_cache_rel_l1_thresholds)
 
+        if self.ras:
+            optional_factors.extend([
+                self.ras_patch_sizes,
+                self.ras_error_reset_steps,
+                self.ras_high_ratios,
+                self.ras_sample_ratios,
+                self.ras_starvation_scales
+            ])
+
         schedulers, second_model_schedulers = self._normalized_schedulers()
 
         product = 1
