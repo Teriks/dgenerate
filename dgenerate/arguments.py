@@ -482,6 +482,13 @@ def _type_ras_error_reset_steps(val: str) -> str:
     return val
 
 
+def _type_ras_metric(val: str) -> str:
+    val = val.lower()
+    if val not in {'std', 'l2norm'}:
+        raise argparse.ArgumentTypeError('Must be one of: std or l2norm.')
+    return val
+
+
 _ARG_PARSER_CACHE = dict()
 
 
@@ -1764,6 +1771,26 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             This is supported for: --model-type torch-sd3.
 
             (default: "12,22")"""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--ras-metrics',
+            metavar='RAS_METRIC',
+            nargs='+', dest='ras_metrics', type=_type_ras_metric,
+            help="""Metrics to try for RAS (Region-Adaptive Sampling).
+            
+            This controls how RAS measures the importance of tokens for caching.
+            Valid values are "std" (standard deviation) or "l2norm" (L2 norm).
+            
+            Each value will be tried in turn.
+            
+            Supplying any values implies --ras.
+            
+            This is supported for: --model-type torch-sd3.
+            
+            (default: "std")"""
         )
     )
 

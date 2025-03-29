@@ -878,18 +878,26 @@ class DiffusionPipelineWrapper:
 
         if args.ras:
             opts.append(('--ras',))
-            if args.ras_index_fusion:
-                opts.append(('--ras-index-fusion',))
-            if args.ras_patch_size is not None:
-                opts.append(('--ras-patch-sizes', str(args.ras_patch_size)))
-            if args.ras_sample_ratio is not None:
-                opts.append(('--ras-sample-ratios', str(args.ras_sample_ratio)))
-            if args.ras_high_ratio is not None:
-                opts.append(('--ras-high-ratios', str(args.ras_high_ratio)))
-            if args.ras_starvation_scale is not None:
-                opts.append(('--ras-starvation-scales', str(args.ras_starvation_scale)))
-            if args.ras_error_reset_steps is not None:
-                opts.append(('--ras-error-reset-steps', args.ras_error_reset_steps))
+        if args.ras_index_fusion:
+            opts.append(('--ras-index-fusion',))
+        if args.ras_patch_size is not None and \
+                args.ras_patch_size != _constants.DEFAULT_RAS_PATCH_SIZE:
+            opts.append(('--ras-patch-sizes', str(args.ras_patch_size)))
+        if args.ras_sample_ratio is not None and \
+                args.ras_sample_ratio != _constants.DEFAULT_RAS_SAMPLE_RATIO:
+            opts.append(('--ras-sample-ratios', str(args.ras_sample_ratio)))
+        if args.ras_high_ratio is not None and \
+                args.ras_high_ratio != _constants.DEFAULT_RAS_HIGH_RATIO:
+            opts.append(('--ras-high-ratios', str(args.ras_high_ratio)))
+        if args.ras_starvation_scale is not None \
+                and args.ras_starvation_scale != _constants.DEFAULT_RAS_STARVATION_SCALE:
+            opts.append(('--ras-starvation-scales', str(args.ras_starvation_scale)))
+        if args.ras_error_reset_steps is not None \
+                and args.ras_error_reset_steps != _constants.DEFAULT_RAS_ERROR_RESET_STEPS:
+            opts.append(('--ras-error-reset-steps', args.ras_error_reset_steps))
+        if args.ras_metric is not None and \
+                args.ras_metric != _constants.DEFAULT_RAS_METRIC:
+            opts.append(('--ras-metrics', args.ras_metric))
 
         opts.append(('--inference-steps', args.inference_steps))
         opts.append(('--guidance-scales', args.guidance_scale))
@@ -1059,10 +1067,12 @@ class DiffusionPipelineWrapper:
         if args.tea_cache:
             opts.append(('--tea-cache',))
 
-        if args.tea_cache_rel_l1_threshold is not None:
+        if args.tea_cache_rel_l1_threshold is not None and \
+                args.tea_cache_rel_l1_threshold != _constants.DEFAULT_TEA_CACHE_REL_L1_THRESHOLD:
             opts.append(('--tea-cache-rel-l1-thresholds', args.tea_cache_rel_l1_threshold))
 
-        if args.pag_scale == 3.0 and args.pag_adaptive_scale == 0.0:
+        if args.pag_scale == _constants.DEFAULT_PAG_SCALE \
+                and args.pag_adaptive_scale == _constants.DEFAULT_PAG_ADAPTIVE_SCALE:
             opts.append(('--pag',))
         else:
             if args.pag_scale is not None:
@@ -1070,8 +1080,8 @@ class DiffusionPipelineWrapper:
             if args.pag_adaptive_scale is not None:
                 opts.append(('--pag-adaptive-scales', args.pag_adaptive_scale))
 
-        if args.sdxl_refiner_pag_scale == 3.0 and \
-                args.sdxl_refiner_pag_adaptive_scale == 0.0:
+        if args.sdxl_refiner_pag_scale == _constants.DEFAULT_SDXL_REFINER_PAG_SCALE and \
+                args.sdxl_refiner_pag_adaptive_scale == _constants.DEFAULT_SDXL_REFINER_PAG_ADAPTIVE_SCALE:
             opts.append(('--sdxl-refiner-pag',))
         else:
             if args.sdxl_refiner_pag_scale is not None:
@@ -2303,7 +2313,8 @@ class DiffusionPipelineWrapper:
                                                      _constants.DEFAULT_RAS_ERROR_RESET_STEPS),
                     width=_types.default(user_args.width, _constants.DEFAULT_SD3_OUTPUT_WIDTH),
                     height=_types.default(user_args.height, _constants.DEFAULT_SD3_OUTPUT_HEIGHT),
-                    enable_index_fusion=user_args.ras_index_fusion
+                    enable_index_fusion=user_args.ras_index_fusion,
+                    metric=_types.default(user_args.ras_metric, _constants.DEFAULT_RAS_METRIC)
                 )
             else:
                 ras_args = None
