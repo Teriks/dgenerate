@@ -1157,7 +1157,8 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         if tea_cache_enabled and not _pipelinewrapper.model_type_is_flux(self.model_type):
             raise RenderLoopConfigError(
-                f'{a_namer("tea_cache")} is only compatible with {a_namer("model_type")} torch-flux*'
+                f'{a_namer("tea_cache")} and related arguments are only '
+                f'compatible with {a_namer("model_type")} torch-flux*'
             )
 
         if tea_cache_enabled:
@@ -1171,10 +1172,18 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         if ras_enabled and not _pipelinewrapper.model_type_is_sd3(self.model_type):
             raise RenderLoopConfigError(
-                f'{a_namer("ras")} is only compatible with {a_namer("model_type")} torch-sd3'
+                f'{a_namer("ras")} and related arguments are only '
+                f'compatible with {a_namer("model_type")} torch-sd3'
             )
 
         if ras_enabled:
+
+            if self.model_cpu_offload:
+                raise RenderLoopConfigError(
+                    f'{a_namer("model_cpu_offload")} is not compatible '
+                    f'with {a_namer("ras")} and related arguments.'
+                )
+
             # just want these default values to appear in textual output
             if self.ras_starvation_scales is None:
                 self.ras_starvation_scales = [_pipelinewrapper.constants.DEFAULT_RAS_STARVATION_SCALE]
