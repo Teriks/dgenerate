@@ -2949,6 +2949,10 @@ class DiffusionPipelineWrapper:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'TeaCache is only supported for Flux.')
 
+            if self.model_cpu_offload:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'TeaCache does not support model CPU offloading.')
+
     def __call__(self, args: DiffusionArguments | None = None, **kwargs) -> PipelineWrapperResult:
         """
         Call the pipeline and generate a result.

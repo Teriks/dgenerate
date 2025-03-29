@@ -1162,6 +1162,12 @@ class RenderLoopConfig(_types.SetFromMixin):
             )
 
         if tea_cache_enabled:
+            if self.model_cpu_offload:
+                raise RenderLoopConfigError(
+                    f'{a_namer("model_cpu_offload")} is not compatible '
+                    f'with {a_namer("tea_cache")} and related arguments.'
+                )
+
             # just want these default values to appear in textual output
             if self.tea_cache_rel_l1_thresholds is None:
                 self.tea_cache_rel_l1_thresholds = [_pipelinewrapper.constants.DEFAULT_TEA_CACHE_REL_L1_THRESHOLD]
