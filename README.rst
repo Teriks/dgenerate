@@ -1798,6 +1798,7 @@ Install dgenerate:
     # * gpt4all_cuda
     # * quant (bitsandbytes)
     # * bitsandbytes (individual)
+    # * triton-windows
 
     pipx install dgenerate ^
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu124/"
