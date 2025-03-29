@@ -1589,7 +1589,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '-tc', '--tea-cache',
+            '--tea-cache',
             action='store_true', default=False, dest='tea_cache',
             help=f"""Activate TeaCache for the primary model?
     
@@ -1609,7 +1609,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '-tct', '--tea-cache-rel-l1-thresholds', metavar='FLOAT',
+            '--tea-cache-rel-l1-thresholds', metavar='FLOAT',
             nargs='*', type=_type_tea_cache_rel_l1_thresh, default=None, dest='tea_cache_rel_l1_thresholds',
             help=f"""TeaCache relative L1 thresholds to try when --tea-cache is enabled.
             
@@ -1620,9 +1620,13 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                      Defaults to 0.6 (2.0x speedup). 0.25 for 1.5x speedup, 0.4 for 1.8x speedup, 
                      0.6 for 2.0x speedup, 0.8 for 2.25x speedup
                     
-                     See: https://github.com/megvii-research/HiDiffusion
+                     See: https://github.com/ali-vilab/TeaCache
+                     
+                     Supplying any values implies --tea-cache.
                     
                      This is supported for: ``--model-type torch-flux*``.
+                     
+                     (default: 0.6)
                      """
         )
     )
@@ -1649,8 +1653,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             help="""Enable index fusion in RAS (Reinforcement Attention System) for the primary model?
 
             This can improve attention computation in RAS for SD3 models.
+            
+            Supplying this flag implies --ras.
 
-            This is supported for: --model-type torch-sd3 when RAS is enabled."""
+            This is supported for: --model-type torch-sd3."""
         )
     )
 
@@ -1663,8 +1669,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             This controls the size of patches used for region-adaptive sampling.
             
             Each value will be tried in turn.
+            
+            Supplying any values implies --ras.
 
-            This is supported for: --model-type torch-sd3 when RAS is enabled.
+            This is supported for: --model-type torch-sd3.
 
             (default: 2)"""
         )
@@ -1683,8 +1691,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             Must be between 0.0 and 1.0 (non-inclusive)
             
             Each value will be tried in turn.
+            
+            Supplying any values implies --ras.
 
-            This is supported for: --model-type torch-sd3 when RAS is enabled.
+            This is supported for: --model-type torch-sd3.
 
             (default: 0.5)"""
         )
@@ -1703,8 +1713,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             ratio between the main subject and the background.
             
             Each value will be tried in turn.
+            
+            Supplying any values implies --ras.
 
-            This is supported for: --model-type torch-sd3 when RAS is enabled.
+            This is supported for: --model-type torch-sd3.
 
             (default: 1.0)"""
         )
@@ -1726,8 +1738,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             Must be between 0.0 and 1.0 (non-inclusive)
             
             Each value will be tried in turn.
+            
+            Supplying any values implies --ras.
 
-            This is supported for: --model-type torch-sd3 when RAS is enabled.
+            This is supported for: --model-type torch-sd3.
 
             (default: 0.1)"""
         )
@@ -1744,8 +1758,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             Should be a comma-separated string of step numbers, e.g. "12,22".
             
             Each individual string value (csv group) will be tried in turn.
+            
+            Supplying any values implies --ras.
 
-            This is supported for: --model-type torch-sd3 when RAS is enabled.
+            This is supported for: --model-type torch-sd3.
 
             (default: "12,22")"""
         )

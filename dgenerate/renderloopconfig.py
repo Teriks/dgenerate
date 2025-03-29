@@ -628,6 +628,8 @@ class RenderLoopConfig(_types.SetFromMixin):
     0.6 for 2.0x speedup, 0.8 for 2.25x speedup
 
     See: https://github.com/ali-vilab/TeaCache
+    
+    Supplying any value implies that :py:attr:`RenderLoopConfig.tea_cache` is enabled.
 
     This is supported for: ``--model-type torch-flux*``.
     """
@@ -651,7 +653,9 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     See: https://github.com/microsoft/ras
     
-    This is supported for: ``--model-type torch-sd3`` when RAS is enabled.
+    Supplying any value implies that :py:attr:`RenderLoopConfig.ras` is enabled.
+    
+    This is supported for: ``--model-type torch-sd3``.
     """
 
     ras_patch_sizes: _types.OptionalIntegers = None
@@ -661,7 +665,9 @@ class RenderLoopConfig(_types.SetFromMixin):
     This controls the size of patches used for region-adaptive sampling.
     Default is 2.
     
-    This is supported for: ``--model-type torch-sd3`` when RAS is enabled.
+    Supplying any value implies that :py:attr:`RenderLoopConfig.ras` is enabled.
+    
+    This is supported for: ``--model-type torch-sd3``.
     """
 
     ras_sample_ratios: _types.OptionalFloats = None
@@ -671,7 +677,9 @@ class RenderLoopConfig(_types.SetFromMixin):
     For instance, setting this to 0.5 on a sequence of 4096 tokens will result in the 
     noise of averagely 2048 tokens to be updated during each RAS step. Must be between 0 and 1.
     
-    This is supported for: ``--model-type torch-sd3`` when RAS is enabled.
+    Supplying any value implies that :py:attr:`RenderLoopConfig.ras` is enabled.
+    
+    This is supported for: ``--model-type torch-sd3``.
     """
 
     ras_high_ratios: _types.OptionalFloats = None
@@ -682,7 +690,9 @@ class RenderLoopConfig(_types.SetFromMixin):
     Default value is 1.0, but can be set between 0 and 1 to balance the sample ratio 
     between the main subject and the background.
     
-    This is supported for: ``--model-type torch-sd3`` when RAS is enabled.
+    Supplying any value implies that :py:attr:`RenderLoopConfig.ras` is enabled.
+    
+    This is supported for: ``--model-type torch-sd3``.
     """
 
     ras_starvation_scales: _types.OptionalFloats = None
@@ -694,7 +704,9 @@ class RenderLoopConfig(_types.SetFromMixin):
     blurring or noise in the final generated image. Larger scaling factor will 
     result in more uniform sampling. Usually set between 0 and 1.
     
-    This is supported for: ``--model-type torch-sd3`` when RAS is enabled.
+    Supplying any value implies that :py:attr:`RenderLoopConfig.ras` is enabled.
+    
+    This is supported for: ``--model-type torch-sd3``.
     """
 
     ras_error_reset_steps: _types.OptionalStrings = None
@@ -704,7 +716,9 @@ class RenderLoopConfig(_types.SetFromMixin):
     The dense sampling steps inserted between the RAS steps to reset the accumulated error.
     Should be a comma-separated string of step numbers, e.g. "12,22".
     
-    This is supported for: ``--model-type torch-sd3`` when RAS is enabled.
+    Supplying any value implies that :py:attr:`RenderLoopConfig.ras` is enabled.
+    
+    This is supported for: ``--model-type torch-sd3``.
     """
 
     sdxl_refiner_hi_diffusion: _types.OptionalBoolean = None
@@ -1133,29 +1147,38 @@ class RenderLoopConfig(_types.SetFromMixin):
             )
 
         # tea_cache and tea_cache_rel_l1_thresholds
-        if self.tea_cache_rel_l1_thresholds and not self.tea_cache:
-            raise RenderLoopConfigError(
-                f'{a_namer("tea_cache_rel_l1_thresholds")} cannot be specified without {a_namer("tea_cache")}'
-            )
-        elif self.tea_cache and not _pipelinewrapper.model_type_is_flux(self.model_type):
+
+        if (self.tea_cache or any(non_null_attr_that_start_with('tea_cache_'))) and \
+                not _pipelinewrapper.model_type_is_flux(self.model_type):
             raise RenderLoopConfigError(
                 f'{a_namer("tea_cache")} is only compatible with {a_namer("model_type")} torch-flux*'
             )
 
+        if self.tea_cache:
+            # just want these default values to appear in textual output
+            if self.tea_cache_rel_l1_thresholds is None:
+                self.tea_cache_rel_l1_thresholds = [_pipelinewrapper.constants.DEFAULT_TEA_CACHE_REL_L1_THRESHOLD]
+
         # ras
 
-        if self.ras and not _pipelinewrapper.model_type_is_sd3(self.model_type):
+        if (self.ras or any(non_null_attr_that_start_with('ras_'))) and \
+                not _pipelinewrapper.model_type_is_sd3(self.model_type):
             raise RenderLoopConfigError(
                 f'{a_namer("ras")} is only compatible with {a_namer("model_type")} torch-sd3'
             )
 
-        if not self.ras:
-            invalid_self = []
-            for ras_self in non_null_attr_that_start_with('ras_'):
-                invalid_self.append(f'you cannot specify {a_namer(ras_self)} '
-                                    f'without {a_namer("ras")}, see: {a_namer("model_type")}.')
-            if invalid_self:
-                raise RenderLoopConfigError('\n'.join(invalid_self))
+        if self.ras:
+            # just want these default values to appear in textual output
+            if self.ras_starvation_scales is None:
+                self.ras_starvation_scales = [_pipelinewrapper.constants.DEFAULT_RAS_STARVATION_SCALE]
+            if self.ras_error_reset_steps is None:
+                self.ras_error_reset_steps = [_pipelinewrapper.constants.DEFAULT_RAS_ERROR_RESET_STEPS]
+            if self.ras_high_ratios is None:
+                self.ras_high_ratios = [_pipelinewrapper.constants.DEFAULT_RAS_HIGH_RATIO]
+            if self.ras_patch_sizes is None:
+                self.ras_patch_sizes = [_pipelinewrapper.constants.DEFAULT_RAS_PATCH_SIZE]
+            if self.ras_sample_ratios is None:
+                self.ras_sample_ratios = [_pipelinewrapper.constants.DEFAULT_RAS_SAMPLE_RATIO]
 
         # exit early if we know there is no possibility
         # of second model arguments being valid
@@ -1974,20 +1997,14 @@ class RenderLoopConfig(_types.SetFromMixin):
             self.adetailer_detector_paddings,
             self.adetailer_mask_paddings,
             self.adetailer_mask_blurs,
-            self.adetailer_mask_dilations
+            self.adetailer_mask_dilations,
+            self.tea_cache_rel_l1_thresholds,
+            self.ras_patch_sizes,
+            self.ras_error_reset_steps,
+            self.ras_high_ratios,
+            self.ras_sample_ratios,
+            self.ras_starvation_scales
         ]
-
-        if self.tea_cache:
-            optional_factors.append(self.tea_cache_rel_l1_thresholds)
-
-        if self.ras:
-            optional_factors.extend([
-                self.ras_patch_sizes,
-                self.ras_error_reset_steps,
-                self.ras_high_ratios,
-                self.ras_sample_ratios,
-                self.ras_starvation_scales
-            ])
 
         schedulers, second_model_schedulers = self._normalized_schedulers()
 

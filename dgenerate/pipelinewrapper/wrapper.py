@@ -1929,7 +1929,10 @@ class DiffusionPipelineWrapper:
         with _teacache_flux.teacache_context(
                 self._pipeline,
                 user_args.inference_steps,
-                rel_l1_thresh=_types.default(user_args.tea_cache_rel_l1_threshold, 0.6),
+                rel_l1_thresh=_types.default(
+                    user_args.tea_cache_rel_l1_threshold,
+                    _constants.DEFAULT_TEA_CACHE_REL_L1_THRESHOLD
+                ),
                 enable=_types.default(user_args.tea_cache, False),
         ):
             if self._parsed_adetailer_detector_uris:
@@ -2294,8 +2297,10 @@ class DiffusionPipelineWrapper:
                     patch_size=_types.default(user_args.ras_patch_size, _constants.DEFAULT_RAS_PATCH_SIZE),
                     sample_ratio=_types.default(user_args.ras_sample_ratio, _constants.DEFAULT_RAS_SAMPLE_RATIO),
                     high_ratio=_types.default(user_args.ras_high_ratio, _constants.DEFAULT_RAS_HIGH_RATIO),
-                    starvation_scale=_types.default(user_args.ras_starvation_scale, _constants.DEFAULT_RAS_STARVATION_SCALE),
-                    error_reset_steps=_types.default(user_args.ras_error_reset_steps, _constants.DEFAULT_RAS_ERROR_RESET_STEPS),
+                    starvation_scale=_types.default(user_args.ras_starvation_scale,
+                                                    _constants.DEFAULT_RAS_STARVATION_SCALE),
+                    error_reset_steps=_types.default(user_args.ras_error_reset_steps,
+                                                     _constants.DEFAULT_RAS_ERROR_RESET_STEPS),
                     width=_types.default(user_args.width, _constants.DEFAULT_SD3_OUTPUT_WIDTH),
                     height=_types.default(user_args.height, _constants.DEFAULT_SD3_OUTPUT_HEIGHT),
                     enable_index_fusion=user_args.ras_index_fusion
@@ -2899,6 +2904,36 @@ class DiffusionPipelineWrapper:
             slicing=args.vae_slicing
         )
 
+    def _auto_ras_check(self, args: DiffusionArguments):
+        for prop in args.__dict__.keys():
+            if prop.startswith('ras_'):
+                value = getattr(args, prop)
+                if value is not None or (isinstance(value, bool) and value is True):
+                    args.ras = True
+                    break
+
+        if args.ras:
+            if not _enums.model_type_is_sd3(self.model_type):
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'RAS is only supported for SD3.')
+
+            if importlib.util.find_spec('triton') is None:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'RAS is only supported with triton / triton-windows installed.')
+
+    def _auto_tea_cache_check(self, args: DiffusionArguments):
+        for prop in args.__dict__.keys():
+            if prop.startswith('tea_cache_'):
+                value = getattr(args, prop)
+                if value is not None or (isinstance(value, bool) and value is True):
+                    args.tea_cache = True
+                    break
+
+        if args.tea_cache:
+            if not _enums.model_type_is_flux(self.model_type):
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'TeaCache is only supported for Flux.')
+
     def __call__(self, args: DiffusionArguments | None = None, **kwargs) -> PipelineWrapperResult:
         """
         Call the pipeline and generate a result.
@@ -2949,19 +2984,8 @@ class DiffusionPipelineWrapper:
         pipeline_args = \
             self._get_pipeline_defaults(user_args=copy_args)
 
-        if not _enums.model_type_is_flux(self.model_type):
-            if args.tea_cache:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'TeaCache is only supported for Flux.')
-
-        if args.ras:
-            if not _enums.model_type_is_sd3(self.model_type):
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'RAS is only supported for SD3.')
-
-            if importlib.util.find_spec('triton') is None:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'RAS is only supported with triton / triton-windows installed.')
+        self._auto_tea_cache_check(copy_args)
+        self._auto_ras_check(copy_args)
 
         if self.model_type == _enums.ModelType.TORCH_S_CASCADE:
             if args.hi_diffusion:
