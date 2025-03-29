@@ -287,6 +287,7 @@ if __name__ != 'setup_as_library':
                 pyinstaller_requires +
                 extras['ncnn'] +
                 extras['gpt4all_cuda'] +
+                extras['triton-windows'] +
                 quant_extras
         )
 
