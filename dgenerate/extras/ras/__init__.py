@@ -11,6 +11,7 @@ class RASArgs:
         self,
         num_inference_steps: int,
         patch_size: int = 2,
+        starvation_scale: float = 0.1,
         scheduler_start_step: int = 4,
         metric: str = "std",
         error_reset_steps: str = "12,22",
@@ -37,10 +38,11 @@ class RASArgs:
         self.width = width
         self.high_ratio = high_ratio
         self.enable_index_fusion = enable_index_fusion
+        self.starvation_scale = starvation_scale
 
 
 @contextmanager
-def sd3_ras_context(pipeline: StableDiffusion3Pipeline, enabled: bool = True, args: RASArgs = None):
+def sd3_ras_context(pipeline: StableDiffusion3Pipeline, args: RASArgs, enabled: bool = True):
     """
     Context manager to enable/disable RAS (Reinforcement Attention System) on a Stable Diffusion 3 pipeline.
 

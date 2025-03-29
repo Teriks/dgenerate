@@ -876,6 +876,21 @@ class DiffusionPipelineWrapper:
         if not omit_device:
             opts.append(('--device', self._device))
 
+        if args.ras:
+            opts.append(('--ras',))
+            if args.ras_index_fusion:
+                opts.append(('--ras-index-fusion',))
+            if args.ras_patch_size is not None:
+                opts.append(('--ras-patch-sizes', str(args.ras_patch_size)))
+            if args.ras_sample_ratio is not None:
+                opts.append(('--ras-sample-ratios', str(args.ras_sample_ratio)))
+            if args.ras_high_ratio is not None:
+                opts.append(('--ras-high-ratios', str(args.ras_high_ratio)))
+            if args.ras_starvation_scale is not None:
+                opts.append(('--ras-starvation-scales', str(args.ras_starvation_scale)))
+            if args.ras_error_reset_steps is not None:
+                opts.append(('--ras-error-reset-steps', args.ras_error_reset_steps))
+
         opts.append(('--inference-steps', args.inference_steps))
         opts.append(('--guidance-scales', args.guidance_scale))
         opts.append(('--seeds', args.seed))
@@ -2273,17 +2288,25 @@ class DiffusionPipelineWrapper:
             )
 
         if self._sdxl_refiner_pipeline is None:
+            if user_args.ras:
+                ras_args = _RASArgs(
+                    num_inference_steps=user_args.inference_steps,
+                    patch_size=_types.default(user_args.ras_patch_size, _constants.DEFAULT_RAS_PATCH_SIZE),
+                    sample_ratio=_types.default(user_args.ras_sample_ratio, _constants.DEFAULT_RAS_SAMPLE_RATIO),
+                    high_ratio=_types.default(user_args.ras_high_ratio, _constants.DEFAULT_RAS_HIGH_RATIO),
+                    starvation_scale=_types.default(user_args.ras_starvation_scale, _constants.DEFAULT_RAS_STARVATION_SCALE),
+                    error_reset_steps=_types.default(user_args.ras_error_reset_steps, _constants.DEFAULT_RAS_ERROR_RESET_STEPS),
+                    width=_types.default(user_args.width, _constants.DEFAULT_SD3_OUTPUT_WIDTH),
+                    height=_types.default(user_args.height, _constants.DEFAULT_SD3_OUTPUT_HEIGHT),
+                    enable_index_fusion=user_args.ras_index_fusion
+                )
+            else:
+                ras_args = None
+
             with _hi_diffusion(self._pipeline,
                                generator=generator,
                                enabled=user_args.hi_diffusion), \
-                    _sd3_ras_context(
-                        self._pipeline,
-                        enabled=user_args.ras,
-                        args=_RASArgs(
-                            num_inference_steps=user_args.inference_steps,
-                            width=_types.default(user_args.width, _constants.DEFAULT_SD3_OUTPUT_WIDTH),
-                            height=_types.default(user_args.height, _constants.DEFAULT_SD3_OUTPUT_HEIGHT)),
-                    ):
+                    _sd3_ras_context(self._pipeline, args=ras_args, enabled=user_args.ras):
                 if self._parsed_adetailer_detector_uris:
                     return generate_asdff()
                 else:

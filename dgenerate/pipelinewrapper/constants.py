@@ -303,5 +303,34 @@ Extra variables include: ``cache_size`` (the current estimated cache size in byt
 and ``transformer_size`` (the estimated size of the new transformer model before it is brought into memory, in bytes)
 """
 
+DEFAULT_RAS_PATCH_SIZE: int = 2
+"""
+Default patch size for RAS (Reinforcement Attention System) in Stable Diffusion 3.
+Controls the size of patches used for attention computation in RAS.
+"""
+
+DEFAULT_RAS_SAMPLE_RATIO: float = 0.5
+"""
+Default sample ratio for RAS (Reinforcement Attention System) in Stable Diffusion 3.
+Controls the average sample ratio for each RAS step, must be between 0 and 1.
+"""
+
+DEFAULT_RAS_HIGH_RATIO: float = 1.0
+"""
+Default high ratio for RAS (Reinforcement Attention System) in Stable Diffusion 3.
+Controls the ratio of high-value tokens to be cached in RAS, must be between 0 and 1.
+"""
+
+DEFAULT_RAS_STARVATION_SCALE: float = 0.1
+"""
+Default starvation scale for RAS (Reinforcement Attention System) in Stable Diffusion 3.
+Controls the starvation scale in RAS patch selection, typically between 0 and 1.
+"""
+
+DEFAULT_RAS_ERROR_RESET_STEPS: str = "12,22"
+"""
+Default error reset steps for RAS (Reinforcement Attention System) in Stable Diffusion 3.
+Comma-separated string of step numbers for dense sampling steps to reset accumulated error in RAS.
+"""
 
 dgenerate.globalconfig.register_all()
