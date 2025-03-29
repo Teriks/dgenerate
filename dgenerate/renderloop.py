@@ -498,22 +498,22 @@ class RenderLoop:
             args += ['tct', diffusion_args.tea_cache_rel_l1_threshold]
 
         if diffusion_args.ras_high_ratio is not None:
-            args += ['rashr', diffusion_args.ras_high_ratio]
+            args += ['rshr', diffusion_args.ras_high_ratio]
 
         if diffusion_args.ras_sample_ratio is not None:
-            args += ['rassr', diffusion_args.ras_sample_ratio]
+            args += ['rssr', diffusion_args.ras_sample_ratio]
 
         if diffusion_args.ras_starvation_scale is not None:
-            args += ['rasss', diffusion_args.ras_starvation_scale]
+            args += ['rsss', diffusion_args.ras_starvation_scale]
 
         if diffusion_args.ras_patch_size is not None:
-            args += ['rasps', diffusion_args.ras_patch_size]
+            args += ['rsps', diffusion_args.ras_patch_size]
 
         if diffusion_args.ras_error_reset_steps is not None:
-            args += ['rasrs', diffusion_args.ras_error_reset_steps.replace(' ', '').replace(',', '-')]
+            args += ['rsrs', diffusion_args.ras_error_reset_steps.replace(' ', '').replace(',', '-')]
 
         if diffusion_args.ras_metric is not None:
-            args += ['rasm', diffusion_args.ras_metric]
+            args += ['rsm', diffusion_args.ras_metric]
 
         return args
 
