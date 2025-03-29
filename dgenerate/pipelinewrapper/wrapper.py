@@ -28,7 +28,7 @@ import typing
 import PIL.Image
 import diffusers
 import torch
-
+import importlib.util
 import dgenerate.image as _image
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.constants as _constants
@@ -2954,10 +2954,14 @@ class DiffusionPipelineWrapper:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'TeaCache is only supported for Flux.')
 
-        if not _enums.model_type_is_sd3(self.model_type):
-            if args.ras:
+        if args.ras:
+            if not _enums.model_type_is_sd3(self.model_type):
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'RAS is only supported for SD3.')
+
+            if importlib.util.find_spec('triton') is None:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'RAS is only supported with triton / triton-windows installed.')
 
         if self.model_type == _enums.ModelType.TORCH_S_CASCADE:
             if args.hi_diffusion:
