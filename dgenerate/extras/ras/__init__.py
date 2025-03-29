@@ -1,7 +1,6 @@
+import importlib.util
 from contextlib import contextmanager
 from diffusers import StableDiffusion3Pipeline
-from .utils.ras_manager import MANAGER
-from .utils.stable_diffusion_3.update_pipeline_sd3 import update_sd3_pipeline
 
 __version__ = "0.1"
 
@@ -57,6 +56,15 @@ def sd3_ras_context(pipeline: StableDiffusion3Pipeline, args: RASArgs, enabled: 
     if not enabled:
         yield pipeline
         return
+
+    if importlib.util.find_spec('triton') is None:
+        raise RuntimeError(
+            "RAS requires the 'triton' package to be installed. "
+            "Please install it using 'pip install triton' or "
+            "'pip install triton-windows' for Windows users.")
+
+    from .utils.ras_manager import MANAGER
+    from .utils.stable_diffusion_3.update_pipeline_sd3 import update_sd3_pipeline
 
     # Store original state
     original_scheduler = pipeline.scheduler
