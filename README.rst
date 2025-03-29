@@ -207,10 +207,11 @@ Help Output
                      [-ti URI [URI ...]] [-cn CONTROLNET_URI [CONTROLNET_URI ...] | -t2i T2I_ADAPTER_URI
                      [T2I_ADAPTER_URI ...]] [-q QUANTIZER_URI] [-q2 QUANTIZER_URI]
                      [-sch SCHEDULER_URI [SCHEDULER_URI ...]]
-                     [--second-model-scheduler SCHEDULER_URI [SCHEDULER_URI ...]] [-hd] [-tc] [-tct [FLOAT ...]]
-                     [--ras] [--ras-index-fusion] [--ras-patch-sizes INT [INT ...]]
-                     [--ras-sample-ratios FLOAT [FLOAT ...]] [--ras-high-ratios FLOAT [FLOAT ...]]
-                     [--ras-starvation-scales FLOAT [FLOAT ...]] [--ras-error-reset-steps CSV_INT [CSV_INT ...]]
+                     [--second-model-scheduler SCHEDULER_URI [SCHEDULER_URI ...]] [-hd] [--tea-cache]
+                     [--tea-cache-rel-l1-thresholds [FLOAT ...]] [--ras] [--ras-index-fusion]
+                     [--ras-patch-sizes INT [INT ...]] [--ras-sample-ratios FLOAT [FLOAT ...]]
+                     [--ras-high-ratios FLOAT [FLOAT ...]] [--ras-starvation-scales FLOAT [FLOAT ...]]
+                     [--ras-error-reset-steps CSV_INT [CSV_INT ...]] [--ras-metrics RAS_METRIC [RAS_METRIC ...]]
                      [-rhd] [-pag] [-pags FLOAT [FLOAT ...]] [-pagas FLOAT [FLOAT ...]] [-rpag]
                      [-rpags FLOAT [FLOAT ...]] [-rpagas FLOAT [FLOAT ...]] [-mqo | -mco] [-mqo2 | -mco2]
                      [--s-cascade-decoder MODEL_URI] [--sdxl-refiner MODEL_URI] [--sdxl-refiner-edit]
@@ -1017,7 +1018,7 @@ Help Output
             
             This is supported for --model-type torch, torch-sdxl, and --torch-kolors.
             -------------------------------------------------------------------------
-      -tc, --tea-cache
+      --tea-cache
             Activate TeaCache for the primary model?
             
             This is supported for Flux, TeaCache uses a novel caching mechanism in the forward pass of the flux
@@ -1030,7 +1031,7 @@ Help Output
             
             This is supported for: --model-type torch-flux*.
             ------------------------------------------------
-      -tct [FLOAT ...], --tea-cache-rel-l1-thresholds [FLOAT ...]
+      --tea-cache-rel-l1-thresholds [FLOAT ...]
             TeaCache relative L1 thresholds to try when --tea-cache is enabled.
             
             This should be one or more float values between 0.0 and 1.0, each value will be tried in turn.
@@ -1040,10 +1041,14 @@ Help Output
             Defaults to 0.6 (2.0x speedup). 0.25 for 1.5x speedup, 0.4 for 1.8x speedup, 0.6 for 2.0x speedup,
             0.8 for 2.25x speedup
             
-            See: https://github.com/megvii-research/HiDiffusion
+            See: https://github.com/ali-vilab/TeaCache
+            
+            Supplying any values implies --tea-cache.
             
             This is supported for: ``--model-type torch-flux*``.
-            ----------------------------------------------------
+            
+            (default: 0.6)
+            --------------
       --ras
             Activate RAS (Region-Adaptive Sampling) for the primary model?
             
@@ -1058,15 +1063,19 @@ Help Output
             
             This can improve attention computation in RAS for SD3 models.
             
-            This is supported for: --model-type torch-sd3 when RAS is enabled.
-            ------------------------------------------------------------------
+            Supplying this flag implies --ras.
+            
+            This is supported for: --model-type torch-sd3.
+            ----------------------------------------------
       --ras-patch-sizes INT [INT ...]
             Patch sizes for RAS (Reinforcement Attention System). This controls the size of patches used for
             region-adaptive sampling.
             
             Each value will be tried in turn.
             
-            This is supported for: --model-type torch-sd3 when RAS is enabled.
+            Supplying any values implies --ras.
+            
+            This is supported for: --model-type torch-sd3.
             
             (default: 2)
             ------------
@@ -1080,7 +1089,9 @@ Help Output
             
             Each value will be tried in turn.
             
-            This is supported for: --model-type torch-sd3 when RAS is enabled.
+            Supplying any values implies --ras.
+            
+            This is supported for: --model-type torch-sd3.
             
             (default: 0.5)
             --------------
@@ -1094,7 +1105,9 @@ Help Output
             
             Each value will be tried in turn.
             
-            This is supported for: --model-type torch-sd3 when RAS is enabled.
+            Supplying any values implies --ras.
+            
+            This is supported for: --model-type torch-sd3.
             
             (default: 1.0)
             --------------
@@ -1111,7 +1124,9 @@ Help Output
             
             Each value will be tried in turn.
             
-            This is supported for: --model-type torch-sd3 when RAS is enabled.
+            Supplying any values implies --ras.
+            
+            This is supported for: --model-type torch-sd3.
             
             (default: 0.1)
             --------------
@@ -1123,10 +1138,26 @@ Help Output
             
             Each individual string value (csv group) will be tried in turn.
             
-            This is supported for: --model-type torch-sd3 when RAS is enabled.
+            Supplying any values implies --ras.
+            
+            This is supported for: --model-type torch-sd3.
             
             (default: "12,22")
             ------------------
+      --ras-metrics RAS_METRIC [RAS_METRIC ...]
+            Metrics to try for RAS (Region-Adaptive Sampling).
+            
+            This controls how RAS measures the importance of tokens for caching. Valid values are "std"
+            (standard deviation) or "l2norm" (L2 norm).
+            
+            Each value will be tried in turn.
+            
+            Supplying any values implies --ras.
+            
+            This is supported for: --model-type torch-sd3.
+            
+            (default: "std")
+            ----------------
       -rhd, --sdxl-refiner-hi-diffusion
             Activate HiDiffusion for the SDXL refiner?, See: --hi-diffusion
             ---------------------------------------------------------------
@@ -5586,16 +5617,14 @@ these are the arguments that are available for use:
     sdxl-refiner-negative-target-size: Size: WxH
     sdxl-refiner-negative-crops-coords-top-left: Size: WxH
     guidance-scale: float
-    hi-diffusion: bool
-    tea-cache: bool
     tea-cache-rel-l1-threshold: float
-    ras: bool
     ras-index-fusion: bool
     ras-patch-size: int
     ras-sample-ratio: float
     ras-high-ratio: float
     ras-starvation-scale: float
     ras-error-reset-steps: str
+    ras-metric: str
     sdxl-refiner-hi-diffusion: bool
     pag-scale: float
     pag-adaptive-scale: float
@@ -7291,13 +7320,19 @@ The ``\templates_help`` output from the above example is:
             Type: typing.Optional[str]
             Value: None
         Name: "last_ras"
-            Type: typing.Optional[bool]
-            Value: None
+            Type: <class 'bool'>
+            Value: False
         Name: "last_ras_error_reset_steps"
             Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
         Name: "last_ras_high_ratios"
             Type: typing.Optional[collections.abc.Sequence[float]]
+            Value: []
+        Name: "last_ras_index_fusion"
+            Type: typing.Optional[bool]
+            Value: None
+        Name: "last_ras_metrics"
+            Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
         Name: "last_ras_patch_sizes"
             Type: typing.Optional[collections.abc.Sequence[int]]
@@ -7451,7 +7486,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [34627458983999]
+            Value: [15578129289664]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -7462,8 +7497,8 @@ The ``\templates_help`` output from the above example is:
             Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
         Name: "last_tea_cache"
-            Type: typing.Optional[bool]
-            Value: None
+            Type: <class 'bool'>
+            Value: False
         Name: "last_tea_cache_rel_l1_thresholds"
             Type: typing.Optional[collections.abc.Sequence[float]]
             Value: []

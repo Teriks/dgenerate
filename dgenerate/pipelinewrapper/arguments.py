@@ -490,6 +490,19 @@ class DiffusionArguments(_types.SetFromMixin):
     This is supported for: ``--model-type torch-sd3``.
     """
 
+    ras_metric: _types.OptionalString = None
+    """
+    Metric to use for RAS (Region-Adaptive Sampling).
+    
+    This controls how RAS measures the importance of tokens for caching.
+    Valid values are "std" (standard deviation) or "l2norm" (L2 norm).
+    Defaults to "std".
+    
+    Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
+    
+    This is supported for: ``--model-type torch-sd3``.
+    """
+
     sdxl_refiner_hi_diffusion: _types.OptionalBoolean = None
     """
     Activate HiDiffusion on the SDXL refiner for this generation?, See: :py:attr:`DiffusionArguments.hi_diffusion`
@@ -781,7 +794,8 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.ras_sample_ratio, "RAS Sample Ratio:"),
             (self.ras_high_ratio, "RAS High Ratio:"),
             (self.ras_starvation_scale, "RAS Starvation Scale:"),
-            (self.ras_error_reset_steps, "RAS Error Reset Steps:")
+            (self.ras_error_reset_steps, "RAS Error Reset Steps:"),
+            (self.ras_metric, "RAS Metric:")
         ]
 
         if not self.prompt.weighter:

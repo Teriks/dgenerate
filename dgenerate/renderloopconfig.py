@@ -699,14 +699,19 @@ class RenderLoopConfig(_types.SetFromMixin):
     """
     Starvation scales to try for RAS (Region-Adaptive Sampling).
     
-    RAS tracks how often a token is dropped and incorporates this count as a scaling 
-    factor in the metric for selecting tokens. This scale factor prevents excessive 
-    blurring or noise in the final generated image. Larger scaling factor will 
-    result in more uniform sampling. Usually set between 0 and 1.
+    RAS tracks how often a token is dropped and incorporates this count as a scaling factor in the
+    metric for selecting tokens. This scale factor prevents excessive blurring or noise in the 
+    final generated image. Larger scaling factor will result in more uniform sampling.
+    Usually set between 0.0 and 1.0.
+    """
+
+    ras_metrics: _types.OptionalStrings = None
+    """
+    One or more RAS metrics to try.
     
-    Supplying any value implies that :py:attr:`RenderLoopConfig.ras` is enabled.
-    
-    This is supported for: ``--model-type torch-sd3``.
+    This controls how RAS measures the importance of tokens for caching.
+    Valid values are "std" (standard deviation) or "l2norm" (L2 norm).
+    Defaults to "std".
     """
 
     ras_error_reset_steps: _types.OptionalStrings = None
@@ -1148,26 +1153,28 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         # tea_cache and tea_cache_rel_l1_thresholds
 
-        if (self.tea_cache or any(non_null_attr_that_start_with('tea_cache_'))) and \
-                not _pipelinewrapper.model_type_is_flux(self.model_type):
+        tea_cache_enabled = (self.tea_cache or any(non_null_attr_that_start_with('tea_cache_')))
+
+        if tea_cache_enabled and not _pipelinewrapper.model_type_is_flux(self.model_type):
             raise RenderLoopConfigError(
                 f'{a_namer("tea_cache")} is only compatible with {a_namer("model_type")} torch-flux*'
             )
 
-        if self.tea_cache:
+        if tea_cache_enabled:
             # just want these default values to appear in textual output
             if self.tea_cache_rel_l1_thresholds is None:
                 self.tea_cache_rel_l1_thresholds = [_pipelinewrapper.constants.DEFAULT_TEA_CACHE_REL_L1_THRESHOLD]
 
         # ras
 
-        if (self.ras or any(non_null_attr_that_start_with('ras_'))) and \
-                not _pipelinewrapper.model_type_is_sd3(self.model_type):
+        ras_enabled = (self.ras or any(non_null_attr_that_start_with('ras_')))
+
+        if ras_enabled and not _pipelinewrapper.model_type_is_sd3(self.model_type):
             raise RenderLoopConfigError(
                 f'{a_namer("ras")} is only compatible with {a_namer("model_type")} torch-sd3'
             )
 
-        if self.ras:
+        if ras_enabled:
             # just want these default values to appear in textual output
             if self.ras_starvation_scales is None:
                 self.ras_starvation_scales = [_pipelinewrapper.constants.DEFAULT_RAS_STARVATION_SCALE]
@@ -1179,6 +1186,8 @@ class RenderLoopConfig(_types.SetFromMixin):
                 self.ras_patch_sizes = [_pipelinewrapper.constants.DEFAULT_RAS_PATCH_SIZE]
             if self.ras_sample_ratios is None:
                 self.ras_sample_ratios = [_pipelinewrapper.constants.DEFAULT_RAS_SAMPLE_RATIO]
+            if self.ras_metrics is None:
+                self.ras_metrics = [_pipelinewrapper.constants.DEFAULT_RAS_METRIC]
 
         # exit early if we know there is no possibility
         # of second model arguments being valid
@@ -2003,7 +2012,8 @@ class RenderLoopConfig(_types.SetFromMixin):
             self.ras_error_reset_steps,
             self.ras_high_ratios,
             self.ras_sample_ratios,
-            self.ras_starvation_scales
+            self.ras_starvation_scales,
+            self.ras_metrics
         ]
 
         schedulers, second_model_schedulers = self._normalized_schedulers()
@@ -2194,7 +2204,8 @@ class RenderLoopConfig(_types.SetFromMixin):
                 adetailer_detector_padding=ov('adetailer_detector_padding', self.adetailer_detector_paddings),
                 adetailer_mask_padding=ov('adetailer_mask_padding', self.adetailer_mask_paddings),
                 adetailer_mask_blur=ov('adetailer_mask_blur', self.adetailer_mask_blurs),
-                adetailer_mask_dilation=ov('adetailer_mask_dilation', self.adetailer_mask_dilations)):
+                adetailer_mask_dilation=ov('adetailer_mask_dilation', self.adetailer_mask_dilations),
+                ras_metric=ov('ras_metric', self.ras_metrics)):
             arg.prompt.set_embedded_args_on(
                 on_object=arg,
                 forbidden_checker=_pipelinewrapper.DiffusionArguments.prompt_embedded_arg_checker)

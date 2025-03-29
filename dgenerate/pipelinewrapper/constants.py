@@ -232,6 +232,11 @@ Default error reset steps for RAS (Reinforcement Attention System) for Stable Di
 Comma-separated string of step numbers for dense sampling steps to reset accumulated error in RAS.
 """
 
+DEFAULT_RAS_METRIC: str = "std"
+"""
+Default RAS metric for RAS (Reinforcement Attention System) for Stable Diffusion 3.
+"""
+
 PIPELINE_WRAPPER_CACHE_GC_CONSTRAINTS: list[str] = ['used_percent > 70']
 """
 Cache constraint expressions for when to clear all object caches, 
