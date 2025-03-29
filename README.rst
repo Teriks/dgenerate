@@ -1045,7 +1045,7 @@ Help Output
             
             Supplying any values implies --tea-cache.
             
-            This is supported for: ``--model-type torch-flux*``.
+            This is supported for: --model-type torch-flux*.
             
             (default: 0.6)
             --------------
@@ -1056,8 +1056,8 @@ Help Output
             
             See: https://github.com/microsoft/ras
             
-            This is supported for: ``--model-type torch-sd3``.
-            --------------------------------------------------
+            This is supported for: --model-type torch-sd3.
+            ----------------------------------------------
       --ras-index-fusion
             Enable index fusion in RAS (Reinforcement Attention System) for the primary model?
             
@@ -7486,7 +7486,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [15578129289664]
+            Value: [21929027794008]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

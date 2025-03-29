@@ -1631,7 +1631,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                      
                      Supplying any values implies --tea-cache.
                     
-                     This is supported for: ``--model-type torch-flux*``.
+                     This is supported for: --model-type torch-flux*.
                      
                      (default: 0.6)
                      """
@@ -1648,7 +1648,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                      See: https://github.com/microsoft/ras
                     
-                     This is supported for: ``--model-type torch-sd3``.
+                     This is supported for: --model-type torch-sd3.
                      """
         )
     )
