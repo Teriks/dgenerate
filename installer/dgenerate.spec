@@ -23,7 +23,6 @@ block_cipher = None
 
 # the cv2 hook works properly, other mentioned deps just are not needed
 exclude_from_collection = {
-    'triton',
     'cmake',
     'lit',
     'opencv-python',
@@ -36,6 +35,7 @@ exclude_from_collection = {
 requires_extra_data_forced = [
     'dgenerate',
     'bitsandbytes',
+    'triton',
     'gpt4all',
     'controlnet_aux',
     'fake_useragent',
@@ -56,6 +56,9 @@ require_source = {
     'transformers',
     'controlnet_aux',
     'diffusers',
+    'triton',
+    'bitsandbytes',
+    'pandas',
     'ultralytics',
     'spandrel',
     'spandrel_extra_arches',
@@ -110,7 +113,8 @@ for package_name in required_package_names:
                   '**/*.jsonl',
                   '**/*.toml',
                   '**/*.yaml',
-                  '**/*.yml'] +
+                  '**/*.yml',
+                  '**/*.exe'] +
                  (['**/*.py', '**/*.pyi']
                   if include_source else []))
     binaries += collect_dynamic_libs(package_name, search_patterns=['*.dll', '*.pyd'])
