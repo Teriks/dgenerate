@@ -2932,6 +2932,10 @@ class DiffusionPipelineWrapper:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'RAS is only supported with triton / triton-windows installed.')
 
+            if self.model_cpu_offload:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'RAS does not support model CPU offloading.')
+
     def _auto_tea_cache_check(self, args: DiffusionArguments):
         for prop in args.__dict__.keys():
             if prop.startswith('tea_cache_'):
