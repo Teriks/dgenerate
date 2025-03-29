@@ -431,6 +431,57 @@ def _type_adetailer_mask_dilation(val):
     return val
 
 
+def _type_ras_patch_size(val: str) -> int:
+    try:
+        val = int(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be an integer')
+    if val <= 0:
+        raise argparse.ArgumentTypeError('Must be greater than 0')
+    return val
+
+
+def _type_ras_sample_ratio(val: str) -> float:
+    try:
+        val = float(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be a floating point number')
+    if not 0 <= val <= 1:
+        raise argparse.ArgumentTypeError('Must be between 0.0 and 1.0')
+    return val
+
+
+def _type_ras_high_ratio(val: str) -> float:
+    try:
+        val = float(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be a floating point number')
+    if not 0 <= val <= 1:
+        raise argparse.ArgumentTypeError('Must be between 0.0 and 1.0')
+    return val
+
+
+def _type_ras_starvation_scale(val: str) -> float:
+    try:
+        val = float(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be a floating point number')
+    if not 0 <= val <= 1:
+        raise argparse.ArgumentTypeError('Must be between 0.0 and 1.0')
+    return val
+
+
+def _type_ras_error_reset_steps(val: str) -> str:
+    try:
+        # Validate that it's a comma-separated list of integers
+        steps = [int(x.strip()) for x in val.split(',')]
+        if not all(x > 0 for x in steps):
+            raise argparse.ArgumentTypeError('All RAS step numbers must be positive')
+    except ValueError:
+        raise argparse.ArgumentTypeError('RAS steps must be a comma-separated list of positive integers')
+    return val
+
+
 _ARG_PARSER_CACHE = dict()
 
 
@@ -924,7 +975,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '-adc', '--adetailer-crop-control-image',
             action='store_true',
-            default=False,
+            default=None,
             dest='adetailer_crop_control_image',
             help="""Should adetailer crop ControlNet control images to the feature detection area? 
                     Your input image and control image should be the the same dimension, otherwise 
@@ -1558,7 +1609,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '-tct', '--tea-cache-rel-l1-thresholds',
+            '-tct', '--tea-cache-rel-l1-thresholds', metavar='FLOAT',
             nargs='*', type=_type_tea_cache_rel_l1_thresh, default=None, dest='tea_cache_rel_l1_thresholds',
             help=f"""TeaCache relative L1 thresholds to try when --tea-cache is enabled.
             
@@ -1578,7 +1629,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '-ras', '--ras',
+            '--ras',
             action='store_true', default=False, dest='ras',
             help=f"""Activate RAS (Region-Adaptive Sampling) for the primary model?
             
@@ -1593,8 +1644,117 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '--ras-index-fusion',
+            action='store_true', dest='ras_index_fusion', default=None,
+            help="""Enable index fusion in RAS (Reinforcement Attention System) for the primary model?
+
+            This can improve attention computation in RAS for SD3 models.
+
+            This is supported for: --model-type torch-sd3 when RAS is enabled."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--ras-patch-sizes',
+            metavar='INT',
+            nargs='+', dest='ras_patch_sizes', type=_type_ras_patch_size,
+            help="""Patch sizes for RAS (Reinforcement Attention System).
+            This controls the size of patches used for region-adaptive sampling.
+            
+            Each value will be tried in turn.
+
+            This is supported for: --model-type torch-sd3 when RAS is enabled.
+
+            (default: 2)"""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--ras-sample-ratios',
+            metavar='FLOAT',
+            nargs='+', dest='ras_sample_ratios', type=_type_ras_sample_ratio,
+            help="""Average sample ratios for each RAS step.
+
+            For instance, setting this to 0.5 on a sequence of 4096 tokens will result in
+            the noise of averagely 2048 tokens to be updated during each RAS step.
+
+            Must be between 0.0 and 1.0 (non-inclusive)
+            
+            Each value will be tried in turn.
+
+            This is supported for: --model-type torch-sd3 when RAS is enabled.
+
+            (default: 0.5)"""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--ras-high-ratios',
+            metavar='FLOAT',
+            nargs='+', dest='ras_high_ratios', type=_type_ras_high_ratio,
+            help="""Ratios of high value tokens to be cached in RAS.
+
+            Based on the metric selected, the ratio of the high value chosen to be cached.
+
+            Must be between 0.0 and 1.0 (non-inclusive) to balance the sample
+            ratio between the main subject and the background.
+            
+            Each value will be tried in turn.
+
+            This is supported for: --model-type torch-sd3 when RAS is enabled.
+
+            (default: 1.0)"""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--ras-starvation-scales',
+            metavar='FLOAT',
+            nargs='+', dest='ras_starvation_scales', type=_type_ras_starvation_scale,
+            help="""Starvation scales for RAS patch selection.
+
+            RAS tracks how often a token is dropped and incorporates this count as a scaling
+            factor in the metric for selecting tokens. This scale factor prevents excessive blurring
+            or noise in the final generated image.
+
+            Larger scaling factor will result in more uniform sampling.
+
+            Must be between 0.0 and 1.0 (non-inclusive)
+            
+            Each value will be tried in turn.
+
+            This is supported for: --model-type torch-sd3 when RAS is enabled.
+
+            (default: 0.1)"""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--ras-error-reset-steps',
+            metavar='CSV_INT',
+            nargs='+', dest='ras_error_reset_steps', type=_type_ras_error_reset_steps,
+            help="""Dense sampling steps to reset accumulated error in RAS.
+
+            The dense sampling steps inserted between the RAS steps to reset the accumulated error.
+            Should be a comma-separated string of step numbers, e.g. "12,22".
+            
+            Each individual string value (csv group) will be tried in turn.
+
+            This is supported for: --model-type torch-sd3 when RAS is enabled.
+
+            (default: "12,22")"""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
             '-rhd', '--sdxl-refiner-hi-diffusion',
-            action='store_true', default=False, dest='sdxl_refiner_hi_diffusion',
+            action='store_true', default=None, dest='sdxl_refiner_hi_diffusion',
             help=f"""Activate HiDiffusion for the SDXL refiner?, See: --hi-diffusion"""
         )
     )
@@ -1630,7 +1790,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '-rpag', '--sdxl-refiner-pag', action='store_true', default=False,
+            '-rpag', '--sdxl-refiner-pag', action='store_true', default=None,
             help=f"""Use perturbed attention guidance in the SDXL refiner? 
             This is supported for --model-type torch-sdxl for most use cases.
             This enables PAG for the SDXL refiner model using default scale
@@ -1684,7 +1844,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         _model_offload_group2.add_argument(
             '-mqo2', '--second-model-sequential-offload',
             dest='second_model_sequential_offload',
-            action='store_true', default=False,
+            action='store_true', default=None,
             help="""Force sequential model offloading for the SDXL Refiner or Stable Cascade Decoder pipeline, 
                     this may drastically reduce memory consumption and allow large models to run when they would 
                     otherwise not fit in your GPUs VRAM. Inference will be much slower. 
@@ -1696,7 +1856,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         _model_offload_group2.add_argument(
             '-mco2', '--second-model-cpu-offload',
             dest='second_model_cpu_offload',
-            action='store_true', default=False,
+            action='store_true', default=None,
             help="""Force model cpu offloading for the SDXL Refiner or Stable Cascade Decoder pipeline,
                     this may reduce memory consumption and allow large models to run when they would 
                     otherwise not fit in your GPUs VRAM. Inference will be slower. Mutually 

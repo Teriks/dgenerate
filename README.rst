@@ -207,12 +207,14 @@ Help Output
                      [-ti URI [URI ...]] [-cn CONTROLNET_URI [CONTROLNET_URI ...] | -t2i T2I_ADAPTER_URI
                      [T2I_ADAPTER_URI ...]] [-q QUANTIZER_URI] [-q2 QUANTIZER_URI]
                      [-sch SCHEDULER_URI [SCHEDULER_URI ...]]
-                     [--second-model-scheduler SCHEDULER_URI [SCHEDULER_URI ...]] [-hd] [-tc]
-                     [-tct [TEA_CACHE_REL_L1_THRESHOLDS ...]] [-ras] [-rhd] [-pag] [-pags FLOAT [FLOAT ...]]
-                     [-pagas FLOAT [FLOAT ...]] [-rpag] [-rpags FLOAT [FLOAT ...]] [-rpagas FLOAT [FLOAT ...]]
-                     [-mqo | -mco] [-mqo2 | -mco2] [--s-cascade-decoder MODEL_URI] [--sdxl-refiner MODEL_URI]
-                     [--sdxl-refiner-edit] [--sdxl-t2i-adapter-factors FLOAT [FLOAT ...]]
-                     [--sdxl-aesthetic-scores FLOAT [FLOAT ...]]
+                     [--second-model-scheduler SCHEDULER_URI [SCHEDULER_URI ...]] [-hd] [-tc] [-tct [FLOAT ...]]
+                     [--ras] [--ras-index-fusion] [--ras-patch-sizes INT [INT ...]]
+                     [--ras-sample-ratios FLOAT [FLOAT ...]] [--ras-high-ratios FLOAT [FLOAT ...]]
+                     [--ras-starvation-scales FLOAT [FLOAT ...]] [--ras-error-reset-steps CSV_INT [CSV_INT ...]]
+                     [-rhd] [-pag] [-pags FLOAT [FLOAT ...]] [-pagas FLOAT [FLOAT ...]] [-rpag]
+                     [-rpags FLOAT [FLOAT ...]] [-rpagas FLOAT [FLOAT ...]] [-mqo | -mco] [-mqo2 | -mco2]
+                     [--s-cascade-decoder MODEL_URI] [--sdxl-refiner MODEL_URI] [--sdxl-refiner-edit]
+                     [--sdxl-t2i-adapter-factors FLOAT [FLOAT ...]] [--sdxl-aesthetic-scores FLOAT [FLOAT ...]]
                      [--sdxl-crops-coords-top-left COORD [COORD ...]] [--sdxl-original-size SIZE [SIZE ...]]
                      [--sdxl-target-size SIZE [SIZE ...]] [--sdxl-negative-aesthetic-scores FLOAT [FLOAT ...]]
                      [--sdxl-negative-original-sizes SIZE [SIZE ...]]
@@ -1028,7 +1030,7 @@ Help Output
             
             This is supported for: --model-type torch-flux*.
             ------------------------------------------------
-      -tct [TEA_CACHE_REL_L1_THRESHOLDS ...], --tea-cache-rel-l1-thresholds [TEA_CACHE_REL_L1_THRESHOLDS ...]
+      -tct [FLOAT ...], --tea-cache-rel-l1-thresholds [FLOAT ...]
             TeaCache relative L1 thresholds to try when --tea-cache is enabled.
             
             This should be one or more float values between 0.0 and 1.0, each value will be tried in turn.
@@ -1042,7 +1044,7 @@ Help Output
             
             This is supported for: ``--model-type torch-flux*``.
             ----------------------------------------------------
-      -ras, --ras
+      --ras
             Activate RAS (Region-Adaptive Sampling) for the primary model?
             
             This can increase inference speed with SD3.
@@ -1051,6 +1053,80 @@ Help Output
             
             This is supported for: ``--model-type torch-sd3``.
             --------------------------------------------------
+      --ras-index-fusion
+            Enable index fusion in RAS (Reinforcement Attention System) for the primary model?
+            
+            This can improve attention computation in RAS for SD3 models.
+            
+            This is supported for: --model-type torch-sd3 when RAS is enabled.
+            ------------------------------------------------------------------
+      --ras-patch-sizes INT [INT ...]
+            Patch sizes for RAS (Reinforcement Attention System). This controls the size of patches used for
+            region-adaptive sampling.
+            
+            Each value will be tried in turn.
+            
+            This is supported for: --model-type torch-sd3 when RAS is enabled.
+            
+            (default: 2)
+            ------------
+      --ras-sample-ratios FLOAT [FLOAT ...]
+            Average sample ratios for each RAS step.
+            
+            For instance, setting this to 0.5 on a sequence of 4096 tokens will result in the noise of averagely
+            2048 tokens to be updated during each RAS step.
+            
+            Must be between 0.0 and 1.0 (non-inclusive)
+            
+            Each value will be tried in turn.
+            
+            This is supported for: --model-type torch-sd3 when RAS is enabled.
+            
+            (default: 0.5)
+            --------------
+      --ras-high-ratios FLOAT [FLOAT ...]
+            Ratios of high value tokens to be cached in RAS.
+            
+            Based on the metric selected, the ratio of the high value chosen to be cached.
+            
+            Must be between 0.0 and 1.0 (non-inclusive) to balance the sample ratio between the main subject and
+            the background.
+            
+            Each value will be tried in turn.
+            
+            This is supported for: --model-type torch-sd3 when RAS is enabled.
+            
+            (default: 1.0)
+            --------------
+      --ras-starvation-scales FLOAT [FLOAT ...]
+            Starvation scales for RAS patch selection.
+            
+            RAS tracks how often a token is dropped and incorporates this count as a scaling factor in the
+            metric for selecting tokens. This scale factor prevents excessive blurring or noise in the final
+            generated image.
+            
+            Larger scaling factor will result in more uniform sampling.
+            
+            Must be between 0.0 and 1.0 (non-inclusive)
+            
+            Each value will be tried in turn.
+            
+            This is supported for: --model-type torch-sd3 when RAS is enabled.
+            
+            (default: 0.1)
+            --------------
+      --ras-error-reset-steps CSV_INT [CSV_INT ...]
+            Dense sampling steps to reset accumulated error in RAS.
+            
+            The dense sampling steps inserted between the RAS steps to reset the accumulated error. Should be a
+            comma-separated string of step numbers, e.g. "12,22".
+            
+            Each individual string value (csv group) will be tried in turn.
+            
+            This is supported for: --model-type torch-sd3 when RAS is enabled.
+            
+            (default: "12,22")
+            ------------------
       -rhd, --sdxl-refiner-hi-diffusion
             Activate HiDiffusion for the SDXL refiner?, See: --hi-diffusion
             ---------------------------------------------------------------
@@ -5514,6 +5590,12 @@ these are the arguments that are available for use:
     tea-cache: bool
     tea-cache-rel-l1-threshold: float
     ras: bool
+    ras-index-fusion: bool
+    ras-patch-size: int
+    ras-sample-ratio: float
+    ras-high-ratio: float
+    ras-starvation-scale: float
+    ras-error-reset-steps: str
     sdxl-refiner-hi-diffusion: bool
     pag-scale: float
     pag-adaptive-scale: float
@@ -7211,6 +7293,21 @@ The ``\templates_help`` output from the above example is:
         Name: "last_ras"
             Type: typing.Optional[bool]
             Value: None
+        Name: "last_ras_error_reset_steps"
+            Type: typing.Optional[collections.abc.Sequence[str]]
+            Value: []
+        Name: "last_ras_high_ratios"
+            Type: typing.Optional[collections.abc.Sequence[float]]
+            Value: []
+        Name: "last_ras_patch_sizes"
+            Type: typing.Optional[collections.abc.Sequence[int]]
+            Value: []
+        Name: "last_ras_sample_ratios"
+            Type: typing.Optional[collections.abc.Sequence[float]]
+            Value: []
+        Name: "last_ras_starvation_scales"
+            Type: typing.Optional[collections.abc.Sequence[float]]
+            Value: []
         Name: "last_revision"
             Type: <class 'str'>
             Value: 'main'
@@ -7354,7 +7451,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [87948373773061]
+            Value: [34627458983999]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

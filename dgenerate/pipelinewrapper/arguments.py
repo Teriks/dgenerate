@@ -370,7 +370,7 @@ class DiffusionArguments(_types.SetFromMixin):
     This is supported for: ``--model-type torch, torch-sdxl, and --torch-kolors``.
     """
 
-    tea_cache: _types.OptionalBoolean = None
+    tea_cache: bool = False
     """
     Activate TeaCache for the primary model?
     
@@ -401,7 +401,7 @@ class DiffusionArguments(_types.SetFromMixin):
     This is supported for: ``--model-type torch-flux*``.
     """
 
-    ras: _types.OptionalBoolean = None
+    ras: bool = False
     """
     Activate RAS (Region-Adaptive Sampling) for the primary model? 
             
@@ -410,6 +410,69 @@ class DiffusionArguments(_types.SetFromMixin):
     See: https://github.com/microsoft/ras
     
     This is supported for: ``--model-type torch-sd3``.
+    """
+
+    ras_index_fusion: _types.OptionalBoolean = None
+    """
+    Enable index fusion in RAS (Region-Adaptive Sampling) for the primary model?
+    
+    This can improve attention computation in RAS for SD3.
+    
+    See: https://github.com/microsoft/ras
+    
+    This is supported for: ``--model-type torch-sd3`` when RAS is enabled.
+    """
+
+    ras_patch_size: _types.OptionalInteger = None
+    """
+    Patch size for RAS (Region-Adaptive Sampling).
+    
+    This controls the size of patches used for region-adaptive sampling.
+    Default is 2.
+    
+    This is supported for: ``--model-type torch-sd3`` when RAS is enabled.
+    """
+
+    ras_sample_ratio: _types.OptionalFloat = None
+    """
+    Average sample ratio for each RAS step.
+    
+    For instance, setting this to 0.5 on a sequence of 4096 tokens will result in the noise of averagely 2048 tokens to be updated during each RAS step.
+    Must be between 0 and 1.
+    
+    This is supported for: ``--model-type torch-sd3`` when RAS is enabled.
+    """
+
+    ras_high_ratio: _types.OptionalFloat = None
+    """
+    Ratio of high value tokens to be cached in RAS.
+    
+    Based on the metric selected, the ratio of the high value chosen to be cached.
+    Default value is 1.0, but can be set between 0 and 1 to balance the sample ratio between the main subject and the background.
+    
+    This is supported for: ``--model-type torch-sd3`` when RAS is enabled.
+    """
+
+    ras_starvation_scale: _types.OptionalFloat = None
+    """
+    Starvation scale for RAS patch selection.
+    
+    RAS tracks how often a token is dropped and incorporates this count as a scaling factor in the metric for selecting tokens.
+    This scale factor prevents excessive blurring or noise in the final generated image.
+    Larger scaling factor will result in more uniform sampling.
+    Usually set between 0 and 1.
+    
+    This is supported for: ``--model-type torch-sd3`` when RAS is enabled.
+    """
+
+    ras_error_reset_steps: _types.OptionalString = None
+    """
+    Dense sampling steps to reset accumulated error in RAS.
+    
+    The dense sampling steps inserted between the RAS steps to reset the accumulated error.
+    Should be a comma-separated string of step numbers, e.g. "12,22".
+    
+    This is supported for: ``--model-type torch-sd3`` when RAS is enabled.
     """
 
     sdxl_refiner_hi_diffusion: _types.OptionalBoolean = None
@@ -698,7 +761,12 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.adetailer_detector_padding, "Adetailer Detector Padding:"),
             (self.adetailer_mask_padding, "Adetailer Mask Padding:"),
             (self.adetailer_mask_blur, "Adetailer Mask Blur:"),
-            (self.adetailer_mask_dilation, "Adetailer Mask Dilation:")
+            (self.adetailer_mask_dilation, "Adetailer Mask Dilation:"),
+            (self.ras_patch_size, "RAS Patch Size:"),
+            (self.ras_sample_ratio, "RAS Sample Ratio:"),
+            (self.ras_high_ratio, "RAS High Ratio:"),
+            (self.ras_starvation_scale, "RAS Starvation Scale:"),
+            (self.ras_error_reset_steps, "RAS Error Reset Steps:")
         ]
 
         if not self.prompt.weighter:

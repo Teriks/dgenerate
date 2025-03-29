@@ -24,7 +24,6 @@ class ras_manager:
         self.cached_scaled_noise = None
         self.skip_token_num_list = []
 
-
     def set_parameters(self, args):
         self.patch_size = args.patch_size
         # self.scheduler_pattern = args.scheduler_pattern
@@ -41,12 +40,13 @@ class ras_manager:
         self.weight = args.width
         self.high_ratio = args.high_ratio
         self.enable_index_fusion = args.enable_index_fusion
+        self.starvation_scale = args.starvation_scale
         self.generate_skip_token_list()
 
-
     def generate_skip_token_list(self):
-        avg_skip_token_num = int((1 - self.sample_ratio) * ((self.height // self.patch_size) // self.vae_size) * ((self.weight // self.patch_size) // self.vae_size))
-        if self.skip_num_step_length == 0: # static dropping
+        avg_skip_token_num = int((1 - self.sample_ratio) * ((self.height // self.patch_size) // self.vae_size) * (
+                (self.weight // self.patch_size) // self.vae_size))
+        if self.skip_num_step_length == 0:  # static dropping
             self.skip_token_num_list = [avg_skip_token_num for i in range(self.num_steps)]
             for i in self.error_reset_steps:
                 self.skip_token_num_list[i] = 0
@@ -58,7 +58,8 @@ class ras_manager:
             for j in range(self.skip_num_step_length):
                 if i * self.skip_num_step_length + j >= self.num_steps:
                     break
-                temp_skip_num = avg_skip_token_num + self.skip_num_step * (i - (((self.num_steps + self.scheduler_start_step) // self.skip_num_step_length) // 2))
+                temp_skip_num = avg_skip_token_num + self.skip_num_step * (
+                        i - (((self.num_steps + self.scheduler_start_step) // self.skip_num_step_length) // 2))
                 temp_skip_num = (temp_skip_num // 64) * 64
                 self.skip_token_num_list.append(temp_skip_num)
         for i in range(self.scheduler_start_step):
@@ -67,7 +68,8 @@ class ras_manager:
             self.skip_token_num_list[i] = 0
         for i in range(len(self.skip_token_num_list)):
             assert self.skip_token_num_list[i] >= 0, "Skip token number should be positive"
-            assert self.skip_token_num_list[i] <= ((self.height // self.patch_size) // self.vae_size) * ((self.weight // self.patch_size) // self.vae_size)
+            assert self.skip_token_num_list[i] <= ((self.height // self.patch_size) // self.vae_size) * (
+                    (self.weight // self.patch_size) // self.vae_size)
         # print("Skip token number list: ", len(self.skip_token_num_list), self.skip_token_num_list)
 
     def reset_cache(self):
@@ -97,11 +99,6 @@ class ras_manager:
             self.is_next_RAS_step = True
         else:
             self.is_next_RAS_step = False
-
-
-
-
-
 
 
 MANAGER = ras_manager()

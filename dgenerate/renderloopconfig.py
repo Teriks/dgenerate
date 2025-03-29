@@ -600,7 +600,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     This is supported for: ``--model-type torch, torch-sdxl, and --torch-kolors``.
     """
 
-    tea_cache: _types.OptionalBoolean = None
+    tea_cache: bool = False
     """
     Activate TeaCache for the primary model?
     
@@ -632,7 +632,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     This is supported for: ``--model-type torch-flux*``.
     """
 
-    ras: _types.OptionalBoolean = None
+    ras: bool = False
     """
     Activate RAS (Region-Adaptive Sampling) for the primary model? 
             
@@ -641,6 +641,70 @@ class RenderLoopConfig(_types.SetFromMixin):
     See: https://github.com/microsoft/ras
     
     This is supported for: ``--model-type torch-sd3``.
+    """
+
+    ras_index_fusion: _types.OptionalBoolean = None
+    """
+    Enable index fusion in RAS (Region-Adaptive Sampling) for the primary model?
+    
+    This can improve attention computation in RAS for SD3.
+    
+    See: https://github.com/microsoft/ras
+    
+    This is supported for: ``--model-type torch-sd3`` when RAS is enabled.
+    """
+
+    ras_patch_sizes: _types.OptionalIntegers = None
+    """
+    Patch sizes to try for RAS (Region-Adaptive Sampling).
+    
+    This controls the size of patches used for region-adaptive sampling.
+    Default is 2.
+    
+    This is supported for: ``--model-type torch-sd3`` when RAS is enabled.
+    """
+
+    ras_sample_ratios: _types.OptionalFloats = None
+    """
+    Sample ratios to try for RAS (Region-Adaptive Sampling).
+    
+    For instance, setting this to 0.5 on a sequence of 4096 tokens will result in the 
+    noise of averagely 2048 tokens to be updated during each RAS step. Must be between 0 and 1.
+    
+    This is supported for: ``--model-type torch-sd3`` when RAS is enabled.
+    """
+
+    ras_high_ratios: _types.OptionalFloats = None
+    """
+    High ratios to try for RAS (Region-Adaptive Sampling).
+    
+    Based on the metric selected, the ratio of the high value chosen to be cached.
+    Default value is 1.0, but can be set between 0 and 1 to balance the sample ratio 
+    between the main subject and the background.
+    
+    This is supported for: ``--model-type torch-sd3`` when RAS is enabled.
+    """
+
+    ras_starvation_scales: _types.OptionalFloats = None
+    """
+    Starvation scales to try for RAS (Region-Adaptive Sampling).
+    
+    RAS tracks how often a token is dropped and incorporates this count as a scaling 
+    factor in the metric for selecting tokens. This scale factor prevents excessive 
+    blurring or noise in the final generated image. Larger scaling factor will 
+    result in more uniform sampling. Usually set between 0 and 1.
+    
+    This is supported for: ``--model-type torch-sd3`` when RAS is enabled.
+    """
+
+    ras_error_reset_steps: _types.OptionalStrings = None
+    """
+    Error reset step patterns to try for RAS (Region-Adaptive Sampling).
+    
+    The dense sampling steps inserted between the RAS steps to reset the accumulated error.
+    Should be a comma-separated string of step numbers, e.g. "12,22".
+    
+    This is supported for: ``--model-type torch-sd3`` when RAS is enabled.
     """
 
     sdxl_refiner_hi_diffusion: _types.OptionalBoolean = None
@@ -1084,6 +1148,14 @@ class RenderLoopConfig(_types.SetFromMixin):
             raise RenderLoopConfigError(
                 f'{a_namer("ras")} is only compatible with {a_namer("model_type")} torch-sd3'
             )
+
+        if not self.ras:
+            invalid_self = []
+            for ras_self in non_null_attr_that_start_with('ras_'):
+                invalid_self.append(f'you cannot specify {a_namer(ras_self)} '
+                                    f'without {a_namer("ras")}, see: {a_namer("model_type")}.')
+            if invalid_self:
+                raise RenderLoopConfigError('\n'.join(invalid_self))
 
         # exit early if we know there is no possibility
         # of second model arguments being valid
@@ -2046,6 +2118,11 @@ class RenderLoopConfig(_types.SetFromMixin):
                 tea_cache=ov('tea_cache', [self.tea_cache]),
                 ras=ov('ras', [self.ras]),
                 tea_cache_rel_l1_threshold=ov('tea_cache_rel_l1_threshold', self.tea_cache_rel_l1_thresholds),
+                ras_patch_size=ov('ras_patch_size', self.ras_patch_sizes),
+                ras_sample_ratio=ov('ras_sample_ratio', self.ras_sample_ratios),
+                ras_high_ratio=ov('ras_high_ratio', self.ras_high_ratios),
+                ras_starvation_scale=ov('ras_starvation_scale', self.ras_starvation_scales),
+                ras_error_reset_steps=ov('ras_error_reset_steps', self.ras_error_reset_steps),
                 pag_scale=ov('pag_scale', self.pag_scales),
                 pag_adaptive_scale=ov('pag_adaptive_scale', self.pag_adaptive_scales),
                 image_guidance_scale=ov('image_guidance_scale', self.image_guidance_scales),
