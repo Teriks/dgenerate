@@ -892,12 +892,18 @@ class DiffusionPipelineWrapper:
         if args.ras_starvation_scale is not None \
                 and args.ras_starvation_scale != _constants.DEFAULT_RAS_STARVATION_SCALE:
             opts.append(('--ras-starvation-scales', str(args.ras_starvation_scale)))
-        if args.ras_error_reset_steps is not None \
-                and args.ras_error_reset_steps != _constants.DEFAULT_RAS_ERROR_RESET_STEPS:
+        if args.ras_error_reset_steps is not None and \
+                args.ras_error_reset_steps != _constants.DEFAULT_RAS_ERROR_RESET_STEPS:
             opts.append(('--ras-error-reset-steps', args.ras_error_reset_steps))
         if args.ras_metric is not None and \
                 args.ras_metric != _constants.DEFAULT_RAS_METRIC:
             opts.append(('--ras-metrics', args.ras_metric))
+        if args.ras_start_step is not None and \
+                args.ras_start_step != _constants.DEFAULT_RAS_START_STEP:
+            opts.append(('--ras-start-steps', str(args.ras_start_step)))
+        if args.ras_end_step is not None and \
+                args.ras_end_step != args.inference_steps:
+            opts.append(('--ras-end-steps', str(args.ras_end_step)))
 
         opts.append(('--inference-steps', args.inference_steps))
         opts.append(('--guidance-scales', args.guidance_scale))
@@ -2314,7 +2320,9 @@ class DiffusionPipelineWrapper:
                     width=_types.default(user_args.width, _constants.DEFAULT_SD3_OUTPUT_WIDTH),
                     height=_types.default(user_args.height, _constants.DEFAULT_SD3_OUTPUT_HEIGHT),
                     enable_index_fusion=user_args.ras_index_fusion,
-                    metric=_types.default(user_args.ras_metric, _constants.DEFAULT_RAS_METRIC)
+                    metric=_types.default(user_args.ras_metric, _constants.DEFAULT_RAS_METRIC),
+                    scheduler_start_step=_types.default(user_args.ras_start_step, _constants.DEFAULT_RAS_START_STEP),
+                    scheduler_end_step=_types.default(user_args.ras_end_step, user_args.inference_steps)
                 )
             else:
                 ras_args = None

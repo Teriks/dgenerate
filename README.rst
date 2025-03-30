@@ -209,10 +209,11 @@ Help Output
                      [-sch SCHEDULER_URI [SCHEDULER_URI ...]]
                      [--second-model-scheduler SCHEDULER_URI [SCHEDULER_URI ...]] [-hd] [--tea-cache]
                      [--tea-cache-rel-l1-thresholds [FLOAT ...]] [--ras] [--ras-index-fusion]
-                     [--ras-patch-sizes INT [INT ...]] [--ras-sample-ratios FLOAT [FLOAT ...]]
+                     [--ras-patch-sizes INTEGER [INTEGER ...]] [--ras-sample-ratios FLOAT [FLOAT ...]]
                      [--ras-high-ratios FLOAT [FLOAT ...]] [--ras-starvation-scales FLOAT [FLOAT ...]]
                      [--ras-error-reset-steps CSV_INT [CSV_INT ...]] [--ras-metrics RAS_METRIC [RAS_METRIC ...]]
-                     [-rhd] [-pag] [-pags FLOAT [FLOAT ...]] [-pagas FLOAT [FLOAT ...]] [-rpag]
+                     [--ras-start-steps INTEGER [INTEGER ...]] [--ras-end-steps INTEGER [INTEGER ...]] [-rhd]
+                     [-pag] [-pags FLOAT [FLOAT ...]] [-pagas FLOAT [FLOAT ...]] [-rpag]
                      [-rpags FLOAT [FLOAT ...]] [-rpagas FLOAT [FLOAT ...]] [-mqo | -mco] [-mqo2 | -mco2]
                      [--s-cascade-decoder MODEL_URI] [--sdxl-refiner MODEL_URI] [--sdxl-refiner-edit]
                      [--sdxl-t2i-adapter-factors FLOAT [FLOAT ...]] [--sdxl-aesthetic-scores FLOAT [FLOAT ...]]
@@ -247,7 +248,7 @@ Help Output
                      [-cip PROCESSOR_URI [PROCESSOR_URI ...]] [--image-processor-help [PROCESSOR_NAME ...]]
                      [-pp PROCESSOR_URI [PROCESSOR_URI ...]] [-iss FLOAT [FLOAT ...] | -uns INTEGER
                      [INTEGER ...]] [-gs FLOAT [FLOAT ...]] [-igs FLOAT [FLOAT ...]] [-gr FLOAT [FLOAT ...]]
-                     [-ifs INTEGER [INTEGER ...]] [-ifs2 INT [INT ...]] [-gs2 FLOAT [FLOAT ...]]
+                     [-ifs INTEGER [INTEGER ...]] [-ifs2 INTEGER [INTEGER ...]] [-gs2 FLOAT [FLOAT ...]]
                      model_path
     
     Batch image generation and manipulation tool supporting Stable Diffusion and related techniques /
@@ -1067,7 +1068,7 @@ Help Output
             
             This is supported for: --model-type torch-sd3.
             ----------------------------------------------
-      --ras-patch-sizes INT [INT ...]
+      --ras-patch-sizes INTEGER [INTEGER ...]
             Patch sizes for RAS (Reinforcement Attention System). This controls the size of patches used for
             region-adaptive sampling.
             
@@ -1158,6 +1159,32 @@ Help Output
             
             (default: "std")
             ----------------
+      --ras-start-steps INTEGER [INTEGER ...]
+            Starting steps to try for RAS (Region-Adaptive Sampling).
+            
+            This controls when RAS begins applying its sampling strategy.
+            
+            Each value will be tried in turn.
+            
+            Supplying any values implies --ras.
+            
+            This is supported for: --model-type torch-sd3.
+            
+            (default: 4)
+            ------------
+      --ras-end-steps INTEGER [INTEGER ...]
+            Ending steps to try for RAS (Region-Adaptive Sampling).
+            
+            This controls when RAS stops applying its sampling strategy.
+            
+            Each value will be tried in turn.
+            
+            Supplying any values implies --ras.
+            
+            This is supported for: --model-type torch-sd3.
+            
+            (default: --inference-steps)
+            ----------------------------
       -rhd, --sdxl-refiner-hi-diffusion
             Activate HiDiffusion for the SDXL refiner?, See: --hi-diffusion
             ---------------------------------------------------------------
@@ -1727,7 +1754,7 @@ Help Output
             content of the image. Values between 30-40 produce good results, higher values may improve image
             quality and or change image content. (default: [30])
             ----------------------------------------------------
-      -ifs2 INT [INT ...], --second-model-inference-steps INT [INT ...]
+      -ifs2 INTEGER [INTEGER ...], --second-model-inference-steps INTEGER [INTEGER ...]
             One or more inference steps values for the SDXL refiner or Stable Cascade decoder when in use.
             Override the number of inference steps used by the second model, which defaults to the value taken
             from --inference-steps for SDXL and 10 for Stable Cascade.

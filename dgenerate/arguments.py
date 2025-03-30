@@ -489,6 +489,26 @@ def _type_ras_metric(val: str) -> str:
     return val
 
 
+def _type_ras_start_steps(val: str) -> int:
+    try:
+        val = int(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be an integer')
+    if val < 0:
+        raise argparse.ArgumentTypeError('Must be greater than or equal to 0.')
+    return val
+
+
+def _type_ras_end_steps(val: str) -> int:
+    try:
+        val = int(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be an integer')
+    if val < 0:
+        raise argparse.ArgumentTypeError('Must be greater than or equal to 0.')
+    return val
+
+
 _ARG_PARSER_CACHE = dict()
 
 
@@ -1670,7 +1690,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     actions.append(
         parser.add_argument(
             '--ras-patch-sizes',
-            metavar='INT',
+            metavar='INTEGER',
             nargs='+', dest='ras_patch_sizes', type=_type_ras_patch_size,
             help="""Patch sizes for RAS (Reinforcement Attention System).
             This controls the size of patches used for region-adaptive sampling.
@@ -1791,6 +1811,44 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             This is supported for: --model-type torch-sd3.
             
             (default: "std")"""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--ras-start-steps',
+            metavar='INTEGER',
+            nargs='+', dest='ras_start_steps', type=_type_ras_start_steps,
+            help="""Starting steps to try for RAS (Region-Adaptive Sampling).
+
+            This controls when RAS begins applying its sampling strategy.
+            
+            Each value will be tried in turn.
+            
+            Supplying any values implies --ras.
+
+            This is supported for: --model-type torch-sd3.
+
+            (default: 4)"""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--ras-end-steps',
+            metavar='INTEGER',
+            nargs='+', dest='ras_end_steps', type=_type_ras_end_steps,
+            help="""Ending steps to try for RAS (Region-Adaptive Sampling).
+
+            This controls when RAS stops applying its sampling strategy.
+            
+            Each value will be tried in turn.
+            
+            Supplying any values implies --ras.
+
+            This is supported for: --model-type torch-sd3.
+
+            (default: --inference-steps)"""
         )
     )
 
@@ -2788,7 +2846,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '-ifs2', '--second-model-inference-steps', action='store', nargs='+', default=None, metavar="INT",
+            '-ifs2', '--second-model-inference-steps', action='store', nargs='+', default=None, metavar="INTEGER",
             type=_type_inference_steps,
             help=f"""One or more inference steps values for the SDXL refiner or Stable Cascade decoder
                      when in use. Override the number of inference steps used by the second model,
