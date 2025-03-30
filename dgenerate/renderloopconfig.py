@@ -2054,7 +2054,9 @@ class RenderLoopConfig(_types.SetFromMixin):
             self.ras_high_ratios,
             self.ras_sample_ratios,
             self.ras_starvation_scales,
-            self.ras_metrics
+            self.ras_metrics,
+            self.ras_start_steps,
+            self.ras_end_steps
         ]
 
         schedulers, second_model_schedulers = self._normalized_schedulers()
@@ -2200,7 +2202,8 @@ class RenderLoopConfig(_types.SetFromMixin):
                 ras_high_ratio=ov('ras_high_ratio', self.ras_high_ratios),
                 ras_starvation_scale=ov('ras_starvation_scale', self.ras_starvation_scales),
                 ras_error_reset_steps=ov('ras_error_reset_steps', self.ras_error_reset_steps),
-                pag_scale=ov('pag_scale', self.pag_scales),
+                ras_start_step=ov('ras_start_step', self.ras_start_steps),
+                ras_end_step=ov('ras_end_step', self.ras_end_steps),
                 pag_adaptive_scale=ov('pag_adaptive_scale', self.pag_adaptive_scales),
                 image_guidance_scale=ov('image_guidance_scale', self.image_guidance_scales),
                 guidance_rescale=ov('guidance_rescale', self.guidance_rescales),
