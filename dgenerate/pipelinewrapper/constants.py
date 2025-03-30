@@ -237,6 +237,12 @@ DEFAULT_RAS_METRIC: str = "std"
 Default RAS metric for RAS (Reinforcement Attention System) for Stable Diffusion 3.
 """
 
+DEFAULT_RAS_START_STEP: int = 4
+"""
+Default starting step for RAS (Reinforcement Attention System) for Stable Diffusion 3.
+Controls when RAS begins applying its sampling strategy.
+"""
+
 PIPELINE_WRAPPER_CACHE_GC_CONSTRAINTS: list[str] = ['used_percent > 70']
 """
 Cache constraint expressions for when to clear all object caches, 

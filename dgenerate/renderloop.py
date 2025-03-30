@@ -515,6 +515,12 @@ class RenderLoop:
         if diffusion_args.ras_metric is not None:
             args += ['rsm', diffusion_args.ras_metric]
 
+        if diffusion_args.ras_start_step is not None:
+            args += ['rssp', diffusion_args.ras_start_step]
+
+        if diffusion_args.ras_end_step is not None:
+            args += ['rsep', diffusion_args.ras_end_step]
+
         return args
 
     def _get_base_extra_config_opts(self, args: _pipelinewrapper.DiffusionArguments):

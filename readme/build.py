@@ -26,6 +26,7 @@ import os
 import re
 import subprocess
 import sys
+import argparse
 from collections import defaultdict
 from importlib.machinery import SourceFileLoader
 
@@ -336,10 +337,46 @@ def render_templates(rst_content, filename=None):
 
 command_cache_path = os.path.join(project_dir, 'readme', 'command.cache.json')
 
-if '--no-cache' not in sys.argv:
-    if os.path.exists(command_cache_path):
+
+parser = argparse.ArgumentParser(
+    description='Build the README.rst file from template'
+)
+
+parser.add_argument(
+    '--no-cache', nargs='*', metavar='COMMAND_PATTERN',
+    help='Disable command cache. If patterns are provided, '
+         'remove matching commands from cache'
+)
+
+parser.add_argument(
+    '--no-cache-regex', nargs='*', metavar='REGEX_PATTERN',
+    help='Disable command cache using regex patterns. '
+         'If patterns are provided, remove matching commands from cache'
+)
+
+args = parser.parse_args()
+
+if args.no_cache is not None or args.no_cache_regex is not None:
+    if (args.no_cache is None or not args.no_cache) and \
+            (args.no_cache_regex is None or not args.no_cache_regex):
+        # No patterns provided for either option, disable cache completely
+        COMMAND_CACHE = {}
+    elif os.path.exists(command_cache_path):
         with open(command_cache_path, 'r') as cache:
             COMMAND_CACHE = json.load(cache)
+
+            def should_keep_command(key):
+                if args.no_cache and any(pattern in key for pattern in args.no_cache):
+                    return False
+                if args.no_cache_regex:
+                    try:
+                        return not any(re.search(pattern, key) for pattern in args.no_cache_regex)
+                    except re.error as e:
+                        print(f"Warning: Invalid regex pattern: {e}", file=sys.stderr)
+                        return True
+                return True
+
+            COMMAND_CACHE = {k: v for k, v in COMMAND_CACHE.items() if should_keep_command(k)}
 
 # default command output width
 os.environ['COLUMNS'] = '110'

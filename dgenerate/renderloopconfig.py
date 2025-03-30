@@ -726,6 +726,30 @@ class RenderLoopConfig(_types.SetFromMixin):
     This is supported for: ``--model-type torch-sd3``.
     """
 
+    ras_start_steps: _types.OptionalIntegers = None
+    """
+    Starting steps to try for RAS (Region-Adaptive Sampling).
+    
+    This controls when RAS begins applying its sampling strategy.
+    Defaults to 4 if not specified.
+    
+    Supplying any value implies that :py:attr:`RenderLoopConfig.ras` is enabled.
+    
+    This is supported for: ``--model-type torch-sd3``.
+    """
+
+    ras_end_steps: _types.OptionalIntegers = None
+    """
+    Ending steps to try for RAS (Region-Adaptive Sampling).
+    
+    This controls when RAS stops applying its sampling strategy.
+    Defaults to the number of inference steps if not specified.
+    
+    Supplying any value implies that :py:attr:`RenderLoopConfig.ras` is enabled.
+    
+    This is supported for: ``--model-type torch-sd3``.
+    """
+
     sdxl_refiner_hi_diffusion: _types.OptionalBoolean = None
     """
     Activate HiDiffusion for the SDXL refiner? See: :py:attr:`RenderLoopConfig.hi_diffusion`
@@ -1203,6 +1227,8 @@ class RenderLoopConfig(_types.SetFromMixin):
                 self.ras_sample_ratios = [_pipelinewrapper.constants.DEFAULT_RAS_SAMPLE_RATIO]
             if self.ras_metrics is None:
                 self.ras_metrics = [_pipelinewrapper.constants.DEFAULT_RAS_METRIC]
+            if self.ras_start_steps is None:
+                self.ras_start_steps = [_pipelinewrapper.constants.DEFAULT_RAS_START_STEP]
 
         # exit early if we know there is no possibility
         # of second model arguments being valid

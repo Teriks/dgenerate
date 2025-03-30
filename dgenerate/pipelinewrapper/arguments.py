@@ -490,6 +490,30 @@ class DiffusionArguments(_types.SetFromMixin):
     This is supported for: ``--model-type torch-sd3``.
     """
 
+    ras_start_step: _types.OptionalInteger = None
+    """
+    Starting step for RAS (Region-Adaptive Sampling).
+    
+    This controls when RAS begins applying its sampling strategy.
+    Defaults to 4 if not specified.
+    
+    Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
+    
+    This is supported for: ``--model-type torch-sd3``.
+    """
+
+    ras_end_step: _types.OptionalInteger = None
+    """
+    Ending step for RAS (Region-Adaptive Sampling).
+    
+    This controls when RAS stops applying its sampling strategy.
+    Defaults to the number of inference steps if not specified.
+    
+    Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
+    
+    This is supported for: ``--model-type torch-sd3``.
+    """
+
     ras_metric: _types.OptionalString = None
     """
     Metric to use for RAS (Region-Adaptive Sampling).
@@ -795,6 +819,8 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.ras_high_ratio, "RAS High Ratio:"),
             (self.ras_starvation_scale, "RAS Starvation Scale:"),
             (self.ras_error_reset_steps, "RAS Error Reset Steps:"),
+            (self.ras_start_step, "RAS Start Step:"),
+            (self.ras_end_step, "RAS End Step:"),
             (self.ras_metric, "RAS Metric:")
         ]
 

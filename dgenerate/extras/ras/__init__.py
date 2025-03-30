@@ -12,6 +12,7 @@ class RASArgs:
         patch_size: int = 2,
         starvation_scale: float = 0.1,
         scheduler_start_step: int = 4,
+        scheduler_end_step: int | None = None,
         metric: str = "std",
         error_reset_steps: str = "12,22",
         replace_with_flash_attn: bool = False,
@@ -25,7 +26,7 @@ class RASArgs:
     ):
         self.patch_size = patch_size
         self.scheduler_start_step = scheduler_start_step
-        self.scheduler_end_step = num_inference_steps
+        self.scheduler_end_step = num_inference_steps if scheduler_end_step is None else scheduler_end_step
         self.metric = metric
         self.error_reset_steps = error_reset_steps
         self.replace_with_flash_attn = replace_with_flash_attn
