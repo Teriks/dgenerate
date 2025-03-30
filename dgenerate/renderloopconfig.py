@@ -2142,22 +2142,30 @@ class RenderLoopConfig(_types.SetFromMixin):
             if not (
                     _pipelinewrapper.model_type_is_sdxl(self.model_type) or
                     _pipelinewrapper.model_type_is_kolors(self.model_type)):
-                if n.startswith('sdxl'):
+                if n.startswith('sdxl_'):
                     return None
             else:
-                if n.startswith('sdxl_refiner') and not self.sdxl_refiner_uri:
+                if n.startswith('sdxl_refiner_') and not self.sdxl_refiner_uri:
                     return None
 
             if not _pipelinewrapper.model_type_is_sd3(self.model_type):
-                if n.startswith('sd3'):
+                if n.startswith('sd3_'):
                     return None
 
             if not _pipelinewrapper.model_type_is_flux(self.model_type):
-                if n.startswith('flux'):
+                if n.startswith('flux_'):
                     return None
 
             if not self.adetailer_detector_uris:
-                if n.startswith('adetailer'):
+                if n.startswith('adetailer_'):
+                    return None
+
+            if not self.ras:
+                if n.startswith('ras_'):
+                    return None
+
+            if not self.tea_cache:
+                if n.startswith('tea_cache_'):
                     return None
 
             if n in overrides:
