@@ -752,6 +752,50 @@ class RenderLoopConfig(_types.SetFromMixin):
     This is supported for: ``--model-type torch-sd3``.
     """
 
+    ras_skip_num_steps: _types.OptionalIntegers = None
+    """
+    Skip steps to try for RAS (Region-Adaptive Sampling).
+    
+    This controls the number of steps to skip between RAS steps.
+    
+    The actual number of tokens skipped will be rounded down to the nearest multiple of 64.
+    This ensures efficient memory access patterns for the attention computation.
+    
+    When used with skip_num_step_length > 0, this value determines how much to increase/decrease
+    the number of skipped tokens over time. A positive value will increase the number of skipped
+    tokens, while a negative value will decrease it.
+    
+    Each value will be tried in turn.
+    
+    Supplying any value implies that :py:attr:`RenderLoopConfig.ras` is enabled.
+    
+    This is supported for: ``--model-type torch-sd3``.
+    
+    (default: 0)
+    """
+
+    ras_skip_num_step_lengths: _types.OptionalIntegers = None
+    """
+    Skip step lengths to try for RAS (Region-Adaptive Sampling).
+    
+    This controls the length of steps to skip between RAS steps.
+    Must be greater than or equal to 0.
+    
+    When set to 0, static dropping is used where the same number of tokens are skipped
+    at each step (except for error reset steps and steps before scheduler_start_step).
+    
+    When greater than 0, dynamic dropping is used where the number of skipped tokens
+    varies over time based on skip_num_step. The pattern repeats every skip_num_step_length steps.
+    
+    Each value will be tried in turn.
+    
+    Supplying any value implies that :py:attr:`RenderLoopConfig.ras` is enabled.
+    
+    This is supported for: ``--model-type torch-sd3``.
+    
+    (default: 0)
+    """
+
     sdxl_refiner_hi_diffusion: _types.OptionalBoolean = None
     """
     Activate HiDiffusion for the SDXL refiner? See: :py:attr:`RenderLoopConfig.hi_diffusion`
@@ -2024,7 +2068,9 @@ class RenderLoopConfig(_types.SetFromMixin):
             self.ras_starvation_scales,
             self.ras_metrics,
             self.ras_start_steps,
-            self.ras_end_steps
+            self.ras_end_steps,
+            self.ras_skip_num_steps,
+            self.ras_skip_num_step_lengths
         ]
 
         schedulers, second_model_schedulers = self._normalized_schedulers()
@@ -2190,6 +2236,8 @@ class RenderLoopConfig(_types.SetFromMixin):
                 ras_error_reset_steps=ov('ras_error_reset_steps', self.ras_error_reset_steps),
                 ras_start_step=ov('ras_start_step', self.ras_start_steps),
                 ras_end_step=ov('ras_end_step', self.ras_end_steps),
+                ras_skip_num_step=ov('ras_skip_num_step', self.ras_skip_num_steps),
+                ras_skip_num_step_length=ov('ras_skip_num_step_length', self.ras_skip_num_step_lengths),
                 pag_adaptive_scale=ov('pag_adaptive_scale', self.pag_adaptive_scales),
                 image_guidance_scale=ov('image_guidance_scale', self.image_guidance_scales),
                 guidance_rescale=ov('guidance_rescale', self.guidance_rescales),

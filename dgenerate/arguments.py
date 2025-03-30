@@ -509,6 +509,24 @@ def _type_ras_end_steps(val: str) -> int:
     return val
 
 
+def _type_ras_skip_num_step(val: str) -> int:
+    try:
+        val = int(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be an integer')
+    return val
+
+
+def _type_ras_skip_num_step_length(val: str) -> int:
+    try:
+        val = int(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be an integer')
+    if val < 0:
+        raise argparse.ArgumentTypeError('Must be greater than or equal to 0')
+    return val
+
+
 _ARG_PARSER_CACHE = dict()
 
 
@@ -1851,6 +1869,59 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             This is supported for: --model-type torch-sd3.
 
             (default: --inference-steps)"""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--ras-skip-num-steps',
+            metavar='INTEGER',
+            nargs='+', dest='ras_skip_num_steps', type=_type_ras_skip_num_step,
+            help="""Skip steps for RAS (Region-Adaptive Sampling).
+
+            This controls the number of steps to skip between RAS steps.
+            
+            The actual number of tokens skipped will be rounded down to the nearest multiple of 64
+            to ensure efficient memory access patterns for attention computation.
+            
+            When used with --ras-skip-num-step-lengths greater than 0, this value will determine
+            how the number of skipped tokens changes over time. Positive values will increase
+            the number of skipped tokens over time, while negative values will decrease it.
+            
+            Each value will be tried in turn.
+            
+            Supplying any values implies --ras.
+
+            This is supported for: --model-type torch-sd3.
+
+            (default: 0)"""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--ras-skip-num-step-lengths',
+            metavar='INTEGER',
+            nargs='+', dest='ras_skip_num_step_lengths', type=_type_ras_skip_num_step_length,
+            help="""Skip step lengths for RAS (Region-Adaptive Sampling).
+
+            This controls the length of steps to skip between RAS steps.
+            Must be greater than or equal to 0.
+            
+            When set to 0, static dropping is used where the number of skipped tokens remains
+            constant throughout the generation process.
+            
+            When greater than 0, dynamic dropping is enabled where the number of skipped tokens
+            varies over time based on --ras-skip-num-steps. The pattern of skipping will repeat
+            every --ras-skip-num-step-lengths steps.
+            
+            Each value will be tried in turn.
+            
+            Supplying any values implies --ras.
+
+            This is supported for: --model-type torch-sd3.
+
+            (default: 0)"""
         )
     )
 
