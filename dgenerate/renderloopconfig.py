@@ -1089,6 +1089,8 @@ class RenderLoopConfig(_types.SetFromMixin):
         Check the configuration for type and logical usage errors, set
         defaults for certain values when needed and not specified.
 
+        This may modify the configuration.
+
         :raises RenderLoopConfigError: on errors
 
         :param attribute_namer: Callable for naming attributes mentioned in exception messages
@@ -2084,6 +2086,24 @@ class RenderLoopConfig(_types.SetFromMixin):
         if isinstance(self.second_model_scheduler_uri, (_types.Uri, type(None))):
             second_model_schedulers = [second_model_schedulers]
         return schedulers, second_model_schedulers
+
+    def copy(self) -> 'RenderLoopConfig':
+        """
+        Create a deep copy of this :py:class:`RenderLoopConfig` instance.
+        
+        :return: :py:class:`RenderLoopConfig` instance that is a deep copy of this instance.
+        """
+        new_config = RenderLoopConfig()
+
+        for attr_name, attr_value in self.__dict__.items():
+            if isinstance(attr_value, (list, tuple, dict, set)):
+                new_config.__dict__[attr_name] = _types.partial_deep_copy_container(attr_value)
+            elif hasattr(attr_value, 'copy') and callable(getattr(attr_value, 'copy')):
+                new_config.__dict__[attr_name] = attr_value.copy()
+            else:
+                new_config.__dict__[attr_name] = attr_value
+
+        return new_config
 
     def apply_prompt_upscalers(self):
         """

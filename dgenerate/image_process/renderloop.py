@@ -226,6 +226,8 @@ class ImageProcessRenderLoop:
             self.config = _renderloopconfig.ImageProcessRenderLoopConfig()
         else:
             self.config = config
+            
+        self._c_config = None
 
         if image_processor_loader is None:
             self.image_processor_loader = _imageprocessors.ImageProcessorLoader()
@@ -299,7 +301,7 @@ class ImageProcessRenderLoop:
 
         if reader.total_frames == 1:
 
-            if not self.config.output_overwrite and not self.disable_writes:
+            if not self._c_config.output_overwrite and not self.disable_writes:
                 out_filename = _filelock.touch_avoid_duplicate(
                     out_directory if out_directory else '.',
                     path_maker=_filelock.suffix_path_maker(out_filename, duplicate_output_suffix))
@@ -328,14 +330,14 @@ class ImageProcessRenderLoop:
         else:
             out_filename_base, ext = os.path.splitext(out_filename)
 
-            if not self.config.output_overwrite and not self.disable_writes:
+            if not self._c_config.output_overwrite and not self.disable_writes:
                 out_anim_name = _filelock.touch_avoid_duplicate(
                     out_directory if out_directory else '.',
                     path_maker=_filelock.suffix_path_maker(out_filename, duplicate_output_suffix))
             else:
                 out_anim_name = out_filename
 
-            if not self.config.no_animation_file and not self.disable_writes:
+            if not self._c_config.no_animation_file and not self.disable_writes:
                 anim_writer = _mediaoutput.create_animation_writer(
                     animation_format=ext.lstrip('.'),
                     out_filename=out_anim_name,
@@ -353,7 +355,7 @@ class ImageProcessRenderLoop:
             yield starting_animation_event
 
             starting_animation_file_event = None
-            if not self.config.no_animation_file and not self.disable_writes:
+            if not self._c_config.no_animation_file and not self.disable_writes:
                 starting_animation_file_event = StartingAnimationFileEvent(
                     origin=self,
                     path=out_anim_name,
@@ -387,7 +389,7 @@ class ImageProcessRenderLoop:
                                                 total_frames=reader.total_frames,
                                                 eta=eta)
 
-                    frame_filename = out_filename_base + f'_frame_{frame_idx + 1}.{self.config.frame_format}'
+                    frame_filename = out_filename_base + f'_frame_{frame_idx + 1}.{self._c_config.frame_format}'
 
                     # Processing happens here, when the frame is read
                     with next(reader) as frame:
@@ -403,14 +405,14 @@ class ImageProcessRenderLoop:
                         )
                         yield frame_generated_event
 
-                        if not self.config.no_animation_file:
+                        if not self._c_config.no_animation_file:
                             writer.write(frame)
 
-                        if not self.config.no_frames and not self.disable_writes:
+                        if not self._c_config.no_frames and not self.disable_writes:
 
                             # frames do not get the _processed_ suffix in any case
 
-                            if not self.config.output_overwrite:
+                            if not self._c_config.output_overwrite:
                                 frame_filename = _filelock.touch_avoid_duplicate(
                                     out_directory if out_directory else '.',
                                     path_maker=_filelock.suffix_path_maker(frame_filename,
@@ -432,7 +434,7 @@ class ImageProcessRenderLoop:
                 origin=self,
                 starting_event=starting_animation_event)
 
-            if not self.config.no_animation_file and not self.disable_writes:
+            if not self._c_config.no_animation_file and not self.disable_writes:
                 self._record_save_animation(out_filename)
 
                 yield AnimationFileFinishedEvent(
@@ -448,11 +450,11 @@ class ImageProcessRenderLoop:
         with _mediainput.MediaReader(
                 path=file,
                 image_processor=processor,
-                resize_resolution=self.config.resize,
-                aspect_correct=not self.config.no_aspect,
-                align=self.config.align,
-                frame_start=self.config.frame_start,
-                frame_end=self.config.frame_end) as reader:
+                resize_resolution=self._c_config.resize,
+                aspect_correct=not self._c_config.no_aspect,
+                align=self._c_config.align,
+                frame_start=self._c_config.frame_start,
+                frame_end=self._c_config.frame_end) as reader:
             self._last_frame_time = 0
             self._frame_time_sum = 0
 
@@ -463,42 +465,43 @@ class ImageProcessRenderLoop:
             yield from self._process_reader(file, reader, out_filename, generation_step)
 
     def _run(self) -> RenderLoopEventStream:
-        self.config.check()
+        self._c_config = self.config.copy()
+        self._c_config.check()
 
         self._written_images = _files.GCFile(
             tempfile.TemporaryFile('w+t'))
         self._written_animations = _files.GCFile(
             tempfile.TemporaryFile('w+t'))
 
-        total_generation_steps = len(self.config.input)
+        total_generation_steps = len(self._c_config.input)
 
         def _is_dir_spec(path):
             return os.path.isdir(path) or path[-1] in '/\\'
 
-        if self.config.processors:
+        if self._c_config.processors:
             processor = self.image_processor_loader.load(
-                self.config.processors,
-                device=self.config.device,
-                local_files_only=self.config.offline_mode
+                self._c_config.processors,
+                device=self._c_config.device,
+                local_files_only=self._c_config.offline_mode
             )
         else:
             processor = None
 
         try:
-            if self.config.output and len(self.config.output) == 1 and _is_dir_spec(self.config.output[0]):
-                for idx, file in enumerate(self.config.input):
+            if self._c_config.output and len(self._c_config.output) == 1 and _is_dir_spec(self._c_config.output[0]):
+                for idx, file in enumerate(self._c_config.input):
                     file = _mediainput.url_aware_normpath(file)
                     base, ext = os.path.splitext(_mediainput.url_aware_basename(file))
                     output_file = os.path.normpath(
-                        os.path.join(self.config.output[0], base + f'_processed_{idx + 1}{ext}'))
+                        os.path.join(self._c_config.output[0], base + f'_processed_{idx + 1}{ext}'))
                     yield from self._process_file(file, output_file, idx, total_generation_steps, processor)
             else:
-                for idx, file in enumerate(self.config.input):
+                for idx, file in enumerate(self._c_config.input):
                     file = _mediainput.url_aware_normpath(file)
                     output_file = _mediainput.url_aware_normpath(
-                        self.config.output[idx] if self.config.output else file)
+                        self._c_config.output[idx] if self._c_config.output else file)
 
-                    if file == output_file and not self.config.output_overwrite:
+                    if file == output_file and not self._c_config.output_overwrite:
                         if not _mediainput.is_downloadable_url(file):
                             base, ext = os.path.splitext(output_file)
                         else:
@@ -515,7 +518,8 @@ class ImageProcessRenderLoop:
 
     def run(self):
         """
-        Run the render loop, this calls :py:meth:`ImageProcessRenderLoopConfig.check` prior to running.
+        Run the render loop, this calls :py:meth:`ImageProcessRenderLoopConfig.check`
+        on a copy of your config prior to running.
 
         :raises dgenerate.OutOfMemoryError: if the execution device runs out of memory
 
@@ -527,6 +531,8 @@ class ImageProcessRenderLoop:
     def events(self) -> RenderLoopEventStream:
         """
         Run the render loop, and iterate over a stream of event objects produced by the render loop.
+
+        This calls :py:meth:`ImageProcessRenderLoopConfig.check` on a copy of your configuration prior to running.
 
         Event objects are of the union type :py:class:`.RenderLoopEvent`
 
