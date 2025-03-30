@@ -1,0 +1,29 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 5.0.0
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+{% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 15 %}
+    \set optimization --quantizer bnb;bits=4;bits4-compute-dtype=bfloat16
+{% else %}
+    \set optimization --model-sequential-offload
+{% endif %}
+
+# Try some different TeaCache relative L1 thresholds to see how it affects the output
+
+# You can also specify --tea-cache, which will use the default relative L1 thresholds of 0.6
+
+black-forest-labs/FLUX.1-dev
+--model-type torch-flux {{ optimization }}
+--dtype bfloat16
+--inference-steps 50
+--guidance-scales 3.5
+--gen-seeds 1
+--output-size 1024
+--tea-cache-rel-l1-thresholds 0.25 0.4 0.6 0.8
+--prompts "Photo of a horse standing near the open door of a red barn, high resolution"
