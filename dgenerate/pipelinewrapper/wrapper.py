@@ -2606,7 +2606,7 @@ class DiffusionPipelineWrapper:
                     'an SDXL refiner is not specified.')
 
             args.sdxl_refiner_pag_scale = _types.default(
-                args.pag_scale, _constants.DEFAULT_SDXL_REFINER_PAG_SCALE)
+                args.sdxl_refiner_pag_scale, _constants.DEFAULT_SDXL_REFINER_PAG_SCALE)
             args.sdxl_refiner_pag_adaptive_scale = _types.default(
                 args.sdxl_refiner_pag_adaptive_scale, _constants.DEFAULT_SDXL_REFINER_PAG_ADAPTIVE_SCALE)
 
