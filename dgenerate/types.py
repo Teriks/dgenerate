@@ -424,9 +424,9 @@ def module_all():
     return all_names
 
 
-def partial_deep_copy_container(container: list | dict | set):
+def partial_deep_copy_container(container: list | tuple | dict | set):
     """
-    Partially copy nested containers, handles lists, dicts, and sets.
+    Partially copy nested containers, handles lists, tuples, dicts, and sets.
 
     :param container: top level container
 
@@ -434,6 +434,8 @@ def partial_deep_copy_container(container: list | dict | set):
     """
     if isinstance(container, list):
         return [partial_deep_copy_container(v) for v in container]
+    if isinstance(container, tuple):
+        return tuple(partial_deep_copy_container(v) for v in container)
     elif isinstance(container, dict):
         return {k: partial_deep_copy_container(v) for k, v in container.items()}
     elif isinstance(container, set):

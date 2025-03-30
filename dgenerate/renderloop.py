@@ -349,6 +349,9 @@ class RenderLoop:
         self.config = \
             RenderLoopConfig() if config is None else config
 
+        # checked / validated config
+        self._c_config = None
+
         self.image_processor_loader = \
             _imageprocessors.ImageProcessorLoader() if \
                 image_processor_loader is None else image_processor_loader
@@ -412,14 +415,14 @@ class RenderLoop:
 
     def _join_output_filename(self, components, ext, with_output_path=True):
 
-        prefix = self.config.output_prefix + '_' if \
-            self.config.output_prefix is not None else ''
+        prefix = self._c_config.output_prefix + '_' if \
+            self._c_config.output_prefix is not None else ''
 
         components = (str(s).replace('.', '-') for s in components)
 
         name = f'{prefix}' + '_'.join(components) + '.' + ext.lstrip('.')
         if with_output_path:
-            return os.path.normpath(os.path.join(self.config.output_path, name))
+            return os.path.normpath(os.path.join(self._c_config.output_path, name))
         return name
 
     def _gen_filename_components_base(self, diffusion_args: _pipelinewrapper.DiffusionArguments):
@@ -526,42 +529,42 @@ class RenderLoop:
     def _get_base_extra_config_opts(self, args: _pipelinewrapper.DiffusionArguments):
         render_loop_opts = []
 
-        if self.config.seed_image_processors:
+        if self._c_config.seed_image_processors:
             render_loop_opts.append(('--seed-image-processors',
-                                     self.config.seed_image_processors))
+                                     self._c_config.seed_image_processors))
 
-        if self.config.mask_image_processors:
+        if self._c_config.mask_image_processors:
             render_loop_opts.append(('--mask-image-processors',
-                                     self.config.mask_image_processors))
+                                     self._c_config.mask_image_processors))
 
-        if self.config.control_image_processors:
+        if self._c_config.control_image_processors:
             render_loop_opts.append(('--control-image-processors',
-                                     self.config.control_image_processors))
+                                     self._c_config.control_image_processors))
 
-        if self.config.post_processors:
+        if self._c_config.post_processors:
             render_loop_opts.append(('--post-processors',
-                                     self.config.post_processors))
+                                     self._c_config.post_processors))
 
         if self.image_processor_loader.plugin_module_paths:
             render_loop_opts.append(('--plugin-modules',
                                      self.image_processor_loader.plugin_module_paths))
 
-        if self.config.seeds_to_images:
+        if self._c_config.seeds_to_images:
             render_loop_opts.append(('--seeds-to-images',))
 
-        if self.config.no_aspect:
+        if self._c_config.no_aspect:
             render_loop_opts.append(('--no-aspect',))
 
-        if self.config.output_prefix:
-            render_loop_opts.append(('--output-prefix', self.config.output_prefix))
+        if self._c_config.output_prefix:
+            render_loop_opts.append(('--output-prefix', self._c_config.output_prefix))
 
-        if self.config.output_size is not None and args.width is None:
+        if self._c_config.output_size is not None and args.width is None:
             # sometimes, output size can be specified with effects (such as resizing input images)
             # even when it does not get passed as a parameter to the diffusion
             # pipeline wrapper, without this statement, the command line will not be accurately
             # reproduced in entirety for those cases
             render_loop_opts.append(('--output-size',
-                                     _textprocessing.format_size(self.config.output_size)))
+                                     _textprocessing.format_size(self._c_config.output_size)))
 
         return render_loop_opts
 
@@ -573,11 +576,11 @@ class RenderLoop:
                                       generation_result: _pipelinewrapper.PipelineWrapperResult):
 
         if generation_result.image_count > 1:
-            extra_opts_out.append(('--batch-size', self.config.batch_size))
+            extra_opts_out.append(('--batch-size', self._c_config.batch_size))
 
-            if self.config.batch_grid_size is not None:
+            if self._c_config.batch_grid_size is not None:
                 extra_opts_out.append(('--batch-grid-size',
-                                       _textprocessing.format_size(self.config.batch_grid_size)))
+                                       _textprocessing.format_size(self._c_config.batch_grid_size)))
             else:
                 extra_comments_out.append(
                     f'{file_title} {batch_index + 1} from a batch of {generation_result.image_count}')
@@ -642,10 +645,10 @@ class RenderLoop:
             image=image,
             generation_step=self.generation_step,
             batch_index=batch_index,
-            suggested_directory=self.config.output_path,
+            suggested_directory=self._c_config.output_path,
             suggested_filename=self._join_output_filename(
                 filename_components,
-                ext=self.config.image_format,
+                ext=self._c_config.image_format,
                 with_output_path=False),
             diffusion_args=diffusion_args,
             image_seed=image_seed,
@@ -657,32 +660,32 @@ class RenderLoop:
 
         yield generated_image_event
 
-        if self.disable_writes or (self.config.no_frames and image_seed.is_animation_frame):
+        if self.disable_writes or (self._c_config.no_frames and image_seed.is_animation_frame):
             return
 
         config_filename = None
 
         # Generate and touch filenames avoiding duplicates in a way
         # that is multiprocess safe between instances of dgenerate
-        if self.config.output_configs:
+        if self._c_config.output_configs:
             image_filename, config_filename = \
                 _filelock.touch_avoid_duplicate(
-                    self.config.output_path,
+                    self._c_config.output_path,
                     path_maker=_filelock.suffix_path_maker(
-                        [self._join_output_filename(filename_components, ext=self.config.image_format),
+                        [self._join_output_filename(filename_components, ext=self._c_config.image_format),
                          self._join_output_filename(filename_components, ext='dgen')],
                         suffix='_duplicate_'))
         else:
             image_filename = _filelock.touch_avoid_duplicate(
-                self.config.output_path,
+                self._c_config.output_path,
                 path_maker=_filelock.suffix_path_maker(
                     self._join_output_filename(filename_components,
-                                               ext=self.config.image_format),
+                                               ext=self._c_config.image_format),
                     suffix='_duplicate_'))
 
         # Write out to the empty files
 
-        if self.config.output_metadata:
+        if self._c_config.output_metadata:
             metadata = PIL.PngImagePlugin.PngInfo()
             metadata.add_text("DgenerateConfig", config_txt)
             image.save(image_filename, pnginfo=metadata)
@@ -693,7 +696,7 @@ class RenderLoop:
         # Only underline the last image write message in a batch of rendered
         # images when --batch-size > 1
 
-        if self.config.output_configs:
+        if self._c_config.output_configs:
             with open(config_filename, "w") as config_file:
                 config_file.write(config_txt)
 
@@ -722,7 +725,7 @@ class RenderLoop:
                                  diffusion_args: _pipelinewrapper.DiffusionArguments,
                                  generation_result: _pipelinewrapper.PipelineWrapperResult,
                                  image_seed: _mediainput.ImageSeed | None = None) -> RenderLoopEventStream:
-        if self.config.batch_grid_size is None:
+        if self._c_config.batch_grid_size is None:
 
             for batch_idx, image in enumerate(generation_result.images):
                 name_components = filename_components.copy()
@@ -737,7 +740,7 @@ class RenderLoop:
                                              image_seed)
         else:
             if generation_result.image_count > 1:
-                image = generation_result.image_grid(self.config.batch_grid_size)
+                image = generation_result.image_grid(self._c_config.batch_grid_size)
             else:
                 image = generation_result.image
 
@@ -797,7 +800,7 @@ class RenderLoop:
 
         desc = diffusion_args.describe_pipeline_wrapper_args()
 
-        total_steps = self.config.calculate_generation_steps()
+        total_steps = self._c_config.calculate_generation_steps()
 
         _messages.log(
             f'Generation Step: {self._generation_step + 1} / {total_steps}\n'
@@ -833,7 +836,8 @@ class RenderLoop:
 
     def run(self):
         """
-        Run the diffusion loop, this calls :py:meth:`.RenderLoopConfig.check` prior to running.
+        Run the diffusion loop, this calls :py:meth:`RenderLoopConfig.check`
+        on a copy of your configuration prior to running.
 
         :raises RenderLoopConfigError:
         :raises dgenerate.ModelNotFoundError:
@@ -850,6 +854,8 @@ class RenderLoop:
     def events(self) -> RenderLoopEventStream:
         """
         Run the render loop, and iterate over a stream of event objects produced by the render loop.
+
+        This calls :py:meth:`RenderLoopConfig.check` on a copy of your configuration prior to running.
 
         Event objects are of the union type :py:data:`.RenderLoopEvent`
 
@@ -870,45 +876,45 @@ class RenderLoop:
 
     def _create_pipeline_wrapper(self):
         self._pipeline_wrapper = _pipelinewrapper.DiffusionPipelineWrapper(
-            self.config.model_path,
-            dtype=self.config.dtype,
-            device=self.config.device,
-            model_type=self.config.model_type,
-            revision=self.config.revision,
-            variant=self.config.variant,
-            subfolder=self.config.subfolder,
-            original_config=self.config.original_config,
-            second_model_original_config=self.config.second_model_original_config,
-            unet_uri=self.config.unet_uri,
-            second_model_unet_uri=self.config.second_model_unet_uri,
-            transformer_uri=self.config.transformer_uri,
-            vae_uri=self.config.vae_uri,
-            lora_uris=self.config.lora_uris,
-            lora_fuse_scale=self.config.lora_fuse_scale,
-            image_encoder_uri=self.config.image_encoder_uri,
-            ip_adapter_uris=self.config.ip_adapter_uris,
-            textual_inversion_uris=self.config.textual_inversion_uris,
-            text_encoder_uris=self.config.text_encoder_uris,
-            second_model_text_encoder_uris=self.config.second_model_text_encoder_uris,
+            self._c_config.model_path,
+            dtype=self._c_config.dtype,
+            device=self._c_config.device,
+            model_type=self._c_config.model_type,
+            revision=self._c_config.revision,
+            variant=self._c_config.variant,
+            subfolder=self._c_config.subfolder,
+            original_config=self._c_config.original_config,
+            second_model_original_config=self._c_config.second_model_original_config,
+            unet_uri=self._c_config.unet_uri,
+            second_model_unet_uri=self._c_config.second_model_unet_uri,
+            transformer_uri=self._c_config.transformer_uri,
+            vae_uri=self._c_config.vae_uri,
+            lora_uris=self._c_config.lora_uris,
+            lora_fuse_scale=self._c_config.lora_fuse_scale,
+            image_encoder_uri=self._c_config.image_encoder_uri,
+            ip_adapter_uris=self._c_config.ip_adapter_uris,
+            textual_inversion_uris=self._c_config.textual_inversion_uris,
+            text_encoder_uris=self._c_config.text_encoder_uris,
+            second_model_text_encoder_uris=self._c_config.second_model_text_encoder_uris,
             controlnet_uris=
-            self.config.controlnet_uris if self.config.image_seeds else [],
+            self._c_config.controlnet_uris if self._c_config.image_seeds else [],
             t2i_adapter_uris=
-            self.config.t2i_adapter_uris if self.config.image_seeds else [],
-            sdxl_refiner_uri=self.config.sdxl_refiner_uri,
-            s_cascade_decoder_uri=self.config.s_cascade_decoder_uri,
-            second_model_cpu_offload=bool(self.config.second_model_cpu_offload),
-            second_model_sequential_offload=bool(self.config.second_model_sequential_offload),
-            safety_checker=self.config.safety_checker,
-            auth_token=self.config.auth_token,
-            local_files_only=self.config.offline_mode,
+            self._c_config.t2i_adapter_uris if self._c_config.image_seeds else [],
+            sdxl_refiner_uri=self._c_config.sdxl_refiner_uri,
+            s_cascade_decoder_uri=self._c_config.s_cascade_decoder_uri,
+            second_model_cpu_offload=bool(self._c_config.second_model_cpu_offload),
+            second_model_sequential_offload=bool(self._c_config.second_model_sequential_offload),
+            safety_checker=self._c_config.safety_checker,
+            auth_token=self._c_config.auth_token,
+            local_files_only=self._c_config.offline_mode,
             model_extra_modules=self.model_extra_modules,
             second_model_extra_modules=self.second_model_extra_modules,
-            model_cpu_offload=self.config.model_cpu_offload,
-            model_sequential_offload=self.config.model_sequential_offload,
+            model_cpu_offload=self._c_config.model_cpu_offload,
+            model_sequential_offload=self._c_config.model_sequential_offload,
             prompt_weighter_loader=self.prompt_weighter_loader,
-            adetailer_detector_uris=self.config.adetailer_detector_uris,
-            adetailer_crop_control_image=bool(self.config.adetailer_crop_control_image),
-            quantizer_uri=self.config.quantizer_uri
+            adetailer_detector_uris=self._c_config.adetailer_detector_uris,
+            adetailer_crop_control_image=bool(self._c_config.adetailer_crop_control_image),
+            quantizer_uri=self._c_config.quantizer_uri
         )
         return self._pipeline_wrapper
 
@@ -918,10 +924,11 @@ class RenderLoop:
         """
 
         if not self.disable_writes:
-            pathlib.Path(self.config.output_path).mkdir(parents=True, exist_ok=True)
+            pathlib.Path(self._c_config.output_path).mkdir(parents=True, exist_ok=True)
 
     def _run(self) -> RenderLoopEventStream:
-        self.config.check()
+        self._c_config = self.config.copy()
+        self._c_config.check()
 
         self._ensure_output_path()
 
@@ -934,7 +941,7 @@ class RenderLoop:
         self._frame_time_sum = 0
         self._last_frame_time = 0
 
-        generation_steps = self.config.calculate_generation_steps()
+        generation_steps = self._c_config.calculate_generation_steps()
 
         if generation_steps == 0:
             _messages.log(f'Options resulted in no generation steps, nothing to do.', underline=True)
@@ -945,26 +952,26 @@ class RenderLoop:
         try:
             self._init_post_processor()
 
-            if self.config.image_seeds:
+            if self._c_config.image_seeds:
                 yield from self._render_with_image_seeds()
             else:
                 pipeline_wrapper = self._create_pipeline_wrapper()
 
                 sdxl_high_noise_fractions = \
-                    self.config.sdxl_high_noise_fractions if \
-                        self.config.sdxl_refiner_uri is not None else None
+                    self._c_config.sdxl_high_noise_fractions if \
+                        self._c_config.sdxl_refiner_uri is not None else None
 
-                for diffusion_arguments in self.config.iterate_diffusion_args(
+                for diffusion_arguments in self._c_config.iterate_diffusion_args(
                         sdxl_high_noise_fraction=sdxl_high_noise_fractions,
                         image_seed_strength=None,
                         upscaler_noise_level=None):
 
-                    if self.config.output_size is not None:
-                        diffusion_arguments.width = self.config.output_size[0]
-                        diffusion_arguments.height = self.config.output_size[1]
+                    if self._c_config.output_size is not None:
+                        diffusion_arguments.width = self._c_config.output_size[0]
+                        diffusion_arguments.height = self._c_config.output_size[1]
 
-                    diffusion_arguments.batch_size = self.config.batch_size
-                    diffusion_arguments.sdxl_refiner_edit = self.config.sdxl_refiner_edit
+                    diffusion_arguments.batch_size = self._c_config.batch_size
+                    diffusion_arguments.sdxl_refiner_edit = self._c_config.sdxl_refiner_edit
 
                     yield from self._pre_generation_step(diffusion_arguments)
 
@@ -977,10 +984,10 @@ class RenderLoop:
             self._destroy_post_processor()
 
     def _init_post_processor(self):
-        if self.config.post_processors is None:
+        if self._c_config.post_processors is None:
             self._post_processor = None
         else:
-            self._post_processor = self._load_image_processors(self.config.post_processors)
+            self._post_processor = self._load_image_processors(self._c_config.post_processors)
             _messages.debug_log('Loaded Post Processor:', self._post_processor)
 
     def _destroy_post_processor(self):
@@ -1012,41 +1019,41 @@ class RenderLoop:
         if len(processor_chain) == 1:
             r = self.image_processor_loader.load(
                 processor_chain[0],
-                device=self.config.device,
-                local_files_only=self.config.offline_mode)
+                device=self._c_config.device,
+                local_files_only=self._c_config.offline_mode)
         else:
             r = [self.image_processor_loader.load(p,
-                                                  device=self.config.device,
-                                                  local_files_only=self.config.offline_mode)
+                                                  device=self._c_config.device,
+                                                  local_files_only=self._c_config.offline_mode)
                  for p in processor_chain]
 
         return r
 
     def _load_seed_image_processors(self):
-        if not self.config.seed_image_processors:
+        if not self._c_config.seed_image_processors:
             return None
 
-        r = self._load_image_processors(self.config.seed_image_processors)
+        r = self._load_image_processors(self._c_config.seed_image_processors)
 
         _messages.debug_log('Loaded Seed Image Processor(s):', r)
 
         return r
 
     def _load_mask_image_processors(self):
-        if not self.config.mask_image_processors:
+        if not self._c_config.mask_image_processors:
             return None
 
-        r = self._load_image_processors(self.config.mask_image_processors)
+        r = self._load_image_processors(self._c_config.mask_image_processors)
 
         _messages.debug_log('Loaded Mask Image Processor(s):', r)
 
         return r
 
     def _load_control_image_processors(self):
-        if not self.config.control_image_processors:
+        if not self._c_config.control_image_processors:
             return None
 
-        r = self._load_image_processors(self.config.control_image_processors)
+        r = self._load_image_processors(self._c_config.control_image_processors)
 
         _messages.debug_log('Loaded Control Image Processor(s):', r)
 
@@ -1097,12 +1104,12 @@ class RenderLoop:
 
         def iterate_image_seeds():
             # image seeds have already had logical and syntax validation preformed
-            for idx, uri_to_parsed in enumerate(zip(self.config.image_seeds, self.config.parsed_image_seeds)):
-                yield uri_to_parsed[0], uri_to_parsed[1], self.config.seeds[idx % len(self.config.seeds)]
+            for idx, uri_to_parsed in enumerate(zip(self._c_config.image_seeds, self._c_config.parsed_image_seeds)):
+                yield uri_to_parsed[0], uri_to_parsed[1], self._c_config.seeds[idx % len(self._c_config.seeds)]
 
         for image_seed_uri, parsed_image_seed, seed_to_image in list(iterate_image_seeds()):
 
-            is_control_guidance_spec = (self.config.controlnet_uris or self.config.t2i_adapter_uris) \
+            is_control_guidance_spec = (self._c_config.controlnet_uris or self._c_config.t2i_adapter_uris) \
                                        and parsed_image_seed.is_single_spec
 
             if is_control_guidance_spec:
@@ -1111,26 +1118,26 @@ class RenderLoop:
                 _messages.log(f'Processing Image Seed: "{image_seed_uri}"', underline=True)
 
             overrides = {}
-            if self.config.seeds_to_images:
+            if self._c_config.seeds_to_images:
                 overrides['seed'] = [seed_to_image]
 
-            arg_iterator = self.config.iterate_diffusion_args(**overrides)
+            arg_iterator = self._c_config.iterate_diffusion_args(**overrides)
 
             if is_control_guidance_spec:
                 seed_info = _mediainput.get_control_image_info(
-                    parsed_image_seed, self.config.frame_start, self.config.frame_end)
+                    parsed_image_seed, self._c_config.frame_start, self._c_config.frame_end)
             else:
                 seed_info = _mediainput.get_image_seed_info(
-                    parsed_image_seed, self.config.frame_start, self.config.frame_end)
+                    parsed_image_seed, self._c_config.frame_start, self._c_config.frame_end)
 
             if is_control_guidance_spec:
                 def image_seed_iterator():
                     yield from _mediainput.iterate_control_image(
                         uri=parsed_image_seed,
-                        frame_start=self.config.frame_start,
-                        frame_end=self.config.frame_end,
-                        resize_resolution=self.config.output_size,
-                        aspect_correct=not self.config.no_aspect,
+                        frame_start=self._c_config.frame_start,
+                        frame_end=self._c_config.frame_end,
+                        resize_resolution=self._c_config.output_size,
+                        aspect_correct=not self._c_config.no_aspect,
                         image_processor=control_image_processor)
 
             else:
@@ -1144,17 +1151,17 @@ class RenderLoop:
 
                     yield from _mediainput.iterate_image_seed(
                         uri=parsed_image_seed,
-                        frame_start=self.config.frame_start,
-                        frame_end=self.config.frame_end,
+                        frame_start=self._c_config.frame_start,
+                        frame_end=self._c_config.frame_end,
                         resize_resolution=
-                        self.config.output_size if not
-                        _pipelinewrapper.model_type_is_s_cascade(self.config.model_type) else None,
-                        aspect_correct=not self.config.no_aspect,
+                        self._c_config.output_size if not
+                        _pipelinewrapper.model_type_is_s_cascade(self._c_config.model_type) else None,
+                        aspect_correct=not self._c_config.no_aspect,
                         seed_image_processor=seed_image_processor,
                         mask_image_processor=mask_image_processor,
                         control_image_processor=control_image_processor,
                         check_dimensions_match=
-                        not _pipelinewrapper.model_type_is_s_cascade(self.config.model_type))
+                        not _pipelinewrapper.model_type_is_s_cascade(self._c_config.model_type))
 
             if seed_info.is_animation:
 
@@ -1184,8 +1191,8 @@ class RenderLoop:
                 continue
 
             for diffusion_arguments in arg_iterator:
-                diffusion_arguments.batch_size = self.config.batch_size
-                diffusion_arguments.sdxl_refiner_edit = self.config.sdxl_refiner_edit
+                diffusion_arguments.batch_size = self._c_config.batch_size
+                diffusion_arguments.sdxl_refiner_edit = self._c_config.sdxl_refiner_edit
 
                 yield from self._pre_generation_step(diffusion_arguments)
 
@@ -1240,27 +1247,27 @@ class RenderLoop:
             self._gen_animation_filename(
                 first_diffusion_args,
                 self._generation_step + 1,
-                ext=self.config.animation_format)
+                ext=self._c_config.animation_format)
 
         next_args_terminates_anim = False
 
         not_writing_animation_file = \
-            self.disable_writes or self.config.animation_format == 'frames'
+            self.disable_writes or self._c_config.animation_format == 'frames'
 
         if not_writing_animation_file:
             # The interface can be used as a mock object
             anim_writer = _mediaoutput.AnimationWriter()
         else:
             anim_writer = _mediaoutput.MultiAnimationWriter(
-                animation_format=self.config.animation_format,
+                animation_format=self._c_config.animation_format,
                 filename=base_filename,
-                fps=fps, allow_overwrites=self.config.output_overwrite)
+                fps=fps, allow_overwrites=self._c_config.output_overwrite)
 
         with anim_writer:
 
             for diffusion_args in itertools.chain([first_diffusion_args], arg_iterator):
-                diffusion_args.batch_size = self.config.batch_size
-                diffusion_args.sdxl_refiner_edit = self.config.sdxl_refiner_edit
+                diffusion_args.batch_size = self._c_config.batch_size
+                diffusion_args.sdxl_refiner_edit = self._c_config.sdxl_refiner_edit
 
                 yield from self._pre_generation_step(diffusion_args)
 
@@ -1274,7 +1281,7 @@ class RenderLoop:
                         new_file=self._gen_animation_filename(
                             diffusion_args,
                             self._generation_step,
-                            ext=self.config.animation_format))
+                            ext=self._c_config.animation_format))
 
                 for image_seed_frame in image_seed_iterator():
                     frame_duration = image_seed_frame.frame_duration
@@ -1299,9 +1306,9 @@ class RenderLoop:
                             self._run_postprocess(generation_result)
                             self._ensure_output_path()
 
-                            if generation_result.image_count > 1 and self.config.batch_grid_size is not None:
+                            if generation_result.image_count > 1 and self._c_config.batch_grid_size is not None:
                                 anim_writer.write(
-                                    generation_result.image_grid(self.config.batch_grid_size))
+                                    generation_result.image_grid(self._c_config.batch_grid_size))
                             else:
                                 anim_writer.write(generation_result.images)
 
@@ -1314,7 +1321,7 @@ class RenderLoop:
                                         '\n'.join(f'Beginning Writes To Animation: "{f}"'
                                                   for f in anim_writer.filenames)
 
-                                    if self.config.output_configs:
+                                    if self._c_config.output_configs:
 
                                         _messages.log(animation_filenames_message)
                                         config_filenames = []
@@ -1360,7 +1367,7 @@ class RenderLoop:
                     yield AnimationFileFinishedEvent(
                         origin=self,
                         path=file,
-                        config_filename=config_filenames[idx] if self.config.output_configs else None,
+                        config_filename=config_filenames[idx] if self._c_config.output_configs else None,
                         starting_event=starting_animation_file_events[idx])
 
     def _write_animation_config_file(self,
@@ -1373,18 +1380,18 @@ class RenderLoop:
 
         extra_opts = []
 
-        if self.config.frame_start is not None and \
-                self.config.frame_start != 0:
+        if self._c_config.frame_start is not None and \
+                self._c_config.frame_start != 0:
             extra_opts.append(('--frame-start',
-                               self.config.frame_start))
+                               self._c_config.frame_start))
 
-        if self.config.frame_end is not None:
+        if self._c_config.frame_end is not None:
             extra_opts.append(('--frame-end',
-                               self.config.frame_end))
+                               self._c_config.frame_end))
 
-        if self.config.animation_format is not None:
+        if self._c_config.animation_format is not None:
             extra_opts.append(('--animation-format',
-                               self.config.animation_format))
+                               self._c_config.animation_format))
 
         extra_opts.append(('--image-seeds', image_seed_uri))
 
@@ -1402,10 +1409,10 @@ class RenderLoop:
                 extra_opts=extra_opts,
                 extra_comments=extra_comments)
 
-        if not self.config.output_overwrite:
+        if not self._c_config.output_overwrite:
             filename = \
                 _filelock.touch_avoid_duplicate(
-                    self.config.output_path,
+                    self._c_config.output_path,
                     path_maker=_filelock.suffix_path_maker(filename,
                                                            '_duplicate_'))
 
