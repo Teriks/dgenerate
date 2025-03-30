@@ -248,6 +248,24 @@ Default starting step for RAS (Reinforcement Attention System) for Stable Diffus
 Controls when RAS begins applying its sampling strategy.
 """
 
+DEFAULT_RAS_SKIP_NUM_STEP: int = 0
+"""
+Default skip num step for RAS (Reinforcement Attention System) for Stable Diffusion 3.
+Controls the number of steps to skip between RAS steps. The actual number of tokens skipped
+will be rounded down to the nearest multiple of 64 to ensure efficient memory access patterns
+for attention computation. When used with skip_num_step_length greater than 0, this value
+determines how the number of skipped tokens changes over time.
+"""
+
+DEFAULT_RAS_SKIP_NUM_STEP_LENGTH: int = 0
+"""
+Default skip num step length for RAS (Reinforcement Attention System) for Stable Diffusion 3.
+Controls the length of steps to skip between RAS steps. When set to 0, static dropping is used
+where the number of skipped tokens remains constant. When greater than 0, dynamic dropping is
+enabled where the number of skipped tokens varies over time based on skip_num_step. The pattern
+of skipping will repeat every skip_num_step_length steps.
+"""
+
 PIPELINE_WRAPPER_CACHE_GC_CONSTRAINTS: list[str] = ['used_percent > 70']
 """
 Cache constraint expressions for when to clear all object caches, 

@@ -524,6 +524,12 @@ class RenderLoop:
         if diffusion_args.ras_end_step is not None:
             args += ['rsep', diffusion_args.ras_end_step]
 
+        if diffusion_args.ras_skip_num_step is not None:
+            args += ['rssn', diffusion_args.ras_skip_num_step]
+
+        if diffusion_args.ras_skip_num_step_length is not None:
+            args += ['rssl', diffusion_args.ras_skip_num_step_length]
+
         return args
 
     def _get_base_extra_config_opts(self, args: _pipelinewrapper.DiffusionArguments):

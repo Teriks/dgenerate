@@ -876,35 +876,6 @@ class DiffusionPipelineWrapper:
         if not omit_device:
             opts.append(('--device', self._device))
 
-        if args.ras:
-            opts.append(('--ras',))
-        if args.ras_index_fusion:
-            opts.append(('--ras-index-fusion',))
-        if args.ras_patch_size is not None and \
-                args.ras_patch_size != _constants.DEFAULT_RAS_PATCH_SIZE:
-            opts.append(('--ras-patch-sizes', str(args.ras_patch_size)))
-        if args.ras_sample_ratio is not None and \
-                args.ras_sample_ratio != _constants.DEFAULT_RAS_SAMPLE_RATIO:
-            opts.append(('--ras-sample-ratios', str(args.ras_sample_ratio)))
-        if args.ras_high_ratio is not None and \
-                args.ras_high_ratio != _constants.DEFAULT_RAS_HIGH_RATIO:
-            opts.append(('--ras-high-ratios', str(args.ras_high_ratio)))
-        if args.ras_starvation_scale is not None \
-                and args.ras_starvation_scale != _constants.DEFAULT_RAS_STARVATION_SCALE:
-            opts.append(('--ras-starvation-scales', str(args.ras_starvation_scale)))
-        if args.ras_error_reset_steps is not None and \
-                args.ras_error_reset_steps != _constants.DEFAULT_RAS_ERROR_RESET_STEPS:
-            opts.append(('--ras-error-reset-steps', args.ras_error_reset_steps))
-        if args.ras_metric is not None and \
-                args.ras_metric != _constants.DEFAULT_RAS_METRIC:
-            opts.append(('--ras-metrics', args.ras_metric))
-        if args.ras_start_step is not None and \
-                args.ras_start_step != _constants.DEFAULT_RAS_START_STEP:
-            opts.append(('--ras-start-steps', str(args.ras_start_step)))
-        if args.ras_end_step is not None and \
-                args.ras_end_step != args.inference_steps:
-            opts.append(('--ras-end-steps', str(args.ras_end_step)))
-
         opts.append(('--inference-steps', args.inference_steps))
         opts.append(('--guidance-scales', args.guidance_scale))
         opts.append(('--seeds', args.seed))
@@ -1076,6 +1047,52 @@ class DiffusionPipelineWrapper:
         if args.tea_cache_rel_l1_threshold is not None and \
                 args.tea_cache_rel_l1_threshold != _constants.DEFAULT_TEA_CACHE_REL_L1_THRESHOLD:
             opts.append(('--tea-cache-rel-l1-thresholds', args.tea_cache_rel_l1_threshold))
+
+        if args.ras:
+            opts.append(('--ras',))
+
+        if args.ras_index_fusion:
+            opts.append(('--ras-index-fusion',))
+
+        if args.ras_patch_size is not None and \
+                args.ras_patch_size != _constants.DEFAULT_RAS_PATCH_SIZE:
+            opts.append(('--ras-patch-sizes', args.ras_patch_size))
+
+        if args.ras_sample_ratio is not None and \
+                args.ras_sample_ratio != _constants.DEFAULT_RAS_SAMPLE_RATIO:
+            opts.append(('--ras-sample-ratios', args.ras_sample_ratio))
+
+        if args.ras_high_ratio is not None and \
+                args.ras_high_ratio != _constants.DEFAULT_RAS_HIGH_RATIO:
+            opts.append(('--ras-high-ratios', args.ras_high_ratio))
+
+        if args.ras_starvation_scale is not None \
+                and args.ras_starvation_scale != _constants.DEFAULT_RAS_STARVATION_SCALE:
+            opts.append(('--ras-starvation-scales', args.ras_starvation_scale))
+
+        if args.ras_error_reset_steps is not None and \
+                args.ras_error_reset_steps != _constants.DEFAULT_RAS_ERROR_RESET_STEPS:
+            opts.append(('--ras-error-reset-steps', args.ras_error_reset_steps))
+
+        if args.ras_metric is not None and \
+                args.ras_metric != _constants.DEFAULT_RAS_METRIC:
+            opts.append(('--ras-metrics', args.ras_metric))
+
+        if args.ras_start_step is not None and \
+                args.ras_start_step != _constants.DEFAULT_RAS_START_STEP:
+            opts.append(('--ras-start-steps', args.ras_start_step))
+
+        if args.ras_end_step is not None and \
+                args.ras_end_step != args.inference_steps:
+            opts.append(('--ras-end-steps', args.ras_end_step))
+
+        if args.ras_skip_num_step is not None and \
+                args.ras_skip_num_step != _constants.DEFAULT_RAS_SKIP_NUM_STEP:
+            opts.append(('--ras-skip-num-steps', args.ras_skip_num_step))
+
+        if args.ras_skip_num_step_length is not None and \
+                args.ras_skip_num_step_length != _constants.DEFAULT_RAS_SKIP_NUM_STEP_LENGTH:
+            opts.append(('--ras-skip-num-step-lengths', args.ras_skip_num_step_length))
 
         if args.pag_scale == _constants.DEFAULT_PAG_SCALE \
                 and args.pag_adaptive_scale == _constants.DEFAULT_PAG_ADAPTIVE_SCALE:
@@ -2322,7 +2339,12 @@ class DiffusionPipelineWrapper:
                     enable_index_fusion=user_args.ras_index_fusion,
                     metric=_types.default(user_args.ras_metric, _constants.DEFAULT_RAS_METRIC),
                     scheduler_start_step=_types.default(user_args.ras_start_step, _constants.DEFAULT_RAS_START_STEP),
-                    scheduler_end_step=_types.default(user_args.ras_end_step, user_args.inference_steps)
+                    scheduler_end_step=_types.default(user_args.ras_end_step, user_args.inference_steps),
+                    skip_num_step=_types.default(
+                        user_args.ras_skip_num_step, _constants.DEFAULT_RAS_SKIP_NUM_STEP),
+                    skip_num_step_length=_types.default(
+                        user_args.ras_skip_num_step_length, _constants.DEFAULT_RAS_SKIP_NUM_STEP_LENGTH),
+                    replace_with_flash_attn=importlib.util.find_spec('flash-attn') is not None
                 )
             else:
                 ras_args = None

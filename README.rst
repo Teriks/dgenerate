@@ -212,11 +212,13 @@ Help Output
                      [--ras-patch-sizes INTEGER [INTEGER ...]] [--ras-sample-ratios FLOAT [FLOAT ...]]
                      [--ras-high-ratios FLOAT [FLOAT ...]] [--ras-starvation-scales FLOAT [FLOAT ...]]
                      [--ras-error-reset-steps CSV_INT [CSV_INT ...]] [--ras-metrics RAS_METRIC [RAS_METRIC ...]]
-                     [--ras-start-steps INTEGER [INTEGER ...]] [--ras-end-steps INTEGER [INTEGER ...]] [-rhd]
-                     [-pag] [-pags FLOAT [FLOAT ...]] [-pagas FLOAT [FLOAT ...]] [-rpag]
-                     [-rpags FLOAT [FLOAT ...]] [-rpagas FLOAT [FLOAT ...]] [-mqo | -mco] [-mqo2 | -mco2]
-                     [--s-cascade-decoder MODEL_URI] [--sdxl-refiner MODEL_URI] [--sdxl-refiner-edit]
-                     [--sdxl-t2i-adapter-factors FLOAT [FLOAT ...]] [--sdxl-aesthetic-scores FLOAT [FLOAT ...]]
+                     [--ras-start-steps INTEGER [INTEGER ...]] [--ras-end-steps INTEGER [INTEGER ...]]
+                     [--ras-skip-num-steps INTEGER [INTEGER ...]]
+                     [--ras-skip-num-step-lengths INTEGER [INTEGER ...]] [-rhd] [-pag] [-pags FLOAT [FLOAT ...]]
+                     [-pagas FLOAT [FLOAT ...]] [-rpag] [-rpags FLOAT [FLOAT ...]] [-rpagas FLOAT [FLOAT ...]]
+                     [-mqo | -mco] [-mqo2 | -mco2] [--s-cascade-decoder MODEL_URI] [--sdxl-refiner MODEL_URI]
+                     [--sdxl-refiner-edit] [--sdxl-t2i-adapter-factors FLOAT [FLOAT ...]]
+                     [--sdxl-aesthetic-scores FLOAT [FLOAT ...]]
                      [--sdxl-crops-coords-top-left COORD [COORD ...]] [--sdxl-original-size SIZE [SIZE ...]]
                      [--sdxl-target-size SIZE [SIZE ...]] [--sdxl-negative-aesthetic-scores FLOAT [FLOAT ...]]
                      [--sdxl-negative-original-sizes SIZE [SIZE ...]]
@@ -1162,7 +1164,7 @@ Help Output
       --ras-start-steps INTEGER [INTEGER ...]
             Starting steps to try for RAS (Region-Adaptive Sampling).
             
-            This controls when RAS begins applying its sampling strategy.
+            This controls when RAS begins applying its sampling strategy. Must be greater than or equal to 1.
             
             Each value will be tried in turn.
             
@@ -1175,7 +1177,7 @@ Help Output
       --ras-end-steps INTEGER [INTEGER ...]
             Ending steps to try for RAS (Region-Adaptive Sampling).
             
-            This controls when RAS stops applying its sampling strategy.
+            This controls when RAS stops applying its sampling strategy. Must be greater than or equal to 1.
             
             Each value will be tried in turn.
             
@@ -1185,6 +1187,46 @@ Help Output
             
             (default: --inference-steps)
             ----------------------------
+      --ras-skip-num-steps INTEGER [INTEGER ...]
+            Skip steps for RAS (Region-Adaptive Sampling).
+            
+            This controls the number of steps to skip between RAS steps.
+            
+            The actual number of tokens skipped will be rounded down to the nearest multiple of 64 to ensure
+            efficient memory access patterns for attention computation.
+            
+            When used with --ras-skip-num-step-lengths greater than 0, this value will determine how the number
+            of skipped tokens changes over time. Positive values will increase the number of skipped tokens over
+            time, while negative values will decrease it.
+            
+            Each value will be tried in turn.
+            
+            Supplying any values implies --ras.
+            
+            This is supported for: --model-type torch-sd3.
+            
+            (default: 0)
+            ------------
+      --ras-skip-num-step-lengths INTEGER [INTEGER ...]
+            Skip step lengths for RAS (Region-Adaptive Sampling).
+            
+            This controls the length of steps to skip between RAS steps. Must be greater than or equal to 0.
+            
+            When set to 0, static dropping is used where the number of skipped tokens remains constant
+            throughout the generation process.
+            
+            When greater than 0, dynamic dropping is enabled where the number of skipped tokens varies over time
+            based on --ras-skip-num-steps. The pattern of skipping will repeat every --ras-skip-num-step-lengths
+            steps.
+            
+            Each value will be tried in turn.
+            
+            Supplying any values implies --ras.
+            
+            This is supported for: --model-type torch-sd3.
+            
+            (default: 0)
+            ------------
       -rhd, --sdxl-refiner-hi-diffusion
             Activate HiDiffusion for the SDXL refiner?, See: --hi-diffusion
             ---------------------------------------------------------------

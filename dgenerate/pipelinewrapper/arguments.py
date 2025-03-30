@@ -531,6 +531,26 @@ class DiffusionArguments(_types.SetFromMixin):
     This is supported for: ``--model-type torch-sd3``.
     """
 
+    ras_skip_num_step: _types.OptionalInteger = None
+    """
+    Skip steps for RAS (Region-Adaptive Sampling). Controls the number of steps to skip between RAS steps.
+    The actual number of tokens skipped will be rounded down to the nearest multiple of 64 to ensure
+    efficient memory access patterns for attention computation. When used with ras_skip_num_step_length
+    greater than 0, this value determines how the number of skipped tokens changes over time.
+    Positive values will increase the number of skipped tokens over time, while negative values will
+    decrease it. Each value will be tried in turn. Supplying any values implies :py:attr:`DiffusionArguments.ras`.
+    """
+
+    ras_skip_num_step_length: _types.OptionalInteger = None
+    """
+    Skip step lengths for RAS (Region-Adaptive Sampling). Controls the length of steps to skip between
+    RAS steps. When set to 0, static dropping is used where the number of skipped tokens remains
+    constant throughout the generation process. When greater than 0, dynamic dropping is enabled
+    where the number of skipped tokens varies over time based on ras_skip_num_step. The pattern of
+    skipping will repeat every ras_skip_num_step_length steps. Each value will be tried in turn.
+    Supplying any values implies :py:attr:`DiffusionArguments.ras`.
+    """
+
     sdxl_refiner_hi_diffusion: _types.OptionalBoolean = None
     """
     Activate HiDiffusion on the SDXL refiner for this generation?, See: :py:attr:`DiffusionArguments.hi_diffusion`
@@ -825,7 +845,9 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.ras_error_reset_steps, "RAS Error Reset Steps:"),
             (self.ras_start_step, "RAS Start Step:"),
             (self.ras_end_step, "RAS End Step:"),
-            (self.ras_metric, "RAS Metric:")
+            (self.ras_metric, "RAS Metric:"),
+            (self.ras_skip_num_step, "RAS Skip Num Step:"),
+            (self.ras_skip_num_step_length, "RAS Skip Num Step Length:")
         ]
 
         if not self.prompt.weighter:
