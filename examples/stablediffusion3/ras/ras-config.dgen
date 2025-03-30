@@ -1,0 +1,39 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 5.0.0
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+{% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 20 %}
+    \set optimization --quantizer bnb;bits=8
+{% else %}
+    \set optimization --model-sequential-offload
+{% endif %}
+
+# Enable Region-Adaptive Sampling (RAS) for Stable Diffusion 3, see: https://github.com/microsoft/RAS
+
+# this reproduces the image from this script: https://github.com/microsoft/RAS/blob/main/scripts/Stable_Diffusion_3_example.sh
+# quantization may have some effect on the output, but it should still be similar
+
+# the default start steps value for RAS is 4, which means it will start applying the RAS algorithm after 4 steps
+
+# --ras-end-steps defaults to --inference-steps
+
+stabilityai/stable-diffusion-3-medium-diffusers
+--model-type torch-sd3 {{ optimization }}
+--variant fp16
+--dtype float16
+--inference-steps 28
+--guidance-scales 7.0
+--ras-sample-ratios 0.5
+--ras-high-ratios 0.3
+--ras-error-reset-steps "12,20"
+--ras-starvation-scales 1.0
+--ras-start-steps 4
+--seeds 29
+--output-path output
+--prompts "A red heart in the clouds over water, in the style of zbrush, light pink and sky-blue, I can't believe how beautiful this is, hyperbolic expression, nyc explosion coverage, unreal engine 5, robert bissell."
