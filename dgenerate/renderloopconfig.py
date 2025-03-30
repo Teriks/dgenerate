@@ -1196,10 +1196,6 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'with {a_namer("tea_cache")} and related arguments.'
                 )
 
-            # just want these default values to appear in textual output
-            if self.tea_cache_rel_l1_thresholds is None:
-                self.tea_cache_rel_l1_thresholds = [_pipelinewrapper.constants.DEFAULT_TEA_CACHE_REL_L1_THRESHOLD]
-
         # ras
 
         ras_enabled = (self.ras or any(non_null_attr_that_start_with('ras_')))
@@ -1217,22 +1213,6 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'{a_namer("model_cpu_offload")} is not compatible '
                     f'with {a_namer("ras")} and related arguments.'
                 )
-
-            # just want these default values to appear in textual output
-            if self.ras_starvation_scales is None:
-                self.ras_starvation_scales = [_pipelinewrapper.constants.DEFAULT_RAS_STARVATION_SCALE]
-            if self.ras_error_reset_steps is None:
-                self.ras_error_reset_steps = [_pipelinewrapper.constants.DEFAULT_RAS_ERROR_RESET_STEPS]
-            if self.ras_high_ratios is None:
-                self.ras_high_ratios = [_pipelinewrapper.constants.DEFAULT_RAS_HIGH_RATIO]
-            if self.ras_patch_sizes is None:
-                self.ras_patch_sizes = [_pipelinewrapper.constants.DEFAULT_RAS_PATCH_SIZE]
-            if self.ras_sample_ratios is None:
-                self.ras_sample_ratios = [_pipelinewrapper.constants.DEFAULT_RAS_SAMPLE_RATIO]
-            if self.ras_metrics is None:
-                self.ras_metrics = [_pipelinewrapper.constants.DEFAULT_RAS_METRIC]
-            if self.ras_start_steps is None:
-                self.ras_start_steps = [_pipelinewrapper.constants.DEFAULT_RAS_START_STEP]
 
         # exit early if we know there is no possibility
         # of second model arguments being valid
@@ -1433,22 +1413,6 @@ class RenderLoopConfig(_types.SetFromMixin):
                 self.sdxl_refiner_pag_scales = [_pipelinewrapper.constants.DEFAULT_SDXL_REFINER_PAG_SCALE]
                 self.sdxl_refiner_pag_adaptive_scales = [
                     _pipelinewrapper.constants.DEFAULT_SDXL_REFINER_PAG_ADAPTIVE_SCALE]
-
-        if self.adetailer_detector_uris:
-            if self.adetailer_mask_shapes is None:
-                self.adetailer_mask_shapes = [_pipelinewrapper.constants.DEFAULT_ADETAILER_MASK_SHAPE]
-
-            if self.adetailer_mask_paddings is None:
-                self.adetailer_mask_paddings = [_pipelinewrapper.constants.DEFAULT_ADETAILER_MASK_PADDING]
-
-            if self.adetailer_detector_paddings is None:
-                self.adetailer_detector_paddings = [_pipelinewrapper.constants.DEFAULT_ADETAILER_DETECTOR_PADDING]
-
-            if self.adetailer_mask_blurs is None:
-                self.adetailer_mask_blurs = [_pipelinewrapper.constants.DEFAULT_ADETAILER_MASK_BLUR]
-
-            if self.adetailer_mask_dilations is None:
-                self.adetailer_mask_dilations = [_pipelinewrapper.constants.DEFAULT_ADETAILER_MASK_DILATION]
 
         # Detect logically incorrect config and set certain defaults
 
