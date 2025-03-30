@@ -2160,14 +2160,6 @@ class RenderLoopConfig(_types.SetFromMixin):
                 if n.startswith('adetailer_'):
                     return None
 
-            if not self.ras:
-                if n.startswith('ras_'):
-                    return None
-
-            if not self.tea_cache:
-                if n.startswith('tea_cache_'):
-                    return None
-
             if n in overrides:
                 return overrides[n]
             return v
