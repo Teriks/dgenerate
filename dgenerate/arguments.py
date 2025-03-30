@@ -494,8 +494,8 @@ def _type_ras_start_steps(val: str) -> int:
         val = int(val)
     except ValueError:
         raise argparse.ArgumentTypeError('Must be an integer')
-    if val < 0:
-        raise argparse.ArgumentTypeError('Must be greater than or equal to 0.')
+    if val < 1:
+        raise argparse.ArgumentTypeError('Must be greater than or equal to 1.')
     return val
 
 
@@ -504,8 +504,8 @@ def _type_ras_end_steps(val: str) -> int:
         val = int(val)
     except ValueError:
         raise argparse.ArgumentTypeError('Must be an integer')
-    if val < 0:
-        raise argparse.ArgumentTypeError('Must be greater than or equal to 0.')
+    if val < 1:
+        raise argparse.ArgumentTypeError('Must be greater than or equal to 1.')
     return val
 
 
@@ -1821,7 +1821,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             nargs='+', dest='ras_start_steps', type=_type_ras_start_steps,
             help="""Starting steps to try for RAS (Region-Adaptive Sampling).
 
-            This controls when RAS begins applying its sampling strategy.
+            This controls when RAS begins applying its sampling strategy. 
+            Must be greater than or equal to 1.
             
             Each value will be tried in turn.
             
@@ -1841,6 +1842,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             help="""Ending steps to try for RAS (Region-Adaptive Sampling).
 
             This controls when RAS stops applying its sampling strategy.
+            Must be greater than or equal to 1.
             
             Each value will be tried in turn.
             

@@ -2944,6 +2944,12 @@ class DiffusionPipelineWrapper:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'RAS does not support model CPU offloading.')
 
+            start_step = _types.default(args.ras_start_step, _constants.DEFAULT_RAS_START_STEP)
+            end_step = _types.default(args.ras_end_step, args.inference_steps)
+            if start_step > end_step:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'RAS start step must be less than or equal to end step.')
+
     def _auto_tea_cache_check(self, args: DiffusionArguments):
         for prop in args.__dict__.keys():
             if prop.startswith('tea_cache_'):
