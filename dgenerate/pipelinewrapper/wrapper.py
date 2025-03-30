@@ -2594,10 +2594,21 @@ class DiffusionPipelineWrapper:
                     'Perturbed attention guidance (pag* arguments) are is not supported '
                     'with --t2i-adapters.')
 
-        if sdxl_refiner_pag and not self._sdxl_refiner_uri:
-            raise _pipelines.UnsupportedPipelineConfigError(
-                'sdxl_refiner_pag* arguments are not supported when '
-                'an SDXL refiner is not specified.')
+            args.pag_scale = _types.default(
+                args.pag_scale, _constants.DEFAULT_PAG_SCALE)
+            args.pag_adaptive_scale = _types.default(
+                args.pag_adaptive_scale, _constants.DEFAULT_PAG_ADAPTIVE_SCALE)
+
+        if sdxl_refiner_pag:
+            if not self._sdxl_refiner_uri:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'sdxl_refiner_pag* arguments are not supported when '
+                    'an SDXL refiner is not specified.')
+
+            args.sdxl_refiner_pag_scale = _types.default(
+                args.pag_scale, _constants.DEFAULT_SDXL_REFINER_PAG_SCALE)
+            args.sdxl_refiner_pag_adaptive_scale = _types.default(
+                args.sdxl_refiner_pag_adaptive_scale, _constants.DEFAULT_SDXL_REFINER_PAG_ADAPTIVE_SCALE)
 
         self._pipeline_type = pipeline_type
 

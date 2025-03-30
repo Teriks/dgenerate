@@ -166,6 +166,11 @@ DEFAULT_ADETAILER_DETECTOR_PADDING: int = 0
 Default detector padding
 """
 
+DEFAULT_ADETAILER_DETECTOR_CONFIDENCE: float = 0.3
+"""
+Default detector confidence
+"""
+
 DEFAULT_ADETAILER_MASK_DILATION: int = 4
 """
 Default adetailer mask dilation

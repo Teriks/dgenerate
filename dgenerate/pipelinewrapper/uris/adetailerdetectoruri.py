@@ -25,6 +25,7 @@ import os.path
 import huggingface_hub
 
 import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
+import dgenerate.pipelinewrapper.constants as _pipelinewrapper_constants
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.torchutil as _torchutil
 import dgenerate.types as _types
@@ -166,7 +167,7 @@ class AdetailerDetectorUri:
                  revision: _types.OptionalString = None,
                  subfolder: _types.OptionalPath = None,
                  weight_name: _types.OptionalName = None,
-                 confidence: float = 0.3,
+                 confidence: float = _pipelinewrapper_constants.DEFAULT_ADETAILER_DETECTOR_CONFIDENCE,
                  detector_padding: _types.OptionalPadding = None,
                  mask_shape: _types.OptionalName = None,
                  mask_padding: _types.OptionalPadding = None,
@@ -287,7 +288,7 @@ class AdetailerDetectorUri:
         try:
             r = _lora_uri_parser.parse(uri)
 
-            confidence = r.args.get('confidence', 0.3)
+            confidence = r.args.get('confidence', _pipelinewrapper_constants.DEFAULT_ADETAILER_DETECTOR_CONFIDENCE)
 
             try:
                 confidence = float(confidence)

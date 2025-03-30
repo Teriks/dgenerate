@@ -291,7 +291,7 @@ class RenderLoop:
 
     config: RenderLoopConfig
     """
-    Render loop configuration.
+    Render loops generation related configuration.
     """
 
     @property
