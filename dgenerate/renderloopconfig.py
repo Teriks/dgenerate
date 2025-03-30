@@ -731,6 +731,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     Starting steps to try for RAS (Region-Adaptive Sampling).
     
     This controls when RAS begins applying its sampling strategy.
+    Must be greater than or equal to 1.
     Defaults to 4 if not specified.
     
     Supplying any value implies that :py:attr:`RenderLoopConfig.ras` is enabled.
@@ -743,6 +744,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     Ending steps to try for RAS (Region-Adaptive Sampling).
     
     This controls when RAS stops applying its sampling strategy.
+    Must be greater than or equal to 1.
     Defaults to the number of inference steps if not specified.
     
     Supplying any value implies that :py:attr:`RenderLoopConfig.ras` is enabled.
