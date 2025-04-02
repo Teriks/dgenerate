@@ -2108,9 +2108,9 @@ def _create_torch_diffusion_pipeline(
         revision=revision,
         variant=variant,
         subfolder=subfolder,
-        include_unet_or_transformer=pipeline_cached_with_submodules,
+        include_unet_or_transformer=pipeline_cached_with_submodules or bool(lora_uris),
         include_vae=pipeline_cached_with_submodules,
-        include_text_encoders=pipeline_cached_with_submodules,
+        include_text_encoders=pipeline_cached_with_submodules or bool(lora_uris),
         lora_uris=lora_uris,
         image_encoder_uri=image_encoder_uri,
         ip_adapter_uris=ip_adapter_uris,
@@ -2167,8 +2167,8 @@ def _create_torch_diffusion_pipeline(
             original_config=original_config,
             use_auth_token=auth_token,
             local_files_only=local_files_only,
-            sequential_cpu_offload_member=sequential_cpu_offload,
-            model_cpu_offload_member=model_cpu_offload)
+            no_cache=bool(lora_uris) or model_cpu_offload or sequential_cpu_offload
+        )
 
     def load_vae(uri: _uris.VAEUri):
         return uri.load(
@@ -2176,8 +2176,8 @@ def _create_torch_diffusion_pipeline(
             original_config=original_config,
             use_auth_token=auth_token,
             local_files_only=local_files_only,
-            sequential_cpu_offload_member=sequential_cpu_offload,
-            model_cpu_offload_member=model_cpu_offload)
+            no_cache=model_cpu_offload or sequential_cpu_offload
+        )
 
     def load_unet(uri: _uris.UNetUri, unet_class):
         return uri.load(
@@ -2186,8 +2186,7 @@ def _create_torch_diffusion_pipeline(
             original_config=original_config,
             use_auth_token=auth_token,
             local_files_only=local_files_only,
-            sequential_cpu_offload_member=sequential_cpu_offload,
-            model_cpu_offload_member=model_cpu_offload,
+            no_cache=bool(lora_uris) or model_cpu_offload or sequential_cpu_offload,
             unet_class=unet_class
         )
 
@@ -2198,8 +2197,7 @@ def _create_torch_diffusion_pipeline(
             original_config=original_config,
             use_auth_token=auth_token,
             local_files_only=local_files_only,
-            sequential_cpu_offload_member=sequential_cpu_offload,
-            model_cpu_offload_member=model_cpu_offload,
+            no_cache=bool(lora_uris) or model_cpu_offload or sequential_cpu_offload,
             transformer_class=transformer_class
         )
 
@@ -2390,8 +2388,7 @@ def _create_torch_diffusion_pipeline(
             dtype_fallback=dtype,
             use_auth_token=auth_token,
             local_files_only=local_files_only,
-            sequential_cpu_offload_member=sequential_cpu_offload,
-            model_cpu_offload_member=model_cpu_offload,
+            no_cache=model_cpu_offload or sequential_cpu_offload
         )
 
         _messages.debug_log(lambda:
@@ -2409,8 +2406,7 @@ def _create_torch_diffusion_pipeline(
                 use_auth_token=auth_token,
                 dtype_fallback=dtype,
                 local_files_only=local_files_only,
-                sequential_cpu_offload_member=sequential_cpu_offload,
-                model_cpu_offload_member=model_cpu_offload
+                no_cache=model_cpu_offload or sequential_cpu_offload
             )
 
             _messages.debug_log(lambda:
@@ -2446,8 +2442,8 @@ def _create_torch_diffusion_pipeline(
                 use_auth_token=auth_token,
                 dtype_fallback=dtype,
                 local_files_only=local_files_only,
-                sequential_cpu_offload_member=sequential_cpu_offload,
-                model_cpu_offload_member=model_cpu_offload)
+                no_cache=model_cpu_offload or sequential_cpu_offload
+            )
 
             _messages.debug_log(lambda:
                                 f'Added Torch ControlNet: "{controlnet_uri}" '

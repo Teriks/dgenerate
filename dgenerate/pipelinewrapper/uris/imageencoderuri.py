@@ -120,8 +120,7 @@ class ImageEncoderUri:
              dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
              use_auth_token: _types.OptionalString = None,
              local_files_only: bool = False,
-             sequential_cpu_offload_member: bool = False,
-             model_cpu_offload_member: bool = False) -> transformers.CLIPVisionModelWithProjection:
+             no_cache: bool = False) -> transformers.CLIPVisionModelWithProjection:
         """
         Load an Image Encoder Model of type :py:class:`transformers.CLIPVisionModelWithProjection`
 
@@ -130,11 +129,7 @@ class ImageEncoderUri:
         :param local_files_only: avoid downloading files and only look for cached files
             when the model path is a huggingface slug or blob link
 
-        :param sequential_cpu_offload_member: This model will be attached to
-            a pipeline which will have sequential cpu offload enabled?
-
-        :param model_cpu_offload_member: This model will be attached to a pipeline
-            which will have model cpu offload enabled?
+        :param no_cache: If True, force the returned object not to be cached by the memoize decorator.
 
         :raises ModelNotFoundError: If the model could not be found.
 
@@ -167,12 +162,7 @@ class ImageEncoderUri:
               dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
               use_auth_token: _types.OptionalString = None,
               local_files_only: bool = False,
-              sequential_cpu_offload_member: bool = False,
-              model_cpu_offload_member: bool = False) -> transformers.CLIPVisionModelWithProjection:
-
-        if sequential_cpu_offload_member and model_cpu_offload_member:
-            # these are used for cache differentiation only
-            raise ValueError('sequential_cpu_offload_member and model_cpu_offload_member cannot both be True.')
+              no_cache: bool = False) -> transformers.CLIPVisionModelWithProjection:
 
         if self.dtype is None:
             torch_dtype = _enums.get_torch_dtype(dtype_fallback)
@@ -218,7 +208,7 @@ class ImageEncoderUri:
         # noinspection PyTypeChecker
         return image_encoder, _d_memoize.CachedObjectMetadata(
             size=estimated_memory_use,
-            skip=model_cpu_offload_member or sequential_cpu_offload_member
+            skip=no_cache
         )
 
     @staticmethod

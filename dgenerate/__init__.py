@@ -255,7 +255,7 @@ def main(args: collections.abc.Sequence[str] | None = None):
 
             for input_file in input_files:
                 try:
-                    with open(input_file, 'rt') as file:
+                    with open(input_file, 'rt', encoding='utf-8') as file:
                         runner.run_file(file)
                 except (ModuleFileNotFoundError, FileNotFoundError) as e:
                     dgenerate.messages.log(f'dgenerate: error: {str(e).strip()}',

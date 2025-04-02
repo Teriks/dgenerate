@@ -168,8 +168,7 @@ class TextEncoderUri:
              original_config: _types.OptionalPath = None,
              use_auth_token: _types.OptionalString = None,
              local_files_only: bool = False,
-             sequential_cpu_offload_member: bool = False,
-             model_cpu_offload_member: bool = False) -> \
+             no_cache: bool = False) -> \
             typing.Union[
                 transformers.models.clip.CLIPTextModel,
                 transformers.models.clip.CLIPTextModelWithProjection,
@@ -187,12 +186,7 @@ class TextEncoderUri:
         :param use_auth_token: optional huggingface auth token.
         :param local_files_only: avoid downloading files and only look for cached files
             when the model path is a huggingface slug or blob link
-
-        :param sequential_cpu_offload_member: This model will be attached to
-            a pipeline which will have sequential cpu offload enabled?
-
-        :param model_cpu_offload_member: This model will be attached to a pipeline
-            which will have model cpu offload enabled?
+        :param no_cache: If True, force the returned object not to be cached by the memoize decorator.
 
         :raises ModelNotFoundError: If the model could not be found.
 
@@ -201,7 +195,6 @@ class TextEncoderUri:
             :py:class:`transformers.models.t5.T5EncoderModel`, or
             :py:class:`diffusers.pipelines.kolors.ChatGLMModel`
         """
-
         try:
             args = locals()
             args.pop('self')
@@ -231,17 +224,12 @@ class TextEncoderUri:
               original_config: _types.OptionalPath = None,
               use_auth_token: _types.OptionalString = None,
               local_files_only: bool = False,
-              sequential_cpu_offload_member: bool = False,
-              model_cpu_offload_member: bool = False) -> \
+              no_cache: bool = False) -> \
             typing.Union[
                 transformers.models.clip.CLIPTextModel,
                 transformers.models.clip.CLIPTextModelWithProjection,
                 transformers.models.t5.T5EncoderModel,
                 diffusers.pipelines.kolors.ChatGLMModel]:
-
-        if sequential_cpu_offload_member and model_cpu_offload_member:
-            # these are used for cache differentiation only
-            raise ValueError('sequential_cpu_offload_member and model_cpu_offload_member cannot both be True.')
 
         if self.dtype is None:
             torch_dtype = _enums.get_torch_dtype(dtype_fallback)
@@ -343,7 +331,7 @@ class TextEncoderUri:
         # noinspection PyTypeChecker
         return text_encoder, _d_memoize.CachedObjectMetadata(
             size=estimated_memory_use,
-            skip=model_cpu_offload_member or sequential_cpu_offload_member or self.quantizer
+            skip=self.quantizer or no_cache
         )
 
     @staticmethod

@@ -34,6 +34,7 @@ import typing
 
 import PIL.Image
 import PIL.ImageTk
+import charset_normalizer
 
 import dgenerate.console.argumentselect as _argumentselect
 import dgenerate.console.directiveselect as _directiveselect
@@ -856,10 +857,29 @@ class DgenerateConsole(tk.Tk):
 
         self.load_file(fn)
 
+    def _try_load_utf8(self, file_name):
+        try:
+            with open(file_name, 'r', encoding='utf-8') as f:
+                return True, f.read()
+        except UnicodeDecodeError:
+            return False, None
+
+    def _load_to_utf8(self, file_name):
+        is_utf8, content = self._try_load_utf8(file_name)
+        if is_utf8:
+            return 'utf-8', content
+
+        result = charset_normalizer.from_path(file_name).best()
+
+        return result.encoding, result.output().decode('utf-8')
+
     def load_file(self, file_name):
-        with open(file_name, 'rt') as f:
-            self._input_text.text.replace('1.0', tk.END, f.read())
+        encoding, content = self._load_to_utf8(file_name)
+
+        self._input_text.text.replace('1.0', tk.END, content)
+
         self._input_text.text.mark_set('insert', '1.0')
+
         self.multiline_mode(True)
 
     def _save_input_entry_text(self):
@@ -1051,7 +1071,7 @@ class DgenerateConsole(tk.Tk):
     def _load_settings(self):
         settings_path = pathlib.Path(pathlib.Path.home(), '.dgenerate_console_settings')
         if settings_path.exists():
-            with settings_path.open('r') as file:
+            with settings_path.open('r', encoding='utf-8') as file:
                 config = json.load(file)
                 self._theme_menu_var.set(config.get('theme', 'dgenerate'))
                 self._auto_scroll_on_run_check_var.set(config.get('auto_scroll_on_run', True))
@@ -1063,7 +1083,7 @@ class DgenerateConsole(tk.Tk):
 
     def save_settings(self):
         settings_path = pathlib.Path(pathlib.Path.home(), '.dgenerate_console_settings')
-        with settings_path.open('w') as file:
+        with settings_path.open('w', encoding='utf-8') as file:
             config = {
                 'theme': self._theme_menu_var.get(),
                 'auto_scroll_on_run': self._auto_scroll_on_run_check_var.get(),
@@ -1079,7 +1099,7 @@ class DgenerateConsole(tk.Tk):
 
         history_path = pathlib.Path(pathlib.Path.home(), '.dgenerate_console_history')
         if history_path.exists():
-            with history_path.open('r') as file:
+            with history_path.open('r', encoding='utf-8') as file:
                 self._command_history = json.load(file)[-self._max_command_history:]
                 self._current_command_index = len(self._command_history)
 
@@ -1088,7 +1108,7 @@ class DgenerateConsole(tk.Tk):
             return
 
         history_path = pathlib.Path(pathlib.Path.home(), '.dgenerate_console_history')
-        with history_path.open('w') as file:
+        with history_path.open('w', encoding='utf-8') as file:
             json.dump(self._command_history[-self._max_command_history:], file)
 
     def _run_input_text(self):
@@ -1146,27 +1166,27 @@ class DgenerateConsole(tk.Tk):
 
         # Undo/Redo operations
         menu.add_command(label='Undo', accelerator='Ctrl+Z',
-            command=self._undo_input_entry)
+                         command=self._undo_input_entry)
         menu.add_command(label='Redo', accelerator='Ctrl+Shift+Z',
-            command=self._redo_input_entry)
+                         command=self._redo_input_entry)
         menu.add_separator()
 
         # Search submenu
         search_submenu = tk.Menu(menu, tearoff=0)
         search_submenu.add_command(label='Find',
-                         accelerator='Ctrl+F',
-                         command=lambda:
-                         _finddialog.open_find_dialog(
-                             self,
-                             'Find In Input',
-                             self._input_text.text))
+                                   accelerator='Ctrl+F',
+                                   command=lambda:
+                                   _finddialog.open_find_dialog(
+                                       self,
+                                       'Find In Input',
+                                       self._input_text.text))
         search_submenu.add_command(label='Replace',
-                         accelerator='Ctrl+R',
-                         command=lambda:
-                         _finddialog.open_find_replace_dialog(
-                             self,
-                             'Replace In Input',
-                             self._input_text.text))
+                                   accelerator='Ctrl+R',
+                                   command=lambda:
+                                   _finddialog.open_find_replace_dialog(
+                                       self,
+                                       'Replace In Input',
+                                       self._input_text.text))
         menu.add_cascade(label='Find / Replace', menu=search_submenu)
 
         # Format option
@@ -1178,39 +1198,39 @@ class DgenerateConsole(tk.Tk):
         # Code submenu
         code_submenu = tk.Menu(menu, tearoff=0)
         code_submenu.add_command(label='Recipe',
-                         command=self._input_text_insert_recipe)
+                                 command=self._input_text_insert_recipe)
         code_submenu.add_command(label='Argument',
-                         command=self._input_text_insert_argument)
+                                 command=self._input_text_insert_argument)
         code_submenu.add_command(label='Directive',
-                         command=self._input_text_insert_directive)
+                                 command=self._input_text_insert_directive)
         code_submenu.add_command(label='Function',
-                         command=self._input_text_insert_function)
+                                 command=self._input_text_insert_function)
         menu.add_cascade(label='Insert Code', menu=code_submenu)
 
         # URI submenu
         uri_submenu = tk.Menu(menu, tearoff=0)
         uri_submenu.add_command(label='Image Seed URI',
-                         command=self._input_text_insert_image_seed)
+                                command=self._input_text_insert_image_seed)
         uri_submenu.add_command(label='Karras Scheduler URI',
-                         command=self._input_text_insert_karras_scheduler)
+                                command=self._input_text_insert_karras_scheduler)
         uri_submenu.add_command(label='Image Processor URI',
-                         command=self._input_text_insert_image_processor)
+                                command=self._input_text_insert_image_processor)
         uri_submenu.add_command(label='Prompt Upscaler URI',
-                         command=self._input_text_insert_prompt_upscaler)
+                                command=self._input_text_insert_prompt_upscaler)
         uri_submenu.add_command(label='Prompt Weighter URI',
-                         command=self._input_text_insert_prompt_weighter)
+                                command=self._input_text_insert_prompt_weighter)
         uri_submenu.add_command(label='Quantizer URI',
-                         command=self._input_text_insert_quantizer)
+                                command=self._input_text_insert_quantizer)
         menu.add_cascade(label='Insert URI', menu=uri_submenu)
 
         # Path submenu
         path_submenu = tk.Menu(menu, tearoff=0)
         path_submenu.add_command(label='File Path (Open)',
-                         command=self._input_text_insert_file_path)
+                                 command=self._input_text_insert_file_path)
         path_submenu.add_command(label='File Path (Save)',
-                         command=self._input_text_insert_file_path_save)
+                                 command=self._input_text_insert_file_path_save)
         path_submenu.add_command(label='Directory Path',
-                         command=self._input_text_insert_directory_path)
+                                 command=self._input_text_insert_directory_path)
         menu.add_cascade(label='Insert Path', menu=path_submenu)
 
         return menu
