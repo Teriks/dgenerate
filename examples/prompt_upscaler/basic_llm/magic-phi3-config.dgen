@@ -35,7 +35,7 @@ stabilityai/stable-diffusion-xl-base-1.0
 --guidance-scales 5
 --clip-skips 0
 --gen-seeds 1
---output-path output
+--output-path magic-phi3
 --output-size 1024x1024
 --prompt-weighter sd-embed
 --prompt-upscaler dynamicprompts magicprompt;model={{ llm_model }};preamble={{ llm_preamble }};seed={{ llm_seed }}{{ llm_optimization }}

@@ -200,8 +200,7 @@ class ControlNetUri:
              dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
              use_auth_token: _types.OptionalString = None,
              local_files_only: bool = False,
-             sequential_cpu_offload_member: bool = False,
-             model_cpu_offload_member: bool = False,
+             no_cache: bool = False,
              model_class:
              type[diffusers.ControlNetModel] |
              type[diffusers.ControlNetUnionModel] |
@@ -223,11 +222,7 @@ class ControlNetUri:
         :param local_files_only: Avoid connecting to huggingface to download models and
             only use cached models?
 
-        :param sequential_cpu_offload_member: This model will be attached to
-            a pipeline which will have sequential cpu offload enabled?
-
-        :param model_cpu_offload_member: This model will be attached to a pipeline
-            which will have model cpu offload enabled?
+        :param no_cache: If True, force the returned object not to be cached by the memoize decorator.
 
         :param model_class: What class of controlnet model should be loaded?
             if ``None`` is specified, load based off :py:attr:`ControlNetUri.model_type`
@@ -251,8 +246,7 @@ class ControlNetUri:
             return self._load(dtype_fallback,
                               use_auth_token,
                               local_files_only,
-                              sequential_cpu_offload_member,
-                              model_cpu_offload_member,
+                              no_cache,
                               model_class)
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
@@ -279,8 +273,7 @@ class ControlNetUri:
               dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
               use_auth_token: _types.OptionalString = None,
               local_files_only: bool = False,
-              sequential_cpu_offload_member: bool = False,
-              model_cpu_offload_member: bool = False,
+              no_cache: bool = False,
               model_class:
               type[diffusers.ControlNetModel] |
               type[diffusers.ControlNetUnionModel] |
@@ -290,10 +283,6 @@ class ControlNetUri:
             diffusers.ControlNetUnionModel | \
             diffusers.SD3ControlNetModel | \
             diffusers.FluxControlNetModel:
-
-        if sequential_cpu_offload_member and model_cpu_offload_member:
-            # these are used for cache differentiation only
-            raise ValueError('sequential_cpu_offload_member and model_cpu_offload_member cannot both be True.')
 
         if model_class not in {diffusers.FluxControlNetModel, diffusers.ControlNetUnionModel}:
             if self.mode is not None:
@@ -356,7 +345,7 @@ class ControlNetUri:
         # noinspection PyTypeChecker
         return new_net, _d_memoize.CachedObjectMetadata(
             size=estimated_memory_usage,
-            skip=model_cpu_offload_member or sequential_cpu_offload_member
+            skip=no_cache
         )
 
     @staticmethod

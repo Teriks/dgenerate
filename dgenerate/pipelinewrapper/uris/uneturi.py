@@ -141,8 +141,7 @@ class UNetUri:
              original_config: _types.OptionalPath = None,
              use_auth_token: _types.OptionalString = None,
              local_files_only: bool = False,
-             sequential_cpu_offload_member: bool = False,
-             model_cpu_offload_member: bool = False,
+             no_cache: bool = False,
              unet_class=diffusers.UNet2DConditionModel):
         """
         Load a UNet of type :py:class:`diffusers.UNet2DConditionModel`
@@ -153,12 +152,7 @@ class UNetUri:
         :param use_auth_token: optional huggingface auth token.
         :param local_files_only: avoid downloading files and only look for cached files
             when the model path is a huggingface slug or blob link
-
-        :param sequential_cpu_offload_member: This model will be attached to
-            a pipeline which will have sequential cpu offload enabled?
-
-        :param model_cpu_offload_member: This model will be attached to a pipeline
-            which will have model cpu offload enabled?
+        :param no_cache: If True, force the returned object not to be cached by the memoize decorator.
 
         :param unet_class: UNet class
 
@@ -195,13 +189,8 @@ class UNetUri:
               original_config: _types.OptionalPath = None,
               use_auth_token: _types.OptionalString = None,
               local_files_only: bool = False,
-              sequential_cpu_offload_member: bool = False,
-              model_cpu_offload_member: bool = False,
-              unet_class=diffusers.UNet2DConditionModel):
-
-        if sequential_cpu_offload_member and model_cpu_offload_member:
-            # these are used for cache differentiation only
-            raise ValueError('sequential_cpu_offload_member and model_cpu_offload_member cannot both be True.')
+              no_cache: bool = False,
+              unet_class=diffusers.UNet2DConditionModel) -> diffusers.UNet2DConditionModel:
 
         if self.dtype is None:
             torch_dtype = _enums.get_torch_dtype(dtype_fallback)
@@ -294,7 +283,7 @@ class UNetUri:
 
         return unet, _d_memoize.CachedObjectMetadata(
             size=estimated_memory_use,
-            skip=model_cpu_offload_member or sequential_cpu_offload_member or self.quantizer
+            skip=self.quantizer or no_cache
         )
 
     @staticmethod

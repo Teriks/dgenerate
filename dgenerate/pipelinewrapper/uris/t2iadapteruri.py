@@ -125,8 +125,7 @@ class T2IAdapterUri:
              dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
              use_auth_token: _types.OptionalString = None,
              local_files_only: bool = False,
-             sequential_cpu_offload_member: bool = False,
-             model_cpu_offload_member: bool = False) -> diffusers.T2IAdapter:
+             no_cache: bool = False) -> diffusers.T2IAdapter:
         """
         Load a :py:class:`diffusers.T2IAdapter` from this URI.
 
@@ -139,11 +138,7 @@ class T2IAdapterUri:
         :param local_files_only: Avoid connecting to huggingface to download models and
             only use cached models?
 
-        :param sequential_cpu_offload_member: This model will be attached to
-            a pipeline which will have sequential cpu offload enabled?
-
-        :param model_cpu_offload_member: This model will be attached to a pipeline
-            which will have model cpu offload enabled?
+        :param no_cache: If True, force the returned object not to be cached by the memoize decorator.
 
         :raises ModelNotFoundError: If the model could not be found.
 
@@ -178,12 +173,7 @@ class T2IAdapterUri:
               dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
               use_auth_token: _types.OptionalString = None,
               local_files_only: bool = False,
-              sequential_cpu_offload_member: bool = False,
-              model_cpu_offload_member: bool = False) -> diffusers.T2IAdapter:
-
-        if sequential_cpu_offload_member and model_cpu_offload_member:
-            # these are used for cache differentiation only
-            raise ValueError('sequential_cpu_offload_member and model_cpu_offload_member cannot both be True.')
+              no_cache: bool = False) -> diffusers.T2IAdapter:
 
         model_path = _pipelinewrapper_util.download_non_hf_model(self.model)
 
@@ -239,7 +229,7 @@ class T2IAdapterUri:
         # noinspection PyTypeChecker
         return new_adapter, _d_memoize.CachedObjectMetadata(
             size=estimated_memory_usage,
-            skip=model_cpu_offload_member or sequential_cpu_offload_member
+            skip=no_cache
         )
 
     @staticmethod

@@ -43,7 +43,7 @@ of input images.
 
 
 def _iterate_diffusion_args(**kwargs) -> collections.abc.Iterator[_pipelinewrapper.DiffusionArguments]:
-    def _list_or_list_of_none(val):
+    def _list_or_list_of_none(val: typing.Any) -> typing.List[typing.Any]:
         return val if val else [None]
 
     yield from _types.iterate_attribute_combinations(
@@ -51,7 +51,7 @@ def _iterate_diffusion_args(**kwargs) -> collections.abc.Iterator[_pipelinewrapp
         _pipelinewrapper.DiffusionArguments)
 
 
-def gen_seeds(n) -> list[int]:
+def gen_seeds(n: int) -> list[int]:
     """
     Generate a list of N random seed integers
 
@@ -1128,61 +1128,74 @@ class RenderLoopConfig(_types.SetFromMixin):
         self.prompts = [_prompt.Prompt()]
         self.seeds = gen_seeds(1)
 
-    def check(self, attribute_namer: typing.Callable[[str], str] = None):
+    def _check(self, attribute_namer: typing.Optional[typing.Callable[[str], str]] = None):
         """
         Check the configuration for type and logical usage errors, set
         defaults for certain values when needed and not specified.
 
         This may modify the configuration.
 
-        :raises RenderLoopConfigError: on errors
-
         :param attribute_namer: Callable for naming attributes mentioned in exception messages
         """
-        try:
-            self._check(attribute_namer)
-        except (_pipelinewrapper.InvalidModelUriError, _mediainput.ImageSeedParseError) as e:
-            raise RenderLoopConfigError(e)
+        # Create attribute namer function for consistent error reporting
+        a_namer = self._create_attribute_namer(attribute_namer)
+        
+        # Validate basic type constraints
+        self._validate_type_constraints(a_namer)
+        
+        # Setup help mode and validate help-related arguments
+        help_mode = self._check_help_arguments(a_namer)
+        
+        # Check model-specific optimization features
+        self._check_optimization_features(a_namer)
+        
+        # Check second model arguments compatibility
+        self._check_second_model_compatibility(a_namer)
+        
+        # Check configuration files compatibility
+        self._check_configuration_files_compatibility(a_namer)
+        
+        # Check adetailer compatibility
+        self._check_adetailer_compatibility(a_namer)
+        
+        # Check image seeds requirements for certain model types
+        self._check_image_seeds_requirements(a_namer, help_mode)
+        
+        # Check output-related arguments
+        self._check_output_arguments(a_namer)
+        
+        # Configure PAG defaults if needed
+        self._configure_pag_defaults()
+        
+        # Check prompt weighters
+        self._check_prompt_weighters(a_namer)
+        
+        # Check other general compatibility issues
+        self._check_general_compatibility(a_namer)
+        
+        # Check model-specific requirements and restrictions
+        self._check_model_specific_requirements(a_namer)
+        
+        # Process image seeds if present
+        self._process_image_seeds(a_namer, help_mode)
 
-    def _check(self, attribute_namer: typing.Callable[[str], str] = None):
-
-        def non_null_attr_that_start_with(s):
-            if not isinstance(s, list):
-                s = [s]
-            return (a for a in dir(self) if any(a.startswith(k) for k in s) and getattr(self, a) is not None)
-
-        def non_null_attr_that_end_with(s):
-            return (a for a in dir(self) if a.endswith(s) and getattr(self, a) is not None)
-
-        def non_null_second_model_arguments(prefix=None):
-            def check(a):
-                if prefix and a.startswith(prefix):
-                    return True
-                if a.startswith('second_model'):
-                    # short circuit and include
-                    # second model prompt arguments
-                    return True
-                if a.startswith('second') and not \
-                        (a.endswith('prompts') or a.endswith('prompt_upscaler_uri')):
-                    # reject primary model 'second_prompts' and `second_prompt_upscaler_uri`
-                    # and include everything else
-                    return True
-                return False
-
-            return (a for a in dir(self) if check(a) and getattr(self, a) is not None)
-
-        def a_namer(attr_name):
+    def _create_attribute_namer(self, attribute_namer: typing.Optional[typing.Callable[[str], str]]) -> typing.Callable[[str], str]:
+        """Create a function to standardize attribute naming in error messages."""
+        def a_namer(attr_name: str) -> str:
             if attribute_namer:
                 return attribute_namer(attr_name)
             return f'{self.__class__.__name__}.{attr_name}'
+        return a_namer
 
+    def _validate_type_constraints(self, a_namer: typing.Callable[[str], str]):
+        """Validate type constraints on configuration attributes."""
         try:
-            _types.type_check_struct(self, attribute_namer)
+            _types.type_check_struct(self, a_namer)
         except ValueError as e:
             raise RenderLoopConfigError(e)
 
-        # help arg usages and --second-model-scheduler --second-model-text-encoders
-
+    def _check_help_arguments(self, a_namer: typing.Callable[[str], str]) -> bool:
+        """Check help-related arguments for validity."""
         schedulers = [self.scheduler_uri] if \
             isinstance(self.scheduler_uri, (_types.Uri, type(None))) else self.scheduler_uri
         scheduler_help = any(_pipelinewrapper.scheduler_is_help(s) for s in schedulers)
@@ -1222,49 +1235,45 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'You cannot specify "help" or "helpargs" to {a_namer("second_model_text_encoders")} '
                 f'with multiple values involved.'
             )
+        
+        return help_mode
 
-        # tea_cache and tea_cache_rel_l1_thresholds
-
-        tea_cache_enabled = (self.tea_cache or any(non_null_attr_that_start_with('tea_cache_')))
-
+    def _check_optimization_features(self, a_namer: typing.Callable[[str], str]):
+        """Check optimization features compatibility with the selected model type."""
+        # Check TeaCache compatibility
+        tea_cache_enabled = (self.tea_cache or any(self._non_null_attr_that_start_with('tea_cache_')))
         if tea_cache_enabled and not _pipelinewrapper.model_type_is_flux(self.model_type):
             raise RenderLoopConfigError(
                 f'{a_namer("tea_cache")} and related arguments are only '
                 f'compatible with {a_namer("model_type")} torch-flux*'
             )
-
-        if tea_cache_enabled:
-            if self.model_cpu_offload:
-                raise RenderLoopConfigError(
-                    f'{a_namer("model_cpu_offload")} is not compatible '
-                    f'with {a_namer("tea_cache")} and related arguments.'
-                )
-
-        # ras
-
-        ras_enabled = (self.ras or any(non_null_attr_that_start_with('ras_')))
-
+        if tea_cache_enabled and self.model_cpu_offload:
+            raise RenderLoopConfigError(
+                f'{a_namer("model_cpu_offload")} is not compatible '
+                f'with {a_namer("tea_cache")} and related arguments.'
+            )
+        
+        # Check RAS compatibility
+        ras_enabled = (self.ras or any(self._non_null_attr_that_start_with('ras_')))
         if ras_enabled and not _pipelinewrapper.model_type_is_sd3(self.model_type):
             raise RenderLoopConfigError(
                 f'{a_namer("ras")} and related arguments are only '
                 f'compatible with {a_namer("model_type")} torch-sd3'
             )
+        if ras_enabled and self.model_cpu_offload:
+            raise RenderLoopConfigError(
+                f'{a_namer("model_cpu_offload")} is not compatible '
+                f'with {a_namer("ras")} and related arguments.'
+            )
 
-        if ras_enabled:
-
-            if self.model_cpu_offload:
-                raise RenderLoopConfigError(
-                    f'{a_namer("model_cpu_offload")} is not compatible '
-                    f'with {a_namer("ras")} and related arguments.'
-                )
-
-        # exit early if we know there is no possibility
-        # of second model arguments being valid
+    def _check_second_model_compatibility(self, a_namer: typing.Callable[[str], str]):
+        """Check compatibility of second model arguments with the primary model type."""
+        # Check if second model arguments are valid for the primary model type
         if not (_pipelinewrapper.model_type_is_sdxl(self.model_type) or
                 _pipelinewrapper.model_type_is_kolors(self.model_type) or
                 _pipelinewrapper.model_type_is_s_cascade(self.model_type)):
             errors = []
-            for arg in non_null_second_model_arguments():
+            for arg in self._non_null_second_model_arguments():
                 errors.append(
                     f'Cannot use {a_namer(arg)} with '
                     f'{a_namer("model_type")} '
@@ -1272,37 +1281,36 @@ class RenderLoopConfig(_types.SetFromMixin):
                 )
             if errors:
                 raise RenderLoopConfigError('\n'.join(errors))
-
+        
+        # Check if second model scheduler and text encoder are valid
         if not self.sdxl_refiner_uri and not self.s_cascade_decoder_uri:
             if self.second_model_scheduler_uri:
                 raise RenderLoopConfigError(
                     f'Cannot use {a_namer("second_model_scheduler_uri")} if {a_namer("sdxl_refiner_uri")} '
                     f'or {a_namer("s_cascade_decoder_uri")} is not specified.')
-
             if self.second_model_text_encoder_uris:
                 raise RenderLoopConfigError(
                     f'Cannot use {a_namer("second_model_text_encoder_uris")} if {a_namer("sdxl_refiner_uri")} '
-                    f'or {a_namer("s_cascade_decoder_uri")} is not specified.'
-                )
+                    f'or {a_namer("s_cascade_decoder_uri")} is not specified.')
 
-        # ===
-
-        # --original-config and --second-model-original-config
-
+    def _check_configuration_files_compatibility(self, a_namer: typing.Callable[[str], str]):
+        """Check compatibility of configuration files with model types."""
+        # Check original config compatibility
         if not _pipelinewrapper_util.is_single_file_model_load(self.model_path):
             if self.original_config:
                 raise RenderLoopConfigError(
                     f'You cannot specify {a_namer("original_config")} when the main '
                     f'model is not a a single file checkpoint.'
                 )
-
+        
+        # Check second model original config compatibility
         if self.second_model_original_config:
             if not self.sdxl_refiner_uri and not self.s_cascade_decoder_uri:
                 raise RenderLoopConfigError(
                     f'You cannot specify {a_namer("second_model_original_config")} '
                     f'without {a_namer("sdxl_refiner_uri")} or {a_namer("s_cascade_decoder_uri")}.'
                 )
-
+            
             if self.sdxl_refiner_uri and \
                     not _pipelinewrapper_util.is_single_file_model_load(
                         _pipelinewrapper.uris.SDXLRefinerUri.parse(self.sdxl_refiner_uri).model):
@@ -1320,18 +1328,16 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'single file checkpoint.'
                 )
 
-        # ===
-
-        # check for adetailer pipeline model compatibility
-
-        adetailer_args_used = list(non_null_attr_that_start_with('adetailer'))
-
+    def _check_adetailer_compatibility(self, a_namer: typing.Callable[[str], str]):
+        """Check compatibility of ADetailer-related arguments."""
+        adetailer_args_used = list(self._non_null_attr_that_start_with('adetailer'))
+        
         if not self.adetailer_detector_uris and adetailer_args_used:
             bad_adetailer_args = _textprocessing.oxford_comma(
                 [a_namer(a) for a in adetailer_args_used if a != "adetailer_detector_uris"], "or")
             raise RenderLoopConfigError(
                 f'May not use {bad_adetailer_args} without {a_namer("adetailer_detector_uris")}.')
-
+        
         if self.adetailer_detector_uris and self.model_type not in {
             _pipelinewrapper.ModelType.TORCH,
             _pipelinewrapper.ModelType.TORCH_SDXL,
@@ -1344,84 +1350,79 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'{a_namer("adetailer_detector_uris")} is only compatible with '
                 f'{a_namer("model_type")} torch, torch-sdxl, torch-kolors, torch-sd3, and torch-flux')
 
-        # Check for argument combinations which require image seeds
-        # also validate that we can construct a valid txt2img pipeline
-        # using this config
-
+    def _check_image_seeds_requirements(self, a_namer: typing.Callable[[str], str], help_mode: bool):
+        """Verify requirements for image seeds based on model type."""
         if not self.image_seeds:
-            args_help = scheduler_help or text_encoder_help or second_model_text_encoder_help
-
+            args_help = help_mode
+            
+            # Check if model type requires image seeds
             if _pipelinewrapper.model_type_is_floyd_ifs(self.model_type) and not args_help:
                 raise RenderLoopConfigError(
                     f'you cannot specify Deep Floyd IF super-resolution '
                     f'({a_namer("model_type")} "{self.model_type})" without {a_namer("image_seeds")}'
                 )
-
+                
             if _pipelinewrapper.model_type_is_upscaler(self.model_type) and not args_help:
                 raise RenderLoopConfigError(
                     f'you cannot specify an upscaler model '
                     f'({a_namer("model_type")} "{self.model_type})" without {a_namer("image_seeds")}.'
                 )
-
+                
             if _pipelinewrapper.model_type_is_pix2pix(self.model_type) and not args_help:
                 raise RenderLoopConfigError(
                     f'you cannot specify a pix2pix model '
                     f'({a_namer("model_type")} "{self.model_type})" without {a_namer("image_seeds")}.'
                 )
-
+                
             if self.model_type == _pipelinewrapper.ModelType.TORCH_FLUX_FILL:
                 raise RenderLoopConfigError(
                     f'you cannot use {a_namer("model_type")} '
                     f'torch-flux-fill without {a_namer("image_seeds")}.'
                 )
-
+                
+            # Check arguments that require image seeds
             if self.adetailer_detector_uris:
                 raise RenderLoopConfigError(
                     f'You cannot specify {a_namer("adetailer_detector_uris")} '
                     f'without {a_namer("image_seeds")}.'
                 )
-
+                
             if self.image_seed_strengths:
                 raise RenderLoopConfigError(
                     f'you cannot specify {a_namer("image_seed_strengths")} '
                     f'without {a_namer("image_seeds")}.')
-
+                    
             if self.seeds_to_images:
                 raise RenderLoopConfigError(
                     f'{a_namer("seeds_to_images")} cannot be specified '
                     f'without {a_namer("image_seeds")}.')
-
+                    
             if self.controlnet_uris:
                 raise RenderLoopConfigError(
                     f'you cannot specify {a_namer("controlnet_uris")} '
                     f'without {a_namer("image_seeds")}.')
-
+                    
             if self.t2i_adapter_uris:
                 raise RenderLoopConfigError(
                     f'you cannot specify {a_namer("t2i_adapter_uris")} '
                     f'without {a_namer("image_seeds")}.')
-
+                    
             if self.ip_adapter_uris:
                 raise RenderLoopConfigError(
                     f'you cannot specify {a_namer("ip_adapter_uris")} '
                     f'without {a_namer("image_seeds")}.')
-
-            # Check that we do not try to use image processor arguments
-            # without any image seeds
-
+                    
+            # Check image processor arguments without image seeds
             invalid_self = []
-            for processor_self in non_null_attr_that_end_with('image_processors'):
+            for processor_self in self._non_null_attr_that_end_with('image_processors'):
                 invalid_self.append(
                     f'you cannot specify {a_namer(processor_self)} '
                     f'without {a_namer("image_seeds")}.')
-
+                    
             if invalid_self:
                 raise RenderLoopConfigError('\n'.join(invalid_self))
-
-            # Check that the config makes sense for constructing
-            # a pipeline and that there is a class available
-            # to handle what was requested
-
+                
+            # Check pipeline class compatibility
             try:
                 _pipelinewrapper.get_torch_pipeline_class(
                     model_type=self.model_type,
@@ -1441,31 +1442,63 @@ class RenderLoopConfig(_types.SetFromMixin):
             except _pipelinewrapper.UnsupportedPipelineConfigError as e:
                 raise RenderLoopConfigError(str(e))
 
+    def _check_output_arguments(self, a_namer: typing.Callable[[str], str]):
+        """Check output-related arguments for compatibility."""
+        # Check output prefix
         if self.output_prefix:
             if '/' in self.output_prefix or '\\' in self.output_prefix:
                 raise RenderLoopConfigError(
                     f'{a_namer("output_prefix")} value may not contain slash characters.')
+        
+        # Check frame start/end
+        if self.frame_end is not None and self.frame_start > self.frame_end:
+            raise RenderLoopConfigError(
+                f'{a_namer("frame_start")} must be less than or equal to {a_namer("frame_end")}')
+        
+        # Clean and validate animation and image formats
+        self.animation_format = self.animation_format.strip().lower()
+        self.image_format = self.image_format.strip().lower()
+        
+        if self.animation_format not in _mediaoutput.get_supported_animation_writer_formats() + ['frames']:
+            raise RenderLoopConfigError(
+                f'Unsupported {a_namer("animation_format")} value "{self.animation_format}". Must be one of '
+                f'{_textprocessing.oxford_comma(_mediaoutput.get_supported_animation_writer_formats(), "or")}')
+        
+        if self.image_format not in _mediaoutput.get_supported_static_image_formats():
+            raise RenderLoopConfigError(
+                f'Unsupported {a_namer("image_format")} value "{self.image_format}". Must be one of '
+                f'{_textprocessing.oxford_comma(_mediaoutput.get_supported_static_image_formats(), "or")}')
+        
+        if self.image_format != "png" and self.output_metadata:
+            raise RenderLoopConfigError(
+                f'{a_namer("image_format")} value "{self.image_format}" is '
+                f'unsupported when {a_namer("output_metadata")} is enabled.')
+        
+        if self.animation_format == 'frames' and self.no_frames:
+            raise RenderLoopConfigError(
+                f'Cannot specify {a_namer("no_frames")} when {a_namer("animation_format")} is set to "frames"')
 
+    def _configure_pag_defaults(self):
+        """Configure PAG default values if needed."""
         if self.pag:
             if not (self.pag_scales or self.pag_adaptive_scales):
                 self.pag_scales = [_pipelinewrapper.constants.DEFAULT_PAG_SCALE]
                 self.pag_adaptive_scales = [_pipelinewrapper.constants.DEFAULT_PAG_ADAPTIVE_SCALE]
-
+        
         if self.sdxl_refiner_pag and self.sdxl_refiner_uri:
-            if not (self.sdxl_refiner_pag_scales or
-                    self.sdxl_refiner_pag_adaptive_scales):
+            if not (self.sdxl_refiner_pag_scales or self.sdxl_refiner_pag_adaptive_scales):
                 self.sdxl_refiner_pag_scales = [_pipelinewrapper.constants.DEFAULT_SDXL_REFINER_PAG_SCALE]
                 self.sdxl_refiner_pag_adaptive_scales = [
                     _pipelinewrapper.constants.DEFAULT_SDXL_REFINER_PAG_ADAPTIVE_SCALE]
 
-        # Detect logically incorrect config and set certain defaults
-
+    def _check_prompt_weighters(self, a_namer: typing.Callable[[str], str]):
+        """Check prompt weighter compatibility."""
         if self.prompt_weighter_uri is not None \
                 and not _promptweighters.prompt_weighter_exists(self.prompt_weighter_uri):
             raise RenderLoopConfigError(
                 f'Unknown prompt weighter implementation: {_promptweighters.prompt_weighter_name_from_uri(self.prompt_weighter_uri)}, '
                 f'must be one of: {_textprocessing.oxford_comma(_promptweighters.prompt_weighter_names(), "or")}')
-
+        
         if self.second_model_prompt_weighter_uri is not None \
                 and not _promptweighters.prompt_weighter_exists(self.second_model_prompt_weighter_uri):
             raise RenderLoopConfigError(
@@ -1473,26 +1506,38 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'{_promptweighters.prompt_weighter_name_from_uri(self.prompt_weighter_uri)}, '
                 f'must be one of: {_textprocessing.oxford_comma(_promptweighters.prompt_weighter_names(), "or")}')
 
+    def _check_general_compatibility(self, a_namer: typing.Callable[[str], str]):
+        """Check general configuration compatibility."""
+        # Check T2I adapter factors
         if self.sdxl_t2i_adapter_factors and not self.t2i_adapter_uris:
             raise RenderLoopConfigError(
                 f'You may not specify {a_namer("sdxl_t2i_adapter_factors")} '
                 f'without {a_namer("t2i_adapter_uris")}.')
+        
+        # Check data type
         supported_dtypes = _pipelinewrapper.supported_data_type_strings()
         if self.dtype not in _pipelinewrapper.supported_data_type_enums():
             raise RenderLoopConfigError(
                 f'{a_namer("dtype")} must be {_textprocessing.oxford_comma(supported_dtypes, "or")}')
+        
+        # Check batch size
         if self.batch_size is not None and self.batch_size < 1:
             raise RenderLoopConfigError(
                 f'{a_namer("batch_size")} must be greater than or equal to 1.')
+        
+        # Check model type
         if self.model_type not in _pipelinewrapper.supported_model_type_enums():
             supported_model_types = _textprocessing.oxford_comma(_pipelinewrapper.supported_model_type_strings(), "or")
             raise RenderLoopConfigError(
                 f'{a_namer("model_type")} must be one of: {supported_model_types}')
+        
+        # Check device
         if not _torchutil.is_valid_device_string(self.device):
             raise RenderLoopConfigError(
                 f'{a_namer("device")} must be "cuda" (optionally with a device ordinal "cuda:N") or "cpu", '
                 f'or other device supported by torch.')
 
+        # Check model offload options
         if self.model_cpu_offload and self.model_sequential_offload:
             raise RenderLoopConfigError(
                 f'{a_namer("model_cpu_offload")} and {a_namer("model_sequential_offload")} '
@@ -1502,72 +1547,68 @@ class RenderLoopConfig(_types.SetFromMixin):
             raise RenderLoopConfigError(
                 f'{a_namer("second_model_cpu_offload")} and {a_namer("second_model_sequential_offload")} '
                 f'may not be enabled simultaneously.')
+        
+        # Check model path is specified
+        if self.model_path is None:
+            raise RenderLoopConfigError(
+                f'{a_namer("model_path")} must be specified')
+        
+        # Check clip skip compatibility
+        if self.clip_skips and not (self.model_type == _pipelinewrapper.ModelType.TORCH or
+                                    self.model_type == _pipelinewrapper.ModelType.TORCH_SDXL or
+                                    self.model_type == _pipelinewrapper.ModelType.TORCH_SD3):
+            raise RenderLoopConfigError(
+                f'you cannot specify {a_namer("clip_skips")} for '
+                f'{a_namer("model_type")} values other than '
+                f'"torch", "torch-sdxl", or "torch-sd3"')
 
+    def _check_model_specific_requirements(self, a_namer: typing.Callable[[str], str]):
+        """Check specific requirements for different model types."""
+        self._check_stable_cascade_requirements(a_namer)
+        self._check_upscaler_requirements(a_namer)
+        self._check_pix2pix_requirements(a_namer)
+        self._check_transformer_compatibility(a_namer)
+        self._check_flux_model_requirements(a_namer)
+        self._check_sd3_model_requirements(a_namer)
+        self._check_sdxl_model_requirements(a_namer)
+        self._check_vae_compatibility(a_namer)
+
+    def _check_stable_cascade_requirements(self, a_namer: typing.Callable[[str], str]):
+        """Check Stable Cascade specific requirements."""
         if self.model_type == _pipelinewrapper.ModelType.TORCH_S_CASCADE_DECODER:
             raise RenderLoopConfigError(
                 f'Stable Cascade decoder {a_namer("model_type")} may not be used as the primary model.')
-
+        
         if self.model_type == _pipelinewrapper.ModelType.TORCH_S_CASCADE:
-
             if self.hi_diffusion:
                 raise RenderLoopConfigError(
                     f'{a_namer("hi_diffusion")} is not supported with Stable Cascade.'
                 )
-
+            
             if not self.second_model_guidance_scales:
                 self.second_model_guidance_scales = [
                     _pipelinewrapper.constants.DEFAULT_S_CASCADE_DECODER_GUIDANCE_SCALE]
-
+            
             if not self.second_model_inference_steps:
                 self.second_model_inference_steps = [
                     _pipelinewrapper.constants.DEFAULT_S_CASCADE_DECODER_INFERENCE_STEPS]
-
+            
             if self.output_size is not None and not _image.is_aligned(self.output_size, 128):
                 raise RenderLoopConfigError(
                     f'Stable Cascade requires {a_namer("output_size")} to be aligned by 128.')
-
+        
         elif self.s_cascade_decoder_uri:
             raise RenderLoopConfigError(
                 f'{a_namer("s_cascade_decoder_uri")} may only be used with "torch-s-cascade"')
 
-        if self.model_path is None:
-            raise RenderLoopConfigError(
-                f'{a_namer("model_path")} must be specified')
-
-        if self.frame_end is not None and self.frame_start > self.frame_end:
-            raise RenderLoopConfigError(
-                f'{a_namer("frame_start")} must be less than or equal to {a_namer("frame_end")}')
-
-        self.animation_format = self.animation_format.strip().lower()
-        self.image_format = self.image_format.strip().lower()
-
-        if self.animation_format not in _mediaoutput.get_supported_animation_writer_formats() + ['frames']:
-            raise RenderLoopConfigError(
-                f'Unsupported {a_namer("animation_format")} value "{self.animation_format}". Must be one of '
-                f'{_textprocessing.oxford_comma(_mediaoutput.get_supported_animation_writer_formats(), "or")}')
-
-        if self.image_format not in _mediaoutput.get_supported_static_image_formats():
-            raise RenderLoopConfigError(
-                f'Unsupported {a_namer("image_format")} value "{self.image_format}". Must be one of '
-                f'{_textprocessing.oxford_comma(_mediaoutput.get_supported_static_image_formats(), "or")}')
-
-        if self.image_format != "png" and self.output_metadata:
-            raise RenderLoopConfigError(
-                f'{a_namer("image_format")} value "{self.image_format}" is '
-                f'unsupported when {a_namer("output_metadata")} is enabled.')
-
-        if self.animation_format == 'frames' and self.no_frames:
-            raise RenderLoopConfigError(
-                f'Cannot specify {a_namer("no_frames")} when {a_namer("animation_format")} is set to "frames"')
-
-        if self.clip_skips and not (self.model_type == _pipelinewrapper.ModelType.TORCH or
-                                    self.model_type == _pipelinewrapper.ModelType.TORCH_SDXL or
-                                    self.model_type == _pipelinewrapper.ModelType.TORCH_SD3):
-            raise RenderLoopConfigError(f'you cannot specify {a_namer("clip_skips")} for '
-                                        f'{a_namer("model_type")} values other than '
-                                        f'"torch", "torch-sdxl", or "torch-sd3"')
-
+    def _check_upscaler_requirements(self, a_namer: typing.Callable[[str], str]) -> bool:
+        """
+        Check upscaler model specific requirements.
+        
+        Returns: Whether upscaler noise levels default was set
+        """
         upscaler_noise_levels_default_set = False
+        
         if not _pipelinewrapper.model_type_is_upscaler(self.model_type) \
                 and not _pipelinewrapper.model_type_is_floyd_ifs(self.model_type):
             if self.upscaler_noise_levels:
@@ -1584,7 +1625,11 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'you cannot specify {a_namer("upscaler_noise_levels")} for an upscaler '
                 f'model type that is not "torch-upscaler-x4" or "torch-ifs-*", '
                 f'see: {a_namer("model_type")}.')
+        
+        return upscaler_noise_levels_default_set
 
+    def _check_pix2pix_requirements(self, a_namer: typing.Callable[[str], str]):
+        """Check pix2pix model specific requirements."""
         if not _pipelinewrapper.model_type_is_pix2pix(self.model_type):
             if self.image_guidance_scales:
                 raise RenderLoopConfigError(
@@ -1593,8 +1638,8 @@ class RenderLoopConfig(_types.SetFromMixin):
         elif not self.image_guidance_scales:
             self.image_guidance_scales = [_pipelinewrapper.constants.DEFAULT_IMAGE_GUIDANCE_SCALE]
 
-        # Verify we can use a transformer
-
+    def _check_transformer_compatibility(self, a_namer: typing.Callable[[str], str]):
+        """Check transformer compatibility with the model type."""
         if self.transformer_uri:
             if not _pipelinewrapper.model_type_is_sd3(self.model_type) \
                     and not _pipelinewrapper.model_type_is_flux(self.model_type):
@@ -1602,12 +1647,11 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'{a_namer("transformer_uri")} is only supported for '
                     f'{a_namer("model_type")} torch-sd3 and torch-flux.')
 
-        # check for invalid specification of --flux-* args
-        # and Flux related arguments such as max_sequence_length
-
+    def _check_flux_model_requirements(self, a_namer: typing.Callable[[str], str]):
+        """Check Flux model specific requirements."""
         if not _pipelinewrapper.model_type_is_flux(self.model_type):
             invalid_self = []
-            for flux_self in non_null_attr_that_start_with('flux'):
+            for flux_self in self._non_null_attr_that_start_with('flux'):
                 invalid_self.append(f'you cannot specify {a_namer(flux_self)} '
                                     f'for a non Flux model type, see: {a_namer("model_type")}.')
             if invalid_self:
@@ -1624,12 +1668,11 @@ class RenderLoopConfig(_types.SetFromMixin):
                         f'to 1 and less than or equal to 512.'
                     )
 
-        # check for invalid specification of --sd3-* args
-        # and SD3 related arguments such as max_sequence_length
-
+    def _check_sd3_model_requirements(self, a_namer: typing.Callable[[str], str]):
+        """Check SD3 model specific requirements."""
         if not _pipelinewrapper.model_type_is_sd3(self.model_type):
             invalid_self = []
-            for sd3_self in non_null_attr_that_start_with('sd3'):
+            for sd3_self in self._non_null_attr_that_start_with('sd3'):
                 invalid_self.append(f'you cannot specify {a_namer(sd3_self)} '
                                     f'for a non SD3 model type, see: {a_namer("model_type")}.')
             if invalid_self:
@@ -1639,196 +1682,235 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise RenderLoopConfigError(
                     f'{a_namer("hi_diffusion")} is not supported with Stable Diffusion 3.'
                 )
-
+            
             if self.max_sequence_length is not None:
                 if self.controlnet_uris:
                     raise RenderLoopConfigError(
                         f'{a_namer("max_sequence_length")} is not supported when '
                         f'{a_namer("controlnet_uris")} is specified.')
-
+                
                 if self.max_sequence_length < 1 or self.max_sequence_length > 512:
                     raise RenderLoopConfigError(
                         f'{a_namer("max_sequence_length")} must be greater than or equal '
                         f'to 1 and less than or equal to 512.'
                     )
-
+            
             if self.output_size is not None:
                 if not _image.is_aligned(self.output_size, 16):
                     raise RenderLoopConfigError(
                         f'Stable Diffusion 3 requires {a_namer("output_size")} to be aligned to 16.')
-
+            
             if self.unet_uri or self.second_model_unet_uri:
                 raise RenderLoopConfigError(
                     f'Stable Diffusion 3 does not support the '
                     f'use of {a_namer("unet_uri")}/{a_namer("second_model_unet_uri")}.')
 
-        # check for invalid specification of --sdxl-* args
-        # and --second-model-* args in the context of torch-sdxl use
-
-        if not (_pipelinewrapper.model_type_is_sdxl(self.model_type) or
-                _pipelinewrapper.model_type_is_kolors(self.model_type)):
+    def _check_sdxl_model_requirements(self, a_namer: typing.Callable[[str], str]):
+        """Check SDXL model specific requirements."""
+        # Check if we're using an SDXL or Kolors model
+        is_sdxl_model = (_pipelinewrapper.model_type_is_sdxl(self.model_type) or 
+                         _pipelinewrapper.model_type_is_kolors(self.model_type))
+        
+        if not is_sdxl_model:
+            # Not an SDXL model, check for incompatible arguments
             invalid_self = []
-            for sdxl_self in non_null_attr_that_start_with('sdxl'):
+            for sdxl_self in self._non_null_attr_that_start_with('sdxl'):
                 invalid_self.append(f'you cannot specify {a_namer(sdxl_self)} '
-                                    f'for a non SDXL model type, see: {a_namer("model_type")}.')
+                                  f'for a non SDXL model type, see: {a_namer("model_type")}.')
             if invalid_self:
                 raise RenderLoopConfigError('\n'.join(invalid_self))
-
+            
+            # Clear high noise fractions since it's not applicable
             self.sdxl_high_noise_fractions = None
+            return
+        
+        # We have an SDXL or Kolors model, check refiner compatibility
+        if not self.sdxl_refiner_uri:
+            # No refiner specified, check for incompatible refiner-specific arguments
+            invalid_self = []
+            for sdxl_self in self._non_null_second_model_arguments('sdxl_refiner'):
+                invalid_self.append(
+                    f'you cannot specify {a_namer(sdxl_self)} '
+                    f'without {a_namer("sdxl_refiner_uri")}.')
+            
+            # High noise fractions require a refiner
+            if self.sdxl_high_noise_fractions is not None:
+                invalid_self.append(
+                    f'you cannot specify {a_namer("sdxl_high_noise_fractions")} '
+                    f'without {a_namer("sdxl_refiner_uri")}.')
+            
+            if invalid_self:
+                raise RenderLoopConfigError('\n'.join(invalid_self))
         else:
-            if not self.sdxl_refiner_uri:
-                invalid_self = []
-                for sdxl_self in non_null_second_model_arguments('sdxl_refiner'):
-                    invalid_self.append(
-                        f'you cannot specify {a_namer(sdxl_self)} '
-                        f'without {a_namer("sdxl_refiner_uri")}.')
-                if self.sdxl_high_noise_fractions is not None:
-                    invalid_self.append(
-                        f'you cannot specify {a_namer("sdxl_high_noise_fractions")} '
-                        f'without {a_namer("sdxl_refiner_uri")}.')
-                if invalid_self:
-                    raise RenderLoopConfigError('\n'.join(invalid_self))
-            elif self.sdxl_high_noise_fractions is None:
-                # Default value
+            # Refiner is specified, set default high noise fraction if needed
+            if self.sdxl_high_noise_fractions is None:
                 self.sdxl_high_noise_fractions = [_pipelinewrapper.constants.DEFAULT_SDXL_HIGH_NOISE_FRACTION]
 
-        # will not happen currently, but reminder for future
-        # non torch based pipelines
-
+    def _check_vae_compatibility(self, a_namer: typing.Callable[[str], str]):
+        """Check VAE compatibility with model type."""
         if not _pipelinewrapper.model_type_is_torch(self.model_type):
             if self.vae_tiling or self.vae_slicing:
                 raise RenderLoopConfigError(
                     f'{a_namer("vae_tiling")}/{a_namer("vae_slicing")} not supported for '
                     f'non torch model type, see: {a_namer("model_type")}.')
-        # ===
 
-        if self.image_seeds:
+    def _process_image_seeds(self, a_namer: typing.Callable[[str], str], help_mode: bool):
+        """Process image seeds and verify compatibility."""
+        if not self.image_seeds:
+            return
 
-            # these pipelines do not use image strength
-            no_seed_strength = (_pipelinewrapper.model_type_is_upscaler(self.model_type) or
-                                _pipelinewrapper.model_type_is_pix2pix(self.model_type) or
-                                _pipelinewrapper.model_type_is_s_cascade(self.model_type) or
-                                self.model_type == _pipelinewrapper.ModelType.TORCH_FLUX_FILL)
-
-            image_seed_strengths_default_set = False
-            user_provided_image_seed_strengths = False
-            if self.image_seed_strengths is None:
-                if not no_seed_strength:
-                    image_seed_strengths_default_set = True
-                    # Default value because the user did not specify
-                    self.image_seed_strengths = [_pipelinewrapper.constants.DEFAULT_IMAGE_SEED_STRENGTH]
-            else:
-                if no_seed_strength:
-                    # cannot specify strength
-                    raise RenderLoopConfigError(
-                        f'{a_namer("image_seed_strengths")} '
-                        f'cannot be used with pix2pix, upscaler, or stablecascade models.')
-                user_provided_image_seed_strengths = True
-
-            parsed_image_seeds = []
-
-            for uri in self.image_seeds:
-                parsed_image_seeds.append(
-                    self._check_image_seed_uri(
-                        uri=uri,
-                        attribute_namer=attribute_namer,
-                        image_seed_strengths_default_set=image_seed_strengths_default_set,
-                        upscaler_noise_levels_default_set=upscaler_noise_levels_default_set))
-
-            # verify that a pipeline can actually be built for this
-            # combination of arguments
-            try:
-                for image_seed in parsed_image_seeds:
-                    is_control_guidance_spec = \
-                        (self.controlnet_uris or self.t2i_adapter_uris) and image_seed.is_single_spec
-
-                    if image_seed.images and (self.adetailer_detector_uris or image_seed.mask_images):
-                        pipeline_type = _pipelinewrapper.PipelineType.INPAINT
-                    elif image_seed.images and not is_control_guidance_spec:
-                        pipeline_type = _pipelinewrapper.PipelineType.IMG2IMG
-                    else:
-                        pipeline_type = _pipelinewrapper.PipelineType.TXT2IMG
-
-                    # if there is no class that can handle
-                    # the operation described by the config
-                    # then this will throw
-                    _pipelinewrapper.get_torch_pipeline_class(
-                        model_type=self.model_type,
-                        pipeline_type=pipeline_type,
-                        unet_uri=self.unet_uri,
-                        transformer_uri=self.transformer_uri,
-                        vae_uri=self.vae_uri,
-                        lora_uris=self.lora_uris,
-                        image_encoder_uri=self.image_encoder_uri,
-                        ip_adapter_uris=self.ip_adapter_uris,
-                        textual_inversion_uris=self.textual_inversion_uris,
-                        controlnet_uris=self.controlnet_uris,
-                        t2i_adapter_uris=self.t2i_adapter_uris,
-                        pag=self.pag,
-                        help_mode=help_mode
-                    )
-            except _pipelinewrapper.UnsupportedPipelineConfigError as e:
-                raise RenderLoopConfigError(str(e))
-
-            # check that we do not specify inpaint masks with adetailer options
-
-            if self.adetailer_detector_uris and any(p.mask_images is not None for p in parsed_image_seeds):
+        # Check if model type supports image seed strength
+        no_seed_strength = (_pipelinewrapper.model_type_is_upscaler(self.model_type) or
+                            _pipelinewrapper.model_type_is_pix2pix(self.model_type) or
+                            _pipelinewrapper.model_type_is_s_cascade(self.model_type) or
+                            self.model_type == _pipelinewrapper.ModelType.TORCH_FLUX_FILL)
+        
+        # Set default image seed strength if needed
+        image_seed_strengths_default_set = False
+        user_provided_image_seed_strengths = False
+        
+        if self.image_seed_strengths is None:
+            if not no_seed_strength:
+                image_seed_strengths_default_set = True
+                self.image_seed_strengths = [_pipelinewrapper.constants.DEFAULT_IMAGE_SEED_STRENGTH]
+        else:
+            if no_seed_strength:
                 raise RenderLoopConfigError(
-                    f'Cannot specify inpaint masks when using {a_namer("adetailer_detector_uris")}, inpaint masks '
-                    f'are generated automatically with this option.'
+                    f'{a_namer("image_seed_strengths")} '
+                    f'cannot be used with pix2pix, upscaler, or stablecascade models.')
+            user_provided_image_seed_strengths = True
+        
+        # Check upscaler noise level default setting
+        upscaler_noise_levels_default_set = self._check_upscaler_requirements(a_namer)
+        
+        # Parse and validate each image seed URI
+        parsed_image_seeds = []
+        for uri in self.image_seeds:
+            parsed_image_seeds.append(
+                self._check_image_seed_uri(
+                    uri=uri,
+                    attribute_namer=a_namer,
+                    image_seed_strengths_default_set=image_seed_strengths_default_set,
+                    upscaler_noise_levels_default_set=upscaler_noise_levels_default_set))
+        
+        # Verify pipeline compatibility
+        self._verify_pipeline_compatibility(
+            parsed_image_seeds=parsed_image_seeds, 
+            help_mode=help_mode, 
+            a_namer=a_namer
+        )
+        
+        # Check for additional compatibility issues
+        self._check_adetailer_mask_compatibility(
+            parsed_image_seeds=parsed_image_seeds, 
+            a_namer=a_namer
+        )
+
+        self._check_image_input_compatibility(
+            parsed_image_seeds=parsed_image_seeds,
+            image_seed_strengths_default_set=image_seed_strengths_default_set,
+            user_provided_image_seed_strengths=user_provided_image_seed_strengths,
+            a_namer=a_namer
+        )
+        
+        # Store parsed image seeds
+        self.parsed_image_seeds = parsed_image_seeds
+
+    def _verify_pipeline_compatibility(self, 
+                                       parsed_image_seeds: typing.List[_mediainput.ImageSeedParseResult], 
+                                       help_mode: bool, 
+                                       a_namer: typing.Callable[[str], str]):
+        """Verify that a pipeline can be built for the given configuration."""
+        try:
+            for image_seed in parsed_image_seeds:
+                is_control_guidance_spec = \
+                    (self.controlnet_uris or self.t2i_adapter_uris) and image_seed.is_single_spec
+                
+                if image_seed.images and (self.adetailer_detector_uris or image_seed.mask_images):
+                    pipeline_type = _pipelinewrapper.PipelineType.INPAINT
+                elif image_seed.images and not is_control_guidance_spec:
+                    pipeline_type = _pipelinewrapper.PipelineType.IMG2IMG
+                else:
+                    pipeline_type = _pipelinewrapper.PipelineType.TXT2IMG
+                
+                # Check if a class can handle the operation
+                _pipelinewrapper.get_torch_pipeline_class(
+                    model_type=self.model_type,
+                    pipeline_type=pipeline_type,
+                    unet_uri=self.unet_uri,
+                    transformer_uri=self.transformer_uri,
+                    vae_uri=self.vae_uri,
+                    lora_uris=self.lora_uris,
+                    image_encoder_uri=self.image_encoder_uri,
+                    ip_adapter_uris=self.ip_adapter_uris,
+                    textual_inversion_uris=self.textual_inversion_uris,
+                    controlnet_uris=self.controlnet_uris,
+                    t2i_adapter_uris=self.t2i_adapter_uris,
+                    pag=self.pag,
+                    help_mode=help_mode
                 )
+        except _pipelinewrapper.UnsupportedPipelineConfigError as e:
+            raise RenderLoopConfigError(str(e))
 
-            # check that we do not try to use an image seed strength value
-            # when there are no actual image inputs that are treated
-            # as an initial noise image
+    def _check_adetailer_mask_compatibility(self, 
+                                            parsed_image_seeds: typing.List[_mediainput.ImageSeedParseResult], 
+                                            a_namer: typing.Callable[[str], str]):
+        """Check that adetailer is not used with manual inpaint masks."""
+        if self.adetailer_detector_uris and any(p.mask_images is not None for p in parsed_image_seeds):
+            raise RenderLoopConfigError(
+                f'Cannot specify inpaint masks when using {a_namer("adetailer_detector_uris")}, inpaint masks '
+                f'are generated automatically with this option.'
+            )
 
-            if all(p.images is None for p in parsed_image_seeds):
-                if image_seed_strengths_default_set:
-                    self.image_seed_strengths = None
-                elif self.image_seed_strengths:
-                    # user set this
+    def _check_image_input_compatibility(self, 
+                                         parsed_image_seeds: typing.List[_mediainput.ImageSeedParseResult], 
+                                         image_seed_strengths_default_set: bool, 
+                                         user_provided_image_seed_strengths: bool, 
+                                         a_namer: typing.Callable[[str], str]):
+        """Check compatibility of image inputs with model type and settings."""
+        # Check if no images are provided for img2img
+        if all(p.images is None for p in parsed_image_seeds):
+            if image_seed_strengths_default_set:
+                self.image_seed_strengths = None
+            elif self.image_seed_strengths:
+                raise RenderLoopConfigError(
+                    f'{a_namer("image_seed_strengths")} '
+                    f'cannot be used unless an img2img operation exists '
+                    f'in at least one {a_namer("image_seeds")} definition.')
+        
+        # Check flux-fill compatibility
+        if not all(p.mask_images is not None for p in parsed_image_seeds):
+            if self.model_type == _pipelinewrapper.ModelType.TORCH_FLUX_FILL \
+                    and not self.adetailer_detector_uris:
+                raise RenderLoopConfigError(
+                    f'Only inpainting {a_namer("image_seeds")} '
+                    f'definitions can be used with {a_namer("model_type")} torch-flux-fill.')
+        
+        # Check deep floyd inpainting mode compatibility
+        if all(p.mask_images is None for p in parsed_image_seeds):
+            if self.model_type == _pipelinewrapper.ModelType.TORCH_IFS:
+                self.image_seed_strengths = None
+                if user_provided_image_seed_strengths:
                     raise RenderLoopConfigError(
                         f'{a_namer("image_seed_strengths")} '
-                        f'cannot be used unless an img2img operation exists '
-                        f'in at least one {a_namer("image_seeds")} definition.')
-
-            # check that we do not try to use flux-fill for anything
-            # other than inpainting operations
-
-            if not all(p.mask_images is not None for p in parsed_image_seeds):
-                if self.model_type == _pipelinewrapper.ModelType.TORCH_FLUX_FILL \
-                        and not self.adetailer_detector_uris:
-                    raise RenderLoopConfigError(
-                        f'Only inpainting {a_namer("image_seeds")} '
-                        f'definitions can be used with {a_namer("model_type")} torch-flux-fill.')
-
-            # image seed strength can only be used with this deep floyd
-            # upscaler if in inpainting mode
-
-            if all(p.mask_images is None for p in parsed_image_seeds):
-                if self.model_type == _pipelinewrapper.ModelType.TORCH_IFS:
-                    self.image_seed_strengths = None
-                    if user_provided_image_seed_strengths:
-                        raise RenderLoopConfigError(
-                            f'{a_namer("image_seed_strengths")} '
-                            f'cannot be used with {a_namer("model_type")} torch-ifs '
-                            f'when no inpainting is taking place in any image seed '
-                            f'specification.')
-
-            self.parsed_image_seeds = parsed_image_seeds
+                        f'cannot be used with {a_namer("model_type")} torch-ifs '
+                        f'when no inpainting is taking place in any image seed '
+                        f'specification.')
 
     def _check_image_seed_uri(self,
-                              uri,
-                              attribute_namer,
-                              image_seed_strengths_default_set,
-                              upscaler_noise_levels_default_set) -> _mediainput.ImageSeedParseResult:
+                              uri: str,
+                              attribute_namer: typing.Callable[[str], str],
+                              image_seed_strengths_default_set: bool,
+                              upscaler_noise_levels_default_set: bool) -> _mediainput.ImageSeedParseResult:
         """
-        :param uri: The URI
-        :param attribute_namer: attribute namer
-        :param image_seed_strengths_default_set: whether check() has set an image_seed_strengths default value
-        :param upscaler_noise_levels_default_set: whether check() has set an upscaler_noise_levels default value
+        Check image seed URI for compatibility with the current configuration.
+        
+        :param uri: The URI to check
+        :param attribute_namer: Function to name attributes in error messages
+        :param image_seed_strengths_default_set: Whether check() has set an image_seed_strengths default value
+        :param upscaler_noise_levels_default_set: Whether check() has set an upscaler_noise_levels default value
+        :return: Parsed image seed result
         """
-
         a_namer = attribute_namer
 
         try:
@@ -1839,9 +1921,61 @@ class RenderLoopConfig(_types.SetFromMixin):
         mask_part = 'mask=my-mask.png;' if parsed.mask_images else ''
         # ^ Used for nice messages about image seed keyword argument misuse
 
+        # Check model-specific image seed requirements
+        self._check_model_specific_image_seed_requirements(
+            parsed=parsed, 
+            uri=uri, 
+            a_namer=a_namer
+        )
+        
+        # Check adapter image compatibility
+        self._check_adapter_image_compatibility(
+            parsed=parsed, 
+            uri=uri, 
+            a_namer=a_namer
+        )
+        
+        # Check image processor compatibility
+        self._check_image_processor_compatibility(
+            parsed=parsed, 
+            uri=uri, 
+            a_namer=a_namer
+        )
+        
+        # Check adapter compatibility
+        self._check_adapter_compatibility(
+            parsed=parsed, 
+            uri=uri, 
+            a_namer=a_namer
+        )
+        
+        # Check control guidance compatibility
+        self._check_control_guidance_compatibility(
+            parsed=parsed,
+            uri=uri,
+            a_namer=a_namer,
+            image_seed_strengths_default_set=image_seed_strengths_default_set,
+            upscaler_noise_levels_default_set=upscaler_noise_levels_default_set
+        )
+        
+        # Check deep floyd compatibility
+        self._check_floyd_compatibility(
+            parsed=parsed, 
+            uri=uri, 
+            a_namer=a_namer, 
+            mask_part=mask_part
+        )
+        
+        return parsed
+
+    def _check_model_specific_image_seed_requirements(self, 
+                                                     parsed: _mediainput.ImageSeedParseResult, 
+                                                     uri: str, 
+                                                     a_namer: typing.Callable[[str], str]):
+        """Check model-specific requirements for image seeds."""
         if _pipelinewrapper.model_type_is_sd3(self.model_type):
             if not parsed.is_single_spec:
-                # only simple img2img and inpaint are supported
+                # Only simple img2img and inpaint are supported
                 if parsed.control_images or parsed.adapter_images:
                     raise RenderLoopConfigError(
                         f'{a_namer("image_seeds")} configurations other than plain img2img and '
@@ -1860,6 +1994,11 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'{a_namer("image_seeds")} configurations other than plain '
                     f'img2img are not supported for Stable Diffusion upscaler models.')
 
+    def _check_adapter_image_compatibility(self, 
+                                          parsed: _mediainput.ImageSeedParseResult, 
+                                          uri: str, 
+                                          a_namer: typing.Callable[[str], str]):
+        """Check compatibility of adapter images with IP adapters."""
         if parsed.adapter_images:
             if not self.ip_adapter_uris:
                 raise RenderLoopConfigError(
@@ -1876,6 +2015,11 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'{number_of_ip_adapter_image_groups} IP Adapter image groups for {number_of_ip_adapter_uris} IP '
                     f'Adapter models.')
 
+    def _check_image_processor_compatibility(self, 
+                                            parsed: _mediainput.ImageSeedParseResult, 
+                                            uri: str, 
+                                            a_namer: typing.Callable[[str], str]):
+        """Check compatibility of image processors with available images."""
         if self.seed_image_processors:
             num_img2img_images = len(parsed.images) if parsed.images is not None else 0
 
@@ -1904,10 +2048,15 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'must not exceed the amount of inpaint mask images.'
                 )
 
+    def _check_adapter_compatibility(self, 
+                                    parsed: _mediainput.ImageSeedParseResult, 
+                                    uri: str, 
+                                    a_namer: typing.Callable[[str], str]):
+        """Check T2I adapter or ControlNet compatibility with the image seeds."""
+        control_image_paths = parsed.get_control_image_paths()
+        num_control_images = len(control_image_paths) if control_image_paths is not None else 0
+        
         if self.t2i_adapter_uris:
-            control_image_paths = parsed.get_control_image_paths()
-            num_control_images = len(control_image_paths) if control_image_paths is not None else 0
-
             if not parsed.is_single_spec:
                 raise RenderLoopConfigError(
                     f'You may not use img2img or inpainting in your {a_namer("image_seeds")} specification '
@@ -1922,9 +2071,6 @@ class RenderLoopConfig(_types.SetFromMixin):
                 )
 
         elif self.controlnet_uris:
-            control_image_paths = parsed.get_control_image_paths()
-            num_control_images = len(control_image_paths) if control_image_paths is not None else 0
-
             if not parsed.is_single_spec and parsed.control_images is None:
                 images_str = ', '.join(parsed.images)
                 raise RenderLoopConfigError(
@@ -1937,7 +2083,7 @@ class RenderLoopConfig(_types.SetFromMixin):
             if control_image_paths is None:
                 raise RenderLoopConfigError(
                     f'You must specify controlnet guidance images in your {a_namer("image_seeds")} '
-                    f'specification "{uri}" (for example: "img2img;{mask_part}control=control1.png, control2.png") '
+                    f'specification "{uri}" (for example: "img2img;mask=my-mask.png;control=control1.png, control2.png") '
                     f'when using {a_namer("controlnet_uris")}'
                 )
 
@@ -1949,20 +2095,26 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'amount of ControlNet models must be equal.'
                 )
 
-            if self.control_image_processors:
-                control_processor_chain_count = \
-                    (sum(1 for p in self.control_image_processors if p == IMAGE_PROCESSOR_SEP) + 1)
+        if self.control_image_processors:
+            control_processor_chain_count = \
+                (sum(1 for p in self.control_image_processors if p == IMAGE_PROCESSOR_SEP) + 1)
 
-                if control_processor_chain_count > num_control_images:
-                    raise RenderLoopConfigError(
-                        f'Your {a_namer("image_seeds")} specification "{uri}" defines {num_control_images} '
-                        f'control guidance image sources, and you have specified {control_processor_chain_count} '
-                        f'{a_namer("control_image_processors")} actions / action chains. The amount of processors '
-                        f'must not exceed the amount of control guidance images.'
-                    )
+            if control_processor_chain_count > num_control_images:
+                raise RenderLoopConfigError(
+                    f'Your {a_namer("image_seeds")} specification "{uri}" defines {num_control_images} '
+                    f'control guidance image sources, and you have specified {control_processor_chain_count} '
+                    f'{a_namer("control_image_processors")} actions / action chains. The amount of processors '
+                    f'must not exceed the amount of control guidance images.'
+                )
 
+    def _check_control_guidance_compatibility(self, 
+                                             parsed: _mediainput.ImageSeedParseResult, 
+                                             uri: str, 
+                                             a_namer: typing.Callable[[str], str],
+                                             image_seed_strengths_default_set: bool,
+                                             upscaler_noise_levels_default_set: bool):
+        """Check control guidance compatibility."""
         is_control_guidance_spec = (self.controlnet_uris or self.t2i_adapter_uris) and parsed.is_single_spec
-
         has_additional_control = parsed.control_images and not parsed.is_single_spec
 
         if has_additional_control and not self.controlnet_uris:
@@ -1998,6 +2150,12 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'your {a_namer("image_seeds")} specification has a single source or comma '
                     f'separated list of sources.')
 
+    def _check_floyd_compatibility(self, 
+                                  parsed: _mediainput.ImageSeedParseResult, 
+                                  uri: str, 
+                                  a_namer: typing.Callable[[str], str], 
+                                  mask_part: str):
+        """Check compatibility with Deep Floyd IF models."""
         if self.model_type == _pipelinewrapper.ModelType.TORCH_IFS_IMG2IMG or \
                 (parsed.mask_images and _pipelinewrapper.model_type_is_floyd_ifs(self.model_type)):
 
@@ -2008,9 +2166,37 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'in your {a_namer("image_seeds")} "{uri}" to disambiguate this '
                     f'usage of Deep Floyd IF super-resolution.')
 
-        return parsed
+    def _normalized_schedulers(self) -> typing.Tuple[typing.List[typing.Optional[_types.Uri]], typing.List[typing.Optional[_types.Uri]]]:
+        """
+        Return normalized lists of schedulers and second model schedulers.
+        
+        Returns:
+            A tuple containing two lists: (schedulers, second_model_schedulers)
+        """
+        schedulers = self.scheduler_uri
+        second_model_schedulers = self.second_model_scheduler_uri
 
-    def calculate_generation_steps(self):
+        if isinstance(schedulers, (_types.Uri, type(None))):
+            schedulers = [schedulers]
+        if isinstance(second_model_schedulers, (_types.Uri, type(None))):
+            second_model_schedulers = [second_model_schedulers]
+        return schedulers, second_model_schedulers
+
+    def check(self, attribute_namer: typing.Optional[typing.Callable[[str], str]] = None):
+        """
+        Check the configuration for type and logical usage errors, set
+        defaults for certain values when needed and not specified.
+
+        This may modify the configuration.
+
+        :param attribute_namer: Callable for naming attributes mentioned in exception messages
+        """
+        try:
+            self._check(attribute_namer)
+        except (_pipelinewrapper.InvalidModelUriError, _mediainput.ImageSeedParseError) as e:
+            raise RenderLoopConfigError(e)
+
+    def calculate_generation_steps(self) -> int:
         """
         Calculate the number of generation steps that this configuration results in.
 
@@ -2087,16 +2273,6 @@ class RenderLoopConfig(_types.SetFromMixin):
                 len(schedulers) *
                 len(second_model_schedulers))
 
-    def _normalized_schedulers(self):
-        schedulers = self.scheduler_uri
-        second_model_schedulers = self.second_model_scheduler_uri
-
-        if isinstance(schedulers, (_types.Uri, type(None))):
-            schedulers = [schedulers]
-        if isinstance(self.second_model_scheduler_uri, (_types.Uri, type(None))):
-            second_model_schedulers = [second_model_schedulers]
-        return schedulers, second_model_schedulers
-
     def copy(self) -> 'RenderLoopConfig':
         """
         Create a deep copy of this :py:class:`RenderLoopConfig` instance.
@@ -2165,7 +2341,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         :return: an iterator over :py:class:`dgenerate.pipelinewrapper.DiffusionArguments`
         """
 
-        def ov(n, v):
+        def ov(n: str, v: typing.Any) -> typing.Optional[typing.List[typing.Any]]:
             if not hasattr(_pipelinewrapper.DiffusionArguments, n):
                 # fat-fingered an argument name too many times :)
                 raise AssertionError(
@@ -2288,3 +2464,56 @@ class RenderLoopConfig(_types.SetFromMixin):
                 on_object=arg,
                 forbidden_checker=_pipelinewrapper.DiffusionArguments.prompt_embedded_arg_checker)
             yield arg
+
+    def _non_null_attr_that_start_with(self, s: typing.Union[str, typing.List[str]]) -> typing.Iterator[str]:
+        """
+        Return an iterator of attribute names that start with the given prefix(es) and have non-None values.
+        
+        Args:
+            s: A string prefix or list of string prefixes
+            
+        Returns:
+            Iterator of attribute names that match the prefix(es) and have non-None values
+        """
+        if not isinstance(s, list):
+            s = [s]
+        return (a for a in dir(self) if any(a.startswith(k) for k in s) and getattr(self, a) is not None)
+        
+    def _non_null_attr_that_end_with(self, s: str) -> typing.Iterator[str]:
+        """
+        Return an iterator of attribute names that end with the given suffix and have non-None values.
+        
+        Args:
+            s: A string suffix
+            
+        Returns:
+            Iterator of attribute names that match the suffix and have non-None values
+        """
+        return (a for a in dir(self) if a.endswith(s) and getattr(self, a) is not None)
+    
+    def _non_null_second_model_arguments(self, prefix: typing.Optional[str] = None) -> typing.Iterator[str]:
+        """
+        Return an iterator of attribute names related to second models that have non-None values.
+        
+        Args:
+            prefix: An optional prefix to further filter attributes
+            
+        Returns:
+            Iterator of attribute names related to second models that have non-None values
+        """
+        def check(a: str) -> bool:
+            if prefix and a.startswith(prefix):
+                return True
+            if a.startswith('second_model'):
+                # short circuit and include
+                # second model prompt arguments
+                return True
+            if a.startswith('second') and not \
+                    (a.endswith('prompts') or a.endswith('prompt_upscaler_uri')):
+                # reject primary model 'second_prompts' and `second_prompt_upscaler_uri`
+                # and include everything else
+                return True
+            return False
+        return (a for a in dir(self) if check(a) and getattr(self, a) is not None)
+
+

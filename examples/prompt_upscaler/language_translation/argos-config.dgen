@@ -14,5 +14,6 @@ Kwai-Kolors/Kolors-diffusers
 --inference-steps 40
 --gen-seeds 2
 --output-size 1024
+--output-path argos
 --model-sequential-offload
 --prompts "<upscaler: translate;input=en;output=zh> Photo of a horse standing near the open door of a red barn, high resolution; artwork"

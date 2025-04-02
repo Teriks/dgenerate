@@ -703,7 +703,7 @@ class RenderLoop:
         # images when --batch-size > 1
 
         if self._c_config.output_configs:
-            with open(config_filename, "w") as config_file:
+            with open(config_filename, "w", encoding='utf-8') as config_file:
                 config_file.write(config_txt)
 
             yield ImageFileSavedEvent(origin=self,
@@ -1422,7 +1422,7 @@ class RenderLoop:
                     path_maker=_filelock.suffix_path_maker(filename,
                                                            '_duplicate_'))
 
-        with open(filename, "w") as config_file:
+        with open(filename, "w", encoding='utf-8') as config_file:
             config_file.write(config_text)
 
         _messages.log(f'Wrote Animation Config File: "{filename}"',

@@ -139,8 +139,7 @@ class TransformerUri:
              original_config: _types.OptionalPath = None,
              use_auth_token: _types.OptionalString = None,
              local_files_only: bool = False,
-             sequential_cpu_offload_member: bool = False,
-             model_cpu_offload_member: bool = False,
+             no_cache: bool = False,
              transformer_class:
              type[diffusers.SD3Transformer2DModel] |
              type[
@@ -156,20 +155,14 @@ class TransformerUri:
         :param use_auth_token: optional huggingface auth token.
         :param local_files_only: avoid downloading files and only look for cached files
             when the model path is a huggingface slug or blob link
+        :param no_cache: If True, force the returned object not to be cached by the memoize decorator.
 
-        :param sequential_cpu_offload_member: This model will be attached to
-            a pipeline which will have sequential cpu offload enabled?
-
-        :param model_cpu_offload_member: This model will be attached to a pipeline
-            which will have model cpu offload enabled?
-            
         :param transformer_class: Transformer class type.
 
         :raises ModelNotFoundError: If the model could not be found.
 
         :return: :py:class:`diffusers.SD3Transformer2DModel` or :py:class:`diffusers.FluxTransformer2DModel`
         """
-
         try:
             args = locals()
             args.pop('self')
@@ -199,17 +192,12 @@ class TransformerUri:
               original_config: _types.OptionalPath = None,
               use_auth_token: _types.OptionalString = None,
               local_files_only: bool = False,
-              sequential_cpu_offload_member: bool = False,
-              model_cpu_offload_member: bool = False,
+              no_cache: bool = False,
               transformer_class:
               type[diffusers.SD3Transformer2DModel] |
               type[
                   diffusers.FluxTransformer2DModel] = diffusers.SD3Transformer2DModel) \
             -> diffusers.SD3Transformer2DModel | diffusers.FluxTransformer2DModel:
-
-        if sequential_cpu_offload_member and model_cpu_offload_member:
-            # these are used for cache differentiation only
-            raise ValueError('sequential_cpu_offload_member and model_cpu_offload_member cannot both be True.')
 
         if self.dtype is None:
             torch_dtype = _enums.get_torch_dtype(dtype_fallback)
@@ -296,7 +284,7 @@ class TransformerUri:
         # noinspection PyTypeChecker
         return transformer, _d_memoize.CachedObjectMetadata(
             size=estimated_memory_use,
-            skip=model_cpu_offload_member or sequential_cpu_offload_member or self.quantizer
+            skip=self.quantizer or no_cache
         )
 
     @staticmethod
