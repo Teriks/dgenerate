@@ -642,6 +642,8 @@ class RenderLoopConfig(_types.SetFromMixin):
     the diffusion process. This is beneficial for higher inference steps.
                   
     See: https://github.com/horseee/DeepCache
+    
+    This is supported for Stable Diffusion, Stable Diffusion XL, Kolors based models.
     """
     
     deep_cache_intervals: _types.OptionalIntegers = None
@@ -653,6 +655,8 @@ class RenderLoopConfig(_types.SetFromMixin):
     resulting in more speedup but using more memory.
     
     Each value will be tried in turn.
+    
+    This is supported for Stable Diffusion, Stable Diffusion XL, Kolors based models.
     
     Supplying any value implies that :py:attr:`RenderLoopConfig.deep_cache` is enabled.
     
@@ -668,6 +672,8 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     Each value will be tried in turn.
     
+    This is supported for Stable Diffusion, Stable Diffusion XL, Kolors based models.
+    
     Supplying any value implies that :py:attr:`RenderLoopConfig.deep_cache` is enabled.
     
     (default: 1)
@@ -678,6 +684,8 @@ class RenderLoopConfig(_types.SetFromMixin):
     Activate DeepCache for the second model (SDXL Refiner)?
     
     See: :py:attr:`RenderLoopConfig.deep_cache`
+    
+    This is supported for Stable Diffusion XL and Kolors based models.
     """
     
     second_model_deep_cache_intervals: _types.OptionalIntegers = None
@@ -689,6 +697,8 @@ class RenderLoopConfig(_types.SetFromMixin):
     resulting in more speedup but using more memory.
     
     Each value will be tried in turn.
+    
+    This is supported for Stable Diffusion XL and Kolors based models.
     
     Supplying any value implies that :py:attr:`RenderLoopConfig.second_model_deep_cache` is enabled.
     
@@ -703,6 +713,8 @@ class RenderLoopConfig(_types.SetFromMixin):
     is applied to. Advanced usage only.
     
     Each value will be tried in turn.
+    
+    This is supported for Stable Diffusion XL and Kolors based models.
     
     Supplying any value implies that :py:attr:`RenderLoopConfig.second_model_deep_cache` is enabled.
     

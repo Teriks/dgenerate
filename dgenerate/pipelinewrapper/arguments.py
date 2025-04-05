@@ -677,35 +677,63 @@ class DiffusionArguments(_types.SetFromMixin):
     Enable DeepCache acceleration for the main model? DeepCache caches the intermediate 
     attention layer outputs to speed up the diffusion process. This is beneficial for 
     higher inference steps.
+    
+    This is supported for Stable Diffusion, Stable Diffusion XL, Kolors based models.
     """
 
     deep_cache_interval: _types.OptionalInteger = None
     """
     Controls the frequency of caching intermediate outputs in DeepCache 
-    for the main model. Defaults to 5.
+    for the main model. 
+    
+    This is supported for Stable Diffusion, Stable Diffusion XL, Kolors based models.
+    
+    Supplying any value implies that :py:attr:`DiffusionArguments.deep_cache` is enabled.
+    
+    Defaults to 5.
     """
 
     deep_cache_branch_id: _types.OptionalInteger = None
     """
     Controls which branch ID DeepCache should operate on in the UNet 
-    for the main model. Defaults to 1.
+    for the main model. 
+    
+    This is supported for Stable Diffusion, Stable Diffusion XL, Kolors based models.
+    
+    Supplying any value implies that :py:attr:`DiffusionArguments.deep_cache` is enabled.
+    
+    Defaults to 1.
     """
 
     second_model_deep_cache: bool = False
     """
     Enable DeepCache acceleration for the secondary model (SDXL Refiner)?
+    
+    This is supported for Stable Diffusion XL and Kolors based models.
     """
 
     second_model_deep_cache_interval: _types.OptionalInteger = None
     """
     Controls the frequency of caching intermediate outputs in DeepCache 
-    for the secondary model. Defaults to 5.
+    for the secondary model. 
+    
+    This is supported for Stable Diffusion XL and Kolors based models.
+    
+    Supplying any value implies that :py:attr:`DiffusionArguments.second_model_deep_cache` is enabled.
+    
+    Defaults to 5.
     """
 
     second_model_deep_cache_branch_id: _types.OptionalInteger = None
     """
     Controls which branch ID DeepCache should operate on in the UNet 
-    for the secondary model. Defaults to 1.
+    for the secondary model.
+    
+    This is supported for Stable Diffusion XL and Kolors based models. 
+    
+    Supplying any value implies that :py:attr:`DiffusionArguments.second_model_deep_cache` is enabled.
+    
+    Defaults to 1.
     """
 
     @staticmethod

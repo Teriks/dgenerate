@@ -2943,7 +2943,11 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                   DeepCache caches intermediate attention layer outputs to speed up
                   the diffusion process. Recommended for higher inference steps.
                   
-                  See: https://github.com/horseee/DeepCache"""
+                  See: https://github.com/horseee/DeepCache
+                  
+                  This is supported for Stable Diffusion, Stable Diffusion XL,
+                  Kolors based models.
+                  """
         )
     )
 
@@ -2961,6 +2965,9 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             Each value will be tried in turn.
             
             Supplying any values implies --deep-cache.
+            
+            This is supported for Stable Diffusion, Stable Diffusion XL,
+            Kolors based models.
             
             (default: 5)"""
         )
@@ -2980,6 +2987,9 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --deep-cache.
             
+            This is supported for Stable Diffusion, Stable Diffusion XL,
+            Kolors based models.
+            
             (default: 1)"""
         )
     )
@@ -2990,7 +3000,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             action='store_true', default=None, dest='second_model_deep_cache',
             help=f"""Activate DeepCache for the second model (SDXL Refiner)?
             
-                  See: --deep-cache"""
+                  See: --deep-cache
+                  
+                  This is supported for Stable Diffusion XL and Kolors based models.
+                  """
         )
     )
 
@@ -3009,6 +3022,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --second-model-deep-cache.
             
+            This is supported for Stable Diffusion XL and Kolors based models.
+            
             (default: 5)"""
         )
     )
@@ -3026,6 +3041,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             Each value will be tried in turn.
             
             Supplying any values implies --second-model-deep-cache.
+            
+            This is supported for Stable Diffusion XL and Kolors based models.
             
             (default: 1)"""
         )

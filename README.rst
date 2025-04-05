@@ -1802,7 +1802,9 @@ Help Output
             for higher inference steps.
             
             See: https://github.com/horseee/DeepCache
-            -----------------------------------------
+            
+            This is supported for Stable Diffusion, Stable Diffusion XL, Kolors based models.
+            ---------------------------------------------------------------------------------
       -dci INTEGER [INTEGER ...], --deep-cache-intervals INTEGER [INTEGER ...]
             Cache interval for DeepCache for the main model.
             
@@ -1812,6 +1814,8 @@ Help Output
             Each value will be tried in turn.
             
             Supplying any values implies --deep-cache.
+            
+            This is supported for Stable Diffusion, Stable Diffusion XL, Kolors based models.
             
             (default: 5)
             ------------
@@ -1824,13 +1828,17 @@ Help Output
             
             Supplying any values implies --deep-cache.
             
+            This is supported for Stable Diffusion, Stable Diffusion XL, Kolors based models.
+            
             (default: 1)
             ------------
       -sdc, --second-model-deep-cache
             Activate DeepCache for the second model (SDXL Refiner)?
             
             See: --deep-cache
-            -----------------
+            
+            This is supported for Stable Diffusion XL and Kolors based models.
+            ------------------------------------------------------------------
       -sdci INTEGER [INTEGER ...], --second-model-deep-cache-intervals INTEGER [INTEGER ...]
             Cache interval for DeepCache for the second model (SDXL Refiner).
             
@@ -1840,6 +1848,8 @@ Help Output
             Each value will be tried in turn.
             
             Supplying any values implies --second-model-deep-cache.
+            
+            This is supported for Stable Diffusion XL and Kolors based models.
             
             (default: 5)
             ------------
@@ -1851,6 +1861,8 @@ Help Output
             Each value will be tried in turn.
             
             Supplying any values implies --second-model-deep-cache.
+            
+            This is supported for Stable Diffusion XL and Kolors based models.
             
             (default: 1)
             ------------
