@@ -642,7 +642,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     See: https://github.com/microsoft/ras
     
-    This is supported for: ``--model-type torch-sd3``.
+    This is supported for: ``--model-type torch-sd3``, (but not for SD3.5 models)
     """
 
     ras_index_fusion: _types.OptionalBoolean = None
@@ -655,7 +655,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     Supplying any value implies that :py:attr:`RenderLoopConfig.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``.
+    This is supported for: ``--model-type torch-sd3``, (but not for SD3.5 models)
     """
 
     ras_sample_ratios: _types.OptionalFloats = None
@@ -667,7 +667,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     Supplying any value implies that :py:attr:`RenderLoopConfig.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``.
+    This is supported for: ``--model-type torch-sd3``, (but not for SD3.5 models)
     """
 
     ras_high_ratios: _types.OptionalFloats = None
@@ -680,7 +680,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     Supplying any value implies that :py:attr:`RenderLoopConfig.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``.
+    This is supported for: ``--model-type torch-sd3``, (but not for SD3.5 models)
     """
 
     ras_starvation_scales: _types.OptionalFloats = None
@@ -711,7 +711,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     Supplying any value implies that :py:attr:`RenderLoopConfig.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``.
+    This is supported for: ``--model-type torch-sd3``, (but not for SD3.5 models)
     """
 
     ras_start_steps: _types.OptionalIntegers = None
@@ -724,7 +724,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     Supplying any value implies that :py:attr:`RenderLoopConfig.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``.
+    This is supported for: ``--model-type torch-sd3``, (but not for SD3.5 models)
     """
 
     ras_end_steps: _types.OptionalIntegers = None
@@ -737,7 +737,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     Supplying any value implies that :py:attr:`RenderLoopConfig.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``.
+    This is supported for: ``--model-type torch-sd3``, (but not for SD3.5 models)
     """
 
     ras_skip_num_steps: _types.OptionalIntegers = None
@@ -757,7 +757,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     Supplying any value implies that :py:attr:`RenderLoopConfig.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``.
+    This is supported for: ``--model-type torch-sd3``, (but not for SD3.5 models)
     
     (default: 0)
     """
@@ -779,7 +779,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     Supplying any value implies that :py:attr:`RenderLoopConfig.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``.
+    This is supported for: ``--model-type torch-sd3``, (but not for SD3.5 models)
     
     (default: 0)
     """

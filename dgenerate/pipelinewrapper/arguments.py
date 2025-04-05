@@ -411,7 +411,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     See: https://github.com/microsoft/ras
     
-    This is supported for: ``--model-type torch-sd3``.
+    This is supported for: ``--model-type torch-sd3``, (but not for SD3.5 models)
     """
 
     ras_index_fusion: _types.OptionalBoolean = None
@@ -424,7 +424,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``.
+    This is supported for: ``--model-type torch-sd3``, (but not for SD3.5 models)
     """
 
     ras_sample_ratio: _types.OptionalFloat = None
@@ -436,7 +436,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``.
+    This is supported for: ``--model-type torch-sd3``, (but not for SD3.5 models)
     """
 
     ras_high_ratio: _types.OptionalFloat = None
@@ -449,7 +449,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``.
+    This is supported for: ``--model-type torch-sd3``, (but not for SD3.5 models)
     """
 
     ras_starvation_scale: _types.OptionalFloat = None
@@ -463,7 +463,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``.
+    This is supported for: ``--model-type torch-sd3``, (but not for SD3.5 models)
     """
 
     ras_error_reset_steps: _types.OptionalString = None
@@ -475,7 +475,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``.
+    This is supported for: ``--model-type torch-sd3``, (but not for SD3.5 models)
     """
 
     ras_start_step: _types.OptionalInteger = None
@@ -489,7 +489,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``.
+    This is supported for: ``--model-type torch-sd3``, (but not for SD3.5 models)
     """
 
     ras_end_step: _types.OptionalInteger = None
@@ -503,7 +503,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``.
+    This is supported for: ``--model-type torch-sd3``, (but not for SD3.5 models)
     """
 
     ras_metric: _types.OptionalString = None
@@ -516,7 +516,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``.
+    This is supported for: ``--model-type torch-sd3``, (but not for SD3.5 models)
     """
 
     ras_skip_num_step: _types.OptionalInteger = None

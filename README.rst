@@ -1058,8 +1058,8 @@ Help Output
             
             See: https://github.com/microsoft/ras
             
-            This is supported for: --model-type torch-sd3.
-            ----------------------------------------------
+            This is supported for: --model-type torch-sd3, (but not for SD3.5 models)
+            -------------------------------------------------------------------------
       --ras-index-fusion
             Enable index fusion in RAS (Reinforcement Attention System) for the primary model?
             
@@ -1067,8 +1067,8 @@ Help Output
             
             Supplying this flag implies --ras.
             
-            This is supported for: --model-type torch-sd3.
-            ----------------------------------------------
+            This is supported for: --model-type torch-sd3, (but not for SD3.5 models)
+            -------------------------------------------------------------------------
       --ras-sample-ratios FLOAT [FLOAT ...]
             Average sample ratios for each RAS step.
             
@@ -1081,7 +1081,7 @@ Help Output
             
             Supplying any values implies --ras.
             
-            This is supported for: --model-type torch-sd3.
+            This is supported for: --model-type torch-sd3, (but not for SD3.5 models)
             
             (default: 0.5)
             --------------
@@ -1097,7 +1097,7 @@ Help Output
             
             Supplying any values implies --ras.
             
-            This is supported for: --model-type torch-sd3.
+            This is supported for: --model-type torch-sd3, (but not for SD3.5 models)
             
             (default: 1.0)
             --------------
@@ -1116,7 +1116,7 @@ Help Output
             
             Supplying any values implies --ras.
             
-            This is supported for: --model-type torch-sd3.
+            This is supported for: --model-type torch-sd3, (but not for SD3.5 models)
             
             (default: 0.1)
             --------------
@@ -1130,7 +1130,7 @@ Help Output
             
             Supplying any values implies --ras.
             
-            This is supported for: --model-type torch-sd3.
+            This is supported for: --model-type torch-sd3, (but not for SD3.5 models)
             
             (default: "12,22")
             ------------------
@@ -1144,7 +1144,7 @@ Help Output
             
             Supplying any values implies --ras.
             
-            This is supported for: --model-type torch-sd3.
+            This is supported for: --model-type torch-sd3, (but not for SD3.5 models)
             
             (default: "std")
             ----------------
@@ -1157,7 +1157,7 @@ Help Output
             
             Supplying any values implies --ras.
             
-            This is supported for: --model-type torch-sd3.
+            This is supported for: --model-type torch-sd3, (but not for SD3.5 models)
             
             (default: 4)
             ------------
@@ -1170,7 +1170,7 @@ Help Output
             
             Supplying any values implies --ras.
             
-            This is supported for: --model-type torch-sd3.
+            This is supported for: --model-type torch-sd3, (but not for SD3.5 models)
             
             (default: --inference-steps)
             ----------------------------
@@ -1190,7 +1190,7 @@ Help Output
             
             Supplying any values implies --ras.
             
-            This is supported for: --model-type torch-sd3.
+            This is supported for: --model-type torch-sd3, (but not for SD3.5 models)
             
             (default: 0)
             ------------
@@ -1210,7 +1210,7 @@ Help Output
             
             Supplying any values implies --ras.
             
-            This is supported for: --model-type torch-sd3.
+            This is supported for: --model-type torch-sd3, (but not for SD3.5 models)
             
             (default: 0)
             ------------
