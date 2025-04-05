@@ -2969,6 +2969,11 @@ class DiffusionPipelineWrapper:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'RAS is only supported for SD3.')
 
+            if self._pipeline.transformer.config.qk_norm == 'rms_norm':
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'RAS does not support SD3.5, only SD3.'
+                )
+
             if importlib.util.find_spec('triton') is None:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'RAS is only supported with triton / triton-windows installed.')

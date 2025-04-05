@@ -1676,7 +1676,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                      See: https://github.com/microsoft/ras
                     
-                     This is supported for: --model-type torch-sd3.
+                     This is supported for: --model-type torch-sd3, (but not for SD3.5 models)
                      """
         )
     )
@@ -1691,7 +1691,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying this flag implies --ras.
 
-            This is supported for: --model-type torch-sd3."""
+            This is supported for: --model-type torch-sd3, (but not for SD3.5 models)"""
         )
     )
 
@@ -1712,7 +1712,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --ras.
 
-            This is supported for: --model-type torch-sd3.
+            This is supported for: --model-type torch-sd3, (but not for SD3.5 models)
 
             (default: 0.5)"""
         )
@@ -1734,7 +1734,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --ras.
 
-            This is supported for: --model-type torch-sd3.
+            This is supported for: --model-type torch-sd3, (but not for SD3.5 models)
 
             (default: 1.0)"""
         )
@@ -1759,7 +1759,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --ras.
 
-            This is supported for: --model-type torch-sd3.
+            This is supported for: --model-type torch-sd3, (but not for SD3.5 models)
 
             (default: 0.1)"""
         )
@@ -1779,7 +1779,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --ras.
 
-            This is supported for: --model-type torch-sd3.
+            This is supported for: --model-type torch-sd3, (but not for SD3.5 models)
 
             (default: "12,22")"""
         )
@@ -1799,7 +1799,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --ras.
             
-            This is supported for: --model-type torch-sd3.
+            This is supported for: --model-type torch-sd3, (but not for SD3.5 models)
             
             (default: "std")"""
         )
@@ -1819,7 +1819,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --ras.
 
-            This is supported for: --model-type torch-sd3.
+            This is supported for: --model-type torch-sd3, (but not for SD3.5 models)
 
             (default: 4)"""
         )
@@ -1839,7 +1839,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --ras.
 
-            This is supported for: --model-type torch-sd3.
+            This is supported for: --model-type torch-sd3, (but not for SD3.5 models)
 
             (default: --inference-steps)"""
         )
@@ -1865,7 +1865,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --ras.
 
-            This is supported for: --model-type torch-sd3.
+            This is supported for: --model-type torch-sd3, (but not for SD3.5 models)
 
             (default: 0)"""
         )
@@ -1892,7 +1892,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --ras.
 
-            This is supported for: --model-type torch-sd3.
+            This is supported for: --model-type torch-sd3, (but not for SD3.5 models)
 
             (default: 0)"""
         )
