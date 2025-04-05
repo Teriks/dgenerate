@@ -13,6 +13,7 @@ order: 3
 @dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"], "default":"float16"}]
 @dropdown[{"label":"Model variant", "arg":"--variant", "options":["fp16", "bf16"], "default":"fp16"}]
 @karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "filter": ["FlowMatchEulerDiscreteScheduler"]}]
+@switch[{"label":"Use RAS", "arg":"--ras"}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "default":1}]
 @quantizer[{"divider-after":true}]
 @torchvae[{"label":"VAE Path / URI", "dir":true, "file-types":["models"]}]
