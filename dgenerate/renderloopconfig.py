@@ -634,6 +634,81 @@ class RenderLoopConfig(_types.SetFromMixin):
     This is supported for: ``--model-type torch-flux*``.
     """
 
+    deep_cache: bool = False
+    """
+    Activate DeepCache for the main model?
+    
+    DeepCache caches intermediate attention layer outputs to speed up
+    the diffusion process. This is beneficial for higher inference steps.
+                  
+    See: https://github.com/horseee/DeepCache
+    """
+    
+    deep_cache_intervals: _types.OptionalIntegers = None
+    """
+    Cache intervals to try for DeepCache for the main model.
+    
+    Controls how frequently the attention layers are cached during
+    the diffusion process. Lower values cache more frequently, potentially
+    resulting in more speedup but using more memory.
+    
+    Each value will be tried in turn.
+    
+    Supplying any value implies that :py:attr:`RenderLoopConfig.deep_cache` is enabled.
+    
+    (default: 5)
+    """
+    
+    deep_cache_branch_ids: _types.OptionalIntegers = None
+    """
+    Branch IDs to try for DeepCache for the main model.
+    
+    Controls which branches of the UNet attention blocks the caching
+    is applied to. Advanced usage only.
+    
+    Each value will be tried in turn.
+    
+    Supplying any value implies that :py:attr:`RenderLoopConfig.deep_cache` is enabled.
+    
+    (default: 1)
+    """
+
+    second_model_deep_cache: _types.OptionalBoolean = None
+    """
+    Activate DeepCache for the second model (SDXL Refiner)?
+    
+    See: :py:attr:`RenderLoopConfig.deep_cache`
+    """
+    
+    second_model_deep_cache_intervals: _types.OptionalIntegers = None
+    """
+    Cache intervals to try for DeepCache for the second model (SDXL Refiner).
+    
+    Controls how frequently the attention layers are cached during
+    the diffusion process. Lower values cache more frequently, potentially
+    resulting in more speedup but using more memory.
+    
+    Each value will be tried in turn.
+    
+    Supplying any value implies that :py:attr:`RenderLoopConfig.second_model_deep_cache` is enabled.
+    
+    (default: 5)
+    """
+    
+    second_model_deep_cache_branch_ids: _types.OptionalIntegers = None
+    """
+    Branch IDs to try for DeepCache for the second model (SDXL Refiner).
+    
+    Controls which branches of the UNet attention blocks the caching
+    is applied to. Advanced usage only.
+    
+    Each value will be tried in turn.
+    
+    Supplying any value implies that :py:attr:`RenderLoopConfig.second_model_deep_cache` is enabled.
+    
+    (default: 1)
+    """
+
     ras: bool = False
     """
     Activate RAS (Region-Adaptive Sampling) for the primary model? 
@@ -1560,6 +1635,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         self._check_sd3_model_requirements(a_namer)
         self._check_sdxl_model_requirements(a_namer)
         self._check_vae_compatibility(a_namer)
+        self._check_deep_cache_compatibility(a_namer)
 
     def _check_stable_cascade_requirements(self, a_namer: typing.Callable[[str], str]):
         """Check Stable Cascade specific requirements."""
@@ -1655,6 +1731,18 @@ class RenderLoopConfig(_types.SetFromMixin):
                         f'{a_namer("max_sequence_length")} must be greater than or equal '
                         f'to 1 and less than or equal to 512.'
                     )
+
+    def _check_deep_cache_compatibility(self, a_namer: typing.Callable[[str], str]):
+        """Check if DeepCache can be used"""
+        deep_cache_enabled = (self.deep_cache or any(self._non_null_attr_that_start_with('deep_cache_')))
+        if deep_cache_enabled and not (_pipelinewrapper.model_type_is_sd15(self.model_type) or
+                                       _pipelinewrapper.model_type_is_sd2(self.model_type) or
+                                       _pipelinewrapper.model_type_is_sdxl(self.model_type) or
+                                       _pipelinewrapper.model_type_is_kolors(self.model_type)):
+            raise RenderLoopConfigError(
+                f'{a_namer("deep_cache")} and related arguments are only '
+                f'compatible with Stable Diffusion, Stable Diffusion XL, and Kolors.'
+            )
 
     def _check_sd3_model_requirements(self, a_namer: typing.Callable[[str], str]):
         """Check SD3 model specific requirements."""
@@ -2243,7 +2331,11 @@ class RenderLoopConfig(_types.SetFromMixin):
             self.ras_start_steps,
             self.ras_end_steps,
             self.ras_skip_num_steps,
-            self.ras_skip_num_step_lengths
+            self.ras_skip_num_step_lengths,
+            self.deep_cache_intervals,
+            self.deep_cache_branch_ids,
+            self.second_model_deep_cache_intervals,
+            self.second_model_deep_cache_branch_ids
         ]
 
         schedulers, second_model_schedulers = self._normalized_schedulers()
@@ -2390,16 +2482,27 @@ class RenderLoopConfig(_types.SetFromMixin):
                 guidance_scale=ov('guidance_scale', self.guidance_scales),
                 hi_diffusion=ov('hi_diffusion', [self.hi_diffusion]),
                 tea_cache=ov('tea_cache', [self.tea_cache]),
-                ras=ov('ras', [self.ras]),
                 tea_cache_rel_l1_threshold=ov('tea_cache_rel_l1_threshold', self.tea_cache_rel_l1_thresholds),
+                ras=ov('ras', [self.ras]),
+                ras_index_fusion=ov('ras_index_fusion', [self.ras_index_fusion]),
                 ras_sample_ratio=ov('ras_sample_ratio', self.ras_sample_ratios),
                 ras_high_ratio=ov('ras_high_ratio', self.ras_high_ratios),
                 ras_starvation_scale=ov('ras_starvation_scale', self.ras_starvation_scales),
                 ras_error_reset_steps=ov('ras_error_reset_steps', self.ras_error_reset_steps),
+                ras_metric=ov('ras_metric', self.ras_metrics),
                 ras_start_step=ov('ras_start_step', self.ras_start_steps),
                 ras_end_step=ov('ras_end_step', self.ras_end_steps),
                 ras_skip_num_step=ov('ras_skip_num_step', self.ras_skip_num_steps),
                 ras_skip_num_step_length=ov('ras_skip_num_step_length', self.ras_skip_num_step_lengths),
+                deep_cache=ov('deep_cache', [self.deep_cache]),
+                deep_cache_interval=ov('deep_cache_interval', self.deep_cache_intervals),
+                deep_cache_branch_id=ov('deep_cache_branch_id', self.deep_cache_branch_ids),
+                second_model_deep_cache=ov('second_model_deep_cache', [self.second_model_deep_cache]),
+                second_model_deep_cache_interval=ov('second_model_deep_cache_interval', 
+                                                    self.second_model_deep_cache_intervals),
+                second_model_deep_cache_branch_id=ov('second_model_deep_cache_branch_id', 
+                                                     self.second_model_deep_cache_branch_ids),
+                pag_scale=ov('pag_scale', self.pag_scales),
                 pag_adaptive_scale=ov('pag_adaptive_scale', self.pag_adaptive_scales),
                 image_guidance_scale=ov('image_guidance_scale', self.image_guidance_scales),
                 guidance_rescale=ov('guidance_rescale', self.guidance_rescales),
@@ -2408,11 +2511,9 @@ class RenderLoopConfig(_types.SetFromMixin):
                 second_model_inference_steps=ov('second_model_inference_steps', self.second_model_inference_steps),
                 second_model_guidance_scale=ov('second_model_guidance_scale', self.second_model_guidance_scales),
                 sdxl_refiner_hi_diffusion=ov('sdxl_refiner_hi_diffusion', [self.sdxl_refiner_hi_diffusion]),
-                sdxl_refiner_pag_scale=ov('sdxl_refiner_pag_scale',
-                                          self.sdxl_refiner_pag_scales),
-                sdxl_refiner_pag_adaptive_scale=ov('sdxl_refiner_pag_adaptive_scale',
+                sdxl_refiner_pag_scale=ov('sdxl_refiner_pag_scale', self.sdxl_refiner_pag_scales),
+                sdxl_refiner_pag_adaptive_scale=ov('sdxl_refiner_pag_adaptive_scale', 
                                                    self.sdxl_refiner_pag_adaptive_scales),
-
                 sdxl_refiner_guidance_rescale=ov('sdxl_refiner_guidance_rescale',
                                                  self.sdxl_refiner_guidance_rescales),
                 upscaler_noise_level=ov('upscaler_noise_level', self.upscaler_noise_levels),
@@ -2444,8 +2545,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                 adetailer_detector_padding=ov('adetailer_detector_padding', self.adetailer_detector_paddings),
                 adetailer_mask_padding=ov('adetailer_mask_padding', self.adetailer_mask_paddings),
                 adetailer_mask_blur=ov('adetailer_mask_blur', self.adetailer_mask_blurs),
-                adetailer_mask_dilation=ov('adetailer_mask_dilation', self.adetailer_mask_dilations),
-                ras_metric=ov('ras_metric', self.ras_metrics)):
+                adetailer_mask_dilation=ov('adetailer_mask_dilation', self.adetailer_mask_dilations)):
             arg.prompt.set_embedded_args_on(
                 on_object=arg,
                 forbidden_checker=_pipelinewrapper.DiffusionArguments.prompt_embedded_arg_checker)

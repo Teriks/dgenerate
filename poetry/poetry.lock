@@ -791,6 +791,23 @@ files = [
 ]
 
 [[package]]
+name = "deepcache"
+version = "0.1.1"
+description = "DeepCache: Accelerating Diffusion Models for Free"
+optional = false
+python-versions = ">=3.6"
+groups = ["main"]
+files = [
+    {file = "DeepCache-0.1.1-py3-none-any.whl", hash = "sha256:aa4aa5f8e9a2e5a41d59900305c3c86c20834537d0c67bf2d8bb7075618ae48a"},
+    {file = "DeepCache-0.1.1.tar.gz", hash = "sha256:8bc995d8c0ee7f3eb51ca080c951916bf0eb044ebdc75215b1753621ac8f80e6"},
+]
+
+[package.dependencies]
+diffusers = "*"
+torch = "*"
+transformers = "*"
+
+[[package]]
 name = "diffusers"
 version = "0.32.2"
 description = "State-of-the-art diffusion in PyTorch and JAX."
@@ -4498,4 +4515,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.13"
-content-hash = "cbc256e3c4c69aae8dec7e086bf229455e612fd03d065b42fbb303ccfc67f135"
+content-hash = "564b88fdc40c6b0180023b4be385da7c0d52b145222312eae2ddb6685864c714"

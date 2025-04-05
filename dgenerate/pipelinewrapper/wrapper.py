@@ -51,6 +51,34 @@ import dgenerate.pipelinewrapper.schedulers as _schedulers
 import dgenerate.memory as _memory
 import dgenerate.memoize as _memoize
 import dgenerate.torchutil as _torchutil
+import DeepCache as _deepcache
+
+
+@contextlib.contextmanager
+def _deep_cache_context(pipeline,
+                        cache_interval: int = 5,
+                        cache_branch_id: int = 1,
+                        skip_mode: str = 'uniform',
+                        enabled: bool = False):
+    if enabled:
+        _messages.debug_log(
+            f'Enabling DeepCache on pipeline: {pipeline.__class__.__name__}')
+        helper = _deepcache.DeepCacheSDHelper(pipe=pipeline)
+        helper.set_params(
+            cache_interval=cache_interval,
+            cache_branch_id=cache_branch_id,
+            skip_mode=skip_mode
+        )
+        helper.enable()
+
+        try:
+            yield
+        finally:
+            _messages.debug_log(
+                f'Disabling DeepCache on pipeline: {pipeline.__class__.__name__}')
+            helper.disable()
+    else:
+        yield
 
 
 class DiffusionArgumentsHelpException(Exception):
@@ -1089,6 +1117,28 @@ class DiffusionPipelineWrapper:
         if args.ras_skip_num_step_length is not None and \
                 args.ras_skip_num_step_length != _constants.DEFAULT_RAS_SKIP_NUM_STEP_LENGTH:
             opts.append(('--ras-skip-num-step-lengths', args.ras_skip_num_step_length))
+
+        if args.deep_cache:
+            opts.append(('--deep-cache',))
+
+        if args.deep_cache_interval is not None and \
+                args.deep_cache_interval != _constants.DEFAULT_DEEP_CACHE_INTERVAL:
+            opts.append(('--deep-cache-intervals', args.deep_cache_interval))
+
+        if args.deep_cache_branch_id is not None and \
+                args.deep_cache_branch_id != _constants.DEFAULT_DEEP_CACHE_BRANCH_ID:
+            opts.append(('--deep-cache-branch-ids', args.deep_cache_branch_id))
+
+        if args.second_model_deep_cache:
+            opts.append(('--second-model-deep-cache',))
+
+        if args.second_model_deep_cache_interval is not None and \
+                args.second_model_deep_cache_interval != _constants.DEFAULT_SDXL_REFINER_DEEP_CACHE_INTERVAL:
+            opts.append(('--second-model-deep-cache-intervals', args.second_model_deep_cache_interval))
+
+        if args.second_model_deep_cache_branch_id is not None and \
+                args.second_model_deep_cache_branch_id != _constants.DEFAULT_SDXL_REFINER_DEEP_CACHE_BRANCH_ID:
+            opts.append(('--second-model-deep-cache-branch-ids', args.second_model_deep_cache_branch_id))
 
         if args.pag_scale == _constants.DEFAULT_PAG_SCALE \
                 and args.pag_adaptive_scale == _constants.DEFAULT_PAG_ADAPTIVE_SCALE:
@@ -2322,10 +2372,14 @@ class DiffusionPipelineWrapper:
         if self._sdxl_refiner_pipeline is None:
             ras_args = self._get_sd3_ras_args(user_args)
 
-            with _hi_diffusion(self._pipeline,
-                               generator=generator,
-                               enabled=user_args.hi_diffusion), \
-                    _sd3_ras_context(self._pipeline, args=ras_args, enabled=user_args.ras):
+            with _hi_diffusion(self._pipeline,generator=generator, enabled=user_args.hi_diffusion), \
+                 _sd3_ras_context(self._pipeline, args=ras_args, enabled=user_args.ras), \
+                 _deep_cache_context(self._pipeline,
+                                     cache_interval=_types.default(
+                                         user_args.deep_cache_interval, _constants.DEFAULT_DEEP_CACHE_INTERVAL),
+                                     cache_branch_id=_types.default(
+                                         user_args.deep_cache_branch_id, _constants.DEFAULT_DEEP_CACHE_BRANCH_ID),
+                                     enabled=user_args.deep_cache):
                 if self._parsed_adetailer_detector_uris:
                     return generate_asdff()
                 else:
@@ -2353,7 +2407,13 @@ class DiffusionPipelineWrapper:
 
         with _hi_diffusion(self._pipeline,
                            generator=generator,
-                           enabled=user_args.hi_diffusion):
+                           enabled=user_args.hi_diffusion), \
+             _deep_cache_context(self._pipeline,
+                                 cache_interval=_types.default(
+                                     user_args.deep_cache_interval, _constants.DEFAULT_DEEP_CACHE_INTERVAL),
+                                 cache_branch_id=_types.default(
+                                     user_args.deep_cache_branch_id, _constants.DEFAULT_DEEP_CACHE_BRANCH_ID),
+                                 enabled=user_args.deep_cache):
             if self._parsed_adetailer_detector_uris:
                 image = generate_asdff().images
             else:
@@ -2522,7 +2582,15 @@ class DiffusionPipelineWrapper:
 
         with _hi_diffusion(self._sdxl_refiner_pipeline,
                            generator=generator,
-                           enabled=user_args.sdxl_refiner_hi_diffusion):
+                           enabled=user_args.sdxl_refiner_hi_diffusion), \
+             _deep_cache_context(self._sdxl_refiner_pipeline,
+                                 cache_interval=_types.default(
+                                     user_args.deep_cache_interval,
+                                     _constants.DEFAULT_SDXL_REFINER_DEEP_CACHE_INTERVAL),
+                                 cache_branch_id=_types.default(
+                                     user_args.deep_cache_branch_id,
+                                     _constants.DEFAULT_SDXL_REFINER_DEEP_CACHE_BRANCH_ID),
+                                 enabled=user_args.second_model_deep_cache):
             return PipelineWrapperResult(
                 _pipelines.call_pipeline(
                     pipeline=self._sdxl_refiner_pipeline,
@@ -2988,6 +3056,31 @@ class DiffusionPipelineWrapper:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'RAS start step must be less than or equal to end step.')
 
+    def _auto_deep_cache_check(self, args: DiffusionArguments):
+        # Auto-enable deep_cache if any deep_cache_ parameters are set
+        for prop in args.__dict__.keys():
+            if prop.startswith('deep_cache_'):
+                value = getattr(args, prop)
+                if value is not None or (isinstance(value, bool) and value is True):
+                    args.deep_cache = True
+                    break
+
+        if args.deep_cache:
+            if not (_enums.model_type_is_sd15(self.model_type) or
+                    _enums.model_type_is_sd2(self.model_type) or
+                    _enums.model_type_is_sdxl(self.model_type) or
+                    _enums.model_type_is_kolors(self.model_type)):
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'DeepCache is only supported for Stable Diffusion, Stable Diffusion XL, and Kolors.'
+                )
+
+        for prop in args.__dict__.keys():
+            if prop.startswith('second_model_deep_cache_'):
+                value = getattr(args, prop)
+                if value is not None or (isinstance(value, bool) and value is True):
+                    args.second_model_deep_cache = True
+                    break
+
     def _auto_tea_cache_check(self, args: DiffusionArguments):
         for prop in args.__dict__.keys():
             if prop.startswith('tea_cache_'):
@@ -3057,6 +3150,7 @@ class DiffusionPipelineWrapper:
 
         self._auto_tea_cache_check(copy_args)
         self._auto_ras_check(copy_args)
+        self._auto_deep_cache_check(copy_args)
 
         if self.model_type == _enums.ModelType.TORCH_S_CASCADE:
             if args.hi_diffusion:

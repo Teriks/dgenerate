@@ -260,6 +260,30 @@ enabled where the number of skipped tokens varies over time based on skip_num_st
 of skipping will repeat every skip_num_step_length steps.
 """
 
+DEFAULT_DEEP_CACHE_INTERVAL: int = 5
+"""
+Default cache interval for DeepCache.
+Controls how frequently the attention layers are cached during the diffusion process.
+"""
+
+DEFAULT_DEEP_CACHE_BRANCH_ID: int = 1
+"""
+Default branch ID for DeepCache.
+Controls which branches to apply DeepCache to in the UNet.
+"""
+
+DEFAULT_SDXL_REFINER_DEEP_CACHE_INTERVAL: int = 5
+"""
+Default cache interval for DeepCache on SDXL Refiner.
+Controls how frequently the attention layers are cached during the diffusion process.
+"""
+
+DEFAULT_SDXL_REFINER_DEEP_CACHE_BRANCH_ID: int = 1
+"""
+Default branch ID for DeepCache on SDXL Refiner.
+Controls which branches to apply DeepCache to in the UNet.
+"""
+
 PIPELINE_WRAPPER_CACHE_GC_CONSTRAINTS: list[str] = ['used_percent > 70']
 """
 Cache constraint expressions for when to clear all object caches, 
