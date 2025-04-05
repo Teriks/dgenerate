@@ -672,6 +672,42 @@ class DiffusionArguments(_types.SetFromMixin):
     see: cv2.dilate. Defaults to 4.
     """
 
+    deep_cache: bool = False
+    """
+    Enable DeepCache acceleration for the main model? DeepCache caches the intermediate 
+    attention layer outputs to speed up the diffusion process. This is beneficial for 
+    higher inference steps.
+    """
+
+    deep_cache_interval: _types.OptionalInteger = None
+    """
+    Controls the frequency of caching intermediate outputs in DeepCache 
+    for the main model. Defaults to 5.
+    """
+
+    deep_cache_branch_id: _types.OptionalInteger = None
+    """
+    Controls which branch ID DeepCache should operate on in the UNet 
+    for the main model. Defaults to 1.
+    """
+
+    second_model_deep_cache: bool = False
+    """
+    Enable DeepCache acceleration for the secondary model (SDXL Refiner)?
+    """
+
+    second_model_deep_cache_interval: _types.OptionalInteger = None
+    """
+    Controls the frequency of caching intermediate outputs in DeepCache 
+    for the secondary model. Defaults to 5.
+    """
+
+    second_model_deep_cache_branch_id: _types.OptionalInteger = None
+    """
+    Controls which branch ID DeepCache should operate on in the UNet 
+    for the secondary model. Defaults to 1.
+    """
+
     @staticmethod
     def prompt_embedded_arg_checker(name):
         """
@@ -834,7 +870,11 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.ras_end_step, "RAS End Step:"),
             (self.ras_metric, "RAS Metric:"),
             (self.ras_skip_num_step, "RAS Skip Num Step:"),
-            (self.ras_skip_num_step_length, "RAS Skip Num Step Length:")
+            (self.ras_skip_num_step_length, "RAS Skip Num Step Length:"),
+            (self.deep_cache_interval, "DeepCache Interval:"),
+            (self.deep_cache_branch_id, "DeepCache Branch ID:"),
+            (self.second_model_deep_cache_interval, "Second Model DeepCache Interval:"),
+            (self.second_model_deep_cache_branch_id, "Second Model DeepCache Branch ID:")
         ]
 
         if not self.prompt.weighter:

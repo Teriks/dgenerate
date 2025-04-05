@@ -249,7 +249,9 @@ Help Output
                      [-cip PROCESSOR_URI [PROCESSOR_URI ...]] [--image-processor-help [PROCESSOR_NAME ...]]
                      [-pp PROCESSOR_URI [PROCESSOR_URI ...]] [-iss FLOAT [FLOAT ...] | -uns INTEGER
                      [INTEGER ...]] [-gs FLOAT [FLOAT ...]] [-igs FLOAT [FLOAT ...]] [-gr FLOAT [FLOAT ...]]
-                     [-ifs INTEGER [INTEGER ...]] [-ifs2 INTEGER [INTEGER ...]] [-gs2 FLOAT [FLOAT ...]]
+                     [-ifs INTEGER [INTEGER ...]] [-ifs2 INTEGER [INTEGER ...]] [-gs2 FLOAT [FLOAT ...]] [-dc]
+                     [-dci INTEGER [INTEGER ...]] [-dcb INTEGER [INTEGER ...]] [-sdc]
+                     [-sdci INTEGER [INTEGER ...]] [-sdcb INTEGER [INTEGER ...]]
                      model_path
     
     Batch image generation and manipulation tool supporting Stable Diffusion and related techniques /
@@ -1793,6 +1795,65 @@ Help Output
             Override the guidance scale value used by the second model, which defaults to the value taken from
             --guidance-scales for SDXL and 0 for Stable Cascade.
             ----------------------------------------------------
+      -dc, --deep-cache
+            Activate DeepCache for the main model?
+            
+            DeepCache caches intermediate attention layer outputs to speed up the diffusion process. Recommended
+            for higher inference steps.
+            
+            See: https://github.com/horseee/DeepCache
+            -----------------------------------------
+      -dci INTEGER [INTEGER ...], --deep-cache-intervals INTEGER [INTEGER ...]
+            Cache interval for DeepCache for the main model.
+            
+            Controls how frequently the attention layers are cached during the diffusion process. Lower values
+            cache more frequently, potentially resulting in more speedup but using more memory.
+            
+            Each value will be tried in turn.
+            
+            Supplying any values implies --deep-cache.
+            
+            (default: 5)
+            ------------
+      -dcb INTEGER [INTEGER ...], --deep-cache-branch-ids INTEGER [INTEGER ...]
+            Branch ID for DeepCache for the main model.
+            
+            Controls which branches of the UNet attention blocks the caching is applied to. Advanced usage only.
+            
+            Each value will be tried in turn.
+            
+            Supplying any values implies --deep-cache.
+            
+            (default: 1)
+            ------------
+      -sdc, --second-model-deep-cache
+            Activate DeepCache for the second model (SDXL Refiner)?
+            
+            See: --deep-cache
+            -----------------
+      -sdci INTEGER [INTEGER ...], --second-model-deep-cache-intervals INTEGER [INTEGER ...]
+            Cache interval for DeepCache for the second model (SDXL Refiner).
+            
+            Controls how frequently the attention layers are cached during the diffusion process. Lower values
+            cache more frequently, potentially resulting in more speedup but using more memory.
+            
+            Each value will be tried in turn.
+            
+            Supplying any values implies --second-model-deep-cache.
+            
+            (default: 5)
+            ------------
+      -sdcb INTEGER [INTEGER ...], --second-model-deep-cache-branch-ids INTEGER [INTEGER ...]
+            Branch ID for DeepCache for the second model (SDXL Refiner).
+            
+            Controls which branches of the UNet attention blocks the caching is applied to. Advanced usage only.
+            
+            Each value will be tried in turn.
+            
+            Supplying any values implies --second-model-deep-cache.
+            
+            (default: 1)
+            ------------
 
 Windows Install
 ===============

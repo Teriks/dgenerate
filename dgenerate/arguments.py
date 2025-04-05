@@ -517,6 +517,26 @@ def _type_ras_skip_num_step_length(val: str) -> int:
     return val
 
 
+def _type_deep_cache_interval(val: str) -> int:
+    try:
+        val = int(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be an integer')
+    if val <= 0:
+        raise argparse.ArgumentTypeError('Must be greater than 0')
+    return val
+
+
+def _type_deep_cache_branch_id(val: str) -> int:
+    try:
+        val = int(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be an integer')
+    if val < 0:
+        raise argparse.ArgumentTypeError('Must be greater than or equal to 0')
+    return val
+
+
 _ARG_PARSER_CACHE = dict()
 
 
@@ -2911,6 +2931,103 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                      which defaults to the value taken from --guidance-scales for SDXL and 
                      {_pipelinewrapper.constants.DEFAULT_S_CASCADE_DECODER_GUIDANCE_SCALE} for Stable Cascade.
                      """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-dc', '--deep-cache',
+            action='store_true', default=False, dest='deep_cache',
+            help=f"""Activate DeepCache for the main model?
+
+                  DeepCache caches intermediate attention layer outputs to speed up
+                  the diffusion process. Recommended for higher inference steps.
+                  
+                  See: https://github.com/horseee/DeepCache"""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-dci', '--deep-cache-intervals',
+            metavar='INTEGER',
+            nargs='+', dest='deep_cache_intervals', type=_type_deep_cache_interval,
+            help="""Cache interval for DeepCache for the main model.
+            
+            Controls how frequently the attention layers are cached during
+            the diffusion process. Lower values cache more frequently, potentially
+            resulting in more speedup but using more memory.
+            
+            Each value will be tried in turn.
+            
+            Supplying any values implies --deep-cache.
+            
+            (default: 5)"""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-dcb', '--deep-cache-branch-ids',
+            metavar='INTEGER',
+            nargs='+', dest='deep_cache_branch_ids', type=_type_deep_cache_branch_id,
+            help="""Branch ID for DeepCache for the main model.
+            
+            Controls which branches of the UNet attention blocks the caching
+            is applied to. Advanced usage only.
+            
+            Each value will be tried in turn.
+            
+            Supplying any values implies --deep-cache.
+            
+            (default: 1)"""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-sdc', '--second-model-deep-cache',
+            action='store_true', default=None, dest='second_model_deep_cache',
+            help=f"""Activate DeepCache for the second model (SDXL Refiner)?
+            
+                  See: --deep-cache"""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-sdci', '--second-model-deep-cache-intervals',
+            metavar='INTEGER',
+            nargs='+', dest='second_model_deep_cache_intervals', type=_type_deep_cache_interval,
+            help="""Cache interval for DeepCache for the second model (SDXL Refiner).
+            
+            Controls how frequently the attention layers are cached during
+            the diffusion process. Lower values cache more frequently, potentially
+            resulting in more speedup but using more memory.
+            
+            Each value will be tried in turn.
+            
+            Supplying any values implies --second-model-deep-cache.
+            
+            (default: 5)"""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-sdcb', '--second-model-deep-cache-branch-ids',
+            metavar='INTEGER',
+            nargs='+', dest='second_model_deep_cache_branch_ids', type=_type_deep_cache_branch_id,
+            help="""Branch ID for DeepCache for the second model (SDXL Refiner).
+            
+            Controls which branches of the UNet attention blocks the caching
+            is applied to. Advanced usage only.
+            
+            Each value will be tried in turn.
+            
+            Supplying any values implies --second-model-deep-cache.
+            
+            (default: 1)"""
         )
     )
 
