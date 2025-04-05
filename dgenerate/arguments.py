@@ -431,16 +431,6 @@ def _type_adetailer_mask_dilation(val):
     return val
 
 
-def _type_ras_patch_size(val: str) -> int:
-    try:
-        val = int(val)
-    except ValueError:
-        raise argparse.ArgumentTypeError('Must be an integer')
-    if val <= 0:
-        raise argparse.ArgumentTypeError('Must be greater than 0')
-    return val
-
-
 def _type_ras_sample_ratio(val: str) -> float:
     try:
         val = float(val)
@@ -1705,23 +1695,6 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         )
     )
 
-    actions.append(
-        parser.add_argument(
-            '--ras-patch-sizes',
-            metavar='INTEGER',
-            nargs='+', dest='ras_patch_sizes', type=_type_ras_patch_size,
-            help="""Patch sizes for RAS (Reinforcement Attention System).
-            This controls the size of patches used for region-adaptive sampling.
-            
-            Each value will be tried in turn.
-            
-            Supplying any values implies --ras.
-
-            This is supported for: --model-type torch-sd3.
-
-            (default: 2)"""
-        )
-    )
 
     actions.append(
         parser.add_argument(

@@ -207,12 +207,6 @@ DEFAULT_TEA_CACHE_REL_L1_THRESHOLD: float = 0.6
 Default relative L1 threshold for TeaCache (Timestep Embedding Aware Cache) for Flux.
 """
 
-DEFAULT_RAS_PATCH_SIZE: int = 2
-"""
-Default patch size for RAS (Reinforcement Attention System) for Stable Diffusion 3.
-Controls the size of patches used for attention computation in RAS.
-"""
-
 DEFAULT_RAS_SAMPLE_RATIO: float = 0.5
 """
 Default sample ratio for RAS (Reinforcement Attention System) for Stable Diffusion 3.

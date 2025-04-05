@@ -209,11 +209,10 @@ Help Output
                      [-sch SCHEDULER_URI [SCHEDULER_URI ...]]
                      [--second-model-scheduler SCHEDULER_URI [SCHEDULER_URI ...]] [-hd] [--tea-cache]
                      [--tea-cache-rel-l1-thresholds [FLOAT ...]] [--ras] [--ras-index-fusion]
-                     [--ras-patch-sizes INTEGER [INTEGER ...]] [--ras-sample-ratios FLOAT [FLOAT ...]]
-                     [--ras-high-ratios FLOAT [FLOAT ...]] [--ras-starvation-scales FLOAT [FLOAT ...]]
-                     [--ras-error-reset-steps CSV_INT [CSV_INT ...]] [--ras-metrics RAS_METRIC [RAS_METRIC ...]]
-                     [--ras-start-steps INTEGER [INTEGER ...]] [--ras-end-steps INTEGER [INTEGER ...]]
-                     [--ras-skip-num-steps INTEGER [INTEGER ...]]
+                     [--ras-sample-ratios FLOAT [FLOAT ...]] [--ras-high-ratios FLOAT [FLOAT ...]]
+                     [--ras-starvation-scales FLOAT [FLOAT ...]] [--ras-error-reset-steps CSV_INT [CSV_INT ...]]
+                     [--ras-metrics RAS_METRIC [RAS_METRIC ...]] [--ras-start-steps INTEGER [INTEGER ...]]
+                     [--ras-end-steps INTEGER [INTEGER ...]] [--ras-skip-num-steps INTEGER [INTEGER ...]]
                      [--ras-skip-num-step-lengths INTEGER [INTEGER ...]] [-rhd] [-pag] [-pags FLOAT [FLOAT ...]]
                      [-pagas FLOAT [FLOAT ...]] [-rpag] [-rpags FLOAT [FLOAT ...]] [-rpagas FLOAT [FLOAT ...]]
                      [-mqo | -mco] [-mqo2 | -mco2] [--s-cascade-decoder MODEL_URI] [--sdxl-refiner MODEL_URI]
@@ -1070,18 +1069,6 @@ Help Output
             
             This is supported for: --model-type torch-sd3.
             ----------------------------------------------
-      --ras-patch-sizes INTEGER [INTEGER ...]
-            Patch sizes for RAS (Reinforcement Attention System). This controls the size of patches used for
-            region-adaptive sampling.
-            
-            Each value will be tried in turn.
-            
-            Supplying any values implies --ras.
-            
-            This is supported for: --model-type torch-sd3.
-            
-            (default: 2)
-            ------------
       --ras-sample-ratios FLOAT [FLOAT ...]
             Average sample ratios for each RAS step.
             
@@ -1623,11 +1610,11 @@ Help Output
             ----------------------------------------------------------------------------
       -if FORMAT, --image-format FORMAT
             Output format when writing static images. Any selection other than "png" is not compatible with
-            --output-metadata. Value must be one of: png, apng, blp, bmp, dib, bufr, pcx, dds, ps, eps, gif,
-            grib, h5, hdf, jp2, j2k, jpc, jpf, jpx, j2c, icns, ico, im, jfif, jpe, jpg, jpeg, tif, tiff, mpo,
-            msp, palm, pdf, pbm, pgm, ppm, pnm, pfm, bw, rgb, rgba, sgi, tga, icb, vda, vst, webp, wmf, emf, or
-            xbm. (default: png)
-            -------------------
+            --output-metadata. Value must be one of: png, apng, avif, avifs, blp, bmp, dib, bufr, pcx, dds, ps,
+            eps, gif, grib, h5, hdf, jp2, j2k, jpc, jpf, jpx, j2c, icns, ico, im, jfif, jpe, jpg, jpeg, tif,
+            tiff, mpo, msp, palm, pdf, pbm, pgm, ppm, pnm, pfm, bw, rgb, rgba, sgi, tga, icb, vda, vst, webp,
+            wmf, emf, or xbm. (default: png)
+            --------------------------------
       -nf, --no-frames
             Do not write frame images individually when rendering an animation, only write the animation file.
             This option is incompatible with --animation-format frames.
@@ -5051,7 +5038,7 @@ The following is an example making use of the ``dynamicprompts``, ``magicprompt`
     --guidance-scales 5
     --clip-skips 0
     --gen-seeds 1
-    --output-path output
+    --output-path dynamic-magic
     --output-size 1024x1024
     --prompt-weighter sd-embed
     --prompts "<upscaler: dynamicprompts> <upscaler: magicprompt> <upscaler: attention> a large {horse|dog} in a field, cloudy day"
@@ -5107,7 +5094,7 @@ Quantization backend packages will be installed by dgenerate's packaging on plat
     --guidance-scales 5
     --clip-skips 0
     --gen-seeds 1
-    --output-path output
+    --output-path magic-phi3
     --output-size 1024x1024
     --prompt-weighter sd-embed
     --prompt-upscaler dynamicprompts magicprompt;model={{ llm_model }};preamble={{ llm_preamble }};seed={{ llm_seed }}{{ llm_optimization }}
@@ -5162,7 +5149,7 @@ Here is an example using `Phi-3 Mini Abliterated Q4 GGUF by failspy <Phi-3_Mini_
     --guidance-scales 5
     --clip-skips 0
     --gen-seeds 1
-    --output-path output
+    --output-path gpt4all-phi3
     --output-size 1024x1024
     --prompt-weighter sd-embed
     --prompt-upscaler dynamicprompts gpt4all;model={{ llm_model }};preamble={{ llm_preamble }};compute='cpu'
