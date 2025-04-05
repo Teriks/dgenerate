@@ -643,7 +643,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                   
     See: https://github.com/horseee/DeepCache
     
-    This is supported for Stable Diffusion, Stable Diffusion XL, Kolors based models.
+    This is supported for Stable Diffusion, Stable Diffusion XL, and Kolors based models.
     """
     
     deep_cache_intervals: _types.OptionalIntegers = None
@@ -656,7 +656,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     Each value will be tried in turn.
     
-    This is supported for Stable Diffusion, Stable Diffusion XL, Kolors based models.
+    This is supported for Stable Diffusion, Stable Diffusion XL, and Kolors based models.
     
     Supplying any value implies that :py:attr:`RenderLoopConfig.deep_cache` is enabled.
     
@@ -672,7 +672,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     Each value will be tried in turn.
     
-    This is supported for Stable Diffusion, Stable Diffusion XL, Kolors based models.
+    This is supported for Stable Diffusion, Stable Diffusion XL, and Kolors based models.
     
     Supplying any value implies that :py:attr:`RenderLoopConfig.deep_cache` is enabled.
     
