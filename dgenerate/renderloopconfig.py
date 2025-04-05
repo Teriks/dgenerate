@@ -658,18 +658,6 @@ class RenderLoopConfig(_types.SetFromMixin):
     This is supported for: ``--model-type torch-sd3``.
     """
 
-    ras_patch_sizes: _types.OptionalIntegers = None
-    """
-    Patch sizes to try for RAS (Region-Adaptive Sampling).
-    
-    This controls the size of patches used for region-adaptive sampling.
-    Default is 2.
-    
-    Supplying any value implies that :py:attr:`RenderLoopConfig.ras` is enabled.
-    
-    This is supported for: ``--model-type torch-sd3``.
-    """
-
     ras_sample_ratios: _types.OptionalFloats = None
     """
     Sample ratios to try for RAS (Region-Adaptive Sampling).
@@ -2247,7 +2235,6 @@ class RenderLoopConfig(_types.SetFromMixin):
             self.adetailer_mask_blurs,
             self.adetailer_mask_dilations,
             self.tea_cache_rel_l1_thresholds,
-            self.ras_patch_sizes,
             self.ras_error_reset_steps,
             self.ras_high_ratios,
             self.ras_sample_ratios,
@@ -2405,7 +2392,6 @@ class RenderLoopConfig(_types.SetFromMixin):
                 tea_cache=ov('tea_cache', [self.tea_cache]),
                 ras=ov('ras', [self.ras]),
                 tea_cache_rel_l1_threshold=ov('tea_cache_rel_l1_threshold', self.tea_cache_rel_l1_thresholds),
-                ras_patch_size=ov('ras_patch_size', self.ras_patch_sizes),
                 ras_sample_ratio=ov('ras_sample_ratio', self.ras_sample_ratios),
                 ras_high_ratio=ov('ras_high_ratio', self.ras_high_ratios),
                 ras_starvation_scale=ov('ras_starvation_scale', self.ras_starvation_scales),

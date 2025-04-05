@@ -1054,10 +1054,6 @@ class DiffusionPipelineWrapper:
         if args.ras_index_fusion:
             opts.append(('--ras-index-fusion',))
 
-        if args.ras_patch_size is not None and \
-                args.ras_patch_size != _constants.DEFAULT_RAS_PATCH_SIZE:
-            opts.append(('--ras-patch-sizes', args.ras_patch_size))
-
         if args.ras_sample_ratio is not None and \
                 args.ras_sample_ratio != _constants.DEFAULT_RAS_SAMPLE_RATIO:
             opts.append(('--ras-sample-ratios', args.ras_sample_ratio))
@@ -2324,30 +2320,7 @@ class DiffusionPipelineWrapper:
             )
 
         if self._sdxl_refiner_pipeline is None:
-            if user_args.ras:
-                ras_args = _RASArgs(
-                    num_inference_steps=user_args.inference_steps,
-                    patch_size=_types.default(user_args.ras_patch_size, _constants.DEFAULT_RAS_PATCH_SIZE),
-                    sample_ratio=_types.default(user_args.ras_sample_ratio, _constants.DEFAULT_RAS_SAMPLE_RATIO),
-                    high_ratio=_types.default(user_args.ras_high_ratio, _constants.DEFAULT_RAS_HIGH_RATIO),
-                    starvation_scale=_types.default(user_args.ras_starvation_scale,
-                                                    _constants.DEFAULT_RAS_STARVATION_SCALE),
-                    error_reset_steps=_types.default(user_args.ras_error_reset_steps,
-                                                     _constants.DEFAULT_RAS_ERROR_RESET_STEPS),
-                    width=_types.default(user_args.width, _constants.DEFAULT_SD3_OUTPUT_WIDTH),
-                    height=_types.default(user_args.height, _constants.DEFAULT_SD3_OUTPUT_HEIGHT),
-                    enable_index_fusion=user_args.ras_index_fusion,
-                    metric=_types.default(user_args.ras_metric, _constants.DEFAULT_RAS_METRIC),
-                    scheduler_start_step=_types.default(user_args.ras_start_step, _constants.DEFAULT_RAS_START_STEP),
-                    scheduler_end_step=_types.default(user_args.ras_end_step, user_args.inference_steps),
-                    skip_num_step=_types.default(
-                        user_args.ras_skip_num_step, _constants.DEFAULT_RAS_SKIP_NUM_STEP),
-                    skip_num_step_length=_types.default(
-                        user_args.ras_skip_num_step_length, _constants.DEFAULT_RAS_SKIP_NUM_STEP_LENGTH),
-                    replace_with_flash_attn=importlib.util.find_spec('flash-attn') is not None
-                )
-            else:
-                ras_args = None
+            ras_args = self._get_sd3_ras_args(user_args)
 
             with _hi_diffusion(self._pipeline,
                                generator=generator,
@@ -2556,6 +2529,33 @@ class DiffusionPipelineWrapper:
                     device=self._device,
                     prompt_weighter=self._get_second_model_prompt_weighter(user_args),
                     **pipeline_args, **i_start).images)
+
+    def _get_sd3_ras_args(self, user_args) -> _RASArgs | None:
+        if user_args.ras:
+            ras_args = _RASArgs(
+                num_inference_steps=user_args.inference_steps,
+                patch_size=self._pipeline.transformer.config.patch_size,
+                sample_ratio=_types.default(user_args.ras_sample_ratio, _constants.DEFAULT_RAS_SAMPLE_RATIO),
+                high_ratio=_types.default(user_args.ras_high_ratio, _constants.DEFAULT_RAS_HIGH_RATIO),
+                starvation_scale=_types.default(user_args.ras_starvation_scale,
+                                                _constants.DEFAULT_RAS_STARVATION_SCALE),
+                error_reset_steps=_types.default(user_args.ras_error_reset_steps,
+                                                 _constants.DEFAULT_RAS_ERROR_RESET_STEPS),
+                width=_types.default(user_args.width, _constants.DEFAULT_SD3_OUTPUT_WIDTH),
+                height=_types.default(user_args.height, _constants.DEFAULT_SD3_OUTPUT_HEIGHT),
+                enable_index_fusion=user_args.ras_index_fusion,
+                metric=_types.default(user_args.ras_metric, _constants.DEFAULT_RAS_METRIC),
+                scheduler_start_step=_types.default(user_args.ras_start_step, _constants.DEFAULT_RAS_START_STEP),
+                scheduler_end_step=_types.default(user_args.ras_end_step, user_args.inference_steps),
+                skip_num_step=_types.default(
+                    user_args.ras_skip_num_step, _constants.DEFAULT_RAS_SKIP_NUM_STEP),
+                skip_num_step_length=_types.default(
+                    user_args.ras_skip_num_step_length, _constants.DEFAULT_RAS_SKIP_NUM_STEP_LENGTH),
+                replace_with_flash_attn=importlib.util.find_spec('flash-attn') is not None
+            )
+        else:
+            ras_args = None
+        return ras_args
 
     def recall_main_pipeline(self) -> _pipelines.PipelineCreationResult:
         """

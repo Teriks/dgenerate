@@ -509,9 +509,6 @@ class RenderLoop:
         if diffusion_args.ras_starvation_scale is not None:
             args += ['rsss', diffusion_args.ras_starvation_scale]
 
-        if diffusion_args.ras_patch_size is not None:
-            args += ['rsps', diffusion_args.ras_patch_size]
-
         if diffusion_args.ras_error_reset_steps is not None:
             args += ['rsrs', diffusion_args.ras_error_reset_steps.replace(' ', '').replace(',', '-')]
 

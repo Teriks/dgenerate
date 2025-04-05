@@ -427,18 +427,6 @@ class DiffusionArguments(_types.SetFromMixin):
     This is supported for: ``--model-type torch-sd3``.
     """
 
-    ras_patch_size: _types.OptionalInteger = None
-    """
-    Patch size for RAS (Region-Adaptive Sampling).
-    
-    This controls the size of patches used for region-adaptive sampling.
-    Default is 2.
-    
-    Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
-    
-    This is supported for: ``--model-type torch-sd3``.
-    """
-
     ras_sample_ratio: _types.OptionalFloat = None
     """
     Average sample ratio for each RAS step.
@@ -838,7 +826,6 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.adetailer_mask_padding, "Adetailer Mask Padding:"),
             (self.adetailer_mask_blur, "Adetailer Mask Blur:"),
             (self.adetailer_mask_dilation, "Adetailer Mask Dilation:"),
-            (self.ras_patch_size, "RAS Patch Size:"),
             (self.ras_sample_ratio, "RAS Sample Ratio:"),
             (self.ras_high_ratio, "RAS High Ratio:"),
             (self.ras_starvation_scale, "RAS Starvation Scale:"),
