@@ -1803,8 +1803,8 @@ Help Output
             
             See: https://github.com/horseee/DeepCache
             
-            This is supported for Stable Diffusion, Stable Diffusion XL, Kolors based models.
-            ---------------------------------------------------------------------------------
+            This is supported for Stable Diffusion, Stable Diffusion XL, and Kolors based models.
+            -------------------------------------------------------------------------------------
       -dci INTEGER [INTEGER ...], --deep-cache-intervals INTEGER [INTEGER ...]
             Cache interval for DeepCache for the main model.
             
@@ -1815,7 +1815,7 @@ Help Output
             
             Supplying any values implies --deep-cache.
             
-            This is supported for Stable Diffusion, Stable Diffusion XL, Kolors based models.
+            This is supported for Stable Diffusion, Stable Diffusion XL, and Kolors based models.
             
             (default: 5)
             ------------
@@ -1828,7 +1828,7 @@ Help Output
             
             Supplying any values implies --deep-cache.
             
-            This is supported for Stable Diffusion, Stable Diffusion XL, Kolors based models.
+            This is supported for Stable Diffusion, Stable Diffusion XL, and Kolors based models.
             
             (default: 1)
             ------------
