@@ -1611,6 +1611,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-sch2',
             '--second-model-scheduler',
             '--second-model-schedulers',
             dest='second_model_scheduler_uri',
@@ -1644,7 +1645,118 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--tea-cache',
+            '-dc', '--deep-cache',
+            action='store_true', default=False, dest='deep_cache',
+            help=f"""Activate DeepCache for the main model?
+
+                  DeepCache caches intermediate attention layer outputs to speed up
+                  the diffusion process. Recommended for higher inference steps.
+                  
+                  See: https://github.com/horseee/DeepCache
+                  
+                  This is supported for Stable Diffusion, Stable Diffusion XL, and Kolors based models.
+                  """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-dci', '--deep-cache-intervals',
+            metavar='INTEGER',
+            nargs='+', dest='deep_cache_intervals', type=_type_deep_cache_interval,
+            help="""Cache interval for DeepCache for the main model.
+            
+            Controls how frequently the attention layers are cached during
+            the diffusion process. Lower values cache more frequently, potentially
+            resulting in more speedup but using more memory.
+            
+            Each value will be tried in turn.
+            
+            Supplying any values implies --deep-cache.
+            
+            This is supported for Stable Diffusion, Stable Diffusion XL, and Kolors based models.
+            
+            (default: 5)"""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-dcb', '--deep-cache-branch-ids',
+            metavar='INTEGER',
+            nargs='+', dest='deep_cache_branch_ids', type=_type_deep_cache_branch_id,
+            help="""Branch ID for DeepCache for the main model.
+            
+            Controls which branches of the UNet attention blocks the caching
+            is applied to. Advanced usage only.
+            
+            Each value will be tried in turn.
+            
+            Supplying any values implies --deep-cache.
+            
+            This is supported for Stable Diffusion, Stable Diffusion XL, and Kolors based models.
+            
+            (default: 1)"""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-dc2', '--second-model-deep-cache',
+            action='store_true', default=None, dest='second_model_deep_cache',
+            help=f"""Activate DeepCache for the second model (SDXL Refiner)?
+            
+                  See: --deep-cache
+                  
+                  This is supported for Stable Diffusion XL and Kolors based models.
+                  """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-dci2', '--second-model-deep-cache-intervals',
+            metavar='INTEGER',
+            nargs='+', dest='second_model_deep_cache_intervals', type=_type_deep_cache_interval,
+            help="""Cache interval for DeepCache for the second model (SDXL Refiner).
+            
+            Controls how frequently the attention layers are cached during
+            the diffusion process. Lower values cache more frequently, potentially
+            resulting in more speedup but using more memory.
+            
+            Each value will be tried in turn.
+            
+            Supplying any values implies --second-model-deep-cache.
+            
+            This is supported for Stable Diffusion XL and Kolors based models.
+            
+            (default: 5)"""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-dcb2', '--second-model-deep-cache-branch-ids',
+            metavar='INTEGER',
+            nargs='+', dest='second_model_deep_cache_branch_ids', type=_type_deep_cache_branch_id,
+            help="""Branch ID for DeepCache for the second model (SDXL Refiner).
+            
+            Controls which branches of the UNet attention blocks the caching
+            is applied to. Advanced usage only.
+            
+            Each value will be tried in turn.
+            
+            Supplying any values implies --second-model-deep-cache.
+            
+            This is supported for Stable Diffusion XL and Kolors based models.
+            
+            (default: 1)"""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-tc', '--tea-cache',
             action='store_true', default=False, dest='tea_cache',
             help=f"""Activate TeaCache for the primary model?
     
@@ -1664,7 +1776,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--tea-cache-rel-l1-thresholds', metavar='FLOAT',
+            '-tcr', '--tea-cache-rel-l1-thresholds', metavar='FLOAT',
             nargs='*', type=_type_tea_cache_rel_l1_thresh, default=None, dest='tea_cache_rel_l1_thresholds',
             help=f"""TeaCache relative L1 thresholds to try when --tea-cache is enabled.
             
@@ -1688,7 +1800,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--ras',
+            '-ra', '--ras',
             action='store_true', default=False, dest='ras',
             help=f"""Activate RAS (Region-Adaptive Sampling) for the primary model?
             
@@ -1703,7 +1815,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--ras-index-fusion',
+            '-rif', '--ras-index-fusion',
             action='store_true', dest='ras_index_fusion', default=None,
             help="""Enable index fusion in RAS (Reinforcement Attention System) for the primary model?
 
@@ -1715,10 +1827,9 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         )
     )
 
-
     actions.append(
         parser.add_argument(
-            '--ras-sample-ratios',
+            '-rsr', '--ras-sample-ratios',
             metavar='FLOAT',
             nargs='+', dest='ras_sample_ratios', type=_type_ras_sample_ratio,
             help="""Average sample ratios for each RAS step.
@@ -1740,7 +1851,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--ras-high-ratios',
+            '-rhr', '--ras-high-ratios',
             metavar='FLOAT',
             nargs='+', dest='ras_high_ratios', type=_type_ras_high_ratio,
             help="""Ratios of high value tokens to be cached in RAS.
@@ -1762,7 +1873,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--ras-starvation-scales',
+            '-rss', '--ras-starvation-scales',
             metavar='FLOAT',
             nargs='+', dest='ras_starvation_scales', type=_type_ras_starvation_scale,
             help="""Starvation scales for RAS patch selection.
@@ -1787,7 +1898,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--ras-error-reset-steps',
+            '-rer', '--ras-error-reset-steps',
             metavar='CSV_INT',
             nargs='+', dest='ras_error_reset_steps', type=_type_ras_error_reset_steps,
             help="""Dense sampling steps to reset accumulated error in RAS.
@@ -1807,7 +1918,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--ras-metrics',
+            '-rme', '--ras-metrics',
             metavar='RAS_METRIC',
             nargs='+', dest='ras_metrics', type=_type_ras_metric,
             help="""Metrics to try for RAS (Region-Adaptive Sampling).
@@ -1827,7 +1938,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--ras-start-steps',
+            '-rst', '--ras-start-steps',
             metavar='INTEGER',
             nargs='+', dest='ras_start_steps', type=_type_ras_start_steps,
             help="""Starting steps to try for RAS (Region-Adaptive Sampling).
@@ -1847,7 +1958,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--ras-end-steps',
+            '-res', '--ras-end-steps',
             metavar='INTEGER',
             nargs='+', dest='ras_end_steps', type=_type_ras_end_steps,
             help="""Ending steps to try for RAS (Region-Adaptive Sampling).
@@ -1867,7 +1978,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--ras-skip-num-steps',
+            '-rsn', '--ras-skip-num-steps',
             metavar='INTEGER',
             nargs='+', dest='ras_skip_num_steps', type=_type_ras_skip_num_step,
             help="""Skip steps for RAS (Region-Adaptive Sampling).
@@ -1893,7 +2004,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--ras-skip-num-step-lengths',
+            '-rsl', '--ras-skip-num-step-lengths',
             metavar='INTEGER',
             nargs='+', dest='ras_skip_num_step_lengths', type=_type_ras_skip_num_step_length,
             help="""Skip step lengths for RAS (Region-Adaptive Sampling).
@@ -2931,117 +3042,6 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                      which defaults to the value taken from --guidance-scales for SDXL and 
                      {_pipelinewrapper.constants.DEFAULT_S_CASCADE_DECODER_GUIDANCE_SCALE} for Stable Cascade.
                      """
-        )
-    )
-
-    actions.append(
-        parser.add_argument(
-            '-dc', '--deep-cache',
-            action='store_true', default=False, dest='deep_cache',
-            help=f"""Activate DeepCache for the main model?
-
-                  DeepCache caches intermediate attention layer outputs to speed up
-                  the diffusion process. Recommended for higher inference steps.
-                  
-                  See: https://github.com/horseee/DeepCache
-                  
-                  This is supported for Stable Diffusion, Stable Diffusion XL, and Kolors based models.
-                  """
-        )
-    )
-
-    actions.append(
-        parser.add_argument(
-            '-dci', '--deep-cache-intervals',
-            metavar='INTEGER',
-            nargs='+', dest='deep_cache_intervals', type=_type_deep_cache_interval,
-            help="""Cache interval for DeepCache for the main model.
-            
-            Controls how frequently the attention layers are cached during
-            the diffusion process. Lower values cache more frequently, potentially
-            resulting in more speedup but using more memory.
-            
-            Each value will be tried in turn.
-            
-            Supplying any values implies --deep-cache.
-            
-            This is supported for Stable Diffusion, Stable Diffusion XL, and Kolors based models.
-            
-            (default: 5)"""
-        )
-    )
-
-    actions.append(
-        parser.add_argument(
-            '-dcb', '--deep-cache-branch-ids',
-            metavar='INTEGER',
-            nargs='+', dest='deep_cache_branch_ids', type=_type_deep_cache_branch_id,
-            help="""Branch ID for DeepCache for the main model.
-            
-            Controls which branches of the UNet attention blocks the caching
-            is applied to. Advanced usage only.
-            
-            Each value will be tried in turn.
-            
-            Supplying any values implies --deep-cache.
-            
-            This is supported for Stable Diffusion, Stable Diffusion XL, and Kolors based models.
-            
-            (default: 1)"""
-        )
-    )
-
-    actions.append(
-        parser.add_argument(
-            '-sdc', '--second-model-deep-cache',
-            action='store_true', default=None, dest='second_model_deep_cache',
-            help=f"""Activate DeepCache for the second model (SDXL Refiner)?
-            
-                  See: --deep-cache
-                  
-                  This is supported for Stable Diffusion XL and Kolors based models.
-                  """
-        )
-    )
-
-    actions.append(
-        parser.add_argument(
-            '-sdci', '--second-model-deep-cache-intervals',
-            metavar='INTEGER',
-            nargs='+', dest='second_model_deep_cache_intervals', type=_type_deep_cache_interval,
-            help="""Cache interval for DeepCache for the second model (SDXL Refiner).
-            
-            Controls how frequently the attention layers are cached during
-            the diffusion process. Lower values cache more frequently, potentially
-            resulting in more speedup but using more memory.
-            
-            Each value will be tried in turn.
-            
-            Supplying any values implies --second-model-deep-cache.
-            
-            This is supported for Stable Diffusion XL and Kolors based models.
-            
-            (default: 5)"""
-        )
-    )
-
-    actions.append(
-        parser.add_argument(
-            '-sdcb', '--second-model-deep-cache-branch-ids',
-            metavar='INTEGER',
-            nargs='+', dest='second_model_deep_cache_branch_ids', type=_type_deep_cache_branch_id,
-            help="""Branch ID for DeepCache for the second model (SDXL Refiner).
-            
-            Controls which branches of the UNet attention blocks the caching
-            is applied to. Advanced usage only.
-            
-            Each value will be tried in turn.
-            
-            Supplying any values implies --second-model-deep-cache.
-            
-            This is supported for Stable Diffusion XL and Kolors based models.
-            
-            (default: 1)"""
         )
     )
 

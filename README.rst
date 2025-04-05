@@ -206,14 +206,13 @@ Help Output
                      [-lrfs LORA_FUSE_SCALE] [-ie IMAGE_ENCODER_URI] [-ipa IP_ADAPTER_URI [IP_ADAPTER_URI ...]]
                      [-ti URI [URI ...]] [-cn CONTROLNET_URI [CONTROLNET_URI ...] | -t2i T2I_ADAPTER_URI
                      [T2I_ADAPTER_URI ...]] [-q QUANTIZER_URI] [-q2 QUANTIZER_URI]
-                     [-sch SCHEDULER_URI [SCHEDULER_URI ...]]
-                     [--second-model-scheduler SCHEDULER_URI [SCHEDULER_URI ...]] [-hd] [--tea-cache]
-                     [--tea-cache-rel-l1-thresholds [FLOAT ...]] [--ras] [--ras-index-fusion]
-                     [--ras-sample-ratios FLOAT [FLOAT ...]] [--ras-high-ratios FLOAT [FLOAT ...]]
-                     [--ras-starvation-scales FLOAT [FLOAT ...]] [--ras-error-reset-steps CSV_INT [CSV_INT ...]]
-                     [--ras-metrics RAS_METRIC [RAS_METRIC ...]] [--ras-start-steps INTEGER [INTEGER ...]]
-                     [--ras-end-steps INTEGER [INTEGER ...]] [--ras-skip-num-steps INTEGER [INTEGER ...]]
-                     [--ras-skip-num-step-lengths INTEGER [INTEGER ...]] [-rhd] [-pag] [-pags FLOAT [FLOAT ...]]
+                     [-sch SCHEDULER_URI [SCHEDULER_URI ...]] [-sch2 SCHEDULER_URI [SCHEDULER_URI ...]] [-hd]
+                     [-dc] [-dci INTEGER [INTEGER ...]] [-dcb INTEGER [INTEGER ...]] [-dc2]
+                     [-dci2 INTEGER [INTEGER ...]] [-dcb2 INTEGER [INTEGER ...]] [-tc] [-tcr [FLOAT ...]] [-ra]
+                     [-rif] [-rsr FLOAT [FLOAT ...]] [-rhr FLOAT [FLOAT ...]] [-rss FLOAT [FLOAT ...]]
+                     [-rer CSV_INT [CSV_INT ...]] [-rme RAS_METRIC [RAS_METRIC ...]]
+                     [-rst INTEGER [INTEGER ...]] [-res INTEGER [INTEGER ...]] [-rsn INTEGER [INTEGER ...]]
+                     [-rsl INTEGER [INTEGER ...]] [-rhd] [-pag] [-pags FLOAT [FLOAT ...]]
                      [-pagas FLOAT [FLOAT ...]] [-rpag] [-rpags FLOAT [FLOAT ...]] [-rpagas FLOAT [FLOAT ...]]
                      [-mqo | -mco] [-mqo2 | -mco2] [--s-cascade-decoder MODEL_URI] [--sdxl-refiner MODEL_URI]
                      [--sdxl-refiner-edit] [--sdxl-t2i-adapter-factors FLOAT [FLOAT ...]]
@@ -249,9 +248,7 @@ Help Output
                      [-cip PROCESSOR_URI [PROCESSOR_URI ...]] [--image-processor-help [PROCESSOR_NAME ...]]
                      [-pp PROCESSOR_URI [PROCESSOR_URI ...]] [-iss FLOAT [FLOAT ...] | -uns INTEGER
                      [INTEGER ...]] [-gs FLOAT [FLOAT ...]] [-igs FLOAT [FLOAT ...]] [-gr FLOAT [FLOAT ...]]
-                     [-ifs INTEGER [INTEGER ...]] [-ifs2 INTEGER [INTEGER ...]] [-gs2 FLOAT [FLOAT ...]] [-dc]
-                     [-dci INTEGER [INTEGER ...]] [-dcb INTEGER [INTEGER ...]] [-sdc]
-                     [-sdci INTEGER [INTEGER ...]] [-sdcb INTEGER [INTEGER ...]]
+                     [-ifs INTEGER [INTEGER ...]] [-ifs2 INTEGER [INTEGER ...]] [-gs2 FLOAT [FLOAT ...]]
                      model_path
     
     Batch image generation and manipulation tool supporting Stable Diffusion and related techniques /
@@ -1004,7 +1001,7 @@ Help Output
             
             You may pass multiple scheduler URIs to this argument, each URI will be tried in turn.
             --------------------------------------------------------------------------------------
-      --second-model-scheduler SCHEDULER_URI [SCHEDULER_URI ...], --second-model-schedulers SCHEDULER_URI [SCHEDULER_URI ...]
+      -sch2 SCHEDULER_URI [SCHEDULER_URI ...], --second-model-scheduler SCHEDULER_URI [SCHEDULER_URI ...], --second-model-schedulers SCHEDULER_URI [SCHEDULER_URI ...]
             Specify a scheduler (sampler) by URI for the SDXL Refiner or Stable Cascade Decoder pass. Operates
             the exact same way as --scheduler including the "help" option. Passing 'helpargs' will yield a help
             message with a list of overridable arguments for each scheduler and their typical defaults. Defaults
@@ -1022,7 +1019,78 @@ Help Output
             
             This is supported for --model-type torch, torch-sdxl, and --torch-kolors.
             -------------------------------------------------------------------------
-      --tea-cache
+      -dc, --deep-cache
+            Activate DeepCache for the main model?
+            
+            DeepCache caches intermediate attention layer outputs to speed up the diffusion process. Recommended
+            for higher inference steps.
+            
+            See: https://github.com/horseee/DeepCache
+            
+            This is supported for Stable Diffusion, Stable Diffusion XL, and Kolors based models.
+            -------------------------------------------------------------------------------------
+      -dci INTEGER [INTEGER ...], --deep-cache-intervals INTEGER [INTEGER ...]
+            Cache interval for DeepCache for the main model.
+            
+            Controls how frequently the attention layers are cached during the diffusion process. Lower values
+            cache more frequently, potentially resulting in more speedup but using more memory.
+            
+            Each value will be tried in turn.
+            
+            Supplying any values implies --deep-cache.
+            
+            This is supported for Stable Diffusion, Stable Diffusion XL, and Kolors based models.
+            
+            (default: 5)
+            ------------
+      -dcb INTEGER [INTEGER ...], --deep-cache-branch-ids INTEGER [INTEGER ...]
+            Branch ID for DeepCache for the main model.
+            
+            Controls which branches of the UNet attention blocks the caching is applied to. Advanced usage only.
+            
+            Each value will be tried in turn.
+            
+            Supplying any values implies --deep-cache.
+            
+            This is supported for Stable Diffusion, Stable Diffusion XL, and Kolors based models.
+            
+            (default: 1)
+            ------------
+      -dc2, --second-model-deep-cache
+            Activate DeepCache for the second model (SDXL Refiner)?
+            
+            See: --deep-cache
+            
+            This is supported for Stable Diffusion XL and Kolors based models.
+            ------------------------------------------------------------------
+      -dci2 INTEGER [INTEGER ...], --second-model-deep-cache-intervals INTEGER [INTEGER ...]
+            Cache interval for DeepCache for the second model (SDXL Refiner).
+            
+            Controls how frequently the attention layers are cached during the diffusion process. Lower values
+            cache more frequently, potentially resulting in more speedup but using more memory.
+            
+            Each value will be tried in turn.
+            
+            Supplying any values implies --second-model-deep-cache.
+            
+            This is supported for Stable Diffusion XL and Kolors based models.
+            
+            (default: 5)
+            ------------
+      -dcb2 INTEGER [INTEGER ...], --second-model-deep-cache-branch-ids INTEGER [INTEGER ...]
+            Branch ID for DeepCache for the second model (SDXL Refiner).
+            
+            Controls which branches of the UNet attention blocks the caching is applied to. Advanced usage only.
+            
+            Each value will be tried in turn.
+            
+            Supplying any values implies --second-model-deep-cache.
+            
+            This is supported for Stable Diffusion XL and Kolors based models.
+            
+            (default: 1)
+            ------------
+      -tc, --tea-cache
             Activate TeaCache for the primary model?
             
             This is supported for Flux, TeaCache uses a novel caching mechanism in the forward pass of the flux
@@ -1035,7 +1103,7 @@ Help Output
             
             This is supported for: --model-type torch-flux*.
             ------------------------------------------------
-      --tea-cache-rel-l1-thresholds [FLOAT ...]
+      -tcr [FLOAT ...], --tea-cache-rel-l1-thresholds [FLOAT ...]
             TeaCache relative L1 thresholds to try when --tea-cache is enabled.
             
             This should be one or more float values between 0.0 and 1.0, each value will be tried in turn.
@@ -1053,7 +1121,7 @@ Help Output
             
             (default: 0.6)
             --------------
-      --ras
+      -ra, --ras
             Activate RAS (Region-Adaptive Sampling) for the primary model?
             
             This can increase inference speed with SD3.
@@ -1062,7 +1130,7 @@ Help Output
             
             This is supported for: --model-type torch-sd3, (but not for SD3.5 models)
             -------------------------------------------------------------------------
-      --ras-index-fusion
+      -rif, --ras-index-fusion
             Enable index fusion in RAS (Reinforcement Attention System) for the primary model?
             
             This can improve attention computation in RAS for SD3 models.
@@ -1071,7 +1139,7 @@ Help Output
             
             This is supported for: --model-type torch-sd3, (but not for SD3.5 models)
             -------------------------------------------------------------------------
-      --ras-sample-ratios FLOAT [FLOAT ...]
+      -rsr FLOAT [FLOAT ...], --ras-sample-ratios FLOAT [FLOAT ...]
             Average sample ratios for each RAS step.
             
             For instance, setting this to 0.5 on a sequence of 4096 tokens will result in the noise of averagely
@@ -1087,7 +1155,7 @@ Help Output
             
             (default: 0.5)
             --------------
-      --ras-high-ratios FLOAT [FLOAT ...]
+      -rhr FLOAT [FLOAT ...], --ras-high-ratios FLOAT [FLOAT ...]
             Ratios of high value tokens to be cached in RAS.
             
             Based on the metric selected, the ratio of the high value chosen to be cached.
@@ -1103,7 +1171,7 @@ Help Output
             
             (default: 1.0)
             --------------
-      --ras-starvation-scales FLOAT [FLOAT ...]
+      -rss FLOAT [FLOAT ...], --ras-starvation-scales FLOAT [FLOAT ...]
             Starvation scales for RAS patch selection.
             
             RAS tracks how often a token is dropped and incorporates this count as a scaling factor in the
@@ -1122,7 +1190,7 @@ Help Output
             
             (default: 0.1)
             --------------
-      --ras-error-reset-steps CSV_INT [CSV_INT ...]
+      -rer CSV_INT [CSV_INT ...], --ras-error-reset-steps CSV_INT [CSV_INT ...]
             Dense sampling steps to reset accumulated error in RAS.
             
             The dense sampling steps inserted between the RAS steps to reset the accumulated error. Should be a
@@ -1136,7 +1204,7 @@ Help Output
             
             (default: "12,22")
             ------------------
-      --ras-metrics RAS_METRIC [RAS_METRIC ...]
+      -rme RAS_METRIC [RAS_METRIC ...], --ras-metrics RAS_METRIC [RAS_METRIC ...]
             Metrics to try for RAS (Region-Adaptive Sampling).
             
             This controls how RAS measures the importance of tokens for caching. Valid values are "std"
@@ -1150,7 +1218,7 @@ Help Output
             
             (default: "std")
             ----------------
-      --ras-start-steps INTEGER [INTEGER ...]
+      -rst INTEGER [INTEGER ...], --ras-start-steps INTEGER [INTEGER ...]
             Starting steps to try for RAS (Region-Adaptive Sampling).
             
             This controls when RAS begins applying its sampling strategy. Must be greater than or equal to 1.
@@ -1163,7 +1231,7 @@ Help Output
             
             (default: 4)
             ------------
-      --ras-end-steps INTEGER [INTEGER ...]
+      -res INTEGER [INTEGER ...], --ras-end-steps INTEGER [INTEGER ...]
             Ending steps to try for RAS (Region-Adaptive Sampling).
             
             This controls when RAS stops applying its sampling strategy. Must be greater than or equal to 1.
@@ -1176,7 +1244,7 @@ Help Output
             
             (default: --inference-steps)
             ----------------------------
-      --ras-skip-num-steps INTEGER [INTEGER ...]
+      -rsn INTEGER [INTEGER ...], --ras-skip-num-steps INTEGER [INTEGER ...]
             Skip steps for RAS (Region-Adaptive Sampling).
             
             This controls the number of steps to skip between RAS steps.
@@ -1196,7 +1264,7 @@ Help Output
             
             (default: 0)
             ------------
-      --ras-skip-num-step-lengths INTEGER [INTEGER ...]
+      -rsl INTEGER [INTEGER ...], --ras-skip-num-step-lengths INTEGER [INTEGER ...]
             Skip step lengths for RAS (Region-Adaptive Sampling).
             
             This controls the length of steps to skip between RAS steps. Must be greater than or equal to 0.
@@ -1795,77 +1863,6 @@ Help Output
             Override the guidance scale value used by the second model, which defaults to the value taken from
             --guidance-scales for SDXL and 0 for Stable Cascade.
             ----------------------------------------------------
-      -dc, --deep-cache
-            Activate DeepCache for the main model?
-            
-            DeepCache caches intermediate attention layer outputs to speed up the diffusion process. Recommended
-            for higher inference steps.
-            
-            See: https://github.com/horseee/DeepCache
-            
-            This is supported for Stable Diffusion, Stable Diffusion XL, and Kolors based models.
-            -------------------------------------------------------------------------------------
-      -dci INTEGER [INTEGER ...], --deep-cache-intervals INTEGER [INTEGER ...]
-            Cache interval for DeepCache for the main model.
-            
-            Controls how frequently the attention layers are cached during the diffusion process. Lower values
-            cache more frequently, potentially resulting in more speedup but using more memory.
-            
-            Each value will be tried in turn.
-            
-            Supplying any values implies --deep-cache.
-            
-            This is supported for Stable Diffusion, Stable Diffusion XL, and Kolors based models.
-            
-            (default: 5)
-            ------------
-      -dcb INTEGER [INTEGER ...], --deep-cache-branch-ids INTEGER [INTEGER ...]
-            Branch ID for DeepCache for the main model.
-            
-            Controls which branches of the UNet attention blocks the caching is applied to. Advanced usage only.
-            
-            Each value will be tried in turn.
-            
-            Supplying any values implies --deep-cache.
-            
-            This is supported for Stable Diffusion, Stable Diffusion XL, and Kolors based models.
-            
-            (default: 1)
-            ------------
-      -sdc, --second-model-deep-cache
-            Activate DeepCache for the second model (SDXL Refiner)?
-            
-            See: --deep-cache
-            
-            This is supported for Stable Diffusion XL and Kolors based models.
-            ------------------------------------------------------------------
-      -sdci INTEGER [INTEGER ...], --second-model-deep-cache-intervals INTEGER [INTEGER ...]
-            Cache interval for DeepCache for the second model (SDXL Refiner).
-            
-            Controls how frequently the attention layers are cached during the diffusion process. Lower values
-            cache more frequently, potentially resulting in more speedup but using more memory.
-            
-            Each value will be tried in turn.
-            
-            Supplying any values implies --second-model-deep-cache.
-            
-            This is supported for Stable Diffusion XL and Kolors based models.
-            
-            (default: 5)
-            ------------
-      -sdcb INTEGER [INTEGER ...], --second-model-deep-cache-branch-ids INTEGER [INTEGER ...]
-            Branch ID for DeepCache for the second model (SDXL Refiner).
-            
-            Controls which branches of the UNet attention blocks the caching is applied to. Advanced usage only.
-            
-            Each value will be tried in turn.
-            
-            Supplying any values implies --second-model-deep-cache.
-            
-            This is supported for Stable Diffusion XL and Kolors based models.
-            
-            (default: 1)
-            ------------
 
 Windows Install
 ===============
