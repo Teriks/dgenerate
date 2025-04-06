@@ -101,11 +101,11 @@ def fetch_model_index_dict(
                     token=use_auth_token,
                     allow_patterns=allow_patterns
                 )
-            except huggingface_hub.errors.LocalEntryNotFoundError:
+            except huggingface_hub.errors.LocalEntryNotFoundError as e:
                 if local_files_only:
                     raise FileNotFoundError(
                         f'offline mode is active, but a config file is needed from Hugging Face '
-                        f'hub to utilize: {path}')
+                        f'hub to utilize: {path}') from e
                 else:
                     try:
                         cached_model_config_path = huggingface_hub.snapshot_download(
@@ -115,10 +115,10 @@ def fetch_model_index_dict(
                             token=use_auth_token,
                             allow_patterns=allow_patterns
                         )
-                    except huggingface_hub.errors.LocalEntryNotFoundError:
+                    except huggingface_hub.errors.LocalEntryNotFoundError as e:
                         raise FileNotFoundError(
                             f'could not find the config file on Hugging Face hub '
-                            f'for: {path}')
+                            f'for: {path}') from e
     else:
         cached_model_config_path = default_pretrained_model_config_name
 
@@ -191,11 +191,11 @@ def single_file_load_sub_module(
                     token=use_auth_token,
                     allow_patterns=allow_patterns
                 )
-            except huggingface_hub.errors.LocalEntryNotFoundError:
+            except huggingface_hub.errors.LocalEntryNotFoundError as e:
                 if local_files_only:
                     raise FileNotFoundError(
                         f'offline mode is active, but a config file is needed from Hugging Face '
-                        f'hub to utilize the {class_name} in: {path}')
+                        f'hub to utilize the {class_name} in: {path}') from e
                 else:
                     try:
                         cached_model_config_path = huggingface_hub.snapshot_download(
@@ -205,10 +205,10 @@ def single_file_load_sub_module(
                             token=use_auth_token,
                             allow_patterns=allow_patterns
                         )
-                    except huggingface_hub.errors.LocalEntryNotFoundError:
+                    except huggingface_hub.errors.LocalEntryNotFoundError as e:
                         raise FileNotFoundError(
                             f'could not find the config file on Hugging Face hub '
-                            f'for {class_name} in: {path}')
+                            f'for {class_name} in: {path}') from e
     else:
         cached_model_config_path = default_pretrained_model_config_name
 
@@ -368,7 +368,7 @@ def _hf_try_to_load_from_cache(repo_id: str,
             repo_type=repo_type
         )
     except huggingface_hub.utils.HFValidationError as e:
-        raise ModelNotFoundError(e)
+        raise ModelNotFoundError(e) from e
 
 
 def download_non_hf_model(model_path):
@@ -637,7 +637,7 @@ def fetch_model_files_with_size(repo_id: str,
                         recursive=True) if isinstance(i, huggingface_hub.hf_api.RepoFile))
             except (huggingface_hub.utils.HFValidationError,
                     huggingface_hub.utils.HfHubHTTPError) as e:
-                raise ModelNotFoundError(e)
+                raise ModelNotFoundError(e) from e
 
             def detect_unet(path):
                 try:

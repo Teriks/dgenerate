@@ -385,14 +385,14 @@ class BatchProcessor:
                     if buffer:
                         yield buffer
                 except Exception as e:
-                    raise BatchProcessError(f'Template Render Error: {str(e).strip()}')
+                    raise BatchProcessError(f'Template Render Error: {str(e).strip()}') from e
 
             return stream_generator()
         else:
             try:
                 return jinja_env.from_string(string).render(**self.template_variables)
             except Exception as e:
-                raise BatchProcessError(f'Template Render Error: {str(e).strip()}')
+                raise BatchProcessError(f'Template Render Error: {str(e).strip()}') from e
 
     def _look_for_version_mismatch(self, line_idx, line):
         versioning = re.match(r'#!\s+' + re.escape(self.name) + r'\s+([0-9]+\.[0-9]+\.[0-9]+)', line)
@@ -559,7 +559,7 @@ class BatchProcessor:
                                         raise_errors=True)
             except Exception as e:
                 raise BatchProcessError(
-                    f'\\setp eval error: {(chr(10) + "  " * 4).join(str(e).strip().split(chr(10)))}')
+                    f'\\setp eval error: {(chr(10) + "  " * 4).join(str(e).strip().split(chr(10)))}') from e
 
     def _set_split(self, directive_args, line):
         name_part = directive_args[1]
@@ -624,12 +624,12 @@ class BatchProcessor:
                 value = self.expand_vars(self.render_template(assignment[1])) if len(assignment) > 1 else ''
                 try:
                     os.environ[assignment[0]] = value
-                except ValueError:
+                except ValueError as e:
                     if not assignment[0].strip():
                         raise BatchProcessError(
-                            f'Environmental variable name expanded to nothing!')
+                            f'Environmental variable name expanded to nothing!') from e
                     raise BatchProcessError(
-                        f'Illegal environmental variable name value: {assignment[0]}')
+                        f'Illegal environmental variable name value: {assignment[0]}') from e
         elif line != '\\env':
             raise BatchProcessError(f'Unknown directive "{line}".')
         else:
@@ -684,7 +684,7 @@ class BatchProcessor:
                     )
                 )
             except _textprocessing.ShellParseSyntaxError as e:
-                raise BatchProcessError(e)
+                raise BatchProcessError(e) from e
             return True
         else:
             raise BatchProcessError(
@@ -743,7 +743,7 @@ class BatchProcessor:
                     )
                 )
             except _textprocessing.ShellParseSyntaxError as e:
-                raise BatchProcessError(e)
+                raise BatchProcessError(e) from e
         elif line != '\\echo':
             raise BatchProcessError(f'Unknown directive "{line}".')
         else:
@@ -763,7 +763,7 @@ class BatchProcessor:
                 f'from line {self._template_continuation_start_line} to line '
                 f'{self._template_continuation_end_line}:\n{" " * 4}Error on line '
                 f'{self._template_continuation_start_line + self.current_line}:'
-                f'\n{" " * 8}{sub_err_msg}')
+                f'\n{" " * 8}{sub_err_msg}') from e
         finally:
             self._running_template_continuation = False
             self._current_line = self._template_continuation_end_line
@@ -793,7 +793,7 @@ class BatchProcessor:
         except Exception as e:
             if self._directive_exceptions:
                 raise e
-            raise BatchProcessError(e)
+            raise BatchProcessError(e) from e
         return True
 
     def _lex_and_run_invocation(self, invocation_string: str):
@@ -806,7 +806,7 @@ class BatchProcessor:
                 expand_vars_func=self.expand_vars
             )
         except _textprocessing.ShellParseSyntaxError as e:
-            raise BatchProcessError(e)
+            raise BatchProcessError(e) from e
 
         for arg in self.injected_args:
             arg = arg.strip()
@@ -929,7 +929,7 @@ class BatchProcessor:
                 try:
                     jinja_lexer.put_source(line_strip)
                 except jinja2.TemplateSyntaxError as e:
-                    raise BatchProcessError(f'Template Syntax Error: {e.message}')
+                    raise BatchProcessError(f'Template Syntax Error: {e.message}') from e
 
                 if jinja_lexer.is_balanced() or next_line is None:
                     self._template_continuation_end_line = self._current_line
@@ -950,7 +950,7 @@ class BatchProcessor:
                 try:
                     jinja_lexer.put_source(line_strip)
                 except jinja2.TemplateSyntaxError as e:
-                    raise BatchProcessError(f'Template Syntax Error: {e.message}')
+                    raise BatchProcessError(f'Template Syntax Error: {e.message}') from e
 
                 if jinja_lexer.is_balanced() or next_line is None:
                     self._template_continuation_end_line = self._current_line
@@ -987,7 +987,7 @@ class BatchProcessor:
                 log_error=False
             )
         except _arguments.DgenerateUsageError as e:
-            raise BatchProcessError(f'Error parsing injected arguments: {str(e).strip()}')
+            raise BatchProcessError(f'Error parsing injected arguments: {str(e).strip()}') from e
 
         directive_exceptions_last = self._directive_exceptions
         if parsed.verbose:
@@ -997,11 +997,11 @@ class BatchProcessor:
         try:
             self._run_file(stream)
         except _TemplateContinuationInternalError as e:
-            raise BatchProcessError(str(e).strip())
+            raise BatchProcessError(str(e).strip()) from e
         except BatchProcessError as e:
             raise BatchProcessError(
                 f'Error on line {self.current_line}:'
-                f'\n{" " * 4}{str(e).strip()}')
+                f'\n{" " * 4}{str(e).strip()}') from e
         finally:
             _messages.pop_level()
             self._directive_exceptions = directive_exceptions_last

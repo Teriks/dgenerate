@@ -234,14 +234,14 @@ def parse_args(args: collections.abc.Sequence[str] | None = None,
         if log_error:
             _messages.error(f'{help_name}: error: {str(e).strip()}')
         if throw:
-            raise ImageProcessUsageError(e)
+            raise ImageProcessUsageError(e) from e
         return None
 
     if parsed is not None:
         try:
             parsed.check(config_attribute_name_to_option)
         except _renderloopconfig.ImageProcessRenderLoopConfigError as e:
-            raise ImageProcessUsageError(e)
+            raise ImageProcessUsageError(e) from e
     return parsed
 
 

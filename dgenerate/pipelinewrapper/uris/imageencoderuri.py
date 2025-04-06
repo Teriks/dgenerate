@@ -141,10 +141,10 @@ class ImageEncoderUri:
             return self._load(**args)
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
-            raise _pipelinewrapper_util.ModelNotFoundError(e)
+            raise _pipelinewrapper_util.ModelNotFoundError(e) from e
         except Exception as e:
             raise _exceptions.ImageEncoderUriLoadError(
-                f'error loading Image Encoder "{self.model}": {e}')
+                f'error loading Image Encoder "{self.model}": {e}') from e
 
     @staticmethod
     def _enforce_cache_size(new_image_encoder_size):
@@ -240,4 +240,4 @@ class ImageEncoderUri:
                 dtype=dtype,
                 subfolder=r.args.get('subfolder', None))
         except _textprocessing.ConceptUriParseError as e:
-            raise _exceptions.InvalidImageEncoderUriError(e)
+            raise _exceptions.InvalidImageEncoderUriError(e) from e

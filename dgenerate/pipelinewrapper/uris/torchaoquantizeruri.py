@@ -64,4 +64,4 @@ class TorchAOQuantizerUri:
             return TorchAOQuantizerUri(type=r.args.get('type', 'int8wo'))
 
         except _textprocessing.ConceptUriParseError as e:
-            raise _exceptions.InvalidTorchAOQuantizerUriError(e)
+            raise _exceptions.InvalidTorchAOQuantizerUriError(e) from e

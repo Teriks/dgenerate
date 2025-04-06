@@ -1267,7 +1267,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         try:
             _types.type_check_struct(self, a_namer)
         except ValueError as e:
-            raise RenderLoopConfigError(e)
+            raise RenderLoopConfigError(e) from e
 
     def _check_help_arguments(self, a_namer: typing.Callable[[str], str]) -> bool:
         """Check help-related arguments for validity."""
@@ -1515,7 +1515,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                     help_mode=help_mode
                 )
             except _pipelinewrapper.UnsupportedPipelineConfigError as e:
-                raise RenderLoopConfigError(str(e))
+                raise RenderLoopConfigError(str(e)) from e
 
     def _check_output_arguments(self, a_namer: typing.Callable[[str], str]):
         """Check output-related arguments for compatibility."""
@@ -1938,7 +1938,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                     help_mode=help_mode
                 )
         except _pipelinewrapper.UnsupportedPipelineConfigError as e:
-            raise RenderLoopConfigError(str(e))
+            raise RenderLoopConfigError(str(e)) from e
 
     def _check_adetailer_mask_compatibility(self, 
                                             parsed_image_seeds: typing.List[_mediainput.ImageSeedParseResult], 
@@ -2004,7 +2004,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         try:
             parsed = _mediainput.parse_image_seed_uri(uri)
         except _mediainput.ImageSeedError as e:
-            raise RenderLoopConfigError(e)
+            raise RenderLoopConfigError(e) from e
 
         mask_part = 'mask=my-mask.png;' if parsed.mask_images else ''
         # ^ Used for nice messages about image seed keyword argument misuse
@@ -2282,7 +2282,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         try:
             self._check(attribute_namer)
         except (_pipelinewrapper.InvalidModelUriError, _mediainput.ImageSeedParseError) as e:
-            raise RenderLoopConfigError(e)
+            raise RenderLoopConfigError(e) from e
 
     def calculate_generation_steps(self) -> int:
         """

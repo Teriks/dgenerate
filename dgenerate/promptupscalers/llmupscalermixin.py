@@ -61,7 +61,7 @@ class LLMPromptUpscalerMixin(abc.ABC):
             try:
                 self._blocklist_regex = re.compile(block_regex, re.IGNORECASE)
             except Exception as e:
-                raise self.argument_error(f'Could not compile "block-regex": {e}')
+                raise self.argument_error(f'Could not compile "block-regex": {e}') from e
             else:
                 self._blocklist_regex = None
 

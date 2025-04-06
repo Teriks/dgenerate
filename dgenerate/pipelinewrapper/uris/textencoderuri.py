@@ -201,10 +201,10 @@ class TextEncoderUri:
             return self._load(**args)
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
-            raise _pipelinewrapper_util.ModelNotFoundError(e)
+            raise _pipelinewrapper_util.ModelNotFoundError(e) from e
         except Exception as e:
             raise _exceptions.TextEncoderUriLoadError(
-                f'error loading text encoder "{self.model}": {e}')
+                f'error loading text encoder "{self.model}": {e}') from e
 
     @staticmethod
     def _enforce_cache_size(new_text_encoder_size):
@@ -266,7 +266,7 @@ class TextEncoderUri:
             except _pipelinewrapper_util.NonHFConfigDownloadError as e:
                 raise _exceptions.TextEncoderUriLoadError(
                     f'original config file "{original_config}" for Text Encoder could not be downloaded: {e}'
-                )
+                ) from e
 
             estimated_memory_use = _pipelinewrapper_util.estimate_model_memory_use(
                 repo_id=model_path,
@@ -291,7 +291,7 @@ class TextEncoderUri:
                 )
             except FileNotFoundError as e:
                 # cannot find configs
-                raise _pipelinewrapper_util.ModelNotFoundError(e)
+                raise _pipelinewrapper_util.ModelNotFoundError(e) from e
 
             estimated_memory_use = _torchutil.estimate_module_memory_usage(text_encoder)
 
@@ -369,4 +369,4 @@ class TextEncoderUri:
                                   subfolder=r.args.get('subfolder', None),
                                   quantizer=r.args.get('quantizer', False))
         except _textprocessing.ConceptUriParseError as e:
-            raise _exceptions.InvalidTextEncoderUriError(e)
+            raise _exceptions.InvalidTextEncoderUriError(e) from e

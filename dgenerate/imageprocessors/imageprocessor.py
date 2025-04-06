@@ -350,9 +350,9 @@ class ImageProcessor(_plugin.Plugin, abc.ABC):
 
             if try_again:
                 return self.__with_memory_safety(func, args, oom_attempt=1)
-        except MemoryError:
+        except MemoryError as e:
             gc.collect()
-            raise _d_exceptions.OutOfMemoryError('cpu (system memory)')
+            raise _d_exceptions.OutOfMemoryError('cpu (system memory)') from e
         except Exception as e:
             if not isinstance(e, _d_exceptions.OutOfMemoryError):
                 self.__to_cpu_ignore_error()
@@ -682,11 +682,11 @@ class ImageProcessor(_plugin.Plugin, abc.ABC):
 
                         self.__to_cpu_ignore_error()
                         self.__flush_mem_ignore_error()
-                        raise _d_exceptions.OutOfMemoryError(e)
+                        raise _d_exceptions.OutOfMemoryError(e) from e
                 except MemoryError as e:
                     # out of cpu side memory
                     self.__flush_mem_ignore_error()
-                    raise _d_exceptions.OutOfMemoryError('cpu (system memory)')
+                    raise _d_exceptions.OutOfMemoryError('cpu (system memory)') from e
 
         if try_again:
             self.__to(device, attempt=1)

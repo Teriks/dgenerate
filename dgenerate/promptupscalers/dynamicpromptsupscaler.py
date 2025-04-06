@@ -145,7 +145,7 @@ class DynamicPromptsUpscaler(_promptupscaler.PromptUpscaler):
         except pyparsing.ParseException as e:
             raise _exceptions.PromptUpscalerProcessingError(
                 f'dynamicprompts prompt upscaler could '
-                f'not parse prompt: "{prompt}", reason: {e}')
+                f'not parse prompt: "{prompt}", reason: {e}') from e
 
         output = []
         for generated_pos_prompt in generated_pos_prompts:

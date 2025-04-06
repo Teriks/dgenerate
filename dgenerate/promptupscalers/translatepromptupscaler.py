@@ -104,7 +104,7 @@ class TranslatePromptUpscaler(_promptupscaler.PromptUpscaler):
                 if provider == 'argos' else _translators.MarianaTranslator(input, output, self.local_files_only)
             )
         except _translators.TranslatorLoadError as e:
-            raise self.argument_error(str(e))
+            raise self.argument_error(str(e)) from e
 
         self._accepts_batch = batch
         self._part = part

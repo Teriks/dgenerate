@@ -328,7 +328,7 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
             try:
                 llm_quantization_config = _get_quantizer_uri_class(llm_quantizer).parse(llm_quantizer).to_config()
             except Exception as e:
-                raise self.argument_error(f'Error loading "llm-quantizer" argument "{llm_quantizer}": {e}')
+                raise self.argument_error(f'Error loading "llm-quantizer" argument "{llm_quantizer}": {e}') from e
         else:
             llm_quantization_config = None
 
@@ -472,7 +472,7 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
         except Exception as e:
             raise self.argument_error(
                 f'Argument "projector" and related, '
-                f'could not find projector model: {e}')
+                f'could not find projector model: {e}') from e
 
     def get_extra_supported_args(self) -> list[str]:
         # override and support passing the rankgen prompt

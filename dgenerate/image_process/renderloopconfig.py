@@ -147,7 +147,7 @@ class ImageProcessRenderLoopConfig(_types.SetFromMixin):
         try:
             _types.type_check_struct(self, attribute_namer)
         except ValueError as e:
-            raise ImageProcessRenderLoopConfigError(e)
+            raise ImageProcessRenderLoopConfigError(e) from e
 
         if self.no_frames and self.no_animation_file:
             raise ImageProcessRenderLoopConfigError(

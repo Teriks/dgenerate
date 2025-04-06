@@ -645,12 +645,12 @@ def pipeline_to(pipeline, device: torch.device | str | None):
         _memory.torch_gc()
         gc.collect()
 
-        raise _d_exceptions.OutOfMemoryError(e)
-    except MemoryError:
+        raise _d_exceptions.OutOfMemoryError(e) from e
+    except MemoryError as e:
         # probably out of RAM on a back
         # to CPU move not much we can do
         gc.collect()
-        raise _d_exceptions.OutOfMemoryError('cpu (system memory)')
+        raise _d_exceptions.OutOfMemoryError('cpu (system memory)') from e
 
 
 def _call_args_debug_transformer(key, value):
@@ -822,12 +822,12 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline,
             _cleanup_prompt_weighter()
             _memory.torch_gc()
             gc.collect()
-            raise _d_exceptions.OutOfMemoryError(e)
-        except MemoryError:
+            raise _d_exceptions.OutOfMemoryError(e) from e
+        except MemoryError as e:
             _cleanup_prompt_weighter()
             gc.collect()
-            raise _d_exceptions.OutOfMemoryError('cpu (system memory)')
-        except Exception as e:
+            raise _d_exceptions.OutOfMemoryError('cpu (system memory)') from e
+        except Exception:
             _cleanup_prompt_weighter()
             _memory.torch_gc()
             gc.collect()
@@ -906,11 +906,11 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline,
         except _d_exceptions.TORCH_CUDA_OOM_EXCEPTIONS as e:
             _d_exceptions.raise_if_not_cuda_oom(e)
             _torch_oom_handler()
-            raise _d_exceptions.OutOfMemoryError(e)
-        except MemoryError:
+            raise _d_exceptions.OutOfMemoryError(e) from e
+        except MemoryError as e:
             gc.collect()
-            raise _d_exceptions.OutOfMemoryError('cpu (system memory)')
-        except Exception as e:
+            raise _d_exceptions.OutOfMemoryError('cpu (system memory)') from e
+        except Exception:
             # same cleanup
             _torch_oom_handler()
             raise
@@ -1234,7 +1234,7 @@ def create_torch_diffusion_pipeline(
         return _create_torch_diffusion_pipeline(**__locals)
     except (huggingface_hub.utils.HFValidationError,
             huggingface_hub.utils.HfHubHTTPError) as e:
-        raise _util.ModelNotFoundError(e)
+        raise _util.ModelNotFoundError(e) from e
 
 
 class TorchPipelineFactory:
@@ -1563,7 +1563,7 @@ def get_torch_pipeline_class(
             sdxl_controlnet_union = controlnet_uris and is_sdxl and any(
                 s.mode is not None for s in parsed_control_net_uris)
     except _uris.InvalidControlNetUriError as e:
-        raise UnsupportedPipelineConfigError(str(e))
+        raise UnsupportedPipelineConfigError(str(e)) from e
 
     def eq_cn_uri(
             uri1: _uris.ControlNetUri,
@@ -2268,9 +2268,9 @@ def _create_torch_diffusion_pipeline(
                         'Skipping auto VAE caching due to model '
                         'configuration not having a VAE key.')
                     vae_encoder_name = None
-                except FileNotFoundError:
+                except FileNotFoundError as e:
                     raise UnsupportedPipelineConfigError(
-                        'Could not find VAE configuration data.')
+                        'Could not find VAE configuration data.') from e
 
                 if vae_encoder_name not in _uris.VAEUri.supported_encoder_names():
                     raise UnsupportedPipelineConfigError(
@@ -2498,11 +2498,11 @@ def _create_torch_diffusion_pipeline(
         if model_path in exc_msg:
             if 'restricted' in exc_msg:
                 # the gated repo message is far more useful to the user
-                raise InvalidModelFileError(exc_msg)
+                raise InvalidModelFileError(exc_msg) from e
             else:
-                raise InvalidModelFileError(f'invalid model file or repo slug: {model_path}')
+                raise InvalidModelFileError(f'invalid model file or repo slug: {model_path}') from e
 
-        raise InvalidModelFileError(e)
+        raise InvalidModelFileError(e) from e
 
     if _util.is_single_file_model_load(model_path):
         if subfolder is not None:
@@ -2528,10 +2528,10 @@ def _create_torch_diffusion_pipeline(
             msg = str(e)
             if 'text_encoder' in msg:
                 raise UnsupportedPipelineConfigError(
-                    f'Single file load error, missing --text-encoders / --second-model-text-encoders:\n{e}')
+                    f'Single file load error, missing --text-encoders / --second-model-text-encoders:\n{e}') from e
             else:
                 raise UnsupportedPipelineConfigError(
-                    f'Single file load error, missing component:\n{e}')
+                    f'Single file load error, missing component:\n{e}') from e
         except (ValueError, TypeError, NameError, OSError) as e:
             _handle_generic_pipeline_load_failure(e)
     else:

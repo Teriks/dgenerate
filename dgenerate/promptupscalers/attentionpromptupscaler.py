@@ -105,7 +105,7 @@ class AttentionUpscaler(_promptupscaler.PromptUpscaler):
         try:
             self._nlp = _spacycache.load_spacy_model(f"{lang.lower()}_core_web_sm")
         except _spacycache.SpacyModelNotFoundException as e:
-            raise _exceptions.PromptUpscalerProcessingError(f'Could not load spaCy model: {e}')
+            raise _exceptions.PromptUpscalerProcessingError(f'Could not load spaCy model: {e}') from e
 
     def _find_noun_chunks(self, text: str) -> list[str, ...]:
         return [str(chunk) for chunk in self._nlp(text).noun_chunks]
@@ -143,7 +143,7 @@ class AttentionUpscaler(_promptupscaler.PromptUpscaler):
         except pyparsing.ParseException as e:
             raise _exceptions.PromptUpscalerProcessingError(
                 f'dynamicprompts prompt upscaler could '
-                f'not parse prompt: "{prompt}", reason: {e}')
+                f'not parse prompt: "{prompt}", reason: {e}') from e
 
         output = []
         for generated_pos_prompt in generated_pos_prompts:

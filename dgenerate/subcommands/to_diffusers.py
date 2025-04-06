@@ -125,7 +125,7 @@ class ToDiffusersSubCommand(_subcommand.SubCommand):
                     _pipelinewrapper.UnsupportedPipelineConfigError,
                     dgenerate.NonHFModelDownloadError,
                     dgenerate.NonHFConfigDownloadError) as e:
-                raise self.argument_error(f'Failed to save pretrained model: {e}')
+                raise self.argument_error(f'Failed to save pretrained model: {e}') from e
             finally:
                 if args.verbose:
                     dgenerate.messages.pop_level()

@@ -100,4 +100,4 @@ class BNBQuantizerUri:
             )
 
         except _textprocessing.ConceptUriParseError as e:
-            raise _exceptions.InvalidBNBQuantizerUriError(e)
+            raise _exceptions.InvalidBNBQuantizerUriError(e) from e

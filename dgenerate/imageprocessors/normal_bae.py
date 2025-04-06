@@ -78,7 +78,8 @@ class NormalBaeProcessor(_imageprocessor.ImageProcessor):
             try:
                 self._detect_resolution = _textprocessing.parse_image_size(detect_resolution)
             except ValueError as e:
-                raise self.argument_error(f'Could not parse the "detect-resolution" argument as an image dimension: {e}')
+                raise self.argument_error(
+                    f'Could not parse the "detect-resolution" argument as an image dimension: {e}') from e
         else:
             self._detect_resolution = None
 

@@ -192,12 +192,12 @@ class TextualInversionUri:
                 local_files_only=local_files_only)
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
-            raise _pipelinewrapper_util.ModelNotFoundError(e)
+            raise _pipelinewrapper_util.ModelNotFoundError(e) from e
         except _exceptions.InvalidTextualInversionUriError:
             raise
         except Exception as e:
             raise _exceptions.TextualInversionUriLoadError(
-                f'error loading Textual Inversions: {e}')
+                f'error loading Textual Inversions: {e}') from e
 
     @staticmethod
     def _load_on_pipeline(pipeline: diffusers.DiffusionPipeline,
@@ -300,4 +300,4 @@ class TextualInversionUri:
                                        revision=r.args.get('revision', None),
                                        subfolder=r.args.get('subfolder', None))
         except _textprocessing.ConceptUriParseError as e:
-            raise _exceptions.InvalidTextualInversionUriError(e)
+            raise _exceptions.InvalidTextualInversionUriError(e) from e

@@ -308,7 +308,7 @@ def download(url: str,
 
         except requests.RequestException as e:
             raise _batchprocessor.BatchProcessError(
-                f'Failed to download "{url}": {e}')
+                f'Failed to download "{url}": {e}') from e
     else:
         class _MimeExcept(Exception):
             pass
@@ -320,12 +320,12 @@ def download(url: str,
                 mimetype_is_supported=mimetype_supported,
                 unknown_mimetype_exception=_MimeExcept,
                 overwrite=overwrite)
-        except _MimeExcept:
+        except _MimeExcept as e:
             raise _batchprocessor.BatchProcessError(
                 f'Encountered text/* mimetype at "{url}" '
-                'without specifying the -t/--text argument.')
+                'without specifying the -t/--text argument.') from e
         except requests.RequestException as e:
-            raise _batchprocessor.BatchProcessError(f'Failed to download "{url}": {e}')
+            raise _batchprocessor.BatchProcessError(f'Failed to download "{url}": {e}') from e
 
     return file_path
 

@@ -717,8 +717,8 @@ def unquote(string: str,
         return ''
     except TokenizedSplitSyntaxError as e:
         if 'Missing separator' in str(e):
-            raise UnquoteSyntaxError(str(e).replace('Missing separator', 'Extraneous text'))
-        raise UnquoteSyntaxError(e)
+            raise UnquoteSyntaxError(str(e).replace('Missing separator', 'Extraneous text')) from e
+        raise UnquoteSyntaxError(e) from e
 
 
 def shell_expandvars(string: str) -> str:
@@ -937,7 +937,7 @@ def shell_parse(
         )
 
     except TokenizedSplitSyntaxError as e:
-        raise ShellParseSyntaxError(e)
+        raise ShellParseSyntaxError(e) from e
 
 
 _concept_uri_parse_cache = dict()
@@ -1425,8 +1425,8 @@ def parse_dimensions(string):
     """
     try:
         return tuple(int(s.strip()) for s in string.lower().split('x'))
-    except ValueError:
-        raise ValueError('Dimensions must consist of integer values.')
+    except ValueError as e:
+        raise ValueError('Dimensions must consist of integer values.') from e
 
 
 def parse_image_size(string):
@@ -1525,19 +1525,19 @@ def parse_timedelta(string: str | None) -> datetime.timedelta:
     try:
         result = parser.parse('timedelta;' + string)
     except ConceptUriParseError as e:
-        raise TimeDeltaParseError(e)
+        raise TimeDeltaParseError(e) from e
 
     args = dict()
     for k, v in result.args.items():
         try:
             args[k] = float(v)
-        except ValueError:
-            raise TimeDeltaParseError(f'Argument "{k}" must be a floating point value or integer.')
+        except ValueError as e:
+            raise TimeDeltaParseError(f'Argument "{k}" must be a floating point value or integer.') from e
 
     try:
         return datetime.timedelta(**args)
     except Exception as e:
-        raise TimeDeltaParseError(e)
+        raise TimeDeltaParseError(e) from e
 
 
 def remove_terminal_escape_sequences(string):
@@ -1728,12 +1728,12 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
                 try:
                     parse_image_size(resize)
                 except ValueError as e:
-                    raise ValueError(f'invalid resize value: {e}')
+                    raise ValueError(f'invalid resize value: {e}') from e
         elif isinstance(resize, tuple):
             try:
                 resize = format_size(tuple(int(i) for i in resize))
             except ValueError as e:
-                raise ValueError(f'invalid resize value: {e}')
+                raise ValueError(f'invalid resize value: {e}') from e
         else:
             raise ValueError('resize argument expects a string or a tuple.')
 

@@ -257,9 +257,9 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
         try:
             return_code = int(args[0])
-        except ValueError:
+        except ValueError as e:
             raise _batchprocessor.BatchProcessError(
-                f'\\exit return code must be an integer value, received: {args[0]}')
+                f'\\exit return code must be an integer value, received: {args[0]}') from e
 
         sys.exit(return_code)
 
@@ -409,10 +409,10 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             for arg in args:
                 try:
                     del saved_modules[arg]
-                except KeyError:
+                except KeyError as e:
                     raise _batchprocessor.BatchProcessError(
                         f'No pipeline modules were saved to the variable name "{arg}", '
-                        f'that name could not be found.')
+                        f'that name could not be found.') from e
         else:
             saved_modules.clear()
         return 0
@@ -434,9 +434,9 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             try:
                 self.template_variables[name] = \
                     [str(s) for s in _renderloop.gen_seeds(int(args[1]))]
-            except ValueError:
+            except ValueError as e:
                 raise _batchprocessor.BatchProcessError(
-                    'The second argument of \\gen_seeds must be an integer value.')
+                    'The second argument of \\gen_seeds must be an integer value.') from e
         else:
             raise _batchprocessor.BatchProcessError(
                 '\\gen_seeds directive takes 2 arguments, template variable '
@@ -507,7 +507,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                 else:
                     os.mkdir(directory)
             except OSError as e:
-                raise _batchprocessor.BatchProcessError(f'Error creating directory "{directory}": {e.strerror}')
+                raise _batchprocessor.BatchProcessError(f'Error creating directory "{directory}": {e.strerror}') from e
         return 0
 
     def _download_directive(self, command_line_args: collections.abc.Sequence[str]):
@@ -697,9 +697,9 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                             try:
                                 file = open(command[_i + 1], mode)
                                 open_files.append(file)
-                            except IndexError:
+                            except IndexError as e:
                                 raise _batchprocessor.BatchProcessError(
-                                    f'{command[_i]} no output file specified.')
+                                    f'{command[_i]} no output file specified.') from e
                             if command[_i][0] != '2':
                                 def stdout_handler(line):
                                     file.write(line)
@@ -744,9 +744,9 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                                                **extra_kwargs)
 
                     open_processes.append(process)
-                except FileNotFoundError:
+                except FileNotFoundError as e:
                     raise _batchprocessor.BatchProcessError(
-                        f'Command "{command[0]}" not found on system.')
+                        f'Command "{command[0]}" not found on system.') from e
 
                 previous_process = process
 
@@ -898,7 +898,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                 os.chdir(path)
                 _messages.log(f'Working Directory Changed To: "{path}"')
             except OSError as e:
-                raise _batchprocessor.BatchProcessError(e)
+                raise _batchprocessor.BatchProcessError(e) from e
         else:
             raise _batchprocessor.BatchProcessError(
                 '\\cd directive takes 1 argument, the directory name.')
@@ -918,7 +918,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                 _messages.log(f'Working Directory Changed To: "{path}"')
                 self._directory_stack.append(old_dir)
             except OSError as e:
-                raise _batchprocessor.BatchProcessError(e)
+                raise _batchprocessor.BatchProcessError(e) from e
         else:
             raise _batchprocessor.BatchProcessError(
                 '\\pushd directive takes 1 argument, the directory name.')
@@ -932,11 +932,11 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             directory = self._directory_stack.pop()
             os.chdir(directory)
             _messages.log(f'Working Directory Changed To: "{directory}"')
-        except IndexError:
-            raise _batchprocessor.BatchProcessError('\\popd failed, no directory on the stack.')
+        except IndexError as e:
+            raise _batchprocessor.BatchProcessError('\\popd failed, no directory on the stack.') from e
         except OSError as e:
             self._directory_stack.append(directory)
-            raise _batchprocessor.BatchProcessError(e)
+            raise _batchprocessor.BatchProcessError(e) from e
         return 0
 
     def _rmdir_directive(self, args: collections.abc.Sequence[str]):
@@ -967,7 +967,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                     os.rmdir(d)
                 except OSError as e:
                     raise _batchprocessor.BatchProcessError(
-                        f"Failed to remove directory {d}: {e.strerror}")
+                        f"Failed to remove directory {d}: {e.strerror}") from e
         return 0
 
     def _rm_directive(self, args: collections.abc.Sequence[str]):
@@ -1015,7 +1015,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                         os.remove(f)
             except OSError as e:
                 raise _batchprocessor.BatchProcessError(
-                    f"Failed to remove {('directory' if os.path.isdir(f) else 'file')} {f}: {e.strerror}")
+                    f"Failed to remove {('directory' if os.path.isdir(f) else 'file')} {f}: {e.strerror}") from e
         return 0
 
     def _config_generate_template_variables_with_types(self) -> dict[str, tuple[type, typing.Any]]:

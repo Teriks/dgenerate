@@ -20,6 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import collections.abc
 import os.path
+import traceback
 import typing
 
 import dgenerate.exceptions as _d_exceptions
@@ -36,6 +37,7 @@ import dgenerate.renderloop as _renderloop
 import dgenerate.subcommands as _subcommands
 import dgenerate.prompt as _prompt
 import dgenerate.globalconfig as _globalconfig
+import dgenerate.textprocessing as _textprocessing
 
 __doc__ = """
 Functions to invoke dgenerate inside the current process using its command line arguments.
@@ -170,12 +172,21 @@ def invoke_dgenerate_events(
     if render_loop is None:
         render_loop = _renderloop.RenderLoop()
 
-    def rethrow_with_message(error, usage_error=False):
+    def debug_exception(error: Exception):
+        _messages.debug_log(
+            lambda:
+            _textprocessing.underline("invoker.invoke_dgenerate_events() error trace:") + "\n" +
+            _textprocessing.underline('\n'.join(traceback.format_exception(error)))
+        )
+
+    def rethrow_with_message(error: Exception, usage_error=False):
+        debug_exception(error)
+
         if log_error:
             _messages.error(f'dgenerate: error: {str(error).strip()}')
         if throw:
             if usage_error:
-                raise _arguments.DgenerateUsageError(error)
+                raise _arguments.DgenerateUsageError(error) from error
             else:
                 raise error
         return DgenerateExitEvent(invoke_dgenerate_events, 1)
@@ -192,7 +203,8 @@ def invoke_dgenerate_events(
     try:
         prompt_weighter_help, _ = _arguments.parse_prompt_weighter_help(
             args, throw_unknown=True, log_error=log_error)
-    except _arguments.DgenerateUsageError:
+    except _arguments.DgenerateUsageError as e:
+        debug_exception(e)
         if throw:
             raise
         yield DgenerateExitEvent(invoke_dgenerate_events, 1)
@@ -215,7 +227,8 @@ def invoke_dgenerate_events(
     try:
         prompt_upscaler_help, _ = _arguments.parse_prompt_upscaler_help(
             args, throw_unknown=True, log_error=log_error)
-    except _arguments.DgenerateUsageError:
+    except _arguments.DgenerateUsageError as e:
+        debug_exception(e)
         if throw:
             raise
         yield DgenerateExitEvent(invoke_dgenerate_events, 1)
@@ -238,7 +251,8 @@ def invoke_dgenerate_events(
     try:
         image_processor_help, _ = _arguments.parse_image_processor_help(
             args, throw_unknown=True, log_error=log_error)
-    except _arguments.DgenerateUsageError:
+    except _arguments.DgenerateUsageError as e:
+        debug_exception(e)
         if throw:
             raise
         yield DgenerateExitEvent(invoke_dgenerate_events, 1)
@@ -261,7 +275,8 @@ def invoke_dgenerate_events(
     try:
         sub_command_help, _ = _arguments.parse_sub_command_help(
             args, throw_unknown=True, log_error=log_error)
-    except _arguments.DgenerateUsageError:
+    except _arguments.DgenerateUsageError as e:
+        debug_exception(e)
         if throw:
             raise
         yield DgenerateExitEvent(invoke_dgenerate_events, 1)
@@ -314,7 +329,8 @@ def invoke_dgenerate_events(
             args, throw_unknown=True, log_error=log_error)
         functions_help_variable_names, _ = _arguments.parse_functions_help(
             args, throw_unknown=True, log_error=log_error)
-    except _arguments.DgenerateUsageError:
+    except _arguments.DgenerateUsageError as e:
+        debug_exception(e)
         if throw:
             raise
         yield DgenerateExitEvent(invoke_dgenerate_events, 1)
@@ -372,7 +388,8 @@ def invoke_dgenerate_events(
             raise
         yield DgenerateExitEvent(invoke_dgenerate_events, 0)
         return
-    except _arguments.DgenerateUsageError:
+    except _arguments.DgenerateUsageError as e:
+        debug_exception(e)
         if throw:
             raise
         yield DgenerateExitEvent(invoke_dgenerate_events, 1)

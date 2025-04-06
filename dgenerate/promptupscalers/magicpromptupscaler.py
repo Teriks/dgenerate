@@ -219,7 +219,7 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
             try:
                 quantization_config = _get_quantizer_uri_class(quantizer).parse(quantizer).to_config()
             except Exception as e:
-                raise self.argument_error(f'Error loading "quantizer" argument "{quantizer}": {e}')
+                raise self.argument_error(f'Error loading "quantizer" argument "{quantizer}": {e}') from e
         else:
             quantization_config = None
 
@@ -424,20 +424,20 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
         try:
             with _with_seed(self._seed), self._with_device():
                 return self._process_prompts(prompts)
-        except torch.cuda.OutOfMemoryError:
+        except torch.cuda.OutOfMemoryError as e:
             prompt_count = len(prompts)
             if prompt_count > 1:
                 raise _exceptions.PromptUpscalerProcessingError(
                     f'magicprompt prompt upscaler could not '
                     f'process {len(prompts)} incoming prompt(s) due to CUDA '
                     f'out of memory error, try using the argument "batch=False" '
-                    f'to process only one prompt at a time (this is slow).')
+                    f'to process only one prompt at a time (this is slow).') from e
             raise _exceptions.PromptUpscalerProcessingError(
                 f'magicprompt prompt upscaler could not '
                 f'process prompt due to CUDA out of memory error: {prompts[0]}'
-            )
+            ) from e
         except transformers.pipelines.PipelineException as e:
             raise _exceptions.PromptUpscalerProcessingError(
                 f'magicprompt prompt upscaler could not process prompt(s) due '
                 f'to transformers pipeline exception: {e}'
-            )
+            ) from e

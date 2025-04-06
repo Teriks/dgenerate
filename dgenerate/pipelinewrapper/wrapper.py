@@ -476,13 +476,13 @@ class DiffusionPipelineWrapper:
             try:
                 _uris.get_quantizer_uri_class(quantizer_uri)
             except ValueError as e:
-                raise _pipelines.UnsupportedPipelineConfigError(str(e))
+                raise _pipelines.UnsupportedPipelineConfigError(str(e)) from e
 
         if second_model_quantizer_uri is not None:
             try:
                 _uris.get_quantizer_uri_class(second_model_quantizer_uri)
             except ValueError as e:
-                raise _pipelines.UnsupportedPipelineConfigError(str(e))
+                raise _pipelines.UnsupportedPipelineConfigError(str(e)) from e
 
         self._quantizer_uri = quantizer_uri
         self._second_model_quantizer_uri = second_model_quantizer_uri
