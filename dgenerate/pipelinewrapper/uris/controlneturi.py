@@ -250,10 +250,10 @@ class ControlNetUri:
                               model_class)
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
-            raise _pipelinewrapper_util.ModelNotFoundError(e)
+            raise _pipelinewrapper_util.ModelNotFoundError(e) from e
         except Exception as e:
             raise _exceptions.ControlNetUriLoadError(
-                f'error loading controlnet "{self.model}": {e}')
+                f'error loading controlnet "{self.model}": {e}') from e
 
     @staticmethod
     def _enforce_cache_size(new_controlnet_size):
@@ -423,7 +423,7 @@ class ControlNetUri:
             )
 
         except _textprocessing.ConceptUriParseError as e:
-            raise _exceptions.InvalidControlNetUriError(e)
+            raise _exceptions.InvalidControlNetUriError(e) from e
 
     @staticmethod
     def _sdxl_mode_int_from_str(mode):
@@ -435,7 +435,7 @@ class ControlNetUri:
             except ValueError:
                 mode = SDXLControlNetUnionUriModes[mode.upper()].value
 
-        except KeyError as e:
+        except KeyError:
             raise _exceptions.InvalidControlNetUriError(
                 f'Torch SDXL Union ControlNet "mode" must be an integer, '
                 f'or one of: {modes}. received: {mode}')
@@ -456,7 +456,7 @@ class ControlNetUri:
             except ValueError:
                 mode = FluxControlNetUnionUriModes[mode.upper()].value
 
-        except KeyError as e:
+        except KeyError:
             raise _exceptions.InvalidControlNetUriError(
                 f'Torch Flux Union ControlNet "mode" must be an integer, '
                 f'or one of: {modes}. received: {mode}')

@@ -257,36 +257,36 @@ def load_scheduler(pipeline: diffusers.DiffusionPipeline, scheduler_uri: _types.
                     return [val]
                 else:
                     return val
-            except (ValueError, SyntaxError):
+            except (ValueError, SyntaxError) as e:
                 raise SchedulerArgumentError(
                     f'{scheduler} argument "{arg_name}" '
                     f'must be a singular literal, list, '
                     f'tuple, or set value in python syntax.'
-                )
+                ) from e
         elif any(t == 'float' for t in types):
             try:
                 return float(value)
-            except ValueError:
+            except ValueError as e:
                 raise SchedulerArgumentError(
                     f'{scheduler} argument "{arg_name}" '
                     f'must be a floating point value.'
-                )
+                ) from e
         elif any(t == 'int' for t in types):
             try:
                 return int(value)
-            except ValueError:
+            except ValueError as e:
                 raise SchedulerArgumentError(
                     f'{scheduler} argument "{arg_name}" '
                     f'must be an integer value.'
-                )
+                ) from e
         elif any(t == 'bool' for t in types):
             try:
                 return _types.parse_bool(value)
-            except ValueError:
+            except ValueError as e:
                 raise SchedulerArgumentError(
                     f'{scheduler} argument "{arg_name}" '
                     f'must be a boolean value.'
-                )
+                ) from e
 
         try:
             # string literal?
@@ -308,7 +308,7 @@ def load_scheduler(pipeline: diffusers.DiffusionPipeline, scheduler_uri: _types.
             try:
                 result = parser.parse(scheduler_uri)
             except _textprocessing.ConceptUriParseError as e:
-                raise SchedulerArgumentError(e)
+                raise SchedulerArgumentError(e) from e
 
             args = {_textprocessing.dashdown(k): _get_uri_arg_value(
                 scheduler_type.__name__, v, k, schema[k]['optional'], schema[k]['types'])
@@ -322,7 +322,7 @@ def load_scheduler(pipeline: diffusers.DiffusionPipeline, scheduler_uri: _types.
             except Exception as e:
                 raise SchedulerArgumentError(
                     f'Error constructing scheduler "{scheduler_type.__name__}" '
-                    f'with given URI argument values, encountered error: {e}')
+                    f'with given URI argument values, encountered error: {e}') from e
 
             _messages.debug_log(
                 f'Scheduler: "{scheduler_type.__name__}", '

@@ -340,7 +340,7 @@ class ResizeProcessor(_imageprocessor.ImageProcessor):
             try:
                 self._size = _textprocessing.parse_image_size(size)
             except ValueError as e:
-                raise self.argument_error(str(e).strip())
+                raise self.argument_error(str(e).strip()) from e
         else:
             self._size = None
 
@@ -455,7 +455,7 @@ class LetterboxProcessor(_imageprocessor.ImageProcessor):
         try:
             self._box_size = _textprocessing.parse_image_size(box_size)
         except ValueError as e:
-            raise self.argument_error(f'Could not parse the "box_size" argument as an image dimension: {e}')
+            raise self.argument_error(f'Could not parse the "box_size" argument as an image dimension: {e}') from e
 
         self._box_is_padding = box_is_padding
         self._box_color = box_color
@@ -466,7 +466,7 @@ class LetterboxProcessor(_imageprocessor.ImageProcessor):
             else:
                 self._inner_size = None
         except ValueError as e:
-            raise self.argument_error(f'Could not parse the "inner_size" argument as an image dimension: {e}')
+            raise self.argument_error(f'Could not parse the "inner_size" argument as an image dimension: {e}') from e
 
         self._aspect_correct = aspect_correct
         self._pre_resize = pre_resize

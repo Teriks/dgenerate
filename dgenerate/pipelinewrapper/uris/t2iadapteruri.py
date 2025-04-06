@@ -150,10 +150,10 @@ class T2IAdapterUri:
             return self._load(**args)
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
-            raise _pipelinewrapper_util.ModelNotFoundError(e)
+            raise _pipelinewrapper_util.ModelNotFoundError(e) from e
         except Exception as e:
             raise _exceptions.T2IAdapterUriLoadError(
-                f'error loading t2i adapter "{self.model}": {e}')
+                f'error loading t2i adapter "{self.model}": {e}') from e
 
     @staticmethod
     def _enforce_cache_size(new_adapter_size):

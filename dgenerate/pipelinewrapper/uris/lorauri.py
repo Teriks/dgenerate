@@ -123,12 +123,12 @@ class LoRAUri:
                                       local_files_only=local_files_only)
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
-            raise _pipelinewrapper_util.ModelNotFoundError(e)
+            raise _pipelinewrapper_util.ModelNotFoundError(e) from e
         except _exceptions.InvalidLoRAUriError:
             raise
         except Exception as e:
             raise _exceptions.LoRAUriLoadError(
-                f'error loading LoRAs: {e}')
+                f'error loading LoRAs: {e}') from e
 
     @staticmethod
     def _load_on_pipeline(pipeline: diffusers.DiffusionPipeline,
@@ -232,4 +232,4 @@ class LoRAUri:
                            revision=r.args.get('revision', None),
                            subfolder=r.args.get('subfolder', None))
         except _textprocessing.ConceptUriParseError as e:
-            raise _exceptions.InvalidLoRAUriError(e)
+            raise _exceptions.InvalidLoRAUriError(e) from e

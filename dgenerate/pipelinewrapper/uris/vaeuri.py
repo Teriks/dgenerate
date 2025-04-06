@@ -210,7 +210,7 @@ class VAEUri:
             return self._load(**args)
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
-            raise _pipelinewrapper_util.ModelNotFoundError(e)
+            raise _pipelinewrapper_util.ModelNotFoundError(e) from e
 
     @staticmethod
     def _enforce_cache_size(new_vae_size):
@@ -254,7 +254,7 @@ class VAEUri:
             except _pipelinewrapper_util.NonHFConfigDownloadError as e:
                 raise _exceptions.VAEUriLoadError(
                     f'original config file "{original_config}" for VAE could not be downloaded: {e}'
-                )
+                ) from e
 
             estimated_memory_use = _pipelinewrapper_util.estimate_model_memory_use(
                 repo_id=model_path,
@@ -300,7 +300,7 @@ class VAEUri:
                     )
                 except FileNotFoundError as e:
                     # cannot find configs
-                    raise _pipelinewrapper_util.ModelNotFoundError(e)
+                    raise _pipelinewrapper_util.ModelNotFoundError(e) from e
 
                 estimated_memory_use = _torchutil.estimate_module_memory_usage(vae)
         else:
@@ -373,4 +373,4 @@ class VAEUri:
                           dtype=dtype,
                           subfolder=r.args.get('subfolder', None))
         except _textprocessing.ConceptUriParseError as e:
-            raise _exceptions.InvalidVaeUriError(e)
+            raise _exceptions.InvalidVaeUriError(e) from e

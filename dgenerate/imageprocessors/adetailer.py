@@ -248,9 +248,9 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
             if len(detector_padding) not in {1, 2, 4}:
                 raise ValueError()
 
-        except ValueError:
+        except ValueError as e:
             raise self.argument_error(
-                'detector-padding must be an integer value, WIDTHxHEIGHT, or LEFTxTOPxRIGHTxBOTTOM')
+                'detector-padding must be an integer value, WIDTHxHEIGHT, or LEFTxTOPxRIGHTxBOTTOM') from e
 
         if len(detector_padding) == 1:
             detector_padding = detector_padding[0]
@@ -333,7 +333,7 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
                 use_auth_token=token,
                 local_files_only=self.local_files_only)
         except Exception as e:
-            raise self.argument_error(str(e))
+            raise self.argument_error(str(e)) from e
 
     def _adetailer(self, image):
         i_filename = _image.get_filename(image)
@@ -432,7 +432,7 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
                     dtype=encoder_dtype,
                     local_files_only=self.local_files_only)
             except Exception as e:
-                raise self.argument_error(str(e))
+                raise self.argument_error(str(e)) from e
 
         if self._seed is not None:
             generator = torch.Generator(

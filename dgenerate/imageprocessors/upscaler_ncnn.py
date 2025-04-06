@@ -290,11 +290,11 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
                 use_sgemm_convolution=self._sgemm,
                 broadcast_data_check=broadcast_check)
         except _ncnn_model.NCNNGPUIndexError as e:
-            raise self.argument_error(str(e))
+            raise self.argument_error(str(e)) from e
         except _ncnn_model.NCNNNoGPUError as e:
-            raise self.argument_error(str(e))
+            raise self.argument_error(str(e)) from e
         except _ncnn_model.NCNNModelLoadError as e:
-            raise self.argument_error(f'Unsupported NCNN model: {e}')
+            raise self.argument_error(f'Unsupported NCNN model: {e}') from e
 
     def _pipeline_fence(self):
         if self._use_gpu:
@@ -366,7 +366,7 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
         try:
             return self._process_upscale(image, self._model)
         except _ncnn_model.NCNNExtractionFailure as e:
-            raise dgenerate.OutOfMemoryError(e)
+            raise dgenerate.OutOfMemoryError(e) from e
 
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize) -> PIL.Image.Image:
         if self._pre_resize:

@@ -234,7 +234,7 @@ def _type_device(device):
             raise argparse.ArgumentTypeError(
                 f'Must be cuda or cpu, or other device supported by torch. Unknown value: {device}')
     except _torchutil.InvalidDeviceOrdinalException as e:
-        raise argparse.ArgumentTypeError(e)
+        raise argparse.ArgumentTypeError(e) from e
 
     return device
 
@@ -3145,14 +3145,14 @@ def _check_unknown_args(args: typing.Sequence[str], log_error: bool):
                     _messages.log(parser.format_usage().rstrip())
                     _messages.error(str(e).strip())
 
-                raise DgenerateUsageError(str(e))
+                raise DgenerateUsageError(str(e)) from e
         else:
             # something other than a missing argument
             if log_error:
                 _messages.log(parser.format_usage().rstrip())
                 _messages.error(str(e).strip())
 
-            raise DgenerateUsageError(str(e))
+            raise DgenerateUsageError(str(e)) from e
 
 
 def parse_templates_help(
@@ -3265,7 +3265,7 @@ def parse_plugin_modules(
         parser.add_argument('--plugin-modules', action='store', default=None, nargs="+")
         parsed, unknown = parser.parse_known_args(args)
     except argparse.ArgumentError as e:
-        raise DgenerateUsageError(e)
+        raise DgenerateUsageError(e) from e
 
     if parsed.plugin_modules is not None and throw_unknown:
         _check_unknown_args(unknown, log_error)
@@ -3377,7 +3377,7 @@ def parse_sub_command(
         parser.add_argument('--sub-command', action='store', default=None)
         parsed, unknown = parser.parse_known_args(args)
     except argparse.ArgumentError as e:
-        raise DgenerateUsageError(e)
+        raise DgenerateUsageError(e) from e
 
     return parsed.sub_command, unknown
 
@@ -3437,7 +3437,7 @@ def parse_device(
         parser.add_argument('-d', '--device', type=_type_device, default=None)
         parsed, unknown = parser.parse_known_args(args)
     except argparse.ArgumentError as e:
-        raise DgenerateUsageError(e)
+        raise DgenerateUsageError(e) from e
 
     if parsed.device is not None and throw_unknown:
         _check_unknown_args(unknown, log_error)
@@ -3528,7 +3528,7 @@ def parse_known_args(args: collections.abc.Sequence[str] | None = None,
             pass
             _messages.error(f'dgenerate: error: {str(e).strip()}')
         if throw:
-            raise DgenerateUsageError(e)
+            raise DgenerateUsageError(e) from e
         return None
 
 
@@ -3564,5 +3564,5 @@ def parse_args(args: collections.abc.Sequence[str] | None = None,
         if log_error:
             _messages.error(f'dgenerate: error: {str(e).strip()}')
         if throw:
-            raise DgenerateUsageError(e)
+            raise DgenerateUsageError(e) from e
         return None

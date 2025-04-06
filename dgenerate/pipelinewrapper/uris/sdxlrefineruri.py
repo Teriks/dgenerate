@@ -125,4 +125,4 @@ class SDXLRefinerUri:
                 dtype=dtype,
                 subfolder=r.args.get('subfolder', None))
         except _textprocessing.ConceptUriParseError as e:
-            raise _exceptions.InvalidSDXLRefinerUriError(e)
+            raise _exceptions.InvalidSDXLRefinerUriError(e) from e

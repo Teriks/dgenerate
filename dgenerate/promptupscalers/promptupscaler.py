@@ -95,7 +95,7 @@ class PromptUpscaler(_plugin.Plugin, abc.ABC):
                         f'Invalid device argument: "{device}" is not a valid device string.')
             except _torchutil.InvalidDeviceOrdinalException as e:
                 raise _exceptions.PromptUpscalerArgumentError(
-                    f'Invalid device argument: {e}')
+                    f'Invalid device argument: {e}') from e
 
         self.__device = device if device else 'cpu'
         self.__local_files_only = local_files_only

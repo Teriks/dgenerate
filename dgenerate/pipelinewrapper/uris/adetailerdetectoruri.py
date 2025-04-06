@@ -272,7 +272,7 @@ class AdetailerDetectorUri:
                     local_files_only=local_files_only)
         except Exception as e:
             raise _exceptions.AdetailerDetectorUriLoadError(
-                f'Error loading adetailer model: {e}')
+                f'Error loading adetailer model: {e}') from e
 
     @staticmethod
     def parse(uri: _types.Uri) -> 'AdetailerDetectorUri':
@@ -294,7 +294,7 @@ class AdetailerDetectorUri:
                 confidence = float(confidence)
             except ValueError:
                 raise _exceptions.InvalidAdetailerDetectorUriError(
-                    f'could not parse adetailer detector confidence value: {confidence}'
+                    f'adetailer detector confidence must be a float value, received: {confidence}'
                 )
 
             mask_padding = AdetailerDetectorUri._parse_padding(
@@ -310,7 +310,7 @@ class AdetailerDetectorUri:
                     mask_blur = int(mask_blur)
                 except ValueError:
                     raise _exceptions.InvalidAdetailerDetectorUriError(
-                        'adetailer detector mask-blur must be an integer value.')
+                        f'adetailer detector mask-blur must be an integer value, received: {mask_blur}')
 
             mask_dilation = r.args.get('mask-dilation', None)
 
@@ -319,7 +319,7 @@ class AdetailerDetectorUri:
                     mask_dilation = int(mask_dilation)
                 except ValueError:
                     raise _exceptions.InvalidAdetailerDetectorUriError(
-                        'adetailer detector mask-dilation must be an integer value.')
+                        f'adetailer detector mask-dilation must be an integer value, received: {mask_dilation}')
 
             index_filter = r.args.get('index-filter', None)
 
@@ -332,7 +332,7 @@ class AdetailerDetectorUri:
                         int(i)
                 except (ValueError, SyntaxError):
                     raise _exceptions.InvalidAdetailerDetectorUriError(
-                        'adetailer detector index-filter must be a list of integers.'
+                        f'adetailer detector index-filter must be a list of integers, received: {index_filter}'
                     )
                 index_filter = val
 
@@ -352,7 +352,7 @@ class AdetailerDetectorUri:
                 mask_shape=r.args.get('mask-shape', None),
                 device=r.args.get('device', None))
         except _textprocessing.ConceptUriParseError as e:
-            raise _exceptions.InvalidAdetailerDetectorUriError(e)
+            raise _exceptions.InvalidAdetailerDetectorUriError(e) from e
 
     @staticmethod
     def _parse_padding(padding, name):

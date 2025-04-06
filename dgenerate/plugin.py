@@ -152,7 +152,7 @@ class PluginArg:
             if base_type is typing.Any:
                 return value
             offset = e.offset - 1 if e.offset > 0 else 0
-            raise ValueError(f'Syntax Error: {e.text[:offset]}[ERROR HERE>]{e.text[offset:]}')
+            raise ValueError(f'Syntax Error: {e.text[:offset]}[ERROR HERE>]{e.text[offset:]}') from e
 
     def __str__(self):
         default_part = f', default={repr(self.default)}' if self.have_default else ''
@@ -574,7 +574,7 @@ def load_modules(paths: collections.abc.Iterable[str]) -> list[types.ModuleType]
                 try:
                     mod = importlib.machinery.SourceFileLoader(plugin_path, plugin_path).load_module()
                 except FileNotFoundError as e:
-                    raise ModuleFileNotFoundError(e)
+                    raise ModuleFileNotFoundError(e) from e
                 LOADED_PLUGIN_MODULES[plugin_path] = mod
 
             r.append(mod)
@@ -583,7 +583,7 @@ def load_modules(paths: collections.abc.Iterable[str]) -> list[types.ModuleType]
             try:
                 mod = importlib.import_module(plugin_path)
             except Exception as e:
-                raise ModuleFileNotFoundError(e)
+                raise ModuleFileNotFoundError(e) from e
             LOADED_PLUGIN_MODULES[plugin_path] = mod
             r.append(mod)
 
@@ -907,7 +907,7 @@ class PluginLoader:
         try:
             parsed_args = arg_parser.parse(uri).args
         except _textprocessing.ConceptUriParseError as e:
-            raise self.__argument_error_type(str(e))
+            raise self.__argument_error_type(str(e)) from e
 
         args_dict = {}
 

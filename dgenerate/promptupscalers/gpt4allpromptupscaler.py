@@ -214,7 +214,7 @@ class GPT4ALLPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptups
             try:
                 return gpt4all.GPT4All(model, device=compute, n_ctx=context_tokens)
             except RuntimeError as e:
-                raise self.argument_error(f'Argument "model", could not load: {e}')
+                raise self.argument_error(f'Argument "model", could not load: {e}') from e
 
         self.set_size_estimate(estimated_size)
 
@@ -307,4 +307,4 @@ class GPT4ALLPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptups
             raise _exceptions.PromptUpscalerProcessingError(
                 f'gpt4all prompt upscaler could not process prompt(s) due '
                 f'to pipeline exception: {e}'
-            )
+            ) from e

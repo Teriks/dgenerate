@@ -78,9 +78,9 @@ def _find_template_tags(text) -> list[_RecipeTemplateTag]:
                         full_tag,
                     ))
 
-            except json.JSONDecodeError:
+            except json.JSONDecodeError as e:
                 raise RuntimeError(
-                    f"Invalid JSON in recipe template: {text[start_pos:json_end + 1]}")
+                    f"Invalid JSON in recipe template: {text[start_pos:json_end + 1]}") from e
 
     return tags
 

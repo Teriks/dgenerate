@@ -76,7 +76,7 @@ def _get_constant_by_string(path: str):
         module = importlib.import_module(module_path)
         return getattr(module, attr_name)
     except (ModuleNotFoundError, AttributeError) as e:
-        raise ImportError(f"Could not retrieve '{path}': {e}")
+        raise ImportError(f"Could not retrieve '{path}': {e}") from e
 
 
 def _set_constant_by_string(path: str, value):
@@ -89,7 +89,7 @@ def _set_constant_by_string(path: str, value):
         module = importlib.import_module(module_path)
         return setattr(module, attr_name, value)
     except (ModuleNotFoundError, AttributeError) as e:
-        raise ImportError(f"Could not retrieve '{path}': {e}")
+        raise ImportError(f"Could not retrieve '{path}': {e}") from e
 
 
 def _get_config_dict():

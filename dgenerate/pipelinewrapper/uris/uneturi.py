@@ -166,10 +166,10 @@ class UNetUri:
             return self._load(**args)
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
-            raise _pipelinewrapper_util.ModelNotFoundError(e)
+            raise _pipelinewrapper_util.ModelNotFoundError(e) from e
         except Exception as e:
             raise _exceptions.UNetUriLoadError(
-                f'error loading unet "{self.model}": {e}')
+                f'error loading unet "{self.model}": {e}') from e
 
     @staticmethod
     def _enforce_cache_size(new_unet_size):
@@ -219,7 +219,7 @@ class UNetUri:
             except _pipelinewrapper_util.NonHFConfigDownloadError as e:
                 raise _exceptions.UNetUriLoadError(
                     f'original config file "{original_config}" for UNet could not be downloaded: {e}'
-                )
+                ) from e
 
             estimated_memory_use = _pipelinewrapper_util.estimate_model_memory_use(
                 repo_id=model_path,
@@ -244,7 +244,7 @@ class UNetUri:
                 )
             except FileNotFoundError as e:
                 # cannot find configs
-                raise _pipelinewrapper_util.ModelNotFoundError(e)
+                raise _pipelinewrapper_util.ModelNotFoundError(e) from e
 
             estimated_memory_use = _torchutil.estimate_module_memory_usage(unet)
         else:
@@ -316,4 +316,4 @@ class UNetUri:
                 subfolder=r.args.get('subfolder', None),
                 quantizer=r.args.get('quantizer', None))
         except _textprocessing.ConceptUriParseError as e:
-            raise _exceptions.InvalidUNetUriError(e)
+            raise _exceptions.InvalidUNetUriError(e) from e

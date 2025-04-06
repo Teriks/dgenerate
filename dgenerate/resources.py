@@ -193,7 +193,7 @@ def compare_versions(version1: str, version2: str) -> VersionComparison:
         version1 = packaging.version.Version(version1)
         version2 = packaging.version.Version(version2)
     except packaging.version.InvalidVersion as e:
-        raise ValueError(str(e))
+        raise ValueError(str(e)) from e
 
     if version1 > version2:
         return VersionComparison.V1_NEWER

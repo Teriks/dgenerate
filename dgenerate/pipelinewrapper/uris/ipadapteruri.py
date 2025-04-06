@@ -116,7 +116,7 @@ class IPAdapterUri:
                                            local_files_only=local_files_only)
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
-            raise _pipelinewrapper_util.ModelNotFoundError(e)
+            raise _pipelinewrapper_util.ModelNotFoundError(e) from e
         except _exceptions.InvalidIPAdapterUriError:
             raise
         except Exception as e:
@@ -124,9 +124,9 @@ class IPAdapterUri:
                 # Rectify highly useless error caused by bug in diffusers
                 raise _exceptions.IPAdapterUriLoadError(
                     'Cannot find IP Adapter weights in repository, '
-                    'you may need to specify a "subfolder" and/or "weight-name" URI value.')
+                    'you may need to specify a "subfolder" and/or "weight-name" URI value.') from e
             raise _exceptions.IPAdapterUriLoadError(
-                f'error loading IP Adapter: {e}')
+                f'error loading IP Adapter: {e}') from e
 
     @staticmethod
     def _load_on_pipeline(pipeline: diffusers.DiffusionPipeline,
@@ -201,4 +201,4 @@ class IPAdapterUri:
                                 revision=r.args.get('revision', None),
                                 subfolder=r.args.get('subfolder', None))
         except _textprocessing.ConceptUriParseError as e:
-            raise _exceptions.InvalidIPAdapterUriError(e)
+            raise _exceptions.InvalidIPAdapterUriError(e) from e

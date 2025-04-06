@@ -169,10 +169,10 @@ class TransformerUri:
             return self._load(**args)
         except (huggingface_hub.utils.HFValidationError,
                 huggingface_hub.utils.HfHubHTTPError) as e:
-            raise _pipelinewrapper_util.ModelNotFoundError(e)
+            raise _pipelinewrapper_util.ModelNotFoundError(e) from e
         except Exception as e:
             raise _exceptions.TransformerUriLoadError(
-                f'error loading transformer "{self.model}": {e}')
+                f'error loading transformer "{self.model}": {e}') from e
 
     @staticmethod
     def _enforce_cache_size(new_transformer_size):
@@ -226,7 +226,7 @@ class TransformerUri:
             except _pipelinewrapper_util.NonHFConfigDownloadError as e:
                 raise _exceptions.TransformerUriLoadError(
                     f'original config file "{original_config}" for Transformer could not be downloaded: {e}'
-                )
+                ) from e
 
             estimated_memory_use = _pipelinewrapper_util.estimate_model_memory_use(
                 repo_id=model_path,
@@ -316,4 +316,4 @@ class TransformerUri:
                                   subfolder=r.args.get('subfolder', None),
                                   quantizer=r.args.get('quantizer', False))
         except _textprocessing.ConceptUriParseError as e:
-            raise _exceptions.InvalidTransformerUriError(e)
+            raise _exceptions.InvalidTransformerUriError(e) from e

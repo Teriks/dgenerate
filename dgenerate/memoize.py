@@ -455,7 +455,7 @@ def memoize(cache: dict[str, typing.Any] | ObjectCache,
                 try:
                     kwargs.update({k: defaults[k] for k in unprovided_args})
                 except KeyError as e:
-                    raise ValueError(f'Missing positional argument: {str(e).strip()}.')
+                    raise ValueError(f'Missing positional argument: {str(e).strip()}.') from e
             else:
                 if unprovided_args:
                     raise ValueError(

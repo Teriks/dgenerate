@@ -121,4 +121,4 @@ class SCascadeDecoderUri:
                 dtype=dtype,
                 subfolder=r.args.get('subfolder', None))
         except _textprocessing.ConceptUriParseError as e:
-            raise _exceptions.InvalidSCascadeDecoderUriError(e)
+            raise _exceptions.InvalidSCascadeDecoderUriError(e) from e

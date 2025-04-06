@@ -154,17 +154,17 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
             try:
                 upscaler_model = spandrel.ModelLoader().load_from_file(model_path).eval()
                 upscaler_model.to(dtype)
-            except spandrel.UnsupportedDtypeError:
+            except spandrel.UnsupportedDtypeError as e:
                 raise self.argument_error(
                     f'Argument "dtype" value "{dtype}" not supported for '
                     f'upscaler model architecture "{_types.fullname(self._model.architecture)}" '
-                    f'used with model file: "{og_path}"')
+                    f'used with model file: "{og_path}"') from e
             except (ValueError,
                     RuntimeError,
                     TypeError,
                     AttributeError) as e:
                 raise self.argument_error(
-                    f'Unsupported model file format: {e}')
+                    f'Unsupported model file format: {e}') from e
 
             if not isinstance(upscaler_model, spandrel.ImageModelDescriptor):
                 raise self.argument_error(

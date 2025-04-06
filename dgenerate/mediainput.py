@@ -1209,7 +1209,7 @@ def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResul
     try:
         parts = _textprocessing.tokenized_split(uri, ';')
     except _textprocessing.TokenizedSplitSyntaxError as e:
-        raise ImageSeedParseError(f'Image seed URI parsing error: {str(e).strip()}')
+        raise ImageSeedParseError(f'Image seed URI parsing error: {str(e).strip()}') from e
 
     non_legacy: bool = len(parts) > 3
 
@@ -1237,7 +1237,7 @@ def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResul
     try:
         parse_result = seed_parser.parse(uri)
     except _textprocessing.ConceptUriParseError as e:
-        raise ImageSeedParseError(e)
+        raise ImageSeedParseError(e) from e
 
     # noinspection HttpUrlsUsage
     def _ensure_exists(path, title):

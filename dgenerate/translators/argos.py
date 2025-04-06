@@ -204,10 +204,10 @@ class ArgosTranslator:
     def _argos_update_package_index():
         try:
             response = urllib.request.urlopen(argostranslate.settings.remote_package_index)
-        except Exception:
+        except Exception as e:
             # They eat this exception and then log it without a re-throw, I need to handle it.
             raise _exceptions.TranslatorLoadError(
-                f'Unable to download argostranslate package index, network error.')
+                f'Unable to download argostranslate package index, network error.') from e
         data = response.read()
         with open(argostranslate.settings.local_package_index, "wb") as f:
             f.write(data)
@@ -217,9 +217,9 @@ class ArgosTranslator:
         try:
             # this actually just throws "Exception" upon download failure.
             return package.download()
-        except Exception:
+        except Exception as e:
             raise _exceptions.TranslatorLoadError(
-                f'Unable to download argostranslate model: {package.from_code} -> {package.to_code}, network error.')
+                f'Unable to download argostranslate model: {package.from_code} -> {package.to_code}, network error.') from e
 
     @staticmethod
     def _argos_model_path(package: argostranslate.package.IPackage):
