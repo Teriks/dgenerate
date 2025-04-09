@@ -88,6 +88,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/version_5.0.0/>`_.
     * `Linux with ROCm (AMD Cards)`_
     * `Linux with opencv-python-headless (libGL.so.1 issues)`_
     * `MacOS Install (Apple Silicon Only)`_
+    * `Google Colab Install`_
 
 * Usage Manual
     * `Basic Usage`_
@@ -5746,12 +5747,15 @@ these are the arguments that are available for use:
     guidance-scale: float
     tea-cache-rel-l1-threshold: float
     ras-index-fusion: bool
-    ras-patch-size: int
     ras-sample-ratio: float
     ras-high-ratio: float
     ras-starvation-scale: float
     ras-error-reset-steps: str
+    ras-start-step: int
+    ras-end-step: int
     ras-metric: str
+    ras-skip-num-step: int
+    ras-skip-num-step-length: int
     sdxl-refiner-hi-diffusion: bool
     pag-scale: float
     pag-adaptive-scale: float
@@ -5768,6 +5772,10 @@ these are the arguments that are available for use:
     adetailer-mask-padding: Padding: P, WxH, LxTxRxB
     adetailer-mask-blur: int
     adetailer-mask-dilation: int
+    deep-cache-interval: int
+    deep-cache-branch-id: int
+    second-model-deep-cache-interval: int
+    second-model-deep-cache-branch-id: int
 
 Utilizing CivitAI links and Other Hosted Models
 ===============================================
@@ -6221,11 +6229,11 @@ The help output of ``image-process`` is as follows:
             equal to those listed under --frame-format.
             -------------------------------------------
       -ff FRAME_FORMAT, --frame-format FRAME_FORMAT
-            Image format for animation frames. Must be one of: png, apng, blp, bmp, dib, bufr, pcx, dds, ps,
-            eps, gif, grib, h5, hdf, jp2, j2k, jpc, jpf, jpx, j2c, icns, ico, im, jfif, jpe, jpg, jpeg, tif,
-            tiff, mpo, msp, palm, pdf, pbm, pgm, ppm, pnm, pfm, bw, rgb, rgba, sgi, tga, icb, vda, vst, webp,
-            wmf, emf, or xbm.
-            -----------------
+            Image format for animation frames. Must be one of: png, apng, avif, avifs, blp, bmp, dib, bufr, pcx,
+            dds, ps, eps, gif, grib, h5, hdf, jp2, j2k, jpc, jpf, jpx, j2c, icns, ico, im, jfif, jpe, jpg, jpeg,
+            tif, tiff, mpo, msp, palm, pdf, pbm, pgm, ppm, pnm, pfm, bw, rgb, rgba, sgi, tga, icb, vda, vst,
+            webp, wmf, emf, or xbm.
+            -----------------------
       -ox, --output-overwrite
             Indicate that it is okay to overwrite files, instead of appending a duplicate suffix.
             -------------------------------------------------------------------------------------
@@ -7314,6 +7322,15 @@ The ``\templates_help`` output from the above example is:
         Name: "last_controlnet_uris"
             Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
+        Name: "last_deep_cache"
+            Type: <class 'bool'>
+            Value: False
+        Name: "last_deep_cache_branch_ids"
+            Type: typing.Optional[collections.abc.Sequence[int]]
+            Value: []
+        Name: "last_deep_cache_intervals"
+            Type: typing.Optional[collections.abc.Sequence[int]]
+            Value: []
         Name: "last_device"
             Type: <class 'str'>
             Value: 'cuda'
@@ -7449,6 +7466,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_ras"
             Type: <class 'bool'>
             Value: False
+        Name: "last_ras_end_steps"
+            Type: typing.Optional[collections.abc.Sequence[int]]
+            Value: []
         Name: "last_ras_error_reset_steps"
             Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
@@ -7461,11 +7481,17 @@ The ``\templates_help`` output from the above example is:
         Name: "last_ras_metrics"
             Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
-        Name: "last_ras_patch_sizes"
-            Type: typing.Optional[collections.abc.Sequence[int]]
-            Value: []
         Name: "last_ras_sample_ratios"
             Type: typing.Optional[collections.abc.Sequence[float]]
+            Value: []
+        Name: "last_ras_skip_num_step_lengths"
+            Type: typing.Optional[collections.abc.Sequence[int]]
+            Value: []
+        Name: "last_ras_skip_num_steps"
+            Type: typing.Optional[collections.abc.Sequence[int]]
+            Value: []
+        Name: "last_ras_start_steps"
+            Type: typing.Optional[collections.abc.Sequence[int]]
             Value: []
         Name: "last_ras_starvation_scales"
             Type: typing.Optional[collections.abc.Sequence[float]]
@@ -7563,6 +7589,15 @@ The ``\templates_help`` output from the above example is:
         Name: "last_second_model_cpu_offload"
             Type: typing.Optional[bool]
             Value: None
+        Name: "last_second_model_deep_cache"
+            Type: typing.Optional[bool]
+            Value: None
+        Name: "last_second_model_deep_cache_branch_ids"
+            Type: typing.Optional[collections.abc.Sequence[int]]
+            Value: []
+        Name: "last_second_model_deep_cache_intervals"
+            Type: typing.Optional[collections.abc.Sequence[int]]
+            Value: []
         Name: "last_second_model_guidance_scales"
             Type: typing.Optional[collections.abc.Sequence[float]]
             Value: []
@@ -7613,7 +7648,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [21929027794008]
+            Value: [31951721742490]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
