@@ -1301,13 +1301,13 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         if text_encoder_help and len(self.text_encoder_uris) > 1:
             raise RenderLoopConfigError(
-                f'You cannot specify "help" or "helpargs" to {a_namer("text_encoders")} '
+                f'You cannot specify "help" or "helpargs" to {a_namer("text_encoder_uris")} '
                 f'with multiple values involved.'
             )
 
         if second_model_text_encoder_help and len(self.second_model_text_encoder_uris) > 1:
             raise RenderLoopConfigError(
-                f'You cannot specify "help" or "helpargs" to {a_namer("second_model_text_encoders")} '
+                f'You cannot specify "help" or "helpargs" to {a_namer("second_model_text_encoder_uris")} '
                 f'with multiple values involved.'
             )
         
@@ -1340,6 +1340,18 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'{a_namer("model_cpu_offload")} is not compatible '
                 f'with {a_namer("ras")} and related arguments.'
             )
+        if self.ras_index_fusion and self.model_sequential_offload:
+            raise RenderLoopConfigError(
+                f'{a_namer("ras_index_fusion")} is not compatible '
+                f'with {a_namer("model_sequential_offload")}.'
+            )
+
+        if self.ras_index_fusion and (
+                self.quantizer_uri or (self.unet_uri and _pipelinewrapper.UNetUri.parse(self.unet_uri).quantizer)
+        ):
+            raise RenderLoopConfigError(
+                f'{a_namer("ras_index_fusion")} is not supported for RAS when UNet quantization is enabled, '
+                f'quantize the text encoders individually using {a_namer("text_encoder_uris")}.')
 
     def _check_second_model_compatibility(self, a_namer: typing.Callable[[str], str]):
         """Check compatibility of second model arguments with the primary model type."""
