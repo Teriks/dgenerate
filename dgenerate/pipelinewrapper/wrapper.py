@@ -3050,6 +3050,17 @@ class DiffusionPipelineWrapper:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'RAS does not support model CPU offloading.')
 
+            if args.ras_index_fusion and self.model_sequential_offload:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'Index fusion is not supported for RAS when sequential offloading is enabled.')
+
+            if args.ras_index_fusion and (
+                    self.quantizer_uri or (self._unet_uri and _uris.UNetUri.parse(self._unet_uri).quantizer)
+            ):
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'Index fusion is not supported for RAS when UNet quantization is enabled, '
+                    'quantize the text encoders individually.')
+
             start_step = _types.default(args.ras_start_step, _constants.DEFAULT_RAS_START_STEP)
             end_step = _types.default(args.ras_end_step, args.inference_steps)
             if start_step > end_step:
