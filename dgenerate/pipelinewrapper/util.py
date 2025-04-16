@@ -876,7 +876,7 @@ def is_loaded_in_8bit_bnb(module):
     """
     return (
             hasattr(module, "is_loaded_in_8bit")
-            and module.is_loaded_in_8bit_bnb
+            and module.is_loaded_in_8bit
             and getattr(module, "quantization_method", None) ==
             transformers.utils.quantization_config.QuantizationMethod.BITS_AND_BYTES
     )
@@ -897,7 +897,7 @@ def check_bnb_status(module) -> tuple[bool, bool, bool]:
     )
     bit8_bnb = (
             hasattr(module, "is_loaded_in_8bit")
-            and module.is_loaded_in_8bit_bnb
+            and module.is_loaded_in_8bit
             and getattr(module, "quantization_method", None) ==
             transformers.utils.quantization_config.QuantizationMethod.BITS_AND_BYTES
     )
