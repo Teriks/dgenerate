@@ -35,8 +35,6 @@ import time
 import types
 import typing
 
-import objgraph
-
 import dgenerate
 import dgenerate.arguments as _arguments
 import dgenerate.batchprocess.batchprocessor as _batchprocessor
@@ -296,6 +294,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
     #     :param args:
     #     :return:
     #     """
+    #     import objgraph
     #     objects = gc.get_objects()
     #     for arg in args:
     #         for object in objects:
