@@ -205,6 +205,9 @@ class DiffusionPipelineWrapper:
 
         :return: :py:class:`dgenerate.pipelinewrapper.pipelines.TorchPipelineCreationResult` or ``None``
         """
+        if DiffusionPipelineWrapper.__LAST_RECALL_PIPELINE is None:
+            return None
+
         return DiffusionPipelineWrapper.__LAST_RECALL_PIPELINE()
 
     @staticmethod
@@ -219,6 +222,9 @@ class DiffusionPipelineWrapper:
 
         :return: :py:class:`dgenerate.pipelinewrapper.pipelines.TorchPipelineCreationResult` or ``None``
         """
+        if DiffusionPipelineWrapper.__LAST_RECALL_SECONDARY_PIPELINE is None:
+            return None
+
         return DiffusionPipelineWrapper.__LAST_RECALL_SECONDARY_PIPELINE()
 
     def __str__(self):
