@@ -212,28 +212,27 @@ def single_file_load_sub_module(
     else:
         cached_model_config_path = default_pretrained_model_config_name
 
-    with _patch_sd21_clip_from_ldm():
-        args = {
-            "cached_model_config_path": cached_model_config_path,
-            "library_name": library_name,
-            "class_name": class_name,
-            "name": name,
-            "torch_dtype": dtype,
-            "original_config": original_config,
-            "local_files_only": local_files_only
-        }
+    args = {
+        "cached_model_config_path": cached_model_config_path,
+        "library_name": library_name,
+        "class_name": class_name,
+        "name": name,
+        "torch_dtype": dtype,
+        "original_config": original_config,
+        "local_files_only": local_files_only
+    }
 
-        _messages.debug_log(
-            f'Loading a "{class_name}" with: '
-            f'diffusers.loaders.load_single_file_sub_model({args})'
-        )
+    _messages.debug_log(
+        f'Loading a "{class_name}" with: '
+        f'diffusers.loaders.load_single_file_sub_model({args})'
+    )
 
-        model = _single_file.load_single_file_sub_model(
-            **args,
-            checkpoint=checkpoint,
-            pipelines=diffusers.pipelines,
-            is_pipeline_module=False
-        )
+    model = _single_file.load_single_file_sub_model(
+        **args,
+        checkpoint=checkpoint,
+        pipelines=diffusers.pipelines,
+        is_pipeline_module=False
+    )
 
     return model
 
@@ -868,88 +867,6 @@ def is_single_file_model_load(path):
         return True
 
     return False
-
-
-@contextlib.contextmanager
-def _patch_sd21_clip_from_ldm():
-    """
-    A context manager which temporarily patches diffusers clip / text_encoder model loading
-    for single file checkpoints, this fixes loading SD2.1 CivitAI checkpoints
-    with StableDiffusionPipeline.from_single_file, and also loading a text encoder
-    individually via checkpoint extraction using dgenerate's TextEncoderUri class.
-    """
-    og_func = diffusers.loaders.single_file_utils.convert_open_clip_checkpoint
-    diffusers.loaders.single_file_utils.convert_open_clip_checkpoint = _convert_open_clip_checkpoint
-    try:
-        yield
-    finally:
-        diffusers.loaders.single_file_utils.convert_open_clip_checkpoint = og_func
-
-
-def _convert_open_clip_checkpoint(
-        text_model,
-        checkpoint,
-        prefix="cond_stage_model.model.",
-):
-    text_model_dict = {}
-    text_proj_key = prefix + "text_projection"
-
-    if text_proj_key in checkpoint:
-        text_proj_dim = int(checkpoint[text_proj_key].shape[1])
-    elif hasattr(text_model.config, "hidden_size"):
-        text_proj_dim = text_model.config.hidden_size
-    else:
-        text_proj_dim = _single_file_utils.LDM_OPEN_CLIP_TEXT_PROJECTION_DIM
-
-    keys = list(checkpoint.keys())
-    keys_to_ignore = _single_file_utils.SD_2_TEXT_ENCODER_KEYS_TO_IGNORE
-
-    openclip_diffusers_ldm_map = _single_file_utils.DIFFUSERS_TO_LDM_MAPPING["openclip"]["layers"]
-    for diffusers_key, ldm_key in openclip_diffusers_ldm_map.items():
-        ldm_key = prefix + ldm_key
-        if ldm_key not in checkpoint:
-            continue
-        if ldm_key in keys_to_ignore:
-            continue
-        if ldm_key.endswith("text_projection"):
-            text_model_dict[diffusers_key] = checkpoint[ldm_key].T.contiguous()
-        else:
-            text_model_dict[diffusers_key] = checkpoint[ldm_key]
-
-    for key in keys:
-        if key in keys_to_ignore:
-            continue
-
-        if not key.startswith(prefix + "transformer."):
-            continue
-
-        diffusers_key = key.replace(prefix + "transformer.", "")
-        transformer_diffusers_to_ldm_map = _single_file_utils.DIFFUSERS_TO_LDM_MAPPING["openclip"]["transformer"]
-        for new_key, old_key in transformer_diffusers_to_ldm_map.items():
-            diffusers_key = (
-                diffusers_key.replace(old_key, new_key).replace(".in_proj_weight", "").replace(".in_proj_bias", "")
-            )
-
-        if key.endswith(".in_proj_weight"):
-            weight_value = checkpoint.get(key)
-
-            text_model_dict[diffusers_key + ".q_proj.weight"] = weight_value[:text_proj_dim, :].clone().detach()
-            text_model_dict[diffusers_key + ".k_proj.weight"] = (
-                weight_value[text_proj_dim: text_proj_dim * 2, :].clone().detach()
-            )
-            text_model_dict[diffusers_key + ".v_proj.weight"] = weight_value[text_proj_dim * 2:, :].clone().detach()
-
-        elif key.endswith(".in_proj_bias"):
-            weight_value = checkpoint.get(key)
-            text_model_dict[diffusers_key + ".q_proj.bias"] = weight_value[:text_proj_dim].clone().detach()
-            text_model_dict[diffusers_key + ".k_proj.bias"] = (
-                weight_value[text_proj_dim: text_proj_dim * 2].clone().detach()
-            )
-            text_model_dict[diffusers_key + ".v_proj.bias"] = weight_value[text_proj_dim * 2:].clone().detach()
-        else:
-            text_model_dict[diffusers_key] = checkpoint.get(key)
-
-    return text_model_dict
 
 
 __all__ = _types.module_all()
