@@ -21,24 +21,21 @@
 import collections.abc
 import contextlib
 import glob
-import inspect
-import itertools
 import json
 import os
 import pathlib
 import re
 
 import diffusers.loaders.single_file as _single_file
-import diffusers.loaders.single_file_utils as _single_file_utils
 import diffusers.pipelines
 import huggingface_hub
 import huggingface_hub.errors
 import torch
 
 import dgenerate.messages as _messages
-import dgenerate.pipelinewrapper.uris
 import dgenerate.types as _types
 import dgenerate.webcache as _webcache
+import transformers.utils.quantization_config
 
 
 @contextlib.contextmanager
@@ -867,6 +864,44 @@ def is_single_file_model_load(path):
         return True
 
     return False
+
+
+def is_loaded_in_8bit_bnb(module):
+    """
+    Is a pipeline module loaded in 8bit with ``bitsandbytes``?
+
+    :param module: the module
+
+    :return: ``True`` or ``False``
+    """
+    return (
+            hasattr(module, "is_loaded_in_8bit")
+            and module.is_loaded_in_8bit_bnb
+            and getattr(module, "quantization_method", None) ==
+            transformers.utils.quantization_config.QuantizationMethod.BITS_AND_BYTES
+    )
+
+
+def check_bnb_status(module) -> tuple[bool, bool, bool]:
+    """
+    Check if a module is loaded in 4bit or 8bit with ``bitsandbytes``.
+
+    :param module: the module
+    :return: (bnb?, 4bit?, 8bit?)
+    """
+    bit4_bnb = (
+            hasattr(module, "is_loaded_in_4bit")
+            and module.is_loaded_in_4bit
+            and getattr(module, "quantization_method", None) ==
+            transformers.utils.quantization_config.QuantizationMethod.BITS_AND_BYTES
+    )
+    bit8_bnb = (
+            hasattr(module, "is_loaded_in_8bit")
+            and module.is_loaded_in_8bit_bnb
+            and getattr(module, "quantization_method", None) ==
+            transformers.utils.quantization_config.QuantizationMethod.BITS_AND_BYTES
+    )
+    return bit4_bnb or bit8_bnb, bit4_bnb, bit8_bnb
 
 
 __all__ = _types.module_all()

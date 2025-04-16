@@ -335,7 +335,10 @@ def is_model_cpu_offload_enabled(module: diffusers.DiffusionPipeline | torch.nn.
 
 
 def _disable_to(module, vae=False):
-    og_to = module.to
+    if hasattr(module, '_DGENERATE_ORIGINAL_TO_DISABLED'):
+        return  # Already patched
+
+    module._DGENERATE_ORIGINAL_TO_DISABLED = module.to
 
     def dummy(*args, **kwargs):
         if vae and module.config.force_upcast and \
@@ -345,29 +348,13 @@ def _disable_to(module, vae=False):
             # basically, is this a VAE that the pipeline needs to upcast
             # this has to happen even if it is described as 'meta'
 
-            og_to(*args, **kwargs)
+            module._DGENERATE_ORIGINAL_TO_DISABLED(*args, **kwargs)
         else:
             pass
 
     module.to = dummy
     _messages.debug_log(
-        f'Disabled .to() on module / model containing meta tensors: {_types.fullname(module)}')
-
-
-def _check_bnb_status(module) -> tuple[bool, bool, bool]:
-    is_loaded_in_4bit_bnb = (
-            hasattr(module, "is_loaded_in_4bit")
-            and module.is_loaded_in_4bit
-            and getattr(module, "quantization_method", None) ==
-            diffusers.quantizers.quantization_config.QuantizationMethod.BITS_AND_BYTES
-    )
-    is_loaded_in_8bit_bnb = (
-            hasattr(module, "is_loaded_in_8bit")
-            and module.is_loaded_in_8bit
-            and getattr(module, "quantization_method", None) ==
-            diffusers.quantizers.quantization_config.QuantizationMethod.BITS_AND_BYTES
-    )
-    return is_loaded_in_4bit_bnb or is_loaded_in_8bit_bnb, is_loaded_in_4bit_bnb, is_loaded_in_8bit_bnb
+        f'Disabled .to() on module: {_types.fullname(module)}')
 
 
 def enable_sequential_cpu_offload(pipeline: diffusers.DiffusionPipeline,
@@ -383,7 +370,7 @@ def enable_sequential_cpu_offload(pipeline: diffusers.DiffusionPipeline,
 
     _set_sequential_cpu_offload_flag(pipeline, True)
     for name, model in get_torch_pipeline_modules(pipeline).items():
-        quant, _, _ = _check_bnb_status(model)
+        quant, _, _ = _util.check_bnb_status(model)
 
         if name in pipeline._exclude_from_cpu_offload or quant:
             continue
@@ -438,7 +425,7 @@ def enable_model_cpu_offload(pipeline: diffusers.DiffusionPipeline,
         if not isinstance(model, torch.nn.Module):
             continue
 
-        _, _, is_loaded_in_8bit_bnb = _check_bnb_status(model)
+        _, _, is_loaded_in_8bit_bnb = _util.check_bnb_status(model)
 
         if is_loaded_in_8bit_bnb:
             _messages.debug_log(
@@ -562,12 +549,7 @@ def _pipeline_to(pipeline, device: torch.device | str | None):
 
     for name, value in get_torch_pipeline_modules(pipeline).items():
 
-        is_loaded_in_8bit_bnb = (
-                hasattr(value, "is_loaded_in_8bit")
-                and value.is_loaded_in_8bit
-                and getattr(value, "quantization_method", None) ==
-                transformers.utils.quantization_config.QuantizationMethod.BITS_AND_BYTES
-        )
+        is_loaded_in_8bit_bnb = _util.is_loaded_in_8bit_bnb(value)
 
         if is_loaded_in_8bit_bnb:
             _messages.debug_log(
@@ -2640,6 +2622,10 @@ def _create_torch_diffusion_pipeline(
 
     if bnb_8bit_components:
         _messages.debug_log(f'Pipeline has 8bit bnb components, not entering cache: "{pipeline_class.__name__}"')
+
+        for module in get_torch_pipeline_modules(pipeline).values():
+            if _util.is_loaded_in_8bit_bnb(module):
+                _disable_to(module)
 
     # noinspection PyTypeChecker
     return TorchPipelineCreationResult(

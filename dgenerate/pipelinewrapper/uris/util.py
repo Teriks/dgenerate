@@ -32,6 +32,7 @@ import dgenerate.pipelinewrapper.uris.torchaoquantizeruri as _torchaoquantizerur
 import dgenerate.torchutil as _torchutil
 import dgenerate.types as _types
 import dgenerate.textprocessing as _textprocessing
+import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 
 
 def uri_hash_with_parser(parser, exclude: set[str] | None = None):
@@ -170,11 +171,19 @@ def _patch_module_to_for_sized_cache(cache: _memory.SizedConstrainedObjectCache,
     :param cache: Module cache
     :param module: The module to patch
     """
-    old_to = module.to
+
+    if hasattr(module, '_DGENERATE_ORIGINAL_TO_CACHE_PATCHED'):
+        return  # Already patched
+
+    module._DGENERATE_ORIGINAL_TO_CACHE_PATCHED = module.to
 
     import dgenerate.pipelinewrapper as _pipelinewrapper
 
     def new_to(*args, **kwargs):
+        if _pipelinewrapper_util.is_loaded_in_8bit_bnb(module):
+            _messages.debug_log(f'Module "{module.__name__}" is loaded in 8bit, .to() call is a no-op.')
+            return module
+
         device = None
         if len(args) == 1:
             if isinstance(args[0], (str, torch.device)):
@@ -213,7 +222,7 @@ def _patch_module_to_for_sized_cache(cache: _memory.SizedConstrainedObjectCache,
                 # does not exist in the cache
                 pass
 
-        return old_to(*args, **kwargs)
+        return module._DGENERATE_ORIGINAL_TO_CACHE_PATCHED(*args, **kwargs)
 
     module.to = new_to
 
