@@ -216,63 +216,59 @@ class TextualInversionUri:
                 # this is tricky because there is stupidly a positional argument named 'token'
                 # as well as an accepted kwargs value with the key 'token'
 
-                old_token = os.environ.get('HF_TOKEN', None)
-                if use_auth_token is not None:
-                    os.environ['HF_TOKEN'] = use_auth_token
+                is_sdxl = pipeline.__class__.__name__.startswith('StableDiffusionXL')
+                is_flux = pipeline.__class__.__name__.startswith('Flux')
 
-                try:
-                    is_sdxl = pipeline.__class__.__name__.startswith('StableDiffusionXL')
-                    is_flux = pipeline.__class__.__name__.startswith('Flux')
+                if is_sdxl or is_flux:
+                    filename, dicts = _load_textual_inversion_state_dict(
+                        model_path,
+                        revision=textual_inversion_uri.revision,
+                        subfolder=textual_inversion_uri.subfolder,
+                        weight_name=textual_inversion_uri.weight_name,
+                        local_files_only=local_files_only,
+                        token=use_auth_token
+                    )
 
-                    if is_sdxl or is_flux:
-                        filename, dicts = _load_textual_inversion_state_dict(
-                            model_path,
-                            revision=textual_inversion_uri.revision,
-                            subfolder=textual_inversion_uri.subfolder,
-                            weight_name=textual_inversion_uri.weight_name,
-                            local_files_only=local_files_only
-                        )
-
-                        if is_sdxl:
-                            if 'clip_l' not in dicts or 'clip_g' not in dicts:
-                                raise RuntimeError(
-                                    'clip_l or clip_g not found in SDXL textual '
-                                    f'inversion model "{textual_inversion_uri.model}" state dict, '
-                                    'unsupported model format.')
-                        else:
-                            if 'clip_l' not in dicts:
-                                raise RuntimeError(
-                                    'clip_l not found in Flux textual '
-                                    f'inversion model "{textual_inversion_uri.model}" state dict, '
-                                    'unsupported model format.')
-
-                        # token is the file name (no extension) with spaces
-                        # replaced by underscores when the user does not provide
-                        # a prompt token
-                        token = os.path.splitext(
-                            os.path.basename(filename))[0].replace(' ', '_') \
-                            if textual_inversion_uri.token is None else textual_inversion_uri.token
-
-                        pipeline.load_textual_inversion(dicts['clip_l'],
-                                                        token=token,
-                                                        text_encoder=pipeline.text_encoder,
-                                                        tokenizer=pipeline.tokenizer)
-
-                        if is_sdxl:
-                            pipeline.load_textual_inversion(dicts['clip_g'],
-                                                            token=token,
-                                                            text_encoder=pipeline.text_encoder_2,
-                                                            tokenizer=pipeline.tokenizer_2)
+                    if is_sdxl:
+                        if 'clip_l' not in dicts or 'clip_g' not in dicts:
+                            raise RuntimeError(
+                                'clip_l or clip_g not found in SDXL textual '
+                                f'inversion model "{textual_inversion_uri.model}" state dict, '
+                                'unsupported model format.')
                     else:
-                        pipeline.load_textual_inversion(model_path,
-                                                        token=textual_inversion_uri.token,
-                                                        revision=textual_inversion_uri.revision,
-                                                        subfolder=textual_inversion_uri.subfolder,
-                                                        weight_name=textual_inversion_uri.weight_name,
-                                                        local_files_only=local_files_only)
-                finally:
-                    if old_token is not None:
-                        os.environ['HF_TOKEN'] = old_token
+                        if 'clip_l' not in dicts:
+                            raise RuntimeError(
+                                'clip_l not found in Flux textual '
+                                f'inversion model "{textual_inversion_uri.model}" state dict, '
+                                'unsupported model format.')
+
+                    # token is the file name (no extension) with spaces
+                    # replaced by underscores when the user does not provide
+                    # a prompt token
+                    token = os.path.splitext(
+                        os.path.basename(filename))[0].replace(' ', '_') \
+                        if textual_inversion_uri.token is None else textual_inversion_uri.token
+
+                    pipeline.load_textual_inversion(dicts['clip_l'],
+                                                    token=token,
+                                                    text_encoder=pipeline.text_encoder,
+                                                    tokenizer=pipeline.tokenizer,
+                                                    hf_token=use_auth_token)
+
+                    if is_sdxl:
+                        pipeline.load_textual_inversion(dicts['clip_g'],
+                                                        token=token,
+                                                        text_encoder=pipeline.text_encoder_2,
+                                                        tokenizer=pipeline.tokenizer_2,
+                                                        hf_token=use_auth_token)
+                else:
+                    pipeline.load_textual_inversion(model_path,
+                                                    token=textual_inversion_uri.token,
+                                                    revision=textual_inversion_uri.revision,
+                                                    subfolder=textual_inversion_uri.subfolder,
+                                                    weight_name=textual_inversion_uri.weight_name,
+                                                    local_files_only=local_files_only,
+                                                    hf_token=use_auth_token)
 
                 _messages.debug_log(f'Added Textual Inversion: "{textual_inversion_uri}" '
                                     f'to pipeline: "{pipeline.__class__.__name__}"')
