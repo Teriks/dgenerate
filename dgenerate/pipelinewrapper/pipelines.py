@@ -1911,6 +1911,18 @@ def _enforce_torch_pipeline_cache_size(new_pipeline_size):
         new_object_size=new_pipeline_size)
 
 
+def _check_for_8bit_bnb_quant_uris(uris: list):
+    for uri in uris:
+        if uri is None:
+            continue
+        uri_obj = _uris.get_quantizer_uri_class(uri).parse(uri)
+        if isinstance(uri_obj, _uris.BNBQuantizerUri):
+            if uri_obj.bits == 8:
+                return True
+
+    return False
+
+
 @_memoize(_torch_pipeline_cache,
           exceptions={'local_files_only'},
           hasher=_torch_args_hasher,
@@ -2623,6 +2635,17 @@ def _create_torch_diffusion_pipeline(
 
     _messages.debug_log(f'Finished Creating Torch Pipeline: "{pipeline_class.__name__}"')
 
+    # modules quantized in 8 bit by bitsandbytes cannot be moved off the GPU,
+    # which results in VRAM memory leaks in dgenerates caching system, just
+    # do not cache these pipelines for anything more than repeated calls, the
+    # only way they get removed from VRAM is if their reference count is zero
+    bnb_8bit_components = _check_for_8bit_bnb_quant_uris(
+        [quantizer_uri, unet_uri, transformer_uri] +
+        [u.quantizer for u in uri_quant_check])
+
+    if bnb_8bit_components:
+        _messages.debug_log(f'Pipeline has 8bit bnb components, not entering cache: "{pipeline_class.__name__}"')
+
     # noinspection PyTypeChecker
     return TorchPipelineCreationResult(
         model_path=model_path,
@@ -2636,7 +2659,7 @@ def _create_torch_diffusion_pipeline(
         parsed_textual_inversion_uris=parsed_textual_inversion_uris,
         parsed_controlnet_uris=parsed_controlnet_uris,
         parsed_t2i_adapter_uris=parsed_t2i_adapter_uris
-    ), _d_memoize.CachedObjectMetadata(size=estimated_memory_usage)
+    ), _d_memoize.CachedObjectMetadata(size=estimated_memory_usage, skip=bnb_8bit_components)
 
 
 __all__ = _types.module_all()

@@ -118,6 +118,9 @@ class ObjectCache:
         """
         return list(self.__cache.values())
 
+    def __len__(self):
+        return len(self.__cache)
+
     def clear(self, collect=True):
         """
         Clear the cache and trigger callbacks.

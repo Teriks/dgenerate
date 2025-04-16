@@ -190,17 +190,36 @@ class DiffusionPipelineWrapper:
     Monolithic diffusion pipelines wrapper.
     """
 
-    __LAST_CALLED = None
+    __LAST_RECALL_PIPELINE: _pipelines.TorchPipelineFactory = None
+    __LAST_RECALL_SECONDARY_PIPELINE: _pipelines.TorchPipelineFactory = None
 
     @staticmethod
-    def last_called_wrapper() -> typing.Optional['DiffusionPipelineWrapper']:
+    def recall_last_used_main_pipeline() -> typing.Optional[_pipelines.TorchPipelineCreationResult]:
         """
-        Return a reference to the last :py:class:`DiffusionPipelineWrapper`
-        that successfully executed an image generation.
+        Return a reference to the last :py:class:`dgenerate.pipelinewrapper.pipelines.TorchPipelineCreationResult`
+        for the pipeline that successfully executed an image generation.
 
-        :return: :py:class:`DiffusionPipelineWrapper`
+        This may recreate the pipeline if it is not cached.
+
+        If no image generation has occurred, this will return ``None``.
+
+        :return: :py:class:`dgenerate.pipelinewrapper.pipelines.TorchPipelineCreationResult` or ``None``
         """
-        return DiffusionPipelineWrapper.__LAST_CALLED
+        return DiffusionPipelineWrapper.__LAST_RECALL_PIPELINE()
+
+    @staticmethod
+    def recall_last_used_secondary_pipeline() -> typing.Optional[_pipelines.TorchPipelineCreationResult]:
+        """
+        Return a reference to the last :py:class:`dgenerate.pipelinewrapper.pipelines.TorchPipelineCreationResult`
+        for the secondary pipeline (refiner / stable cascade decoder) that successfully executed an image generation.
+
+        This may recreate the pipeline if it is not cached.
+
+        If no image generation has occurred or no secondary pipeline has been called, this will return ``None``.
+
+        :return: :py:class:`dgenerate.pipelinewrapper.pipelines.TorchPipelineCreationResult` or ``None``
+        """
+        return DiffusionPipelineWrapper.__LAST_RECALL_SECONDARY_PIPELINE()
 
     def __str__(self):
         return f'{self.__class__.__name__}({str(_types.get_public_attributes(self))})'
@@ -524,7 +543,7 @@ class DiffusionPipelineWrapper:
         self._pipeline_type = None
         self._local_files_only = local_files_only
         self._recall_main_pipeline = None
-        self._recall_refiner_pipeline = None
+        self._recall_secondary_pipeline = None
         self._model_extra_modules = model_extra_modules
         self._second_model_extra_modules = second_model_extra_modules
         self._model_cpu_offload = model_cpu_offload
@@ -2642,12 +2661,12 @@ class DiffusionPipelineWrapper:
 
         return self._recall_main_pipeline()
 
-    def recall_refiner_pipeline(self) -> _pipelines.PipelineCreationResult:
+    def recall_secondary_pipeline(self) -> _pipelines.PipelineCreationResult:
         """
-        Fetch the last used refiner pipeline creation result, possibly the
-        pipeline will be recreated if no longer in the in memory cache.
-        If there is no refiner pipeline currently created, which will be the
-        case if an image was never generated yet or a refiner model was not
+        Fetch the last used refiner / stable cascade decoder pipeline creation result,
+        possibly the pipeline will be recreated if no longer in the in memory cache.
+        If there is no refiner / decoder pipeline currently created, which will be the
+        case if an image was never generated yet or a refiner / decoder model was not
         specified, :py:exc:`RuntimeError` will be raised.
 
         :raises RuntimeError:
@@ -2655,10 +2674,10 @@ class DiffusionPipelineWrapper:
         :return: :py:class:`dgenerate.pipelinewrapper.PipelineCreationResult`
         """
 
-        if self._recall_refiner_pipeline is None:
+        if self._recall_secondary_pipeline is None:
             raise RuntimeError('Cannot recall refiner pipeline as one has not been created.')
 
-        return self._recall_refiner_pipeline()
+        return self._recall_secondary_pipeline()
 
     def _lazy_init_pipeline(self, args: DiffusionArguments):
 
@@ -2703,7 +2722,7 @@ class DiffusionPipelineWrapper:
         self._pipeline_type = pipeline_type
 
         self._recall_main_pipeline = None
-        self._recall_refiner_pipeline = None
+        self._recall_secondary_pipeline = None
 
         if self._parsed_adetailer_detector_uris:
             pipeline_type = _enums.PipelineType.INPAINT
@@ -2739,7 +2758,7 @@ class DiffusionPipelineWrapper:
             creation_result = self._recall_main_pipeline()
             self._pipeline = creation_result.pipeline
 
-            self._recall_s_cascade_decoder_pipeline = _pipelines.TorchPipelineFactory(
+            self._recall_secondary_pipeline = _pipelines.TorchPipelineFactory(
                 model_path=self._parsed_s_cascade_decoder_uri.model,
                 model_type=_enums.ModelType.TORCH_S_CASCADE_DECODER,
                 pipeline_type=_enums.PipelineType.TXT2IMG,
@@ -2764,7 +2783,7 @@ class DiffusionPipelineWrapper:
                 model_cpu_offload=self._second_model_cpu_offload,
                 sequential_cpu_offload=self._second_model_sequential_offload)
 
-            creation_result = self._recall_s_cascade_decoder_pipeline()
+            creation_result = self._recall_secondary_pipeline()
             self._s_cascade_decoder_pipeline = creation_result.pipeline
 
         elif self._sdxl_refiner_uri is not None:
@@ -2822,7 +2841,7 @@ class DiffusionPipelineWrapper:
             else:
                 refiner_extra_modules = self._second_model_extra_modules
 
-            self._recall_refiner_pipeline = _pipelines.TorchPipelineFactory(
+            self._recall_secondary_pipeline = _pipelines.TorchPipelineFactory(
                 model_path=self._parsed_sdxl_refiner_uri.model,
                 model_type=_enums.ModelType.TORCH_SDXL,
                 pipeline_type=refiner_pipeline_type,
@@ -2848,7 +2867,7 @@ class DiffusionPipelineWrapper:
                 model_cpu_offload=self._second_model_cpu_offload,
                 sequential_cpu_offload=self._second_model_sequential_offload
             )
-            self._sdxl_refiner_pipeline = self._recall_refiner_pipeline().pipeline
+            self._sdxl_refiner_pipeline = self._recall_secondary_pipeline().pipeline
         else:
             self._recall_main_pipeline = _pipelines.TorchPipelineFactory(
                 model_path=self._model_path,
@@ -3189,7 +3208,8 @@ class DiffusionPipelineWrapper:
             result = self._call_torch(pipeline_args=pipeline_args,
                                       user_args=copy_args)
 
-        DiffusionPipelineWrapper.__LAST_CALLED = self
+        DiffusionPipelineWrapper.__LAST_RECALL_PIPELINE = self._recall_main_pipeline
+        DiffusionPipelineWrapper.__LAST_RECALL_SECONDARY_PIPELINE = self._recall_secondary_pipeline
 
         return result
 
