@@ -1667,11 +1667,7 @@ def get_torch_pipeline_class(
                 pipeline_class = (
                     diffusers.StableDiffusionXLAdapterPipeline
                     if is_sdxl
-                    else type(
-                        'StableDiffusionAdapterPipeline',
-                        (diffusers.loaders.FromSingleFileMixin, diffusers.StableDiffusionAdapterPipeline),
-                        {},
-                    )
+                    else diffusers.StableDiffusionAdapterPipeline
                 )
             elif controlnet_uris:
                 if is_sdxl:
