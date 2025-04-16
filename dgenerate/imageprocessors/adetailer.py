@@ -341,10 +341,10 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
         if self._pipe:
             last_pipe = self._pipe
         else:
-            last_pipe = _pipelinewrapper.DiffusionPipelineWrapper.last_called_wrapper()
+            last_pipe = _pipelinewrapper.DiffusionPipelineWrapper.recall_last_used_main_pipeline()
             if last_pipe is not None:
                 # we only want the primary pipe, not the sdxl refiner for instance
-                last_pipe = last_pipe.recall_main_pipeline().pipeline
+                last_pipe = last_pipe.pipeline
 
         if last_pipe is None:
             raise self.argument_error(

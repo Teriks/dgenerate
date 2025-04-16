@@ -317,12 +317,20 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
     @staticmethod
     def _list_object_caches(args: collections.abc.Sequence[str]):
         """
-        List object cache names that may be cleared with \\clear_object_cache.
+        List object cache names (and memory footprint if applicable) that may be cleared with \\clear_object_cache.
         """
 
-        _messages.log('Object cache names:\n')
+        _messages.log('Object caches:\n')
+
         for object_cache in _memoize.get_object_cache_names():
-            _messages.log(' ' * 4 + '"' + object_cache + '"')
+            bin = _memoize.get_object_cache(object_cache)
+            if isinstance(bin, _memory.SizedConstrainedObjectCache):
+                _messages.log(
+                    ' ' * 4 + '"' + object_cache +
+                    f'": {len(bin)} objects, cpu side RAM - {_memory.bytes_best_human_unit(bin.size)}'
+                )
+            else:
+                _messages.log(' ' * 4 + '"' + object_cache + f'": {len(bin)} objects')
 
         return 0
 
