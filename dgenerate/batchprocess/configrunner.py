@@ -35,6 +35,8 @@ import time
 import types
 import typing
 
+import objgraph
+
 import dgenerate
 import dgenerate.arguments as _arguments
 import dgenerate.batchprocess.batchprocessor as _batchprocessor
@@ -190,6 +192,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'clear_object_cache': self._clear_object_cache,
             'list_object_caches': self._list_object_caches,
             'clear_device_cache': self._clear_device_cache,
+            # 'gc_dump': self._gc_dump,
             'save_modules': self._save_modules_directive,
             'use_modules': self._use_modules_directive,
             'clear_modules': self._clear_modules_directive,
@@ -287,6 +290,18 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
         return 0
 
+    # @staticmethod
+    # def _gc_dump(args: collections.abc.Sequence[str]):
+    #     """
+    #     :param args:
+    #     :return:
+    #     """
+    #     objects = gc.get_objects()
+    #     for arg in args:
+    #         for object in objects:
+    #             if arg in object.__class__.__name__:
+    #                 objgraph.show_backrefs([object], max_depth=10, filename=f'gc_dump_{arg}.png')
+#
     @staticmethod
     def _clear_object_cache(args: collections.abc.Sequence[str]):
         """

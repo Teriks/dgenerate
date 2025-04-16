@@ -738,7 +738,23 @@ def _evict_last_pipeline(device: torch.device | None):
         destroy_last_called_pipeline()
 
 
+def _evict_8bit_bnb_pipelines(device: torch.device | None):
+    # clear out any 8bit bnb pipelines in the cache, they are
+    # on the GPU and cannot be moved
+    for cached_pipeline in _torch_pipeline_cache.values():
+
+        bit8 = any(_util.is_loaded_in_8bit_bnb(module) for
+                   module in get_torch_pipeline_modules(cached_pipeline.pipeline).values())
+
+        if bit8 and (device is None or _torchutil.devices_equal(device, get_torch_device(cached_pipeline.pipeline))):
+            _messages.debug_log(
+                f'Clearing out cached 8bit pipeline from cache: {cached_pipeline.pipeline.__class__.__name__}')
+            _torch_pipeline_cache.un_cache(cached_pipeline)
+            del cached_pipeline
+
+
 _devicecache.register_eviction_method(_evict_last_pipeline)
+_devicecache.register_eviction_method(_evict_8bit_bnb_pipelines)
 
 
 # noinspection PyCallingNonCallable
@@ -899,6 +915,22 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline,
         finally:
             if old_execution_device_property is not None:
                 pipeline.__class__._execution_device = old_execution_device_property
+
+    for cached_pipeline in _torch_pipeline_cache.values():
+        # hack to clear out cached 8bit pipelines, only one should ever
+        # be in the object cache for sequential calls, this is necessary
+        # for efficient main pipeline recall in DiffusionPipelineWrapper
+        # which is used for the adetailer post processor
+        if cached_pipeline.pipeline is not pipeline:
+            bit8 = any(_util.is_loaded_in_8bit_bnb(module) for
+                       module in get_torch_pipeline_modules(cached_pipeline.pipeline).values())
+            if bit8 and _torchutil.devices_equal(device, get_torch_device(cached_pipeline.pipeline)):
+                _messages.debug_log(
+                    f'Clearing out cached 8bit pipeline from cache: {cached_pipeline.pipeline.__class__.__name__}')
+                _torch_pipeline_cache.un_cache(cached_pipeline)
+                del cached_pipeline
+                gc.collect()
+                _memory.torch_gc()
 
     if pipeline is _LAST_CALLED_PIPELINE:
         try:
@@ -2612,17 +2644,15 @@ def _create_torch_diffusion_pipeline(
 
     _messages.debug_log(f'Finished Creating Torch Pipeline: "{pipeline_class.__name__}"')
 
-    # modules quantized in 8 bit by bitsandbytes cannot be moved off the GPU,
-    # which results in VRAM memory leaks in dgenerates caching system, just
-    # do not cache these pipelines for anything more than repeated calls, the
-    # only way they get removed from VRAM is if their reference count is zero
+    # modules quantized in 8 bit by bitsandbytes cannot be moved off the GPU
+    # there is a sequence in call_pipeline that garbage collects them out of the
+    # cache before calling other pipelines, there is also a dgenerate.devicecache
+    # hook to clear them out when requested
     bnb_8bit_components = _check_for_8bit_bnb_quant_uris(
         [quantizer_uri, unet_uri, transformer_uri] +
         [u.quantizer for u in uri_quant_check])
 
     if bnb_8bit_components:
-        _messages.debug_log(f'Pipeline has 8bit bnb components, not entering cache: "{pipeline_class.__name__}"')
-
         for module in get_torch_pipeline_modules(pipeline).values():
             if _util.is_loaded_in_8bit_bnb(module):
                 _disable_to(module)
@@ -2640,7 +2670,7 @@ def _create_torch_diffusion_pipeline(
         parsed_textual_inversion_uris=parsed_textual_inversion_uris,
         parsed_controlnet_uris=parsed_controlnet_uris,
         parsed_t2i_adapter_uris=parsed_t2i_adapter_uris
-    ), _d_memoize.CachedObjectMetadata(size=estimated_memory_usage, skip=bnb_8bit_components)
+    ), _d_memoize.CachedObjectMetadata(size=estimated_memory_usage)
 
 
 __all__ = _types.module_all()
