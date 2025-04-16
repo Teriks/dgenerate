@@ -1921,18 +1921,6 @@ def _enforce_torch_pipeline_cache_size(new_pipeline_size):
         new_object_size=new_pipeline_size)
 
 
-def _check_for_8bit_bnb_quant_uris(uris: list):
-    for uri in uris:
-        if uri is None:
-            continue
-        uri_obj = _uris.get_quantizer_uri_class(uri).parse(uri)
-        if isinstance(uri_obj, _uris.BNBQuantizerUri):
-            if uri_obj.bits == 8:
-                return True
-
-    return False
-
-
 @_memoize(_torch_pipeline_cache,
           exceptions={'local_files_only'},
           hasher=_torch_args_hasher,
@@ -2648,14 +2636,9 @@ def _create_torch_diffusion_pipeline(
     # there is a sequence in call_pipeline that garbage collects them out of the
     # cache before calling other pipelines, there is also a dgenerate.devicecache
     # hook to clear them out when requested
-    bnb_8bit_components = _check_for_8bit_bnb_quant_uris(
-        [quantizer_uri, unet_uri, transformer_uri] +
-        [u.quantizer for u in uri_quant_check])
-
-    if bnb_8bit_components:
-        for module in get_torch_pipeline_modules(pipeline).values():
-            if _util.is_loaded_in_8bit_bnb(module):
-                _disable_to(module)
+    for module in get_torch_pipeline_modules(pipeline).values():
+        if _util.is_loaded_in_8bit_bnb(module):
+            _disable_to(module)
 
     # noinspection PyTypeChecker
     return TorchPipelineCreationResult(
