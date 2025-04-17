@@ -36,6 +36,10 @@ import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 from dgenerate.pipelinewrapper.uris import util as _util
+import dgenerate.extras.DistillT5.models.T5_encoder as _distill_t5_encoder
+
+
+DistillT5EncoderModel = _distill_t5_encoder.T5EncoderWithProjection
 
 _text_encoder_uri_parser = _textprocessing.ConceptUriParser(
     'TextEncoder', [
@@ -111,6 +115,7 @@ class TextEncoderUri:
         'CLIPTextModel': transformers.models.clip.CLIPTextModel,
         'CLIPTextModelWithProjection': transformers.models.clip.CLIPTextModelWithProjection,
         'T5EncoderModel': transformers.models.t5.T5EncoderModel,
+        'DistillT5EncoderModel': DistillT5EncoderModel,
         'ChatGLMModel': diffusers.pipelines.kolors.ChatGLMModel
     }
 
@@ -173,6 +178,7 @@ class TextEncoderUri:
                 transformers.models.clip.CLIPTextModel,
                 transformers.models.clip.CLIPTextModelWithProjection,
                 transformers.models.t5.T5EncoderModel,
+                DistillT5EncoderModel,
                 diffusers.pipelines.kolors.ChatGLMModel]:
         """
         Load a torch Text Encoder of type :py:class:`transformers.models.clip.CLIPTextModel`,
@@ -229,6 +235,7 @@ class TextEncoderUri:
                 transformers.models.clip.CLIPTextModel,
                 transformers.models.clip.CLIPTextModelWithProjection,
                 transformers.models.t5.T5EncoderModel,
+                DistillT5EncoderModel,
                 diffusers.pipelines.kolors.ChatGLMModel]:
 
         if self.dtype is None:

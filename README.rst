@@ -544,7 +544,8 @@ Help Output
             
             Examples: "CLIPTextModel;model=huggingface/text_encoder",
             "CLIPTextModelWithProjection;model=huggingface/text_encoder;revision=main",
-            "T5EncoderModel;model=text_encoder_folder_on_disk".
+            "T5EncoderModel;model=text_encoder_folder_on_disk",
+            "DistillT5EncoderModel;model=text_encoder_folder_on_disk".
             
             For main models which require multiple text encoders, the + symbol may be used to indicate that a
             default value should be used for a particular text encoder, for example: --text-encoders + +
@@ -1681,11 +1682,11 @@ Help Output
             ----------------------------------------------------------------------------
       -if FORMAT, --image-format FORMAT
             Output format when writing static images. Any selection other than "png" is not compatible with
-            --output-metadata. Value must be one of: png, apng, avif, avifs, blp, bmp, dib, bufr, pcx, dds, ps,
-            eps, gif, grib, h5, hdf, jp2, j2k, jpc, jpf, jpx, j2c, icns, ico, im, jfif, jpe, jpg, jpeg, tif,
-            tiff, mpo, msp, palm, pdf, pbm, pgm, ppm, pnm, pfm, bw, rgb, rgba, sgi, tga, icb, vda, vst, webp,
-            wmf, emf, or xbm. (default: png)
-            --------------------------------
+            --output-metadata. Value must be one of: png, apng, blp, bmp, dib, bufr, pcx, dds, ps, eps, gif,
+            grib, h5, hdf, jp2, j2k, jpc, jpf, jpx, j2c, icns, ico, im, jfif, jpe, jpg, jpeg, tif, tiff, mpo,
+            msp, palm, pdf, pbm, pgm, ppm, pnm, pfm, bw, rgb, rgba, sgi, tga, icb, vda, vst, webp, wmf, emf, or
+            xbm. (default: png)
+            -------------------
       -nf, --no-frames
             Do not write frame images individually when rendering an animation, only write the animation file.
             This option is incompatible with --animation-format frames.
@@ -4493,6 +4494,7 @@ Available encoder classes are:
 * CLIPTextModel
 * CLIPTextModelWithProjection
 * T5EncoderModel
+* DistillT5EncoderModel (see: [LifuWang/DistillT5](https://huggingface.co/LifuWang/DistillT5))
 
 You can query the text encoder types and position for a model by passing ``help``
 as an argument to ``--text-encoders`` or ``--second-model-text-encoders``. This feature
@@ -6229,11 +6231,11 @@ The help output of ``image-process`` is as follows:
             equal to those listed under --frame-format.
             -------------------------------------------
       -ff FRAME_FORMAT, --frame-format FRAME_FORMAT
-            Image format for animation frames. Must be one of: png, apng, avif, avifs, blp, bmp, dib, bufr, pcx,
-            dds, ps, eps, gif, grib, h5, hdf, jp2, j2k, jpc, jpf, jpx, j2c, icns, ico, im, jfif, jpe, jpg, jpeg,
-            tif, tiff, mpo, msp, palm, pdf, pbm, pgm, ppm, pnm, pfm, bw, rgb, rgba, sgi, tga, icb, vda, vst,
-            webp, wmf, emf, or xbm.
-            -----------------------
+            Image format for animation frames. Must be one of: png, apng, blp, bmp, dib, bufr, pcx, dds, ps,
+            eps, gif, grib, h5, hdf, jp2, j2k, jpc, jpf, jpx, j2c, icns, ico, im, jfif, jpe, jpg, jpeg, tif,
+            tiff, mpo, msp, palm, pdf, pbm, pgm, ppm, pnm, pfm, bw, rgb, rgba, sgi, tga, icb, vda, vst, webp,
+            wmf, emf, or xbm.
+            -----------------
       -ox, --output-overwrite
             Indicate that it is okay to overwrite files, instead of appending a duplicate suffix.
             -------------------------------------------------------------------------------------
@@ -7648,7 +7650,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [31951721742490]
+            Value: [60362205707704]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -7992,11 +7994,13 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
     ================================================================================
     complex(args, kwargs):
     
-        Create a complex number from a real part and an optional imaginary part.
+        Create a complex number from a string or numbers.
     
-        This is equivalent to (real + imag*1j) where imag defaults to 0.
+        If a string is given, parse it as a complex number. If a single number is given, convert it to a complex
+        number. If the 'real' or 'imag' arguments are given, create a complex number with the specified real and
+        imaginary components.
     
-    ============================================================================
+    ============================================================================================================
     dict(args, kwargs):
     
         dict() -> new empty dictionary dict(mapping) -> new dictionary initialized from a mapping object's
@@ -8032,7 +8036,7 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
     ==============================================================================================================
     float(args, kwargs):
     
-        Convert a string or number to a floating point number, if possible.
+        Convert a string or number to a floating-point number, if possible.
     
     =======================================================================
     format(args, kwargs):
@@ -8055,10 +8059,10 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
     =================================================================================
     getattr(args, kwargs):
     
-        Get a named attribute from an object.
+        getattr(object, name[, default]) -> value
     
-        getattr(x, 'y') is equivalent to x.y When a default argument is given, it is returned when the attribute
-        doesn't exist; without it, an exception is raised in that case.
+        Get a named attribute from an object; getattr(x, 'y') is equivalent to x.y. When a default argument is
+        given, it is returned when the attribute doesn't exist; without it, an exception is raised in that case.
     
     ============================================================================================================
     hasattr(args, kwargs):
@@ -8088,7 +8092,7 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
         int([x]) -> integer int(x, base=10) -> integer
     
         Convert a number or string to an integer, or return 0 if no arguments are given.  If x is a number, return
-        x.__int__().  For floating point numbers, this truncates towards zero.
+        x.__int__().  For floating-point numbers, this truncates towards zero.
     
         If x is not a number or if base is given, then x must be a string, bytes, or bytearray instance
         representing an integer literal in the given base.  The literal can be preceded by '+' or '-' and be
@@ -8098,12 +8102,12 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
     ==============================================================================================================
     iter(args, kwargs):
     
-        Get an iterator from an object.
+        iter(iterable) -> iterator iter(callable, sentinel) -> iterator
     
-        In the first form, the argument must supply its own iterator, or be a sequence. In the second form, the
-        callable is called until it returns the sentinel.
+        Get an iterator from an object.  In the first form, the argument must supply its own iterator, or be a
+        sequence. In the second form, the callable is called until it returns the sentinel.
     
-    ===========================================================================================================
+    ==========================================================================================================
     len(args, kwargs):
     
         Return the number of items in a container.
@@ -8145,11 +8149,12 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
     =============================================================================================================
     next(args, kwargs):
     
-        Return the next item from the iterator.
+        next(iterator[, default])
     
-        If default is given and the iterator is exhausted, it is returned instead of raising StopIteration.
+        Return the next item from the iterator. If default is given and the iterator is exhausted, it is returned
+        instead of raising StopIteration.
     
-    =======================================================================================================
+    =============================================================================================================
     object(args, kwargs):
     
         The base class of the class hierarchy.
