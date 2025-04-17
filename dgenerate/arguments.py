@@ -552,6 +552,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         if status == 0:
             # help
             raise DgenerateHelpException('dgenerate --help used.')
+        raise argparse.ArgumentError(None, message)
 
     def _usage(file):
         if prints_usage:
