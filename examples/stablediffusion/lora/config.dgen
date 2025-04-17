@@ -1,8 +1,8 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 5.0.0
 
-CompVis/stable-diffusion-v1-4 
---loras sayakpaul/sd-model-finetuned-lora-t4
+stable-diffusion-v1-5/stable-diffusion-v1-5
+--loras ybelkada/sd-1.5-pokemon-lora-peft
 --inference-steps 40
 --guidance-scales 8
 --gen-seeds 2

@@ -203,6 +203,9 @@ class LoRAUri:
                                                token=use_auth_token,
                                                adapter_name=adapter_name)
 
+                if not pipeline.get_list_adapters():
+                    raise RuntimeError(f'LoRA model "{lora_uri.model}" contained no usable weights.')
+
                 _messages.debug_log(f'Added LoRA: "{lora_uri}" to pipeline: "{pipeline.__class__.__name__}"')
 
             _messages.debug_log(f'Fusing all LoRAs into pipeline with global scale: {fuse_scale}')
