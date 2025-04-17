@@ -35,6 +35,7 @@ Available encoder classes are:
 * CLIPTextModel
 * CLIPTextModelWithProjection
 * T5EncoderModel
+* DistillT5EncoderModel (see: [LifuWang/DistillT5](https://huggingface.co/LifuWang/DistillT5))
 
 You can query the text encoder types and position for a model by passing ``help``
 as an argument to ``--text-encoders`` or ``--second-model-text-encoders``. This feature
