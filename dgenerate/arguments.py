@@ -64,10 +64,6 @@ class DgenerateHelpException(Exception):
     pass
 
 
-class _DgenerateUnknownArgumentError(Exception):
-    pass
-
-
 def _model_type(val):
     val = val.lower()
     if val not in _pipelinewrapper.supported_model_type_strings():
@@ -556,7 +552,6 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         if status == 0:
             # help
             raise DgenerateHelpException('dgenerate --help used.')
-        raise _DgenerateUnknownArgumentError(message)
 
     def _usage(file):
         if prints_usage:
@@ -3126,28 +3121,20 @@ def _check_unknown_args(args: typing.Sequence[str], log_error: bool):
     try:
         # try first to parse without adding a fake model argument
         parser.parse_args(args)
-    except (argparse.ArgumentTypeError,
-            argparse.ArgumentError,
-            _DgenerateUnknownArgumentError) as e:
+    except argparse.ArgumentTypeError as e:
+        if log_error:
+            _messages.log(parser.format_usage().rstrip())
+            _messages.error(str(e).strip())
 
-        if isinstance(e, _DgenerateUnknownArgumentError):
-            # an argument is missing?
+        raise DgenerateUsageError(str(e)) from e
+    except argparse.ArgumentError:
+        try:
+            # try again one more time with a fake model argument
+            parser.parse_args(['fake_model'] + list(args))
+        except (argparse.ArgumentTypeError,
+                argparse.ArgumentError) as e:
 
-            try:
-                # try again one more time with a fake model argument
-                parser.parse_args(['fake_model'] + list(args))
-            except (argparse.ArgumentTypeError,
-                    argparse.ArgumentError,
-                    _DgenerateUnknownArgumentError) as e:
-
-                # truly erroneous command line
-                if log_error:
-                    _messages.log(parser.format_usage().rstrip())
-                    _messages.error(str(e).strip())
-
-                raise DgenerateUsageError(str(e)) from e
-        else:
-            # something other than a missing argument
+            # truly erroneous command line
             if log_error:
                 _messages.log(parser.format_usage().rstrip())
                 _messages.error(str(e).strip())
@@ -3522,8 +3509,7 @@ def parse_known_args(args: collections.abc.Sequence[str] | None = None,
         if help_raises:
             raise
     except (argparse.ArgumentTypeError,
-            argparse.ArgumentError,
-            _DgenerateUnknownArgumentError) as e:
+            argparse.ArgumentError) as e:
         if log_error:
             pass
             _messages.error(f'dgenerate: error: {str(e).strip()}')
@@ -3559,8 +3545,7 @@ def parse_args(args: collections.abc.Sequence[str] | None = None,
             raise
     except (dgenerate.RenderLoopConfigError,
             argparse.ArgumentTypeError,
-            argparse.ArgumentError,
-            _DgenerateUnknownArgumentError) as e:
+            argparse.ArgumentError) as e:
         if log_error:
             _messages.error(f'dgenerate: error: {str(e).strip()}')
         if throw:
