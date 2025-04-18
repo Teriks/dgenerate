@@ -9,6 +9,7 @@ order: 7
 --scheduler LCMScheduler
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "default":0}]
 @quantizer[{"divider-after":true}]
+@switch[{"label":"Use DeepCache", "arg":"--deep-cache"}]
 @switch[{"label":"Use HiDiffusion", "arg":"--hi-diffusion"}]
 @torchvae[{"label":"VAE Path / URI", "dir":true, "file-types":["models"]}]
 @switch[{"label":"VAE Tiling", "arg":"--vae-tiling"}]

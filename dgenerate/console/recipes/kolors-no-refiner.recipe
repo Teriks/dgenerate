@@ -6,6 +6,7 @@ order: 11
 @dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"], "default":"float16"}]
 @dropdown[{"label":"Model variant", "arg":"--variant", "options":["fp16", "bf16"], "default":"fp16"}]
 @karrasscheduler[{"label":"Scheduler", "arg":"--scheduler"}]
+@switch[{"label":"Use DeepCache", "arg":"--deep-cache"}]
 @switch[{"label":"Use HiDiffusion", "arg":"--hi-diffusion"}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "default": 1}]
 @quantizer[{"divider-after":true}]
