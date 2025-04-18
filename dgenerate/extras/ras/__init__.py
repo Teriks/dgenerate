@@ -72,6 +72,9 @@ def sd3_ras_context(pipeline: StableDiffusion3Pipeline, args: RASArgs, enabled: 
     original_transformer_forward = pipeline.transformer.forward
     original_attn_processors = [block.attn.processor for block in pipeline.transformer.transformer_blocks]
 
+    if args.enable_index_fusion and pipeline.transformer.config.qk_norm == 'rms_norm':
+        raise ValueError("Index fusion is not supported with SD3.5.")
+
     try:
         MANAGER.set_parameters(args)
         

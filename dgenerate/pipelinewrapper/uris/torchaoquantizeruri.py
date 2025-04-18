@@ -46,7 +46,7 @@ class TorchAOQuantizerUri:
 
         self.type = type
 
-    def to_config(self) -> diffusers.TorchAoConfig:
+    def to_config(self, compute_dtype: str | None = None) -> diffusers.TorchAoConfig:
         return diffusers.TorchAoConfig(
             quant_type=self.type
         )

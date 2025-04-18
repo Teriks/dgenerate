@@ -208,7 +208,7 @@ class UNetUri:
             quant_config = _util.get_quantizer_uri_class(
                 self.quantizer,
                 _exceptions.InvalidUNetUriError
-            ).parse(self.quantizer).to_config()
+            ).parse(self.quantizer).to_config(torch_dtype)
         else:
             quant_config = None
 

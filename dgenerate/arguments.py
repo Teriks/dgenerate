@@ -1551,11 +1551,11 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Example: 
             
-            --quantizer bnb;bits=4;bits4-compute-dtype=float16
+            --quantizer bnb;bits=4
             
             or: 
             
-            --quantizer bnb;bits=4;bits4-compute-dtype=float16
+            --quantizer bitsandbytes;bits=4
             
             The bitsandbytes backend URI possesses these arguments and defaults:
             
@@ -1805,7 +1805,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                      See: https://github.com/microsoft/ras
                     
-                     This is supported for: --model-type torch-sd3, (but not for SD3.5 models)
+                     This is supported for: --model-type torch-sd3.
                      """
         )
     )
@@ -1840,7 +1840,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --ras.
 
-            This is supported for: --model-type torch-sd3, (but not for SD3.5 models)
+            This is supported for: --model-type torch-sd3.
 
             (default: 0.5)"""
         )
@@ -1862,7 +1862,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --ras.
 
-            This is supported for: --model-type torch-sd3, (but not for SD3.5 models)
+            This is supported for: --model-type torch-sd3.
 
             (default: 1.0)"""
         )
@@ -1887,7 +1887,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --ras.
 
-            This is supported for: --model-type torch-sd3, (but not for SD3.5 models)
+            This is supported for: --model-type torch-sd3.
 
             (default: 0.1)"""
         )
@@ -1907,7 +1907,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --ras.
 
-            This is supported for: --model-type torch-sd3, (but not for SD3.5 models)
+            This is supported for: --model-type torch-sd3.
 
             (default: "12,22")"""
         )
@@ -1927,7 +1927,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --ras.
             
-            This is supported for: --model-type torch-sd3, (but not for SD3.5 models)
+            This is supported for: --model-type torch-sd3.
             
             (default: "std")"""
         )
@@ -1947,7 +1947,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --ras.
 
-            This is supported for: --model-type torch-sd3, (but not for SD3.5 models)
+            This is supported for: --model-type torch-sd3.
 
             (default: 4)"""
         )
@@ -1967,7 +1967,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --ras.
 
-            This is supported for: --model-type torch-sd3, (but not for SD3.5 models)
+            This is supported for: --model-type torch-sd3.
 
             (default: --inference-steps)"""
         )
@@ -1993,7 +1993,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --ras.
 
-            This is supported for: --model-type torch-sd3, (but not for SD3.5 models)
+            This is supported for: --model-type torch-sd3.
 
             (default: 0)"""
         )
@@ -2020,7 +2020,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --ras.
 
-            This is supported for: --model-type torch-sd3, (but not for SD3.5 models)
+            This is supported for: --model-type torch-sd3.
 
             (default: 0)"""
         )

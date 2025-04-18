@@ -12,16 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Union
 
-import numpy as np
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
 from diffusers.models.modeling_outputs import Transformer2DModelOutput
-from diffusers.utils import USE_PEFT_BACKEND, is_torch_version, logging, scale_lora_layers, unscale_lora_layers
-from diffusers.utils.torch_utils import maybe_allow_in_graph
+from diffusers.utils import USE_PEFT_BACKEND, logging, scale_lora_layers, unscale_lora_layers
+
 from dgenerate.extras.ras.utils import ras_manager
+
+logger = logging.get_logger()
 
 
 def ras_forward(
@@ -34,7 +33,7 @@ def ras_forward(
         joint_attention_kwargs: Optional[Dict[str, Any]] = None,
         return_dict: bool = True,
         skip_layers: Optional[List[int]] = None,
-    ) -> Union[torch.FloatTensor, Transformer2DModelOutput]:
+) -> Union[torch.FloatTensor, Transformer2DModelOutput]:
     """
     The [`SD3Transformer2DModel`] forward method.
 
@@ -86,39 +85,36 @@ def ras_forward(
     if ras_manager.MANAGER.sample_ratio < 1.0 and ras_manager.MANAGER.is_RAS_step:
         hidden_states = hidden_states[:, ras_manager.MANAGER.other_patchified_index]
 
+    if joint_attention_kwargs is not None and "ip_adapter_image_embeds" in joint_attention_kwargs:
+        ip_adapter_image_embeds = joint_attention_kwargs.pop("ip_adapter_image_embeds")
+        ip_hidden_states, ip_temb = self.image_proj(ip_adapter_image_embeds, timestep)
+
+        joint_attention_kwargs.update(ip_hidden_states=ip_hidden_states, temb=ip_temb)
+
     for index_block, block in enumerate(self.transformer_blocks):
         # Skip specified layers
         is_skip = True if skip_layers is not None and index_block in skip_layers else False
 
         if torch.is_grad_enabled() and self.gradient_checkpointing and not is_skip:
-
-            def create_custom_forward(module, return_dict=None):
-                def custom_forward(*inputs):
-                    if return_dict is not None:
-                        return module(*inputs, return_dict=return_dict)
-                    else:
-                        return module(*inputs)
-
-                return custom_forward
-
-            ckpt_kwargs: Dict[str, Any] = {"use_reentrant": False} if is_torch_version(">=", "1.11.0") else {}
-            encoder_hidden_states, hidden_states = torch.utils.checkpoint.checkpoint(
-                create_custom_forward(block),
+            encoder_hidden_states, hidden_states = self._gradient_checkpointing_func(
+                block,
                 hidden_states,
                 encoder_hidden_states,
                 temb,
-                **ckpt_kwargs,
+                joint_attention_kwargs,
             )
         elif not is_skip:
             encoder_hidden_states, hidden_states = block(
-                hidden_states=hidden_states, encoder_hidden_states=encoder_hidden_states, temb=temb
+                hidden_states=hidden_states,
+                encoder_hidden_states=encoder_hidden_states,
+                temb=temb,
+                joint_attention_kwargs=joint_attention_kwargs,
             )
 
         # controlnet residual
         if block_controlnet_hidden_states is not None and block.context_pre_only is False:
             interval_control = len(self.transformer_blocks) / len(block_controlnet_hidden_states)
-            interval_control = int(np.ceil(interval_control))
-            hidden_states = hidden_states + block_controlnet_hidden_states[index_block // interval_control]
+            hidden_states = hidden_states + block_controlnet_hidden_states[int(index_block / interval_control)]
 
     hidden_states = self.norm_out(hidden_states, temb)
     hidden_states = self.proj_out(hidden_states)
