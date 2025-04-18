@@ -2397,14 +2397,14 @@ class DiffusionPipelineWrapper:
         if self._sdxl_refiner_pipeline is None:
             ras_args = self._get_sd3_ras_args(user_args)
 
-            with _hi_diffusion(self._pipeline,generator=generator, enabled=user_args.hi_diffusion), \
-                 _sd3_ras_context(self._pipeline, args=ras_args, enabled=user_args.ras), \
-                 _deep_cache_context(self._pipeline,
-                                     cache_interval=_types.default(
-                                         user_args.deep_cache_interval, _constants.DEFAULT_DEEP_CACHE_INTERVAL),
-                                     cache_branch_id=_types.default(
-                                         user_args.deep_cache_branch_id, _constants.DEFAULT_DEEP_CACHE_BRANCH_ID),
-                                     enabled=user_args.deep_cache):
+            with _hi_diffusion(self._pipeline, generator=generator, enabled=user_args.hi_diffusion), \
+                    _sd3_ras_context(self._pipeline, args=ras_args, enabled=user_args.ras), \
+                    _deep_cache_context(self._pipeline,
+                                        cache_interval=_types.default(
+                                            user_args.deep_cache_interval, _constants.DEFAULT_DEEP_CACHE_INTERVAL),
+                                        cache_branch_id=_types.default(
+                                            user_args.deep_cache_branch_id, _constants.DEFAULT_DEEP_CACHE_BRANCH_ID),
+                                        enabled=user_args.deep_cache):
                 if self._parsed_adetailer_detector_uris:
                     return generate_asdff()
                 else:
@@ -2433,12 +2433,12 @@ class DiffusionPipelineWrapper:
         with _hi_diffusion(self._pipeline,
                            generator=generator,
                            enabled=user_args.hi_diffusion), \
-             _deep_cache_context(self._pipeline,
-                                 cache_interval=_types.default(
-                                     user_args.deep_cache_interval, _constants.DEFAULT_DEEP_CACHE_INTERVAL),
-                                 cache_branch_id=_types.default(
-                                     user_args.deep_cache_branch_id, _constants.DEFAULT_DEEP_CACHE_BRANCH_ID),
-                                 enabled=user_args.deep_cache):
+                _deep_cache_context(self._pipeline,
+                                    cache_interval=_types.default(
+                                        user_args.deep_cache_interval, _constants.DEFAULT_DEEP_CACHE_INTERVAL),
+                                    cache_branch_id=_types.default(
+                                        user_args.deep_cache_branch_id, _constants.DEFAULT_DEEP_CACHE_BRANCH_ID),
+                                    enabled=user_args.deep_cache):
             if self._parsed_adetailer_detector_uris:
                 image = generate_asdff().images
             else:
@@ -2608,14 +2608,14 @@ class DiffusionPipelineWrapper:
         with _hi_diffusion(self._sdxl_refiner_pipeline,
                            generator=generator,
                            enabled=user_args.sdxl_refiner_hi_diffusion), \
-             _deep_cache_context(self._sdxl_refiner_pipeline,
-                                 cache_interval=_types.default(
-                                     user_args.deep_cache_interval,
-                                     _constants.DEFAULT_SDXL_REFINER_DEEP_CACHE_INTERVAL),
-                                 cache_branch_id=_types.default(
-                                     user_args.deep_cache_branch_id,
-                                     _constants.DEFAULT_SDXL_REFINER_DEEP_CACHE_BRANCH_ID),
-                                 enabled=user_args.second_model_deep_cache):
+                _deep_cache_context(self._sdxl_refiner_pipeline,
+                                    cache_interval=_types.default(
+                                        user_args.deep_cache_interval,
+                                        _constants.DEFAULT_SDXL_REFINER_DEEP_CACHE_INTERVAL),
+                                    cache_branch_id=_types.default(
+                                        user_args.deep_cache_branch_id,
+                                        _constants.DEFAULT_SDXL_REFINER_DEEP_CACHE_BRANCH_ID),
+                                    enabled=user_args.second_model_deep_cache):
             return PipelineWrapperResult(
                 _pipelines.call_pipeline(
                     pipeline=self._sdxl_refiner_pipeline,
@@ -3062,14 +3062,14 @@ class DiffusionPipelineWrapper:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'RAS is only supported for SD3.')
 
-            if self._pipeline.transformer.config.qk_norm == 'rms_norm':
+            if args.ras_index_fusion and self._pipeline.transformer.config.qk_norm == 'rms_norm':
                 raise _pipelines.UnsupportedPipelineConfigError(
-                    'RAS does not support SD3.5, only SD3.'
+                    'RAS index fusion not supported with SD3.5, only SD3.'
                 )
 
-            if importlib.util.find_spec('triton') is None:
+            if args.ras_index_fusion and not importlib.util.find_spec('triton'):
                 raise _pipelines.UnsupportedPipelineConfigError(
-                    'RAS is only supported with triton / triton-windows installed.')
+                    'RAS index fusion is only supported with triton / triton-windows installed.')
 
             if self.model_cpu_offload:
                 raise _pipelines.UnsupportedPipelineConfigError(

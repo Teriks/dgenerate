@@ -23,6 +23,8 @@ import gc
 import inspect
 import re
 
+import diffusers
+
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.enums as _enums
 from dgenerate.pipelinewrapper.uris import get_quantizer_uri_class as _get_quantizer_uri_class
@@ -326,7 +328,8 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
 
         if llm_quantizer:
             try:
-                llm_quantization_config = _get_quantizer_uri_class(llm_quantizer).parse(llm_quantizer).to_config()
+                llm_quantization_config = \
+                    _get_quantizer_uri_class(llm_quantizer).parse(llm_quantizer).to_config(llm_dtype)
             except Exception as e:
                 raise self.argument_error(f'Error loading "llm-quantizer" argument "{llm_quantizer}": {e}') from e
         else:

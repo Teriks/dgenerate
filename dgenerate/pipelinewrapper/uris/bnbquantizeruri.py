@@ -20,10 +20,12 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import diffusers
+import torch
 
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
+from dgenerate.pipelinewrapper.enums import get_torch_dtype as _get_torch_dtype
 
 _bnb_quantizer_uri_parser = _textprocessing.ConceptUriParser(
     'BNB Quantizer',
@@ -65,14 +67,17 @@ class BNBQuantizerUri:
                 'BNB Quant dtypes must be one of: float16, float32, int8, uint8, float64 or bfloat16.')
         return s
 
-    def to_config(self) -> diffusers.BitsAndBytesConfig:
+    def to_config(self, compute_dtype: str | torch.dtype | None = None) -> diffusers.BitsAndBytesConfig:
+
+        compute_dtype = _get_torch_dtype(compute_dtype)
+
         return diffusers.BitsAndBytesConfig(
             load_in_4bit=self.bits == 4,
             load_in_8bit=self.bits == 8,
             bnb_4bit_use_double_quant=self.bits4_use_double_quant,
             bnb_4bit_quant_type=self.bits4_quant_type,
             bnb_4bit_quant_storage=self.bits4_quant_storage,
-            bnb_4bit_compute_dtype=self.bits4_compute_dtype
+            bnb_4bit_compute_dtype=_types.default(self.bits4_compute_dtype, compute_dtype)
         )
 
     @staticmethod

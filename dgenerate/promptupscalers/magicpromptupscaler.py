@@ -22,6 +22,7 @@ import contextlib
 import gc
 import typing
 
+import diffusers
 import torch
 import transformers
 
@@ -215,17 +216,18 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
                          smart_truncate=smart_truncate,
                          cleanup_config=cleanup_config)
 
+        dtype = dtype.lower()
+        if dtype not in {'float32', 'float16', 'bfloat16'}:
+            raise self.argument_error('Argument "dtype" must be either float32, float16, or bfloat16.')
+
         if quantizer:
             try:
-                quantization_config = _get_quantizer_uri_class(quantizer).parse(quantizer).to_config()
+                quantization_config = \
+                    _get_quantizer_uri_class(quantizer).parse(quantizer).to_config(dtype)
             except Exception as e:
                 raise self.argument_error(f'Error loading "quantizer" argument "{quantizer}": {e}') from e
         else:
             quantization_config = None
-
-        dtype = dtype.lower()
-        if dtype not in {'float32', 'float16', 'bfloat16'}:
-            raise self.argument_error('Argument "dtype" must be either float32, float16, or bfloat16.')
 
         part = part.lower()
         if part not in {'both', 'positive', 'negative'}:
@@ -284,10 +286,16 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
         def load_method():
             if quantization_config is not None:
                 self.memory_guard_device(self.device, self.size_estimate)
+
             torch_dtype = {'float32': torch.float32,
                            'float16': torch.float16,
                            'bfloat16': torch.bfloat16
                            }[dtype]
+
+            if isinstance(quantization_config, diffusers.BitsAndBytesConfig):
+                if quantization_config.load_in_4bit and quantization_config.bnb_4bit_compute_dtype is None:
+                    quantization_config.bnb_4bit_compute_dtype = torch_dtype
+
             return self._load_pipeline(model, dtype=torch_dtype, quantization_config=quantization_config)
 
         self.set_size_estimate(estimated_size)

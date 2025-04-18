@@ -729,7 +729,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     See: https://github.com/microsoft/ras
     
-    This is supported for: ``--model-type torch-sd3``, (but not for SD3.5 models)
+    This is supported for: ``--model-type torch-sd3``.
     """
 
     ras_index_fusion: _types.OptionalBoolean = None
@@ -740,7 +740,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     See: https://github.com/microsoft/ras
     
-    Supplying any value implies that :py:attr:`RenderLoopConfig.ras` is enabled.
+    Setting to ``True`` implies that :py:attr:`RenderLoopConfig.ras` is enabled.
     
     This is supported for: ``--model-type torch-sd3``, (but not for SD3.5 models)
     """
@@ -752,9 +752,11 @@ class RenderLoopConfig(_types.SetFromMixin):
     For instance, setting this to 0.5 on a sequence of 4096 tokens will result in the 
     noise of averagely 2048 tokens to be updated during each RAS step. Must be between 0 and 1.
     
-    Supplying any value implies that :py:attr:`RenderLoopConfig.ras` is enabled.
+    Each value will be tried in turn.
     
-    This is supported for: ``--model-type torch-sd3``, (but not for SD3.5 models)
+    Supplying any values implies that :py:attr:`RenderLoopConfig.ras` is enabled.
+    
+    This is supported for: ``--model-type torch-sd3``.
     """
 
     ras_high_ratios: _types.OptionalFloats = None
@@ -765,9 +767,11 @@ class RenderLoopConfig(_types.SetFromMixin):
     Default value is 1.0, but can be set between 0 and 1 to balance the sample ratio 
     between the main subject and the background.
     
-    Supplying any value implies that :py:attr:`RenderLoopConfig.ras` is enabled.
+    Each value will be tried in turn.
     
-    This is supported for: ``--model-type torch-sd3``, (but not for SD3.5 models)
+    Supplying any values implies that :py:attr:`RenderLoopConfig.ras` is enabled.
+    
+    This is supported for: ``--model-type torch-sd3``.
     """
 
     ras_starvation_scales: _types.OptionalFloats = None
@@ -778,6 +782,12 @@ class RenderLoopConfig(_types.SetFromMixin):
     metric for selecting tokens. This scale factor prevents excessive blurring or noise in the 
     final generated image. Larger scaling factor will result in more uniform sampling.
     Usually set between 0.0 and 1.0.
+    
+    Each value will be tried in turn.
+    
+    Supplying any values implies that :py:attr:`RenderLoopConfig.ras` is enabled.
+    
+    This is supported for: ``--model-type torch-sd3``.
     """
 
     ras_metrics: _types.OptionalStrings = None
@@ -787,6 +797,12 @@ class RenderLoopConfig(_types.SetFromMixin):
     This controls how RAS measures the importance of tokens for caching.
     Valid values are "std" (standard deviation) or "l2norm" (L2 norm).
     Defaults to "std".
+    
+    Each value will be tried in turn.
+    
+    Supplying any values implies that :py:attr:`RenderLoopConfig.ras` is enabled.
+    
+    This is supported for: ``--model-type torch-sd3``.
     """
 
     ras_error_reset_steps: _types.OptionalStrings = None
@@ -796,9 +812,11 @@ class RenderLoopConfig(_types.SetFromMixin):
     The dense sampling steps inserted between the RAS steps to reset the accumulated error.
     Should be a comma-separated string of step numbers, e.g. "12,22".
     
-    Supplying any value implies that :py:attr:`RenderLoopConfig.ras` is enabled.
+    Each value will be tried in turn.
     
-    This is supported for: ``--model-type torch-sd3``, (but not for SD3.5 models)
+    Supplying any values implies that :py:attr:`RenderLoopConfig.ras` is enabled.
+    
+    This is supported for: ``--model-type torch-sd3``.
     """
 
     ras_start_steps: _types.OptionalIntegers = None
@@ -809,9 +827,11 @@ class RenderLoopConfig(_types.SetFromMixin):
     Must be greater than or equal to 1.
     Defaults to 4 if not specified.
     
-    Supplying any value implies that :py:attr:`RenderLoopConfig.ras` is enabled.
+    Each value will be tried in turn.
     
-    This is supported for: ``--model-type torch-sd3``, (but not for SD3.5 models)
+    Supplying any values implies that :py:attr:`RenderLoopConfig.ras` is enabled.
+    
+    This is supported for: ``--model-type torch-sd3``.
     """
 
     ras_end_steps: _types.OptionalIntegers = None
@@ -822,9 +842,11 @@ class RenderLoopConfig(_types.SetFromMixin):
     Must be greater than or equal to 1.
     Defaults to the number of inference steps if not specified.
     
-    Supplying any value implies that :py:attr:`RenderLoopConfig.ras` is enabled.
+    Each value will be tried in turn.
     
-    This is supported for: ``--model-type torch-sd3``, (but not for SD3.5 models)
+    Supplying any values implies that :py:attr:`RenderLoopConfig.ras` is enabled.
+    
+    This is supported for: ``--model-type torch-sd3``.
     """
 
     ras_skip_num_steps: _types.OptionalIntegers = None
@@ -836,15 +858,15 @@ class RenderLoopConfig(_types.SetFromMixin):
     The actual number of tokens skipped will be rounded down to the nearest multiple of 64.
     This ensures efficient memory access patterns for the attention computation.
     
-    When used with skip_num_step_length > 0, this value determines how much to increase/decrease
-    the number of skipped tokens over time. A positive value will increase the number of skipped
-    tokens, while a negative value will decrease it.
+    When used with :py:attr:`RenderLoopConfig.ras_skip_num_step_lengths` > 0, this value determines 
+    how much to increase/decrease the number of skipped tokens over time. A positive value will 
+    increase the number of skipped tokens, while a negative value will decrease it.
     
     Each value will be tried in turn.
     
     Supplying any value implies that :py:attr:`RenderLoopConfig.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``, (but not for SD3.5 models)
+    This is supported for: ``--model-type torch-sd3``.
     
     (default: 0)
     """
@@ -857,16 +879,17 @@ class RenderLoopConfig(_types.SetFromMixin):
     Must be greater than or equal to 0.
     
     When set to 0, static dropping is used where the same number of tokens are skipped
-    at each step (except for error reset steps and steps before scheduler_start_step).
+    at each step (except for error reset steps and steps before :py:attr:`RenderLoopConfig.ras_start_steps`).
     
     When greater than 0, dynamic dropping is used where the number of skipped tokens
-    varies over time based on skip_num_step. The pattern repeats every skip_num_step_length steps.
+    varies over time based on :py:attr:`RenderLoopConfig.ras_skip_num_steps`. The pattern repeats every 
+    :py:attr:`RenderLoopConfig.ras_skip_num_step_lengths` steps.
     
     Each value will be tried in turn.
     
     Supplying any value implies that :py:attr:`RenderLoopConfig.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``, (but not for SD3.5 models)
+    This is supported for: ``--model-type torch-sd3``.
     
     (default: 0)
     """

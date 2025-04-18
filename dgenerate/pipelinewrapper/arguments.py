@@ -411,7 +411,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     See: https://github.com/microsoft/ras
     
-    This is supported for: ``--model-type torch-sd3``, (but not for SD3.5 models)
+    This is supported for: ``--model-type torch-sd3``.
     """
 
     ras_index_fusion: _types.OptionalBoolean = None
@@ -436,7 +436,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``, (but not for SD3.5 models)
+    This is supported for: ``--model-type torch-sd3``.
     """
 
     ras_high_ratio: _types.OptionalFloat = None
@@ -449,7 +449,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``, (but not for SD3.5 models)
+    This is supported for: ``--model-type torch-sd3``.
     """
 
     ras_starvation_scale: _types.OptionalFloat = None
@@ -463,7 +463,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``, (but not for SD3.5 models)
+    This is supported for: ``--model-type torch-sd3``.
     """
 
     ras_error_reset_steps: _types.OptionalString = None
@@ -475,7 +475,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``, (but not for SD3.5 models)
+    This is supported for: ``--model-type torch-sd3``.
     """
 
     ras_start_step: _types.OptionalInteger = None
@@ -489,7 +489,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``, (but not for SD3.5 models)
+    This is supported for: ``--model-type torch-sd3``.
     """
 
     ras_end_step: _types.OptionalInteger = None
@@ -503,7 +503,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``, (but not for SD3.5 models)
+    This is supported for: ``--model-type torch-sd3``.
     """
 
     ras_metric: _types.OptionalString = None
@@ -516,27 +516,44 @@ class DiffusionArguments(_types.SetFromMixin):
     
     Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``, (but not for SD3.5 models)
+    This is supported for: ``--model-type torch-sd3``.
     """
 
     ras_skip_num_step: _types.OptionalInteger = None
     """
     Skip steps for RAS (Region-Adaptive Sampling). Controls the number of steps to skip between RAS steps.
     The actual number of tokens skipped will be rounded down to the nearest multiple of 64 to ensure
-    efficient memory access patterns for attention computation. When used with ras_skip_num_step_length
-    greater than 0, this value determines how the number of skipped tokens changes over time.
+    efficient memory access patterns for attention computation. 
+    
+    When used with :py:attr:`DiffusionArguments.ras_skip_num_step_length` greater than 0, this 
+    value determines how the number of skipped tokens changes over time.
+    
     Positive values will increase the number of skipped tokens over time, while negative values will
-    decrease it. Each value will be tried in turn. Supplying any values implies :py:attr:`DiffusionArguments.ras`.
+    decrease it. 
+    
+    Each value will be tried in turn. 
+    
+    Supplying any values implies :py:attr:`DiffusionArguments.ras`.
+    
+    This is supported for: ``--model-type torch-sd3``.
     """
 
     ras_skip_num_step_length: _types.OptionalInteger = None
     """
     Skip step lengths for RAS (Region-Adaptive Sampling). Controls the length of steps to skip between
     RAS steps. When set to 0, static dropping is used where the number of skipped tokens remains
-    constant throughout the generation process. When greater than 0, dynamic dropping is enabled
-    where the number of skipped tokens varies over time based on ras_skip_num_step. The pattern of
-    skipping will repeat every ras_skip_num_step_length steps. Each value will be tried in turn.
+    constant throughout the generation process. 
+    
+    When greater than 0, dynamic dropping is enabled where the number of skipped tokens varies over 
+    time based on :py:attr:`DiffusionArguments.ras_skip_num_step`. 
+    
+    The pattern of skipping will repeat every :py:attr:`DiffusionArguments.ras_skip_num_step_length` steps. 
+    
+    Each value will be tried in turn. 
+    
     Supplying any values implies :py:attr:`DiffusionArguments.ras`.
+    
+    This is supported for: ``--model-type torch-sd3``.
     """
 
     sdxl_refiner_hi_diffusion: _types.OptionalBoolean = None
