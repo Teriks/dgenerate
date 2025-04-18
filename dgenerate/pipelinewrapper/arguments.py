@@ -722,7 +722,7 @@ class DiffusionArguments(_types.SetFromMixin):
     Defaults to 1.
     """
 
-    sdxl_refiner_deep_cache: bool = False
+    sdxl_refiner_deep_cache: _types.OptionalBoolean = None
     """
     Enable DeepCache acceleration for the SDXL Refiner?
     
