@@ -4,7 +4,7 @@ order: 19
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "stabilityai/stable-diffusion-x4-upscaler", "optional":false, "file-types":["models"]}]
 @file[{"label": "Original Config (yaml)", "arg": "--original-config", "file-types": ["yaml"]}]
 @karrasscheduler[{"label":"Scheduler", "arg":"--scheduler"}]
-@switch[{"label":"Use HiDiffusion", "arg":"--hi-diffusion"}]
+@switch[{"label":"Use DeepCache", "arg":"--deep-cache"}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"]}]
 @quantizer[{"divider-after": true}]
 --model-type torch-upscaler-x4

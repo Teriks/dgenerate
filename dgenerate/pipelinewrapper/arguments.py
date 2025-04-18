@@ -722,33 +722,33 @@ class DiffusionArguments(_types.SetFromMixin):
     Defaults to 1.
     """
 
-    second_model_deep_cache: bool = False
+    sdxl_refiner_deep_cache: bool = False
     """
-    Enable DeepCache acceleration for the secondary model (SDXL Refiner)?
+    Enable DeepCache acceleration for the SDXL Refiner?
     
     This is supported for Stable Diffusion XL and Kolors based models.
     """
 
-    second_model_deep_cache_interval: _types.OptionalInteger = None
+    sdxl_refiner_deep_cache_interval: _types.OptionalInteger = None
     """
     Controls the frequency of caching intermediate outputs in DeepCache 
-    for the secondary model. 
+    for the SDXL Refiner. 
     
     This is supported for Stable Diffusion XL and Kolors based models.
     
-    Supplying any value implies that :py:attr:`DiffusionArguments.second_model_deep_cache` is enabled.
+    Supplying any value implies that :py:attr:`DiffusionArguments.sdxl_refiner_deep_cache` is enabled.
     
     Defaults to 5.
     """
 
-    second_model_deep_cache_branch_id: _types.OptionalInteger = None
+    sdxl_refiner_deep_cache_branch_id: _types.OptionalInteger = None
     """
     Controls which branch ID DeepCache should operate on in the UNet 
-    for the secondary model.
+    for the SDXL Refiner.
     
     This is supported for Stable Diffusion XL and Kolors based models. 
     
-    Supplying any value implies that :py:attr:`DiffusionArguments.second_model_deep_cache` is enabled.
+    Supplying any value implies that :py:attr:`DiffusionArguments.sdxl_refiner_deep_cache` is enabled.
     
     Defaults to 1.
     """
@@ -918,8 +918,8 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.ras_skip_num_step_length, "RAS Skip Num Step Length:"),
             (self.deep_cache_interval, "DeepCache Interval:"),
             (self.deep_cache_branch_id, "DeepCache Branch ID:"),
-            (self.second_model_deep_cache_interval, "Second Model DeepCache Interval:"),
-            (self.second_model_deep_cache_branch_id, "Second Model DeepCache Branch ID:")
+            (self.sdxl_refiner_deep_cache_interval, "SDXL Refiner DeepCache Interval:"),
+            (self.sdxl_refiner_deep_cache_branch_id, "SDXL Refiner DeepCache Branch ID:")
         ]
 
         if not self.prompt.weighter:

@@ -208,14 +208,14 @@ Help Output
                      [-ti URI [URI ...]] [-cn CONTROLNET_URI [CONTROLNET_URI ...] | -t2i T2I_ADAPTER_URI
                      [T2I_ADAPTER_URI ...]] [-q QUANTIZER_URI] [-q2 QUANTIZER_URI]
                      [-sch SCHEDULER_URI [SCHEDULER_URI ...]] [-sch2 SCHEDULER_URI [SCHEDULER_URI ...]] [-hd]
-                     [-dc] [-dci INTEGER [INTEGER ...]] [-dcb INTEGER [INTEGER ...]] [-dc2]
-                     [-dci2 INTEGER [INTEGER ...]] [-dcb2 INTEGER [INTEGER ...]] [-tc] [-tcr [FLOAT ...]] [-ra]
+                     [-rhd] [-dc] [-dci INTEGER [INTEGER ...]] [-dcb INTEGER [INTEGER ...]] [-rdc]
+                     [-rdci INTEGER [INTEGER ...]] [-rdcb INTEGER [INTEGER ...]] [-tc] [-tcr [FLOAT ...]] [-ra]
                      [-rif] [-rsr FLOAT [FLOAT ...]] [-rhr FLOAT [FLOAT ...]] [-rss FLOAT [FLOAT ...]]
                      [-rer CSV_INT [CSV_INT ...]] [-rme RAS_METRIC [RAS_METRIC ...]]
                      [-rst INTEGER [INTEGER ...]] [-res INTEGER [INTEGER ...]] [-rsn INTEGER [INTEGER ...]]
-                     [-rsl INTEGER [INTEGER ...]] [-rhd] [-pag] [-pags FLOAT [FLOAT ...]]
-                     [-pagas FLOAT [FLOAT ...]] [-rpag] [-rpags FLOAT [FLOAT ...]] [-rpagas FLOAT [FLOAT ...]]
-                     [-mqo | -mco] [-mqo2 | -mco2] [--s-cascade-decoder MODEL_URI] [--sdxl-refiner MODEL_URI]
+                     [-rsl INTEGER [INTEGER ...]] [-pag] [-pags FLOAT [FLOAT ...]] [-pagas FLOAT [FLOAT ...]]
+                     [-rpag] [-rpags FLOAT [FLOAT ...]] [-rpagas FLOAT [FLOAT ...]] [-mqo | -mco]
+                     [-mqo2 | -mco2] [--s-cascade-decoder MODEL_URI] [--sdxl-refiner MODEL_URI]
                      [--sdxl-refiner-edit] [--sdxl-t2i-adapter-factors FLOAT [FLOAT ...]]
                      [--sdxl-aesthetic-scores FLOAT [FLOAT ...]]
                      [--sdxl-crops-coords-top-left COORD [COORD ...]] [--sdxl-original-size SIZE [SIZE ...]]
@@ -1021,6 +1021,9 @@ Help Output
             
             This is supported for --model-type torch, torch-sdxl, and --torch-kolors.
             -------------------------------------------------------------------------
+      -rhd, --sdxl-refiner-hi-diffusion
+            Activate HiDiffusion for the SDXL refiner?, See: --hi-diffusion
+            ---------------------------------------------------------------
       -dc, --deep-cache
             Activate DeepCache for the main model?
             
@@ -1058,35 +1061,35 @@ Help Output
             
             (default: 1)
             ------------
-      -dc2, --second-model-deep-cache
-            Activate DeepCache for the second model (SDXL Refiner)?
+      -rdc, --sdxl-refiner-deep-cache
+            Activate DeepCache for the SDXL Refiner?
             
             See: --deep-cache
             
             This is supported for Stable Diffusion XL and Kolors based models.
             ------------------------------------------------------------------
-      -dci2 INTEGER [INTEGER ...], --second-model-deep-cache-intervals INTEGER [INTEGER ...]
-            Cache interval for DeepCache for the second model (SDXL Refiner).
+      -rdci INTEGER [INTEGER ...], --sdxl-refiner-deep-cache-intervals INTEGER [INTEGER ...]
+            Cache interval for DeepCache for the SDXL Refiner.
             
             Controls how frequently the attention layers are cached during the diffusion process. Lower values
             cache more frequently, potentially resulting in more speedup but using more memory.
             
             Each value will be tried in turn.
             
-            Supplying any values implies --second-model-deep-cache.
+            Supplying any values implies --sdxl-refiner-deep-cache.
             
             This is supported for Stable Diffusion XL and Kolors based models.
             
             (default: 5)
             ------------
-      -dcb2 INTEGER [INTEGER ...], --second-model-deep-cache-branch-ids INTEGER [INTEGER ...]
-            Branch ID for DeepCache for the second model (SDXL Refiner).
+      -rdcb INTEGER [INTEGER ...], --sdxl-refiner-deep-cache-branch-ids INTEGER [INTEGER ...]
+            Branch ID for DeepCache for the SDXL Refiner.
             
             Controls which branches of the UNet attention blocks the caching is applied to. Advanced usage only.
             
             Each value will be tried in turn.
             
-            Supplying any values implies --second-model-deep-cache.
+            Supplying any values implies --sdxl-refiner-deep-cache.
             
             This is supported for Stable Diffusion XL and Kolors based models.
             
@@ -1286,9 +1289,6 @@ Help Output
             
             (default: 0)
             ------------
-      -rhd, --sdxl-refiner-hi-diffusion
-            Activate HiDiffusion for the SDXL refiner?, See: --hi-diffusion
-            ---------------------------------------------------------------
       -pag, --pag
             Use perturbed attention guidance? This is supported for --model-type torch, torch-sdxl, and torch-
             sd3 for most use cases. This enables PAG for the main model using default scale values.
@@ -7591,13 +7591,13 @@ The ``\templates_help`` output from the above example is:
         Name: "last_second_model_cpu_offload"
             Type: typing.Optional[bool]
             Value: None
-        Name: "last_second_model_deep_cache"
+        Name: "last_sdxl_refiner_deep_cache"
             Type: typing.Optional[bool]
             Value: None
-        Name: "last_second_model_deep_cache_branch_ids"
+        Name: "last_sdxl_refiner_deep_cache_branch_ids"
             Type: typing.Optional[collections.abc.Sequence[int]]
             Value: []
-        Name: "last_second_model_deep_cache_intervals"
+        Name: "last_sdxl_refiner_deep_cache_intervals"
             Type: typing.Optional[collections.abc.Sequence[int]]
             Value: []
         Name: "last_second_model_guidance_scales"

@@ -7,11 +7,13 @@ order: 6
 @dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"], "default":"float16"}]
 @dropdown[{"label":"Model variant", "arg":"--variant", "options":["fp16", "bf16"], "default":"fp16"}]
 --scheduler LCMScheduler
+@switch[{"label":"Use DeepCache", "arg":"--deep-cache"}]
 @switch[{"label":"Use HiDiffusion", "arg":"--hi-diffusion"}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "default": 0}]
 @quantizer[{"divider-after":true}]
 @uri[{"label":"Refiner Path / URI", "dir":true, "arg":"--sdxl-refiner", "default":"stabilityai/stable-diffusion-xl-refiner-1.0", "file-types":["models"]}]
 @karrasscheduler[{"label":"Refiner Scheduler", "arg":"--second-model-scheduler", "default":"UniPCMultistepScheduler"}]
+@switch[{"label":"Refiner Use DeepCache", "arg":"--sdxl-refiner-deep-cache"}]
 @switch[{"label":"Refiner Use HiDiffusion", "arg":"--sdxl-refiner-hi-diffusion"}]
 @switch[{"label":"Refiner Edit Mode", "arg":"--sdxl-refiner-edit"}]
 @switchradio[{"labels":["Refiner CPU Offload", "Refiner Sequential Offload"], "args":["--second-model-cpu-offload", "--second-model-sequential-offload"]}]

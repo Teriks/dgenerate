@@ -1642,6 +1642,14 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-rhd', '--sdxl-refiner-hi-diffusion',
+            action='store_true', default=None, dest='sdxl_refiner_hi_diffusion',
+            help=f"""Activate HiDiffusion for the SDXL refiner?, See: --hi-diffusion"""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
             '-dc', '--deep-cache',
             action='store_true', default=False, dest='deep_cache',
             help=f"""Activate DeepCache for the main model?
@@ -1699,9 +1707,9 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '-dc2', '--second-model-deep-cache',
-            action='store_true', default=None, dest='second_model_deep_cache',
-            help=f"""Activate DeepCache for the second model (SDXL Refiner)?
+            '-rdc', '--sdxl-refiner-deep-cache',
+            action='store_true', default=None, dest='sdxl_refiner_deep_cache',
+            help=f"""Activate DeepCache for the SDXL Refiner?
             
                   See: --deep-cache
                   
@@ -1712,10 +1720,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '-dci2', '--second-model-deep-cache-intervals',
+            '-rdci', '--sdxl-refiner-deep-cache-intervals',
             metavar='INTEGER',
-            nargs='+', dest='second_model_deep_cache_intervals', type=_type_deep_cache_interval,
-            help="""Cache interval for DeepCache for the second model (SDXL Refiner).
+            nargs='+', dest='sdxl_refiner_deep_cache_intervals', type=_type_deep_cache_interval,
+            help="""Cache interval for DeepCache for the SDXL Refiner.
             
             Controls how frequently the attention layers are cached during
             the diffusion process. Lower values cache more frequently, potentially
@@ -1723,7 +1731,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Each value will be tried in turn.
             
-            Supplying any values implies --second-model-deep-cache.
+            Supplying any values implies --sdxl-refiner-deep-cache.
             
             This is supported for Stable Diffusion XL and Kolors based models.
             
@@ -1733,17 +1741,17 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '-dcb2', '--second-model-deep-cache-branch-ids',
+            '-rdcb', '--sdxl-refiner-deep-cache-branch-ids',
             metavar='INTEGER',
-            nargs='+', dest='second_model_deep_cache_branch_ids', type=_type_deep_cache_branch_id,
-            help="""Branch ID for DeepCache for the second model (SDXL Refiner).
+            nargs='+', dest='sdxl_refiner_deep_cache_branch_ids', type=_type_deep_cache_branch_id,
+            help="""Branch ID for DeepCache for the SDXL Refiner.
             
             Controls which branches of the UNet attention blocks the caching
             is applied to. Advanced usage only.
             
             Each value will be tried in turn.
             
-            Supplying any values implies --second-model-deep-cache.
+            Supplying any values implies --sdxl-refiner-deep-cache.
             
             This is supported for Stable Diffusion XL and Kolors based models.
             
@@ -2023,14 +2031,6 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             This is supported for: --model-type torch-sd3.
 
             (default: 0)"""
-        )
-    )
-
-    actions.append(
-        parser.add_argument(
-            '-rhd', '--sdxl-refiner-hi-diffusion',
-            action='store_true', default=None, dest='sdxl_refiner_hi_diffusion',
-            help=f"""Activate HiDiffusion for the SDXL refiner?, See: --hi-diffusion"""
         )
     )
 

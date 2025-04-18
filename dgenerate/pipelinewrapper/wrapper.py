@@ -1154,16 +1154,16 @@ class DiffusionPipelineWrapper:
                 args.deep_cache_branch_id != _constants.DEFAULT_DEEP_CACHE_BRANCH_ID:
             opts.append(('--deep-cache-branch-ids', args.deep_cache_branch_id))
 
-        if args.second_model_deep_cache:
-            opts.append(('--second-model-deep-cache',))
+        if args.sdxl_refiner_deep_cache:
+            opts.append(('--sdxl-refiner-deep-cache',))
 
-        if args.second_model_deep_cache_interval is not None and \
-                args.second_model_deep_cache_interval != _constants.DEFAULT_SDXL_REFINER_DEEP_CACHE_INTERVAL:
-            opts.append(('--second-model-deep-cache-intervals', args.second_model_deep_cache_interval))
+        if args.sdxl_refiner_deep_cache_interval is not None and \
+                args.sdxl_refiner_deep_cache_interval != _constants.DEFAULT_SDXL_REFINER_DEEP_CACHE_INTERVAL:
+            opts.append(('--sdxl-refiner-deep-cache-intervals', args.sdxl_refiner_deep_cache_interval))
 
-        if args.second_model_deep_cache_branch_id is not None and \
-                args.second_model_deep_cache_branch_id != _constants.DEFAULT_SDXL_REFINER_DEEP_CACHE_BRANCH_ID:
-            opts.append(('--second-model-deep-cache-branch-ids', args.second_model_deep_cache_branch_id))
+        if args.sdxl_refiner_deep_cache_branch_id is not None and \
+                args.sdxl_refiner_deep_cache_branch_id != _constants.DEFAULT_SDXL_REFINER_DEEP_CACHE_BRANCH_ID:
+            opts.append(('--sdxl-refiner-deep-cache-branch-ids', args.sdxl_refiner_deep_cache_branch_id))
 
         if args.pag_scale == _constants.DEFAULT_PAG_SCALE \
                 and args.pag_adaptive_scale == _constants.DEFAULT_PAG_ADAPTIVE_SCALE:
@@ -2615,7 +2615,7 @@ class DiffusionPipelineWrapper:
                                     cache_branch_id=_types.default(
                                         user_args.deep_cache_branch_id,
                                         _constants.DEFAULT_SDXL_REFINER_DEEP_CACHE_BRANCH_ID),
-                                    enabled=user_args.second_model_deep_cache):
+                                    enabled=user_args.sdxl_refiner_deep_cache):
             return PipelineWrapperResult(
                 _pipelines.call_pipeline(
                     pipeline=self._sdxl_refiner_pipeline,
@@ -3102,20 +3102,35 @@ class DiffusionPipelineWrapper:
                     break
 
         if args.deep_cache:
-            if not (_enums.model_type_is_sd15(self.model_type) or
-                    _enums.model_type_is_sd2(self.model_type) or
-                    _enums.model_type_is_sdxl(self.model_type) or
-                    _enums.model_type_is_kolors(self.model_type)):
+            if not (
+                    self.model_type == _enums.ModelType.TORCH_SDXL or
+                    self.model_type == _enums.ModelType.TORCH_SDXL_PIX2PIX or
+                    self.model_type == _enums.ModelType.TORCH_KOLORS or
+                    self.model_type == _enums.ModelType.TORCH or
+                    self.model_type == _enums.ModelType.TORCH_PIX2PIX or
+                    self.model_type == _enums.ModelType.TORCH_UPSCALER_X4):
                 raise _pipelines.UnsupportedPipelineConfigError(
-                    'DeepCache is only supported for Stable Diffusion, Stable Diffusion XL, and Kolors.'
+                    f'DeepCache is only supported with Stable Diffusion, Stable Diffusion XL, '
+                    f'Stable Diffusion Upscaler X4, Kolors, and Pix2Pix variants.'
                 )
 
         for prop in args.__dict__.keys():
-            if prop.startswith('second_model_deep_cache_'):
+            if prop.startswith('sdxl_refiner_deep_cache_'):
                 value = getattr(args, prop)
                 if value is not None or (isinstance(value, bool) and value is True):
-                    args.second_model_deep_cache = True
+                    args.sdxl_refiner_deep_cache = True
                     break
+
+    def _auto_hi_diffusion_check(self, args: DiffusionArguments):
+        if args.hi_diffusion:
+            if not (
+                    self.model_type == _enums.ModelType.TORCH_SDXL or
+                    self.model_type == _enums.ModelType.TORCH_KOLORS or
+                    self.model_type == _enums.ModelType.TORCH):
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'HiDiffusion is only supported for '
+                    '--model-type torch, torch-sdxl, and torch-kolors'
+                )
 
     def _auto_tea_cache_check(self, args: DiffusionArguments):
         for prop in args.__dict__.keys():
@@ -3128,11 +3143,13 @@ class DiffusionPipelineWrapper:
         if args.tea_cache:
             if not _enums.model_type_is_flux(self.model_type):
                 raise _pipelines.UnsupportedPipelineConfigError(
-                    'TeaCache is only supported for Flux.')
+                    'TeaCache is only supported for Flux.'
+                )
 
             if self.model_cpu_offload:
                 raise _pipelines.UnsupportedPipelineConfigError(
-                    'TeaCache does not support model CPU offloading.')
+                    'TeaCache does not support model CPU offloading.'
+                )
 
     def __call__(self, args: DiffusionArguments | None = None, **kwargs) -> PipelineWrapperResult:
         """
@@ -3187,30 +3204,16 @@ class DiffusionPipelineWrapper:
         self._auto_tea_cache_check(copy_args)
         self._auto_ras_check(copy_args)
         self._auto_deep_cache_check(copy_args)
+        self._auto_hi_diffusion_check(copy_args)
 
         if self.model_type == _enums.ModelType.TORCH_S_CASCADE:
-            if args.hi_diffusion:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'HiDiffusion is not supported for Stable Cascade.'
-                )
-
             result = self._call_torch_s_cascade(
                 pipeline_args=pipeline_args,
                 user_args=copy_args)
         elif _enums.model_type_is_flux(self.model_type):
-            if args.hi_diffusion:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'HiDiffusion is not supported for Flux.'
-                )
-
             result = self._call_torch_flux(pipeline_args=pipeline_args,
                                            user_args=copy_args)
         else:
-            if args.hi_diffusion and _enums.model_type_is_sd3(self.model_type):
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'HiDiffusion is not supported for SD3.'
-                )
-
             result = self._call_torch(pipeline_args=pipeline_args,
                                       user_args=copy_args)
 
