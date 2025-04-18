@@ -695,7 +695,8 @@ class DiffusionArguments(_types.SetFromMixin):
     attention layer outputs to speed up the diffusion process. This is beneficial for 
     higher inference steps.
     
-    This is supported for Stable Diffusion, Stable Diffusion XL, and Kolors based models.
+    This is supported for Stable Diffusion, Stable Diffusion XL,
+    Stable Diffusion Upscaler X4, Kolors, and Pix2Pix variants.
     """
 
     deep_cache_interval: _types.OptionalInteger = None
@@ -703,7 +704,8 @@ class DiffusionArguments(_types.SetFromMixin):
     Controls the frequency of caching intermediate outputs in DeepCache 
     for the main model. 
     
-    This is supported for Stable Diffusion, Stable Diffusion XL, and Kolors based models.
+    This is supported for Stable Diffusion, Stable Diffusion XL,
+    Stable Diffusion Upscaler X4, Kolors, and Pix2Pix variants.
     
     Supplying any value implies that :py:attr:`DiffusionArguments.deep_cache` is enabled.
     
@@ -715,7 +717,8 @@ class DiffusionArguments(_types.SetFromMixin):
     Controls which branch ID DeepCache should operate on in the UNet 
     for the main model. 
     
-    This is supported for Stable Diffusion, Stable Diffusion XL, and Kolors based models.
+    This is supported for Stable Diffusion, Stable Diffusion XL,
+    Stable Diffusion Upscaler X4, Kolors, and Pix2Pix variants.
     
     Supplying any value implies that :py:attr:`DiffusionArguments.deep_cache` is enabled.
     
