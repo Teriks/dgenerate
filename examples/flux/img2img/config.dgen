@@ -10,7 +10,7 @@
 {% endif %}
 
 {% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 15 %}
-    \set optimization --quantizer bnb;bits=4;bits4-compute-dtype=bfloat16
+    \set optimization --quantizer bnb;bits=4
 {% else %}
     \set optimization --model-sequential-offload
 {% endif %}
