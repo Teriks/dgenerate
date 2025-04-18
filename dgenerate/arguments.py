@@ -1659,7 +1659,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                   
                   See: https://github.com/horseee/DeepCache
                   
-                  This is supported for Stable Diffusion, Stable Diffusion XL, and Kolors based models.
+                  This is supported for Stable Diffusion, Stable Diffusion XL,
+                  Stable Diffusion Upscaler X4, Kolors, and Pix2Pix variants.
                   """
         )
     )
@@ -1679,7 +1680,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --deep-cache.
             
-            This is supported for Stable Diffusion, Stable Diffusion XL, and Kolors based models.
+            This is supported for Stable Diffusion, Stable Diffusion XL,
+            Stable Diffusion Upscaler X4, Kolors, and Pix2Pix variants.
             
             (default: 5)"""
         )
@@ -1699,7 +1701,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --deep-cache.
             
-            This is supported for Stable Diffusion, Stable Diffusion XL, and Kolors based models.
+            This is supported for Stable Diffusion, Stable Diffusion XL,
+            Stable Diffusion Upscaler X4, Kolors, and Pix2Pix variants.
             
             (default: 1)"""
         )
