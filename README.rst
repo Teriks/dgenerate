@@ -976,7 +976,7 @@ Help Output
             
             * bits: int = 8 (must be 4 or 8)
             
-            * bits4-compute-dtype: str = None
+            * bits4-compute-dtype: str = None (auto set when not specified)
             
             * bits4-quant-type: str = "fp4"
             
