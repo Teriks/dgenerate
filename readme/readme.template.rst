@@ -94,6 +94,8 @@ Help Output
 
 @INCLUDE[sections/install/google_colab_install.template.rst]
 
+@INCLUDE[sections/install/installing_development_branches.template.rst]
+
 @INCLUDE[sections/basic_usage.template.rst]
 
 @INCLUDE[sections/basic_prompting.template.rst]
