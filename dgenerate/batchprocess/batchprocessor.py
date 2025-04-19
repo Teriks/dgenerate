@@ -827,12 +827,11 @@ class BatchProcessor:
         else:
             cmd_info = raw_templated_string
 
-        header = 'Processing Arguments: '
+        header = 'Processing Arguments:\n\n'
         args_wrapped = \
             _textprocessing.wrap(
                 cmd_info,
-                width=_textprocessing.long_text_wrap_width() - len(header),
-                subsequent_indent=' ' * len(header))
+                width=_textprocessing.long_text_wrap_width()) + '\n'
 
         _messages.log(header + args_wrapped, underline=True)
 
