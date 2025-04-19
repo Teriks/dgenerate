@@ -131,6 +131,21 @@ class IntSpinbox(tk.Entry):
         except ValueError:
             return False
 
+    def is_valid(self):
+        display_value = self.display_value.get()
+        if display_value == '':
+            return True
+
+        try:
+            value = int(display_value)  # Validate as int
+
+            if value < self.from_ or value > self.to:
+                return False
+
+            return True
+        except ValueError:
+            return False
+
     def destroy(self) -> None:
         un_bind_mousewheel(self.unbind)
         super().destroy()
