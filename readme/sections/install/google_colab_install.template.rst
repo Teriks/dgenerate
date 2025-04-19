@@ -6,17 +6,17 @@ The following cell entries will get you started in a Google Collab environment.
 Make sure you select a GPU runtime for your notebook, such as the T4 runtime.
 
 
-1.) Install venv.
+1.) Install virtualenv.
 
 .. code-block:: bash
 
-    !apt install python3-venv
+    !pip install virtualenv
 
 2.) Create a virtual environment.
 
 .. code-block:: bash
 
-    !python3 -m venv venv
+    !virtualenv venv
 
 3.) Install dgenerate, you must activate the virtual environment in the same cell.
 
