@@ -1042,7 +1042,9 @@ Help Output
             Controls how frequently the attention layers are cached during the diffusion process. Lower values
             cache more frequently, potentially resulting in more speedup but using more memory.
             
-            Each value will be tried in turn.
+            This value must be greater than zero.
+            
+            Each value supplied will be tried in turn.
             
             Supplying any values implies --deep-cache.
             
@@ -1056,7 +1058,9 @@ Help Output
             
             Controls which branches of the UNet attention blocks the caching is applied to. Advanced usage only.
             
-            Each value will be tried in turn.
+            This value must be greater than or equal to 0.
+            
+            Each value supplied will be tried in turn.
             
             Supplying any values implies --deep-cache.
             
@@ -1078,7 +1082,9 @@ Help Output
             Controls how frequently the attention layers are cached during the diffusion process. Lower values
             cache more frequently, potentially resulting in more speedup but using more memory.
             
-            Each value will be tried in turn.
+            This value must be greater than zero.
+            
+            Each value supplied will be tried in turn.
             
             Supplying any values implies --sdxl-refiner-deep-cache.
             
@@ -1091,7 +1097,9 @@ Help Output
             
             Controls which branches of the UNet attention blocks the caching is applied to. Advanced usage only.
             
-            Each value will be tried in turn.
+            This value must be greater than or equal to 0.
+            
+            Each value supplied will be tried in turn.
             
             Supplying any values implies --sdxl-refiner-deep-cache.
             

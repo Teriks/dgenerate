@@ -704,6 +704,8 @@ class DiffusionArguments(_types.SetFromMixin):
     Controls the frequency of caching intermediate outputs in DeepCache 
     for the main model. 
     
+    This value must be greater than zero.
+    
     This is supported for Stable Diffusion, Stable Diffusion XL,
     Stable Diffusion Upscaler X4, Kolors, and Pix2Pix variants.
     
@@ -716,6 +718,8 @@ class DiffusionArguments(_types.SetFromMixin):
     """
     Controls which branch ID DeepCache should operate on in the UNet 
     for the main model. 
+    
+    This value must be greater than or equal to 0.
     
     This is supported for Stable Diffusion, Stable Diffusion XL,
     Stable Diffusion Upscaler X4, Kolors, and Pix2Pix variants.
@@ -737,6 +741,8 @@ class DiffusionArguments(_types.SetFromMixin):
     Controls the frequency of caching intermediate outputs in DeepCache 
     for the SDXL Refiner. 
     
+    This value must be greater than zero.
+    
     This is supported for Stable Diffusion XL and Kolors based models.
     
     Supplying any value implies that :py:attr:`DiffusionArguments.sdxl_refiner_deep_cache` is enabled.
@@ -748,6 +754,8 @@ class DiffusionArguments(_types.SetFromMixin):
     """
     Controls which branch ID DeepCache should operate on in the UNet 
     for the SDXL Refiner.
+    
+    This value must be greater than or equal to 0.
     
     This is supported for Stable Diffusion XL and Kolors based models. 
     

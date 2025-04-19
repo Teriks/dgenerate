@@ -655,7 +655,9 @@ class RenderLoopConfig(_types.SetFromMixin):
     the diffusion process. Lower values cache more frequently, potentially
     resulting in more speedup but using more memory.
     
-    Each value will be tried in turn.
+    This value must be greater than zero.
+    
+    Each value supplied will be tried in turn.
     
     This is supported for Stable Diffusion, Stable Diffusion XL,
     Stable Diffusion Upscaler X4, Kolors, and Pix2Pix variants.
@@ -672,7 +674,9 @@ class RenderLoopConfig(_types.SetFromMixin):
     Controls which branches of the UNet attention blocks the caching
     is applied to. Advanced usage only.
     
-    Each value will be tried in turn.
+    This value must be greater than or equal to 0.
+    
+    Each value supplied will be tried in turn.
     
     This is supported for Stable Diffusion, Stable Diffusion XL,
     Stable Diffusion Upscaler X4, Kolors, and Pix2Pix variants.
@@ -699,7 +703,9 @@ class RenderLoopConfig(_types.SetFromMixin):
     the diffusion process. Lower values cache more frequently, potentially
     resulting in more speedup but using more memory.
     
-    Each value will be tried in turn.
+    This value must be greater than zero.
+    
+    Each value supplied will be tried in turn.
     
     This is supported for Stable Diffusion XL and Kolors based models.
     
@@ -715,7 +721,9 @@ class RenderLoopConfig(_types.SetFromMixin):
     Controls which branches of the UNet attention blocks the caching
     is applied to. Advanced usage only.
     
-    Each value will be tried in turn.
+    This value must be greater than or equal to 0.
+    
+    Each value supplied will be tried in turn.
     
     This is supported for Stable Diffusion XL and Kolors based models.
     
