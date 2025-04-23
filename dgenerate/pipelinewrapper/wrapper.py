@@ -1475,8 +1475,7 @@ class DiffusionPipelineWrapper:
                 if _enums.model_type_is_sd3(self._model_type):
                     # Handle SD3 model specifics for control images
                     args['control_image'] = self._sd3_force_control_to_a16(args, control_images, user_args)
-                elif (_enums.model_type_is_flux(self._model_type) or
-                      _enums.model_type_is_kolors(self._model_type)):
+                elif _enums.model_type_is_flux(self._model_type):
                     args['control_image'] = control_images
                 elif sdxl_cn_union:
                     # controlnet union pipeline does not use "image"
