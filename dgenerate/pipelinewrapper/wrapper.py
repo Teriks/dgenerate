@@ -931,6 +931,10 @@ class DiffusionPipelineWrapper:
 
         opts.append(('--inference-steps', args.inference_steps))
         opts.append(('--guidance-scales', args.guidance_scale))
+
+        if args.sigmas:
+            opts.append(('--sigmas', ','.join(map(str, args.sigmas))))
+
         opts.append(('--seeds', args.seed))
 
         if self.dtype_string != 'auto':
@@ -1121,7 +1125,7 @@ class DiffusionPipelineWrapper:
 
         if args.ras_error_reset_steps is not None and \
                 args.ras_error_reset_steps != _constants.DEFAULT_RAS_ERROR_RESET_STEPS:
-            opts.append(('--ras-error-reset-steps', args.ras_error_reset_steps))
+            opts.append(('--ras-error-reset-steps', ','.join(map(str, args.ras_error_reset_steps))))
 
         if args.ras_metric is not None and \
                 args.ras_metric != _constants.DEFAULT_RAS_METRIC:
@@ -1191,6 +1195,9 @@ class DiffusionPipelineWrapper:
 
         if args.second_model_guidance_scale is not None:
             opts.append(('--second-model-guidance-scales', args.second_model_guidance_scale))
+
+        if args.sdxl_refiner_sigmas is not None:
+            opts.append(('--sdxl-refiner-sigmas', ','.join(map(str, args.sdxl_refiner_sigmas))))
 
         if args.sdxl_refiner_guidance_rescale is not None:
             opts.append(('--sdxl-refiner-guidance-rescales', args.sdxl_refiner_guidance_rescale))
