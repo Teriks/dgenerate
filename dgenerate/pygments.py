@@ -18,7 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
+import importlib
 
 import pygments.lexer as _lexer
 import pygments.token as _token
@@ -28,6 +28,24 @@ This module provides a pygments lexer for the dgenerate config / shell language.
 
 This can be used for syntax highlighting.
 """
+
+
+def _get_ns_functions(name, ns=None):
+    if ns is None:
+        ns = name
+    module = importlib.import_module(name)
+
+    for member_name in dir(module):
+        member = getattr(module, member_name)
+
+        if hasattr(member, '__name__') and not member_name.startswith('_') and callable(member):
+            yield ns + '.' + member_name
+
+
+_ns_funcs = list(_get_ns_functions('glob')) + \
+            list(_get_ns_functions('numpy')) + \
+            list(_get_ns_functions('numpy', 'np')) + \
+            list(_get_ns_functions('os.path', 'path'))
 
 _DGENERATE_FUNCTIONS = sorted((
     "abs", "align_size", "all", "any", "ascii", "bin", "bool", "bytearray", "bytes",
@@ -40,17 +58,8 @@ _DGENERATE_FUNCTIONS = sorted((
     "sum", "tuple", "type", "unquote", "zip", "have_feature", "platform", "frange"
 ), key=lambda s: len(s), reverse=True)
 
-_DGENERATE_FUNCTIONS_NS = sorted(map(lambda x: '({})(.)({})'.format(*x.split('.')), (
-    'glob.glob', 'glob.iglob', 'glob.escape', 'path.abspath', 'path.basename',
-    'path.commonpath', 'path.commonprefix',
-    'path.dirname', 'path.exists', 'path.expanduser', 'path.expandvars',
-    'path.getatime', 'path.getctime', 'path.getmtime', 'path.getsize',
-    'path.isabs', 'path.isdir', 'path.isfile', 'path.islink',
-    'path.ismount', 'path.join', 'path.lexists', 'path.normcase',
-    'path.normpath', 'path.realpath', 'path.relpath', 'path.samefile',
-    'path.sameopenfile', 'path.samestat', 'path.split', 'path.splitdrive',
-    'path.splitext', 'path.supports_unicode_filenames'
-)), key=lambda s: len(s), reverse=True)
+_DGENERATE_FUNCTIONS_NS = sorted(
+    map(lambda x: '({})(.)({})'.format(*x.split('.')), _ns_funcs), key=lambda s: len(s), reverse=True)
 
 _JINJA2_FUNCTIONS = sorted((
     # Functions
@@ -108,8 +117,9 @@ _http_pattern = (r'(?<!\w)(https?://(?:'  # Protocol
 
 _path_patterns = (
     _http_pattern,
-    (rf'(?<!\w)([a-zA-Z]:(([/]|\\\\){_ecos}*)+)', _token.String), # Drive letters
-    (rf'(?<!\w)(~|..?)?(([/]|\\\\){_ecos}+)(([/]|\\\\){_ecos}*)*', _token.String),  # absolute paths with relative components
+    (rf'(?<!\w)([a-zA-Z]:(([/]|\\\\){_ecos}*)+)', _token.String),  # Drive letters
+    (rf'(?<!\w)(~|..?)?(([/]|\\\\){_ecos}+)(([/]|\\\\){_ecos}*)*', _token.String),
+    # absolute paths with relative components
     (rf'(?<!\w)({_ecos}+)(([/]|\\\\){_ecos}*)+', _token.String),  # relative paths with relative components
     (rf'(?<!\w){_ecos}+\.{_ecos}+', _token.String)
 )
@@ -228,7 +238,7 @@ def _create_string_continue(name, char, root_state):
 def _create_wait_for_var(name, next_state):
     return {
         name: [
-            ('([a-zA-Z_][a-zA-Z0-9_]*)',  _token.Name.Variable, next_state),
+            ('([a-zA-Z_][a-zA-Z0-9_]*)', _token.Name.Variable, next_state),
             _env_var_pattern + (next_state,),
             (r'(?<=\}\})\s', _token.Whitespace, next_state),
             (r'(?<=%\})\s', _token.Whitespace, next_state),

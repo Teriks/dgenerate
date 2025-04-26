@@ -513,7 +513,7 @@ class RenderLoop:
             args += ['rsss', diffusion_args.ras_starvation_scale]
 
         if diffusion_args.ras_error_reset_steps is not None:
-            args += ['rsrs', diffusion_args.ras_error_reset_steps.replace(' ', '').replace(',', '-')]
+            args += ['rsrs', '-'.join(map(str, diffusion_args.ras_error_reset_steps))]
 
         if diffusion_args.ras_metric is not None:
             args += ['rsm', diffusion_args.ras_metric]
@@ -673,6 +673,9 @@ class RenderLoop:
 
         # Generate and touch filenames avoiding duplicates in a way
         # that is multiprocess safe between instances of dgenerate
+        # when --output-overwrite is not specified, otherwise just
+        # overwrite the files if they exist.
+
         if self._c_config.output_configs:
             if not self._c_config.output_overwrite:
                 image_filename, config_filename = \

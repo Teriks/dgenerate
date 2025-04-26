@@ -266,6 +266,19 @@ class RenderLoopConfig(_types.SetFromMixin):
     of the dgenerate command line tool.
     """
 
+    sigmas: typing.Optional[typing.Sequence[_types.Floats]] = None
+    """
+    One or more lists of sigma values to try. This is supported
+    when using a :py:attr:`RenderLoopConfig.scheduler_uri` that supports 
+    setting sigmas.
+    
+    Sigma values control the noise schedule in the diffusion process, allowing for 
+    fine-grained control over how noise is added and removed during image generation.
+    
+    This corresponds to the ``--sigmas`` command line argument, which accepts 
+    multiple comma-separated lists of floating point values, or singular values.
+    """
+
     inference_steps: _types.Integers
     """
     List of inference steps values, this corresponds to the ``--inference-steps`` argument of the
@@ -345,6 +358,19 @@ class RenderLoopConfig(_types.SetFromMixin):
     """
     Optional list of guidance scale value overrides for the SDXL refiner or Stable Cascade decoder, 
     this corresponds to the ``--second-model-guidance-scales`` argument of the dgenerate command line tool.
+    """
+
+    sdxl_refiner_sigmas: typing.Optional[typing.Sequence[_types.Floats]] = None
+    """
+    One or more lists of sigma values to try. This is supported
+    when using a :py:attr:`RenderLoopConfig.second_model_scheduler_uri` that supports 
+    setting sigmas.
+    
+    These sigma values control the noise schedule specifically for the SDXL refiner's 
+    diffusion process, allowing for customized denoising behavior during the refinement stage.
+    
+    This corresponds to the ``--sdxl-refiner-sigmas`` command line argument, which accepts 
+    multiple comma-separated lists of floating point values, or singular values.
     """
 
     sdxl_refiner_guidance_rescales: _types.OptionalFloats = None
@@ -816,14 +842,14 @@ class RenderLoopConfig(_types.SetFromMixin):
     This is supported for: ``--model-type torch-sd3``.
     """
 
-    ras_error_reset_steps: _types.OptionalStrings = None
+    ras_error_reset_steps: typing.Optional[typing.Sequence[_types.Integers]] = None
     """
     Error reset step patterns to try for RAS (Region-Adaptive Sampling).
     
     The dense sampling steps inserted between the RAS steps to reset the accumulated error.
-    Should be a comma-separated string of step numbers, e.g. "12,22".
+    Should be a list of lists of step numbers, e.g. [[12, 22], ...].
     
-    Each value will be tried in turn.
+    Each list will be tried in turn.
     
     Supplying any values implies that :py:attr:`RenderLoopConfig.ras` is enabled.
     
@@ -2580,10 +2606,12 @@ class RenderLoopConfig(_types.SetFromMixin):
                 pag_adaptive_scale=ov('pag_adaptive_scale', self.pag_adaptive_scales),
                 image_guidance_scale=ov('image_guidance_scale', self.image_guidance_scales),
                 guidance_rescale=ov('guidance_rescale', self.guidance_rescales),
+                sigmas=ov('sigmas', self.sigmas),
                 inference_steps=ov('inference_steps', self.inference_steps),
                 sdxl_high_noise_fraction=ov('sdxl_high_noise_fraction', self.sdxl_high_noise_fractions),
                 second_model_inference_steps=ov('second_model_inference_steps', self.second_model_inference_steps),
                 second_model_guidance_scale=ov('second_model_guidance_scale', self.second_model_guidance_scales),
+                sdxl_refiner_sigmas=ov('sdxl_refiner_sigmas', self.sdxl_refiner_sigmas),
                 sdxl_refiner_hi_diffusion=ov('sdxl_refiner_hi_diffusion', [self.sdxl_refiner_hi_diffusion]),
                 sdxl_refiner_pag_scale=ov('sdxl_refiner_pag_scale', self.sdxl_refiner_pag_scales),
                 sdxl_refiner_pag_adaptive_scale=ov('sdxl_refiner_pag_adaptive_scale',

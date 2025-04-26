@@ -245,7 +245,80 @@ The entirety of pythons builtin ``glob`` and ``os.path`` module are also accessi
 can glob directories using functions from the glob module, you can also glob directory's using shell
 globbing.
 
+The glob modules is set to the ``glob`` template variable, and the ``os.path`` module is set to the ``path`` template variable.
+
 @EXAMPLE[../../examples/config_syntax/globbing-config.dgen]
+
+
+Using numpy functions in configs
+--------------------------------
+
+The entirety of the ``numpy`` module is also accessible during templating, you can use numpy functions
+via the ``numpy`` or ``np`` template variable, which is set to the numpy module.
+
+You can use this to calculate and scale linear Flux sigmas for instance.
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate @VERSION
+
+    # Flux requires a huggingface auth token to access
+    # you must request access to the repository
+
+    \setp auth_token "$HF_TOKEN"
+
+    \set auth_token {{ '--auth-token ' + quote(auth_token) if auth_token else '' }}
+
+    \setp inference_steps 50
+    \setp sigma_scale 0.95
+
+    \set sigmas {{ ','.join(map(str, np.linspace(1.0, 1 / inference_steps, inference_steps) * sigma_scale)) }}
+
+    black-forest-labs/FLUX.1-dev
+    --model-type torch-flux {{ auth_token }}
+    --dtype bfloat16
+    --quantizer bnb;bits=4;bits4-quant-type=nf4
+    --inference-steps {{ inference_steps }}
+    --guidance-scales 3.5
+    --gen-seeds 1
+    --sigmas {{ sigmas }}
+    --output-path output
+    --output-size 1024x1024
+    --prompts "a horse standing inside a barn"
+
+
+Or try scaling exponential SDXL sigmas.
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate @VERSION
+
+    \setp auth_token "$HF_TOKEN"
+
+    \set auth_token {{ '--auth-token ' + quote(auth_token) if auth_token else '' }}
+
+    \setp inference_steps 30
+
+    \setp sigma_max 14.0
+    \setp sigma_min 0.002
+    \setp sigma_scale 0.95
+
+    \set sigmas {{ ','.join(map(str, np.exp(np.linspace(np.log(sigma_max), np.log(sigma_min), inference_steps)) * sigma_scale)) }}
+
+    stabilityai/stable-diffusion-xl-base-1.0
+    --model-type torch-sdxl
+    --dtype float16
+    --variant fp16
+    --inference-steps 30
+    --guidance-scales 5
+    --sigmas {{ sigmas }}
+    --clip-skips 0
+    --gen-seeds 1
+    --output-path output
+    --output-size 1024x1024
+    --prompts "a horse standing in a field"
 
 
 String and text escaping behavior

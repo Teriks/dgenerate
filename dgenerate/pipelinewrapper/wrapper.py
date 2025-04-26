@@ -2006,6 +2006,11 @@ class DiffusionPipelineWrapper:
                                              'ip_adapter_image', 'ip_adapter_images',
                                              'IP Adapter images')
 
+        self._set_non_universal_pipeline_arg(self._pipeline,
+                                             pipeline_args, user_args,
+                                             'sigmas', 'sigmas',
+                                             '--sigmas')
+
         pipeline_args['generator'] = \
             torch.Generator(device=self._device).manual_seed(
                 _types.default(user_args.seed, _constants.DEFAULT_SEED))
@@ -2145,6 +2150,9 @@ class DiffusionPipelineWrapper:
         if user_args.clip_skip is not None and user_args.clip_skip > 0:
             raise _pipelines.UnsupportedPipelineConfigError('Stable Cascade does not support clip skip.')
 
+        if user_args.sigmas is not None:
+            raise _pipelines.UnsupportedPipelineConfigError('Stable Cascade does not support sigmas.')
+
         prompt: _prompt.Prompt = _types.default(user_args.prompt, _prompt.Prompt())
         pipeline_args['prompt'] = prompt.positive if prompt.positive else ''
         pipeline_args['negative_prompt'] = prompt.negative
@@ -2273,6 +2281,11 @@ class DiffusionPipelineWrapper:
                                              pipeline_args, user_args,
                                              'guidance_rescale', 'guidance_rescale',
                                              '--guidance-rescales')
+
+        self._set_non_universal_pipeline_arg(self._pipeline,
+                                             pipeline_args, user_args,
+                                             'sigmas', 'sigmas',
+                                             '--sigmas')
 
         self._set_non_universal_pipeline_arg(self._pipeline,
                                              pipeline_args, user_args,
@@ -2470,6 +2483,7 @@ class DiffusionPipelineWrapper:
         self._pop_sdxl_conditioning_args(pipeline_args)
         pipeline_args.pop('ip_adapter_image', None)
         pipeline_args.pop('guidance_rescale', None)
+        pipeline_args.pop('sigmas', None)
         pipeline_args.pop('controlnet_conditioning_scale', None)
         pipeline_args.pop('control_guidance_start', None)
         pipeline_args.pop('control_guidance_end', None)
@@ -2534,6 +2548,11 @@ class DiffusionPipelineWrapper:
                                              pipeline_args, user_args,
                                              'guidance_rescale', 'sdxl_refiner_guidance_rescale',
                                              '--sdxl-refiner-guidance-rescales')
+
+        self._set_non_universal_pipeline_arg(self._pipeline,
+                                             pipeline_args, user_args,
+                                             'sigmas', 'sdxl_refiner_sigmas',
+                                             '--sdxl-refiner-sigmas')
 
         if user_args.second_model_inference_steps is not None:
             pipeline_args['num_inference_steps'] = user_args.second_model_inference_steps

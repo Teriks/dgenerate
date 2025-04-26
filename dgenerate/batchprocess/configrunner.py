@@ -35,6 +35,8 @@ import time
 import types
 import typing
 
+import numpy
+
 import dgenerate
 import dgenerate.arguments as _arguments
 import dgenerate.batchprocess.batchprocessor as _batchprocessor
@@ -138,6 +140,8 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'injected_plugin_modules': injected_plugin_modules,
             'saved_modules': dict(),
             'glob': glob,
+            'np': numpy,
+            'numpy': numpy,
             'path': os.path,
         }
 
@@ -1085,6 +1089,10 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                                                self.template_variables.get('saved_modules'))
 
         template_variables['glob'] = (types.ModuleType, self.template_variables.get('glob'))
+
+        template_variables['np'] = (types.ModuleType, self.template_variables.get('np'))
+
+        template_variables['numpy'] = (types.ModuleType, self.template_variables.get('numpy'))
 
         template_variables['path'] = (types.ModuleType, self.template_variables.get('path'))
 

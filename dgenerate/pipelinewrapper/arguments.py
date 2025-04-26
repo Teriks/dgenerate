@@ -235,6 +235,21 @@ class DiffusionArguments(_types.SetFromMixin):
     Override the guidance scale used by the SDXL refiner or Stable Cascade decoder.
     """
 
+    sdxl_refiner_sigmas: _types.OptionalFloats = None
+    """
+    Sigma values, this is supported when using a 
+    :py:attr:`DiffusionArguments.second_model_scheduler_uri` that supports 
+    setting sigmas.
+    
+    These sigma values control the noise schedule specifically for the SDXL 
+    refiner's diffusion process, allowing for customized denoising behavior
+    during the refinement stage. This can be particularly useful for fine-tuning
+    the level of detail and quality in the refined image.
+    
+    Format: A list of floating point values in descending order, typically ranging 
+    from higher values (more noise) to lower values (less noise).
+    """
+
     sdxl_refiner_guidance_rescale: _types.OptionalFloat = None
     """
     Override the guidance rescale value used by the SDXL refiner, which is normally set to the value of
@@ -357,6 +372,20 @@ class DiffusionArguments(_types.SetFromMixin):
     when :py:attr:`.DiffusionArguments.guidance_scale`  > 1
     """
 
+    sigmas: _types.OptionalFloats = None
+    """
+    Sigma values, this is supported when using a when using 
+    a :py:attr:`DiffusionArguments.scheduler_uri` that supports setting sigmas.
+    
+    Sigma values control the noise schedule in the diffusion process, allowing for 
+    fine-grained control over how noise is added and removed during image generation.
+    Custom sigma values can be used to achieve specific artistic effects or to 
+    optimize the generation process for particular types of images.
+    
+    Format: A list of floating point values in descending order, typically ranging 
+    from higher values (more noise) to lower values (less noise).
+    """
+
     hi_diffusion: bool = False
     """
     Activate HiDiffusion for the primary model? 
@@ -466,12 +495,12 @@ class DiffusionArguments(_types.SetFromMixin):
     This is supported for: ``--model-type torch-sd3``.
     """
 
-    ras_error_reset_steps: _types.OptionalString = None
+    ras_error_reset_steps: _types.OptionalIntegers = None
     """
     Dense sampling steps to reset accumulated error in RAS.
     
     The dense sampling steps inserted between the RAS steps to reset the accumulated error.
-    Should be a comma-separated string of step numbers, e.g. "12,22".
+    A list of step numbers, e.g. [12, 22].
     
     Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
     
@@ -889,6 +918,7 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.sdxl_refiner_pag_scale, 'SDXL Refiner PAG Scale:'),
             (self.sdxl_refiner_pag_adaptive_scale, 'SDXL Refiner PAG Adaptive Scale:'),
             (self.sdxl_refiner_guidance_rescale, "SDXL Refiner Guidance Rescale:"),
+            (self.sdxl_refiner_sigmas, "SDXL Refiner Sigmas:"),
             (self.sdxl_aesthetic_score, "SDXL Aesthetic Score:"),
             (self.sdxl_original_size, "SDXL Original Size:"),
             (self.sdxl_target_size, "SDXL Target Size:"),
@@ -908,6 +938,7 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.pag_scale, "PAG Scale:"),
             (self.pag_adaptive_scale, "PAG Adaptive Scale:"),
             (self.guidance_scale, "Guidance Scale:"),
+            (self.sigmas, "Sigmas:"),
             (self.tea_cache_rel_l1_threshold, "TeaCache Relative L1 Threshold:"),
             (self.image_guidance_scale, "Image Guidance Scale:"),
             (self.guidance_rescale, "Guidance Rescale:"),
