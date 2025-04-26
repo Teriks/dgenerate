@@ -18,31 +18,33 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import collections.abc
 
-import dgenerate.types as _types
+import dgenerate.batchprocess.configrunnerplugin as _configrunnerplugin
+import dgenerate.subcommands.subcommandloader as _subcommandloader
 
-from .batchprocessor import BatchProcessor, BatchProcessError
 
-from .configrunner import ConfigRunner
+class Auto1111MetadataDirective(_configrunnerplugin.ConfigRunnerPlugin):
+    def __init__(self, **kwargs):
+        """
+        :param kwargs: plugin base class arguments
+        """
 
-from .configrunnerplugin import ConfigRunnerPlugin
+        super().__init__(**kwargs)
 
-from .configrunnerpluginloader import (
-    ConfigRunnerPluginLoader,
-    ConfigRunnerPluginNotFoundError,
-    ConfigRunnerPluginArgumentError,
-)
+        self.register_directive('auto1111_metadata', self._directive)
 
-from .image_process_directive import ImageProcessDirective
+    def _directive(self, args: collections.abc.Sequence[str]) -> int:
+        """
+        Alias for: --sub-command auto1111-metadata
 
-from .civitai_links_directive import CivitAILinksDirective
-from .prompt_upscale_directive import PromptUpscaleDirective
+        This can be used to add metadata to images in the Automatic1111 format, either by using
+        the output from --output-configs, or from the metadata placed on image by --output-metadata.
 
-from .to_diffusers_directive import ToDiffusersDirective
-from .auto1111_metadata_directive import Auto1111MetadataDirective
+        See: \\auto1111_metadata --help
+        """
 
-__doc__ = """
-Batch processing / dgenerate config scripts.
-"""
+        subcommand = _subcommandloader.SubCommandLoader().load(
+            'auto1111-metadata', args=args, program_name='\\auto1111_metadata')
 
-__all__ = _types.module_all()
+        return subcommand()
