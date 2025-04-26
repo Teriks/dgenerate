@@ -24,6 +24,8 @@ import typing
 import PIL.Image
 import cv2
 import numpy
+import piexif
+import piexif.helper
 
 import dgenerate.types as _types
 
@@ -367,3 +369,42 @@ def get_filename(img: PIL.Image.Image):
     if hasattr(img, 'filename'):
         return img.filename
     return 'NO_FILENAME'
+
+
+def create_jpeg_exif_with_user_comment(comment: str) -> bytes:
+    """
+    Return JPEG EXIF data with a user comment field, this can be used with ``PIL.Image.save(img, exif=...)``.
+
+    This function is specifically for saving JPEG files only.
+
+    :return: EXIF data (bytes)
+    """
+    exif_dict = {"0th": {}, "Exif": {}, "GPS": {}, "1st": {}, "thumbnail": None}
+    exif_dict["Exif"][piexif.ExifIFD.UserComment] = \
+        piexif.helper.UserComment.dump(
+            comment, encoding="unicode"
+        )
+    return piexif.dump(exif_dict)
+
+
+def read_jpeg_exif_user_comment(img: PIL.Image.Image) -> str | None:
+    """
+    Read the user comment field from a JPEG EXIF data, this can be used with ``PIL.Image.open(img)``.
+
+    This function is specifically for JPEG files only.
+
+    :param img: :py:class:`PIL.Image.Image`
+    :return: user comment string or empty string if not found
+    """
+    if "exif" not in img.info:
+        return None
+
+    exif_dict = piexif.load(img.info["exif"])
+
+    user_comment_raw = exif_dict["Exif"].get(piexif.ExifIFD.UserComment)
+
+    if user_comment_raw:
+        user_comment = piexif.helper.UserComment.load(user_comment_raw)
+        return user_comment
+    else:
+        return None

@@ -39,6 +39,7 @@ from .civitai_links_directive import CivitAILinksDirective
 from .prompt_upscale_directive import PromptUpscaleDirective
 
 from .to_diffusers_directive import ToDiffusersDirective
+from .auto1111_metadata_directive import Auto1111MetadataDirective
 
 __doc__ = """
 Batch processing / dgenerate config scripts.

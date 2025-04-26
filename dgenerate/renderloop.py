@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 import collections.abc
 import datetime
 import itertools
@@ -27,9 +28,11 @@ import tempfile
 import time
 import typing
 
+
 import PIL.Image
 import PIL.PngImagePlugin
 
+import dgenerate.image as _image
 import dgenerate.filelock as _filelock
 import dgenerate.files as _files
 import dgenerate.imageprocessors as _imageprocessors
@@ -671,27 +674,46 @@ class RenderLoop:
         # Generate and touch filenames avoiding duplicates in a way
         # that is multiprocess safe between instances of dgenerate
         if self._c_config.output_configs:
-            image_filename, config_filename = \
-                _filelock.touch_avoid_duplicate(
+            if not self._c_config.output_overwrite:
+                image_filename, config_filename = \
+                    _filelock.touch_avoid_duplicate(
+                        self._c_config.output_path,
+                        path_maker=_filelock.suffix_path_maker(
+                            [self._join_output_filename(filename_components, ext=self._c_config.image_format),
+                             self._join_output_filename(filename_components, ext='dgen')],
+                            suffix='_duplicate_'))
+            else:
+                image_filename = self._join_output_filename(
+                    filename_components, ext=self._c_config.image_format
+                )
+
+                config_filename = self._join_output_filename(
+                    filename_components, ext='dgen'
+                )
+        else:
+            if not self._c_config.output_overwrite:
+                image_filename = _filelock.touch_avoid_duplicate(
                     self._c_config.output_path,
                     path_maker=_filelock.suffix_path_maker(
-                        [self._join_output_filename(filename_components, ext=self._c_config.image_format),
-                         self._join_output_filename(filename_components, ext='dgen')],
+                        self._join_output_filename(filename_components,
+                                                   ext=self._c_config.image_format),
                         suffix='_duplicate_'))
-        else:
-            image_filename = _filelock.touch_avoid_duplicate(
-                self._c_config.output_path,
-                path_maker=_filelock.suffix_path_maker(
-                    self._join_output_filename(filename_components,
-                                               ext=self._c_config.image_format),
-                    suffix='_duplicate_'))
+            else:
+                image_filename = self._join_output_filename(
+                    filename_components, ext=self._c_config.image_format
+                )
 
         # Write out to the empty files
-
         if self._c_config.output_metadata:
-            metadata = PIL.PngImagePlugin.PngInfo()
-            metadata.add_text("DgenerateConfig", config_txt)
-            image.save(image_filename, pnginfo=metadata)
+            if image_filename.lower().endswith(('.jpg', '.jpeg')):
+                image.save(
+                    image_filename,
+                    exif=_image.create_jpeg_exif_with_user_comment(config_txt)
+                )
+            else:
+                metadata = PIL.PngImagePlugin.PngInfo()
+                metadata.add_text("DgenerateConfig", config_txt)
+                image.save(image_filename, pnginfo=metadata)
         else:
             image.save(image_filename)
 

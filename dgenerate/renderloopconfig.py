@@ -1048,9 +1048,9 @@ class RenderLoopConfig(_types.SetFromMixin):
     """
     Format for any images that are written including animation frames.
     
-    Anything other than "png" is not compatible with ``output_metadata=True`` and a
-    :py:exc:`.RenderLoopConfigError` will be raised upon running the render loop if 
-    ``output_metadata=True`` and this value is not "png"
+    Anything other than "png", "jpg", or "jpeg" is not compatible with ``output_metadata=True`` 
+    and a :py:exc:`.RenderLoopConfigError` will be raised upon running the render 
+    loop if  ``output_metadata=True`` and this value is not one of those mentioned formats.
     """
 
     no_frames: bool = False
@@ -1617,10 +1617,11 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'Unsupported {a_namer("image_format")} value "{self.image_format}". Must be one of '
                 f'{_textprocessing.oxford_comma(_mediaoutput.get_supported_static_image_formats(), "or")}')
 
-        if self.image_format != "png" and self.output_metadata:
+        if self.image_format not in {"png", "jpg", "jpeg"} and self.output_metadata:
             raise RenderLoopConfigError(
                 f'{a_namer("image_format")} value "{self.image_format}" is '
-                f'unsupported when {a_namer("output_metadata")} is enabled.')
+                f'unsupported when {a_namer("output_metadata")} is enabled. '
+                f'Only "png", "jpg", and "jpeg" formats are supported with {a_namer("output_metadata")}.')
 
         if self.animation_format == 'frames' and self.no_frames:
             raise RenderLoopConfigError(

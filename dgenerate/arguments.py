@@ -2772,8 +2772,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     actions.append(
         parser.add_argument(
             '-if', '--image-format', action='store', default='png', type=_type_image_format, metavar="FORMAT",
-            help=f"""Output format when writing static images. Any selection other than "png" is not
-                    compatible with --output-metadata. Value must be one of: 
+            help=f"""Output format when writing static images. Any selection other than "png", "jpg", or "jpeg"
+                    is not compatible with --output-metadata. Value must be one of: 
                     {_SUPPORTED_STATIC_IMAGE_OUTPUT_FORMATS_PRETTY}. (default: png)"""
         )
     )
