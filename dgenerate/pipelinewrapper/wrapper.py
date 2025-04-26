@@ -932,7 +932,7 @@ class DiffusionPipelineWrapper:
         opts.append(('--inference-steps', args.inference_steps))
         opts.append(('--guidance-scales', args.guidance_scale))
 
-        if args.sigmas:
+        if args.sigmas is not None:
             opts.append(('--sigmas', ','.join(map(str, args.sigmas))))
 
         opts.append(('--seeds', args.seed))
