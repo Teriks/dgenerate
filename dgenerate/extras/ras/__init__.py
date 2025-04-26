@@ -14,7 +14,7 @@ class RASArgs:
         scheduler_start_step: int = 4,
         scheduler_end_step: int | None = None,
         metric: str = "std",
-        error_reset_steps: str = "12,22",
+        error_reset_steps: list[int] = None,
         replace_with_flash_attn: bool = False,
         sample_ratio: float = 0.5,
         skip_num_step: int = 0,
@@ -28,7 +28,7 @@ class RASArgs:
         self.scheduler_start_step = scheduler_start_step
         self.scheduler_end_step = num_inference_steps if scheduler_end_step is None else scheduler_end_step
         self.metric = metric
-        self.error_reset_steps = error_reset_steps
+        self.error_reset_steps = [12, 22] if error_reset_steps is None else error_reset_steps
         self.replace_with_flash_attn = replace_with_flash_attn
         self.sample_ratio = sample_ratio
         self.num_inference_steps = num_inference_steps

@@ -457,15 +457,22 @@ def _type_ras_starvation_scale(val: str) -> float:
     return val
 
 
-def _type_ras_error_reset_steps(val: str) -> str:
+def _type_ras_error_reset_steps(val: str) -> list[int]:
     try:
-        # Validate that it's a comma-separated list of integers
-        steps = [int(x.strip()) for x in val.split(',')]
+        if ',' in val:
+            steps = [int(x.strip()) for x in val.split(',')]
+        else:
+            steps = [int(val.strip())]
         if not all(x > 0 for x in steps):
-            raise argparse.ArgumentTypeError('All RAS step numbers must be positive')
+            raise argparse.ArgumentTypeError(
+                'All RAS step numbers must be positive'
+            )
     except ValueError:
-        raise argparse.ArgumentTypeError('RAS steps must be a comma-separated list of positive integers')
-    return val
+        raise argparse.ArgumentTypeError(
+            'RAS steps must be a comma-separated list of '
+            'positive integers, or a single integer'
+        )
+    return steps
 
 
 def _type_ras_metric(val: str) -> str:
@@ -531,6 +538,20 @@ def _type_deep_cache_branch_id(val: str) -> int:
     if val < 0:
         raise argparse.ArgumentTypeError('Must be greater than or equal to 0')
     return val
+
+
+def _type_sigmas(val: str) -> list[float]:
+    try:
+        if ',' in val:
+            sigmas = [float(x.strip()) for x in val.split(',')]
+        else:
+            sigmas = [float(val.strip())]
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            'Sigmas must be a comma-separated list of '
+            'floating point numbers, or a single float'
+        )
+    return sigmas
 
 
 _ARG_PARSER_CACHE = dict()
@@ -1920,9 +1941,12 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             help="""Dense sampling steps to reset accumulated error in RAS.
 
             The dense sampling steps inserted between the RAS steps to reset the accumulated error.
-            Should be a comma-separated string of step numbers, e.g. "12,22".
+            Each argument should be either a single integer or a comma-separated list of integers, 
+            e.g. 12 or "12,22".
             
-            Each individual string value (csv group) will be tried in turn.
+            Multiple values or comma-separated lists can be provided, and each will be tried in turn.
+            
+            Example: --ras-error-reset-steps 12 "5,10,15"
             
             Supplying any values implies --ras.
 
@@ -2988,6 +3012,24 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-si', '--sigmas', action='store', nargs='+',
+            default=None,
+            metavar="CSV_FLOAT", type=_type_sigmas,
+            help="""One or more comma-separated lists (or singular values) of floating 
+                    point sigmas to try. This is supported when using a --scheduler 
+                    that supports setting sigmas. Sigma values control the noise schedule 
+                    in the diffusion process, allowing for fine-grained control over 
+                    how noise is added and removed during image generation. 
+                    
+                    Example: --sigmas "1.0,0.8,0.6,0.4,0.2" 
+                    
+                    Or singular values: --sigmas 0.4
+                    """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
             '-igs', '--image-guidance-scales', action='store', nargs='+', default=None, metavar="FLOAT",
             type=_type_image_guidance_scale,
             help="""One or more image guidance scale values to try. This can push the generated image towards the
@@ -3050,6 +3092,15 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                      which defaults to the value taken from --guidance-scales for SDXL and 
                      {_pipelinewrapper.constants.DEFAULT_S_CASCADE_DECODER_GUIDANCE_SCALE} for Stable Cascade.
                      """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-sir', '--sdxl-refiner-sigmas', action='store', nargs='+',
+            default=None,
+            metavar="CSV_FLOAT", type=_type_sigmas,
+            help="""See: --sigmas, but for the SDXL Refiner."""
         )
     )
 

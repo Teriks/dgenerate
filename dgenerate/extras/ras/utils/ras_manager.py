@@ -30,7 +30,7 @@ class ras_manager:
         self.scheduler_start_step = args.scheduler_start_step
         self.scheduler_end_step = args.scheduler_end_step
         self.metric = args.metric
-        self.error_reset_steps = [int(i.strip()) for i in args.error_reset_steps.split(",")]
+        self.error_reset_steps = args.error_reset_steps
         self.replace_with_flash_attn = args.replace_with_flash_attn
         self.sample_ratio = args.sample_ratio
         self.num_steps = args.num_inference_steps

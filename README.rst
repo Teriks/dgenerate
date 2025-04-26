@@ -165,6 +165,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/version_5.0.0/>`_.
         * `Setting template variables, in depth`_
         * `Setting environmental variables, in depth`_
         * `Globbing and path manipulation`_
+        * `Using numpy functions in configs`_
         * `String and text escaping behavior`_
         * `The \\print and \\echo directive`_
         * `The \\image_process directive`_
@@ -250,8 +251,9 @@ Help Output
                      [-sip PROCESSOR_URI [PROCESSOR_URI ...]] [-mip PROCESSOR_URI [PROCESSOR_URI ...]]
                      [-cip PROCESSOR_URI [PROCESSOR_URI ...]] [--image-processor-help [PROCESSOR_NAME ...]]
                      [-pp PROCESSOR_URI [PROCESSOR_URI ...]] [-iss FLOAT [FLOAT ...] | -uns INTEGER
-                     [INTEGER ...]] [-gs FLOAT [FLOAT ...]] [-igs FLOAT [FLOAT ...]] [-gr FLOAT [FLOAT ...]]
-                     [-ifs INTEGER [INTEGER ...]] [-ifs2 INTEGER [INTEGER ...]] [-gs2 FLOAT [FLOAT ...]]
+                     [INTEGER ...]] [-gs FLOAT [FLOAT ...]] [-si CSV_FLOAT [CSV_FLOAT ...]]
+                     [-igs FLOAT [FLOAT ...]] [-gr FLOAT [FLOAT ...]] [-ifs INTEGER [INTEGER ...]]
+                     [-ifs2 INTEGER [INTEGER ...]] [-gs2 FLOAT [FLOAT ...]] [-sir CSV_FLOAT [CSV_FLOAT ...]]
                      model_path
     
     Batch image generation and manipulation tool supporting Stable Diffusion and related techniques /
@@ -1211,10 +1213,13 @@ Help Output
       -rer CSV_INT [CSV_INT ...], --ras-error-reset-steps CSV_INT [CSV_INT ...]
             Dense sampling steps to reset accumulated error in RAS.
             
-            The dense sampling steps inserted between the RAS steps to reset the accumulated error. Should be a
-            comma-separated string of step numbers, e.g. "12,22".
+            The dense sampling steps inserted between the RAS steps to reset the accumulated error. Each
+            argument should be either a single integer or a comma-separated list of integers, e.g. 12 or
+            "12,22".
             
-            Each individual string value (csv group) will be tried in turn.
+            Multiple values or comma-separated lists can be provided, and each will be tried in turn.
+            
+            Example: --ras-error-reset-steps 12 "5,10,15"
             
             Supplying any values implies --ras.
             
@@ -1843,6 +1848,16 @@ Help Output
             One or more guidance scale values to try. Guidance scale effects how much your text prompt is
             considered. Low values draw more data from images unrelated to text prompt. (default: [5])
             ------------------------------------------------------------------------------------------
+      -si CSV_FLOAT [CSV_FLOAT ...], --sigmas CSV_FLOAT [CSV_FLOAT ...]
+            One or more comma-separated lists (or singular values) of floating point sigmas to try. This is
+            supported when using a --scheduler that supports setting sigmas. Sigma values control the noise
+            schedule in the diffusion process, allowing for fine-grained control over how noise is added and
+            removed during image generation.
+            
+            Example: --sigmas "1.0,0.8,0.6,0.4,0.2"
+            
+            Or singular values: --sigmas 0.4
+            --------------------------------
       -igs FLOAT [FLOAT ...], --image-guidance-scales FLOAT [FLOAT ...]
             One or more image guidance scale values to try. This can push the generated image towards the
             initial image when using --model-type *-pix2pix models, it is unsupported for other model types. Use
@@ -1878,6 +1893,9 @@ Help Output
             Override the guidance scale value used by the second model, which defaults to the value taken from
             --guidance-scales for SDXL and 0 for Stable Cascade.
             ----------------------------------------------------
+      -sir CSV_FLOAT [CSV_FLOAT ...], --sdxl-refiner-sigmas CSV_FLOAT [CSV_FLOAT ...]
+            See: --sigmas, but for the SDXL Refiner.
+            ----------------------------------------
 
 Windows Install
 ===============
@@ -8964,6 +8982,8 @@ The entirety of pythons builtin ``glob`` and ``os.path`` module are also accessi
 can glob directories using functions from the glob module, you can also glob directory's using shell
 globbing.
 
+The glob modules is set to the ``glob`` template variable, and the ``os.path`` module is set to the ``path`` template variable.
+
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
@@ -9027,6 +9047,77 @@ globbing.
     --prompts "In the style of picaso"
     --image-seeds ../media/*.png
     --output-path ./output
+
+
+Using numpy functions in configs
+--------------------------------
+
+The entirety of the ``numpy`` module is also accessible during templating, you can use numpy functions
+via the ``numpy`` or ``np`` template variable, which is set to the numpy module.
+
+You can use this to calculate and scale linear Flux sigmas for instance.
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 5.0.0
+
+    # Flux requires a huggingface auth token to access
+    # you must request access to the repository
+
+    \setp auth_token "$HF_TOKEN"
+
+    \set auth_token {{ '--auth-token ' + quote(auth_token) if auth_token else '' }}
+
+    \setp inference_steps 50
+    \setp sigma_scale 0.95
+
+    \set sigmas {{ ','.join(map(str, np.linspace(1.0, 1 / inference_steps, inference_steps) * sigma_scale)) }}
+
+    black-forest-labs/FLUX.1-dev
+    --model-type torch-flux {{ auth_token }}
+    --dtype bfloat16
+    --quantizer bnb;bits=4;bits4-quant-type=nf4
+    --inference-steps {{ inference_steps }}
+    --guidance-scales 3.5
+    --gen-seeds 1
+    --sigmas {{ sigmas }}
+    --output-path output
+    --output-size 1024x1024
+    --prompts "a horse standing inside a barn"
+
+
+Or try scaling exponential SDXL sigmas.
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 5.0.0
+
+    \setp auth_token "$HF_TOKEN"
+
+    \set auth_token {{ '--auth-token ' + quote(auth_token) if auth_token else '' }}
+
+    \setp inference_steps 30
+
+    \setp sigma_max 14.0
+    \setp sigma_min 0.002
+    \setp sigma_scale 0.95
+
+    \set sigmas {{ ','.join(map(str, np.exp(np.linspace(np.log(sigma_max), np.log(sigma_min), inference_steps)) * sigma_scale)) }}
+
+    stabilityai/stable-diffusion-xl-base-1.0
+    --model-type torch-sdxl
+    --dtype float16
+    --variant fp16
+    --inference-steps 30
+    --guidance-scales 5
+    --sigmas {{ sigmas }}
+    --clip-skips 0
+    --gen-seeds 1
+    --output-path output
+    --output-size 1024x1024
+    --prompts "a horse standing in a field"
 
 
 String and text escaping behavior
