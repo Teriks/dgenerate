@@ -34,9 +34,7 @@ import threading
 import time
 import types
 import typing
-
-import numpy
-
+import importlib
 import dgenerate
 import dgenerate.arguments as _arguments
 import dgenerate.batchprocess.batchprocessor as _batchprocessor
@@ -140,8 +138,6 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'injected_plugin_modules': injected_plugin_modules,
             'saved_modules': dict(),
             'glob': glob,
-            'np': numpy,
-            'numpy': numpy,
             'path': os.path,
         }
 
@@ -150,6 +146,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         self.reserved_template_variables = set(self.template_variables.keys())
 
         self.template_functions = {
+            'import_module': _configrunnerbuiltins.import_module,
             'unquote': _configrunnerbuiltins.unquote,
             'quote': _configrunnerbuiltins.quote,
             'format_prompt': _configrunnerbuiltins.format_prompt,
@@ -171,17 +168,9 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'frange': _configrunnerbuiltins.frange,
             'have_cuda': _configrunnerbuiltins.have_cuda,
             'total_memory': _configrunnerbuiltins.total_memory,
-            'default_device': _configrunnerbuiltins.default_device
+            'default_device': _configrunnerbuiltins.default_device,
+            'csv': _configrunnerbuiltins.csv
         }
-
-        def return_zero(func, help_text):
-            def wrap(args):
-                func()
-                return 0
-
-            wrap.__doc__ = help_text
-
-            return wrap
 
         self.directives = {
             'help': self._help_directive,
@@ -211,7 +200,8 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'mkdir': self._mkdir_directive,
             'rmdir': self._rmdir_directive,
             'rm': self._rm_directive,
-            'exit': self._exit_directive
+            'exit': self._exit_directive,
+            'import': self._import_directive
         }
 
         self.plugin_loader = \
@@ -1044,7 +1034,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                     f"Failed to remove {('directory' if os.path.isdir(f) else 'file')} {f}: {e.strerror}") from e
         return 0
 
-    def _config_generate_template_variables_with_types(self) -> dict[str, tuple[type, typing.Any]]:
+    def _generate_template_variables_with_types(self) -> dict[str, tuple[type, typing.Any]]:
         template_variables = dict()
 
         variable_prefix = 'last_'
@@ -1066,35 +1056,14 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         template_variables.update({
             'last_images': (collections.abc.Iterable[str], self.render_loop.written_images),
             'last_animations': (collections.abc.Iterable[str], self.render_loop.written_animations),
+            'injected_args': (collections.abc.Sequence[str], self.template_variables.get('injected_args')),
+            'injected_device': (_types.OptionalString, self.template_variables.get('injected_device')),
+            'injected_verbose': (_types.OptionalBoolean, self.template_variables.get('injected_verbose')),
+            'injected_plugin_modules': (_types.OptionalPaths, self.template_variables.get('injected_plugin_modules')),
+            'saved_modules': (dict[str, dict[str, typing.Any]], self.template_variables.get('saved_modules')),
+            'glob': (types.ModuleType, self.template_variables.get('glob')),
+            'path': (types.ModuleType, self.template_variables.get('path'))
         })
-
-        return template_variables
-
-    def _generate_template_variables_with_types(self) -> dict[str, tuple[type, typing.Any]]:
-        template_variables = self._config_generate_template_variables_with_types()
-
-        template_variables['injected_args'] = (collections.abc.Sequence[str],
-                                               self.template_variables.get('injected_args'))
-
-        template_variables['injected_device'] = (_types.OptionalString,
-                                                 self.template_variables.get('injected_device'))
-
-        template_variables['injected_verbose'] = (_types.OptionalBoolean,
-                                                  self.template_variables.get('injected_verbose'))
-
-        template_variables['injected_plugin_modules'] = (_types.OptionalPaths,
-                                                         self.template_variables.get('injected_plugin_modules'))
-
-        template_variables['saved_modules'] = (dict[str, dict[str, typing.Any]],
-                                               self.template_variables.get('saved_modules'))
-
-        template_variables['glob'] = (types.ModuleType, self.template_variables.get('glob'))
-
-        template_variables['np'] = (types.ModuleType, self.template_variables.get('np'))
-
-        template_variables['numpy'] = (types.ModuleType, self.template_variables.get('numpy'))
-
-        template_variables['path'] = (types.ModuleType, self.template_variables.get('path'))
 
         return template_variables
 
@@ -1362,6 +1331,87 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         Alias for --help
         """
         self.run_string('--help')
+        return 0
+
+    def _import_directive(self, args: collections.abc.Sequence[str]):
+        """
+        Import Python modules into the template variables.
+        
+        This implements Python's import syntax, including the 'as' keyword.
+        
+        Examples:
+        
+            \\import torch
+            \\import torch.nn
+            \\import torch.nn.functional as f
+            
+        The imported modules are available as template variables with the
+        same name as the imported module, or the alias if 'as' is used.
+        """
+
+        if not args:
+            raise _batchprocessor.BatchProcessError(
+                '\\import directive must be used with at least one argument.')
+        
+        # Check if we have an 'as' alias (should be exactly 3 args: module, 'as', alias)
+        if len(args) == 3 and args[1] == 'as':
+            module_path = args[0]
+            variable_name = args[2]
+            
+            if not variable_name.isidentifier():
+                raise _batchprocessor.BatchProcessError(
+                    f'Invalid identifier "{variable_name}" in import statement.')
+            
+            self.user_define_check(variable_name)
+            
+            try:
+                # Import the full module
+                module = importlib.import_module(module_path)
+                
+                # Add it to template variables with the alias
+                self.template_variables[variable_name] = module
+                
+            except ImportError as e:
+                raise _batchprocessor.BatchProcessError(
+                    f'Failed to import module "{module_path}": {str(e)}') from e
+                
+        elif len(args) == 1:
+            # Regular import without 'as'
+            module_path = args[0]
+            
+            # Split the path into parts
+            parts = module_path.split('.')
+            
+            # Validate module name parts
+            if not all(part.isidentifier() for part in parts):
+                raise _batchprocessor.BatchProcessError(
+                    f'Invalid module name component in "{module_path}".')
+            
+            # The base module name is the first part
+            base_module_name = parts[0]
+            
+            self.user_define_check(base_module_name)
+            
+            try:
+                # First import the base module
+                base_module = importlib.import_module(base_module_name)
+                
+                # Add the base module to template variables
+                self.template_variables[base_module_name] = base_module
+                
+                # If it's a nested import (e.g., os.path), import the full module too
+                if len(parts) > 1:
+                    # Import the full module to ensure all submodules are properly loaded
+                    importlib.import_module(module_path)
+                
+            except ImportError as e:
+                raise _batchprocessor.BatchProcessError(
+                    f'Failed to import module "{module_path}": {str(e)}') from e
+            
+        else:
+            raise _batchprocessor.BatchProcessError(
+                f'Invalid import syntax. Use "\\import module" or "\\import module as alias".')
+            
         return 0
 
 

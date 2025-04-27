@@ -165,7 +165,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/version_5.0.0/>`_.
         * `Setting template variables, in depth`_
         * `Setting environmental variables, in depth`_
         * `Globbing and path manipulation`_
-        * `Using numpy functions in configs`_
+        * `Importing arbitrary python modules`_
         * `String and text escaping behavior`_
         * `The \\print and \\echo directive`_
         * `The \\image_process directive`_
@@ -5786,6 +5786,7 @@ these are the arguments that are available for use:
     sdxl-high-noise-fraction: float
     second-model-inference-steps: int
     second-model-guidance-scale: float
+    sdxl-refiner-sigmas: [float, ...]
     sdxl-refiner-guidance-rescale: float
     sdxl-aesthetic-score: float
     sdxl-original-size: Size: WxH
@@ -5804,12 +5805,13 @@ these are the arguments that are available for use:
     sdxl-refiner-negative-target-size: Size: WxH
     sdxl-refiner-negative-crops-coords-top-left: Size: WxH
     guidance-scale: float
+    sigmas: [float, ...]
     tea-cache-rel-l1-threshold: float
     ras-index-fusion: bool
     ras-sample-ratio: float
     ras-high-ratio: float
     ras-starvation-scale: float
-    ras-error-reset-steps: str
+    ras-error-reset-steps: [int, ...]
     ras-start-step: int
     ras-end-step: int
     ras-metric: str
@@ -7648,7 +7650,7 @@ The ``\templates_help`` output from the above example is:
             Type: typing.Optional[collections.abc.Sequence[int]]
             Value: []
         Name: "last_ras_error_reset_steps"
-            Type: typing.Optional[collections.abc.Sequence[str]]
+            Type: typing.Optional[collections.abc.Sequence[collections.abc.Sequence[int]]]
             Value: []
         Name: "last_ras_high_ratios"
             Type: typing.Optional[collections.abc.Sequence[float]]
@@ -7761,6 +7763,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_sdxl_refiner_pag_scales"
             Type: typing.Optional[collections.abc.Sequence[float]]
             Value: []
+        Name: "last_sdxl_refiner_sigmas"
+            Type: typing.Optional[collections.abc.Sequence[collections.abc.Sequence[float]]]
+            Value: []
         Name: "last_sdxl_refiner_target_sizes"
             Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
             Value: []
@@ -7826,10 +7831,13 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [48588263685896]
+            Value: [81918744414703]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
+        Name: "last_sigmas"
+            Type: typing.Optional[collections.abc.Sequence[collections.abc.Sequence[float]]]
+            Value: []
         Name: "last_subfolder"
             Type: typing.Optional[str]
             Value: None
@@ -7900,6 +7908,15 @@ The dgenerate specific jinja2 functions/filters are:
 
 .. code-block:: text
 
+    import_module(module_name: str) -> typing.Any:
+    
+        Import a Python module by name and return the module object.
+    
+        If the module cannot be imported, an error will be raised.
+    
+        See also the directive: \import
+    
+    ================================================================
     unquote(strings: str | collections.abc.Iterable[typing.Any], expand: bool = False) -> list:
     
         Un-Shell quote a string or iterable of strings (shell parse)
@@ -8087,6 +8104,11 @@ The dgenerate specific jinja2 functions/filters are:
         Return the name of the default accelerator device on the system.
     
     ====================================================================
+    csv(iterable: typing.Iterable):
+    
+        Convert an iterable into a CSV formatted string.
+    
+    ====================================================
 
 In addition to the dgenerate specific jinja2 functions, some python builtins are available:
 
@@ -8492,6 +8514,7 @@ Example output:
         "\help"
         "\image_process"
         "\image_processor_help"
+        "\import"
         "\import_plugins"
         "\list_object_caches"
         "\ls"
@@ -9049,11 +9072,42 @@ The glob modules is set to the ``glob`` template variable, and the ``os.path`` m
     --output-path ./output
 
 
-Using numpy functions in configs
---------------------------------
+Importing arbitrary python modules
+----------------------------------
 
-The entirety of the ``numpy`` module is also accessible during templating, you can use numpy functions
-via the ``numpy`` or ``np`` template variable, which is set to the numpy module.
+You can use the ``\import`` function to import arbitrary python modules, this supports
+the ``as`` syntax as well.
+
+In addition ``import_module`` function can be used with ``\setp`` to import the module
+as well, and can also be directly used inside a template.
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 5.0.0
+
+    # Python style import with alias
+
+    \import numpy as np
+
+    \setp arr np.array([1, 2, 3, 4, 5]) * 2
+
+    \print {{ arr }}
+
+
+    # Set the imported module to the variable "torch"
+    # Using the import_module function
+
+    \setp torch import_module('torch')
+
+    # Call a module function and print the result
+
+    \print {{ torch.cuda.is_available() }}
+
+    # With import_module, you can also do the import
+    # directly in a template expression if you want
+
+    \print {{ import_module('torch').cuda.is_available() }}
 
 You can use this to calculate and scale linear Flux sigmas for instance.
 
@@ -9061,23 +9115,34 @@ You can use this to calculate and scale linear Flux sigmas for instance.
 
     #! /usr/bin/env dgenerate --file
     #! dgenerate 5.0.0
-
-    # Flux requires a huggingface auth token to access
-    # you must request access to the repository
-
-    \setp auth_token "$HF_TOKEN"
-
-    \set auth_token {{ '--auth-token ' + quote(auth_token) if auth_token else '' }}
-
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    {% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 15 %}
+        \set optimization --quantizer bnb;bits=4
+    {% else %}
+        \set optimization --model-sequential-offload
+    {% endif %}
+    
+    # Use numpy to generate scaled linear sigmas for Flux
+    
+    # import numpy as np
+    
+    \import numpy as np
+    
     \setp inference_steps 50
     \setp sigma_scale 0.95
-
-    \set sigmas {{ ','.join(map(str, np.linspace(1.0, 1 / inference_steps, inference_steps) * sigma_scale)) }}
-
+    
+    \set sigmas {{ csv(np.linspace(1.0, 1 / inference_steps, inference_steps) * sigma_scale) }}
+    
     black-forest-labs/FLUX.1-dev
-    --model-type torch-flux {{ auth_token }}
+    --model-type torch-flux {{ auth_token }} {{ optimization }}
     --dtype bfloat16
-    --quantizer bnb;bits=4;bits4-quant-type=nf4
     --inference-steps {{ inference_steps }}
     --guidance-scales 3.5
     --gen-seeds 1
@@ -9086,26 +9151,27 @@ You can use this to calculate and scale linear Flux sigmas for instance.
     --output-size 1024x1024
     --prompts "a horse standing inside a barn"
 
-
 Or try scaling exponential SDXL sigmas.
 
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
     #! dgenerate 5.0.0
-
-    \setp auth_token "$HF_TOKEN"
-
-    \set auth_token {{ '--auth-token ' + quote(auth_token) if auth_token else '' }}
-
+    
+    # Use numpy to generate scaled exponential sigmas for Stable Diffusion XL
+    
+    # import numpy as np
+    
+    \import numpy as np
+    
     \setp inference_steps 30
-
+    
     \setp sigma_max 14.0
     \setp sigma_min 0.002
     \setp sigma_scale 0.95
-
-    \set sigmas {{ ','.join(map(str, np.exp(np.linspace(np.log(sigma_max), np.log(sigma_min), inference_steps)) * sigma_scale)) }}
-
+    
+    \set sigmas {{ csv(np.exp(np.linspace(np.log(sigma_max), np.log(sigma_min), inference_steps)) * sigma_scale) }}
+    
     stabilityai/stable-diffusion-xl-base-1.0
     --model-type torch-sdxl
     --dtype float16
@@ -9118,7 +9184,6 @@ Or try scaling exponential SDXL sigmas.
     --output-path output
     --output-size 1024x1024
     --prompts "a horse standing in a field"
-
 
 String and text escaping behavior
 ---------------------------------

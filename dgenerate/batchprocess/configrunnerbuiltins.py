@@ -538,3 +538,26 @@ def total_memory(device: str | None = None, unit: str = 'b'):
         return dgenerate.memory.get_total_memory(unit)
     else:
         return dgenerate.memory.get_cuda_total_memory(device, unit)
+
+
+def import_module(module_name: str) -> typing.Any:
+    """
+    Import a Python module by name and return the module object.
+
+    If the module cannot be imported, an error will be raised.
+
+    See also the directive: \\import
+    """
+    try:
+        return importlib.import_module(module_name)
+    except ImportError as e:
+        raise ImportError(
+            f'Failed to import python module "{module_name}": {e}') from e
+
+
+def csv(iterable: typing.Iterable):
+    """
+    Convert an iterable into a CSV formatted string.
+    """
+
+    return ','.join(str(item) for item in iterable)

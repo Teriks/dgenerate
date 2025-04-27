@@ -266,7 +266,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     of the dgenerate command line tool.
     """
 
-    sigmas: typing.Optional[typing.Sequence[_types.Floats]] = None
+    sigmas: typing.Optional[collections.abc.Sequence[_types.Floats]] = None
     """
     One or more lists of sigma values to try. This is supported
     when using a :py:attr:`RenderLoopConfig.scheduler_uri` that supports 
@@ -360,7 +360,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     this corresponds to the ``--second-model-guidance-scales`` argument of the dgenerate command line tool.
     """
 
-    sdxl_refiner_sigmas: typing.Optional[typing.Sequence[_types.Floats]] = None
+    sdxl_refiner_sigmas: typing.Optional[collections.abc.Sequence[_types.Floats]] = None
     """
     One or more lists of sigma values to try. This is supported
     when using a :py:attr:`RenderLoopConfig.second_model_scheduler_uri` that supports 
@@ -842,7 +842,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     This is supported for: ``--model-type torch-sd3``.
     """
 
-    ras_error_reset_steps: typing.Optional[typing.Sequence[_types.Integers]] = None
+    ras_error_reset_steps: typing.Optional[collections.abc.Sequence[_types.Integers]] = None
     """
     Error reset step patterns to try for RAS (Region-Adaptive Sampling).
     
