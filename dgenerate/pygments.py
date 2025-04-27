@@ -18,7 +18,6 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import importlib
 
 import pygments.lexer as _lexer
 import pygments.token as _token
@@ -28,48 +27,6 @@ This module provides a pygments lexer for the dgenerate config / shell language.
 
 This can be used for syntax highlighting.
 """
-
-
-def _get_ns_functions(name, ns=None):
-    if ns is None:
-        ns = name
-    module = importlib.import_module(name)
-
-    for member_name in dir(module):
-        member = getattr(module, member_name)
-
-        if hasattr(member, '__name__') and not member_name.startswith('_') and callable(member):
-            yield ns + '.' + member_name
-
-
-_ns_funcs = list(_get_ns_functions('glob')) + \
-            list(_get_ns_functions('numpy')) + \
-            list(_get_ns_functions('numpy', 'np')) + \
-            list(_get_ns_functions('os.path', 'path'))
-
-_DGENERATE_FUNCTIONS = sorted((
-    "abs", "align_size", "all", "any", "ascii", "bin", "bool", "bytearray", "bytes",
-    "callable", "chr", "complex", "cwd", "dict", "divmod", "download", "enumerate",
-    "filter", "first", "float", "format", "format_dtype", "format_model_type",
-    "format_prompt", "format_size", "frozenset", "gen_seeds", "getattr", "hasattr",
-    "hash", "hex", "int", "iter", "last", "len", "list", "map", "max", "min", "next",
-    "object", "oct", "ord", "pow", "pow2_size", "quote", "range", "repr", "reversed",
-    "round", "set", "size_is_aligned", "size_is_pow2", "slice", "sorted", "str",
-    "sum", "tuple", "type", "unquote", "zip", "have_feature", "platform", "frange"
-), key=lambda s: len(s), reverse=True)
-
-_DGENERATE_FUNCTIONS_NS = sorted(
-    map(lambda x: '({})(.)({})'.format(*x.split('.')), _ns_funcs), key=lambda s: len(s), reverse=True)
-
-_JINJA2_FUNCTIONS = sorted((
-    # Functions
-    'range', 'lipsum', 'cycler', 'joiner',
-
-    # Filters
-    'safe', 'capitalize', 'lower', 'upper', 'title', 'trim', 'striptags', 'urlencode',
-    'wordcount', 'replace', 'format', 'escape', 'tojson', 'join', 'sort', 'reverse',
-    'length', 'sum', 'random', 'batch', 'slice', 'first', 'last', 'default', 'groupby'
-), key=lambda s: len(s), reverse=True)
 
 # Define Jinja2 keywords
 _JINJA2_KEYWORDS = sorted((
@@ -88,8 +45,16 @@ _SETP_KEYWORDS = sorted((
 _ecos = r'(\\[^\s]|[^/\s\\#=;:{}"\'])'
 _comment_pattern = (r'(?<!\\)(#.*$)', _token.Comment.Single)
 _env_var_pattern = (r'\$(?:\w+|\{\w+\})|%[\w]+%', _token.Name.Constant)
-_jinja_block_pattern = (r'(\{%)(\s*)(\w+)',
-                        _lexer.bygroups(_token.String.Interpol, _token.Whitespace, _token.Keyword), 'jinja_block')
+
+_jinja_block_pattern = (
+    r'(\{%)(\s*)(\w+)',
+    _lexer.bygroups(
+        _token.String.Interpol,
+        _token.Whitespace,
+        _token.Keyword
+    ), 'jinja_block'
+)
+
 _jinja_comment_pattern = (r'(\{#)', _token.Comment.Multiline, 'jinja_comment')
 _jinja_interpolate_pattern = (r'(\{\{)', _token.String.Interpol, 'jinja_interpolate')
 _operators_punctuation_pattern = (r'[\[\]{}()=\\;,:]', _token.Operator)
@@ -102,18 +67,24 @@ _hexa_decimal_integer_pattern = (r'(?<!\w)0[xX][0-9a-fA-F]+(?!\w)', _token.Numbe
 _octal_integer_pattern = (r'(?<!\w)0[oO][0-7]+(?!\w)', _token.Number.Octal)
 _text_pattern = (r'[^=\s\[\]{}()$"\'`\\<&|;:,]+', _token.Text)
 _variable_names_pattern = (r'(?<!\w)[a-zA-Z_][a-zA-Z0-9_]*(?!\w)', _token.Name.Variable)
-_function_call_generic = (r'(?<!\w)([a-zA-Z_][a-zA-Z0-9_]*)(\()', _lexer.bygroups(_token.Name, _token.Operator))
 
-_http_pattern = (r'(?<!\w)(https?://(?:'  # Protocol
-                 r'(?:[a-zA-Z0-9\-]+\.)+[a-zA-Z]{2,6}|'  # Domain
-                 r'localhost|'  # Localhost
-                 r'(?:\d{1,3}\.){3}\d{1,3}|'  # IPv4
-                 r'\[[a-fA-F0-9:]+\])'  # IPv6
-                 r'(?::\d+)?'  # Optional port
-                 r'(?:/(\\[$%\']?|[a-zA-Z0-9\-._~%!$&\'()*+,=:@/])*)?'  # Path (including allowed shell escapes)
-                 r'(?:\?(\\[$%\']?|[a-zA-Z0-9\-._~%!$&\'()*+,=:@/?])*)?'  # Query parameters (including allowed shell escapes)
-                 r')',
-                 _token.String)
+_function_call_pattern = (
+    r'(?<!\w)([a-zA-Z_][a-zA-Z0-9_]*)(\()',
+    _lexer.bygroups(_token.Name.Function,
+                    _token.Operator)
+)
+
+_http_pattern = (
+    r'(?<!\w)(https?://(?:'  # Protocol
+    r'(?:[a-zA-Z0-9\-]+\.)+[a-zA-Z]{2,6}|'  # Domain
+    r'localhost|'  # Localhost
+    r'(?:\d{1,3}\.){3}\d{1,3}|'  # IPv4
+    r'\[[a-fA-F0-9:]+\])'  # IPv6
+    r'(?::\d+)?'  # Optional port
+    r'(?:/(\\[$%\']?|[a-zA-Z0-9\-._~%!$&\'()*+,=:@/])*)?'  # Path (including allowed shell escapes)
+    r'(?:\?(\\[$%\']?|[a-zA-Z0-9\-._~%!$&\'()*+,=:@/?])*)?'  # Query parameters (including allowed shell escapes)
+    r')', _token.String
+)
 
 _path_patterns = (
     _http_pattern,
@@ -277,6 +248,8 @@ class DgenerateLexer(_lexer.RegexLexer):
              _lexer.bygroups(_token.Name.Builtin, _token.Text.Whitespace), 'var_then_setp_value'),
             (r'(?<!\w)(\\import_plugins)(\s+)',
              _lexer.bygroups(_token.Name.Builtin, _token.Text.Whitespace), 'import_plugins_value'),
+            (r'(?<!\w)(\\import)(\s+)',
+             _lexer.bygroups(_token.Name.Builtin, _token.Text.Whitespace), 'import_value'),
             (r'(?<!\w)(\\unset|\\save_modules|\\use_modules|\\clear_modules)(\s+)',
              _lexer.bygroups(_token.Name.Builtin, _token.Text.Whitespace), 'var_then_root'),
             (r'(?<!\w)(\\[a-zA-Z_][a-zA-Z0-9_]*)', _lexer.bygroups(_token.Name.Builtin)),
@@ -299,6 +272,7 @@ class DgenerateLexer(_lexer.RegexLexer):
             *_path_patterns,
             _operators_punctuation_pattern,
             _operators_pattern,
+            _function_call_pattern,
             (r'"', _token.String.Double, 'double_string'),
             (r"'", _token.String.Single, 'single_string'),
             _text_pattern,
@@ -321,6 +295,7 @@ class DgenerateLexer(_lexer.RegexLexer):
             *_path_patterns,
             _operators_punctuation_pattern,
             _operators_pattern,
+            _function_call_pattern,
             (r'"', _token.String.Double, 'double_string'),
             (r"'", _token.String.Single, 'single_string'),
             _text_pattern,
@@ -337,10 +312,7 @@ class DgenerateLexer(_lexer.RegexLexer):
             _comment_pattern,
             _env_var_pattern,
             (r'\b(%s)\b' % '|'.join(_SETP_KEYWORDS), _token.Keyword),
-            (r'\b(%s)\b' % '|'.join(_DGENERATE_FUNCTIONS), _token.Name.Function),
-            *((r'\b%s\b' % fun, _lexer.bygroups(_token.Name.Variable, _token.Operator, _token.Name.Function))
-              for fun in _DGENERATE_FUNCTIONS_NS),
-            _function_call_generic,
+            _function_call_pattern,
             _variable_names_pattern,
             _jinja_block_pattern,
             _jinja_comment_pattern,
@@ -363,7 +335,7 @@ class DgenerateLexer(_lexer.RegexLexer):
             _comment_pattern,
             _env_var_pattern,
             *((p[0], _token.Keyword) for p in _path_patterns[1:4]),  # everything except http and file.ext
-            (_variable_names_pattern[0], _token.Keyword),  # module names are keywords
+            (_variable_names_pattern[0], _token.Keyword),  # plugin names are keywords
             (r'[.]', _token.Operator),  # namespace operator
             _jinja_block_pattern,
             _jinja_comment_pattern,
@@ -371,6 +343,32 @@ class DgenerateLexer(_lexer.RegexLexer):
             (r'"', _token.String.Double, 'double_string_import_plugins_value'),
             (r"'", _token.String.Single, 'single_string_import_plugins_value'),
             (r'\s+', _token.Whitespace),
+        ],
+        'import_value': [
+            (r'(\s*?\n\s*?)(-)', _lexer.bygroups(_token.Whitespace, _token.Operator)),
+            (r'\s*?\n', _token.Whitespace, 'root'),
+            (r'(\n\s*?)(-)', _lexer.bygroups(_token.Whitespace, _token.Operator)),
+            (r'\\[^\s]', _token.Escape),
+            (r'(\\)(\s*?\n)', _lexer.bygroups(_token.Operator, _token.Whitespace), 'import_value_escape'),
+            (r'(\\)(\s+)(#[^\n]*)', _lexer.bygroups(_token.Operator, _token.Whitespace, _token.Comment.Single),
+             'import_value_escape'),
+            _comment_pattern,
+            _env_var_pattern,
+            *((p[0], _token.Keyword) for p in _path_patterns[1:4]),  # everything except http and file.ext
+            (r'(?<!\.)as(?!\.)', _token.Keyword),  # 'as' keyword for imports - only when standalone
+            (_variable_names_pattern[0], _token.Name.Namespace),  # python module names are namespace
+            (r'[.]', _token.Operator),  # namespace operator
+            _jinja_block_pattern,
+            _jinja_comment_pattern,
+            _jinja_interpolate_pattern,
+            (r'"', _token.String.Double, 'double_string_import_value'),
+            (r"'", _token.String.Single, 'single_string_import_value'),
+            (r'\s+', _token.Whitespace),
+        ],
+        f'import_value_escape': [
+            (r'(#[^\n]*)(\s*\n)', _lexer.bygroups(_token.Comment.Single, _token.Whitespace)),
+            (r'(\s|\n)+', _token.Whitespace),
+            (r'(?<=[-\n\s.])', _token.Whitespace, 'import_value')
         ],
         f'import_plugins_value_escape': [
             (r'(#[^\n]*)(\s*\n)', _lexer.bygroups(_token.Comment.Single, _token.Whitespace)),
@@ -393,18 +391,14 @@ class DgenerateLexer(_lexer.RegexLexer):
         **_create_string_continue('single_string_setp_value', "'", 'setp_value'),
         **_create_string_continue('double_string_import_plugins_value', '"', 'import_plugins_value'),
         **_create_string_continue('single_string_import_plugins_value', "'", 'import_plugins_value'),
+        **_create_string_continue('double_string_import_value', '"', 'import_value'),
+        **_create_string_continue('single_string_import_value', "'", 'import_value'),
         'jinja_block': [
             # End of Jinja2 block statement
             (r'(\s*)(%\})', _lexer.bygroups(_token.Text, _token.String.Interpol), '#pop'),
 
-            # Function names
-            (r'\b(%s)\b' % '|'.join(_DGENERATE_FUNCTIONS), _token.Name.Function),
-            *((r'\b%s\b' % fun, _lexer.bygroups(_token.Name.Variable, _token.Operator, _token.Name.Function))
-              for fun in _DGENERATE_FUNCTIONS_NS),
-            _function_call_generic,
-
-            # Jinja2 Function names
-            (r'\b(%s)\b' % '|'.join(_JINJA2_FUNCTIONS), _token.Name.Function),
+            # Function calls
+            _function_call_pattern,
 
             # Jinja2 Keywords
             (r'\b(%s)\b' % '|'.join(_JINJA2_KEYWORDS), _token.Keyword),
@@ -438,14 +432,8 @@ class DgenerateLexer(_lexer.RegexLexer):
             # End of Jinja2 template expression
             (r'(\}\})', _token.String.Interpol, '#pop'),
 
-            # Function names
-            (r'\b(%s)\b' % '|'.join(_DGENERATE_FUNCTIONS), _token.Name.Function),
-            *((r'\b%s\b' % fun, _lexer.bygroups(_token.Name.Variable, _token.Operator, _token.Name.Function))
-              for fun in _DGENERATE_FUNCTIONS_NS),
-            _function_call_generic,
-
-            # Jinja2 Function names
-            (r'\b(%s)\b' % '|'.join(_JINJA2_FUNCTIONS), _token.Name.Function),
+            # Function calls
+            _function_call_pattern,
 
             # Jinja2 Keywords
             (r'\b(%s)\b' % '|'.join(_JINJA2_KEYWORDS), _token.Keyword),
