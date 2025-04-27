@@ -3015,11 +3015,11 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '-si', '--sigmas', action='store', nargs='+',
             default=None,
             metavar="CSV_FLOAT", type=_type_sigmas,
-            help="""One or more comma-separated lists (or singular values) of floating 
-                    point sigmas to try. This is supported when using a --scheduler 
-                    that supports setting sigmas. Sigma values control the noise schedule 
-                    in the diffusion process, allowing for fine-grained control over 
-                    how noise is added and removed during image generation. 
+            help="""One or more comma-separated lists (or singular values) of floating
+                    point sigmas to try. This is supported when using a --scheduler
+                    that supports setting sigmas. Sigma values control the noise schedule
+                    in the diffusion process, allowing for fine-grained control over
+                    how noise is added and removed during image generation.
                     
                     Example: --sigmas "1.0,0.8,0.6,0.4,0.2" 
                     
