@@ -546,7 +546,7 @@ class DgenerateConsole(tk.Tk):
                 self._input_text.clear()
                 self._input_text.text.insert('1.0', formatted_text)
         except Exception as e:
-            self._print(str(e), error=True)
+            self._write_stderr_output(str(e))
 
     def _set_theme(self, name):
         self._input_text.set_theme(name)
