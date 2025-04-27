@@ -21,8 +21,8 @@
 import os
 
 import PIL.Image
-import controlnet_aux as _cna
-import controlnet_aux.util as _cna_util
+import dgenerate.extras.controlnet_aux as _cna
+import dgenerate.extras.controlnet_aux.util as _cna_util
 import huggingface_hub
 import numpy
 import torch

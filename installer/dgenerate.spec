@@ -37,7 +37,6 @@ requires_extra_data_forced = [
     'bitsandbytes',
     'triton',
     'gpt4all',
-    'controlnet_aux',
     'fake_useragent',
     'fontTools',
     'antlr4',
@@ -54,7 +53,6 @@ requires_extra_data_forced = [
 require_source = {
     'dgenerate',
     'transformers',
-    'controlnet_aux',
     'diffusers',
     'triton',
     'bitsandbytes',

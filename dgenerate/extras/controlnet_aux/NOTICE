@@ -1,3 +1,6 @@
 This code is vendored from: https://github.com/huggingface/controlnet_aux/tree/master/src/controlnet_aux/pidi
 
 And includes the bugfix: https://github.com/huggingface/controlnet_aux/pull/109
+
+This also includes a compatibility fix for ZoeDepth
+so it can work with the latest version of timm

@@ -31,11 +31,9 @@ import diffusers.loaders.single_file_utils
 import huggingface_hub
 import torch.nn
 import torch.nn
-import transformers.utils.quantization_config
 import diffusers.quantizers.quantization_config
 
 import dgenerate.exceptions as _d_exceptions
-import dgenerate.extras.diffusers
 import dgenerate.extras.kolors
 import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
@@ -1693,7 +1691,7 @@ def get_torch_pipeline_class(
                     else:
                         if sdxl_controlnet_union:
                             pipeline_class = \
-                                dgenerate.extras.diffusers.StableDiffusionXLControlNetUnionPipeline
+                                diffusers.StableDiffusionXLControlNetUnionPipeline
                         else:
                             pipeline_class = diffusers.StableDiffusionXLControlNetPipeline
                 else:
@@ -1781,7 +1779,7 @@ def get_torch_pipeline_class(
                     else:
                         if sdxl_controlnet_union:
                             pipeline_class = \
-                                dgenerate.extras.diffusers.StableDiffusionXLControlNetUnionImg2ImgPipeline
+                                diffusers.StableDiffusionXLControlNetUnionImg2ImgPipeline
                         else:
                             pipeline_class = diffusers.StableDiffusionXLControlNetImg2ImgPipeline
                 else:
@@ -1868,7 +1866,7 @@ def get_torch_pipeline_class(
                     else:
                         if sdxl_controlnet_union:
                             pipeline_class = \
-                                dgenerate.extras.diffusers.StableDiffusionXLControlNetUnionInpaintPipeline
+                                diffusers.StableDiffusionXLControlNetUnionInpaintPipeline
                         else:
                             pipeline_class = diffusers.StableDiffusionXLControlNetInpaintPipeline
                 else:

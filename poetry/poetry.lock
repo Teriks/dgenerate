@@ -680,32 +680,6 @@ test = ["Pillow", "contourpy[test-no-images]", "matplotlib"]
 test-no-images = ["pytest", "pytest-cov", "pytest-rerunfailures", "pytest-xdist", "wurlitzer"]
 
 [[package]]
-name = "controlnet-aux"
-version = "0.0.9"
-description = "Auxillary models for controlnet"
-optional = false
-python-versions = ">=3.7.0"
-groups = ["main"]
-files = [
-    {file = "controlnet_aux-0.0.9-py3-none-any.whl", hash = "sha256:c0401e0f1992562889f15865ede34c0e9b7fbc432aed2d19f7de461a524cc9d8"},
-    {file = "controlnet_aux-0.0.9.tar.gz", hash = "sha256:6c28352e6fe9b3324d6b1288d94d1c2586c6e2fc9f58df9e47297ea6a86fd560"},
-]
-
-[package.dependencies]
-einops = "*"
-filelock = "*"
-huggingface-hub = "*"
-importlib-metadata = "*"
-numpy = "*"
-opencv-python-headless = "*"
-Pillow = "*"
-scikit-image = "*"
-scipy = "*"
-timm = "<=0.6.7"
-torch = "*"
-torchvision = "*"
-
-[[package]]
 name = "ctranslate2"
 version = "4.5.0"
 description = "Fast inference engine for Transformer models"
@@ -3840,18 +3814,21 @@ zarr = ["fsspec", "zarr (<3)"]
 
 [[package]]
 name = "timm"
-version = "0.6.7"
-description = "(Unofficial) PyTorch Image Models"
+version = "1.0.15"
+description = "PyTorch Image Models"
 optional = false
-python-versions = ">=3.6"
+python-versions = ">=3.8"
 groups = ["main"]
 files = [
-    {file = "timm-0.6.7-py3-none-any.whl", hash = "sha256:4bbd7a5c9ae462ec7fec3d99ffc62ac2012010d755248e3de778d50bce5f6186"},
-    {file = "timm-0.6.7.tar.gz", hash = "sha256:340f907906695092cf53fe01a476aa14ad15763545b654bc122ea0daef23071f"},
+    {file = "timm-1.0.15-py3-none-any.whl", hash = "sha256:5a3dc460c24e322ecc7fd1f3e3eb112423ddee320cb059cc1956fbc9731748ef"},
+    {file = "timm-1.0.15.tar.gz", hash = "sha256:756a3bc30c96565f056e608a9b559daed904617eaadb6be536f96874879b1055"},
 ]
 
 [package.dependencies]
-torch = ">=1.4"
+huggingface_hub = "*"
+pyyaml = "*"
+safetensors = "*"
+torch = "*"
 torchvision = "*"
 
 [[package]]
@@ -4570,4 +4547,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.13"
-content-hash = "73af49b99c1920e9c119e25f89db7621d25ec884ff65866f378b71259f8bc949"
+content-hash = "4237285c190e97628031918b8cf2d1b9e7486f8e0fffb2d34064536e94da8abf"

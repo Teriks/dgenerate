@@ -8,7 +8,7 @@ from einops import rearrange
 from huggingface_hub import hf_hub_download
 from PIL import Image
 
-from controlnet_aux.util import HWC3, nms, resize_image, safe_step
+from ..util import HWC3, nms, resize_image, safe_step
 from .model import pidinet
 
 
