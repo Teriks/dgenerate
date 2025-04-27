@@ -19,9 +19,9 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import PIL.Image
-import controlnet_aux as _cna
-import controlnet_aux.open_pose as _cna_open_pose
-import controlnet_aux.util as _cna_util
+import dgenerate.extras.controlnet_aux as _cna
+import dgenerate.extras.controlnet_aux.open_pose as _cna_open_pose
+import dgenerate.extras.controlnet_aux.util as _cna_util
 import numpy
 import torch
 

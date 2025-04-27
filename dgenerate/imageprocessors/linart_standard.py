@@ -20,7 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import PIL.Image
-import controlnet_aux.util as _cna_util
+import dgenerate.extras.controlnet_aux.util as _cna_util
 import cv2
 import numpy
 
