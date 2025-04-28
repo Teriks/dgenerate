@@ -1,0 +1,38 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 5.0.0
+
+stabilityai/stable-cascade-prior
+--model-type torch-s-cascade
+--dtype bfloat16
+--variant bf16
+--model-cpu-offload
+--s-cascade-decoder stabilityai/stable-cascade;dtype=float16
+--second-model-cpu-offload
+--inference-steps 20
+--guidance-scales 4
+--second-model-inference-steps 10
+--second-model-guidance-scales 0
+--gen-seeds 1
+--output-size 1024
+--prompt-weighter compel
+--prompts "Photo+ of a horse+ standing near the (open door)+ of a (red barn)+, (high resolution)++; artwork"
+--output-path compel
+
+# Translate our prompt into compel from Stable Diffusion Web UI syntax
+
+stabilityai/stable-cascade-prior
+--model-type torch-s-cascade
+--dtype bfloat16
+--variant bf16
+--model-cpu-offload
+--s-cascade-decoder stabilityai/stable-cascade;dtype=float16
+--second-model-cpu-offload
+--inference-steps 20
+--guidance-scales 4
+--second-model-inference-steps 10
+--second-model-guidance-scales 0
+--gen-seeds 1
+--output-size 1024
+--prompt-weighter compel;syntax=sdwui
+--prompts "(Photo) of a (horse) standing near the (open door) of a (red barn), (high resolution:1.2); artwork"
+--output-path compel_sdwui
