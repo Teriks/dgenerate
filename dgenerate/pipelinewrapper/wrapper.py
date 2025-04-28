@@ -2162,11 +2162,10 @@ class DiffusionPipelineWrapper:
 
         if user_args.clip_skip is not None and user_args.clip_skip > 0:
             prompt_weighter_name = getattr(user_args, 'prompt_weighter', None)
-            if prompt_weighter_name:
-                prompt_weighter_name = prompt_weighter_name.split(';')[0].strip()
-                if prompt_weighter_name not in {'compel', 'sd-embed'}:
-                    raise _pipelines.UnsupportedPipelineConfigError(
-                        'Stable Cascade only supports clip skip with the compel and sd-embed prompt weighters.')
+            if not prompt_weighter_name:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'Stable Cascade only supports clip skip through '
+                    'prompt weighters (such as compel or sd-embed).')
 
         if user_args.sigmas is not None:
             raise _pipelines.UnsupportedPipelineConfigError('Stable Cascade does not support sigmas.')
