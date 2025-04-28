@@ -24,7 +24,7 @@ import inspect
 import re
 import typing
 
-import compel
+from dgenerate.extras import compel as compel
 import torch
 
 import dgenerate.messages as _messages
@@ -117,36 +117,6 @@ def _translate_sdwui_to_compel(text: str) -> str:
     return _attention_to_compel_prompt(attention)
 
 
-class _SCascadeEmbeddingsProvider(compel.EmbeddingsProvider):
-
-    def _encode_token_ids_to_embeddings(self, token_ids: torch.Tensor,
-                                        attention_mask: typing.Optional[torch.Tensor] = None) -> torch.Tensor:
-        text_encoder_output = self.text_encoder(token_ids,
-                                                attention_mask,
-                                                output_hidden_states=True,
-                                                return_dict=True)
-
-        return text_encoder_output.hidden_states[-1]
-
-    def get_pooled_embeddings(self, texts: typing.List[str], attention_mask: typing.Optional[torch.Tensor] = None,
-                              device: typing.Optional[str] = None) -> typing.Optional[torch.Tensor]:
-        device = device or self.device
-
-        token_ids = self.get_token_ids(texts, padding="max_length", truncation_override=True)
-
-        token_ids = torch.tensor(token_ids, dtype=torch.long).to(device)
-
-        text_encoder_output = self.text_encoder(token_ids, attention_mask, return_dict=True)
-
-        pooled = text_encoder_output.text_embeds
-
-        return pooled.unsqueeze(1)
-
-
-def _compel_s_cascade_patch(compel_obj: compel.Compel):
-    compel_obj.conditioning_provider.__class__ = _SCascadeEmbeddingsProvider
-
-
 class CompelPromptWeighter(_promptweighter.PromptWeighter):
     """
     Implements prompt weighting syntax for Stable Diffusion 1/2 and Stable Diffusion XL
@@ -208,6 +178,12 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
         self._tensors = list()
         self._syntax = syntax
 
+    def get_extra_supported_args(self) -> list[str]:
+        if self.model_type == _enums.ModelType.TORCH_S_CASCADE:
+            return ['clip_skip']
+        else:
+            return []
+
     @torch.inference_mode()
     def translate_to_embeds(self,
                             pipeline,
@@ -246,8 +222,6 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
                 f'Prompt weighting not supported for --model-type: {_enums.get_model_type_string(self.model_type)}')
 
         output = dict(args)
-
-        clip_skip = args.get('clip_skip', 0)
 
         positive = args.get('prompt')
         negative = args.get('negative_prompt')
@@ -304,72 +278,62 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
         self.move_text_encoders(pipeline, device)
 
         if pipeline.__class__.__name__.startswith('StableDiffusionXL'):
+            clip_skip = args.get('clip_skip', None)
 
             if pipeline.tokenizer is not None:
 
-                original_clip_layers = pipeline.text_encoder.text_model.encoder.layers
-                original_clip_layers_2 = pipeline.text_encoder_2.text_model.encoder.layers
+                if positive_2 or negative_2:
+                    compel1 = compel.Compel(
+                        tokenizer=pipeline.tokenizer,
+                        text_encoder=pipeline.text_encoder,
+                        returned_embeddings_type=
+                        compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
+                        requires_pooled=False,
+                        truncate_long_prompts=False,
+                        device=device,
+                        clip_skip=clip_skip
+                    )
 
-                try:
-                    if clip_skip > 0:
-                        pipeline.text_encoder.text_model.encoder.layers = original_clip_layers[:-clip_skip]
-                        pipeline.text_encoder_2.text_model.encoder.layers = original_clip_layers_2[:-clip_skip]
+                    _memory.torch_gc()
 
-                    if positive_2 or negative_2:
-                        compel1 = compel.Compel(
-                            tokenizer=pipeline.tokenizer,
-                            text_encoder=pipeline.text_encoder,
-                            returned_embeddings_type=
-                            compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
-                            requires_pooled=False,
-                            truncate_long_prompts=False,
-                            device=device
-                        )
+                    compel2 = compel.Compel(
+                        tokenizer=pipeline.tokenizer_2,
+                        text_encoder=pipeline.text_encoder_2,
+                        returned_embeddings_type=
+                        compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
+                        requires_pooled=True,
+                        truncate_long_prompts=False,
+                        device=device,
+                        clip_skip=clip_skip
+                    )
 
-                        _memory.torch_gc()
+                    conditioning1 = compel1(positive)
+                    conditioning2, pos_pooled = compel2(positive_2)
+                    pos_conditioning = torch.cat((conditioning1, conditioning2), dim=-1)
 
-                        compel2 = compel.Compel(
-                            tokenizer=pipeline.tokenizer_2,
-                            text_encoder=pipeline.text_encoder_2,
-                            returned_embeddings_type=
-                            compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
-                            requires_pooled=True,
-                            truncate_long_prompts=False,
-                            device=device
-                        )
+                    conditioning1 = compel1(negative)
+                    conditioning2, neg_pooled = compel2(negative_2)
+                    neg_conditioning = torch.cat((conditioning1, conditioning2), dim=-1)
 
-                        conditioning1 = compel1(positive)
-                        conditioning2, pos_pooled = compel2(positive_2)
-                        pos_conditioning = torch.cat((conditioning1, conditioning2), dim=-1)
+                    pos_conditioning, neg_conditioning = compel1.pad_conditioning_tensors_to_same_length(
+                        [pos_conditioning, neg_conditioning])
+                else:
+                    compel1 = compel.Compel(
+                        tokenizer=[pipeline.tokenizer, pipeline.tokenizer_2],
+                        text_encoder=[pipeline.text_encoder, pipeline.text_encoder_2],
+                        returned_embeddings_type=
+                        compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
+                        requires_pooled=[False, True],
+                        truncate_long_prompts=False,
+                        device=device,
+                        clip_skip=clip_skip
+                    )
 
-                        conditioning1 = compel1(negative)
-                        conditioning2, neg_pooled = compel2(negative_2)
-                        neg_conditioning = torch.cat((conditioning1, conditioning2), dim=-1)
+                    pos_conditioning, pos_pooled = compel1(positive)
+                    neg_conditioning, neg_pooled = compel1(negative)
 
-                        pos_conditioning, neg_conditioning = compel1.pad_conditioning_tensors_to_same_length(
-                            [pos_conditioning, neg_conditioning])
-                    else:
-                        compel1 = compel.Compel(
-                            tokenizer=[pipeline.tokenizer, pipeline.tokenizer_2],
-                            text_encoder=[pipeline.text_encoder, pipeline.text_encoder_2],
-                            returned_embeddings_type=
-                            compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
-                            requires_pooled=[False, True],
-                            truncate_long_prompts=False,
-                            device=device
-                        )
-
-                        pos_conditioning, pos_pooled = compel1(positive)
-                        neg_conditioning, neg_pooled = compel1(negative)
-
-                        pos_conditioning, neg_conditioning = compel1.pad_conditioning_tensors_to_same_length(
-                            [pos_conditioning, neg_conditioning])
-                finally:
-                    # leaving this modified would really
-                    # screw up other stuff in dgenerate :)
-                    if clip_skip > 0:
-                        pipeline.text_encoder.text_model.encoder.layers = original_clip_layers
-                        pipeline.text_encoder_2.text_model.encoder.layers = original_clip_layers_2
+                    pos_conditioning, neg_conditioning = compel1.pad_conditioning_tensors_to_same_length(
+                        [pos_conditioning, neg_conditioning])
 
                 _memory.torch_gc()
 
@@ -380,67 +344,53 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
                         f'"compel" for --second-model-second-prompts, that prompt is being ignored.'
                     )
 
-                original_clip_layers_2 = pipeline.text_encoder_2.text_model.encoder.layers
+                compel2 = compel.Compel(
+                    tokenizer=pipeline.tokenizer_2,
+                    text_encoder=pipeline.text_encoder_2,
+                    returned_embeddings_type=
+                    compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
+                    requires_pooled=True,
+                    truncate_long_prompts=False,
+                    device=device,
+                    clip_skip=clip_skip
+                )
 
-                try:
-                    if clip_skip > 0:
-                        pipeline.text_encoder_2.text_model.encoder.layers = original_clip_layers_2[:-clip_skip]
-
-                    compel2 = compel.Compel(
-                        tokenizer=pipeline.tokenizer_2,
-                        text_encoder=pipeline.text_encoder_2,
-                        returned_embeddings_type=
-                        compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
-                        requires_pooled=True,
-                        truncate_long_prompts=False,
-                        device=device
-                    )
-
-                    pos_conditioning, pos_pooled = compel2(positive)
-                    neg_conditioning, neg_pooled = compel2(negative)
-                finally:
-                    # leaving this modified would really
-                    # screw up other stuff in dgenerate :)
-                    if clip_skip > 0:
-                        pipeline.text_encoder_2.text_model.encoder.layers = original_clip_layers_2
+                pos_conditioning, pos_pooled = compel2(positive)
+                neg_conditioning, neg_pooled = compel2(negative)
 
                 pos_conditioning, neg_conditioning = compel2.pad_conditioning_tensors_to_same_length(
                     [pos_conditioning, neg_conditioning])
 
                 _memory.torch_gc()
         elif pipeline.__class__.__name__.startswith('StableCascade'):
-            original_clip_layers = pipeline.text_encoder.text_model.encoder.layers
+            # needs to be consumed as the pipeline
+            # does not have this argument
+            if 'clip_skip' in output:
+                clip_skip = output.pop('clip_skip')
+            else:
+                clip_skip = None
 
-            try:
+            compel1 = compel.Compel(
+                tokenizer=pipeline.tokenizer,
+                text_encoder=pipeline.text_encoder,
+                requires_pooled=True,
+                returned_embeddings_type=compel.ReturnedEmbeddingsType.STABLE_CASCADE,
+                truncate_long_prompts=False,
+                device=device,
+                clip_skip=clip_skip
+            )
 
-                if clip_skip > 0:
-                    pipeline.text_encoder.text_model.encoder.layers = original_clip_layers[:-clip_skip]
+            pos_conditioning, pos_pooled = compel1(positive)
+            neg_conditioning, neg_pooled = compel1(negative)
 
-                compel1 = compel.Compel(
-                    tokenizer=pipeline.tokenizer,
-                    text_encoder=pipeline.text_encoder,
-                    requires_pooled=True,
-                    truncate_long_prompts=False,
-                    device=device
-                )
-
-                _compel_s_cascade_patch(compel1)
-
-                pos_conditioning, pos_pooled = compel1(positive)
-                neg_conditioning, neg_pooled = compel1(negative)
-
-                pos_conditioning, neg_conditioning = compel1.pad_conditioning_tensors_to_same_length(
-                    [pos_conditioning, neg_conditioning])
-
-            finally:
-                # leaving this modified would really
-                # screw up other stuff in dgenerate :)
-                if clip_skip > 0:
-                    pipeline.text_encoder.text_model.encoder.layers = original_clip_layers
+            pos_conditioning, neg_conditioning = compel1.pad_conditioning_tensors_to_same_length(
+                [pos_conditioning, neg_conditioning])
 
             _memory.torch_gc()
 
         elif pipeline.__class__.__name__.startswith('StableDiffusion'):
+            clip_skip = args.get('clip_skip', 0)
+
             embedding_type = \
                 compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NORMALIZED \
                     if clip_skip > 0 and pipeline.text_encoder.config.hidden_act == 'quick_gelu' \
@@ -450,27 +400,16 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
             _messages.debug_log('Compel text_encoder.config.hidden_act:', pipeline.text_encoder.config.hidden_act)
             _messages.debug_log('Compel Embedding Type:', embedding_type)
 
-            original_clip_layers = pipeline.text_encoder.text_model.encoder.layers
+            compel1 = compel.Compel(
+                tokenizer=pipeline.tokenizer,
+                text_encoder=pipeline.text_encoder,
+                truncate_long_prompts=False,
+                returned_embeddings_type=embedding_type,
+                device=device,
+                clip_skip=clip_skip)
 
-            try:
-                if clip_skip > 0:
-                    pipeline.text_encoder.text_model.encoder.layers = original_clip_layers[:-clip_skip]
-
-                compel1 = compel.Compel(
-                    tokenizer=pipeline.tokenizer,
-                    text_encoder=pipeline.text_encoder,
-                    truncate_long_prompts=False,
-                    returned_embeddings_type=embedding_type,
-                    device=device)
-
-                pos_conditioning = compel1(positive)
-                neg_conditioning = compel1(negative)
-
-            finally:
-                # leaving this modified would really
-                # screw up other stuff in dgenerate :)
-                if clip_skip > 0:
-                    pipeline.text_encoder.text_model.encoder.layers = original_clip_layers
+            pos_conditioning = compel1(positive)
+            neg_conditioning = compel1(negative)
 
             pos_conditioning, neg_conditioning = compel1.pad_conditioning_tensors_to_same_length(
                 [pos_conditioning, neg_conditioning])

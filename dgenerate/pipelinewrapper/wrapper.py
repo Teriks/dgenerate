@@ -1847,7 +1847,8 @@ class DiffusionPipelineWrapper:
             'prompt_2': second_prompt_arg,
             'negative_prompt_2': second_prompt_arg,
             'prompt_3': 'third_prompt',
-            'negative_prompt_3': 'third_prompt'
+            'negative_prompt_3': 'third_prompt',
+            'clip_skip': 'clip_skip'
         }
 
         prompt_weighter_extra_args = prompt_weighter.get_extra_supported_args()
@@ -1866,10 +1867,15 @@ class DiffusionPipelineWrapper:
                 if user_value:
                     pipeline_args[arg_name] = user_value.negative
                     poppable_args.append(arg_name)
-            else:
+            elif 'prompt' in arg_name:
                 user_value = getattr(diffusion_args, source, None)
                 if user_value:
                     pipeline_args[arg_name] = user_value.positive
+                    poppable_args.append(arg_name)
+            else:
+                user_value = getattr(diffusion_args, source, None)
+                if user_value:
+                    pipeline_args[arg_name] = user_value
                     poppable_args.append(arg_name)
 
         return poppable_args
@@ -2155,7 +2161,12 @@ class DiffusionPipelineWrapper:
         self._check_for_invalid_model_specific_opts(user_args)
 
         if user_args.clip_skip is not None and user_args.clip_skip > 0:
-            raise _pipelines.UnsupportedPipelineConfigError('Stable Cascade does not support clip skip.')
+            prompt_weighter_name = getattr(user_args, 'prompt_weighter', None)
+            if prompt_weighter_name:
+                prompt_weighter_name = prompt_weighter_name.split(';')[0].strip()
+                if prompt_weighter_name not in {'compel', 'sd-embed'}:
+                    raise _pipelines.UnsupportedPipelineConfigError(
+                        'Stable Cascade only supports clip skip with the compel and sd-embed prompt weighters.')
 
         if user_args.sigmas is not None:
             raise _pipelines.UnsupportedPipelineConfigError('Stable Cascade does not support sigmas.')

@@ -1729,13 +1729,20 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'{a_namer("model_path")} must be specified')
 
         # Check clip skip compatibility
-        if self.clip_skips and not (self.model_type == _pipelinewrapper.ModelType.TORCH or
-                                    self.model_type == _pipelinewrapper.ModelType.TORCH_SDXL or
-                                    self.model_type == _pipelinewrapper.ModelType.TORCH_SD3):
-            raise RenderLoopConfigError(
-                f'you cannot specify {a_namer("clip_skips")} for '
-                f'{a_namer("model_type")} values other than '
-                f'"torch", "torch-sdxl", or "torch-sd3"')
+        if self.clip_skips:
+            if (
+                    self.model_type != _pipelinewrapper.ModelType.TORCH and
+                    self.model_type != _pipelinewrapper.ModelType.TORCH_SDXL and
+                    self.model_type != _pipelinewrapper.ModelType.TORCH_SD3 and
+                    self.prompt_weighter_uri is None
+            ):
+                # prompt weighter may be able to handle clip skips
+                # when the pipeline cannot, such is the case for StableCascade
+                raise RenderLoopConfigError(
+                    f'you cannot specify {a_namer("clip_skips")} for '
+                    f'{a_namer("model_type")} values other than '
+                    f'"torch", "torch-sdxl", or "torch-sd3" when a '
+                    f'{a_namer("prompt_weighter_uri")} is not specified.')
 
     def _check_model_specific_requirements(self, a_namer: typing.Callable[[str], str]):
         """Check specific requirements for different model types."""

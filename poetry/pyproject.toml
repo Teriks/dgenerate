@@ -55,7 +55,6 @@ toml = "^0.10.2"
 tklinenums = "^1.7.1"
 pyrfc6266 = "^1.0.2"
 protobuf = "^6.30.2"
-compel = "^2.0.3"
 lark = "^1.2.2"
 packaging = "^24.2"
 
