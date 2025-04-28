@@ -72,9 +72,8 @@ Install dgenerate
     # * ncnn
     # * gpt4all
     # * gpt4all_cuda
-    # * quant (bitsandbytes & torchao)
+    # * quant (bitsandbytes)
     # * bitsandbytes (individual)
-    # * torchao (individual)
 
     # install with just support for torch
 

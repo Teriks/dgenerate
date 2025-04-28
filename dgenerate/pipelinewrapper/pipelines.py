@@ -1984,6 +1984,11 @@ def _create_torch_diffusion_pipeline(
                 'when loading from a Hugging Face repo.'
             )
 
+    if quantizer_uri and quantizer_uri.split(';')[0].strip() in {'bnb', 'bitsandbytes'}:
+        if dtype is _enums.DataType.AUTO:
+            # Default to all modules to float32 if no dtype is specified when using bitsandbytes
+            dtype = _enums.DataType.FLOAT32
+
     if original_config:
         original_config = _util.download_non_hf_config(original_config)
 

@@ -28,7 +28,6 @@ import dgenerate.memoize as _memoize
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.uris.bnbquantizeruri as _bnbquantizeruri
-import dgenerate.pipelinewrapper.uris.torchaoquantizeruri as _torchaoquantizeruri
 import dgenerate.torchutil as _torchutil
 import dgenerate.types as _types
 import dgenerate.textprocessing as _textprocessing
@@ -154,12 +153,6 @@ def get_quantizer_uri_class(uri: str, exception: type[Exception] = ValueError):
                 f'Cannot load quantization backend bitsandbytes, '
                 f'as bitsandbytes is not installed.')
         return _bnbquantizeruri.BNBQuantizerUri
-    elif concept == 'torchao':
-        if not diffusers.utils.is_torchao_available():
-            raise exception(
-                f'Cannot load quantization backend torchao, '
-                f'as torchao is not installed.')
-        return _torchaoquantizeruri.TorchAOQuantizerUri
     else:
         raise exception(f'Unknown quantization backend: {concept}')
 
