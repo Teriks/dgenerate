@@ -132,6 +132,7 @@ class PromptWeighter(_plugin.Plugin, abc.ABC):
         * ``negative_prompt_2``
         * ``prompt_3``
         * ``negative_prompt_3``
+        * ``clip_skip``
 
         If you return a value outside the set of values listed here,
         a :py:exc:`RuntimeError` will be raised by :py:class:`dgenerate.pipelinewrapper.DiffusionPipelineWrapper`

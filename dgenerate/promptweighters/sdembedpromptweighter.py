@@ -96,6 +96,12 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
 
         self._tensors = list()
 
+    def get_extra_supported_args(self) -> list[str]:
+        if self.model_type == _enums.ModelType.TORCH_S_CASCADE:
+            return ['clip_skip']
+        else:
+            return []
+
     @torch.inference_mode()
     def translate_to_embeds(self,
                             pipeline,
@@ -135,8 +141,6 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
                 f'Prompt weighting not supported for --model-type: {_enums.get_model_type_string(self.model_type)}')
 
         output = dict(args)
-
-        clip_skip = args.get('clip_skip', 0)
 
         positive = args.get('prompt')
         negative = args.get('negative_prompt')
@@ -185,6 +189,7 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
         self.move_text_encoders(pipeline, device)
 
         if pipeline.__class__.__name__.startswith('StableDiffusion3'):
+            clip_skip = output.get('clip_skip', None)
 
             if positive_2 or negative_2:
                 _messages.warning(
@@ -192,94 +197,64 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
                     f'"sd-embed" for --second-prompts, that prompt is being ignored.'
                 )
 
-            original_clip_layers = pipeline.text_encoder.text_model.encoder.layers
-            original_clip_layers_2 = pipeline.text_encoder_2.text_model.encoder.layers
-
-            try:
-                if clip_skip > 0:
-                    pipeline.text_encoder.text_model.encoder.layers = original_clip_layers[:-clip_skip]
-                    pipeline.text_encoder_2.text_model.encoder.layers = original_clip_layers_2[:-clip_skip]
-
-                pos_conditioning, \
-                    neg_conditioning, \
-                    pos_pooled, \
-                    neg_pooled = _sd_embed.get_weighted_text_embeddings_sd3(
-                    pipe=pipeline,
-                    prompt=positive,
-                    neg_prompt=negative,
-                    pad_last_block=True,
-                    use_t5_encoder=pipeline.tokenizer_3 is not None,
-                    device=device)
-
-            finally:
-                # leaving this modified would really
-                # screw up other stuff in dgenerate :)
-                if clip_skip > 0:
-                    pipeline.text_encoder.text_model.encoder.layers = original_clip_layers
-                    pipeline.text_encoder_2.text_model.encoder.layers = original_clip_layers_2
+            pos_conditioning, \
+                neg_conditioning, \
+                pos_pooled, \
+                neg_pooled = _sd_embed.get_weighted_text_embeddings_sd3(
+                pipe=pipeline,
+                prompt=positive,
+                neg_prompt=negative,
+                pad_last_block=True,
+                use_t5_encoder=pipeline.tokenizer_3 is not None,
+                clip_skip=clip_skip,
+                device=device)
 
         elif pipeline.__class__.__name__.startswith('StableCascade'):
+            # needs to be consumed as the pipeline
+            # does not have this argument
+            if 'clip_skip' in output:
+                clip_skip = output.pop('clip_skip')
+            else:
+                clip_skip = None
 
-            original_clip_layers = pipeline.text_encoder.text_model.encoder.layers
-
-            try:
-                if clip_skip > 0:
-                    pipeline.text_encoder.text_model.encoder.layers = original_clip_layers[:-clip_skip]
-
-                pos_conditioning, \
-                    neg_conditioning, \
-                    pos_pooled, \
-                    neg_pooled = _sd_embed.get_weighted_text_embeddings_s_cascade(
-                    pipe=pipeline,
-                    prompt=positive,
-                    neg_prompt=negative,
-                    device=device)
-
-            finally:
-                # leaving this modified would really
-                # screw up other stuff in dgenerate :)
-                if clip_skip > 0:
-                    pipeline.text_encoder.text_model.encoder.layers = original_clip_layers
+            pos_conditioning, \
+                neg_conditioning, \
+                pos_pooled, \
+                neg_pooled = _sd_embed.get_weighted_text_embeddings_s_cascade(
+                pipe=pipeline,
+                prompt=positive,
+                neg_prompt=negative,
+                clip_skip=clip_skip,
+                device=device)
 
         elif pipeline.__class__.__name__.startswith('StableDiffusionXL'):
+            clip_skip = output.get('clip_skip', None)
 
             if pipeline.tokenizer is not None:
 
-                original_clip_layers = pipeline.text_encoder.text_model.encoder.layers
-                original_clip_layers_2 = pipeline.text_encoder_2.text_model.encoder.layers
+                if positive_2 or negative_2:
+                    pos_conditioning, \
+                        neg_conditioning, \
+                        pos_pooled, \
+                        neg_pooled = _sd_embed.get_weighted_text_embeddings_sdxl_2p(
+                        pipe=pipeline,
+                        prompt=positive,
+                        prompt_2=positive_2 if positive_2 else None,
+                        neg_prompt=negative,
+                        neg_prompt_2=negative_2 if negative_2 else None,
+                        clip_skip=clip_skip,
+                        device=device)
+                else:
+                    pos_conditioning, \
+                        neg_conditioning, \
+                        pos_pooled, \
+                        neg_pooled = _sd_embed.get_weighted_text_embeddings_sdxl(
+                        pipe=pipeline,
+                        prompt=positive,
+                        neg_prompt=negative,
+                        clip_skip=clip_skip,
+                        device=device)
 
-                try:
-                    if clip_skip > 0:
-                        pipeline.text_encoder.text_model.encoder.layers = original_clip_layers[:-clip_skip]
-                        pipeline.text_encoder_2.text_model.encoder.layers = original_clip_layers_2[:-clip_skip]
-
-                    if positive_2 or negative_2:
-                        pos_conditioning, \
-                            neg_conditioning, \
-                            pos_pooled, \
-                            neg_pooled = _sd_embed.get_weighted_text_embeddings_sdxl_2p(
-                            pipe=pipeline,
-                            prompt=positive,
-                            prompt_2=positive_2 if positive_2 else None,
-                            neg_prompt=negative,
-                            neg_prompt_2=negative_2 if negative_2 else None,
-                            device=device)
-                    else:
-                        pos_conditioning, \
-                            neg_conditioning, \
-                            pos_pooled, \
-                            neg_pooled = _sd_embed.get_weighted_text_embeddings_sdxl(
-                            pipe=pipeline,
-                            prompt=positive,
-                            neg_prompt=negative,
-                            device=device)
-
-                finally:
-                    # leaving this modified would really
-                    # screw up other stuff in dgenerate :)
-                    if clip_skip > 0:
-                        pipeline.text_encoder.text_model.encoder.layers = original_clip_layers
-                        pipeline.text_encoder_2.text_model.encoder.layers = original_clip_layers_2
             else:
                 if positive_2 or negative_2:
                     _messages.warning(
@@ -287,27 +262,18 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
                         f'"sd-embed" for --second-model-second-prompts, that prompt is being ignored.'
                     )
 
-                original_clip_layers_2 = pipeline.text_encoder_2.text_model.encoder.layers
-
-                try:
-                    if clip_skip > 0:
-                        pipeline.text_encoder_2.text_model.encoder.layers = original_clip_layers_2[:-clip_skip]
-
-                    pos_conditioning, \
-                        neg_conditioning, \
-                        pos_pooled, \
-                        neg_pooled = _sd_embed.get_weighted_text_embeddings_sdxl_refiner(
-                        pipe=pipeline,
-                        prompt=positive,
-                        neg_prompt=negative,
-                        device=device)
-                finally:
-                    # leaving this modified would really
-                    # screw up other stuff in dgenerate :)
-                    if clip_skip > 0:
-                        pipeline.text_encoder_2.text_model.encoder.layers = original_clip_layers_2
+                pos_conditioning, \
+                    neg_conditioning, \
+                    pos_pooled, \
+                    neg_pooled = _sd_embed.get_weighted_text_embeddings_sdxl_refiner(
+                    pipe=pipeline,
+                    prompt=positive,
+                    neg_prompt=negative,
+                    clip_skip=clip_skip,
+                    device=device)
 
         elif pipeline.__class__.__name__.startswith('StableDiffusion'):
+            clip_skip = output.get('clip_skip', 0)
 
             pos_conditioning, \
                 neg_conditioning = _sd_embed.get_weighted_text_embeddings_sd15(

@@ -37,7 +37,7 @@ order: 4
 @float[{"label":"PAG Scale", "arg":"--pag-scales", "min":0}]
 @float[{"label":"Adaptive PAG Scale", "arg":"--pag-adaptive-scales", "min":0}]
 @float[{"label":"SDXL High Noise Fraction", "arg":"--sdxl-high-noise-fractions", "default":0.8, "min":0.001, "max":0.99}]
-@int[{"label":"Clip Skip", "arg":"--clip-skips", "default":0, "min":0}]
+@int[{"label":"Clip Skip", "arg":"--clip-skips", "min":0}]
 @seeds[{"label":"Seeds"}]
 @int[{"label":"Batch Size", "arg":"--batch-size", "default":"", "min":1}]
 @imagesize[{"label":"Batch Grid Size (CxR)", "arg":"--batch-grid-size", "default":"", "divider-after":true}]

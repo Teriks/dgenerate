@@ -572,24 +572,6 @@ files = [
 ]
 
 [[package]]
-name = "compel"
-version = "2.0.3"
-description = "A prompting enhancement library for transformers-type text embedding systems."
-optional = false
-python-versions = ">=3.7"
-groups = ["main"]
-files = [
-    {file = "compel-2.0.3-py3-none-any.whl", hash = "sha256:eb0ab6cf230fc59ae12dfe00d859e43eec9ba46408d7c5f79b95ccfcb47443ef"},
-    {file = "compel-2.0.3.tar.gz", hash = "sha256:6548b90340166b85e26d3d5b4e9a11de6908a03b6b24879aff65e6e6fc5b677c"},
-]
-
-[package.dependencies]
-diffusers = ">=0.11"
-pyparsing = ">=3.0,<4.0"
-torch = "*"
-transformers = ">=4.25,<5.0"
-
-[[package]]
 name = "confection"
 version = "0.1.5"
 description = "The sweetest config system for Python"
@@ -4547,4 +4529,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.13"
-content-hash = "4237285c190e97628031918b8cf2d1b9e7486f8e0fffb2d34064536e94da8abf"
+content-hash = "1137684f7d93a212eb73955811fc3339202b04fcd6d65ad9b97800f3858d8b56"

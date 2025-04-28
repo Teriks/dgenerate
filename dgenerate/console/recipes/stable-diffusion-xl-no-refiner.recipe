@@ -27,7 +27,7 @@ order: 5
 @float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":5, "min":0}]
 @float[{"label":"PAG Scale", "arg":"--pag-scales", "min":0}]
 @float[{"label":"Adaptive PAG Scale", "arg":"--pag-adaptive-scales", "min":0}]
-@int[{"label":"Clip Skip", "arg":"--clip-skips", "default":0, "min":0}]
+@int[{"label":"Clip Skip", "arg":"--clip-skips", "min":0}]
 @seeds[{"label":"Seeds"}]
 @int[{"label":"Batch Size", "arg":"--batch-size", "default":"", "min":1}]
 @imagesize[{"label":"Batch Grid Size (CxR)", "arg":"--batch-grid-size", "default":"", "divider-after":true}]
