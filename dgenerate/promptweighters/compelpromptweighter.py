@@ -24,7 +24,7 @@ import inspect
 import re
 import typing
 
-from dgenerate.extras import compel as compel
+from dgenerate.extras import compel as _compel
 import torch
 
 import dgenerate.messages as _messages
@@ -283,11 +283,11 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
             if pipeline.tokenizer is not None:
 
                 if positive_2 or negative_2:
-                    compel1 = compel.Compel(
+                    compel1 = _compel.Compel(
                         tokenizer=pipeline.tokenizer,
                         text_encoder=pipeline.text_encoder,
                         returned_embeddings_type=
-                        compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
+                        _compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
                         requires_pooled=False,
                         truncate_long_prompts=False,
                         device=device,
@@ -296,11 +296,11 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
 
                     _memory.torch_gc()
 
-                    compel2 = compel.Compel(
+                    compel2 = _compel.Compel(
                         tokenizer=pipeline.tokenizer_2,
                         text_encoder=pipeline.text_encoder_2,
                         returned_embeddings_type=
-                        compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
+                        _compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
                         requires_pooled=True,
                         truncate_long_prompts=False,
                         device=device,
@@ -318,11 +318,11 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
                     pos_conditioning, neg_conditioning = compel1.pad_conditioning_tensors_to_same_length(
                         [pos_conditioning, neg_conditioning])
                 else:
-                    compel1 = compel.Compel(
+                    compel1 = _compel.Compel(
                         tokenizer=[pipeline.tokenizer, pipeline.tokenizer_2],
                         text_encoder=[pipeline.text_encoder, pipeline.text_encoder_2],
                         returned_embeddings_type=
-                        compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
+                        _compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
                         requires_pooled=[False, True],
                         truncate_long_prompts=False,
                         device=device,
@@ -344,11 +344,11 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
                         f'"compel" for --second-model-second-prompts, that prompt is being ignored.'
                     )
 
-                compel2 = compel.Compel(
+                compel2 = _compel.Compel(
                     tokenizer=pipeline.tokenizer_2,
                     text_encoder=pipeline.text_encoder_2,
                     returned_embeddings_type=
-                    compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
+                    _compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
                     requires_pooled=True,
                     truncate_long_prompts=False,
                     device=device,
@@ -370,11 +370,11 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
             else:
                 clip_skip = None
 
-            compel1 = compel.Compel(
+            compel1 = _compel.Compel(
                 tokenizer=pipeline.tokenizer,
                 text_encoder=pipeline.text_encoder,
                 requires_pooled=True,
-                returned_embeddings_type=compel.ReturnedEmbeddingsType.STABLE_CASCADE,
+                returned_embeddings_type=_compel.ReturnedEmbeddingsType.STABLE_CASCADE,
                 truncate_long_prompts=False,
                 device=device,
                 clip_skip=clip_skip
@@ -392,15 +392,15 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
             clip_skip = args.get('clip_skip', 0)
 
             embedding_type = \
-                compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NORMALIZED \
+                _compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NORMALIZED \
                     if clip_skip > 0 and pipeline.text_encoder.config.hidden_act == 'quick_gelu' \
-                    else compel.ReturnedEmbeddingsType.LAST_HIDDEN_STATES_NORMALIZED
+                    else _compel.ReturnedEmbeddingsType.LAST_HIDDEN_STATES_NORMALIZED
 
             _messages.debug_log('Compel Clip Skip:', args.get('clip_skip', 0))
             _messages.debug_log('Compel text_encoder.config.hidden_act:', pipeline.text_encoder.config.hidden_act)
             _messages.debug_log('Compel Embedding Type:', embedding_type)
 
-            compel1 = compel.Compel(
+            compel1 = _compel.Compel(
                 tokenizer=pipeline.tokenizer,
                 text_encoder=pipeline.text_encoder,
                 truncate_long_prompts=False,
