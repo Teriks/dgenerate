@@ -76,8 +76,7 @@ with open('dgenerate/console/schemas/karrasschedulers.json', 'w') as file:
 
 with open('dgenerate/console/schemas/quantizers.json', 'w') as file:
     schema = {
-        'bnb': _pipelinewrapper.get_uri_accepted_args_schema(_pipelinewrapper.uris.BNBQuantizerUri),
-        'torchao': _pipelinewrapper.get_uri_accepted_args_schema(_pipelinewrapper.uris.TorchAOQuantizerUri)
+        'bnb': _pipelinewrapper.get_uri_accepted_args_schema(_pipelinewrapper.uris.BNBQuantizerUri)
     }
 
     json.dump(schema, file)

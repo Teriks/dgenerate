@@ -964,7 +964,7 @@ Help Output
             use the "quantizer" URI argument of --text-encoders and or --unet / --transformer to specify the
             quantization settings on a per model basis.
             
-            Available backends are: (bnb / bitsandbytes), torchao
+            Available backends are: (bnb / bitsandbytes)
             
             bitsandbytes can be specified with "bnb" or "bitsandbytes"
             
@@ -988,13 +988,7 @@ Help Output
             
             * bits4-quant-storage: str = None
             
-            torchao may be specified using this syntax:
             
-            --quantizer torchao;type=int8wo
-            
-            The only configuration argument used with the torchao backend is "type", which is a string
-            indicating the quantization datatype for loading.
-            -------------------------------------------------
       -q2 QUANTIZER_URI, --second-model-quantizer QUANTIZER_URI
             Global quantization configuration via URI for the secondary model, such as the SDXL Refiner or
             Stable Cascade decoder. See --quantizer for syntax examples.
@@ -2104,9 +2098,8 @@ Install dgenerate
     # * ncnn
     # * gpt4all
     # * gpt4all_cuda
-    # * quant (bitsandbytes & torchao)
+    # * quant (bitsandbytes)
     # * bitsandbytes (individual)
-    # * torchao (individual)
 
     # install with just support for torch
 
@@ -5181,7 +5174,7 @@ Any LLM that is supported by ``transformers`` can be used to upscale prompts via
 
 Here is an example using `Phi-3 Mini Abliterated by failspy <https://huggingface.co/failspy/Phi-3-mini-128k-instruct-abliterated-v3>`_
 
-The ``magicprompt`` plugin supports quantization backends when ``bitsandbytes`` or ``torchao`` is installed.
+The ``magicprompt`` plugin supports quantization when ``bitsandbytes`` is installed.
 
 Quantization backend packages will be installed by dgenerate's packaging on platforms where they are supported.
 
@@ -7831,7 +7824,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [81918744414703]
+            Value: [51997002315633]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -8059,7 +8052,6 @@ The dgenerate specific jinja2 functions/filters are:
     
         "ncnn": Do we have ncnn installed?
         "gpt4all": Do we have gpt4all installed?
-        "torchao": Do we have torchao installed?
         "bitsandbytes": Do we have bitsandbytes installed?
         "flash-attn": Do we have flash-attn installed?
         "triton": Do we have triton installed?

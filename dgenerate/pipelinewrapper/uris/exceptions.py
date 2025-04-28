@@ -45,13 +45,6 @@ class InvalidBNBQuantizerUriError(InvalidModelUriError):
     pass
 
 
-class InvalidTorchAOQuantizerUriError(InvalidModelUriError):
-    """
-    Error in ``--quantizer`` uri
-    """
-    pass
-
-
 class InvalidSDXLRefinerUriError(InvalidModelUriError):
     """
     Error in ``--sdxl-refiner`` uri

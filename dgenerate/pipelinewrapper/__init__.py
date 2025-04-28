@@ -167,9 +167,6 @@ from .uris import (
     BNBQuantizerUri,
     InvalidBNBQuantizerUriError,
 
-    TorchAOQuantizerUri,
-    InvalidTorchAOQuantizerUriError,
-
     # Adetailer
     AdetailerDetectorUri,
     InvalidAdetailerDetectorUriError,

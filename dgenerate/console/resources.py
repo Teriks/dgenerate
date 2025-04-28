@@ -111,9 +111,6 @@ _LOADED_SCHEMAS = dict()
 def _schema_filter_quantizers(schema: dict):
     if importlib.util.find_spec('bitsandbytes') is None:
         schema.pop('bnb', None)
-
-    if importlib.util.find_spec('torchao') is None:
-        schema.pop('torchao', None)
     return schema
 
 

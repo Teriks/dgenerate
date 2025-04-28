@@ -252,7 +252,6 @@ if __name__ != 'setup_as_library':
 
     if dgenerate_platform != 'linux':
         exclude_requires('triton')
-        exclude_requires('torchao')
 
     if dgenerate_platform == 'darwin':
         exclude_requires('bitsandbytes')
@@ -268,11 +267,6 @@ if __name__ != 'setup_as_library':
         bitsandbytes_requires = ['bitsandbytes' + requires.pop('bitsandbytes')]
         quant_extras.extend(bitsandbytes_requires)
         extras['bitsandbytes'] = bitsandbytes_requires
-
-    if 'torchao' in requires:
-        torchao_requires = ['torchao' + requires.pop('torchao')]
-        quant_extras.extend(torchao_requires)
-        extras['torchao'] = torchao_requires
 
     if quant_extras:
         extras['quant'] = quant_extras

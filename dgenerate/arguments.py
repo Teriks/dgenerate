@@ -1566,7 +1566,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             you should use the "quantizer" URI argument of --text-encoders and or --unet / --transformer
             to specify the quantization settings on a per model basis.
             
-            Available backends are: (bnb / bitsandbytes), torchao
+            Available backends are: (bnb / bitsandbytes)
             
             bitsandbytes can be specified with "bnb" or "bitsandbytes"
             
@@ -1590,12 +1590,6 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             * bits4-quant-storage: str = None
             
-            torchao may be specified using this syntax:
-            
-            --quantizer torchao;type=int8wo
-            
-            The only configuration argument used with the torchao backend is "type", which 
-            is a string indicating the quantization datatype for loading.
             """
         )
     )

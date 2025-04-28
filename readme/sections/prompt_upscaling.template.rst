@@ -148,7 +148,7 @@ Any LLM that is supported by ``transformers`` can be used to upscale prompts via
 
 Here is an example using `Phi-3 Mini Abliterated by failspy <https://huggingface.co/failspy/Phi-3-mini-128k-instruct-abliterated-v3>`_
 
-The ``magicprompt`` plugin supports quantization backends when ``bitsandbytes`` or ``torchao`` is installed.
+The ``magicprompt`` plugin supports quantization when ``bitsandbytes`` is installed.
 
 Quantization backend packages will be installed by dgenerate's packaging on platforms where they are supported.
 
