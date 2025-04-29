@@ -186,6 +186,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/version_5.0.0/>`_.
         * `Web Cache`_
         * `spaCy Model Cache`_
         * `Hugging Face Cache`_
+        * `Checkpoint Conversion Cache`_
 
 Help Output
 ===========
@@ -6569,6 +6570,9 @@ and elsewhere into diffusers format (a folder on disk with configuration).
 
 This can be useful if you want to load a single file checkpoint with quantization.
 
+dgenerate does this conversion for you automatically when necessary and caches the result on disk,
+see: `Checkpoint Conversion Cache`_ for more information about where these files are cached.
+
 You may also save models loaded from Hugging Face repos.
 
 This sub-command also exists as the config directive: ``\to_diffusers``
@@ -7824,7 +7828,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [51997002315633]
+            Value: [63792230191812]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -9888,3 +9892,16 @@ for example on another disk, simply set ``HF_HOME`` to a new path in your enviro
 
 You can read more about environmental variables that affect huggingface libraries on this
 `huggingface documentation page <https://huggingface.co/docs/huggingface_hub/package_reference/environment_variables>`_.
+
+
+Checkpoint Conversion Cache
+---------------------------
+
+In order to support quantization on single-file checkpoints from sources such as CivitAI, etc.
+dgenerate will load and then convert the checkpoint into diffusers format on disk before
+reloading it with quantization pre-processing applied.
+
+These converted checkpoints exist in the directory ``$DGENERATE_CACHE/diffusers_converted``.
+
+These converted checkpoints are not removed automatically, and will remain on disk until
+you manually delete them similar to the huggingface cache.

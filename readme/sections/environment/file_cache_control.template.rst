@@ -53,3 +53,16 @@ for example on another disk, simply set ``HF_HOME`` to a new path in your enviro
 
 You can read more about environmental variables that affect huggingface libraries on this
 `huggingface documentation page <https://huggingface.co/docs/huggingface_hub/package_reference/environment_variables>`_.
+
+
+Checkpoint Conversion Cache
+---------------------------
+
+In order to support quantization on single-file checkpoints from sources such as CivitAI, etc.
+dgenerate will load and then convert the checkpoint into diffusers format on disk before
+reloading it with quantization pre-processing applied.
+
+These converted checkpoints exist in the directory ``$DGENERATE_CACHE/diffusers_converted``.
+
+These converted checkpoints are not removed automatically, and will remain on disk until
+you manually delete them similar to the huggingface cache.

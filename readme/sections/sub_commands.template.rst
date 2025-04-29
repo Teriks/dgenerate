@@ -238,6 +238,9 @@ and elsewhere into diffusers format (a folder on disk with configuration).
 
 This can be useful if you want to load a single file checkpoint with quantization.
 
+dgenerate does this conversion for you automatically when necessary and caches the result on disk,
+see: `Checkpoint Conversion Cache`_ for more information about where these files are cached.
+
 You may also save models loaded from Hugging Face repos.
 
 This sub-command also exists as the config directive: ``\to_diffusers``
