@@ -22,7 +22,10 @@ import collections.abc
 import gc
 import inspect
 import os.path
+import pathlib
+import random
 import typing
+import hashlib
 
 import accelerate
 import diffusers
@@ -49,6 +52,8 @@ from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper import constants as _constants
 import dgenerate.devicecache as _devicecache
 import dgenerate.torchutil as _torchutil
+import dgenerate.filecache as _filecache
+import dgenerate.filelock as _filelock
 
 
 class UnsupportedPipelineConfigError(Exception):
@@ -124,8 +129,7 @@ def estimate_pipeline_cache_footprint(
         safety_checker: bool = False,
         auth_token: str | None = None,
         extra_args: dict[str, typing.Any] | None = None,
-        local_files_only: bool = False
-):
+        local_files_only: bool = False) -> int:
     """
     Estimate the CPU side cache memory use of a pipeline.
 
@@ -1972,11 +1976,16 @@ def _create_torch_diffusion_pipeline(
 
     if _util.is_single_file_model_load(model_path):
         if quantizer_uri:
-            raise UnsupportedPipelineConfigError(
-                'specifying a global pipeline quantizer URI is only supported for Hugging Face '
-                'repository loads from a repo slug or disk path, single file loads are not supported. '
-                'Use "dgenerate --sub-command to-diffusers" to convert your model file to a folder on disk in '
-                'diffusers format, see: "dgenerate --sub-command to-diffusers --help".')
+            model_path = _to_diffusers_with_caching(
+                model_path,
+                model_type,
+                revision,
+                variant,
+                subfolder,
+                dtype,
+                original_config,
+                auth_token
+            )
     else:
         if original_config:
             raise UnsupportedPipelineConfigError(
@@ -2657,6 +2666,96 @@ def _create_torch_diffusion_pipeline(
         parsed_controlnet_uris=parsed_controlnet_uris,
         parsed_t2i_adapter_uris=parsed_t2i_adapter_uris
     ), _d_memoize.CachedObjectMetadata(size=estimated_memory_usage)
+
+
+def get_converted_checkpoint_cache_dir():
+    """
+    Get cache directory where dgenerate stores any checkpoints that needed to be converted into
+    diffusers directory format on disk to function, this process is used to
+    support quantization on single file checkpoints.
+
+    Or the value of the environmental variable ``DGENERATE_CACHE`` joined with ``diffusers_converted``.
+
+    :return: string (directory path)
+    """
+    user_cache_path = os.environ.get('DGENERATE_CACHE')
+
+    if user_cache_path is not None:
+        path = os.path.join(user_cache_path, 'web')
+    else:
+        path = os.path.expanduser(os.path.join('~', '.cache', 'dgenerate', 'diffusers_converted'))
+
+    pathlib.Path(path).mkdir(parents=True, exist_ok=True)
+
+    return path
+
+
+_to_diffusers_cache_dir = get_converted_checkpoint_cache_dir()
+_to_diffusers_cache = _filecache.FileCache(os.path.join(_to_diffusers_cache_dir, 'cache.db'), _to_diffusers_cache_dir)
+
+
+def _to_diffusers_with_caching(
+        model_path: str,
+        model_type: _enums.ModelType,
+        revision: str | None,
+        variant: str | None,
+        subfolder: str | None,
+        dtype: _enums.DataType,
+        original_config: str | None,
+        auth_token: str | None
+):
+    cache_key = model_path + str(model_type) + str(variant) + str(subfolder)
+
+    with _to_diffusers_cache:
+        exists = _to_diffusers_cache.get(cache_key)
+
+        if exists is None:
+            try:
+                # Convert the model to diffusers format
+                _messages.debug_log(
+                    f'Converting single file model "{model_path}" to diffusers format to support quantization'
+                )
+
+                # Call this function recursively without quantizer_uri to avoid infinite recursion
+                pipe = create_torch_diffusion_pipeline(
+                    model_path=model_path,
+                    model_type=model_type,
+                    revision=revision,
+                    subfolder=subfolder,
+                    variant=variant,
+                    dtype=dtype,
+                    original_config=original_config,
+                    auth_token=auth_token,
+                    quantizer_uri=None
+                )
+
+                cache_path = os.path.join(
+                    _to_diffusers_cache_dir, hashlib.sha256(cache_key.encode('utf-8')).hexdigest()
+                )
+
+                while os.path.exists(cache_path):
+                    cache_path = os.path.join(
+                        _to_diffusers_cache_dir, hashlib.sha256(
+                            cache_key.encode('utf-8') + str(random.random()).encode('utf-8')).hexdigest()
+                    )
+
+                # Save the model to the cache directory
+                _messages.debug_log(f"Saving converted model to: {cache_path}")
+                pipe.pipeline.save_pretrained(cache_path, variant=variant)
+                _to_diffusers_cache.add(cache_key, cache_path.encode('utf8'))
+
+            except Exception as e:
+                raise UnsupportedPipelineConfigError(
+                    f'Failed to convert single file model to diffusers format: {e}. '
+                    'Try converting manually with "dgenerate --sub-command to-diffusers".')
+        else:
+            with open(exists.path, 'rt', encoding='utf-8') as f:
+                cache_path = f.read().strip()
+            _messages.debug_log(f"Using cached converted diffusers model from: {cache_path}")
+
+        model_path = cache_path
+
+        return model_path
 
 
 __all__ = _types.module_all()

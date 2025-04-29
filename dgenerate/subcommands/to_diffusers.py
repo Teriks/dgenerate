@@ -44,6 +44,9 @@ class ToDiffusersSubCommand(_subcommand.SubCommand):
 
     This can be useful if you want to load a single file checkpoint with quantization.
 
+    This conversion is done automatically by dgenerate when you load a single file checkpoint
+    and request quantization post-processing to occur.
+
     You may also save models loaded from Hugging Face repos.
 
     Examples:
