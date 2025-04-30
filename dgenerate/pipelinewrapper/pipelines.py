@@ -2692,7 +2692,7 @@ def get_converted_checkpoint_cache_dir():
 
 
 _to_diffusers_cache_dir = get_converted_checkpoint_cache_dir()
-_to_diffusers_cache = _filecache.FileCache(os.path.join(_to_diffusers_cache_dir, 'cache.db'), _to_diffusers_cache_dir)
+_to_diffusers_cache = _filecache.KeyValueStore(os.path.join(_to_diffusers_cache_dir, 'cache.db'))
 
 
 def _to_diffusers_with_caching(
@@ -2707,7 +2707,13 @@ def _to_diffusers_with_caching(
         original_config: str | None,
         auth_token: str | None
 ):
-    cache_key = model_path + str(model_type) + str(variant) + str(subfolder)
+    cache_key = model_path + str(model_type) + str(variant) + str(subfolder) + str(dtype)
+
+    if text_encoder_uris:
+        cache_key += str(list(text_encoder_uris))
+
+    if vae_uri:
+        cache_key += str(vae_uri)
 
     with _to_diffusers_cache:
         exists = _to_diffusers_cache.get(cache_key)
@@ -2727,7 +2733,6 @@ def _to_diffusers_with_caching(
                 revision=revision,
                 subfolder=subfolder,
                 variant=variant,
-
                 dtype=dtype,
                 original_config=original_config,
                 auth_token=auth_token,
@@ -2747,10 +2752,9 @@ def _to_diffusers_with_caching(
             # Save the model to the cache directory
             _messages.debug_log(f"Saving converted model to: {cache_path}")
             pipe.pipeline.save_pretrained(cache_path, variant=variant)
-            _to_diffusers_cache.add(cache_key, cache_path.encode('utf8'))
+            _to_diffusers_cache[cache_key] = cache_path
         else:
-            with open(exists.path, 'rt', encoding='utf-8') as f:
-                cache_path = f.read().strip()
+            cache_path = _to_diffusers_cache[cache_key]
             _messages.debug_log(f"Using cached converted diffusers model from: {cache_path}")
 
         model_path = cache_path
