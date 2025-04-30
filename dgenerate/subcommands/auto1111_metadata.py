@@ -20,8 +20,10 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import hashlib
+from tqdm import tqdm
 import os
 import typing
+import dgenerate.memory as _memory
 
 import PIL.Image
 import PIL.PngImagePlugin
@@ -106,9 +108,18 @@ def _extract_scheduler_name(scheduler_uri: str) -> str:
 
 
 def _calculate_file_hash(file_path: str, length: int = 10) -> str:
-    with open(file_path, "rb") as f:
-        file_hash = hashlib.sha256(f.read()).hexdigest()
-        return file_hash[:length]
+    hasher = hashlib.sha256()
+    file_size = os.path.getsize(file_path)
+    chunk_size = _memory.calculate_chunk_size(file_size)
+    with open(file_path, 'rb') as f:
+        for chunk in tqdm(
+                iter(lambda: f.read(chunk_size), b''),
+                desc=f'Hashing: {file_path}',
+                total=file_size // chunk_size,
+                unit='chunk'
+        ):
+            hasher.update(chunk)
+    return hasher.hexdigest()[:length]
 
 
 class _ParseOnlyInvoker:
