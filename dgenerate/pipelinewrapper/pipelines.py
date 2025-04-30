@@ -2745,7 +2745,7 @@ def _to_diffusers_with_caching(
 
             except Exception as e:
                 raise UnsupportedPipelineConfigError(
-                    f'Failed to convert single file model to diffusers format: {e}. '
+                    f'Failed to convert single file model to diffusers format: "{e}" '
                     'Try converting manually with "dgenerate --sub-command to-diffusers".')
         else:
             with open(exists.path, 'rt', encoding='utf-8') as f:
