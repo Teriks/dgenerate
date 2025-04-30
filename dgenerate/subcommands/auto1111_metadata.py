@@ -326,7 +326,7 @@ def _get_dgenerate_metadata_from_image(img: PIL.Image.Image):
         user_comment = img.info.get("DgenerateConfig", None)
 
         if not user_comment:
-            _messages.log("DgenerateConfig found in PNG metadata.")
+            _messages.log("DgenerateConfig not found in PNG metadata.")
 
         return user_comment
     else:
