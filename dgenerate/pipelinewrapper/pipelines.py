@@ -2709,44 +2709,38 @@ def _to_diffusers_with_caching(
         exists = _to_diffusers_cache.get(cache_key)
 
         if exists is None:
-            try:
-                # Convert the model to diffusers format
-                _messages.debug_log(
-                    f'Converting single file model "{model_path}" to diffusers format to support quantization'
-                )
+            # Convert the model to diffusers format
+            _messages.debug_log(
+                f'Converting single file model "{model_path}" to diffusers format to support quantization'
+            )
 
-                # Call this function recursively without quantizer_uri to avoid infinite recursion
-                pipe = create_torch_diffusion_pipeline(
-                    model_path=model_path,
-                    model_type=model_type,
-                    revision=revision,
-                    subfolder=subfolder,
-                    variant=variant,
-                    dtype=dtype,
-                    original_config=original_config,
-                    auth_token=auth_token,
-                    quantizer_uri=None
-                )
+            # Call this function recursively without quantizer_uri to avoid infinite recursion
+            pipe = create_torch_diffusion_pipeline(
+                model_path=model_path,
+                model_type=model_type,
+                revision=revision,
+                subfolder=subfolder,
+                variant=variant,
+                dtype=dtype,
+                original_config=original_config,
+                auth_token=auth_token,
+                quantizer_uri=None
+            )
 
+            cache_path = os.path.join(
+                _to_diffusers_cache_dir, hashlib.sha256(cache_key.encode('utf-8')).hexdigest()
+            )
+
+            while os.path.exists(cache_path):
                 cache_path = os.path.join(
-                    _to_diffusers_cache_dir, hashlib.sha256(cache_key.encode('utf-8')).hexdigest()
+                    _to_diffusers_cache_dir, hashlib.sha256(
+                        cache_key.encode('utf-8') + str(random.random()).encode('utf-8')).hexdigest()
                 )
 
-                while os.path.exists(cache_path):
-                    cache_path = os.path.join(
-                        _to_diffusers_cache_dir, hashlib.sha256(
-                            cache_key.encode('utf-8') + str(random.random()).encode('utf-8')).hexdigest()
-                    )
-
-                # Save the model to the cache directory
-                _messages.debug_log(f"Saving converted model to: {cache_path}")
-                pipe.pipeline.save_pretrained(cache_path, variant=variant)
-                _to_diffusers_cache.add(cache_key, cache_path.encode('utf8'))
-
-            except Exception as e:
-                raise UnsupportedPipelineConfigError(
-                    f'Failed to convert single file model to diffusers format: "{e}" '
-                    'Try converting manually with "dgenerate --sub-command to-diffusers".')
+            # Save the model to the cache directory
+            _messages.debug_log(f"Saving converted model to: {cache_path}")
+            pipe.pipeline.save_pretrained(cache_path, variant=variant)
+            _to_diffusers_cache.add(cache_key, cache_path.encode('utf8'))
         else:
             with open(exists.path, 'rt', encoding='utf-8') as f:
                 cache_path = f.read().strip()
