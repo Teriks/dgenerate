@@ -3561,8 +3561,8 @@ Flux Example:
     dgenerate black-forest-labs/FLUX.1-dev \
     --model-type torch-flux \
     --dtype bfloat16 \
-    --transformer "black-forest-labs/FLUX.1-dev;subfolder=transformer;quantizer='bnb;bits=4;bits4_compute_dtype=bfloat16'" \
-    --text-encoders + "T5EncoderModel;model=black-forest-labs/FLUX.1-dev;subfolder=text_encoder_2;quantizer='bnb;bits=4;bits4_compute_dtype=bfloat16'" \
+    --transformer "black-forest-labs/FLUX.1-dev;subfolder=transformer;quantizer='bnb;bits=4'" \
+    --text-encoders + "T5EncoderModel;model=black-forest-labs/FLUX.1-dev;subfolder=text_encoder_2;quantizer='bnb;bits=4'" \
     --model-cpu-offload \
     --inference-steps 20 \
     --guidance-scales 3.5 \

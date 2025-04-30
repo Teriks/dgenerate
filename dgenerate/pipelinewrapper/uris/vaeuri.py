@@ -22,6 +22,7 @@
 import typing
 
 import diffusers
+import diffusers.loaders
 import huggingface_hub
 
 import dgenerate.memoize as _d_memoize
@@ -301,6 +302,10 @@ class VAEUri:
                 except FileNotFoundError as e:
                     # cannot find configs
                     raise _pipelinewrapper_util.ModelNotFoundError(e) from e
+                except diffusers.loaders.single_file.SingleFileComponentError as e:
+                    raise _exceptions.VAEUriLoadError(
+                        f'Failed to load VAE from single file checkpoint {model_path}, '
+                        f'make sure the file contains a VAE.') from e
 
                 estimated_memory_use = _torchutil.estimate_module_memory_usage(vae)
         else:
