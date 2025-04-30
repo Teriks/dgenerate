@@ -1978,6 +1978,8 @@ def _create_torch_diffusion_pipeline(
             model_path = _to_diffusers_with_caching(
                 model_path,
                 model_type,
+                text_encoder_uris,
+                vae_uri,
                 revision,
                 variant,
                 subfolder,
@@ -2696,6 +2698,8 @@ _to_diffusers_cache = _filecache.FileCache(os.path.join(_to_diffusers_cache_dir,
 def _to_diffusers_with_caching(
         model_path: str,
         model_type: _enums.ModelType,
+        text_encoder_uris: _types.OptionalUris,
+        vae_uri: _types.OptionalUri,
         revision: str | None,
         variant: str | None,
         subfolder: str | None,
@@ -2718,9 +2722,12 @@ def _to_diffusers_with_caching(
             pipe = create_torch_diffusion_pipeline(
                 model_path=model_path,
                 model_type=model_type,
+                text_encoder_uris=text_encoder_uris,
+                vae_uri=vae_uri,
                 revision=revision,
                 subfolder=subfolder,
                 variant=variant,
+
                 dtype=dtype,
                 original_config=original_config,
                 auth_token=auth_token,

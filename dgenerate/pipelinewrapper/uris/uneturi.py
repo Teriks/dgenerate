@@ -20,6 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import diffusers
+import diffusers.loaders
 import huggingface_hub
 
 import dgenerate.memoize as _d_memoize
@@ -245,6 +246,10 @@ class UNetUri:
             except FileNotFoundError as e:
                 # cannot find configs
                 raise _pipelinewrapper_util.ModelNotFoundError(e) from e
+            except diffusers.loaders.single_file.SingleFileComponentError as e:
+                raise _exceptions.UNetUriLoadError(
+                    f'Failed to load UNet from single file checkpoint {model_path}, '
+                    f'make sure the file contains a UNet.') from e
 
             estimated_memory_use = _torchutil.estimate_module_memory_usage(unet)
         else:

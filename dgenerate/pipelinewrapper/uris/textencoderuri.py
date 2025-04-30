@@ -23,6 +23,7 @@ import typing
 import diffusers.pipelines.kolors
 import huggingface_hub
 import transformers.models.clip
+import diffusers.loaders
 
 import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
@@ -299,6 +300,10 @@ class TextEncoderUri:
             except FileNotFoundError as e:
                 # cannot find configs
                 raise _pipelinewrapper_util.ModelNotFoundError(e) from e
+            except diffusers.loaders.single_file.SingleFileComponentError as e:
+                raise _exceptions.TextEncoderUriLoadError(
+                    f'Failed to load Text Encoder from single file checkpoint {model_path}, '
+                    f'make sure the file contains a Text Encoders.') from e
 
             estimated_memory_use = _torchutil.estimate_module_memory_usage(text_encoder)
 
