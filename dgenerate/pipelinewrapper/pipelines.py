@@ -2707,7 +2707,12 @@ def _to_diffusers_with_caching(
         original_config: str | None,
         auth_token: str | None
 ):
-    cache_key = model_path + str(model_type) + str(variant) + str(subfolder) + str(dtype)
+    cache_key = model_path + \
+                str(model_type) + \
+                str(variant) + \
+                str(subfolder) + \
+                str(dtype) + \
+                str(original_config)
 
     if text_encoder_uris:
         cache_key += str(list(text_encoder_uris))
