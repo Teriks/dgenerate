@@ -8,29 +8,27 @@
     \exit
 {% endif %}
 
-# Loading flux checkpoints from CivitAI becomes tricky because you need to provide
-# The recommended text encoder models and the VAE manually for it to be able
+# Loading SD3 checkpoints from CivitAI becomes tricky because you need to provide
+# The recommended text encoder models manually for it to be able
 # to load the pipeline correctly when using safetensors checkpoints.
-
 
 # bitsandbytes 4 bit nf4
 \set quantizer bnb;bits=4;bits4-quant-type=nf4
 
 
-# PixelWave: https://civitai.com/models/141592/pixelwave?modelVersionId=992642
+# Crystal Clear SD3: https://civitai.com/models/614171/crystal-clear-sd3?modelVersionId=686696
 
-# This is the full bf16 safetensors checkpoint, it will take some time to load and use up around 30 gigs
-# of system memory, CPU side ram, before entering the GPU.
+# This is the full fp16 safetensors checkpoint
 
 # this is the only style of checkpoint diffusers can load from CivitAI
 
-https://civitai.com/api/download/models/992642?type=Model&format=SafeTensor&size=full&fp=bf16
---model-type torch-flux
---dtype bfloat16
+https://civitai.com/api/download/models/686696?type=Model&format=SafeTensor&size=full&fp=fp16
+--model-type torch-sd3
+--dtype float16
 --quantizer {{ quantizer }}
---text-encoders CLIPTextModel;model=stabilityai/stable-diffusion-3-medium-diffusers;subfolder=text_encoder;quantizer="{{ quantizer }}" \
-                T5EncoderModel;model=black-forest-labs/FLUX.1-dev;subfolder=text_encoder_2;quantizer="{{ quantizer }}"
---vae AutoencoderKL;model=black-forest-labs/FLUX.1-dev;subfolder=vae
+--text-encoders CLIPTextModelWithProjection;model=stabilityai/stable-diffusion-3-medium-diffusers;subfolder=text_encoder;quantizer="{{ quantizer }}" \
+                CLIPTextModelWithProjection;model=stabilityai/stable-diffusion-3-medium-diffusers;subfolder=text_encoder_2;quantizer="{{ quantizer }}" \
+                T5EncoderModel;model=stabilityai/stable-diffusion-3-medium-diffusers;subfolder=text_encoder_3;quantizer="{{ quantizer }}"
 --inference-steps 50
 --guidance-scales 3.5
 --gen-seeds 1
