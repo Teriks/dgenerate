@@ -19,7 +19,7 @@
 
 # PixelWave: https://civitai.com/models/141592/pixelwave?modelVersionId=992642
 
-# This is the full bf16 checkpoint, it will take some time to load and use up around 30 gigs
+# This is the full bf16 safetensors checkpoint, it will take some time to load and use up around 30 gigs
 # of system memory, CPU side ram, before entering the GPU.
 
 # this is the only style of checkpoint diffusers can load from CivitAI
@@ -36,6 +36,7 @@ https://civitai.com/api/download/models/992642?type=Model&format=SafeTensor&size
 --gen-seeds 1
 --output-path output
 --output-size 1024x1024
+--prompt-weighter sd-embed
 --prompts "Tranquil landscape oil painting, realist style. Serpentine path leads up to a hilltop \
            villa with a prominent bell tower, nestled among lush green foliage. Sunlight filters \
            through the trees casting dappled shadows on the walkway. Rich texture in the brushwork, \

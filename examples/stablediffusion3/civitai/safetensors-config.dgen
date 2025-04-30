@@ -1,0 +1,42 @@
+# Flux requires a huggingface auth token to access
+# you must request access to the repository
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+# Loading SD3 checkpoints from CivitAI becomes tricky because you need to provide
+# The recommended text encoder models manually for it to be able
+# to load the pipeline correctly when using safetensors checkpoints.
+
+# bitsandbytes 4 bit nf4
+\set quantizer bnb;bits=4;bits4-quant-type=nf4
+
+
+# Crystal Clear SD3: https://civitai.com/models/614171/crystal-clear-sd3?modelVersionId=686696
+
+# This is the full fp16 safetensors checkpoint
+
+# this is the only style of checkpoint diffusers can load from CivitAI
+
+https://civitai.com/api/download/models/686696?type=Model&format=SafeTensor&size=full&fp=fp16
+--model-type torch-sd3
+--dtype float16
+--quantizer {{ quantizer }}
+--text-encoders CLIPTextModelWithProjection;model=stabilityai/stable-diffusion-3-medium-diffusers;subfolder=text_encoder;quantizer="{{ quantizer }}" \
+                CLIPTextModelWithProjection;model=stabilityai/stable-diffusion-3-medium-diffusers;subfolder=text_encoder_2;quantizer="{{ quantizer }}" \
+                T5EncoderModel;model=stabilityai/stable-diffusion-3-medium-diffusers;subfolder=text_encoder_3;quantizer="{{ quantizer }}"
+--inference-steps 50
+--guidance-scales 3.5
+--gen-seeds 1
+--output-path output
+--output-size 1024x1024
+--prompt-weighter sd-embed
+--prompts "Tranquil landscape oil painting, realist style. Serpentine path leads up to a hilltop \
+           villa with a prominent bell tower, nestled among lush green foliage. Sunlight filters \
+           through the trees casting dappled shadows on the walkway. Rich texture in the brushwork, \
+           capturing the vivid variety of plant life. Hints of a vivid blue sky with puffy white clouds \
+           and distant mountains. Warm, inviting color palette evokes serene countryside ambiance."
