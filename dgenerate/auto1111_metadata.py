@@ -539,7 +539,7 @@ def get_checkpoint_hash_cache() -> str:
 
     pathlib.Path(path).mkdir(parents=True, exist_ok=True)
 
-    return os.path.join(path, 'checkpoint_hash_cache.db')
+    return os.path.join(path, 'cache.db')
 
 
 _checkpoint_hash_cache = _filecache.KeyValueStore(get_checkpoint_hash_cache())
