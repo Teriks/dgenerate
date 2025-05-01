@@ -21,6 +21,7 @@
 
 import hashlib
 import pathlib
+import re
 
 from tqdm import tqdm
 import os
@@ -249,10 +250,10 @@ def _config_to_automatic1111_dict(config: str) -> typing.Dict[str, any]:
             model_title='Primary',
             model_path=args.model_path
         )
-        if model_name:
-            parameters["Model"] = model_name
         if model_hash:
             parameters["Model hash"] = model_hash
+        if model_name:
+            parameters["Model"] = model_name
 
     # Extract prompts
     if args.prompts:
@@ -562,11 +563,11 @@ def _process_model_path(model_title: str, model_path: str):
 
     # Check if model path is a URL
     if _webcache.is_downloadable_url(model_path):
-        model_name = model_path
+        model_name = f'"{model_path}"'
 
         with _checkpoint_hash_cache:
-            if model_name in _checkpoint_hash_cache:
-                return model_name, _checkpoint_hash_cache[model_name]
+            if model_path in _checkpoint_hash_cache:
+                return model_name, _checkpoint_hash_cache[model_path]
 
         # Try to get a cached version of the model
         _messages.debug_log(
@@ -591,7 +592,7 @@ def _process_model_path(model_title: str, model_path: str):
                     _messages.debug_log(f"Calculated hash from cached {model_title} model: {model_hash}")
 
                     with _checkpoint_hash_cache:
-                        _checkpoint_hash_cache[model_name] = model_hash
+                        _checkpoint_hash_cache[model_path] = model_hash
 
                 except Exception as e:
 
@@ -616,10 +617,11 @@ def _process_model_path(model_title: str, model_path: str):
         # Regular file path
         if os.path.exists(model_path):
             model_name = os.path.basename(model_path)
+            model_name_no_ext, _ = os.path.splitext(model_name)
 
             with _checkpoint_hash_cache:
                 if model_name in _checkpoint_hash_cache:
-                    return model_name, _checkpoint_hash_cache[model_name]
+                    return model_name_no_ext, _checkpoint_hash_cache[model_name]
 
             try:
                 model_hash = _calculate_file_hash(model_path)
@@ -632,6 +634,8 @@ def _process_model_path(model_title: str, model_path: str):
             except Exception as e:
                 _messages.debug_log(f"Failed to calculate hash for {model_title} model file: {e}")
                 model_hash = None
+
+            model_name = model_name_no_ext
         else:
             model_name = model_path
 
