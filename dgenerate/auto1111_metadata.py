@@ -526,7 +526,7 @@ def get_checkpoint_hash_cache() -> str:
     Checkpoint hashes are used for Automatic1111 metadata to provide information about
     the models involved in a generation, this information is cached for performance.
 
-    Or the value of the environmental variable ``DGENERATE_CACHE`` joined with ``checkpoint_hash_cache.db``.
+    Or the value of the environmental variable ``DGENERATE_CACHE`` joined with ``cache.db``.
 
     :return: string (directory path)
     """
