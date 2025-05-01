@@ -9,6 +9,7 @@ import inspect
 import itertools
 import json
 import os
+import re
 
 import diffusers
 
@@ -132,6 +133,6 @@ with open('dgenerate/console/schemas/arguments.json', 'w') as file:
 
     for action in (a for a in _arguments._actions if a.option_strings):
         schema[_opt_name(action)] = _textprocessing.wrap_paragraphs(
-            inspect.cleandoc(action.help), width=100)
+            re.sub(r'\s+', ' ', inspect.cleandoc(action.help)), width=100)
 
     json.dump(schema, file)
