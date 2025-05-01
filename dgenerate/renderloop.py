@@ -720,6 +720,14 @@ class RenderLoop:
         else:
             image.save(image_filename)
 
+            # prevent circular import
+            import dgenerate.auto1111_metadata as _auto1111_metadata
+
+            if self._c_config.output_auto1111_metadata:
+                _auto1111_metadata.convert_and_insert_metadata(
+                    image_filename, dgenerate_config=config_txt
+                )
+
         is_last_image = batch_index == generation_result.image_count - 1
         # Only underline the last image write message in a batch of rendered
         # images when --batch-size > 1
