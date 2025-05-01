@@ -96,10 +96,18 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             obtained using :py:attr:`dgenerate.batchprocess.BatchProcessor.current_line`.
         """
 
-        def invoker(args):
+        def invoker(command_line, parsed_args):
+            header = 'Processing Arguments:\n\n'
+            args_wrapped = \
+                _textprocessing.wrap(
+                    command_line,
+                    width=_textprocessing.long_text_wrap_width()) + '\n'
+
+            _messages.log(header + args_wrapped, underline=True)
+
             try:
                 return_code = \
-                    _invoker.invoke_dgenerate(args,
+                    _invoker.invoke_dgenerate(parsed_args,
                                               render_loop=self.render_loop,
                                               throw=throw)
                 if return_code == 0:
@@ -294,7 +302,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
     #         for object in objects:
     #             if arg in object.__class__.__name__:
     #                 objgraph.show_backrefs([object], max_depth=10, filename=f'gc_dump_{arg}.png')
-#
+    #
     @staticmethod
     def _clear_object_cache(args: collections.abc.Sequence[str]):
         """
@@ -1070,7 +1078,8 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
     def _generate_template_variables(self) -> dict[str, typing.Any]:
         return {k: v[1] for k, v in self._generate_template_variables_with_types().items()}
 
-    def generate_directives_help(self, directive_names: typing.Collection[str] | None = None, help_wrap_width: int | None = None):
+    def generate_directives_help(self, directive_names: typing.Collection[str] | None = None,
+                                 help_wrap_width: int | None = None):
         """
         Generate the help string for ``--directives-help``
 
@@ -1130,7 +1139,8 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
         return help_string
 
-    def generate_functions_help(self, function_names: typing.Collection[str] | None = None, help_wrap_width: int | None = None):
+    def generate_functions_help(self, function_names: typing.Collection[str] | None = None,
+                                help_wrap_width: int | None = None):
         """
         Generate the help string for ``--functions-help``
 
@@ -1352,66 +1362,66 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         if not args:
             raise _batchprocessor.BatchProcessError(
                 '\\import directive must be used with at least one argument.')
-        
+
         # Check if we have an 'as' alias (should be exactly 3 args: module, 'as', alias)
         if len(args) == 3 and args[1] == 'as':
             module_path = args[0]
             variable_name = args[2]
-            
+
             if not variable_name.isidentifier():
                 raise _batchprocessor.BatchProcessError(
                     f'Invalid identifier "{variable_name}" in import statement.')
-            
+
             self.user_define_check(variable_name)
-            
+
             try:
                 # Import the full module
                 module = importlib.import_module(module_path)
-                
+
                 # Add it to template variables with the alias
                 self.template_variables[variable_name] = module
-                
+
             except ImportError as e:
                 raise _batchprocessor.BatchProcessError(
                     f'Failed to import module "{module_path}": {str(e)}') from e
-                
+
         elif len(args) == 1:
             # Regular import without 'as'
             module_path = args[0]
-            
+
             # Split the path into parts
             parts = module_path.split('.')
-            
+
             # Validate module name parts
             if not all(part.isidentifier() for part in parts):
                 raise _batchprocessor.BatchProcessError(
                     f'Invalid module name component in "{module_path}".')
-            
+
             # The base module name is the first part
             base_module_name = parts[0]
-            
+
             self.user_define_check(base_module_name)
-            
+
             try:
                 # First import the base module
                 base_module = importlib.import_module(base_module_name)
-                
+
                 # Add the base module to template variables
                 self.template_variables[base_module_name] = base_module
-                
+
                 # If it's a nested import (e.g., os.path), import the full module too
                 if len(parts) > 1:
                     # Import the full module to ensure all submodules are properly loaded
                     importlib.import_module(module_path)
-                
+
             except ImportError as e:
                 raise _batchprocessor.BatchProcessError(
                     f'Failed to import module "{module_path}": {str(e)}') from e
-            
+
         else:
             raise _batchprocessor.BatchProcessError(
                 f'Invalid import syntax. Use "\\import module" or "\\import module as alias".')
-            
+
         return 0
 
 

@@ -10,6 +10,17 @@ dgenerate.arguments module
    :show-inheritance:
    :special-members: __call__, __init__
 
+
+dgenerate.auto1111_metadata module
+----------------------------------
+
+.. automodule:: dgenerate.auto1111_metadata
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :special-members: __call__, __init__
+
+
 dgenerate.batchprocess module
 -----------------------------
 

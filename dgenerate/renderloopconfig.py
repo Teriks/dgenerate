@@ -1059,8 +1059,17 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     output_metadata: bool = False
     """
-    Write config text to the metadata of all written images? this data is not written to animated files, only PNGs.
-    This corresponds to the ``--output-metadata`` argument of the dgenerate command line tool.
+    Write config text to the metadata of all written images? this data is not written to
+    animated files, only PNGs and JPEGs. This corresponds to the ``--output-metadata``
+    argument of the dgenerate command line tool.
+    """
+
+    output_auto1111_metadata: bool = False
+    """
+    Write Automatic1111 compatible metadata to the metadata of all written images?
+    this data is not written to animated files, only PNGs and JPEGs.
+    This corresponds to the ``--output-metadata`` argument of the dgenerate
+    command line tool.
     """
 
     animation_format: _types.Name = 'mp4'
@@ -1643,11 +1652,18 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'Unsupported {a_namer("image_format")} value "{self.image_format}". Must be one of '
                 f'{_textprocessing.oxford_comma(_mediaoutput.get_supported_static_image_formats(), "or")}')
 
-        if self.image_format not in {"png", "jpg", "jpeg"} and self.output_metadata:
+        if self.output_metadata and self.output_auto1111_metadata:
             raise RenderLoopConfigError(
-                f'{a_namer("image_format")} value "{self.image_format}" is '
-                f'unsupported when {a_namer("output_metadata")} is enabled. '
-                f'Only "png", "jpg", and "jpeg" formats are supported with {a_namer("output_metadata")}.')
+                f'{a_namer("output_metadata")} and {a_namer("output_auto1111_metadata")} '
+                f'are mutually exclusive and cannot be used simultaneously.')
+
+        if self.image_format not in {"png", "jpg", "jpeg"}:
+            if self.output_metadata or self.output_auto1111_metadata:
+                prop_name = 'output_metadata' if self.output_metadata else 'output_auto1111_metadata'
+                raise RenderLoopConfigError(
+                    f'{a_namer("image_format")} value "{self.image_format}" is '
+                    f'unsupported when {a_namer(prop_name)} is enabled. '
+                    f'Only "png", "jpg", and "jpeg" formats are supported with {a_namer(prop_name)}.')
 
         if self.animation_format == 'frames' and self.no_frames:
             raise RenderLoopConfigError(

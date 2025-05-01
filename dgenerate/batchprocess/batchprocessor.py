@@ -54,6 +54,10 @@ class _TemplateContinuationInternalError(Exception):
     pass
 
 
+InvokerType = typing.Callable[[str, collections.abc.Sequence[str]], int] | typing.Callable[
+    [collections.abc.Sequence[str]], int]
+
+
 class BatchProcessor:
     """
     Implements dgenerate's batch processing scripts in a generified manner.
@@ -75,9 +79,13 @@ class BatchProcessor:
     :py:class:`dgenerate.batchprocess.ConfigRunner`
     """
 
-    invoker: typing.Callable[[collections.abc.Sequence[str]], int]
+    invoker: InvokerType
     """
     Invoker function, responsible for executing lines recognized as shell commands.
+    
+    This can be a function that just accepts a sequence of arguments, or a function 
+    that accepts the raw command line as a string followed by the parsed 
+    sequence of arguments.
     """
 
     name: _types.Name
@@ -132,8 +140,15 @@ class BatchProcessor:
     A function for expanding environmental variables, defaults to :py:func:`dgenerate.textprocessing.shell_expandvars`
     """
 
+    disable_directives: bool = False
+    """
+    If ``True``, disables the use of all directives, including the built-in ones.
+    
+    This also disable template continuations, (lines starting with "{") which are a form of directive.
+    """
+
     def __init__(self,
-                 invoker: typing.Callable[[collections.abc.Sequence[str]], int],
+                 invoker: InvokerType,
                  name: _types.Name,
                  version: _types.Version | str,
                  template_variables: dict[str, typing.Any] | None = None,
@@ -141,9 +156,13 @@ class BatchProcessor:
                  template_functions: dict[str, typing.Callable[[typing.Any], typing.Any]] | None = None,
                  directives: dict[str, typing.Callable[[list], None]] | None = None,
                  builtins: dict[str, typing.Callable[[typing.Any], typing.Any]] | None = None,
-                 injected_args: collections.abc.Sequence[str] | None = None):
+                 injected_args: collections.abc.Sequence[str] | None = None,
+                 disable_directives: bool = False
+                 ):
         """
-        :param invoker: A function for invoking lines recognized as shell commands, should return a return code.
+        :param invoker: A function for invoking lines recognized as shell commands, should return a return code,
+            This can be a function that just accepts a sequence of arguments, or a function that accepts the
+            raw command line as a string followed by the parsed sequence of arguments.
         :param name: The name of this batch processor, currently used in the version check directive and messages
         :param version: Version for version check hash bang directive.
         :param template_variables: Live template variables, the initial environment, this dictionary will be
@@ -162,6 +181,8 @@ class BatchProcessor:
             runs, and not just for invocations. Passing ``-v/--verbose`` also disables handling of unhandled non
             :py:exc:`SystemExit` exceptions raised by config directive implementations, a stack trace will be
             printed when these exceptions are encountered.
+        :param disable_directives: If ``True``, disables the use of all directives, including the built-in ones.
+            This also disable template continuations, (lines starting with "{") which are a form of directive.
         """
 
         self._template_functions = None
@@ -174,6 +195,8 @@ class BatchProcessor:
         self.template_functions = template_functions if template_functions else dict()
 
         self.directives = directives if directives else dict()
+
+        self.disable_directives = disable_directives
 
         self._directive_exceptions = False
 
@@ -592,6 +615,9 @@ class BatchProcessor:
 
     def _directive_handlers(self, line: str) -> bool:
         """Handle shell directives."""
+        if self.disable_directives:
+            return False
+
         if line.startswith('\\env'):
             return self._handle_env_directive(line)
         elif line.startswith('\\unset_env'):
@@ -827,15 +853,10 @@ class BatchProcessor:
         else:
             cmd_info = raw_templated_string
 
-        header = 'Processing Arguments:\n\n'
-        args_wrapped = \
-            _textprocessing.wrap(
-                cmd_info,
-                width=_textprocessing.long_text_wrap_width()) + '\n'
-
-        _messages.log(header + args_wrapped, underline=True)
-
-        return_code = self.invoker(shell_lexed)
+        if len(inspect.signature(self.invoker).parameters) == 2:
+            return_code = self.invoker(cmd_info, shell_lexed)
+        else:
+            return_code = self.invoker(shell_lexed)
 
         if return_code != 0:
             raise BatchProcessError(
@@ -989,6 +1010,7 @@ class BatchProcessor:
             raise BatchProcessError(f'Error parsing injected arguments: {str(e).strip()}') from e
 
         directive_exceptions_last = self._directive_exceptions
+
         if parsed.verbose:
             _messages.push_level(_messages.DEBUG)
             self._directive_exceptions = True
@@ -1002,7 +1024,8 @@ class BatchProcessor:
                 f'Error on line {self.current_line}:'
                 f'\n{" " * 4}{str(e).strip()}') from e
         finally:
-            _messages.pop_level()
+            if parsed.verbose:
+                _messages.pop_level()
             self._directive_exceptions = directive_exceptions_last
 
     def run_string(self, string: str):

@@ -25,19 +25,19 @@ import sys
 import typing
 from argparse import Action
 
-import dgenerate
 import dgenerate.mediaoutput as _mediaoutput
 import dgenerate.memoize as _memoize
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
-import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 import dgenerate.prompt as _prompt
 import dgenerate.promptweighters as _promptweighters
 import dgenerate.promptupscalers as _promptupscalers
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 import dgenerate.torchutil as _torchutil
+import dgenerate.renderloopconfig as _renderloopconfig
+import dgenerate.resources as _resources
 
 __doc__ = """
 Argument parsing for the dgenerate command line tool.
@@ -250,7 +250,7 @@ def _type_gen_seeds(val):
     except ValueError:
         raise argparse.ArgumentTypeError('Must be an integer')
 
-    return dgenerate.gen_seeds(val)
+    return _renderloopconfig.gen_seeds(val)
 
 
 def _type_animation_format(val):
@@ -603,7 +603,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--version', action='version', version=f"dgenerate v{dgenerate.__version__}",
+            '--version', action='version', version=f"dgenerate v{_resources.version()}",
             help="Show dgenerate's version and exit"
         )
     )
@@ -2551,13 +2551,28 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         )
     )
 
+    output_metadata_group = parser.add_mutually_exclusive_group()
+
     actions.append(
-        parser.add_argument(
+        output_metadata_group.add_argument(
             '-om', '--output-metadata', action='store_true', default=False,
-            help="""Write the information produced by --output-configs to the PNG metadata of each image.
-                    Metadata will not be written to animated files (yet). The data is written to a
-                    PNG metadata property named DgenerateConfig and can be read using ImageMagick like so: 
-                    "magick identify -format "%%[Property:DgenerateConfig] generated_file.png"."""
+            help="""Write the information produced by --output-configs to the image metadata of each image.
+                    Metadata will not be written to animated files. For PNGs, the data is written to a
+                    PNG metadata property named "DgenerateConfig" and can be read using ImageMagick like so: 
+                    "magick identify -format "%%[Property:DgenerateConfig] generated_file.png". For JPEGs,
+                    the data is written to the EXIF UserComment on the image. Only PNGs and JPEGs are
+                    supported for metadata writing, see: --image-format"""
+        )
+    )
+
+    actions.append(
+        output_metadata_group.add_argument(
+            '-oam', '--output-auto1111-metadata', action='store_true', default=False,
+            help="""Write Automatic1111 compatible metadata to the image metadata of each image,
+                    this includes hashes for single file model checkpoints. Metadata will not be written 
+                    to animated files. For PNGs, the data is written to a PNG metadata property named 
+                    "parameters". For JPEGs, the data is written to the EXIF UserComment on the image. 
+                    Only PNGs and JPEGs are supported for metadata writing, see: --image-format"""
         )
     )
 
@@ -3108,7 +3123,7 @@ class DgenerateUsageError(Exception):
     pass
 
 
-class DgenerateArguments(dgenerate.RenderLoopConfig):
+class DgenerateArguments(_renderloopconfig.RenderLoopConfig):
     """
     Represents dgenerate's parsed command line arguments, can be used
     as a configuration object for :py:class:`dgenerate.renderloop.RenderLoop`.
@@ -3601,7 +3616,7 @@ def parse_args(args: collections.abc.Sequence[str] | None = None,
     except DgenerateHelpException:
         if help_raises:
             raise
-    except (dgenerate.RenderLoopConfigError,
+    except (_renderloopconfig.RenderLoopConfigError,
             argparse.ArgumentTypeError,
             argparse.ArgumentError) as e:
         if log_error:

@@ -164,6 +164,28 @@ def errors_to_null():
     _ERROR_FILE = open(os.devnull, "w")
 
 
+@contextlib.contextmanager
+def silence():
+    """
+    Context manager to silence all dgenerate logging / messages.
+
+    This will redirect all messages to a null file temporarily.
+    """
+    global _MESSAGE_FILE, _ERROR_FILE
+
+    old_message_file = _MESSAGE_FILE
+    old_error_file = _ERROR_FILE
+
+    messages_to_null()
+    errors_to_null()
+
+    try:
+        yield
+    finally:
+        _MESSAGE_FILE = old_message_file
+        _ERROR_FILE = old_error_file
+
+
 def add_logging_handler(callback: typing.Callable[[typing.ParamSpecArgs, int, bool, str], None]):
     """
     Add your own logging handler callback.
