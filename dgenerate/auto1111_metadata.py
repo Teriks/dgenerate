@@ -22,7 +22,7 @@
 import hashlib
 import pathlib
 
-from tqdm import tqdm
+import tqdm
 import os
 import typing
 import dgenerate.memory as _memory
@@ -128,7 +128,7 @@ def _calculate_file_hash(file_path: str, length: int = 10) -> str:
     file_size = os.path.getsize(file_path)
     chunk_size = _memory.calculate_chunk_size(file_size)
     with open(file_path, 'rb') as f:
-        for chunk in tqdm(
+        for chunk in tqdm.tqdm(
                 iter(lambda: f.read(chunk_size), b''),
                 desc=f'Hashing for Auto1111 Metadata: {file_path}',
                 total=file_size // chunk_size,
