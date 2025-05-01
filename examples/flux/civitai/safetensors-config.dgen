@@ -2,6 +2,12 @@
 # you must request access to the repository
 
 \set token %HF_TOKEN%
+\set civit_ai_token %CIVIT_AI_TOKEN%
+
+{% if not civit_ai_token.strip() %}
+    \print Set CIVIT_AI_TOKEN environmental variable to run this example!
+    \exit
+{% endif %}
 
 {% if not token.strip() and not '--auth-token' in injected_args %}
     \print Set HF_TOKEN environmental variable or --auth-token to run this example!
