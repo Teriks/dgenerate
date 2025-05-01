@@ -21,7 +21,6 @@
 
 import hashlib
 import pathlib
-import re
 
 from tqdm import tqdm
 import os
