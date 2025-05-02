@@ -22,6 +22,7 @@
 import hashlib
 import pathlib
 
+import huggingface_hub
 import tqdm
 import os
 import typing
@@ -35,6 +36,7 @@ import dgenerate.batchprocess.batchprocessor as _batchprocessor
 import dgenerate.pipelinewrapper.enums
 import dgenerate.webcache as _webcache
 import dgenerate.pipelinewrapper.uris as _uris
+import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 import dgenerate.messages as _messages
 import dgenerate.arguments as _arguments
 
@@ -575,13 +577,22 @@ def _process_model_path(model_title: str, model_path: str):
         )
 
         try:
-            _, cached_path = _webcache.create_web_cache_file(
-                url=model_path,
-                mime_acceptable_desc='not text',
-                mimetype_is_supported=lambda m: m is not None and not m.startswith('text/'),
-                unknown_mimetype_exception=_ModelMimetypeException
+            hf_blob_check = _pipelinewrapper_util.HFBlobLink.parse(model_path)
+            if hf_blob_check is not None:
+                cached_path = huggingface_hub.hf_hub_download(
+                    repo_id=hf_blob_check.repo_id,
+                    revision=hf_blob_check.revision,
+                    subfolder=hf_blob_check.subfolder,
+                    filename=hf_blob_check.weight_name
+                )
+            else:
+                _, cached_path = _webcache.create_web_cache_file(
+                    url=model_path,
+                    mime_acceptable_desc='not text',
+                    mimetype_is_supported=lambda m: m is not None and not m.startswith('text/'),
+                    unknown_mimetype_exception=_ModelMimetypeException
 
-            )
+                )
 
             if cached_path and os.path.exists(cached_path):
                 _messages.debug_log(f"{model_title} model cached at: {cached_path}")
