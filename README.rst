@@ -582,6 +582,19 @@ Help Output
             
             --text-encoders 'CLIPTextModel;model=huggingface/text_encoder;quantizer="bnb;bits=8"'
             
+            Quantization with bitsandbytes does not work with anything but Hugging Face repositories or the
+            monolithic checkpoints usable via the "mode" parameter discussed below, quantization is not
+            supported when loading a sub-model out of a single file checkpoint using "subfolder"
+            
+            The "mode" argument can be used to load monolithic single file "clip-l" or "t5-xxl" checkpoints,
+            this is useful in some cases to load ComfyUI compatible text encoder checkpoints, this works with
+            "quantizer" as well, where as loading a sub-model out of a single file checkpoint does not. This
+            value may be "clip-l" or "t5-xxl", for instance when using Flux, one could specify:
+            
+            CLIPTextModel;model=https://huggingface.co/comfyanonymous/flux_text_encoders/blob/main/clip_l.safete
+            nsors;mode=clip-l T5EncoderModel;model=https://huggingface.co/comfyanonymous/flux_text_encoders/blob
+            /main/t5xxl_fp16.safetensors;mode=t5-xxl
+            
             If you wish to load weights directly from a path on disk, you must point this argument at the folder
             they exist in, which should also contain the config.json file for the Text Encoder. For example, a
             downloaded repository folder from Hugging Face.

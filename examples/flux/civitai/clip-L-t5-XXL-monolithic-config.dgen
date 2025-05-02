@@ -1,0 +1,64 @@
+# Flux requires a huggingface auth token to access
+# you must request access to the repository
+
+\set token %HF_TOKEN%
+\set civit_ai_token %CIVIT_AI_TOKEN%
+
+{% if not civit_ai_token.strip() %}
+    \print Set CIVIT_AI_TOKEN environmental variable to run this example!
+    \exit
+{% endif %}
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+# Loading flux checkpoints from CivitAI becomes tricky because you need to provide
+# The recommended text encoder models and the VAE manually for it to be able
+# to load the pipeline correctly when using safetensors checkpoints.
+
+
+# bitsandbytes 4 bit nf4
+\set quantizer bnb;bits=4;bits4-quant-type=nf4
+
+
+# PixelWave: https://civitai.com/models/141592/pixelwave?modelVersionId=992642
+
+# This is the full bf16 safetensors checkpoint, it will take some time to load and use up around 30 gigs
+# of system memory, CPU side ram, before entering the GPU.
+
+# Non-sharded text encoder checkpoints can be loaded by specifying "mode" in the text encoder URI
+# You can specify 'clip-l' to load a "openai/clip-vit-large-patch14" based clip checkpoint
+
+# Or you can specify 't5-xxl' to load a "google/t5-v1_1-xxl" based checkpoint
+
+# here we are loading ComfyUI non-sharded checkpoints from hugging face blob links,
+# this can also be a URL to an arbitrary model such as a model on CivitAI if needed
+
+# These are slower to load without sharding due to IO bottlenecking, but some models on CivitAI
+# provide their own clip-l, or possible t5-xxl checkpoint in this format, this is how
+# you would load those
+
+\set model https://civitai.com/api/download/models/992642?type=Model&format=SafeTensor&size=full&fp=bf16
+\set clip_l https://huggingface.co/comfyanonymous/flux_text_encoders/blob/main/clip_l.safetensors
+\set t5_xxl https://huggingface.co/comfyanonymous/flux_text_encoders/blob/main/t5xxl_fp16.safetensors
+
+{{ model }}
+--model-type torch-flux
+--dtype bfloat16
+--quantizer {{ quantizer }}
+--text-encoders CLIPTextModel;model={{ clip_l }};mode=clip-l;quantizer="{{ quantizer }}" \
+                T5EncoderModel;model={{ t5_xxl }};mode=t5-xxl;quantizer="{{ quantizer }}"
+--vae AutoencoderKL;model=black-forest-labs/FLUX.1-dev;subfolder=vae
+--inference-steps 50
+--guidance-scales 3.5
+--gen-seeds 1
+--output-path output
+--output-size 1024x1024
+--prompt-weighter sd-embed
+--prompts "Tranquil landscape oil painting, realist style. Serpentine path leads up to a hilltop \
+           villa with a prominent bell tower, nestled among lush green foliage. Sunlight filters \
+           through the trees casting dappled shadows on the walkway. Rich texture in the brushwork, \
+           capturing the vivid variety of plant life. Hints of a vivid blue sky with puffy white clouds \
+           and distant mountains. Warm, inviting color palette evokes serene countryside ambiance."
