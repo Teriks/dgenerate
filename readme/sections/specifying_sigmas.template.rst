@@ -1,4 +1,4 @@
-Specifying sigmas (denoising schedule)
+Specifying Sigmas (denoising schedule)
 ======================================
 
 The denoising schedule sigma values can be overridden with the options ``--sigmas`` or ``--sdxl-refiner-sigmas``
