@@ -118,6 +118,8 @@ Help Output
 
 @INCLUDE[sections/specifying_scheduler.template.rst]
 
+@INCLUDE[sections/specifying_sigmas.template.rst]
+
 @INCLUDE[sections/sub_models/specifying_vae.template.rst]
 
 @INCLUDE[sections/sub_models/vae_tiling_slicing.template.rst]

@@ -266,17 +266,29 @@ class RenderLoopConfig(_types.SetFromMixin):
     of the dgenerate command line tool.
     """
 
-    sigmas: typing.Optional[collections.abc.Sequence[_types.Floats]] = None
+    sigmas: typing.Optional[collections.abc.Sequence[collections.abc.Sequence[float] | str]] = None
     """
     One or more lists of sigma values to try. This is supported
     when using a :py:attr:`RenderLoopConfig.scheduler_uri` that supports 
     setting sigmas.
     
+    Or: string expressions involving sigmas from the selected scheduler such as ``sigmas * 0.95``,
+    sigmas will be represented as a numpy array, numpy is available through the namespace ``np``, 
+    this uses ``asteval``.
+    
+    Lists of floats and strings representing expressions can be intermixed.
+    
     Sigma values control the noise schedule in the diffusion process, allowing for 
     fine-grained control over how noise is added and removed during image generation.
     
     This corresponds to the ``--sigmas`` command line argument, which accepts 
-    multiple comma-separated lists of floating point values, or singular values.
+    multiple comma-separated lists of floating point values, or singular values,
+    or expressions denoted with: ``expr: ...``.
+    
+    You do not need to specify ``expr:`` when passing this value in the library,
+    simply pass a string instead of a list of floats.
+    
+    Example: ``[[1.0,2.0,3.0], 'sigmas * 0.95']``
     """
 
     inference_steps: _types.Integers
@@ -360,17 +372,29 @@ class RenderLoopConfig(_types.SetFromMixin):
     this corresponds to the ``--second-model-guidance-scales`` argument of the dgenerate command line tool.
     """
 
-    sdxl_refiner_sigmas: typing.Optional[collections.abc.Sequence[_types.Floats]] = None
+    sdxl_refiner_sigmas: typing.Optional[collections.abc.Sequence[collections.abc.Sequence[float] | str]] = None
     """
-    One or more lists of sigma values to try. This is supported
+    One or more lists of sigma values to try with the SDXL refiner. This is supported
     when using a :py:attr:`RenderLoopConfig.second_model_scheduler_uri` that supports 
     setting sigmas.
     
-    These sigma values control the noise schedule specifically for the SDXL refiner's 
-    diffusion process, allowing for customized denoising behavior during the refinement stage.
+    Or: string expressions involving sigmas from the selected scheduler such as ``sigmas * 0.95``,
+    sigmas will be represented as a numpy array, numpy is available through the namespace ``np``, 
+    this uses ``asteval``.
+    
+    Lists of floats and strings representing expressions can be intermixed.
+    
+    Sigma values control the noise schedule in the diffusion process, allowing for 
+    fine-grained control over how noise is added and removed during image generation.
     
     This corresponds to the ``--sdxl-refiner-sigmas`` command line argument, which accepts 
-    multiple comma-separated lists of floating point values, or singular values.
+    multiple comma-separated lists of floating point values, or singular values,
+    or expressions denoted with: ``expr: ...``.
+    
+    You do not need to specify ``expr:`` when passing this value in the library,
+    simply pass a string instead of a list of floats.
+    
+    Example: ``[[1.0,2.0,3.0], 'sigmas * 0.95']``
     """
 
     sdxl_refiner_guidance_rescales: _types.OptionalFloats = None
@@ -2458,7 +2482,9 @@ class RenderLoopConfig(_types.SetFromMixin):
             self.deep_cache_intervals,
             self.deep_cache_branch_ids,
             self.sdxl_refiner_deep_cache_intervals,
-            self.sdxl_refiner_deep_cache_branch_ids
+            self.sdxl_refiner_deep_cache_branch_ids,
+            self.sigmas,
+            self.sdxl_refiner_sigmas
         ]
 
         schedulers, second_model_schedulers = self._normalized_schedulers()

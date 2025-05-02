@@ -19,11 +19,11 @@ stabilityai/stable-diffusion-xl-base-1.0
 --model-type torch-sdxl
 --dtype float16
 --variant fp16
---inference-steps 30
+--inference-steps {{ inference_steps }}
 --guidance-scales 5
 --sigmas {{ sigmas }}
 --clip-skips 0
 --gen-seeds 1
---output-path output
+--output-path sigmas_manual
 --output-size 1024x1024
 --prompts "a horse standing in a field"

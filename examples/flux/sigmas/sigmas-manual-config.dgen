@@ -1,0 +1,37 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 5.0.0
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+{% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 15 %}
+    \set optimization --quantizer bnb;bits=4
+{% else %}
+    \set optimization --model-sequential-offload
+{% endif %}
+
+# Use numpy to generate scaled linear sigmas for Flux
+
+# import numpy as np
+
+\import numpy as np
+
+\setp inference_steps 50
+\setp sigma_scale 0.95
+
+\set sigmas {{ csv(np.linspace(1.0, 1 / inference_steps, inference_steps) * sigma_scale) }}
+
+black-forest-labs/FLUX.1-dev
+--model-type torch-flux {{ auth_token }} {{ optimization }}
+--dtype bfloat16
+--inference-steps {{ inference_steps }}
+--guidance-scales 3.5
+--gen-seeds 1
+--sigmas {{ sigmas }}
+--output-path sigmas_manual
+--output-size 1024x1024
+--prompts "a horse standing inside a barn"

@@ -289,11 +289,11 @@ as well, and can also be directly used inside a template.
 
 You can use this to calculate and scale linear Flux sigmas for instance.
 
-@EXAMPLE[../../examples/flux/sigmas/config.dgen]
+@EXAMPLE[../../examples/flux/sigmas/sigmas-manual-config.dgen]
 
 Or try scaling exponential SDXL sigmas.
 
-@EXAMPLE[../../examples/stablediffusion_xl/sigmas/config.dgen]
+@EXAMPLE[../../examples/stablediffusion_xl/sigmas/sigmas-manual-config.dgen]
 
 String and text escaping behavior
 ---------------------------------
