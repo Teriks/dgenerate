@@ -21,8 +21,8 @@ this CSV list is parsed as one token, so you may want to quote it depending on t
 To specify an expression you should use: ``--sigmas "expr: sigmas * 0.95"`` for instance,
 the ``expr:`` prefix on the argument value indicates that you are using an expression.
 
-Expressions are evaluated using ``asteval`` which is also used for expression dgenerates
-shell.
+Expressions are evaluated using ``asteval`` which is also used for some expression
+parsing operations in dgenerate's shell.
 
 In this expression environment, numpy is available through the namespace ``np`` if you
 wish to use it to help with calculating a set of sigma values.
