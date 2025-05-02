@@ -182,12 +182,13 @@ class VAEUri:
              original_config: _types.OptionalPath = None,
              use_auth_token: _types.OptionalString = None,
              local_files_only: bool = False,
-             no_cache: bool = False) -> \
+             no_cache: bool = False,
+             missing_ok: bool = False) -> \
             typing.Union[
                 diffusers.AutoencoderKL,
                 diffusers.AsymmetricAutoencoderKL,
                 diffusers.AutoencoderTiny,
-                diffusers.ConsistencyDecoderVAE]:
+                diffusers.ConsistencyDecoderVAE, None]:
         """
         Load a VAE of type :py:class:`diffusers.AutoencoderKL`, :py:class:`diffusers.AsymmetricAutoencoderKL`,
         :py:class:`diffusers.AutoencoderKLTemporalDecoder`, or :py:class:`diffusers.AutoencoderTiny` from this URI
@@ -198,7 +199,9 @@ class VAEUri:
         :param local_files_only: avoid downloading files and only look for cached files
             when the model path is a huggingface slug or blob link
 
-        :param no_cache: If True, force the returned object not to be cached by the memoize decorator.
+        :param no_cache: If ``True``, force the returned object not to be cached by the memoize decorator.
+        :param missing_ok: If ``True``, when a VAE is not found inside a single file checkpoint as a sub model,
+            just return ``None`` instead of throwing an error.
 
         :raises ModelNotFoundError: If the model could not be found.
 
@@ -221,7 +224,7 @@ class VAEUri:
             new_object_size=new_vae_size)
 
     @_memoize(_vae_cache,
-              exceptions={'local_files_only'},
+              exceptions={'local_files_only', 'missing_ok'},
               hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _d_memoize.struct_hasher}),
               on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Torch VAE", key, hit),
               on_create=lambda key, new: _d_memoize.simple_cache_miss_debug("Torch VAE", key, new))
@@ -230,12 +233,14 @@ class VAEUri:
               original_config: _types.OptionalPath = None,
               use_auth_token: _types.OptionalString = None,
               local_files_only: bool = False,
-              no_cache: bool = False) -> \
+              no_cache: bool = False,
+              missing_ok: bool = False
+              ) -> \
             typing.Union[
                 diffusers.AutoencoderKL,
                 diffusers.AsymmetricAutoencoderKL,
                 diffusers.AutoencoderTiny,
-                diffusers.ConsistencyDecoderVAE]:
+                diffusers.ConsistencyDecoderVAE, None]:
 
         if self.dtype is None:
             torch_dtype = _enums.get_torch_dtype(dtype_fallback)
@@ -303,6 +308,12 @@ class VAEUri:
                     # cannot find configs
                     raise _pipelinewrapper_util.ModelNotFoundError(e) from e
                 except diffusers.loaders.single_file.SingleFileComponentError as e:
+                    if missing_ok:
+                        # noinspection PyTypeChecker
+                        return None, _d_memoize.CachedObjectMetadata(
+                            size=0,
+                            skip=True
+                        )
                     raise _exceptions.VAEUriLoadError(
                         f'Failed to load VAE from single file checkpoint {model_path}, '
                         f'make sure the file contains a VAE.') from e

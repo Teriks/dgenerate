@@ -330,13 +330,15 @@ class TextEncoderUri:
              original_config: _types.OptionalPath = None,
              use_auth_token: _types.OptionalString = None,
              local_files_only: bool = False,
-             no_cache: bool = False) -> \
+             no_cache: bool = False,
+             missing_ok: bool = False
+             ) -> \
             typing.Union[
                 transformers.models.clip.CLIPTextModel,
                 transformers.models.clip.CLIPTextModelWithProjection,
                 transformers.models.t5.T5EncoderModel,
                 DistillT5EncoderModel,
-                diffusers.pipelines.kolors.ChatGLMModel]:
+                diffusers.pipelines.kolors.ChatGLMModel, None]:
         """
         Load a torch Text Encoder of type :py:class:`transformers.models.clip.CLIPTextModel`,
         :py:class:`transformers.models.clip.CLIPTextModelWithProjection`,
@@ -349,7 +351,9 @@ class TextEncoderUri:
         :param use_auth_token: optional huggingface auth token.
         :param local_files_only: avoid downloading files and only look for cached files
             when the model path is a huggingface slug or blob link
-        :param no_cache: If True, force the returned object not to be cached by the memoize decorator.
+        :param no_cache: If ``True``, force the returned object not to be cached by the memoize decorator.
+        :param missing_ok: If ``True``, when a VAE is not found inside a single file checkpoint as a sub model,
+            just return ``None`` instead of throwing an error.
 
         :raises ModelNotFoundError: If the model could not be found.
 
@@ -387,13 +391,15 @@ class TextEncoderUri:
               original_config: _types.OptionalPath = None,
               use_auth_token: _types.OptionalString = None,
               local_files_only: bool = False,
-              no_cache: bool = False) -> \
+              no_cache: bool = False,
+              missing_ok: bool = False
+              ) -> \
             typing.Union[
                 transformers.models.clip.CLIPTextModel,
                 transformers.models.clip.CLIPTextModelWithProjection,
                 transformers.models.t5.T5EncoderModel,
                 DistillT5EncoderModel,
-                diffusers.pipelines.kolors.ChatGLMModel]:
+                diffusers.pipelines.kolors.ChatGLMModel, None]:
 
         if self.dtype is None:
             torch_dtype = _enums.get_torch_dtype(dtype_fallback)
@@ -508,6 +514,12 @@ class TextEncoderUri:
                     # cannot find configs
                     raise _pipelinewrapper_util.ModelNotFoundError(e) from e
                 except diffusers.loaders.single_file.SingleFileComponentError as e:
+                    if missing_ok:
+                        # noinspection PyTypeChecker
+                        return None, _d_memoize.CachedObjectMetadata(
+                            size=0,
+                            skip=True
+                        )
                     raise _exceptions.TextEncoderUriLoadError(
                         f'Failed to load Text Encoder from single file checkpoint {model_path}, '
                         f'make sure the file contains a Text Encoders.') from e
