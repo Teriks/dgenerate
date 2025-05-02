@@ -289,6 +289,22 @@ def _config_to_automatic1111_dict(config: str) -> typing.Dict[str, any]:
         if vae_hash:
             parameters["VAE hash"] = vae_hash
 
+    # Extract Text encoder information
+    if args.text_encoder_uris:
+        text_encoder_info = {}
+        for text_encoder_uri_str in args.text_encoder_uris:
+            text_encoder_uri = _uris.TextEncoderUri.parse(text_encoder_uri_str)
+            text_encoder_name, text_encoder_hash = _process_model_path(
+                model_title='TextEncoder',
+                model_path=text_encoder_uri.model
+            )
+            if text_encoder_name and text_encoder_hash:
+                text_encoder_info[text_encoder_name] = text_encoder_hash
+
+        if text_encoder_info:
+            parameters["TextEncoder hashes"] = ", ".join(
+                [f"{name}: {hash_val}" for name, hash_val in text_encoder_info.items()])
+
     # Extract LoRA information
     if args.lora_uris:
         lora_info = {}
@@ -646,11 +662,11 @@ def _process_model_path(model_title: str, model_path: str):
 
             model_name = model_name_no_ext
         else:
-            model_name = model_path
+            model_name = f'"{model_path}"'
 
             _messages.debug_log(
-                f"{model_title} model file not found: {model_path}, "
-                f"this may be a huggingface slug.")
+                f'{model_title} model file not found: "{model_path}", '
+                f'this may be a huggingface slug.')
 
             model_hash = None
 
