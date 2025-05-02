@@ -18,12 +18,16 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import contextlib
+import logging
 import typing
 
 import diffusers.pipelines.kolors
 import huggingface_hub
+import torch
 import transformers.models.clip
 import diffusers.loaders
+import accelerate
 
 import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
@@ -39,7 +43,6 @@ from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 from dgenerate.pipelinewrapper.uris import util as _util
 import dgenerate.extras.DistillT5.models.T5_encoder as _distill_t5_encoder
 
-
 DistillT5EncoderModel = _distill_t5_encoder.T5EncoderWithProjection
 
 _text_encoder_uri_parser = _textprocessing.ConceptUriParser(
@@ -49,13 +52,139 @@ _text_encoder_uri_parser = _textprocessing.ConceptUriParser(
         'variant',
         'subfolder',
         'dtype',
-        'quantizer'
+        'quantizer',
+        'mode'
     ]
 )
 
 _text_encoder_cache = _d_memoize.create_object_cache(
     'text_encoder', cache_type=_memory.SizedConstrainedObjectCache
 )
+
+
+@contextlib.contextmanager
+def _suppress_accelerate_warnings():
+    """Context manager to temporarily suppress Accelerate warnings."""
+    # Get the logger
+    logger = logging.getLogger("accelerate.utils.modeling")
+    # Store original level
+    original_level = logger.level
+    # Set level to ERROR (suppressing warnings)
+    logger.setLevel(logging.ERROR)
+    try:
+        yield
+    finally:
+        # Restore original level
+        logger.setLevel(original_level)
+
+
+def _load_clip_l_from_single_file(
+        model_class: transformers.CLIPTextModel | transformers.CLIPTextModelWithProjection,
+        model_path: str,
+        dtype: torch.dtype,
+        local_files_only: bool = False,
+        quantization_config=None
+):
+    model_id = "openai/clip-vit-large-patch14"
+    
+    try:
+
+        with _suppress_accelerate_warnings(), accelerate.init_empty_weights():
+            config = transformers.CLIPTextConfig.from_pretrained(
+                model_id, local_files_only=local_files_only,
+                quantization_config=quantization_config
+            )
+
+            config.torch_dtype = dtype
+
+            # Load with automatic device mapping for efficient memory usage
+            text_encoder = model_class(config)
+        
+        blob_link = _pipelinewrapper_util.HFBlobLink.parse(model_path)
+        
+        if blob_link is not None:
+            model_path = huggingface_hub.hf_hub_download(
+                repo_id=blob_link.repo_id,
+                revision=blob_link.revision,
+                subfolder=blob_link.subfolder,
+                filename=blob_link.weight_name,
+                local_files_only=local_files_only
+            )
+
+        _messages.log(
+            f'Loading monolithic clip-l state dict from: "{model_path}", this may take a while, please wait...',
+            level=_messages.WARNING
+        )
+
+        with _suppress_accelerate_warnings():
+            # Load state dict and update weights
+            text_encoder = accelerate.load_checkpoint_and_dispatch(
+                text_encoder,
+                checkpoint=model_path,
+                device_map="auto",
+                dtype=dtype,
+                no_split_module_classes=["CLIPEncoderLayer"]
+            )
+
+        return text_encoder
+    
+    except Exception as e:
+        raise _exceptions.TextEncoderUriLoadError(f"Failed to load CLIP-L model: {e}") from e
+
+
+def _load_t5_xxl_from_single_file(
+        model_class: transformers.models.t5.T5EncoderModel | DistillT5EncoderModel,
+        model_path: str,
+        dtype: torch.dtype,
+        local_files_only: bool = False,
+        quantization_config=None
+):
+    model_id = "google/t5-v1_1-xxl"
+    
+    try:
+        # Following Flux examples, load T5-XXL in 8-bit to save memory
+        _messages.debug_log("Loading T5-XXL model with 8-bit quantization and auto device mapping")
+
+        with _suppress_accelerate_warnings(), accelerate.init_empty_weights():
+            config = transformers.T5Config.from_pretrained(
+                model_id, local_files_only=local_files_only,
+                quantization_config=quantization_config
+            )
+
+            config.torch_dtype = dtype
+
+            text_encoder = model_class(config)
+
+        blob_link = _pipelinewrapper_util.HFBlobLink.parse(model_path)
+        
+        if blob_link is not None:
+            model_path = huggingface_hub.hf_hub_download(
+                repo_id=blob_link.repo_id,
+                revision=blob_link.revision,
+                subfolder=blob_link.subfolder,
+                filename=blob_link.weight_name,
+                local_files_only=local_files_only
+            )
+        
+        # Load state dict and update weights
+        _messages.log(
+            f'Loading monolithic t5-xxl state dict from: "{model_path}", this may take a while, please wait...',
+            level=_messages.WARNING
+        )
+
+        with _suppress_accelerate_warnings():
+            text_encoder = accelerate.load_checkpoint_and_dispatch(
+                text_encoder,
+                checkpoint=model_path,
+                device_map="auto",
+                dtype=dtype,
+                no_split_module_classes=["T5Block"]
+            )
+
+        return text_encoder
+    
+    except Exception as e:
+        raise _exceptions.TextEncoderUriLoadError(f"Failed to load T5-XXL model: {e}") from e
 
 
 class TextEncoderUri:
@@ -112,6 +241,15 @@ class TextEncoderUri:
         """
         return self._quantizer
 
+    @property
+    def mode(self) -> _types.OptionalString:
+        """
+        Model loading mode for single file checkpoints, for example 'clip-l' or 't5-xxl'
+
+        The default behavior is to extract the sub model from an assumed to be combined checkpoint.
+        """
+        return self._mode
+
     _encoders = {
         'CLIPTextModel': transformers.models.clip.CLIPTextModel,
         'CLIPTextModelWithProjection': transformers.models.clip.CLIPTextModelWithProjection,
@@ -131,7 +269,8 @@ class TextEncoderUri:
                  variant: _types.OptionalString = None,
                  subfolder: _types.OptionalString = None,
                  dtype: _enums.DataType | str | None = None,
-                 quantizer: _types.OptionalUri = None):
+                 quantizer: _types.OptionalUri = None,
+                 mode: _types.OptionalString = None):
         """
         :param encoder: encoder class name, for example ``CLIPTextModel``
         :param model: model path
@@ -139,6 +278,7 @@ class TextEncoderUri:
         :param variant: model variant, for example ``fp16``
         :param subfolder: model subfolder
         :param dtype: model data type (precision)
+        :param mode: model loading mode, for example ``clip-l`` for single file ''clip-l'' checkpoints.
 
         :raises InvalidTextEncoderUriError: If ``dtype`` is passed an invalid data type string, or if
             ``model`` points to a single file and the specified ``encoder`` class name does not
@@ -149,11 +289,26 @@ class TextEncoderUri:
             raise _exceptions.InvalidTextEncoderUriError(
                 f'Unknown TextEncoder encoder class {encoder}, must be one of: {_textprocessing.oxford_comma(self._encoders.keys(), "or")}')
 
+        mode = mode.lower() if mode is not None else mode
+
+        if mode not in (None, 'clip-l', 't5-xxl'):
+            raise _exceptions.InvalidTextEncoderUriError(
+                f'Unknown TextEncoder load mode "{mode}", must be None, "clip-l", or "t5-xxl"')
+
         if _pipelinewrapper_util.is_single_file_model_load(model):
-            if quantizer:
+            if quantizer and mode not in ('clip-l', 't5-xxl'):
                 raise _exceptions.InvalidTextEncoderUriError(
                     'specifying a Text Encoder quantizer URI is only supported for Hugging Face '
                     'repository loads from a repo slug or disk path, single file loads are not supported.')
+                
+        # Validate special modes don't use variant or revision
+        if mode in ('clip-l', 't5-xxl'):
+            if variant is not None:
+                raise _exceptions.InvalidTextEncoderUriError(
+                    f'TextEncoder cannot use variant with mode "{mode}", these are incompatible options')
+            if revision is not None:
+                raise _exceptions.InvalidTextEncoderUriError(
+                    f'TextEncoder cannot use revision with mode "{mode}", these are incompatible options')
 
         self._encoder = encoder
         self._model = model
@@ -161,6 +316,7 @@ class TextEncoderUri:
         self._variant = variant
         self._subfolder = subfolder
         self._quantizer = quantizer
+        self._mode = mode
 
         try:
             self._dtype = _enums.get_data_type_enum(dtype) if dtype else None
@@ -256,6 +412,14 @@ class TextEncoderUri:
 
         encoder = self._encoders[self.encoder]
 
+        if self.mode == 'clip-l' and encoder not in (transformers.CLIPTextModel, transformers.CLIPTextModelWithProjection):
+            raise _exceptions.TextEncoderUriLoadError(
+                f'Encoder "{self.encoder}" does not support loading with mode "clip-l".')
+
+        if self.mode == 't5-xxl' and encoder not in (transformers.T5EncoderModel, DistillT5EncoderModel):
+            raise _exceptions.TextEncoderUriLoadError(
+                f'Encoder "{self.encoder}" does not support loading with mode "t5-xxl".')
+
         model_path = _pipelinewrapper_util.download_non_hf_model(self.model)
 
         if self.quantizer:
@@ -267,45 +431,88 @@ class TextEncoderUri:
             quant_config = None
 
         if _pipelinewrapper_util.is_single_file_model_load(model_path):
-
-            try:
-                original_config = _pipelinewrapper_util.download_non_hf_config(
-                    original_config) if original_config else None
-            except _pipelinewrapper_util.NonHFConfigDownloadError as e:
-                raise _exceptions.TextEncoderUriLoadError(
-                    f'original config file "{original_config}" for Text Encoder could not be downloaded: {e}'
-                ) from e
-
-            estimated_memory_use = _pipelinewrapper_util.estimate_model_memory_use(
-                repo_id=model_path,
-                revision=self.revision,
-                local_files_only=local_files_only,
-                use_auth_token=use_auth_token
-            )
-
-            self._enforce_cache_size(estimated_memory_use)
-
-            try:
-                text_encoder = _pipelinewrapper_util.single_file_load_sub_module(
-                    path=model_path,
-                    class_name=self.encoder,
-                    library_name=encoder_library,
-                    name=self.subfolder if self.subfolder else 'text_encoder',
-                    use_auth_token=use_auth_token,
-                    original_config=original_config,
+            if self.mode in ('clip-l', 't5-xxl'):
+                # Ensure these modes are only used with safetensors files
+                if not model_path.endswith('.safetensors'):
+                    raise _exceptions.TextEncoderUriLoadError(
+                        f'TextEncoder mode "{self.mode}" only supports loading '
+                        f'from safetensors files, but got: "{model_path}"')
+                    
+            if self.mode == 'clip-l':
+                estimated_memory_use = _pipelinewrapper_util.estimate_model_memory_use(
+                    repo_id="openai/clip-vit-large-patch14",
                     local_files_only=local_files_only,
-                    revision=self.revision,
-                    dtype=torch_dtype
+                    use_auth_token=use_auth_token
                 )
-            except FileNotFoundError as e:
-                # cannot find configs
-                raise _pipelinewrapper_util.ModelNotFoundError(e) from e
-            except diffusers.loaders.single_file.SingleFileComponentError as e:
-                raise _exceptions.TextEncoderUriLoadError(
-                    f'Failed to load Text Encoder from single file checkpoint {model_path}, '
-                    f'make sure the file contains a Text Encoders.') from e
 
-            estimated_memory_use = _torchutil.estimate_module_memory_usage(text_encoder)
+                self._enforce_cache_size(estimated_memory_use)
+
+                text_encoder = _load_clip_l_from_single_file(
+                    model_class=encoder,
+                    model_path=model_path,
+                    dtype=torch_dtype,
+                    local_files_only=local_files_only,
+                    quantization_config=quant_config
+                )
+
+                estimated_memory_use = _torchutil.estimate_module_memory_usage(text_encoder)
+            elif self.mode == 't5-xxl':
+                estimated_memory_use = _pipelinewrapper_util.estimate_model_memory_use(
+                    repo_id="google/t5-v1_1-xxl",
+                    local_files_only=local_files_only,
+                    use_auth_token=use_auth_token
+                )
+
+                self._enforce_cache_size(estimated_memory_use)
+
+                text_encoder = _load_t5_xxl_from_single_file(
+                    model_class=encoder,
+                    model_path=model_path,
+                    dtype=torch_dtype,
+                    local_files_only=local_files_only,
+                    quantization_config=quant_config
+                )
+
+                estimated_memory_use = _torchutil.estimate_module_memory_usage(text_encoder)
+            else:
+                try:
+                    original_config = _pipelinewrapper_util.download_non_hf_config(
+                        original_config) if original_config else None
+                except _pipelinewrapper_util.NonHFConfigDownloadError as e:
+                    raise _exceptions.TextEncoderUriLoadError(
+                        f'original config file "{original_config}" for Text Encoder could not be downloaded: {e}'
+                    ) from e
+
+                estimated_memory_use = _pipelinewrapper_util.estimate_model_memory_use(
+                    repo_id=model_path,
+                    revision=self.revision,
+                    local_files_only=local_files_only,
+                    use_auth_token=use_auth_token
+                )
+
+                self._enforce_cache_size(estimated_memory_use)
+
+                try:
+                    text_encoder = _pipelinewrapper_util.single_file_load_sub_module(
+                        path=model_path,
+                        class_name=self.encoder,
+                        library_name=encoder_library,
+                        name=self.subfolder if self.subfolder else 'text_encoder',
+                        use_auth_token=use_auth_token,
+                        original_config=original_config,
+                        local_files_only=local_files_only,
+                        revision=self.revision,
+                        dtype=torch_dtype
+                    )
+                except FileNotFoundError as e:
+                    # cannot find configs
+                    raise _pipelinewrapper_util.ModelNotFoundError(e) from e
+                except diffusers.loaders.single_file.SingleFileComponentError as e:
+                    raise _exceptions.TextEncoderUriLoadError(
+                        f'Failed to load Text Encoder from single file checkpoint {model_path}, '
+                        f'make sure the file contains a Text Encoders.') from e
+
+                estimated_memory_use = _torchutil.estimate_module_memory_usage(text_encoder)
 
         else:
             if original_config:
@@ -379,6 +586,8 @@ class TextEncoderUri:
                                   variant=r.args.get('variant', None),
                                   dtype=dtype,
                                   subfolder=r.args.get('subfolder', None),
-                                  quantizer=r.args.get('quantizer', False))
+                                  quantizer=r.args.get('quantizer', False),
+                                  mode=r.args.get('mode', None)
+                                  )
         except _textprocessing.ConceptUriParseError as e:
             raise _exceptions.InvalidTextEncoderUriError(e) from e
