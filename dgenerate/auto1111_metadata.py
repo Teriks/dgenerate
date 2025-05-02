@@ -20,7 +20,9 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import hashlib
+import json
 import pathlib
+import re
 import urllib.parse
 
 import huggingface_hub
@@ -278,8 +280,19 @@ def _config_to_automatic1111_dict(config: str) -> typing.Dict[str, any]:
     if sampler is not None:
         parameters["Sampler"] = sampler
 
+    # Extra data for CivitAI in particular,
+    # appended at the end as "Civitai resources"
+    civit_ai_resources = []
+
+    def handle_civit_ai_resource(uri):
+        civit_ai_id = _extract_civitai_id(uri)
+        if civit_ai_id is not None:
+            civit_ai_resources.append({"type": "checkpoint", "modelVersionId": civit_ai_id})
+
     # Extract VAE information
     if args.vae_uri:
+        handle_civit_ai_resource(args.vae_uri)
+
         vae_uri = _uris.VAEUri.parse(args.vae_uri)
         vae_name, vae_hash = _process_model_path(
             model_title='VAE',
@@ -294,6 +307,8 @@ def _config_to_automatic1111_dict(config: str) -> typing.Dict[str, any]:
     if args.text_encoder_uris:
         text_encoder_info = {}
         for text_encoder_uri_str in args.text_encoder_uris:
+            handle_civit_ai_resource(text_encoder_uri_str)
+
             text_encoder_uri = _uris.TextEncoderUri.parse(text_encoder_uri_str)
             text_encoder_name, text_encoder_hash = _process_model_path(
                 model_title='TextEncoder',
@@ -311,6 +326,8 @@ def _config_to_automatic1111_dict(config: str) -> typing.Dict[str, any]:
     if args.lora_uris:
         lora_info = {}
         for lora_uri_str in args.lora_uris:
+            handle_civit_ai_resource(lora_uri_str)
+
             lora_uri = _uris.LoRAUri.parse(lora_uri_str)
             lora_name, lora_hash = _process_model_path(
                 model_title='LoRA',
@@ -328,6 +345,8 @@ def _config_to_automatic1111_dict(config: str) -> typing.Dict[str, any]:
     if args.textual_inversion_uris:
         embedding_info = {}
         for embedding_uri_str in args.textual_inversion_uris:
+            handle_civit_ai_resource(embedding_uri_str)
+
             embedding_uri = _uris.TextualInversionUri.parse(embedding_uri_str)
             embedding_name, embedding_hash = _process_model_path(
                 model_title='TextualInversion',
@@ -345,6 +364,8 @@ def _config_to_automatic1111_dict(config: str) -> typing.Dict[str, any]:
     if args.controlnet_uris:
         controlnet_info = {}
         for controlnet_uri_str in args.controlnet_uris:
+            handle_civit_ai_resource(controlnet_uri_str)
+
             controlnet_uri = _uris.ControlNetUri.parse(controlnet_uri_str)
             controlnet_name, controlnet_hash = _process_model_path(
                 model_title='ControlNet',
@@ -361,6 +382,9 @@ def _config_to_automatic1111_dict(config: str) -> typing.Dict[str, any]:
     # Check for clip skip
     if args.clip_skips:
         parameters["Clip skip"] = args.clip_skips[0]
+
+    if civit_ai_resources:
+        parameters['Civitai resources'] = json.dumps(civit_ai_resources)
 
     return parameters
 
@@ -601,6 +625,20 @@ def _clean_url(url):
         cleaned = cleaned[2:]
 
     return cleaned
+
+
+def _extract_civitai_id(url):
+    parsed = urllib.parse.urlparse(url)
+
+    # Ensure it's a Civitai download URL
+    if parsed.netloc not in ("civitai.com", "www.civitai.com"):
+        return None
+
+    match = re.match(r"^/api/download/models/(\d+)$", parsed.path)
+    if match:
+        return int(match.group(1))
+
+    return None
 
 
 def _process_model_path(model_title: str, model_path: str):
