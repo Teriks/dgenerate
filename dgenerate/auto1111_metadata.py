@@ -248,8 +248,19 @@ def _config_to_automatic1111_dict(config: str) -> typing.Dict[str, any]:
 
     args = parse_only_invoker.args
 
+    # Extra data for CivitAI in particular,
+    # appended at the end as "Civitai resources"
+    civit_ai_resources = []
+
+    def handle_civit_ai_resource(type, uri):
+        civit_ai_id = _extract_civitai_id(uri)
+        if civit_ai_id is not None:
+            civit_ai_resources.append({"type": type, "modelVersionId": civit_ai_id})
+
     # Extract model information
     if args.model_path:
+        handle_civit_ai_resource('checkpoint', args.model_path)
+
         model_name, model_hash = _process_model_path(
             model_title='Primary',
             model_path=args.model_path
@@ -280,18 +291,9 @@ def _config_to_automatic1111_dict(config: str) -> typing.Dict[str, any]:
     if sampler is not None:
         parameters["Sampler"] = sampler
 
-    # Extra data for CivitAI in particular,
-    # appended at the end as "Civitai resources"
-    civit_ai_resources = []
-
-    def handle_civit_ai_resource(uri):
-        civit_ai_id = _extract_civitai_id(uri)
-        if civit_ai_id is not None:
-            civit_ai_resources.append({"type": "checkpoint", "modelVersionId": civit_ai_id})
-
     # Extract VAE information
     if args.vae_uri:
-        handle_civit_ai_resource(args.vae_uri)
+        handle_civit_ai_resource('vae', args.vae_uri)
 
         vae_uri = _uris.VAEUri.parse(args.vae_uri)
         vae_name, vae_hash = _process_model_path(
@@ -307,7 +309,7 @@ def _config_to_automatic1111_dict(config: str) -> typing.Dict[str, any]:
     if args.text_encoder_uris:
         text_encoder_info = {}
         for text_encoder_uri_str in args.text_encoder_uris:
-            handle_civit_ai_resource(text_encoder_uri_str)
+            handle_civit_ai_resource('encoder', text_encoder_uri_str)
 
             text_encoder_uri = _uris.TextEncoderUri.parse(text_encoder_uri_str)
             text_encoder_name, text_encoder_hash = _process_model_path(
@@ -326,7 +328,7 @@ def _config_to_automatic1111_dict(config: str) -> typing.Dict[str, any]:
     if args.lora_uris:
         lora_info = {}
         for lora_uri_str in args.lora_uris:
-            handle_civit_ai_resource(lora_uri_str)
+            handle_civit_ai_resource('lora', lora_uri_str)
 
             lora_uri = _uris.LoRAUri.parse(lora_uri_str)
             lora_name, lora_hash = _process_model_path(
@@ -345,7 +347,7 @@ def _config_to_automatic1111_dict(config: str) -> typing.Dict[str, any]:
     if args.textual_inversion_uris:
         embedding_info = {}
         for embedding_uri_str in args.textual_inversion_uris:
-            handle_civit_ai_resource(embedding_uri_str)
+            handle_civit_ai_resource('embed', embedding_uri_str)
 
             embedding_uri = _uris.TextualInversionUri.parse(embedding_uri_str)
             embedding_name, embedding_hash = _process_model_path(
@@ -364,7 +366,7 @@ def _config_to_automatic1111_dict(config: str) -> typing.Dict[str, any]:
     if args.controlnet_uris:
         controlnet_info = {}
         for controlnet_uri_str in args.controlnet_uris:
-            handle_civit_ai_resource(controlnet_uri_str)
+            handle_civit_ai_resource('controlnet', controlnet_uri_str)
 
             controlnet_uri = _uris.ControlNetUri.parse(controlnet_uri_str)
             controlnet_name, controlnet_hash = _process_model_path(
