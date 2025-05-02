@@ -591,7 +591,6 @@ def _process_model_path(model_title: str, model_path: str):
                     mime_acceptable_desc='not text',
                     mimetype_is_supported=lambda m: m is not None and not m.startswith('text/'),
                     unknown_mimetype_exception=_ModelMimetypeException
-
                 )
 
             if cached_path and os.path.exists(cached_path):
