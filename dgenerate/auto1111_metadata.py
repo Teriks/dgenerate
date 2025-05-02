@@ -702,7 +702,7 @@ def _process_model_path(model_title: str, model_path: str):
 
             model_name = model_name_no_ext
         else:
-            model_name = model_path
+            model_name = model_path.replace(':', '_')
 
             _messages.debug_log(
                 f'{model_title} model file not found: "{model_path}", '
