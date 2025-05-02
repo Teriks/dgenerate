@@ -104,7 +104,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/version_5.0.0/>`_.
     * `Deterministic Output`_
     * `Specifying a specific GPU for CUDA`_
     * `Specifying a Scheduler (sampler)`_
-    * `Specifying sigmas (denoising schedule)`_
+    * `Specifying Sigmas (denoising schedule)`_
     * `Specifying a VAE`_
     * `VAE Tiling and Slicing`_
     * `Specifying a UNet`_
@@ -3290,7 +3290,7 @@ output file name, in the order: ``(scheduler)_(refiner / decoder scheduler)``
     --guidance-scales 5 \
     --prompts "a horse standing in a field"
 
-Specifying sigmas (denoising schedule)
+Specifying Sigmas (denoising schedule)
 ======================================
 
 The denoising schedule sigma values can be overridden with the options ``--sigmas`` or ``--sdxl-refiner-sigmas``
