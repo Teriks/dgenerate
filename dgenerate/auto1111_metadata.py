@@ -21,6 +21,7 @@
 
 import hashlib
 import pathlib
+import urllib.parse
 
 import huggingface_hub
 import tqdm
@@ -302,8 +303,9 @@ def _config_to_automatic1111_dict(config: str) -> typing.Dict[str, any]:
                 text_encoder_info[text_encoder_name] = text_encoder_hash
 
         if text_encoder_info:
-            parameters["TextEncoder hashes"] = ", ".join(
-                [f"{name}: {hash_val}" for name, hash_val in text_encoder_info.items()])
+            parameters["TextEncoder hashes"] = _textprocessing.quote(
+                ", ".join([f"{name}: {hash_val}" for name, hash_val in text_encoder_info.items()])
+            )
 
     # Extract LoRA information
     if args.lora_uris:
@@ -318,7 +320,9 @@ def _config_to_automatic1111_dict(config: str) -> typing.Dict[str, any]:
                 lora_info[lora_name] = lora_hash
 
         if lora_info:
-            parameters["Lora hashes"] = ", ".join([f"{name}: {hash_val}" for name, hash_val in lora_info.items()])
+            parameters["Lora hashes"] = _textprocessing.quote(
+                ", ".join([f"{name}: {hash_val}" for name, hash_val in lora_info.items()])
+            )
 
     # Extract embeddings information
     if args.textual_inversion_uris:
@@ -333,8 +337,9 @@ def _config_to_automatic1111_dict(config: str) -> typing.Dict[str, any]:
                 embedding_info[embedding_name] = embedding_hash
 
         if embedding_info:
-            parameters["Embedding hashes"] = ", ".join(
-                [f"{name}: {hash_val}" for name, hash_val in embedding_info.items()])
+            parameters["Embedding hashes"] = _textprocessing.quote(
+                ", ".join([f"{name}: {hash_val}" for name, hash_val in embedding_info.items()])
+            )
 
     # Extract ControlNet information
     if args.controlnet_uris:
@@ -349,8 +354,9 @@ def _config_to_automatic1111_dict(config: str) -> typing.Dict[str, any]:
                 controlnet_info[controlnet_name] = controlnet_hash
 
         if controlnet_info:
-            parameters["ControlNet hashes"] = ", ".join(
-                [f"{name}: {hash_val}" for name, hash_val in controlnet_info.items()])
+            parameters["ControlNet hashes"] = _textprocessing.quote(
+                ", ".join([f"{name}: {hash_val}" for name, hash_val in controlnet_info.items()])
+            )
 
     # Check for clip skip
     if args.clip_skips:
@@ -567,6 +573,36 @@ class _ModelMimetypeException(Exception):
     pass
 
 
+def _clean_url(url):
+    # colons in model names break civitai
+    # cannot actually get the model name,
+    # so want to use the URL, need to make
+    # sure it is clean
+
+    parsed = urllib.parse.urlparse(url)
+
+    # Remove username, password, port from netloc
+    hostname = parsed.hostname or ''
+    netloc = hostname
+
+    # Remove colons in path, params, query, and fragment
+    path = parsed.path.replace(':', '')
+    params = parsed.params.replace(':', '')
+    query = parsed.query.replace(':', '')
+    fragment = parsed.fragment.replace(':', '')
+
+    # Reconstruct without scheme and sensitive info
+    clean_parts = ('', netloc, path, params, query, fragment)
+
+    cleaned = urllib.parse.urlunparse(clean_parts)
+
+    # Strip leading // if present
+    if cleaned.startswith('//'):
+        cleaned = cleaned[2:]
+
+    return cleaned
+
+
 def _process_model_path(model_title: str, model_path: str):
     """
     Process a model path, handling URLs using web cache if necessary.
@@ -580,7 +616,7 @@ def _process_model_path(model_title: str, model_path: str):
 
     # Check if model path is a URL
     if _webcache.is_downloadable_url(model_path):
-        model_name = f'"{model_path}"'
+        model_name = _clean_url(model_path)
 
         with _checkpoint_hash_cache:
             if model_path in _checkpoint_hash_cache:
@@ -644,6 +680,10 @@ def _process_model_path(model_title: str, model_path: str):
             model_name = os.path.basename(model_path)
             model_name_no_ext, _ = os.path.splitext(model_name)
 
+            # colon messes up civitai parsing, the parser
+            # is very simple
+            model_name_no_ext.replace(':', '_')
+
             with _checkpoint_hash_cache:
                 if model_name in _checkpoint_hash_cache:
                     return model_name_no_ext, _checkpoint_hash_cache[model_name]
@@ -662,7 +702,7 @@ def _process_model_path(model_title: str, model_path: str):
 
             model_name = model_name_no_ext
         else:
-            model_name = f'"{model_path}"'
+            model_name = model_path
 
             _messages.debug_log(
                 f'{model_title} model file not found: "{model_path}", '
