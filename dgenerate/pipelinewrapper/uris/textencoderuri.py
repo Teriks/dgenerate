@@ -381,7 +381,7 @@ class TextEncoderUri:
             new_object_size=new_text_encoder_size)
 
     @_memoize(_text_encoder_cache,
-              exceptions={'local_files_only'},
+              exceptions={'local_files_only', 'missing_ok'},
               hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _d_memoize.struct_hasher}),
               on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Torch TextEncoder", key, hit),
               on_create=lambda key, new: _d_memoize.simple_cache_miss_debug("Torch TextEncoder", key, new))
