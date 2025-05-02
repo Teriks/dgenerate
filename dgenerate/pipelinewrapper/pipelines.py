@@ -1190,7 +1190,9 @@ def create_torch_diffusion_pipeline(
         extra_modules: dict[str, typing.Any] | None = None,
         model_cpu_offload: bool = False,
         sequential_cpu_offload: bool = False,
-        local_files_only: bool = False) -> TorchPipelineCreationResult:
+        local_files_only: bool = False,
+        missing_submodules_ok: bool = False
+) -> TorchPipelineCreationResult:
     """
     Create a :py:class:`diffusers.DiffusionPipeline` in dgenerate's in memory cacheing system.
 
@@ -1228,6 +1230,7 @@ def create_torch_diffusion_pipeline(
     :param model_cpu_offload: This pipeline has model_cpu_offloading enabled?
     :param sequential_cpu_offload: This pipeline has sequential_cpu_offloading enabled?
     :param local_files_only: Only look in the huggingface cache and do not connect to download models?
+    :param missing_submodules_ok: It is okay if Text Encoders or VAE is missing from the checkpoint?
 
     :raises InvalidModelFileError:
     :raises ModelNotFoundError:
@@ -1923,7 +1926,7 @@ def _enforce_torch_pipeline_cache_size(new_pipeline_size):
 
 
 @_memoize(_torch_pipeline_cache,
-          exceptions={'local_files_only'},
+          exceptions={'local_files_only', 'missing_submodules_ok'},
           hasher=_torch_args_hasher,
           extra_identities=[lambda m: m.pipeline],
           on_hit=_torch_on_hit,
@@ -1956,7 +1959,8 @@ def _create_torch_diffusion_pipeline(
         extra_modules: dict[str, typing.Any] | None = None,
         model_cpu_offload: bool = False,
         sequential_cpu_offload: bool = False,
-        local_files_only: bool = False
+        local_files_only: bool = False,
+        missing_submodules_ok: bool = False
 ) -> TorchPipelineCreationResult:
     # Ensure model path is specified
     if not model_path:
@@ -1978,8 +1982,6 @@ def _create_torch_diffusion_pipeline(
             model_path = _to_diffusers_with_caching(
                 model_path,
                 model_type,
-                text_encoder_uris,
-                vae_uri,
                 revision,
                 variant,
                 subfolder,
@@ -2190,7 +2192,8 @@ def _create_torch_diffusion_pipeline(
             original_config=original_config,
             use_auth_token=auth_token,
             local_files_only=local_files_only,
-            no_cache=bool(lora_uris) or model_cpu_offload or sequential_cpu_offload
+            no_cache=bool(lora_uris) or model_cpu_offload or sequential_cpu_offload,
+            missing_ok=missing_submodules_ok
         )
 
     def load_vae(uri: _uris.VAEUri):
@@ -2199,7 +2202,8 @@ def _create_torch_diffusion_pipeline(
             original_config=original_config,
             use_auth_token=auth_token,
             local_files_only=local_files_only,
-            no_cache=model_cpu_offload or sequential_cpu_offload
+            no_cache=model_cpu_offload or sequential_cpu_offload,
+            missing_ok=missing_submodules_ok
         )
 
     def load_unet(uri: _uris.UNetUri, unet_class):
@@ -2698,8 +2702,6 @@ _to_diffusers_cache = _filecache.KeyValueStore(os.path.join(_to_diffusers_cache_
 def _to_diffusers_with_caching(
         model_path: str,
         model_type: _enums.ModelType,
-        text_encoder_uris: _types.OptionalUris,
-        vae_uri: _types.OptionalUri,
         revision: str | None,
         variant: str | None,
         subfolder: str | None,
@@ -2709,16 +2711,9 @@ def _to_diffusers_with_caching(
 ):
     cache_key = model_path + \
                 str(model_type) + \
-                str(variant) + \
                 str(subfolder) + \
                 str(dtype) + \
                 str(original_config)
-
-    if text_encoder_uris:
-        cache_key += str(list(text_encoder_uris))
-
-    if vae_uri:
-        cache_key += str(vae_uri)
 
     with _to_diffusers_cache:
         exists = _to_diffusers_cache.get(cache_key)
@@ -2730,19 +2725,19 @@ def _to_diffusers_with_caching(
             )
 
             # Call this function recursively without quantizer_uri to avoid infinite recursion
-            pipe = create_torch_diffusion_pipeline(
-                model_path=model_path,
-                model_type=model_type,
-                text_encoder_uris=text_encoder_uris,
-                vae_uri=vae_uri,
-                revision=revision,
-                subfolder=subfolder,
-                variant=variant,
-                dtype=dtype,
-                original_config=original_config,
-                auth_token=auth_token,
-                quantizer_uri=None
-            )
+            with _d_memoize.disable_memoization_context():
+                pipe = create_torch_diffusion_pipeline(
+                    model_path=model_path,
+                    model_type=model_type,
+                    revision=revision,
+                    subfolder=subfolder,
+                    variant=variant,
+                    dtype=dtype,
+                    original_config=original_config,
+                    auth_token=auth_token,
+                    quantizer_uri=None,
+                    missing_submodules_ok=True
+                )
 
             cache_path = os.path.join(
                 _to_diffusers_cache_dir, hashlib.sha256(cache_key.encode('utf-8')).hexdigest()

@@ -441,7 +441,16 @@ def memoize(cache: dict[str, typing.Any] | ObjectCache,
         def wrapper(*args, **kwargs):
             global _MEMOIZE_DISABLED
             if _MEMOIZE_DISABLED:
-                return func(*args, **kwargs)
+                val = func(*args, **kwargs)
+                if isinstance(val, tuple):
+                    meta_index = [idx for idx, o in enumerate(val) if isinstance(o, CachedObjectMetadata)]
+                    if len(meta_index) > 1:
+                        raise RuntimeError(
+                            f'Memoized function: {func} returned too many metadata objects.')
+                    if len(meta_index) > 0:
+                        val, _ = _pop_tuple_item(val, meta_index[0])
+                        val = val if len(val) > 1 else val[0]
+                return val
 
             spec = inspect.getfullargspec(func)
             args_len = len(args)

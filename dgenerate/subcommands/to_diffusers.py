@@ -119,7 +119,8 @@ class ToDiffusersSubCommand(_subcommand.SubCommand):
                         subfolder=args.subfolder,
                         variant='fp16' if dtype == dgenerate.DataType.FLOAT16 else None,
                         dtype=dtype,
-                        auth_token=args.auth_token
+                        auth_token=args.auth_token,
+                        missing_submodules_ok=True
                     )
             except (_pipelinewrapper.InvalidModelFileError,
                     _pipelinewrapper.ModelNotFoundError,
