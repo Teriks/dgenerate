@@ -18,7 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
+import collections.abc
 import typing
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.prompt as _prompt
@@ -235,7 +235,7 @@ class DiffusionArguments(_types.SetFromMixin):
     Override the guidance scale used by the SDXL refiner or Stable Cascade decoder.
     """
 
-    sdxl_refiner_sigmas: _types.OptionalFloats = None
+    sdxl_refiner_sigmas: collections.abc.Sequence[float] | str | None = None
     """
     Sigma values, this is supported when using a 
     :py:attr:`DiffusionArguments.second_model_scheduler_uri` that supports 
@@ -248,6 +248,10 @@ class DiffusionArguments(_types.SetFromMixin):
     
     Format: A list of floating point values in descending order, typically ranging 
     from higher values (more noise) to lower values (less noise).
+    
+    Or: a string expression involving sigmas from the selected scheduler such as ``sigmas * 0.95``,
+    sigmas will be represented as a numpy array, numpy is available through the namespace ``np``, 
+    this uses asteval.
     """
 
     sdxl_refiner_guidance_rescale: _types.OptionalFloat = None
@@ -372,7 +376,7 @@ class DiffusionArguments(_types.SetFromMixin):
     when :py:attr:`.DiffusionArguments.guidance_scale`  > 1
     """
 
-    sigmas: _types.OptionalFloats = None
+    sigmas: collections.abc.Sequence[float] | str | None = None
     """
     Sigma values, this is supported when using a when using 
     a :py:attr:`DiffusionArguments.scheduler_uri` that supports setting sigmas.
@@ -384,6 +388,10 @@ class DiffusionArguments(_types.SetFromMixin):
     
     Format: A list of floating point values in descending order, typically ranging 
     from higher values (more noise) to lower values (less noise).
+    
+    Or: a string expression involving sigmas from the selected scheduler such as ``sigmas * 0.95``,
+    sigmas will be represented as a numpy array, numpy is available through the namespace ``np``, 
+    this uses asteval.
     """
 
     hi_diffusion: bool = False

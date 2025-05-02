@@ -540,16 +540,19 @@ def _type_deep_cache_branch_id(val: str) -> int:
     return val
 
 
-def _type_sigmas(val: str) -> list[float]:
+def _type_sigmas(val: str) -> list[float] | str:
     try:
-        if ',' in val:
+        if val.startswith('expr:'):
+            sigmas = val.removeprefix('expr:').strip()
+        elif ',' in val:
             sigmas = [float(x.strip()) for x in val.split(',')]
         else:
             sigmas = [float(val.strip())]
     except ValueError:
         raise argparse.ArgumentTypeError(
             'Sigmas must be a comma-separated list of '
-            'floating point numbers, or a single float'
+            'floating point numbers, a single float, or an expression '
+            'involving "sigmas" denoted by "expr: ... "'
         )
     return sigmas
 
@@ -3036,7 +3039,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '-si', '--sigmas', action='store', nargs='+',
             default=None,
-            metavar="CSV_FLOAT", type=_type_sigmas,
+            metavar="CSV_FLOAT_OR_EXPRESSION", type=_type_sigmas,
             help="""One or more comma-separated lists (or singular values) of floating
                     point sigmas to try. This is supported when using a --scheduler
                     that supports setting sigmas. Sigma values control the noise schedule
@@ -3045,7 +3048,15 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                     Example: --sigmas "1.0,0.8,0.6,0.4,0.2" 
                     
+                    Or expressions: "expr: sigmas * .95", sigmas from --scheduler are 
+                    represented as a numpy array in an interpreted expression, numpy
+                    is available through the namespace "np", this uses asteval.
+                    
                     Or singular values: --sigmas 0.4
+                    
+                    Expressions and CSV lists can be intermixed: --sigmas "1.0,..." "expr: sigmas * 0.95"
+                    
+                    Each provided value (each quoted string in the example above) will be tried in turn.
                     """
         )
     )
@@ -3121,7 +3132,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '-sir', '--sdxl-refiner-sigmas', action='store', nargs='+',
             default=None,
-            metavar="CSV_FLOAT", type=_type_sigmas,
+            metavar="CSV_FLOAT_OR_EXPRESSION", type=_type_sigmas,
             help="""See: --sigmas, but for the SDXL Refiner."""
         )
     )

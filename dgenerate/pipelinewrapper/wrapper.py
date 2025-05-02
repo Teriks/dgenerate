@@ -21,12 +21,15 @@
 import collections.abc
 import contextlib
 import decimal
+import functools
 import inspect
 import math
 import typing
 
 import PIL.Image
+import asteval
 import diffusers
+import numpy
 import torch
 import importlib.util
 import dgenerate.image as _image
@@ -933,7 +936,10 @@ class DiffusionPipelineWrapper:
         opts.append(('--guidance-scales', args.guidance_scale))
 
         if args.sigmas is not None:
-            opts.append(('--sigmas', ','.join(map(str, args.sigmas))))
+            if isinstance(args.sigmas, str):
+                opts.append(('--sigmas', f'expr: {args.sigmas}'))
+            else:
+                opts.append(('--sigmas', ','.join(map(str, args.sigmas))))
 
         opts.append(('--seeds', args.seed))
 
@@ -1197,7 +1203,12 @@ class DiffusionPipelineWrapper:
             opts.append(('--second-model-guidance-scales', args.second_model_guidance_scale))
 
         if args.sdxl_refiner_sigmas is not None:
-            opts.append(('--sdxl-refiner-sigmas', ','.join(map(str, args.sdxl_refiner_sigmas))))
+            if isinstance(args.sdxl_refiner_sigmas, str):
+                opts.append(('--sdxl-refiner-sigmas',
+                             f'expr: {args.sdxl_refiner_sigmas}'))
+            else:
+                opts.append(('--sdxl-refiner-sigmas',
+                             ','.join(map(str, args.sdxl_refiner_sigmas))))
 
         if args.sdxl_refiner_guidance_rescale is not None:
             opts.append(('--sdxl-refiner-guidance-rescales', args.sdxl_refiner_guidance_rescale))
@@ -2019,10 +2030,19 @@ class DiffusionPipelineWrapper:
                                              'ip_adapter_image', 'ip_adapter_images',
                                              'IP Adapter images')
 
-        self._set_non_universal_pipeline_arg(self._pipeline,
-                                             pipeline_args, user_args,
-                                             'sigmas', 'sigmas',
-                                             '--sigmas')
+        self._set_non_universal_pipeline_arg(
+            self._pipeline,
+            pipeline_args, user_args,
+            'sigmas', 'sigmas',
+            '--sigmas',
+            transform=functools.partial(
+                self._sigmas_eval,
+                'primary',
+                self._pipeline,
+                _types.default(
+                    user_args.inference_steps,
+                    _constants.DEFAULT_INFERENCE_STEPS)
+            ))
 
         pipeline_args['generator'] = \
             torch.Generator(device=self._device).manual_seed(
@@ -2221,6 +2241,93 @@ class DiffusionPipelineWrapper:
             prompt_weighter=self._get_second_model_prompt_weighter(user_args),
             **pipeline_args).images)
 
+    @staticmethod
+    def _flux_sigmas_calculate_shift(
+            image_seq_len,
+            base_seq_len: int = 256,
+            max_seq_len: int = 4096,
+            base_shift: float = 0.5,
+            max_shift: float = 1.15,
+    ):
+        # mu calculation for use_dynamic_shifting=True with Flux
+        # This code comes from the Flux pipelines
+
+        m = (max_shift - base_shift) / (max_seq_len - base_seq_len)
+        b = base_shift - m * base_seq_len
+        mu = image_seq_len * m + b
+        return mu
+
+    @staticmethod
+    def _sigmas_eval(model_title: str, pipeline, steps: int, val: str | list):
+        accept_sigmas = "sigmas" in set(
+            inspect.signature(pipeline.scheduler.set_timesteps).parameters.keys()
+        )
+        if not accept_sigmas:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'The current {model_title} model scheduler "{pipeline.scheduler.__class__.__name__}" '
+                f'does not support custom sigmas schedules. Please ensure that '
+                f'you are using a supported scheduler.'
+            )
+
+        if not isinstance(val, str):
+            return val
+
+        try:
+            if pipeline.__class__.__name__.startswith('Flux'):
+                # This code comes from the Flux pipelines
+                mu = DiffusionPipelineWrapper._flux_sigmas_calculate_shift(
+                    pipeline.transformer.config.in_channels // 4,   # latents.shape[1]
+                    pipeline.scheduler.config.get("base_image_seq_len", 256),
+                    pipeline.scheduler.config.get("max_image_seq_len", 4096),
+                    pipeline.scheduler.config.get("base_shift", 0.5),
+                    pipeline.scheduler.config.get("max_shift", 1.15),
+                )
+                pipeline.scheduler.set_timesteps(steps, mu=mu)
+            else:
+                pipeline.scheduler.set_timesteps(steps)
+        except Exception as e:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'Custom sigmas not supported for the {model_title} model and scheduler combination.'
+            ) from e
+
+        try:
+            sigmas = pipeline.scheduler.sigmas
+        except AttributeError as e:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'Selected {model_title} model scheduler '
+                f'{pipeline.scheduler.__class__.__name__} did not produce sigmas.'
+            ) from e
+
+        interpreter = asteval.Interpreter(
+            minimal=True,
+            with_listcomp=True,
+            with_dictcomp=True,
+            with_setcomp=True,
+            with_assign=False,
+            with_ifexp=True
+        )
+
+        if 'print' in interpreter.symtable:
+            del interpreter.symtable['print']
+
+        interpreter.symtable['np'] = numpy
+        interpreter.symtable['sigmas'] = numpy.array(sigmas)
+
+        try:
+            val = interpreter.eval(val, show_errors=False, raise_errors=True)
+        except Exception as e:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'Error interpreting sigmas expression "{val}":\n{e}'
+            )
+
+        if not isinstance(val, typing.Iterable):
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'Sigmas expression for the {model_title} model '
+                f'did not evaluate to an array, got: {val}'
+            )
+        else:
+            return list(val)
+
     def _call_torch(self, pipeline_args, user_args: DiffusionArguments):
         self._check_for_invalid_model_specific_opts(user_args)
 
@@ -2299,10 +2406,19 @@ class DiffusionPipelineWrapper:
                                              'guidance_rescale', 'guidance_rescale',
                                              '--guidance-rescales')
 
-        self._set_non_universal_pipeline_arg(self._pipeline,
-                                             pipeline_args, user_args,
-                                             'sigmas', 'sigmas',
-                                             '--sigmas')
+        self._set_non_universal_pipeline_arg(
+            self._pipeline,
+            pipeline_args, user_args,
+            'sigmas', 'sigmas',
+            '--sigmas',
+            transform=functools.partial(
+                self._sigmas_eval,
+                'primary',
+                self._pipeline,
+                _types.default(
+                    user_args.inference_steps,
+                    _constants.DEFAULT_INFERENCE_STEPS)
+            ))
 
         self._set_non_universal_pipeline_arg(self._pipeline,
                                              pipeline_args, user_args,
@@ -2533,43 +2649,44 @@ class DiffusionPipelineWrapper:
             second_model=True
         )
 
-        self._set_non_universal_pipeline_arg(self._pipeline,
-                                             pipeline_args, user_args,
-                                             'prompt', 'second_model_prompt',
-                                             '--second-model-prompts',
-                                             transform=lambda p: p.positive)
+        self._set_non_universal_pipeline_arg(
+            self._sdxl_refiner_pipeline,
+            pipeline_args, user_args,
+            'prompt', 'second_model_prompt',
+            '--second-model-prompts',
+            transform=lambda p: p.positive)
 
-        self._set_non_universal_pipeline_arg(self._pipeline,
-                                             pipeline_args, user_args,
-                                             'negative_prompt', 'second_model_prompt',
-                                             '--second-model-prompts',
-                                             transform=lambda p: p.negative)
+        self._set_non_universal_pipeline_arg(
+            self._sdxl_refiner_pipeline,
+            pipeline_args, user_args,
+            'negative_prompt', 'second_model_prompt',
+            '--second-model-prompts',
+            transform=lambda p: p.negative)
 
-        self._set_non_universal_pipeline_arg(self._pipeline,
-                                             pipeline_args, user_args,
-                                             'prompt_2', 'second_model_second_prompt',
-                                             '--second-model-second-prompts',
-                                             transform=lambda p: p.positive)
+        self._set_non_universal_pipeline_arg(
+            self._sdxl_refiner_pipeline,
+            pipeline_args, user_args,
+            'prompt_2', 'second_model_second_prompt',
+            '--second-model-second-prompts',
+            transform=lambda p: p.positive)
 
-        self._set_non_universal_pipeline_arg(self._pipeline,
-                                             pipeline_args, user_args,
-                                             'negative_prompt_2', 'second_model_second_prompt',
-                                             '--second-model-second-prompts',
-                                             transform=lambda p: p.negative)
+        self._set_non_universal_pipeline_arg(
+            self._sdxl_refiner_pipeline,
+            pipeline_args, user_args,
+            'negative_prompt_2', 'second_model_second_prompt',
+            '--second-model-second-prompts',
+            transform=lambda p: p.negative)
 
-        self._get_sdxl_conditioning_args(self._sdxl_refiner_pipeline,
-                                         pipeline_args, user_args,
-                                         user_prefix='refiner')
+        self._get_sdxl_conditioning_args(
+            self._sdxl_refiner_pipeline,
+            pipeline_args, user_args,
+            user_prefix='refiner')
 
-        self._set_non_universal_pipeline_arg(self._pipeline,
-                                             pipeline_args, user_args,
-                                             'guidance_rescale', 'sdxl_refiner_guidance_rescale',
-                                             '--sdxl-refiner-guidance-rescales')
-
-        self._set_non_universal_pipeline_arg(self._pipeline,
-                                             pipeline_args, user_args,
-                                             'sigmas', 'sdxl_refiner_sigmas',
-                                             '--sdxl-refiner-sigmas')
+        self._set_non_universal_pipeline_arg(
+            self._sdxl_refiner_pipeline,
+            pipeline_args, user_args,
+            'guidance_rescale', 'sdxl_refiner_guidance_rescale',
+            '--sdxl-refiner-guidance-rescales')
 
         if user_args.second_model_inference_steps is not None:
             pipeline_args['num_inference_steps'] = user_args.second_model_inference_steps
@@ -2639,6 +2756,19 @@ class DiffusionPipelineWrapper:
                     )
 
             pipeline_args['num_inference_steps'] = limit
+
+        self._set_non_universal_pipeline_arg(
+            self._sdxl_refiner_pipeline,
+            pipeline_args, user_args,
+            'sigmas', 'sdxl_refiner_sigmas',
+            '--sdxl-refiner-sigmas',
+            transform=functools.partial(
+                self._sigmas_eval,
+                'refiner',
+                self._sdxl_refiner_pipeline,
+                pipeline_args.get('num_inference_steps', _constants.DEFAULT_INFERENCE_STEPS)
+            )
+        )
 
         with _hi_diffusion(self._sdxl_refiner_pipeline,
                            generator=generator,

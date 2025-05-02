@@ -104,6 +104,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/version_5.0.0/>`_.
     * `Deterministic Output`_
     * `Specifying a specific GPU for CUDA`_
     * `Specifying a Scheduler (sampler)`_
+    * `Specifying sigmas (denoising schedule)`_
     * `Specifying a VAE`_
     * `VAE Tiling and Slicing`_
     * `Specifying a UNet`_
@@ -252,9 +253,10 @@ Help Output
                      [-sip PROCESSOR_URI [PROCESSOR_URI ...]] [-mip PROCESSOR_URI [PROCESSOR_URI ...]]
                      [-cip PROCESSOR_URI [PROCESSOR_URI ...]] [--image-processor-help [PROCESSOR_NAME ...]]
                      [-pp PROCESSOR_URI [PROCESSOR_URI ...]] [-iss FLOAT [FLOAT ...] | -uns INTEGER
-                     [INTEGER ...]] [-gs FLOAT [FLOAT ...]] [-si CSV_FLOAT [CSV_FLOAT ...]]
-                     [-igs FLOAT [FLOAT ...]] [-gr FLOAT [FLOAT ...]] [-ifs INTEGER [INTEGER ...]]
-                     [-ifs2 INTEGER [INTEGER ...]] [-gs2 FLOAT [FLOAT ...]] [-sir CSV_FLOAT [CSV_FLOAT ...]]
+                     [INTEGER ...]] [-gs FLOAT [FLOAT ...]]
+                     [-si CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...]] [-igs FLOAT [FLOAT ...]]
+                     [-gr FLOAT [FLOAT ...]] [-ifs INTEGER [INTEGER ...]] [-ifs2 INTEGER [INTEGER ...]]
+                     [-gs2 FLOAT [FLOAT ...]] [-sir CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...]]
                      model_path
     
     Batch image generation and manipulation tool supporting Stable Diffusion and related techniques /
@@ -1865,7 +1867,7 @@ Help Output
             One or more guidance scale values to try. Guidance scale effects how much your text prompt is
             considered. Low values draw more data from images unrelated to text prompt. (default: [5])
             ------------------------------------------------------------------------------------------
-      -si CSV_FLOAT [CSV_FLOAT ...], --sigmas CSV_FLOAT [CSV_FLOAT ...]
+      -si CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...], --sigmas CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...]
             One or more comma-separated lists (or singular values) of floating point sigmas to try. This is
             supported when using a --scheduler that supports setting sigmas. Sigma values control the noise
             schedule in the diffusion process, allowing for fine-grained control over how noise is added and
@@ -1873,8 +1875,15 @@ Help Output
             
             Example: --sigmas "1.0,0.8,0.6,0.4,0.2"
             
+            Or expressions: "expr: sigmas * .95", sigmas from --scheduler are represented as a numpy array in an
+            interpreted expression, numpy is available through the namespace "np", this uses asteval.
+            
             Or singular values: --sigmas 0.4
-            --------------------------------
+            
+            Expressions and CSV lists can be intermixed: --sigmas "1.0,..." "expr: sigmas * 0.95"
+            
+            Each provided value (each quoted string in the example above) will be tried in turn.
+            ------------------------------------------------------------------------------------
       -igs FLOAT [FLOAT ...], --image-guidance-scales FLOAT [FLOAT ...]
             One or more image guidance scale values to try. This can push the generated image towards the
             initial image when using --model-type *-pix2pix models, it is unsupported for other model types. Use
@@ -1910,7 +1919,7 @@ Help Output
             Override the guidance scale value used by the second model, which defaults to the value taken from
             --guidance-scales for SDXL and 0 for Stable Cascade.
             ----------------------------------------------------
-      -sir CSV_FLOAT [CSV_FLOAT ...], --sdxl-refiner-sigmas CSV_FLOAT [CSV_FLOAT ...]
+      -sir CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...], --sdxl-refiner-sigmas CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...]
             See: --sigmas, but for the SDXL Refiner.
             ----------------------------------------
 
@@ -3280,6 +3289,130 @@ output file name, in the order: ``(scheduler)_(refiner / decoder scheduler)``
     --inference-steps 30 \
     --guidance-scales 5 \
     --prompts "a horse standing in a field"
+
+Specifying sigmas (denoising schedule)
+======================================
+
+The denoising schedule sigma values can be overridden with the options ``--sigmas`` or ``--sdxl-refiner-sigmas``
+
+This is supported when the selected ``--scheduler`` or ``--second-model-scheduler`` supports overriding
+sigma values.  Which is the case in the default scheduler for most model types.
+
+An error will be issued if this particular operation is not supported for the model or the model and
+selected scheduler.
+
+Sigma values can be overridden by providing a CSV list of float values, or by using an expression
+that acts on the existing sigmas calculated by the scheduler.
+
+The ``--sigmas`` and ``--sdxl-refiner-sigmas`` options are combinatorial, meaning you can provide
+multiple CSV lists, or multiple expressions, and each one of those will be tried in batch.
+
+To specify a list of sigma values to try, simply use: ``--sigmas 1.0,0.8,0.6,0.4,0.2`` for example,
+this CSV list is parsed as one token, so you may want to quote it depending on the situation.
+
+To specify an expression you should use: ``--sigmas "expr: sigmas * 0.95"`` for instance,
+the ``expr:`` prefix on the argument value indicates that you are using an expression.
+
+Expressions are evaluated using ``asteval`` which is also used for expression dgenerates
+shell.
+
+In this expression environment, numpy is available through the namespace ``np`` if you
+wish to use it to help with calculating a set of sigma values.
+
+A common operation is simply scaling the sigma values, the variable ``sigmas`` in the
+expression environment is set to the sigmas calculated by the models scheduler, it is
+represented as a numpy array so you may use the multiplication operator to scale the
+entire array of sigmas by a value.
+
+
+Here is an example of manually calculating sigmas for Flux and passing them as CSV
+from inside of a dgenerate config, this is essentially using the default sigmas
+curve that Flux already uses and scaling it by a value.
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 5.0.0
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    {% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 15 %}
+        \set optimization --quantizer bnb;bits=4
+    {% else %}
+        \set optimization --model-sequential-offload
+    {% endif %}
+    
+    # Use numpy to generate scaled linear sigmas for Flux
+    
+    # import numpy as np
+    
+    \import numpy as np
+    
+    \setp inference_steps 50
+    \setp sigma_scale 0.95
+    
+    \set sigmas {{ csv(np.linspace(1.0, 1 / inference_steps, inference_steps) * sigma_scale) }}
+    
+    black-forest-labs/FLUX.1-dev
+    --model-type torch-flux {{ auth_token }} {{ optimization }}
+    --dtype bfloat16
+    --inference-steps {{ inference_steps }}
+    --guidance-scales 3.5
+    --gen-seeds 1
+    --sigmas {{ sigmas }}
+    --output-path sigmas_manual
+    --output-size 1024x1024
+    --prompts "a horse standing inside a barn"
+
+In the case that we want to use the sigmas generated by the scheduler and then scale
+them, instead of entirely calculating them on our own, we can use the expression
+feature, this is helpful for SDXL or other models where calculating the intial
+set of sigmas may not be so trivial.
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 5.0.0
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    {% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 15 %}
+        \set optimization --quantizer bnb;bits=4
+    {% else %}
+        \set optimization --model-sequential-offload
+    {% endif %}
+    
+    # Use a sigmas expression to scale the sigmas from Flux's scheduler
+    
+    # we can pass expressions that act on the sigmas generated by
+    # the selected --scheduler, for instance, we can scale the "sigmas"
+    # calculated by the scheduler by 0.95, the "sigmas" variable
+    # is represented as a numpy array, this expression parser
+    # uses asteval, numpy functions are available through the
+    # namespace 'np' which is imported by default
+    
+    # You may also use python builtins such as "max", "min" etc.
+    
+    black-forest-labs/FLUX.1-dev
+    --model-type torch-flux {{ auth_token }} {{ optimization }}
+    --dtype bfloat16
+    --inference-steps 50
+    --guidance-scales 3.5
+    --gen-seeds 1
+    --sigmas "expr: sigmas * 0.95"
+    --output-path sigmas_expr
+    --output-size 1024x1024
+    --prompts "a horse standing inside a barn"
 
 Specifying a VAE
 ================
@@ -9174,7 +9307,7 @@ You can use this to calculate and scale linear Flux sigmas for instance.
     --guidance-scales 3.5
     --gen-seeds 1
     --sigmas {{ sigmas }}
-    --output-path output
+    --output-path sigmas_manual
     --output-size 1024x1024
     --prompts "a horse standing inside a barn"
 
@@ -9203,12 +9336,12 @@ Or try scaling exponential SDXL sigmas.
     --model-type torch-sdxl
     --dtype float16
     --variant fp16
-    --inference-steps 30
+    --inference-steps {{ inference_steps }}
     --guidance-scales 5
     --sigmas {{ sigmas }}
     --clip-skips 0
     --gen-seeds 1
-    --output-path output
+    --output-path sigmas_manual
     --output-size 1024x1024
     --prompts "a horse standing in a field"
 
