@@ -31,6 +31,7 @@ import dgenerate.messages as _messages
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 import dgenerate.memoize as _memoize
+import dgenerate.eval as _eval
 
 __doc__ = """
 System memory information and memory constraint expressions.
@@ -168,12 +169,9 @@ def memory_constraints(expressions: collections.abc.Iterable[str],
                     f'extra_vars cannot redefine reserved attribute: {key}')
             variables[key] = value
 
-    interpreter = asteval.Interpreter(
-        minimal=True,
-        symtable=variables.copy())
-
-    if 'print' in interpreter.symtable:
-        del interpreter.symtable['print']
+    interpreter = _eval.standard_interpreter(
+        symtable=variables.copy().update(_eval.safe_builtins())
+    )
 
     interpreter.symtable.update(functions)
 
@@ -615,12 +613,9 @@ def cuda_memory_constraints(expressions: collections.abc.Iterable[str],
                     f'extra_vars cannot redefine reserved attribute: {key}')
             variables[key] = value
 
-    interpreter = asteval.Interpreter(
-        minimal=True,
-        symtable=variables.copy())
-
-    if 'print' in interpreter.symtable:
-        del interpreter.symtable['print']
+    interpreter = _eval.standard_interpreter(
+        symtable=variables.copy().update(_eval.safe_builtins())
+    )
 
     interpreter.symtable.update(functions)
 

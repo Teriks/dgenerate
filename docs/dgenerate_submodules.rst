@@ -39,6 +39,15 @@ dgenerate.devicecache module
    :show-inheritance:
    :special-members: __call__, __init__
 
+dgenerate.eval module
+---------------------
+
+.. automodule:: dgenerate.eval
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :special-members: __call__, __init__
+
 dgenerate.filecache module
 --------------------------
 
