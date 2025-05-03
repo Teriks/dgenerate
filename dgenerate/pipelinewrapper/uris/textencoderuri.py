@@ -253,16 +253,15 @@ def _load_clip_l_sd35_large_from_single_file(
     try:
         with _suppress_accelerate_warnings():
             # Create a config manually for SD3.5 Large CLIP-L
-            # Using larger parameters for the SD3.5 large variant
             config = transformers.CLIPTextConfig(
                 vocab_size=49408,
-                hidden_size=1024,  # Larger hidden size
-                intermediate_size=4096,  # Larger intermediate size
-                num_hidden_layers=24,  # More layers
-                num_attention_heads=16,  # More attention heads
+                hidden_size=768,
+                intermediate_size=3072,
+                num_hidden_layers=12,
+                num_attention_heads=12,
                 max_position_embeddings=77,
                 hidden_act="quick_gelu",
-                projection_dim=1024,  # Larger projection dimension
+                projection_dim=768,
                 torch_dtype=dtype
             )
 
