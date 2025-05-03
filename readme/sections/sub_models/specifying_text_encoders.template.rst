@@ -42,12 +42,28 @@ argument with monolithic (non-sharded) checkpoints.  This is not supported when
 loading a submodule out of a combined checkpoint file with ``subfolder``.
 
 The ``mode`` URI argument can be used to provide an additional hint about the loading
-method for a single file checkpoint, it may be ``clip-l`` for monolithic CLIP-L checkpoints,
-``clip-g`` for monolithic CLIP-G (bigG) checkpoints, or ``t5-xxl`` for monolithic T5 checkpoints
-as used with SD3 and Flux. diffusers usually shards these weights for performance, though 
-monolithic checkpoints are often available for use with ComfyUI or distributed on CivitAI.
-This is for compatibility with other software. This option is mutually exclusive with ``subfolder``.
+method for a single file checkpoint. 
 
+Flux & T5 universal modes:
+
+* ``clip-l`` for monolithic Flux CLIP-L checkpoints
+* ``t5-xxl`` for monolithic T5 checkpoints (SD3 and Flux)
+
+SD3 and SD3.5 specific modes:
+
+* ``clip-l-sd3`` for SD3 CLIP-L checkpoints
+* ``clip-l-sd35`` for SD3.5 CLIP-L checkpoints
+* ``clip-l-sd35-large`` for SD3.5 large variant CLIP-L checkpoints
+* ``clip-g-sd3`` for SD3 CLIP-G checkpoints
+* ``clip-g-sd35`` for SD3.5 CLIP-G checkpoints
+* ``clip-g-sd35-large`` for SD3.5 large variant CLIP-G checkpoints
+
+These SD3/SD3.5 specific modes are designed with the correct architecture parameters for
+each model variant.
+
+diffusers usually shards T5 / large weights for performance, though monolithic checkpoints
+are often available for use with ComfyUI or distributed on CivitAI. This is for compatibility 
+with other software. The ``mode`` option is mutually exclusive with ``subfolder``.
 
 Available encoder classes are:
 
@@ -119,3 +135,7 @@ which are also sometimes distributed alongside Flux transformer only checkpoints
 with additional fine-tuning.
 
 @EXAMPLE[../../../examples/flux/civitai/clip-L-T5-XXL-monolithic-config.dgen]
+
+This can also be utilized with SD3.
+
+@EXAMPLE[../../../examples/stablediffusion_3/civitai/clip-L-G-T5-XXL-monolithic-config.dgen]
