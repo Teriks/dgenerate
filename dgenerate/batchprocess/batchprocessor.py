@@ -26,7 +26,7 @@ import re
 import typing
 import warnings
 
-import asteval
+
 import jinja2
 
 import dgenerate.arguments as _arguments
@@ -35,6 +35,7 @@ import dgenerate.files as _files
 import dgenerate.messages as _messages
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
+import dgenerate.eval as _eval
 
 
 class _EnvNamespace:
@@ -225,54 +226,7 @@ class BatchProcessor:
     def default_builtins() -> dict[str, typing.Callable[[typing.Any], typing.Any]]:
         """Return the default builtins available as template functions."""
 
-        return {
-            'abs': abs,
-            'all': all,
-            'any': any,
-            'ascii': ascii,
-            'bin': bin,
-            'bool': bool,
-            'bytearray': bytearray,
-            'bytes': bytes,
-            'callable': callable,
-            'chr': chr,
-            'complex': complex,
-            'dict': dict,
-            'divmod': divmod,
-            'enumerate': enumerate,
-            'filter': filter,
-            'float': float,
-            'format': format,
-            'frozenset': frozenset,
-            'getattr': getattr,
-            'hasattr': hasattr,
-            'hash': hash,
-            'hex': hex,
-            'int': int,
-            'iter': iter,
-            'len': len,
-            'list': list,
-            'map': map,
-            'max': max,
-            'min': min,
-            'next': next,
-            'object': object,
-            'oct': oct,
-            'ord': ord,
-            'pow': pow,
-            'range': range,
-            'repr': repr,
-            'reversed': reversed,
-            'round': round,
-            'set': set,
-            'slice': slice,
-            'sorted': sorted,
-            'str': str,
-            'sum': sum,
-            'tuple': tuple,
-            'type': type,
-            'zip': zip,
-        }
+        return _eval.safe_builtins()
 
     @property
     def directives_builtins_help(self) -> dict[str, str]:
@@ -551,17 +505,9 @@ class BatchProcessor:
         self.template_variables.pop(name)
 
     def _intepret_setp_value(self, value):
-        interpreter = asteval.Interpreter(
-            minimal=True,
-            with_listcomp=True,
-            with_dictcomp=True,
-            with_setcomp=True,
-            with_assign=False,
-            with_ifexp=True,
-            symtable=self.template_variables.copy())
-
-        if 'print' in interpreter.symtable:
-            del interpreter.symtable['print']
+        interpreter = _eval.standard_interpreter(
+            symtable=self.template_variables.copy()
+        )
 
         interpreter.symtable.update(self.builtins)
         interpreter.symtable.update(self.template_functions)

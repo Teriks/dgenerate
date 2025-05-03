@@ -27,7 +27,6 @@ import math
 import typing
 
 import PIL.Image
-import asteval
 import diffusers
 import numpy
 import torch
@@ -55,6 +54,7 @@ import dgenerate.memory as _memory
 import dgenerate.memoize as _memoize
 import dgenerate.torchutil as _torchutil
 import DeepCache as _deepcache
+import dgenerate.eval as _eval
 
 
 @contextlib.contextmanager
@@ -2298,17 +2298,9 @@ class DiffusionPipelineWrapper:
                 f'{pipeline.scheduler.__class__.__name__} did not produce sigmas.'
             ) from e
 
-        interpreter = asteval.Interpreter(
-            minimal=True,
-            with_listcomp=True,
-            with_dictcomp=True,
-            with_setcomp=True,
-            with_assign=False,
-            with_ifexp=True
+        interpreter = _eval.standard_interpreter(
+            symtable=_eval.safe_builtins()
         )
-
-        if 'print' in interpreter.symtable:
-            del interpreter.symtable['print']
 
         interpreter.symtable['np'] = numpy
         interpreter.symtable['sigmas'] = numpy.array(sigmas)
