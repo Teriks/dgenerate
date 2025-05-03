@@ -579,23 +579,24 @@ Help Output
             -t/--dtype and should be one of: auto, bfloat16, float16, or float32.
             
             The "quantizer" argument specifies a quantization backend and configuration for the Text Encoder
-            model individually, and uses the same URI syntax as --quantizer. If working from the command line
-            you may need to nested quote this URI, i.e:
+            model individually, and uses the same URI syntax as --quantizer. This is supported when loading from
+            Hugging Face repo slugs / folders on disk, and when using the "mode" argument with monolithic (non-
+            sharded) checkpoints. This is *not* supported when loading a submodule out of a combined checkpoint
+            file with "subfolder". If working from the command line you may need to nested quote this URI, i.e:
             
             --text-encoders 'CLIPTextModel;model=huggingface/text_encoder;quantizer="bnb;bits=8"'
             
-            Quantization with bitsandbytes does not work with anything but Hugging Face repositories or the
-            monolithic checkpoints usable via the "mode" parameter discussed below, quantization is not
-            supported when loading a sub-model out of a single file checkpoint using "subfolder"
-            
-            The "mode" argument can be used to load monolithic single file "clip-l" or "t5-xxl" checkpoints,
-            this is useful in some cases to load ComfyUI compatible text encoder checkpoints, this works with
-            "quantizer" as well, where as loading a sub-model out of a single file checkpoint does not. This
-            value may be "clip-l" or "t5-xxl", for instance when using Flux, one could specify:
+            The "mode" argument can be used to load monolithic single file "clip-l", "clip-g", or "t5-xxl"
+            checkpoints, this is useful in some cases to load ComfyUI compatible text encoder checkpoints, this
+            works with "quantizer" as well, where as loading a sub-model out of a single file checkpoint does
+            not. This value may be "clip-l", "clip-g" or "t5-xxl". For instance when using Flux, one could
+            specify:
             
             CLIPTextModel;model=https://huggingface.co/comfyanonymous/flux_text_encoders/blob/main/clip_l.safete
             nsors;mode=clip-l T5EncoderModel;model=https://huggingface.co/comfyanonymous/flux_text_encoders/blob
             /main/t5xxl_fp16.safetensors;mode=t5-xxl
+            
+            The "mode" option is mutually exclusive with "subfolder".
             
             If you wish to load weights directly from a path on disk, you must point this argument at the folder
             they exist in, which should also contain the config.json file for the Text Encoder. For example, a
@@ -4675,32 +4676,51 @@ To specify a Text Encoder models directly use ``--text-encoders`` for
 the primary model and ``--second-model-text-encoders`` for the SDXL Refiner or
 Stable Cascade decoder.
 
-Text Encoder URIs do not support loading from blob links or a single file,
-text encoders must be loaded from a huggingface slug or a folder on disk
-containing the models and configuration.
-
 The syntax for specifying text encoders is similar to that of ``--vae``
 
 The URI syntax for ``--text-encoders`` is ``TextEncoderClass;model=(huggingface repository slug or folder path)``
 
-Loading arguments available when specifying a Text Encoder are: ``model``, ``revision``, ``variant``, ``subfolder``, ``dtype``, and ``quantizer``
+Loading arguments available when specifying a Text Encoder are: ``model``, ``revision``, ``variant``, ``subfolder``, ``dtype``, ``quantizer``, and ``mode``
 
-The ``variant`` argument defaults to the value of ``--variant``
+The ``model`` argument is the path to the the model, this may be a Hugging Face slug, a folder on disk,
+a checkpoint file on disk, a URL pointing to a single file model, or a Hugging Face blob link.
 
-The ``dtype`` argument defaults to the value of ``--dtype``
+The ``revision`` argument is used to specify the repo revision when loading out
+of a Hugging Face repo, or a checked out repo on disk.
+
+The ``variant`` argument defaults to the value of ``--variant``, specifying ``null`` explicitly
+indicates to not use any variant, even if ``--variant`` is specified.
+
+The ``subfolder`` argument specifies the subfolder when loading from a Hugging Face repository,
+when loading from a single file checkpoint that has text encoders packaged with it, this can
+be used to specify the sub-model inside the checkpoint, for instance ``text_encoder`` will
+work identically on a single file checkpoint containing said text encoder as it does
+with a Hugging Face repository or folder on disk.  This is useful for monolithic
+checkpoints from places like CivitAI which contain a UNet + Text Encoders.
+
+The ``dtype`` argument defaults to the value of ``--dtype`` and specifies the dtype
+for the weights to be loaded in, for example: ``float32``, ``float16``, or ``bfloat16``.
 
 The ``quantizer`` URI argument can be used to specify a quantization backend
-for the text encoder using the same URI syntax as ``--quantizer``
+for the text encoder using the same URI syntax as ``--quantizer``, this is supported
+when loading from Hugging Face repo slugs / folders on disk, and when using the ``mode``
+argument with monolithic (non-sharded) checkpoints.  This is not supported when
+loading a submodule out of a combined checkpoint file with ``subfolder``.
 
-The other named arguments are available when loading from a huggingface repository or folder
-that may or may not be a local git repository on disk.
+The ``mode`` URI argument can be used to provide an additional hint about the loading
+method for a single file checkpoint, it may be ``clip-l`` for monolithic CLIP-L checkpoints,
+``clip-g`` for monolithic CLIP-G (bigG) checkpoints, or ``t5-xxl`` for monolithic T5 checkpoints
+as used with SD3 and Flux. diffusers usually shards these weights for performance, though 
+monolithic checkpoints are often available for use with ComfyUI or distributed on CivitAI.
+This is for compatibility with other software. This option is mutually exclusive with ``subfolder``.
+
 
 Available encoder classes are:
 
-* CLIPTextModel
-* CLIPTextModelWithProjection
-* T5EncoderModel
-* DistillT5EncoderModel (see: [LifuWang/DistillT5](https://huggingface.co/LifuWang/DistillT5))
+* ``CLIPTextModel``
+* ``CLIPTextModelWithProjection``
+* ``T5EncoderModel``
+* ``DistillT5EncoderModel`` (see: [LifuWang/DistillT5](https://huggingface.co/LifuWang/DistillT5))
 
 You can query the text encoder types and position for a model by passing ``help``
 as an argument to ``--text-encoders`` or ``--second-model-text-encoders``. This feature
@@ -4742,51 +4762,84 @@ one not included with the main model file.
 This text encoder is loaded from a subfolder of the Stable Diffusion 3
 repository on huggingface.
 
-.. code-block:: bash
+.. code-block:: jinja
 
-    #!/usr/bin/env bash
-
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 5.0.0
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    
+    {% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 20 %}
+        \set optimization --quantizer bnb;bits=8
+    {% else %}
+        \set optimization --model-sequential-offload
+    {% endif %}
+    
+    
     # This is an example of individually specifying text encoders
     # specifically for stable diffusion 3, this model from the blob
     # link includes the clip encoders, so we only need to specify
     # the T5 encoder, which is encoder number 3, the + symbols indicate
     # the first 2 encoders are assigned their default value, they are
     # loaded from the checkpoint file for the main model
-
-    dgenerate https://huggingface.co/stabilityai/stable-diffusion-3-medium/blob/main/sd3_medium_incl_clips.safetensors \
-    --model-type torch-sd3 \
-    --variant fp16 \
-    --dtype float16 \
-    --inference-steps 30 \
-    --guidance-scales 5.00 \
+    
+    https://huggingface.co/stabilityai/stable-diffusion-3-medium/blob/main/sd3_medium_incl_clips.safetensors
+    --model-type torch-sd3 {{ optimization }}
+    --variant fp16
+    --dtype float16
+    --inference-steps 30
+    --guidance-scales 5.00
     --text-encoders + + \
-        "T5EncoderModel;model=stabilityai/stable-diffusion-3-medium-diffusers;subfolder=text_encoder_3" \
-    --clip-skips 0 \
-    --gen-seeds 2 \
-    --output-path output \
-    --model-sequential-offload \
+        T5EncoderModel;model=stabilityai/stable-diffusion-3-medium-diffusers;subfolder=text_encoder_3 \
+    --clip-skips 0
+    --gen-seeds 2
+    --output-path specify_encoders
     --prompts "a horse outside a barn"
-
 
 You may also use the URI value ``null``, to indicate that you do not want to ever load a specific text encoder at all.
 
 For instance, you can prevent Stable Diffusion 3 from loading and using the T5 encoder all together.
 
-.. code-block:: bash
+.. code-block:: jinja
 
-    #!/usr/bin/env bash
-
-    dgenerate stabilityai/stable-diffusion-3-medium-diffusers \
-    --model-type torch-sd3 \
-    --variant fp16 \
-    --dtype float16 \
-    --inference-steps 30 \
-    --guidance-scales 5.00 \
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 5.0.0
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    
+    {% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 20 %}
+        \set optimization --quantizer bnb;bits=8
+    {% else %}
+        \set optimization --model-sequential-offload
+    {% endif %}
+    
+    
+    # Stable Diffusion 3 can run without using the T5 encoder
+    # this is an example of disabling it entirely by using 
+    # the value "null" in place of a text encoder URI
+    
+    https://huggingface.co/stabilityai/stable-diffusion-3-medium/blob/main/sd3_medium_incl_clips.safetensors
+    --model-type torch-sd3 {{ optimization }}
+    --variant fp16
+    --dtype float16
+    --inference-steps 30
+    --guidance-scales 5.00
     --text-encoders + + null \
-    --clip-skips 0 \
-    --gen-seeds 2 \
-    --output-path output \
-    --model-sequential-offload \
+    --clip-skips 0
+    --gen-seeds 2
+    --output-path without_t5
     --prompts "a horse outside a barn"
 
 
@@ -4798,49 +4851,137 @@ and using ``null`` will override it.
 
     #! /usr/bin/env dgenerate --file
     #! dgenerate 5.0.0
-
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    
+    {% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 20 %}
+        \set optimization --quantizer bnb;bits=8
+    {% else %}
+        \set optimization --model-sequential-offload
+    {% endif %}
+    
+        
     # this model will load all three text encoders,
     # they are not cached individually as we did not explicitly
     # specify any of them, they are cached with the pipeline
     # as a whole
-
+    
     stabilityai/stable-diffusion-3-medium-diffusers
-    --model-type torch-sd3
+    --model-type torch-sd3 {{ optimization }}
     --variant fp16
     --dtype float16
     --inference-steps 30
     --guidance-scales 5.00
     --clip-skips 0
     --gen-seeds 2
-    --output-path output
-    --model-sequential-offload
+    --output-path share_encoders
     --prompts "a horse outside a barn"
-
+    
     # store all the text encoders from the last pipeline
     # into the variable "encoders"
-
+    
     \save_modules encoders text_encoder text_encoder_2 text_encoder_3
-
+    
     # share them with the next pipeline
-
+    
     \use_modules encoders
-
-    # use all the encoders except the T5 encoder (third encoder)
-    # sharing modules this way saves a significant amount
+    
+    # use all of the encoders except the T5 encoder (third encoder)
+    # sharing modules this way saves a significant amount 
     # of memory
-
+    
     stabilityai/stable-diffusion-3-medium-diffusers
-    --model-type torch-sd3
+    --model-type torch-sd3 {{ optimization }}
     --variant fp16
     --dtype float16
     --inference-steps 30
     --guidance-scales 5.00
     --clip-skips 0
-    --text-encoders + + null
+    --text-encoders + + null 
     --gen-seeds 2
-    --output-path output
-    --model-sequential-offload
+    --output-path share_encoders
     --prompts "a horse outside a barn"
+
+
+Monolithic CLIP-L, CLIP-G, and T5-XXL checkpoints (Used with Flux and SD3) can be loaded by utilizing the ``mode`` argument.
+
+For instance, this can be used to load the Flux text encoders from ComfyUI style checkpoints,
+which are also sometimes distributed alongside Flux transformer only checkpoints on CivitAI
+with additional fine-tuning.
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 5.0.0
+    
+    
+    \set token %HF_TOKEN%
+    \set civit_ai_token %CIVIT_AI_TOKEN%
+    
+    {% if not civit_ai_token.strip() %}
+        \print Set CIVIT_AI_TOKEN environmental variable to run this example!
+        \exit
+    {% endif %}
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    # Loading flux checkpoints from CivitAI becomes tricky because you need to provide
+    # The recommended text encoder models and the VAE manually for it to be able
+    # to load the pipeline correctly when using safetensors checkpoints.
+    
+    
+    # bitsandbytes 4 bit nf4
+    \set quantizer bnb;bits=4;bits4-quant-type=nf4
+    
+    
+    # PixelWave: https://civitai.com/models/141592/pixelwave?modelVersionId=992642
+    
+    # This is the full bf16 safetensors checkpoint, it will take some time to load and use up around 30 gigs
+    # of system memory, CPU side ram, before entering the GPU.
+    
+    # Non-sharded text encoder checkpoints can be loaded by specifying "mode" in the text encoder URI
+    # You can specify 'clip-l' to load a "openai/clip-vit-large-patch14" based clip checkpoint
+    
+    # Or you can specify 't5-xxl' to load a "google/t5-v1_1-xxl" based checkpoint
+    
+    # here we are loading ComfyUI non-sharded checkpoints from hugging face blob links,
+    # this can also be a URL to an arbitrary model such as a model on CivitAI if needed
+    
+    # These are slower to load without sharding due to IO bottlenecking, but some models on CivitAI
+    # provide their own clip-l, or possible t5-xxl checkpoint in this format, this is how
+    # you would load those
+    
+    \set model https://civitai.com/api/download/models/992642?type=Model&format=SafeTensor&size=full&fp=bf16
+    \set clip_l https://huggingface.co/comfyanonymous/flux_text_encoders/blob/main/clip_l.safetensors
+    \set t5_xxl https://huggingface.co/comfyanonymous/flux_text_encoders/blob/main/t5xxl_fp16.safetensors
+    
+    {{ model }}
+    --model-type torch-flux
+    --dtype bfloat16
+    --quantizer {{ quantizer }}
+    --text-encoders CLIPTextModel;model={{ clip_l }};mode=clip-l;quantizer="{{ quantizer }}" \
+                    T5EncoderModel;model={{ t5_xxl }};mode=t5-xxl;quantizer="{{ quantizer }}"
+    --vae AutoencoderKL;model=black-forest-labs/FLUX.1-dev;subfolder=vae
+    --inference-steps 50
+    --guidance-scales 3.5
+    --gen-seeds 1
+    --output-path output
+    --output-size 1024x1024
+    --prompt-weighter sd-embed
+    --prompts "Tranquil landscape oil painting, realist style. Serpentine path leads up to a hilltop \
+               villa with a prominent bell tower, nestled among lush green foliage. Sunlight filters \
+               through the trees casting dappled shadows on the walkway. Rich texture in the brushwork, \
+               capturing the vivid variety of plant life. Hints of a vivid blue sky with puffy white clouds \
+               and distant mountains. Warm, inviting color palette evokes serene countryside ambiance."
 
 Prompt Upscaling
 ================

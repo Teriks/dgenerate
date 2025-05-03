@@ -1,5 +1,6 @@
-# Flux requires a huggingface auth token to access
-# you must request access to the repository
+#! /usr/bin/env dgenerate --file
+#! dgenerate 5.0.0
+
 
 \set token %HF_TOKEN%
 \set civit_ai_token %CIVIT_AI_TOKEN%
