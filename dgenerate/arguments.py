@@ -1106,14 +1106,11 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                     --text-encoders 'CLIPTextModel;model=huggingface/text_encoder;quantizer="bnb;bits=8"'
                     
-                    The "mode" argument can be used to load monolithic single file "clip-l", "clip-g", or "t5-xxl" 
-                    checkpoints, this is useful in some cases to load ComfyUI compatible text encoder checkpoints,
-                    this works with "quantizer" as well, where as loading a sub-model out of a single
-                    file checkpoint does not. This value may be "clip-l", "clip-g" or "t5-xxl". For instance
-                    when using Flux, one could specify:
-                    
-                    CLIPTextModel;model=https://huggingface.co/comfyanonymous/flux_text_encoders/blob/main/clip_l.safetensors;mode=clip-l
-                    T5EncoderModel;model=https://huggingface.co/comfyanonymous/flux_text_encoders/blob/main/t5xxl_fp16.safetensors;mode=t5-xxl
+                    The "mode" argument can be used to load monolithic single file checkpoints with specific
+                    architecture configurations. Supports standard modes like "clip-l" or "t5-xxl"
+                    for Flux-compatible models, and SD3/SD3.5-specific modes: "clip-l-sd3", "clip-l-sd35",
+                    "clip-g-sd3", "clip-g-sd35", and "clip-l-sd35-large" for SD3/SD3.5 models. "t5-xxl"
+                    can be used with both SD3 and Flux.
                     
                     The "mode" option is mutually exclusive with "subfolder".
                     
