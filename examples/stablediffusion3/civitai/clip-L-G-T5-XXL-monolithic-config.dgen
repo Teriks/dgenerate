@@ -31,7 +31,7 @@
 
 https://civitai.com/api/download/models/686696?type=Model&format=SafeTensor&size=full&fp=fp16
 --model-type torch-sd3
---dtype bfloat16
+--dtype float16
 --quantizer {{ quantizer }}
 --text-encoders CLIPTextModelWithProjection;model={{ clip_l }};mode=clip-l-sd3;quantizer="{{ quantizer }}" \
                 CLIPTextModelWithProjection;model={{ clip_g }};mode=clip-g-sd3;quantizer="{{ quantizer }}" \
