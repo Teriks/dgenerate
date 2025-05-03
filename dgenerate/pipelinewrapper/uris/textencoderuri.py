@@ -89,7 +89,7 @@ def _load_clip_l_from_single_file(
     
     try:
 
-        with _suppress_accelerate_warnings(), accelerate.init_empty_weights():
+        with _suppress_accelerate_warnings():
             config = transformers.CLIPTextConfig.from_pretrained(
                 model_id, local_files_only=local_files_only,
                 quantization_config=quantization_config
@@ -140,12 +140,12 @@ def _load_t5_xxl_from_single_file(
         quantization_config=None
 ):
     model_id = "google/t5-v1_1-xxl"
-    
+
     try:
         # Following Flux examples, load T5-XXL in 8-bit to save memory
         _messages.debug_log("Loading T5-XXL model with 8-bit quantization and auto device mapping")
 
-        with _suppress_accelerate_warnings(), accelerate.init_empty_weights():
+        with _suppress_accelerate_warnings():
             config = transformers.T5Config.from_pretrained(
                 model_id, local_files_only=local_files_only,
                 quantization_config=quantization_config
@@ -185,6 +185,59 @@ def _load_t5_xxl_from_single_file(
     
     except Exception as e:
         raise _exceptions.TextEncoderUriLoadError(f"Failed to load T5-XXL model: {e}") from e
+
+
+def _load_clip_g_from_single_file(
+        model_class: transformers.CLIPTextModel | transformers.CLIPTextModelWithProjection,
+        model_path: str,
+        dtype: torch.dtype,
+        local_files_only: bool = False,
+        quantization_config=None
+):
+    model_id = "laion/CLIP-ViT-bigG-14-laion2B-39B-b160k"
+
+    try:
+        with _suppress_accelerate_warnings():
+            config = transformers.CLIPTextConfig.from_pretrained(
+                model_id, local_files_only=local_files_only,
+                quantization_config=quantization_config
+            )
+
+            config.torch_dtype = dtype
+
+            # Load with automatic device mapping for efficient memory usage
+            text_encoder = model_class(config)
+        
+        blob_link = _pipelinewrapper_util.HFBlobLink.parse(model_path)
+        
+        if blob_link is not None:
+            model_path = huggingface_hub.hf_hub_download(
+                repo_id=blob_link.repo_id,
+                revision=blob_link.revision,
+                subfolder=blob_link.subfolder,
+                filename=blob_link.weight_name,
+                local_files_only=local_files_only
+            )
+
+        _messages.log(
+            f'Loading monolithic clip-g state dict from: "{model_path}", this may take a while, please wait...',
+            level=_messages.WARNING
+        )
+
+        with _suppress_accelerate_warnings():
+            # Load state dict and update weights
+            text_encoder = accelerate.load_checkpoint_and_dispatch(
+                text_encoder,
+                checkpoint=model_path,
+                device_map="auto",
+                dtype=dtype,
+                no_split_module_classes=["CLIPEncoderLayer"]
+            )
+
+        return text_encoder
+    
+    except Exception as e:
+        raise _exceptions.TextEncoderUriLoadError(f"Failed to load CLIP-G model: {e}") from e
 
 
 class TextEncoderUri:
@@ -244,9 +297,11 @@ class TextEncoderUri:
     @property
     def mode(self) -> _types.OptionalString:
         """
-        Model loading mode for single file checkpoints, for example 'clip-l' or 't5-xxl'
+        Model loading mode for single file checkpoints, for example 'clip-l', 'clip-g', or 't5-xxl'
 
-        The default behavior is to extract the sub model from an assumed to be combined checkpoint.
+        The default behavior is to extract the sub model from an 
+        assumed to be combined checkpoint, which is not compatible
+        with quantization.
         """
         return self._mode
 
@@ -291,24 +346,27 @@ class TextEncoderUri:
 
         mode = mode.lower() if mode is not None else mode
 
-        if mode not in (None, 'clip-l', 't5-xxl'):
+        if mode not in (None, 'clip-l', 't5-xxl', 'clip-g'):
             raise _exceptions.InvalidTextEncoderUriError(
-                f'Unknown TextEncoder load mode "{mode}", must be None, "clip-l", or "t5-xxl"')
+                f'Unknown TextEncoder load mode "{mode}", must be None, "clip-l", "clip-g", or "t5-xxl"')
 
         if _pipelinewrapper_util.is_single_file_model_load(model):
-            if quantizer and mode not in ('clip-l', 't5-xxl'):
+            if quantizer and mode not in ('clip-l', 't5-xxl', 'clip-g'):
                 raise _exceptions.InvalidTextEncoderUriError(
                     'specifying a Text Encoder quantizer URI is only supported for Hugging Face '
                     'repository loads from a repo slug or disk path, single file loads are not supported.')
                 
         # Validate special modes don't use variant or revision
-        if mode in ('clip-l', 't5-xxl'):
+        if mode in ('clip-l', 't5-xxl', 'clip-g'):
             if variant is not None:
                 raise _exceptions.InvalidTextEncoderUriError(
                     f'TextEncoder cannot use variant with mode "{mode}", these are incompatible options')
             if revision is not None:
                 raise _exceptions.InvalidTextEncoderUriError(
                     f'TextEncoder cannot use revision with mode "{mode}", these are incompatible options')
+            if subfolder is not None:
+                raise _exceptions.InvalidTextEncoderUriError(
+                    f'TextEncoder cannot use subfolder with mode "{mode}", these are incompatible options')
 
         self._encoder = encoder
         self._model = model
@@ -422,6 +480,10 @@ class TextEncoderUri:
             raise _exceptions.TextEncoderUriLoadError(
                 f'Encoder "{self.encoder}" does not support loading with mode "clip-l".')
 
+        if self.mode == 'clip-g' and encoder not in (transformers.CLIPTextModel, transformers.CLIPTextModelWithProjection):
+            raise _exceptions.TextEncoderUriLoadError(
+                f'Encoder "{self.encoder}" does not support loading with mode "clip-g".')
+
         if self.mode == 't5-xxl' and encoder not in (transformers.T5EncoderModel, DistillT5EncoderModel):
             raise _exceptions.TextEncoderUriLoadError(
                 f'Encoder "{self.encoder}" does not support loading with mode "t5-xxl".')
@@ -437,7 +499,7 @@ class TextEncoderUri:
             quant_config = None
 
         if _pipelinewrapper_util.is_single_file_model_load(model_path):
-            if self.mode in ('clip-l', 't5-xxl'):
+            if self.mode in ('clip-l', 't5-xxl', 'clip-g'):
                 # Ensure these modes are only used with safetensors files
                 if not model_path.endswith('.safetensors'):
                     raise _exceptions.TextEncoderUriLoadError(
@@ -454,6 +516,24 @@ class TextEncoderUri:
                 self._enforce_cache_size(estimated_memory_use)
 
                 text_encoder = _load_clip_l_from_single_file(
+                    model_class=encoder,
+                    model_path=model_path,
+                    dtype=torch_dtype,
+                    local_files_only=local_files_only,
+                    quantization_config=quant_config
+                )
+
+                estimated_memory_use = _torchutil.estimate_module_memory_usage(text_encoder)
+            elif self.mode == 'clip-g':
+                estimated_memory_use = _pipelinewrapper_util.estimate_model_memory_use(
+                    repo_id="laion/CLIP-ViT-bigG-14-laion2B-39B-b160k",
+                    local_files_only=local_files_only,
+                    use_auth_token=use_auth_token
+                )
+
+                self._enforce_cache_size(estimated_memory_use)
+
+                text_encoder = _load_clip_g_from_single_file(
                     model_class=encoder,
                     model_path=model_path,
                     dtype=torch_dtype,

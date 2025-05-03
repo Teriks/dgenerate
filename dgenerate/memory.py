@@ -170,7 +170,7 @@ def memory_constraints(expressions: collections.abc.Iterable[str],
             variables[key] = value
 
     interpreter = _eval.standard_interpreter(
-        symtable=variables.copy().update(_eval.safe_builtins())
+        symtable=_eval.safe_builtins() | variables.copy()
     )
 
     interpreter.symtable.update(functions)
@@ -614,7 +614,7 @@ def cuda_memory_constraints(expressions: collections.abc.Iterable[str],
             variables[key] = value
 
     interpreter = _eval.standard_interpreter(
-        symtable=variables.copy().update(_eval.safe_builtins())
+        symtable=_eval.safe_builtins() | variables.copy()
     )
 
     interpreter.symtable.update(functions)

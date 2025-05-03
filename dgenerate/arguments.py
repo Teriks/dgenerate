@@ -1062,7 +1062,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '-te', '--text-encoders', nargs='+', type=_type_text_encoder, action='store', default=None,
             metavar='TEXT_ENCODER_URIS', dest='text_encoder_uris',
-            help=f"""Specify Text Encoders for the main model using URIs, main models
+            help=f'''Specify Text Encoders for the main model using URIs, main models
                     may use one or more text encoders depending on the --model-type value and other
                     dgenerate arguments. See: --text-encoders help for information
                     about what text encoders are needed for your invocation.
@@ -1074,7 +1074,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                     For main models which require multiple text encoders, the + symbol may be used
                     to indicate that a default value should be used for a particular text encoder,
-                    for example: --text-encoders + + huggingface/encoder3.  Any trailing text
+                    for example: --text-encoders + + huggingface/encoder3. Any trailing text
                     encoders which are not specified are given their default value.
                     
                     The value "null" may be used to indicate that a specific text
@@ -1098,27 +1098,28 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     and should be one of: {_SUPPORTED_DATA_TYPES_PRETTY}.
                     
                     The "quantizer" argument specifies a quantization backend and configuration for the
-                    Text Encoder model individually, and uses the same URI syntax as --quantizer. 
+                    Text Encoder model individually, and uses the same URI syntax as --quantizer. This is supported
+                    when loading from Hugging Face repo slugs / folders on disk, and when using the "mode"
+                    argument with monolithic (non-sharded) checkpoints. This is *not* supported when
+                    loading a submodule out of a combined checkpoint file with "subfolder".
                     If working from the command line you may need to nested quote this URI, i.e:
                     
                     --text-encoders 'CLIPTextModel;model=huggingface/text_encoder;quantizer="bnb;bits=8"'
                     
-                    Quantization with bitsandbytes does not work with anything but Hugging Face repositories
-                    or the monolithic checkpoints usable via the "mode" parameter discussed below, quantization
-                    is not supported when loading a sub-model out of a single file checkpoint using "subfolder"
-                    
-                    The "mode" argument can be used to load monolithic single file "clip-l" or "t5-xxl" 
+                    The "mode" argument can be used to load monolithic single file "clip-l", "clip-g", or "t5-xxl" 
                     checkpoints, this is useful in some cases to load ComfyUI compatible text encoder checkpoints,
                     this works with "quantizer" as well, where as loading a sub-model out of a single
-                    file checkpoint does not. This value may be "clip-l" or "t5-xxl", for instance
+                    file checkpoint does not. This value may be "clip-l", "clip-g" or "t5-xxl". For instance
                     when using Flux, one could specify:
                     
                     CLIPTextModel;model=https://huggingface.co/comfyanonymous/flux_text_encoders/blob/main/clip_l.safetensors;mode=clip-l
                     T5EncoderModel;model=https://huggingface.co/comfyanonymous/flux_text_encoders/blob/main/t5xxl_fp16.safetensors;mode=t5-xxl
                     
+                    The "mode" option is mutually exclusive with "subfolder".
+                    
                     If you wish to load weights directly from a path on disk, you must point this argument at the folder
                     they exist in, which should also contain the config.json file for the Text Encoder.
-                    For example, a downloaded repository folder from Hugging Face."""
+                    For example, a downloaded repository folder from Hugging Face.'''
         )
     )
 
