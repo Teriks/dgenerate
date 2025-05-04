@@ -1340,17 +1340,17 @@ def _pipeline_creation_args_debug(backend, cls, method, model, **kwargs):
     return method(model, **kwargs)
 
 
-def _text_encoder_not_default(uri):
-    return uri and uri != '+'
+xt def _text_encoder_default(uri):
+    return uri is None or uri.strip() == '+'
 
 
 def _text_encoder_null(uri):
-    return uri and uri.lower() == 'null'
+    return uri and uri.strip().lower() == 'null'
 
 
 def _torch_args_hasher(args):
     def text_encoder_uri_parse(uri):
-        if uri is None or uri.strip() == '+':
+        if _text_encoder_default(uri):
             return None
 
         if uri.strip() == 'help':
@@ -2228,46 +2228,45 @@ def _create_torch_diffusion_pipeline(
             transformer_class=transformer_class
         )
 
-    if text_encoder_uris:
+    text_encoder_override_states = [
+        text_encoder_override,
+        text_encoder_2_override,
+        text_encoder_3_override
+    ]
 
-        if not text_encoder_override and (len(text_encoder_uris) > 0) and \
-                _text_encoder_not_default(text_encoder_uris[0]):
-            creation_kwargs['text_encoder'] = load_text_encoder(
-                _uris.TextEncoderUri.parse(text_encoder_uris[0]))
-        if not text_encoder_2_override and (len(text_encoder_uris) > 1) and \
-                _text_encoder_not_default(text_encoder_uris[1]):
-            creation_kwargs['text_encoder_2'] = load_text_encoder(
-                _uris.TextEncoderUri.parse(text_encoder_uris[1]))
-        if not text_encoder_3_override and (len(text_encoder_uris) > 2) and \
-                _text_encoder_not_default(text_encoder_uris[2]):
-            creation_kwargs['text_encoder_3'] = load_text_encoder(
-                _uris.TextEncoderUri.parse(text_encoder_uris[2]))
-    else:
-        override_states = [
-            text_encoder_override,
-            text_encoder_2_override,
-            text_encoder_3_override
-        ]
-        for idx, (name, param) in enumerate(
-                [n for n in sorted(model_index.items(), key=lambda x: x[0])
-                 if n[0].startswith('text_encoder') and n[1][0] is not None]):
-            if override_states[idx]:
-                continue
-
-            if _util.is_single_file_model_load(model_path):
-                encoder_subfolder = name
-            else:
-                encoder_subfolder = os.path.join(subfolder, name) if subfolder else name
-            creation_kwargs[name] = load_text_encoder(
-                _uris.TextEncoderUri(
-                    encoder=param[1],
-                    model=model_path,
-                    variant=variant,
-                    subfolder=encoder_subfolder,
-                    dtype=dtype,
-                    quantizer=quantizer_uri
-                )
+    def load_default_text_encoder(encoder):
+        return load_text_encoder(
+            _uris.TextEncoderUri(
+                encoder=encoder,
+                model=model_path,
+                variant=variant,
+                revision=revision,
+                subfolder=encoder_subfolder,
+                dtype=dtype,
+                quantizer=quantizer_uri
             )
+        )
+
+    for idx, (name, param) in enumerate(
+            [n for n in sorted(model_index.items(), key=lambda x: x[0])
+             if n[0].startswith('text_encoder') and n[1][0] is not None]):
+        if text_encoder_override_states[idx]:
+            continue
+
+        if _util.is_single_file_model_load(model_path):
+            encoder_subfolder = name
+        else:
+            encoder_subfolder = os.path.join(subfolder, name) if subfolder else name
+
+        if text_encoder_uris and len(text_encoder_uris) > idx:
+            if _text_encoder_default(text_encoder_uris[idx]):
+                creation_kwargs[name] = load_default_text_encoder(param[1])
+            else:
+                creation_kwargs[name] = load_text_encoder(
+                    _uris.TextEncoderUri.parse(text_encoder_uris[idx])
+                )
+        else:
+            creation_kwargs[name] = load_default_text_encoder(param[1])
 
     if not vae_override:
         if vae_uri:
@@ -2312,6 +2311,7 @@ def _create_torch_diffusion_pipeline(
                             encoder=vae_encoder_name,
                             model=model_path,
                             variant=variant,
+                            revision=revision,
                             subfolder=vae_subfolder,
                             extract=vae_extract_from_checkpoint,
                             dtype=dtype
@@ -2323,6 +2323,7 @@ def _create_torch_diffusion_pipeline(
                         load_vae(_uris.VAEUri(
                             encoder=vae_encoder_name,
                             model=model_path,
+                            revision=revision,
                             subfolder=vae_subfolder,
                             dtype=dtype
                         ))
@@ -2365,6 +2366,7 @@ def _create_torch_diffusion_pipeline(
                     _uris.UNetUri(
                         model=model_path,
                         variant=variant,
+                        revision=revision,
                         subfolder=unet_subfolder,
                         dtype=dtype,
                         quantizer=quantizer_uri
@@ -2403,6 +2405,7 @@ def _create_torch_diffusion_pipeline(
                 _uris.TransformerUri(
                     model=model_path,
                     variant=variant,
+                    revision=revision,
                     subfolder=transformer_subfolder,
                     dtype=dtype,
                     quantizer=quantizer_uri

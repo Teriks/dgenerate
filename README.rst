@@ -314,9 +314,9 @@ Help Output
       --sub-command SUB_COMMAND
             Specify the name a sub-command to invoke. dgenerate exposes some extra image processing
             functionality through the use of sub-commands. Sub commands essentially replace the entire set of
-            accepted arguments with those of a sub-command which implements additional functionality. See --sub-
-            command-help for a list of sub-commands and help.
-            -------------------------------------------------
+            accepted arguments with those of a sub-command which implements additional functionality. See
+            --sub-command-help for a list of sub-commands and help.
+            -------------------------------------------------------
       --sub-command-help [SUB_COMMAND ...]
             Use this option alone (or with --plugin-modules) and no model specification in order to list
             available sub-command names. Calling a sub-command with "--sub-command name --help" will produce
@@ -352,9 +352,9 @@ Help Output
             -----------------------------------------------------------------------------------------------
       -mt MODEL_TYPE, --model-type MODEL_TYPE
             Use when loading different model types. Currently supported: torch, torch-pix2pix, torch-sdxl,
-            torch-sdxl-pix2pix, torch-kolors, torch-upscaler-x2, torch-upscaler-x4, torch-if, torch-ifs, torch-
-            ifs-img2img, torch-s-cascade, torch-sd3, torch-flux, or torch-flux-fill. (default: torch)
-            -----------------------------------------------------------------------------------------
+            torch-sdxl-pix2pix, torch-kolors, torch-upscaler-x2, torch-upscaler-x4, torch-if, torch-ifs,
+            torch-ifs-img2img, torch-s-cascade, torch-sd3, torch-flux, or torch-flux-fill. (default: torch)
+            -----------------------------------------------------------------------------------------------
       -rev BRANCH, --revision BRANCH
             The model revision to use when loading from a Hugging Face repository, (The Git branch / tag,
             default is "main")
@@ -452,9 +452,9 @@ Help Output
             
             The "mask-padding" (overrides --adetailer-mask-paddings) argument indicates how much padding to
             place around the masked area when cropping out the image to be inpainted. This value must be large
-            enough to accommodate any feathering on the edge of the mask caused by "mask-blur" or "mask-
-            dilation" for the best result, the default value is 32. The syntax for specifying this value is
-            identical to "detector-padding".
+            enough to accommodate any feathering on the edge of the mask caused by "mask-blur" or
+            "mask-dilation" for the best result, the default value is 32. The syntax for specifying this value
+            is identical to "detector-padding".
             
             The "mask-shape" (overrides --adetailer-mask-shapes) argument indicates what mask shape adetailer
             should attempt to draw around a detected feature, the default value is "rectangle". You may also
@@ -518,8 +518,8 @@ Help Output
       -admp ADETAILER_MASK_PADDING [ADETAILER_MASK_PADDING ...], --adetailer-mask-paddings ADETAILER_MASK_PADDING [ADETAILER_MASK_PADDING ...]
             One or more adetailer mask padding values to try. This value indicates how much padding to place
             around the masked area when cropping out the image to be inpainted, this value must be large enough
-            to accommodate any feathering on the edge of the mask caused by "--adetailer-mask-blurs" or "--
-            adetailer-mask-dilations" for the best result.
+            to accommodate any feathering on the edge of the mask caused by "--adetailer-mask-blurs" or
+            "--adetailer-mask-dilations" for the best result.
             
             Example:
             
@@ -549,10 +549,12 @@ Help Output
             depending on the --model-type value and other dgenerate arguments. See: --text-encoders help for
             information about what text encoders are needed for your invocation.
             
-            Examples: "CLIPTextModel;model=huggingface/text_encoder",
-            "CLIPTextModelWithProjection;model=huggingface/text_encoder;revision=main",
-            "T5EncoderModel;model=text_encoder_folder_on_disk",
-            "DistillT5EncoderModel;model=text_encoder_folder_on_disk".
+            Examples:
+            
+            "CLIPTextModel;model=huggingface/text_encoder"
+            "CLIPTextModelWithProjection;model=huggingface/text_encoder;revision=main"
+            "T5EncoderModel;model=text_encoder_folder_on_disk"
+            "DistillT5EncoderModel;model=text_encoder_folder_on_disk"
             
             For main models which require multiple text encoders, the + symbol may be used to indicate that a
             default value should be used for a particular text encoder, for example: --text-encoders + +
@@ -570,33 +572,43 @@ Help Output
             --variant if it is not specified in the URI.
             
             The "subfolder" argument specifies the Text Encoder model subfolder, if specified when loading from
-            a Hugging Face repository or folder, weights from the specified subfolder. If you are loading from a
-            combined single file checkpoint containing multiple components, this value will be used to determine
-            the key in the checkpoint that contains the text encoder, by default "text_encoder" is used if
-            subfolder is not provided.
+            a Hugging Face repository or folder, weights from the specified subfolder.
             
             The "dtype" argument specifies the Text Encoder model precision, it defaults to the value of
             -t/--dtype and should be one of: auto, bfloat16, float16, or float32.
             
-            The "quantizer" argument specifies a quantization backend and configuration for the Text Encoder
-            model individually, and uses the same URI syntax as --quantizer. This is supported when loading from
-            Hugging Face repo slugs / folders on disk, and when using the "mode" argument with monolithic (non-
-            sharded) checkpoints. This is *not* supported when loading a submodule out of a combined checkpoint
-            file with "subfolder". If working from the command line you may need to nested quote this URI, i.e:
+            The "quantizer" URI argument can be used to specify a quantization backend for the text encoder
+            using the same URI syntax as --quantizer. This is supported when loading from Hugging Face repo
+            slugs / folders on disk, and when using the "mode" argument with monolithic (non-sharded)
+            checkpoints. This is not supported when loading a submodule out of a combined checkpoint file with
+            "subfolder". If working from the command line you may need to nested quote this URI, i.e:
             
             --text-encoders 'CLIPTextModel;model=huggingface/text_encoder;quantizer="bnb;bits=8"'
             
-            The "mode" argument can be used to load monolithic single file "clip-l", "clip-g", or "t5-xxl"
-            checkpoints, this is useful in some cases to load ComfyUI compatible text encoder checkpoints, this
-            works with "quantizer" as well, where as loading a sub-model out of a single file checkpoint does
-            not. This value may be "clip-l", "clip-g" or "t5-xxl". For instance when using Flux, one could
-            specify:
+            The "mode" argument can be used to load monolithic single file checkpoints with specific
+            architecture configurations. Available modes are:
             
-            CLIPTextModel;model=https://huggingface.co/comfyanonymous/flux_text_encoders/blob/main/clip_l.safete
-            nsors;mode=clip-l T5EncoderModel;model=https://huggingface.co/comfyanonymous/flux_text_encoders/blob
-            /main/t5xxl_fp16.safetensors;mode=t5-xxl
+            Flux & T5 universal modes:
             
-            The "mode" option is mutually exclusive with "subfolder".
+            * "clip-l" for monolithic Flux CLIP-L checkpoints
+            * "t5-xxl" for monolithic T5 checkpoints (SD3 and Flux)
+            
+            SD3 and SD3.5 specific modes:
+            
+            * "clip-l-sd3" for SD3/SD3.5 medium CLIP-L checkpoints
+            * "clip-g-sd3" for SD3/SD3.5 medium CLIP-G checkpoints
+            * "clip-l-sd35-large" for SD3.5 large variant CLIP-L checkpoints
+            * "clip-g-sd35-large" for SD3.5 large variant CLIP-G checkpoints
+            
+             The "mode" option is mutually exclusive with "subfolder".
+            
+            Available encoder classes are:
+            
+            * CLIPTextModel
+            * CLIPTextModelWithProjection
+            * T5EncoderModel
+            * DistillT5EncoderModel (see: LifuWang/DistillT5)
+            * ChatGLMModel (for Kolors models)
             
             If you wish to load weights directly from a path on disk, you must point this argument at the folder
             they exist in, which should also contain the config.json file for the Text Encoder. For example, a
@@ -608,7 +620,9 @@ Help Output
       -un UNET_URI, --unet UNET_URI
             Specify a UNet using a URI.
             
-            Examples: "huggingface/unet", "huggingface/unet;revision=main", "unet_folder_on_disk".
+            Examples:
+            
+            "huggingface/unet", "huggingface/unet;revision=main", "unet_folder_on_disk"
             
             The "revision" argument specifies the model revision to use for the UNet when loading from Hugging
             Face repository, (The Git branch / tag, default is "main").
@@ -644,8 +658,11 @@ Help Output
       -tf TRANSFORMER_URI, --transformer TRANSFORMER_URI
             Specify a Stable Diffusion 3 or Flux Transformer model using a URI.
             
-            Examples: "huggingface/transformer", "huggingface/transformer;revision=main",
-            "transformer_folder_on_disk".
+            Examples:
+            
+            "huggingface/transformer"
+            "huggingface/transformer;revision=main"
+            "transformer_folder_on_disk"
             
             Blob links / single file loads are supported for SD3 Transformers.
             
@@ -675,15 +692,20 @@ Help Output
             used.
             
             If you wish to load a specific weight file from a Hugging Face repository, use the blob link loading
-            syntax: --transformer "AutoencoderKL;https://huggingface.co/UserName/repository-
-            name/blob/main/transformer.safetensors", the "revision" argument may be used with this syntax.
-            ----------------------------------------------------------------------------------------------
+            syntax: --transformer
+            "AutoencoderKL;https://huggingface.co/UserName/repository-name/blob/main/transformer.safetensors",
+            the "revision" argument may be used with this syntax.
+            -----------------------------------------------------
       -vae VAE_URI, --vae VAE_URI
             Specify a VAE using a URI, the URI syntax is: "AutoEncoderClass;model=(Hugging Face repository
             slug/blob link or file/folder path)".
             
-            Examples: "AutoencoderKL;model=vae.pt", "AsymmetricAutoencoderKL;model=huggingface/vae",
-            "AutoencoderTiny;model=huggingface/vae", "ConsistencyDecoderVAE;model=huggingface/vae".
+            Examples:
+            
+            "AutoencoderKL;model=vae.pt"
+            "AsymmetricAutoencoderKL;model=huggingface/vae"
+            "AutoencoderTiny;model=huggingface/vae"
+            "ConsistencyDecoderVAE;model=huggingface/vae"
             
             The AutoencoderKL encoder class accepts Hugging Face repository slugs/blob links, .pt, .pth, .bin,
             .ckpt, and .safetensors files.
@@ -698,7 +720,8 @@ Help Output
             these are: "revision", "variant", "subfolder", "dtype".
             
             They can be specified as so in any order, they are not positional:
-            "AutoencoderKL;model=huggingface/vae;revision=main;variant=fp16;subfolder=sub_folder;dtype=float16".
+            
+            "AutoencoderKL;model=huggingface/vae;revision=main;variant=fp16;subfolder=sub_folder;dtype=float16"
             
             The "revision" argument specifies the model revision to use for the VAE when loading from Hugging
             Face repository or blob link, (The Git branch / tag, default is "main").
@@ -725,9 +748,10 @@ Help Output
             this case and may produce an error message if used.
             
             If you wish to load a specific weight file from a Hugging Face repository, use the blob link loading
-            syntax: --vae "AutoencoderKL;https://huggingface.co/UserName/repository-
-            name/blob/main/vae_model.safetensors", the "revision" argument may be used with this syntax.
-            --------------------------------------------------------------------------------------------
+            syntax: --vae
+            "AutoencoderKL;https://huggingface.co/UserName/repository-name/blob/main/vae_model.safetensors", the
+            "revision" argument may be used with this syntax.
+            -------------------------------------------------
       -vt, --vae-tiling
             Enable VAE tiling. Assists in the generation of large images with lower memory overhead. The VAE
             will split the input tensor into tiles to compute decoding and encoding in several steps. This is
@@ -738,9 +762,9 @@ Help Output
       -vs, --vae-slicing
             Enable VAE slicing. Assists in the generation of large images with lower memory overhead. The VAE
             will split the input tensor in slices to compute decoding in several steps. This is useful to save
-            some memory, especially when --batch-size is greater than 1. Note that if you are using --control-
-            nets you may still run into memory issues generating large images.
-            ------------------------------------------------------------------
+            some memory, especially when --batch-size is greater than 1. Note that if you are using
+            --control-nets you may still run into memory issues generating large images.
+            ----------------------------------------------------------------------------
       -lra LORA_URI [LORA_URI ...], --loras LORA_URI [LORA_URI ...]
             Specify one or more LoRA models using URIs. These should be a Hugging Face repository slug, path to
             model file on disk (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or model folder
@@ -755,7 +779,8 @@ Help Output
             "subfolder", and "weight-name".
             
             They can be specified as so in any order, they are not positional:
-            "huggingface/lora;scale=1.0;revision=main;subfolder=repo_subfolder;weight-name=lora.safetensors".
+            
+            "huggingface/lora;scale=1.0;revision=main;subfolder=repo_subfolder;weight-name=lora.safetensors"
             
             The "scale" argument indicates the scale factor of the LoRA.
             
@@ -780,14 +805,17 @@ Help Output
       -ie IMAGE_ENCODER_URI, --image-encoder IMAGE_ENCODER_URI
             Specify an Image Encoder using a URI.
             
-            Image Encoders are used with --ip-adapters models, and must be specified if none of the loaded --ip-
-            adapters contain one. An error will be produced in this situation, which requires you to use this
-            argument.
+            Image Encoders are used with --ip-adapters models, and must be specified if none of the loaded
+            --ip-adapters contain one. An error will be produced in this situation, which requires you to use
+            this argument.
             
             An image encoder can also be manually specified for Stable Cascade models.
             
-            Examples: "huggingface/image_encoder", "huggingface/image_encoder;revision=main",
-            "image_encoder_folder_on_disk".
+            Examples:
+            
+            "huggingface/image_encoder"
+            "huggingface/image_encoder;revision=main"
+            "image_encoder_folder_on_disk"
             
             Blob links / single file loads are not supported for Image Encoders.
             
@@ -825,8 +853,9 @@ Help Output
             Optional arguments can be provided after an IP Adapter model specification, these are: "scale",
             "revision", "subfolder", and "weight-name".
             
-            They can be specified as so in any order, they are not positional: "huggingface/ip-
-            adapter;scale=1.0;revision=main;subfolder=repo_subfolder;weight-name=ip_adapter.safetensors".
+            They can be specified as so in any order, they are not positional:
+            
+            "huggingface/ip-adapter;scale=1.0;revision=main;subfolder=repo_subfolder;weight-name=ip_adapter.safetensors".
             
             The "scale" argument indicates the scale factor of the IP Adapter.
             
@@ -857,6 +886,7 @@ Help Output
             "token", "revision", "subfolder", and "weight-name".
             
             They can be specified as so in any order, they are not positional:
+            
             "huggingface/ti_model;revision=main;subfolder=repo_subfolder;weight-name=ti_model.safetensors".
             
             The "token" argument can be used to override the prompt token used for the textual inversion prompt
@@ -888,8 +918,9 @@ Help Output
             Optional arguments can be provided after the ControlNet model specification, these are: "scale",
             "start", "end", "revision", "variant", "subfolder", and "dtype".
             
-            They can be specified as so in any order, they are not positional: "huggingface/controlnet;scale=1.0
-            ;start=0.0;end=1.0;revision=main;variant=fp16;subfolder=repo_subfolder;dtype=float16".
+            They can be specified as so in any order, they are not positional:
+            
+            "huggingface/controlnet;scale=1.0;start=0.0;end=1.0;revision=main;variant=fp16;subfolder=repo_subfolder;dtype=float16".
             
             The "scale" argument specifies the scaling factor applied to the ControlNet model, the default value
             is 1.0.
@@ -925,9 +956,10 @@ Help Output
             and may produce an error message if used.
             
             If you wish to load a specific weight file from a Hugging Face repository, use the blob link loading
-            syntax: --control-nets "https://huggingface.co/UserName/repository-
-            name/blob/main/controlnet.safetensors", the "revision" argument may be used with this syntax.
-            ---------------------------------------------------------------------------------------------
+            syntax: --control-nets
+            "https://huggingface.co/UserName/repository-name/blob/main/controlnet.safetensors", the "revision"
+            argument may be used with this syntax.
+            --------------------------------------
       -t2i T2I_ADAPTER_URI [T2I_ADAPTER_URI ...], --t2i-adapters T2I_ADAPTER_URI [T2I_ADAPTER_URI ...]
             Specify one or more T2IAdapter models using URIs. This should be a Hugging Face repository slug /
             blob link, path to model file on disk (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file),
@@ -939,8 +971,9 @@ Help Output
             Optional arguments can be provided after the T2IAdapter model specification, these are: "scale",
             "revision", "variant", "subfolder", and "dtype".
             
-            They can be specified as so in any order, they are not positional: "huggingface/t2iadapter;scale=1.0
-            ;revision=main;variant=fp16;subfolder=repo_subfolder;dtype=float16".
+            They can be specified as so in any order, they are not positional:
+            
+            "huggingface/t2iadapter;scale=1.0;revision=main;variant=fp16;subfolder=repo_subfolder;dtype=float16".
             
             The "scale" argument specifies the scaling factor applied to the T2IAdapter model, the default value
             is 1.0.
@@ -966,9 +999,10 @@ Help Output
             an error message if used.
             
             If you wish to load a specific weight file from a Hugging Face repository, use the blob link loading
-            syntax: --t2i-adapters "https://huggingface.co/UserName/repository-
-            name/blob/main/t2i_adapter.safetensors", the "revision" argument may be used with this syntax.
-            ----------------------------------------------------------------------------------------------
+            syntax: --t2i-adapters
+            "https://huggingface.co/UserName/repository-name/blob/main/t2i_adapter.safetensors", the "revision"
+            argument may be used with this syntax.
+            --------------------------------------
       -q QUANTIZER_URI, --quantizer QUANTIZER_URI
             Global quantization configuration via URI.
             
@@ -996,25 +1030,24 @@ Help Output
             The bitsandbytes backend URI possesses these arguments and defaults:
             
             * bits: int = 8 (must be 4 or 8)
-            
             * bits4-compute-dtype: str = None (auto set when not specified)
-            
             * bits4-quant-type: str = "fp4"
-            
             * bits4-use-double-quant = False,
-            
             * bits4-quant-storage: str = None
-            
-            
+            ---------------------------------
       -q2 QUANTIZER_URI, --second-model-quantizer QUANTIZER_URI
             Global quantization configuration via URI for the secondary model, such as the SDXL Refiner or
             Stable Cascade decoder. See --quantizer for syntax examples.
             ------------------------------------------------------------
       -sch SCHEDULER_URI [SCHEDULER_URI ...], --scheduler SCHEDULER_URI [SCHEDULER_URI ...], --schedulers SCHEDULER_URI [SCHEDULER_URI ...]
-            Specify a scheduler (sampler) by URI. Passing "help" to this argument will print the compatible
-            schedulers for a model without generating any images. Passing "helpargs" will yield a help message
-            with a list of overridable arguments for each scheduler and their typical defaults. Arguments listed
-            by "helpargs" can be overridden using the URI syntax typical to other dgenerate URI arguments.
+            Specify a scheduler (sampler) by URI.
+            
+            Passing "help" to this argument will print the compatible schedulers for a model without generating any images.
+            
+            Passing "helpargs" will yield a help message with a list of overridable arguments for each scheduler and their typical defaults.
+            
+            Arguments listed by "helpargs" can be overridden using the URI syntax typical to other dgenerate URI
+            arguments.
             
             You may pass multiple scheduler URIs to this argument, each URI will be tried in turn.
             --------------------------------------------------------------------------------------
@@ -1319,9 +1352,9 @@ Help Output
             (default: 0)
             ------------
       -pag, --pag
-            Use perturbed attention guidance? This is supported for --model-type torch, torch-sdxl, and torch-
-            sd3 for most use cases. This enables PAG for the main model using default scale values.
-            ---------------------------------------------------------------------------------------
+            Use perturbed attention guidance? This is supported for --model-type torch, torch-sdxl, and
+            torch-sd3 for most use cases. This enables PAG for the main model using default scale values.
+            ---------------------------------------------------------------------------------------------
       -pags FLOAT [FLOAT ...], --pag-scales FLOAT [FLOAT ...]
             One or more perturbed attention guidance scales to try. Specifying values enables PAG for the main
             model. (default: [3.0])
@@ -1355,9 +1388,9 @@ Help Output
       -mqo2, --second-model-sequential-offload
             Force sequential model offloading for the SDXL Refiner or Stable Cascade Decoder pipeline, this may
             drastically reduce memory consumption and allow large models to run when they would otherwise not
-            fit in your GPUs VRAM. Inference will be much slower. Mutually exclusive with --second-model-cpu-
-            offload
-            -------
+            fit in your GPUs VRAM. Inference will be much slower. Mutually exclusive with
+            --second-model-cpu-offload
+            --------------------------
       -mco2, --second-model-cpu-offload
             Force model cpu offloading for the SDXL Refiner or Stable Cascade Decoder pipeline, this may reduce
             memory consumption and allow large models to run when they would otherwise not fit in your GPUs
@@ -1372,6 +1405,7 @@ Help Output
             "variant", "subfolder", and "dtype".
             
             They can be specified as so in any order, they are not positional:
+            
             "huggingface/decoder_model;revision=main;variant=fp16;subfolder=repo_subfolder;dtype=float16".
             
             The "revision" argument specifies the model revision to use for the decoder model when loading from
@@ -1392,9 +1426,10 @@ Help Output
             arguments aside from "dtype" are unused in this case and may produce an error message if used.
             
             If you wish to load a specific weight file from a Hugging Face repository, use the blob link loading
-            syntax: --s-cascade-decoder "https://huggingface.co/UserName/repository-
-            name/blob/main/decoder.safetensors", the "revision" argument may be used with this syntax.
-            ------------------------------------------------------------------------------------------
+            syntax: --s-cascade-decoder
+            "https://huggingface.co/UserName/repository-name/blob/main/decoder.safetensors", the "revision"
+            argument may be used with this syntax.
+            --------------------------------------
       --sdxl-refiner MODEL_URI
             Specify a Stable Diffusion XL (torch-sdxl) refiner model path using a URI. This should be a Hugging
             Face repository slug / blob link, path to model file on disk (for example, a .pt, .pth, .bin, .ckpt,
@@ -1404,6 +1439,7 @@ Help Output
             "revision", "variant", "subfolder", and "dtype".
             
             They can be specified as so in any order, they are not positional:
+            
             "huggingface/refiner_model_xl;revision=main;variant=fp16;subfolder=repo_subfolder;dtype=float16".
             
             The "revision" argument specifies the model revision to use for the refiner model when loading from
@@ -1425,16 +1461,17 @@ Help Output
             if used.
             
             If you wish to load a specific weight file from a Hugging Face repository, use the blob link loading
-            syntax: --sdxl-refiner "https://huggingface.co/UserName/repository-
-            name/blob/main/refiner_model.safetensors", the "revision" argument may be used with this syntax.
-            ------------------------------------------------------------------------------------------------
+            syntax: --sdxl-refiner
+            "https://huggingface.co/UserName/repository-name/blob/main/refiner_model.safetensors", the
+            "revision" argument may be used with this syntax.
+            -------------------------------------------------
       --sdxl-refiner-edit
             Force the SDXL refiner to operate in edit mode instead of cooperative denoising mode as it would
             normally do for inpainting and ControlNet usage. The main model will perform the full amount of
             inference steps requested by --inference-steps. The output of the main model will be passed to the
-            refiner model and processed with an image seed strength in img2img mode determined by (1.0 - high-
-            noise-fraction)
-            ---------------
+            refiner model and processed with an image seed strength in img2img mode determined by (1.0 -
+            high-noise-fraction)
+            --------------------
       --sdxl-t2i-adapter-factors FLOAT [FLOAT ...]
             One or more SDXL specific T2I adapter factors to try, this controls the amount of time-steps for
             which a T2I adapter applies guidance to an image, this is a value between 0.0 and 1.0. A value of
@@ -1450,8 +1487,8 @@ Help Output
       --sdxl-crops-coords-top-left COORD [COORD ...]
             One or more Stable Diffusion XL (torch-sdxl) "negative-crops-coords-top-left" micro-conditioning
             parameters in the format "0,0". --sdxl-crops-coords-top-left can be used to generate an image that
-            appears to be "cropped" from the position --sdxl-crops-coords-top-left downwards. Favorable, well-
-            centered images are usually achieved by setting --sdxl-crops-coords-top-left to "0,0". Part of
+            appears to be "cropped" from the position --sdxl-crops-coords-top-left downwards. Favorable,
+            well-centered images are usually achieved by setting --sdxl-crops-coords-top-left to "0,0". Part of
             SDXL's micro-conditioning as explained in section 2.2 of [https://huggingface.co/papers/2307.01952].
             ----------------------------------------------------------------------------------------------------
       --sdxl-original-size SIZE [SIZE ...], --sdxl-original-sizes SIZE [SIZE ...]
@@ -1523,11 +1560,11 @@ Help Output
             One or more high-noise-fraction values for Stable Diffusion XL (torch-sdxl), this fraction of
             inference steps will be processed by the base model, while the rest will be processed by the refiner
             model. Multiple values to this argument will result in additional generation steps for each value.
-            In certain situations when collaborative denoising is not supported, such as when using --control-
-            nets and inpainting with SDXL, the inverse proportion of this value IE: (1.0 - high-noise-fraction)
-            becomes the --image-seed-strengths input to the SDXL refiner in plain img2img mode. Edit mode may be
-            forced with the option --sdxl-refiner-edit (default: [0.8])
-            -----------------------------------------------------------
+            In certain situations when collaborative denoising is not supported, such as when using
+            --control-nets and inpainting with SDXL, the inverse proportion of this value IE: (1.0 -
+            high-noise-fraction) becomes the --image-seed-strengths input to the SDXL refiner in plain img2img
+            mode. Edit mode may be forced with the option --sdxl-refiner-edit (default: [0.8])
+            ----------------------------------------------------------------------------------
       -rgr FLOAT [FLOAT ...], --sdxl-refiner-guidance-rescales FLOAT [FLOAT ...]
             One or more guidance rescale values for the SDXL refiner when in use. Override the guidance rescale
             value used by the SDXL refiner, which defaults to the value taken from --guidance-rescales.
@@ -1570,12 +1607,13 @@ Help Output
             --------
       -na, --no-aspect
             This option disables aspect correct resizing of images provided to --image-seeds globally. Seed,
-            Mask, and Control guidance images will be resized to the closest dimension specified by --output-
-            size that is aligned by 8 pixels with no consideration of the source aspect ratio. This can be
-            overriden at the --image-seeds level with the image seed keyword argument 'aspect=true/false'.
-            ----------------------------------------------------------------------------------------------
+            Mask, and Control guidance images will be resized to the closest dimension specified by
+            --output-size that is aligned by 8 pixels with no consideration of the source aspect ratio. This can
+            be overriden at the --image-seeds level with the image seed keyword argument 'aspect=true/false'.
+            -------------------------------------------------------------------------------------------------
       -o PATH, --output-path PATH
             Output path for generated images and files. This directory will be created if it does not exist.
+            
             (default: ./output)
             -------------------
       -op PREFIX, --output-prefix PREFIX
@@ -1601,40 +1639,45 @@ Help Output
             will not be written to animated files. For PNGs, the data is written to a PNG metadata property
             named "DgenerateConfig" and can be read using ImageMagick like so: "magick identify -format
             "%[Property:DgenerateConfig] generated_file.png". For JPEGs, the data is written to the EXIF
-            UserComment on the image. Only PNGs and JPEGs are supported for metadata writing, see: --image-
-            format
-            ------
+            UserComment on the image. Only PNGs and JPEGs are supported for metadata writing, see:
+            --image-format
+            --------------
       -oam, --output-auto1111-metadata
             Write Automatic1111 compatible metadata to the image metadata of each image, this includes hashes
             for single file model checkpoints. Metadata will not be written to animated files. For PNGs, the
             data is written to a PNG metadata property named "parameters". For JPEGs, the data is written to the
-            EXIF UserComment on the image. Only PNGs and JPEGs are supported for metadata writing, see: --image-
-            format
-            ------
+            EXIF UserComment on the image. Only PNGs and JPEGs are supported for metadata writing, see:
+            --image-format
+            --------------
       -pw PROMPT_WEIGHTER_URI, --prompt-weighter PROMPT_WEIGHTER_URI
-            Specify a prompt weighter implementation by URI, for example: --prompt-weighter compel, or --prompt-
-            weighter sd-embed. By default, no prompt weighting syntax is enabled, meaning that you cannot adjust
-            token weights as you may be able to do in software such as ComfyUI, Automatic1111, CivitAI etc. And
-            in some cases the length of your prompt is limited. Prompt weighters support these special token
-            weighting syntaxes and long prompts, currently there are two implementations "compel" and "sd-
-            embed". See: --prompt-weighter-help for a list of implementation names. You may also use --prompt-
-            weighter-help "name" to see comprehensive documentation for a specific prompt weighter
-            implementation.
-            ---------------
+            Specify a prompt weighter implementation by URI, for example:
+            
+            --prompt-weighter compel, or --prompt-weighter sd-embed.
+            
+            By default, no prompt weighting syntax is enabled,
+            meaning that you cannot adjust token weights as you may be able to do in software such as
+            ComfyUI, Automatic1111, CivitAI etc. And in some cases the length of your prompt is limited.
+            Prompt weighters support these special token weighting syntaxes and long prompts,
+            currently there are two implementations "compel" and "sd-embed". See: --prompt-weighter-help
+            for a list of implementation names. You may also use --prompt-weighter-help "name" to
+            see comprehensive documentation for a specific prompt weighter implementation.
+            ------------------------------------------------------------------------------
       -pw2 PROMPT_WEIGHTER_URI, --second-model-prompt-weighter PROMPT_WEIGHTER_URI
             --prompt-weighter URI value that that applies to to --sdxl-refiner or --s-cascade-decoder.
             ------------------------------------------------------------------------------------------
       --prompt-weighter-help [PROMPT_WEIGHTER_NAMES ...]
             Use this option alone (or with --plugin-modules) and no model specification in order to list
             available prompt weighter names. Specifying one or more prompt weighter names after this option will
-            cause usage documentation for the specified prompt weighters to be printed. When used with --plugin-
-            modules, prompt weighters implemented by the specified plugins will also be listed.
-            -----------------------------------------------------------------------------------
+            cause usage documentation for the specified prompt weighters to be printed. When used with
+            --plugin-modules, prompt weighters implemented by the specified plugins will also be listed.
+            --------------------------------------------------------------------------------------------
       -pu PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...], --prompt-upscaler PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]
             Specify a prompt upscaler implementation by URI, for example: --prompt-weighter dynamicprompts.
             Prompt upscaler plugins can preform pure text processing and expansion on incoming prompt text,
             possibly resulting in more generation steps (variations) if the prompt upscaler returns multiple
             prompts per input prompt.
+            
+            For example: --prompt-upscaler "dynamicprompts;scale=1.5"
             
             You may specify multiple upscaler URIs and they will be chained together sequentially.
             --------------------------------------------------------------------------------------
@@ -1657,15 +1700,18 @@ Help Output
       --prompt-upscaler-help [PROMPT_UPSCALER_NAMES ...]
             Use this option alone (or with --plugin-modules) and no model specification in order to list
             available prompt upscaler names. Specifying one or more prompt upscaler names after this option will
-            cause usage documentation for the specified prompt upscalers to be printed. When used with --plugin-
-            modules, prompt upscalers implemented by the specified plugins will also be listed.
-            -----------------------------------------------------------------------------------
+            cause usage documentation for the specified prompt upscalers to be printed. When used with
+            --plugin-modules, prompt upscalers implemented by the specified plugins will also be listed.
+            --------------------------------------------------------------------------------------------
       -p PROMPT [PROMPT ...], --prompts PROMPT [PROMPT ...]
             One or more prompts to try, an image group is generated for each prompt, prompt data is split by ;
             (semi-colon). The first value is the positive text influence, things you want to see. The Second
-            value is negative influence IE. things you don't want to see. Example: --prompts "photo of a horse
-            in a field; artwork, painting, rain". (default: [(empty string)])
-            -----------------------------------------------------------------
+            value is negative influence IE. things you don't want to see.
+            
+            Example: --prompts "photo of a horse in a field; artwork, painting, rain".
+            
+            (default: [(empty string)])
+            ---------------------------
       --second-prompts PROMPT [PROMPT ...]
             One or more secondary prompts to try using the torch-sdxl (SDXL), torch-sd3 (Stable Diffusion 3) or
             torch-flux (Flux) secondary text encoder. By default the model is passed the primary prompt for this
@@ -1741,21 +1787,29 @@ Help Output
             WEBP files will result in frames being rendered as well as an animated output file being generated
             if more than one frame is available in the input file. Inpainting for static images can be achieved
             by specifying a black and white mask image in each image seed string using a semicolon as the
-            separating character, like so: "my-seed-image.png;my-image-mask.png", white areas of the mask
-            indicate where generated content is to be placed in your seed image.
+            separating character, like so:
+            
+            "my-seed-image.png;my-image-mask.png", white areas of the mask indicate where
+            
+            generated content is to be placed in your seed image.
             
             Output dimensions specific to the image seed can be specified by placing the dimension at the end of
-            the string following a semicolon like so: "my-seed-image.png;512x512" or "my-seed-image.png;my-
-            image-mask.png;512x512". When using --control-nets, a singular image specification is interpreted as
-            the control guidance image, and you can specify multiple control image sources by separating them
-            with commas in the case where multiple ControlNets are specified, IE: (--image-seeds "control-
-            image1.png, control-image2.png") OR (--image-seeds "seed.png;control=control-image1.png, control-
-            image2.png").
+            the string following a semicolon like so:
             
-            Using --control-nets with img2img or inpainting can be accomplished with the syntax: "my-seed-
-            image.png;mask=my-image-mask.png;control=my-control-image.png;resize=512x512". The "mask" and
-            "resize" arguments are optional when using --control-nets. Videos, GIFs, and WEBP are also supported
-            as inputs when using --control-nets, even for the "control" argument.
+            "my-seed-image.png;512x512" or "my-seed-image.png;my-image-mask.png;512x512".
+            
+            When using --control-nets, a singular image specification is interpreted as the control guidance
+            image, and you can specify multiple control image sources by separating them with commas in the case
+            where multiple ControlNets are specified, IE:
+            
+            (--image-seeds "control-image1.png, control-image2.png") OR (--image-seeds "seed.png;control=control-image1.png, control-image2.png").
+            
+            Using --control-nets with img2img or inpainting can be accomplished with the syntax:
+            
+            "my-seed-image.png;mask=my-image-mask.png;control=my-control-image.png;resize=512x512".
+            
+            The "mask" and "resize" arguments are optional when using --control-nets. Videos, GIFs, and WEBP are
+            also supported as inputs when using --control-nets, even for the "control" argument.
             
             --image-seeds is capable of reading from multiple animated files at once or any combination of
             animated files and images, the animated file with the least amount of frames dictates how many
@@ -1770,21 +1824,28 @@ Help Output
             syntax.
             -------
       -sip PROCESSOR_URI [PROCESSOR_URI ...], --seed-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
-            Specify one or more image processor actions to perform on the primary image(s) specified by --image-
-            seeds.
+            Specify one or more image processor actions to perform on the primary image(s) specified by
+            --image-seeds.
             
             For example: --seed-image-processors "flip" "mirror" "grayscale".
             
             To obtain more information about what image processors are available and how to use them, see:
             --image-processor-help.
             
-            If you have multiple images specified for batching, for example (--image-seeds "images:
-            img2img-1.png, img2img-2.png"), you may use the delimiter "+" to separate image processor chains, so
-            that a certain chain affects a certain seed image, the plus symbol may also be used to represent a
-            null processor.
+            If you have multiple images specified for batching, for example
             
-            For example: (--seed-image-processors affect-img-1 + affect-img-2), or (--seed-image-processors +
-            affect-img-2), or (--seed-image-processors affect-img-1 +).
+            (--image-seeds "images: img2img-1.png, img2img-2.png"),
+            
+            you may use the delimiter "+" to separate image processor chains, so that a certain chain affects a
+            certain seed image, the plus symbol may also be used to represent a null processor.
+            
+            For example:
+            
+            (--seed-image-processors affect-img-1 + affect-img-2)
+            
+            (--seed-image-processors + affect-img-2)
+            
+            (--seed-image-processors affect-img-1 +)
             
             The amount of processors / processor chains must not exceed the amount of input images, or you will
             receive a syntax error message. To obtain more information about what image processors are available
@@ -1812,29 +1873,41 @@ Help Output
             available and how to use them, see: --image-processor-help.
             -----------------------------------------------------------
       -cip PROCESSOR_URI [PROCESSOR_URI ...], --control-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
-            Specify one or more image processor actions to perform on the control image specified by --image-
-            seeds, this option is meant to be used with --control-nets.
+            Specify one or more image processor actions to perform on the control image specified by
+            --image-seeds, this option is meant to be used with --control-nets.
             
             Example: --control-image-processors "canny;lower=50;upper=100".
             
             The delimiter "+" can be used to specify a different processor group for each image when using
             multiple control images with --control-nets.
             
-            For example if you have --image-seeds "img1.png, img2.png" or --image-seeds "...;control=img1.png,
-            img2.png" specified and multiple ControlNet models specified with --control-nets, you can specify
-            processors for those control images with the syntax: (--control-image-processors "processes-img1" +
-            "processes-img2").
+            For example if you have
             
-            This syntax also supports chaining of processors, for example: (--control-image-processors "first-
-            process-img1" "second-process-img1" + "process-img2").
+            --image-seeds "img1.png, img2.png"
+            
+            or
+            
+            --image-seeds "...;control=img1.png, img2.png"
+            
+            specified and multiple ControlNet models specified with --control-nets, you can specify processors
+            for those control images with the syntax:
+            
+            (--control-image-processors "processes-img1" + "processes-img2").
+            
+            This syntax also supports chaining of processors, for example:
+            
+            (--control-image-processors "first-process-img1" "second-process-img1" + "process-img2").
             
             The amount of specified processors must not exceed the amount of specified control images, or you
             will receive a syntax error message.
             
             Images which do not have a processor defined for them will not be processed, and the plus character
             can be used to indicate an image is not to be processed and instead skipped over when that image is
-            a leading element, for example (--control-image-processors + "process-second") would indicate that
-            the first control guidance image is not to be processed, only the second.
+            a leading element, for example
+            
+            (--control-image-processors + "process-second")
+            
+            would indicate that the first control guidance image is not to be processed, only the second.
             
             To obtain more information about what image processors are available and how to use them, see:
             --image-processor-help.
@@ -1842,14 +1915,17 @@ Help Output
       --image-processor-help [PROCESSOR_NAME ...]
             Use this option alone (or with --plugin-modules) and no model specification in order to list
             available image processor names. Specifying one or more image processor names after this option will
-            cause usage documentation for the specified image processors to be printed. When used with --plugin-
-            modules, image processors implemented by the specified plugins will also be listed.
-            -----------------------------------------------------------------------------------
+            cause usage documentation for the specified image processors to be printed. When used with
+            --plugin-modules, image processors implemented by the specified plugins will also be listed.
+            --------------------------------------------------------------------------------------------
       -pp PROCESSOR_URI [PROCESSOR_URI ...], --post-processors PROCESSOR_URI [PROCESSOR_URI ...]
-            Specify one or more image processor actions to perform on generated output before it is saved. For
-            example: --post-processors "upcaler;model=4x_ESRGAN.pth". To obtain more information about what
-            processors are available and how to use them, see: --image-processor-help.
-            --------------------------------------------------------------------------
+            Specify one or more image processor actions to perform on generated output before it is saved.
+            
+            For example: --post-processors "upcaler;model=4x_ESRGAN.pth".
+            
+            To obtain more information about what processors are available and how to use them, see:
+            --image-processor-help.
+            -----------------------
       -iss FLOAT [FLOAT ...], --image-seed-strengths FLOAT [FLOAT ...]
             One or more image strength values to try when using --image-seeds for img2img or inpaint mode.
             Closer to 0 means high usage of the seed image (less noise convolution), 1 effectively means no
@@ -1861,13 +1937,15 @@ Help Output
             One or more upscaler noise level values to try when using the super resolution upscaler --model-type
             torch-upscaler-x4 or torch-ifs. Specifying this option for --model-type torch-upscaler-x2 will
             produce an error message. The higher this value the more noise is added to the image before
-            upscaling (similar to --image-seed-strengths). (default: [20 for x4, 250 for torch-ifs/torch-ifs-
-            img2img, 0 for torch-ifs inpainting mode])
-            ------------------------------------------
+            upscaling (similar to --image-seed-strengths). (default: [20 for x4, 250 for
+            torch-ifs/torch-ifs-img2img, 0 for torch-ifs inpainting mode])
+            --------------------------------------------------------------
       -gs FLOAT [FLOAT ...], --guidance-scales FLOAT [FLOAT ...]
             One or more guidance scale values to try. Guidance scale effects how much your text prompt is
-            considered. Low values draw more data from images unrelated to text prompt. (default: [5])
-            ------------------------------------------------------------------------------------------
+            considered. Low values draw more data from images unrelated to text prompt.
+            
+            (default: [5])
+            --------------
       -si CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...], --sigmas CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...]
             One or more comma-separated lists (or singular values) of floating point sigmas to try. This is
             supported when using a --scheduler that supports setting sigmas. Sigma values control the noise
@@ -1876,10 +1954,16 @@ Help Output
             
             Example: --sigmas "1.0,0.8,0.6,0.4,0.2"
             
-            Or expressions: "expr: sigmas * .95", sigmas from --scheduler are represented as a numpy array in an
-            interpreted expression, numpy is available through the namespace "np", this uses asteval.
+            Or expressions:
             
-            Or singular values: --sigmas 0.4
+            "expr: sigmas * .95"
+            
+            sigmas from --scheduler are represented as a numpy array in an interpreted expression, numpy is
+            available through the namespace "np", this uses asteval.
+            
+            Or singular values:
+            
+            --sigmas 0.4
             
             Expressions and CSV lists can be intermixed: --sigmas "1.0,..." "expr: sigmas * 0.95"
             
@@ -1894,22 +1978,31 @@ Help Output
             lower image quality. Requires a value of at least 1. (default: [1.5])
             ---------------------------------------------------------------------
       -gr FLOAT [FLOAT ...], --guidance-rescales FLOAT [FLOAT ...]
-            One or more guidance rescale factors to try. Proposed by [Common Diffusion Noise Schedules and
-            Sample Steps are Flawed](https://arxiv.org/pdf/2305.08891.pdf) "guidance_scale" is defined as "φ" in
-            equation 16. of [Common Diffusion Noise Schedules and Sample Steps are Flawed]
-            (https://arxiv.org/pdf/2305.08891.pdf). Guidance rescale factor should fix overexposure when using
-            zero terminal SNR. This is supported for basic text to image generation when using --model-type
-            "torch" but not inpainting, img2img, or --control-nets. When using --model-type "torch-sdxl" it is
-            supported for basic generation, inpainting, and img2img, unless --control-nets is specified in which
-            case only inpainting is supported. It is supported for --model-type "torch-sdxl-pix2pix" but not
-            --model-type "torch-pix2pix". (default: [0.0])
-            ----------------------------------------------
+            One or more guidance rescale factors to try. Proposed by
+            
+            [Common Diffusion Noise Schedules and Sample Steps are Flawed](https://arxiv.org/pdf/2305.08891.pdf)
+            
+            "guidance_scale" is defined as "φ" in equation 16. of
+            
+            [Common Diffusion Noise Schedules and Sample Steps are Flawed](https://arxiv.org/pdf/2305.08891.pdf).
+            
+            Guidance rescale factor should fix overexposure when using zero terminal SNR. This is supported for
+            basic text to image generation when using --model-type "torch" but not inpainting, img2img, or
+            --control-nets. When using --model-type "torch-sdxl" it is supported for basic generation,
+            inpainting, and img2img, unless --control-nets is specified in which case only inpainting is
+            supported. It is supported for --model-type "torch-sdxl-pix2pix" but not --model-type
+            "torch-pix2pix".
+            
+            (default: [0.0])
+            ----------------
       -ifs INTEGER [INTEGER ...], --inference-steps INTEGER [INTEGER ...]
             One or more inference steps values to try. The amount of inference (de-noising) steps effects image
             clarity to a degree, higher values bring the image closer to what the AI is targeting for the
             content of the image. Values between 30-40 produce good results, higher values may improve image
-            quality and or change image content. (default: [30])
-            ----------------------------------------------------
+            quality and or change image content.
+            
+            (default: [30])
+            ---------------
       -ifs2 INTEGER [INTEGER ...], --second-model-inference-steps INTEGER [INTEGER ...]
             One or more inference steps values for the SDXL refiner or Stable Cascade decoder when in use.
             Override the number of inference steps used by the second model, which defaults to the value taken
@@ -4708,12 +4801,26 @@ argument with monolithic (non-sharded) checkpoints.  This is not supported when
 loading a submodule out of a combined checkpoint file with ``subfolder``.
 
 The ``mode`` URI argument can be used to provide an additional hint about the loading
-method for a single file checkpoint, it may be ``clip-l`` for monolithic CLIP-L checkpoints,
-``clip-g`` for monolithic CLIP-G (bigG) checkpoints, or ``t5-xxl`` for monolithic T5 checkpoints
-as used with SD3 and Flux. diffusers usually shards these weights for performance, though 
-monolithic checkpoints are often available for use with ComfyUI or distributed on CivitAI.
-This is for compatibility with other software. This option is mutually exclusive with ``subfolder``.
+method for a single file checkpoint. 
 
+Flux & T5 universal modes:
+
+* ``clip-l`` for monolithic Flux CLIP-L checkpoints
+* ``t5-xxl`` for monolithic T5 checkpoints (SD3 and Flux)
+
+SD3 and SD3.5 specific modes:
+
+* ``clip-l-sd3`` for SD3/SD3.5 medium CLIP-L checkpoints
+* ``clip-g-sd3`` for SD3/SD3.5 medium CLIP-G checkpoints
+* ``clip-l-sd35-large`` for SD3.5 large variant CLIP-L checkpoints
+* ``clip-g-sd35-large`` for SD3.5 large variant CLIP-G checkpoints
+
+These SD3/SD3.5 specific modes are designed with the correct architecture parameters for
+each model variant.
+
+diffusers usually shards T5 / large weights for performance, though monolithic checkpoints
+are often available for use with ComfyUI or distributed on CivitAI. This is for compatibility 
+with other software. The ``mode`` option is mutually exclusive with ``subfolder``.
 
 Available encoder classes are:
 
@@ -4721,6 +4828,7 @@ Available encoder classes are:
 * ``CLIPTextModelWithProjection``
 * ``T5EncoderModel``
 * ``DistillT5EncoderModel`` (see: [LifuWang/DistillT5](https://huggingface.co/LifuWang/DistillT5))
+* ``ChatGLMModel`` (for Kolors models)
 
 You can query the text encoder types and position for a model by passing ``help``
 as an argument to ``--text-encoders`` or ``--second-model-text-encoders``. This feature
@@ -4982,6 +5090,10 @@ with additional fine-tuning.
                through the trees casting dappled shadows on the walkway. Rich texture in the brushwork, \
                capturing the vivid variety of plant life. Hints of a vivid blue sky with puffy white clouds \
                and distant mountains. Warm, inviting color palette evokes serene countryside ambiance."
+
+This can also be utilized with SD3.
+
+.. WARNING: Missing example file: ../../../examples/stablediffusion_3/civitai/clip-L-G-T5-XXL-monolithic-config.dgen ..
 
 Prompt Upscaling
 ================
@@ -5382,8 +5494,8 @@ This can be used to translate between any language supported by ``argostranslate
         The "output" argument indicates the output language code (IETF), or literal name of the language, this
         value defaults to "en" (English).
     
-        The "provider" argument indicates the translation provider, which may be one of "argos" or "mariana".  The
-        default value is "argos", indicating argostranslate.  argos will only ever use the "cpu" regardless of the
+        The "provider" argument indicates the translation provider, which may be one of "argos" or "mariana". The
+        default value is "argos", indicating argostranslate. argos will only ever use the "cpu" regardless of the
         current --device or "device" argument value. Mariana will default to using the value of --device which
         will usually be a GPU.
     
@@ -5399,7 +5511,7 @@ This can be used to translate between any language supported by ``argostranslate
         The "device" argument can be used to set the device the prompt upscaler will run any models on, for
         example: cpu, cuda, cuda:1. this argument will default to the value of the dgenerate argument --device.
     
-    ==============================================================================================================
+    =============================================================================================================
 
 
 Basic prompt upscaling example
@@ -5876,10 +5988,10 @@ as the ``compel`` prompt weighter currently does not.
         See: https://github.com/xhinker/sd_embed
     
         @misc{sd_embed_2024,
-          author       = {Shudong Zhu(Andrew Zhu)},
-          title        = {Long Prompt Weighted Stable Diffusion Embedding},
-          howpublished = {\url{https://github.com/xhinker/sd_embed}},
-          year         = {2024},
+        author = {Shudong Zhu(Andrew Zhu)},
+        title = {Long Prompt Weighted Stable Diffusion Embedding},
+        howpublished = {\url{https://github.com/xhinker/sd_embed}},
+        year = {2024},
         }
     
         This prompt weighter supports the model types:
@@ -6013,9 +6125,9 @@ See: `LLM4GEN <https://github.com/YUHANG-Ma/LLM4GEN>`_
         The "token" argument allows you to explicitly specify a Hugging Face auth token for downloads.
     
         @misc{liu2024llm4genleveragingsemanticrepresentation,
-          title={LLM4GEN: Leveraging Semantic Representation of LLMs for Text-to-Image Generation},
-          author={Mushui Liu and Yuhang Ma and Xinfeng Zhang and Yang Zhen and Zeng Zhao and Zhipeng Hu and Bai Liu and Changjie Fan},
-          year={2024},
+        title={LLM4GEN: Leveraging Semantic Representation of LLMs for Text-to-Image Generation},
+        author={Mushui Liu and Yuhang Ma and Xinfeng Zhang and Yang Zhen and Zeng Zhao and Zhipeng Hu and Bai Liu and Changjie Fan},
+        year={2024},
         }
     
     ==============================================================================================================
@@ -6076,7 +6188,6 @@ these are the arguments that are available for use:
     sdxl-high-noise-fraction: float
     second-model-inference-steps: int
     second-model-guidance-scale: float
-    sdxl-refiner-sigmas: [float, ...]
     sdxl-refiner-guidance-rescale: float
     sdxl-aesthetic-score: float
     sdxl-original-size: Size: WxH
@@ -6095,7 +6206,6 @@ these are the arguments that are available for use:
     sdxl-refiner-negative-target-size: Size: WxH
     sdxl-refiner-negative-crops-coords-top-left: Size: WxH
     guidance-scale: float
-    sigmas: [float, ...]
     tea-cache-rel-l1-threshold: float
     ras-index-fusion: bool
     ras-sample-ratio: float
@@ -8066,7 +8176,7 @@ The ``\templates_help`` output from the above example is:
             Type: typing.Optional[collections.abc.Sequence[float]]
             Value: []
         Name: "last_sdxl_refiner_sigmas"
-            Type: typing.Optional[collections.abc.Sequence[collections.abc.Sequence[float]]]
+            Type: typing.Optional[collections.abc.Sequence[collections.abc.Sequence[float] | str]]
             Value: []
         Name: "last_sdxl_refiner_target_sizes"
             Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
@@ -8133,12 +8243,12 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [65045093575631]
+            Value: [22256152085593]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
         Name: "last_sigmas"
-            Type: typing.Optional[collections.abc.Sequence[collections.abc.Sequence[float]]]
+            Type: typing.Optional[collections.abc.Sequence[collections.abc.Sequence[float] | str]]
             Value: []
         Name: "last_subfolder"
             Type: typing.Optional[str]
@@ -8464,21 +8574,21 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
         bytearray(bytes_or_buffer) -> mutable copy of bytes_or_buffer bytearray(int) -> bytes array of size given
         by the parameter initialized with null bytes bytearray() -> empty bytes array
     
-        Construct a mutable bytearray object from:   - an iterable yielding integers in range(256)   - a text
-        string encoded using the specified encoding   - a bytes or a buffer object   - any object implementing the
-        buffer API.   - an integer
+        Construct a mutable bytearray object from: - an iterable yielding integers in range(256) - a text string
+        encoded using the specified encoding - a bytes or a buffer object - any object implementing the buffer
+        API. - an integer
     
-    ==============================================================================================================
+    =============================================================================================================
     bytes(args, kwargs):
     
         bytes(iterable_of_ints) -> bytes bytes(string, encoding[, errors]) -> bytes bytes(bytes_or_buffer) ->
         immutable copy of bytes_or_buffer bytes(int) -> bytes object of size given by the parameter initialized
         with null bytes bytes() -> empty bytes object
     
-        Construct an immutable array of bytes from:   - an iterable yielding integers in range(256)   - a text
-        string encoded using the specified encoding   - any object implementing the buffer API.   - an integer
+        Construct an immutable array of bytes from: - an iterable yielding integers in range(256) - a text string
+        encoded using the specified encoding - any object implementing the buffer API. - an integer
     
-    ===========================================================================================================
+    =============================================================================================================
     callable(args, kwargs):
     
         Return whether the object is callable (i.e., some kind of function).
@@ -8502,27 +8612,27 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
     ============================================================================================================
     dict(args, kwargs):
     
-        dict() -> new empty dictionary dict(mapping) -> new dictionary initialized from a mapping object's
-        (key, value) pairs dict(iterable) -> new dictionary initialized as if via:     d = {}     for k, v in
-        iterable:         d[k] = v dict(**kwargs) -> new dictionary initialized with the name=value pairs     in
-        the keyword argument list.  For example:  dict(one=1, two=2)
+        dict() -> new empty dictionary dict(mapping) -> new dictionary initialized from a mapping object's (key,
+        value) pairs dict(iterable) -> new dictionary initialized as if via: d = {} for k, v in iterable: d[k] = v
+        dict(**kwargs) -> new dictionary initialized with the name=value pairs in the keyword argument list. For
+        example: dict(one=1, two=2)
     
-    ============================================================================================================
+    ==============================================================================================================
     divmod(args, kwargs):
     
-        Return the tuple (x//y, x%y).  Invariant: div*y + mod == x.
+        Return the tuple (x//y, x%y). Invariant: div*y + mod == x.
     
-    ===============================================================
+    ==============================================================
     enumerate(args, kwargs):
     
         Return an enumerate object.
     
-          iterable     an object supporting iteration
+        iterable an object supporting iteration
     
         The enumerate object yields pairs containing a count (from start, which defaults to zero) and a value
         yielded by the iterable argument.
     
-        enumerate is useful for obtaining an indexed list:     (0, seq[0]), (1, seq[1]), (2, seq[2]), ...
+        enumerate is useful for obtaining an indexed list: (0, seq[0]), (1, seq[1]), (2, seq[2]), ...
     
     =========================================================================================================
     filter(args, kwargs):
@@ -8590,23 +8700,23 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
     
         int([x]) -> integer int(x, base=10) -> integer
     
-        Convert a number or string to an integer, or return 0 if no arguments are given.  If x is a number, return
-        x.__int__().  For floating-point numbers, this truncates towards zero.
+        Convert a number or string to an integer, or return 0 if no arguments are given. If x is a number, return
+        x.__int__(). For floating-point numbers, this truncates towards zero.
     
         If x is not a number or if base is given, then x must be a string, bytes, or bytearray instance
-        representing an integer literal in the given base.  The literal can be preceded by '+' or '-' and be
-        surrounded by whitespace.  The base defaults to 10.  Valid bases are 0 and 2-36. Base 0 means to interpret
+        representing an integer literal in the given base. The literal can be preceded by '+' or '-' and be
+        surrounded by whitespace. The base defaults to 10. Valid bases are 0 and 2-36. Base 0 means to interpret
         the base from the string as an integer literal. >>> int('0b100', base=0) 4
     
-    ==============================================================================================================
+    =============================================================================================================
     iter(args, kwargs):
     
         iter(iterable) -> iterator iter(callable, sentinel) -> iterator
     
-        Get an iterator from an object.  In the first form, the argument must supply its own iterator, or be a
+        Get an iterator from an object. In the first form, the argument must supply its own iterator, or be a
         sequence. In the second form, the callable is called until it returns the sentinel.
     
-    ==========================================================================================================
+    =========================================================================================================
     len(args, kwargs):
     
         Return the number of items in a container.
@@ -8624,10 +8734,10 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
     
         map(func, *iterables) --> map object
     
-        Make an iterator that computes the function using arguments from each of the iterables.  Stops when the
+        Make an iterator that computes the function using arguments from each of the iterables. Stops when the
         shortest iterable is exhausted.
     
-    ===========================================================================================================
+    ==========================================================================================================
     max(args, kwargs):
     
         max(iterable, *[, default=obj, key=func]) -> value max(arg1, arg2, *args, *[, key=func]) -> value
@@ -8687,8 +8797,8 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
         range(stop) -> range object range(start, stop[, step]) -> range object
     
         Return an object that produces a sequence of integers from start (inclusive) to stop (exclusive) by step.
-        range(i, j) produces i, i+1, i+2, ..., j-1. start defaults to 0, and stop is omitted!  range(4) produces
-        0, 1, 2, 3. These are exactly the valid indices for a list of 4 elements. When step is given, it specifies
+        range(i, j) produces i, i+1, i+2, ..., j-1. start defaults to 0, and stop is omitted! range(4) produces 0,
+        1, 2, 3. These are exactly the valid indices for a list of 4 elements. When step is given, it specifies
         the increment (or decrement).
     
     ==============================================================================================================
@@ -8708,10 +8818,10 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
     
         Round a number to a given precision in decimal digits.
     
-        The return value is an integer if ndigits is omitted or None.  Otherwise the return value has the same
-        type as the number.  ndigits may be negative.
+        The return value is an integer if ndigits is omitted or None. Otherwise the return value has the same type
+        as the number. ndigits may be negative.
     
-    ==========================================================================================================
+    ==============================================================================================================
     set(args, kwargs):
     
         set() -> new empty set object set(iterable) -> new set object
@@ -8723,9 +8833,9 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
     
         slice(stop) slice(start, stop[, step])
     
-        Create a slice object.  This is used for extended slicing (e.g. a[0:10:2]).
+        Create a slice object. This is used for extended slicing (e.g. a[0:10:2]).
     
-    ===============================================================================
+    ==============================================================================
     sorted(args, kwargs):
     
         Return a new list containing all items from the iterable in ascending order.
@@ -8771,15 +8881,15 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
     
         zip(*iterables, strict=False) --> Yield tuples until an input is exhausted.
     
-           >>> list(zip('abcdefg', range(3), range(4)))    [('a', 0, 0), ('b', 1, 1), ('c', 2, 2)]
+        >>> list(zip('abcdefg', range(3), range(4))) [('a', 0, 0), ('b', 1, 1), ('c', 2, 2)]
     
         The zip object yields n-length tuples, where n is the number of iterables passed as positional arguments
-        to zip().  The i-th element in every tuple comes from the i-th iterable argument to zip().  This continues
+        to zip(). The i-th element in every tuple comes from the i-th iterable argument to zip(). This continues
         until the shortest argument is exhausted.
     
         If strict is true and one of the arguments is exhausted before the others, raise a ValueError.
     
-    ==============================================================================================================
+    ============================================================================================================
 
 
 Directives, and applying templating

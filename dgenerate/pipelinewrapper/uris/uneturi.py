@@ -200,6 +200,8 @@ class UNetUri:
 
         if self.variant is None:
             variant = variant_fallback
+        elif self.variant == 'null':
+            variant = None
         else:
             variant = self.variant
 

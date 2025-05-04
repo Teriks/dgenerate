@@ -851,6 +851,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                     This option supports: --model-type torch, torch-sdxl, torch-kolors, torch-sd3, torch-flux, and torch-flux-fill
                     
+                    NOWRAP!
                     Example: --adetailer-detectors Bingsu/adetailer;weight-name=face_yolov8n.pt
                     
                     The "revision" argument specifies the model revision to use for the adetailer model when loading from
@@ -1067,10 +1068,13 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     dgenerate arguments. See: --text-encoders help for information
                     about what text encoders are needed for your invocation.
                     
-                    Examples: "CLIPTextModel;model=huggingface/text_encoder",
-                    "CLIPTextModelWithProjection;model=huggingface/text_encoder;revision=main",
-                    "T5EncoderModel;model=text_encoder_folder_on_disk", 
-                    "DistillT5EncoderModel;model=text_encoder_folder_on_disk".
+                    Examples: 
+                    
+                    NOWRAP!
+                    "CLIPTextModel;model=huggingface/text_encoder"
+                    "CLIPTextModelWithProjection;model=huggingface/text_encoder;revision=main"
+                    "T5EncoderModel;model=text_encoder_folder_on_disk"
+                    "DistillT5EncoderModel;model=text_encoder_folder_on_disk"
                     
                     For main models which require multiple text encoders, the + symbol may be used
                     to indicate that a default value should be used for a particular text encoder,
@@ -1089,30 +1093,49 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     For this argument, "variant" defaults to the value of --variant if it is not specified in the URI.
                     
                     The "subfolder" argument specifies the Text Encoder model subfolder, if specified when loading 
-                    from a Hugging Face repository or folder, weights from the specified subfolder. If you are 
-                    loading from a combined single file checkpoint containing multiple components, this value 
-                    will be used to determine the key in the checkpoint that contains the text encoder, by default 
-                    "text_encoder" is used if subfolder is not provided.
+                    from a Hugging Face repository or folder, weights from the specified subfolder.
                     
                     The "dtype" argument specifies the Text Encoder model precision, it defaults to the value of -t/--dtype
                     and should be one of: {_SUPPORTED_DATA_TYPES_PRETTY}.
                     
-                    The "quantizer" argument specifies a quantization backend and configuration for the
-                    Text Encoder model individually, and uses the same URI syntax as --quantizer. This is supported
+                    The "quantizer" URI argument can be used to specify a quantization backend
+                    for the text encoder using the same URI syntax as --quantizer. This is supported
                     when loading from Hugging Face repo slugs / folders on disk, and when using the "mode"
-                    argument with monolithic (non-sharded) checkpoints. This is *not* supported when
+                    argument with monolithic (non-sharded) checkpoints. This is not supported when
                     loading a submodule out of a combined checkpoint file with "subfolder".
                     If working from the command line you may need to nested quote this URI, i.e:
                     
+                    NOWRAP!
                     --text-encoders 'CLIPTextModel;model=huggingface/text_encoder;quantizer="bnb;bits=8"'
                     
                     The "mode" argument can be used to load monolithic single file checkpoints with specific
-                    architecture configurations. Supports standard modes like "clip-l" or "t5-xxl"
-                    for Flux-compatible models, and SD3/SD3.5-specific modes: "clip-l-sd3", "clip-l-sd35",
-                    "clip-g-sd3", "clip-g-sd35", and "clip-l-sd35-large" for SD3/SD3.5 models. "t5-xxl"
-                    can be used with both SD3 and Flux.
+                    architecture configurations. Available modes are:
+                    
+                    Flux & T5 universal modes:
+                    
+                    NOWRAP!
+                    * "clip-l" for monolithic Flux CLIP-L checkpoints
+                    * "t5-xxl" for monolithic T5 checkpoints (SD3 and Flux)
+                    
+                    SD3 and SD3.5 specific modes:
+                    
+                    NOWRAP!
+                    * "clip-l-sd3" for SD3/SD3.5 medium CLIP-L checkpoints
+                    * "clip-g-sd3" for SD3/SD3.5 medium CLIP-G checkpoints
+                    * "clip-l-sd35-large" for SD3.5 large variant CLIP-L checkpoints
+                    * "clip-g-sd35-large" for SD3.5 large variant CLIP-G checkpoints
+                    
                     
                     The "mode" option is mutually exclusive with "subfolder".
+                    
+                    Available encoder classes are:
+                    
+                    NOWRAP!
+                    * CLIPTextModel
+                    * CLIPTextModelWithProjection
+                    * T5EncoderModel
+                    * DistillT5EncoderModel (see: LifuWang/DistillT5)
+                    * ChatGLMModel (for Kolors models)
                     
                     If you wish to load weights directly from a path on disk, you must point this argument at the folder
                     they exist in, which should also contain the config.json file for the Text Encoder.
@@ -1133,7 +1156,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '-un', '--unet', action='store', default=None, metavar="UNET_URI", dest='unet_uri',
             help=f"""Specify a UNet using a URI.
                     
-                    Examples: "huggingface/unet", "huggingface/unet;revision=main", "unet_folder_on_disk".
+                    Examples: 
+                    
+                    NOWRAP!
+                    "huggingface/unet", "huggingface/unet;revision=main", "unet_folder_on_disk"
                     
                     The "revision" argument specifies the model revision to use for the UNet when loading from
                     Hugging Face repository, (The Git branch / tag, default is "main").
@@ -1156,6 +1182,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     UNet model individually, and uses the same URI syntax as --quantizer. 
                     If working from the command line you may need to nested quote this URI, i.e:
                     
+                    NOWRAP!
                     --unet 'huggingface/unet;quantizer="bnb;bits=8"'
                     
                     If you wish to load weights directly from a path on disk, you must point this argument at the folder
@@ -1178,7 +1205,12 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '-tf', '--transformer', action='store', default=None, metavar="TRANSFORMER_URI", dest='transformer_uri',
             help=f"""Specify a Stable Diffusion 3 or Flux Transformer model using a URI.
                     
-                    Examples: "huggingface/transformer", "huggingface/transformer;revision=main", "transformer_folder_on_disk".
+                    Examples: 
+                    
+                    NOWRAP!
+                    "huggingface/transformer"
+                    "huggingface/transformer;revision=main"
+                    "transformer_folder_on_disk"
                     
                     Blob links / single file loads are supported for SD3 Transformers.
                     
@@ -1200,6 +1232,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     Transformer model individually, and uses the same URI syntax as --quantizer. 
                     If working from the command line you may need to nested quote this URI, i.e:
                     
+                    NOWRAP!
                     --transformer 'huggingface/transformer;quantizer="bnb;bits=8"'
                     
                     If you wish to load a weights file directly from disk, the simplest
@@ -1220,8 +1253,13 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             help=f"""Specify a VAE using a URI, the URI syntax is: 
                     "AutoEncoderClass;model=(Hugging Face repository slug/blob link or file/folder path)".
                     
-                    Examples: "AutoencoderKL;model=vae.pt", "AsymmetricAutoencoderKL;model=huggingface/vae",
-                    "AutoencoderTiny;model=huggingface/vae", "ConsistencyDecoderVAE;model=huggingface/vae".
+                    Examples: 
+                    
+                    NOWRAP!
+                    "AutoencoderKL;model=vae.pt"
+                    "AsymmetricAutoencoderKL;model=huggingface/vae"
+                    "AutoencoderTiny;model=huggingface/vae"
+                    "ConsistencyDecoderVAE;model=huggingface/vae"
                     
                     The AutoencoderKL encoder class accepts Hugging Face repository slugs/blob links,
                     .pt, .pth, .bin, .ckpt, and .safetensors files.
@@ -1237,7 +1275,9 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     these are: "revision", "variant", "subfolder", "dtype".
                     
                     They can be specified as so in any order, they are not positional:
-                    "AutoencoderKL;model=huggingface/vae;revision=main;variant=fp16;subfolder=sub_folder;dtype=float16".
+                    
+                    NOWRAP!
+                    "AutoencoderKL;model=huggingface/vae;revision=main;variant=fp16;subfolder=sub_folder;dtype=float16"
                     
                     The "revision" argument specifies the model revision to use for the VAE when loading from
                     Hugging Face repository or blob link, (The Git branch / tag, default is "main").
@@ -1309,7 +1349,9 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     these are: "scale", "revision", "subfolder", and "weight-name".
                     
                     They can be specified as so in any order, they are not positional:
-                    "huggingface/lora;scale=1.0;revision=main;subfolder=repo_subfolder;weight-name=lora.safetensors".
+                    
+                    NOWRAP!
+                    "huggingface/lora;scale=1.0;revision=main;subfolder=repo_subfolder;weight-name=lora.safetensors"
                     
                     The "scale" argument indicates the scale factor of the LoRA.
                     
@@ -1349,7 +1391,12 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                     An image encoder can also be manually specified for Stable Cascade models.
                     
-                    Examples: "huggingface/image_encoder", "huggingface/image_encoder;revision=main", "image_encoder_folder_on_disk".
+                    Examples: 
+                    
+                    NOWRAP!
+                    "huggingface/image_encoder"
+                    "huggingface/image_encoder;revision=main"
+                    "image_encoder_folder_on_disk"
                     
                     Blob links / single file loads are not supported for Image Encoders.
                     
@@ -1394,6 +1441,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     these are: "scale", "revision", "subfolder", and "weight-name".
                     
                     They can be specified as so in any order, they are not positional:
+                    
+                    NOWRAP!
                     "huggingface/ip-adapter;scale=1.0;revision=main;subfolder=repo_subfolder;weight-name=ip_adapter.safetensors".
                     
                     The "scale" argument indicates the scale factor of the IP Adapter.
@@ -1432,6 +1481,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     these are: "token", "revision", "subfolder", and "weight-name".
                     
                     They can be specified as so in any order, they are not positional:
+                    
+                    NOWRAP!
                     "huggingface/ti_model;revision=main;subfolder=repo_subfolder;weight-name=ti_model.safetensors".
                     
                     The "token" argument can be used to override the prompt token used for the
@@ -1474,6 +1525,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     these are: "scale", "start", "end", "revision", "variant", "subfolder", and "dtype".
                     
                     They can be specified as so in any order, they are not positional:
+                    
+                    NOWRAP!
                     "huggingface/controlnet;scale=1.0;start=0.0;end=1.0;revision=main;variant=fp16;subfolder=repo_subfolder;dtype=float16".
                     
                     The "scale" argument specifies the scaling factor applied to the ControlNet model,
@@ -1533,6 +1586,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     these are: "scale", "revision", "variant", "subfolder", and "dtype".
                     
                     They can be specified as so in any order, they are not positional:
+                    
+                    NOWRAP!
                     "huggingface/t2iadapter;scale=1.0;revision=main;variant=fp16;subfolder=repo_subfolder;dtype=float16".
                     
                     The "scale" argument specifies the scaling factor applied to the T2IAdapter model,
@@ -1586,22 +1641,21 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Example: 
             
+            NOWRAP!
             --quantizer bnb;bits=4
             
             or: 
             
+            NOWRAP!
             --quantizer bitsandbytes;bits=4
             
             The bitsandbytes backend URI possesses these arguments and defaults:
             
+            NOWRAP!
             * bits: int = 8 (must be 4 or 8)
-            
             * bits4-compute-dtype: str = None (auto set when not specified)
-            
             * bits4-quant-type: str = "fp4"
-            
             * bits4-use-double-quant = False,
-            
             * bits4-quant-storage: str = None
             
             """
@@ -1625,9 +1679,14 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '--schedulers',
             dest='scheduler_uri',
             action='store', nargs='+', default=None, metavar="SCHEDULER_URI",
-            help=f"""Specify a scheduler (sampler) by URI. Passing "help" to this argument
-                    will print the compatible schedulers for a model without generating any images. Passing "helpargs" 
-                    will yield a help message with a list of overridable arguments for each scheduler and their typical defaults.
+            help=f"""Specify a scheduler (sampler) by URI. 
+                    
+                    NOWRAP!
+                    Passing "help" to this argument will print the compatible schedulers for a model without generating any images. 
+                    
+                    NOWRAP!
+                    Passing "helpargs" will yield a help message with a list of overridable arguments for each scheduler and their typical defaults.
+                    
                     Arguments listed by "helpargs" can be overridden using the URI syntax typical to other dgenerate URI arguments.
                     
                     You may pass multiple scheduler URIs to this argument, each URI will be tried in turn.
@@ -1662,6 +1721,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                      output images while retaining quality with no overhead, and 
                      possibly improved performance.
                      
+                     NOWRAP!
                      See: https://github.com/megvii-research/HiDiffusion
                      
                      This is supported for --model-type torch, torch-sdxl, and --torch-kolors.
@@ -1686,6 +1746,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                   DeepCache caches intermediate attention layer outputs to speed up
                   the diffusion process. Recommended for higher inference steps.
                   
+                  NOWRAP!
                   See: https://github.com/horseee/DeepCache
                   
                   This is supported for Stable Diffusion, Stable Diffusion XL,
@@ -1810,6 +1871,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                      computation needed to generate an image, this can speed up inference
                      with small amounts of quality loss.
                      
+                     NOWRAP!
                      See: https://github.com/ali-vilab/TeaCache
                      
                      Also see: --tea-cache-rel-l1-thresholds
@@ -1831,7 +1893,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                      Defaults to 0.6 (2.0x speedup). 0.25 for 1.5x speedup, 0.4 for 1.8x speedup, 
                      0.6 for 2.0x speedup, 0.8 for 2.25x speedup
-                    
+                     
+                     NOWRAP!
                      See: https://github.com/ali-vilab/TeaCache
                      
                      Supplying any values implies --tea-cache.
@@ -1851,6 +1914,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
                      This can increase inference speed with SD3.
                     
+                     NOWRAP!
                      See: https://github.com/microsoft/ras
                     
                      This is supported for: --model-type torch-sd3.
@@ -1954,6 +2018,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Multiple values or comma-separated lists can be provided, and each will be tried in turn.
             
+            NOWRAP!
             Example: --ras-error-reset-steps 12 "5,10,15"
             
             Supplying any values implies --ras.
@@ -2194,6 +2259,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     these are: "revision", "variant", "subfolder", and "dtype".
                     
                     They can be specified as so in any order, they are not positional:
+                    
+                    NOWRAP!
                     "huggingface/decoder_model;revision=main;variant=fp16;subfolder=repo_subfolder;dtype=float16".
                     
                     The "revision" argument specifies the model revision to use for the decoder model
@@ -2233,6 +2300,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     these are: "revision", "variant", "subfolder", and "dtype".
                     
                     They can be specified as so in any order, they are not positional:
+                    
+                    NOWRAP!
                     "huggingface/refiner_model_xl;revision=main;variant=fp16;subfolder=repo_subfolder;dtype=float16".
                     
                     The "revision" argument specifies the model revision to use for the refiner model
@@ -2529,7 +2598,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '-o', '--output-path', action='store', default='output', metavar="PATH",
             help="""Output path for generated images and files.
-                    This directory will be created if it does not exist. (default: ./output)"""
+                    This directory will be created if it does not exist. 
+                    
+                    NOWRAP!
+                    (default: ./output)"""
         )
     )
 
@@ -2594,14 +2666,18 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '-pw', '--prompt-weighter', metavar='PROMPT_WEIGHTER_URI', dest='prompt_weighter_uri', action='store',
             default=None, type=_type_prompt_weighter,
-            help='Specify a prompt weighter implementation by URI, for example: --prompt-weighter compel, or '
-                 '--prompt-weighter sd-embed. By default, no prompt weighting syntax is enabled, '
-                 'meaning that you cannot adjust token weights as you may be able to do in software such as '
-                 'ComfyUI, Automatic1111, CivitAI etc. And in some cases the length of your prompt is limited. '
-                 'Prompt weighters support these special token weighting syntaxes and long prompts, '
-                 'currently there are two implementations "compel" and "sd-embed". See: --prompt-weighter-help '
-                 'for a list of implementation names. You may also use --prompt-weighter-help "name" to '
-                 'see comprehensive documentation for a specific prompt weighter implementation.'
+            help="""Specify a prompt weighter implementation by URI, for example: 
+                 
+                 NOWRAP!
+                 --prompt-weighter compel, or --prompt-weighter sd-embed. 
+                  
+                 By default, no prompt weighting syntax is enabled, 
+                 meaning that you cannot adjust token weights as you may be able to do in software such as 
+                 ComfyUI, Automatic1111, CivitAI etc. And in some cases the length of your prompt is limited. 
+                 Prompt weighters support these special token weighting syntaxes and long prompts, 
+                 currently there are two implementations "compel" and "sd-embed". See: --prompt-weighter-help 
+                 for a list of implementation names. You may also use --prompt-weighter-help "name" to 
+                 see comprehensive documentation for a specific prompt weighter implementation."""
         )
     )
 
@@ -2637,6 +2713,9 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     Prompt upscaler plugins can preform pure text processing and expansion on incoming prompt text, 
                     possibly resulting in more generation steps (variations) if the prompt upscaler returns multiple 
                     prompts per input prompt.
+                    
+                    NOWRAP!
+                    For example: --prompt-upscaler "dynamicprompts;scale=1.5"
                     
                     You may specify multiple upscaler URIs and they will be chained together sequentially.
                     """
@@ -2703,7 +2782,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     prompt data is split by ; (semi-colon). The first value is the positive
                     text influence, things you want to see. The Second value is negative
                     influence IE. things you don't want to see.
+                    
+                    NOWRAP!
                     Example: --prompts "photo of a horse in a field; artwork, painting, rain".
+                    
                     (default: [(empty string)])"""
         )
     )
@@ -2857,19 +2939,31 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     output file being generated if more than one frame is available in the input file.
                     Inpainting for static images can be achieved by specifying a black and white mask image in each
                     image seed string using a semicolon as the separating character, like so: 
+                    
+                    NOWRAP!
                     "my-seed-image.png;my-image-mask.png", white areas of the mask indicate where
+                    
                     generated content is to be placed in your seed image.
                     
                     Output dimensions specific to the image seed can be specified by placing the dimension
-                    at the end of the string following a semicolon like so: "my-seed-image.png;512x512" or
-                    "my-seed-image.png;my-image-mask.png;512x512". When using --control-nets, a singular
+                    at the end of the string following a semicolon like so: 
+                    
+                    NOWRAP!
+                    "my-seed-image.png;512x512" or "my-seed-image.png;my-image-mask.png;512x512". 
+                    
+                    When using --control-nets, a singular
                     image specification is interpreted as the control guidance image, and you can specify
                     multiple control image sources by separating them with commas in the case where multiple
-                    ControlNets are specified, IE: (--image-seeds "control-image1.png, control-image2.png") OR
-                    (--image-seeds "seed.png;control=control-image1.png, control-image2.png").
+                    ControlNets are specified, IE: 
+                    
+                    NOWRAP!
+                    (--image-seeds "control-image1.png, control-image2.png") OR (--image-seeds "seed.png;control=control-image1.png, control-image2.png").
                      
                     Using --control-nets with img2img or inpainting can be accomplished with the syntax: 
+                    
+                    NOWRAP!
                     "my-seed-image.png;mask=my-image-mask.png;control=my-control-image.png;resize=512x512".
+                    
                     The "mask" and "resize" arguments are optional when using --control-nets. Videos, GIFs,
                     and WEBP are also supported as inputs when using --control-nets, even for the "control"
                     argument.
@@ -2897,18 +2991,31 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             help="""Specify one or more image processor actions to perform on the primary
                     image(s) specified by --image-seeds.
                     
+                    NOWRAP!
                     For example: --seed-image-processors "flip" "mirror" "grayscale".
                     
                     To obtain more information about what image processors are available and how to use them,
                     see: --image-processor-help.
                     
                     If you have multiple images specified for batching, for example
-                    (--image-seeds "images: img2img-1.png, img2img-2.png"), you may use the delimiter "+" to separate
+                    
+                    NOWRAP!
+                    (--image-seeds "images: img2img-1.png, img2img-2.png"), 
+                    
+                    you may use the delimiter "+" to separate
                     image processor chains, so that a certain chain affects a certain seed image, the plus symbol
                     may also be used to represent a null processor.
                     
-                    For example: (--seed-image-processors affect-img-1 + affect-img-2), or
-                    (--seed-image-processors + affect-img-2), or (--seed-image-processors affect-img-1 +).
+                    For example: 
+                    
+                    NOWRAP!
+                    (--seed-image-processors affect-img-1 + affect-img-2)
+                    
+                    NOWRAP!
+                    (--seed-image-processors + affect-img-2)
+                    
+                    NOWRAP!
+                    (--seed-image-processors affect-img-1 +)
                     
                     The amount of processors / processor chains must not exceed the amount of input images,
                     or you will receive a syntax error message. To obtain more information about what image
@@ -2922,6 +3029,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             help="""Specify one or more image processor actions to perform on the inpaint mask
                     image(s) specified by --image-seeds.
                     
+                    NOWRAP!
                     For example: --mask-image-processors "invert".
                     
                     To obtain more information about what image processors are available and how to use them,
@@ -2949,16 +3057,31 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             help="""Specify one or more image processor actions to perform on the control
                     image specified by --image-seeds, this option is meant to be used with --control-nets.
                     
+                    NOWRAP!
                     Example: --control-image-processors "canny;lower=50;upper=100".
                     
                     The delimiter "+" can be used to specify a different processor group for each image when using
                     multiple control images with --control-nets.
                     
-                    For example if you have --image-seeds "img1.png, img2.png" or --image-seeds "...;control=img1.png, img2.png" 
+                    For example if you have 
+                    
+                    NOWRAP!
+                    --image-seeds "img1.png, img2.png" 
+                    
+                    or 
+                    
+                    NOWRAP!
+                    --image-seeds "...;control=img1.png, img2.png" 
+                    
                     specified and multiple ControlNet models specified with --control-nets, you can specify processors for
-                    those control images with the syntax: (--control-image-processors "processes-img1" + "processes-img2").
+                    those control images with the syntax: 
+                    
+                    NOWRAP!
+                    (--control-image-processors "processes-img1" + "processes-img2").
                     
                     This syntax also supports chaining of processors, for example: 
+                    
+                    NOWRAP!
                     (--control-image-processors "first-process-img1" "second-process-img1" + "process-img2").
                      
                     The amount of specified processors must not exceed the amount of specified control images, or you
@@ -2966,7 +3089,12 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                     Images which do not have a processor defined for them will not be processed, and the plus character can
                     be used to indicate an image is not to be processed and instead skipped over when that image is a
-                    leading element, for example (--control-image-processors + "process-second") would indicate that
+                    leading element, for example 
+                    
+                    NOWRAP!
+                    (--control-image-processors + "process-second") 
+                    
+                    would indicate that
                     the first control guidance image is not to be processed, only the second.
                     
                     To obtain more information about what image processors
@@ -2990,7 +3118,11 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '-pp', '--post-processors', action='store', nargs='+', default=None, metavar="PROCESSOR_URI",
             help="""Specify one or more image processor actions to perform on generated
-                    output before it is saved. For example: --post-processors "upcaler;model=4x_ESRGAN.pth".
+                    output before it is saved. 
+                    
+                    NOWRAP!
+                    For example: --post-processors "upcaler;model=4x_ESRGAN.pth".
+                    
                     To obtain more information about what processors are available and how to use them,
                     see: --image-processor-help."""
         )
@@ -3029,7 +3161,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             metavar="FLOAT", type=_type_guidance_scale,
             help="""One or more guidance scale values to try. Guidance scale effects how much your
                     text prompt is considered. Low values draw more data from images unrelated
-                    to text prompt. (default: [5])"""
+                    to text prompt. 
+                    
+                    NOWRAP!
+                    (default: [5])"""
         )
     )
 
@@ -3044,14 +3179,24 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     in the diffusion process, allowing for fine-grained control over
                     how noise is added and removed during image generation.
                     
+                    NOWRAP!
                     Example: --sigmas "1.0,0.8,0.6,0.4,0.2" 
                     
-                    Or expressions: "expr: sigmas * .95", sigmas from --scheduler are 
+                    Or expressions: 
+                    
+                    NOWRAP!
+                    "expr: sigmas * .95"
+                    
+                    sigmas from --scheduler are 
                     represented as a numpy array in an interpreted expression, numpy
                     is available through the namespace "np", this uses asteval.
                     
-                    Or singular values: --sigmas 0.4
+                    Or singular values: 
                     
+                    NOWRAP!
+                    --sigmas 0.4
+                    
+                    NOWRAP!
                     Expressions and CSV lists can be intermixed: --sigmas "1.0,..." "expr: sigmas * 0.95"
                     
                     Each provided value (each quoted string in the example above) will be tried in turn.
@@ -3076,15 +3221,24 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '-gr', '--guidance-rescales', action='store', nargs='+', default=[], metavar="FLOAT",
             type=_type_guidance_scale,
-            help="""One or more guidance rescale factors to try. Proposed by [Common Diffusion Noise Schedules and
-                    Sample Steps are Flawed](https://arxiv.org/pdf/2305.08891.pdf) "guidance_scale" is defined
-                    as "φ" in equation 16. of [Common Diffusion Noise Schedules and Sample Steps are Flawed]
-                    (https://arxiv.org/pdf/2305.08891.pdf). Guidance rescale factor should fix overexposure
+            help="""One or more guidance rescale factors to try. Proposed by 
+                    
+                    NOWRAP!
+                    [Common Diffusion Noise Schedules and Sample Steps are Flawed](https://arxiv.org/pdf/2305.08891.pdf) 
+                    
+                    "guidance_scale" is defined as "φ" in equation 16. of 
+                    
+                    NOWRAP!
+                    [Common Diffusion Noise Schedules and Sample Steps are Flawed](https://arxiv.org/pdf/2305.08891.pdf). 
+                    
+                    Guidance rescale factor should fix overexposure
                     when using zero terminal SNR. This is supported for basic text to image generation
                     when using --model-type "torch" but not inpainting, img2img, or --control-nets.
                     When using --model-type "torch-sdxl" it is supported for basic generation, inpainting,
                     and img2img, unless --control-nets is specified in which case only inpainting is supported.
                     It is supported for --model-type "torch-sdxl-pix2pix" but not --model-type "torch-pix2pix".
+                    
+                    NOWRAP!
                     (default: [0.0])"""
         )
     )
@@ -3098,7 +3252,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     effects image clarity to a degree, higher values bring the image closer to what
                     the AI is targeting for the content of the image. Values between 30-40
                     produce good results, higher values may improve image quality and or
-                    change image content. (default: [30])"""
+                    change image content. 
+                    
+                    NOWRAP!
+                    (default: [30])"""
         )
     )
 
