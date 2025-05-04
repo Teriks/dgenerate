@@ -88,14 +88,15 @@ def _load_clip_l_from_single_file(
     model_id = "openai/clip-vit-large-patch14"
     
     try:
-
         with _suppress_accelerate_warnings():
             config = transformers.CLIPTextConfig.from_pretrained(
-                model_id, local_files_only=local_files_only,
-                quantization_config=quantization_config
+                model_id, local_files_only=local_files_only
             )
 
             config.torch_dtype = dtype
+            
+            if quantization_config:
+                config.quantization_config = quantization_config
 
             text_encoder = model_class(config)
         
@@ -115,6 +116,10 @@ def _load_clip_l_from_single_file(
             level=_messages.WARNING
         )
 
+        if quantization_config:
+            hf_quantizer = diffusers.quantizers.auto.DiffusersAutoQuantizer().from_config(quantization_config)
+            hf_quantizer.preprocess_model(text_encoder, device_map='auto')
+
         with _suppress_accelerate_warnings():
             # Load state dict and update weights
             text_encoder = accelerate.load_checkpoint_and_dispatch(
@@ -124,6 +129,9 @@ def _load_clip_l_from_single_file(
                 dtype=dtype,
                 no_split_module_classes=["CLIPEncoderLayer"]
             )
+
+        if quantization_config:
+            hf_quantizer.postprocess_model(text_encoder)
 
         return text_encoder
     
@@ -138,9 +146,13 @@ def _load_clip_l_sd3_from_single_file(
         local_files_only: bool = False,
         quantization_config=None
 ):
+    """
+    Load a CLIP-L text encoder from a monolithic checkpoint for SD3/SD3.5 models.
+    This function is used for both SD3 and SD3.5 variants (non-large).
+    """
     try:
         with _suppress_accelerate_warnings():
-            # Create a config manually for SD3 CLIP-L
+            # Create a config manually for SD3/SD3.5 CLIP-L
             config = transformers.CLIPTextConfig(
                 vocab_size=49408,
                 hidden_size=768,
@@ -152,6 +164,9 @@ def _load_clip_l_sd3_from_single_file(
                 projection_dim=768,
                 torch_dtype=dtype
             )
+
+            if quantization_config:
+                config.quantization_config = quantization_config
 
             text_encoder = model_class(config)
         
@@ -167,9 +182,13 @@ def _load_clip_l_sd3_from_single_file(
             )
 
         _messages.log(
-            f'Loading monolithic clip-l-sd3 state dict from: "{model_path}", this may take a while, please wait...',
+            f'Loading monolithic CLIP-L SD3/SD3.5 state dict from: "{model_path}", this may take a while, please wait...',
             level=_messages.WARNING
         )
+
+        if quantization_config:
+            hf_quantizer = diffusers.quantizers.auto.DiffusersAutoQuantizer().from_config(quantization_config)
+            hf_quantizer.preprocess_model(text_encoder, device_map='auto')
 
         with _suppress_accelerate_warnings():
             # Load state dict and update weights
@@ -181,33 +200,43 @@ def _load_clip_l_sd3_from_single_file(
                 no_split_module_classes=["CLIPEncoderLayer"]
             )
 
+        if quantization_config:
+            hf_quantizer.postprocess_model(text_encoder)
+
         return text_encoder
     
     except Exception as e:
-        raise _exceptions.TextEncoderUriLoadError(f"Failed to load CLIP-L SD3 model: {e}") from e
+        raise _exceptions.TextEncoderUriLoadError(f"Failed to load CLIP-L SD3/SD3.5 model: {e}") from e
 
 
-def _load_clip_l_sd35_from_single_file(
+def _load_clip_g_sd3_from_single_file(
         model_class: transformers.CLIPTextModel | transformers.CLIPTextModelWithProjection,
         model_path: str,
         dtype: torch.dtype,
         local_files_only: bool = False,
         quantization_config=None
 ):
+    """
+    Load a CLIP-G text encoder from a monolithic checkpoint for SD3/SD3.5 models.
+    This function is used for both SD3 and SD3.5 variants (non-large).
+    """
     try:
         with _suppress_accelerate_warnings():
-            # Create a config manually for SD3.5 CLIP-L
+            # Create a config manually for SD3/SD3.5 CLIP-G
             config = transformers.CLIPTextConfig(
                 vocab_size=49408,
-                hidden_size=768,
-                intermediate_size=3072,
-                num_hidden_layers=12,
-                num_attention_heads=12,
+                hidden_size=1280,
+                intermediate_size=5120,
+                num_hidden_layers=32,
+                num_attention_heads=20,
                 max_position_embeddings=77,
                 hidden_act="quick_gelu",
-                projection_dim=768,
+                projection_dim=1280,
                 torch_dtype=dtype
             )
+
+            if quantization_config:
+                config.quantization_config = quantization_config
 
             text_encoder = model_class(config)
         
@@ -223,9 +252,13 @@ def _load_clip_l_sd35_from_single_file(
             )
 
         _messages.log(
-            f'Loading monolithic clip-l-sd35 state dict from: "{model_path}", this may take a while, please wait...',
+            f'Loading monolithic CLIP-G SD3/SD3.5 state dict from: "{model_path}", this may take a while, please wait...',
             level=_messages.WARNING
         )
+
+        if quantization_config:
+            hf_quantizer = diffusers.quantizers.auto.DiffusersAutoQuantizer().from_config(quantization_config)
+            hf_quantizer.preprocess_model(text_encoder, device_map='auto')
 
         with _suppress_accelerate_warnings():
             # Load state dict and update weights
@@ -237,10 +270,75 @@ def _load_clip_l_sd35_from_single_file(
                 no_split_module_classes=["CLIPEncoderLayer"]
             )
 
+        if quantization_config:
+            hf_quantizer.postprocess_model(text_encoder)
+
         return text_encoder
     
     except Exception as e:
-        raise _exceptions.TextEncoderUriLoadError(f"Failed to load CLIP-L SD3.5 model: {e}") from e
+        raise _exceptions.TextEncoderUriLoadError(f"Failed to load CLIP-G SD3/SD3.5 model: {e}") from e
+
+
+def _load_t5_xxl_from_single_file(
+        model_class: transformers.models.t5.T5EncoderModel | DistillT5EncoderModel,
+        model_path: str,
+        dtype: torch.dtype,
+        local_files_only: bool = False,
+        quantization_config=None
+):
+    model_id = "google/t5-v1_1-xxl"
+
+    try:
+        
+        with _suppress_accelerate_warnings():
+            config = transformers.T5Config.from_pretrained(
+                model_id, local_files_only=local_files_only
+            )
+
+            config.torch_dtype = dtype
+            
+            if quantization_config:
+                config.quantization_config = quantization_config
+
+            text_encoder = model_class(config)
+
+        blob_link = _pipelinewrapper_util.HFBlobLink.parse(model_path)
+        
+        if blob_link is not None:
+            model_path = huggingface_hub.hf_hub_download(
+                repo_id=blob_link.repo_id,
+                revision=blob_link.revision,
+                subfolder=blob_link.subfolder,
+                filename=blob_link.weight_name,
+                local_files_only=local_files_only
+            )
+        
+        # Load state dict and update weights
+        _messages.log(
+            f'Loading monolithic t5-xxl state dict from: "{model_path}", this may take a while, please wait...',
+            level=_messages.WARNING
+        )
+
+        if quantization_config:
+            hf_quantizer = diffusers.quantizers.auto.DiffusersAutoQuantizer().from_config(quantization_config)
+            hf_quantizer.preprocess_model(text_encoder, device_map='auto')
+
+        with _suppress_accelerate_warnings():
+            text_encoder = accelerate.load_checkpoint_and_dispatch(
+                text_encoder,
+                checkpoint=model_path,
+                device_map="auto",
+                dtype=dtype,
+                no_split_module_classes=["T5Block"]
+            )
+
+        if quantization_config:
+            hf_quantizer.postprocess_model(text_encoder)
+
+        return text_encoder
+    
+    except Exception as e:
+        raise _exceptions.TextEncoderUriLoadError(f"Failed to load T5-XXL model: {e}") from e
 
 
 def _load_clip_l_sd35_large_from_single_file(
@@ -260,10 +358,13 @@ def _load_clip_l_sd35_large_from_single_file(
                 num_hidden_layers=12,
                 num_attention_heads=12,
                 max_position_embeddings=77,
-                hidden_act="quick_gelu",
+                hidden_act="gelu",  # Note: This uses "gelu" instead of "quick_gelu"
                 projection_dim=768,
                 torch_dtype=dtype
             )
+
+            if quantization_config:
+                config.quantization_config = quantization_config
 
             text_encoder = model_class(config)
         
@@ -283,6 +384,10 @@ def _load_clip_l_sd35_large_from_single_file(
             level=_messages.WARNING
         )
 
+        if quantization_config:
+            hf_quantizer = diffusers.quantizers.auto.DiffusersAutoQuantizer().from_config(quantization_config)
+            hf_quantizer.preprocess_model(text_encoder, device_map='auto')
+
         with _suppress_accelerate_warnings():
             # Load state dict and update weights
             text_encoder = accelerate.load_checkpoint_and_dispatch(
@@ -292,123 +397,14 @@ def _load_clip_l_sd35_large_from_single_file(
                 dtype=dtype,
                 no_split_module_classes=["CLIPEncoderLayer"]
             )
+
+        if quantization_config:
+            hf_quantizer.postprocess_model(text_encoder)
 
         return text_encoder
     
     except Exception as e:
         raise _exceptions.TextEncoderUriLoadError(f"Failed to load CLIP-L SD3.5 Large model: {e}") from e
-
-
-def _load_clip_g_sd3_from_single_file(
-        model_class: transformers.CLIPTextModel | transformers.CLIPTextModelWithProjection,
-        model_path: str,
-        dtype: torch.dtype,
-        local_files_only: bool = False,
-        quantization_config=None
-):
-    try:
-        with _suppress_accelerate_warnings():
-            # Create a config manually for SD3 CLIP-G
-            config = transformers.CLIPTextConfig(
-                vocab_size=49408,
-                hidden_size=1280,
-                intermediate_size=5120,
-                num_hidden_layers=32,
-                num_attention_heads=20,
-                max_position_embeddings=77,
-                hidden_act="quick_gelu",
-                projection_dim=1280,
-                torch_dtype=dtype
-            )
-
-            text_encoder = model_class(config)
-        
-        blob_link = _pipelinewrapper_util.HFBlobLink.parse(model_path)
-        
-        if blob_link is not None:
-            model_path = huggingface_hub.hf_hub_download(
-                repo_id=blob_link.repo_id,
-                revision=blob_link.revision,
-                subfolder=blob_link.subfolder,
-                filename=blob_link.weight_name,
-                local_files_only=local_files_only
-            )
-
-        _messages.log(
-            f'Loading monolithic clip-g-sd3 state dict from: "{model_path}", this may take a while, please wait...',
-            level=_messages.WARNING
-        )
-
-        with _suppress_accelerate_warnings():
-            # Load state dict and update weights
-            text_encoder = accelerate.load_checkpoint_and_dispatch(
-                text_encoder,
-                checkpoint=model_path,
-                device_map="auto",
-                dtype=dtype,
-                no_split_module_classes=["CLIPEncoderLayer"]
-            )
-
-        return text_encoder
-    
-    except Exception as e:
-        raise _exceptions.TextEncoderUriLoadError(f"Failed to load CLIP-G SD3 model: {e}") from e
-
-
-def _load_clip_g_sd35_from_single_file(
-        model_class: transformers.CLIPTextModel | transformers.CLIPTextModelWithProjection,
-        model_path: str,
-        dtype: torch.dtype,
-        local_files_only: bool = False,
-        quantization_config=None
-):
-    try:
-        with _suppress_accelerate_warnings():
-            # Create a config manually for SD3.5 CLIP-G
-            config = transformers.CLIPTextConfig(
-                vocab_size=49408,
-                hidden_size=1280,
-                intermediate_size=5120,
-                num_hidden_layers=32,
-                num_attention_heads=20,
-                max_position_embeddings=77,
-                hidden_act="quick_gelu",
-                projection_dim=1280,
-                torch_dtype=dtype
-            )
-
-            text_encoder = model_class(config)
-        
-        blob_link = _pipelinewrapper_util.HFBlobLink.parse(model_path)
-        
-        if blob_link is not None:
-            model_path = huggingface_hub.hf_hub_download(
-                repo_id=blob_link.repo_id,
-                revision=blob_link.revision,
-                subfolder=blob_link.subfolder,
-                filename=blob_link.weight_name,
-                local_files_only=local_files_only
-            )
-
-        _messages.log(
-            f'Loading monolithic clip-g-sd35 state dict from: "{model_path}", this may take a while, please wait...',
-            level=_messages.WARNING
-        )
-
-        with _suppress_accelerate_warnings():
-            # Load state dict and update weights
-            text_encoder = accelerate.load_checkpoint_and_dispatch(
-                text_encoder,
-                checkpoint=model_path,
-                device_map="auto",
-                dtype=dtype,
-                no_split_module_classes=["CLIPEncoderLayer"]
-            )
-
-        return text_encoder
-    
-    except Exception as e:
-        raise _exceptions.TextEncoderUriLoadError(f"Failed to load CLIP-G SD3.5 model: {e}") from e
 
 
 def _load_clip_g_sd35_large_from_single_file(
@@ -433,6 +429,9 @@ def _load_clip_g_sd35_large_from_single_file(
                 torch_dtype=dtype
             )
 
+            if quantization_config:
+                config.quantization_config = quantization_config
+
             text_encoder = model_class(config)
         
         blob_link = _pipelinewrapper_util.HFBlobLink.parse(model_path)
@@ -451,6 +450,10 @@ def _load_clip_g_sd35_large_from_single_file(
             level=_messages.WARNING
         )
 
+        if quantization_config:
+            hf_quantizer = diffusers.quantizers.auto.DiffusersAutoQuantizer().from_config(quantization_config)
+            hf_quantizer.preprocess_model(text_encoder, device_map='auto')
+
         with _suppress_accelerate_warnings():
             # Load state dict and update weights
             text_encoder = accelerate.load_checkpoint_and_dispatch(
@@ -461,63 +464,13 @@ def _load_clip_g_sd35_large_from_single_file(
                 no_split_module_classes=["CLIPEncoderLayer"]
             )
 
+        if quantization_config:
+            hf_quantizer.postprocess_model(text_encoder)
+
         return text_encoder
     
     except Exception as e:
         raise _exceptions.TextEncoderUriLoadError(f"Failed to load CLIP-G SD3.5 Large model: {e}") from e
-
-
-def _load_t5_xxl_from_single_file(
-        model_class: transformers.models.t5.T5EncoderModel | DistillT5EncoderModel,
-        model_path: str,
-        dtype: torch.dtype,
-        local_files_only: bool = False,
-        quantization_config=None
-):
-    model_id = "google/t5-v1_1-xxl"
-
-    try:
-        
-        with _suppress_accelerate_warnings():
-            config = transformers.T5Config.from_pretrained(
-                model_id, local_files_only=local_files_only,
-                quantization_config=quantization_config
-            )
-
-            config.torch_dtype = dtype
-
-            text_encoder = model_class(config)
-
-        blob_link = _pipelinewrapper_util.HFBlobLink.parse(model_path)
-        
-        if blob_link is not None:
-            model_path = huggingface_hub.hf_hub_download(
-                repo_id=blob_link.repo_id,
-                revision=blob_link.revision,
-                subfolder=blob_link.subfolder,
-                filename=blob_link.weight_name,
-                local_files_only=local_files_only
-            )
-        
-        # Load state dict and update weights
-        _messages.log(
-            f'Loading monolithic t5-xxl state dict from: "{model_path}", this may take a while, please wait...',
-            level=_messages.WARNING
-        )
-
-        with _suppress_accelerate_warnings():
-            text_encoder = accelerate.load_checkpoint_and_dispatch(
-                text_encoder,
-                checkpoint=model_path,
-                device_map="auto",
-                dtype=dtype,
-                no_split_module_classes=["T5Block"]
-            )
-
-        return text_encoder
-    
-    except Exception as e:
-        raise _exceptions.TextEncoderUriLoadError(f"Failed to load T5-XXL model: {e}") from e
 
 
 class TextEncoderUri:
@@ -626,35 +579,34 @@ class TextEncoderUri:
 
         mode = mode.lower() if mode is not None else mode
 
-        valid_modes = (None, 'clip-l', 't5-xxl', 
-                       'clip-l-sd3', 'clip-l-sd35', 'clip-g-sd3', 'clip-g-sd35',
-                       'clip-l-sd35-large', 'clip-g-sd35-large')
+        # Available mode options
+        valid_modes = ('clip-l', 't5-xxl', 
+                    'clip-l-sd3', 'clip-g-sd3',
+                    'clip-l-sd35-large', 'clip-g-sd35-large')
         
-        if mode not in valid_modes:
-            raise _exceptions.InvalidTextEncoderUriError(
-                f'Unknown TextEncoder load mode "{mode}", must be one of: {_textprocessing.oxford_comma(valid_modes, "or")}')
-
         if _pipelinewrapper_util.is_single_file_model_load(model):
-            if quantizer and mode not in ('clip-l', 't5-xxl', 
-                                           'clip-l-sd3', 'clip-l-sd35', 'clip-g-sd3', 'clip-g-sd35',
-                                           'clip-l-sd35-large', 'clip-g-sd35-large'):
+                if quantizer and mode not in valid_modes:
+                    raise _exceptions.InvalidTextEncoderUriError(
+                        'specifying a Text Encoder quantizer URI is only supported for Hugging Face '
+                        'repository loads from a repo slug or disk path, single file loads are not supported.')
+
+        if mode is not None:
+            
+            if mode not in valid_modes:
                 raise _exceptions.InvalidTextEncoderUriError(
-                    'specifying a Text Encoder quantizer URI is only supported for Hugging Face '
-                    'repository loads from a repo slug or disk path, single file loads are not supported.')
-                
-        # Validate special modes don't use variant or revision
-        if mode in ('clip-l', 't5-xxl', 
-                   'clip-l-sd3', 'clip-l-sd35', 'clip-g-sd3', 'clip-g-sd35',
-                   'clip-l-sd35-large', 'clip-g-sd35-large'):
-            if variant is not None:
-                raise _exceptions.InvalidTextEncoderUriError(
-                    f'TextEncoder cannot use variant with mode "{mode}", these are incompatible options')
-            if revision is not None:
-                raise _exceptions.InvalidTextEncoderUriError(
-                    f'TextEncoder cannot use revision with mode "{mode}", these are incompatible options')
-            if subfolder is not None:
-                raise _exceptions.InvalidTextEncoderUriError(
-                    f'TextEncoder cannot use subfolder with mode "{mode}", these are incompatible options')
+                    f'Unknown TextEncoder load mode "{mode}", must be one of: {_textprocessing.oxford_comma(valid_modes, "or")}')
+            
+            # Validate special modes don't use variant or revision
+            if mode in valid_modes:
+                if variant is not None:
+                    raise _exceptions.InvalidTextEncoderUriError(
+                        f'TextEncoder cannot use variant with mode "{mode}", these are incompatible options')
+                if revision is not None:
+                    raise _exceptions.InvalidTextEncoderUriError(
+                        f'TextEncoder cannot use revision with mode "{mode}", these are incompatible options')
+                if subfolder is not None:
+                    raise _exceptions.InvalidTextEncoderUriError(
+                        f'TextEncoder cannot use subfolder with mode "{mode}", these are incompatible options')
 
         self._encoder = encoder
         self._model = model
@@ -754,6 +706,8 @@ class TextEncoderUri:
 
         if self.variant is None:
             variant = variant_fallback
+        elif self.variant == 'null':
+            variant = None
         else:
             variant = self.variant
 
@@ -768,7 +722,7 @@ class TextEncoderUri:
         clip_encoders = (transformers.CLIPTextModel, transformers.CLIPTextModelWithProjection)
         t5_encoders = (transformers.T5EncoderModel, DistillT5EncoderModel)
 
-        if self.mode in ('clip-l', 'clip-l-sd3', 'clip-l-sd35', 'clip-g', 'clip-g-sd3', 'clip-g-sd35', 'clip-l-sd35-large', 'clip-g-sd35-large') and encoder not in clip_encoders:
+        if self.mode in ('clip-l', 'clip-l-sd3', 'clip-g-sd3', 'clip-l-sd35-large', 'clip-g-sd35-large') and encoder not in clip_encoders:
             raise _exceptions.TextEncoderUriLoadError(
                 f'Encoder "{self.encoder}" does not support loading with mode "{self.mode}".')
 
@@ -788,7 +742,7 @@ class TextEncoderUri:
 
         if _pipelinewrapper_util.is_single_file_model_load(model_path):
             # Ensure these modes are only used with safetensors files
-            if self.mode in ('clip-l', 'clip-l-sd3', 'clip-l-sd35', 'clip-g', 'clip-g-sd3', 'clip-g-sd35', 'clip-l-sd35-large', 'clip-g-sd35-large', 't5-xxl'):
+            if self.mode in ('clip-l', 'clip-l-sd3', 'clip-g-sd3', 'clip-l-sd35-large', 'clip-g-sd35-large', 't5-xxl'):
                 if not model_path.endswith('.safetensors'):
                     raise _exceptions.TextEncoderUriLoadError(
                         f'TextEncoder mode "{self.mode}" only supports loading '
@@ -832,25 +786,6 @@ class TextEncoderUri:
                 )
 
                 estimated_memory_use = _torchutil.estimate_module_memory_usage(text_encoder)
-            elif self.mode == 'clip-l-sd35':
-                # Estimate memory directly based on model size
-                # CLIP-L for SD3.5: ~123M parameters (same architecture as CLIP-L)
-                estimated_memory_use = 123_000_000 * 4  # Roughly 4 bytes per parameter for float32
-                if torch_dtype == torch.float16:
-                    estimated_memory_use = estimated_memory_use // 2
-
-                _messages.debug_log(f'Estimated CLIP-L SD3.5 Memory Use: {_memory.bytes_best_human_unit(estimated_memory_use)}')
-                self._enforce_cache_size(estimated_memory_use)
-
-                text_encoder = _load_clip_l_sd35_from_single_file(
-                    model_class=encoder,
-                    model_path=model_path,
-                    dtype=torch_dtype,
-                    local_files_only=local_files_only,
-                    quantization_config=quant_config
-                )
-
-                estimated_memory_use = _torchutil.estimate_module_memory_usage(text_encoder)
             elif self.mode == 'clip-l-sd35-large':
                 # Estimate memory directly based on model size
                 # CLIP-L for SD3.5 Large: ~320M parameters (larger architecture)
@@ -881,25 +816,6 @@ class TextEncoderUri:
                 self._enforce_cache_size(estimated_memory_use)
 
                 text_encoder = _load_clip_g_sd3_from_single_file(
-                    model_class=encoder,
-                    model_path=model_path,
-                    dtype=torch_dtype,
-                    local_files_only=local_files_only,
-                    quantization_config=quant_config
-                )
-
-                estimated_memory_use = _torchutil.estimate_module_memory_usage(text_encoder)
-            elif self.mode == 'clip-g-sd35':
-                # Estimate memory directly based on model size
-                # CLIP-G for SD3.5: ~1.2B parameters
-                estimated_memory_use = 1_200_000_000 * 4  # Roughly 4 bytes per parameter for float32
-                if torch_dtype == torch.float16:
-                    estimated_memory_use = estimated_memory_use // 2
-
-                _messages.debug_log(f'Estimated CLIP-G SD3.5 Memory Use: {_memory.bytes_best_human_unit(estimated_memory_use)}')
-                self._enforce_cache_size(estimated_memory_use)
-
-                text_encoder = _load_clip_g_sd35_from_single_file(
                     model_class=encoder,
                     model_path=model_path,
                     dtype=torch_dtype,

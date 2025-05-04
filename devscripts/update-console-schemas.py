@@ -133,6 +133,6 @@ with open('dgenerate/console/schemas/arguments.json', 'w') as file:
 
     for action in (a for a in _arguments._actions if a.option_strings):
         schema[_opt_name(action)] = _textprocessing.wrap_paragraphs(
-            re.sub(r'\s+', ' ', inspect.cleandoc(action.help)), width=100)
+            inspect.cleandoc(action.help), width=100)
 
     json.dump(schema, file)

@@ -23,6 +23,7 @@ import collections.abc
 import datetime
 import enum
 import glob
+import inspect
 import itertools
 import math
 import os
@@ -1301,10 +1302,18 @@ def indent_text(text,
     return '\n'.join(indented_lines)
 
 
+def _clean_lines(lines: list):
+    l = []
+    for line in lines:
+        l.append(re.sub(r'\s+', ' ', line).strip())
+    return l
+
+
 def wrap_paragraphs(text: str,
                     width: int,
-                    break_long_words=False,
-                    break_on_hyphens=False,
+                    break_long_words: bool = False,
+                    break_on_hyphens: bool = False,
+                    clean_lines: bool = True,
                     **fill_args):
     """
     Wrap text that may contain paragraphs without removing separating whitespace.
@@ -1318,6 +1327,7 @@ def wrap_paragraphs(text: str,
     :param width: Wrap with in characters
     :param break_long_words: break on long words? default ``False``
     :param break_on_hyphens: break on hyphens? default ``False``
+    :param clean_lines: Remove sequential whitespace / right strip lines?
     :param fill_args: extra keyword arguments to :py:func:`textwrap.fill` if desired
     :return: text wrapped string
     """
@@ -1328,15 +1338,18 @@ def wrap_paragraphs(text: str,
         # Check if the paragraph contains 'NOWRAP!' after leading whitespace
         if paragraph.lstrip().startswith('NOWRAP!'):
             # Add the paragraph to the wrapped text as is
-            wrapped_text += indent_text('\n'.join(paragraph.split('\n')[1:]),
+            lines = paragraph.split('\n')[1:]
+            wrapped_text += indent_text('\n'.join(_clean_lines(lines) if clean_lines else lines),
                                         initial_indent=fill_args.get('initial_indent', None),
                                         subsequent_indent=fill_args.get('subsequent_indent', None)) + '\n\n'
         else:
             # Wrap the paragraph as before
-            wrapped_paragraph = textwrap.fill(paragraph, width=width,
-                                              break_long_words=break_long_words,
-                                              break_on_hyphens=break_on_hyphens,
-                                              **fill_args)
+            wrapped_paragraph = textwrap.fill(
+                paragraph if not clean_lines else '\n'.join(_clean_lines(paragraph.split('\n'))), width=width,
+                break_long_words=break_long_words,
+                break_on_hyphens=break_on_hyphens,
+                **fill_args
+            )
             wrapped_text += wrapped_paragraph + '\n\n'
 
     return wrapped_text.rstrip()
@@ -1883,34 +1896,21 @@ class ArgparseParagraphFormatter(argparse.HelpFormatter):
     This formatter also underlines option text for better visual segregation.
     """
 
-    PARAGRAPH_SEPARATOR = "\n\n"
-    PARAGRAPH_SEPARATOR_RE = re.compile(r"\n\s*\n", flags=re.ASCII)
-    WHITESPACE_PATTERN = re.compile(r"\s+")
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, max_help_position=8, **kwargs)
 
     def _fill_text(self, text, width, indent):
-        formatted_paragraphs = [
-            textwrap.fill(
-                self.WHITESPACE_PATTERN.sub(" ", paragraph).strip(),
-                width,
-                initial_indent=indent,
-                subsequent_indent=indent,
-            )
-            for paragraph in self.PARAGRAPH_SEPARATOR_RE.split(text)
-        ]
-
-        return self.PARAGRAPH_SEPARATOR.join(formatted_paragraphs)
+        return wrap_paragraphs(
+            inspect.cleandoc(text),
+            width=width,
+            initial_indent=indent,
+            subsequent_indent=indent
+        )
 
     def _split_lines(self, text, width):
-        wrapped_lines = []
-        for paragraph in self.PARAGRAPH_SEPARATOR_RE.split(text):
-            cleaned_paragraph = self.WHITESPACE_PATTERN.sub(" ", paragraph).strip()
-            if wrapped_lines:
-                wrapped_lines.append("")
-            wrapped_lines.extend(textwrap.wrap(cleaned_paragraph, width))
+        wrapped_lines = wrap_paragraphs(
+            inspect.cleandoc(text), width=width
+        ).split('\n')
 
         wrapped_lines.append('-' * len(wrapped_lines[-1]))
-
         return wrapped_lines

@@ -51,11 +51,9 @@ Flux & T5 universal modes:
 
 SD3 and SD3.5 specific modes:
 
-* ``clip-l-sd3`` for SD3 CLIP-L checkpoints
-* ``clip-l-sd35`` for SD3.5 CLIP-L checkpoints
+* ``clip-l-sd3`` for SD3/SD3.5 medium CLIP-L checkpoints
+* ``clip-g-sd3`` for SD3/SD3.5 medium CLIP-G checkpoints
 * ``clip-l-sd35-large`` for SD3.5 large variant CLIP-L checkpoints
-* ``clip-g-sd3`` for SD3 CLIP-G checkpoints
-* ``clip-g-sd35`` for SD3.5 CLIP-G checkpoints
 * ``clip-g-sd35-large`` for SD3.5 large variant CLIP-G checkpoints
 
 These SD3/SD3.5 specific modes are designed with the correct architecture parameters for
@@ -71,6 +69,7 @@ Available encoder classes are:
 * ``CLIPTextModelWithProjection``
 * ``T5EncoderModel``
 * ``DistillT5EncoderModel`` (see: [LifuWang/DistillT5](https://huggingface.co/LifuWang/DistillT5))
+* ``ChatGLMModel`` (for Kolors models)
 
 You can query the text encoder types and position for a model by passing ``help``
 as an argument to ``--text-encoders`` or ``--second-model-text-encoders``. This feature
