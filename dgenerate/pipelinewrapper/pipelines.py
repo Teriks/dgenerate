@@ -22,6 +22,7 @@ import collections.abc
 import gc
 import hashlib
 import inspect
+import json
 import os.path
 import pathlib
 import random
@@ -2154,9 +2155,9 @@ def _create_torch_diffusion_pipeline(
 
     uri_quant_check = []
 
-    for text_encoder_uri in text_encoder_uris:
-        if text_encoder_uri and text_encoder_uri.lower() not in {'+', 'help', 'null'}:
-            uri_quant_check.append(_uris.TextEncoderUri.parse(text_encoder_uri))
+    for encoder_uri in text_encoder_uris:
+        if encoder_uri and encoder_uri.lower() not in {'+', 'help', 'null'}:
+            uri_quant_check.append(_uris.TextEncoderUri.parse(encoder_uri))
 
     if transformer_uri:
         uri_quant_check.append(_uris.TransformerUri.parse(transformer_uri))
@@ -2249,39 +2250,30 @@ def _create_torch_diffusion_pipeline(
 
     # Load Text Encoders
 
-    for idx, parameter in enumerate(
-            [n for n in sorted(
-                inspect.signature(pipeline_class.__init__).parameters.values(),
-                key=lambda x: x.name)
-                if n.name.startswith('text_encoder')
-                and n.annotation is not inspect.Parameter.empty]
-    ):
-
-        text_encoder_arg = parameter.name
-        text_encoder_class = parameter.annotation.__name__
-
+    for idx, (name, param) in enumerate(
+            [n for n in sorted(model_index.items(), key=lambda x: x[0])
+             if n[0].startswith('text_encoder') and n[1][0] is not None]):
         if text_encoder_override_states[idx]:
             continue
 
         if _util.is_single_file_model_load(model_path):
-            encoder_subfolder = text_encoder_arg
+            encoder_subfolder = name
         else:
-            encoder_subfolder = os.path.join(
-                subfolder, text_encoder_arg
-            ) if subfolder else text_encoder_arg
+            encoder_subfolder = os.path.join(subfolder, name) if subfolder else name
+
+        encoder_class = param[1]
 
         if text_encoder_uris and len(text_encoder_uris) > idx:
-            custom_uri = text_encoder_uris[idx]
+            encoder_uri = text_encoder_uris[idx]
 
-            if _text_encoder_default(custom_uri):
-                creation_kwargs[text_encoder_arg] = load_default_text_encoder(text_encoder_class)
+            if _text_encoder_default(encoder_uri):
+                creation_kwargs[name] = load_default_text_encoder(encoder_class)
             else:
-                creation_kwargs[text_encoder_arg] = load_text_encoder(
-                    _uris.TextEncoderUri.parse(custom_uri)
+                creation_kwargs[name] = load_text_encoder(
+                    _uris.TextEncoderUri.parse(encoder_uri)
                 )
         else:
-            creation_kwargs[text_encoder_arg] = load_default_text_encoder(text_encoder_class)
-
+            creation_kwargs[name] = load_default_text_encoder(encoder_class)
 
     # Load VAE
 
@@ -2728,6 +2720,14 @@ _to_diffusers_cache_dir = get_converted_checkpoint_cache_dir()
 _to_diffusers_cache = _filecache.KeyValueStore(os.path.join(_to_diffusers_cache_dir, 'cache.db'))
 
 
+def _edit_model_index(path, update_dict):
+    with open(path, 'r', encoding='utf-8') as model_index:
+        model_index_dict = json.load(model_index)
+        model_index_dict.update(update_dict)
+    with open(path, 'w', encoding='utf-8') as model_index:
+        json.dump(model_index_dict, model_index)
+
+
 def _to_diffusers_with_caching(
         model_path: str,
         model_type: _enums.ModelType,
@@ -2781,6 +2781,44 @@ def _to_diffusers_with_caching(
             # Save the model to the cache directory
             _messages.debug_log(f"Saving converted model to: {cache_path}")
             pipe.pipeline.save_pretrained(cache_path, variant=variant)
+
+            model_index_path = os.path.join(cache_path, 'model_index.json')
+
+            # dgenerate relies on the encoders being
+            # defined in model_index for SD3 and Flux
+            # which they will not be if we load a checkpoint
+            # that is missing then
+
+            if pipe.pipeline.__class__.__name__.startswith('StableDiffusion3'):
+                _edit_model_index(
+                    model_index_path,
+                    {
+                        "text_encoder": [
+                            "transformers",
+                            "CLIPTextModelWithProjection"
+                        ],
+                        "text_encoder_2": [
+                            "transformers",
+                            "CLIPTextModelWithProjection"
+                        ],
+                        "text_encoder_3": [
+                            "transformers",
+                            "T5EncoderModel"
+                        ]
+                    })
+            elif pipe.pipeline.__class__.__name__.startswith('Flux'):
+                _edit_model_index(
+                    model_index_path,
+                    {
+                        "text_encoder": [
+                            "transformers",
+                            "CLIPTextModelWithProjection"
+                        ],
+                        "text_encoder_2": [
+                            "transformers",
+                            "T5EncoderModel"
+                        ]
+                    })
             _to_diffusers_cache[cache_key] = cache_path
         else:
             cache_path = _to_diffusers_cache[cache_key]
