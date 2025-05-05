@@ -45,7 +45,7 @@ args.prompt = dgenerate.Prompt.parse('a man standing by a river, (photo:1.3); (p
 # this pipeline to exist on the CPU before moving into VRAM
 
 # This cache fencing happens automatically as modules move to and
-# back from VRAM during memory managment
+# back from VRAM during memory management
 
 result = wrapper(args)
 
