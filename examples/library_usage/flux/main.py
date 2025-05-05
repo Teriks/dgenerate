@@ -39,8 +39,7 @@ config.prompts = [Prompt.parse('an astronaut walking on the moon')]
 config.device = device
 
 # It is likely you will need this enabled to run Flux on
-# average consumer hardware, even with bfloat8 quantization
-# of the text encoder and transformer (which is not used here)
+# average consumer hardware without quantization
 config.model_sequential_offload = True
 
 # further reduce resource usage / memory consumption
