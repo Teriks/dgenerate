@@ -29,13 +29,13 @@
 \set clip_g https://huggingface.co/stabilityai/stable-diffusion-3-medium-diffusers/blob/main/text_encoder_2/model.fp16.safetensors
 \set t5_xxl https://huggingface.co/stabilityai/stable-diffusion-3-medium/blob/main/text_encoders/t5xxl_fp16.safetensors
 
-https://civitai.com/api/download/models/686696?type=Model&format=SafeTensor&size=full&fp=fp16
+{{ model }}
 --model-type torch-sd3
 --dtype float16
 --quantizer {{ quantizer }}
 --text-encoders CLIPTextModelWithProjection;model={{ clip_l }};mode=clip-l-sd3;quantizer="{{ quantizer }}" \
                 CLIPTextModelWithProjection;model={{ clip_g }};mode=clip-g-sd3;quantizer="{{ quantizer }}" \
-                T5EncoderModel;model={{ t5_xxl }};mode=t5-xxl;quantizer="{{ quantizer }}"
+                T5EncoderModel;model={{ t5_xxl }};mode=t5-xxl-sd3;quantizer="{{ quantizer }}"
 --inference-steps 50
 --guidance-scales 3.5
 --gen-seeds 1

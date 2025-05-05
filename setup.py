@@ -304,6 +304,7 @@ if __name__ != 'setup_as_library':
               'dgenerate.console.recipes': ['*.recipe'],
               'dgenerate.extras.hidiffusion.sd_module_key': ['*.txt'],
               'dgenerate.translators.data': ['*.json'],
+              'dgenerate.pipelinewrapper.uris.text_encoder_configs': ['*.json']
           },
           include_package_data=True,
           license='BSD 3-Clause',
