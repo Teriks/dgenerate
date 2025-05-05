@@ -1340,7 +1340,7 @@ def _pipeline_creation_args_debug(backend, cls, method, model, **kwargs):
     return method(model, **kwargs)
 
 
-xt def _text_encoder_default(uri):
+def _text_encoder_default(uri):
     return uri is None or uri.strip() == '+'
 
 
@@ -2228,12 +2228,6 @@ def _create_torch_diffusion_pipeline(
             transformer_class=transformer_class
         )
 
-    text_encoder_override_states = [
-        text_encoder_override,
-        text_encoder_2_override,
-        text_encoder_3_override
-    ]
-
     def load_default_text_encoder(encoder):
         return load_text_encoder(
             _uris.TextEncoderUri(
@@ -2247,26 +2241,49 @@ def _create_torch_diffusion_pipeline(
             )
         )
 
-    for idx, (name, param) in enumerate(
-            [n for n in sorted(model_index.items(), key=lambda x: x[0])
-             if n[0].startswith('text_encoder') and n[1][0] is not None]):
+    text_encoder_override_states = [
+        text_encoder_override,
+        text_encoder_2_override,
+        text_encoder_3_override
+    ]
+
+    # Load Text Encoders
+
+    for idx, parameter in enumerate(
+            [n for n in sorted(
+                inspect.signature(pipeline_class.__init__).parameters.values(),
+                key=lambda x: x.name)
+                if n.name.startswith('text_encoder')
+                and n.annotation is not inspect.Parameter.empty]
+    ):
+
+        text_encoder_arg = parameter.name
+        text_encoder_class = parameter.annotation.__name__
+
         if text_encoder_override_states[idx]:
             continue
 
         if _util.is_single_file_model_load(model_path):
-            encoder_subfolder = name
+            encoder_subfolder = text_encoder_arg
         else:
-            encoder_subfolder = os.path.join(subfolder, name) if subfolder else name
+            encoder_subfolder = os.path.join(
+                subfolder, text_encoder_arg
+            ) if subfolder else text_encoder_arg
 
         if text_encoder_uris and len(text_encoder_uris) > idx:
-            if _text_encoder_default(text_encoder_uris[idx]):
-                creation_kwargs[name] = load_default_text_encoder(param[1])
+            custom_uri = text_encoder_uris[idx]
+
+            if _text_encoder_default(custom_uri):
+                creation_kwargs[text_encoder_arg] = load_default_text_encoder(text_encoder_class)
             else:
-                creation_kwargs[name] = load_text_encoder(
-                    _uris.TextEncoderUri.parse(text_encoder_uris[idx])
+                creation_kwargs[text_encoder_arg] = load_text_encoder(
+                    _uris.TextEncoderUri.parse(custom_uri)
                 )
         else:
-            creation_kwargs[name] = load_default_text_encoder(param[1])
+            creation_kwargs[text_encoder_arg] = load_default_text_encoder(text_encoder_class)
+
+
+    # Load VAE
 
     if not vae_override:
         if vae_uri:
@@ -2328,6 +2345,7 @@ def _create_torch_diffusion_pipeline(
                             dtype=dtype
                         ))
 
+    # Load UNet
     if not unet_override:
         unet_parameter = 'unet'
 
@@ -2372,6 +2390,8 @@ def _create_torch_diffusion_pipeline(
                         quantizer=quantizer_uri
                     ), unet_class=unet_class)
 
+    # Load Transformer
+
     if _enums.model_type_is_sd3(model_type):
         transformer_class = diffusers.SD3Transformer2DModel
     elif _enums.model_type_is_flux(model_type):
@@ -2411,6 +2431,8 @@ def _create_torch_diffusion_pipeline(
                     quantizer=quantizer_uri
                 ), transformer_class=transformer_class)
 
+    # load image encoder
+
     if image_encoder_uri is not None and not image_encoder_override:
         parsed_image_encoder_uri = _uris.ImageEncoderUri.parse(image_encoder_uri)
 
@@ -2424,6 +2446,8 @@ def _create_torch_diffusion_pipeline(
         _messages.debug_log(lambda:
                             f'Added Torch Image Encoder: "{image_encoder_uri}" to '
                             f'pipeline: "{pipeline_class.__name__}"')
+
+    # Load T2I Adapters
 
     if t2i_adapter_uris and not adapter_override:
         t2i_adapters = None
@@ -2455,6 +2479,8 @@ def _create_torch_diffusion_pipeline(
             creation_kwargs['adapter'] = diffusers.MultiAdapter(t2i_adapters)
         else:
             creation_kwargs['adapter'] = t2i_adapters
+
+    # Load ControlNets
 
     if controlnet_uris and not controlnet_override:
         controlnets = None

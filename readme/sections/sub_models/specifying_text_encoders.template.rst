@@ -47,12 +47,13 @@ method for a single file checkpoint.
 Flux & T5 universal modes:
 
 * ``clip-l`` for monolithic Flux CLIP-L checkpoints
-* ``t5-xxl`` for monolithic T5 checkpoints (SD3 and Flux)
+* ``t5-xxl`` for monolithic Flux T5 checkpoints
 
 SD3 and SD3.5 specific modes:
 
 * ``clip-l-sd3`` for SD3/SD3.5 medium CLIP-L checkpoints
 * ``clip-g-sd3`` for SD3/SD3.5 medium CLIP-G checkpoints
+* ``t5-xxl-sd3`` for SD3/SD3.5 T5-XXL checkpoints
 * ``clip-l-sd35-large`` for SD3.5 large variant CLIP-L checkpoints
 * ``clip-g-sd35-large`` for SD3.5 large variant CLIP-G checkpoints
 
