@@ -12,7 +12,7 @@
     \exit
 {% endif %}
 
-{% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 20 %}
+{% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 24 %}
     \set optimization --quantizer bnb;bits=4
 {% else %}
     \set optimization --model-sequential-offload
