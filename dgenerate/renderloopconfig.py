@@ -1499,6 +1499,24 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'Stable Diffusion Upscaler X4, Kolors, and Pix2Pix variants.'
             )
 
+        # Check FreeU compatibility
+        if self.freeu_params is not None:
+            freeu_model_types = {
+                _pipelinewrapper.ModelType.TORCH,
+                _pipelinewrapper.ModelType.TORCH_SDXL,
+                _pipelinewrapper.ModelType.TORCH_KOLORS,
+                _pipelinewrapper.ModelType.TORCH_PIX2PIX,
+                _pipelinewrapper.ModelType.TORCH_SDXL_PIX2PIX,
+                _pipelinewrapper.ModelType.TORCH_UPSCALER_X2,
+                _pipelinewrapper.ModelType.TORCH_UPSCALER_X4
+            }
+
+            if self.model_type not in freeu_model_types:
+                raise RenderLoopConfigError(
+                    f'{a_namer("freeu_params")} not supported with '
+                    f'{a_namer("model_type")} {_pipelinewrapper.get_model_type_string(self.model_type)}.'
+                )
+
     def _check_second_model_compatibility(self, a_namer: typing.Callable[[str], str]):
         """Check compatibility of second model arguments with the primary model type."""
         # Check if second model arguments are valid for the primary model type

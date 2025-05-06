@@ -236,7 +236,7 @@ class Prompt:
         def list_of(the_type, v):
             try:
                 values = ast.literal_eval(v)
-                if not isinstance(values, typing.Iterable):
+                if not isinstance(values, collections.abc.Iterable):
                     raise ValueError()
                 values = list(values)
                 for idx, v in enumerate(values):
