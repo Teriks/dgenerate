@@ -4883,7 +4883,7 @@ repository on huggingface.
     {% endif %}
     
     
-    {% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 20 %}
+    {% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 24 %}
         \set optimization --quantizer bnb;bits=8
     {% else %}
         \set optimization --model-sequential-offload
@@ -4927,7 +4927,7 @@ For instance, you can prevent Stable Diffusion 3 from loading and using the T5 e
     {% endif %}
     
     
-    {% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 20 %}
+    {% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 24 %}
         \set optimization --quantizer bnb;bits=8
     {% else %}
         \set optimization --model-sequential-offload
@@ -4968,7 +4968,7 @@ and using ``null`` will override it.
     {% endif %}
     
     
-    {% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 20 %}
+    {% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 24 %}
         \set optimization --quantizer bnb;bits=8
     {% else %}
         \set optimization --model-sequential-offload
