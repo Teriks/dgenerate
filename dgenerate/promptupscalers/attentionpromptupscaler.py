@@ -19,7 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import random
-import typing
+import collections.abc
 
 import pyparsing
 
@@ -125,7 +125,7 @@ class AttentionUpscaler(_promptupscaler.PromptUpscaler):
 
     def upscale(self, prompt: _prompt.Prompt) -> _prompt.PromptOrPrompts:
 
-        if isinstance(prompt, typing.Iterable):
+        if isinstance(prompt, collections.abc.Iterable):
             raise _exceptions.PromptUpscalerProcessingError(
                 'attention prompt upscaler cannot handle batch prompt input.'
             )

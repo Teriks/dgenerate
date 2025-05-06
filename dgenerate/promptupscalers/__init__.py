@@ -29,6 +29,7 @@ from .dynamicpromptsupscaler import DynamicPromptsUpscaler
 from .magicpromptupscaler import MagicPromptUpscaler
 from .attentionpromptupscaler import AttentionUpscaler
 from .translatepromptupscaler import TranslatePromptUpscaler
+import collections.abc
 
 try:
     import gpt4all
@@ -172,7 +173,7 @@ def upscale_prompts(
                 batch_inputs = [_prompt.Prompt.copy(p) for p in batch_prompts]
                 batch_outputs = upscaler.upscale(batch_inputs)
 
-                if not isinstance(batch_outputs, typing.Iterable):
+                if not isinstance(batch_outputs, collections.abc.Iterable):
                     batch_outputs = [batch_outputs]
 
                 next_prompts.extend(batch_outputs)
@@ -181,7 +182,7 @@ def upscale_prompts(
                 for p in batch_prompts:
                     new_results = upscaler.upscale(_prompt.Prompt.copy(p))
 
-                    if not isinstance(new_results, typing.Iterable):
+                    if not isinstance(new_results, collections.abc.Iterable):
                         new_results = [new_results]
 
                     next_prompts.extend(new_results)

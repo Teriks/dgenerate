@@ -939,6 +939,11 @@ class DiffusionArguments(_types.SetFromMixin):
                 return f"s1={params[0]}, s2={params[1]}, b1={params[2]}, b2={params[3]}"
             return None
 
+        def format_size(size: tuple):
+            if size is not None:
+                return _textprocessing.format_size(size)
+            return None
+
         descriptions = [
             (self.scheduler_uri, "Scheduler:"),
             (self.second_model_scheduler_uri, "Second Model Scheduler:"),
@@ -958,21 +963,22 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.sdxl_refiner_guidance_rescale, "SDXL Refiner Guidance Rescale:"),
             (self.sdxl_refiner_sigmas, "SDXL Refiner Sigmas:"),
             (self.sdxl_aesthetic_score, "SDXL Aesthetic Score:"),
-            (self.sdxl_original_size, "SDXL Original Size:"),
-            (self.sdxl_target_size, "SDXL Target Size:"),
-            (self.sdxl_crops_coords_top_left, "SDXL Top Left Crop Coords:"),
+            (format_size(self.sdxl_original_size), "SDXL Original Size:"),
+            (format_size(self.sdxl_target_size), "SDXL Target Size:"),
+            (format_size(self.sdxl_crops_coords_top_left), "SDXL Top Left Crop Coords:"),
             (self.sdxl_negative_aesthetic_score, "SDXL Negative Aesthetic Score:"),
-            (self.sdxl_negative_original_size, "SDXL Negative Original Size:"),
-            (self.sdxl_negative_target_size, "SDXL Negative Target Size:"),
-            (self.sdxl_negative_crops_coords_top_left, "SDXL Negative Top Left Crop Coords:"),
+            (format_size(self.sdxl_negative_original_size), "SDXL Negative Original Size:"),
+            (format_size(self.sdxl_negative_target_size), "SDXL Negative Target Size:"),
+            (format_size(self.sdxl_negative_crops_coords_top_left), "SDXL Negative Top Left Crop Coords:"),
             (self.sdxl_refiner_aesthetic_score, "SDXL Refiner Aesthetic Score:"),
-            (self.sdxl_refiner_original_size, "SDXL Refiner Original Size:"),
-            (self.sdxl_refiner_target_size, "SDXL Refiner Target Size:"),
-            (self.sdxl_refiner_crops_coords_top_left, "SDXL Refiner Top Left Crop Coords:"),
+            (format_size(self.sdxl_refiner_original_size), "SDXL Refiner Original Size:"),
+            (format_size(self.sdxl_refiner_target_size), "SDXL Refiner Target Size:"),
+            (format_size(self.sdxl_refiner_crops_coords_top_left), "SDXL Refiner Top Left Crop Coords:"),
             (self.sdxl_refiner_negative_aesthetic_score, "SDXL Refiner Negative Aesthetic Score:"),
-            (self.sdxl_refiner_negative_original_size, "SDXL Refiner Negative Original Size:"),
-            (self.sdxl_refiner_negative_target_size, "SDXL Refiner Negative Target Size:"),
-            (self.sdxl_refiner_negative_crops_coords_top_left, "SDXL Refiner Negative Top Left Crop Coords:"),
+            (format_size(self.sdxl_refiner_negative_original_size), "SDXL Refiner Negative Original Size:"),
+            (format_size(self.sdxl_refiner_negative_target_size), "SDXL Refiner Negative Target Size:"),
+            (format_size(self.sdxl_refiner_negative_crops_coords_top_left),
+             "SDXL Refiner Negative Top Left Crop Coords:"),
             (self.pag_scale, "PAG Scale:"),
             (self.pag_adaptive_scale, "PAG Adaptive Scale:"),
             (self.guidance_scale, "Guidance Scale:"),
@@ -983,8 +989,8 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.inference_steps, "Inference Steps:"),
             (self.adetailer_index_filter, "Adetailer Index Filter:"),
             (self.adetailer_mask_shape, "Adetailer Mask Shape:"),
-            (self.adetailer_detector_padding, "Adetailer Detector Padding:"),
-            (self.adetailer_mask_padding, "Adetailer Mask Padding:"),
+            (format_size(self.adetailer_detector_padding), "Adetailer Detector Padding:"),
+            (format_size(self.adetailer_mask_padding), "Adetailer Mask Padding:"),
             (self.adetailer_mask_blur, "Adetailer Mask Blur:"),
             (self.adetailer_mask_dilation, "Adetailer Mask Dilation:"),
             (self.ras_sample_ratio, "RAS Sample Ratio:"),
@@ -1012,8 +1018,8 @@ class DiffusionArguments(_types.SetFromMixin):
 
         for val, desc in descriptions:
             if val is not None:
-                if isinstance(val, tuple):
-                    inputs.append(desc + ' ' + _textprocessing.format_size(val))
+                if not isinstance(val, str) and isinstance(val, collections.abc.Iterable):
+                    inputs.append(desc + ' ' + repr(list(val)))
                 else:
                     inputs.append(desc + ' ' + str(val))
 

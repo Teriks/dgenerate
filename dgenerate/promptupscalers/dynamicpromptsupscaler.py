@@ -20,7 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import os.path
-import typing
+import collections.abc
 
 import pyparsing
 import dgenerate.promptupscalers.promptupscaler as _promptupscaler
@@ -123,7 +123,7 @@ class DynamicPromptsUpscaler(_promptupscaler.PromptUpscaler):
 
     def upscale(self, prompt: _prompt.Prompt) -> _prompt.PromptOrPrompts:
 
-        if isinstance(prompt, typing.Iterable):
+        if isinstance(prompt, collections.abc.Iterable):
             raise _exceptions.PromptUpscalerProcessingError(
                 'dynamicprompts prompt upscaler cannot handle batch prompt input.'
             )

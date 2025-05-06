@@ -31,6 +31,7 @@ import numpy
 import dgenerate.textprocessing as _textprocessing
 import diffusers.loaders
 import dgenerate.messages as _messages
+import collections.abc
 
 
 class SchedulerLoadError(Exception):
@@ -211,7 +212,7 @@ def get_scheduler_uri_schema(scheduler: type[diffusers.SchedulerMixin] | list[ty
 
             if isinstance(parameter.default, list):
                 if not all(isinstance(i, typing.SupportsIndex) or
-                           not isinstance(i, typing.Iterable) for i in parameter.default):
+                           not isinstance(i, collections.abc.Iterable) for i in parameter.default):
                     # cannot support multiple dimensions
                     continue
             if isinstance(parameter.default, numpy.ndarray):

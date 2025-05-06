@@ -2333,7 +2333,7 @@ class DiffusionPipelineWrapper:
                 f'Error interpreting sigmas expression "{val}":\n{e}'
             )
 
-        if not isinstance(val, typing.Iterable):
+        if not isinstance(val, collections.abc.Iterable):
             raise _pipelines.UnsupportedPipelineConfigError(
                 f'Sigmas expression for the {model_title} model '
                 f'did not evaluate to an array, got: {val}'
