@@ -197,7 +197,7 @@ class DiffusionPipelineWrapper:
     __LAST_RECALL_SECONDARY_PIPELINE: _pipelines.TorchPipelineFactory = None
 
     @staticmethod
-    def recall_last_used_main_pipeline() -> typing.Optional[_pipelines.TorchPipelineCreationResult]:
+    def recall_last_used_main_pipeline() -> typing.Optional[_pipelines.PipelineCreationResult]:
         """
         Return a reference to the last :py:class:`dgenerate.pipelinewrapper.pipelines.TorchPipelineCreationResult`
         for the pipeline that successfully executed an image generation.
@@ -214,7 +214,7 @@ class DiffusionPipelineWrapper:
         return DiffusionPipelineWrapper.__LAST_RECALL_PIPELINE()
 
     @staticmethod
-    def recall_last_used_secondary_pipeline() -> typing.Optional[_pipelines.TorchPipelineCreationResult]:
+    def recall_last_used_secondary_pipeline() -> typing.Optional[_pipelines.PipelineCreationResult]:
         """
         Return a reference to the last :py:class:`dgenerate.pipelinewrapper.pipelines.TorchPipelineCreationResult`
         for the secondary pipeline (refiner / stable cascade decoder) that successfully executed an image generation.
