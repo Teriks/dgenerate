@@ -212,8 +212,9 @@ Help Output
                      [-lrfs LORA_FUSE_SCALE] [-ie IMAGE_ENCODER_URI] [-ipa IP_ADAPTER_URI [IP_ADAPTER_URI ...]]
                      [-ti URI [URI ...]] [-cn CONTROLNET_URI [CONTROLNET_URI ...] | -t2i T2I_ADAPTER_URI
                      [T2I_ADAPTER_URI ...]] [-q QUANTIZER_URI] [-q2 QUANTIZER_URI]
-                     [-sch SCHEDULER_URI [SCHEDULER_URI ...]] [-sch2 SCHEDULER_URI [SCHEDULER_URI ...]] [-hd]
-                     [-rhd] [-dc] [-dci INTEGER [INTEGER ...]] [-dcb INTEGER [INTEGER ...]] [-rdc]
+                     [-sch SCHEDULER_URI [SCHEDULER_URI ...]] [-sch2 SCHEDULER_URI [SCHEDULER_URI ...]]
+                     [-fu CSV_FLOAT [CSV_FLOAT ...]] [-hd] [-rfu CSV_FLOAT [CSV_FLOAT ...]] [-rhd] [-dc]
+                     [-dci INTEGER [INTEGER ...]] [-dcb INTEGER [INTEGER ...]] [-rdc]
                      [-rdci INTEGER [INTEGER ...]] [-rdcb INTEGER [INTEGER ...]] [-tc] [-tcr [FLOAT ...]] [-ra]
                      [-rif] [-rsr FLOAT [FLOAT ...]] [-rhr FLOAT [FLOAT ...]] [-rss FLOAT [FLOAT ...]]
                      [-rer CSV_INT [CSV_INT ...]] [-rme RAS_METRIC [RAS_METRIC ...]]
@@ -591,12 +592,13 @@ Help Output
             Flux & T5 universal modes:
             
             * "clip-l" for monolithic Flux CLIP-L checkpoints
-            * "t5-xxl" for monolithic T5 checkpoints (SD3 and Flux)
+            * "t5-xxl" for monolithic Flux T5 checkpoints
             
             SD3 and SD3.5 specific modes:
             
             * "clip-l-sd3" for SD3/SD3.5 medium CLIP-L checkpoints
             * "clip-g-sd3" for SD3/SD3.5 medium CLIP-G checkpoints
+            * "t5-xxl-sd3" for SD3/SD3.5 T5-XXL checkpoints
             * "clip-l-sd35-large" for SD3.5 large variant CLIP-L checkpoints
             * "clip-g-sd35-large" for SD3.5 large variant CLIP-G checkpoints
             
@@ -1059,6 +1061,24 @@ Help Output
             
             You may pass multiple scheduler URIs to this argument, each URI will be tried in turn.
             --------------------------------------------------------------------------------------
+      -fu CSV_FLOAT [CSV_FLOAT ...], --freeu-params CSV_FLOAT [CSV_FLOAT ...]
+            FreeU is a technique for improving image quality by re-balancing the contributions from the UNet’s
+            skip connections and backbone feature maps.
+            
+            This can be used with no cost to performance, to potentially improve image quality.
+            
+            This argument can be used to specify The FreeU parameters: s1, s2, b1, and b2 in that order.
+            
+            It accepts CSV, for example: --freeu-params "0.9,0.2,1.1,1.2"
+            
+            If you supply multiple CSV strings, they will be tried in turn.
+            
+            This argument only applies to models that utilize a UNet: SD1.5/2, SDXL, and Kolors
+            
+            See: https://huggingface.co/docs/diffusers/main/en/using-diffusers/freeu
+            
+            And: https://github.com/ChenyangSi/FreeU
+            ----------------------------------------
       -hd, --hi-diffusion
             Activate HiDiffusion for the primary model?
             
@@ -1069,6 +1089,9 @@ Help Output
             
             This is supported for --model-type torch, torch-sdxl, and --torch-kolors.
             -------------------------------------------------------------------------
+      -rfu CSV_FLOAT [CSV_FLOAT ...], --sdxl-refiner-freeu-params CSV_FLOAT [CSV_FLOAT ...]
+            FreeU parameters for the SDXL refiner, see: --freeu-params
+            ----------------------------------------------------------
       -rhd, --sdxl-refiner-hi-diffusion
             Activate HiDiffusion for the SDXL refiner?, See: --hi-diffusion
             ---------------------------------------------------------------
@@ -4806,12 +4829,13 @@ method for a single file checkpoint.
 Flux & T5 universal modes:
 
 * ``clip-l`` for monolithic Flux CLIP-L checkpoints
-* ``t5-xxl`` for monolithic T5 checkpoints (SD3 and Flux)
+* ``t5-xxl`` for monolithic Flux T5 checkpoints
 
 SD3 and SD3.5 specific modes:
 
 * ``clip-l-sd3`` for SD3/SD3.5 medium CLIP-L checkpoints
 * ``clip-g-sd3`` for SD3/SD3.5 medium CLIP-G checkpoints
+* ``t5-xxl-sd3`` for SD3/SD3.5 T5-XXL checkpoints
 * ``clip-l-sd35-large`` for SD3.5 large variant CLIP-L checkpoints
 * ``clip-g-sd35-large`` for SD3.5 large variant CLIP-G checkpoints
 
@@ -7932,6 +7956,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_frame_start"
             Type: <class 'int'>
             Value: 0
+        Name: "last_freeu_params"
+            Type: typing.Optional[collections.abc.Sequence[tuple[float, float, float, float]]]
+            Value: []
         Name: "last_global_config"
             Type: typing.Optional[str]
             Value: None
@@ -8145,6 +8172,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_sdxl_refiner_edit"
             Type: typing.Optional[bool]
             Value: None
+        Name: "last_sdxl_refiner_freeu_params"
+            Type: typing.Optional[collections.abc.Sequence[tuple[float, float, float, float]]]
+            Value: []
         Name: "last_sdxl_refiner_guidance_rescales"
             Type: typing.Optional[collections.abc.Sequence[float]]
             Value: []
@@ -8243,7 +8273,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [22256152085593]
+            Value: [69681394514219]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

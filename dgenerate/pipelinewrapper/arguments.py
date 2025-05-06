@@ -394,6 +394,29 @@ class DiffusionArguments(_types.SetFromMixin):
     this uses asteval.
     """
 
+    freeu_params: typing.Optional[tuple[float, float, float, float]] = None
+    """
+    FreeU is a technique for improving image quality by re-balancing the contributions from 
+    the UNet’s skip connections and backbone feature maps.
+    
+    This can be used with no cost to performance, to potentially improve image quality.
+    
+    This argument can be used to specify The FreeU parameters: s1, s2, b1, and b2 in that order.
+    
+    This argument only applies to models that utilize a UNet: SD1.5/2, SDXL, and Kolors
+    
+    See: https://huggingface.co/docs/diffusers/main/en/using-diffusers/freeu
+    
+    And: https://github.com/ChenyangSi/FreeU
+    """
+
+    sdxl_refiner_freeu_params: typing.Optional[tuple[float, float, float, float]] = None
+    """
+    FreeU parameters for the SDXL refiner
+    
+    See: :py:attr:`DiffusionArguments.freeu_params` for clarification.
+    """
+
     hi_diffusion: bool = False
     """
     Activate HiDiffusion for the primary model? 
@@ -911,6 +934,11 @@ class DiffusionArguments(_types.SetFromMixin):
 
         inputs = []
 
+        def format_freeu(params: tuple):
+            if params is not None:
+                return f"s1={params[0]}, s2={params[1]}, b1={params[2]}, b2={params[3]}"
+            return None
+
         descriptions = [
             (self.scheduler_uri, "Scheduler:"),
             (self.second_model_scheduler_uri, "Second Model Scheduler:"),
@@ -921,6 +949,8 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.upscaler_noise_level, "Upscaler Noise Level:"),
             (self.second_model_inference_steps, 'Second Model Inference Steps:'),
             (self.second_model_guidance_scale, 'Second Model Guidance Scale:'),
+            (format_freeu(self.freeu_params), 'FreeU Params:'),
+            (format_freeu(self.sdxl_refiner_freeu_params), "SDXL Refiner FreeU Params:"),
             (self.sdxl_high_noise_fraction, "SDXL High Noise Fraction:"),
             (self.sdxl_t2i_adapter_factor, "SDXL T2I Adapter Factor:"),
             (self.sdxl_refiner_pag_scale, 'SDXL Refiner PAG Scale:'),
