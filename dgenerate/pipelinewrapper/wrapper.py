@@ -57,33 +57,6 @@ import DeepCache as _deepcache
 import dgenerate.eval as _eval
 
 
-@contextlib.contextmanager
-def _deep_cache_context(pipeline,
-                        cache_interval: int = 5,
-                        cache_branch_id: int = 1,
-                        skip_mode: str = 'uniform',
-                        enabled: bool = False):
-    if enabled:
-        _messages.debug_log(
-            f'Enabling DeepCache on pipeline: {pipeline.__class__.__name__}')
-        helper = _deepcache.DeepCacheSDHelper(pipe=pipeline)
-        helper.set_params(
-            cache_interval=cache_interval,
-            cache_branch_id=cache_branch_id,
-            skip_mode=skip_mode
-        )
-        helper.enable()
-
-        try:
-            yield
-        finally:
-            _messages.debug_log(
-                f'Disabling DeepCache on pipeline: {pipeline.__class__.__name__}')
-            helper.disable()
-    else:
-        yield
-
-
 class DiffusionArgumentsHelpException(Exception):
     """
     Thrown when a :py:class:`DiffusionArguments` attribute that supports
@@ -174,6 +147,33 @@ class PipelineWrapperResult:
 
 
 @contextlib.contextmanager
+def _deep_cache_context(pipeline,
+                        cache_interval: int = 5,
+                        cache_branch_id: int = 1,
+                        skip_mode: str = 'uniform',
+                        enabled: bool = False):
+    if enabled:
+        _messages.debug_log(
+            f'Enabling DeepCache on pipeline: {pipeline.__class__.__name__}')
+        helper = _deepcache.DeepCacheSDHelper(pipe=pipeline)
+        helper.set_params(
+            cache_interval=cache_interval,
+            cache_branch_id=cache_branch_id,
+            skip_mode=skip_mode
+        )
+        helper.enable()
+
+        try:
+            yield
+        finally:
+            _messages.debug_log(
+                f'Disabling DeepCache on pipeline: {pipeline.__class__.__name__}')
+            helper.disable()
+    else:
+        yield
+
+
+@contextlib.contextmanager
 def _hi_diffusion(pipeline, generator, enabled: bool):
     if enabled:
         _messages.debug_log(
@@ -186,6 +186,21 @@ def _hi_diffusion(pipeline, generator, enabled: bool):
             _messages.debug_log(
                 f'Disabling HiDiffusion on pipeline: {pipeline.__class__.__name__}')
             _hidiffusion.remove_hidiffusion(pipeline)
+
+
+@contextlib.contextmanager
+def _freeu(pipeline, params: tuple[float, float, float, float] | None):
+    if params is not None:
+        _messages.debug_log(
+            f'Enabling FreeU on pipeline: {pipeline.__class__.__name__}')
+        pipeline.enable_freeu(*params)
+    try:
+        yield
+    finally:
+        if params is not None:
+            _messages.debug_log(
+                f'Disabling FreeU on pipeline: {pipeline.__class__.__name__}')
+            pipeline.disable_freeu()
 
 
 class DiffusionPipelineWrapper:
@@ -1098,8 +1113,14 @@ class DiffusionPipelineWrapper:
             if args.second_model_scheduler_uri != args.scheduler_uri:
                 opts.append(('--second-model-scheduler', args.second_model_scheduler_uri))
 
+        if args.freeu_params is not None:
+            opts.append(('--freeu-params', ','.join(map(str, args.freeu_params))))
+
         if args.hi_diffusion:
             opts.append(('--hi-diffusion',))
+
+        if args.sdxl_refiner_freeu_params is not None:
+            opts.append(('--sdxl-refiner-freeu-params', ','.join(map(str, args.sdxl_refiner_freeu_params))))
 
         if args.sdxl_refiner_hi_diffusion:
             opts.append(('--sdxl-refiner-hi-diffusion',))
@@ -2276,7 +2297,7 @@ class DiffusionPipelineWrapper:
             if pipeline.__class__.__name__.startswith('Flux'):
                 # This code comes from the Flux pipelines
                 mu = DiffusionPipelineWrapper._flux_sigmas_calculate_shift(
-                    pipeline.transformer.config.in_channels // 4,   # latents.shape[1]
+                    pipeline.transformer.config.in_channels // 4,  # latents.shape[1]
                     pipeline.scheduler.config.get("base_image_seq_len", 256),
                     pipeline.scheduler.config.get("max_image_seq_len", 4096),
                     pipeline.scheduler.config.get("base_shift", 0.5),
@@ -2534,14 +2555,16 @@ class DiffusionPipelineWrapper:
         if self._sdxl_refiner_pipeline is None:
             ras_args = self._get_sd3_ras_args(user_args)
 
-            with _hi_diffusion(self._pipeline, generator=generator, enabled=user_args.hi_diffusion), \
-                    _sd3_ras_context(self._pipeline, args=ras_args, enabled=user_args.ras), \
-                    _deep_cache_context(self._pipeline,
-                                        cache_interval=_types.default(
-                                            user_args.deep_cache_interval, _constants.DEFAULT_DEEP_CACHE_INTERVAL),
-                                        cache_branch_id=_types.default(
-                                            user_args.deep_cache_branch_id, _constants.DEFAULT_DEEP_CACHE_BRANCH_ID),
-                                        enabled=user_args.deep_cache):
+            with _freeu(self._pipeline, user_args.freeu_params), \
+                 _hi_diffusion(self._pipeline, generator=generator, enabled=user_args.hi_diffusion), \
+                 _sd3_ras_context(self._pipeline, args=ras_args, enabled=user_args.ras), \
+                 _deep_cache_context(self._pipeline,
+                                     cache_interval=_types.default(
+                                         user_args.deep_cache_interval, _constants.DEFAULT_DEEP_CACHE_INTERVAL),
+                                     cache_branch_id=_types.default(
+                                         user_args.deep_cache_branch_id, _constants.DEFAULT_DEEP_CACHE_BRANCH_ID),
+                                     enabled=user_args.deep_cache):
+
                 if self._parsed_adetailer_detector_uris:
                     return generate_asdff()
                 else:
@@ -2567,15 +2590,17 @@ class DiffusionPipelineWrapper:
             # cannot handle latent input
             output_type = 'pil'
 
-        with _hi_diffusion(self._pipeline,
+        with _freeu(self._pipeline, user_args.freeu_params), \
+             _hi_diffusion(self._pipeline,
                            generator=generator,
                            enabled=user_args.hi_diffusion), \
-                _deep_cache_context(self._pipeline,
-                                    cache_interval=_types.default(
-                                        user_args.deep_cache_interval, _constants.DEFAULT_DEEP_CACHE_INTERVAL),
-                                    cache_branch_id=_types.default(
-                                        user_args.deep_cache_branch_id, _constants.DEFAULT_DEEP_CACHE_BRANCH_ID),
-                                    enabled=user_args.deep_cache):
+             _deep_cache_context(self._pipeline,
+                                 cache_interval=_types.default(
+                                     user_args.deep_cache_interval, _constants.DEFAULT_DEEP_CACHE_INTERVAL),
+                                 cache_branch_id=_types.default(
+                                     user_args.deep_cache_branch_id, _constants.DEFAULT_DEEP_CACHE_BRANCH_ID),
+                                 enabled=user_args.deep_cache):
+
             if self._parsed_adetailer_detector_uris:
                 image = generate_asdff().images
             else:
@@ -2762,17 +2787,19 @@ class DiffusionPipelineWrapper:
             )
         )
 
-        with _hi_diffusion(self._sdxl_refiner_pipeline,
+        with _freeu(self._sdxl_refiner_pipeline, user_args.sdxl_refiner_freeu_params), \
+             _hi_diffusion(self._sdxl_refiner_pipeline,
                            generator=generator,
                            enabled=user_args.sdxl_refiner_hi_diffusion), \
-                _deep_cache_context(self._sdxl_refiner_pipeline,
-                                    cache_interval=_types.default(
-                                        user_args.deep_cache_interval,
-                                        _constants.DEFAULT_SDXL_REFINER_DEEP_CACHE_INTERVAL),
-                                    cache_branch_id=_types.default(
-                                        user_args.deep_cache_branch_id,
-                                        _constants.DEFAULT_SDXL_REFINER_DEEP_CACHE_BRANCH_ID),
-                                    enabled=user_args.sdxl_refiner_deep_cache):
+             _deep_cache_context(self._sdxl_refiner_pipeline,
+                                 cache_interval=_types.default(
+                                     user_args.deep_cache_interval,
+                                     _constants.DEFAULT_SDXL_REFINER_DEEP_CACHE_INTERVAL),
+                                 cache_branch_id=_types.default(
+                                     user_args.deep_cache_branch_id,
+                                     _constants.DEFAULT_SDXL_REFINER_DEEP_CACHE_BRANCH_ID),
+                                 enabled=user_args.sdxl_refiner_deep_cache):
+
             return PipelineWrapperResult(
                 _pipelines.call_pipeline(
                     pipeline=self._sdxl_refiner_pipeline,
@@ -3308,6 +3335,29 @@ class DiffusionPipelineWrapper:
                     'TeaCache does not support model CPU offloading.'
                 )
 
+    def _auto_freeu_check(self, args: DiffusionArguments):
+        freeu_model_types = {
+            _enums.ModelType.TORCH,
+            _enums.ModelType.TORCH_SDXL,
+            _enums.ModelType.TORCH_KOLORS,
+            _enums.ModelType.TORCH_PIX2PIX,
+            _enums.ModelType.TORCH_SDXL_PIX2PIX,
+            _enums.ModelType.TORCH_UPSCALER_X2,
+            _enums.ModelType.TORCH_UPSCALER_X4
+        }
+
+        if args.freeu_params is not None:
+            if self._model_type not in freeu_model_types:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'Current primary model does not utilize a UNet, and therefore does not support FreeU parameters.'
+                )
+
+        if args.sdxl_refiner_freeu_params is not None:
+            if self._sdxl_refiner_uri is None:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'SDXL refiner is not in use, so cannot supply FreeU parameters to it.'
+                )
+
     def __call__(self, args: DiffusionArguments | None = None, **kwargs) -> PipelineWrapperResult:
         """
         Call the pipeline and generate a result.
@@ -3334,6 +3384,11 @@ class DiffusionPipelineWrapper:
 
         copy_args.set_from(kwargs, missing_value_throws=False)
 
+        self._auto_freeu_check(copy_args)
+        self._auto_tea_cache_check(copy_args)
+        self._auto_deep_cache_check(copy_args)
+        self._auto_hi_diffusion_check(copy_args)
+
         help_text = self._argument_help_check(copy_args)
         if help_text:
             raise DiffusionArgumentsHelpException(help_text)
@@ -3358,10 +3413,8 @@ class DiffusionPipelineWrapper:
         pipeline_args = \
             self._get_pipeline_defaults(user_args=copy_args)
 
-        self._auto_tea_cache_check(copy_args)
+        # needs the pipeline initialized
         self._auto_ras_check(copy_args)
-        self._auto_deep_cache_check(copy_args)
-        self._auto_hi_diffusion_check(copy_args)
 
         if self.model_type == _enums.ModelType.TORCH_S_CASCADE:
             result = self._call_torch_s_cascade(

@@ -557,6 +557,21 @@ def _type_sigmas(val: str) -> list[float] | str:
     return sigmas
 
 
+def _type_freeu_params(val: str) -> tuple[float, float, float, float]:
+    try:
+        steps = [float(x.strip()) for x in val.split(',')]
+        if len(steps) != 4:
+            raise argparse.ArgumentTypeError(
+                f'Not enough FreeU parameters supplied, requires 4 floats in CSV format, got: {val}'
+            )
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            'FreeU parameters must be a comma-separated list of four floats'
+        )
+    # noinspection PyTypeChecker
+    return tuple(steps)
+
+
 _ARG_PARSER_CACHE = dict()
 
 
@@ -1714,6 +1729,34 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-fu', '--freeu-params',
+            default=None,
+            nargs='+',
+            dest='freeu_params',
+            metavar='CSV_FLOAT',
+            type=_type_freeu_params,
+            help=f"""FreeU is a technique for improving image quality by re-balancing the contributions from 
+                     the UNet’s skip connections and backbone feature maps.
+                     
+                     This can be used with no cost to performance, to potentially improve image quality.
+                     
+                     This argument can be used to specify The FreeU parameters: s1, s2, b1, and b2 in that order.
+                     
+                     It accepts CSV, for example: --freeu-params "0.9,0.2,1.1,1.2"
+                     
+                     If you supply multiple CSV strings, they will be tried in turn.
+                     
+                     This argument only applies to models that utilize a UNet: SD1.5/2, SDXL, and Kolors
+                     
+                     See: https://huggingface.co/docs/diffusers/main/en/using-diffusers/freeu
+                     
+                     And: https://github.com/ChenyangSi/FreeU
+                     """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
             '-hd', '--hi-diffusion',
             action='store_true', default=False, dest='hi_diffusion',
             help=f"""Activate HiDiffusion for the primary model? 
@@ -1727,6 +1770,18 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                      
                      This is supported for --model-type torch, torch-sdxl, and --torch-kolors.
                      """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-rfu', '--sdxl-refiner-freeu-params',
+            default=None,
+            nargs='+',
+            dest='sdxl_refiner_freeu_params',
+            metavar='CSV_FLOAT',
+            type=_type_freeu_params,
+            help=f"""FreeU parameters for the SDXL refiner, see: --freeu-params"""
         )
     )
 

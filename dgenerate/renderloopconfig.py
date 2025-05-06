@@ -637,6 +637,32 @@ class RenderLoopConfig(_types.SetFromMixin):
     This may be a list of schedulers, indicating to try each scheduler in turn.
     """
 
+    freeu_params: typing.Optional[collections.abc.Sequence[tuple[float, float, float, float]]] = None
+    """
+    FreeU is a technique for improving image quality by re-balancing the contributions from 
+    the UNet’s skip connections and backbone feature maps.
+    
+    This can be used with no cost to performance, to potentially improve image quality.
+    
+    This argument can be used to specify The FreeU parameters: s1, s2, b1, and b2 in that order.
+    
+    You can specify the FreeU parameters as a list / sequence of tuples that will be
+    tried in turn for generation.
+    
+    This argument only applies to models that utilize a UNet: SD1.5/2, SDXL, and Kolors
+    
+    See: https://huggingface.co/docs/diffusers/main/en/using-diffusers/freeu
+    
+    And: https://github.com/ChenyangSi/FreeU
+    """
+
+    sdxl_refiner_freeu_params: typing.Optional[collections.abc.Sequence[tuple[float, float, float, float]]] = None
+    """
+    List / sequence of FreeU parameters to try for the SDXL refiner.
+    
+    See: :py:attr:`RenderLoopConfig.freeu_params` for clarification.
+    """
+
     hi_diffusion: bool = False
     """
     Activate HiDiffusion for the primary model? 
@@ -2440,6 +2466,8 @@ class RenderLoopConfig(_types.SetFromMixin):
             self.sdxl_refiner_clip_skips,
             self.upscaler_noise_levels,
             self.guidance_rescales,
+            self.freeu_params,
+            self.sdxl_refiner_freeu_params,
             self.sdxl_high_noise_fractions,
             self.sdxl_aesthetic_scores,
             self.sdxl_original_sizes,
@@ -2629,6 +2657,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                 sdxl_t2i_adapter_factor=ov('sdxl_t2i_adapter_factor', self.sdxl_t2i_adapter_factors),
                 image_seed_strength=ov('image_seed_strength', self.image_seed_strengths),
                 guidance_scale=ov('guidance_scale', self.guidance_scales),
+                freeu_params=ov('freeu_params', self.freeu_params),
                 hi_diffusion=ov('hi_diffusion', [self.hi_diffusion]),
                 tea_cache=ov('tea_cache', [self.tea_cache]),
                 tea_cache_rel_l1_threshold=ov('tea_cache_rel_l1_threshold', self.tea_cache_rel_l1_thresholds),
@@ -2661,6 +2690,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                 second_model_inference_steps=ov('second_model_inference_steps', self.second_model_inference_steps),
                 second_model_guidance_scale=ov('second_model_guidance_scale', self.second_model_guidance_scales),
                 sdxl_refiner_sigmas=ov('sdxl_refiner_sigmas', self.sdxl_refiner_sigmas),
+                sdxl_refiner_freeu_params=ov('sdxl_refiner_freeu_params', self.sdxl_refiner_freeu_params),
                 sdxl_refiner_hi_diffusion=ov('sdxl_refiner_hi_diffusion', [self.sdxl_refiner_hi_diffusion]),
                 sdxl_refiner_pag_scale=ov('sdxl_refiner_pag_scale', self.sdxl_refiner_pag_scales),
                 sdxl_refiner_pag_adaptive_scale=ov('sdxl_refiner_pag_adaptive_scale',
