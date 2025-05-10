@@ -1473,7 +1473,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         ):
             raise RenderLoopConfigError(
                 f'{a_namer("ras_index_fusion")} is not supported for RAS when UNet quantization is enabled, '
-                f'quantize the text encoders individually using {a_namer("text_encoder_uris")}.')
+                f'quantize the text encoders individually using {a_namer("text_encoder_uris")}')
 
         if self.hi_diffusion:
             if not (
@@ -1483,6 +1483,11 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise RenderLoopConfigError(
                     f'{a_namer("hi_diffusion")} is only supported for '
                     f'Stable Diffusion, Stable Diffusion XL, and Kolors'
+                )
+
+            if self.controlnet_uris:
+                raise RenderLoopConfigError(
+                    f'{a_namer("hi_diffusion")} is not supported with {a_namer("controlnet_uris")}'
                 )
 
         deep_cache_enabled = (self.deep_cache or any(self._non_null_attr_that_start_with('deep_cache_')))
