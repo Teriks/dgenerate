@@ -3212,17 +3212,16 @@ class DiffusionPipelineWrapper:
             args.second_model_scheduler_uri,
             args.scheduler_uri
         )
-        if args.scheduler_uri:
-            _schedulers.load_scheduler(
-                pipeline=self._pipeline,
-                scheduler_uri=args.scheduler_uri
-            )
-        if self._sdxl_refiner_pipeline and second_model_scheduler_uri:
+        _schedulers.load_scheduler(
+            pipeline=self._pipeline,
+            scheduler_uri=args.scheduler_uri
+        )
+        if self._sdxl_refiner_pipeline:
             _schedulers.load_scheduler(
                 pipeline=self._sdxl_refiner_pipeline,
                 scheduler_uri=second_model_scheduler_uri
             )
-        if self._s_cascade_decoder_pipeline and second_model_scheduler_uri:
+        if self._s_cascade_decoder_pipeline:
             _schedulers.load_scheduler(
                 pipeline=self._s_cascade_decoder_pipeline,
                 scheduler_uri=second_model_scheduler_uri
