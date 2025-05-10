@@ -1485,9 +1485,15 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'Stable Diffusion, Stable Diffusion XL, and Kolors'
                 )
 
-            if self.controlnet_uris:
+            if self.controlnet_uris and self.model_type == _pipelinewrapper.ModelType.TORCH:
                 raise RenderLoopConfigError(
-                    f'{a_namer("hi_diffusion")} is not supported with {a_namer("controlnet_uris")}'
+                    f'{a_namer("hi_diffusion")} is not supported with {a_namer("controlnet_uris")} '
+                    f'with {a_namer("model_type")} {_pipelinewrapper.get_model_type_string(self.model_type)}'
+                )
+
+            if self.ip_adapter_uris:
+                raise RenderLoopConfigError(
+                    f'{a_namer("hi_diffusion")} is not supported with {a_namer("ip_adapter_uris")}'
                 )
 
             if self.t2i_adapter_uris:
