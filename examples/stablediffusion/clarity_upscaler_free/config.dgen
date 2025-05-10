@@ -62,23 +62,18 @@
 \set diffusion_size 1024x1024
 
 
-# final resize after the upscaler using the resize image processor,
-# equivalent to scale=2 with the 4x upscaler since it will be
-# upscaled 1024 * 4, to 4096, and then resized back to 2048
+# for a 1x scale, set this to 1
+# this upscales the image to 2048, incorporating
+# details from the 4x upscale with 4xNomosUniDAT_otf.pth
+# this amounts to an image downsize after upscale
+# that occurs during the upscalers tiling algorithm
 
-# for a 1x scale, you would just resize back to 1024x1024
-
-\set final_size 2048x2048
+\set upscaler_scale 2
 
 # The above values can be played with for quality,
 # large diffusion outputs might be resource intensive,
 # though the cat image is being upscaled from 128
 # pixels to 1024, which is a significant initial upscale
-
-# you could have the "diffusion_size" be 4096 if desired
-# the upscaler would upscale resulting the image to
-# 16384 (might be problematic for memory, but scaling down
-# the tiles in the tiler would help if implemented)
 
 
 # this prompt is taken directly from the ComfyUI workflow, we use --prompt-weighter sd-embed
@@ -101,5 +96,5 @@
 --output-path output
 --output-size {{ diffusion_size }}
 --prompt-weighter sd-embed
---post-processors upscaler;model={{ upscaler_model }} resize;size={{ final_size }}
+--post-processors upscaler;model={{ upscaler_model }};scale={{ upscaler_scale }}
 --prompts {{ prompt }}
