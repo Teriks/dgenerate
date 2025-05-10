@@ -3315,6 +3315,11 @@ class DiffusionPipelineWrapper:
                     '--model-type torch, torch-sdxl, and torch-kolors'
                 )
 
+            if self.controlnet_uris:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'HiDiffusion is not supported with ControlNets'
+                )
+
     def _auto_tea_cache_check(self, args: DiffusionArguments):
         for prop in args.__dict__.keys():
             if prop.startswith('tea_cache_'):

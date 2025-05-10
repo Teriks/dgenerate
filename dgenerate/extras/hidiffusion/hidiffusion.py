@@ -859,6 +859,12 @@ def make_diffusers_sdxl_contrtolnet_ppl(block_class):
                 return (image,)
 
             return StableDiffusionXLPipelineOutput(images=image)
+
+    # let's be nice and not change the __name__ of the pipeline class
+    # this messes up some important pipeline detection code in dgenerate.
+
+    sdxl_controlnet_ppl.__name__ = block_class.__name__
+
     return sdxl_controlnet_ppl
 
 
