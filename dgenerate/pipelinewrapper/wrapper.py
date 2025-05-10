@@ -3320,6 +3320,11 @@ class DiffusionPipelineWrapper:
                     'HiDiffusion is not supported with ControlNets'
                 )
 
+            if self.t2i_adapter_uris:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'HiDiffusion is not supported with T2I Adapters'
+                )
+
     def _auto_tea_cache_check(self, args: DiffusionArguments):
         for prop in args.__dict__.keys():
             if prop.startswith('tea_cache_'):

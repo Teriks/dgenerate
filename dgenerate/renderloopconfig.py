@@ -1490,6 +1490,11 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'{a_namer("hi_diffusion")} is not supported with {a_namer("controlnet_uris")}'
                 )
 
+            if self.t2i_adapter_uris:
+                raise RenderLoopConfigError(
+                    f'{a_namer("hi_diffusion")} is not supported with {a_namer("t2i_adapter_uris")}'
+                )
+
         deep_cache_enabled = (self.deep_cache or any(self._non_null_attr_that_start_with('deep_cache_')))
         if deep_cache_enabled and not (
                 self.model_type == _pipelinewrapper.ModelType.TORCH_SDXL or
