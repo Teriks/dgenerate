@@ -136,6 +136,13 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
     The "overlap" argument can be used to specify the overlap amount of each
     tile in pixels, it must be greater than or equal to 0, and defaults to 8.
 
+    The "scale" argument can be used to specify the output scale of the image regardless of the models
+    scale, this equates to an image resize on each tile output of the model as necessary, with auto selected
+    resizing algorithm for the best quality. This is effectively equivalent to basic image resizing of
+    the upscaled output post upscale, just with somewhat reduced memory overhead as it occurs during tiling.
+    When this argument is not specified, the scale of the model architecture is used and no resizing occurs.
+    This argument must be greater than or equal to 1.
+
     The "pre-resize" argument is a boolean value determining if the processing
     should take place before or after the image is resized by dgenerate.
 
@@ -162,6 +169,7 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
                  sgemm: bool | None = None,
                  tile: int = 400,
                  overlap: int = 8,
+                 scale: int | None = None,
                  pre_resize: bool = False,
                  **kwargs):
         """
@@ -174,6 +182,7 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
         :param tile: specifies the tile size for tiled upscaling, it must be divisible by 2, and defaults to 400.
             Specifying values over 400 is not supported.
         :param overlap: the overlap amount of each tile in pixels, it must be greater than or equal to 0, and defaults to 8.
+        :param scale: the scale factor to use for the upscaler, it must be greater than 1, and defaults to None (meaning use the model's scale).
         :param pre_resize: process the image before it is resized, or after? default is ``False`` (after).
         :param kwargs: forwarded to base class
         """
@@ -207,6 +216,9 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
 
         if gpu_index < 0:
             raise self.argument_error('Argument "gpu-index" must be greater than or equal to 0.')
+
+        if scale is not None and scale < 1:
+            raise self.argument_error('Argument "scale" must be greater than or equal to 1.')
 
         if isinstance(threads, int) and threads < 1:
             raise self.argument_error(
@@ -255,6 +267,7 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
 
         self._tile = tile
         self._overlap = overlap
+        self._scale = scale
         self._pre_resize = pre_resize
 
         self._threads = threads if isinstance(threads, int) else psutil.cpu_count(logical=True)
@@ -344,7 +357,7 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
                     tile_x=tile,
                     tile_y=tile,
                     overlap=self._overlap,
-                    upscale_amount=model.broadcast_data.scale,
+                    upscale_amount=_types.default(self._scale, model.broadcast_data.scale),
                     pbar=pbar.update)
 
                 oom = False
