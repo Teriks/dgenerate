@@ -80,6 +80,13 @@
 # 16384 (might be problematic for memory, but scaling down
 # the tiles in the tiler would help if implemented)
 
+
+# this prompt is taken directly from the ComfyUI workflow, we use --prompt-weighter sd-embed
+# to preform the weighting that exists in the negative prompt
+
+\set prompt "masterpiece, best quality, highres; (worst quality, low quality, normal quality:2) <JuggernautNegative-neg>"
+
+
 {{ model }}
 --image-seeds "../../media/low_res_cat.png"
 --scheduler DPMSolverSDEScheduler;timestep-spacing=trailing
@@ -95,4 +102,4 @@
 --output-size {{ diffusion_size }}
 --prompt-weighter sd-embed
 --post-processors upscaler;model={{ upscaler_model }} resize;size={{ final_size }}
---prompts "masterpiece, best quality, highres; (worst quality, low quality, normal quality:2) <JuggernautNegative-neg>"
+--prompts {{ prompt }}
