@@ -1,0 +1,98 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 5.0.0
+
+\set civit_ai_token %CIVIT_AI_TOKEN%
+
+{% if not civit_ai_token.strip() %}
+    \print Must set CIVIT_AI_TOKEN environmental variable for this example!
+    \exit
+{% endif %}
+
+# This configuration is a free equivalent to the Clarity Upscaler (https://clarityai.co/)
+# ported from this ComfyUI config: https://github.com/lrq3000/ComfyUI-ClarityAI/tree/5bc846f8f4eeaaa1a7c5a17e73c30c46ee0cb345
+
+
+# https://civitai.com/models/798005/vixenmix-hyperified-8-steps-sd-15-hyper-lora-merge
+# see documentation in this link, regarding inference steps, guidance scale, and scheduler
+# selection
+
+# the --scheduler selection in this config mimics what is described there, in dgenerate / diffusers terms
+
+\set model https://civitai.com/api/download/models/892376?type=Model&format=SafeTensor&size=pruned&fp=fp16
+
+
+# tiling controlnet from huggingface
+
+\set tile_controlnet https://huggingface.co/copybaiter/ControlNet/blob/main/control_v11f1e_sd15_tile.safetensors
+
+
+#  https://civitai.com/models/82098/add-more-details-detail-enhancer-tweaker-lora
+
+# scale taken from ComfyUI config (see below)
+
+\set detail_enhancer https://civitai.com/api/download/models/87153?type=Model&format=SafeTensor
+
+
+# https://civitai.com/models/171159/sdxlrender
+
+# scale taken from ComfyUI config (see below)
+
+\set sdxl_render_lora https://civitai.com/api/download/models/236130?type=Model&format=SafeTensor
+
+
+# https://civitai.com/models/81563/juggernaut-negative-embedding
+
+# negative embedding mentioned in ComfyUI config
+
+\set neg_embedding https://civitai.com/api/download/models/86553?type=Negative&format=Other
+
+
+# upscaler Nomos x4 DAT from: https://openmodeldb.info/models/4x-NomosUniDAT-otf, just re-uploaded
+# the upscaler cannot currently download hf blob links, so we must copy the download link directly
+
+\set upscaler_model https://huggingface.co/Teriks/dgenerate-example-models/resolve/main/upscalers/4xNomosUniDAT_otf/4xNomosUniDAT_otf.pth
+
+
+# diffusion output size, size of the pipeline output.
+# incidentally, the input image is upscaled with a normal
+# image resize to this dimension before acting as ControlNet input.
+# I am not sure if this is correct for tiled ControlNet,
+# but it seems to work
+
+\set diffusion_size 1024x1024
+
+
+# final resize after the upscaler using the resize image processor,
+# equivalent to scale=2 with the 4x upscaler since it will be
+# upscaled 1024 * 4, to 4096, and then resized back to 2048
+
+# for a 1x scale, you would just resize back to 1024x1024
+
+\set final_size 2048x2048
+
+# The above values can be played with for quality,
+# large diffusion outputs might be resource intensive,
+# though the cat image is being upscaled from 128
+# pixels to 1024, which is a significant initial upscale
+
+# you could have the "diffusion_size" be 4096 if desired
+# the upscaler would upscale resulting the image to
+# 16384 (might be problematic for memory, but scaling down
+# the tiles in the tiler would help if implemented)
+
+{{ model }}
+--image-seeds "../../media/low_res_cat.png"
+--scheduler DPMSolverSDEScheduler;timestep-spacing=trailing
+--inference-steps 8
+--guidance-scales 1.5
+--gen-seeds 1
+--vae-tiling
+--control-nets {{ tile_controlnet }};scale=0.9
+--loras {{ detail_enhancer }};scale=1.0 \
+        {{ sdxl_render_lora }};scale=-0.32
+--textual-inversions {{ neg_embedding }};token="<JuggernautNegative-neg>"
+--output-path output
+--output-size {{ diffusion_size }}
+--prompt-weighter sd-embed
+--post-processors upscaler;model={{ upscaler_model }} resize;size={{ final_size }}
+--prompts "masterpiece, best quality, highres; (worst quality, low quality, normal quality:2) <JuggernautNegative-neg>"
