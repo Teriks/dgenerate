@@ -433,10 +433,10 @@ class RenderLoop:
         scheduler_components = []
 
         if diffusion_args.scheduler_uri:
-            scheduler_components.append(diffusion_args.scheduler_uri)
+            scheduler_components.append(diffusion_args.scheduler_uri.split(';')[0].strip())
 
         if diffusion_args.second_model_scheduler_uri:
-            scheduler_components.append(diffusion_args.second_model_scheduler_uri)
+            scheduler_components.append(diffusion_args.second_model_scheduler_uri.split(';')[0].strip())
 
         args = scheduler_components + ['s', diffusion_args.seed]
 

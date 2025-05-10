@@ -40,7 +40,7 @@ import transformers.utils.quantization_config
 
 @contextlib.contextmanager
 def _disable_tqdm():
-    huggingface_hub.utils.enable_progress_bars()
+    huggingface_hub.utils.disable_progress_bars()
     try:
         yield
     finally:
