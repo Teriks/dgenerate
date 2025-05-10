@@ -227,9 +227,12 @@ def get_scheduler_uri_schema(scheduler: type[diffusers.SchedulerMixin] | list[ty
     return schema
 
 
-def load_scheduler(pipeline: diffusers.DiffusionPipeline, scheduler_uri: _types.Uri):
+def load_scheduler(pipeline: diffusers.DiffusionPipeline, scheduler_uri: _types.Uri | None):
     """
     Load a specific compatible scheduler class name onto a huggingface diffusers pipeline object.
+
+    Passing ``None`` to the URI reloads the original scheduler that the pipeline was loaded
+    with, if no new scheduler has been set since then, this is a no-op.
 
     :raises InvalidSchedulerNameError: If an invalid scheduler name is specified specifically.
     :raises SchedulerArgumentError: If invalid arguments are supplied to the scheduler via the URI.
@@ -237,6 +240,11 @@ def load_scheduler(pipeline: diffusers.DiffusionPipeline, scheduler_uri: _types.
     :param pipeline: pipeline object
     :param scheduler_uri: Compatible scheduler URI.
     """
+
+    if scheduler_uri is None:
+        if hasattr(pipeline, '_DGENERATE_ORIGINAL_SCHEDULER'):
+            pipeline.scheduler = pipeline._DGENERATE_ORIGINAL_SCHEDULER
+        return
 
     compatibles = get_compatible_schedulers(pipeline.__class__)
 
@@ -319,7 +327,12 @@ def load_scheduler(pipeline: diffusers.DiffusionPipeline, scheduler_uri: _types.
                 f'Constructing Scheduler: "{scheduler_type.__name__}", URI Args: {args}')
 
             try:
+                og_scheduler = pipeline.scheduler
+
                 pipeline.scheduler = scheduler_type.from_config(pipeline.scheduler.config, **args)
+
+                if not hasattr(pipeline, '_DGENERATE_ORIGINAL_SCHEDULER'):
+                    pipeline._DGENERATE_ORIGINAL_SCHEDULER = og_scheduler
             except Exception as e:
                 raise SchedulerArgumentError(
                     f'Error constructing scheduler "{scheduler_type.__name__}" '

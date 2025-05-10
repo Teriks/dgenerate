@@ -1104,9 +1104,12 @@ class TorchPipelineCreationResult(PipelineCreationResult):
     Parsed Transformer URI if one was present
     """
 
-    def load_scheduler(self, scheduler_uri: _types.Uri):
+    def load_scheduler(self, scheduler_uri: _types.Uri | None):
         """
         Load a scheduler onto the pipeline using a URI specification.
+
+        Passing ``None`` to the URI reloads the original scheduler that the model was loaded
+        with, if no new scheduler has been set since then, this is a no-op.
 
         :param scheduler_uri: The scheduler URI
         """
