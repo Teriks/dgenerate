@@ -57,6 +57,13 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
     The "overlap" argument can be used to specify the overlap amount of each tile in pixels, it must be
     greater than or equal to 0, and defaults to 32.
 
+    The "scale" argument can be used to specify the output scale of the image regardless of the models
+    scale, this equates to an image resize on each tile output of the model as necessary, with auto selected
+    resizing algorithm for the best quality. This is effectively equivalent to basic image resizing of
+    the upscaled output post upscale, just with somewhat reduced memory overhead as it occurs during tiling.
+    When this argument is not specified, the scale of the model architecture is used and no resizing occurs.
+    This argument must be greater than or equal to 1.
+
     The "force-tiling" argument can be used to force external image tiling for upscaler model architectures which
     discourage the use of external tiling (SCUNEt and MixDehazeNet currently), this may mean that the model needs
     information about the whole image to achieve a good result. External tiling breaks up the image into tiles
@@ -80,6 +87,7 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
                  model: str,
                  tile: int | str = 512,
                  overlap: int = 32,
+                 scale: int | None = None,
                  force_tiling: bool = False,
                  dtype: str = 'float32',
                  pre_resize: bool = False,
@@ -90,6 +98,7 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
             Specifying 'auto' indicates that this value should be calculated based off available GPU memory
             if applicable. Specifying 0 disable tiling entirely.
         :param overlap: the overlap amount of each tile in pixels, it must be greater than or equal to 0, and defaults to 32.
+        :param scale: the scale factor to use for the upscaler, it must be greater than 1, and defaults to None (meaning use the model's scale).
         :param dtype: the datatype to use to for the model in memory, it may be either "float32" or "float16".
             using float16 will result in a smaller memory footprint if supported.
         :param force_tiling: Force external image tiling for model architectures that discourage it.
@@ -126,11 +135,15 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
 
         if overlap < 0:
             raise self.argument_error('Argument "overlap" must be greater than or equal to 0.')
+        
+        if scale is not None and scale < 1:
+            raise self.argument_error('Argument "scale" must be greater than or equal to 1.')
 
         self._tile = tile
         self._overlap = overlap
         self._pre_resize = pre_resize
         self._force_tiling = force_tiling
+        self._scale = scale
 
         self.register_module(self._model)
 
@@ -280,7 +293,7 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
                     tile_x=tile,
                     tile_y=tile,
                     overlap=self._overlap,
-                    upscale_amount=self._model.scale,
+                    upscale_amount=_types.default(self._scale, self._model.scale),
                     pbar=pbar.update)
 
                 oom = False
