@@ -3315,9 +3315,14 @@ class DiffusionPipelineWrapper:
                     '--model-type torch, torch-sdxl, and torch-kolors'
                 )
 
-            if self.controlnet_uris:
+            if self.controlnet_uris and self.model_type == _enums.ModelType.TORCH:
                 raise _pipelines.UnsupportedPipelineConfigError(
-                    'HiDiffusion is not supported with ControlNets'
+                    f'HiDiffusion is not support with ControlNet for SD1.5/SD2'
+                )
+
+            if self.ip_adapter_uris:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'HiDiffusion is not supported with IP Adapters'
                 )
 
             if self.t2i_adapter_uris:
