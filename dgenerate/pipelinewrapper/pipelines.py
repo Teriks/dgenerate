@@ -2217,7 +2217,10 @@ def _create_torch_diffusion_pipeline(
             original_config=original_config,
             use_auth_token=auth_token,
             local_files_only=local_files_only,
-            no_cache=bool(lora_uris) or model_cpu_offload or sequential_cpu_offload,
+            no_cache=bool(lora_uris) or
+                     bool(ip_adapter_uris) or
+                     model_cpu_offload or
+                     sequential_cpu_offload,
             unet_class=unet_class
         )
 
