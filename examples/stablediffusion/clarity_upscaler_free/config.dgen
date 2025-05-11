@@ -72,7 +72,7 @@
 --freeu-params "1.30,1.40,0.90,0.20"
 --gen-seeds 1
 --vae-tiling
---control-nets {{ tile_controlnet }};scale=0.9
+--control-nets {{ tile_controlnet }};scale=0.9;end=0.9
 --loras {{ detail_enhancer }};scale=1.0 \
         {{ sdxl_render_lora }};scale=-0.32
 --textual-inversions {{ neg_embedding }};token="<JuggernautNegative-neg>"
