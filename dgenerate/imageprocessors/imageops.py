@@ -303,6 +303,9 @@ class ResizeProcessor(_imageprocessor.ImageProcessor):
 
     The "size" argument is the new image size.
 
+    The "scale" argument is a floating point value to scale the image dimensions by. 
+    This is mutually exclusive with "size".
+
     The "align" argument is the new image alignment.
 
     The "aspect-correct" argument is a boolean argument that determines if the resize is aspect correct.
@@ -322,6 +325,7 @@ class ResizeProcessor(_imageprocessor.ImageProcessor):
 
     def __init__(self,
                  size: str | None = None,
+                 scale: float | None = None,
                  align: int | None = None,
                  aspect_correct: bool = True,
                  algo: str = 'auto',
@@ -329,8 +333,11 @@ class ResizeProcessor(_imageprocessor.ImageProcessor):
                  **kwargs):
         super().__init__(**kwargs)
 
-        if size is None and align is None:
+        if (size is None and scale is None) and align is None:
             raise self.argument_error('no arguments provided that result in resizing.')
+
+        if size is not None and scale is not None:
+            raise self.argument_error('arguments "size" and "scale" are mutually exclusive.')
 
         if algo not in {"auto", "nearest", "box", "bilinear", "hamming", "bicubic", "lanczos"}:
             raise self.argument_error(
@@ -351,6 +358,7 @@ class ResizeProcessor(_imageprocessor.ImageProcessor):
         self._aspect_correct = aspect_correct
         self._algo = algo
         self._pre_resize = pre_resize
+        self._scale = scale
 
     def _process(self, image: PIL.Image.Image):
         if self._algo == 'auto':
@@ -358,8 +366,14 @@ class ResizeProcessor(_imageprocessor.ImageProcessor):
         else:
             algo = getattr(PIL.Image.Resampling, self._algo.upper())
 
+        # Calculate size based on scale if provided
+        size = self._size
+        if self._scale is not None:
+            w, h = image.size
+            size = (int(w * self._scale), int(h * self._scale))
+
         return _image.resize_image(img=image,
-                                   size=self._size,
+                                   size=size,
                                    aspect_correct=self._aspect_correct,
                                    align=self._align,
                                    algo=algo)
