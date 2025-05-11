@@ -53,27 +53,9 @@
 \set upscaler_model https://huggingface.co/Teriks/dgenerate-example-models/resolve/main/upscalers/4xNomosUniDAT_otf/4xNomosUniDAT_otf.pth
 
 
-# diffusion output size, size of the pipeline output.
-# incidentally, the input image is upscaled with a normal
-# image resize to this dimension before acting as ControlNet input.
-# I am not sure if this is correct for tiled ControlNet,
-# but it seems to work
+# final image size
 
-\set diffusion_size 1024x1024
-
-
-# for a 1x scale, set this to 1
-# this upscales the image to 2048, incorporating
-# details from the 4x upscale with 4xNomosUniDAT_otf.pth
-# this amounts to an image downsize after upscale
-# that occurs during the upscalers tiling algorithm
-
-\set upscaler_scale 2
-
-# The above values can be played with for quality,
-# large diffusion outputs might be resource intensive,
-# though the cat image is being upscaled from 128
-# pixels to 1024, which is a significant initial upscale
+\set output_size 1024x1024
 
 
 # this prompt is taken directly from the ComfyUI workflow, we use --prompt-weighter sd-embed
@@ -83,11 +65,11 @@
 
 
 {{ model }}
---image-seeds "../../media/low_res_cat.png"
+--image-seeds "../../media/low_res_cat.png;control=../../media/low_res_cat.png"
 --scheduler DPMSolverSDEScheduler;timestep-spacing=trailing
---freeu-params "1.30,1.40,0.90,0.20"
 --inference-steps 8
 --guidance-scales 1.5
+--freeu-params "1.30,1.40,0.90,0.20"
 --gen-seeds 1
 --vae-tiling
 --control-nets {{ tile_controlnet }};scale=0.9
@@ -95,7 +77,7 @@
         {{ sdxl_render_lora }};scale=-0.32
 --textual-inversions {{ neg_embedding }};token="<JuggernautNegative-neg>"
 --output-path output
---output-size {{ diffusion_size }}
+--output-size {{ output_size }}
 --prompt-weighter sd-embed
---post-processors upscaler;model={{ upscaler_model }};scale={{ upscaler_scale }}
+--seed-image-processors upscaler;model={{ upscaler_model }};scale=1
 --prompts {{ prompt }}
