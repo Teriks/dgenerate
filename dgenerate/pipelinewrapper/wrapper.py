@@ -176,9 +176,15 @@ def _deep_cache_context(pipeline,
 @contextlib.contextmanager
 def _hi_diffusion(pipeline, generator, enabled: bool):
     if enabled:
+        sd15cn = pipeline.__class__.__name__.startswith('StableDiffusionControlNet')
         _messages.debug_log(
             f'Enabling HiDiffusion on pipeline: {pipeline.__class__.__name__}')
-        _hidiffusion.apply_hidiffusion(pipeline, generator=generator)
+        _hidiffusion.apply_hidiffusion(
+            pipeline,
+            generator=generator,
+            apply_raunet=not sd15cn,
+            apply_window_attn=not sd15cn
+        )
     try:
         yield
     finally:
@@ -3313,16 +3319,6 @@ class DiffusionPipelineWrapper:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'HiDiffusion is only supported for '
                     '--model-type torch, torch-sdxl, and torch-kolors'
-                )
-
-            if self.controlnet_uris and self.model_type == _enums.ModelType.TORCH:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    f'HiDiffusion is not support with ControlNet for SD1.5/SD2'
-                )
-
-            if self.ip_adapter_uris:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'HiDiffusion is not supported with IP Adapters'
                 )
 
             if self.t2i_adapter_uris:

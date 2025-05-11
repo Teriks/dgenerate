@@ -317,7 +317,7 @@ def make_diffusers_sdxl_contrtolnet_ppl(block_class):
                 containing the output images.
             """
 
-            # convert image to control_image to fit sdxl_controlnet ppl. 
+            # convert image to control_image to fit sdxl_controlnet ppl.
             if control_image is None:
                 control_image = image
                 image = None
@@ -1936,9 +1936,9 @@ def apply_hidiffusion(
         generator: torch.Generator | None = None):
     """
     model: diffusers model. We support SD 1.5, 2.1, XL, XL Turbo.
-    
+
     apply_raunet: whether to apply RAU-Net
-    
+
     apply_window_attn: whether to apply MSW-MSA.
     """
 
@@ -1950,12 +1950,22 @@ def apply_hidiffusion(
     if not is_diffusers:
         raise RuntimeError("Provided model was not a diffusers model/pipeline, as expected.")
     else:
-        if hasattr(model, 'controlnet'):
+        # Check if the pipeline is a ControlNet pipeline
+        is_sdxl_controlnet = hasattr(model, 'controlnet') and isinstance_str(model, "StableDiffusionXLControlNet")
+        is_sd_controlnet = hasattr(model, 'controlnet') and isinstance_str(model, "StableDiffusionControlNet")
+
+        if is_sdxl_controlnet:
             make_ppl_fn = make_diffusers_sdxl_contrtolnet_ppl
             model.__class__ = make_ppl_fn(model.__class__)
 
             make_block_fn = make_diffusers_unet_2d_condition
             model.unet.__class__ = make_block_fn(model.unet.__class__)
+        elif is_sd_controlnet:
+            # For SD 1.5 ControlNet, we don't need to patch the pipeline class
+            # Just patch the UNet for consistency
+            make_block_fn = make_diffusers_unet_2d_condition
+            model.unet.__class__ = make_block_fn(model.unet.__class__)
+
         diffusion_model = model.unet if hasattr(model, "unet") else model
 
     # Hack, avoid non-square problem. See unet_2d_condition.py in diffusers
