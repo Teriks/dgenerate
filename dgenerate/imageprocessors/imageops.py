@@ -303,8 +303,10 @@ class ResizeProcessor(_imageprocessor.ImageProcessor):
 
     The "size" argument is the new image size.
 
-    The "scale" argument is a floating point value to scale the image dimensions by. 
-    This is mutually exclusive with "size".
+    The "scale" argument is either a single floating point value to scale both dimensions by,
+    or a tuple of two floating point values to scale x and y dimensions separately.
+    This is mutually exclusive with "size". When specifying a tuple, you
+    may use CSV, for example: "2,1", meaning X*2, Y*1.
 
     The "align" argument is the new image alignment.
 
@@ -325,7 +327,7 @@ class ResizeProcessor(_imageprocessor.ImageProcessor):
 
     def __init__(self,
                  size: str | None = None,
-                 scale: float | None = None,
+                 scale: float | tuple[float, float] | None = None,
                  align: int | None = None,
                  aspect_correct: bool = True,
                  algo: str = 'auto',
@@ -370,7 +372,13 @@ class ResizeProcessor(_imageprocessor.ImageProcessor):
         size = self._size
         if self._scale is not None:
             w, h = image.size
-            size = (int(w * self._scale), int(h * self._scale))
+            if isinstance(self._scale, tuple):
+                # Apply different scales to x and y
+                scale_x, scale_y = self._scale
+                size = (int(w * scale_x), int(h * scale_y))
+            else:
+                # Apply same scale to both dimensions
+                size = (int(w * self._scale), int(h * self._scale))
 
         return _image.resize_image(img=image,
                                    size=size,
