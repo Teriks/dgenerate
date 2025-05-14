@@ -327,7 +327,7 @@ class ResizeProcessor(_imageprocessor.ImageProcessor):
 
     def __init__(self,
                  size: str | None = None,
-                 scale: int | float | tuple[float, float] | None = None,
+                 scale: float | tuple[float, float] | None = None,
                  align: int | None = None,
                  aspect_correct: bool = True,
                  algo: str = 'auto',
