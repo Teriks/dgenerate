@@ -89,17 +89,31 @@ class PluginArg:
         if self.base_type is typing.Any:
             return value
 
-        if not isinstance(value, self.base_type):
-            raise ValueError(
-                f'Literal type "{value.__class__.__name__}" '
-                f'does not match plugin argument "{self.name}" type '
-                f'hint "{self.type_string()}".'
-            )
+        if self.base_type is float and isinstance(value, int):
+            return float(value)
 
-        return value
+        if isinstance(value, self.base_type):
+            return value
+
+        if _types.is_union(self.base_type) and isinstance(value, int):
+            union_types = typing.get_args(self.type)
+
+            has_int_type = any(t is int or _types.get_type(t) is int for t in union_types)
+            if not has_int_type:
+                for t in union_types:
+                    if t is float or _types.get_type(t) is float:
+                        return float(value)
+
+        raise ValueError(
+            f'Literal type "{value.__class__.__name__}" '
+            f'does not match plugin argument "{self.name}" type '
+            f'hint "{self.type_string()}".'
+        )
 
     def parse_by_type(self, value: str | typing.Any):
         if not isinstance(value, str):
+            if isinstance(value, int) and self.base_type is float:
+                return float(value)
             return value
 
         base_type = self.base_type
@@ -116,6 +130,9 @@ class PluginArg:
                         raise
 
                     if base_type is not typing.Any and not isinstance(evaled, base_type):
+                        if base_type is float and isinstance(evaled, int):
+                            return float(evaled)
+
                         if not self.is_hinted_optional or evaled is not None:
                             raise ValueError(
                                 f'Literal type "{evaled.__class__.__name__}" '
@@ -138,6 +155,15 @@ class PluginArg:
                         continue
                     else:
                         failures += 1
+
+                if failures == len(union_types) and isinstance(evaled, int):
+                    has_int_type = any(t is int or _types.get_type(t) is int for t in union_types)
+                    if not has_int_type:
+                        for t in union_types:
+                            if t is float or _types.get_type(t) is float:
+                                evaled = float(evaled)
+                                failures = 0
+                                break
 
                 if failures == len(union_types):
                     raise ValueError(
