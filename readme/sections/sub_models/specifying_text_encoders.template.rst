@@ -138,4 +138,4 @@ with additional fine-tuning.
 
 This can also be utilized with SD3.
 
-@EXAMPLE[../../../examples/stablediffusion_3/civitai/clip-L-G-T5-XXL-monolithic-config.dgen]
+@EXAMPLE[../../../examples/stablediffusion3/civitai/clip-L-G-T5-XXL-monolithic-config.dgen]
