@@ -1,0 +1,34 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 5.0.0
+
+# Use the built in mirror and canny processor action to process
+# the image for you before using it for generation. This mirrors
+# the image horizontally and then runs canny edge detection on it
+
+# The mode argument is not used for ControlNet Union Pro 2
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+{% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 24 %}
+    \set optimization --quantizer bnb;bits=4
+{% else %}
+    \set optimization --model-sequential-offload
+{% endif %}
+
+
+black-forest-labs/FLUX.1-schnell
+--model-type torch-flux {{ optimization }}
+--dtype bfloat16
+--inference-steps 4
+--guidance-scales 0
+--prompts "Detailed watercolor painting of a woman sitting, facing the viewer, bright"
+--control-nets Shakker-Labs/FLUX.1-dev-ControlNet-Union-Pro-2.0;scale=1.0
+--image-seeds "../../media/monalisa.png"
+--control-image-processors "mirror" "canny;lower=50;upper=100;output-file=monalisa/monalisa-canny.png"
+--output-path monalisa
+--output-size 800
