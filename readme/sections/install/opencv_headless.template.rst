@@ -2,7 +2,7 @@ Linux with opencv-python-headless (libGL.so.1 issues)
 =====================================================
 
 If you are running into issues with OpenCV being unable to load ``libGL.so.1``
-because your system is headless.
+because your system is headless and you are using the extra: ``ncnn``
 
 If it is applicable, install these: ``libgl1 libglib2.0-0``
 
@@ -25,7 +25,7 @@ then reinstall ``opencv-python-headless``.
     pip install opencv-python-headless~=@COMMAND_OUTPUT[{"command": "python ../../scripts/get_cur_headless_opencv_ver.py", "block":false}]
 
 
-This work around is needed because some of dgenerates dependencies depend on ``opencv-python`` and pip
+This work around is needed because ``ncnn`` depends on ``opencv-python`` and pip
 gives no way to prevent it from being installed when installing from a wheel.
 
 ``opencv-python`` expects you to probably have a window manager and GL, maybe mesa.

@@ -2416,7 +2416,7 @@ Linux with opencv-python-headless (libGL.so.1 issues)
 =====================================================
 
 If you are running into issues with OpenCV being unable to load ``libGL.so.1``
-because your system is headless.
+because your system is headless and you are using the extra: ``ncnn``
 
 If it is applicable, install these: ``libgl1 libglib2.0-0``
 
@@ -2439,7 +2439,7 @@ then reinstall ``opencv-python-headless``.
     pip install opencv-python-headless~=4.11.0.86
 
 
-This work around is needed because some of dgenerates dependencies depend on ``opencv-python`` and pip
+This work around is needed because ``ncnn`` depends on ``opencv-python`` and pip
 gives no way to prevent it from being installed when installing from a wheel.
 
 ``opencv-python`` expects you to probably have a window manager and GL, maybe mesa.
@@ -5117,7 +5117,57 @@ with additional fine-tuning.
 
 This can also be utilized with SD3.
 
-.. WARNING: Missing example file: ../../../examples/stablediffusion_3/civitai/clip-L-G-T5-XXL-monolithic-config.dgen ..
+.. code-block:: jinja
+
+    # Flux requires a huggingface auth token to access
+    # you must request access to the repository
+    
+    \set token %HF_TOKEN%
+    \set civit_ai_token %CIVIT_AI_TOKEN%
+    
+    {% if not civit_ai_token.strip() %}
+        \print Set CIVIT_AI_TOKEN environmental variable to run this example!
+        \exit
+    {% endif %}
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    # Loading SD3 checkpoints from CivitAI becomes tricky because you need to provide
+    # The recommended text encoder models manually for it to be able
+    # to load the pipeline correctly when using safetensors checkpoints.
+    
+    # bitsandbytes 8 bit
+    \set quantizer bnb;bits=8
+    
+    
+    # Crystal Clear SD3: https://civitai.com/models/614171/crystal-clear-sd3?modelVersionId=686696
+    
+    \set model https://civitai.com/api/download/models/686696?type=Model&format=SafeTensor&size=full&fp=fp16
+    \set clip_l https://huggingface.co/stabilityai/stable-diffusion-3-medium-diffusers/blob/main/text_encoder/model.fp16.safetensors
+    \set clip_g https://huggingface.co/stabilityai/stable-diffusion-3-medium-diffusers/blob/main/text_encoder_2/model.fp16.safetensors
+    \set t5_xxl https://huggingface.co/stabilityai/stable-diffusion-3-medium/blob/main/text_encoders/t5xxl_fp16.safetensors
+    
+    {{ model }}
+    --model-type torch-sd3
+    --dtype float16
+    --quantizer {{ quantizer }}
+    --text-encoders CLIPTextModelWithProjection;model={{ clip_l }};mode=clip-l-sd3;quantizer="{{ quantizer }}" \
+                    CLIPTextModelWithProjection;model={{ clip_g }};mode=clip-g-sd3;quantizer="{{ quantizer }}" \
+                    T5EncoderModel;model={{ t5_xxl }};mode=t5-xxl-sd3;quantizer="{{ quantizer }}"
+    --inference-steps 50
+    --guidance-scales 3.5
+    --gen-seeds 1
+    --output-path output
+    --output-size 1024x1024
+    --prompt-weighter sd-embed
+    --prompts "Tranquil landscape oil painting, realist style. Serpentine path leads up to a hilltop \
+               villa with a prominent bell tower, nestled among lush green foliage. Sunlight filters \
+               through the trees casting dappled shadows on the walkway. Rich texture in the brushwork, \
+               capturing the vivid variety of plant life. Hints of a vivid blue sky with puffy white clouds \
+               and distant mountains. Warm, inviting color palette evokes serene countryside ambiance."
 
 Prompt Upscaling
 ================
@@ -8273,7 +8323,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [57559566935550]
+            Value: [77196966133800]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
