@@ -17,7 +17,7 @@ accelerate = "1.6.0"
 DeepCache = "0.1.1"
 dynamicprompts = "0.31.0"
 spacy = "3.8.5"
-dgenerate-ultralytics-headless = {version = "8.3.134.post0", platform = "not_darwin"}
+dgenerate-ultralytics-headless = {version = "8.3.135", platform = "not_darwin"}
 langcodes = "^3.5.0"
 argostranslate = "^1.9.6"
 pytorch-lightning = "^2.5.1"

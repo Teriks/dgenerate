@@ -777,15 +777,15 @@ transformers = "*"
 
 [[package]]
 name = "dgenerate-ultralytics-headless"
-version = "8.3.134.post0"
+version = "8.3.135"
 description = "Automatically built Ultralytics package with python-opencv-headless dependency instead of python-opencv"
 optional = false
 python-versions = ">=3.8"
 groups = ["main"]
 markers = "sys_platform == \"not_darwin\""
 files = [
-    {file = "dgenerate_ultralytics_headless-8.3.134.post0-py3-none-any.whl", hash = "sha256:a902a7d08245da2e2249c01b186d8bcde51e47c151b162568f8346ed2765bbf2"},
-    {file = "dgenerate_ultralytics_headless-8.3.134.post0.tar.gz", hash = "sha256:69c4f6006ad3b53cf971431941df336a6bbb01630d61f6ede6738666db1c3b81"},
+    {file = "dgenerate_ultralytics_headless-8.3.135-py3-none-any.whl", hash = "sha256:2d76f35ae50fe9fbb6f6a792dcd0a7eef8eb0e3c08f038b549190b4624dd1bf2"},
+    {file = "dgenerate_ultralytics_headless-8.3.135.tar.gz", hash = "sha256:b67217536b9c472332f43277172a24e1b125371f71eeae4346beb6adee4fba6b"},
 ]
 
 [package.dependencies]
@@ -4511,4 +4511,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.13"
-content-hash = "0c5d53c080c86108ac1915a677f4f1410a9bba0ff6a3d1fe3682ccf556fa630e"
+content-hash = "219d53120d3515f6b58b0198b743e056bef3ed0f044e5623f1341e5ec6f2565a"
