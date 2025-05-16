@@ -617,6 +617,14 @@ class RenderLoopConfig(_types.SetFromMixin):
     on the the most appropriate models associated with the main diffusion pipeline.
     """
 
+    quantizer_map: _types.OptionalStrings = None
+    """
+    Collection of pipeline submodule names to which quantization should be applied when
+    :py:attr`RenderLoopConfig.quantizer_uri` is provided. Valid values 
+    include: ``unet``, ``transformer``, ``text_encoder``, ``text_encoder_2``, ``text_encoder_3``. 
+    If ``None``, all supported modules will be quantized.
+    """
+
     second_model_quantizer_uri: _types.OptionalUri = None
     """
     Global quantizer URI for secondary pipeline (SDXL Refiner or Stable Cascade decoder), 
@@ -625,6 +633,14 @@ class RenderLoopConfig(_types.SetFromMixin):
     The quantization backend and settings specified by this URI will be used globally 
     on the the most appropriate models associated with the secondary diffusion pipeline 
     (SDXL Refiner, Stable Cascade Decoder).
+    """
+
+    second_model_quantizer_map: _types.OptionalStrings = None
+    """
+    Collection of secondary pipeline submodule names to which quantization should be applied when
+    :py:attr`RenderLoopConfig.second_model_quantizer_uri` is provided. Valid values 
+    include: ``unet``, ``transformer``, ``text_encoder``, ``text_encoder_2``, ``text_encoder_3``. 
+    If ``None``, all supported modules will be quantized.
     """
 
     scheduler_uri: _types.OptionalUriOrUris = None
@@ -1437,6 +1453,18 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     def _check_optimization_features(self, a_namer: typing.Callable[[str], str]):
         """Check optimization features compatibility with the selected model type."""
+
+        if self.quantizer_map and not self.quantizer_uri:
+            raise RenderLoopConfigError(
+                f'{a_namer("quantizer_map")} cannot be used without {a_namer("quantizer_uri")}'
+            )
+
+        if self.second_model_quantizer_map and not self.second_model_quantizer_uri:
+            raise RenderLoopConfigError(
+                f'{a_namer("second_model_quantizer_map")} cannot be '
+                f'used without {a_namer("second_model_quantizer_uri")}'
+            )
+
         # Check TeaCache compatibility
         tea_cache_enabled = (self.tea_cache or any(self._non_null_attr_that_start_with('tea_cache_')))
         if tea_cache_enabled and not _pipelinewrapper.model_type_is_flux(self.model_type):
@@ -1487,7 +1515,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
             if self.t2i_adapter_uris:
                 raise RenderLoopConfigError(
-                   f'{a_namer("hi_diffusion")} is not supported with {a_namer("t2i_adapter_uris")}'
+                    f'{a_namer("hi_diffusion")} is not supported with {a_namer("t2i_adapter_uris")}'
                 )
 
         deep_cache_enabled = (self.deep_cache or any(self._non_null_attr_that_start_with('deep_cache_')))

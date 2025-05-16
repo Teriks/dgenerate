@@ -280,7 +280,9 @@ class DiffusionPipelineWrapper:
                  sdxl_refiner_uri: _types.OptionalUri = None,
                  s_cascade_decoder_uri: _types.OptionalUri = None,
                  quantizer_uri: _types.OptionalUri = None,
+                 quantizer_map: _types.OptionalStrings = None,
                  second_model_quantizer_uri: _types.OptionalUri = None,
+                 second_model_quantizer_map: _types.OptionalStrings = None,
                  device: str = _torchutil.default_device(),
                  safety_checker: bool = False,
                  original_config: _types.OptionalString = None,
@@ -337,7 +339,14 @@ class DiffusionPipelineWrapper:
         :param sdxl_refiner_uri: SDXL Refiner model URI string
         :param s_cascade_decoder_uri: Stable Cascade decoder URI string
         :param quantizer_uri: Global --quantizer URI value
+        :param quantizer_map: Collection of pipeline submodule names to which quantization should be applied when
+            ``quantizer_uri`` is provided. Valid values include: ``unet``, ``transformer``, ``text_encoder``,
+            ``text_encoder_2``, ``text_encoder_3``. If ``None``, all supported modules will be quantized.
         :param second_model_quantizer_uri: Global --second-model-quantizer URI value
+        :param second_model_quantizer_map: Collection of pipeline submodule names to which quantization should be
+            applied when ``second_model_quantizer_uri`` is provided. Valid values include: ``unet``,
+            ``transformer``, ``text_encoder``, ``text_encoder_2``, ``text_encoder_3``.
+            If ``None``, all supported modules will be quantized.
         :param device: Rendering device string, example: ``cuda:0`` or ``cuda``
         :param safety_checker: Use safety checker model if available? (antiquated, for SD 1/2, Deep Floyd etc.)
         :param original_config: Optional original LDM config .yaml file path when loading a single file checkpoint.
@@ -399,7 +408,9 @@ class DiffusionPipelineWrapper:
             sdxl_refiner_uri: _types.OptionalUri = None,
             s_cascade_decoder_uri: _types.OptionalUri = None,
             quantizer_uri: _types.OptionalUri = None,
+            quantizer_map: _types.OptionalStrings = None,
             second_model_quantizer_uri: _types.OptionalUri = None,
+            second_model_quantizer_map: _types.OptionalStrings = None,
             device: str = _torchutil.default_device(),
             safety_checker: bool = False,
             original_config: _types.OptionalString = None,
@@ -533,8 +544,34 @@ class DiffusionPipelineWrapper:
             except ValueError as e:
                 raise _pipelines.UnsupportedPipelineConfigError(str(e)) from e
 
+        quantizer_map_vals = [
+            'unet',
+            'transformer',
+            'text_encoder',
+            'text_encoder_2',
+            'text_encoder_3'
+        ]
+
+        if quantizer_map is not None:
+            for map_value in quantizer_map:
+                if map_value not in quantizer_map_vals:
+                    raise _pipelines.UnsupportedPipelineConfigError(
+                        f'Unknown quantizer_map value: {map_value}, '
+                        f'must be one of: {_textprocessing.oxford_comma(quantizer_map_vals, "or")}'
+                    )
+
+        if second_model_quantizer_map is not None:
+            for map_value in second_model_quantizer_map:
+                if map_value not in quantizer_map_vals:
+                    raise _pipelines.UnsupportedPipelineConfigError(
+                        f'Unknown second_model_quantizer_map value: {map_value}, '
+                        f'must be one of: {_textprocessing.oxford_comma(quantizer_map_vals, "or")}'
+                    )
+
         self._quantizer_uri = quantizer_uri
+        self._quantizer_map = quantizer_map
         self._second_model_quantizer_uri = second_model_quantizer_uri
+        self._second_model_quantizer_map = second_model_quantizer_map
         self._subfolder = subfolder
         self._device = device
         self._model_type = _enums.get_model_type_enum(model_type)
@@ -872,11 +909,25 @@ class DiffusionPipelineWrapper:
         return self._quantizer_uri
 
     @property
+    def quantizer_map(self) -> _types.OptionalStrings:
+        """
+        Current ``--quantizer-map`` value.
+        """
+        return list(self._quantizer_map) if self._quantizer_map is not None else None
+
+    @property
     def second_model_quantizer_uri(self) -> _types.OptionalUri:
         """
         Current ``--second-model-quantizer`` value.
         """
         return self._second_model_quantizer_uri
+
+    @property
+    def second_model_quantizer_map(self) -> _types.OptionalStrings:
+        """
+        Current ``--second-model-quantizer-map`` value.
+        """
+        return list(self._second_model_quantizer_map) if self._second_model_quantizer_map is not None else None
 
     @property
     def original_config(self) -> _types.OptionalPath:
@@ -2943,6 +2994,7 @@ class DiffusionPipelineWrapper:
                 lora_uris=self._lora_uris,
                 lora_fuse_scale=self._lora_fuse_scale,
                 quantizer_uri=self._quantizer_uri,
+                quantizer_map=self._quantizer_map,
                 safety_checker=self._safety_checker,
                 auth_token=self._auth_token,
                 device=self._device,
@@ -2963,6 +3015,7 @@ class DiffusionPipelineWrapper:
                 unet_uri=self._second_model_unet_uri,
                 text_encoder_uris=self._second_model_text_encoder_uris,
                 quantizer_uri=self._second_model_quantizer_uri,
+                quantizer_map=self._second_model_quantizer_map,
 
                 variant=self._parsed_s_cascade_decoder_uri.variant if
                 self._parsed_s_cascade_decoder_uri.variant is not None else self._variant,
@@ -3004,6 +3057,7 @@ class DiffusionPipelineWrapper:
                 controlnet_uris=self._controlnet_uris,
                 t2i_adapter_uris=self._t2i_adapter_uris,
                 quantizer_uri=self._quantizer_uri,
+                quantizer_map=self._quantizer_map,
                 pag=pag,
                 safety_checker=self._safety_checker,
                 auth_token=self._auth_token,
@@ -3046,6 +3100,7 @@ class DiffusionPipelineWrapper:
                 unet_uri=self._second_model_unet_uri,
                 text_encoder_uris=self._second_model_text_encoder_uris,
                 quantizer_uri=self._second_model_quantizer_uri,
+                quantizer_map=self._second_model_quantizer_map,
 
                 variant=self._parsed_sdxl_refiner_uri.variant if
                 self._parsed_sdxl_refiner_uri.variant is not None else self._variant,
@@ -3084,6 +3139,7 @@ class DiffusionPipelineWrapper:
                 textual_inversion_uris=self._textual_inversion_uris,
                 text_encoder_uris=self._text_encoder_uris,
                 quantizer_uri=self._quantizer_uri,
+                quantizer_map=self._quantizer_map,
                 controlnet_uris=self._controlnet_uris,
                 t2i_adapter_uris=self._t2i_adapter_uris,
                 pag=pag,

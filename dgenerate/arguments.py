@@ -572,6 +572,24 @@ def _type_freeu_params(val: str) -> tuple[float, float, float, float]:
     return tuple(steps)
 
 
+def _type_quantizer_map(val: str):
+    vals = [
+        'unet',
+        'transformer',
+        'text_encoder',
+        'text_encoder_2',
+        'text_encoder_3'
+    ]
+
+    if val not in vals:
+        raise argparse.ArgumentTypeError(
+            f'Quantizer map values must be one of: '
+            f'{_textprocessing.oxford_comma(vals, "or")}, received invalid value: {val}'
+        )
+
+    return val
+
+
 _ARG_PARSER_CACHE = dict()
 
 
@@ -1680,11 +1698,43 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-qm', '--quantizer-map', type=_type_quantizer_map,
+            nargs='+', action='store', default=None, metavar="SUBMODULE", dest='quantizer_map',
+            help=f"""Global quantization map, used with --quantizer.
+            
+            This argument can be used to specify which sub-modules have the quantization pre-process
+            preformed on them.
+            
+            By default when a --quantizer URI is specified, the UNet / Transformer, and all Text Encoders
+            are processed.
+            
+            When using --quantizer, you can use this argument to specify exactly which sub-modules undergo
+            quantization.
+            
+            Accepted values are: "unet", "transformer", "text_encoder", "text_encoder_2", "text_encoder_3"
+            """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
             '-q2', '--second-model-quantizer',
             action='store', default=None, metavar="QUANTIZER_URI", dest='second_model_quantizer_uri',
             help=f"""
             Global quantization configuration via URI for the secondary model, 
-            such as the SDXL Refiner or Stable Cascade decoder. See --quantizer for syntax examples."""
+            such as the SDXL Refiner or Stable Cascade decoder. See: --quantizer for syntax examples.
+            """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-qm2', '--second-model-quantizer-map', type=_type_quantizer_map,
+            nargs='+', action='store', default=None, metavar="SUBMODULE", dest='second_model_quantizer_map',
+            help=f"""
+            Global quantization map for the secondary model, used with --second-model-quantizer.
+            This affects the SDXL Refiner or Stable Cascade decoder, See: --quantizer-map for syntax examples.
+            """
         )
     )
 

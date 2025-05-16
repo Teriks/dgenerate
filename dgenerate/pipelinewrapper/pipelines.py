@@ -1186,6 +1186,7 @@ def create_torch_diffusion_pipeline(
         controlnet_uris: _types.OptionalUris = None,
         t2i_adapter_uris: _types.OptionalUris = None,
         quantizer_uri: _types.OptionalUri = None,
+        quantizer_map: _types.OptionalStrings = None,
         pag: bool = False,
         safety_checker: bool = False,
         original_config: _types.OptionalString = None,
@@ -1224,6 +1225,9 @@ def create_torch_diffusion_pipeline(
     :param controlnet_uris: Optional ``--control-nets`` URI strings for specifying ControlNet models
     :param t2i_adapter_uris: Optional ``--t2i-adapters`` URI strings for specifying T2IAdapter models
     :param quantizer_uri: Optional ``--quantizer`` URI value
+    :param quantizer_map: Collection of pipeline submodule names to which quantization should be applied when
+        ``quantizer_uri`` is provided. Valid values include: ``unet``, ``transformer``, ``text_encoder``,
+        ``text_encoder_2``, ``text_encoder_3``. If ``None``, all supported modules will be quantized.
     :param pag: Use perturbed attention guidance?
     :param safety_checker: Safety checker enabled? default is ``False``
     :param original_config: Optional original training config .yaml file path when loading a single file checkpoint.
@@ -1285,6 +1289,7 @@ class TorchPipelineFactory:
                  t2i_adapter_uris: _types.OptionalUris = None,
                  text_encoder_uris: _types.OptionalUris = None,
                  quantizer_uri: _types.OptionalUri = None,
+                 quantizer_map: _types.OptionalStrings = None,
                  pag: bool = False,
                  safety_checker: bool = False,
                  original_config: _types.OptionalString = None,
@@ -1384,7 +1389,8 @@ def _torch_args_hasher(args):
         'quantizer_uri':
             _uris.uri_hash_with_parser(
                 _uris.get_quantizer_uri_class(quantizer_uri).parse)
-            if quantizer_uri else lambda x: None
+            if quantizer_uri else lambda x: None,
+        'quantizer_map': lambda x: hash(tuple(sorted(x))) if x else None
     }
     return _d_memoize.args_cache_key(args, custom_hashes=custom_hashes)
 
@@ -1955,6 +1961,7 @@ def _create_torch_diffusion_pipeline(
         controlnet_uris: _types.OptionalUris = None,
         t2i_adapter_uris: _types.OptionalUris = None,
         quantizer_uri: _types.OptionalUri = None,
+        quantizer_map: _types.OptionalStrings = None,
         pag: bool = False,
         safety_checker: bool = False,
         original_config: _types.OptionalString = None,
@@ -1980,6 +1987,23 @@ def _create_torch_diffusion_pipeline(
         raise UnsupportedPipelineConfigError(
             'device must be "cuda" (optionally with a device ordinal "cuda:N") or "cpu", '
             'or other device supported by torch.')
+
+    # Quantizer map check
+    quantizer_map_vals = [
+        'unet',
+        'transformer',
+        'text_encoder',
+        'text_encoder_2',
+        'text_encoder_3'
+    ]
+
+    if quantizer_map is not None:
+        for map_value in quantizer_map:
+            if map_value not in quantizer_map_vals:
+                raise UnsupportedPipelineConfigError(
+                    f'Unknown quantizer_map value: {map_value}, '
+                    f'must be one of: {_textprocessing.oxford_comma(quantizer_map_vals, "or")}'
+                )
 
     if _util.is_single_file_model_load(model_path):
         if quantizer_uri:
@@ -2156,6 +2180,14 @@ def _create_torch_diffusion_pipeline(
 
     _enforce_torch_pipeline_cache_size(estimated_memory_usage)
 
+    # Helper function to determine if quantization should be applied to a module
+    def should_apply_quantizer(module_name):
+        if not quantizer_uri:
+            return False
+        if quantizer_map is None:
+            return True
+        return module_name in quantizer_map
+
     uri_quant_check = []
 
     for encoder_uri in text_encoder_uris:
@@ -2235,7 +2267,7 @@ def _create_torch_diffusion_pipeline(
             transformer_class=transformer_class
         )
 
-    def load_default_text_encoder(encoder):
+    def load_default_text_encoder(encoder, encoder_name):
         return load_text_encoder(
             _uris.TextEncoderUri(
                 encoder=encoder,
@@ -2244,7 +2276,7 @@ def _create_torch_diffusion_pipeline(
                 revision=revision,
                 subfolder=encoder_subfolder,
                 dtype=dtype,
-                quantizer=quantizer_uri
+                quantizer=quantizer_uri if should_apply_quantizer(encoder_name) else None
             )
         )
 
@@ -2273,13 +2305,13 @@ def _create_torch_diffusion_pipeline(
             encoder_uri = text_encoder_uris[idx]
 
             if _text_encoder_default(encoder_uri):
-                creation_kwargs[name] = load_default_text_encoder(encoder_class)
+                creation_kwargs[name] = load_default_text_encoder(encoder_class, name)
             else:
                 creation_kwargs[name] = load_text_encoder(
                     _uris.TextEncoderUri.parse(encoder_uri)
                 )
         else:
-            creation_kwargs[name] = load_default_text_encoder(encoder_class)
+            creation_kwargs[name] = load_default_text_encoder(encoder_class, name)
 
     # Load VAE
 
@@ -2346,7 +2378,6 @@ def _create_torch_diffusion_pipeline(
     # Load UNet
     if not unet_override:
         unet_parameter = 'unet'
-
         if model_type == _enums.ModelType.TORCH_S_CASCADE:
             unet_parameter = 'prior'
         elif model_type == _enums.ModelType.TORCH_S_CASCADE_DECODER:
@@ -2385,7 +2416,7 @@ def _create_torch_diffusion_pipeline(
                         revision=revision,
                         subfolder=unet_subfolder,
                         dtype=dtype,
-                        quantizer=quantizer_uri
+                        quantizer=quantizer_uri if should_apply_quantizer("unet") else None
                     ), unet_class=unet_class)
 
     # Load Transformer
@@ -2426,7 +2457,7 @@ def _create_torch_diffusion_pipeline(
                     revision=revision,
                     subfolder=transformer_subfolder,
                     dtype=dtype,
-                    quantizer=quantizer_uri
+                    quantizer=quantizer_uri if should_apply_quantizer("transformer") else None
                 ), transformer_class=transformer_class)
 
     # load image encoder
@@ -2836,3 +2867,4 @@ def _to_diffusers_with_caching(
 
 
 __all__ = _types.module_all()
+
