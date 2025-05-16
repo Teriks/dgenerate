@@ -40,6 +40,18 @@ setup = SourceFileLoader(
 
 VERSION = setup.VERSION
 
+command_cache_path = os.path.join(project_dir, 'readme', 'command.cache.json')
+
+# Load existing cache file if it exists
+if os.path.exists(command_cache_path):
+    try:
+        with open(command_cache_path, 'r') as cache:
+            COMMAND_CACHE = json.load(cache)
+    except json.JSONDecodeError:
+        print(f"Warning: Could not parse cache file: {command_cache_path}", file=sys.stderr)
+    except Exception as e:
+        print(f"Warning: Error loading cache file: {e}", file=sys.stderr)
+
 
 def get_git_revision():
     try:
@@ -335,9 +347,6 @@ def render_templates(rst_content, filename=None):
     return rst_content
 
 
-command_cache_path = os.path.join(project_dir, 'readme', 'command.cache.json')
-
-
 parser = argparse.ArgumentParser(
     description='Build the README.rst file from template'
 )
@@ -361,22 +370,20 @@ if args.no_cache is not None or args.no_cache_regex is not None:
             (args.no_cache_regex is None or not args.no_cache_regex):
         # No patterns provided for either option, disable cache completely
         COMMAND_CACHE = {}
-    elif os.path.exists(command_cache_path):
-        with open(command_cache_path, 'r') as cache:
-            COMMAND_CACHE = json.load(cache)
+    else:
+        # Apply filtering to the already loaded cache
+        def should_keep_command(key):
+            if args.no_cache and any(pattern in key for pattern in args.no_cache):
+                return False
+            if args.no_cache_regex:
+                try:
+                    return not any(re.search(pattern, key) for pattern in args.no_cache_regex)
+                except re.error as e:
+                    print(f"Warning: Invalid regex pattern: {e}", file=sys.stderr)
+                    return True
+            return True
 
-            def should_keep_command(key):
-                if args.no_cache and any(pattern in key for pattern in args.no_cache):
-                    return False
-                if args.no_cache_regex:
-                    try:
-                        return not any(re.search(pattern, key) for pattern in args.no_cache_regex)
-                    except re.error as e:
-                        print(f"Warning: Invalid regex pattern: {e}", file=sys.stderr)
-                        return True
-                return True
-
-            COMMAND_CACHE = {k: v for k, v in COMMAND_CACHE.items() if should_keep_command(k)}
+        COMMAND_CACHE = {k: v for k, v in COMMAND_CACHE.items() if should_keep_command(k)}
 
 # default command output width
 os.environ['COLUMNS'] = '110'

@@ -211,7 +211,8 @@ Help Output
                      [-tf TRANSFORMER_URI] [-vae VAE_URI] [-vt] [-vs] [-lra LORA_URI [LORA_URI ...]]
                      [-lrfs LORA_FUSE_SCALE] [-ie IMAGE_ENCODER_URI] [-ipa IP_ADAPTER_URI [IP_ADAPTER_URI ...]]
                      [-ti URI [URI ...]] [-cn CONTROLNET_URI [CONTROLNET_URI ...] | -t2i T2I_ADAPTER_URI
-                     [T2I_ADAPTER_URI ...]] [-q QUANTIZER_URI] [-q2 QUANTIZER_URI]
+                     [T2I_ADAPTER_URI ...]] [-q QUANTIZER_URI] [-qm SUBMODULE [SUBMODULE ...]]
+                     [-q2 QUANTIZER_URI] [-qm2 SUBMODULE [SUBMODULE ...]]
                      [-sch SCHEDULER_URI [SCHEDULER_URI ...]] [-sch2 SCHEDULER_URI [SCHEDULER_URI ...]]
                      [-fu CSV_FLOAT [CSV_FLOAT ...]] [-hd] [-rfu CSV_FLOAT [CSV_FLOAT ...]] [-rhd] [-dc]
                      [-dci INTEGER [INTEGER ...]] [-dcb INTEGER [INTEGER ...]] [-rdc]
@@ -1037,10 +1038,28 @@ Help Output
             * bits4-use-double-quant = False,
             * bits4-quant-storage: str = None
             ---------------------------------
+      -qm SUBMODULE [SUBMODULE ...], --quantizer-map SUBMODULE [SUBMODULE ...]
+            Global quantization map, used with --quantizer.
+            
+            This argument can be used to specify which sub-modules have the quantization pre-process preformed
+            on them.
+            
+            By default when a --quantizer URI is specified, the UNet / Transformer, and all Text Encoders are
+            processed.
+            
+            When using --quantizer, you can use this argument to specify exactly which sub-modules undergo
+            quantization.
+            
+            Accepted values are: "unet", "transformer", "text_encoder", "text_encoder_2", "text_encoder_3"
+            ----------------------------------------------------------------------------------------------
       -q2 QUANTIZER_URI, --second-model-quantizer QUANTIZER_URI
             Global quantization configuration via URI for the secondary model, such as the SDXL Refiner or
-            Stable Cascade decoder. See --quantizer for syntax examples.
-            ------------------------------------------------------------
+            Stable Cascade decoder. See: --quantizer for syntax examples.
+            -------------------------------------------------------------
+      -qm2 SUBMODULE [SUBMODULE ...], --second-model-quantizer-map SUBMODULE [SUBMODULE ...]
+            Global quantization map for the secondary model, used with --second-model-quantizer. This affects
+            the SDXL Refiner or Stable Cascade decoder, See: --quantizer-map for syntax examples.
+            -------------------------------------------------------------------------------------
       -sch SCHEDULER_URI [SCHEDULER_URI ...], --scheduler SCHEDULER_URI [SCHEDULER_URI ...], --schedulers SCHEDULER_URI [SCHEDULER_URI ...]
             Specify a scheduler (sampler) by URI.
             
@@ -8129,6 +8148,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_prompts"
             Type: collections.abc.Sequence[dgenerate.prompt.Prompt]
             Value: ['a man walking on the moon without a space suit']
+        Name: "last_quantizer_map"
+            Type: typing.Optional[collections.abc.Sequence[str]]
+            Value: []
         Name: "last_quantizer_uri"
             Type: typing.Optional[str]
             Value: None
@@ -8291,6 +8313,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_second_model_prompts"
             Type: typing.Optional[collections.abc.Sequence[dgenerate.prompt.Prompt]]
             Value: []
+        Name: "last_second_model_quantizer_map"
+            Type: typing.Optional[collections.abc.Sequence[str]]
+            Value: []
         Name: "last_second_model_quantizer_uri"
             Type: typing.Optional[str]
             Value: None
@@ -8323,7 +8348,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [77196966133800]
+            Value: [14535753373180]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

@@ -950,7 +950,10 @@ class RenderLoop:
             prompt_weighter_loader=self.prompt_weighter_loader,
             adetailer_detector_uris=self._c_config.adetailer_detector_uris,
             adetailer_crop_control_image=bool(self._c_config.adetailer_crop_control_image),
-            quantizer_uri=self._c_config.quantizer_uri
+            quantizer_uri=self._c_config.quantizer_uri,
+            quantizer_map=self._c_config.quantizer_map,
+            second_model_quantizer_uri=self._c_config.second_model_quantizer_uri,
+            second_model_quantizer_map=self._c_config.second_model_quantizer_map
         )
         return self._pipeline_wrapper
 
