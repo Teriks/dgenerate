@@ -2013,20 +2013,6 @@ def _create_torch_diffusion_pipeline(
 
     if quantizer_uri and (_util.is_single_file_model_load(model_path) or lora_uris):
 
-        if lora_uris:
-            _messages.warning(
-                f'Model "{model_path}" is being having LoRAs '
-                f'fused into it and then being cached on disk '
-                f'prior to quantization, this is a one time task per LoRA scale value, '
-                f'please be patient...'
-            )
-        else:
-            _messages.warning(
-                f'Model "{model_path}" is being converted to '
-                f'diffusers format and cached on disk prior to quantization, '
-                f'this is a one time task, please be patient...'
-            )
-
         model_path = _to_diffusers_with_caching(
             model_path,
             model_type,
@@ -2812,6 +2798,20 @@ def _to_diffusers_with_caching(
             _messages.debug_log(
                 f'Converting single file model "{model_path}" to diffusers format to support quantization'
             )
+
+            if lora_uris:
+                _messages.warning(
+                    f'Model "{model_path}" is being having LoRAs '
+                    f'fused into it and then being cached on disk '
+                    f'prior to quantization, this is a one time task per LoRA scale value, '
+                    f'please be patient...'
+                )
+            else:
+                _messages.warning(
+                    f'Model "{model_path}" is being converted to '
+                    f'diffusers format and cached on disk prior to quantization, '
+                    f'this is a one time task, please be patient...'
+                )
 
             # Call this function recursively without quantizer_uri to avoid infinite recursion
             with _d_memoize.disable_memoization_context():
