@@ -2005,24 +2005,40 @@ def _create_torch_diffusion_pipeline(
                     f'must be one of: {_textprocessing.oxford_comma(quantizer_map_vals, "or")}'
                 )
 
-    if _util.is_single_file_model_load(model_path):
-        if quantizer_uri:
-            model_path = _to_diffusers_with_caching(
-                model_path,
-                model_type,
-                revision,
-                variant,
-                subfolder,
-                dtype,
-                original_config,
-                auth_token
+    if not _util.is_single_file_model_load(model_path) and original_config:
+        raise UnsupportedPipelineConfigError(
+            'Loading original config .yaml file is not supported '
+            'when loading from a Hugging Face repo.'
+        )
+
+    if quantizer_uri and (_util.is_single_file_model_load(model_path) or lora_uris):
+
+        if lora_uris:
+            _messages.warning(
+                f'Model "{model_path}" is being having LoRAs '
+                f'fused into it and then being cached on disk '
+                f'prior to quantization, this is a one time task per LoRA scale value, '
+                f'please be patient...'
             )
-    else:
-        if original_config:
-            raise UnsupportedPipelineConfigError(
-                'Loading original config .yaml file is not supported '
-                'when loading from a Hugging Face repo.'
+        else:
+            _messages.warning(
+                f'Model "{model_path}" is being converted to '
+                f'diffusers format and cached on disk prior to quantization, '
+                f'this is a one time task, please be patient...'
             )
+
+        model_path = _to_diffusers_with_caching(
+            model_path,
+            model_type,
+            lora_uris,
+            lora_fuse_scale,
+            revision,
+            variant,
+            subfolder,
+            dtype,
+            original_config,
+            auth_token
+        )
 
     if quantizer_uri and quantizer_uri.split(';')[0].strip() in {'bnb', 'bitsandbytes'}:
         if dtype is _enums.DataType.AUTO:
@@ -2660,7 +2676,10 @@ def _create_torch_diffusion_pipeline(
             use_auth_token=auth_token,
             local_files_only=local_files_only)
 
-    if lora_uris:
+    if lora_uris and not quantizer_uri:
+        # LoRAs are fused into the model and cached
+        # to disk in the case that quantization is requested
+
         for lora_uri in lora_uris:
             parsed = _uris.LoRAUri.parse(lora_uri)
             parsed_lora_uris.append(parsed)
@@ -2768,6 +2787,8 @@ def _edit_model_index(path, update_dict):
 def _to_diffusers_with_caching(
         model_path: str,
         model_type: _enums.ModelType,
+        lora_uris: _types.OptionalUris,
+        lora_fuse_scale: float | None,
         revision: str | None,
         variant: str | None,
         subfolder: str | None,
@@ -2776,6 +2797,8 @@ def _to_diffusers_with_caching(
         auth_token: str | None
 ):
     cache_key = model_path + \
+                str(lora_uris) + \
+                str(lora_fuse_scale) + \
                 str(model_type) + \
                 str(subfolder) + \
                 str(dtype) + \
@@ -2795,6 +2818,8 @@ def _to_diffusers_with_caching(
                 pipe = create_torch_diffusion_pipeline(
                     model_path=model_path,
                     model_type=model_type,
+                    lora_uris=lora_uris,
+                    lora_fuse_scale=lora_fuse_scale,
                     revision=revision,
                     subfolder=subfolder,
                     variant=variant,
@@ -2817,6 +2842,8 @@ def _to_diffusers_with_caching(
 
             # Save the model to the cache directory
             _messages.debug_log(f"Saving converted model to: {cache_path}")
+            if lora_uris:
+                pipe.pipeline.unload_lora_weights()
             pipe.pipeline.save_pretrained(cache_path, variant=variant)
 
             model_index_path = os.path.join(cache_path, 'model_index.json')
@@ -2824,7 +2851,7 @@ def _to_diffusers_with_caching(
             # dgenerate relies on the encoders being
             # defined in model_index for SD3 and Flux
             # which they will not be if we load a checkpoint
-            # that is missing then
+            # that is missing them
 
             if pipe.pipeline.__class__.__name__.startswith('StableDiffusion3'):
                 _edit_model_index(
@@ -2849,7 +2876,7 @@ def _to_diffusers_with_caching(
                     {
                         "text_encoder": [
                             "transformers",
-                            "CLIPTextModelWithProjection"
+                            "CLIPTextModel"
                         ],
                         "text_encoder_2": [
                             "transformers",
@@ -2867,4 +2894,3 @@ def _to_diffusers_with_caching(
 
 
 __all__ = _types.module_all()
-
