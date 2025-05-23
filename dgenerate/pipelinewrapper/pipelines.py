@@ -2801,7 +2801,7 @@ def _to_diffusers_with_caching(
 
             if lora_uris:
                 _messages.warning(
-                    f'Model "{model_path}" is being having LoRAs '
+                    f'Model "{model_path}" is having LoRAs '
                     f'fused into it and then being cached on disk '
                     f'prior to quantization, this is a one time task per LoRA scale value, '
                     f'please be patient...'
