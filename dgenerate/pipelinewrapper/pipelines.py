@@ -2011,21 +2011,6 @@ def _create_torch_diffusion_pipeline(
             'when loading from a Hugging Face repo.'
         )
 
-    if quantizer_uri and (_util.is_single_file_model_load(model_path) or lora_uris):
-
-        model_path = _to_diffusers_with_caching(
-            model_path,
-            model_type,
-            lora_uris,
-            lora_fuse_scale,
-            revision,
-            variant,
-            subfolder,
-            dtype,
-            original_config,
-            auth_token
-        )
-
     if quantizer_uri and quantizer_uri.split(';')[0].strip() in {'bnb', 'bitsandbytes'}:
         if dtype is _enums.DataType.AUTO:
             # Default to all modules to float32 if no dtype is specified when using bitsandbytes
@@ -2207,6 +2192,48 @@ def _create_torch_diffusion_pipeline(
         # immediately, and they are guaranteed to be of non-trivial size
         _devicecache.clear_device_cache(device)
 
+    # Granular component caching for quantization scenarios
+    cached_component_paths = {}
+
+    # Determine if we need granular caching
+    needs_granular_caching = quantizer_uri and (
+            _util.is_single_file_model_load(model_path) or lora_uris
+    )
+
+    if needs_granular_caching:
+
+        # Determine which components to cache
+        if lora_uris:
+            # For LoRA + quantizer: cache only components affected by LoRA
+            components_to_cache = _get_affected_components_for_lora(pipeline_class)
+        else:
+            # For single file + quantizer: cache all quantizable components
+            components_to_cache = _get_quantizable_components(model_type)
+
+        # Filter based on quantizer_map if specified
+        if quantizer_map is not None:
+            components_to_cache = [c for c in components_to_cache if c in quantizer_map]
+
+        # Perform granular caching
+        if components_to_cache:
+            cached_component_paths = _cache_components_granular(
+                model_path=model_path,
+                model_type=model_type,
+                pipeline_type=pipeline_type,
+                components_to_cache=components_to_cache,
+                lora_uris=lora_uris,
+                lora_fuse_scale=lora_fuse_scale,
+                revision=revision,
+                variant=variant,
+                subfolder=subfolder,
+                dtype=dtype,
+                original_config=original_config,
+                auth_token=auth_token,
+                quantizer_uri=quantizer_uri
+            )
+
+            _messages.debug_log(f"Granular caching complete. Cached components: {list(cached_component_paths.keys())}")
+
     # ControlNet and VAE loading
 
     # Used during pipeline load
@@ -2270,17 +2297,29 @@ def _create_torch_diffusion_pipeline(
         )
 
     def load_default_text_encoder(encoder, encoder_name):
-        return load_text_encoder(
-            _uris.TextEncoderUri(
-                encoder=encoder,
-                model=model_path,
-                variant=variant,
-                revision=revision,
-                subfolder=encoder_subfolder,
-                dtype=dtype,
-                quantizer=quantizer_uri if should_apply_quantizer(encoder_name) else None
+        # Check if we have a cached version from granular caching
+        if encoder_name in cached_component_paths:
+            return load_text_encoder(
+                _uris.TextEncoderUri(
+                    encoder=encoder,
+                    model=cached_component_paths[encoder_name],
+                    variant=variant,
+                    dtype=dtype,
+                    quantizer=quantizer_uri if should_apply_quantizer(encoder_name) else None
+                )
             )
-        )
+        else:
+            return load_text_encoder(
+                _uris.TextEncoderUri(
+                    encoder=encoder,
+                    model=model_path,
+                    variant=variant,
+                    revision=revision,
+                    subfolder=encoder_subfolder,
+                    dtype=dtype,
+                    quantizer=quantizer_uri if should_apply_quantizer(encoder_name) else None
+                )
+            )
 
     text_encoder_override_states = [
         text_encoder_override,
@@ -2410,12 +2449,21 @@ def _create_torch_diffusion_pipeline(
             else:
                 unet_subfolder = os.path.join(subfolder, unet_parameter) if subfolder else unet_parameter
 
+            # Check if we have a cached version from granular caching
+            if 'unet' in cached_component_paths:
+                unet_model_path = cached_component_paths['unet']
+                unet_subfolder = None  # No subfolder for cached component
+                unet_revision = None  # No revision for cached component
+            else:
+                unet_model_path = model_path
+                unet_revision = revision
+
             creation_kwargs['unet'] = \
                 load_unet(
                     _uris.UNetUri(
-                        model=model_path,
+                        model=unet_model_path,
                         variant=variant,
-                        revision=revision,
+                        revision=unet_revision,
                         subfolder=unet_subfolder,
                         dtype=dtype,
                         quantizer=quantizer_uri if should_apply_quantizer("unet") else None
@@ -2452,11 +2500,20 @@ def _create_torch_diffusion_pipeline(
             else:
                 transformer_subfolder = os.path.join(subfolder, 'transformer') if subfolder else 'transformer'
 
+            # Check if we have a cached version from granular caching
+            if 'transformer' in cached_component_paths:
+                transformer_model_path = cached_component_paths['transformer']
+                transformer_subfolder = None  # No subfolder for cached component
+                transformer_revision = None  # No revision for cached component
+            else:
+                transformer_model_path = model_path
+                transformer_revision = revision
+
             creation_kwargs['transformer'] = load_transformer(
                 _uris.TransformerUri(
-                    model=model_path,
+                    model=transformer_model_path,
                     variant=variant,
-                    revision=revision,
+                    revision=transformer_revision,
                     subfolder=transformer_subfolder,
                     dtype=dtype,
                     quantizer=quantizer_uri if should_apply_quantizer("transformer") else None
@@ -2759,18 +2816,27 @@ def get_converted_checkpoint_cache_dir():
 
 
 _to_diffusers_cache_dir = get_converted_checkpoint_cache_dir()
-_to_diffusers_cache = _filecache.KeyValueStore(os.path.join(_to_diffusers_cache_dir, 'cache.db'))
 
 
-def _edit_model_index(path, update_dict):
-    with open(path, 'r', encoding='utf-8') as model_index:
-        model_index_dict = json.load(model_index)
-        model_index_dict.update(update_dict)
-    with open(path, 'w', encoding='utf-8') as model_index:
-        json.dump(model_index_dict, model_index)
+# Component-specific caches for granular caching
+def _get_component_cache_store(component_name: str):
+    """Get or create a cache store for a specific component."""
+    component_dir = os.path.join(_to_diffusers_cache_dir, component_name)
+    pathlib.Path(component_dir).mkdir(parents=True, exist_ok=True)
+    return _filecache.KeyValueStore(os.path.join(component_dir, 'cache.db'))
 
 
-def _to_diffusers_with_caching(
+_component_cache_stores = {
+    'text_encoder': _get_component_cache_store('text_encoder'),
+    'text_encoder_2': _get_component_cache_store('text_encoder_2'),
+    'text_encoder_3': _get_component_cache_store('text_encoder_3'),
+    'transformer': _get_component_cache_store('transformer'),
+    'unet': _get_component_cache_store('unet'),
+}
+
+
+def _get_component_cache_key(
+        component_name: str,
         model_path: str,
         model_type: _enums.ModelType,
         lora_uris: _types.OptionalUris,
@@ -2780,117 +2846,240 @@ def _to_diffusers_with_caching(
         subfolder: str | None,
         dtype: _enums.DataType,
         original_config: str | None,
-        auth_token: str | None
-):
-    cache_key = model_path + \
-                str(lora_uris) + \
-                str(lora_fuse_scale) + \
-                str(model_type) + \
-                str(subfolder) + \
-                str(dtype) + \
-                str(original_config)
+        quantizer_uri: str | None
+) -> str:
+    return f"{component_name}|{model_path}|{str(lora_uris)}|{str(lora_fuse_scale)}|" \
+           f"{str(model_type)}|{str(revision)}|{str(variant)}|{str(subfolder)}|" \
+           f"{str(dtype)}|{str(original_config)}|{str(quantizer_uri)}"
 
-    with _to_diffusers_cache:
-        exists = _to_diffusers_cache.get(cache_key)
 
-        if exists is None:
-            # Convert the model to diffusers format
-            _messages.debug_log(
-                f'Converting single file model "{model_path}" to diffusers format to support quantization'
-            )
+def _get_affected_components_for_lora(pipeline_class) -> list[str]:
+    if hasattr(pipeline_class, '_lora_loadable_modules'):
+        return list(pipeline_class._lora_loadable_modules)
+    return []
 
-            if lora_uris:
-                _messages.warning(
-                    f'Model "{model_path}" is having LoRAs '
-                    f'fused into it and then being cached on disk '
-                    f'prior to quantization, this is a one time task per LoRA scale value, '
-                    f'please be patient...'
-                )
-            else:
-                _messages.warning(
-                    f'Model "{model_path}" is being converted to '
-                    f'diffusers format and cached on disk prior to quantization, '
-                    f'this is a one time task, please be patient...'
-                )
 
-            # Call this function recursively without quantizer_uri to avoid infinite recursion
-            with _d_memoize.disable_memoization_context():
-                pipe = create_torch_diffusion_pipeline(
-                    model_path=model_path,
-                    model_type=model_type,
-                    lora_uris=lora_uris,
-                    lora_fuse_scale=lora_fuse_scale,
-                    revision=revision,
-                    subfolder=subfolder,
-                    variant=variant,
-                    dtype=dtype,
-                    original_config=original_config,
-                    auth_token=auth_token,
-                    quantizer_uri=None,
-                    missing_submodules_ok=True
-                )
+def _get_quantizable_components(model_type: _enums.ModelType) -> list[str]:
+    components = []
 
-            cache_path = os.path.join(
-                _to_diffusers_cache_dir, hashlib.sha256(cache_key.encode('utf-8')).hexdigest()
-            )
-
-            while os.path.exists(cache_path):
-                cache_path = os.path.join(
-                    _to_diffusers_cache_dir, hashlib.sha256(
-                        cache_key.encode('utf-8') + str(random.random()).encode('utf-8')).hexdigest()
-                )
-
-            # Save the model to the cache directory
-            _messages.debug_log(f"Saving converted model to: {cache_path}")
-            if lora_uris:
-                pipe.pipeline.unload_lora_weights()
-            pipe.pipeline.save_pretrained(cache_path, variant=variant)
-
-            model_index_path = os.path.join(cache_path, 'model_index.json')
-
-            # dgenerate relies on the encoders being
-            # defined in model_index for SD3 and Flux
-            # which they will not be if we load a checkpoint
-            # that is missing them
-
-            if pipe.pipeline.__class__.__name__.startswith('StableDiffusion3'):
-                _edit_model_index(
-                    model_index_path,
-                    {
-                        "text_encoder": [
-                            "transformers",
-                            "CLIPTextModelWithProjection"
-                        ],
-                        "text_encoder_2": [
-                            "transformers",
-                            "CLIPTextModelWithProjection"
-                        ],
-                        "text_encoder_3": [
-                            "transformers",
-                            "T5EncoderModel"
-                        ]
-                    })
-            elif pipe.pipeline.__class__.__name__.startswith('Flux'):
-                _edit_model_index(
-                    model_index_path,
-                    {
-                        "text_encoder": [
-                            "transformers",
-                            "CLIPTextModel"
-                        ],
-                        "text_encoder_2": [
-                            "transformers",
-                            "T5EncoderModel"
-                        ]
-                    })
-            _to_diffusers_cache[cache_key] = cache_path
+    # Add UNet or Transformer based on model type
+    if _enums.model_type_is_sd3(model_type) or _enums.model_type_is_flux(model_type):
+        # For SD3 and Flux, single file checkpoints typically only contain the transformer
+        # Text encoders are usually separate standard models that don't need conversion
+        components.append('transformer')
+    else:
+        # For older models (SD1.5, SD2, SDXL), single files often contain UNet and text encoders
+        components.append('unet')
+        if _enums.model_type_is_sdxl(model_type):
+            components.extend(['text_encoder', 'text_encoder_2'])
         else:
-            cache_path = _to_diffusers_cache[cache_key]
-            _messages.debug_log(f"Using cached converted diffusers model from: {cache_path}")
+            components.append('text_encoder')
 
-        model_path = cache_path
+    return components
 
-        return model_path
+
+def _create_minimal_pipeline_for_component_extraction(
+        model_path: str,
+        model_type: _enums.ModelType,
+        pipeline_type: _enums.PipelineType,
+        components_needed: list[str],
+        revision: str | None,
+        variant: str | None,
+        subfolder: str | None,
+        dtype: _enums.DataType,
+        original_config: str | None,
+        auth_token: str | None,
+        lora_uris: _types.OptionalUris,
+        lora_fuse_scale: float | None
+):
+    pipeline_class = get_torch_pipeline_class(
+        model_type=model_type,
+        pipeline_type=pipeline_type,
+        help_mode=True  # Allow creation even if pipeline_type doesn't match
+    )
+
+    torch_dtype = _enums.get_torch_dtype(dtype)
+    creation_kwargs = {}
+
+    # Only load the components we need
+    for component in components_needed:
+        if component not in ['text_encoder', 'text_encoder_2', 'text_encoder_3', 'transformer', 'unet']:
+            continue
+
+        # Skip components that don't exist for this model type
+        pipe_params = inspect.signature(pipeline_class.__init__).parameters
+
+        if component == 'transformer' and 'transformer' not in pipe_params:
+            continue
+        if component == 'unet' and 'unet' not in pipe_params:
+            continue
+        if component.startswith('text_encoder') and component not in pipe_params:
+            continue
+
+    # Load the pipeline with minimal components
+    if _util.is_single_file_model_load(model_path):
+        try:
+            pipeline = pipeline_class.from_single_file(
+                model_path,
+                original_config=original_config,
+                token=auth_token,
+                revision=revision,
+                variant=variant,
+                torch_dtype=torch_dtype,
+                use_safe_tensors=model_path.endswith('.safetensors'),
+                **creation_kwargs
+            )
+        except Exception as e:
+            _messages.debug_log(f"Failed to create minimal pipeline from single file: {e}")
+            raise
+    else:
+        try:
+            pipeline = pipeline_class.from_pretrained(
+                model_path,
+                token=auth_token,
+                revision=revision,
+                variant=variant,
+                torch_dtype=torch_dtype,
+                subfolder=subfolder,
+                **creation_kwargs
+            )
+        except Exception as e:
+            _messages.debug_log(f"Failed to create minimal pipeline from pretrained: {e}")
+            raise
+
+    # Apply LoRAs if specified
+    if lora_uris:
+        parsed_lora_uris = [_uris.LoRAUri.parse(uri) for uri in lora_uris]
+
+        _uris.LoRAUri.load_on_pipeline(
+            pipeline=pipeline,
+            uris=parsed_lora_uris,
+            fuse_scale=lora_fuse_scale if lora_fuse_scale is not None else 1.0,
+            use_auth_token=auth_token
+        )
+
+    return pipeline
+
+
+def _cache_components_granular(
+        model_path: str,
+        model_type: _enums.ModelType,
+        pipeline_type: _enums.PipelineType,
+        components_to_cache: list[str],
+        lora_uris: _types.OptionalUris,
+        lora_fuse_scale: float | None,
+        revision: str | None,
+        variant: str | None,
+        subfolder: str | None,
+        dtype: _enums.DataType,
+        original_config: str | None,
+        auth_token: str | None,
+        quantizer_uri: str | None
+) -> dict[str, str]:
+    cached_component_paths = {}
+    components_to_load = []
+
+    # Check which components are already cached
+    for component in components_to_cache:
+        cache_key = _get_component_cache_key(
+            component, model_path, model_type, lora_uris, lora_fuse_scale,
+            revision, variant, subfolder, dtype, original_config, quantizer_uri
+        )
+
+        cache_store = _component_cache_stores[component]
+
+        with cache_store:
+            cached_path = cache_store.get(cache_key)
+            if cached_path and os.path.exists(cached_path):
+                cached_component_paths[component] = cached_path
+                _messages.debug_log(f"Using cached {component} from: {cached_path}")
+            else:
+                components_to_load.append(component)
+
+    # If all components are cached, return early
+    if not components_to_load:
+        return cached_component_paths
+
+    # Create pipeline and extract needed components
+    if lora_uris:
+        _messages.warning(
+            f'Model "{model_path}" is having LoRAs '
+            f'fused into specific components and cached on disk '
+            f'prior to quantization, this is a one time task per LoRA scale value, '
+            f'please be patient...'
+        )
+    else:
+        _messages.warning(
+            f'Model "{model_path}" components are being converted to '
+            f'diffusers format and cached on disk prior to quantization, '
+            f'this is a one time task, please be patient...'
+        )
+
+    with _d_memoize.disable_memoization_context():
+        pipeline = _create_minimal_pipeline_for_component_extraction(
+            model_path=model_path,
+            model_type=model_type,
+            pipeline_type=pipeline_type,
+            components_needed=components_to_load,
+            revision=revision,
+            variant=variant,
+            subfolder=subfolder,
+            dtype=dtype,
+            original_config=original_config,
+            auth_token=auth_token,
+            lora_uris=lora_uris,
+            lora_fuse_scale=lora_fuse_scale
+        )
+
+    if lora_uris:
+        pipeline.unload_lora_weights()
+
+    # Cache each component individually
+    for component in components_to_load:
+        if not hasattr(pipeline, component):
+            _messages.debug_log(
+                f"Component {component} not found in pipeline, skipping cache")
+            continue
+
+        component_obj = getattr(pipeline, component)
+        if component_obj is None:
+            _messages.debug_log(
+                f"Component {component} is None, skipping cache")
+            continue
+
+        # Get the cache store for the component
+        cache_store = _component_cache_stores[component]
+
+        # Generate cache key and path
+        cache_key = _get_component_cache_key(
+            component, model_path, model_type, lora_uris, lora_fuse_scale,
+            revision, variant, subfolder, dtype, original_config, quantizer_uri
+        )
+
+        # Generate cache path with component/uuid structure
+        component_dir = os.path.join(_to_diffusers_cache_dir, component)
+        pathlib.Path(component_dir).mkdir(parents=True, exist_ok=True)
+
+        with cache_store:
+            cache_uuid = hashlib.sha256(cache_key.encode('utf-8')).hexdigest()
+            cache_path = os.path.join(component_dir, cache_uuid)
+
+            # Ensure unique path
+            while os.path.exists(cache_path):
+                cache_uuid = hashlib.sha256((cache_key + str(random.random())).encode('utf-8')).hexdigest()
+                cache_path = os.path.join(component_dir, cache_uuid)
+
+        # Save component
+        _messages.debug_log(f"Saving cached {component} to: {cache_path}")
+        component_obj.save_pretrained(cache_path, variant=variant)
+
+        # Store in cache
+        with cache_store:
+            cache_store[cache_key] = cache_path
+
+        cached_component_paths[component] = cache_path
+
+    return cached_component_paths
 
 
 __all__ = _types.module_all()
