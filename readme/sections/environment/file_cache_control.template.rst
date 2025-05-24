@@ -58,11 +58,24 @@ You can read more about environmental variables that affect huggingface librarie
 Checkpoint Conversion Cache
 ---------------------------
 
-In order to support quantization on single-file checkpoints from sources such as CivitAI, etc.
-dgenerate will load and then convert the checkpoint into diffusers format on disk before
-reloading it with quantization pre-processing applied.
+In order to support quantization on single-file checkpoints from sources such as CivitAI, or
+in the case of quantization with LoRAs involved, dgenerate will load and then save the checkpoint
+sub-modules into diffusers format to an on disk cache before reloading them with
+quantization pre-processing applied.
 
-These converted checkpoints exist in the directory ``$DGENERATE_CACHE/diffusers_converted``.
+In the case of single file checkpoints, this is just to get the checkpoint into diffusers
+format so that it can be processed by the auto quantizer, when LoRAs are involved, the
+LoRAs are first merged into the applicable checkpoint sub-modules at the desired scale
+values before being saved in diffusers format.
 
-These converted checkpoints are not removed automatically, and will remain on disk until
-you manually delete them similar to the huggingface cache.
+For LoRAs, this process allows for improved numerical stability, LoRAs are first
+merged with the applicable checkpoint sub-modules in original precision before
+the quantization pre-process occurs. If you change your LoRA scale values,
+this will equate to a cache miss, and the merge and save process will be repeated
+for the new scale values.
+
+These converted module checkpoints exist in the directory ``$DGENERATE_CACHE/diffusers_converted``.
+
+They are not removed automatically, and will remain on disk until you manually delete them
+similar to the huggingface cache. If you use quantization with many different LoRAs or LoRA
+scale values, this directory can grow large over time.
