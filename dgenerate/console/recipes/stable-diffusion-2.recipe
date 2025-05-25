@@ -7,7 +7,7 @@ order: 1
 @dropdown[{"label":"Model variant", "arg":"--variant", "options":["fp16", "bf16"]}]
 @karrasscheduler[{"label":"Scheduler", "arg":"--scheduler"}]
 @checkboxwithtwointargs[{"label":"Use DeepCache", "int1-label": "DeepCache Interval", "int1-arg":"--deep-cache-intervals", "int1":5, "int1-min":1, "int2-label":"DeepCache Branch ID", "int2":1, "int2-arg": "--deep-cache-branch-ids", "int2-min":0}]
-@switch[{"label":"Use HiDiffusion", "arg":"--hi-diffusion"}]
+@conditionalcheckboxes[{"labels":["Use HiDiffusion", "HiDiffusion No Window Attention", "HiDiffusion No RAUNet"], "args":["--hi-diffusion", "--hi-diffusion-no-win-attn", "--hi-diffusion-no-raunet"]}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"]}]
 @quantizer[{"divider-after": true}]
 @torchvae[{"label":"VAE Path / URI", "dir":true, "file-types":["models"]}]
