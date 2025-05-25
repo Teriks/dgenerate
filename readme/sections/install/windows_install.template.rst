@@ -61,30 +61,30 @@ Install dgenerate:
     # * triton-windows
 
     pipx install dgenerate ^
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu124/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu128/"
 
     # with NCNN upscaler support
 
     pipx install dgenerate[ncnn] ^
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu124/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu128/"
 
     # If you want a specific version
 
     pipx install dgenerate==@VERSION ^
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu124/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu128/"
 
     # with NCNN upscaler support and a specific version
 
     pipx install dgenerate[ncnn]==@VERSION ^
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu124/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu128/"
 
     # You can install without pipx into your own environment like so
 
-    pip install dgenerate==@VERSION --extra-index-url https://download.pytorch.org/whl/cu124/
+    pip install dgenerate==@VERSION --extra-index-url https://download.pytorch.org/whl/cu128/
 
     # Or with NCNN
 
-    pip install dgenerate[ncnn]==@VERSION --extra-index-url https://download.pytorch.org/whl/cu124/
+    pip install dgenerate[ncnn]==@VERSION --extra-index-url https://download.pytorch.org/whl/cu128/
 
 
 It is recommended to install dgenerate with pipx if you are just intending
@@ -109,11 +109,11 @@ a cloned repository like this:
     # * quant (bitsandbytes)
     # * bitsandbytes (individual)
 
-    pip install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu124/
+    pip install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu128/
 
     # Install with pip into the environment, include NCNN
 
-    pip install --editable .[dev, ncnn] --extra-index-url https://download.pytorch.org/whl/cu124/
+    pip install --editable .[dev, ncnn] --extra-index-url https://download.pytorch.org/whl/cu128/
 
 
 Run ``dgenerate`` to generate images:

@@ -15,7 +15,7 @@ Note that the name of the ``pip`` executable may be named ``pip3`` on some syste
 
     # ROCm
 
-    pip install git+https://github.com/Teriks/dgenerate@BRANCH_NAME --extra-index-url https://download.pytorch.org/whl/rocm6.2.4/
+    pip install git+https://github.com/Teriks/dgenerate@BRANCH_NAME --extra-index-url https://download.pytorch.org/whl/rocm6.3/
 
     # With extras, for example "quant"
 

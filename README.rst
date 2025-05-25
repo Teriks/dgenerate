@@ -2122,30 +2122,30 @@ Install dgenerate:
     # * triton-windows
 
     pipx install dgenerate ^
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu124/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu128/"
 
     # with NCNN upscaler support
 
     pipx install dgenerate[ncnn] ^
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu124/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu128/"
 
     # If you want a specific version
 
     pipx install dgenerate==5.0.0 ^
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu124/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu128/"
 
     # with NCNN upscaler support and a specific version
 
     pipx install dgenerate[ncnn]==5.0.0 ^
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu124/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu128/"
 
     # You can install without pipx into your own environment like so
 
-    pip install dgenerate==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu124/
+    pip install dgenerate==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu128/
 
     # Or with NCNN
 
-    pip install dgenerate[ncnn]==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu124/
+    pip install dgenerate[ncnn]==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu128/
 
 
 It is recommended to install dgenerate with pipx if you are just intending
@@ -2170,11 +2170,11 @@ a cloned repository like this:
     # * quant (bitsandbytes)
     # * bitsandbytes (individual)
 
-    pip install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu124/
+    pip install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu128/
 
     # Install with pip into the environment, include NCNN
 
-    pip install --editable .[dev, ncnn] --extra-index-url https://download.pytorch.org/whl/cu124/
+    pip install --editable .[dev, ncnn] --extra-index-url https://download.pytorch.org/whl/cu128/
 
 
 Run ``dgenerate`` to generate images:
@@ -2272,25 +2272,25 @@ Install dgenerate
     # install with just support for torch
 
     pipx install dgenerate \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu124/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu128/"
 
     # With NCNN upscaler support (extra)
 
     pipx install dgenerate[ncnn] \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu124/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu128/"
 
     # If you want a specific version
 
     pipx install dgenerate==5.0.0 \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu124/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu128/"
 
     # You can install without pipx into your own environment like so
 
-    pip3 install dgenerate==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu124/
+    pip3 install dgenerate==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu128/
 
     # Or with NCNN
 
-    pip3 install dgenerate[ncnn]==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu124/
+    pip3 install dgenerate[ncnn]==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu128/
 
 
 It is recommended to install dgenerate with pipx if you are just intending
@@ -2309,11 +2309,11 @@ virtual environment you can do so like this:
 
     # Install with pip into the environment (editable, for development)
 
-    pip3 install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu124/
+    pip3 install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu128/
 
     # Install with pip into the environment (non-editable)
 
-    pip3 install . --extra-index-url https://download.pytorch.org/whl/cu124/
+    pip3 install . --extra-index-url https://download.pytorch.org/whl/cu128/
 
 
 Run ``dgenerate`` to generate images:
@@ -2347,7 +2347,7 @@ When specifying any ``--device`` value use ``cuda``, ``cuda:1``, etc. as you wou
 
 You need to first install ROCm support, follow: https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/quick-start.html
 
-Then use: ``--extra-index-url https://download.pytorch.org/whl/rocm6.2.4/`` when installing via ``pip`` or ``pipx``.
+Then use: ``--extra-index-url https://download.pytorch.org/whl/rocm6.3/`` when installing via ``pip`` or ``pipx``.
 
 Install Python >=3.10,<3.13 (Debian / Ubuntu) and pipx
 ------------------------------------------------------
@@ -2397,17 +2397,17 @@ Install dgenerate
     # install with just support for torch
 
     pipx install dgenerate \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm6.2.4/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm6.3/"
 
     # With NCNN upscaler support
 
     pipx install dgenerate[ncnn] \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm6.2.4/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm6.3/"
 
     # If you want a specific version
 
     pipx install dgenerate==5.0.0 \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm6.2.4/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm6.3/"
 
 
     # you can attempt to install the pre-release bitsandbytes
@@ -2420,11 +2420,11 @@ Install dgenerate
 
     # You can install without pipx into your own environment like so
 
-    pip3 install dgenerate==5.0.0 --extra-index-url https://download.pytorch.org/whl/rocm6.2.4/
+    pip3 install dgenerate==5.0.0 --extra-index-url https://download.pytorch.org/whl/rocm6.3/
 
     # Or with NCNN
 
-    pip3 install dgenerate[ncnn]==5.0.0 --extra-index-url https://download.pytorch.org/whl/rocm6.2.4/
+    pip3 install dgenerate[ncnn]==5.0.0 --extra-index-url https://download.pytorch.org/whl/rocm6.3/
 
 
     # you can attempt to install the pre-release bitsandbytes multiplatform version like so:
@@ -2656,7 +2656,7 @@ Note that the name of the ``pip`` executable may be named ``pip3`` on some syste
 
     # ROCm
 
-    pip install git+https://github.com/Teriks/dgenerate@BRANCH_NAME --extra-index-url https://download.pytorch.org/whl/rocm6.2.4/
+    pip install git+https://github.com/Teriks/dgenerate@BRANCH_NAME --extra-index-url https://download.pytorch.org/whl/rocm6.3/
 
     # With extras, for example "quant"
 
