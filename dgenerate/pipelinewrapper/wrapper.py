@@ -185,9 +185,9 @@ def _hi_diffusion(
         sd15cn = pipeline.__class__.__name__.startswith('StableDiffusionControlNet')
 
         if no_raunet is None:
-            no_raunet = not sd15cn
+            no_raunet = sd15cn
         if no_window_attn is None:
-            no_window_attn = not sd15cn
+            no_window_attn = sd15cn
 
         _messages.debug_log(
             f'Enabling HiDiffusion on pipeline: {pipeline.__class__.__name__} '
