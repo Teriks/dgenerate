@@ -2176,15 +2176,30 @@ def _create_torch_diffusion_pipeline(
         return module_name in quantizer_map
 
     uri_quant_check = []
+    manual_quantizer_components = set()
 
-    for encoder_uri in text_encoder_uris:
+    # Check text encoder URIs
+    for idx, encoder_uri in enumerate(text_encoder_uris):
         if encoder_uri and encoder_uri.lower() not in {'+', 'help', 'null'}:
-            uri_quant_check.append(_uris.TextEncoderUri.parse(encoder_uri))
+            parsed_uri = _uris.TextEncoderUri.parse(encoder_uri)
+            uri_quant_check.append(parsed_uri)
+            if parsed_uri.quantizer:
+                encoder_name = f'text_encoder{"_2" if idx == 1 else "_3" if idx == 2 else ""}'
+                manual_quantizer_components.add(encoder_name)
 
+    # Check transformer URI
     if transformer_uri:
-        uri_quant_check.append(_uris.TransformerUri.parse(transformer_uri))
+        parsed_uri = _uris.TransformerUri.parse(transformer_uri)
+        uri_quant_check.append(parsed_uri)
+        if parsed_uri.quantizer:
+            manual_quantizer_components.add('transformer')
+
+    # Check unet URI
     if unet_uri:
-        uri_quant_check.append(_uris.UNetUri.parse(unet_uri))
+        parsed_uri = _uris.UNetUri.parse(unet_uri)
+        uri_quant_check.append(parsed_uri)
+        if parsed_uri.quantizer:
+            manual_quantizer_components.add('unet')
 
     if quantizer_uri or any(p.quantizer for p in uri_quant_check):
         # for now, just knock out anything cached on the gpu, such as the last pipeline
@@ -2194,11 +2209,12 @@ def _create_torch_diffusion_pipeline(
 
     # Granular component caching for quantization scenarios
     cached_component_paths = {}
+    manual_quantizers = {}
+    components_to_cache = []
 
     # Determine if we need granular caching
-    needs_granular_caching = quantizer_uri and (
-            _util.is_single_file_model_load(model_path) or lora_uris
-    )
+    needs_granular_caching = (quantizer_uri and (_util.is_single_file_model_load(model_path) or lora_uris)) or \
+                             (manual_quantizer_components and lora_uris)
 
     if needs_granular_caching:
 
@@ -2206,17 +2222,49 @@ def _create_torch_diffusion_pipeline(
         if lora_uris:
             # For LoRA + quantizer: cache only components affected by LoRA
             components_to_cache = _get_affected_components_for_lora(pipeline_class)
+
+            # Also include any manual components with quantizers that are LoRA-affected
+            lora_affected_components = set(components_to_cache)
+            for component in manual_quantizer_components:
+                if component in lora_affected_components:
+                    if component not in components_to_cache:
+                        components_to_cache.append(component)
         else:
             # For single file + quantizer: cache all quantizable components
             components_to_cache = _get_quantizable_components(model_type)
 
-        # Filter based on quantizer_map if specified
+        # Filter based on quantizer_map ONLY for components that would get auto-quantized
+        # Components with manual quantizers should always be cached when LoRAs are involved
         if quantizer_map is not None:
-            components_to_cache = [c for c in components_to_cache if c in quantizer_map]
+            # Keep components that either:
+            # 1. Have manual quantizers (always cache these when LoRAs are involved)
+            # 2. Are in the quantizer_map (for auto-quantization)
+            if lora_uris:
+                # When LoRAs are involved, always cache components with manual quantizers
+                components_to_cache = [c for c in components_to_cache
+                                       if c in manual_quantizer_components or c in quantizer_map]
+            else:
+                # For single file without LoRAs, only respect quantizer_map
+                components_to_cache = [c for c in components_to_cache if c in quantizer_map]
+
+        # Collect manual URIs for components that will be cached
+        manual_component_uris = {}
+        if unet_uri and 'unet' in components_to_cache:
+            manual_component_uris['unet'] = unet_uri
+        if transformer_uri and 'transformer' in components_to_cache:
+            manual_component_uris['transformer'] = transformer_uri
+
+        # Handle text encoder URIs
+        if text_encoder_uris:
+            for idx, encoder_uri in enumerate(text_encoder_uris):
+                if not _text_encoder_default(encoder_uri):
+                    encoder_name = f'text_encoder{"_2" if idx == 1 else "_3" if idx == 2 else ""}'
+                    if encoder_name in components_to_cache:
+                        manual_component_uris[encoder_name] = encoder_uri
 
         # Perform granular caching
         if components_to_cache:
-            cached_component_paths = _cache_components_granular(
+            cached_component_paths, manual_quantizers = _cache_components_granular(
                 model_path=model_path,
                 model_type=model_type,
                 pipeline_type=pipeline_type,
@@ -2229,10 +2277,20 @@ def _create_torch_diffusion_pipeline(
                 dtype=dtype,
                 original_config=original_config,
                 auth_token=auth_token,
-                quantizer_uri=quantizer_uri
+                quantizer_uri=quantizer_uri,
+                manual_component_uris=manual_component_uris
             )
 
-            _messages.debug_log(f"Granular caching complete. Cached components: {list(cached_component_paths.keys())}")
+            _messages.debug_log(
+                f"Granular caching complete. Cached components: {list(cached_component_paths.keys())}")
+            if manual_component_uris:
+                _messages.debug_log(
+                    f"Manual component URIs processed: {list(manual_component_uris.keys())}")
+            if manual_quantizers:
+                _messages.debug_log(
+                    f"Manual quantizers preserved: {list(manual_quantizers.keys())}")
+        else:
+            manual_quantizers = {}
 
     # ControlNet and VAE loading
 
@@ -2299,13 +2357,17 @@ def _create_torch_diffusion_pipeline(
     def load_default_text_encoder(encoder, encoder_name):
         # Check if we have a cached version from granular caching
         if encoder_name in cached_component_paths:
+            # Use manual quantizer if available, otherwise use global quantizer
+            text_encoder_quantizer = manual_quantizers.get(encoder_name, quantizer_uri if should_apply_quantizer(
+                encoder_name) else None)
+
             return load_text_encoder(
                 _uris.TextEncoderUri(
                     encoder=encoder,
                     model=cached_component_paths[encoder_name],
                     variant=variant,
                     dtype=dtype,
-                    quantizer=quantizer_uri if should_apply_quantizer(encoder_name) else None
+                    quantizer=text_encoder_quantizer
                 )
             )
         else:
@@ -2347,10 +2409,12 @@ def _create_torch_diffusion_pipeline(
 
             if _text_encoder_default(encoder_uri):
                 creation_kwargs[name] = load_default_text_encoder(encoder_class, name)
-            else:
+            elif not (needs_granular_caching and name in components_to_cache):
                 creation_kwargs[name] = load_text_encoder(
                     _uris.TextEncoderUri.parse(encoder_uri)
                 )
+            # If granular caching is needed and this encoder is in components_to_cache,
+            # skip direct loading - it will be handled by granular caching
         else:
             creation_kwargs[name] = load_default_text_encoder(encoder_class, name)
 
@@ -2427,7 +2491,7 @@ def _create_torch_diffusion_pipeline(
         unet_class = diffusers.UNet2DConditionModel if unet_parameter == 'unet' \
             else diffusers.models.unets.StableCascadeUNet
 
-        if unet_uri is not None:
+        if unet_uri is not None and not (needs_granular_caching and 'unet' in components_to_cache):
             parsed_unet_uri = _uris.UNetUri.parse(unet_uri)
 
             if _enums.model_type_is_kolors(model_type) and parsed_unet_uri.quantizer:
@@ -2454,9 +2518,14 @@ def _create_torch_diffusion_pipeline(
                 unet_model_path = cached_component_paths['unet']
                 unet_subfolder = None  # No subfolder for cached component
                 unet_revision = None  # No revision for cached component
+
+                # Use manual quantizer if available, otherwise use global quantizer
+                unet_quantizer = manual_quantizers.get('unet',
+                                                       quantizer_uri if should_apply_quantizer("unet") else None)
             else:
                 unet_model_path = model_path
                 unet_revision = revision
+                unet_quantizer = quantizer_uri if should_apply_quantizer("unet") else None
 
             creation_kwargs['unet'] = \
                 load_unet(
@@ -2466,7 +2535,7 @@ def _create_torch_diffusion_pipeline(
                         revision=unet_revision,
                         subfolder=unet_subfolder,
                         dtype=dtype,
-                        quantizer=quantizer_uri if should_apply_quantizer("unet") else None
+                        quantizer=unet_quantizer
                     ), unet_class=unet_class)
 
     # Load Transformer
@@ -2479,7 +2548,8 @@ def _create_torch_diffusion_pipeline(
         transformer_class = None
 
     if not transformer_override:
-        if transformer_uri is not None:
+        if transformer_uri is not None and not (
+                needs_granular_caching and transformer_class is not None and 'transformer' in components_to_cache):
             assert transformer_class is not None
 
             parsed_transformer_uri = _uris.TransformerUri.parse(transformer_uri)
@@ -2505,9 +2575,14 @@ def _create_torch_diffusion_pipeline(
                 transformer_model_path = cached_component_paths['transformer']
                 transformer_subfolder = None  # No subfolder for cached component
                 transformer_revision = None  # No revision for cached component
+
+                # Use manual quantizer if available, otherwise use global quantizer
+                transformer_quantizer = manual_quantizers.get('transformer', quantizer_uri if should_apply_quantizer(
+                    "transformer") else None)
             else:
                 transformer_model_path = model_path
                 transformer_revision = revision
+                transformer_quantizer = quantizer_uri if should_apply_quantizer("transformer") else None
 
             creation_kwargs['transformer'] = load_transformer(
                 _uris.TransformerUri(
@@ -2516,7 +2591,7 @@ def _create_torch_diffusion_pipeline(
                     revision=transformer_revision,
                     subfolder=transformer_subfolder,
                     dtype=dtype,
-                    quantizer=quantizer_uri if should_apply_quantizer("transformer") else None
+                    quantizer=transformer_quantizer
                 ), transformer_class=transformer_class)
 
     # load image encoder
@@ -2820,7 +2895,6 @@ _to_diffusers_cache_dir = get_converted_checkpoint_cache_dir()
 
 # Component-specific caches for granular caching
 def _get_component_cache_store(component_name: str):
-    """Get or create a cache store for a specific component."""
     component_dir = os.path.join(_to_diffusers_cache_dir, component_name)
     pathlib.Path(component_dir).mkdir(parents=True, exist_ok=True)
     return _filecache.KeyValueStore(os.path.join(component_dir, 'cache.db'))
@@ -2846,11 +2920,67 @@ def _get_component_cache_key(
         subfolder: str | None,
         dtype: _enums.DataType,
         original_config: str | None,
-        quantizer_uri: str | None
+        manual_component_uris: dict[str, str] | None = None
 ) -> str:
-    return f"{component_name}|{model_path}|{str(lora_uris)}|{str(lora_fuse_scale)}|" \
+    manual_uri_part = ""
+    if manual_component_uris and component_name in manual_component_uris:
+        # Strip quantizer from manual URI for cache key since components are saved in original precision
+        try:
+            if component_name == 'unet':
+                parsed_uri = _uris.UNetUri.parse(manual_component_uris[component_name])
+                uri_without_quantizer = _uris.UNetUri(
+                    model=parsed_uri.model,
+                    revision=parsed_uri.revision,
+                    variant=parsed_uri.variant,
+                    subfolder=parsed_uri.subfolder,
+                    dtype=parsed_uri.dtype,
+                    quantizer=None
+                )
+                manual_uri_part = f"|manual:{str(uri_without_quantizer)}"
+            elif component_name == 'transformer':
+                parsed_uri = _uris.TransformerUri.parse(manual_component_uris[component_name])
+                uri_without_quantizer = _uris.TransformerUri(
+                    model=parsed_uri.model,
+                    revision=parsed_uri.revision,
+                    variant=parsed_uri.variant,
+                    subfolder=parsed_uri.subfolder,
+                    dtype=parsed_uri.dtype,
+                    quantizer=None
+                )
+                manual_uri_part = f"|manual:{str(uri_without_quantizer)}"
+            elif component_name.startswith('text_encoder'):
+                parsed_uri = _uris.TextEncoderUri.parse(manual_component_uris[component_name])
+                uri_without_quantizer = _uris.TextEncoderUri(
+                    encoder=parsed_uri.encoder,
+                    model=parsed_uri.model,
+                    revision=parsed_uri.revision,
+                    variant=parsed_uri.variant,
+                    subfolder=parsed_uri.subfolder,
+                    dtype=parsed_uri.dtype,
+                    quantizer=None
+                )
+                manual_uri_part = f"|manual:{str(uri_without_quantizer)}"
+            else:
+                # Fallback for unknown component types
+                manual_uri_part = f"|manual:{manual_component_uris[component_name]}"
+        except Exception:
+            # If parsing fails, use the original URI
+            manual_uri_part = f"|manual:{manual_component_uris[component_name]}"
+    
+    # LoRA order consideration: LoRA fusion order can affect the final result since
+    # LoRA operations are not necessarily commutative. We preserve the original order
+    # to ensure mathematical correctness and respect user intent.
+    # 
+    # If you want to optimize cache efficiency by normalizing LoRA order (at the cost
+    # of potentially different results), you could sort the URIs like this:
+    # lora_uris_for_cache = sorted(lora_uris) if lora_uris else lora_uris
+    lora_uris_for_cache = lora_uris
+    
+    # Note: quantizer_uri is NOT included in the cache key because components are saved
+    # in original precision. The quantizer is only applied when loading from cache.
+    return f"{component_name}|{model_path}|{str(lora_uris_for_cache)}|{str(lora_fuse_scale)}|" \
            f"{str(model_type)}|{str(revision)}|{str(variant)}|{str(subfolder)}|" \
-           f"{str(dtype)}|{str(original_config)}|{str(quantizer_uri)}"
+           f"{str(dtype)}|{str(original_config)}{manual_uri_part}"
 
 
 def _get_affected_components_for_lora(pipeline_class) -> list[str]:
@@ -2890,7 +3020,8 @@ def _create_minimal_pipeline_for_component_extraction(
         original_config: str | None,
         auth_token: str | None,
         lora_uris: _types.OptionalUris,
-        lora_fuse_scale: float | None
+        lora_fuse_scale: float | None,
+        manual_component_uris: dict[str, str] | None = None
 ):
     pipeline_class = get_torch_pipeline_class(
         model_type=model_type,
@@ -2900,23 +3031,162 @@ def _create_minimal_pipeline_for_component_extraction(
 
     torch_dtype = _enums.get_torch_dtype(dtype)
     creation_kwargs = {}
+    manual_quantizers = {}  # Store quantizer info from manual URIs
 
-    # Only load the components we need
-    for component in components_needed:
-        if component not in ['text_encoder', 'text_encoder_2', 'text_encoder_3', 'transformer', 'unet']:
-            continue
+    # Get all text encoder parameters that the pipeline expects
+    pipe_params = inspect.signature(pipeline_class.__init__).parameters
+    text_encoder_params = [name for name in pipe_params.keys() if name.startswith('text_encoder')]
 
-        # Skip components that don't exist for this model type
-        pipe_params = inspect.signature(pipeline_class.__init__).parameters
+    # Load ALL text encoders that the pipeline expects, even if not being cached
+    # This prevents SingleFileComponentError during pipeline creation
+    for encoder_param in text_encoder_params:
+        # Check if we have a manual URI for this encoder
+        if manual_component_uris and encoder_param in manual_component_uris:
+            parsed_uri = _uris.TextEncoderUri.parse(manual_component_uris[encoder_param])
 
-        if component == 'transformer' and 'transformer' not in pipe_params:
-            continue
-        if component == 'unet' and 'unet' not in pipe_params:
-            continue
-        if component.startswith('text_encoder') and component not in pipe_params:
-            continue
+            # Save quantizer info and reconstruct URI without quantizer
+            if parsed_uri.quantizer:
+                manual_quantizers[encoder_param] = parsed_uri.quantizer
 
-    # Load the pipeline with minimal components
+            # Reconstruct URI without quantizer
+            uri_without_quantizer = _uris.TextEncoderUri(
+                encoder=parsed_uri.encoder,
+                model=parsed_uri.model,
+                revision=parsed_uri.revision,
+                variant=parsed_uri.variant,
+                subfolder=parsed_uri.subfolder,
+                dtype=parsed_uri.dtype,
+                quantizer=None  # Explicitly set to None
+            )
+
+            creation_kwargs[encoder_param] = uri_without_quantizer.load(
+                variant_fallback=variant,
+                dtype_fallback=dtype,
+                original_config=original_config,
+                use_auth_token=auth_token,
+                local_files_only=False,
+                no_cache=True,
+                missing_ok=False
+            )
+        else:
+            # Load default text encoder for this parameter
+            # We need to load it even if we're not caching it to prevent errors
+            try:
+                if _util.is_single_file_model_load(model_path):
+                    encoder_subfolder = encoder_param
+                else:
+                    encoder_subfolder = os.path.join(subfolder, encoder_param) if subfolder else encoder_param
+
+                # Try to determine the encoder class - this is a simplified approach
+                # In practice, we might need to look at model_index or infer from model_type
+                if encoder_param == 'text_encoder':
+                    encoder_name = 'CLIPTextModel'  # Default for most SD models
+                elif encoder_param == 'text_encoder_2':
+                    if _enums.model_type_is_sdxl(model_type):
+                        encoder_name = 'CLIPTextModelWithProjection'
+                    elif _enums.model_type_is_sd3(model_type):
+                        encoder_name = 'CLIPTextModelWithProjection'
+                    elif _enums.model_type_is_flux(model_type):
+                        encoder_name = 'CLIPTextModel'
+                    else:
+                        encoder_name = 'CLIPTextModel'
+                elif encoder_param == 'text_encoder_3':
+                    if _enums.model_type_is_sd3(model_type) or _enums.model_type_is_flux(model_type):
+                        encoder_name = 'T5EncoderModel'
+                    else:
+                        encoder_name = 'CLIPTextModel'
+                else:
+                    encoder_name = 'CLIPTextModel'
+
+                default_encoder_uri = _uris.TextEncoderUri(
+                    encoder=encoder_name,
+                    model=model_path,
+                    variant=variant,
+                    revision=revision,
+                    subfolder=encoder_subfolder,
+                    dtype=dtype,
+                    quantizer=None
+                )
+
+                creation_kwargs[encoder_param] = default_encoder_uri.load(
+                    variant_fallback=variant,
+                    dtype_fallback=dtype,
+                    original_config=original_config,
+                    use_auth_token=auth_token,
+                    local_files_only=False,
+                    no_cache=True,
+                    missing_ok=True  # Allow missing for optional encoders
+                )
+            except Exception as e:
+                _messages.debug_log(f"Failed to load default {encoder_param}: {e}")
+                # Continue without this encoder - some may be optional
+
+    # Load manual components that are not text encoders
+    if manual_component_uris:
+        for component in components_needed:
+            if component in manual_component_uris and not component.startswith('text_encoder'):
+                if component == 'unet':
+                    unet_class = diffusers.UNet2DConditionModel
+                    parsed_uri = _uris.UNetUri.parse(manual_component_uris[component])
+
+                    # Save quantizer info and reconstruct URI without quantizer
+                    if parsed_uri.quantizer:
+                        manual_quantizers[component] = parsed_uri.quantizer
+
+                    # Reconstruct URI without quantizer
+                    uri_without_quantizer = _uris.UNetUri(
+                        model=parsed_uri.model,
+                        revision=parsed_uri.revision,
+                        variant=parsed_uri.variant,
+                        subfolder=parsed_uri.subfolder,
+                        dtype=parsed_uri.dtype,
+                        quantizer=None  # Explicitly set to None
+                    )
+
+                    creation_kwargs['unet'] = uri_without_quantizer.load(
+                        variant_fallback=variant,
+                        dtype_fallback=dtype,
+                        original_config=original_config,
+                        use_auth_token=auth_token,
+                        local_files_only=False,
+                        no_cache=True,
+                        unet_class=unet_class
+                    )
+                elif component == 'transformer':
+                    if _enums.model_type_is_sd3(model_type):
+                        transformer_class = diffusers.SD3Transformer2DModel
+                    elif _enums.model_type_is_flux(model_type):
+                        transformer_class = diffusers.FluxTransformer2DModel
+                    else:
+                        continue  # Skip if no appropriate transformer class
+
+                    parsed_uri = _uris.TransformerUri.parse(manual_component_uris[component])
+
+                    # Save quantizer info and reconstruct URI without quantizer
+                    if parsed_uri.quantizer:
+                        manual_quantizers[component] = parsed_uri.quantizer
+
+                    # Reconstruct URI without quantizer
+                    uri_without_quantizer = _uris.TransformerUri(
+                        model=parsed_uri.model,
+                        revision=parsed_uri.revision,
+                        variant=parsed_uri.variant,
+                        subfolder=parsed_uri.subfolder,
+                        dtype=parsed_uri.dtype,
+                        quantizer=None  # Explicitly set to None
+                    )
+
+                    creation_kwargs['transformer'] = uri_without_quantizer.load(
+                        variant_fallback=variant,
+                        dtype_fallback=dtype,
+                        original_config=original_config,
+                        use_auth_token=auth_token,
+                        local_files_only=False,
+                        no_cache=True,
+                        transformer_class=transformer_class
+                    )
+
+    # Load the pipeline with all required components
     if _util.is_single_file_model_load(model_path):
         try:
             pipeline = pipeline_class.from_single_file(
@@ -2958,7 +3228,7 @@ def _create_minimal_pipeline_for_component_extraction(
             use_auth_token=auth_token
         )
 
-    return pipeline
+    return pipeline, manual_quantizers
 
 
 def _cache_components_granular(
@@ -2974,8 +3244,9 @@ def _cache_components_granular(
         dtype: _enums.DataType,
         original_config: str | None,
         auth_token: str | None,
-        quantizer_uri: str | None
-) -> dict[str, str]:
+        quantizer_uri: str | None,
+        manual_component_uris: dict[str, str] | None = None
+) -> tuple[dict[str, str], dict[str, str]]:
     cached_component_paths = {}
     components_to_load = []
 
@@ -2983,7 +3254,8 @@ def _cache_components_granular(
     for component in components_to_cache:
         cache_key = _get_component_cache_key(
             component, model_path, model_type, lora_uris, lora_fuse_scale,
-            revision, variant, subfolder, dtype, original_config, quantizer_uri
+            revision, variant, subfolder, dtype, original_config,
+            manual_component_uris
         )
 
         cache_store = _component_cache_stores[component]
@@ -2996,9 +3268,30 @@ def _cache_components_granular(
             else:
                 components_to_load.append(component)
 
+    # If all components are cached, we still need to extract manual quantizer info
+    manual_quantizers = {}
+    if manual_component_uris:
+        for component, uri in manual_component_uris.items():
+            if component in components_to_cache:
+                try:
+                    if component == 'unet':
+                        parsed_uri = _uris.UNetUri.parse(uri)
+                        if parsed_uri.quantizer:
+                            manual_quantizers[component] = parsed_uri.quantizer
+                    elif component == 'transformer':
+                        parsed_uri = _uris.TransformerUri.parse(uri)
+                        if parsed_uri.quantizer:
+                            manual_quantizers[component] = parsed_uri.quantizer
+                    elif component.startswith('text_encoder'):
+                        parsed_uri = _uris.TextEncoderUri.parse(uri)
+                        if parsed_uri.quantizer:
+                            manual_quantizers[component] = parsed_uri.quantizer
+                except Exception as e:
+                    _messages.debug_log(f"Error extracting quantizer from {component} URI: {e}")
+
     # If all components are cached, return early
     if not components_to_load:
-        return cached_component_paths
+        return cached_component_paths, manual_quantizers
 
     # Create pipeline and extract needed components
     if lora_uris:
@@ -3016,7 +3309,7 @@ def _cache_components_granular(
         )
 
     with _d_memoize.disable_memoization_context():
-        pipeline = _create_minimal_pipeline_for_component_extraction(
+        pipeline, manual_quantizers = _create_minimal_pipeline_for_component_extraction(
             model_path=model_path,
             model_type=model_type,
             pipeline_type=pipeline_type,
@@ -3028,7 +3321,8 @@ def _cache_components_granular(
             original_config=original_config,
             auth_token=auth_token,
             lora_uris=lora_uris,
-            lora_fuse_scale=lora_fuse_scale
+            lora_fuse_scale=lora_fuse_scale,
+            manual_component_uris=manual_component_uris
         )
 
     if lora_uris:
@@ -3053,7 +3347,8 @@ def _cache_components_granular(
         # Generate cache key and path
         cache_key = _get_component_cache_key(
             component, model_path, model_type, lora_uris, lora_fuse_scale,
-            revision, variant, subfolder, dtype, original_config, quantizer_uri
+            revision, variant, subfolder, dtype, original_config,
+            manual_component_uris
         )
 
         # Generate cache path with component/uuid structure
@@ -3079,7 +3374,7 @@ def _cache_components_granular(
 
         cached_component_paths[component] = cache_path
 
-    return cached_component_paths
+    return cached_component_paths, manual_quantizers
 
 
 __all__ = _types.module_all()
