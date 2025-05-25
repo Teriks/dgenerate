@@ -430,6 +430,28 @@ class DiffusionArguments(_types.SetFromMixin):
     This is supported for: ``--model-type torch, torch-sdxl, and --torch-kolors``.
     """
 
+    hi_diffusion_no_win_attn: _types.OptionalBoolean = None
+    """
+    Disable window attention when using HiDiffusion for the primary model?
+    
+    This disables the MSW-MSA (Multi-Scale Window Multi-Head Self-Attention) component of HiDiffusion.
+    
+    See: https://github.com/megvii-research/HiDiffusion
+    
+    This is supported for: ``--model-type torch, torch-sdxl, and --torch-kolors``.
+    """
+
+    hi_diffusion_no_raunet: _types.OptionalBoolean = None
+    """
+    Disable RAU-Net when using HiDiffusion for the primary model?
+    
+    This disables the Resolution-Aware U-Net component of HiDiffusion.
+    
+    See: https://github.com/megvii-research/HiDiffusion
+    
+    This is supported for: ``--model-type torch, torch-sdxl, and --torch-kolors``.
+    """
+
     tea_cache: bool = False
     """
     Activate TeaCache for the primary model?
@@ -619,6 +641,24 @@ class DiffusionArguments(_types.SetFromMixin):
     sdxl_refiner_hi_diffusion: _types.OptionalBoolean = None
     """
     Activate HiDiffusion on the SDXL refiner for this generation?, See: :py:attr:`DiffusionArguments.hi_diffusion`
+    """
+
+    sdxl_refiner_hi_diffusion_no_win_attn: _types.OptionalBoolean = None
+    """
+    Disable window attention when using HiDiffusion for the SDXL refiner?
+    
+    This disables the MSW-MSA (Multi-Scale Window Multi-Head Self-Attention) component of HiDiffusion.
+    
+    See: :py:attr:`DiffusionArguments.hi_diffusion_no_win_attn`
+    """
+
+    sdxl_refiner_hi_diffusion_no_raunet: _types.OptionalBoolean = None
+    """
+    Disable RAU-Net when using HiDiffusion for the SDXL refiner?
+    
+    This disables the Resolution-Aware U-Net component of HiDiffusion.
+    
+    See: :py:attr:`DiffusionArguments.hi_diffusion_no_raunet`
     """
 
     pag_scale: _types.OptionalFloat = None

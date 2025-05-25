@@ -214,7 +214,9 @@ Help Output
                      [T2I_ADAPTER_URI ...]] [-q QUANTIZER_URI] [-qm SUBMODULE [SUBMODULE ...]]
                      [-q2 QUANTIZER_URI] [-qm2 SUBMODULE [SUBMODULE ...]]
                      [-sch SCHEDULER_URI [SCHEDULER_URI ...]] [-sch2 SCHEDULER_URI [SCHEDULER_URI ...]]
-                     [-fu CSV_FLOAT [CSV_FLOAT ...]] [-hd] [-rfu CSV_FLOAT [CSV_FLOAT ...]] [-rhd] [-dc]
+                     [-fu CSV_FLOAT [CSV_FLOAT ...]] [-hd] [--hi-diffusion-no-win-attn]
+                     [--hi-diffusion-no-raunet] [-rfu CSV_FLOAT [CSV_FLOAT ...]] [-rhd]
+                     [--sdxl-refiner-hi-diffusion-no-win-attn] [--sdxl-refiner-hi-diffusion-no-raunet] [-dc]
                      [-dci INTEGER [INTEGER ...]] [-dcb INTEGER [INTEGER ...]] [-rdc]
                      [-rdci INTEGER [INTEGER ...]] [-rdcb INTEGER [INTEGER ...]] [-tc] [-tcr [FLOAT ...]] [-ra]
                      [-rif] [-rsr FLOAT [FLOAT ...]] [-rhr FLOAT [FLOAT ...]] [-rss FLOAT [FLOAT ...]]
@@ -1108,12 +1110,44 @@ Help Output
             
             This is supported for --model-type torch, torch-sdxl, and --torch-kolors.
             -------------------------------------------------------------------------
+      --hi-diffusion-no-win-attn
+            Disable window attention when using HiDiffusion for the primary model?
+            
+            This disables the MSW-MSA (Multi-Scale Window Multi-Head Self-Attention) component of HiDiffusion.
+            
+            See: https://github.com/megvii-research/HiDiffusion
+            
+            This is supported for: --model-type torch, torch-sdxl, and --torch-kolors.
+            --------------------------------------------------------------------------
+      --hi-diffusion-no-raunet
+            Disable RAU-Net when using HiDiffusion for the primary model?
+            
+            This disables the Resolution-Aware U-Net component of HiDiffusion.
+            
+            See: https://github.com/megvii-research/HiDiffusion
+            
+            This is supported for: --model-type torch, torch-sdxl, and --torch-kolors.
+            --------------------------------------------------------------------------
       -rfu CSV_FLOAT [CSV_FLOAT ...], --sdxl-refiner-freeu-params CSV_FLOAT [CSV_FLOAT ...]
             FreeU parameters for the SDXL refiner, see: --freeu-params
             ----------------------------------------------------------
       -rhd, --sdxl-refiner-hi-diffusion
             Activate HiDiffusion for the SDXL refiner?, See: --hi-diffusion
             ---------------------------------------------------------------
+      --sdxl-refiner-hi-diffusion-no-win-attn
+            Disable window attention when using HiDiffusion for the SDXL refiner?
+            
+            This disables the MSW-MSA (Multi-Scale Window Multi-Head Self-Attention) component of HiDiffusion.
+            
+            See: --hi-diffusion-no-win-attn
+            -------------------------------
+      --sdxl-refiner-hi-diffusion-no-raunet
+            Disable RAU-Net when using HiDiffusion for the SDXL refiner?
+            
+            This disables the Resolution-Aware U-Net component of HiDiffusion.
+            
+            See: --hi-diffusion-no-raunet
+            -----------------------------
       -dc, --deep-cache
             Activate DeepCache for the main model?
             
@@ -6299,6 +6333,8 @@ these are the arguments that are available for use:
     sdxl-refiner-negative-target-size: Size: WxH
     sdxl-refiner-negative-crops-coords-top-left: Size: WxH
     guidance-scale: float
+    hi-diffusion-no-win-attn: bool
+    hi-diffusion-no-raunet: bool
     tea-cache-rel-l1-threshold: float
     ras-index-fusion: bool
     ras-sample-ratio: float
@@ -6311,6 +6347,8 @@ these are the arguments that are available for use:
     ras-skip-num-step: int
     ras-skip-num-step-length: int
     sdxl-refiner-hi-diffusion: bool
+    sdxl-refiner-hi-diffusion-no-win-attn: bool
+    sdxl-refiner-hi-diffusion-no-raunet: bool
     pag-scale: float
     pag-adaptive-scale: float
     sdxl-refiner-pag-scale: float
@@ -8040,6 +8078,12 @@ The ``\templates_help`` output from the above example is:
         Name: "last_hi_diffusion"
             Type: <class 'bool'>
             Value: False
+        Name: "last_hi_diffusion_no_raunet"
+            Type: typing.Optional[bool]
+            Value: None
+        Name: "last_hi_diffusion_no_win_attn"
+            Type: typing.Optional[bool]
+            Value: None
         Name: "last_image_encoder_uri"
             Type: typing.Optional[str]
             Value: None
@@ -8253,6 +8297,12 @@ The ``\templates_help`` output from the above example is:
         Name: "last_sdxl_refiner_hi_diffusion"
             Type: typing.Optional[bool]
             Value: None
+        Name: "last_sdxl_refiner_hi_diffusion_no_raunet"
+            Type: typing.Optional[bool]
+            Value: None
+        Name: "last_sdxl_refiner_hi_diffusion_no_win_attn"
+            Type: typing.Optional[bool]
+            Value: None
         Name: "last_sdxl_refiner_negative_aesthetic_scores"
             Type: typing.Optional[collections.abc.Sequence[float]]
             Value: []
@@ -8348,7 +8398,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [14535753373180]
+            Value: [94551214971610]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

@@ -1825,6 +1825,38 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '--hi-diffusion-no-win-attn',
+            action='store_true', default=False, dest='hi_diffusion_no_win_attn',
+            help=f"""Disable window attention when using HiDiffusion for the primary model?
+            
+                     This disables the MSW-MSA (Multi-Scale Window Multi-Head Self-Attention) component of HiDiffusion.
+                     
+                     NOWRAP!
+                     See: https://github.com/megvii-research/HiDiffusion
+                     
+                     This is supported for: --model-type torch, torch-sdxl, and --torch-kolors.
+                     """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--hi-diffusion-no-raunet',
+            action='store_true', default=False, dest='hi_diffusion_no_raunet',
+            help=f"""Disable RAU-Net when using HiDiffusion for the primary model?
+            
+                     This disables the Resolution-Aware U-Net component of HiDiffusion.
+                     
+                     NOWRAP!
+                     See: https://github.com/megvii-research/HiDiffusion
+                     
+                     This is supported for: --model-type torch, torch-sdxl, and --torch-kolors.
+                     """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
             '-rfu', '--sdxl-refiner-freeu-params',
             default=None,
             nargs='+',
@@ -1840,6 +1872,32 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '-rhd', '--sdxl-refiner-hi-diffusion',
             action='store_true', default=None, dest='sdxl_refiner_hi_diffusion',
             help=f"""Activate HiDiffusion for the SDXL refiner?, See: --hi-diffusion"""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--sdxl-refiner-hi-diffusion-no-win-attn',
+            action='store_true', default=None, dest='sdxl_refiner_hi_diffusion_no_win_attn',
+            help=f"""Disable window attention when using HiDiffusion for the SDXL refiner?
+            
+                     This disables the MSW-MSA (Multi-Scale Window Multi-Head Self-Attention) component of HiDiffusion.
+                     
+                     See: --hi-diffusion-no-win-attn
+                     """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--sdxl-refiner-hi-diffusion-no-raunet',
+            action='store_true', default=None, dest='sdxl_refiner_hi_diffusion_no_raunet',
+            help=f"""Disable RAU-Net when using HiDiffusion for the SDXL refiner?
+            
+                     This disables the Resolution-Aware U-Net component of HiDiffusion.
+                     
+                     See: --hi-diffusion-no-raunet
+                     """
         )
     )
 

@@ -692,6 +692,28 @@ class RenderLoopConfig(_types.SetFromMixin):
     This is supported for: ``--model-type torch, torch-sdxl, and --torch-kolors``.
     """
 
+    hi_diffusion_no_win_attn: _types.OptionalBoolean = None
+    """
+    Disable window attention when using HiDiffusion for the primary model?
+    
+    This disables the MSW-MSA (Multi-Scale Window Multi-Head Self-Attention) component of HiDiffusion.
+    
+    See: https://github.com/megvii-research/HiDiffusion
+    
+    This is supported for: ``--model-type torch, torch-sdxl, and --torch-kolors``.
+    """
+
+    hi_diffusion_no_raunet: _types.OptionalBoolean = None
+    """
+    Disable RAU-Net when using HiDiffusion for the primary model?
+    
+    This disables the Resolution-Aware U-Net component of HiDiffusion.
+    
+    See: https://github.com/megvii-research/HiDiffusion
+    
+    This is supported for: ``--model-type torch, torch-sdxl, and --torch-kolors``.
+    """
+
     tea_cache: bool = False
     """
     Activate TeaCache for the primary model?
@@ -1000,6 +1022,24 @@ class RenderLoopConfig(_types.SetFromMixin):
     sdxl_refiner_hi_diffusion: _types.OptionalBoolean = None
     """
     Activate HiDiffusion for the SDXL refiner? See: :py:attr:`RenderLoopConfig.hi_diffusion`
+    """
+
+    sdxl_refiner_hi_diffusion_no_win_attn: _types.OptionalBoolean = None
+    """
+    Disable window attention when using HiDiffusion for the SDXL refiner?
+    
+    This disables the MSW-MSA (Multi-Scale Window Multi-Head Self-Attention) component of HiDiffusion.
+    
+    See: :py:attr:`RenderLoopConfig.hi_diffusion_no_win_attn`
+    """
+
+    sdxl_refiner_hi_diffusion_no_raunet: _types.OptionalBoolean = None
+    """
+    Disable RAU-Net when using HiDiffusion for the SDXL refiner?
+    
+    This disables the Resolution-Aware U-Net component of HiDiffusion.
+    
+    See: :py:attr:`RenderLoopConfig.hi_diffusion_no_raunet`
     """
 
     pag: bool = False
@@ -1516,6 +1556,27 @@ class RenderLoopConfig(_types.SetFromMixin):
             if self.t2i_adapter_uris:
                 raise RenderLoopConfigError(
                     f'{a_namer("hi_diffusion")} is not supported with {a_namer("t2i_adapter_uris")}'
+                )
+        else:
+            if self.hi_diffusion_no_win_attn is not None:
+                raise RenderLoopConfigError(
+                    f'{a_namer("hi_diffusion_no_win_attn")} is only supported when {a_namer("hi_diffusion")} is enabled.'
+                )
+            if self.hi_diffusion_no_raunet is not None:
+                raise RenderLoopConfigError(
+                    f'{a_namer("hi_diffusion_no_raunet")} is only supported when {a_namer("hi_diffusion")} is enabled.'
+                )
+
+        if not self.sdxl_refiner_hi_diffusion:
+            if self.sdxl_refiner_hi_diffusion_no_win_attn is not None:
+                raise RenderLoopConfigError(
+                    f'{a_namer("sdxl_refiner_hi_diffusion_no_win_attn")} is only '
+                    f'supported when {a_namer("sdxl_refiner_hi_diffusion")} is enabled.'
+                )
+            if self.sdxl_refiner_hi_diffusion_no_raunet is not None:
+                raise RenderLoopConfigError(
+                    f'{a_namer("sdxl_refiner_hi_diffusion_no_raunet")} is only '
+                    f'supported when {a_namer("sdxl_refiner_hi_diffusion")} is enabled.'
                 )
 
         deep_cache_enabled = (self.deep_cache or any(self._non_null_attr_that_start_with('deep_cache_')))
@@ -2710,6 +2771,10 @@ class RenderLoopConfig(_types.SetFromMixin):
                 guidance_scale=ov('guidance_scale', self.guidance_scales),
                 freeu_params=ov('freeu_params', self.freeu_params),
                 hi_diffusion=ov('hi_diffusion', [self.hi_diffusion]),
+                hi_diffusion_no_win_attn=ov(
+                    'hi_diffusion_no_win_attn', [self.hi_diffusion_no_win_attn]),
+                hi_diffusion_no_raunet=ov(
+                    'hi_diffusion_no_raunet', [self.hi_diffusion_no_raunet]),
                 tea_cache=ov('tea_cache', [self.tea_cache]),
                 tea_cache_rel_l1_threshold=ov('tea_cache_rel_l1_threshold', self.tea_cache_rel_l1_thresholds),
                 ras=ov('ras', [self.ras]),
@@ -2743,6 +2808,10 @@ class RenderLoopConfig(_types.SetFromMixin):
                 sdxl_refiner_sigmas=ov('sdxl_refiner_sigmas', self.sdxl_refiner_sigmas),
                 sdxl_refiner_freeu_params=ov('sdxl_refiner_freeu_params', self.sdxl_refiner_freeu_params),
                 sdxl_refiner_hi_diffusion=ov('sdxl_refiner_hi_diffusion', [self.sdxl_refiner_hi_diffusion]),
+                sdxl_refiner_hi_diffusion_no_win_attn=ov(
+                    'sdxl_refiner_hi_diffusion_no_win_attn', [self.sdxl_refiner_hi_diffusion_no_win_attn]),
+                sdxl_refiner_hi_diffusion_no_raunet=ov(
+                    'sdxl_refiner_hi_diffusion_no_raunet', [self.sdxl_refiner_hi_diffusion_no_raunet]),
                 sdxl_refiner_pag_scale=ov('sdxl_refiner_pag_scale', self.sdxl_refiner_pag_scales),
                 sdxl_refiner_pag_adaptive_scale=ov('sdxl_refiner_pag_adaptive_scale',
                                                    self.sdxl_refiner_pag_adaptive_scales),

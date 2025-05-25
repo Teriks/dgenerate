@@ -174,16 +174,29 @@ def _deep_cache_context(pipeline,
 
 
 @contextlib.contextmanager
-def _hi_diffusion(pipeline, generator, enabled: bool):
+def _hi_diffusion(
+        pipeline,
+        generator,
+        enabled: bool,
+        no_raunet: bool | None = None,
+        no_window_attn: bool | None = None
+):
     if enabled:
         sd15cn = pipeline.__class__.__name__.startswith('StableDiffusionControlNet')
+
+        if no_raunet is None:
+            no_raunet = not sd15cn
+        if no_window_attn is None:
+            no_window_attn = not sd15cn
+
         _messages.debug_log(
-            f'Enabling HiDiffusion on pipeline: {pipeline.__class__.__name__}')
+            f'Enabling HiDiffusion on pipeline: {pipeline.__class__.__name__} '
+            f'(no_raunet={no_raunet}, no_window_attn={no_window_attn})')
         _hidiffusion.apply_hidiffusion(
             pipeline,
             generator=generator,
-            apply_raunet=not sd15cn,
-            apply_window_attn=not sd15cn
+            apply_raunet=not no_raunet,
+            apply_window_attn=not no_window_attn
         )
     try:
         yield
@@ -1176,11 +1189,23 @@ class DiffusionPipelineWrapper:
         if args.hi_diffusion:
             opts.append(('--hi-diffusion',))
 
+        if args.hi_diffusion_no_win_attn:
+            opts.append(('--hi-diffusion-no-win-attn',))
+
+        if args.hi_diffusion_no_raunet:
+            opts.append(('--hi-diffusion-no-raunet',))
+
         if args.sdxl_refiner_freeu_params is not None:
             opts.append(('--sdxl-refiner-freeu-params', ','.join(map(str, args.sdxl_refiner_freeu_params))))
 
         if args.sdxl_refiner_hi_diffusion:
             opts.append(('--sdxl-refiner-hi-diffusion',))
+
+        if args.sdxl_refiner_hi_diffusion_no_win_attn:
+            opts.append(('--sdxl-refiner-hi-diffusion-no-win-attn',))
+
+        if args.sdxl_refiner_hi_diffusion_no_raunet:
+            opts.append(('--sdxl-refiner-hi-diffusion-no-raunet',))
 
         if args.tea_cache:
             opts.append(('--tea-cache',))
@@ -2613,14 +2638,18 @@ class DiffusionPipelineWrapper:
             ras_args = self._get_sd3_ras_args(user_args)
 
             with _freeu(self._pipeline, user_args.freeu_params), \
-                 _hi_diffusion(self._pipeline, generator=generator, enabled=user_args.hi_diffusion), \
-                 _sd3_ras_context(self._pipeline, args=ras_args, enabled=user_args.ras), \
-                 _deep_cache_context(self._pipeline,
-                                     cache_interval=_types.default(
-                                         user_args.deep_cache_interval, _constants.DEFAULT_DEEP_CACHE_INTERVAL),
-                                     cache_branch_id=_types.default(
-                                         user_args.deep_cache_branch_id, _constants.DEFAULT_DEEP_CACHE_BRANCH_ID),
-                                     enabled=user_args.deep_cache):
+                    _hi_diffusion(self._pipeline,
+                                  generator=generator,
+                                  enabled=user_args.hi_diffusion,
+                                  no_raunet=user_args.hi_diffusion_no_raunet,
+                                  no_window_attn=user_args.hi_diffusion_no_win_attn), \
+                    _sd3_ras_context(self._pipeline, args=ras_args, enabled=user_args.ras), \
+                    _deep_cache_context(self._pipeline,
+                                        cache_interval=_types.default(
+                                            user_args.deep_cache_interval, _constants.DEFAULT_DEEP_CACHE_INTERVAL),
+                                        cache_branch_id=_types.default(
+                                            user_args.deep_cache_branch_id, _constants.DEFAULT_DEEP_CACHE_BRANCH_ID),
+                                        enabled=user_args.deep_cache):
 
                 if self._parsed_adetailer_detector_uris:
                     return generate_asdff()
@@ -2648,15 +2677,17 @@ class DiffusionPipelineWrapper:
             output_type = 'pil'
 
         with _freeu(self._pipeline, user_args.freeu_params), \
-             _hi_diffusion(self._pipeline,
-                           generator=generator,
-                           enabled=user_args.hi_diffusion), \
-             _deep_cache_context(self._pipeline,
-                                 cache_interval=_types.default(
-                                     user_args.deep_cache_interval, _constants.DEFAULT_DEEP_CACHE_INTERVAL),
-                                 cache_branch_id=_types.default(
-                                     user_args.deep_cache_branch_id, _constants.DEFAULT_DEEP_CACHE_BRANCH_ID),
-                                 enabled=user_args.deep_cache):
+                _hi_diffusion(self._pipeline,
+                              generator=generator,
+                              enabled=user_args.hi_diffusion,
+                              no_raunet=user_args.hi_diffusion_no_raunet,
+                              no_window_attn=user_args.hi_diffusion_no_win_attn), \
+                _deep_cache_context(self._pipeline,
+                                    cache_interval=_types.default(
+                                        user_args.deep_cache_interval, _constants.DEFAULT_DEEP_CACHE_INTERVAL),
+                                    cache_branch_id=_types.default(
+                                        user_args.deep_cache_branch_id, _constants.DEFAULT_DEEP_CACHE_BRANCH_ID),
+                                    enabled=user_args.deep_cache):
 
             if self._parsed_adetailer_detector_uris:
                 image = generate_asdff().images
@@ -2845,17 +2876,19 @@ class DiffusionPipelineWrapper:
         )
 
         with _freeu(self._sdxl_refiner_pipeline, user_args.sdxl_refiner_freeu_params), \
-             _hi_diffusion(self._sdxl_refiner_pipeline,
-                           generator=generator,
-                           enabled=user_args.sdxl_refiner_hi_diffusion), \
-             _deep_cache_context(self._sdxl_refiner_pipeline,
-                                 cache_interval=_types.default(
-                                     user_args.deep_cache_interval,
-                                     _constants.DEFAULT_SDXL_REFINER_DEEP_CACHE_INTERVAL),
-                                 cache_branch_id=_types.default(
-                                     user_args.deep_cache_branch_id,
-                                     _constants.DEFAULT_SDXL_REFINER_DEEP_CACHE_BRANCH_ID),
-                                 enabled=user_args.sdxl_refiner_deep_cache):
+                _hi_diffusion(self._sdxl_refiner_pipeline,
+                              generator=generator,
+                              enabled=user_args.sdxl_refiner_hi_diffusion,
+                              no_raunet=user_args.sdxl_refiner_hi_diffusion_no_raunet,
+                              no_window_attn=user_args.sdxl_refiner_hi_diffusion_no_win_attn), \
+                _deep_cache_context(self._sdxl_refiner_pipeline,
+                                    cache_interval=_types.default(
+                                        user_args.deep_cache_interval,
+                                        _constants.DEFAULT_SDXL_REFINER_DEEP_CACHE_INTERVAL),
+                                    cache_branch_id=_types.default(
+                                        user_args.deep_cache_branch_id,
+                                        _constants.DEFAULT_SDXL_REFINER_DEEP_CACHE_BRANCH_ID),
+                                    enabled=user_args.sdxl_refiner_deep_cache):
 
             return PipelineWrapperResult(
                 _pipelines.call_pipeline(
@@ -3380,6 +3413,27 @@ class DiffusionPipelineWrapper:
             if self.t2i_adapter_uris:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'HiDiffusion is not supported with T2I Adapters'
+                )
+        else:
+            if args.hi_diffusion_no_raunet is not None:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'HiDiffusion no-raunet option is only supported when HiDiffusion is enabled.'
+                )
+            if args.hi_diffusion_no_win_attn is not None:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'HiDiffusion no-window-attention option is only supported when HiDiffusion is enabled.'
+                )
+
+        if not args.sdxl_refiner_hi_diffusion:
+            if args.sdxl_refiner_hi_diffusion_no_raunet is not None:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'SDXL Refiner HiDiffusion no-raunet option is only '
+                    'supported when SDXL Refiner HiDiffusion is enabled.'
+                )
+            if args.sdxl_refiner_hi_diffusion_no_win_attn is not None:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'SDXL Refiner HiDiffusion no-window-attention option is only '
+                    'supported when SDXL Refiner HiDiffusion is enabled.'
                 )
 
     def _auto_tea_cache_check(self, args: DiffusionArguments):
