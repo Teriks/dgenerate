@@ -37,6 +37,7 @@ from .uriwithfloatargentry import _UriWithFloatArgEntry
 from .seedsentry import _SeedsEntry
 from .imagesizeentry import _ImageSizeEntry
 from .argswitchradio import _ArgSwitchRadio
+from .argswitchconditionalcheckboxes import _ArgSwitchConditionalCheckboxes
 from .urientry import _UriEntry
 from .imageseedentry import _ImageSeedEntry
 from .fluxcontrolnetentry import _FluxControlNetEntry
