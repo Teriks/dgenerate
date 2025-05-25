@@ -1019,29 +1019,6 @@ class RenderLoopConfig(_types.SetFromMixin):
     (default: 0)
     """
 
-    sdxl_refiner_hi_diffusion: _types.OptionalBoolean = None
-    """
-    Activate HiDiffusion for the SDXL refiner? See: :py:attr:`RenderLoopConfig.hi_diffusion`
-    """
-
-    sdxl_refiner_hi_diffusion_no_win_attn: _types.OptionalBoolean = None
-    """
-    Disable window attention when using HiDiffusion for the SDXL refiner?
-    
-    This disables the MSW-MSA (Multi-Scale Window Multi-Head Self-Attention) component of HiDiffusion.
-    
-    See: :py:attr:`RenderLoopConfig.hi_diffusion_no_win_attn`
-    """
-
-    sdxl_refiner_hi_diffusion_no_raunet: _types.OptionalBoolean = None
-    """
-    Disable RAU-Net when using HiDiffusion for the SDXL refiner?
-    
-    This disables the Resolution-Aware U-Net component of HiDiffusion.
-    
-    See: :py:attr:`RenderLoopConfig.hi_diffusion_no_raunet`
-    """
-
     pag: bool = False
     """
     Use perturbed attention guidance?
@@ -1565,18 +1542,6 @@ class RenderLoopConfig(_types.SetFromMixin):
             if self.hi_diffusion_no_raunet is not None:
                 raise RenderLoopConfigError(
                     f'{a_namer("hi_diffusion_no_raunet")} is only supported when {a_namer("hi_diffusion")} is enabled.'
-                )
-
-        if not self.sdxl_refiner_hi_diffusion:
-            if self.sdxl_refiner_hi_diffusion_no_win_attn is not None:
-                raise RenderLoopConfigError(
-                    f'{a_namer("sdxl_refiner_hi_diffusion_no_win_attn")} is only '
-                    f'supported when {a_namer("sdxl_refiner_hi_diffusion")} is enabled.'
-                )
-            if self.sdxl_refiner_hi_diffusion_no_raunet is not None:
-                raise RenderLoopConfigError(
-                    f'{a_namer("sdxl_refiner_hi_diffusion_no_raunet")} is only '
-                    f'supported when {a_namer("sdxl_refiner_hi_diffusion")} is enabled.'
                 )
 
         deep_cache_enabled = (self.deep_cache or any(self._non_null_attr_that_start_with('deep_cache_')))
@@ -2807,11 +2772,6 @@ class RenderLoopConfig(_types.SetFromMixin):
                 second_model_guidance_scale=ov('second_model_guidance_scale', self.second_model_guidance_scales),
                 sdxl_refiner_sigmas=ov('sdxl_refiner_sigmas', self.sdxl_refiner_sigmas),
                 sdxl_refiner_freeu_params=ov('sdxl_refiner_freeu_params', self.sdxl_refiner_freeu_params),
-                sdxl_refiner_hi_diffusion=ov('sdxl_refiner_hi_diffusion', [self.sdxl_refiner_hi_diffusion]),
-                sdxl_refiner_hi_diffusion_no_win_attn=ov(
-                    'sdxl_refiner_hi_diffusion_no_win_attn', [self.sdxl_refiner_hi_diffusion_no_win_attn]),
-                sdxl_refiner_hi_diffusion_no_raunet=ov(
-                    'sdxl_refiner_hi_diffusion_no_raunet', [self.sdxl_refiner_hi_diffusion_no_raunet]),
                 sdxl_refiner_pag_scale=ov('sdxl_refiner_pag_scale', self.sdxl_refiner_pag_scales),
                 sdxl_refiner_pag_adaptive_scale=ov('sdxl_refiner_pag_adaptive_scale',
                                                    self.sdxl_refiner_pag_adaptive_scales),

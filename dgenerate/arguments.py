@@ -1869,40 +1869,6 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '-rhd', '--sdxl-refiner-hi-diffusion',
-            action='store_true', default=None, dest='sdxl_refiner_hi_diffusion',
-            help=f"""Activate HiDiffusion for the SDXL refiner?, See: --hi-diffusion"""
-        )
-    )
-
-    actions.append(
-        parser.add_argument(
-            '--sdxl-refiner-hi-diffusion-no-win-attn',
-            action='store_true', default=None, dest='sdxl_refiner_hi_diffusion_no_win_attn',
-            help=f"""Disable window attention when using HiDiffusion for the SDXL refiner?
-            
-                     This disables the MSW-MSA (Multi-Scale Window Multi-Head Self-Attention) component of HiDiffusion.
-                     
-                     See: --hi-diffusion-no-win-attn
-                     """
-        )
-    )
-
-    actions.append(
-        parser.add_argument(
-            '--sdxl-refiner-hi-diffusion-no-raunet',
-            action='store_true', default=None, dest='sdxl_refiner_hi_diffusion_no_raunet',
-            help=f"""Disable RAU-Net when using HiDiffusion for the SDXL refiner?
-            
-                     This disables the Resolution-Aware U-Net component of HiDiffusion.
-                     
-                     See: --hi-diffusion-no-raunet
-                     """
-        )
-    )
-
-    actions.append(
-        parser.add_argument(
             '-dc', '--deep-cache',
             action='store_true', default=False, dest='deep_cache',
             help=f"""Activate DeepCache for the main model?
