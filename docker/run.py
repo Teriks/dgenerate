@@ -81,7 +81,7 @@ if len(args) == 0:
     args = ['bash']
 
 if amd_mode:
-    extra_index = "https://download.pytorch.org/whl/rocm6.2.4/"
+    extra_index = "https://download.pytorch.org/whl/rocm6.3/"
     docker_file = 'dockerfile-rocm'
     image = 'dgenerate-rocm'
 
@@ -91,7 +91,7 @@ if amd_mode:
     gpu_opts = ['--device', '/dev/kfd', '--device', '/dev/dri', '--security-opt', 'seccomp=unconfined'] \
         if platform.system() != 'Windows' else []
 else:
-    extra_index = "https://download.pytorch.org/whl/cu124/"
+    extra_index = "https://download.pytorch.org/whl/cu128/"
     docker_file = 'dockerfile-cuda'
     image = 'dgenerate-cuda'
     gpu_opts = ['--gpus', 'all']

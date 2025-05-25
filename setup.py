@@ -20,8 +20,6 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import io
-import itertools
 import os
 import platform
 import re
@@ -130,24 +128,33 @@ def _pad_version(parts):
             parts.append(0)
 
 
-def _to_version_str(parts) -> str:
-    return '.'.join(str(p) for p in parts)
+def _to_version_str(parts, suffix='') -> str:
+    return '.'.join(str(p) for p in parts) + suffix
 
 
 def _version_to_parts(string, cast=True) -> tuple[list[int], str]:
-    parts = string.split('+')
-
-    extra = ''
-    if len(parts) == 2:
-        extra = '+' + parts[1]
-
-    version = parts[0]
-
-    return [int(i) if cast else i for i in version.split('.')], extra
+    # Match the base version (major.minor.patch) and any suffix
+    match = re.match(r'^(\d+(?:\.\d+)*)(.*)', string)
+    if not match:
+        # Fallback for edge cases
+        return [0], string
+    
+    base_version, suffix = match.groups()
+    
+    if cast:
+        try:
+            version_parts = [int(i) for i in base_version.split('.')]
+        except ValueError:
+            # If casting fails, return as strings
+            version_parts = base_version.split('.')
+    else:
+        version_parts = base_version.split('.')
+    
+    return version_parts, suffix
 
 
 def poetry_caret_to_pip(version) -> str:
-    v, _ = _version_to_parts(version)
+    v, suffix = _version_to_parts(version)
     v2 = []
     bumped = False
     for idx, p in enumerate(v):
@@ -160,7 +167,7 @@ def poetry_caret_to_pip(version) -> str:
     _pad_version(v)
     _pad_version(v2)
 
-    return f">={_to_version_str(v)},<{_to_version_str(v2)}"
+    return f">={_to_version_str(v, suffix)},<{_to_version_str(v2)}"
 
 
 def _bump_version_rest(parts) -> list[int]:
@@ -174,7 +181,7 @@ def _bump_version_rest(parts) -> list[int]:
 
 
 def poetry_tilde_to_pip(version) -> str:
-    v, _ = _version_to_parts(version)
+    v, suffix = _version_to_parts(version)
     if len(v) > 2:
         v = v[:2]
 
@@ -183,17 +190,23 @@ def poetry_tilde_to_pip(version) -> str:
     _pad_version(v)
     _pad_version(v2)
 
-    return f">={_to_version_str(v)},<{_to_version_str(v2)}"
+    return f">={_to_version_str(v, suffix)},<{_to_version_str(v2)}"
 
 
 def poetry_star_to_pip(version) -> str:
-    v, _ = _version_to_parts(version, cast=False)
-    v = v[:v.index('*')]
-
-    if not v:
+    # Handle wildcard versions like "1.2.*"
+    # Split on the first '*' to separate the base version from the wildcard
+    if '*' not in version:
+        return f"=={version}"
+    
+    base_version = version.split('*')[0].rstrip('.')
+    
+    if not base_version:
         return '>=0.0.0'
-
-    v2 = _bump_version_rest([int(i) for i in v])
+    
+    # Parse the base version parts
+    v = [int(i) for i in base_version.split('.')]
+    v2 = _bump_version_rest(v)
 
     _pad_version(v)
     _pad_version(v2)
@@ -232,15 +245,15 @@ if __name__ != 'setup_as_library':
         if name in requires:
             requires.pop(name)
 
-    pyinstaller_requires = ['pyinstaller==6.12.0']
-    sphinx_requires = ['sphinx_rtd_theme==3.0.2', 'sphinx_rtd_theme==3.0.2']
+    pyinstaller_requires = ['pyinstaller==6.13.0']
+    sphinx_requires = ['sphinx_rtd_theme==3.0.2']
 
     extras: dict[str, list[str]] = {
         'ncnn': ['ncnn==1.0.20241226'],
         'gpt4all': ['gpt4all==2.8.2'],
         'dev': [*pyinstaller_requires,
                 *sphinx_requires,
-                'poetry~=2.1.1',
+                'poetry~=2.1.3',
                 'graphviz~=0.20.3'],
         'readthedocs': sphinx_requires
     }
@@ -275,7 +288,7 @@ if __name__ != 'setup_as_library':
         extras['gpt4all_cuda'] = ['gpt4all[cuda]==2.8.2']
 
     if dgenerate_platform == 'windows':
-        extras['triton-windows'] = ['triton-windows==3.2.0.post17']
+        extras['triton-windows'] = ['triton-windows==3.3.0.post19']
         
         extras['win-installer'] = (
                 pyinstaller_requires +

@@ -68,7 +68,7 @@ def create_portable_environment(args):
 
         subprocess.run([python_exe,
                         '-m', 'pip', 'install', '.[win-installer]',
-                        '--extra-index-url', 'https://download.pytorch.org/whl/cu124/'], env=env)
+                        '--extra-index-url', 'https://download.pytorch.org/whl/cu128/'], env=env)
 
         if args.custom_diffusers:
             subprocess.run([python_exe,
