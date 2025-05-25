@@ -2277,8 +2277,8 @@ def _create_torch_diffusion_pipeline(
                 dtype=dtype,
                 original_config=original_config,
                 auth_token=auth_token,
-                quantizer_uri=quantizer_uri,
-                manual_component_uris=manual_component_uris
+                manual_component_uris=manual_component_uris,
+                vae_uri=vae_uri
             )
 
             _messages.debug_log(
@@ -3021,7 +3021,8 @@ def _create_minimal_pipeline_for_component_extraction(
         auth_token: str | None,
         lora_uris: _types.OptionalUris,
         lora_fuse_scale: float | None,
-        manual_component_uris: dict[str, str] | None = None
+        manual_component_uris: dict[str, str] | None = None,
+        vae_uri: _types.OptionalUri = None
 ):
     pipeline_class = get_torch_pipeline_class(
         model_type=model_type,
@@ -3186,6 +3187,18 @@ def _create_minimal_pipeline_for_component_extraction(
                         transformer_class=transformer_class
                     )
 
+    # Load VAE if specified - this is needed for single file checkpoints that don't contain a VAE
+    if vae_uri:
+        parsed_vae_uri = _uris.VAEUri.parse(vae_uri)
+        creation_kwargs['vae'] = parsed_vae_uri.load(
+            dtype_fallback=dtype,
+            original_config=original_config,
+            use_auth_token=auth_token,
+            local_files_only=False,
+            no_cache=True,
+            missing_ok=False
+        )
+
     # Load the pipeline with all required components
     if _util.is_single_file_model_load(model_path):
         try:
@@ -3244,8 +3257,8 @@ def _cache_components_granular(
         dtype: _enums.DataType,
         original_config: str | None,
         auth_token: str | None,
-        quantizer_uri: str | None,
-        manual_component_uris: dict[str, str] | None = None
+        manual_component_uris: dict[str, str] | None = None,
+        vae_uri: _types.OptionalUri = None
 ) -> tuple[dict[str, str], dict[str, str]]:
     cached_component_paths = {}
     components_to_load = []
@@ -3322,7 +3335,8 @@ def _cache_components_granular(
             auth_token=auth_token,
             lora_uris=lora_uris,
             lora_fuse_scale=lora_fuse_scale,
-            manual_component_uris=manual_component_uris
+            manual_component_uris=manual_component_uris,
+            vae_uri=vae_uri
         )
 
     if lora_uris:
