@@ -1198,15 +1198,6 @@ class DiffusionPipelineWrapper:
         if args.sdxl_refiner_freeu_params is not None:
             opts.append(('--sdxl-refiner-freeu-params', ','.join(map(str, args.sdxl_refiner_freeu_params))))
 
-        if args.sdxl_refiner_hi_diffusion:
-            opts.append(('--sdxl-refiner-hi-diffusion',))
-
-        if args.sdxl_refiner_hi_diffusion_no_win_attn:
-            opts.append(('--sdxl-refiner-hi-diffusion-no-win-attn',))
-
-        if args.sdxl_refiner_hi_diffusion_no_raunet:
-            opts.append(('--sdxl-refiner-hi-diffusion-no-raunet',))
-
         if args.tea_cache:
             opts.append(('--tea-cache',))
 
@@ -2876,11 +2867,6 @@ class DiffusionPipelineWrapper:
         )
 
         with _freeu(self._sdxl_refiner_pipeline, user_args.sdxl_refiner_freeu_params), \
-                _hi_diffusion(self._sdxl_refiner_pipeline,
-                              generator=generator,
-                              enabled=user_args.sdxl_refiner_hi_diffusion,
-                              no_raunet=user_args.sdxl_refiner_hi_diffusion_no_raunet,
-                              no_window_attn=user_args.sdxl_refiner_hi_diffusion_no_win_attn), \
                 _deep_cache_context(self._sdxl_refiner_pipeline,
                                     cache_interval=_types.default(
                                         user_args.deep_cache_interval,
@@ -3422,18 +3408,6 @@ class DiffusionPipelineWrapper:
             if args.hi_diffusion_no_win_attn is not None:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'HiDiffusion no-window-attention option is only supported when HiDiffusion is enabled.'
-                )
-
-        if not args.sdxl_refiner_hi_diffusion:
-            if args.sdxl_refiner_hi_diffusion_no_raunet is not None:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'SDXL Refiner HiDiffusion no-raunet option is only '
-                    'supported when SDXL Refiner HiDiffusion is enabled.'
-                )
-            if args.sdxl_refiner_hi_diffusion_no_win_attn is not None:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'SDXL Refiner HiDiffusion no-window-attention option is only '
-                    'supported when SDXL Refiner HiDiffusion is enabled.'
                 )
 
     def _auto_tea_cache_check(self, args: DiffusionArguments):

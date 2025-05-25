@@ -2018,9 +2018,7 @@ def apply_hidiffusion(
             module.model = 'sd15'
             module.info = diffusion_model.info
 
-    elif name_or_path in ['stabilityai/stable-diffusion-xl-base-1.0',
-                          'stabilityai/stable-diffusion-xl-refiner-1.0',
-                          'diffusers/stable-diffusion-xl-1.0-inpainting-0.1']:
+    elif name_or_path in ['stabilityai/stable-diffusion-xl-base-1.0', 'diffusers/stable-diffusion-xl-1.0-inpainting-0.1']:
         modified_key = sdxl_hidiffusion_key()
         for key, module in diffusion_model.named_modules():
             if apply_raunet and key in modified_key['down_module_key']:

@@ -15,7 +15,6 @@ order: 8
 @file[{"label": "Refiner Original Config (yaml)", "arg": "--sdxl-refiner-original-config", "file-types": ["yaml"]}]
 @karrasscheduler[{"label":"Refiner Scheduler", "arg":"--second-model-scheduler", "default":"UniPCMultistepScheduler"}]
 @checkboxwithtwointargs[{"label":"Refiner Use DeepCache", "int1-label": "Refiner DeepCache Interval", "int1-arg":"--sdxl-refiner-deep-cache-intervals", "int1":5, "int1-min":1, "int2-label":"Refiner DeepCache Branch ID", "int2":1, "int2-arg": "--sdxl-refiner-deep-cache-branch-ids", "int2-min":0}]
-@conditionalcheckboxes[{"labels":["Refiner Use HiDiffusion", "Refiner HiDiffusion No Window Attention", "Refiner HiDiffusion No RAUNet"], "args":["--sdxl-refiner-hi-diffusion", "--sdxl-refiner-hi-diffusion-no-win-attn", "--sdxl-refiner-hi-diffusion-no-raunet"]}]
 @switch[{"label":"Refiner Edit Mode", "arg":"--sdxl-refiner-edit"}]
 @switchradio[{"labels":["Refiner CPU Offload", "Refiner Sequential Offload"], "args":["--second-model-cpu-offload", "--second-model-sequential-offload"]}]
 @quantizer[{"label": "Refiner Quantizer", "arg":"--second-model-quantizer", "divider-after":true}]
