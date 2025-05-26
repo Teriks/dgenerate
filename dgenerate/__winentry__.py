@@ -20,12 +20,15 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import sys
+import os
 
 __doc__ = """
 Windows installation entry point.
 
 This is used in the environment created by the windows installer.
 """
+
+os.environ['DGENERATE_PYINSTALLER'] = '1'
 
 try:
     import dgenerate

@@ -27,6 +27,22 @@ import itertools
 import os
 import sys
 
+if os.environ.get('DGENERATE_PYINSTALLER', '0') == '1':
+    import inspect
+
+    original_getsourcefile = inspect.getsourcefile
+
+    def patched_getsourcefile(obj):
+        try:
+            result = original_getsourcefile(obj)
+            if result and result.endswith('.pyc'):
+                result = result[:-1]
+            return result
+        except Exception:
+            return None
+
+    inspect.getsourcefile = patched_getsourcefile
+
 # Set the maximum split size for the CUDA memory allocator
 # and GC threshold to handle large allocations efficiently
 os.environ['PYTORCH_CUDA_ALLOC_CONF'] = os.environ.get(
@@ -64,6 +80,9 @@ if __am_dgenerate_app and '--console' in sys.argv:
         args.remove('--console')
     _console.main(args)
     sys.exit(0)
+
+if os.environ.get('DGENERATE_PYINSTALLER', '0') == '1':
+    import dgenerate.pyinstaller_transformers_patches
 
 import collections.abc
 import warnings
