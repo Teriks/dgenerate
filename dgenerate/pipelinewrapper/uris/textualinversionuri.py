@@ -261,6 +261,13 @@ class TextualInversionUri:
                                                         text_encoder=pipeline.text_encoder_2,
                                                         tokenizer=pipeline.tokenizer_2,
                                                         hf_token=use_auth_token)
+
+                    if is_flux and 't5' in dicts:
+                        pipeline.load_textual_inversion(dicts['t5'],
+                                                        token=token,
+                                                        text_encoder=pipeline.text_encoder_2,
+                                                        tokenizer=pipeline.tokenizer_2,
+                                                        hf_token=use_auth_token)
                 else:
                     pipeline.load_textual_inversion(model_path,
                                                     token=textual_inversion_uri.token,
