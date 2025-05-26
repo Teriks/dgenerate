@@ -16,8 +16,10 @@
 
 import transformers.utils.import_utils
 import os
+import functools
 
 
+@functools.lru_cache()
 def create_import_structure_from_path(module_path):
     """
     This method takes the path to a file/a folder and returns the import structure.
