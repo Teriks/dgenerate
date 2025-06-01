@@ -82,9 +82,6 @@ if __am_dgenerate_app and '--console' in sys.argv:
     _console.main(args)
     sys.exit(0)
 
-if os.environ.get('DGENERATE_PYINSTALLER', '0') == '1':
-    import dgenerate.pyinstaller_transformers_patches
-
 import collections.abc
 import warnings
 
@@ -100,6 +97,18 @@ if os.environ.get('DGENERATE_BACKEND_WARNINGS', '0') == '0':
     warnings.filterwarnings('ignore', module='ctranslate2')
 
 try:
+    import transformers.utils.import_utils
+    import diffusers.utils.import_utils
+
+    # These libraries cannot detect the presence of dbowring-sentencepiece
+    transformers.utils.import_utils._sentencepiece_available = True
+    transformers.utils.import_utils.is_sentencepiece_available = lambda: True
+    diffusers.utils.import_utils._sentencepiece_available = True
+    diffusers.utils.import_utils.is_sentencepiece_available = lambda: True
+
+    if os.environ.get('DGENERATE_PYINSTALLER', '0') == '1':
+        import dgenerate.pyinstaller_transformers_patches
+
     import diffusers
     import transformers
 
