@@ -3,7 +3,7 @@ from __future__ import annotations
 import random
 import urllib.request
 
-from argostranslate.utils import error, info
+from dgenerate.extras.argostranslate.utils import error, info
 
 USER_AGENT = "ArgosTranslate"
 

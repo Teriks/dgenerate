@@ -3,11 +3,11 @@ from __future__ import annotations
 from difflib import SequenceMatcher
 from typing import List, Optional
 
-import spacy
+import dgenerate.spacycache as _spacycache
 
-from argostranslate import package
-from argostranslate.package import Package
-from argostranslate.utils import info
+from dgenerate.extras.argostranslate import package
+from dgenerate.extras.argostranslate.package import Package
+from dgenerate.extras.argostranslate.utils import info
 
 
 class ISentenceBoundaryDetectionModel:
@@ -24,12 +24,15 @@ class ISentenceBoundaryDetectionModel:
 # python -m spacy download xx_sent_ud_sm
 class SpacySentencizerSmall(ISentenceBoundaryDetectionModel):
     def __init__(self):
-        try:
-            self.nlp = spacy.load("xx_sent_ud_sm", exclude=["parser"])
-        except OSError:
-            # Automatically download the model if it doesn't exist
-            spacy.cli.download("xx_sent_ud_sm")
-            self.nlp = spacy.load("xx_sent_ud_sm", exclude=["parser"])
+
+        # try:
+        #     self.nlp = spacy.load("xx_sent_ud_sm", exclude=["parser"])
+        # except OSError:
+        #     # Automatically download the model if it doesn't exist
+        #     spacy.cli.download("xx_sent_ud_sm")
+        #     self.nlp = spacy.load("xx_sent_ud_sm", exclude=["parser"])
+
+        self.nlp = _spacycache.load_spacy_model("xx_sent_ud_sm", exclude=["parser"])
         self.nlp.add_pipe("sentencizer")
 
     def split_sentences(self, text: str, lang_code: Optional[str] = None) -> List[str]:

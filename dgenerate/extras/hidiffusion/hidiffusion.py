@@ -105,10 +105,12 @@ inpainting_is_aggressive_raunet = False
 playground_is_aggressive_raunet = False
 
 
-with importlib.resources.open_text('dgenerate.extras.hidiffusion.sd_module_key', 'sd15_module_key.txt', 'utf-8') as f:
+with importlib.resources.open_text(
+        'dgenerate.extras.hidiffusion.sd_module_key', 'sd15_module_key.txt', encoding='utf-8') as f:
     sd15_module_key = f.read().splitlines()
 
-with importlib.resources.open_text('dgenerate.extras.hidiffusion.sd_module_key', 'sdxl_module_key.txt', 'utf-8') as f:
+with importlib.resources.open_text(
+        'dgenerate.extras.hidiffusion.sd_module_key', 'sdxl_module_key.txt', encoding='utf-8') as f:
     sdxl_module_key = f.read().splitlines()
 
 

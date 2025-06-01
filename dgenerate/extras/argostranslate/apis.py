@@ -4,14 +4,14 @@ import json
 import sys
 from urllib import parse, request
 
-from argostranslate.models import ILanguageModel
+from dgenerate.extras.argostranslate.models import ILanguageModel
 
 
 class LibreTranslateAPI:
     """Connect to the LibreTranslate API"""
 
     """Example usage:
-    from argostranslate.apis import LibreTranslateAPI
+    from dgenerate.extras.argostranslate.apis import LibreTranslateAPI
     lt = LibreTranslateAPI("https://translate.argosopentech.com/")
     print(lt.detect("Hello World"))
     print(lt.languages())

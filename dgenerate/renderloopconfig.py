@@ -28,11 +28,11 @@ import dgenerate.mediaoutput as _mediaoutput
 import dgenerate.pipelinewrapper as _pipelinewrapper
 import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 import dgenerate.prompt as _prompt
-import dgenerate.promptweighters as _promptweighters
 import dgenerate.promptupscalers as _promptupscalers
+import dgenerate.promptweighters as _promptweighters
 import dgenerate.textprocessing as _textprocessing
-import dgenerate.types as _types
 import dgenerate.torchutil as _torchutil
+import dgenerate.types as _types
 
 IMAGE_PROCESSOR_SEP = '+'
 """
@@ -656,7 +656,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     freeu_params: typing.Optional[collections.abc.Sequence[tuple[float, float, float, float]]] = None
     """
     FreeU is a technique for improving image quality by re-balancing the contributions from 
-    the UNet’s skip connections and backbone feature maps.
+    the UNet's skip connections and backbone feature maps.
     
     This can be used with no cost to performance, to potentially improve image quality.
     
@@ -1342,11 +1342,18 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     adetailer_crop_control_image: _types.OptionalBoolean = None
     """
-    Should adetailer crop ControlNet control images to the feature detection area? 
-    Your input image and control image should be the the same dimension, 
-    otherwise this argument is ignored with a warning. When this argument 
-    is not specified as ``True``, the control image provided is simply resized
-    to the same size as the detection area.
+    Should adetailer crop any control image the same way that it crops the mask?
+    
+    This is only relevant when using adetailer with ControlNet models.
+    
+    When enabled, control images will be cropped to match the detected region
+    before being passed to the inpainting pipeline. This can help ensure that
+    the control guidance is properly aligned with the area being inpainted.
+    
+    When disabled (default), control images will be resized to match the
+    cropped region size without cropping.
+    
+    This corresponds to the ``--adetailer-crop-control-image`` argument of the dgenerate command line tool.
     """
 
     def __init__(self):
@@ -1660,6 +1667,12 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'{a_namer("adetailer_detector_uris")} is only compatible with '
                 f'{a_namer("model_type")} torch, torch-sdxl, torch-kolors, torch-sd3, and torch-flux')
 
+        if self.adetailer_detector_uris and self.is_output_latents():
+            raise RenderLoopConfigError(
+                f'Outputting latents with {a_namer("image_format")} {self.image_format} '
+                f'is not supported with {a_namer("adetailer_detector_uris")}'
+            )
+
     def _check_image_seeds_requirements(self, a_namer: typing.Callable[[str], str], help_mode: bool):
         """Verify requirements for image seeds based on model type."""
         if not self.image_seeds:
@@ -1774,23 +1787,36 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'Unsupported {a_namer("animation_format")} value "{self.animation_format}". Must be one of '
                 f'{_textprocessing.oxford_comma(_mediaoutput.get_supported_animation_writer_formats(), "or")}')
 
-        if self.image_format not in _mediaoutput.get_supported_static_image_formats():
+        # Check if it's a supported image format or tensor format
+        supported_image_formats = _mediaoutput.get_supported_static_image_formats()
+        supported_tensor_formats = _mediaoutput.get_supported_tensor_formats()
+        all_supported_formats = supported_image_formats + supported_tensor_formats
+
+        if self.image_format not in all_supported_formats:
             raise RenderLoopConfigError(
                 f'Unsupported {a_namer("image_format")} value "{self.image_format}". Must be one of '
-                f'{_textprocessing.oxford_comma(_mediaoutput.get_supported_static_image_formats(), "or")}')
+                f'{_textprocessing.oxford_comma(all_supported_formats, "or")}')
 
         if self.output_metadata and self.output_auto1111_metadata:
             raise RenderLoopConfigError(
                 f'{a_namer("output_metadata")} and {a_namer("output_auto1111_metadata")} '
                 f'are mutually exclusive and cannot be used simultaneously.')
 
-        if self.image_format not in {"png", "jpg", "jpeg"}:
+        # Only check metadata compatibility for actual image formats, not tensor formats
+        if not self.is_output_latents() and self.image_format not in {"png", "jpg", "jpeg"}:
             if self.output_metadata or self.output_auto1111_metadata:
                 prop_name = 'output_metadata' if self.output_metadata else 'output_auto1111_metadata'
                 raise RenderLoopConfigError(
                     f'{a_namer("image_format")} value "{self.image_format}" is '
                     f'unsupported when {a_namer(prop_name)} is enabled. '
                     f'Only "png", "jpg", and "jpeg" formats are supported with {a_namer(prop_name)}.')
+
+        # Tensor formats don't support metadata
+        if self.is_output_latents() and (self.output_metadata or self.output_auto1111_metadata):
+            prop_name = 'output_metadata' if self.output_metadata else 'output_auto1111_metadata'
+            raise RenderLoopConfigError(
+                f'{a_namer(prop_name)} is not supported when outputting latents. '
+                f'Tensor formats ({", ".join(_mediaoutput.get_supported_tensor_formats())}) do not support metadata.')
 
         if self.animation_format == 'frames' and self.no_frames:
             raise RenderLoopConfigError(
@@ -1887,6 +1913,13 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'"torch", "torch-sdxl", or "torch-sd3" when a '
                     f'{a_namer("prompt_weighter_uri")} is not specified.')
 
+        # Check tensor output compatibility with batch grid
+        if self.batch_grid_size is not None and self.is_output_latents():
+            raise RenderLoopConfigError(
+                f'{a_namer("batch_grid_size")} cannot be used with latents output formats '
+                f'(pt, pth, safetensors). Image grids can only be created from decoded images, '
+                f'not raw latents tensors. Use a standard image format such as "png" or "jpg" instead.')
+
     def _check_model_specific_requirements(self, a_namer: typing.Callable[[str], str]):
         """Check specific requirements for different model types."""
         self._check_stable_cascade_requirements(a_namer)
@@ -1897,6 +1930,16 @@ class RenderLoopConfig(_types.SetFromMixin):
         self._check_sd3_model_requirements(a_namer)
         self._check_sdxl_model_requirements(a_namer)
         self._check_vae_compatibility(a_namer)
+        self._check_floyd_requirements(a_namer)
+
+    def _check_floyd_requirements(self, a_namer: typing.Callable[[str], str]):
+        """Check Floyd model specific requirements."""
+        if _pipelinewrapper.model_type_is_floyd(self.model_type):
+            if self.is_output_latents():
+                raise RenderLoopConfigError(
+                    f'Outputting latents with {a_namer("image_format")} {self.image_format} '
+                    f'is not supported with Deep Floyd model types.'
+                )
 
     def _check_stable_cascade_requirements(self, a_namer: typing.Callable[[str], str]):
         """Check Stable Cascade specific requirements."""
@@ -2806,7 +2849,8 @@ class RenderLoopConfig(_types.SetFromMixin):
                 adetailer_detector_padding=ov('adetailer_detector_padding', self.adetailer_detector_paddings),
                 adetailer_mask_padding=ov('adetailer_mask_padding', self.adetailer_mask_paddings),
                 adetailer_mask_blur=ov('adetailer_mask_blur', self.adetailer_mask_blurs),
-                adetailer_mask_dilation=ov('adetailer_mask_dilation', self.adetailer_mask_dilations)):
+                adetailer_mask_dilation=ov('adetailer_mask_dilation', self.adetailer_mask_dilations),
+                output_latents=ov('output_latents', [self.is_output_latents()])):
             arg.prompt.set_embedded_args_on(
                 on_object=arg,
                 forbidden_checker=_pipelinewrapper.DiffusionArguments.prompt_embedded_arg_checker)
@@ -2864,3 +2908,11 @@ class RenderLoopConfig(_types.SetFromMixin):
             return False
 
         return (a for a in dir(self) if check(a) and getattr(self, a) is not None)
+
+    def is_output_latents(self) -> bool:
+        """
+        Check if the current image_format results in outputting latents.
+        
+        :return: ``True`` if the image output format indicates to output latents.
+        """
+        return self.image_format in _mediaoutput.get_supported_tensor_formats()

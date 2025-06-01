@@ -22,6 +22,7 @@ import collections.abc
 import mimetypes
 import os
 import re
+import tempfile
 import typing
 import urllib.parse
 
@@ -29,19 +30,26 @@ import PIL.Image
 import PIL.ImageOps
 import PIL.ImageSequence
 import av
+import safetensors.torch
+import torch
 
 import dgenerate.image as _image
 import dgenerate.imageprocessors as _imageprocessors
+import dgenerate.messages as _messages
 import dgenerate.textprocessing as _textprocessing
+import dgenerate.torchutil as _torchutil
 import dgenerate.types as _types
 import dgenerate.webcache as _webcache
 
 __doc__ = """
-Media input, handles reading videos/animations and static images, and creating readers from image seed URIs.
+Media input, handles reading videos/animations, static images, and tensor files (.pt, .pth, .safetensors), 
+and creating readers from image seed URIs.
 
 Also provides media download capabilities and temporary caching of web based files.
 
-Provides information about supported input formats.
+Provides information about supported input formats including tensor formats for latent data.
+
+Note: Tensor files are loaded as-is without any preprocessing, resizing, or image processing operations.
 """
 
 
@@ -501,6 +509,81 @@ class MockImageAnimationReader(_imageprocessors.ImageProcessorMixin, AnimationRe
             raise StopIteration
 
 
+class MockTensorReader(AnimationReader):
+    """
+    Implementation of :py:class:`.AnimationReader` that yields a single tensor
+    as many times as desired to mock/emulate an animation with tensor data.
+    
+    This reader is used for .pt, .pth, and .safetensors files containing latent tensors.
+    No image processing, resizing, or alignment operations are performed on tensors.
+    """
+
+    def __init__(self,
+                 tensor: torch.Tensor,
+                 file_source: str,
+                 tensor_repetitions: int = 1):
+        """
+        :param tensor: source tensor to yield for each frame
+        :param file_source: source filename for the tensor data
+        :param tensor_repetitions: number of frames that this mock reader provides
+            using the source tensor
+        """
+        self._tensor = tensor
+        self._file_source = file_source
+        self._idx = 0
+
+        total_frames = tensor_repetitions
+        fps = 30.0
+        frame_duration = 1000 / fps
+
+        # For tensors, we don't have meaningful width/height
+        # Use tensor shape if it's 4D (batch, channels, height, width)
+        if len(tensor.shape) >= 2:
+            height = tensor.shape[-2] if len(tensor.shape) >= 2 else 1
+            width = tensor.shape[-1] if len(tensor.shape) >= 1 else 1
+        else:
+            width = height = 1
+
+        super().__init__(width=width,
+                         height=height,
+                         fps=fps,
+                         frame_duration=frame_duration,
+                         total_frames=total_frames)
+
+    @property
+    def total_frames(self) -> int:
+        """
+        Settable total_frames property.
+
+        :return: frame count
+        """
+        return self._total_frames
+
+    @total_frames.setter
+    def total_frames(self, cnt):
+        """
+        Settable total_frames property.
+        """
+        self._total_frames = cnt
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        # Tensors don't need explicit cleanup
+        pass
+
+    def __next__(self) -> torch.Tensor:
+        if self._idx < self.total_frames:
+            self._idx += 1
+            # Return the tensor directly - cloning is only needed if the caller modifies it
+            # Most use cases just read the tensor, so avoid unnecessary memory overhead
+            result = self._tensor
+            # Set a filename-like attribute for consistency (this doesn't modify the tensor data)
+            if hasattr(result, 'filename'):
+                result.filename = self._file_source
+            return result
+        else:
+            raise StopIteration
+
+
 def _exif_orient(image):
     exif = image.getexif()
     for k in exif.keys():
@@ -701,7 +784,151 @@ def get_supported_mimetypes() -> list[str]:
 
     :return: list of strings
     """
-    return get_supported_image_mimetypes() + get_supported_video_mimetypes()
+    return list(
+        set(get_supported_image_mimetypes()) |
+        set(get_supported_video_mimetypes()) |
+        set(get_supported_tensor_mimetypes())
+    )
+
+
+def get_supported_tensor_formats() -> list[str]:
+    """
+    Get supported tensor file formats for latent loading.
+    
+    :return: list of file extensions without periods
+    """
+    return ['pt', 'pth', 'safetensors']
+
+
+def get_supported_tensor_mimetypes() -> list[str]:
+    """
+    Get supported tensor mimetypes for latent loading.
+    
+    :return: list of mimetype strings
+    """
+    return ['application/octet-stream']
+
+
+def is_tensor_file(path: str) -> bool:
+    """
+    Check if a file path appears to be a tensor file based on extension.
+    
+    :param path: file path or URL
+    :return: ``True`` if it appears to be a tensor file
+    """
+    _, ext = url_aware_splitext(path)
+    return ext.lstrip('.').lower() in get_supported_tensor_formats()
+
+
+def load_tensor_file(path_or_file: typing.BinaryIO | str, file_source: str) -> torch.Tensor:
+    """
+    Load a tensor from a .pt, .pth, or .safetensors file.
+    
+    :param path_or_file: file path or binary IO object
+    :param file_source: source filename for error reporting
+    :return: loaded tensor
+    :raises MediaIdentificationError: if the file cannot be loaded
+    :raises ValueError: if the file format is not supported
+    """
+    _, ext = os.path.splitext(file_source)
+    ext = ext.lstrip('.').lower()
+
+    try:
+        if ext in ['pt', 'pth']:
+            if isinstance(path_or_file, str):
+                tensor = torch.load(path_or_file, map_location='cpu', weights_only=True)
+            else:
+                tensor = torch.load(path_or_file, map_location='cpu', weights_only=True)
+        elif ext == 'safetensors':
+            if isinstance(path_or_file, str):
+                tensor_dict = safetensors.torch.load_file(path_or_file, device='cpu')
+            else:
+                # safetensors doesn't support loading from file objects directly
+                # We'd need to save to a temporary file first
+                tmp_name = None
+                try:
+                    with tempfile.NamedTemporaryFile(suffix='.safetensors', delete=False) as tmp:
+                        tmp.write(path_or_file.read())
+                        tmp.flush()
+                        tmp_name = tmp.name  # Store the name before closing
+
+                    tensor_dict = safetensors.torch.load_file(tmp_name, device='cpu')
+                finally:
+                    # Clean up the temporary file
+                    if tmp_name is not None:
+                        try:
+                            os.unlink(tmp_name)
+                        except (OSError, PermissionError):
+                            # On Windows, sometimes the file is still locked
+                            # Try again after a short delay
+                            import time
+                            time.sleep(0.1)
+                            try:
+                                os.unlink(tmp_name)
+                            except (OSError, PermissionError):
+                                # If it still fails, just leave it for the OS to clean up
+                                pass
+
+            # Handle both single tensor and dictionary of tensors
+            if len(tensor_dict) == 1:
+                tensor = next(iter(tensor_dict.values()))
+            else:
+                # If multiple tensors, look for common latent keys
+                latent_keys = ['latent', 'latents', 'sample', 'samples']
+                for key in latent_keys:
+                    if key in tensor_dict:
+                        tensor = tensor_dict[key]
+                        break
+                else:
+                    # If no common key found, take the first tensor
+                    tensor = next(iter(tensor_dict.values()))
+        else:
+            raise ValueError(f'Unsupported tensor file format: {ext}')
+
+        # Ensure we have a tensor
+        if not isinstance(tensor, torch.Tensor):
+            raise MediaIdentificationError(
+                f'File "{file_source}" does not contain a valid tensor')
+
+        return tensor
+
+    except Exception as e:
+        if isinstance(e, (MediaIdentificationError, ValueError)):
+            raise
+        raise MediaIdentificationError(
+            f'Error loading tensor file "{file_source}": {str(e)}')
+
+
+def separate_images_and_tensors(items: _types.ImagesOrTensors) -> tuple[_types.Images, _types.Tensors]:
+    """
+    Separate a sequence of images or tensors into separate sequences.
+    
+    Note: The input should be homogeneous (all images or all tensors), but this function
+    can handle mixed inputs for validation purposes.
+    
+    :param items: Sequence of PIL Images or torch Tensors (should be homogeneous)
+    :return: Tuple of (images, tensors) where each can be empty if no items of that type exist
+    """
+    images = []
+    tensors = []
+
+    for item in items:
+        if _image.is_image(item):
+            images.append(item)
+        elif _torchutil.is_tensor(item):
+            tensors.append(item)
+
+    return images, tensors
+
+
+def mimetype_is_tensor(mimetype: str) -> bool:
+    """
+    Check if a mimetype is one that dgenerate considers a tensor file
+
+    :param mimetype: The mimetype string
+    :return: bool
+    """
+    return mimetype in get_supported_tensor_mimetypes()
 
 
 def mimetype_is_animated_image(mimetype: str) -> bool:
@@ -748,7 +975,8 @@ def mimetype_is_supported(mimetype: str) -> bool:
     """
     return mimetype_is_static_image(mimetype) or \
         mimetype_is_animated_image(mimetype) or \
-        mimetype_is_video(mimetype)
+        mimetype_is_video(mimetype) or \
+        mimetype_is_tensor(mimetype)
 
 
 class IPAdapterImageUri:
@@ -1026,6 +1254,11 @@ def _parse_ip_adapter_uri(uri: str) -> IPAdapterImageUri:
     if not (is_downloadable_url(path) or os.path.exists(path)):
         raise ImageSeedFileNotFoundError(
             f'Adapter image file "{path}" does not exist.')
+
+    if is_tensor_file(path):
+        raise ImageSeedParseError(
+            f'IP Adapter image path "{path}" is a tensor file. IP Adapter expect images in pixel space, '
+            f'tensor files are not supported for IP Adapter images.')
 
     return IPAdapterImageUri(path, resize, aspect, align)
 
@@ -1535,19 +1768,25 @@ def fetch_media_data_stream(uri: str) -> tuple[str, typing.BinaryIO]:
         mime_type, filename = create_web_cache_file(uri)
         return mime_type, open(filename, mode='rb')
     else:
-        mime_acceptable_desc = _textprocessing.oxford_comma(
-            get_supported_mimetypes(), conjunction='or')
+        # Check if it's a tensor file first
+        if is_tensor_file(uri):
+            # For tensor files, we'll use a generic binary mimetype
+            mime_type = 'application/octet-stream'
+        else:
+            mime_acceptable_desc = _textprocessing.oxford_comma(
+                get_supported_mimetypes(), conjunction='or'
+            )
 
-        mime_type = guess_mimetype(uri)
+            mime_type = guess_mimetype(uri)
 
-        if mime_type is None:
-            raise UnknownMimetypeError(
-                f'Mimetype could not be determined for file "{uri}". '
-                f'Expected: {mime_acceptable_desc}')
+            if mime_type is None:
+                raise UnknownMimetypeError(
+                    f'Mimetype could not be determined for file "{uri}". '
+                    f'Expected: {mime_acceptable_desc}')
 
-        if not mimetype_is_supported(mime_type):
-            raise UnknownMimetypeError(
-                f'Unknown mimetype "{mime_type}" for file "{uri}". Expected: {mime_acceptable_desc}')
+            if not mimetype_is_supported(mime_type):
+                raise UnknownMimetypeError(
+                    f'Unknown mimetype "{mime_type}" for file "{uri}". Expected: {mime_acceptable_desc}')
 
     return mime_type, open(uri, 'rb')
 
@@ -1702,22 +1941,30 @@ class MediaReaderSpec:
 
     image_processor: _imageprocessors.ImageProcessor | None = None
     """
-    Optional image image processor associated with the file
+    Optional image processor associated with the file.
+    
+    Note: Image processors are ignored for tensor files.
     """
 
     aspect_correct: bool = True
     """
     Aspect correct resize enabled?
+    
+    Note: Resize operations are ignored for tensor files.
     """
 
     align: int | None = 8
     """
     Images which are read are aligned to this amount of pixels, ``None`` or ``1`` will disable alignment.
+    
+    Note: Alignment is ignored for tensor files.
     """
 
     resize_resolution: _types.OptionalSize = None
     """
     Optional resize resolution.
+    
+    Note: Resize operations are ignored for tensor files.
     """
 
     def __init__(self, path: str,
@@ -1727,10 +1974,11 @@ class MediaReaderSpec:
                  align: int | None = 8):
         """
         :param path: File path or URL
-        :param resize_resolution: Resize resolution
-        :param aspect_correct: Aspect correct resize enabled?
-        :param align: Images which are read are aligned to this amount of pixels, ``None`` or ``1`` will disable alignment.
-        :param image_processor: Optional image image processor associated with the file
+        :param resize_resolution: Resize resolution (ignored for tensor files)
+        :param aspect_correct: Aspect correct resize enabled? (ignored for tensor files)
+        :param align: Images which are read are aligned to this amount of pixels,
+            ``None`` or ``1`` will disable alignment. (ignored for tensor files)
+        :param image_processor: Optional image processor associated with the file (ignored for tensor files)
         """
 
         if align is not None and align < 1:
@@ -1869,19 +2117,51 @@ class MultiMediaReader:
         self._fps = None
 
         for spec in specs:
-            mimetype, file_stream = path_opener(spec.path)
+            if is_tensor_file(spec.path):
+                # Handle tensor files directly
+                mimetype, file_stream = path_opener(spec.path)
+                tensor = load_tensor_file(file_stream, spec.path)
+                file_stream.close()  # Close immediately after loading tensor
 
-            self._readers.append(
-                create_animation_reader(
-                    mimetype=mimetype,
-                    file_source=spec.path,
-                    file=file_stream,
-                    resize_resolution=spec.resize_resolution,
-                    aspect_correct=spec.aspect_correct,
-                    align=spec.align,
-                    image_processor=spec.image_processor)
-            )
-            self._file_streams.append(file_stream)
+                # Warn about ignored operations on tensor files
+                ignored_operations = []
+
+                if spec.resize_resolution is not None:
+                    ignored_operations.append(f"resize ({spec.resize_resolution[0]}x{spec.resize_resolution[1]})")
+
+                if not spec.aspect_correct:  # Check if non-default value was set
+                    ignored_operations.append(f"aspect ({spec.aspect_correct})")
+
+                if spec.align is not None and spec.align != 8:  # Check if non-default value was set
+                    ignored_operations.append(f"align ({spec.align})")
+
+                if spec.image_processor is not None:
+                    ignored_operations.append(f"image processor ({str(spec.image_processor)})")
+
+                if ignored_operations:
+                    operations_str = ", ".join(ignored_operations)
+                    _messages.warning(f'Tensor file "{url_aware_basename(spec.path)}" is latents input - '
+                                      f'ignoring {operations_str} (tensor files are loaded as-is)')
+
+                # Create a mock reader that yields the tensor
+                self._readers.append(
+                    MockTensorReader(tensor=tensor, file_source=spec.path)
+                )
+            else:
+                # Handle regular media files
+                mimetype, file_stream = path_opener(spec.path)
+
+                self._readers.append(
+                    create_animation_reader(
+                        mimetype=mimetype,
+                        file_source=spec.path,
+                        file=file_stream,
+                        resize_resolution=spec.resize_resolution,
+                        aspect_correct=spec.aspect_correct,
+                        align=spec.align,
+                        image_processor=spec.image_processor)
+                )
+                self._file_streams.append(file_stream)
 
         non_images = [r for r in self._readers if not isinstance(r, MockImageAnimationReader)]
 
@@ -2145,7 +2425,8 @@ class ImageSeed:
     def __exit__(self, exc_type, exc_value, exc_tb):
         if self.images is not None:
             for i in self.images:
-                i.close()
+                if hasattr(i, 'close'):
+                    i.close()
 
         if self.mask_images is not None:
             for i in self.mask_images:
@@ -2162,19 +2443,40 @@ class ImageSeed:
 
 
 def _check_image_dimensions_match(images):
-    ix: PIL.Image.Image
-    for ix in images:
-        iy: PIL.Image.Image
-        for iy in images:
-            if ix.size != iy.size:
+    """
+    Check that all images have matching dimensions.
+    
+    Note: This function only checks PIL Images against other PIL Images.
+    Tensor dimension validation is handled by the pipeline wrapper using VAE scale factors.
+    """
+
+    def get_dimensions(item):
+        return item.size
+
+    def get_filename(item):
+        return _image.get_filename(item)
+
+    # Only check PIL images - tensors are validated by the pipeline wrapper
+    pil_images = [item for item in images if not _torchutil.is_tensor(item)]
+
+    # Check dimensions within PIL images only
+    for ix in pil_images:
+        ix_dims = get_dimensions(ix)
+        ix_filename = get_filename(ix)
+
+        for iy in pil_images:
+            iy_dims = get_dimensions(iy)
+            iy_filename = get_filename(iy)
+
+            if ix_dims != iy_dims:
                 raise ImageSeedSizeMismatchError(
-                    f'Dimension of "{_image.get_filename(ix)}" ({_textprocessing.format_size(ix.size)}) does '
-                    f'not match "{_image.get_filename(iy)}" ({_textprocessing.format_size(iy.size)})')
+                    f'Dimension of "{ix_filename}" ({_textprocessing.format_size(ix_dims)}) does '
+                    f'not match "{iy_filename}" ({_textprocessing.format_size(iy_dims)})')
 
 
 def _flatten(xs):
     for x in xs:
-        if isinstance(x, collections.abc.Iterable) and not isinstance(x, (str, bytes)):
+        if isinstance(x, collections.abc.Iterable) and not isinstance(x, (str, bytes)) and not _torchutil.is_tensor(x):
             yield from _flatten(x)
         else:
             yield x
@@ -2217,7 +2519,7 @@ def iterate_image_seed(uri: str | ImageSeedParseResult,
                        check_dimensions_match: bool = True) -> \
         collections.abc.Iterator[ImageSeed]:
     """
-    Parse and load images/videos in an ``--image-seeds`` uri and return an iterator that
+    Parse and load images/videos/tensors in an ``--image-seeds`` uri and return an iterator that
     produces :py:class:`.ImageSeed` objects while progressively reading those files.
 
     This method is used to iterate over an ``--image-seeds`` uri in the case that the image source
@@ -2263,7 +2565,13 @@ def iterate_image_seed(uri: str | ImageSeedParseResult,
         * ``--image-seeds "img2img.png;mask=mask.png;floyd=stage2-image.png"``
 
     Note that all keyword arguments mentioned above can be used together, except for
-    "control" and "floyd", or "adapter" and "floyd", which are mutually exclusive arguments.
+    ``control`` and ``floyd``, or ``adapter`` and ``floyd``, which are mutually exclusive arguments.
+
+    For ``img2img`` sources, you may also specify a ``pt``, ``pth``, or ``safetensors`` file,
+    this is for passing in latents in place of images in pixel space, image processing will not be
+    applied to these inputs and will be ignored with warnings, this includes resizing, aspect
+    correction, alignment, and image processors. Latents can be generated by using the
+    option ``--image-format`` with the value ``pt``, ``pth``,  or ``safetensors``.
 
     One or more :py:class:`.ImageSeed` objects may be yielded depending on whether an animation is being read.
 
@@ -2551,6 +2859,9 @@ def iterate_control_image(uri: str | ImageSeedParseResult,
     :raise ValueError: if there are more **image_processor** values than
         there are control guidance image sources in the URI.
 
+    :raise ImageSeedError: if a tensor file is passed in a control guidance image specification,
+        latents input is not supported for controlnet guidance images.
+
     :return: an iterator over :py:class:`.ImageSeed` objects
     """
 
@@ -2587,6 +2898,13 @@ def iterate_control_image(uri: str | ImageSeedParseResult,
         image_processor = [image_processor]
 
     control_guidance_image_paths = parse_result.get_control_image_paths()
+
+    # Check for tensor files
+    for path in control_guidance_image_paths:
+        if is_tensor_file(path):
+            raise ImageSeedError(
+                f'Control image path "{path}" is a tensor file. ControlNet/T2I-Adapter expect images in pixel space, '
+                f'tensor files are not supported for control images.')
 
     _validate_image_processor_count(
         processors=image_processor,

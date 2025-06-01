@@ -25,7 +25,9 @@ Commonly used torch utilities.
 """
 
 import re
+
 import torch
+
 import dgenerate.types as _types
 
 
@@ -132,6 +134,16 @@ def estimate_module_memory_usage(module: torch.nn.Module) -> str:
     bytes_per_param = dtype_sizes.get(dtype, 4)
     num_params = sum(p.numel() for p in module.parameters())
     return num_params * bytes_per_param
+
+
+def is_tensor(obj) -> bool:
+    """
+    Check if an object is a PyTorch tensor.
+    
+    :param obj: Object to check
+    :return: True if the object is a torch.Tensor, False otherwise
+    """
+    return isinstance(obj, torch.Tensor)
 
 
 __all__ = _types.module_all()

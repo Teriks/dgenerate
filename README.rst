@@ -210,9 +210,9 @@ Help Output
                      [-te2 TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]] [-un UNET_URI] [-un2 UNET_URI]
                      [-tf TRANSFORMER_URI] [-vae VAE_URI] [-vt] [-vs] [-lra LORA_URI [LORA_URI ...]]
                      [-lrfs LORA_FUSE_SCALE] [-ie IMAGE_ENCODER_URI] [-ipa IP_ADAPTER_URI [IP_ADAPTER_URI ...]]
-                     [-ti URI [URI ...]] [-cn CONTROLNET_URI [CONTROLNET_URI ...] | -t2i T2I_ADAPTER_URI
-                     [T2I_ADAPTER_URI ...]] [-q QUANTIZER_URI] [-qm SUBMODULE [SUBMODULE ...]]
-                     [-q2 QUANTIZER_URI] [-qm2 SUBMODULE [SUBMODULE ...]]
+                     [-ti URI [URI ...]] [-cn CONTROLNET_URI [CONTROLNET_URI ...] |
+                     -t2i T2I_ADAPTER_URI [T2I_ADAPTER_URI ...]] [-q QUANTIZER_URI]
+                     [-qm SUBMODULE [SUBMODULE ...]] [-q2 QUANTIZER_URI] [-qm2 SUBMODULE [SUBMODULE ...]]
                      [-sch SCHEDULER_URI [SCHEDULER_URI ...]] [-sch2 SCHEDULER_URI [SCHEDULER_URI ...]]
                      [-fu CSV_FLOAT [CSV_FLOAT ...]] [-hd] [--hi-diffusion-no-win-attn]
                      [--hi-diffusion-no-raunet] [-rfu CSV_FLOAT [CSV_FLOAT ...]] [-dc]
@@ -222,10 +222,9 @@ Help Output
                      [-rer CSV_INT [CSV_INT ...]] [-rme RAS_METRIC [RAS_METRIC ...]]
                      [-rst INTEGER [INTEGER ...]] [-res INTEGER [INTEGER ...]] [-rsn INTEGER [INTEGER ...]]
                      [-rsl INTEGER [INTEGER ...]] [-pag] [-pags FLOAT [FLOAT ...]] [-pagas FLOAT [FLOAT ...]]
-                     [-rpag] [-rpags FLOAT [FLOAT ...]] [-rpagas FLOAT [FLOAT ...]] [-mqo | -mco]
-                     [-mqo2 | -mco2] [--s-cascade-decoder MODEL_URI] [--sdxl-refiner MODEL_URI]
-                     [--sdxl-refiner-edit] [--sdxl-t2i-adapter-factors FLOAT [FLOAT ...]]
-                     [--sdxl-aesthetic-scores FLOAT [FLOAT ...]]
+                     [-rpag] [-rpags FLOAT [FLOAT ...]] [-rpagas FLOAT [FLOAT ...]] [-mqo | -mco] [-mqo2 |
+                     -mco2] [--s-cascade-decoder MODEL_URI] [--sdxl-refiner MODEL_URI] [--sdxl-refiner-edit]
+                     [--sdxl-t2i-adapter-factors FLOAT [FLOAT ...]] [--sdxl-aesthetic-scores FLOAT [FLOAT ...]]
                      [--sdxl-crops-coords-top-left COORD [COORD ...]] [--sdxl-original-size SIZE [SIZE ...]]
                      [--sdxl-target-size SIZE [SIZE ...]] [--sdxl-negative-aesthetic-scores FLOAT [FLOAT ...]]
                      [--sdxl-negative-original-sizes SIZE [SIZE ...]]
@@ -255,8 +254,8 @@ Help Output
                      [-if FORMAT] [-nf] [-fs FRAME_NUMBER] [-fe FRAME_NUMBER] [-is SEED [SEED ...]]
                      [-sip PROCESSOR_URI [PROCESSOR_URI ...]] [-mip PROCESSOR_URI [PROCESSOR_URI ...]]
                      [-cip PROCESSOR_URI [PROCESSOR_URI ...]] [--image-processor-help [PROCESSOR_NAME ...]]
-                     [-pp PROCESSOR_URI [PROCESSOR_URI ...]] [-iss FLOAT [FLOAT ...] | -uns INTEGER
-                     [INTEGER ...]] [-gs FLOAT [FLOAT ...]]
+                     [-pp PROCESSOR_URI [PROCESSOR_URI ...]] [-iss FLOAT [FLOAT ...] |
+                     -uns INTEGER [INTEGER ...]] [-gs FLOAT [FLOAT ...]]
                      [-si CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...]] [-igs FLOAT [FLOAT ...]]
                      [-gr FLOAT [FLOAT ...]] [-ifs INTEGER [INTEGER ...]] [-ifs2 INTEGER [INTEGER ...]]
                      [-gs2 FLOAT [FLOAT ...]] [-sir CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...]]
@@ -349,40 +348,40 @@ Help Output
             function names. When used with --plugin-modules, functions implemented by the specified plugins will
             also be listed.
             ---------------
-      -gc FILE, --global-config FILE
+      -gc, --global-config FILE
             Provide a json, yaml, or toml file to configure dgenerate's global settings. These settings include
             various default values for generation and garbage collection settings for the in memory caches.
             -----------------------------------------------------------------------------------------------
-      -mt MODEL_TYPE, --model-type MODEL_TYPE
+      -mt, --model-type MODEL_TYPE
             Use when loading different model types. Currently supported: torch, torch-pix2pix, torch-sdxl,
             torch-sdxl-pix2pix, torch-kolors, torch-upscaler-x2, torch-upscaler-x4, torch-if, torch-ifs,
             torch-ifs-img2img, torch-s-cascade, torch-sd3, torch-flux, or torch-flux-fill. (default: torch)
             -----------------------------------------------------------------------------------------------
-      -rev BRANCH, --revision BRANCH
+      -rev, --revision BRANCH
             The model revision to use when loading from a Hugging Face repository, (The Git branch / tag,
             default is "main")
             ------------------
-      -var VARIANT, --variant VARIANT
+      -var, --variant VARIANT
             If specified when loading from a Hugging Face repository or folder, load weights from "variant"
             filename, e.g. "pytorch_model.<variant>.safetensors". Defaults to automatic selection.
             --------------------------------------------------------------------------------------
-      -sbf SUBFOLDER, --subfolder SUBFOLDER
+      -sbf, --subfolder SUBFOLDER
             Main model subfolder. If specified when loading from a Hugging Face repository or folder, load
             weights from the specified subfolder.
             -------------------------------------
-      -olc FILE, --original-config FILE
+      -olc, --original-config FILE
             This argument can be used to supply an original LDM config .yaml file that was provided with a
             single file checkpoint.
             -----------------------
-      -olc2 FILE, --second-model-original-config FILE
+      -olc2, --second-model-original-config FILE
             This argument can be used to supply an original LDM config .yaml file that was provided with a
             single file checkpoint for the secondary model, i.e. the SDXL Refiner or Stable Cascade Decoder.
             ------------------------------------------------------------------------------------------------
-      -atk TOKEN, --auth-token TOKEN
+      -atk, --auth-token TOKEN
             Huggingface auth token. Required to download restricted repositories that have access permissions
             granted to your Hugging Face account.
             -------------------------------------
-      -bs INTEGER, --batch-size INTEGER
+      -bs, --batch-size INTEGER
             The number of image variations to produce per set of individual diffusion parameters in one
             rendering step simultaneously on a single GPU.
             
@@ -396,13 +395,13 @@ Help Output
             along side the produced animation as either suffixed files or image grids depending on the options
             you choose. (Default: 1)
             ------------------------
-      -bgs SIZE, --batch-grid-size SIZE
+      -bgs, --batch-grid-size SIZE
             Produce a single image containing a grid of images with the number of COLUMNSxROWS given to this
             argument when --batch-size is greater than 1. If not specified with a --batch-size greater than 1,
             images will be written individually with an image number suffix (image_N) in the filename signifying
             which image in the batch they are.
             ----------------------------------
-      -ad ADETAILER_DETECTOR_URIS [ADETAILER_DETECTOR_URIS ...], --adetailer-detectors ADETAILER_DETECTOR_URIS [ADETAILER_DETECTOR_URIS ...]
+      -ad, --adetailer-detectors ADETAILER_DETECTOR_URIS [ADETAILER_DETECTOR_URIS ...]
             Specify one or more adetailer YOLO detector model URIs. When specifying this option, you must
             provide an image to --image-seeds, inpaint masks will be auto generated based on what is detected by
             the provided detector models.
@@ -489,20 +488,20 @@ Help Output
             
             Example: --adetailer-detectors https://modelsite.com/yolo-model.pt
             ------------------------------------------------------------------
-      -adi INTEGER [INTEGER ...], --adetailer-index-filter INTEGER [INTEGER ...]
+      -adi, --adetailer-index-filter INTEGER [INTEGER ...]
             A list index values that indicates what adetailer YOLO detection indices to keep, the index values
             start at zero. Detections are sorted by their top left bounding box coordinate from left to right,
             top to bottom, by (confidence descending). The order of detections in the image is identical to the
             reading order of words on a page (english). Inpainting will only be preformed on the specified
             detection indices, if no indices are specified, then inpainting will be preformed on all detections.
             ----------------------------------------------------------------------------------------------------
-      -ads ADETAILER_MASK_SHAPE [ADETAILER_MASK_SHAPE ...], --adetailer-mask-shapes ADETAILER_MASK_SHAPE [ADETAILER_MASK_SHAPE ...]
+      -ads, --adetailer-mask-shapes ADETAILER_MASK_SHAPE [ADETAILER_MASK_SHAPE ...]
             One or more adetailer mask shapes to try. This indicates what mask shape adetailer should attempt to
             draw around a detected feature, the default value is "rectangle". You may also specify "circle" to
             generate an ellipsoid shaped mask, which might be helpful for achieving better blending. (default:
             rectangle).
             -----------
-      -addp ADETAILER_DETECTOR_PADDING [ADETAILER_DETECTOR_PADDING ...], --adetailer-detector-paddings ADETAILER_DETECTOR_PADDING [ADETAILER_DETECTOR_PADDING ...]
+      -addp, --adetailer-detector-paddings ADETAILER_DETECTOR_PADDING [ADETAILER_DETECTOR_PADDING ...]
             One or more adetailer detector padding values to try. This value specifies the amount of padding
             that will be added to the detection rectangle which is used to generate a masked area. The default
             is 0, you can make the mask area around the detected feature larger with positive padding and
@@ -518,7 +517,7 @@ Help Output
             
             (default: 0).
             -------------
-      -admp ADETAILER_MASK_PADDING [ADETAILER_MASK_PADDING ...], --adetailer-mask-paddings ADETAILER_MASK_PADDING [ADETAILER_MASK_PADDING ...]
+      -admp, --adetailer-mask-paddings ADETAILER_MASK_PADDING [ADETAILER_MASK_PADDING ...]
             One or more adetailer mask padding values to try. This value indicates how much padding to place
             around the masked area when cropping out the image to be inpainted, this value must be large enough
             to accommodate any feathering on the edge of the mask caused by "--adetailer-mask-blurs" or
@@ -534,11 +533,11 @@ Help Output
             
             (default: 32).
             --------------
-      -adb ADETAILER_MASK_BLUR [ADETAILER_MASK_BLUR ...], --adetailer-mask-blurs ADETAILER_MASK_BLUR [ADETAILER_MASK_BLUR ...]
+      -adb, --adetailer-mask-blurs ADETAILER_MASK_BLUR [ADETAILER_MASK_BLUR ...]
             The level of gaussian blur to apply to the generated adetailer inpaint mask, which can help with
             smooth blending in of the inpainted feature. (default: 4)
             ---------------------------------------------------------
-      -add ADETAILER_MASK_DILATION [ADETAILER_MASK_DILATION ...], --adetailer-mask-dilations ADETAILER_MASK_DILATION [ADETAILER_MASK_DILATION ...]
+      -add, --adetailer-mask-dilations ADETAILER_MASK_DILATION [ADETAILER_MASK_DILATION ...]
             The amount of dilation applied to the adetailer inpaint mask, see: cv2.dilate. (default: 4)
             -------------------------------------------------------------------------------------------
       -adc, --adetailer-crop-control-image
@@ -547,7 +546,7 @@ Help Output
             When this argument is not specified, the control image provided is simply resized to the same size
             as the detection area.
             ----------------------
-      -te TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...], --text-encoders TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]
+      -te, --text-encoders TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]
             Specify Text Encoders for the main model using URIs, main models may use one or more text encoders
             depending on the --model-type value and other dgenerate arguments. See: --text-encoders help for
             information about what text encoders are needed for your invocation.
@@ -618,10 +617,10 @@ Help Output
             they exist in, which should also contain the config.json file for the Text Encoder. For example, a
             downloaded repository folder from Hugging Face.
             -----------------------------------------------
-      -te2 TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...], --second-model-text-encoders TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]
+      -te2, --second-model-text-encoders TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]
             --text-encoders but for the SDXL refiner or Stable Cascade decoder model.
             -------------------------------------------------------------------------
-      -un UNET_URI, --unet UNET_URI
+      -un, --unet UNET_URI
             Specify a UNet using a URI.
             
             Examples:
@@ -655,11 +654,11 @@ Help Output
             they exist in, which should also contain the config.json file for the UNet. For example, a
             downloaded repository folder from Hugging Face.
             -----------------------------------------------
-      -un2 UNET_URI, --second-model-unet UNET_URI
+      -un2, --second-model-unet UNET_URI
             Specify a second UNet, this is only valid when using SDXL or Stable Cascade model types. This UNet
             will be used for the SDXL refiner, or Stable Cascade decoder model.
             -------------------------------------------------------------------
-      -tf TRANSFORMER_URI, --transformer TRANSFORMER_URI
+      -tf, --transformer TRANSFORMER_URI
             Specify a Stable Diffusion 3 or Flux Transformer model using a URI.
             
             Examples:
@@ -700,7 +699,7 @@ Help Output
             "AutoencoderKL;https://huggingface.co/UserName/repository-name/blob/main/transformer.safetensors",
             the "revision" argument may be used with this syntax.
             -----------------------------------------------------
-      -vae VAE_URI, --vae VAE_URI
+      -vae, --vae VAE_URI
             Specify a VAE using a URI, the URI syntax is: "AutoEncoderClass;model=(Hugging Face repository
             slug/blob link or file/folder path)".
             
@@ -769,7 +768,7 @@ Help Output
             some memory, especially when --batch-size is greater than 1. Note that if you are using
             --control-nets you may still run into memory issues generating large images.
             ----------------------------------------------------------------------------
-      -lra LORA_URI [LORA_URI ...], --loras LORA_URI [LORA_URI ...]
+      -lra, --loras LORA_URI [LORA_URI ...]
             Specify one or more LoRA models using URIs. These should be a Hugging Face repository slug, path to
             model file on disk (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or model folder
             containing model files.
@@ -801,12 +800,12 @@ Help Output
             "my_lora.safetensors", or with a scale "my_lora.safetensors;scale=1.0", all other loading arguments
             are unused in this case and may produce an error message if used.
             -----------------------------------------------------------------
-      -lrfs LORA_FUSE_SCALE, --lora-fuse-scale LORA_FUSE_SCALE
+      -lrfs, --lora-fuse-scale LORA_FUSE_SCALE
             LoRA weights are merged into the main model at this scale. When specifying multiple LoRA models,
             they are fused together into one set of weights using their individual scale values, after which
             they are fused into the main model at this scale value. (default: 1.0).
             -----------------------------------------------------------------------
-      -ie IMAGE_ENCODER_URI, --image-encoder IMAGE_ENCODER_URI
+      -ie, --image-encoder IMAGE_ENCODER_URI
             Specify an Image Encoder using a URI.
             
             Image Encoders are used with --ip-adapters models, and must be specified if none of the loaded
@@ -844,7 +843,7 @@ Help Output
             they exist in, which should also contain the config.json file for the Image Encoder. For example, a
             downloaded repository folder from Hugging Face.
             -----------------------------------------------
-      -ipa IP_ADAPTER_URI [IP_ADAPTER_URI ...], --ip-adapters IP_ADAPTER_URI [IP_ADAPTER_URI ...]
+      -ipa, --ip-adapters IP_ADAPTER_URI [IP_ADAPTER_URI ...]
             Specify one or more IP Adapter models using URIs. These should be a Hugging Face repository slug,
             path to model file on disk (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or model
             folder containing model files.
@@ -876,7 +875,7 @@ Help Output
             "ip_adapter.safetensors", or with a scale "ip_adapter.safetensors;scale=1.0", all other loading
             arguments are unused in this case and may produce an error message if used.
             ---------------------------------------------------------------------------
-      -ti URI [URI ...], --textual-inversions URI [URI ...]
+      -ti, --textual-inversions URI [URI ...]
             Specify one or more Textual Inversion models using URIs. These should be a Hugging Face repository
             slug, path to model file on disk (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or
             model folder containing model files.
@@ -911,7 +910,7 @@ Help Output
             "my_ti_model.safetensors", all other loading arguments are unused in this case and may produce an
             error message if used.
             ----------------------
-      -cn CONTROLNET_URI [CONTROLNET_URI ...], --control-nets CONTROLNET_URI [CONTROLNET_URI ...]
+      -cn, --control-nets CONTROLNET_URI [CONTROLNET_URI ...]
             Specify one or more ControlNet models using URIs. This should be a Hugging Face repository slug /
             blob link, path to model file on disk (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file),
             or model folder containing model files.
@@ -964,7 +963,7 @@ Help Output
             "https://huggingface.co/UserName/repository-name/blob/main/controlnet.safetensors", the "revision"
             argument may be used with this syntax.
             --------------------------------------
-      -t2i T2I_ADAPTER_URI [T2I_ADAPTER_URI ...], --t2i-adapters T2I_ADAPTER_URI [T2I_ADAPTER_URI ...]
+      -t2i, --t2i-adapters T2I_ADAPTER_URI [T2I_ADAPTER_URI ...]
             Specify one or more T2IAdapter models using URIs. This should be a Hugging Face repository slug /
             blob link, path to model file on disk (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file),
             or model folder containing model files.
@@ -1007,7 +1006,7 @@ Help Output
             "https://huggingface.co/UserName/repository-name/blob/main/t2i_adapter.safetensors", the "revision"
             argument may be used with this syntax.
             --------------------------------------
-      -q QUANTIZER_URI, --quantizer QUANTIZER_URI
+      -q, --quantizer QUANTIZER_URI
             Global quantization configuration via URI.
             
             This URI specifies the quantization backend and its configuration.
@@ -1039,7 +1038,7 @@ Help Output
             * bits4-use-double-quant = False,
             * bits4-quant-storage: str = None
             ---------------------------------
-      -qm SUBMODULE [SUBMODULE ...], --quantizer-map SUBMODULE [SUBMODULE ...]
+      -qm, --quantizer-map SUBMODULE [SUBMODULE ...]
             Global quantization map, used with --quantizer.
             
             This argument can be used to specify which sub-modules have the quantization pre-process preformed
@@ -1053,15 +1052,15 @@ Help Output
             
             Accepted values are: "unet", "transformer", "text_encoder", "text_encoder_2", "text_encoder_3"
             ----------------------------------------------------------------------------------------------
-      -q2 QUANTIZER_URI, --second-model-quantizer QUANTIZER_URI
+      -q2, --second-model-quantizer QUANTIZER_URI
             Global quantization configuration via URI for the secondary model, such as the SDXL Refiner or
             Stable Cascade decoder. See: --quantizer for syntax examples.
             -------------------------------------------------------------
-      -qm2 SUBMODULE [SUBMODULE ...], --second-model-quantizer-map SUBMODULE [SUBMODULE ...]
+      -qm2, --second-model-quantizer-map SUBMODULE [SUBMODULE ...]
             Global quantization map for the secondary model, used with --second-model-quantizer. This affects
             the SDXL Refiner or Stable Cascade decoder, See: --quantizer-map for syntax examples.
             -------------------------------------------------------------------------------------
-      -sch SCHEDULER_URI [SCHEDULER_URI ...], --scheduler SCHEDULER_URI [SCHEDULER_URI ...], --schedulers SCHEDULER_URI [SCHEDULER_URI ...]
+      -sch, --scheduler, --schedulers SCHEDULER_URI [SCHEDULER_URI ...]
             Specify a scheduler (sampler) by URI.
             
             Passing "help" to this argument will print the compatible schedulers for a model without generating any images.
@@ -1073,7 +1072,7 @@ Help Output
             
             You may pass multiple scheduler URIs to this argument, each URI will be tried in turn.
             --------------------------------------------------------------------------------------
-      -sch2 SCHEDULER_URI [SCHEDULER_URI ...], --second-model-scheduler SCHEDULER_URI [SCHEDULER_URI ...], --second-model-schedulers SCHEDULER_URI [SCHEDULER_URI ...]
+      -sch2, --second-model-scheduler, --second-model-schedulers SCHEDULER_URI [SCHEDULER_URI ...]
             Specify a scheduler (sampler) by URI for the SDXL Refiner or Stable Cascade Decoder pass. Operates
             the exact same way as --scheduler including the "help" option. Passing 'helpargs' will yield a help
             message with a list of overridable arguments for each scheduler and their typical defaults. Defaults
@@ -1081,8 +1080,8 @@ Help Output
             
             You may pass multiple scheduler URIs to this argument, each URI will be tried in turn.
             --------------------------------------------------------------------------------------
-      -fu CSV_FLOAT [CSV_FLOAT ...], --freeu-params CSV_FLOAT [CSV_FLOAT ...]
-            FreeU is a technique for improving image quality by re-balancing the contributions from the UNet’s
+      -fu, --freeu-params CSV_FLOAT [CSV_FLOAT ...]
+            FreeU is a technique for improving image quality by re-balancing the contributions from the UNet's
             skip connections and backbone feature maps.
             
             This can be used with no cost to performance, to potentially improve image quality.
@@ -1127,7 +1126,7 @@ Help Output
             
             This is supported for: --model-type torch, torch-sdxl, and --torch-kolors.
             --------------------------------------------------------------------------
-      -rfu CSV_FLOAT [CSV_FLOAT ...], --sdxl-refiner-freeu-params CSV_FLOAT [CSV_FLOAT ...]
+      -rfu, --sdxl-refiner-freeu-params CSV_FLOAT [CSV_FLOAT ...]
             FreeU parameters for the SDXL refiner, see: --freeu-params
             ----------------------------------------------------------
       -dc, --deep-cache
@@ -1141,7 +1140,7 @@ Help Output
             This is supported for Stable Diffusion, Stable Diffusion XL, Stable Diffusion Upscaler X4, Kolors,
             and Pix2Pix variants.
             ---------------------
-      -dci INTEGER [INTEGER ...], --deep-cache-intervals INTEGER [INTEGER ...]
+      -dci, --deep-cache-intervals INTEGER [INTEGER ...]
             Cache interval for DeepCache for the main model.
             
             Controls how frequently the attention layers are cached during the diffusion process. Lower values
@@ -1158,7 +1157,7 @@ Help Output
             
             (default: 5)
             ------------
-      -dcb INTEGER [INTEGER ...], --deep-cache-branch-ids INTEGER [INTEGER ...]
+      -dcb, --deep-cache-branch-ids INTEGER [INTEGER ...]
             Branch ID for DeepCache for the main model.
             
             Controls which branches of the UNet attention blocks the caching is applied to. Advanced usage only.
@@ -1181,7 +1180,7 @@ Help Output
             
             This is supported for Stable Diffusion XL and Kolors based models.
             ------------------------------------------------------------------
-      -rdci INTEGER [INTEGER ...], --sdxl-refiner-deep-cache-intervals INTEGER [INTEGER ...]
+      -rdci, --sdxl-refiner-deep-cache-intervals INTEGER [INTEGER ...]
             Cache interval for DeepCache for the SDXL Refiner.
             
             Controls how frequently the attention layers are cached during the diffusion process. Lower values
@@ -1197,7 +1196,7 @@ Help Output
             
             (default: 5)
             ------------
-      -rdcb INTEGER [INTEGER ...], --sdxl-refiner-deep-cache-branch-ids INTEGER [INTEGER ...]
+      -rdcb, --sdxl-refiner-deep-cache-branch-ids INTEGER [INTEGER ...]
             Branch ID for DeepCache for the SDXL Refiner.
             
             Controls which branches of the UNet attention blocks the caching is applied to. Advanced usage only.
@@ -1225,7 +1224,7 @@ Help Output
             
             This is supported for: --model-type torch-flux*.
             ------------------------------------------------
-      -tcr [FLOAT ...], --tea-cache-rel-l1-thresholds [FLOAT ...]
+      -tcr, --tea-cache-rel-l1-thresholds [FLOAT ...]
             TeaCache relative L1 thresholds to try when --tea-cache is enabled.
             
             This should be one or more float values between 0.0 and 1.0, each value will be tried in turn.
@@ -1261,7 +1260,7 @@ Help Output
             
             This is supported for: --model-type torch-sd3, (but not for SD3.5 models)
             -------------------------------------------------------------------------
-      -rsr FLOAT [FLOAT ...], --ras-sample-ratios FLOAT [FLOAT ...]
+      -rsr, --ras-sample-ratios FLOAT [FLOAT ...]
             Average sample ratios for each RAS step.
             
             For instance, setting this to 0.5 on a sequence of 4096 tokens will result in the noise of averagely
@@ -1277,7 +1276,7 @@ Help Output
             
             (default: 0.5)
             --------------
-      -rhr FLOAT [FLOAT ...], --ras-high-ratios FLOAT [FLOAT ...]
+      -rhr, --ras-high-ratios FLOAT [FLOAT ...]
             Ratios of high value tokens to be cached in RAS.
             
             Based on the metric selected, the ratio of the high value chosen to be cached.
@@ -1293,7 +1292,7 @@ Help Output
             
             (default: 1.0)
             --------------
-      -rss FLOAT [FLOAT ...], --ras-starvation-scales FLOAT [FLOAT ...]
+      -rss, --ras-starvation-scales FLOAT [FLOAT ...]
             Starvation scales for RAS patch selection.
             
             RAS tracks how often a token is dropped and incorporates this count as a scaling factor in the
@@ -1312,7 +1311,7 @@ Help Output
             
             (default: 0.1)
             --------------
-      -rer CSV_INT [CSV_INT ...], --ras-error-reset-steps CSV_INT [CSV_INT ...]
+      -rer, --ras-error-reset-steps CSV_INT [CSV_INT ...]
             Dense sampling steps to reset accumulated error in RAS.
             
             The dense sampling steps inserted between the RAS steps to reset the accumulated error. Each
@@ -1329,7 +1328,7 @@ Help Output
             
             (default: "12,22")
             ------------------
-      -rme RAS_METRIC [RAS_METRIC ...], --ras-metrics RAS_METRIC [RAS_METRIC ...]
+      -rme, --ras-metrics RAS_METRIC [RAS_METRIC ...]
             Metrics to try for RAS (Region-Adaptive Sampling).
             
             This controls how RAS measures the importance of tokens for caching. Valid values are "std"
@@ -1343,7 +1342,7 @@ Help Output
             
             (default: "std")
             ----------------
-      -rst INTEGER [INTEGER ...], --ras-start-steps INTEGER [INTEGER ...]
+      -rst, --ras-start-steps INTEGER [INTEGER ...]
             Starting steps to try for RAS (Region-Adaptive Sampling).
             
             This controls when RAS begins applying its sampling strategy. Must be greater than or equal to 1.
@@ -1356,7 +1355,7 @@ Help Output
             
             (default: 4)
             ------------
-      -res INTEGER [INTEGER ...], --ras-end-steps INTEGER [INTEGER ...]
+      -res, --ras-end-steps INTEGER [INTEGER ...]
             Ending steps to try for RAS (Region-Adaptive Sampling).
             
             This controls when RAS stops applying its sampling strategy. Must be greater than or equal to 1.
@@ -1369,7 +1368,7 @@ Help Output
             
             (default: --inference-steps)
             ----------------------------
-      -rsn INTEGER [INTEGER ...], --ras-skip-num-steps INTEGER [INTEGER ...]
+      -rsn, --ras-skip-num-steps INTEGER [INTEGER ...]
             Skip steps for RAS (Region-Adaptive Sampling).
             
             This controls the number of steps to skip between RAS steps.
@@ -1389,7 +1388,7 @@ Help Output
             
             (default: 0)
             ------------
-      -rsl INTEGER [INTEGER ...], --ras-skip-num-step-lengths INTEGER [INTEGER ...]
+      -rsl, --ras-skip-num-step-lengths INTEGER [INTEGER ...]
             Skip step lengths for RAS (Region-Adaptive Sampling).
             
             This controls the length of steps to skip between RAS steps. Must be greater than or equal to 0.
@@ -1413,11 +1412,11 @@ Help Output
             Use perturbed attention guidance? This is supported for --model-type torch, torch-sdxl, and
             torch-sd3 for most use cases. This enables PAG for the main model using default scale values.
             ---------------------------------------------------------------------------------------------
-      -pags FLOAT [FLOAT ...], --pag-scales FLOAT [FLOAT ...]
+      -pags, --pag-scales FLOAT [FLOAT ...]
             One or more perturbed attention guidance scales to try. Specifying values enables PAG for the main
             model. (default: [3.0])
             -----------------------
-      -pagas FLOAT [FLOAT ...], --pag-adaptive-scales FLOAT [FLOAT ...]
+      -pagas, --pag-adaptive-scales FLOAT [FLOAT ...]
             One or more adaptive perturbed attention guidance scales to try. Specifying values enables PAG for
             the main model. (default: [0.0])
             --------------------------------
@@ -1425,11 +1424,11 @@ Help Output
             Use perturbed attention guidance in the SDXL refiner? This is supported for --model-type torch-sdxl
             for most use cases. This enables PAG for the SDXL refiner model using default scale values.
             -------------------------------------------------------------------------------------------
-      -rpags FLOAT [FLOAT ...], --sdxl-refiner-pag-scales FLOAT [FLOAT ...]
+      -rpags, --sdxl-refiner-pag-scales FLOAT [FLOAT ...]
             One or more perturbed attention guidance scales to try with the SDXL refiner pass. Specifying values
             enables PAG for the refiner. (default: [3.0])
             ---------------------------------------------
-      -rpagas FLOAT [FLOAT ...], --sdxl-refiner-pag-adaptive-scales FLOAT [FLOAT ...]
+      -rpagas, --sdxl-refiner-pag-adaptive-scales FLOAT [FLOAT ...]
             One or more adaptive perturbed attention guidance scales to try with the SDXL refiner pass.
             Specifying values enables PAG for the refiner. (default: [0.0])
             ---------------------------------------------------------------
@@ -1549,14 +1548,14 @@ Help Output
             well-centered images are usually achieved by setting --sdxl-crops-coords-top-left to "0,0". Part of
             SDXL's micro-conditioning as explained in section 2.2 of [https://huggingface.co/papers/2307.01952].
             ----------------------------------------------------------------------------------------------------
-      --sdxl-original-size SIZE [SIZE ...], --sdxl-original-sizes SIZE [SIZE ...]
+      --sdxl-original-size, --sdxl-original-sizes SIZE [SIZE ...]
             One or more Stable Diffusion XL (torch-sdxl) "original-size" micro-conditioning parameters in the
             format (WIDTH)x(HEIGHT). If not the same as --sdxl-target-size the image will appear to be down or
             up-sampled. --sdxl-original-size defaults to --output-size or the size of any input images if not
             specified. Part of SDXL's micro-conditioning as explained in section 2.2 of
             [https://huggingface.co/papers/2307.01952]
             ------------------------------------------
-      --sdxl-target-size SIZE [SIZE ...], --sdxl-target-sizes SIZE [SIZE ...]
+      --sdxl-target-size, --sdxl-target-sizes SIZE [SIZE ...]
             One or more Stable Diffusion XL (torch-sdxl) "target-size" micro-conditioning parameters in the
             format (WIDTH)x(HEIGHT). For most cases, --sdxl-target-size should be set to the desired height and
             width of the generated image. If not specified it will default to --output-size or the size of any
@@ -1614,7 +1613,7 @@ Help Output
       --sdxl-refiner-negative-crops-coords-top-left COORD [COORD ...]
             See: --sdxl-negative-crops-coords-top-left, applied to SDXL refiner pass.
             -------------------------------------------------------------------------
-      -hnf FLOAT [FLOAT ...], --sdxl-high-noise-fractions FLOAT [FLOAT ...]
+      -hnf, --sdxl-high-noise-fractions FLOAT [FLOAT ...]
             One or more high-noise-fraction values for Stable Diffusion XL (torch-sdxl), this fraction of
             inference steps will be processed by the base model, while the rest will be processed by the refiner
             model. Multiple values to this argument will result in additional generation steps for each value.
@@ -1623,7 +1622,7 @@ Help Output
             high-noise-fraction) becomes the --image-seed-strengths input to the SDXL refiner in plain img2img
             mode. Edit mode may be forced with the option --sdxl-refiner-edit (default: [0.8])
             ----------------------------------------------------------------------------------
-      -rgr FLOAT [FLOAT ...], --sdxl-refiner-guidance-rescales FLOAT [FLOAT ...]
+      -rgr, --sdxl-refiner-guidance-rescales FLOAT [FLOAT ...]
             One or more guidance rescale values for the SDXL refiner when in use. Override the guidance rescale
             value used by the SDXL refiner, which defaults to the value taken from --guidance-rescales.
             -------------------------------------------------------------------------------------------
@@ -1632,14 +1631,14 @@ Help Output
             detected may result in solid black output. Some pretrained models have no safety checker model
             present, in that case this option has no effect.
             ------------------------------------------------
-      -d DEVICE, --device DEVICE
+      -d, --device DEVICE
             cuda / cpu, or other device supported by torch, for example mps on MacOS. (default: cuda, mps on
             MacOS). Use: cuda:0, cuda:1, cuda:2, etc. to specify a specific cuda supporting GPU.
             ------------------------------------------------------------------------------------
-      -t DTYPE, --dtype DTYPE
+      -t, --dtype DTYPE
             Model precision: auto, bfloat16, float16, or float32. (default: auto)
             ---------------------------------------------------------------------
-      -s SIZE, --output-size SIZE
+      -s, --output-size SIZE
             Image output size, for txt2img generation this is the exact output size. The dimensions specified
             for this value must be aligned by 8 or you will receive an error message. If an --image-seeds URI is
             used its Seed, Mask, and/or Control component image sources will be resized to this dimension with
@@ -1669,12 +1668,12 @@ Help Output
             --output-size that is aligned by 8 pixels with no consideration of the source aspect ratio. This can
             be overriden at the --image-seeds level with the image seed keyword argument 'aspect=true/false'.
             -------------------------------------------------------------------------------------------------
-      -o PATH, --output-path PATH
+      -o, --output-path PATH
             Output path for generated images and files. This directory will be created if it does not exist.
             
             (default: ./output)
             -------------------
-      -op PREFIX, --output-prefix PREFIX
+      -op, --output-prefix PREFIX
             Name prefix for generated images and files. This prefix will be added to the beginning of every
             generated file, followed by an underscore.
             ------------------------------------------
@@ -1707,7 +1706,7 @@ Help Output
             EXIF UserComment on the image. Only PNGs and JPEGs are supported for metadata writing, see:
             --image-format
             --------------
-      -pw PROMPT_WEIGHTER_URI, --prompt-weighter PROMPT_WEIGHTER_URI
+      -pw, --prompt-weighter PROMPT_WEIGHTER_URI
             Specify a prompt weighter implementation by URI, for example:
             
             --prompt-weighter compel, or --prompt-weighter sd-embed.
@@ -1720,7 +1719,7 @@ Help Output
             for a list of implementation names. You may also use --prompt-weighter-help "name" to
             see comprehensive documentation for a specific prompt weighter implementation.
             ------------------------------------------------------------------------------
-      -pw2 PROMPT_WEIGHTER_URI, --second-model-prompt-weighter PROMPT_WEIGHTER_URI
+      -pw2, --second-model-prompt-weighter PROMPT_WEIGHTER_URI
             --prompt-weighter URI value that that applies to to --sdxl-refiner or --s-cascade-decoder.
             ------------------------------------------------------------------------------------------
       --prompt-weighter-help [PROMPT_WEIGHTER_NAMES ...]
@@ -1729,7 +1728,7 @@ Help Output
             cause usage documentation for the specified prompt weighters to be printed. When used with
             --plugin-modules, prompt weighters implemented by the specified plugins will also be listed.
             --------------------------------------------------------------------------------------------
-      -pu PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...], --prompt-upscaler PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]
+      -pu, --prompt-upscaler PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]
             Specify a prompt upscaler implementation by URI, for example: --prompt-weighter dynamicprompts.
             Prompt upscaler plugins can preform pure text processing and expansion on incoming prompt text,
             possibly resulting in more generation steps (variations) if the prompt upscaler returns multiple
@@ -1739,7 +1738,7 @@ Help Output
             
             You may specify multiple upscaler URIs and they will be chained together sequentially.
             --------------------------------------------------------------------------------------
-      -pu2 PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...], --second-model-prompt-upscaler PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]
+      -pu2, --second-model-prompt-upscaler PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]
             Specify a --prompt-upscaler URI that will affect --second-model-prompts only, by default the prompt
             upscaler specified by --prompt-upscaler will be used.
             -----------------------------------------------------
@@ -1761,7 +1760,7 @@ Help Output
             cause usage documentation for the specified prompt upscalers to be printed. When used with
             --plugin-modules, prompt upscalers implemented by the specified plugins will also be listed.
             --------------------------------------------------------------------------------------------
-      -p PROMPT [PROMPT ...], --prompts PROMPT [PROMPT ...]
+      -p, --prompts PROMPT [PROMPT ...]
             One or more prompts to try, an image group is generated for each prompt, prompt data is split by ;
             (semi-colon). The first value is the positive text influence, things you want to see. The Second
             value is negative influence IE. things you don't want to see.
@@ -1798,13 +1797,13 @@ Help Output
             3 or Flux can handle. This should be an integer value between 1 and 512 inclusive. The higher the
             value the more resources and time are required for processing. (default: 256 for SD3, 512 for Flux)
             ---------------------------------------------------------------------------------------------------
-      -cs INTEGER [INTEGER ...], --clip-skips INTEGER [INTEGER ...]
+      -cs, --clip-skips INTEGER [INTEGER ...]
             One or more clip skip values to try. Clip skip is the number of layers to be skipped from CLIP while
             computing the prompt embeddings, it must be a value greater than or equal to zero. A value of 1
             means that the output of the pre-final layer will be used for computing the prompt embeddings. This
             is only supported for --model-type values "torch", "torch-sdxl", and "torch-sd3".
             ---------------------------------------------------------------------------------
-      -se SEED [SEED ...], --seeds SEED [SEED ...]
+      -se, --seeds SEED [SEED ...]
             One or more seeds to try, define fixed seeds to achieve deterministic output. This argument may not
             be used when --gse/--gen-seeds is used. (default: [randint(0, 99999999999999)])
             -------------------------------------------------------------------------------
@@ -1814,33 +1813,34 @@ Help Output
             identical to that of the amount of --image-seeds given, the seed is determined as: seed =
             seeds[image_seed_index % len(seeds)], IE: it wraps around.
             ----------------------------------------------------------
-      -gse COUNT, --gen-seeds COUNT
+      -gse, --gen-seeds COUNT
             Auto generate N random seeds to try. This argument may not be used when -se/--seeds is used.
             --------------------------------------------------------------------------------------------
-      -af FORMAT, --animation-format FORMAT
+      -af, --animation-format FORMAT
             Output format when generating an animation from an input video / gif / webp etc. Value must be one
             of: mp4, png, apng, gif, or webp. You may also specify "frames" to indicate that only frames should
             be output and no coalesced animation file should be rendered. (default: mp4)
             ----------------------------------------------------------------------------
-      -if FORMAT, --image-format FORMAT
-            Output format when writing static images. Any selection other than "png", "jpg", or "jpeg" is not
-            compatible with --output-metadata. Value must be one of: png, apng, blp, bmp, dib, bufr, pcx, dds,
-            ps, eps, gif, grib, h5, hdf, jp2, j2k, jpc, jpf, jpx, j2c, icns, ico, im, jfif, jpe, jpg, jpeg, tif,
-            tiff, mpo, msp, palm, pdf, pbm, pgm, ppm, pnm, pfm, bw, rgb, rgba, sgi, tga, icb, vda, vst, webp,
-            wmf, emf, or xbm. (default: png)
-            --------------------------------
+      -if, --image-format FORMAT
+            Output format when writing static images or tensors. For image formats, any selection other than
+            "png", "jpg", or "jpeg" is not compatible with --output-metadata. For tensor formats (pt, pth,
+            safetensors), raw latent tensors will be saved instead of decoded images. Value must be one of: png,
+            apng, blp, bmp, dib, bufr, pcx, dds, ps, eps, gif, grib, h5, hdf, jp2, j2k, jpc, jpf, jpx, j2c,
+            icns, ico, im, jfif, jpe, jpg, jpeg, tif, tiff, mpo, msp, palm, pdf, pbm, pgm, ppm, pnm, pfm, bw,
+            rgb, rgba, sgi, tga, icb, vda, vst, webp, wmf, emf, xbm, pt, pth, or safetensors. (default: png)
+            ------------------------------------------------------------------------------------------------
       -nf, --no-frames
             Do not write frame images individually when rendering an animation, only write the animation file.
             This option is incompatible with --animation-format frames.
             -----------------------------------------------------------
-      -fs FRAME_NUMBER, --frame-start FRAME_NUMBER
+      -fs, --frame-start FRAME_NUMBER
             Starting frame slice point for animated files (zero-indexed), the specified frame will be included.
             (default: 0)
             ------------
-      -fe FRAME_NUMBER, --frame-end FRAME_NUMBER
+      -fe, --frame-end FRAME_NUMBER
             Ending frame slice point for animated files (zero-indexed), the specified frame will be included.
             -------------------------------------------------------------------------------------------------
-      -is SEED [SEED ...], --image-seeds SEED [SEED ...]
+      -is, --image-seeds SEED [SEED ...]
             One or more image seed URIs to process, these may consist of URLs or file paths. Videos / GIFs /
             WEBP files will result in frames being rendered as well as an animated output file being generated
             if more than one frame is available in the input file. Inpainting for static images can be achieved
@@ -1880,8 +1880,20 @@ Help Output
             using --model-type torch-ifs*. When keyword arguments are present, all applicable images such as
             "mask", "control", etc. must also be defined with keyword arguments instead of with the short
             syntax.
-            -------
-      -sip PROCESSOR_URI [PROCESSOR_URI ...], --seed-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
+            
+            In place of static images, you may pass a latents file generated by dgenerate containing the raw
+            un-decoded latents from a previous generation, latents can be generated with --image-format pt, pth,
+            or safetensors. Latents may be passed for im2img input only. If used with inpainting, latents will
+            first be decoded back into pixel space (into a normal image) by the receiving models VAE for
+            masking. This bypasses VAE encoding of the image during img2img operations, and can be used as a
+            more efficient interchange format between identical model types.
+            
+            Latent img2img input is not supported for --model-type torch-s-cascade as Stable Cascade cannot
+            perform traditional img2img, and will result in an error if attempted. Latent input is also not
+            supported for ControlNet/T2I Adapter guidance images, or IP Adapter images, as these guidance models
+            operate on images in pixel space.
+            ---------------------------------
+      -sip, --seed-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
             Specify one or more image processor actions to perform on the primary image(s) specified by
             --image-seeds.
             
@@ -1909,7 +1921,7 @@ Help Output
             receive a syntax error message. To obtain more information about what image processors are available
             and how to use them, see: --image-processor-help.
             -------------------------------------------------
-      -mip PROCESSOR_URI [PROCESSOR_URI ...], --mask-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
+      -mip, --mask-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
             Specify one or more image processor actions to perform on the inpaint mask image(s) specified by
             --image-seeds.
             
@@ -1930,7 +1942,7 @@ Help Output
             will receive a syntax error message. To obtain more information about what image processors are
             available and how to use them, see: --image-processor-help.
             -----------------------------------------------------------
-      -cip PROCESSOR_URI [PROCESSOR_URI ...], --control-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
+      -cip, --control-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
             Specify one or more image processor actions to perform on the control image specified by
             --image-seeds, this option is meant to be used with --control-nets.
             
@@ -1976,7 +1988,7 @@ Help Output
             cause usage documentation for the specified image processors to be printed. When used with
             --plugin-modules, image processors implemented by the specified plugins will also be listed.
             --------------------------------------------------------------------------------------------
-      -pp PROCESSOR_URI [PROCESSOR_URI ...], --post-processors PROCESSOR_URI [PROCESSOR_URI ...]
+      -pp, --post-processors PROCESSOR_URI [PROCESSOR_URI ...]
             Specify one or more image processor actions to perform on generated output before it is saved.
             
             For example: --post-processors "upcaler;model=4x_ESRGAN.pth".
@@ -1984,27 +1996,27 @@ Help Output
             To obtain more information about what processors are available and how to use them, see:
             --image-processor-help.
             -----------------------
-      -iss FLOAT [FLOAT ...], --image-seed-strengths FLOAT [FLOAT ...]
+      -iss, --image-seed-strengths FLOAT [FLOAT ...]
             One or more image strength values to try when using --image-seeds for img2img or inpaint mode.
             Closer to 0 means high usage of the seed image (less noise convolution), 1 effectively means no
             usage (high noise convolution). Low values will produce something closer or more relevant to the
             input image, high values will give the AI more creative freedom. This value must be greater than 0
             and less than or equal to 1. (default: [0.8])
             ---------------------------------------------
-      -uns INTEGER [INTEGER ...], --upscaler-noise-levels INTEGER [INTEGER ...]
+      -uns, --upscaler-noise-levels INTEGER [INTEGER ...]
             One or more upscaler noise level values to try when using the super resolution upscaler --model-type
             torch-upscaler-x4 or torch-ifs. Specifying this option for --model-type torch-upscaler-x2 will
             produce an error message. The higher this value the more noise is added to the image before
             upscaling (similar to --image-seed-strengths). (default: [20 for x4, 250 for
             torch-ifs/torch-ifs-img2img, 0 for torch-ifs inpainting mode])
             --------------------------------------------------------------
-      -gs FLOAT [FLOAT ...], --guidance-scales FLOAT [FLOAT ...]
+      -gs, --guidance-scales FLOAT [FLOAT ...]
             One or more guidance scale values to try. Guidance scale effects how much your text prompt is
             considered. Low values draw more data from images unrelated to text prompt.
             
             (default: [5])
             --------------
-      -si CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...], --sigmas CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...]
+      -si, --sigmas CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...]
             One or more comma-separated lists (or singular values) of floating point sigmas to try. This is
             supported when using a --scheduler that supports setting sigmas. Sigma values control the noise
             schedule in the diffusion process, allowing for fine-grained control over how noise is added and
@@ -2027,7 +2039,7 @@ Help Output
             
             Each provided value (each quoted string in the example above) will be tried in turn.
             ------------------------------------------------------------------------------------
-      -igs FLOAT [FLOAT ...], --image-guidance-scales FLOAT [FLOAT ...]
+      -igs, --image-guidance-scales FLOAT [FLOAT ...]
             One or more image guidance scale values to try. This can push the generated image towards the
             initial image when using --model-type *-pix2pix models, it is unsupported for other model types. Use
             in conjunction with --image-seeds, inpainting (masks) and --control-nets are not supported. Image
@@ -2035,7 +2047,7 @@ Help Output
             encourages generated images that are closely linked to the source image, usually at the expense of
             lower image quality. Requires a value of at least 1. (default: [1.5])
             ---------------------------------------------------------------------
-      -gr FLOAT [FLOAT ...], --guidance-rescales FLOAT [FLOAT ...]
+      -gr, --guidance-rescales FLOAT [FLOAT ...]
             One or more guidance rescale factors to try. Proposed by
             
             [Common Diffusion Noise Schedules and Sample Steps are Flawed](https://arxiv.org/pdf/2305.08891.pdf)
@@ -2053,7 +2065,7 @@ Help Output
             
             (default: [0.0])
             ----------------
-      -ifs INTEGER [INTEGER ...], --inference-steps INTEGER [INTEGER ...]
+      -ifs, --inference-steps INTEGER [INTEGER ...]
             One or more inference steps values to try. The amount of inference (de-noising) steps effects image
             clarity to a degree, higher values bring the image closer to what the AI is targeting for the
             content of the image. Values between 30-40 produce good results, higher values may improve image
@@ -2061,17 +2073,17 @@ Help Output
             
             (default: [30])
             ---------------
-      -ifs2 INTEGER [INTEGER ...], --second-model-inference-steps INTEGER [INTEGER ...]
+      -ifs2, --second-model-inference-steps INTEGER [INTEGER ...]
             One or more inference steps values for the SDXL refiner or Stable Cascade decoder when in use.
             Override the number of inference steps used by the second model, which defaults to the value taken
             from --inference-steps for SDXL and 10 for Stable Cascade.
             ----------------------------------------------------------
-      -gs2 FLOAT [FLOAT ...], --second-model-guidance-scales FLOAT [FLOAT ...]
+      -gs2, --second-model-guidance-scales FLOAT [FLOAT ...]
             One or more inference steps values for the SDXL refiner or Stable Cascade decoder when in use.
             Override the guidance scale value used by the second model, which defaults to the value taken from
             --guidance-scales for SDXL and 0 for Stable Cascade.
             ----------------------------------------------------
-      -sir CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...], --sdxl-refiner-sigmas CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...]
+      -sir, --sdxl-refiner-sigmas CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...]
             See: --sigmas, but for the SDXL Refiner.
             ----------------------------------------
 
@@ -2857,6 +2869,17 @@ via the ``adapters`` URI argument discussed in: `Specifying IP Adapters`_
 Batching or providing multiple image inputs for the same generation, resulting in multiple output
 variations possibly using different input images, or multiple image prompts, is possible using the
 ``images: ...`` syntax discussed in the section: `Batching Input Images and Inpaint Masks`_.
+
+For ``img2img`` sources, you may also specify a ``pt``, ``pth``, or ``safetensors`` file,
+this is for passing in latents in place of images in pixel space, image processing will not be
+applied to these inputs and will be ignored with warnings, this includes resizing, aspect
+correction, alignment, and image processors. Latents can be generated by using the
+option ``--image-format`` with the value ``pt``, ``pth``,  or ``safetensors``.
+
+Latent ``img2img`` input is not supported for ``--model-type torch-s-cascade`` as Stable Cascade
+cannot perform traditional ``img2img``, and will result in an error if attempted. Latent input
+is also not supported for ControlNet/T2I Adapter guidance images, or IP Adapter images, as
+these guidance models operate on images in pixel space.
 
 Inpainting
 ==========
@@ -6782,7 +6805,7 @@ The help output of ``image-process`` is as follows:
       -h, --help
             show this help message and exit
             -------------------------------
-      -p PROCESSORS [PROCESSORS ...], --processors PROCESSORS [PROCESSORS ...]
+      -p, --processors PROCESSORS [PROCESSORS ...]
             One or more image processor URIs, specifying multiple will chain them together. See: dgenerate
             --image-processor-help
             ----------------------
@@ -6790,7 +6813,7 @@ The help output of ``image-process`` is as follows:
             Specify one or more plugin module folder paths (folder containing __init__.py) or python .py file
             paths to load as plugins. Plugin modules can implement image processors.
             ------------------------------------------------------------------------
-      -o OUTPUT [OUTPUT ...], --output OUTPUT [OUTPUT ...]
+      -o, --output OUTPUT [OUTPUT ...]
             Output files, parent directories mentioned in output paths will be created for you if they do not
             exist. If you do not specify output files, the output file will be placed next to the input file
             with the added suffix '_processed_N' unless --output-overwrite is specified, in that case it will be
@@ -6800,7 +6823,7 @@ The help output of ``image-process`` is as follows:
             file with a URL as an input is considered an error. Supported file extensions for image output are
             equal to those listed under --frame-format.
             -------------------------------------------
-      -ff FRAME_FORMAT, --frame-format FRAME_FORMAT
+      -ff, --frame-format FRAME_FORMAT
             Image format for animation frames. Must be one of: png, apng, blp, bmp, dib, bufr, pcx, dds, ps,
             eps, gif, grib, h5, hdf, jp2, j2k, jpc, jpf, jpx, j2c, icns, ico, im, jfif, jpe, jpg, jpeg, tif,
             tiff, mpo, msp, palm, pdf, pbm, pgm, ppm, pnm, pfm, bw, rgb, rgba, sgi, tga, icb, vda, vst, webp,
@@ -6809,24 +6832,24 @@ The help output of ``image-process`` is as follows:
       -ox, --output-overwrite
             Indicate that it is okay to overwrite files, instead of appending a duplicate suffix.
             -------------------------------------------------------------------------------------
-      -r RESIZE, --resize RESIZE
+      -r, --resize RESIZE
             Preform naive image resizing, the best resampling algorithm is auto selected.
             -----------------------------------------------------------------------------
       -na, --no-aspect
             Make --resize ignore aspect ratio.
             ----------------------------------
-      -al ALIGN, --align ALIGN
+      -al, --align ALIGN
             Align images / videos to this value in pixels, default is 8. Specifying 1 will disable resolution
             alignment.
             ----------
-      -d DEVICE, --device DEVICE
+      -d, --device DEVICE
             Processing device, for example "cuda", "cuda:1". Or "mps" on MacOS. (default: cuda, mps on MacOS)
             -------------------------------------------------------------------------------------------------
-      -fs FRAME_NUMBER, --frame-start FRAME_NUMBER
+      -fs, --frame-start FRAME_NUMBER
             Starting frame slice point for animated files (zero-indexed), the specified frame will be included.
             (default: 0)
             ------------
-      -fe FRAME_NUMBER, --frame-end FRAME_NUMBER
+      -fe, --frame-end FRAME_NUMBER
             Ending frame slice point for animated files (zero-indexed), the specified frame will be included.
             -------------------------------------------------------------------------------------------------
       -nf, --no-frames
@@ -7015,10 +7038,10 @@ The help output of ``image-process`` is as follows:
       -h, --help
             show this help message and exit
             -------------------------------
-      -o OUTPUT, --output OUTPUT
+      -o, --output OUTPUT
             Output path for processed image (defaults to overwriting input image).
             ----------------------------------------------------------------------
-      -c CONFIG, --config CONFIG
+      -c, --config CONFIG
             Path to dgenerate config file to extract generation parameters from, this file is produced by
             --output-configs.
             -----------------
@@ -7137,28 +7160,28 @@ The help output of ``to-diffusers`` is as follows:
       -h, --help
             show this help message and exit
             -------------------------------
-      -mt MODEL_TYPE, --model-type MODEL_TYPE
+      -mt, --model-type MODEL_TYPE
             Model type, as you would provide to dgenerate to generate images, must match the checkpoint model
             type.
             -----
-      -rev REVISION, --revision REVISION
+      -rev, --revision REVISION
             Model revision, if loading from Hugging Face hub.
             -------------------------------------------------
-      -sbf SUBFOLDER, --subfolder SUBFOLDER
+      -sbf, --subfolder SUBFOLDER
             Model subfolder, if loading from Hugging Face hub.
             --------------------------------------------------
-      -t [DTYPES ...], --dtypes [DTYPES ...]
+      -t, --dtypes [DTYPES ...]
             Model dtypes to generate, this generates variants, such as "fp16", you may specify up to 2 values.
             Accepted values are: float16, and float32. By default only the 32 bit variant is saved if you do not
             specify this argument, if you want both variants you must specify both dtypes simultaneously.
             ---------------------------------------------------------------------------------------------
-      -olc ORIGINAL_CONFIG, --original-config ORIGINAL_CONFIG
+      -olc, --original-config ORIGINAL_CONFIG
             Original LDM config (.yaml) file.
             ---------------------------------
-      -atk AUTH_TOKEN, --auth-token AUTH_TOKEN
+      -atk, --auth-token AUTH_TOKEN
             Optional Hugging Face authentication token value.
             -------------------------------------------------
-      -o OUTPUT, --output OUTPUT
+      -o, --output OUTPUT
             Output directory for the converted model, this is a folder you can point dgenerate at to generate
             images.
             -------
@@ -7211,29 +7234,29 @@ The help output of ``prompt-upscale`` is as follows:
     
     positional arguments:
       prompts
-            Prompts, identical to the dgenerate --prompts argument. The embedded prompt argument <upscaler:
-            ...>, is understood. All other embedded prompt arguments are entirely ignored and left in the
-            prompt, be aware of this.
-            -------------------------
+            Prompts (positional), identical to the dgenerate --prompts argument. The embedded prompt argument
+            <upscaler: ...>, is understood. All other embedded prompt arguments are entirely ignored and left in
+            the prompt, be aware of this. Prompts should be the first argument passed, followed by --upscaler.
+            --------------------------------------------------------------------------------------------------
     
     options:
       -h, --help
             show this help message and exit
             -------------------------------
-      -u PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...], --upscaler PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]
+      -u, --upscaler PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]
             Global prompt upscaler(s) to use, identical to the dgenerate --prompt-upscaler argument. Providing
             multiple prompt upscaler plugin URIs indicates chaining.
             --------------------------------------------------------
-      -d DEVICE, --device DEVICE
+      -d, --device DEVICE
             Acceleration device to use for prompt upscalers that support acceleration. Defaults to: cuda
             --------------------------------------------------------------------------------------------
-      -of OUTPUT_FORMAT, --output-format OUTPUT_FORMAT
+      -of, --output-format OUTPUT_FORMAT
             Output format. defaults to "text", can be: "text", "json", "toml", "yaml".
             --------------------------------------------------------------------------
-      -o OUTPUT, --output OUTPUT
+      -o, --output OUTPUT
             Output file path. default to printing to stdout.
             ------------------------------------------------
-      -q QUOTE, --quote QUOTE
+      -q, --quote QUOTE
             Quoting method when --output-format is "text", defaults to "none". May be one of: none (raw
             strings), shell (shlex.quote), dgenerate (dgenerate config shell syntax). If you are generating
             output in text mode, and you intend to do something with the output other than just look at it,
@@ -8368,7 +8391,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [35591246729061]
+            Value: [46681136517767]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -8687,12 +8710,10 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
     ===================================================
     bool(args, kwargs):
     
-        bool(x) -> bool
-    
-        Returns True when the argument x is true, False otherwise. The builtins True and False are the only two
+        Returns True when the argument is true, False otherwise. The builtins True and False are the only two
         instances of the class bool. The class bool is a subclass of the class int, and cannot be subclassed.
     
-    ===========================================================================================================
+    =========================================================================================================
     bytearray(args, kwargs):
     
         bytearray(iterable_of_ints) -> bytearray bytearray(string, encoding[, errors]) -> bytearray
@@ -8762,8 +8783,6 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
     =========================================================================================================
     filter(args, kwargs):
     
-        filter(function or None, iterable) --> filter object
-    
         Return an iterator yielding those items of iterable for which function(item) is true. If function is None,
         return the items that are true.
     
@@ -8786,11 +8805,9 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
     =========================================================================================================
     frozenset(args, kwargs):
     
-        frozenset() -> empty frozenset object frozenset(iterable) -> frozenset object
-    
         Build an immutable unordered collection of unique elements.
     
-    =================================================================================
+    ===============================================================
     getattr(args, kwargs):
     
         getattr(object, name[, default]) -> value
@@ -8857,8 +8874,6 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
     ==========================================================================================================
     map(args, kwargs):
     
-        map(func, *iterables) --> map object
-    
         Make an iterator that computes the function using arguments from each of the iterables. Stops when the
         shortest iterable is exhausted.
     
@@ -8868,8 +8883,8 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
         max(iterable, *[, default=obj, key=func]) -> value max(arg1, arg2, *args, *[, key=func]) -> value
     
         With a single iterable argument, return its biggest item. The default keyword-only argument specifies an
-        object to return if the provided iterable is empty. With two or more arguments, return the largest
-        argument.
+        object to return if the provided iterable is empty. With two or more positional arguments, return the
+        largest argument.
     
     ============================================================================================================
     min(args, kwargs):
@@ -8877,8 +8892,8 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
         min(iterable, *[, default=obj, key=func]) -> value min(arg1, arg2, *args, *[, key=func]) -> value
     
         With a single iterable argument, return its smallest item. The default keyword-only argument specifies an
-        object to return if the provided iterable is empty. With two or more arguments, return the smallest
-        argument.
+        object to return if the provided iterable is empty. With two or more positional arguments, return the
+        smallest argument.
     
     =============================================================================================================
     next(args, kwargs):
@@ -8949,11 +8964,9 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
     ==============================================================================================================
     set(args, kwargs):
     
-        set() -> new empty set object set(iterable) -> new set object
-    
         Build an unordered collection of unique elements.
     
-    =================================================================
+    =====================================================
     slice(args, kwargs):
     
         slice(stop) slice(start, stop[, step])
@@ -8975,8 +8988,8 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
     
         Create a new string object from the given object. If encoding or errors is specified, then the object must
         expose a data buffer that will be decoded using the given encoding and error handler. Otherwise, returns
-        the result of object.__str__() (if defined) or repr(object). encoding defaults to
-        sys.getdefaultencoding(). errors defaults to 'strict'.
+        the result of object.__str__() (if defined) or repr(object). encoding defaults to 'utf-8'. errors defaults
+        to 'strict'.
     
     ==============================================================================================================
     sum(args, kwargs):
@@ -9004,15 +9017,13 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
     ===================================================================================
     zip(args, kwargs):
     
-        zip(*iterables, strict=False) --> Yield tuples until an input is exhausted.
-    
-        >>> list(zip('abcdefg', range(3), range(4))) [('a', 0, 0), ('b', 1, 1), ('c', 2, 2)]
-    
         The zip object yields n-length tuples, where n is the number of iterables passed as positional arguments
         to zip(). The i-th element in every tuple comes from the i-th iterable argument to zip(). This continues
         until the shortest argument is exhausted.
     
         If strict is true and one of the arguments is exhausted before the others, raise a ValueError.
+    
+        >>> list(zip('abcdefg', range(3), range(4))) [('a', 0, 0), ('b', 1, 1), ('c', 2, 2)]
     
     ============================================================================================================
 

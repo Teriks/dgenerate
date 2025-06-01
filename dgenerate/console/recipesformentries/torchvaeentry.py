@@ -18,12 +18,12 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import shlex
 import tkinter as tk
 
 import dgenerate.console.recipesformentries.entry as _entry
 import dgenerate.console.recipesformentries.urientry as _urientry
 import dgenerate.console.resources as _resources
+import dgenerate.console.combobox as _combobox
 
 
 class _TorchVaeEntry(_urientry._UriEntry):
@@ -43,26 +43,29 @@ class _TorchVaeEntry(_urientry._UriEntry):
         self.vae_type_label = tk.Label(
             self.master, text='VAE Type', anchor='e')
 
-        self.vae_type_entry = tk.OptionMenu(
-            self.master, self.vae_type_var, *vae_types)
+        self.vae_type_entry = _combobox.ComboBox(
+            self.master,
+            textvariable=self.vae_type_var,
+            values=vae_types
+        )
 
         self.vae_type_label.grid(row=self.row + 1, column=0, padx=_entry.ROW_XPAD, sticky='e')
         self.vae_type_entry.grid(row=self.row + 1, column=1, padx=_entry.ROW_XPAD, sticky='ew')
 
-        self._vae_type_enabled_color = self.vae_type_entry.cget('bg')
+        self._vae_type_enabled_color = self.vae_type_entry.cget('background')
 
         if not self.uri_var.get():
-            self.vae_type_entry.config(bg='darkgray')
+            self.vae_type_entry.config(background='darkgray')
             self.vae_type_entry.config(state=tk.DISABLED)
 
         self.uri_var.trace_add('write', lambda *a: self._check_vae_type_active())
 
     def _check_vae_type_active(self):
         if self.uri_var.get():
-            self.vae_type_entry.config(bg=self._vae_type_enabled_color)
+            self.vae_type_entry.config(background=self._vae_type_enabled_color)
             self.vae_type_entry.config(state=tk.NORMAL)
         else:
-            self.vae_type_entry.config(bg='darkgray')
+            self.vae_type_entry.config(background='darkgray')
             self.vae_type_entry.config(state=tk.DISABLED)
 
     def template(self, content):

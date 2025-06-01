@@ -6,11 +6,11 @@ import ctranslate2
 import sentencepiece as spm
 from ctranslate2 import Translator
 
-from argostranslate import apis, fewshot, package, sbd, settings
-from argostranslate.models import ILanguageModel
-from argostranslate.package import Package
-from argostranslate.sbd import SpacySentencizerSmall
-from argostranslate.utils import info
+from dgenerate.extras.argostranslate import apis, fewshot, package, sbd, settings
+from dgenerate.extras.argostranslate.models import ILanguageModel
+from dgenerate.extras.argostranslate.package import Package
+from dgenerate.extras.argostranslate.sbd import SpacySentencizerSmall
+from dgenerate.extras.argostranslate.utils import info
 
 
 class Hypothesis:

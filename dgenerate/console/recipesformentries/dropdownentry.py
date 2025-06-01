@@ -21,6 +21,7 @@
 import tkinter as tk
 
 import dgenerate.console.recipesformentries.entry as _entry
+import dgenerate.console.combobox as _combobox
 
 
 class _DropDownEntry(_entry._Entry):
@@ -44,9 +45,11 @@ class _DropDownEntry(_entry._Entry):
             self.master,
             text=self.get_label('Dropdown'), anchor='e')
 
-        self.entry = tk.OptionMenu(self.master,
-                                   self.text_var,
-                                   *options)
+        self.entry = _combobox.ComboBox(
+            self.master,
+            textvariable=self.text_var,
+            values=options
+        )
 
         self.label_widget.grid(row=self.row, column=0, padx=_entry.ROW_XPAD, sticky='e')
         self.entry.grid(row=self.row, column=1, padx=_entry.ROW_XPAD, sticky='ew')

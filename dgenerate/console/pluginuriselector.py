@@ -25,6 +25,7 @@ import typing
 import dgenerate.console.recipesformentries.pluginschemaentry as _pluginschemaentry
 import dgenerate.console.util as _util
 from dgenerate.console.mousewheelbind import bind_mousewheel, handle_canvas_scroll, un_bind_mousewheel
+from dgenerate.console.combobox import ComboBox
 
 
 class _PluginUriSelect(tk.Toplevel):
@@ -125,6 +126,12 @@ class _PluginUriSelect(tk.Toplevel):
         self.canvas.itemconfig(self.canvas_window, width=canvas_width)
 
     def _on_mouse_wheel(self, event):
+        if 'popdown' in str(event.widget).lower():
+            return "break"
+
+        # Notify entry of scroll event
+        if hasattr(self, 'plugin_entry'):
+            self.plugin_entry.on_form_scroll()
         handle_canvas_scroll(self.canvas, event)
 
     def _insert_action(self):

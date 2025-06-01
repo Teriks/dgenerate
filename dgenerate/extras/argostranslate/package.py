@@ -10,14 +10,14 @@ from threading import Lock
 
 import packaging.version
 
-from argostranslate import networking, settings
-from argostranslate.tokenizer import BPETokenizer, SentencePieceTokenizer
-from argostranslate.utils import error, info, warning
+from dgenerate.extras.argostranslate import networking, settings
+from dgenerate.extras.argostranslate.tokenizer import BPETokenizer, SentencePieceTokenizer
+from dgenerate.extras.argostranslate.utils import error, info, warning
 
 """
 ## `package` module example usage
 ```
-from argostranslate import package
+from dgenerate.extras.argostranslate import package
 
 # Update package definitions from remote
 package.update_package_index()

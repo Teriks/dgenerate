@@ -80,10 +80,11 @@ class PromptUpscaleSubCommand(_subcommand.SubCommand):
 
         parser.add_argument(
             'prompts',
-            help="""Prompts, identical to the dgenerate --prompts argument.
+            help="""Prompts (positional), identical to the dgenerate --prompts argument.
                     The embedded prompt argument <upscaler: ...>, is understood. 
                     All other embedded prompt arguments are entirely ignored and 
-                    left in the prompt, be aware of this.""", nargs='+',
+                    left in the prompt, be aware of this. Prompts should be the first 
+                    argument passed, followed by --upscaler.""", nargs='+',
             type=_type_prompts,
         )
 

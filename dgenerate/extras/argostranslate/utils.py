@@ -1,7 +1,7 @@
 import logging
 import sys
 
-from argostranslate import settings
+from dgenerate.extras.argostranslate import settings
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG if settings.debug else logging.INFO)

@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from argostranslate.translate import ITranslation
-from argostranslate.utils import info
+from dgenerate.extras.argostranslate.translate import ITranslation
+from dgenerate.extras.argostranslate.utils import info
 
 """
-import argostranslate
-from argostranslate.tags import translate_tags, Tag
-from argostranslate import translate
+import dgenerate.extras.argostranslate
+from dgenerate.extras.argostranslate.tags import translate_tags, Tag
+from dgenerate.extras.argostranslate import translate
 
 installed_languages = translate.get_installed_languages()
 translation = installed_languages[0].get_translation(installed_languages[1])

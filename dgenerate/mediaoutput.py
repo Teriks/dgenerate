@@ -20,16 +20,22 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import collections.abc
 import os
+import shutil
+import tempfile
+import typing
 
 import PIL.Image
 import av
+import numpy
+import safetensors.torch
+import torch
 
 import dgenerate.filelock as _filelock
 
 __doc__ = """
-Media output, handles writing videos and animations.  
+Media output, handles writing videos, animations, and tensor files (latents).  
 
-Provides information about supported output formats.
+Provides information about supported output formats including tensor formats for latent data.
 """
 
 
@@ -270,3 +276,64 @@ class MultiAnimationWriter(AnimationWriter):
     def __exit__(self, exc_type, exc_val, exc_tb):
         for writer in self.writers:
             writer.__exit__(exc_type, exc_val, exc_tb)
+
+
+def get_supported_tensor_formats() -> list[str]:
+    """
+    Get supported tensor file formats for latents output.
+    
+    :return: List of supported tensor formats
+    """
+    return ["pt", "pth", "safetensors"]
+
+
+def save_tensor_file(tensor: torch.Tensor | numpy.ndarray,
+                     path_or_file: typing.BinaryIO | str,
+                     file_format: str = "pt"
+                     ) -> None:
+    """
+    Save a tensor to disk in the specified format.
+    
+    :param tensor: The tensor to save (torch.Tensor or numpy.ndarray)
+    :param path_or_file: Path to save to or file-like object
+    :param file_format: Format to save in ("pt", "pth", or "safetensors")
+    :raises ValueError: If format is not supported
+    """
+    file_format = file_format.lower()
+
+    # Convert numpy array to torch tensor if needed
+    if isinstance(tensor, numpy.ndarray):
+        tensor = torch.from_numpy(tensor)
+
+    if file_format in ("pt", "pth"):
+        if isinstance(path_or_file, str):
+            torch.save(tensor, path_or_file)
+        else:
+            torch.save(tensor, path_or_file)
+    elif file_format == "safetensors":
+        # Ensure tensor is contiguous for safetensors
+        if not tensor.is_contiguous():
+            tensor = tensor.contiguous()
+
+        if isinstance(path_or_file, str):
+            safetensors.torch.save_file({"latents": tensor}, path_or_file)
+        else:
+            # safetensors doesn't support file-like objects directly
+            tmp_name = None
+            try:
+                with tempfile.NamedTemporaryFile(delete=False) as tmp:
+                    tmp_name = tmp.name
+
+                safetensors.torch.save_file({"latents": tensor}, tmp_name)
+
+                with open(tmp_name, 'rb') as tmp_file:
+                    shutil.copyfileobj(tmp_file, path_or_file)
+            finally:
+                if tmp_name is not None:
+                    try:
+                        os.unlink(tmp_name)
+                    except (OSError, PermissionError):
+                        # If cleanup fails, just leave it for the OS
+                        pass
+    else:
+        raise ValueError(f"Unsupported tensor format: {file_format}. Supported formats: pt, pth, safetensors")

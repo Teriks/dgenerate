@@ -20,6 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import collections.abc
 import typing
+
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.prompt as _prompt
 import dgenerate.textprocessing as _textprocessing
@@ -90,9 +91,14 @@ class DiffusionArguments(_types.SetFromMixin):
     Enable VAE tiling?
     """
 
-    images: _types.OptionalImages = None
+    images: _types.OptionalImagesOrTensors = None
     """
-    Images for img2img operations, or the base for inpainting operations.
+    Images or tensors for img2img operations, or the base for inpainting operations.
+    
+    All inputs must be either PIL Images or torch Tensors - mixing both types in the same sequence is not supported.
+    
+    When tensors are provided, they represent latent space data and bypass VAE encoding.
+    Tensor inputs cannot be resized or processed with image processors.
     
     All input images involved in a generation except for ``adapter_images`` must match in dimension and be aligned by 8 pixels,
     except in the case of Stable Cascade, which can accept multiple images of any dimension for the purpose of image based
@@ -107,6 +113,8 @@ class DiffusionArguments(_types.SetFromMixin):
     
     The amount of img2img ``images`` must be equal to the amount of ``mask_images`` supplied.
     
+    Note: Mask images are always PIL Images, tensor masks are not supported.
+    
     All input images involved in a generation except for ``adapter_images``  must match in dimension and be aligned by 8 pixels,
     except in the case of Stable Cascade, which can accept multiple images of any dimension for the purpose of image based
     prompting similar to IP Adapters.  Stable Cascade cannot perform inpainting, so ``mask_images`` is irrelevant in
@@ -118,6 +126,9 @@ class DiffusionArguments(_types.SetFromMixin):
     ControlNet guidance images to use if ``controlnet_uris`` were given to the 
     constructor of :py:class:`.DiffusionPipelineWrapper`.
     
+    Note: Control images must be PIL Images, tensors are not supported since ControlNet/T2I-Adapter 
+    operate in pixel space.
+    
     All input images involved in a generation must match in dimension and be aligned by 8 pixels.
     """
 
@@ -126,6 +137,9 @@ class DiffusionArguments(_types.SetFromMixin):
     IP Adapter images to use if ``ip_adapter_uris`` were given to the
     constructor of :py:class:`.DiffusionPipelineWrapper`.
     
+    Note: IP Adapter images must be PIL Images, tensors are not supported since IP-Adapter 
+    operates in pixel space.
+    
     This should be a list of ``Sequence[PIL.Image]``
     
     Each list entry corresponds to an IP adapter URI.
@@ -133,11 +147,13 @@ class DiffusionArguments(_types.SetFromMixin):
     Multiple IP Adapter URIs can be provided, each IP Adapter can get its own set of images.
     """
 
-    floyd_image: _types.OptionalImage = None
+    floyd_image: _types.OptionalImageOrTensor = None
     """
-    The output image of the last stage when preforming img2img or 
+    The output image or tensor of the last stage when preforming img2img or 
     inpainting generation with Deep Floyd. When preforming txt2img 
     generation :py:attr:`DiffusionArguments.image` is used.
+    
+    When a tensor is provided, it represents latent space data from a previous Floyd stage.
     """
 
     width: _types.OptionalInteger = None
@@ -397,7 +413,7 @@ class DiffusionArguments(_types.SetFromMixin):
     freeu_params: typing.Optional[tuple[float, float, float, float]] = None
     """
     FreeU is a technique for improving image quality by re-balancing the contributions from 
-    the UNet’s skip connections and backbone feature maps.
+    the UNet's skip connections and backbone feature maps.
     
     This can be used with no cost to performance, to potentially improve image quality.
     
@@ -834,11 +850,21 @@ class DiffusionArguments(_types.SetFromMixin):
     
     This value must be greater than or equal to 0.
     
-    This is supported for Stable Diffusion XL and Kolors based models. 
+    This is supported for Stable Diffusion XL and Kolors based models.
     
     Supplying any value implies that :py:attr:`DiffusionArguments.sdxl_refiner_deep_cache` is enabled.
     
     Defaults to 1.
+    """
+
+    output_latents: bool = False
+    """
+    Whether to output raw latent tensors instead of decoded PIL Images.
+    
+    When ``True``, the pipeline will return raw latent tensors instead of decoded images.
+    This is useful for saving latent representations or for chaining multiple pipeline operations.
+    
+    Defaults to False (outputs PIL Images).
     """
 
     @staticmethod
@@ -876,7 +902,6 @@ class DiffusionArguments(_types.SetFromMixin):
             return _enums.PipelineType.INPAINT
 
         if self.images is not None:
-            # Image only is handled by IMG2IMG type
             return _enums.PipelineType.IMG2IMG
 
         # All other situations handled by TXT2IMG type

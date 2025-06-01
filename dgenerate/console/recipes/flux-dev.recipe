@@ -32,6 +32,7 @@ order: 16
 @int[{"label":"Batch Size", "arg":"--batch-size", "default":"", "min":1}]
 @imagesize[{"label":"Batch Grid Size (CxR)", "arg":"--batch-grid-size", "default":"", "divider-after":true}]
 @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
+@imageformat[{}]
 @switchradio[{"labels":["Output Dgenerate Image Metadata", "Output Automatic1111 Image Metadata"], "args":["--output-metadata", "--output-auto1111-metadata"]}]
 @switch[{"label":"Output Configs", "arg":"--output-configs"}]
 @imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"1024x1024", "divider-after":true}]
