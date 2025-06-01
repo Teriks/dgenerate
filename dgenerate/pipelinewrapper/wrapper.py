@@ -1907,10 +1907,13 @@ class DiffusionPipelineWrapper:
         def set_img2img_defaults():
             input_images, input_tensors = self._process_mixed_img2img_inputs(user_args.images)
 
-            if self._pipeline_type == _enums.PipelineType.INPAINT and \
+            if self._model_type != _enums.ModelType.TORCH_UPSCALER_X2 and \
                     hasattr(self._pipeline, 'vae') and self._pipeline.vae is not None:
-                # we need to decode the latents before inpainting occurs, the pipelines
-                # do the masking in image space.
+                # we need to decode the latents into an image using the VAE for
+                # the best img2img result, passing already denoised latents
+                # in does not make sense to the receiving UNet/Transformer
+                # except in the case of the X2 latent upscaler, which can
+                # work with the already denoised latents
                 if input_tensors:
                     input_images = self.decode_latents(input_tensors, user_args)
                     input_tensors = None
@@ -3879,7 +3882,12 @@ class DiffusionPipelineWrapper:
             if latents.ndim == 3:
                 latents = latents.unsqueeze(0)
         else:
-            latents = torch.stack(list(latents), dim=0)
+            if len(latents) > 0 and latents[0].ndim == 4:
+                # List of [B, C, H, W] tensors - concatenate along batch dimension
+                latents = torch.cat(list(latents), dim=0)  # [total_B, C, H, W]
+            elif len(latents) > 0 and latents[0].ndim == 3:
+                # List of [C, H, W] tensors - stack to create batch dimension
+                latents = torch.stack(list(latents), dim=0)  # [num_tensors, C, H, W]
 
         vae = self._pipeline.vae
 
