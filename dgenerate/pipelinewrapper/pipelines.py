@@ -3310,15 +3310,15 @@ def _cache_components_granular(
     if lora_uris:
         _messages.warning(
             f'Model "{model_path}" is having LoRAs '
-            f'fused into specific components and cached on disk '
-            f'prior to quantization, this is a one time task per LoRA scale value, '
+            f'fused into specific components, that will then be cached on disk '
+            f'prior to quantization. This is a one time task per LoRA scale value, '
             f'please be patient...'
         )
     else:
         _messages.warning(
             f'Model "{model_path}" components are being converted to '
-            f'diffusers format and cached on disk prior to quantization, '
-            f'this is a one time task, please be patient...'
+            f'diffusers format and cached on disk prior to quantization. '
+            f'This is a one time task, please be patient...'
         )
 
     with _d_memoize.disable_memoization_context():
