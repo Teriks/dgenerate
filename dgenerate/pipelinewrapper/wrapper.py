@@ -3846,7 +3846,7 @@ class DiffusionPipelineWrapper:
             self,
             latents: typing.Sequence[torch.Tensor] | torch.Tensor,
             args: DiffusionArguments,
-    ):
+    ) -> _types.Images:
         """
         Decode latents using the main pipeline's VAE.
 
