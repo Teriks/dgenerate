@@ -1,0 +1,88 @@
+# Editor colors
+[editor]
+bg = "#282c34"  # Background: dark gray
+fg = "#abb2bf"  # Foreground: light gray
+select_bg = "#3e4451"  # Selection bg: lighter gray
+select_fg = "#abb2bf"  # Selection fg: light gray
+inactive_select_bg = "#2c313a"  # Inactive selection bg: darker gray
+caret = "#528bff"  # Caret: bright blue
+caret_width = 1
+border_width = 0
+focus_border_width = 0
+
+# General syntax colors
+[general]
+comment = "#5c6370"  # Comments: gray
+error = "#e06c75"  # Errors: red
+escape = "#abb2bf"  # Escapes: light gray
+keyword = "#c678dd"  # Keywords: purple
+name = "#98c379"  # Names: green
+string = "#98c379"  # Strings: green
+punctuation = "#abb2bf"  # Punctuation: light gray
+
+# Keyword colors
+[keyword]
+constant = "#d19a66"  # Constants: orange
+declaration = "#c678dd"  # Declarations: purple
+namespace = "#c678dd"  # Namespaces: purple
+pseudo = "#c678dd"  # Pseudo keywords: purple
+reserved = "#c678dd"  # Reserved keywords: purple
+type = "#e5c07b"  # Types: yellow
+
+# Name colors
+[name]
+attr = "#d19a66"  # Attributes: orange
+builtin = "#e5c07b"  # Built-ins: yellow
+builtin_pseudo = "#e5c07b"  # Built-in pseudo: yellow
+class = "#e5c07b"  # Classes: yellow
+class_variable = "#e06c75"  # Class variables: red
+constant = "#d19a66"  # Constants: orange
+decorator = "#61afef"  # Decorators: blue
+entity = "#98c379"  # Entities: green
+exception = "#e06c75"  # Exceptions: red
+function = "#61afef"  # Functions: blue
+global_variable = "#e06c75"  # Global variables: red
+instance_variable = "#e06c75"  # Instance variables: red
+label = "#98c379"  # Labels: green
+magic_function = "#61afef"  # Magic functions: blue
+magic_variable = "#e06c75"  # Magic variables: red
+namespace = "#e5c07b"  # Namespace: yellow
+tag = "#e06c75"  # Tags: red
+variable = "#e06c75"  # Variables: red
+
+# Operator colors
+[operator]
+symbol = "#56b6c2"  # Symbols: cyan
+word = "#56b6c2"  # Words: cyan
+
+# String colors
+[string]
+affix = "#98c379"  # Affix: green
+char = "#98c379"  # Char: green
+delimeter = "#98c379"  # Delimeter: green
+doc = "#98c379"  # Doc: green
+double = "#98c379"  # Double: green
+escape = "#56b6c2"  # Escape: cyan
+heredoc = "#98c379"  # Heredoc: green
+interpol = "#56b6c2"  # Interpol: cyan
+regex = "#98c379"  # Regex: green
+single = "#98c379"  # Single: green
+symbol = "#98c379"  # Symbol: green
+
+# Number colors
+[number]
+binary = "#d19a66"  # Binary: orange
+float = "#d19a66"  # Float: orange
+hex = "#d19a66"  # Hex: orange
+integer = "#d19a66"  # Integer: orange
+long = "#d19a66"  # Long: orange
+octal = "#d19a66"  # Octal: orange
+
+# Comment colors
+[comment]
+hashbang = "#5c6370"  # Hashbang: gray
+multiline = "#5c6370"  # Multiline: gray
+preproc = "#c678dd"  # Preproc: purple
+preprocfile = "#98c379"  # Preprocfile: green
+single = "#5c6370"  # Single: gray
+special = "#5c6370"  # Special: gray 

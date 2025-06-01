@@ -1,0 +1,88 @@
+# Editor colors
+[editor]
+bg = "#002b36"  # Background: base03
+fg = "#839496"  # Foreground: base0
+select_bg = "#073642"  # Selection bg: base02
+select_fg = "#93a1a1"  # Selection fg: base1
+inactive_select_bg = "#073642"  # Inactive selection bg: base02
+caret = "#839496"  # Caret: base0
+caret_width = 1
+border_width = 0
+focus_border_width = 0
+
+# General syntax colors
+[general]
+comment = "#586e75"  # Comments: base01
+error = "#dc322f"  # Errors: red
+escape = "#839496"  # Escapes: base0
+keyword = "#859900"  # Keywords: green
+name = "#268bd2"  # Names: blue
+string = "#2aa198"  # Strings: cyan
+punctuation = "#839496"  # Punctuation: base0
+
+# Keyword colors
+[keyword]
+constant = "#cb4b16"  # Constants: orange
+declaration = "#859900"  # Declarations: green
+namespace = "#859900"  # Namespaces: green
+pseudo = "#859900"  # Pseudo keywords: green
+reserved = "#859900"  # Reserved keywords: green
+type = "#b58900"  # Types: yellow
+
+# Name colors
+[name]
+attr = "#268bd2"  # Attributes: blue
+builtin = "#b58900"  # Built-ins: yellow
+builtin_pseudo = "#b58900"  # Built-in pseudo: yellow
+class = "#b58900"  # Classes: yellow
+class_variable = "#268bd2"  # Class variables: blue
+constant = "#cb4b16"  # Constants: orange
+decorator = "#268bd2"  # Decorators: blue
+entity = "#268bd2"  # Entities: blue
+exception = "#dc322f"  # Exceptions: red
+function = "#268bd2"  # Functions: blue
+global_variable = "#268bd2"  # Global variables: blue
+instance_variable = "#268bd2"  # Instance variables: blue
+label = "#268bd2"  # Labels: blue
+magic_function = "#268bd2"  # Magic functions: blue
+magic_variable = "#268bd2"  # Magic variables: blue
+namespace = "#b58900"  # Namespace: yellow
+tag = "#268bd2"  # Tags: blue
+variable = "#268bd2"  # Variables: blue
+
+# Operator colors
+[operator]
+symbol = "#859900"  # Symbols: green
+word = "#859900"  # Words: green
+
+# String colors
+[string]
+affix = "#2aa198"  # Affix: cyan
+char = "#2aa198"  # Char: cyan
+delimeter = "#2aa198"  # Delimeter: cyan
+doc = "#2aa198"  # Doc: cyan
+double = "#2aa198"  # Double: cyan
+escape = "#cb4b16"  # Escape: orange
+heredoc = "#2aa198"  # Heredoc: cyan
+interpol = "#cb4b16"  # Interpol: orange
+regex = "#dc322f"  # Regex: red
+single = "#2aa198"  # Single: cyan
+symbol = "#2aa198"  # Symbol: cyan
+
+# Number colors
+[number]
+binary = "#d33682"  # Binary: magenta
+float = "#d33682"  # Float: magenta
+hex = "#d33682"  # Hex: magenta
+integer = "#d33682"  # Integer: magenta
+long = "#d33682"  # Long: magenta
+octal = "#d33682"  # Octal: magenta
+
+# Comment colors
+[comment]
+hashbang = "#586e75"  # Hashbang: base01
+multiline = "#586e75"  # Multiline: base01
+preproc = "#cb4b16"  # Preproc: orange
+preprocfile = "#2aa198"  # Preprocfile: cyan
+single = "#586e75"  # Single: base01
+special = "#586e75"  # Special: base01 

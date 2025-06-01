@@ -1,0 +1,88 @@
+# Editor colors
+[editor]
+bg = "#0d1117"  # Background: GitHub dark
+fg = "#c9d1d9"  # Foreground: light gray
+select_bg = "#1f6feb"  # Selection bg: GitHub blue
+select_fg = "#ffffff"  # Selection fg: white
+inactive_select_bg = "#1a1f24"  # Inactive selection bg: darker gray
+caret = "#c9d1d9"  # Caret: light gray
+caret_width = 1
+border_width = 0
+focus_border_width = 0
+
+# General syntax colors
+[general]
+comment = "#8b949e"  # Comments: muted gray
+error = "#f85149"  # Errors: red
+escape = "#c9d1d9"  # Escapes: light gray
+keyword = "#ff7b72"  # Keywords: coral
+name = "#7ee787"  # Names: green
+string = "#a5d6ff"  # Strings: light blue
+punctuation = "#c9d1d9"  # Punctuation: light gray
+
+# Keyword colors
+[keyword]
+constant = "#79c0ff"  # Constants: blue
+declaration = "#ff7b72"  # Declarations: coral
+namespace = "#ff7b72"  # Namespaces: coral
+pseudo = "#ff7b72"  # Pseudo keywords: coral
+reserved = "#ff7b72"  # Reserved keywords: coral
+type = "#ff7b72"  # Types: coral
+
+# Name colors
+[name]
+attr = "#7ee787"  # Attributes: green
+builtin = "#ffa657"  # Built-ins: orange
+builtin_pseudo = "#ffa657"  # Built-in pseudo: orange
+class = "#d2a8ff"  # Classes: purple
+class_variable = "#c9d1d9"  # Class variables: light gray
+constant = "#79c0ff"  # Constants: blue
+decorator = "#d2a8ff"  # Decorators: purple
+entity = "#7ee787"  # Entities: green
+exception = "#d2a8ff"  # Exceptions: purple
+function = "#d2a8ff"  # Functions: purple
+global_variable = "#c9d1d9"  # Global variables: light gray
+instance_variable = "#c9d1d9"  # Instance variables: light gray
+label = "#7ee787"  # Labels: green
+magic_function = "#d2a8ff"  # Magic functions: purple
+magic_variable = "#c9d1d9"  # Magic variables: light gray
+namespace = "#c9d1d9"  # Namespace: light gray
+tag = "#7ee787"  # Tags: green
+variable = "#ffa657"  # Variables: orange
+
+# Operator colors
+[operator]
+symbol = "#ff7b72"  # Symbols: coral
+word = "#ff7b72"  # Words: coral
+
+# String colors
+[string]
+affix = "#a5d6ff"  # Affix: light blue
+char = "#a5d6ff"  # Char: light blue
+delimeter = "#a5d6ff"  # Delimeter: light blue
+doc = "#a5d6ff"  # Doc: light blue
+double = "#a5d6ff"  # Double: light blue
+escape = "#c9d1d9"  # Escape: light gray
+heredoc = "#a5d6ff"  # Heredoc: light blue
+interpol = "#a5d6ff"  # Interpol: light blue
+regex = "#a5d6ff"  # Regex: light blue
+single = "#a5d6ff"  # Single: light blue
+symbol = "#a5d6ff"  # Symbol: light blue
+
+# Number colors
+[number]
+binary = "#79c0ff"  # Binary: blue
+float = "#79c0ff"  # Float: blue
+hex = "#79c0ff"  # Hex: blue
+integer = "#79c0ff"  # Integer: blue
+long = "#79c0ff"  # Long: blue
+octal = "#79c0ff"  # Octal: blue
+
+# Comment colors
+[comment]
+hashbang = "#8b949e"  # Hashbang: muted gray
+multiline = "#8b949e"  # Multiline: muted gray
+preproc = "#ff7b72"  # Preproc: coral
+preprocfile = "#a5d6ff"  # Preprocfile: light blue
+single = "#8b949e"  # Single: muted gray
+special = "#8b949e"  # Special: muted gray 

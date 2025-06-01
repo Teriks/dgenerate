@@ -1,0 +1,88 @@
+# Editor colors
+[editor]
+bg = "#2e3440"  # Background: polar night
+fg = "#d8dee9"  # Foreground: snow storm
+select_bg = "#434c5e"  # Selection bg: polar night lighter
+select_fg = "#eceff4"  # Selection fg: snow storm bright
+inactive_select_bg = "#3b4252"  # Inactive selection bg: polar night dark
+caret = "#88c0d0"  # Caret: frost
+caret_width = 1
+border_width = 0
+focus_border_width = 0
+
+# General syntax colors
+[general]
+comment = "#616e88"  # Comments: muted
+error = "#bf616a"  # Errors: aurora red
+escape = "#d8dee9"  # Escapes: snow storm
+keyword = "#81a1c1"  # Keywords: frost darker
+name = "#8fbcbb"  # Names: frost light
+string = "#a3be8c"  # Strings: aurora green
+punctuation = "#eceff4"  # Punctuation: snow storm bright
+
+# Keyword colors
+[keyword]
+constant = "#5e81ac"  # Constants: frost darkest
+declaration = "#81a1c1"  # Declarations: frost darker
+namespace = "#81a1c1"  # Namespaces: frost darker
+pseudo = "#81a1c1"  # Pseudo keywords: frost darker
+reserved = "#81a1c1"  # Reserved keywords: frost darker
+type = "#8fbcbb"  # Types: frost light
+
+# Name colors
+[name]
+attr = "#88c0d0"  # Attributes: frost
+builtin = "#81a1c1"  # Built-ins: frost darker
+builtin_pseudo = "#81a1c1"  # Built-in pseudo: frost darker
+class = "#8fbcbb"  # Classes: frost light
+class_variable = "#d8dee9"  # Class variables: snow storm
+constant = "#5e81ac"  # Constants: frost darkest
+decorator = "#88c0d0"  # Decorators: frost
+entity = "#a3be8c"  # Entities: aurora green
+exception = "#bf616a"  # Exceptions: aurora red
+function = "#88c0d0"  # Functions: frost
+global_variable = "#d8dee9"  # Global variables: snow storm
+instance_variable = "#d8dee9"  # Instance variables: snow storm
+label = "#8fbcbb"  # Labels: frost light
+magic_function = "#88c0d0"  # Magic functions: frost
+magic_variable = "#d8dee9"  # Magic variables: snow storm
+namespace = "#8fbcbb"  # Namespace: frost light
+tag = "#81a1c1"  # Tags: frost darker
+variable = "#d8dee9"  # Variables: snow storm
+
+# Operator colors
+[operator]
+symbol = "#81a1c1"  # Symbols: frost darker
+word = "#81a1c1"  # Words: frost darker
+
+# String colors
+[string]
+affix = "#a3be8c"  # Affix: aurora green
+char = "#a3be8c"  # Char: aurora green
+delimeter = "#a3be8c"  # Delimeter: aurora green
+doc = "#a3be8c"  # Doc: aurora green
+double = "#a3be8c"  # Double: aurora green
+escape = "#88c0d0"  # Escape: frost
+heredoc = "#a3be8c"  # Heredoc: aurora green
+interpol = "#88c0d0"  # Interpol: frost
+regex = "#ebcb8b"  # Regex: aurora yellow
+single = "#a3be8c"  # Single: aurora green
+symbol = "#a3be8c"  # Symbol: aurora green
+
+# Number colors
+[number]
+binary = "#b48ead"  # Binary: aurora purple
+float = "#b48ead"  # Float: aurora purple
+hex = "#b48ead"  # Hex: aurora purple
+integer = "#b48ead"  # Integer: aurora purple
+long = "#b48ead"  # Long: aurora purple
+octal = "#b48ead"  # Octal: aurora purple
+
+# Comment colors
+[comment]
+hashbang = "#616e88"  # Hashbang: muted
+multiline = "#616e88"  # Multiline: muted
+preproc = "#5e81ac"  # Preproc: frost darkest
+preprocfile = "#a3be8c"  # Preprocfile: aurora green
+single = "#616e88"  # Single: muted
+special = "#616e88"  # Special: muted 
