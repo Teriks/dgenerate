@@ -26,7 +26,7 @@ Overview
 
 **See here for v5.0.0 dev branch:** https://github.com/Teriks/dgenerate/tree/version_5.0.0
 
-**See here for v5.0.0 nightlys:** https://github.com/Teriks/dgenerate/tree/pre-release
+**See here for v5.0.0 nightlys:** https://github.com/Teriks/dgenerate/releases/tag/pre-release
 
 ----
 
