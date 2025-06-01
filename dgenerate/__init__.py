@@ -19,9 +19,6 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-from dgenerate.resources import __version__
-
 import importlib.metadata
 import argparse
 import glob
@@ -121,6 +118,8 @@ if os.environ.get('DGENERATE_BACKEND_WARNINGS', '0') == '0':
     warnings.filterwarnings('ignore', module='ctranslate2')
 
 try:
+    from dgenerate.resources import __version__
+
     if os.environ.get('DGENERATE_PYINSTALLER', '0') == '1':
         import dgenerate.pyinstaller_transformers_patches
 
@@ -231,7 +230,8 @@ try:
     transformers.logging.set_verbosity(transformers.logging.CRITICAL)
     diffusers.logging.set_verbosity(diffusers.logging.CRITICAL)
 except KeyboardInterrupt:
-    print('Exiting dgenerate due to keyboard interrupt!', file=sys.stderr)
+    if __am_dgenerate_app:
+        print('Exiting dgenerate due to keyboard interrupt!', file=sys.stderr)
     sys.exit(1)
 
 

@@ -26,6 +26,7 @@ import json
 import os.path
 import pathlib
 import random
+import re
 import typing
 
 import accelerate
@@ -2035,19 +2036,20 @@ def _create_torch_diffusion_pipeline(
 
     if '_class_name' in model_index:
         model_class_name = model_index['_class_name']
-        model_checks = {
-            _enums.model_type_is_flux: ('Flux', 'Flux'),
-            _enums.model_type_is_sd3: ('StableDiffusion3', 'Stable Diffusion 3'),
-            _enums.model_type_is_sdxl: ('StableDiffusionXL', 'Stable Diffusion XL'),
-            _enums.model_type_is_sd15: ('StableDiffusion', 'Stable Diffusion'),
-            _enums.model_type_is_sd2: ('StableDiffusion', 'Stable Diffusion'),
-            _enums.model_type_is_s_cascade: ('StableCascade', 'Stable Cascade'),
-            _enums.model_type_is_kolors: ('Kolors', 'Kolors'),
-            _enums.model_type_is_floyd: ('IF', 'Deep Floyd'),
-        }
 
-        for check_func, (prefix, title) in model_checks.items():
-            if check_func(model_type) and not model_class_name.startswith(prefix):
+        model_checks = [
+            (_enums.model_type_is_flux, ('^Flux.*', 'Flux')),
+            (_enums.model_type_is_sd3, ('^StableDiffusion3.*', 'Stable Diffusion 3')),
+            (_enums.model_type_is_sdxl, ('^StableDiffusionXL.*', 'Stable Diffusion XL')),
+            (_enums.model_type_is_sd15, ('^StableDiffusion[^X3].*', 'Stable Diffusion')),
+            (_enums.model_type_is_sd2, ('^StableDiffusion[^X3].*', 'Stable Diffusion')),
+            (_enums.model_type_is_s_cascade, ('^StableCascade.*', 'Stable Cascade')),
+            (_enums.model_type_is_kolors, ('^Kolors.*', 'Kolors')),
+            (_enums.model_type_is_floyd, ('^IF.*', 'Deep Floyd')),
+        ]
+
+        for check_func, (pattern, title) in model_checks:
+            if check_func(model_type) and re.match(pattern, model_class_name) is None:
                 raise UnsupportedPipelineConfigError(
                     f'{model_path} is not a {title} model, '
                     f'incorrect --model-type value: {_enums.get_model_type_string(model_type)}'
