@@ -28,13 +28,13 @@ import tempfile
 import time
 import typing
 
-
 import PIL.Image
 import PIL.PngImagePlugin
+import torch
 
-import dgenerate.image as _image
 import dgenerate.filelock as _filelock
 import dgenerate.files as _files
+import dgenerate.image as _image
 import dgenerate.imageprocessors as _imageprocessors
 import dgenerate.mediainput as _mediainput
 import dgenerate.mediaoutput as _mediaoutput
@@ -102,9 +102,14 @@ class ImageGeneratedEvent(_Event):
     Occurs when an image is generated (but not saved yet).
     """
 
-    image: PIL.Image.Image
+    image: PIL.Image.Image | None
     """
-    The generated image.
+    The generated image. Will be None if latent output is being used.
+    """
+
+    latents: torch.Tensor | None
+    """
+    The generated latents tensor. Will be None if image output is being used.
     """
 
     generation_step: int
@@ -179,8 +184,23 @@ class ImageGeneratedEvent(_Event):
             return self.image_seed.frame_index
         return None
 
+    @property
+    def is_latents(self) -> bool:
+        """
+        Is this event representing latents tensor output?
+        """
+        return self.latents is not None
+
+    @property
+    def is_image_output(self) -> bool:
+        """
+        Is this event representing image output?
+        """
+        return self.image is not None
+
     def __init__(self, origin: 'RenderLoop',
                  image: PIL.Image.Image | None,
+                 latents: torch.Tensor | None,
                  generation_step: int,
                  batch_index: int,
                  suggested_directory: str,
@@ -192,6 +212,7 @@ class ImageGeneratedEvent(_Event):
         super().__init__(origin)
 
         self.image = image
+        self.latents = latents
         self.generation_step = generation_step
         self.batch_index = batch_index
         self.suggested_directory = suggested_directory if suggested_directory.strip() else '.'
@@ -618,7 +639,8 @@ class RenderLoop:
 
     def _write_image(self,
                      filename_components: list[str],
-                     image: PIL.Image.Image,
+                     image: PIL.Image.Image | None,
+                     latents: torch.Tensor | None,
                      batch_index: int,
                      diffusion_args: _pipelinewrapper.DiffusionArguments,
                      generation_result: _pipelinewrapper.PipelineWrapperResult,
@@ -628,7 +650,12 @@ class RenderLoop:
 
         extra_opts = []
         extra_comments = []
-        self._setup_batch_size_config_opts(file_title="Image",
+        
+        # Determine if we're outputting tensors or images
+        is_output_latents = self._c_config.is_output_latents()
+        
+        file_title = "Tensor" if is_output_latents else "Image"
+        self._setup_batch_size_config_opts(file_title=file_title,
                                            extra_opts_out=extra_opts,
                                            extra_comments_out=extra_comments,
                                            batch_index=batch_index,
@@ -649,6 +676,7 @@ class RenderLoop:
         generated_image_event = ImageGeneratedEvent(
             origin=self,
             image=image,
+            latents=latents,
             generation_step=self.generation_step,
             batch_index=batch_index,
             suggested_directory=self._c_config.output_path,
@@ -666,7 +694,7 @@ class RenderLoop:
 
         yield generated_image_event
 
-        if self.disable_writes or (self._c_config.no_frames and image_seed.is_animation_frame):
+        if self.disable_writes or (self._c_config.no_frames and image_seed and image_seed.is_animation_frame):
             return
 
         config_filename = None
@@ -678,7 +706,7 @@ class RenderLoop:
 
         if self._c_config.output_configs:
             if not self._c_config.output_overwrite:
-                image_filename, config_filename = \
+                output_filename, config_filename = \
                     _filelock.touch_avoid_duplicate(
                         self._c_config.output_path,
                         path_maker=_filelock.suffix_path_maker(
@@ -686,7 +714,7 @@ class RenderLoop:
                              self._join_output_filename(filename_components, ext='dgen')],
                             suffix='_duplicate_'))
             else:
-                image_filename = self._join_output_filename(
+                output_filename = self._join_output_filename(
                     filename_components, ext=self._c_config.image_format
                 )
 
@@ -695,42 +723,59 @@ class RenderLoop:
                 )
         else:
             if not self._c_config.output_overwrite:
-                image_filename = _filelock.touch_avoid_duplicate(
+                output_filename = _filelock.touch_avoid_duplicate(
                     self._c_config.output_path,
                     path_maker=_filelock.suffix_path_maker(
                         self._join_output_filename(filename_components,
                                                    ext=self._c_config.image_format),
                         suffix='_duplicate_'))
             else:
-                image_filename = self._join_output_filename(
+                output_filename = self._join_output_filename(
                     filename_components, ext=self._c_config.image_format
                 )
 
         # Write out to the empty files
-        if self._c_config.output_metadata:
-            if image_filename.lower().endswith(('.jpg', '.jpeg')):
-                image.save(
-                    image_filename,
-                    exif=_image.create_jpeg_exif_with_user_comment(config_txt)
-                )
-            else:
-                metadata = PIL.PngImagePlugin.PngInfo()
-                metadata.add_text("DgenerateConfig", config_txt)
-                image.save(image_filename, pnginfo=metadata)
+        if is_output_latents:
+            # Save tensor output
+            assert latents is not None
+
+            _mediaoutput.save_tensor_file(
+                tensor=latents,
+                path_or_file=output_filename,
+                file_format=self._c_config.image_format
+            )
+            
+            output_type_name = "Tensor"
         else:
-            image.save(image_filename)
+            # Save image output
+            assert image is not None
+                
+            if self._c_config.output_metadata:
+                if output_filename.lower().endswith(('.jpg', '.jpeg')):
+                    image.save(
+                        output_filename,
+                        exif=_image.create_jpeg_exif_with_user_comment(config_txt)
+                    )
+                else:
+                    metadata = PIL.PngImagePlugin.PngInfo()
+                    metadata.add_text("DgenerateConfig", config_txt)
+                    image.save(output_filename, pnginfo=metadata)
+            else:
+                image.save(output_filename)
 
-            # prevent circular import
-            import dgenerate.auto1111_metadata as _auto1111_metadata
+                # prevent circular import
+                import dgenerate.auto1111_metadata as _auto1111_metadata
 
-            if self._c_config.output_auto1111_metadata:
-                _auto1111_metadata.convert_and_insert_metadata(
-                    image_filename, dgenerate_config=config_txt
-                )
+                if self._c_config.output_auto1111_metadata:
+                    _auto1111_metadata.convert_and_insert_metadata(
+                        output_filename, dgenerate_config=config_txt
+                    )
+            
+            output_type_name = "Image"
 
-        is_last_image = batch_index == generation_result.image_count - 1
-        # Only underline the last image write message in a batch of rendered
-        # images when --batch-size > 1
+        is_last_output = batch_index == generation_result.output_count - 1
+        # Only underline the last output write message in a batch of rendered
+        # outputs when --batch-size > 1
 
         if self._c_config.output_configs:
             with open(config_filename, "w", encoding='utf-8') as config_file:
@@ -738,53 +783,94 @@ class RenderLoop:
 
             yield ImageFileSavedEvent(origin=self,
                                       generated_event=generated_image_event,
-                                      path=image_filename,
+                                      path=output_filename,
                                       config_filename=config_filename)
 
             _messages.log(
-                f'Wrote Image File: "{image_filename}"\n'
+                f'Wrote {output_type_name} File: "{output_filename}"\n'
                 f'Wrote Config File: "{config_filename}"',
-                underline=is_last_image)
+                underline=is_last_output)
         else:
             yield ImageFileSavedEvent(origin=self,
                                       generated_event=generated_image_event,
-                                      path=image_filename)
+                                      path=output_filename)
 
-            _messages.log(f'Wrote Image File: "{image_filename}"',
-                          underline=is_last_image)
+            _messages.log(f'Wrote {output_type_name} File: "{output_filename}"',
+                          underline=is_last_output)
 
         # Append to written images for the current run
-        self._written_images.write(os.path.abspath(image_filename) + '\n')
+        self._written_images.write(os.path.abspath(output_filename) + '\n')
 
     def _write_generation_result(self,
                                  filename_components: list[str],
                                  diffusion_args: _pipelinewrapper.DiffusionArguments,
                                  generation_result: _pipelinewrapper.PipelineWrapperResult,
                                  image_seed: _mediainput.ImageSeed | None = None) -> RenderLoopEventStream:
+        
+        # Determine if we're working with images or latents
+        has_images = generation_result.has_images
+        has_latents = generation_result.has_latents
+        is_output_latents = self._c_config.is_output_latents()
+        
         if self._c_config.batch_grid_size is None:
+            # Handle individual outputs (no grid)
+            if has_images and not is_output_latents:
+                # Standard image output
+                for batch_idx, image in enumerate(generation_result.images):
+                    name_components = filename_components.copy()
+                    if generation_result.image_count > 1:
+                        name_components += ['image', batch_idx + 1]
 
-            for batch_idx, image in enumerate(generation_result.images):
-                name_components = filename_components.copy()
+                    yield from self._write_image(name_components,
+                                                 image,
+                                                 None,  # latents
+                                                 batch_idx,
+                                                 diffusion_args,
+                                                 generation_result,
+                                                 image_seed)
+            elif has_latents and is_output_latents:
+                # Tensor output
+                for batch_idx, latents in enumerate(generation_result.latents):
+                    name_components = filename_components.copy()
+                    if generation_result.latents_count > 1:
+                        name_components += ['latent', batch_idx + 1]
+
+                    yield from self._write_image(name_components,
+                                                 None,  # image
+                                                 latents,
+                                                 batch_idx,
+                                                 diffusion_args,
+                                                 generation_result,
+                                                 image_seed)
+            else:
+                assert False, (
+                    f"Mismatch between output format and generation result: "
+                    f"tensor_output={is_output_latents}, has_images={has_images}, has_latents={has_latents}"
+                )
+        else:
+            # Handle grid output
+            if has_images and not is_output_latents:
                 if generation_result.image_count > 1:
-                    name_components += ['image', batch_idx + 1]
+                    image = generation_result.image_grid(self._c_config.batch_grid_size)
+                else:
+                    image = generation_result.image
 
-                yield from self._write_image(name_components,
+                yield from self._write_image(filename_components,
                                              image,
-                                             batch_idx,
+                                             None,  # latents
+                                             0,
                                              diffusion_args,
                                              generation_result,
                                              image_seed)
-        else:
-            if generation_result.image_count > 1:
-                image = generation_result.image_grid(self._c_config.batch_grid_size)
+            elif has_latents and is_output_latents:
+                raise RenderLoopConfigError(
+                    "RenderLoopConfig option batch_grid_size is unsupported when using a latent output."
+                )
             else:
-                image = generation_result.image
-
-            yield from self._write_image(filename_components,
-                                         image, 0,
-                                         diffusion_args,
-                                         generation_result,
-                                         image_seed)
+                assert False, (
+                    f"Mismatch between output format and generation result: "
+                    f"tensor_output={is_output_latents}, has_images={has_images}, has_latents={has_latents}"
+                )
 
     def _write_animation_frame(self,
                                diffusion_args: _pipelinewrapper.DiffusionArguments,
@@ -1038,10 +1124,15 @@ class RenderLoop:
         self._post_processor = None
 
     def _run_postprocess(self, generation_result: _pipelinewrapper.PipelineWrapperResult):
-        if self._post_processor is not None and generation_result.images is not None:
-            for idx, image in enumerate(generation_result.images):
-                img = self._post_processor.process(image)
-                generation_result.images[idx] = img
+        if self._post_processor is not None:
+            if generation_result.has_images:
+                for idx, image in enumerate(generation_result.images):
+                    img = self._post_processor.process(image)
+                    generation_result.images[idx] = img
+            else:
+                _messages.warning(
+                    f'Post processor step ({str(self._post_processor)}) is being '
+                    f'skipped due to output being latents.')
 
     def _load_image_processors(self, processors):
         if not processors:
@@ -1345,11 +1436,20 @@ class RenderLoop:
                             self._run_postprocess(generation_result)
                             self._ensure_output_path()
 
-                            if generation_result.image_count > 1 and self._c_config.batch_grid_size is not None:
-                                anim_writer.write(
-                                    generation_result.image_grid(self._c_config.batch_grid_size))
-                            else:
-                                anim_writer.write(generation_result.images)
+                            if generation_result.has_images:
+                                if generation_result.image_count > 1 and self._c_config.batch_grid_size is not None:
+                                    anim_writer.write(
+                                        generation_result.image_grid(self._c_config.batch_grid_size))
+                                else:
+                                    anim_writer.write(generation_result.images)
+                            elif generation_result.has_latents:
+                                # For latent output in animations, we need to decode to images for the animation writer
+                                # This is a limitation - animations require decoded images
+                                raise RenderLoopConfigError(
+                                    'Animated file output with latent output is not supported. '
+                                    'Latent output can only be used for individual frame output, '
+                                    'i.e. --animation-format "frames".'
+                                )
 
                             if image_seed_frame.frame_index == 0:
                                 # Preform on first frame write

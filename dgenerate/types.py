@@ -26,7 +26,9 @@ import os.path
 import traceback
 import types
 import typing
+
 import PIL.Image
+import torch
 
 __doc__ = """
 Commonly used static type definitions and utilities for introspecting on objects, functions, types, etc.
@@ -94,6 +96,19 @@ Images = collections.abc.Sequence[PIL.Image.Image]
 MutableImages = collections.abc.MutableSequence[PIL.Image.Image]
 OptionalImages = typing.Optional[Images]
 OptionalImagesSequence = typing.Optional[collections.abc.Sequence[Images]]
+
+Tensor = torch.Tensor
+OptionalTensor = typing.Optional[torch.Tensor]
+Tensors = collections.abc.Sequence[torch.Tensor]
+OptionalTensors = typing.Optional[Tensors]
+MutableTensors = collections.abc.MutableSequence[Tensor]
+
+# Union types for image/tensor support (no mixing allowed within a sequence)
+ImageOrTensor = typing.Union[PIL.Image.Image, torch.Tensor]
+ImagesOrTensors = typing.Union[Images, Tensors]  # Either all images OR all tensors, no mixing
+OptionalImagesOrTensors = typing.Optional[ImagesOrTensors]
+OptionalImageOrTensor = typing.Optional[ImageOrTensor]
+OptionalImagesOrTensorsSequence = typing.Optional[collections.abc.Sequence[ImagesOrTensors]]
 
 
 def iterate_attribute_combinations(

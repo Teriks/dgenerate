@@ -1,0 +1,7 @@
+This code is modified for import structure, and to use dgenerate.spacycache in sbd.py
+
+it is vendored from the argostranslate project
+
+due to depending sentencepiece which is not yet available for python 3.13, and other issues
+
+See: https://github.com/argosopentech/argos-translate

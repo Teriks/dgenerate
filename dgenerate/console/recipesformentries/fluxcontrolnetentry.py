@@ -23,6 +23,7 @@ import tkinter as tk
 import dgenerate.console.recipesformentries.entry as _entry
 import dgenerate.console.recipesformentries.urientry as _urientry
 from dgenerate.console.spinbox import FloatSpinbox
+from dgenerate.console.combobox import ComboBox
 
 
 class _FluxControlNetEntry(_urientry._UriEntry):
@@ -55,17 +56,20 @@ class _FluxControlNetEntry(_urientry._UriEntry):
             text=self.get_label(
                 'Union Mode', key='mode-label'), anchor='e')
 
-        self.mode_entry = tk.OptionMenu(
+        self.mode_entry = ComboBox(
             self.master,
-            self.mode_var,
-            '',
-            'canny',
-            'tile',
-            'depth',
-            'blur',
-            'pose',
-            'gray',
-            'lq')
+            textvariable=self.mode_var,
+            values=[
+                '',
+                'canny',
+                'tile',
+                'depth',
+                'blur',
+                'pose',
+                'gray',
+                'lq'
+            ]
+        )
 
         self.mode_label_widget.grid(row=self.row + 1, column=0, padx=_entry.ROW_XPAD, sticky='e')
         self.mode_entry.grid(row=self.row + 1, column=1, padx=_entry.ROW_XPAD, sticky='ew')

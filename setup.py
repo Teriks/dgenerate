@@ -315,9 +315,10 @@ if __name__ != 'setup_as_library':
               'dgenerate.console.themes': ['*.toml'],
               'dgenerate.console.schemas': ['*.json'],
               'dgenerate.console.recipes': ['*.recipe'],
-              'dgenerate.extras.hidiffusion.sd_module_key': ['*.txt'],
               'dgenerate.translators.data': ['*.json'],
-              'dgenerate.pipelinewrapper.uris.text_encoder_configs': ['*.json']
+              'dgenerate.pipelinewrapper.uris.text_encoder_configs': ['*.json'],
+              'dgenerate.extras.hidiffusion.sd_module_key': ['*.txt'],
+              'dgenerate.extras': ['**/LICENSE', '**/NOTICE']
           },
           include_package_data=True,
           license='BSD 3-Clause',

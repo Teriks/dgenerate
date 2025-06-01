@@ -19,7 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
+import tkinter.ttk as ttk
 import dgenerate.textprocessing as _textprocessing
 import typing
 
@@ -53,15 +53,25 @@ def shell_quote_if(text, strict: bool = False):
 
 
 def valid_colors(widget):
-    widget.config(
-        highlightthickness=0)
+    if isinstance(widget, ttk.Combobox):
+        widget.config(
+            foreground="black",
+            background="white")
+    else:
+        widget.config(
+            highlightthickness=0)
 
 
 def invalid_colors(widget):
-    widget.config(
-        highlightbackground="red",
-        highlightcolor="red",
-        highlightthickness=2)
+    if isinstance(widget, ttk.Combobox):
+        widget.config(
+            foreground="black",
+            background="red")
+    else:
+        widget.config(
+            highlightbackground="red",
+            highlightcolor="red",
+            highlightthickness=2)
 
 
 class _Entry:
@@ -110,3 +120,6 @@ class _Entry:
 
     def template(self, content):
         return self._template(content, 'OVERRIDE ME')
+
+    def on_form_scroll(self):
+        pass

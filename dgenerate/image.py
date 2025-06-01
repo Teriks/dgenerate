@@ -34,6 +34,16 @@ Image operations commonly used by dgenerate.
 """
 
 
+def is_image(obj) -> bool:
+    """
+    Check if an object is a PIL Image.
+
+    :param obj: object to check
+    :return: ``True`` if the object is a ``PIL.Image.Image``
+    """
+    return isinstance(obj, PIL.Image.Image)
+
+
 def resize_image_calc(old_size: _types.Size,
                       new_size: _types.OptionalSize,
                       aspect_correct: bool = False,

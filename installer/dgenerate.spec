@@ -112,7 +112,9 @@ for package_name in required_package_names:
                   '**/*.toml',
                   '**/*.yaml',
                   '**/*.yml',
-                  '**/*.exe'] +
+                  '**/*.exe',
+                  '**/LICENSE',
+                  '**/NOTICE'] +
                  (['**/*.py', '**/*.pyi']
                   if include_source else []))
     binaries += collect_dynamic_libs(package_name, search_patterns=['*.dll', '*.pyd'])

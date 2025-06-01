@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from argostranslate import translate
+from dgenerate.extras.argostranslate import translate
 
 
 def main():

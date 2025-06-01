@@ -45,5 +45,6 @@ from .quantizerurientry import _QuantizerEntry
 from .promptupscalerentry import _PromptUpscalerEntry
 from .promptweighterentry import _PromptWeighterEntry
 from .checkboxwithtwointargsentry import _CheckboxWithTwoIntArgsEntry
+from .imageformatentry import _ImageFormatEntry
 
 from .entry import DIVIDER_YPAD, ROW_XPAD

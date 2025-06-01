@@ -20,6 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import tkinter.ttk as ttk
+import dgenerate.console.mousewheelbind as _mousewheelbind
 
 
 class ComboBox(ttk.Combobox):
@@ -28,17 +29,19 @@ class ComboBox(ttk.Combobox):
     """
 
     def __init__(self, *args, **kwargs):
+
+        if 'state' not in kwargs:
+            kwargs['state'] = 'readonly'
+
         super().__init__(*args, **kwargs)
         self._is_dropdown_open = False
-        
+
         # Bind events to track dropdown state
         self.bind('<<ComboboxDropdown>>', self._on_dropdown_open)
         self.bind('<<ComboboxClosed>>', self._on_dropdown_close)
-        
+
         # Bind mousewheel events
-        self.bind('<MouseWheel>', self._on_mousewheel)  # Windows
-        self.bind('<Button-4>', self._on_mousewheel)    # Linux scroll up
-        self.bind('<Button-5>', self._on_mousewheel)    # Linux scroll down
+        _mousewheelbind.bind_mousewheel(self.bind, self._on_mousewheel)
 
     def _on_dropdown_open(self, event):
         """Called when the dropdown list opens."""
@@ -52,11 +55,3 @@ class ComboBox(ttk.Combobox):
         """Handle mousewheel events."""
         if not self._is_dropdown_open:
             return "break"  # Prevent scrolling when dropdown is closed
-
-    def force_close(self):
-        """Force close the dropdown if it's open."""
-        if self._is_dropdown_open:
-            self.selection_clear()
-            self.event_generate('<<ComboboxClosed>')
-            # On some systems, we need to explicitly close the dropdown
-            self.state(['!pressed', '!active']) 

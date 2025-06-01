@@ -533,4 +533,85 @@ class LetterboxProcessor(_imageprocessor.ImageProcessor):
         return self
 
 
+class CropProcessor(_imageprocessor.ImageProcessor):
+    """
+    Crop the input image to a specified box region.
+    
+    The "box" argument specifies the crop region in the format "LEFTxTOPxRIGHTxBOTTOM",
+    where each value represents pixel coordinates. For example: "100x50x300x400" will crop
+    the image with top left: (x=100, y=50), bottom right: (x=300, y=400)
+
+    The "pre-resize" argument determines if the cropping occurs before or
+    after dgenerate resizes the image. This defaults to False, meaning the image is
+    cropped after dgenerate is done resizing it.
+    """
+
+    NAMES = ['crop']
+
+    HIDE_ARGS = ['device', 'model-offload']
+
+    def __init__(self, box: str, pre_resize: bool = False, **kwargs):
+        """
+        :param box: Crop region in format "LEFTxTOPxRIGHTxBOTTOM"
+        :param pre_resize: Whether to crop before or after dgenerate's resize operation
+        :param kwargs: forwarded to base class
+        """
+        super().__init__(**kwargs)
+
+        # Parse the box string in format LEFTxTOPxRIGHTxBOTTOM
+        try:
+            parts = _textprocessing.parse_dimensions(box)
+        except ValueError:
+            raise self.argument_error(
+                'Error parsing "box" argument: {box}. Expected format (integers): LEFTxTOPxRIGHTxBOTTOM'
+            )
+
+        if len(parts) != 4:
+            raise self.argument_error(
+                'Argument "box" must be in format (integers): LEFTxTOPxRIGHTxBOTTOM')
+
+        self._box = parts
+
+        left, top, right, bottom = self._box
+        if left < 0 or top < 0:
+            raise self.argument_error('Argument "box": Left and top coordinates must be non-negative')
+        if right <= left:
+            raise self.argument_error('Argument "box": Right coordinate must be greater than left')
+        if bottom <= top:
+            raise self.argument_error('Argument "box": Bottom coordinate must be greater than top')
+
+        self._pre_resize = pre_resize
+
+    def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
+        """
+        Crop the image if pre_resize is True.
+
+        :param image: image to process
+        :param resize_resolution: purely informational, is unused by this processor
+        :return: the cropped image if pre_resize is True, otherwise the original image
+        """
+        if self._pre_resize:
+            return image.crop(self._box)
+        return image
+
+    def impl_post_resize(self, image: PIL.Image.Image):
+        """
+        Crop the image if pre_resize is False.
+
+        :param image: image to process
+        :return: the cropped image if pre_resize is False, otherwise the original image
+        """
+        if not self._pre_resize:
+            return image.crop(self._box)
+        return image
+
+    def to(self, device) -> "CropProcessor":
+        """
+        Does nothing for this processor.
+        :param device: the device
+        :return: this processor
+        """
+        return self
+
+
 __all__ = _types.module_all()

@@ -28,6 +28,7 @@ import dgenerate.console.recipesformentries.entry as _entry
 import dgenerate.console.resources as _resources
 from dgenerate.console.mousewheelbind import bind_mousewheel, un_bind_mousewheel
 from dgenerate.console.spinbox import FloatSpinbox, IntSpinbox
+from dgenerate.console.combobox import ComboBox
 
 
 class _PluginArgEntry:
@@ -137,23 +138,23 @@ class _PluginSchemaEntry(_entry._Entry):
     def _create_dropdown(self, label: str, values: list[str]):
         self.dropdown_label = tk.Label(self._dropdown_parent, text=label)
 
+        self.plugin_dropdown = ComboBox(self._dropdown_parent, textvariable=self.plugin_name_var)
+        
         if self.declared_optional:
-            self.plugin_dropdown = tk.OptionMenu(
-                self._dropdown_parent,
-                self.plugin_name_var, '', *values,
-                command=lambda s: self._on_plugin_change(str(s)))
+            self.plugin_dropdown['values'] = ('',) + tuple(values)
+            self.plugin_name_var.set('')
         else:
+            self.plugin_dropdown['values'] = tuple(values)
             self.plugin_name_var.set(values[0])
-
             if self._has_help_button:
                 self.current_help_text = self.schema[values[0]][self._schema_help_node]
 
-            self.plugin_dropdown = tk.OptionMenu(
-                self._dropdown_parent, self.plugin_name_var, *values,
-                command=lambda s: self._on_plugin_change(str(s)))
+        self.plugin_dropdown.bind(
+            '<<ComboboxSelected>>',
+            lambda e: self._on_plugin_change(self.plugin_name_var.get()))
 
         if len(self.schema) == 0:
-            self.plugin_dropdown.config(bg='darkgray')
+            self.plugin_dropdown.config(background='darkgray')
             self.plugin_dropdown.configure(state=tk.DISABLED)
 
         if self._has_help_button:
@@ -273,9 +274,12 @@ class _PluginSchemaEntry(_entry._Entry):
             variable = tk.StringVar(value=str(default_value))
         else:
             variable = tk.StringVar(value='')
+            
         if optional:
             values = [''] + values
-        entry = tk.OptionMenu(self.master, variable, *values)
+            
+        entry = ComboBox(self.master, textvariable=variable, values=values)
+        
         entry.grid(row=row, column=1, sticky='we', padx=_entry.ROW_XPAD)
         return _PluginArgEntry(raw=False, widgets=[entry], variable=variable)
 
@@ -302,8 +306,8 @@ class _PluginSchemaEntry(_entry._Entry):
                 variable = tk.StringVar(value=str(default_value))
                 values = ['True', 'False', 'None']
 
-                entry = tk.OptionMenu(self.master, variable, *values)
-
+                entry = ComboBox(self.master, textvariable=variable, values=values)
+                
                 entry.grid(row=row, column=1, sticky='we', padx=_entry.ROW_XPAD)
                 return True, _PluginArgEntry(raw=False, widgets=[entry], variable=variable)
             else:
@@ -382,7 +386,7 @@ class _PluginSchemaEntry(_entry._Entry):
             self._add_directory_in_button(row, entry)
 
         # editing resets invalid border
-        arg_entry.variable.trace_add('write', lambda *a, e=entry: e.config(highlightthickness=0))
+        arg_entry.variable.trace_add('write', lambda *a, e=entry: _entry.valid_colors(e))
 
         self.entries[param_name] = (entry, arg_entry.variable, default_value, optional)
 
@@ -515,3 +519,9 @@ class _PluginSchemaEntry(_entry._Entry):
 
     def template(self, content):
         return self._template(content, self._format_uri())
+
+    def on_form_scroll(self):
+        self.plugin_dropdown.event_generate('<Escape>')
+        for widget in self.dynamic_widgets:
+            if isinstance(widget, ttk.Combobox):
+                widget.event_generate('<Escape>')

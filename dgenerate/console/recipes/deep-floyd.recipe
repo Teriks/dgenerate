@@ -19,7 +19,9 @@ order: 12
 
 \set device @device[{"optional":false}]
 
-\set output_dir @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output", "optional":false, "divider-after":true}]
+\set output_dir @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output", "optional":false}]
+
+\set image_format @imageformat[{"divider-after":true}]
 
 \set auth_token {{ '--auth-token ' + quote(auth_token) if auth_token else '' }}
 
@@ -73,6 +75,6 @@ order: 12
 @int[{"label":"Stage 3 Upscaler Noise Level", "arg":"--upscaler-noise-levels", "default":20, "min":1}]
 @quantizer[{"label":"Stage 3 Quantizer", "divider-after":true}]
 @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
---output-prefix stage3 {{ device }} {{ output_dir }} {{ auth_token }}
+--output-prefix stage3 {{ device }} {{ output_dir }} {{ image_format }} {{ auth_token }}
 
 \clear_modules stage_1_modules

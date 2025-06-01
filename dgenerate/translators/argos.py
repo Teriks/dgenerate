@@ -21,9 +21,9 @@
 import os.path
 import urllib.request
 
-import argostranslate.package
-import argostranslate.settings
-import argostranslate.translate
+import dgenerate.extras.argostranslate.package as argostranslate_package
+import dgenerate.extras.argostranslate.settings as argostranslate_settings
+import dgenerate.extras.argostranslate.translate as argostranslate_translate
 
 import dgenerate.filelock
 import dgenerate.messages as _messages
@@ -67,14 +67,14 @@ class ArgosTranslator:
         # argostranslate is not multiprocess safe.
         # at least make it so between dgenerate processes.
 
-        argostranslate.settings.cache_dir.mkdir(parents=True, exist_ok=True)
+        argostranslate_settings.cache_dir.mkdir(parents=True, exist_ok=True)
 
         with dgenerate.filelock.temp_file_lock(
-                argostranslate.settings.cache_dir / '_dgenerate.lock'
+                argostranslate_settings.cache_dir / '_dgenerate.lock'
         ):
 
             # download package index if we do not have it, and the user allows it
-            if not os.path.exists(argostranslate.settings.local_package_index):
+            if not os.path.exists(argostranslate_settings.local_package_index):
 
                 if not local_files_only:
                     _messages.debug_log('argostranslate, updating package index...')
@@ -85,7 +85,7 @@ class ArgosTranslator:
                         'to search for available translation models, but you are in offline mode.')
 
             # what is available? (in the index)
-            available_packages = argostranslate.package.get_available_packages()
+            available_packages = argostranslate_package.get_available_packages()
 
             # Try to find this initially
             package_to_install = None
@@ -129,7 +129,7 @@ class ArgosTranslator:
                             f'for: "{pivot_lang.from_code}" -> "{pivot_lang.to_code}", '
                             f'but offline mode is active.')
 
-                    argostranslate.package.install_from_path(
+                    argostranslate_package.install_from_path(
                         self._argos_download_package(pivot_lang)
                     )
 
@@ -157,7 +157,7 @@ class ArgosTranslator:
                             f'for: "{package_to_install.from_code}" -> "{package_to_install.to_code}", '
                             f'but offline mode is active.')
 
-                    argostranslate.package.install_from_path(
+                    argostranslate_package.install_from_path(
                         self._argos_download_package(package_to_install)
                     )
 
@@ -174,7 +174,7 @@ class ArgosTranslator:
                             f'for: "{package_to_install.from_code}" -> "{package_to_install.to_code}", '
                             f'but offline mode is active.')
 
-                    argostranslate.package.install_from_path(
+                    argostranslate_package.install_from_path(
                         self._argos_download_package(package_to_install)
                     )
             else:
@@ -191,29 +191,29 @@ class ArgosTranslator:
                 f'argostranslate: using pivot {from_lang} -> {pivot_lang.to_code} then {pivot_lang.to_code} -> {to_lang}')
 
             # first step, translate to pivot language
-            self._translation = argostranslate.translate.get_translation_from_codes(from_lang, pivot_lang.to_code)
+            self._translation = argostranslate_translate.get_translation_from_codes(from_lang, pivot_lang.to_code)
 
             # second step, translate from pivot language to target language
-            self._translation2 = argostranslate.translate.get_translation_from_codes(pivot_lang.to_code, to_lang)
+            self._translation2 = argostranslate_translate.get_translation_from_codes(pivot_lang.to_code, to_lang)
 
         else:
             # directly translate
-            self._translation = argostranslate.translate.get_translation_from_codes(from_lang, to_lang)
+            self._translation = argostranslate_translate.get_translation_from_codes(from_lang, to_lang)
 
     @staticmethod
     def _argos_update_package_index():
         try:
-            response = urllib.request.urlopen(argostranslate.settings.remote_package_index)
+            response = urllib.request.urlopen(argostranslate_settings.remote_package_index)
         except Exception as e:
             # They eat this exception and then log it without a re-throw, I need to handle it.
             raise _exceptions.TranslatorLoadError(
                 f'Unable to download argostranslate package index, network error.') from e
         data = response.read()
-        with open(argostranslate.settings.local_package_index, "wb") as f:
+        with open(argostranslate_settings.local_package_index, "wb") as f:
             f.write(data)
 
     @staticmethod
-    def _argos_download_package(package: argostranslate.package.AvailablePackage):
+    def _argos_download_package(package: argostranslate_package.AvailablePackage):
         try:
             # this actually just throws "Exception" upon download failure.
             return package.download()
@@ -222,10 +222,10 @@ class ArgosTranslator:
                 f'Unable to download argostranslate model: {package.from_code} -> {package.to_code}, network error.') from e
 
     @staticmethod
-    def _argos_model_path(package: argostranslate.package.IPackage):
+    def _argos_model_path(package: argostranslate_package.IPackage):
         # see the source code of package.download()
-        return argostranslate.settings.downloads_dir / (
-                argostranslate.package.argospm_package_name(package) + '.argosmodel')
+        return argostranslate_settings.downloads_dir / (
+                argostranslate_package.argospm_package_name(package) + '.argosmodel')
 
     def translate(self, texts: str | list[str]) -> list[str]:
         """

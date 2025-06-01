@@ -22,39 +22,41 @@ import collections.abc
 import contextlib
 import decimal
 import functools
+import importlib.util
 import inspect
 import math
 import typing
 
+import DeepCache as _deepcache
 import PIL.Image
 import diffusers
 import numpy
 import torch
-import importlib.util
-import dgenerate.image as _image
-import dgenerate.messages as _messages
-import dgenerate.pipelinewrapper.constants as _constants
-import dgenerate.pipelinewrapper.enums as _enums
-import dgenerate.pipelinewrapper.pipelines as _pipelines
-import dgenerate.pipelinewrapper.uris as _uris
-import dgenerate.prompt as _prompt
-import dgenerate.promptweighters as _promptweighters
-import dgenerate.textprocessing as _textprocessing
-import dgenerate.types as _types
-from dgenerate.pipelinewrapper.arguments import DiffusionArguments
-import dgenerate.pipelinewrapper.util as _util
+
+import dgenerate.eval as _eval
 import dgenerate.extras.asdff.base as _asdff_base
 import dgenerate.extras.hidiffusion as _hidiffusion
 import dgenerate.extras.teacache.teacache_flux as _teacache_flux
-from dgenerate.extras.ras import sd3_ras_context as _sd3_ras_context
-from dgenerate.extras.ras import RASArgs as _RASArgs
-import dgenerate.pipelinewrapper.help as _help
-import dgenerate.pipelinewrapper.schedulers as _schedulers
-import dgenerate.memory as _memory
+import dgenerate.image as _image
+import dgenerate.mediainput as _mediainput
 import dgenerate.memoize as _memoize
+import dgenerate.memory as _memory
+import dgenerate.messages as _messages
+import dgenerate.pipelinewrapper.constants as _constants
+import dgenerate.pipelinewrapper.enums as _enums
+import dgenerate.pipelinewrapper.help as _help
+import dgenerate.pipelinewrapper.pipelines as _pipelines
+import dgenerate.pipelinewrapper.schedulers as _schedulers
+import dgenerate.pipelinewrapper.uris as _uris
+import dgenerate.pipelinewrapper.util as _util
+import dgenerate.prompt as _prompt
+import dgenerate.promptweighters as _promptweighters
+import dgenerate.textprocessing as _textprocessing
 import dgenerate.torchutil as _torchutil
-import DeepCache as _deepcache
-import dgenerate.eval as _eval
+import dgenerate.types as _types
+from dgenerate.extras.ras import RASArgs as _RASArgs
+from dgenerate.extras.ras import sd3_ras_context as _sd3_ras_context
+from dgenerate.pipelinewrapper.arguments import DiffusionArguments
 
 
 class DiffusionArgumentsHelpException(Exception):
@@ -85,9 +87,10 @@ class PipelineWrapperResult:
     The result of calling :py:class:`.DiffusionPipelineWrapper`
     """
     images: _types.MutableImages | None
+    latents: _types.MutableTensors | None
 
     @property
-    def image_count(self):
+    def image_count(self) -> int:
         """
         The number of images produced.
 
@@ -99,7 +102,28 @@ class PipelineWrapperResult:
         return len(self.images)
 
     @property
-    def image(self):
+    def latents_count(self) -> int:
+        """
+        The number of latents produced.
+
+        :return: int
+        """
+        if self.latents is None:
+            return 0
+
+        return len(self.latents)
+
+    @property
+    def output_count(self) -> int:
+        """
+        The number of outputs produced (images or latents).
+
+        :return: int
+        """
+        return max(self.image_count, self.latents_count)
+
+    @property
+    def image(self) -> PIL.Image.Image | None:
         """
         The first image in the batch of requested batch size.
 
@@ -107,18 +131,54 @@ class PipelineWrapperResult:
         """
         return self.images[0] if self.images else None
 
+    @property
+    def latent(self) -> torch.Tensor | None:
+        """
+        The first latent in the batch of requested batch size.
+
+        :return: :py:class:`torch.Tensor`
+        """
+        return self.latents[0] if self.latents else None
+
+    @property
+    def has_images(self) -> bool:
+        """
+        Whether this result contains images.
+
+        :return: bool
+        """
+        return self.images is not None and len(self.images) > 0
+
+    @property
+    def has_latents(self) -> bool:
+        """
+        Whether this result contains latents.
+
+        :return: bool
+        """
+        return self.latents is not None and len(self.latents) > 0
+
     def image_grid(self, cols_rows: _types.Size):
         """
         Render an image grid from the images in this result.
 
         :raise ValueError: if no images are present on this object.
             This is impossible if this object was produced by :py:class:`.DiffusionPipelineWrapper`.
+        :raise ValueError: if this result contains latents instead of images.
+            Image grids can only be created from decoded images, not raw latent tensors.
 
         :param cols_rows: columns and rows (WxH) desired as a tuple
         :return: :py:class:`PIL.Image.Image`
         """
         if not self.images:
-            raise ValueError('No images present.')
+            if self.has_latents:
+                raise ValueError(
+                    'Cannot create image grid from latent tensors. '
+                    'Image grids can only be created from decoded images, not raw latent tensors. '
+                    'Use output_latents=False to get decoded images instead.'
+                )
+            else:
+                raise ValueError('No images present.')
 
         if len(self.images) == 1:
             return self.images[0]
@@ -131,9 +191,55 @@ class PipelineWrapperResult:
             grid.paste(img, box=(i % cols * w, i // cols * h))
         return grid
 
-    def __init__(self, images: _types.Images | None):
+    def __init__(self, images: _types.Images | None = None, latents: _types.MutableTensors | None = None):
+        if images is None and latents is None:
+            raise ValueError("PipelineWrapperResult must have either images or latents, both cannot be None")
+        if images is not None and latents is not None:
+            raise ValueError("PipelineWrapperResult cannot have both images and latents, only one is allowed")
+
         self.images = images
+        self.latents = latents
         self.dgenerate_opts = list()
+
+    @classmethod
+    def from_pipeline_output(cls, pipeline_output, output_type: str = 'pil'):
+        """
+        Create a PipelineWrapperResult from a diffusers pipeline output.
+        
+        :param pipeline_output: The output from a diffusers pipeline call
+        :param output_type: The output type that was used ('pil' or 'latent')
+        :return: PipelineWrapperResult instance
+        """
+        if output_type == 'latent':
+            # Pipeline returned latents
+            if hasattr(pipeline_output, 'images'):
+                # The 'images' attribute actually contains latent tensors when output_type='latent'
+                latents = pipeline_output.images
+            else:
+                # Fallback - try to get latents directly
+                latents = getattr(pipeline_output, 'latents', None)
+
+            # Normalize latents to torch tensors on CPU
+            if latents is not None:
+                normalized_latents = []
+                for latent in latents:
+                    if isinstance(latent, numpy.ndarray):
+                        # Convert numpy array to torch tensor
+                        latent_tensor = torch.from_numpy(latent).cpu()
+                    elif isinstance(latent, torch.Tensor):
+                        # Ensure tensor is on CPU
+                        latent_tensor = latent.cpu()
+                    else:
+                        raise TypeError(
+                            f"Unexpected latent type: {type(latent)}. Expected numpy.ndarray or torch.Tensor")
+                    normalized_latents.append(latent_tensor)
+                latents = normalized_latents
+
+            return cls(images=None, latents=latents)
+        else:
+            # Pipeline returned PIL images
+            images = getattr(pipeline_output, 'images', None)
+            return cls(images=images, latents=None)
 
     def __enter__(self):
         return self
@@ -143,7 +249,8 @@ class PipelineWrapperResult:
             for i in self.images:
                 if i is not None:
                     i.close()
-                    self.images = None
+            self.images = None
+        # Latents don't need explicit cleanup like PIL images
 
 
 @contextlib.contextmanager
@@ -263,6 +370,144 @@ class DiffusionPipelineWrapper:
             return None
 
         return DiffusionPipelineWrapper.__LAST_RECALL_SECONDARY_PIPELINE()
+
+    @staticmethod
+    def _separate_images_and_tensors(items: _types.ImagesOrTensors | None) \
+            -> tuple[_types.Images | None, _types.Tensors | None]:
+        """
+        Separate a sequence of images or tensors into separate sequences.
+        
+        Note: The input should be homogeneous (all images or all tensors), but this method
+        can handle mixed inputs for validation purposes.
+        
+        :param items: Sequence of PIL Images or torch Tensors (should be homogeneous), or None
+        :return: Tuple of (images, tensors) where each can be None if no items of that type exist
+        """
+        if items is None:
+            return None, None
+
+        images, tensors = _mediainput.separate_images_and_tensors(items)
+        return images if images else None, tensors if tensors else None
+
+    @staticmethod
+    def _validate_img2img_tensor_compatibility(tensors: _types.Tensors):
+        """
+        Validate that tensors are compatible for the given operation.
+        
+        :param tensors: Sequence of tensors to validate
+        :raises UnsupportedPipelineConfigError: If tensors are incompatible
+        """
+        if not tensors:
+            return
+
+        # Check that all tensors have the same shape
+        first_shape = tensors[0].shape
+        for i, tensor in enumerate(tensors[1:], 1):
+            if tensor.shape != first_shape:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    f'All img2img latents tensors must have the same shape. '
+                    f'Tensor 0 has shape {first_shape}, but tensor {i} has shape {tensor.shape}.'
+                )
+
+    def _validate_img2img_latent_channels(self, tensors: _types.Tensors):
+        """
+        Validate that latent tensors have the correct number of channels for the current model type.
+        
+        :param tensors: Sequence of tensors to validate
+        :raises UnsupportedPipelineConfigError: If tensors have incorrect number of channels
+        """
+        if not tensors:
+            return
+
+        if _enums.model_type_is_s_cascade(self.model_type):
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'Stable Cascade does not support accepting latents as input.'
+            )
+
+        # Get expected channels based on model type
+        if _enums.model_type_is_flux(self.model_type):
+            # Flux uses packed format [B, L, C] or [L, C] where C is always 64
+            expected_channels = 64  # Flux models expect 64 channels in packed format
+            for i, tensor in enumerate(tensors):
+                if len(tensor.shape) not in (2, 3):
+                    raise _pipelines.UnsupportedPipelineConfigError(
+                        f'Invalid shape for Flux img2img latents tensor at index {i}. '
+                        f'Expected 2D [L, C] or 3D [B, L, C] tensor in packed format, '
+                        f'but got shape {tensor.shape}'
+                    )
+                channels = tensor.shape[-1]  # Last dim is always channels in packed format
+                if channels != expected_channels:
+                    raise _pipelines.UnsupportedPipelineConfigError(
+                        f'Invalid number of channels in Flux img2img latents tensor at index {i}. '
+                        f'Expected {expected_channels} channels in packed format, '
+                        f'but got {channels} channels instead. Shape: {tensor.shape}'
+                    )
+        elif _enums.model_type_is_sd3(self.model_type):
+            # SD3 uses 16 channels in latent space
+            expected_channels = self._pipeline.transformer.config.in_channels
+
+            for i, tensor in enumerate(tensors):
+                if len(tensor.shape) not in (3, 4):  # Must be [C, H, W] or [B, C, H, W]
+                    raise _pipelines.UnsupportedPipelineConfigError(
+                        f'Invalid shape for SD3 img2img latents tensor at index {i}. '
+                        f'Expected 3D [C, H, W] or 4D tensor [B, C, H, W], but got shape {tensor.shape}'
+                    )
+                channels = tensor.shape[1 - (4 - len(tensor.shape))]
+                if channels != expected_channels:
+                    raise _pipelines.UnsupportedPipelineConfigError(
+                        f'Invalid number of channels in SD3 img2img latents tensor at index {i}. '
+                        f'Expected {expected_channels} channels for model type "{self.model_type_string}", '
+                        f'but got {channels} channels instead. Shape: {tensor.shape}'
+                    )
+        else:
+            # Standard SD models use channels from VAE config
+            expected_channels = 4  # Default if not specified in config
+            if hasattr(self._pipeline.vae, 'config'):
+                if hasattr(self._pipeline.vae.config, 'latent_channels'):
+                    expected_channels = self._pipeline.vae.config.latent_channels
+                # Some models use in_channels instead
+                elif hasattr(self._pipeline.vae.config, 'in_channels'):
+                    expected_channels = self._pipeline.vae.config.in_channels
+
+            for i, tensor in enumerate(tensors):
+                if len(tensor.shape) not in (3, 4):   # Must be [C, H, W] or [B, C, H, W]
+                    raise _pipelines.UnsupportedPipelineConfigError(
+                        f'Invalid shape for img2img latents tensor at index {i}. '
+                        f'Expected 3D [C, H, W] or 4D tensor [B, C, H, W], but got shape {tensor.shape}'
+                    )
+                channels = tensor.shape[1 - (4 - len(tensor.shape))]
+                if channels != expected_channels:
+                    raise _pipelines.UnsupportedPipelineConfigError(
+                        f'Invalid number of channels in img2img latents tensor at index {i}. '
+                        f'Expected {expected_channels} channels for model type "{self.model_type_string}", '
+                        f'but got {channels} channels instead. Shape: {tensor.shape}'
+                    )
+
+    def _process_mixed_img2img_inputs(self, items: _types.ImagesOrTensors | None) \
+            -> tuple[_types.Images | None, _types.Tensors | None]:
+        """
+        Process image/tensor inputs, validating homogeneity and compatibility.
+        
+        :param items: Sequence of images or tensors (must be homogeneous - all images or all tensors)
+        :return: Tuple of (processed_images, processed_tensors) - only one will be non-None
+        """
+        if items is None:
+            return None, None
+
+        images, tensors = self._separate_images_and_tensors(items)
+
+        if tensors:
+            self._validate_img2img_tensor_compatibility(tensors)
+            self._validate_img2img_latent_channels(tensors)
+
+        # Don't allow mixing images and tensors in the same input
+        if images and tensors:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'Cannot mix PIL Images and latents tensors in img2img inputs. '
+                f'All inputs must be either images or latents tensors, not both.'
+            )
+
+        return images, tensors
 
     def __str__(self):
         return f'{self.__class__.__name__}({str(_types.get_public_attributes(self))})'
@@ -1539,6 +1784,10 @@ class DiffusionPipelineWrapper:
         args['guidance_scale'] = float(_types.default(user_args.guidance_scale, _constants.DEFAULT_GUIDANCE_SCALE))
         args['num_inference_steps'] = int(_types.default(user_args.inference_steps, _constants.DEFAULT_INFERENCE_STEPS))
 
+        # Create generator once and reuse it throughout
+        args['generator'] = torch.Generator(device=self._device).manual_seed(
+            _types.default(user_args.seed, _constants.DEFAULT_SEED))
+
         def set_strength():
             strength = float(_types.default(user_args.image_seed_strength, _constants.DEFAULT_IMAGE_SEED_STRENGTH))
             ifs = int(_types.default(user_args.inference_steps, _constants.DEFAULT_INFERENCE_STEPS))
@@ -1656,7 +1905,22 @@ class DiffusionPipelineWrapper:
                 )
 
         def set_img2img_defaults():
-            images = user_args.images
+            input_images, input_tensors = self._process_mixed_img2img_inputs(user_args.images)
+
+            if self._pipeline_type == _enums.PipelineType.INPAINT and \
+                    hasattr(self._pipeline, 'vae') and self._pipeline.vae is not None:
+                # we need to decode the latents before inpainting occurs, the pipelines
+                # do the masking in image space.
+                if input_tensors:
+                    input_images = self._main_pipeline_decode_latents(
+                        input_tensors,
+                        user_args.width,
+                        user_args.height
+                    )
+                    input_tensors = None
+
+            inputs: _types.ImagesOrTensors
+            inputs = input_images if input_images else input_tensors
 
             floyd_og_image_needed = (self._pipeline_type == _enums.PipelineType.INPAINT and
                                      _enums.model_type_is_floyd_ifs(self._model_type)
@@ -1667,12 +1931,12 @@ class DiffusionPipelineWrapper:
                     raise _pipelines.UnsupportedPipelineConfigError(
                         'must specify "floyd_image" to disambiguate this operation, '
                         '"floyd_image" being the output of a previous floyd stage.')
-                args['original_image'] = images
+                args['original_image'] = inputs
                 args['image'] = user_args.floyd_image
             elif self._model_type == _enums.ModelType.TORCH_S_CASCADE:
-                args['images'] = images
+                args['images'] = inputs
             else:
-                args['image'] = images
+                args['image'] = inputs
 
             def check_no_image_seed_strength():
                 if user_args.image_seed_strength is not None:
@@ -1730,43 +1994,89 @@ class DiffusionPipelineWrapper:
                 args['mask_image'] = mask_images
                 if not (_enums.model_type_is_floyd(self._model_type) or
                         _enums.model_type_is_sd3(self._model_type)):
-                    args['width'] = images[0].size[0]
-                    args['height'] = images[0].size[1]
+                    if input_images:
+                        args['width'] = inputs[0].size[0]
+                        args['height'] = inputs[0].size[1]
+                    else:
+                        # For tensors, dimensions are encoded in the tensor itself
+                        # Only set width/height if user explicitly provided them
+                        if user_args.width is not None:
+                            args['width'] = user_args.width
+                        if user_args.height is not None:
+                            args['height'] = user_args.height
+
+                        # Validate that all img2img tensors have matching dimensions
+                        self._validate_img2img_tensor_compatibility(input_tensors, "Img2img")
 
             if self._parsed_adetailer_detector_uris:
                 # inpainting pipeline, just no mask
                 # because it is auto generated
                 if not _enums.model_type_is_sd3(self._model_type):
-                    args['width'] = images[0].size[0]
-                    args['height'] = images[0].size[1]
+                    if input_images:
+                        args['width'] = inputs[0].size[0]
+                        args['height'] = inputs[0].size[1]
+                    else:
+                        # For tensors, dimensions are encoded in the tensor itself
+                        # Only set width/height if user explicitly provided them
+                        if user_args.width is not None:
+                            args['width'] = user_args.width
+                        if user_args.height is not None:
+                            args['height'] = user_args.height
+
+                        # Validate that all adetailer tensors have matching dimensions
+                        self._validate_img2img_tensor_compatibility(input_tensors, "Adetailer")
 
             if self._model_type == _enums.ModelType.TORCH_SDXL_PIX2PIX:
-                args['width'] = images[0].size[0]
-                args['height'] = images[0].size[1]
+                if input_images:
+                    args['width'] = inputs[0].size[0]
+                    args['height'] = inputs[0].size[1]
+                else:
+                    # For tensors, dimensions are encoded in the tensor itself
+                    # Only set width/height if user explicitly provided them
+                    if user_args.width is not None:
+                        args['width'] = user_args.width
+                    if user_args.height is not None:
+                        args['height'] = user_args.height
+
+                    # Validate that all SDXL pix2pix tensors have matching dimensions
+                    self._validate_img2img_tensor_compatibility(input_tensors, "SDXL pix2pix")
 
             elif self._model_type == _enums.ModelType.TORCH_UPSCALER_X2:
-                images = list(images)
-                args['image'] = images
+                inputs = list(inputs)
+                args['image'] = inputs
 
-                for idx, image in enumerate(images):
-                    if not _image.is_aligned(image.size, 64):
-                        size = _image.align_by(image.size, 64)
-                        _messages.warning(
-                            f'Input image size {image.size} is not aligned by 64. '
-                            f'Output dimensions will be forcefully aligned to 64: {size}.'
-                        )
-                        images[idx] = _image.resize_image(image, size)
+                if input_images:
+                    # Only resize PIL Images, not tensors
+                    for idx, image in enumerate(inputs):
+                        if not _image.is_aligned(image.size, 64):
+                            size = _image.align_by(image.size, 64)
+                            _messages.warning(
+                                f'Input image size {image.size} is not aligned by 64. '
+                                f'Output dimensions will be forcefully aligned to 64: {size}.'
+                            )
+                            inputs[idx] = _image.resize_image(image, size)
 
             elif self._model_type == _enums.ModelType.TORCH_S_CASCADE:
-                if not _image.is_aligned(images[0].size, 128):
-                    size = _image.align_by(images[0].size, 128)
-                    _messages.warning(
-                        f'Input image size {images[0].size} is not aligned by 128. '
-                        f'Output dimensions will be forcefully aligned to 128: {size}.'
-                    )
-                else:
-                    size = images[0].size
+                if input_images:
+                    # Handle PIL Images
+                    if not _image.is_aligned(inputs[0].size, 128):
+                        size = _image.align_by(inputs[0].size, 128)
+                        _messages.warning(
+                            f'Input image size {inputs[0].size} is not aligned by 128. '
+                            f'Output dimensions will be forcefully aligned to 128: {size}.'
+                        )
+                    else:
+                        size = inputs[0].size
 
+                    args['width'] = _types.default(user_args.width, size[0])
+                    args['height'] = _types.default(user_args.height, size[1])
+                else:
+                    # Handle tensors - dimensions are encoded in the tensor itself
+                    # No need to set width/height as the pipeline can infer from tensor shape
+                    # Just validate that all tensors have matching dimensions
+                    self._validate_img2img_tensor_compatibility(input_tensors, "Stable Cascade")
+
+                # Validate output dimensions for both PIL and tensor inputs
                 if user_args.width and user_args.width > 0:
                     if not (user_args.width % 128) == 0:
                         raise _pipelines.UnsupportedPipelineConfigError(
@@ -1777,21 +2087,18 @@ class DiffusionPipelineWrapper:
                         raise _pipelines.UnsupportedPipelineConfigError(
                             'Stable Cascade requires an output dimension that is aligned by 128.')
 
-                args['width'] = _types.default(user_args.width, size[0])
-                args['height'] = _types.default(user_args.height, size[1])
-
             elif self._model_type == _enums.ModelType.TORCH_SD3:
-                images = list(images)
-                args['image'] = images
-
-                for idx, image in enumerate(images):
-                    if not _image.is_aligned(image.size, 16):
-                        size = _image.align_by(image.size, 16)
-                        _messages.warning(
-                            f'Input image size {image.size} is not aligned by 16. '
-                            f'Dimensions will be forcefully aligned to 16: {size}.'
-                        )
-                        images[idx] = _image.resize_image(image, size)
+                inputs = list(inputs)
+                args['image'] = inputs
+                if input_images:
+                    for idx, image in enumerate(inputs):
+                        if not _image.is_aligned(image.size, 16):
+                            size = _image.align_by(image.size, 16)
+                            _messages.warning(
+                                f'Input image size {image.size} is not aligned by 16. '
+                                f'Dimensions will be forcefully aligned to 16: {size}.'
+                            )
+                            inputs[idx] = _image.resize_image(image, size)
 
                 if mask_images:
                     mask_images = list(mask_images)
@@ -2077,6 +2384,40 @@ class DiffusionPipelineWrapper:
         pipeline_args.pop('negative_original_size', None)
         pipeline_args.pop('negative_crops_coords_top_left', None)
 
+    def _unpack_flux_latents(self,
+                             latents: torch.Tensor,
+                             height: int | None = None,
+                             width: int | None = None) -> torch.Tensor:
+        """
+        Unpack Flux latents from sequence format [B, L, C] to spatial format [B, C, H, W].
+        
+        :param latents: Input latents in shape [B, L, C] or [L, C]
+        :param height: Optional target height, will use default if not specified
+        :param width: Optional target width, will use default if not specified
+        :return: Unpacked latents in shape [B, C, H, W]
+        """
+
+        # Add batch dimension if needed
+        if len(latents.shape) == 2:  # If [L, C] add batch dimension
+            latents = latents.unsqueeze(0)
+
+        # Calculate dimensions
+        height = height or self._pipeline.default_sample_size * self._pipeline.vae_scale_factor
+        width = width or self._pipeline.default_sample_size * self._pipeline.vae_scale_factor
+
+        # VAE applies 8x compression on images but we must also account for packing which requires
+        # latent height and width to be divisible by 2
+        height = 2 * (int(height) // (self._pipeline.vae_scale_factor * 2))
+        width = 2 * (int(width) // (self._pipeline.vae_scale_factor * 2))
+
+        # Unpack from [B, L, C] to [B, C, H, W]
+        batch_size, num_patches, channels = latents.shape
+        latents = latents.view(batch_size, height // 2, width // 2, channels // 4, 2, 2)
+        latents = latents.permute(0, 3, 1, 4, 2, 5)
+        latents = latents.reshape(batch_size, channels // (2 * 2), height, width)
+
+        return latents
+
     def _call_torch_flux(self, pipeline_args, user_args: DiffusionArguments):
         self._check_for_invalid_model_specific_opts(user_args)
 
@@ -2107,6 +2448,15 @@ class DiffusionPipelineWrapper:
         batch_size = _types.default(user_args.batch_size, 1)
 
         if user_args.images:
+            # For img2img, we need to unpack latents if they're in packed format
+            # We expect them to be in packed format, as that is what the pipeline
+            # outputs. Diffusers needs them in unpacked format
+            if _torchutil.is_tensor(user_args.images[0]):
+                latents: _types.MutableTensors = list(user_args.images)
+                for idx, latent in enumerate(latents):
+                    latents[idx] = self._unpack_flux_latents(latent, user_args.height, user_args.width)
+                pipeline_args['image'] = latents
+
             if batch_size % len(user_args.images) != 0:
                 batch_size = len(user_args.images)
                 if user_args.batch_size is not None:
@@ -2138,10 +2488,6 @@ class DiffusionPipelineWrapper:
                     _constants.DEFAULT_INFERENCE_STEPS)
             ))
 
-        pipeline_args['generator'] = \
-            torch.Generator(device=self._device).manual_seed(
-                _types.default(user_args.seed, _constants.DEFAULT_SEED))
-
         if hasattr(self._pipeline, 'controlnet'):
             pipeline_args['controlnet_conditioning_scale'] = \
                 self._get_controlnet_conditioning_scale()
@@ -2170,6 +2516,8 @@ class DiffusionPipelineWrapper:
                 ),
                 enable=_types.default(user_args.tea_cache, False),
         ):
+            output_type = 'latent' if user_args.output_latents else 'pil'
+
             if self._parsed_adetailer_detector_uris:
                 return self._call_asdff(
                     user_args=user_args,
@@ -2178,18 +2526,20 @@ class DiffusionPipelineWrapper:
                     prompt_weighter=prompt_weighter
                 )
             else:
-                return PipelineWrapperResult(_pipelines.call_pipeline(
+                pipeline_output = _pipelines.call_pipeline(
                     pipeline=self._pipeline,
                     prompt_weighter=prompt_weighter,
                     device=self._device,
-                    **pipeline_args).images)
+                    output_type=output_type,
+                    **pipeline_args
+                )
+                return PipelineWrapperResult.from_pipeline_output(pipeline_output, output_type)
 
     def _call_asdff(self,
                     user_args: DiffusionArguments,
                     prompt_weighter: _promptweighters.PromptWeighter,
                     pipeline_args: dict[str, typing.Any],
-                    batch_size: int
-                    ):
+                    batch_size: int):
         asdff_pipe = _asdff_base.AdPipelineBase(self._pipeline)
 
         # use the provided pipe as is, it must be
@@ -2269,7 +2619,7 @@ class DiffusionPipelineWrapper:
                 mask_dilation=mask_dilation
             )
 
-        return PipelineWrapperResult(asdff_output.images)
+        return PipelineWrapperResult.from_pipeline_output(asdff_output)
 
     def _call_torch_s_cascade(self, pipeline_args, user_args: DiffusionArguments):
         self._check_for_invalid_model_specific_opts(user_args)
@@ -2289,10 +2639,6 @@ class DiffusionPipelineWrapper:
         pipeline_args['negative_prompt'] = prompt.negative
 
         pipeline_args['num_images_per_prompt'] = _types.default(user_args.batch_size, 1)
-
-        pipeline_args['generator'] = \
-            torch.Generator(device=self._device).manual_seed(
-                _types.default(user_args.seed, _constants.DEFAULT_SEED))
 
         prompt_weighter = self._get_prompt_weighter(user_args)
 
@@ -2328,12 +2674,16 @@ class DiffusionPipelineWrapper:
 
         pipeline_args.pop('num_images_per_prompt')
 
-        return PipelineWrapperResult(_pipelines.call_pipeline(
+        output_type = 'latent' if user_args.output_latents else 'pil'
+
+        pipeline_output = _pipelines.call_pipeline(
             image_embeddings=image_embeddings,
             pipeline=self._s_cascade_decoder_pipeline,
             device=self._device,
             prompt_weighter=self._get_second_model_prompt_weighter(user_args),
-            **pipeline_args).images)
+            output_type=output_type,
+            **pipeline_args)
+        return PipelineWrapperResult.from_pipeline_output(pipeline_output, output_type)
 
     @staticmethod
     def _flux_sigmas_calculate_shift(
@@ -2557,10 +2907,7 @@ class DiffusionPipelineWrapper:
                 pipeline_args['negative_prompt'] = \
                     [pipeline_args['negative_prompt']] * num_prompts
 
-        generator = torch.Generator(device=self._device).manual_seed(
-            _types.default(user_args.seed, _constants.DEFAULT_SEED))
-
-        pipeline_args['generator'] = generator
+        generator = pipeline_args['generator']
 
         if isinstance(self._pipeline, diffusers.StableDiffusionInpaintPipelineLegacy):
             # Not necessary, will cause an error
@@ -2645,11 +2992,18 @@ class DiffusionPipelineWrapper:
                 if self._parsed_adetailer_detector_uris:
                     return generate_asdff()
                 else:
-                    return PipelineWrapperResult(_pipelines.call_pipeline(
+                    output_type = 'latent' if user_args.output_latents else 'pil'
+
+                    pipeline_output = _pipelines.call_pipeline(
                         pipeline=self._pipeline,
                         prompt_weighter=prompt_weighter,
                         device=self._device,
-                        **pipeline_args).images)
+                        output_type=output_type,
+                        **pipeline_args
+                    )
+                    return PipelineWrapperResult.from_pipeline_output(
+                        pipeline_output, output_type
+                    )
 
         high_noise_fraction = _types.default(user_args.sdxl_high_noise_fraction,
                                              _constants.DEFAULT_SDXL_HIGH_NOISE_FRACTION)
@@ -2687,9 +3041,10 @@ class DiffusionPipelineWrapper:
                     pipeline=self._pipeline,
                     device=self._device,
                     prompt_weighter=prompt_weighter,
+                    output_type=output_type,
                     **pipeline_args,
-                    **i_end,
-                    output_type=output_type).images
+                    **i_end
+                ).images
 
         pipeline_args['image'] = image
 
@@ -2876,12 +3231,20 @@ class DiffusionPipelineWrapper:
                                         _constants.DEFAULT_SDXL_REFINER_DEEP_CACHE_BRANCH_ID),
                                     enabled=user_args.sdxl_refiner_deep_cache):
 
-            return PipelineWrapperResult(
-                _pipelines.call_pipeline(
-                    pipeline=self._sdxl_refiner_pipeline,
-                    device=self._device,
-                    prompt_weighter=self._get_second_model_prompt_weighter(user_args),
-                    **pipeline_args, **i_start).images)
+            output_type = 'latent' if user_args.output_latents else 'pil'
+
+            pipeline_output = _pipelines.call_pipeline(
+                pipeline=self._sdxl_refiner_pipeline,
+                device=self._device,
+                prompt_weighter=self._get_second_model_prompt_weighter(user_args),
+                output_type=output_type,
+                **pipeline_args,
+                **i_start
+            )
+
+            return PipelineWrapperResult.from_pipeline_output(
+                pipeline_output, output_type
+            )
 
     def _get_sd3_ras_args(self, user_args) -> _RASArgs | None:
         if user_args.ras:
@@ -3313,6 +3676,36 @@ class DiffusionPipelineWrapper:
             slicing=args.vae_slicing
         )
 
+    def _auto_latents_check(self, args: DiffusionArguments):
+        if args.output_latents:
+            if self.adetailer_detector_uris:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'Adetailer does not support outputting to latents.'
+                )
+
+            if _enums.model_type_is_floyd(self.model_type):
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'Deep Floyd model types do not support outputting to latents.'
+                )
+
+        if args.images and any(_torchutil.is_tensor(i) for i in args.images):
+            # validation that input type is not mixed happens in _get_pipeline_defaults
+
+            if self.adetailer_detector_uris:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'Adetailer does not support accepting latents as input.'
+                )
+
+            if _enums.model_type_is_floyd(self.model_type):
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'Deep Floyd model types do not support accepting latents as input.'
+                )
+
+            if _enums.model_type_is_s_cascade(self.model_type):
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'Stable Cascade does not support accepting latents as input.'
+                )
+
     def _auto_ras_check(self, args: DiffusionArguments):
         for prop in args.__dict__.keys():
             if prop.startswith('ras_'):
@@ -3452,6 +3845,94 @@ class DiffusionPipelineWrapper:
                     'SDXL refiner is not in use, so cannot supply FreeU parameters to it.'
                 )
 
+    @torch.inference_mode()
+    def _main_pipeline_decode_latents(
+            self,
+            latents: typing.Sequence[torch.Tensor] | torch.Tensor,
+            width: int | None,
+            height: int | None
+    ):
+        """
+        Decode latents using the main pipeline's VAE.
+
+        This is useful for inpainting pipelines where the latents cannot be provided
+        directly. Masking must occur in image space.
+        """
+
+        assert hasattr(self._pipeline, 'vae') and self._pipeline.vae is not None
+
+        if isinstance(latents, torch.Tensor):
+            if latents.ndim == 3:
+                latents = latents.unsqueeze(0)
+        else:
+            latents = torch.stack(list(latents), dim=0)
+
+        vae = self._pipeline.vae
+
+        needs_upcasting = vae.dtype == torch.float16 and getattr(vae.config, 'force_upcast', False)
+
+        dtype = vae.dtype if not needs_upcasting else torch.float32
+
+        vae.to(self._device, dtype=dtype)
+
+        if latents.device != vae.device:
+            latents = latents.to(self._device, dtype=dtype)
+
+        if _enums.model_type_is_sdxl(self.model_type) or _enums.model_type_is_kolors(self.model_type):
+            # SDXL and Kolors
+            has_latents_mean = \
+                hasattr(vae.config, "latents_mean") and \
+                vae.config.latents_mean is not None
+            has_latents_std = \
+                hasattr(vae.config, "latents_std") and \
+                vae.config.latents_std is not None
+
+            if has_latents_mean and has_latents_std:
+                latents_mean = (
+                    torch.tensor(vae.config.latents_mean).reshape(1, 4, 1, 1).expand(latents.shape[0], -1, 1, 1).to(
+                        latents.device, latents.dtype
+                    )
+                )
+                latents_std = (
+                    torch.tensor(vae.config.latents_std).reshape(1, 4, 1, 1).expand(latents.shape[0], -1, 1, 1).to(
+                        latents.device, latents.dtype
+                    )
+                )
+                latents = latents * latents_std / vae.config.scaling_factor + latents_mean
+            else:
+                latents = latents / vae.config.scaling_factor
+        elif _enums.model_type_is_sd15(self.model_type) or _enums.model_type_is_sd2(self.model_type):
+            # SD15 and SD2
+            latents = latents / vae.config.scaling_factor
+        elif _enums.model_type_is_sd3(self.model_type):
+            # SD3
+            latents = (latents / vae.config.scaling_factor) + vae.config.shift_factor
+        elif _enums.model_type_is_flux(self.model_type):
+            # Flux
+            height = height or self._pipeline.default_sample_size * self._pipeline.vae_scale_factor
+            width = width or self._pipeline.default_sample_size * self._pipeline.vae_scale_factor
+
+            # VAE applies 8x compression on images but we must also account for packing which requires
+            # latent height and width to be divisible by 2
+            height = 2 * (int(height) // (self._pipeline.vae_scale_factor * 2))
+            width = 2 * (int(width) // (self._pipeline.vae_scale_factor * 2))
+
+            # Unpack latents from saved/reloaded format [B, L, C] to VAE format [B, C, H, W]
+            batch_size, num_patches, channels = latents.shape
+            latents = latents.view(batch_size, height // 2, width // 2, channels // 4, 2, 2)
+            latents = latents.permute(0, 3, 1, 4, 2, 5)
+            latents = latents.reshape(batch_size, channels // (2 * 2), height, width)
+
+            # Apply VAE scaling and shift
+            latents = (latents / vae.config.scaling_factor) + vae.config.shift_factor
+        else:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'Unable to decode input latents for model type: {_enums.get_model_type_string(self.model_type)}')
+
+        decoded_images = vae.decode(latents).sample
+
+        return self._pipeline.image_processor.postprocess(decoded_images)
+
     def __call__(self, args: DiffusionArguments | None = None, **kwargs) -> PipelineWrapperResult:
         """
         Call the pipeline and generate a result.
@@ -3482,6 +3963,7 @@ class DiffusionPipelineWrapper:
         self._auto_tea_cache_check(copy_args)
         self._auto_deep_cache_check(copy_args)
         self._auto_hi_diffusion_check(copy_args)
+        self._auto_latents_check(copy_args)
 
         help_text = self._argument_help_check(copy_args)
         if help_text:

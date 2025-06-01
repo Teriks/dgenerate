@@ -49,7 +49,7 @@ class BPETokenizer(Tokenizer):
             self.detokenizer = MosesDetokenizer(self.to_code)
             self.normalizer = MosesPunctNormalizer(self.from_code)
 
-            from argostranslate.apply_bpe import BPE
+            from dgenerate.extras.argostranslate.apply_bpe import BPE
 
             with open(str(self.model_file), "r", encoding="utf-8") as f:
                 self.bpe_source = BPE(f)

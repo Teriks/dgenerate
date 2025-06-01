@@ -7,7 +7,7 @@ readme = "README.rst"
 license = "BSD 3-Clause"
 
 [tool.poetry.dependencies]
-python = ">=3.10,<3.13"
+python = ">=3.10,<3.14"
 diffusers = "0.33.1"
 hf_xet = "^1.1.2"
 bitsandbytes = "0.45.5"
@@ -19,7 +19,6 @@ dynamicprompts = "0.31.0"
 spacy = "3.8.7"
 dgenerate-ultralytics-headless = {version = "8.3.144", platform = "not_darwin"}
 langcodes = "^3.5.0"
-argostranslate = "^1.9.6"
 pytorch-lightning = "^2.5.1.post0"
 lightning-utilities = "^0.14.3"
 charset-normalizer = "^3.4.2"
@@ -36,7 +35,7 @@ torchsde = "0.2.6"
 fake-useragent = "2.2.0"
 opencv-python-headless = "^4.11.0.86"
 psutil = "^7.0.0"
-sentencepiece = "^0.2.0"
+dbowring-sentencepiece = "^0.2.1"
 ftfy = "^6.3.1"
 beautifulsoup4 = "^4.13.4"
 matplotlib = "^3.10.3"
@@ -57,7 +56,8 @@ pyrfc6266 = "^1.0.2"
 protobuf = "^6.31.0"
 lark = "^1.2.2"
 packaging = "^25.0"
-
+ctranslate2 = "^4.6.0"
+sacremoses = "0.0.53"
 
 [tool.poetry.scripts]
 dgenerate = 'dgenerate.__init__:main'

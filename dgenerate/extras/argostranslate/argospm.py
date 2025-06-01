@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import argparse
 
-from argostranslate import package, settings
-from argostranslate.package import AvailablePackage
+from dgenerate.extras.argostranslate import package, settings
+from dgenerate.extras.argostranslate.package import AvailablePackage
 
 """
 Example usage:

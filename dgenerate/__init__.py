@@ -27,6 +27,7 @@ import itertools
 import os
 import sys
 
+
 if os.environ.get('DGENERATE_PYINSTALLER', '0') == '1':
     import inspect
 
@@ -96,6 +97,7 @@ if os.environ.get('DGENERATE_BACKEND_WARNINGS', '0') == '0':
     warnings.filterwarnings('ignore', module='huggingface_hub')
     warnings.filterwarnings('ignore', module='torch')
     warnings.filterwarnings('ignore', module='controlnet_aux')
+    warnings.filterwarnings('ignore', module='ctranslate2')
 
 try:
     import diffusers

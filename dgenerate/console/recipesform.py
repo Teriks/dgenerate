@@ -30,6 +30,7 @@ import dgenerate.console.recipesformentries as _recipesformentries
 import dgenerate.console.resources as _resources
 import dgenerate.console.util as _util
 from dgenerate.console.mousewheelbind import bind_mousewheel, handle_canvas_scroll, un_bind_mousewheel
+from dgenerate.console.combobox import ComboBox
 
 _dialog_state = _util.DialogState(save_position=True, save_size=True)
 
@@ -187,15 +188,18 @@ class _RecipesForm(tk.Toplevel):
 
         self.bind("<Configure>", self._on_resize)
 
-        self._dropdown = tk.OptionMenu(self,
-                                       self._current_template,
-                                       *self._template_names,
-                                       command=lambda s: self._update_form(str(s))
-                                       )
+        self._dropdown = ComboBox(
+            self,
+            textvariable=self._current_template,
+            values=self._template_names
+        )
+
+        self._dropdown.bind(
+            '<<ComboboxSelected>>',
+            lambda e: self._update_form(self._current_template.get())
+        )
 
         self._dropdown.grid(row=0, column=0, columnspan=2, sticky='ew', padx=5, pady=5)
-
-        self.grid_columnconfigure(0, weight=1)
 
         # Bind mouse wheel events
         bind_mousewheel(self.canvas.bind_all, self._on_mouse_wheel)
@@ -203,6 +207,12 @@ class _RecipesForm(tk.Toplevel):
         self._update_form(self._current_template.get())
 
     def _on_mouse_wheel(self, event):
+        if 'popdown' in str(event.widget).lower():
+            return "break"
+
+        # Notify entries of scroll event
+        for entry in self._entries:
+            entry.on_form_scroll()
         handle_canvas_scroll(self.canvas, event)
 
     def _on_resize(self, event):
