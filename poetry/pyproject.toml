@@ -58,6 +58,7 @@ lark = "^1.2.2"
 packaging = "^25.0"
 ctranslate2 = "^4.6.0"
 sacremoses = "0.0.53"
+preshed = "3.0.10"
 
 [tool.poetry.scripts]
 dgenerate = 'dgenerate.__init__:main'
