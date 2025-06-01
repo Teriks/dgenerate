@@ -51,7 +51,7 @@ if os.environ.get('DGENERATE_PYINSTALLER', '0') == '1':
 # import_util introspection to work with the sentencepiece fork
 
 # Store the original function
-_original_version = importlib.metadata.version
+_original_importlib_metadata_version = importlib.metadata.version
 
 
 def _patched_importlib_metadata_version(distribution_name):
@@ -62,7 +62,7 @@ def _patched_importlib_metadata_version(distribution_name):
     if distribution_name == "sentencepiece":
         distribution_name = "dbowring-sentencepiece"
 
-    return _original_version(distribution_name)
+    return _original_importlib_metadata_version(distribution_name)
 
 
 # Apply the patch
