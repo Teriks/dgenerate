@@ -179,10 +179,19 @@ def invoke_dgenerate_events(
             _textprocessing.underline('\n'.join(traceback.format_exception(error)))
         )
 
-    def rethrow_with_message(error: Exception, usage_error=False):
-        debug_exception(error)
+    def unexpected_exception_trace(error: Exception):
+        _messages.error(
+            _textprocessing.underline("invoker.invoke_dgenerate_events() unexpected error trace:") + "\n" +
+            _textprocessing.underline('\n'.join(traceback.format_exception(error)))
+        )
 
-        if log_error:
+    def rethrow_with_message(error: Exception, usage_error=False, expected=True):
+        if expected:
+            debug_exception(error)
+        else:
+            unexpected_exception_trace(error)
+
+        if log_error and expected:
             _messages.error(f'dgenerate: error: {str(error).strip()}')
         if throw:
             if usage_error:
@@ -438,6 +447,9 @@ def invoke_dgenerate_events(
                 _d_exceptions.OutOfMemoryError,
                 OSError) as e:
             yield rethrow_with_message(e)
+            return
+        except Exception as e:
+            yield rethrow_with_message(e, expected=False)
             return
 
     # Return the template environment for pipelining

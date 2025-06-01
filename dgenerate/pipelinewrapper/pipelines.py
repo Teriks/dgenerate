@@ -2355,11 +2355,12 @@ def _create_torch_diffusion_pipeline(
         )
 
     def load_default_text_encoder(encoder, encoder_name):
+        should_quantize = should_apply_quantizer(encoder_name)
+
         # Check if we have a cached version from granular caching
         if encoder_name in cached_component_paths:
             # Use manual quantizer if available, otherwise use global quantizer
-            text_encoder_quantizer = manual_quantizers.get(encoder_name, quantizer_uri if should_apply_quantizer(
-                encoder_name) else None)
+            text_encoder_quantizer = manual_quantizers.get(encoder_name, quantizer_uri if should_quantize else None)
 
             return load_text_encoder(
                 _uris.TextEncoderUri(
@@ -2371,6 +2372,13 @@ def _create_torch_diffusion_pipeline(
                 )
             )
         else:
+            if _util.is_single_file_model_load(model_path) and should_quantize:
+                raise UnsupportedPipelineConfigError(
+                    'Cannot use global --quantizer URI when attempting to '
+                    f'load default text encoder for "{encoder_name}" from a single file checkpoint. '
+                    f'You must specify this text encoder manually with --text-encoders, it is likely missing '
+                    f'from the model checkpoint.'
+                )
             return load_text_encoder(
                 _uris.TextEncoderUri(
                     encoder=encoder,
@@ -2379,7 +2387,7 @@ def _create_torch_diffusion_pipeline(
                     revision=revision,
                     subfolder=encoder_subfolder,
                     dtype=dtype,
-                    quantizer=quantizer_uri if should_apply_quantizer(encoder_name) else None
+                    quantizer=quantizer_uri if should_quantize else None
                 )
             )
 
@@ -2743,13 +2751,7 @@ def _create_torch_diffusion_pipeline(
                 **creation_kwargs)
 
         except diffusers.loaders.single_file.SingleFileComponentError as e:
-            msg = str(e)
-            if 'text_encoder' in msg:
-                raise UnsupportedPipelineConfigError(
-                    f'Single file load error, missing --text-encoders / --second-model-text-encoders:\n{e}') from e
-            else:
-                raise UnsupportedPipelineConfigError(
-                    f'Single file load error, missing component:\n{e}') from e
+            _handle_single_file_component_error(e)
         except (ValueError, TypeError, NameError, OSError) as e:
             _handle_generic_pipeline_load_failure(e)
     else:
@@ -2868,6 +2870,19 @@ def _create_torch_diffusion_pipeline(
     ), _d_memoize.CachedObjectMetadata(size=estimated_memory_usage)
 
 
+def _handle_single_file_component_error(e):
+    msg = str(e)
+    if 'text_encoder' in msg:
+        raise UnsupportedPipelineConfigError(
+            f'Single file load error, missing --text-encoders / --second-model-text-encoders:\n{e}') from e
+    elif 'vae =' in msg:
+        raise UnsupportedPipelineConfigError(
+            f'Single file load error, missing --vae:\n{e}') from e
+    else:
+        raise UnsupportedPipelineConfigError(
+            f'Single file load error, missing component:\n{e}') from e
+
+
 def get_converted_checkpoint_cache_dir():
     """
     Get cache directory where dgenerate stores any checkpoints that needed to be converted into
@@ -2966,7 +2981,7 @@ def _get_component_cache_key(
         except Exception:
             # If parsing fails, use the original URI
             manual_uri_part = f"|manual:{manual_component_uris[component_name]}"
-    
+
     # LoRA order consideration: LoRA fusion order can affect the final result since
     # LoRA operations are not necessarily commutative. We preserve the original order
     # to ensure mathematical correctness and respect user intent.
@@ -2975,7 +2990,7 @@ def _get_component_cache_key(
     # of potentially different results), you could sort the URIs like this:
     # lora_uris_for_cache = sorted(lora_uris) if lora_uris else lora_uris
     lora_uris_for_cache = lora_uris
-    
+
     # Note: quantizer_uri is NOT included in the cache key because components are saved
     # in original precision. The quantizer is only applied when loading from cache.
     return f"{component_name}|{model_path}|{str(lora_uris_for_cache)}|{str(lora_fuse_scale)}|" \
@@ -3212,6 +3227,8 @@ def _create_minimal_pipeline_for_component_extraction(
                 use_safe_tensors=model_path.endswith('.safetensors'),
                 **creation_kwargs
             )
+        except diffusers.loaders.single_file.SingleFileComponentError as e:
+            _handle_single_file_component_error(e)
         except Exception as e:
             _messages.debug_log(f"Failed to create minimal pipeline from single file: {e}")
             raise
