@@ -1912,11 +1912,7 @@ class DiffusionPipelineWrapper:
                 # we need to decode the latents before inpainting occurs, the pipelines
                 # do the masking in image space.
                 if input_tensors:
-                    input_images = self._main_pipeline_decode_latents(
-                        input_tensors,
-                        user_args.width,
-                        user_args.height
-                    )
+                    input_images = self.decode_latents(input_tensors, user_args)
                     input_tensors = None
 
             inputs: _types.ImagesOrTensors
@@ -3846,20 +3842,38 @@ class DiffusionPipelineWrapper:
                 )
 
     @torch.inference_mode()
-    def _main_pipeline_decode_latents(
+    def decode_latents(
             self,
             latents: typing.Sequence[torch.Tensor] | torch.Tensor,
-            width: int | None,
-            height: int | None
+            args: DiffusionArguments,
     ):
         """
         Decode latents using the main pipeline's VAE.
 
-        This is useful for inpainting pipelines where the latents cannot be provided
-        directly. Masking must occur in image space.
+        A generation must have occurred at least once for this method to be usable.
+
+        You must be using a model type that utilizes a VAE, Stable Cascade and Deep Floyd model types
+        are not supported by this method.
+
+        :param latents: Latents to decode, can be a sequence of tensors (batched), or a single tensor.
+            A single tensor with a batch dimension [B, C, H, W] will be assumed to be a batch of latents
+            and batched if the batch dimension is > 1, [C, H, W] will be assumed to be a single latent tensor.
+
+        :param args: :py:class:`.DiffusionArguments` that were used to generate these latents, this is used
+            as a reference for decoding the latents correctly for some model types.
+
+        :raise dgenerate.pipelinewrapper.UnsupportedPipelineConfigError: If the decoding the latents is not supported.
         """
 
-        assert hasattr(self._pipeline, 'vae') and self._pipeline.vae is not None
+        if self._pipeline is None:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'Cannot decode latents as a pipeline has not been initialized, you must preform a generation first.'
+            )
+
+        if not hasattr(self._pipeline, 'vae') or self._pipeline.vae is None:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'Cannot decode latents as the initialized pipeline does not have a VAE.'
+            )
 
         if isinstance(latents, torch.Tensor):
             if latents.ndim == 3:
@@ -3909,8 +3923,8 @@ class DiffusionPipelineWrapper:
             latents = (latents / vae.config.scaling_factor) + vae.config.shift_factor
         elif _enums.model_type_is_flux(self.model_type):
             # Flux
-            height = height or self._pipeline.default_sample_size * self._pipeline.vae_scale_factor
-            width = width or self._pipeline.default_sample_size * self._pipeline.vae_scale_factor
+            height = args.height or self._pipeline.default_sample_size * self._pipeline.vae_scale_factor
+            width = args.width or self._pipeline.default_sample_size * self._pipeline.vae_scale_factor
 
             # VAE applies 8x compression on images but we must also account for packing which requires
             # latent height and width to be divisible by 2
@@ -3927,7 +3941,8 @@ class DiffusionPipelineWrapper:
             latents = (latents / vae.config.scaling_factor) + vae.config.shift_factor
         else:
             raise _pipelines.UnsupportedPipelineConfigError(
-                f'Unable to decode input latents for model type: {_enums.get_model_type_string(self.model_type)}')
+                f'Unable to decode latents for unsupported model type: {_enums.get_model_type_string(self.model_type)}'
+            )
 
         decoded_images = vae.decode(latents).sample
 
