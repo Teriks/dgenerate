@@ -1953,8 +1953,9 @@ class DiffusionPipelineWrapper:
                 # except in the case of the X2 latent upscaler, which can
                 # work with the already denoised latents
                 if input_tensors and not (
-                        _enums.model_type_is_sdxl(self._model_type) and
-                        user_args.denoising_start is not None
+                        (_enums.model_type_is_sdxl(self._model_type) or
+                         _enums.model_type_is_kolors(self._model_type))
+                        and user_args.denoising_start is not None
                         and user_args.denoising_start > 0.0
                 ):
                     input_images = self.decode_latents(input_tensors, user_args)
