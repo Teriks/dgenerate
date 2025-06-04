@@ -57,6 +57,8 @@ import dgenerate.types as _types
 from dgenerate.extras.ras import RASArgs as _RASArgs
 from dgenerate.extras.ras import sd3_ras_context as _sd3_ras_context
 from dgenerate.pipelinewrapper.arguments import DiffusionArguments
+from dgenerate.pipelinewrapper.denoise_range import denoise_range as _denoise_range
+from dgenerate.pipelinewrapper.denoise_range import DenoiseRangeError as _DenoiseRangeError
 
 
 class DiffusionArgumentsHelpException(Exception):
@@ -470,7 +472,7 @@ class DiffusionPipelineWrapper:
                     expected_channels = self._pipeline.vae.config.in_channels
 
             for i, tensor in enumerate(tensors):
-                if len(tensor.shape) not in (3, 4):   # Must be [C, H, W] or [B, C, H, W]
+                if len(tensor.shape) not in (3, 4):  # Must be [C, H, W] or [B, C, H, W]
                     raise _pipelines.UnsupportedPipelineConfigError(
                         f'Invalid shape for img2img latents tensor at index {i}. '
                         f'Expected 3D [C, H, W] or 4D tensor [B, C, H, W], but got shape {tensor.shape}'
@@ -483,8 +485,9 @@ class DiffusionPipelineWrapper:
                         f'but got {channels} channels instead. Shape: {tensor.shape}'
                     )
 
-    def _process_mixed_img2img_inputs(self, items: _types.ImagesOrTensors | None) \
-            -> tuple[_types.Images | None, _types.Tensors | None]:
+    def _process_mixed_img2img_inputs(
+            self, items: _types.ImagesOrTensors | None
+    ) -> tuple[_types.Images | None, _types.Tensors | None]:
         """
         Process image/tensor inputs, validating homogeneity and compatibility.
         
@@ -1626,6 +1629,21 @@ class DiffusionPipelineWrapper:
                         # not a solo switch option, some value
                         opts[idx] = (_textprocessing.shell_quote(solo_val),)
 
+        if args.sdxl_refiner_negative_crops_coords_top_left is not None:
+            opts.append(
+                ('--sdxl-refiner-negative-crops-coords-top-left', args.sdxl_refiner_negative_crops_coords_top_left))
+
+        if args.latents is not None:
+            # Note: We can't reconstruct the actual tensor files since they're loaded tensors,
+            # so this would need to be specified manually in extra_opts
+            pass
+
+        if args.denoising_start is not None:
+            opts.append(('--denoising-start', args.denoising_start))
+
+        if args.denoising_end is not None:
+            opts.append(('--denoising-end', args.denoising_end))
+
         return opts
 
     @staticmethod
@@ -1788,6 +1806,26 @@ class DiffusionPipelineWrapper:
         args['generator'] = torch.Generator(device=self._device).manual_seed(
             _types.default(user_args.seed, _constants.DEFAULT_SEED))
 
+        if user_args.latents is not None:
+            latents = user_args.latents
+            if _torchutil.is_tensor(latents):
+                args['latents'] = user_args.latents.to(dtype=_enums.get_torch_dtype(self._dtype))
+            else:
+                if latents[0].ndim == 4:
+                    # List of [B, C, H, W] tensors - concatenate along batch dimension
+                    latents = torch.cat(list(latents), dim=0)  # [total_B, C, H, W]
+                elif latents[0].ndim == 3:
+                    # List of [C, H, W] tensors - stack to create batch dimension
+                    latents = torch.stack(list(latents), dim=0)  # [num_tensors, C, H, W]
+                elif not (latents[0].ndim == 2 and _enums.model_type_is_flux(self._model_type)):
+                    raise _pipelines.UnsupportedPipelineConfigError(
+                        f'Unsupported latents shape: {user_args.latents[0].shape}')
+                else:
+                    # List of [H, W] tensors (packed latents) - stack to create batch dimension
+                    latents = torch.stack(list(latents), dim=0)
+
+                args['latents'] = latents.to(dtype=_enums.get_torch_dtype(self._dtype))
+
         def set_strength():
             strength = float(_types.default(user_args.image_seed_strength, _constants.DEFAULT_IMAGE_SEED_STRENGTH))
             ifs = int(_types.default(user_args.inference_steps, _constants.DEFAULT_INFERENCE_STEPS))
@@ -1914,7 +1952,11 @@ class DiffusionPipelineWrapper:
                 # in does not make sense to the receiving UNet/Transformer
                 # except in the case of the X2 latent upscaler, which can
                 # work with the already denoised latents
-                if input_tensors:
+                if input_tensors and not (
+                        _enums.model_type_is_sdxl(self._model_type) and
+                        user_args.denoising_start is not None
+                        and user_args.denoising_start > 0.0
+                ):
                     input_images = self.decode_latents(input_tensors, user_args)
                     input_tensors = None
 
@@ -2005,7 +2047,7 @@ class DiffusionPipelineWrapper:
                             args['height'] = user_args.height
 
                         # Validate that all img2img tensors have matching dimensions
-                        self._validate_img2img_tensor_compatibility(input_tensors, "Img2img")
+                        self._validate_img2img_tensor_compatibility(input_tensors)
 
             if self._parsed_adetailer_detector_uris:
                 # inpainting pipeline, just no mask
@@ -2023,7 +2065,7 @@ class DiffusionPipelineWrapper:
                             args['height'] = user_args.height
 
                         # Validate that all adetailer tensors have matching dimensions
-                        self._validate_img2img_tensor_compatibility(input_tensors, "Adetailer")
+                        self._validate_img2img_tensor_compatibility(input_tensors)
 
             if self._model_type == _enums.ModelType.TORCH_SDXL_PIX2PIX:
                 if input_images:
@@ -2038,7 +2080,7 @@ class DiffusionPipelineWrapper:
                         args['height'] = user_args.height
 
                     # Validate that all SDXL pix2pix tensors have matching dimensions
-                    self._validate_img2img_tensor_compatibility(input_tensors, "SDXL pix2pix")
+                    self._validate_img2img_tensor_compatibility(input_tensors)
 
             elif self._model_type == _enums.ModelType.TORCH_UPSCALER_X2:
                 inputs = list(inputs)
@@ -2073,7 +2115,7 @@ class DiffusionPipelineWrapper:
                     # Handle tensors - dimensions are encoded in the tensor itself
                     # No need to set width/height as the pipeline can infer from tensor shape
                     # Just validate that all tensors have matching dimensions
-                    self._validate_img2img_tensor_compatibility(input_tensors, "Stable Cascade")
+                    self._validate_img2img_tensor_compatibility(input_tensors)
 
                 # Validate output dimensions for both PIL and tensor inputs
                 if user_args.width and user_args.width > 0:
@@ -2466,6 +2508,8 @@ class DiffusionPipelineWrapper:
                         f'provided number of input images.'
                     )
 
+
+
         pipeline_args['num_images_per_prompt'] = batch_size
 
         self._set_non_universal_pipeline_arg(self._pipeline,
@@ -2514,6 +2558,10 @@ class DiffusionPipelineWrapper:
                     _constants.DEFAULT_TEA_CACHE_REL_L1_THRESHOLD
                 ),
                 enable=_types.default(user_args.tea_cache, False),
+        ), _denoise_range(
+            self._pipeline,
+            user_args.denoising_start,
+            user_args.denoising_end
         ):
             output_type = 'latent' if user_args.output_latents else 'pil'
 
@@ -2986,7 +3034,8 @@ class DiffusionPipelineWrapper:
                                             user_args.deep_cache_interval, _constants.DEFAULT_DEEP_CACHE_INTERVAL),
                                         cache_branch_id=_types.default(
                                             user_args.deep_cache_branch_id, _constants.DEFAULT_DEEP_CACHE_BRANCH_ID),
-                                        enabled=user_args.deep_cache):
+                                        enabled=user_args.deep_cache), \
+                    _denoise_range(self._pipeline, user_args.denoising_start, user_args.denoising_end):
 
                 if self._parsed_adetailer_detector_uris:
                     return generate_asdff()
@@ -3003,6 +3052,11 @@ class DiffusionPipelineWrapper:
                     return PipelineWrapperResult.from_pipeline_output(
                         pipeline_output, output_type
                     )
+
+        if user_args.denoising_start is not None or user_args.denoising_end is not None:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'denoising_start and denoising_end are not supported when using an SDXL refiner.'
+            )
 
         high_noise_fraction = _types.default(user_args.sdxl_high_noise_fraction,
                                              _constants.DEFAULT_SDXL_HIGH_NOISE_FRACTION)
@@ -3675,6 +3729,38 @@ class DiffusionPipelineWrapper:
             slicing=args.vae_slicing
         )
 
+    def _auto_denoise_range_check(self, args: DiffusionArguments):
+        if _enums.model_type_is_sdxl(self._model_type):
+
+            have_latent_input = any(
+                _torchutil.is_tensor(i) for i in args.images
+            ) if args.images else False
+
+            have_image_input = any(
+                isinstance(i, PIL.Image.Image) for i in args.images
+            ) if args.images else False
+
+            if args.denoising_start is not None and args.denoising_start != 0.0:
+                if args.mask_images and have_latent_input:
+                    raise _pipelines.UnsupportedPipelineConfigError(
+                        'Denoising start parameter is not supported for SDXL models '
+                        'with latent input and inpaint mask images defined. In order '
+                        'to refine an inpainted image, just pass in the generated image '
+                        'and use normal inpainting mode on it.'
+                    )
+
+                if not have_latent_input:
+                    raise _pipelines.UnsupportedPipelineConfigError(
+                        'Denoising start parameter is not supported for SDXL models '
+                        'without latents being passed as image inputs.'
+                    )
+
+                if have_image_input:
+                    raise _pipelines.UnsupportedPipelineConfigError(
+                        'Denoising start parameter is not supported for SDXL models '
+                        'with image inputs for img2img, it can only accept latents.'
+                    )
+
     def _auto_latents_check(self, args: DiffusionArguments):
         if args.output_latents:
             if self.adetailer_detector_uris:
@@ -3847,7 +3933,7 @@ class DiffusionPipelineWrapper:
     @torch.inference_mode()
     def decode_latents(
             self,
-            latents: typing.Sequence[torch.Tensor] | torch.Tensor,
+            latents: _types.TensorsOrTensor,
             args: DiffusionArguments,
     ) -> _types.Images:
         """
@@ -3881,11 +3967,11 @@ class DiffusionPipelineWrapper:
         if isinstance(latents, torch.Tensor):
             if latents.ndim == 3:
                 latents = latents.unsqueeze(0)
-        else:
-            if len(latents) > 0 and latents[0].ndim == 4:
+        elif latents:
+            if latents[0].ndim == 4:
                 # List of [B, C, H, W] tensors - concatenate along batch dimension
                 latents = torch.cat(list(latents), dim=0)  # [total_B, C, H, W]
-            elif len(latents) > 0 and latents[0].ndim == 3:
+            elif latents[0].ndim == 3:
                 # List of [C, H, W] tensors - stack to create batch dimension
                 latents = torch.stack(list(latents), dim=0)  # [num_tensors, C, H, W]
 
@@ -3987,6 +4073,7 @@ class DiffusionPipelineWrapper:
         self._auto_deep_cache_check(copy_args)
         self._auto_hi_diffusion_check(copy_args)
         self._auto_latents_check(copy_args)
+        self._auto_denoise_range_check(copy_args)
 
         help_text = self._argument_help_check(copy_args)
         if help_text:
@@ -4015,16 +4102,19 @@ class DiffusionPipelineWrapper:
         # needs the pipeline initialized
         self._auto_ras_check(copy_args)
 
-        if self.model_type == _enums.ModelType.TORCH_S_CASCADE:
-            result = self._call_torch_s_cascade(
-                pipeline_args=pipeline_args,
-                user_args=copy_args)
-        elif _enums.model_type_is_flux(self.model_type):
-            result = self._call_torch_flux(pipeline_args=pipeline_args,
-                                           user_args=copy_args)
-        else:
-            result = self._call_torch(pipeline_args=pipeline_args,
-                                      user_args=copy_args)
+        try:
+            if self.model_type == _enums.ModelType.TORCH_S_CASCADE:
+                result = self._call_torch_s_cascade(
+                    pipeline_args=pipeline_args,
+                    user_args=copy_args)
+            elif _enums.model_type_is_flux(self.model_type):
+                result = self._call_torch_flux(pipeline_args=pipeline_args,
+                                               user_args=copy_args)
+            else:
+                result = self._call_torch(pipeline_args=pipeline_args,
+                                          user_args=copy_args)
+        except _DenoiseRangeError as e:
+            raise _pipelines.UnsupportedPipelineConfigError(e) from e
 
         DiffusionPipelineWrapper.__LAST_RECALL_PIPELINE = self._recall_main_pipeline
         DiffusionPipelineWrapper.__LAST_RECALL_SECONDARY_PIPELINE = self._recall_secondary_pipeline

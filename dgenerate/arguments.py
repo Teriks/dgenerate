@@ -38,6 +38,7 @@ import dgenerate.resources as _resources
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.torchutil as _torchutil
 import dgenerate.types as _types
+import torch
 
 __doc__ = """
 Argument parsing for the dgenerate command line tool.
@@ -592,6 +593,59 @@ def _type_quantizer_map(val: str):
             f'{_textprocessing.oxford_comma(vals, "or")}, received invalid value: {val}'
         )
 
+    return val
+
+
+def _type_latents(val: str) -> torch.Tensor:
+    """
+    Load and validate a tensor file for the --latents argument.
+    
+    :param val: The tensor file path
+    :return: The loaded tensor
+    :raises ArgumentTypeError: If the file doesn't exist, isn't a valid tensor format, or can't be loaded
+    """
+    import os
+    import dgenerate.mediainput as _mediainput
+    
+    # Check if file exists
+    if not os.path.exists(val):
+        raise argparse.ArgumentTypeError(f'Tensor file not found: {val}')
+    
+    # Check if it's a valid tensor file format
+    if not _mediainput.is_tensor_file(val):
+        supported_formats = _mediainput.get_supported_tensor_formats()
+        raise argparse.ArgumentTypeError(
+            f'File "{val}" is not a supported tensor format. '
+            f'Supported formats: {", ".join(supported_formats)}'
+        )
+    
+    # Load the tensor
+    try:
+        tensor = _mediainput.load_tensor_file(val, val)
+        return tensor
+    except Exception as e:
+        raise argparse.ArgumentTypeError(
+            f'Failed to load tensor from "{val}": {str(e)}'
+        )
+
+
+def _type_denoising_fraction(val: str) -> float:
+    """
+    Validate a denoising fraction value (0.0 to 1.0).
+    
+    :param val: The denoising fraction as a string
+    :return: The validated float value
+    :raises ArgumentTypeError: If the value is not a valid float between 0.0 and 1.0
+    """
+    try:
+        val = float(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be a floating point number')
+
+    if val < 0.0 or val > 1.0:
+        raise argparse.ArgumentTypeError(
+            'Must be between 0.0 and 1.0 (inclusive)')
+    
     return val
 
 
@@ -3437,6 +3491,75 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             default=None,
             metavar="CSV_FLOAT_OR_EXPRESSION", type=_type_sigmas,
             help="""See: --sigmas, but for the SDXL Refiner."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--denoising-start', action='store', default=None, metavar="FLOAT",
+            dest='denoising_start', type=_type_denoising_fraction,
+            help="""Fraction of total timesteps at which denoising should start (0.0 to 1.0). 
+                    This allows you to skip the early noising steps and start denoising from 
+                    a specific point in the noise schedule. Useful for cooperative denoising 
+                    workflows where one model handles the initial denoising and another model 
+                    refines the result.
+                    
+                    Scheduler Compatibility:
+                    
+                    For SD 1.5 models, only stateless schedulers are supported:
+                    
+                    NOWRAP!
+                    * EulerDiscreteScheduler
+                    * LMSDiscreteScheduler
+                    * EDMEulerScheduler, 
+                    * DPMSolverMultistepScheduler
+                    * DDIMScheduler
+                    * DDPMScheduler
+                    
+                    For SDXL models, all schedulers are supported via native denoising_start/denoising_end.
+                    
+                    For SD3/Flux models, FlowMatchEulerDiscreteScheduler is supported.
+                    
+                    NOWRAP!
+                    Example: --denoising-start 0.8
+                    
+                    A value of 0.8 means denoising will start at 80 percent through the total timesteps, 
+                    effectively skipping the first 20 percent of the normal denoising process."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--denoising-end', action='store', default=None, metavar="FLOAT",
+            dest='denoising_end', type=_type_denoising_fraction,
+            help="""Fraction of total timesteps at which denoising should end (0.0 to 1.0). 
+                    This allows you to stop denoising early, leaving the output in a partially 
+                    noisy state. Useful for generating noisy latents that can be saved with 
+                    --image-format pt/pth/safetensors and passed to another model or generation 
+                    stage using the "latents: ..." or "img2img.png;latents= ..." syntax of 
+                    --image-seeds.
+                    
+                    Scheduler Compatibility:
+                    
+                    For SD 1.5 models, only stateless schedulers are supported:
+                    
+                    NOWRAP!
+                    * EulerDiscreteScheduler
+                    * LMSDiscreteScheduler
+                    * EDMEulerScheduler, 
+                    * DPMSolverMultistepScheduler
+                    * DDIMScheduler
+                    * DDPMScheduler
+                    
+                    For SDXL models, all schedulers are supported via native denoising_start/denoising_end.
+                    
+                    For SD3/Flux models, FlowMatchEulerDiscreteScheduler is supported.
+                    
+                    NOWRAP!
+                    Example: --denoising-end 0.5
+                    
+                    A value of 0.5 means denoising will stop at 50 percent through the total timesteps, 
+                    leaving the result partially noisy for further processing by another model."""
         )
     )
 

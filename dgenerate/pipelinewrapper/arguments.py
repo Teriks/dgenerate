@@ -107,6 +107,13 @@ class DiffusionArguments(_types.SetFromMixin):
     All other pipelines interpret multiple image inputs as a batching request.
     """
 
+    latents: _types.OptionalTensorsOrTensor = None
+    """
+    Noisy latents to serve as a starting point for generation, this can be a list of tensors
+    in the format ``[C, W, H]`` or ``[B, C, W, H]``, or a single tensor.  A list of tensors
+    with a batch dimension will be concatenated intelligently.
+    """
+
     mask_images: _types.OptionalImages = None
     """
     Mask images for inpainting operations.
@@ -867,6 +874,36 @@ class DiffusionArguments(_types.SetFromMixin):
     Defaults to False (outputs PIL Images).
     """
 
+    denoising_start: _types.OptionalFloat = None
+    """
+    Denoising should start at this fraction of total timesteps (0.0 to 1.0).
+    
+    This is useful continuing denoising on noisy latents generated with :py:attr:`DiffusionArguments.denoising_end`
+    
+    Scheduler Compatibility:
+    
+    * SD 1.5 models: Only stateless schedulers are supported (``EulerDiscreteScheduler``, 
+      ``LMSDiscreteScheduler``, ``EDMEulerScheduler``, ``DPMSolverMultistepScheduler``, 
+      ``DDIMScheduler``, ``DDPMScheduler``, ``PNDMScheduler``)
+    * SDXL models: All schedulers supported via native denoising_start/denoising_end
+    * SD3/Flux models: FlowMatchEulerDiscreteScheduler and standard schedulers supported
+    """
+
+    denoising_end: _types.OptionalFloat = None
+    """
+    Denoising should end at this fraction of total timesteps (0.0 to 1.0).
+    
+    This is useful for generating noisy latents that can be saved and passed to other models.
+    
+    Scheduler Compatibility:
+    
+    * SD 1.5 models: Only stateless schedulers are supported (``EulerDiscreteScheduler``, 
+      ``LMSDiscreteScheduler``, ``EDMEulerScheduler``, ``DPMSolverMultistepScheduler``, 
+      ``DDIMScheduler``, ``DDPMScheduler``, ``PNDMScheduler``)
+    * SDXL models: All schedulers supported via native denoising_start/denoising_end
+    * SD3/Flux models: FlowMatchEulerDiscreteScheduler and standard schedulers supported
+    """
+
     @staticmethod
     def prompt_embedded_arg_checker(name):
         """
@@ -896,7 +933,6 @@ class DiffusionArguments(_types.SetFromMixin):
 
         :return: :py:attr:`dgenerate.pipelinewrapper.PipelineType`
         """
-
         if self.images is not None and self.mask_images is not None:
             # Inpainting is handled by INPAINT type
             return _enums.PipelineType.INPAINT

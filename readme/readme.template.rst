@@ -112,6 +112,8 @@ Help Output
 
 @INCLUDE[sections/image_inputs/inpainting_animations.template.rst]
 
+@INCLUDE[sections/image_inputs/latents_interchange.template.rst]
+
 @INCLUDE[sections/deterministic_output.template.rst]
 
 @INCLUDE[sections/specifying_gpu.template.rst]

@@ -1095,6 +1095,19 @@ class ImageSeedParseResult:
         * ``--image-seeds "img2img.png;adapter=adapter-image1.png + adapter-image2.png;mask=inpaint-mask.png;control=control.png"``
     """
 
+    latents: _types.Paths | None = None
+    """
+    Optional raw latent tensor paths (.pt, .pth, .safetensors files).
+    
+    In parses such as:
+    
+        * ``--image-seeds "latents: latents1.pt, latents2.pt"``
+        * ``--image-seeds "img2img.png;latents=latents.pt"``
+        * ``--image-seeds "images: img2img1.png, img2img2.png;latents=latents1.pt, latents2.pt"``
+        
+    Raw latents are loaded as-is without any image processing, resizing, or alignment operations.
+    """
+
     floyd_image: _types.OptionalPath = None
     """
     Optional path to a result from a Deep Floyd IF stage, used only for img2img and inpainting mode
@@ -1191,7 +1204,7 @@ class ImageSeedParseResult:
         For instance could it be a img2img definition / sequence of img2img images using
         the ``images: ...`` syntax, or a sequence of controlnet guidance images?
 
-        This requires that ``mask_images``, ``control_images``, ``floyd_image``, ``adapter_images`` are all undefined.
+        This requires that ``mask_images``, ``control_images``, ``floyd_image``, ``adapter_images``, and ``latents`` are all undefined.
 
         Possible parses which trigger this condition are:
 
@@ -1209,7 +1222,8 @@ class ImageSeedParseResult:
         return self.mask_images is None \
             and self.control_images is None \
             and self.floyd_image is None \
-            and self.adapter_images is None
+            and self.adapter_images is None \
+            and self.latents is None
 
 
 ParsedImageSeeds = collections.abc.Sequence[ImageSeedParseResult]
@@ -1291,7 +1305,13 @@ def _parse_image_seed_uri_legacy(uri: str, align: int = 8) -> ImageSeedParseResu
         result.adapter_images = []
         first = first.removeprefix('adapter:').strip()
 
-    result.images = [first]
+    latents_mode = first.startswith('latents:')
+    if latents_mode:
+        result.latents = []
+        first = first.removeprefix('latents:').strip()
+
+    if not ip_adapter_mode and not latents_mode:
+        result.images = [first]
 
     try:
         first_parts = [t.strip() for t in _textprocessing.tokenized_split(
@@ -1308,6 +1328,14 @@ def _parse_image_seed_uri_legacy(uri: str, align: int = 8) -> ImageSeedParseResu
 
             for image in adapter_images:
                 result.adapter_images[-1].append(_parse_ip_adapter_uri(image))
+        elif latents_mode:
+            if not is_tensor_file(part):
+                raise ImageSeedParseError(
+                    f'Latent file "{part}" must be a tensor file (.pt, .pth, or .safetensors).')
+            if not (is_downloadable_url(part) or os.path.exists(part)):
+                raise ImageSeedFileNotFoundError(
+                    f'Latent tensor file "{part}" does not exist.')
+            result.latents.append(part)
         elif result.multi_image_mode:
             if not (is_downloadable_url(part) or os.path.exists(part)):
                 raise ImageSeedFileNotFoundError(
@@ -1323,9 +1351,11 @@ def _parse_image_seed_uri_legacy(uri: str, align: int = 8) -> ImageSeedParseResu
                     raise ImageSeedFileNotFoundError(
                         f'Image seed file "{part}" does not exist.')
 
-    if len(first_parts) > 1 and not ip_adapter_mode:
+    if len(first_parts) > 1 and not ip_adapter_mode and not latents_mode:
         result.images = first_parts
     elif ip_adapter_mode:
+        result.images = None
+    elif latents_mode:
         result.images = None
 
     def parse_multi_mask(mask_part):
@@ -1392,6 +1422,12 @@ def _parse_image_seed_uri_legacy(uri: str, align: int = 8) -> ImageSeedParseResu
                 'Cannot use resize resolution or inpaint mask '
                 'syntax with IP adapter only image seed input.')
 
+    if latents_mode:
+        if result.resize_resolution or result.mask_images:
+            raise ImageSeedParseError(
+                'Cannot use resize resolution or inpaint mask '
+                'syntax with latents only image seed input.')
+
     if result.images and len(result.images) > 1 and result.mask_images and not result.multi_image_mode:
         raise ImageSeedParseError(
             'Cannot use multiple image inputs with inpaint '
@@ -1432,6 +1468,7 @@ def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResul
     keyword_args = ['mask',
                     'control',
                     'adapter',
+                    'latents',
                     'floyd',
                     'resize',
                     'align',
@@ -1464,7 +1501,7 @@ def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResul
 
     seed_parser = _textprocessing.ConceptUriParser('Image Seed',
                                                    known_args=keyword_args,
-                                                   args_lists=['control', 'mask'],
+                                                   args_lists=['control', 'mask', 'latents'],
                                                    args_raw=['adapter'])
 
     try:
@@ -1499,6 +1536,18 @@ def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResul
     if images.startswith('adapter:'):
         adapters_parsed = True
         parse_adapters(images.removeprefix('adapter:').strip())
+        result.images = None
+    elif images.startswith('latents:'):
+        latent_paths = [p.strip() for p in
+                        _textprocessing.tokenized_split(
+                            images.removeprefix('latents:').strip(),
+                            ',', strict=True, remove_quotes=True, escapes_in_quoted=True)]
+        for latent_path in latent_paths:
+            if not is_tensor_file(latent_path):
+                raise ImageSeedParseError(
+                    f'Latent file "{latent_path}" must be a tensor file (.pt, .pth, or .safetensors).')
+            _ensure_exists(latent_path, 'Latent tensor')
+        result.latents = latent_paths
         result.images = None
     elif result.multi_image_mode:
         seed_images = [p.strip() for p in
@@ -1559,6 +1608,25 @@ def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResul
             _ensure_exists(control_images, 'Control image')
             result.control_images = [control_images]
 
+    latents = parse_result.args.get('latents', None)
+
+    if latents is not None:
+        if isinstance(latents, list):
+            for f in latents:
+                if not f.strip():
+                    raise ImageSeedParseError('Missing latent tensor definition, stray comma?')
+                if not is_tensor_file(f):
+                    raise ImageSeedParseError(
+                        f'Latent file "{f}" must be a tensor file (.pt, .pth, or .safetensors).')
+                _ensure_exists(f, 'Latent tensor')
+            result.latents = latents
+        else:
+            if not is_tensor_file(latents):
+                raise ImageSeedParseError(
+                    f'Latent file "{latents}" must be a tensor file (.pt, .pth, or .safetensors).')
+            _ensure_exists(latents, 'Latent tensor')
+            result.latents = [latents]
+
     adapter_arg = parse_result.args.get('adapter', None)
 
     if adapter_arg is not None:
@@ -1575,6 +1643,10 @@ def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResul
         if adapters_parsed:
             raise ImageSeedParseError(
                 'Image seed IP adapter images not supported with floyd stage image.')
+
+        if result.latents is not None:
+            raise ImageSeedParseError(
+                'Image seed latent tensors not supported with floyd stage image.')
 
         _ensure_exists(floyd_image, 'Floyd image')
         if control_images is not None:
@@ -1648,6 +1720,13 @@ def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResul
 
     result.frame_start = frame_start
     result.frame_end = frame_end
+
+    # Validate that images and latents have equal counts when both are provided
+    if result.images is not None and result.latents is not None:
+        if len(result.images) != len(result.latents):
+            raise ImageSeedParseError(
+                f'Number of images ({len(result.images)}) must equal number of latents ({len(result.latents)}) '
+                f'when both are provided. Diffusers requires equal batch sizes.')
 
     return result
 
@@ -2362,6 +2441,8 @@ class ImageSeed:
     An optional images used for img2img mode, or inpainting mode in combination with :py:attr:`.ImageSeed.mask_images`.
     
     May be ``None`` when using IP Adapter only images, IE: the ``adapter: ...`` uri syntax.
+    
+    May also be ``None`` when using latents only input, IE: the ``latents: ...`` uri syntax.
     """
 
     mask_images: _types.Images | None
@@ -2377,6 +2458,13 @@ class ImageSeed:
     adapter_images: collections.abc.Sequence[_types.Images] | None
     """
     IP Adapter images, or None.
+    """
+
+    latents: _types.Tensors | None
+    """
+    Raw latent tensors loaded from .pt, .pth, or .safetensors files, or None.
+    
+    These tensors are loaded as-is without any image processing, resizing, or alignment operations.
     """
 
     floyd_image: PIL.Image.Image | None
@@ -2401,7 +2489,8 @@ class ImageSeed:
                  mask_images: PIL.Image.Image | None = None,
                  control_images: _types.Images | None = None,
                  floyd_image: PIL.Image.Image | None = None,
-                 adapter_images: list[_types.Images] | None = None):
+                 adapter_images: list[_types.Images] | None = None,
+                 latents: _types.Tensors | None = None):
         self.images = images
         self.mask_images = mask_images
 
@@ -2415,9 +2504,15 @@ class ImageSeed:
                 'adapter_images and floyd_image arguments are incompatible '
                 'and cannot both be specified')
 
+        if latents is not None and floyd_image is not None:
+            raise ValueError(
+                'latents and floyd_image arguments are incompatible '
+                'and cannot both be specified')
+
         self.control_images = control_images
         self.floyd_image = floyd_image
         self.adapter_images = adapter_images
+        self.latents = latents
 
     def __enter__(self):
         return self
@@ -2440,6 +2535,10 @@ class ImageSeed:
             for group in self.adapter_images:
                 for image in group:
                     image.close()
+
+        # Tensors don't need explicit cleanup, but we clear the reference
+        if self.latents:
+            self.latents = None
 
 
 def _check_image_dimensions_match(images):
@@ -2555,6 +2654,13 @@ def iterate_image_seed(uri: str | ImageSeedParseResult,
         * ``--image-seeds "img2img.png;adapter=adapter1-image1.png + adapter1-image2.png, adapter2-image1.png + adapter2-image2.png"``
         * ``--image-seeds "images: img2img-1.png, img2img-2.png;adapter=image.png"``
 
+    Raw (noisy) latents can be specified in these ways:
+
+        * ``--image-seeds "latents: latents1.pt, latents2.pt"``
+        * ``--image-seeds "img2img.png;latents=latents.pt"``
+        * ``--image-seeds "images: img2img1.png, img2img2.png;latents=latents1.pt, latents2.pt"``
+        * ``--image-seeds "latents: latents.safetensors;control=control.png"``
+
     The ``control`` argument is supported for any IP Adapter image specification.
 
     The ``mask`` argument is also supported for img2img with additional IP Adapter images.
@@ -2565,7 +2671,8 @@ def iterate_image_seed(uri: str | ImageSeedParseResult,
         * ``--image-seeds "img2img.png;mask=mask.png;floyd=stage2-image.png"``
 
     Note that all keyword arguments mentioned above can be used together, except for
-    ``control`` and ``floyd``, or ``adapter`` and ``floyd``, which are mutually exclusive arguments.
+    ``control`` and ``floyd``, ``adapter`` and ``floyd``, or ``latents`` and ``floyd``,
+    which are mutually exclusive arguments.
 
     For ``img2img`` sources, you may also specify a ``pt``, ``pth``, or ``safetensors`` file,
     this is for passing in latents in place of images in pixel space, image processing will not be
@@ -2757,6 +2864,20 @@ def iterate_image_seed(uri: str | ImageSeedParseResult,
             align=None))
 
         append_range('floyd_image', 1)
+
+    if parse_result.latents is not None:
+        latent_paths = parse_result.latents
+        latent_cnt = 0
+        for latent_path in latent_paths:
+            # Latent tensors don't need image processing, resizing, or alignment
+            reader_specs.append(
+                MediaReaderSpec(
+                    path=latent_path,
+                    resize_resolution=None,
+                    align=None))
+            latent_cnt += 1
+
+        append_range('latents', latent_cnt)
 
     if parse_result.frame_start is not None:
         frame_start = parse_result.frame_start

@@ -1304,6 +1304,8 @@ class RenderLoop:
                                        ims_obj: _mediainput.ImageSeed):
                         if ims_obj.images is not None:
                             args.images = ims_obj.images
+                        if ims_obj.latents is not None:
+                            args.latents = ims_obj.latents
                         if ims_obj.mask_images is not None:
                             args.mask_images = ims_obj.mask_images
                         if ims_obj.control_images is not None:
@@ -1329,6 +1331,9 @@ class RenderLoop:
                 with next(image_seed_iterator()) as image_seed:
                     if not is_control_guidance_spec and image_seed.images is not None:
                         diffusion_arguments.images = image_seed.images
+
+                    if image_seed.latents is not None:
+                        diffusion_arguments.latents = image_seed.latents
 
                     if image_seed.mask_images is not None:
                         diffusion_arguments.mask_images = image_seed.mask_images

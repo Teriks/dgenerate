@@ -1,0 +1,74 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 5.0.0
+
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+{% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 24 %}
+    \set optimization --quantizer bnb;bits=8
+{% else %}
+    \set optimization --model-sequential-offload
+{% endif %}
+
+
+# Using --denoising-end and --denoising-start we can split
+# the denoising process of a Stable Diffusion pipeline into two stages,
+# allowing us to pass the latents from the first stage to the second stage.
+
+# These latents must be passed in as raw latents using a special --image-seeds
+# syntax.  This is different from the SDXL refiner example, where we passed
+# the latents in as img2img input.
+
+# The first pipeline will denoise the latents up to 80 percent, and then
+# the second pipeline will denoise the latents the rest of the way
+
+# The output formats "pt", "pth", and "safetensors" are supported
+
+
+
+# how much denoising to apply in the first stage
+# or rather how many inference steps out of the total
+
+\set high_noise_fraction 0.80
+
+\set steps 30
+
+
+stabilityai/stable-diffusion-3-medium-diffusers
+--model-type torch-sd3 {{ optimization }}
+--variant fp16
+--dtype float16
+--inference-steps {{ steps }}
+--guidance-scales 5
+--gen-seeds 1
+--output-size 768
+--image-format pt
+--output-path cooperative
+--denoising-end {{ high_noise_fraction }}
+--prompts "a beautiful sunset over the mountains"
+
+# Use the --image-seeds "latents: ..." syntax to pass the latents
+
+# If there is additional img2img / mask data we want to pass in,
+# we could potentially use the --image-seeds "img2img.png;latents=..." syntax
+# to pass the latents along side the images if desired, in this case we are
+# simply using the latents in txt2img mode as a starting point for the second
+# pipeline.
+
+stabilityai/stable-diffusion-3-medium-diffusers
+--model-type torch-sd3 {{ optimization }}
+--variant fp16
+--dtype float16
+--inference-steps {{ steps }}
+--guidance-scales 5
+--gen-seeds 1
+--output-size 768
+--output-path cooperative
+--image-seeds "latents: {{ quote(last_images) }}"
+--denoising-start {{ high_noise_fraction }}
+--prompts "clouds in the sky on a sunny day"
