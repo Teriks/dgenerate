@@ -132,7 +132,7 @@ Flux Cooperative Denoising:
 SDXL and Kolors models handle latents interchange differently than other model families.
 For SDXL or Kolors cooperative denoising, latents are passed directly as img2img input without
 the special ``latents:`` syntax, these latents will not be decoded by the receiving VAE
-whe ``--denoising-start`` has been specified with an SDXL or Kolors model:
+when ``--denoising-start`` has been specified with an SDXL or Kolors model:
 
 @EXAMPLE[../../../examples/latents_interchange/sdxl/two-stage-refining-config.dgen]
 
