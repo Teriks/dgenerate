@@ -592,6 +592,7 @@ def denoise_range(pipeline, start: float | None = 0.0, end: float | None = 1.0):
     * ``DPMSolverMultistepScheduler``
     * ``DDIMScheduler``
     * ``DDPMScheduler``
+    * ``PNDMScheduler``
 
     SD3/Flux Supported schedulers:
 
