@@ -263,7 +263,7 @@ Help Output
                      [-si CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...]] [-igs FLOAT [FLOAT ...]]
                      [-gr FLOAT [FLOAT ...]] [-ifs INTEGER [INTEGER ...]] [-ifs2 INTEGER [INTEGER ...]]
                      [-gs2 FLOAT [FLOAT ...]] [-sir CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...]]
-                     [--denoising-start FLOAT] [--denoising-end FLOAT]
+                     [-ds FLOAT] [-de FLOAT]
                      model_path
     
     Batch image generation and manipulation tool supporting Stable Diffusion and related techniques /
@@ -2090,7 +2090,7 @@ Help Output
       -sir, --sdxl-refiner-sigmas CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...]
             See: --sigmas, but for the SDXL Refiner.
             ----------------------------------------
-      --denoising-start FLOAT
+      -ds, --denoising-start FLOAT
             Fraction of total timesteps at which denoising should start (0.0 to 1.0). This allows you to skip
             the early noising steps and start denoising from a specific point in the noise schedule. Useful for
             cooperative denoising workflows where one model handles the initial denoising and another model
@@ -2117,7 +2117,7 @@ Help Output
             A value of 0.8 means denoising will start at 80 percent through the total timesteps, effectively
             skipping the first 20 percent of the normal denoising process.
             --------------------------------------------------------------
-      --denoising-end FLOAT
+      -de, --denoising-end FLOAT
             Fraction of total timesteps at which denoising should end (0.0 to 1.0). This allows you to stop
             denoising early, leaving the output in a partially noisy state. Useful for generating noisy latents
             that can be saved with --image-format pt/pth/safetensors and passed to another model or generation

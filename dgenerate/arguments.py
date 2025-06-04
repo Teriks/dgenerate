@@ -3496,7 +3496,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--denoising-start', action='store', default=None, metavar="FLOAT",
+            '-ds', '--denoising-start', action='store', default=None, metavar="FLOAT",
             dest='denoising_start', type=_type_denoising_fraction,
             help="""Fraction of total timesteps at which denoising should start (0.0 to 1.0). 
                     This allows you to skip the early noising steps and start denoising from 
@@ -3531,7 +3531,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--denoising-end', action='store', default=None, metavar="FLOAT",
+            '-de', '--denoising-end', action='store', default=None, metavar="FLOAT",
             dest='denoising_end', type=_type_denoising_fraction,
             help="""Fraction of total timesteps at which denoising should end (0.0 to 1.0). 
                     This allows you to stop denoising early, leaving the output in a partially 
