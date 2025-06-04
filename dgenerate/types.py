@@ -101,6 +101,8 @@ Tensor = torch.Tensor
 OptionalTensor = typing.Optional[torch.Tensor]
 Tensors = collections.abc.Sequence[torch.Tensor]
 OptionalTensors = typing.Optional[Tensors]
+TensorsOrTensor = Tensors | Tensor
+OptionalTensorsOrTensor = typing.Optional[TensorsOrTensor]
 MutableTensors = collections.abc.MutableSequence[Tensor]
 
 # Union types for image/tensor support (no mixing allowed within a sequence)

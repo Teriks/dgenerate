@@ -145,6 +145,11 @@
 
     Default detector padding
 
+.. data:: DEFAULT_ADETAILER_DETECTOR_CONFIDENCE
+    :annotation: = 0.3
+
+    Default detector confidence
+
 .. data:: DEFAULT_ADETAILER_MASK_DILATION
     :annotation: = 4
 
@@ -174,6 +179,88 @@
     :annotation: = 0.0
 
     Default sdxl refiner pag adaptive scale
+
+.. data:: DEFAULT_TEA_CACHE_REL_L1_THRESHOLD
+    :annotation: = 0.6
+
+    Default relative L1 threshold for TeaCache (Timestep Embedding Aware Cache) for Flux.
+
+.. data:: DEFAULT_RAS_SAMPLE_RATIO
+    :annotation: = 0.5
+
+    Default sample ratio for RAS (Reinforcement Attention System) for Stable Diffusion 3.
+    Controls the average sample ratio for each RAS step, must be between 0 and 1.
+
+.. data:: DEFAULT_RAS_HIGH_RATIO
+    :annotation: = 1.0
+
+    Default high ratio for RAS (Reinforcement Attention System) for Stable Diffusion 3.
+    Controls the ratio of high-value tokens to be cached in RAS, must be between 0 and 1.
+
+.. data:: DEFAULT_RAS_STARVATION_SCALE
+    :annotation: = 0.1
+
+    Default starvation scale for RAS (Reinforcement Attention System) for Stable Diffusion 3.
+    Controls the starvation scale in RAS patch selection, typically between 0 and 1.
+
+.. data:: DEFAULT_RAS_ERROR_RESET_STEPS
+    :annotation: = '12,22'
+
+    Default error reset steps for RAS (Reinforcement Attention System) for Stable Diffusion 3.
+    Comma-separated string of step numbers for dense sampling steps to reset accumulated error in RAS.
+
+.. data:: DEFAULT_RAS_METRIC
+    :annotation: = 'std'
+
+    Default RAS metric for RAS (Reinforcement Attention System) for Stable Diffusion 3.
+
+.. data:: DEFAULT_RAS_START_STEP
+    :annotation: = 4
+
+    Default starting step for RAS (Reinforcement Attention System) for Stable Diffusion 3.
+    Controls when RAS begins applying its sampling strategy.
+
+.. data:: DEFAULT_RAS_SKIP_NUM_STEP
+    :annotation: = 0
+
+    Default skip num step for RAS (Reinforcement Attention System) for Stable Diffusion 3.
+    Controls the number of steps to skip between RAS steps. The actual number of tokens skipped
+    will be rounded down to the nearest multiple of 64 to ensure efficient memory access patterns
+    for attention computation. When used with skip_num_step_length greater than 0, this value
+    determines how the number of skipped tokens changes over time.
+
+.. data:: DEFAULT_RAS_SKIP_NUM_STEP_LENGTH
+    :annotation: = 0
+
+    Default skip num step length for RAS (Reinforcement Attention System) for Stable Diffusion 3.
+    Controls the length of steps to skip between RAS steps. When set to 0, static dropping is used
+    where the number of skipped tokens remains constant. When greater than 0, dynamic dropping is
+    enabled where the number of skipped tokens varies over time based on skip_num_step. The pattern
+    of skipping will repeat every skip_num_step_length steps.
+
+.. data:: DEFAULT_DEEP_CACHE_INTERVAL
+    :annotation: = 5
+
+    Default cache interval for DeepCache.
+    Controls how frequently the attention layers are cached during the diffusion process.
+
+.. data:: DEFAULT_DEEP_CACHE_BRANCH_ID
+    :annotation: = 1
+
+    Default branch ID for DeepCache.
+    Controls which branches to apply DeepCache to in the UNet.
+
+.. data:: DEFAULT_SDXL_REFINER_DEEP_CACHE_INTERVAL
+    :annotation: = 5
+
+    Default cache interval for DeepCache on SDXL Refiner.
+    Controls how frequently the attention layers are cached during the diffusion process.
+
+.. data:: DEFAULT_SDXL_REFINER_DEEP_CACHE_BRANCH_ID
+    :annotation: = 1
+
+    Default branch ID for DeepCache on SDXL Refiner.
+    Controls which branches to apply DeepCache to in the UNet.
 
 .. data:: PIPELINE_WRAPPER_CACHE_GC_CONSTRAINTS
     :annotation: = ['used_percent > 70']

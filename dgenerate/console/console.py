@@ -542,7 +542,7 @@ class DgenerateConsole(tk.Tk):
         try:
             text = self._input_text.text.get('1.0', 'end-1c')
             if text.strip():  # check that it's not just whitespace
-                formatted_text = _textprocessing.format_code(text)
+                formatted_text = '\n'.join(_textprocessing.format_dgenerate_config(iter(text.split('\n'))))
                 self._input_text.clear()
                 self._input_text.text.insert('1.0', formatted_text)
         except Exception as e:

@@ -706,3 +706,22 @@ class DgenerateCodeView(tk.Frame):
         
         # Prevent the default behavior (which would insert another #)
         return "break"
+
+    def clear(self):
+        """Clear all text content and reset the widget state."""
+        # Exit column mode if active
+        self._exit_column_mode(None)
+        
+        # Clear all text content
+        self.text.delete("1.0", "end")
+        
+        # Clear any selection
+        self.text.tag_remove("sel", "1.0", "end")
+
+        # Clear syntax highlighting tags if highlighting is enabled
+        if self._highlighting:
+            self._syntax_highlighter.remove_tags()
+        
+        # Line numbers will automatically update due to the <<Modified>> event
+        # Force a redraw to ensure they're updated immediately
+        self._line_numbers.redraw()

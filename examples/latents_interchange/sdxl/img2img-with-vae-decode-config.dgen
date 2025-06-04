@@ -1,0 +1,37 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 5.0.0
+
+# We can pass latents from the first pipeline to the second pipeline
+# using the --image-format argument to specify a tensor format,
+# in this case "pt"
+
+# The output formats "pt", "pth", and "safetensors" are supported
+
+# output to --image-format "pt", a tensor in latent space
+
+
+stabilityai/stable-diffusion-xl-base-1.0
+--model-type torch-sdxl
+--dtype float16
+--variant 'fp16'
+--inference-steps 30
+--guidance-scales 5
+--gen-seeds 1
+--output-path vae_decode
+--image-format pt
+--prompts "a horse in a field"
+
+# Call an SDXL img2img pipeline, the VAE of this pipeline
+# will decode the latent data into an image, this also
+# works for inpainting
+
+stabilityai/stable-diffusion-xl-base-1.0
+--dtype float16
+--variant 'fp16'
+--model-type torch-sdxl
+--inference-steps 30
+--guidance-scales 5
+--gen-seeds 1
+--output-path vae_decode
+--image-seeds {{ quote(last_images) }}
+--prompts "a horse in a field"
