@@ -2106,6 +2106,7 @@ Help Output
             * DPMSolverMultistepScheduler
             * DDIMScheduler
             * DDPMScheduler
+            * PNDMScheduler
             
             For SDXL models, all schedulers are supported via native denoising_start/denoising_end.
             
@@ -2132,6 +2133,7 @@ Help Output
             * DPMSolverMultistepScheduler
             * DDIMScheduler
             * DDPMScheduler
+            * PNDMScheduler
             
             For SDXL models, all schedulers are supported via native denoising_start/denoising_end.
             

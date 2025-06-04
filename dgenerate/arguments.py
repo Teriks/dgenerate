@@ -3515,6 +3515,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     * DPMSolverMultistepScheduler
                     * DDIMScheduler
                     * DDPMScheduler
+                    * PNDMScheduler
                     
                     For SDXL models, all schedulers are supported via native denoising_start/denoising_end.
                     
@@ -3550,6 +3551,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     * DPMSolverMultistepScheduler
                     * DDIMScheduler
                     * DDPMScheduler
+                    * PNDMScheduler
                     
                     For SDXL models, all schedulers are supported via native denoising_start/denoising_end.
                     
