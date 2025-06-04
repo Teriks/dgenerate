@@ -3659,7 +3659,7 @@ this works for SD1.5/2.x, SD3, and Flux models using the ``latents= ...`` syntax
     
     # Second stage: Continue with a different model using the latents
     dgenerate Lykon/DreamShaper \
-    --image-seeds "input.png;latents={{ quote(last_images) }}" \
+    --image-seeds "input.png;latents=cooperative/*.pt" \
     --prompts "artistic interpretation with enhanced details" \
     --denoising-start 0.6 \
     --output-path cooperative
