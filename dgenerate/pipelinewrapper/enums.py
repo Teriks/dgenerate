@@ -19,7 +19,6 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import enum
-import typing
 
 import torch
 
@@ -470,6 +469,23 @@ def model_type_is_floyd_ifs(model_type: ModelType | str) -> bool:
     model_type = get_model_type_enum(model_type)
 
     return model_type == ModelType.TORCH_IFS or model_type == ModelType.TORCH_IFS_IMG2IMG
+
+
+def model_type_uses_image_encoder(model_type: ModelType | str) -> bool:
+    """
+    Does a ``--model-type`` string or :py:class:`.ModelType` enum value denote
+    a model type which is known to use an image encoder for image inputs (image prompting).
+
+    This differs from traditional ``img2img`` in that the images are not used as a noise seed,
+    and instead concepts are extracted from their content.
+
+    This usually means that image input dimensions can vary in size for batch input,
+    and that the input size does not correlate to the output size from the model.
+
+    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
+    :return: bool
+    """
+    return model_type_is_s_cascade(model_type)
 
 
 def get_torch_dtype(dtype: DataType | torch.dtype | str | None) -> torch.dtype | None:

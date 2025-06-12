@@ -22,8 +22,8 @@
 import dgenerate.latentsprocessors.exceptions as _exceptions
 import dgenerate.latentsprocessors.latentsprocessor as _latentsprocessor
 import dgenerate.latentsprocessors.latentsprocessorloader as _latentsprocessorloader
+import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.plugin as _plugin
-import dgenerate.pipelinewrapper.enums as _enums  
 import dgenerate.types as _types
 
 __doc__ = """
@@ -46,8 +46,13 @@ from dgenerate.latentsprocessors.latentsprocessor import (
     LatentsProcessor
 )
 
-from dgenerate.latentsprocessors.noise_injector import NoiseInjectorLatentsProcessor
-from dgenerate.latentsprocessors.latents_scaler import LatentsScalerProcessor
+from dgenerate.latentsprocessors.latentsprocessorchain import (
+    LatentsProcessorChain
+)
+
+from dgenerate.latentsprocessors.noise import NoiseProcessor
+from dgenerate.latentsprocessors.scale import ScaleProcessor
+from dgenerate.latentsprocessors.interposer import InterposerProcessor
 
 import dgenerate.latentsprocessors.constants
 
@@ -96,7 +101,7 @@ def latents_processor_names():
     return list(LatentsProcessorLoader().get_all_names())
 
 
-def latents_processor_name_from_uri(uri):
+def latents_processor_name_from_uri(uri: _types.Uri):
     """
     Extract just the implementation name from a latents processor URI.
 
@@ -107,7 +112,7 @@ def latents_processor_name_from_uri(uri):
     return uri.split(';')[0].strip()
 
 
-def latents_processor_exists(uri):
+def latents_processor_exists(uri: _types.Uri):
     """
     Check if a latents processor implementation exists for a given URI.
 
@@ -119,7 +124,7 @@ def latents_processor_exists(uri):
     return latents_processor_name_from_uri(uri) in latents_processor_names()
 
 
-def create_latents_processor(uri,
+def create_latents_processor(uri: _types.Uri,
                              model_type: _enums.ModelType,
                              device: str = 'cpu',
                              local_files_only: bool = False) -> LatentsProcessor:

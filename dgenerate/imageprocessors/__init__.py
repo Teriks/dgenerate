@@ -105,4 +105,66 @@ def image_processor_help(names: _types.Names,
         return 1
 
 
+def image_processor_names():
+    """
+    Implementation names for all image processors implemented by dgenerate,
+    which are visible to the default :py:class:`ImageProcessorLoader` instance.
+
+    :return: a list of latents processor implementation names.
+    """
+
+    return list(ImageProcessorLoader().get_all_names())
+
+
+def image_processor_name_from_uri(uri: _types.Uri):
+    """
+    Extract just the implementation name from a image processor URI.
+
+    :param uri: the URI
+    :return: the implementation name.
+    """
+
+    return uri.split(';')[0].strip()
+
+
+def image_processor_exists(uri: _types.Uri):
+    """
+    Check if a image processor implementation exists for a given URI.
+
+    This uses the default :py:class:`ImageProcessorLoader` instance.
+
+    :param uri: The image processor URI
+    :return: ``True`` or ``False``
+    """
+    return image_processor_name_from_uri(uri) in image_processor_names()
+
+
+def create_image_processor(uri: _types.Uri,
+                           output_file: str | None = None,
+                           output_overwrite: bool = True,
+                           device: str = 'cpu',
+                           model_offload: bool = False,
+                           local_files_only: bool = False) -> ImageProcessor:
+    """
+    Create an image processor implementation using the default :py:class:`ImageProcessorLoader` instance.
+
+    :param output_file: Output path for the processor debug image
+    :param output_overwrite: enable overwrite for the processor debug image?
+    :param uri: The image processor URI
+    :param device: Device to run processing on
+    :param model_offload: enable cpu model offloading?
+    :param local_files_only: Should the processor avoid downloading
+        files from Hugging Face hub and only check the cache or local directories?
+    :return: A :py:class:`ImageProcessor` implementation
+    """
+    return ImageProcessorLoader().load(
+        uri,
+        output_file=output_file,
+        output_overwrite=output_overwrite,
+        device=device,
+        model_offload=model_offload,
+        local_files_only=local_files_only
+    )
+
+
 __all__ = _types.module_all()

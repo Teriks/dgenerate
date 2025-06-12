@@ -1647,7 +1647,8 @@ def remove_tail_comments(string) -> tuple[bool, str]:
 def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | None = None,
                           mask_images: str | collections.abc.Iterable[str] | None = None,
                           control_images: str | collections.abc.Iterable[str] | None = None,
-                          adapter_images: collections.abc.Iterable[str] | None = None,
+                          adapter_images: str | collections.abc.Iterable[str] | None = None,
+                          latents: str | collections.abc.Iterable[str] | None = None,
                           floyd_image: str | None = None,
                           resize: str | tuple[int | str, int | str] | None = None,
                           aspect: bool = True,
@@ -1661,7 +1662,11 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
                        if ``frame_start`` or ``frame_end`` are negative values.
                        if ``frame_start`` is greater than ``frame_end``.
                        if ``adapter_images`` are used with ``floyd_image``.
+                       if ``latents`` are used with ``floyd_image``.
                        if both ``control_images`` and ``floyd_image`` are specified.
+                       if ``resize`` is specified when only ``latents`` are provided.
+                       if ``aspect=False`` is specified when only ``latents`` are provided.
+                       if ``frame_start`` or ``frame_end`` is specified when only ``latents`` are provided.
                        if too many mask images are provided.
                        if too few mask images are provided.
                        if no arguments are provided.
@@ -1669,7 +1674,8 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
     :param seed_images: Seed image path(s)
     :param mask_images: Inpaint image path(s)
     :param control_images: Control image path(s)
-    :param adapter_images: Adapter image paths
+    :param adapter_images: Adapter image path(s)
+    :param latents: Raw latent tensor path(s) (.pt, .pth, .safetensors files)
     :param floyd_image: Path to a Floyd image
     :param resize: Optional resize dimension (WxH string)
     :param aspect: Preserve aspect ratio?
@@ -1681,8 +1687,8 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
     if all(v is None for v in locals().values() if not isinstance(v, bool)):
         raise ValueError('format_image_seed_uri, no arguments provided.')
 
+    # Handle input collections
     if seed_images is not None and not isinstance(seed_images, str):
-
         if mask_images is not None and not isinstance(mask_images, str):
             mask_image_cnt = len(list(mask_images))
             seed_image_cnt = len(list(seed_images))
@@ -1700,6 +1706,12 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
     if control_images is not None and not isinstance(control_images, str):
         control_images = ', '.join(control_images)
 
+    if latents is not None and not isinstance(latents, str):
+        latents = ', '.join(latents)
+
+    if adapter_images is not None and not isinstance(adapter_images, str):
+        adapter_images = ' + '.join(adapter_images)
+
     components = []
 
     def add_component_if_valid(component, prefix=""):
@@ -1709,35 +1721,24 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
             else:
                 components.append(str(component))
 
-    # aspect=True by default
-    use_keyword_args = aspect is False or frame_start is not None or frame_end is not None
-
-    if mask_images and not seed_images:
+    # Validate inputs
+    if mask_images and not seed_images and not floyd_image:
         raise ValueError('inpaint_image cannot be specified without seed_image.')
-
-    if use_keyword_args and not seed_images and not control_images:
-        raise ValueError('Keyword arguments present without seed_image or control_images.')
-
-    if frame_start is not None and frame_start < 0:
-        raise ValueError('frame_start cannot be negative.')
-
-    if frame_end is not None and frame_end < 0:
-        raise ValueError('frame_end cannot be negative.')
-
-    if frame_start is not None and frame_end is not None and frame_start > frame_end:
-        raise ValueError('frame_start cannot be greater than frame_end.')
 
     if adapter_images and floyd_image:
         raise ValueError('adapter_images cannot be specified with floyd_image.')
 
+    if latents and floyd_image:
+        raise ValueError('latents cannot be specified with floyd_image.')
+
     if control_images and floyd_image:
         raise ValueError('control_images cannot be specified with floyd_image.')
 
+    # Handle resize validation
     if resize is not None:
         if isinstance(resize, str):
             resize = resize.strip()
             if resize:
-                # can be an empty string
                 try:
                     parse_image_size(resize)
                 except ValueError as e:
@@ -1750,70 +1751,89 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
         else:
             raise ValueError('resize argument expects a string or a tuple.')
 
-    if control_images and not seed_images and not mask_images:
-        # we can specify a control image alone
-        seed_images = control_images
-        control_images = None
-
-    # case 1: Only image seed provided
-    if seed_images and not mask_images and not control_images:
-        components.append(seed_images)
+    # Check if only latents are specified (no images that can be resized)
+    if latents and not (seed_images or control_images or adapter_images):
         if resize:
-            if use_keyword_args:
-                add_component_if_valid(resize, "resize")
-            else:
-                components.append(resize)
+            raise ValueError(
+                'resize cannot be specified when only latents are provided (latents are used as-is).')
+        if aspect is False:  # Non-default value
+            raise ValueError(
+                'aspect=False cannot be specified when only latents are '
+                'provided (aspect ratio is meaningless for latents).')
+        if frame_start is not None or frame_end is not None:
+            raise ValueError(
+                'frame_start or frame_end cannot be specified when only latents are '
+                'provided (latents are used as-is and do not have animation frames).')
 
-    # case 2: Inpaint image without control image
-    elif seed_images and mask_images and not control_images:
-        components.append(seed_images)
-        if use_keyword_args:
-            add_component_if_valid(mask_images, "mask")
-            add_component_if_valid(resize, "resize")
-        else:
-            components.append(mask_images)
-            if resize:
-                components.append(resize)
+    # Special case: adapter images only
+    if adapter_images and not any([seed_images, mask_images, control_images, latents, floyd_image]):
+        components.append('adapter:' + adapter_images)
+        return ";".join(components)
 
-    # case 3: Inpaint image with control image
-    elif seed_images and mask_images and control_images:
-        components.append(seed_images)
-        add_component_if_valid(mask_images, "mask")
-        add_component_if_valid(control_images, "control")
-        if resize:
-            add_component_if_valid(resize, "resize")
-
-    # case 4: Control image with image seed
-    elif seed_images and not mask_images and control_images:
-        components.append(seed_images)
-        add_component_if_valid(control_images, "control")
-        if resize:
-            add_component_if_valid(resize, "resize")
-
-    # case 5: Adapter images only
-    elif adapter_images and not seed_images and not mask_images:
-        adapter_str = 'adapter:' + ' + '.join(adapter_images)
-        components.append(adapter_str)
-
-    # case 6: Seed image with adapter images
-    elif seed_images and adapter_images:
-        components.append(seed_images)
-        adapter_str = 'adapter=' + ' + '.join(adapter_images)
-        add_component_if_valid(adapter_str)
-
-    # case 7: Floyd image with seed image or inpaint image
-    elif floyd_image and (seed_images or mask_images):
+    # Special case: floyd image
+    if floyd_image and (seed_images or mask_images):
         components.append(seed_images or mask_images)
         add_component_if_valid(floyd_image, "floyd")
+        return ";".join(components)
 
-    # handle aspect ratio setting if applicable (only add if aspect=False)
-    if aspect is False:
-        add_component_if_valid(str(aspect), "aspect")
+    # Handle base image (seed, control, or latents)
+    if control_images and not seed_images and not mask_images and not latents:
+        # Control image alone becomes the seed
+        seed_images = control_images
+        control_images = None
+    elif latents and not seed_images and not mask_images and not control_images:
+        # Latents alone becomes the seed
+        seed_images = 'latents:' + latents
+        latents = None
 
-    # handle frame_start and frame_end arguments
-    if use_keyword_args:
-        add_component_if_valid(frame_start, "frame-start")
-        add_component_if_valid(frame_end, "frame-end")
+    # Add base image
+    if seed_images:
+        components.append(seed_images)
+
+    # Check if we can use legacy format (no keyword arguments)
+    use_legacy = (
+        # No complex arguments that require keywords
+        not adapter_images and
+        not latents and
+        not floyd_image and
+        aspect is True and
+        frame_start is None and
+        frame_end is None and
+        # Either:
+        # 1. Seed image with optional mask
+        # 2. Control image only
+        (
+            (seed_images and not control_images) or  # Case 1: seed image (with optional mask)
+            (control_images and not seed_images and not mask_images)  # Case 2: control image only
+        )
+    )
+
+    if use_legacy:
+        # Legacy format: img.png;mask.png;512x512 or control.png;512x512
+        if mask_images:
+            components.append(mask_images)
+        if control_images:
+            components.append(control_images)
+        if resize:
+            components.append(resize)
+    else:
+        # Modern format with keywords
+        if mask_images:
+            add_component_if_valid(mask_images, "mask")
+        if latents:
+            add_component_if_valid(latents, "latents")
+        if adapter_images:
+            add_component_if_valid(adapter_images, "adapter")
+        if control_images:
+            add_component_if_valid(control_images, "control")
+        if resize:
+            add_component_if_valid(resize, "resize")
+        if aspect is False:
+            add_component_if_valid(str(aspect), "aspect")
+        if frame_start is not None:
+            add_component_if_valid(frame_start, "frame-start")
+        if frame_end is not None:
+            add_component_if_valid(frame_end, "frame-end")
 
     return ";".join(components)
 

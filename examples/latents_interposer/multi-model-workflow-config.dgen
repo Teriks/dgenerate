@@ -1,6 +1,10 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 5.0.0
 
+{% if "--output-metadata" in injected_args %}
+    \set _ {{ injected_args.remove("--output-metadata") }}
+{% endif %}
+
 \set token %HF_TOKEN%
 
 {% if not token.strip() and not '--auth-token' in injected_args %}
@@ -53,5 +57,5 @@ stabilityai/stable-diffusion-3-medium-diffusers
 --guidance-scales 7.0
 --output-path multi_model_workflow
 --image-seeds {{ quote(last_images) }}
---img2img-latents-processors "interposer;source=xl;target=v3" "scaler;scale=1.05;normalize=true"
+--img2img-latents-processors "interposer;source=xl;target=v3" "scale;factor=1.05;normalize=true"
 --prompts "a peaceful zen garden with cherry blossoms, traditional Japanese style, detailed textures, masterpiece quality, photorealistic"

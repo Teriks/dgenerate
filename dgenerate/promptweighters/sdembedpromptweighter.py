@@ -23,6 +23,7 @@ import gc
 import inspect
 import re
 
+import diffusers
 import torch
 
 import dgenerate.extras.sd_embed as _sd_embed
@@ -104,7 +105,7 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
 
     @torch.inference_mode()
     def translate_to_embeds(self,
-                            pipeline,
+                            pipeline: diffusers.DiffusionPipeline,
                             device: str,
                             args: dict[str, any]):
 

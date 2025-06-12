@@ -1,6 +1,11 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 5.0.0
 
+{% if "--output-metadata" in injected_args %}
+    \set _ {{ injected_args.remove("--output-metadata") }}
+{% endif %}
+
+
 # We can manually run the SDXL refiner as an img2img pipeline,
 # passing the latents into the second stage via the `--image-seeds` argument,
 # this latent data should go in as img2img input.

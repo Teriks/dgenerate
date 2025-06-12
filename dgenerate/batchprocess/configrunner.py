@@ -186,6 +186,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'directives_help': self._directives_help_directive,
             'functions_help': self._functions_help_directive,
             'image_processor_help': self._image_processor_help_directive,
+            'latents_processor_help': self._latents_processor_help_directive,
             'prompt_weighter_help': self._prompt_weighter_help_directive,
             'prompt_upscaler_help': self._prompt_upscaler_help_directive,
             'clear_object_cache': self._clear_object_cache,
@@ -1308,6 +1309,18 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         """
 
         self.run_string(shlex.join(['--image-processor-help'] + list(args)))
+        return 0
+
+    def _latents_processor_help_directive(self, args: collections.abc.Sequence[str]):
+        """
+        Prints all image processor names. Alias for --latents-processor-help
+
+        Providing processor names as arguments prints documentation for those processors.
+
+        This does not cause the config to exit.
+        """
+
+        self.run_string(shlex.join(['--latents-processor-help'] + list(args)))
         return 0
 
     def _prompt_weighter_help_directive(self, args: collections.abc.Sequence[str]):

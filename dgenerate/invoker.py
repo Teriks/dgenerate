@@ -27,6 +27,7 @@ import dgenerate.exceptions as _d_exceptions
 import dgenerate.arguments as _arguments
 import dgenerate.events as _event
 import dgenerate.imageprocessors as _imageprocessors
+import dgenerate.latentsprocessors as _latentsprocessors
 import dgenerate.mediainput as _mediainput
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
@@ -277,6 +278,30 @@ def invoke_dgenerate_events(
                     throw=True))
 
         except (_imageprocessors.ImageProcessorNotFoundError,
+                _plugin.ModuleFileNotFoundError) as e:
+            yield rethrow_with_message(e)
+        return
+
+    try:
+        latents_processor_help, _ = _arguments.parse_latents_processor_help(
+            args, throw_unknown=True, log_error=log_error)
+    except _arguments.DgenerateUsageError as e:
+        debug_exception(e)
+        if throw:
+            raise
+        yield DgenerateExitEvent(invoke_dgenerate_events, 1)
+        return
+
+    if latents_processor_help is not None:
+        try:
+            yield DgenerateExitEvent(
+                origin=invoke_dgenerate_events,
+                return_code=_latentsprocessors.latents_processor_help(
+                    names=latents_processor_help,
+                    log_error=False,
+                    throw=True))
+
+        except (_latentsprocessors.LatentsProcessorNotFoundError,
                 _plugin.ModuleFileNotFoundError) as e:
             yield rethrow_with_message(e)
         return

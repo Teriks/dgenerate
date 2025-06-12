@@ -149,6 +149,11 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/version_5.0.0/>`_.
     * `Image Processors`_
         * `Image processor arguments`_
         * `Multiple controlnet images, and input image batching`_
+    * `Latents Processors`_
+        * `Processing Raw Latent Input`_
+        * `Processing Img2Img Latents`_
+        * `Multiple Processors and Chaining`_
+        * `Latents Interposer`_
     * `Sub Commands`_
         * `Sub Command: image-process`_
         * `Sub Command: civitai-links`_
@@ -245,6 +250,10 @@ Help Output
                      [-rgr FLOAT [FLOAT ...]] [-sc] [-d DEVICE] [-t DTYPE] [-s SIZE] [-na] [-o PATH]
                      [-op PREFIX] [-ox] [-oc] [-om | -oam] [-pw PROMPT_WEIGHTER_URI] [-pw2 PROMPT_WEIGHTER_URI]
                      [--prompt-weighter-help [PROMPT_WEIGHTER_NAMES ...]]
+                     [-lp LATENTS_PROCESSOR_URI [LATENTS_PROCESSOR_URI ...]]
+                     [-ilp LATENTS_PROCESSOR_URI [LATENTS_PROCESSOR_URI ...]]
+                     [-lpp LATENTS_PROCESSOR_URI [LATENTS_PROCESSOR_URI ...]]
+                     [--latents-processor-help [LATENTS_PROCESSOR_NAMES ...]]
                      [-pu PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]]
                      [-pu2 PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]]
                      [--second-model-second-prompt-upscaler PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]]
@@ -1733,6 +1742,73 @@ Help Output
             cause usage documentation for the specified prompt weighters to be printed. When used with
             --plugin-modules, prompt weighters implemented by the specified plugins will also be listed.
             --------------------------------------------------------------------------------------------
+      -lp, --latents-processors LATENTS_PROCESSOR_URI [LATENTS_PROCESSOR_URI ...]
+            Specify one or more latents processor URIs for processing raw input latents before pipeline
+            execution. These processors are applied to latents provided through --image-seeds when using latents
+            syntax such as "latents: file.pt", "img2img.png;latents=file.pt", or directly "file.pt" (raw latents
+            used as noise initialization). The processors are applied in sequence before the latents are passed
+            to the diffusion pipeline.
+            
+            You may specify multiple processor URIs and they will be chained together sequentially.
+            
+            If you have multiple latents specified for batching, for example
+            
+            (--image-seeds "latents: latents-1.pt, latents-2.pt"),
+            
+            you may use the delimiter "+" to separate latents processor chains, so that a certain chain affects
+            a certain latents input, the plus symbol may also be used to represent a null processor.
+            
+            For example:
+            
+            (--latents-processors affect-1 + affect-2)
+            
+            (--latents-processors + affect-2)
+            
+            (--latents-processors affect-1 +)
+            
+            See: --latents-processor-help for a list of available implementations.
+            ----------------------------------------------------------------------
+      -ilp, --img2img-latents-processors LATENTS_PROCESSOR_URI [LATENTS_PROCESSOR_URI ...]
+            Specify one or more latents processor URIs for processing img2img latents before pipeline execution.
+            These processors are applied to latent tensors provided through the --image-seeds argument when
+            doing img2img with tensor inputs. The processors are applied in sequence and may occur before VAE
+            decoding (for models that decode img2img latents) or before direct pipeline usage.
+            
+            You may specify multiple processor URIs and they will be chained together sequentially.
+            
+            If you have multiple img2img latents specified for batching, for example
+            
+            (--image-seeds "images: latents-1.pt, latents-2.pt"),
+            
+            you may use the delimiter "+" to separate latents processor chains, so that a certain chain affects
+            a certain latents input, the plus symbol may also be used to represent a null processor.
+            
+            For example:
+            
+            (--img2img-latents-processors affect-1 + affect-2)
+            
+            (--img2img-latents-processors + affect-2)
+            
+            (--img2img-latents-processors affect-1 +)
+            
+            See: --latents-processor-help for a list of available implementations.
+            ----------------------------------------------------------------------
+      -lpp, --latents-post-processors LATENTS_PROCESSOR_URI [LATENTS_PROCESSOR_URI ...]
+            Specify one or more latents processor URIs for processing output latents when outputting to latents.
+            These processors are applied to latents when --image-format is set to a tensor format (pt, pth,
+            safetensors). The processors are applied in sequence after the diffusion pipeline generates the
+            latents but before they are returned in the result.
+            
+            You may specify multiple processor URIs and they will be chained together sequentially.
+            
+            See: --latents-processor-help for a list of available implementations.
+            ----------------------------------------------------------------------
+      --latents-processor-help [LATENTS_PROCESSOR_NAMES ...]
+            Use this option alone (or with --plugin-modules) and no model specification in order to list
+            available latents processor names. Specifying one or more latents processor names after this option
+            will cause usage documentation for the specified latents processors to be printed. When used with
+            --plugin-modules, latents processors implemented by the specified plugins will also be listed.
+            ----------------------------------------------------------------------------------------------
       -pu, --prompt-upscaler PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]
             Specify a prompt upscaler implementation by URI, for example: --prompt-weighter dynamicprompts.
             Prompt upscaler plugins can preform pure text processing and expansion on incoming prompt text,
@@ -1898,8 +1974,11 @@ Help Output
             operate on images in pixel space.
             ---------------------------------
       -sip, --seed-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
-            Specify one or more image processor actions to perform on the primary image(s) specified by
+            Specify one or more image processor actions to perform on the primary img2img image(s) specified by
             --image-seeds.
+            
+            When specifying latents as img2img input, these processors will run on the image after the latents
+            are decoded by the VAE.
             
             For example: --seed-image-processors "flip" "mirror" "grayscale".
             
@@ -3399,6 +3478,11 @@ Stable Diffusion 1.5/2.x Cooperative Denoising:
     #! /usr/bin/env dgenerate --file
     #! dgenerate 5.0.0
     
+    {% if "--output-metadata" in injected_args %}
+        \set _ {{ injected_args.remove("--output-metadata") }}
+    {% endif %}
+    
+    
     # Using --denoising-end and --denoising-start we can split
     # the denoising process of a Stable Diffusion pipeline into two stages,
     # allowing us to pass the latents from the first stage to the second stage.
@@ -3456,6 +3540,10 @@ Stable Diffusion 3 Cooperative Denoising:
 
     #! /usr/bin/env dgenerate --file
     #! dgenerate 5.0.0
+    
+    {% if "--output-metadata" in injected_args %}
+        \set _ {{ injected_args.remove("--output-metadata") }}
+    {% endif %}
     
     
     \set token %HF_TOKEN%
@@ -3536,6 +3624,11 @@ Flux Cooperative Denoising:
     #! /usr/bin/env dgenerate --file
     #! dgenerate 5.0.0
     
+    {% if "--output-metadata" in injected_args %}
+        \set _ {{ injected_args.remove("--output-metadata") }}
+    {% endif %}
+    
+    
     \set token %HF_TOKEN%
     
     {% if not token.strip() and not '--auth-token' in injected_args %}
@@ -3591,6 +3684,11 @@ when ``--denoising-start`` has been specified with an SDXL or Kolors model:
 
     #! /usr/bin/env dgenerate --file
     #! dgenerate 5.0.0
+    
+    {% if "--output-metadata" in injected_args %}
+        \set _ {{ injected_args.remove("--output-metadata") }}
+    {% endif %}
+    
     
     # We can manually run the SDXL refiner as an img2img pipeline,
     # passing the latents into the second stage via the `--image-seeds` argument,
@@ -3678,6 +3776,11 @@ For cases where you want to generate latents and then decode them through a diff
 
     #! /usr/bin/env dgenerate --file
     #! dgenerate 5.0.0
+    
+    {% if "--output-metadata" in injected_args %}
+        \set _ {{ injected_args.remove("--output-metadata") }}
+    {% endif %}
+    
     
     # We can pass latents from the first pipeline to the second pipeline
     # using the --image-format argument to specify a tensor format,
@@ -6806,6 +6909,10 @@ these are the arguments that are available for use:
 
     scheduler-uri: str
     second-model-scheduler-uri: str
+    latents-processors: [str, ...]
+    latents-post-processors: [str, ...]
+    img2img-latents-processors: [str, ...]
+    decoded-latents-image-processor-uris: [str, ...]
     width: int
     height: int
     batch-size: int
@@ -7063,10 +7170,11 @@ Output:
 .. code-block:: text
 
     Available image processors:
-
+    
         "adetailer"
         "anyline"
         "canny"
+        "crop"
         "flip"
         "grayscale"
         "hed"
@@ -7088,6 +7196,7 @@ Output:
         "solarize"
         "teed"
         "upscaler"
+        "upscaler-ncnn"
         "zoe"
 
 
@@ -7254,6 +7363,211 @@ syntax described in: `Batching Input Images and Inpaint Masks`_
     --vae-slicing \
     --output-path mars_horse \
     --prompts "A photo of a horse standing on mars"
+
+Latents Processors
+==================
+
+Latents processor operate on the latent space representation of images in diffusion models.
+Unlike image processors which work with pixel data, latents processors manipulate the compressed, abstract representation
+that diffusion models use internally. These processors are particularly useful when working with dgenerate's latents
+interchange functionality.
+
+dgenerate supports three main ways to use latents processors:
+
+The argument ``--latents-processors`` which processes latents when using raw latent input through ``--image-seeds "latents: ..."`` or ``img2img.png;latents ...`` syntax.
+
+The argument  ``--img2img-latents-processors`` which processes latents during img2img generation when using latents input as img2img data, e.g. ``--image-seeds latents.pt``
+
+And the argument ``--latents-post-processors`` which processes latents after generation when outputting to latent formats (pt, pth, safetensors)
+
+Using the option ``--latents-processor-help`` with no arguments will yield a list of available latents processor names:
+
+.. code-block:: bash
+
+    #!/usr/bin/env bash
+
+    dgenerate --latents-processor-help
+
+Output:
+
+.. code-block:: text
+
+    Available latents processors:
+    
+        "interposer"
+        "noise"
+        "scale"
+
+Each processor has its own set of arguments that can be specified using URI syntax,
+which can be viewed with: ``dgenerate --latents-processor-help PROCESSOR_NAMES``
+in the same fashion as other dgenerate plugins.
+
+Processing Raw Latent Input
+---------------------------
+
+When using the ``--image-seeds "latents: ..." or ``--image-seeds "img2img.png;latents ..."`` syntax to pass in
+raw / noisy latents, you can use ``--latents-processors`` to run a process on this type of latent input.
+
+.. code-block:: bash
+
+    dgenerate stabilityai/stable-diffusion-2 \
+    --image-seeds "latents: partially_denoised.pt" \
+    --latents-processors "scale;factor=1.5" \
+    --denoising-start 0.8
+
+Processing Img2Img Latents
+--------------------------
+
+When using latents as ``img2img`` input, they will be decoded by the receiving VAE, for
+this usage you should use ``--img2img-latents-processors``.
+
+There is a separate option for this use, as latents can be used for ``img2img`` input and
+as raw latents input simultaneously if desired.
+
+.. code-block:: bash
+
+    dgenerate stabilityai/stable-diffusion-2 \
+    --image-seeds "fully_denoised_img2img.pt" \
+    --img2img-latents-processors "noise;timestep=50;seed=42"
+
+For instance, ``--img2img-latents-processors`` acts on ``fully_denoised_img2img.pt``, which
+will end up being decoded and used as an ``img2img`` source.  And ``--latents-processors``
+acts on ``partially_denoised.pt``, which will be passed straight into the model without
+decoding as a starting point for inference.
+
+.. code-block:: bash
+
+    dgenerate stabilityai/stable-diffusion-2 \
+    --image-seeds "fully_denoised_img2img.pt;latents=partially_denoised.pt" \
+    --img2img-latents-processors "noise;timestep=50;seed=42"
+    --latents-processors "scale;factor=1.5" \
+    --denoising-start 0.8
+
+Multiple Processors and Chaining
+--------------------------------
+
+Like image processors, multiple latents processors can be chained together:
+
+.. code-block:: bash
+
+    dgenerate stabilityai/stable-diffusion-2 \
+    --image-seeds "latents: noisy_input.pt" \
+    --latents-processors "scale;factor=1.2" "noise;timestep=20"
+
+When using multiple latent inputs (batching), you can specify different processor chains for each input using
+the + delimiter, just like image processors:
+
+.. code-block:: bash
+
+     dgenerate stabilityai/stable-diffusion-2 \
+    --image-seeds "latents: latents1.pt, latents: latents2.pt" \
+    --latents-processors "scale;factor=1.5" + "noise;timestep=30"
+
+
+With ``img2img`` input batching:
+
+.. code-block:: bash
+
+     dgenerate stabilityai/stable-diffusion-2 \
+    --image-seeds "images: img2img.png, img2img.png;latents=latents1.pt, latents2.pt" \
+    --latents-processors "scale;factor=1.5" + "noise;timestep=30"
+
+
+Latents Interposer
+------------------
+
+The ``interposer`` latents processor can be used to convert fully denoised latents into
+a space / distribution that a VAE designed for another model type can understand.
+
+This can allow you to convert between the latent space of one model type to another.
+
+This only works for fully denoised latents, and not for partially denoised latents.
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 5.0.0
+    
+    {% if "--output-metadata" in injected_args %}
+        \set _ {{ injected_args.remove("--output-metadata") }}
+    {% endif %}
+    
+    # Basic example of using the latents interposer processor
+    # to convert SD1.x latents to SDXL latents
+    
+    # This example generates latents with SD1.x model and converts them
+    # to SDXL latent space using the interposer processor, then processes
+    # them with an SDXL model for final generation
+    
+    # Generate initial latents with SD1.x model
+    
+    stable-diffusion-v1-5/stable-diffusion-v1-5
+    --inference-steps 20
+    --guidance-scales 7
+    --output-path sd1_to_sdxl_basic
+    --image-format pt
+    --prompts "a serene mountain landscape at sunset"
+    
+    # Process the SD1.x latents with SDXL model using interposer processor
+    # The interposer;source=v1;target=xl converts SD1.x latents to SDXL space
+    
+    stabilityai/stable-diffusion-xl-base-1.0
+    --model-type torch-sdxl
+    --dtype float16
+    --variant fp16
+    --inference-steps 30
+    --guidance-scales 7
+    --output-path sd1_to_sdxl_basic
+    --image-seeds {{ quote(last_images) }}
+    --img2img-latents-processors "interposer;source=v1;target=xl"
+    --seed-image-processors grayscale
+    --prompts "a serene mountain landscape at sunset, highly detailed, photorealistic"
+
+The ``interposer`` supports several conversions, described in its help output:
+
+.. code-block:: text
+
+    interposer:
+        arguments:
+            source: str
+            target: str
+            device: str = "cpu"
+            model-offload: bool = False
+    
+        Converts latents between different diffusion model latent spaces.
+    
+        This processor uses pre-trained models to convert latents from one diffusion model's latent space to
+        another (e.g., SD1.x to SDXL, SDXL to SD3). The required conversion models are downloaded from the Hugging
+        Face Hub or loaded from local cache when available.
+    
+        This only works on fully denoised latents.
+    
+        Supported conversions:
+        - v1 (SD 1.x) ↔ xl (SDXL) ↔ v3 (SD3)
+        - fx (Flux) → v1/xl/v3
+        - ca (Stable Cascade) → v1/xl/v3
+    
+        VAE scaling factors are applied automatically based on the source and target latent spaces.
+    
+        The "source" argument represents the input latents format, and can be one of:
+    
+        * v1 (sd1.5/sd2)
+        * xl (sdxl)
+        * v3 (sd3)
+        * fx (flux)
+        * ca (stable cascade)
+    
+        The "target" argument represents the output latents format, and can be one of: v1, xl, or v3
+    
+        The "device" argument can be used to set the device the processor will run on, for example: cpu, cuda,
+        cuda:1.
+    
+        The "model-offload" argument can be used to enable cpu model offloading for a processor. If this is
+        disabled, any torch tensors or modules placed on the GPU will remain there until the processor is done
+        being used, instead of them being moved back to the CPU after each invocation. Enabling this may help save
+        VRAM when using a latents processor but will impact rendering speed with multiple inputs / outputs.
+    
+    ==============================================================================================================
 
 Sub Commands
 ============
@@ -8610,6 +8924,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_images"
             Type: collections.abc.Iterable[str]
             Value: <dgenerate.renderloop.RenderLoop.written_images.<locals>.Iterable object>
+        Name: "last_img2img_latents_processors"
+            Type: typing.Optional[collections.abc.Sequence[str]]
+            Value: []
         Name: "last_inference_steps"
             Type: collections.abc.Sequence[int]
             Value: [1]
@@ -8617,8 +8934,14 @@ The ``\templates_help`` output from the above example is:
             Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
         Name: "last_latents"
-            Type: typing.Union[collections.abc.Sequence[torch.Tensor], torch.Tensor, NoneType]
-            Value: None
+            Type: typing.Optional[collections.abc.Sequence[torch.Tensor]]
+            Value: []
+        Name: "last_latents_post_processors"
+            Type: typing.Optional[collections.abc.Sequence[str]]
+            Value: []
+        Name: "last_latents_processors"
+            Type: typing.Optional[collections.abc.Sequence[str]]
+            Value: []
         Name: "last_lora_fuse_scale"
             Type: typing.Optional[float]
             Value: None
@@ -8900,7 +9223,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [70090518877325]
+            Value: [93562545431233]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -9572,6 +9895,7 @@ Example output:
         "\image_processor_help"
         "\import"
         "\import_plugins"
+        "\latents_processor_help"
         "\list_object_caches"
         "\ls"
         "\mkdir"

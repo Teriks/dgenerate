@@ -28,6 +28,7 @@ from .entry import _Entry
 from .fileentry import _FileEntry
 from .floatentry import _FloatEntry
 from .imageprocessorentry import _ImageProcessorEntry
+from .latentsprocessorentry import _LatentsProcessorEntry
 from .intentry import _IntEntry
 from .karrasschedulerentry import _KarrasSchedulerEntry
 from .stringentry import _StringEntry

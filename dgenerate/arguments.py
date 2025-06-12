@@ -25,6 +25,8 @@ import sys
 import typing
 from argparse import Action
 
+import dgenerate.latentsprocessors as _latentsprocessors
+import dgenerate.imageprocessors as _imageprocessors
 import dgenerate.mediaoutput as _mediaoutput
 import dgenerate.memoize as _memoize
 import dgenerate.memory as _memory
@@ -119,6 +121,24 @@ def _type_prompt_upscaler(uri):
         raise argparse.ArgumentTypeError(
             f'Unknown prompt upscaler implementation: {_promptupscalers.prompt_upscaler_name_from_uri(uri)}, '
             f'must be one of: {_textprocessing.oxford_comma(_promptupscalers.prompt_upscaler_names(), "or")}')
+    return uri
+
+
+def _type_latents_processor(uri):
+    uri = str(uri)
+    if uri != _pipelinewrapper.constants.LATENTS_PROCESSOR_SEP and not _latentsprocessors.latents_processor_exists(uri):
+        raise argparse.ArgumentTypeError(
+            f'Unknown latents processor implementation: {_latentsprocessors.latents_processor_name_from_uri(uri)}, '
+            f'must be one of: {_textprocessing.oxford_comma(_latentsprocessors.latents_processor_names(), "or")}')
+    return uri
+
+
+def _type_image_processor(uri):
+    uri = str(uri)
+    if uri != _renderloopconfig.IMAGE_PROCESSOR_SEP and not _imageprocessors.image_processor_exists(uri):
+        raise argparse.ArgumentTypeError(
+            f'Unknown image processor implementation: {_imageprocessors.image_processor_name_from_uri(uri)}, '
+            f'must be one of: {_textprocessing.oxford_comma(_imageprocessors.image_processor_names(), "or")}')
     return uri
 
 
@@ -2894,6 +2914,109 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-lp',
+            '--latents-processors', nargs='+', action='store', default=None,
+            metavar="LATENTS_PROCESSOR_URI", dest='latents_processors',
+            type=_type_latents_processor,
+            help="""Specify one or more latents processor URIs for processing raw input latents before pipeline execution.
+                    These processors are applied to latents provided through --image-seeds when using latents syntax
+                    such as "latents: file.pt", "img2img.png;latents=file.pt", or directly "file.pt" (raw latents 
+                    used as noise initialization). The processors are applied in sequence before the latents 
+                    are passed to the diffusion pipeline.
+                    
+                    You may specify multiple processor URIs and they will be chained together sequentially.
+                    
+                    If you have multiple latents specified for batching, for example
+                    
+                    NOWRAP!
+                    (--image-seeds "latents: latents-1.pt, latents-2.pt"), 
+                    
+                    you may use the delimiter "+" to separate
+                    latents processor chains, so that a certain chain affects a certain latents input, 
+                    the plus symbol may also be used to represent a null processor.
+                    
+                    For example: 
+                    
+                    NOWRAP!
+                    (--latents-processors affect-1 + affect-2)
+                    
+                    NOWRAP!
+                    (--latents-processors + affect-2)
+                    
+                    NOWRAP!
+                    (--latents-processors affect-1 +)
+                    
+                    See: --latents-processor-help for a list of available implementations."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-ilp',
+            '--img2img-latents-processors', nargs='+', action='store', default=None,
+            metavar="LATENTS_PROCESSOR_URI", dest='img2img_latents_processors',
+            type=_type_latents_processor,
+            help="""Specify one or more latents processor URIs for processing img2img latents before pipeline execution.
+                    These processors are applied to latent tensors provided through the --image-seeds argument when 
+                    doing img2img with tensor inputs. The processors are applied in sequence and may occur 
+                    before VAE decoding (for models that decode img2img latents) or before direct pipeline usage.
+                    
+                    You may specify multiple processor URIs and they will be chained together sequentially.
+                    
+                    If you have multiple img2img latents specified for batching, for example
+                    
+                    NOWRAP!
+                    (--image-seeds "images: latents-1.pt, latents-2.pt"), 
+                    
+                    you may use the delimiter "+" to separate
+                    latents processor chains, so that a certain chain affects a certain latents input, 
+                    the plus symbol may also be used to represent a null processor.
+                    
+                    For example: 
+                    
+                    NOWRAP!
+                    (--img2img-latents-processors affect-1 + affect-2)
+                    
+                    NOWRAP!
+                    (--img2img-latents-processors + affect-2)
+                    
+                    NOWRAP!
+                    (--img2img-latents-processors affect-1 +)
+                    
+                    See: --latents-processor-help for a list of available implementations."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-lpp',
+            '--latents-post-processors', nargs='+', action='store', default=None,
+            metavar="LATENTS_PROCESSOR_URI", dest='latents_post_processors',
+            type=_type_latents_processor,
+            help="""Specify one or more latents processor URIs for processing output latents when outputting to latents.
+                    These processors are applied to latents when --image-format is set to a tensor format (pt, pth, safetensors). 
+                    The processors are applied in sequence after the diffusion pipeline generates the latents 
+                    but before they are returned in the result.
+                    
+                    You may specify multiple processor URIs and they will be chained together sequentially.
+                    
+                    See: --latents-processor-help for a list of available implementations."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--latents-processor-help', metavar='LATENTS_PROCESSOR_NAMES', dest=None, nargs='*',
+            help="""Use this option alone (or with --plugin-modules) and no model specification
+                    in order to list available latents processor names. Specifying one or more
+                    latents processor names after this option will cause usage documentation for the specified
+                    latents processors to be printed. When used with --plugin-modules, latents processors
+                    implemented by the specified plugins will also be listed."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
             '-pu',
             '--prompt-upscaler',
             metavar='PROMPT_UPSCALER_URI', dest='prompt_upscaler_uri', action='store', nargs='+',
@@ -3189,9 +3312,14 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '-sip', '--seed-image-processors', action='store', nargs='+', default=None, metavar="PROCESSOR_URI",
+            '-sip', '--seed-image-processors',
+            type=_type_image_processor,
+            action='store', nargs='+', default=None, metavar="PROCESSOR_URI",
             help="""Specify one or more image processor actions to perform on the primary
-                    image(s) specified by --image-seeds.
+                    img2img image(s) specified by --image-seeds.
+                    
+                    When specifying latents as img2img input, these processors will run 
+                    on the image after the latents are decoded by the VAE.
                     
                     NOWRAP!
                     For example: --seed-image-processors "flip" "mirror" "grayscale".
@@ -3221,13 +3349,15 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                     The amount of processors / processor chains must not exceed the amount of input images,
                     or you will receive a syntax error message. To obtain more information about what image
-                    processors  are available and how to use them, see: --image-processor-help."""
+                    processors are available and how to use them, see: --image-processor-help."""
         )
     )
 
     actions.append(
         parser.add_argument(
-            '-mip', '--mask-image-processors', action='store', nargs='+', default=None, metavar="PROCESSOR_URI",
+            '-mip', '--mask-image-processors',
+            type=_type_image_processor,
+            action='store', nargs='+', default=None, metavar="PROCESSOR_URI",
             help="""Specify one or more image processor actions to perform on the inpaint mask
                     image(s) specified by --image-seeds.
                     
@@ -3255,7 +3385,9 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '-cip', '--control-image-processors', action='store', nargs='+', default=None, metavar="PROCESSOR_URI",
+            '-cip', '--control-image-processors',
+            type=_type_image_processor,
+            action='store', nargs='+', default=None, metavar="PROCESSOR_URI",
             help="""Specify one or more image processor actions to perform on the control
                     image specified by --image-seeds, this option is meant to be used with --control-nets.
                     
@@ -3841,6 +3973,35 @@ def parse_prompt_weighter_help(
         _check_unknown_args(unknown, log_error)
 
     return parsed.prompt_weighter_help, unknown
+
+
+def parse_latents_processor_help(
+        args: collections.abc.Sequence[str] | None = None,
+        throw_unknown: bool = False,
+        log_error: bool = False) -> tuple[list[str] | None, list[str]]:
+    """
+    Retrieve the ``--latents-processor-help`` argument value
+
+    :param args: command line arguments
+
+    :param throw_unknown: Raise :py:class:`DgenerateUsageError` if any other
+     specified argument is not a valid dgenerate argument? This treats the
+     primary model argument as optional, and only goes into effect if the
+     specific argument is detected.
+
+    :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
+
+    :return: (values | ``None``, unknown_args_list)
+    """
+
+    parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
+    parser.add_argument('--latents-processor-help', action='store', nargs='*', default=None)
+    parsed, unknown = parser.parse_known_args(args)
+
+    if parsed.latents_processor_help is not None and throw_unknown:
+        _check_unknown_args(unknown, log_error)
+
+    return parsed.latents_processor_help, unknown
 
 
 def parse_prompt_upscaler_help(

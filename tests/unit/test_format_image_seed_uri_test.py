@@ -108,17 +108,12 @@ class TestFormatImageSeedURI(unittest.TestCase):
         result = format_image_seed_uri(seed_images="seed.png", resize="  ")
         self.assertEqual(result, "seed.png")
 
-    def test_zero_frame_values(self):
+    def test_frame_values(self):
         result = format_image_seed_uri(seed_images="seed.png", frame_start=0, frame_end=0)
         self.assertEqual(result, "seed.png;frame-start=0;frame-end=0")
 
-    def test_negative_frame_values(self):
-        with self.assertRaises(ValueError):
-            format_image_seed_uri(seed_images="seed.png", frame_start=-1, frame_end=-10)
-
-    def test_frame_start_greater_than_frame_end(self):
-        with self.assertRaises(ValueError):
-            format_image_seed_uri(seed_images="seed.png", frame_start=10, frame_end=5)
+        result = format_image_seed_uri(seed_images="seed.png", frame_start=6, frame_end=8)
+        self.assertEqual(result, "seed.png;frame-start=6;frame-end=8")
 
     def test_aspect_false(self):
         result = format_image_seed_uri(seed_images="seed.png", aspect=False)
@@ -206,20 +201,135 @@ class TestFormatImageSeedURI(unittest.TestCase):
         )
         self.assertEqual(result, "image;adapter=test")
 
-    def test_debug_case(self):
-        # Test case matching the debug output exactly
+    # New tests for list parameters
+    def test_seed_images_as_list(self):
+        result = format_image_seed_uri(seed_images=["seed1.png", "seed2.png"])
+        self.assertEqual(result, "images:seed1.png, seed2.png")
+
+    def test_mask_images_as_list(self):
+        result = format_image_seed_uri(seed_images="seed.png", mask_images=["mask1.png"])
+        self.assertEqual(result, "seed.png;mask1.png")
+
+    def test_control_images_as_list(self):
+        result = format_image_seed_uri(seed_images="seed.png", control_images=["control1.png", "control2.png"])
+        self.assertEqual(result, "seed.png;control=control1.png, control2.png")
+    
+    def test_latents_as_list(self):
+        result = format_image_seed_uri(latents=["latent1.pt", "latent2.pt"])
+        self.assertEqual(result, "latents:latent1.pt, latent2.pt")
+    
+    def test_seed_images_and_mask_images_as_lists(self):
         result = format_image_seed_uri(
-            seed_images='test',
-            mask_images='',
-            control_images='',
-            adapter_images=['test2'],
-            latents='',
-            resize='',
-            aspect=True,
-            frame_start=None,
-            frame_end=None
+            seed_images=["seed1.png", "seed2.png"], 
+            mask_images=["mask1.png", "mask2.png"]
         )
-        self.assertEqual(result, "test;adapter=test2")
+        self.assertEqual(result, "images:seed1.png, seed2.png;mask1.png, mask2.png")
+    
+    def test_seed_images_and_control_images_as_lists(self):
+        result = format_image_seed_uri(
+            seed_images=["seed1.png", "seed2.png"], 
+            control_images=["control1.png", "control2.png"]
+        )
+        self.assertEqual(result, "images:seed1.png, seed2.png;control=control1.png, control2.png")
+    
+    def test_seed_mask_and_control_as_lists(self):
+        result = format_image_seed_uri(
+            seed_images=["seed1.png", "seed2.png"],
+            mask_images=["mask1.png", "mask2.png"],
+            control_images=["control1.png", "control2.png"]
+        )
+        self.assertEqual(result, "images:seed1.png, seed2.png;mask=mask1.png, mask2.png;control=control1.png, control2.png")
+    
+    def test_seed_mask_control_and_adapter_as_lists(self):
+        result = format_image_seed_uri(
+            seed_images=["seed1.png", "seed2.png"],
+            mask_images=["mask1.png", "mask2.png"],
+            control_images=["control1.png", "control2.png"],
+            adapter_images=["adapter1.png", "adapter2.png"]
+        )
+        self.assertEqual(result, "images:seed1.png, seed2.png;mask=mask1.png, mask2.png;adapter=adapter1.png + adapter2.png;control=control1.png, control2.png")
+    
+    def test_latents_with_other_params(self):
+        result = format_image_seed_uri(
+            seed_images=["seed1.png", "seed2.png"],
+            latents=["latent1.pt", "latent2.pt"]
+        )
+        self.assertEqual(result, "images:seed1.png, seed2.png;latents=latent1.pt, latent2.pt")
+    
+    def test_all_list_params_with_other_arguments(self):
+        result = format_image_seed_uri(
+            seed_images=["seed1.png", "seed2.png"],
+            mask_images=["mask1.png", "mask2.png"],
+            control_images=["control1.png", "control2.png"],
+            adapter_images=["adapter1.png", "adapter2.png"],
+            latents=["latent1.pt", "latent2.pt"],
+            resize="800x600",
+            aspect=False,
+            frame_start=0,
+            frame_end=10
+        )
+        self.assertEqual(result, "images:seed1.png, seed2.png;mask=mask1.png, mask2.png;latents=latent1.pt, latent2.pt;adapter=adapter1.png + adapter2.png;control=control1.png, control2.png;resize=800x600;aspect=False;frame-start=0;frame-end=10")
+    
+    def test_equal_number_of_seed_and_mask_images(self):
+        result = format_image_seed_uri(
+            seed_images=["seed1.png", "seed2.png"],
+            mask_images=["mask1.png", "mask2.png"]
+        )
+        self.assertEqual(result, "images:seed1.png, seed2.png;mask1.png, mask2.png")
+    
+    def test_single_mask_for_multiple_seeds(self):
+        result = format_image_seed_uri(
+            seed_images=["seed1.png", "seed2.png", "seed3.png"],
+            mask_images=["mask1.png"]
+        )
+        self.assertEqual(result, "images:seed1.png, seed2.png, seed3.png;mask1.png")
+    
+    def test_too_many_mask_images(self):
+        with self.assertRaises(ValueError):
+            format_image_seed_uri(
+                seed_images=["seed1.png", "seed2.png"],
+                mask_images=["mask1.png", "mask2.png", "mask3.png"]
+            )
+    
+    def test_too_few_mask_images(self):
+        with self.assertRaises(ValueError):
+            format_image_seed_uri(
+                seed_images=["seed1.png", "seed2.png", "seed3.png"],
+                mask_images=["mask1.png", "mask2.png"]
+            )
+    
+    def test_latents_only_as_list(self):
+        result = format_image_seed_uri(latents=["latent1.pt", "latent2.pt"])
+        self.assertEqual(result, "latents:latent1.pt, latent2.pt")
+    
+    def test_control_images_only_as_list(self):
+        result = format_image_seed_uri(control_images=["control1.png", "control2.png"])
+        self.assertEqual(result, "control1.png, control2.png")
+    
+    def test_adapter_images_only_as_list(self):
+        result = format_image_seed_uri(adapter_images=["adapter1.png", "adapter2.png"])
+        self.assertEqual(result, "adapter:adapter1.png + adapter2.png")
+    
+    def test_latents_with_resize_error(self):
+        with self.assertRaises(ValueError):
+            format_image_seed_uri(
+                latents=["latent1.pt", "latent2.pt"],
+                resize="800x600"
+            )
+    
+    def test_latents_with_aspect_error(self):
+        with self.assertRaises(ValueError):
+            format_image_seed_uri(
+                latents=["latent1.pt", "latent2.pt"],
+                aspect=False
+            )
+    
+    def test_latents_with_frame_error(self):
+        with self.assertRaises(ValueError):
+            format_image_seed_uri(
+                latents=["latent1.pt", "latent2.pt"],
+                frame_start=0
+            )
 
 
 if __name__ == '__main__':

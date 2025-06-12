@@ -55,7 +55,8 @@ from .enums import (
     model_type_is_flux,
     model_type_is_kolors,
     model_type_is_sd2,
-    model_type_is_sd15
+    model_type_is_sd15,
+    model_type_uses_image_encoder
 )
 from .help import (
     text_encoder_help,

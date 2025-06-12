@@ -20,18 +20,23 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import abc
+import gc
 import typing
 
+import diffusers
 import torch
 
+import dgenerate.devicecache as _devicecache
+import dgenerate.exceptions as _d_exceptions
+import dgenerate.latentsprocessors.constants as _constants
 import dgenerate.latentsprocessors.exceptions as _exceptions
-import dgenerate.plugin as _plugin
-import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.memoize as _memoize
 import dgenerate.memory as _memory
-import dgenerate.latentsprocessors.constants as _constants
 import dgenerate.messages as _messages
-import dgenerate.devicecache as _devicecache
+import dgenerate.pipelinewrapper.enums as _enums
+import dgenerate.plugin as _plugin
+import dgenerate.torchutil as _torchutil
+import dgenerate.types
 
 _latents_processor_cache = _memoize.create_object_cache(
     'latents_processor',
@@ -62,12 +67,34 @@ class LatentsProcessor(_plugin.Plugin, abc.ABC):
     """
 
     # you cannot specify these via a URI
-    HIDE_ARGS = ['model-type', 'device', 'local-files-only']
+    HIDE_ARGS = ['model-type', 'local-files-only']
+
+    @classmethod
+    def inheritable_help(cls, subclass, loaded_by_name):
+        hidden_args = subclass.get_hidden_args(loaded_by_name)
+        help_messages = {
+            'device': (
+                'The "device" argument can be used to set the device '
+                'the processor will run on, for example: cpu, cuda, cuda:1.'
+            ),
+            'model-offload': (
+                'The "model-offload" argument can be used to enable '
+                'cpu model offloading for a processor. If this is disabled, '
+                'any torch tensors or modules placed on the GPU will remain there until '
+                'the processor is done being used, instead of them being moved back to the CPU '
+                'after each invocation. Enabling this may help save VRAM when using a latents processor '
+                'but will impact rendering speed with multiple inputs / outputs.'
+            )
+        }
+        help_str = '\n\n'.join(
+            message for arg, message in help_messages.items() if arg not in hidden_args)
+        return help_str
 
     def __init__(self,
                  loaded_by_name: str,
                  model_type: _enums.ModelType,
                  device: str = 'cpu',
+                 model_offload: bool = False,
                  local_files_only: bool = False,
                  **kwargs):
         """
@@ -76,6 +103,9 @@ class LatentsProcessor(_plugin.Plugin, abc.ABC):
         :param loaded_by_name: The name the processor was loaded by
         :param model_type: Model type enum :py:class:`dgenerate.ModelType`
         :param device: Device to run processing on
+        :param model_offload: if ``True``, any torch modules that the processor
+            has registered are offloaded to the CPU immediately after processing an
+            image
         :param local_files_only: if ``True``, the plugin should never try to download
             models from the internet automatically, and instead only look
             for them in cache / on disk.
@@ -89,6 +119,9 @@ class LatentsProcessor(_plugin.Plugin, abc.ABC):
         self.__device = device
         self.__local_files_only = local_files_only
         self.__size_estimate = 0
+        self.__model_offload = model_offload
+        self.__modules = []
+        self.__modules_device = torch.device('cpu')
 
     @property
     def model_type(self) -> _enums.ModelType:
@@ -114,6 +147,19 @@ class LatentsProcessor(_plugin.Plugin, abc.ABC):
         Is this processor only going to look for files in cache / on disk?
         """
         return self.__local_files_only
+
+    @property
+    def modules_device(self) -> torch.device:
+        """
+        The rendering device that this processors modules currently exist on.
+
+        This will change with calls to :py:meth:`.LatentsProcessor.to` and
+        possibly when the processor is used.
+
+        :return: :py:class:`torch.device`, using ``str()`` on this object
+            will yield a device string such as "cuda", "cuda:N", or "cpu"
+        """
+        return self.__modules_device
 
     @property
     def size_estimate(self) -> int:
@@ -194,6 +240,74 @@ class LatentsProcessor(_plugin.Plugin, abc.ABC):
 
         self.__size_estimate = int(size_bytes)
 
+    def register_module(self, module):
+        """
+        Register :py:class:`torch.nn.Module` objects.
+
+        These will be brought on to the cpu during finalization.
+
+        All of these modules can be cast to a specific device with :py:attr:`.LatentsProcessor.to`
+
+        :param module: the module
+        """
+        self.__modules.append(module)
+
+    def __flush_diffusion_pipeline_after_oom(self):
+        _messages.debug_log(
+            f'Latents processor "{self.__class__.__name__}" is clearing the GPU side object '
+            f'cache for device {self.device} due to VRAM out of memory condition.')
+
+        _devicecache.clear_device_cache(self.device)
+
+    def __to_cpu_ignore_error(self):
+        try:
+            self.to('cpu')
+        except:
+            pass
+
+    @staticmethod
+    def __flush_mem_ignore_error():
+        try:
+            _memory.torch_gc()
+        except:
+            pass
+
+    def __with_memory_safety(self, func, args: dict, oom_attempt=0):
+        raise_exc = None
+
+        try:
+            try_again = False
+            try:
+                return func(**args)
+            except _d_exceptions.TORCH_CUDA_OOM_EXCEPTIONS as e:
+                _d_exceptions.raise_if_not_cuda_oom(e)
+
+                if oom_attempt == 0:
+                    self.__flush_diffusion_pipeline_after_oom()
+                    try_again = True
+                else:
+                    _messages.debug_log(
+                        f'LatentsProcessor "{self.__class__.__name__}" failed attempt at '
+                        f'OOM recovery in {dgenerate.types.fullname(func)}()')
+
+                    self.__to_cpu_ignore_error()
+                    self.__flush_mem_ignore_error()
+                    raise_exc = _d_exceptions.OutOfMemoryError(e)
+
+            if try_again:
+                return self.__with_memory_safety(func, args, oom_attempt=1)
+        except MemoryError as e:
+            gc.collect()
+            raise _d_exceptions.OutOfMemoryError('cpu (system memory)') from e
+        except Exception as e:
+            if not isinstance(e, _d_exceptions.OutOfMemoryError):
+                self.__to_cpu_ignore_error()
+                self.__flush_mem_ignore_error()
+            raise
+
+        if raise_exc is not None:
+            raise raise_exc
+
     def load_object_cached(self,
                            tag: str,
                            estimated_size: int,
@@ -223,12 +337,32 @@ class LatentsProcessor(_plugin.Plugin, abc.ABC):
 
         return load_cached()
 
-    @abc.abstractmethod
     def process(self,
-                pipeline,
-                device: str,
-                latents: torch.Tensor,
-                *args, **kwargs) -> torch.Tensor:
+                pipeline: diffusers.DiffusionPipeline,
+                latents: torch.Tensor) -> torch.Tensor:
+        """
+        Process a latents tensor.
+
+        :param pipeline: The pipeline object
+        :param latents: Input latents tensor with shape [B, C, H, W]
+        :return: Processed latents tensor with shape [B, C, H, W]
+        """
+
+        self.to(self.device)
+        try:
+            return self.__with_memory_safety(
+                self.impl_process,
+                {'pipeline': pipeline,
+                 'latents': latents})
+        finally:
+            if self.__model_offload:
+                self.to('cpu')
+                self.__flush_mem_ignore_error()
+
+    @abc.abstractmethod
+    def impl_process(self,
+                     pipeline: diffusers.DiffusionPipeline,
+                     latents: torch.Tensor) -> torch.Tensor:
         """
         Process a latents tensor.
         
@@ -236,11 +370,71 @@ class LatentsProcessor(_plugin.Plugin, abc.ABC):
         the actual tensor processing functionality.
         
         :param pipeline: The pipeline object
-        :param device: The device the pipeline modules are on
-        :param latents: Input latents tensor with shape [B, C, W, H]
-        :param args: Additional positional arguments
-        :param kwargs: Additional keyword arguments
-        :return: Processed latents tensor with shape [B, C, W, H]
+        :param latents: Input latents tensor with shape [B, C, H, W]
+        :return: Processed latents tensor with shape [B, C, H, W]
         """
         raise NotImplementedError()
 
+    def __to(self, device: torch.device | str, attempt=0):
+        device = torch.device(device)
+
+        if device.type != 'cpu':
+            _latents_processor_cache.size -= self.__size_estimate
+        else:
+            _latents_processor_cache.size += self.__size_estimate
+
+        self.__modules_device = device
+
+        try_again = False
+
+        for m in self.__modules:
+            if not hasattr(m, '_DGENERATE_LATENTS_PROCESSOR_DEVICE') or \
+                    not _torchutil.devices_equal(m._DGENERATE_LATENTS_PROCESSOR_DEVICE, device):
+
+                self.memory_guard_device(device, self.size_estimate)
+
+                m._DGENERATE_LATENTS_PROCESSOR_DEVICE = device
+                _messages.debug_log(
+                    f'Moving LatentsProcessor registered module: {dgenerate.types.fullname(m)}.to("{device}")')
+
+                try:
+                    m.to(device)
+                except _d_exceptions.TORCH_CUDA_OOM_EXCEPTIONS as e:
+                    _d_exceptions.raise_if_not_cuda_oom(e)
+
+                    if attempt == 0:
+                        # hail marry
+                        self.__flush_diffusion_pipeline_after_oom()
+                        try_again = True
+                        break
+                    else:
+                        _messages.debug_log(
+                            f'LatentsProcessor "{self.__class__.__name__}" failed attempt '
+                            f'at OOM recovery in to({device})')
+
+                        m._DGENERATE_LATENTS_PROCESSOR_DEVICE = torch.device('cpu')
+
+                        self.__to_cpu_ignore_error()
+                        self.__flush_mem_ignore_error()
+                        raise _d_exceptions.OutOfMemoryError(e) from e
+                except MemoryError as e:
+                    # out of cpu side memory
+                    self.__flush_mem_ignore_error()
+                    raise _d_exceptions.OutOfMemoryError('cpu (system memory)') from e
+
+        if try_again:
+            self.__to(device, attempt=1)
+
+        return self
+
+    def to(self, device: torch.device | str) -> "LatentsProcessor":
+        """
+        Move all :py:class:`torch.nn.Module` modules registered
+        to this latents processor to a specific device.
+
+        :raise dgenerate.OutOfMemoryError: if there is not enough memory on the specified device
+
+        :param device: The device string, or torch device object
+        :return: the latents processor itself
+        """
+        return self.__to(device)

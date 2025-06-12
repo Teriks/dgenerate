@@ -164,6 +164,8 @@ Help Output
 
 @INCLUDE[sections/image_processing/image_processors.template.rst]
 
+@INCLUDE[sections/image_processing/latents_processors.template.rst]
+
 @INCLUDE[sections/sub_commands.template.rst]
 
 @INCLUDE[sections/image_processing/upscaling_images.template.rst]

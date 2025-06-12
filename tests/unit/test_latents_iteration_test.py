@@ -1,5 +1,7 @@
 import unittest
 import tempfile
+
+import safetensors.torch
 import torch
 import os
 
@@ -24,7 +26,7 @@ class TestLatentsIteration(unittest.TestCase):
         
         torch.save(self.test_tensor1, self.latent1_path)
         torch.save(self.test_tensor2, self.latent2_path)
-        torch.save(self.test_tensor2, self.latent3_path)
+        safetensors.torch.save_file({'samples': self.test_tensor2}, self.latent3_path)
 
     def tearDown(self):
         """Clean up temporary files"""
@@ -86,7 +88,7 @@ class TestLatentsIteration(unittest.TestCase):
 
     def test_iterate_multiple_images_with_multiple_latents(self):
         """Test iterating over multiple images with multiple latents"""
-        uri = (f'images: examples/media/earth.jpg, examples/media/beach.jpg;'
+        uri = (f'images: examples/media/earth.jpg, examples/media/earth.jpg;'
                f'latents={self.latent1_path}, {self.latent2_path}')
         
         seeds = list(_mi.iterate_image_seed(uri))

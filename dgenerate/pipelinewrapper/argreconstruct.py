@@ -32,7 +32,6 @@ import typing
 import dgenerate.pipelinewrapper.constants as _constants
 import dgenerate.prompt as _prompt
 import dgenerate.textprocessing as _textprocessing
-
 from dgenerate.pipelinewrapper.arguments import DiffusionArguments
 from dgenerate.pipelinewrapper.wrapper import DiffusionPipelineWrapper
 
@@ -44,7 +43,8 @@ def reconstruct_dgenerate_opts(
                         tuple[str] | tuple[str, typing.Any]] | None = None,
         omit_device: bool = False,
         shell_quote: bool = True,
-        **kwargs) -> list[tuple[str] | tuple[str, typing.Any]]:
+        overrides: dict[str, typing.Any] = None
+) -> list[tuple[str] | tuple[str, typing.Any]]:
     """
     Reconstruct dgenerate's command line arguments from a particular set of pipeline wrapper call arguments.
     
@@ -60,7 +60,7 @@ def reconstruct_dgenerate_opts(
         make sense to include the device specification. And instead simply fallback to whatever 
         the default device is, which is generally ``cuda``
     :param shell_quote: Shell quote and format the argument values? or return them raw.
-    :param kwargs: pipeline wrapper keyword arguments, these will override values derived from
+    :param overrides: pipeline wrapper keyword arguments, these will override values derived from
         any :py:class:`.DiffusionArguments` object given to the *args* argument. See:
         :py:class:`.DiffusionArguments.get_pipeline_wrapper_kwargs`
     :return: List of tuples of length 1 or 2 representing the option
@@ -72,7 +72,7 @@ def reconstruct_dgenerate_opts(
     if args is not None:
         copy_args.set_from(args)
 
-    copy_args.set_from(kwargs, missing_value_throws=False)
+    copy_args.set_from(overrides, missing_value_throws=False)
 
     args = copy_args
 
@@ -438,25 +438,24 @@ def reconstruct_dgenerate_opts(
     elif args.width is not None:
         opts.append(('--output-size', f'{args.width}'))
 
-    if args.latents is not None:
-        # Note: We can't reconstruct the actual tensor files since they're loaded tensors,
-        # so this would need to be specified manually in extra_opts
-        pass
-
     if args.denoising_start is not None:
         opts.append(('--denoising-start', args.denoising_start))
 
     if args.denoising_end is not None:
         opts.append(('--denoising-end', args.denoising_end))
 
-    if args.latents_input_processor_uris:
-        opts.append(('--latents-processors', args.latents_input_processor_uris))
+    if args.latents_processors:
+        opts.append(('--latents-processors', args.latents_processors))
 
-    if args.img2img_latents_input_processor_uris:
-        opts.append(('--img2img-latents-processors', args.img2img_latents_input_processor_uris))
+    if args.img2img_latents_processors:
+        opts.append(('--img2img-latents-processors', args.img2img_latents_processors))
 
-    if args.latents_output_processor_uris:
-        opts.append(('--latents-post-processors', args.latents_output_processor_uris))
+    if args.latents_post_processors:
+        opts.append(('--latents-post-processors', args.latents_post_processors))
+
+    if args.decoded_latents_image_processor_uris:
+        # these are specified with --seed-image-processors
+        opts.append(('--seed-image-processors', args.decoded_latents_image_processor_uris))
 
     if extra_opts is not None:
         for opt in extra_opts:
@@ -528,12 +527,14 @@ def _format_option_pair(val):
     return _textprocessing.shell_quote(solo_val)
 
 
-def gen_dgenerate_config(wrapper: DiffusionPipelineWrapper,
-                         args: DiffusionArguments | None = None,
-                         extra_opts: collections.abc.Sequence[tuple[str] | tuple[str, typing.Any]] | None = None,
-                         extra_comments: collections.abc.Iterable[str] | None = None,
-                         omit_device: bool = False,
-                         **kwargs) -> str:
+def gen_dgenerate_config(
+        wrapper: DiffusionPipelineWrapper,
+        args: DiffusionArguments | None = None,
+        extra_opts: collections.abc.Sequence[tuple[str] | tuple[str, typing.Any]] | None = None,
+        extra_comments: collections.abc.Iterable[str] | None = None,
+        omit_device: bool = False,
+        overrides: dict[str, typing.Any] = None
+) -> str:
     """
     Generate a valid dgenerate config file with a single invocation that reproduces the 
     arguments associated with :py:class:`.DiffusionArguments`.
@@ -552,7 +553,7 @@ def gen_dgenerate_config(wrapper: DiffusionPipelineWrapper,
     :param omit_device: Omit the ``--device`` option? For a shareable configuration it might not
         make sense to include the device specification. And instead simply fallback to whatever 
         the default device is, which is generally ``cuda``
-    :param kwargs: pipeline wrapper keyword arguments, these will override values derived from
+    :param overrides: pipeline wrapper keyword arguments, these will override values derived from
         any :py:class:`.DiffusionArguments` object given to the *args* argument. See:
         :py:class:`.DiffusionArguments.get_pipeline_wrapper_kwargs`
     :return: The configuration as a string
@@ -571,9 +572,12 @@ def gen_dgenerate_config(wrapper: DiffusionPipelineWrapper,
         if wrote_comments:
             config += '\n\n'
 
-    opts = reconstruct_dgenerate_opts(wrapper, args, **kwargs,
-                                      shell_quote=False,
-                                      omit_device=omit_device)
+    opts = reconstruct_dgenerate_opts(
+        wrapper=wrapper,
+        args=args,
+        overrides=overrides,
+        shell_quote=False,
+        omit_device=omit_device)
 
     if extra_opts is not None:
         for opt in extra_opts:
@@ -591,7 +595,7 @@ def gen_dgenerate_command(wrapper: DiffusionPipelineWrapper,
                           args: DiffusionArguments | None = None,
                           extra_opts: collections.abc.Sequence[tuple[str] | tuple[str, typing.Any]] | None = None,
                           omit_device: bool = False,
-                          **kwargs) -> str:
+                          overrides: dict[str, typing.Any] = None) -> str:
     """
     Generate a valid dgenerate command line invocation that reproduces the 
     arguments associated with :py:class:`.DiffusionArguments`.
@@ -608,7 +612,7 @@ def gen_dgenerate_command(wrapper: DiffusionPipelineWrapper,
     :param omit_device: Omit the ``--device`` option? For a shareable configuration it might not
         make sense to include the device specification. And instead simply fallback to whatever 
         the default device is, which is generally ``cuda``
-    :param kwargs: pipeline wrapper keyword arguments, these will override values derived from
+    :param overrides: pipeline wrapper keyword arguments, these will override values derived from
         any :py:class:`.DiffusionArguments` object given to the *args* argument. See:
         :py:class:`.DiffusionArguments.get_pipeline_wrapper_kwargs`
     :return: A string containing the dgenerate command line needed to reproduce this result.
@@ -617,7 +621,9 @@ def gen_dgenerate_command(wrapper: DiffusionPipelineWrapper,
         ' '.join(
             f"{_format_option_pair(opt)}"
             for opt in reconstruct_dgenerate_opts(
-                wrapper, args, **kwargs,
+                wrapper=wrapper,
+                args=args,
+                overrides=overrides,
                 extra_opts=extra_opts,
                 omit_device=omit_device,
                 shell_quote=False))

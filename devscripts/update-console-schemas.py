@@ -16,6 +16,7 @@ import diffusers
 import dgenerate.arguments as _arguments
 import dgenerate.batchprocess as _batchprocess
 import dgenerate.imageprocessors.imageprocessorloader as _imageprocessorloader
+import dgenerate.latentsprocessors.latentsprocessorloader as _latentsprocessorloader
 import dgenerate.mediainput as _mediainput
 import dgenerate.mediaoutput as _mediaoutput
 import dgenerate.pipelinewrapper as _pipelinewrapper
@@ -29,6 +30,19 @@ os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 with open('dgenerate/console/schemas/imageprocessors.json', 'w') as file:
     plugin_loader = _imageprocessorloader.ImageProcessorLoader()
+    schema = plugin_loader.get_accepted_args_schema(include_bases=True)
+
+    # sort by processor name, this affects json output
+    schema = dict(sorted(schema.items(), key=lambda x: x[0]))
+
+    for plugin in schema.keys():
+        schema[plugin].update({'PROCESSOR_HELP': plugin_loader.get_help(
+            plugin, wrap_width=100, include_bases=True)})
+
+    json.dump(schema, file)
+
+with open('dgenerate/console/schemas/latentsprocessors.json', 'w') as file:
+    plugin_loader = _latentsprocessorloader.LatentsProcessorLoader()
     schema = plugin_loader.get_accepted_args_schema(include_bases=True)
 
     # sort by processor name, this affects json output

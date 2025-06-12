@@ -91,7 +91,7 @@ def prompt_upscaler_names():
     return list(PromptUpscalerLoader().get_all_names())
 
 
-def prompt_upscaler_name_from_uri(uri):
+def prompt_upscaler_name_from_uri(uri: _types.Uri):
     """
     Extract just the implementation name from a prompt upscaler URI.
 
@@ -102,7 +102,7 @@ def prompt_upscaler_name_from_uri(uri):
     return uri.split(';')[0].strip()
 
 
-def prompt_upscaler_exists(uri):
+def prompt_upscaler_exists(uri: _types.Uri):
     """
     Check if a prompt upscaler implementation exists for a given URI.
 
@@ -114,7 +114,7 @@ def prompt_upscaler_exists(uri):
     return prompt_upscaler_name_from_uri(uri) in prompt_upscaler_names()
 
 
-def create_prompt_upscaler(uri, device: str = 'cpu', local_files_only: bool = False) -> PromptUpscaler:
+def create_prompt_upscaler(uri: _types.Uri, device: str = 'cpu', local_files_only: bool = False) -> PromptUpscaler:
     """
     Create a prompt upscaler implementation using the default :py:class:`PromptUpscalerLoader` instance.
 
