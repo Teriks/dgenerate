@@ -1,0 +1,35 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 5.0.0
+
+# Example demonstrating Stable Cascade to SD1.x latents conversion
+
+# This shows how to convert latents from Stable Cascade models
+# to SD1.x latent space for further processing
+
+# Generate initial latents with Stable Cascade
+
+stabilityai/stable-cascade-prior
+--model-type torch-s-cascade
+--variant bf16
+--dtype bfloat16
+--model-cpu-offload
+--second-model-cpu-offload
+--s-cascade-decoder "stabilityai/stable-cascade;dtype=float16"
+--inference-steps 20
+--guidance-scales 4
+--second-model-inference-steps 10
+--second-model-guidance-scales 0
+--output-path cascade_to_sd
+--image-format pt
+--prompts "a majestic dragon flying over mountain peaks"
+
+# Convert Stable Cascade latents to SD1.x space
+# The interposer handles conversion from Cascade (ca) to SD1.x (v1)
+
+stable-diffusion-v1-5/stable-diffusion-v1-5
+--inference-steps 25
+--guidance-scales 7.5
+--output-path cascade_to_sd
+--image-seeds {{ quote(last_images) }}
+--img2img-latents-processors "interposer;source=ca;target=v1"
+--prompts "a majestic dragon flying over mountain peaks, fantasy art, detailed scales" 

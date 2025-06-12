@@ -1,0 +1,625 @@
+# Copyright (c) 2023, Teriks
+#
+# dgenerate is distributed under the following BSD 3-Clause License
+#
+# Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in
+#    the documentation and/or other materials provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived
+#    from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+# COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+"""
+Argument reconstruction functionality for DiffusionPipelineWrapper.
+
+This module provides utilities to reconstruct dgenerate command line arguments
+from DiffusionArguments and DiffusionPipelineWrapper state.
+"""
+
+import collections.abc
+import typing
+
+import dgenerate.pipelinewrapper.constants as _constants
+import dgenerate.prompt as _prompt
+import dgenerate.textprocessing as _textprocessing
+
+from dgenerate.pipelinewrapper.arguments import DiffusionArguments
+from dgenerate.pipelinewrapper.wrapper import DiffusionPipelineWrapper
+
+
+def reconstruct_dgenerate_opts(
+        wrapper: DiffusionPipelineWrapper,
+        args: DiffusionArguments | None = None,
+        extra_opts: collections.abc.Sequence[
+                        tuple[str] | tuple[str, typing.Any]] | None = None,
+        omit_device: bool = False,
+        shell_quote: bool = True,
+        **kwargs) -> list[tuple[str] | tuple[str, typing.Any]]:
+    """
+    Reconstruct dgenerate's command line arguments from a particular set of pipeline wrapper call arguments.
+    
+    This does not reproduce ``--image-seeds``, you must include that value in ``extra_opts``, 
+    this is because there is not enough information in :py:class:`.DiffusionArguments` to
+    accurately reproduce it.
+
+    :param wrapper: DiffusionPipelineWrapper instance to extract configuration from
+    :param args: :py:class:`.DiffusionArguments` object to take values from
+    :param extra_opts: Extra option pairs to be added to the end of reconstructed options,
+        this should be a sequence of tuples of length 1 (switch only) or length 2 (switch with args)
+    :param omit_device: Omit the ``--device`` option? For a shareable configuration it might not
+        make sense to include the device specification. And instead simply fallback to whatever 
+        the default device is, which is generally ``cuda``
+    :param shell_quote: Shell quote and format the argument values? or return them raw.
+    :param kwargs: pipeline wrapper keyword arguments, these will override values derived from
+        any :py:class:`.DiffusionArguments` object given to the *args* argument. See:
+        :py:class:`.DiffusionArguments.get_pipeline_wrapper_kwargs`
+    :return: List of tuples of length 1 or 2 representing the option
+    """
+    from .arguments import DiffusionArguments
+
+    copy_args = DiffusionArguments()
+
+    if args is not None:
+        copy_args.set_from(args)
+
+    copy_args.set_from(kwargs, missing_value_throws=False)
+
+    args = copy_args
+
+    opts = [(wrapper.model_path,),
+            ('--model-type', wrapper.model_type_string)]
+
+    if wrapper.original_config:
+        opts.append(('--original-config', wrapper.original_config))
+
+    if wrapper.second_model_original_config:
+        opts.append(('--second-model-original-config', wrapper.second_model_original_config))
+
+    if wrapper.quantizer_uri:
+        opts.append(('--quantizer', wrapper.quantizer_uri))
+
+    if wrapper.second_model_quantizer_uri:
+        opts.append(('--second-model-quantizer', wrapper.second_model_quantizer_uri))
+
+    if not omit_device:
+        opts.append(('--device', wrapper.device))
+
+    opts.append(('--inference-steps', args.inference_steps))
+    opts.append(('--guidance-scales', args.guidance_scale))
+
+    if args.sigmas is not None:
+        if isinstance(args.sigmas, str):
+            opts.append(('--sigmas', f'expr: {args.sigmas}'))
+        else:
+            opts.append(('--sigmas', ','.join(map(str, args.sigmas))))
+
+    opts.append(('--seeds', args.seed))
+
+    if wrapper.dtype_string != 'auto':
+        opts.append(('--dtype', wrapper.dtype_string))
+
+    if args.batch_size is not None and args.batch_size > 1:
+        opts.append(('--batch-size', args.batch_size))
+
+    if args.guidance_rescale is not None:
+        opts.append(('--guidance-rescales', args.guidance_rescale))
+
+    if args.image_guidance_scale is not None:
+        opts.append(('--image-guidance-scales', args.image_guidance_scale))
+
+    if args.prompt_weighter_uri:
+        opts.append(('--prompt-weighter', args.prompt_weighter_uri))
+
+    if args.second_model_prompt_weighter_uri:
+        opts.append(('--second-model-prompt-weighter', args.second_model_prompt_weighter_uri))
+
+    if args.prompt is not None:
+        opts.append(('--prompts', args.prompt))
+
+    if args.second_prompt is not None:
+        opts.append(('--second-prompts', args.second_prompt))
+
+    if args.third_prompt is not None:
+        opts.append(('--third-prompts', args.third_prompt))
+
+    if args.second_model_prompt is not None:
+        opts.append(('--second-model-prompts', args.second_model_prompt))
+
+    if args.second_model_second_prompt is not None:
+        opts.append(('--second-model-second-prompts', args.second_model_second_prompt))
+
+    if args.max_sequence_length is not None:
+        opts.append(('--max-sequence-length', args.max_sequence_length))
+
+    if args.clip_skip is not None:
+        opts.append(('--clip-skips', args.clip_skip))
+
+    if args.sdxl_refiner_clip_skip is not None:
+        opts.append(('--sdxl-refiner-clip-skips', args.sdxl_refiner_clip_skip))
+
+    if wrapper.adetailer_detector_uris:
+        opts.append(('--adetailer-detectors', wrapper.adetailer_detector_uris))
+
+    if args.adetailer_index_filter is not None:
+        opts.append(('--adetailer-index-filter',
+                     ' '.join(str(i) for i in args.adetailer_index_filter)))
+
+    if args.adetailer_mask_shape is not None:
+        opts.append(('--adetailer-mask-shapes', args.adetailer_mask_shape))
+
+    if args.adetailer_detector_padding is not None:
+        opts.append(('--adetailer-detector-paddings',
+                     _textprocessing.format_size(args.adetailer_detector_padding)))
+
+    if args.adetailer_mask_padding is not None:
+        opts.append(('--adetailer-mask-paddings',
+                     _textprocessing.format_size(args.adetailer_mask_padding)))
+
+    if args.adetailer_mask_blur is not None:
+        opts.append(('--adetailer-mask-blurs', args.adetailer_mask_blur))
+
+    if args.adetailer_mask_dilation is not None:
+        opts.append(('--adetailer-mask-dilations', args.adetailer_mask_dilation))
+
+    if wrapper.adetailer_crop_control_image:
+        opts.append(('--adetailer-crop-control-image',))
+
+    if wrapper.text_encoder_uris:
+        opts.append(('--text-encoders', ['+' if x is None else x for x in wrapper.text_encoder_uris]))
+
+    if wrapper.second_model_text_encoder_uris:
+        opts.append(('--second-model-text-encoders',
+                     ['+' if x is None else x for x in wrapper.second_model_text_encoder_uris]))
+
+    if wrapper.s_cascade_decoder_uri is not None:
+        opts.append(('--s-cascade-decoder', wrapper.s_cascade_decoder_uri))
+
+    if wrapper.revision is not None and wrapper.revision != 'main':
+        opts.append(('--revision', wrapper.revision))
+
+    if wrapper.variant is not None:
+        opts.append(('--variant', wrapper.variant))
+
+    if wrapper.subfolder is not None:
+        opts.append(('--subfolder', wrapper.subfolder))
+
+    if wrapper.unet_uri is not None:
+        opts.append(('--unet', wrapper.unet_uri))
+
+    if wrapper.second_model_unet_uri is not None:
+        opts.append(('--second-model-unet', wrapper.second_model_unet_uri))
+
+    if wrapper.transformer_uri is not None:
+        opts.append(('--transformer', wrapper.transformer_uri))
+
+    if wrapper.vae_uri is not None:
+        opts.append(('--vae', wrapper.vae_uri))
+
+    if args.vae_tiling:
+        opts.append(('--vae-tiling',))
+
+    if args.vae_slicing:
+        opts.append(('--vae-slicing',))
+
+    if wrapper.model_cpu_offload:
+        opts.append(('--model-cpu-offload',))
+
+    if wrapper.model_sequential_offload:
+        opts.append(('--model-sequential-offload',))
+
+    if wrapper.second_model_cpu_offload:
+        opts.append(('--second-model-cpu-offload',))
+
+    if wrapper.second_model_sequential_offload:
+        opts.append(('--second-model-sequential-offload',))
+
+    if wrapper.sdxl_refiner_uri is not None:
+        opts.append(('--sdxl-refiner', wrapper.sdxl_refiner_uri))
+
+    if args.sdxl_refiner_edit:
+        opts.append(('--sdxl-refiner-edit',))
+
+    if wrapper.lora_uris:
+        opts.append(('--loras', wrapper.lora_uris))
+
+    if wrapper.lora_fuse_scale is not None:
+        opts.append(('--lora-fuse-scale', wrapper.lora_fuse_scale))
+
+    if wrapper.image_encoder_uri:
+        opts.append(('--image-encoder', wrapper.image_encoder_uri))
+
+    if wrapper.ip_adapter_uris:
+        opts.append(('--ip-adapters', wrapper.ip_adapter_uris))
+
+    if wrapper.textual_inversion_uris:
+        opts.append(('--textual-inversions', wrapper.textual_inversion_uris))
+
+    if wrapper.controlnet_uris:
+        opts.append(('--control-nets', wrapper.controlnet_uris))
+
+    if wrapper.t2i_adapter_uris:
+        opts.append(('--t2i-adapters', wrapper.t2i_adapter_uris))
+
+    if args.sdxl_t2i_adapter_factor is not None:
+        opts.append(('--sdxl-t2i-adapter-factors', args.sdxl_t2i_adapter_factor))
+
+    if args.scheduler_uri is not None:
+        opts.append(('--scheduler', args.scheduler_uri))
+
+    if args.second_model_scheduler_uri is not None:
+        if args.second_model_scheduler_uri != args.scheduler_uri:
+            opts.append(('--second-model-scheduler', args.second_model_scheduler_uri))
+
+    if args.freeu_params is not None:
+        opts.append(('--freeu-params', ','.join(map(str, args.freeu_params))))
+
+    if args.hi_diffusion:
+        opts.append(('--hi-diffusion',))
+
+    if args.hi_diffusion_no_win_attn:
+        opts.append(('--hi-diffusion-no-win-attn',))
+
+    if args.hi_diffusion_no_raunet:
+        opts.append(('--hi-diffusion-no-raunet',))
+
+    if args.sdxl_refiner_freeu_params is not None:
+        opts.append(('--sdxl-refiner-freeu-params', ','.join(map(str, args.sdxl_refiner_freeu_params))))
+
+    if args.tea_cache:
+        opts.append(('--tea-cache',))
+
+    if args.tea_cache_rel_l1_threshold is not None and \
+            args.tea_cache_rel_l1_threshold != _constants.DEFAULT_TEA_CACHE_REL_L1_THRESHOLD:
+        opts.append(('--tea-cache-rel-l1-thresholds', args.tea_cache_rel_l1_threshold))
+
+    if args.ras:
+        opts.append(('--ras',))
+
+    if args.ras_index_fusion:
+        opts.append(('--ras-index-fusion',))
+
+    if args.ras_sample_ratio is not None and \
+            args.ras_sample_ratio != _constants.DEFAULT_RAS_SAMPLE_RATIO:
+        opts.append(('--ras-sample-ratios', args.ras_sample_ratio))
+
+    if args.ras_high_ratio is not None and \
+            args.ras_high_ratio != _constants.DEFAULT_RAS_HIGH_RATIO:
+        opts.append(('--ras-high-ratios', args.ras_high_ratio))
+
+    if args.ras_starvation_scale is not None \
+            and args.ras_starvation_scale != _constants.DEFAULT_RAS_STARVATION_SCALE:
+        opts.append(('--ras-starvation-scales', args.ras_starvation_scale))
+
+    if args.ras_error_reset_steps is not None and \
+            args.ras_error_reset_steps != _constants.DEFAULT_RAS_ERROR_RESET_STEPS:
+        opts.append(('--ras-error-reset-steps', ','.join(map(str, args.ras_error_reset_steps))))
+
+    if args.ras_metric is not None and \
+            args.ras_metric != _constants.DEFAULT_RAS_METRIC:
+        opts.append(('--ras-metrics', args.ras_metric))
+
+    if args.ras_start_step is not None and \
+            args.ras_start_step != _constants.DEFAULT_RAS_START_STEP:
+        opts.append(('--ras-start-steps', args.ras_start_step))
+
+    if args.ras_end_step is not None and \
+            args.ras_end_step != args.inference_steps:
+        opts.append(('--ras-end-steps', args.ras_end_step))
+
+    if args.ras_skip_num_step is not None and \
+            args.ras_skip_num_step != _constants.DEFAULT_RAS_SKIP_NUM_STEP:
+        opts.append(('--ras-skip-num-steps', args.ras_skip_num_step))
+
+    if args.ras_skip_num_step_length is not None and \
+            args.ras_skip_num_step_length != _constants.DEFAULT_RAS_SKIP_NUM_STEP_LENGTH:
+        opts.append(('--ras-skip-num-step-lengths', args.ras_skip_num_step_length))
+
+    if args.deep_cache:
+        opts.append(('--deep-cache',))
+
+    if args.deep_cache_interval is not None and \
+            args.deep_cache_interval != _constants.DEFAULT_DEEP_CACHE_INTERVAL:
+        opts.append(('--deep-cache-intervals', args.deep_cache_interval))
+
+    if args.deep_cache_branch_id is not None and \
+            args.deep_cache_branch_id != _constants.DEFAULT_DEEP_CACHE_BRANCH_ID:
+        opts.append(('--deep-cache-branch-ids', args.deep_cache_branch_id))
+
+    if args.sdxl_refiner_deep_cache:
+        opts.append(('--sdxl-refiner-deep-cache',))
+
+    if args.sdxl_refiner_deep_cache_interval is not None and \
+            args.sdxl_refiner_deep_cache_interval != _constants.DEFAULT_SDXL_REFINER_DEEP_CACHE_INTERVAL:
+        opts.append(('--sdxl-refiner-deep-cache-intervals', args.sdxl_refiner_deep_cache_interval))
+
+    if args.sdxl_refiner_deep_cache_branch_id is not None and \
+            args.sdxl_refiner_deep_cache_branch_id != _constants.DEFAULT_SDXL_REFINER_DEEP_CACHE_BRANCH_ID:
+        opts.append(('--sdxl-refiner-deep-cache-branch-ids', args.sdxl_refiner_deep_cache_branch_id))
+
+    if args.pag_scale == _constants.DEFAULT_PAG_SCALE \
+            and args.pag_adaptive_scale == _constants.DEFAULT_PAG_ADAPTIVE_SCALE:
+        opts.append(('--pag',))
+    else:
+        if args.pag_scale is not None:
+            opts.append(('--pag-scales', args.pag_scale))
+        if args.pag_adaptive_scale is not None:
+            opts.append(('--pag-adaptive-scales', args.pag_adaptive_scale))
+
+    if args.sdxl_refiner_pag_scale == _constants.DEFAULT_SDXL_REFINER_PAG_SCALE and \
+            args.sdxl_refiner_pag_adaptive_scale == _constants.DEFAULT_SDXL_REFINER_PAG_ADAPTIVE_SCALE:
+        opts.append(('--sdxl-refiner-pag',))
+    else:
+        if args.sdxl_refiner_pag_scale is not None:
+            opts.append(('--sdxl-refiner-pag-scales', args.sdxl_refiner_pag_scale))
+        if args.sdxl_refiner_pag_adaptive_scale is not None:
+            opts.append(('--sdxl-refiner-pag-adaptive-scales', args.sdxl_refiner_pag_adaptive_scale))
+
+    if args.sdxl_high_noise_fraction is not None:
+        opts.append(('--sdxl-high-noise-fractions', args.sdxl_high_noise_fraction))
+
+    if args.second_model_inference_steps is not None:
+        opts.append(('--second-model-inference-steps', args.second_model_inference_steps))
+
+    if args.second_model_guidance_scale is not None:
+        opts.append(('--second-model-guidance-scales', args.second_model_guidance_scale))
+
+    if args.sdxl_refiner_sigmas is not None:
+        if isinstance(args.sdxl_refiner_sigmas, str):
+            opts.append(('--sdxl-refiner-sigmas',
+                         f'expr: {args.sdxl_refiner_sigmas}'))
+        else:
+            opts.append(('--sdxl-refiner-sigmas',
+                         ','.join(map(str, args.sdxl_refiner_sigmas))))
+
+    if args.sdxl_refiner_guidance_rescale is not None:
+        opts.append(('--sdxl-refiner-guidance-rescales', args.sdxl_refiner_guidance_rescale))
+
+    if args.sdxl_aesthetic_score is not None:
+        opts.append(('--sdxl-aesthetic-scores', args.sdxl_aesthetic_score))
+
+    if args.sdxl_original_size is not None:
+        opts.append(('--sdxl-original-size', args.sdxl_original_size))
+
+    if args.sdxl_target_size is not None:
+        opts.append(('--sdxl-target-size', args.sdxl_target_size))
+
+    if args.sdxl_crops_coords_top_left is not None:
+        opts.append(('--sdxl-crops-coords-top-left', args.sdxl_crops_coords_top_left))
+
+    if args.sdxl_negative_aesthetic_score is not None:
+        opts.append(('--sdxl-negative-aesthetic-scores', args.sdxl_negative_aesthetic_score))
+
+    if args.sdxl_negative_original_size is not None:
+        opts.append(('--sdxl-negative-original-sizes', args.sdxl_negative_original_size))
+
+    if args.sdxl_negative_target_size is not None:
+        opts.append(('--sdxl-negative-target-sizes', args.sdxl_negative_target_size))
+
+    if args.sdxl_negative_crops_coords_top_left is not None:
+        opts.append(('--sdxl-negative-crops-coords-top-left', args.sdxl_negative_crops_coords_top_left))
+
+    if args.sdxl_refiner_aesthetic_score is not None:
+        opts.append(('--sdxl-refiner-aesthetic-scores', args.sdxl_refiner_aesthetic_score))
+
+    if args.sdxl_refiner_original_size is not None:
+        opts.append(('--sdxl-refiner-original-sizes', args.sdxl_refiner_original_size))
+
+    if args.sdxl_refiner_target_size is not None:
+        opts.append(('--sdxl-refiner-target-sizes', args.sdxl_refiner_target_size))
+
+    if args.sdxl_refiner_crops_coords_top_left is not None:
+        opts.append(('--sdxl-refiner-crops-coords-top-left', args.sdxl_refiner_crops_coords_top_left))
+
+    if args.sdxl_refiner_negative_aesthetic_score is not None:
+        opts.append(('--sdxl-refiner-negative-aesthetic-scores', args.sdxl_refiner_negative_aesthetic_score))
+
+    if args.sdxl_refiner_negative_original_size is not None:
+        opts.append(('--sdxl-refiner-negative-original-sizes', args.sdxl_refiner_negative_original_size))
+
+    if args.sdxl_refiner_negative_target_size is not None:
+        opts.append(('--sdxl-refiner-negative-target-sizes', args.sdxl_refiner_negative_target_size))
+
+    if args.sdxl_refiner_negative_crops_coords_top_left is not None:
+        opts.append(
+            ('--sdxl-refiner-negative-crops-coords-top-left', args.sdxl_refiner_negative_crops_coords_top_left))
+
+    if args.width is not None and args.height is not None:
+        opts.append(('--output-size', f'{args.width}x{args.height}'))
+    elif args.width is not None:
+        opts.append(('--output-size', f'{args.width}'))
+
+    if args.latents is not None:
+        # Note: We can't reconstruct the actual tensor files since they're loaded tensors,
+        # so this would need to be specified manually in extra_opts
+        pass
+
+    if args.denoising_start is not None:
+        opts.append(('--denoising-start', args.denoising_start))
+
+    if args.denoising_end is not None:
+        opts.append(('--denoising-end', args.denoising_end))
+
+    if args.latents_input_processor_uris:
+        opts.append(('--latents-processors', args.latents_input_processor_uris))
+
+    if args.img2img_latents_input_processor_uris:
+        opts.append(('--img2img-latents-processors', args.img2img_latents_input_processor_uris))
+
+    if args.latents_output_processor_uris:
+        opts.append(('--latents-post-processors', args.latents_output_processor_uris))
+
+    if extra_opts is not None:
+        for opt in extra_opts:
+            opts.append(opt)
+
+    if shell_quote:
+        for idx, option in enumerate(opts):
+            if len(option) > 1:
+                name, value = option
+                if isinstance(value, (str, _prompt.Prompt)):
+                    opts[idx] = (name, _textprocessing.shell_quote(str(value)))
+                elif isinstance(value, tuple):
+                    opts[idx] = (name, _textprocessing.format_size(value))
+                else:
+                    opts[idx] = (name, str(value))
+            else:
+                solo_val = str(option[0])
+                if not solo_val.startswith('-'):
+                    # not a solo switch option, some value
+                    opts[idx] = (_textprocessing.shell_quote(solo_val),)
+
+    return opts
+
+
+def _set_opt_value_syntax(val):
+    """Helper function to format option values with proper syntax."""
+    if isinstance(val, tuple):
+        return _textprocessing.format_size(val)
+    if isinstance(val, str):
+        return _textprocessing.shell_quote(str(val))
+
+    try:
+        val_iter = iter(val)
+    except TypeError:
+        return _textprocessing.shell_quote(str(val))
+
+    return ' '.join(_set_opt_value_syntax(v) for v in val_iter)
+
+
+def _format_option_pair(val):
+    """Helper function to format option pairs for command line output."""
+    if len(val) > 1:
+        opt_name, opt_value = val
+
+        if isinstance(opt_value, _prompt.Prompt):
+            header_len = len(opt_name) + 2
+            prompt_text = \
+                _textprocessing.wrap(
+                    _textprocessing.shell_quote(str(opt_value)),
+                    subsequent_indent=' ' * header_len,
+                    width=75)
+
+            prompt_text = ' \\\n'.join(prompt_text.split('\n'))
+
+            if '\n' in prompt_text:
+                # need to escape the comment token
+                prompt_text = prompt_text.replace('#', r'\#')
+
+            return f'{opt_name} {prompt_text}'
+
+        return f'{opt_name} {_set_opt_value_syntax(opt_value)}'
+
+    solo_val = str(val[0])
+
+    if solo_val.startswith('-'):
+        return solo_val
+
+    # Not a switch option, some value
+    return _textprocessing.shell_quote(solo_val)
+
+
+def gen_dgenerate_config(wrapper: DiffusionPipelineWrapper,
+                         args: DiffusionArguments | None = None,
+                         extra_opts: collections.abc.Sequence[tuple[str] | tuple[str, typing.Any]] | None = None,
+                         extra_comments: collections.abc.Iterable[str] | None = None,
+                         omit_device: bool = False,
+                         **kwargs) -> str:
+    """
+    Generate a valid dgenerate config file with a single invocation that reproduces the 
+    arguments associated with :py:class:`.DiffusionArguments`.
+    
+    This does not reproduce ``--image-seeds``, you must include that value in ``extra_opts``, 
+    this is because there is not enough information in :py:class:`.DiffusionArguments` to
+    accurately reproduce it.
+
+    :param wrapper: DiffusionPipelineWrapper instance to extract configuration from
+    :param args: :py:class:`.DiffusionArguments` object to take values from
+    :param extra_opts: Extra option pairs to be added to the end of reconstructed options
+        of the dgenerate invocation, this should be a sequence of tuples of length 1 (switch only)
+        or length 2 (switch with args)
+    :param extra_comments: Extra strings to use as comments after the initial
+        version check directive
+    :param omit_device: Omit the ``--device`` option? For a shareable configuration it might not
+        make sense to include the device specification. And instead simply fallback to whatever 
+        the default device is, which is generally ``cuda``
+    :param kwargs: pipeline wrapper keyword arguments, these will override values derived from
+        any :py:class:`.DiffusionArguments` object given to the *args* argument. See:
+        :py:class:`.DiffusionArguments.get_pipeline_wrapper_kwargs`
+    :return: The configuration as a string
+    """
+    from dgenerate import __version__
+
+    config = f'#! /usr/bin/env dgenerate --file\n#! dgenerate {__version__}\n\n'
+
+    if extra_comments:
+        wrote_comments = False
+        for comment in extra_comments:
+            wrote_comments = True
+            for part in comment.split('\n'):
+                config += '# ' + part.rstrip()
+
+        if wrote_comments:
+            config += '\n\n'
+
+    opts = reconstruct_dgenerate_opts(wrapper, args, **kwargs,
+                                      shell_quote=False,
+                                      omit_device=omit_device)
+
+    if extra_opts is not None:
+        for opt in extra_opts:
+            opts.append(opt)
+
+    for opt in opts[:-1]:
+        config += f'{_format_option_pair(opt)} \\\n'
+
+    last = opts[-1]
+
+    return config + _format_option_pair(last)
+
+
+def gen_dgenerate_command(wrapper: DiffusionPipelineWrapper,
+                          args: DiffusionArguments | None = None,
+                          extra_opts: collections.abc.Sequence[tuple[str] | tuple[str, typing.Any]] | None = None,
+                          omit_device: bool = False,
+                          **kwargs) -> str:
+    """
+    Generate a valid dgenerate command line invocation that reproduces the 
+    arguments associated with :py:class:`.DiffusionArguments`.
+    
+    This does not reproduce ``--image-seeds``, you must include that value in ``extra_opts``, 
+    this is because there is not enough information in :py:class:`.DiffusionArguments` to
+    accurately reproduce it.
+
+    :param wrapper: DiffusionPipelineWrapper instance to extract configuration from
+    :param args: :py:class:`.DiffusionArguments` object to take values from
+    :param extra_opts: Extra option pairs to be added to the end of reconstructed options
+        of the dgenerate invocation, this should be a sequence of tuples of length 1 (switch only)
+        or length 2 (switch with args)
+    :param omit_device: Omit the ``--device`` option? For a shareable configuration it might not
+        make sense to include the device specification. And instead simply fallback to whatever 
+        the default device is, which is generally ``cuda``
+    :param kwargs: pipeline wrapper keyword arguments, these will override values derived from
+        any :py:class:`.DiffusionArguments` object given to the *args* argument. See:
+        :py:class:`.DiffusionArguments.get_pipeline_wrapper_kwargs`
+    :return: A string containing the dgenerate command line needed to reproduce this result.
+    """
+    opt_string = \
+        ' '.join(
+            f"{_format_option_pair(opt)}"
+            for opt in reconstruct_dgenerate_opts(
+                wrapper, args, **kwargs,
+                extra_opts=extra_opts,
+                omit_device=omit_device,
+                shell_quote=False))
+
+    return f'dgenerate {opt_string}'

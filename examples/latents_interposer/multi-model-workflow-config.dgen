@@ -1,0 +1,57 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 5.0.0
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+# Multi-model workflow example using latents interposer
+
+# This demonstrates a complex workflow where latents are passed
+# between different model types: SD1.x -> SDXL -> SD3
+
+# Step 1: Generate base concept with SD1.x
+
+stable-diffusion-v1-5/stable-diffusion-v1-5
+--inference-steps 20
+--guidance-scales 7.5
+--output-path multi_model_workflow
+--image-format pt
+--prompts "a peaceful zen garden with cherry blossoms"
+
+# Step 2: Upscale and refine with SDXL using interposer
+
+stabilityai/stable-diffusion-xl-base-1.0
+--model-type torch-sdxl
+--dtype float16
+--variant fp16
+--inference-steps 25
+--guidance-scales 8.0
+--output-path multi_model_workflow
+--output-size 1024x1024
+--image-seeds {{ quote(last_images) }}
+--image-format pt
+--img2img-latents-processors "interposer;source=v1;target=xl"
+--prompts "a peaceful zen garden with cherry blossoms, traditional Japanese style, detailed textures"
+
+# Step 3: Final processing with SD3 for highest quality
+
+{% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 24 %}
+    \set optimization --quantizer bnb;bits=8
+{% else %}
+    \set optimization --model-sequential-offload
+{% endif %}
+
+stabilityai/stable-diffusion-3-medium-diffusers
+--model-type torch-sd3 {{ optimization }}
+--variant fp16
+--dtype float16
+--inference-steps 30
+--guidance-scales 7.0
+--output-path multi_model_workflow
+--image-seeds {{ quote(last_images) }}
+--img2img-latents-processors "interposer;source=xl;target=v3" "scaler;scale=1.05;normalize=true"
+--prompts "a peaceful zen garden with cherry blossoms, traditional Japanese style, detailed textures, masterpiece quality, photorealistic"
