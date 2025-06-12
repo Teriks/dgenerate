@@ -1,0 +1,33 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 5.0.0
+
+# Basic example of using the latents interposer processor
+# to convert SD1.x latents to SDXL latents
+
+# This example generates latents with SD1.x model and converts them
+# to SDXL latent space using the interposer processor, then processes
+# them with an SDXL model for final generation
+
+# Generate initial latents with SD1.x model
+
+stable-diffusion-v1-5/stable-diffusion-v1-5
+--inference-steps 20
+--guidance-scales 7
+--output-path sd1_to_sdxl_basic
+--image-format pt
+--prompts "a serene mountain landscape at sunset"
+
+# Process the SD1.x latents with SDXL model using interposer processor
+# The interposer;source=v1;target=xl converts SD1.x latents to SDXL space
+
+stabilityai/stable-diffusion-xl-base-1.0
+--model-type torch-sdxl
+--dtype float16
+--variant fp16
+--inference-steps 30
+--guidance-scales 7
+--output-path sd1_to_sdxl_basic
+--image-seeds {{ quote(last_images) }}
+--img2img-latents-processors "interposer;source=v1;target=xl"
+--seed-image-processors grayscale
+--prompts "a serene mountain landscape at sunset, highly detailed, photorealistic" 

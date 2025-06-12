@@ -1,0 +1,44 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 5.0.0
+
+# Example demonstrating Flux to SDXL latents conversion
+
+# Generate initial latents with Flux model
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+{% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 15 %}
+    \set optimization --quantizer bnb;bits=4
+{% else %}
+    \set optimization --model-sequential-offload
+{% endif %}
+
+
+black-forest-labs/FLUX.1-schnell
+--model-type torch-flux {{ optimization }}
+--dtype bfloat16
+--max-sequence-length 256
+--inference-steps 4
+--guidance-scales 0
+--output-path flux_to_sdxl
+--image-format pt
+--prompts "a cyberpunk city at night, neon lights, futuristic architecture"
+
+# Convert Flux latents to SDXL space and process with SDXL model
+# The interposer handles the conversion from Flux (fx) to SDXL (xl) space
+
+stabilityai/stable-diffusion-xl-base-1.0
+--model-type torch-sdxl
+--dtype float16
+--variant fp16
+--inference-steps 30
+--guidance-scales 8.0
+--output-path flux_to_sdxl
+--image-seeds {{ quote(last_images) }}
+--img2img-latents-processors "interposer;source=fx;target=xl"
+--prompts "a cyberpunk city at night, neon lights, futuristic architecture, highly detailed, sharp focus" 

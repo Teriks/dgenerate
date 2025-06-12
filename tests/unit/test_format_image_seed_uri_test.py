@@ -174,6 +174,53 @@ class TestFormatImageSeedURI(unittest.TestCase):
         with self.assertRaises(ValueError):
             format_image_seed_uri(seed_images="seed.png", adapter_images=["adapter1.png"], floyd_image="floyd.png")
 
+    def test_seed_with_adapter_and_mask(self):
+        result = format_image_seed_uri(
+            seed_images="seed.png",
+            adapter_images=["adapter1.png", "adapter2.png"],
+            mask_images="mask.png"
+        )
+        self.assertEqual(result, "seed.png;mask=mask.png;adapter=adapter1.png + adapter2.png")
+
+    def test_seed_with_adapter_and_control(self):
+        result = format_image_seed_uri(
+            seed_images="seed.png",
+            adapter_images=["adapter1.png", "adapter2.png"],
+            control_images="control.png"
+        )
+        self.assertEqual(result, "seed.png;adapter=adapter1.png + adapter2.png;control=control.png")
+
+    def test_seed_with_adapter_mask_and_control(self):
+        result = format_image_seed_uri(
+            seed_images="seed.png",
+            adapter_images=["adapter1.png", "adapter2.png"],
+            mask_images="mask.png",
+            control_images="control.png"
+        )
+        self.assertEqual(result, "seed.png;mask=mask.png;adapter=adapter1.png + adapter2.png;control=control.png")
+
+    def test_basic_seed_with_adapter(self):
+        result = format_image_seed_uri(
+            seed_images='image',
+            adapter_images=['test']
+        )
+        self.assertEqual(result, "image;adapter=test")
+
+    def test_debug_case(self):
+        # Test case matching the debug output exactly
+        result = format_image_seed_uri(
+            seed_images='test',
+            mask_images='',
+            control_images='',
+            adapter_images=['test2'],
+            latents='',
+            resize='',
+            aspect=True,
+            frame_start=None,
+            frame_end=None
+        )
+        self.assertEqual(result, "test;adapter=test2")
+
 
 if __name__ == '__main__':
     unittest.main()
