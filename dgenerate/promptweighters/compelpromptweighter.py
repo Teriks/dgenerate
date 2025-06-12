@@ -24,6 +24,8 @@ import inspect
 import re
 import typing
 
+import diffusers
+
 from dgenerate.extras import compel as _compel
 import torch
 
@@ -186,7 +188,7 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
 
     @torch.inference_mode()
     def translate_to_embeds(self,
-                            pipeline,
+                            pipeline: diffusers.DiffusionPipeline,
                             device: str,
                             args: dict[str, any]):
 

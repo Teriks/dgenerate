@@ -211,6 +211,12 @@ try:
         ImageProcessorError,
     )
 
+    from dgenerate.latentsprocessors import (
+        LatentsProcessorArgumentError,
+        LatentsProcessorNotFoundError,
+        LatentsProcessorError
+    )
+
     from dgenerate.plugin import (
         ModuleFileNotFoundError,
         PluginNotFoundError,

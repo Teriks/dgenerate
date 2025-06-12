@@ -1,6 +1,11 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 5.0.0
 
+{% if "--output-metadata" in injected_args %}
+    \set _ {{ injected_args.remove("--output-metadata") }}
+{% endif %}
+
+
 # Using --denoising-end and --denoising-start we can split
 # the denoising process of a Stable Diffusion pipeline into two stages,
 # allowing us to pass the latents from the first stage to the second stage.

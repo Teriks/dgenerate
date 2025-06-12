@@ -21,25 +21,23 @@
 
 import torch
 
-import dgenerate.latentsprocessors.exceptions as _exceptions
 import dgenerate.latentsprocessors.latentsprocessor as _latentsprocessor
-import dgenerate.pipelinewrapper.enums as _enums
 
 __doc__ = """
 Latents scaling processor implementation.
 """
 
 
-class LatentsScalerProcessor(_latentsprocessor.LatentsProcessor):
+class ScaleProcessor(_latentsprocessor.LatentsProcessor):
     """
-    Scales and normalizes latents tensors with various operations.
+    Scales and normalizes latents tensors.
     
     This processor provides scaling, clamping, and normalization operations
     for latents tensors, useful for controlling the magnitude and range
     of latent representations. The scaling is applied first, followed by
     optional normalization to unit variance, and finally value clamping.
 
-    The "scale" argument multiplies all tensor values by the specified factor.
+    The "factor" argument multiplies all tensor values by the specified factor.
     Values greater than 1.0 increase the magnitude while values less than 1.0
     decrease it. If "normalize" is enabled, the tensor will be normalized to
     have unit variance after scaling. The "clamp_min" and "clamp_max" arguments
@@ -48,100 +46,67 @@ class LatentsScalerProcessor(_latentsprocessor.LatentsProcessor):
     This processor is useful for adjusting the dynamic range of latents before
     or after other processing steps in the diffusion pipeline.
     """
-    
-    NAMES = ['scaler']
+
+    NAMES = ['scale']
+
+    # hide inherited arguments
+    # that are device related
+    HIDE_ARGS = ['device', 'model-offload']
 
     def __init__(self,
-                 loaded_by_name: str,
-                 model_type: _enums.ModelType,
-                 device: str = 'cpu',
-                 local_files_only: bool = False,
-                 scale: float = 1.0,
-                 clamp_min: float = None,
-                 clamp_max: float = None,
+                 factor: float = 1.0,
+                 clamp_min: float | None = None,
+                 clamp_max: float | None = None,
                  normalize: bool = False,
                  **kwargs):
         """
-        :param loaded_by_name: The name the processor was loaded by
-        :param model_type: Model type enum
-        :param device: Device to run processing on
-        :param local_files_only: Whether to avoid downloading files from the internet
-        :param scale: Scaling factor to multiply tensor values. Must be positive
+        :param factor: Scaling factor to multiply tensor values. Must be positive
         :param clamp_min: Minimum value to clamp tensor values to (optional)
         :param clamp_max: Maximum value to clamp tensor values to (optional)
         :param normalize: Whether to normalize tensor to unit variance after scaling
         :param kwargs: Additional arguments passed to base class
         """
-        super().__init__(loaded_by_name=loaded_by_name,
-                         model_type=model_type,
-                         device=device,
-                         local_files_only=local_files_only,
-                         **kwargs)
-        
-        if scale <= 0:
-            raise _exceptions.LatentsProcessorArgumentError(
-                f"scale must be positive, got {scale}")
-        
+        super().__init__(**kwargs)
+
+        if factor <= 0:
+            raise self.argument_error(
+                f"scale must be positive, got {factor}")
+
         if clamp_min is not None and clamp_max is not None and clamp_min >= clamp_max:
-            raise _exceptions.LatentsProcessorArgumentError(
+            raise self.argument_error(
                 f"clamp_min ({clamp_min}) must be less than clamp_max ({clamp_max})")
-        
-        self._scale = scale
+
+        self._factor = factor
         self._clamp_min = clamp_min
         self._clamp_max = clamp_max
         self._normalize = normalize
 
-    @property
-    def scale(self) -> float:
-        """Get the scaling factor."""
-        return self._scale
-
-    @property
-    def clamp_min(self) -> float:
-        """Get the minimum clamp value."""
-        return self._clamp_min
-
-    @property
-    def clamp_max(self) -> float:
-        """Get the maximum clamp value."""
-        return self._clamp_max
-
-    @property
-    def normalize(self) -> bool:
-        """Get whether normalization is enabled."""
-        return self._normalize
-
-    def process(self,
-                pipeline,
-                latents: torch.Tensor) -> torch.Tensor:
+    def impl_process(self,
+                     pipeline,
+                     latents: torch.Tensor) -> torch.Tensor:
         """
         Scale and process the latents tensor.
         
         :param pipeline: The pipeline object
-        :param latents: Input latents tensor with shape [B, C, W, H]
-        :return: Scaled and processed latents tensor, shape [B, C, W, H]
+        :param latents: Input latents tensor with shape [B, C, H, W]
+        :return: Scaled and processed latents tensor, shape [B, C, H, W]
         """
-        try:
-            import torch
-            
-            result = latents.clone()
-            
-            # Apply scaling
-            if self._scale != 1.0:
-                result = result * self._scale
-            
-            # Apply normalization
-            if self._normalize:
-                # Normalize to have unit variance
-                std = result.std()
-                if std > 1e-8:  # Avoid division by zero
-                    result = result / std
-            
-            # Apply clamping
-            if self._clamp_min is not None or self._clamp_max is not None:
-                result = result.clamp(min=self._clamp_min, max=self._clamp_max)
-            
-            return result
-            
-        except Exception as e:
-            raise _exceptions.LatentsProcessorError(f"Failed to scale latents: {e}") from e 
+
+        result = latents.clone()
+
+        # Apply scaling
+        if self._factor != 1.0:
+            result = result * self._factor
+
+        # Apply normalization
+        if self._normalize:
+            # Normalize to have unit variance
+            std = result.std()
+            if std > 1e-8:  # Avoid division by zero
+                result = result / std
+
+        # Apply clamping
+        if self._clamp_min is not None or self._clamp_max is not None:
+            result = result.clamp(min=self._clamp_min, max=self._clamp_max)
+
+        return result

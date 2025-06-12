@@ -4,7 +4,7 @@ import ast
 import inspect
 import textwrap
 import dgenerate.pygments
-import dgenerate.promptupscalers
+import dgenerate
 import sphinx.highlighting
 from importlib.machinery import SourceFileLoader
 
@@ -123,4 +123,10 @@ convert_constants_to_rst(
     dgenerate.imageprocessors.constants,
     'dgenerate.imageprocessors.constants',
     'imageprocessors_constants.rst'
+)
+
+convert_constants_to_rst(
+    dgenerate.latentsprocessors.constants,
+    'dgenerate.latentsprocessors.constants',
+    'latentsprocessors_constants.rst'
 )

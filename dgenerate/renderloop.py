@@ -42,6 +42,7 @@ import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
 import dgenerate.promptweighters as _promptweighters
 import dgenerate.textprocessing as _textprocessing
+import dgenerate.torchutil as _torchutil
 import dgenerate.types as _types
 from dgenerate.events import \
     Event as _Event, \
@@ -595,6 +596,15 @@ class RenderLoop:
 
         return render_loop_opts
 
+    def _get_gen_config_overrides(self):
+        # We already define --seed-image-processors in extra opts,
+        # and this value maps to that as well, so override it with None
+        # so the option is not generated twice
+
+        return {
+            'decoded_latents_image_processor_uris': None
+        }
+
     def _setup_batch_size_config_opts(self,
                                       file_title: str,
                                       extra_opts_out: list[tuple[str, typing.Any] | tuple[str]],
@@ -616,26 +626,29 @@ class RenderLoop:
                               args: _pipelinewrapper.DiffusionArguments | None = None,
                               extra_opts:
                               collections.abc.Sequence[tuple[str] | tuple[str, typing.Any]] | None = None,
-                              extra_comments: collections.abc.Iterable[str] | None = None,
-                              **kwargs) -> str:
+                              extra_comments: collections.abc.Iterable[str] | None = None) -> str:
 
-        return self._pipeline_wrapper.gen_dgenerate_config(args,
-                                                           extra_opts=self._get_base_extra_config_opts(args) + (
-                                                               extra_opts if extra_opts else []),
-                                                           extra_comments=extra_comments,
-                                                           omit_device=True,
-                                                           **kwargs)
+        return self._pipeline_wrapper.gen_dgenerate_config(
+            args,
+            extra_opts=self._get_base_extra_config_opts(args) + (
+                extra_opts if extra_opts else []),
+            extra_comments=extra_comments,
+            omit_device=True,
+            overrides=self._get_gen_config_overrides()
+        )
 
     def _gen_dgenerate_command(self,
                                args: _pipelinewrapper.DiffusionArguments | None = None,
-                               extra_opts: collections.abc.Sequence[tuple[str] | tuple[str, typing.Any]] | None = None,
-                               **kwargs) -> str:
+                               extra_opts: collections.abc.Sequence[
+                                               tuple[str] | tuple[str, typing.Any]] | None = None) -> str:
 
-        return self._pipeline_wrapper.gen_dgenerate_command(args,
-                                                            extra_opts=self._get_base_extra_config_opts(args) + (
-                                                                extra_opts if extra_opts else []),
-                                                            omit_device=True,
-                                                            **kwargs)
+        return self._pipeline_wrapper.gen_dgenerate_command(
+            args,
+            extra_opts=self._get_base_extra_config_opts(args) + (
+                extra_opts if extra_opts else []),
+            omit_device=True,
+            overrides=self._get_gen_config_overrides()
+        )
 
     def _write_image(self,
                      filename_components: list[str],
@@ -650,10 +663,10 @@ class RenderLoop:
 
         extra_opts = []
         extra_comments = []
-        
+
         # Determine if we're outputting tensors or images
         is_output_latents = self._c_config.is_output_latents()
-        
+
         file_title = "Tensor" if is_output_latents else "Image"
         self._setup_batch_size_config_opts(file_title=file_title,
                                            extra_opts_out=extra_opts,
@@ -744,12 +757,12 @@ class RenderLoop:
                 path_or_file=output_filename,
                 file_format=self._c_config.image_format
             )
-            
+
             output_type_name = "Tensor"
         else:
             # Save image output
             assert image is not None
-                
+
             if self._c_config.output_metadata:
                 if output_filename.lower().endswith(('.jpg', '.jpeg')):
                     image.save(
@@ -770,7 +783,7 @@ class RenderLoop:
                     _auto1111_metadata.convert_and_insert_metadata(
                         output_filename, dgenerate_config=config_txt
                     )
-            
+
             output_type_name = "Image"
 
         is_last_output = batch_index == generation_result.output_count - 1
@@ -806,12 +819,12 @@ class RenderLoop:
                                  diffusion_args: _pipelinewrapper.DiffusionArguments,
                                  generation_result: _pipelinewrapper.PipelineWrapperResult,
                                  image_seed: _mediainput.ImageSeed | None = None) -> RenderLoopEventStream:
-        
+
         # Determine if we're working with images or latents
         has_images = generation_result.has_images
         has_latents = generation_result.has_latents
         is_output_latents = self._c_config.is_output_latents()
-        
+
         if self._c_config.batch_grid_size is None:
             # Handle individual outputs (no grid)
             if has_images and not is_output_latents:
@@ -1090,11 +1103,6 @@ class RenderLoop:
                         sdxl_high_noise_fraction=sdxl_high_noise_fractions,
                         image_seed_strength=None,
                         upscaler_noise_level=None):
-
-                    if self._c_config.output_size is not None:
-                        diffusion_arguments.width = self._c_config.output_size[0]
-                        diffusion_arguments.height = self._c_config.output_size[1]
-
                     diffusion_arguments.batch_size = self._c_config.batch_size
                     diffusion_arguments.sdxl_refiner_edit = self._c_config.sdxl_refiner_edit
 
@@ -1112,7 +1120,11 @@ class RenderLoop:
         if self._c_config.post_processors is None:
             self._post_processor = None
         else:
-            self._post_processor = self._load_image_processors(self._c_config.post_processors)
+            self._post_processor = self.image_processor_loader.load(
+                self._c_config.post_processors,
+                device=self._c_config.device,
+                local_files_only=self._c_config.offline_mode
+            )
             _messages.debug_log('Loaded Post Processor:', self._post_processor)
 
     def _destroy_post_processor(self):
@@ -1272,20 +1284,14 @@ class RenderLoop:
 
             else:
                 def image_seed_iterator():
-
-                    # Stable cascade input images are used for style reference
-                    # and should not be resized, output dimension is determined
-                    # by the first image if no explicit width/height is provided
-                    # to the pipeline wrapper call, in addition, these images
-                    # do not need to match in dimension
+                    resize_resolution = self._c_config.output_size \
+                        if not _pipelinewrapper.model_type_uses_image_encoder(self._c_config.model_type) else None
 
                     yield from _mediainput.iterate_image_seed(
                         uri=parsed_image_seed,
                         frame_start=self._c_config.frame_start,
                         frame_end=self._c_config.frame_end,
-                        resize_resolution=
-                        self._c_config.output_size if not
-                        _pipelinewrapper.model_type_is_s_cascade(self._c_config.model_type) else None,
+                        resize_resolution=resize_resolution,
                         aspect_correct=not self._c_config.no_aspect,
                         seed_image_processor=seed_image_processor,
                         mask_image_processor=mask_image_processor,
@@ -1304,6 +1310,10 @@ class RenderLoop:
                                        ims_obj: _mediainput.ImageSeed):
                         if ims_obj.images is not None:
                             args.images = ims_obj.images
+                            if self._c_config.seed_image_processors and \
+                                    any(_torchutil.is_tensor(img) for img in ims_obj.images):
+                                args.decoded_latents_image_processor_uris = \
+                                    self._c_config.seed_image_processors
                         if ims_obj.latents is not None:
                             args.latents = ims_obj.latents
                         if ims_obj.mask_images is not None:
@@ -1331,6 +1341,10 @@ class RenderLoop:
                 with next(image_seed_iterator()) as image_seed:
                     if not is_control_guidance_spec and image_seed.images is not None:
                         diffusion_arguments.images = image_seed.images
+                        if self._c_config.seed_image_processors and \
+                                any(_torchutil.is_tensor(img) for img in image_seed.images):
+                            diffusion_arguments.decoded_latents_image_processor_uris = \
+                                self._c_config.seed_image_processors
 
                     if image_seed.latents is not None:
                         diffusion_arguments.latents = image_seed.latents

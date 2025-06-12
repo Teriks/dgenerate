@@ -18,14 +18,16 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-import dgenerate.latentsprocessors.latentsprocessor as _latentsprocessor
-import dgenerate.latentsprocessors.exceptions as _exceptions
-import dgenerate.plugin as _plugin
-from dgenerate.plugin import PluginArg as _Pa
-import dgenerate.pipelinewrapper.enums as _enums
-import dgenerate.types as _types
+import collections.abc
 import typing
+
+import dgenerate.latentsprocessors.exceptions as _exceptions
+import dgenerate.latentsprocessors.latentsprocessor as _latentsprocessor
+import dgenerate.latentsprocessors.latentsprocessorchain as _latentsprocessorchain
+import dgenerate.pipelinewrapper.enums as _enums
+import dgenerate.plugin as _plugin
+import dgenerate.types as _types
+from dgenerate.plugin import PluginArg as _Pa
 
 
 class LatentsProcessorLoader(_plugin.PluginLoader):
@@ -45,22 +47,45 @@ class LatentsProcessorLoader(_plugin.PluginLoader):
         self.add_search_module_string('dgenerate.latentsprocessors')
 
     def load(self,
-             uri: _types.Uri,
+             uri: _types.Uri | collections.abc.Iterable[_types.Uri],
              device: str = 'cpu',
              local_files_only: bool = False,
-             **kwargs) -> _latentsprocessor.LatentsProcessor:
+             **kwargs) -> _latentsprocessor.LatentsProcessor | _latentsprocessorchain.LatentsProcessorChain | None:
         """
-        Load a latents processor by URI.
+        Load a latents processor by URI / URI chain.
 
-        :param uri: latents processor URI
+        :param uri: latents processor URI / URI chain
         :param device: Request a specific rendering device, default is CPU
         :param local_files_only: Should the latents processor avoid downloading
             files from Hugging Face hub and only check the cache or local directories?
         :param kwargs: Additional plugin arguments
-        :return: :py:class:`dgenerate.latentsprocessors.LatentsProcessor`
+        :return: :py:class:`dgenerate.latentsprocessors.LatentsProcessor` or
+            :py:class:`dgenerate.latentsprocessors.LatentsProcessorChain`
         """
-        return typing.cast(_latentsprocessor.LatentsProcessor, super().load(
-            uri, model_type=model_type, device=device, local_files_only=local_files_only, **kwargs))
+        s = super()
+
+        if uri is None:
+            raise ValueError('uri must not be None')
+
+        if isinstance(uri, str):
+            return typing.cast(
+                _latentsprocessor.LatentsProcessor,
+                s.load(uri, device=device, local_files_only=local_files_only, **kwargs))
+
+        paths = list(uri)
+
+        if not paths:
+            return None
+
+        if len(paths) == 1:
+            return typing.cast(
+                _latentsprocessor.LatentsProcessor,
+                s.load(paths[0], device=device, local_files_only=local_files_only, **kwargs))
+
+        return _latentsprocessorchain.LatentsProcessorChain(
+            typing.cast(
+                _latentsprocessor.LatentsProcessor,
+                s.load(i, device=device, local_files_only=local_files_only, **kwargs)) for i in paths)
 
 
-__all__ = _types.module_all() 
+__all__ = _types.module_all()

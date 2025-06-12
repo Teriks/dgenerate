@@ -20,20 +20,16 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import os
-import typing
 
+import diffusers
+import huggingface_hub
+import safetensors.torch
 import torch
-import torch.nn as nn
-from safetensors.torch import load_file
-from huggingface_hub import hf_hub_download
 
-import dgenerate.latentsprocessors.exceptions as _exceptions
 import dgenerate.latentsprocessors.latentsprocessor as _latentsprocessor
-import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.messages as _messages
-
 from dgenerate.extras.sd_latent_interposer.interposer import InterposerModel as _InterposerModel
-from dgenerate.extras.sd_latent_interposer.interposer import config as _config as _INTERPOSER_CONFIG
+from dgenerate.extras.sd_latent_interposer.interposer import config as _INTERPOSER_CONFIG
 
 __doc__ = """
 Latent space interposer processor implementation.
@@ -47,31 +43,51 @@ class InterposerProcessor(_latentsprocessor.LatentsProcessor):
     """
     Converts latents between different diffusion model latent spaces.
 
-    This processor uses pre-trained neural network models to convert latents from
-    one diffusion model's latent space to another (e.g., SD1.x to SDXL, SDXL to SD3).
-    The conversion models are downloaded from the Hugging Face Hub or loaded from
-    local cache when available.
+    This processor uses pre-trained models to convert latents from one diffusion model's latent space
+    to another (e.g., SD1.x to SDXL, SDXL to SD3). The required conversion models are downloaded
+    from the Hugging Face Hub or loaded from local cache when available.
 
+    This only works on fully denoised latents.
+
+    NOWRAP!
     Supported conversions:
     - v1 (SD 1.x) ↔ xl (SDXL) ↔ v3 (SD3)
     - fx (Flux) → v1/xl/v3
     - ca (Stable Cascade) → v1/xl/v3
 
-    The processor automatically handles batched tensors and preserves the batch
-    dimension while converting the latent representations.
+    VAE scaling factors are applied automatically based on the source and target latent spaces.
+
+    The "source" argument represents the input latents format, and can be one of:
+
+    NOWRAP!
+    * v1 (sd1.5/sd2)
+    * xl (sdxl)
+    * v3 (sd3)
+    * fx (flux)
+    * ca (stable cascade)
+
+    The "target" argument represents the output latents format, and can be one of: v1, xl, or v3
     """
 
     NAMES = ['interposer']
 
+    # VAE scaling factors from SD-Latent-Interposer vae.py
+    _VAE_SCALES = {
+        'v1': 1 / 8,  # SD 1.x
+        'xl': 1 / 8,  # SDXL
+        'v3': 1 / 8,  # SD3
+        'fx': 1 / 8,  # Flux
+        'ca': 1 / 4,  # Stable Cascade (Stage A/B)
+        'cc': 1 / 32,  # Stable Cascade (Stage C) - not used in interposer
+    }
+
     def __init__(self,
                  source: str,
                  target: str,
-                 version: float = 4.0,
                  **kwargs):
         """
         :param source: Source latent space (v1, xl, v3, fx, ca)
         :param target: Target latent space (v1, xl, v3)
-        :param version: Model version to use (default: 4.0)
         :param kwargs: Additional arguments passed to base class
         """
         super().__init__(**kwargs)
@@ -88,9 +104,22 @@ class InterposerProcessor(_latentsprocessor.LatentsProcessor):
             raise self.argument_error(
                 f"Invalid target '{target}'. Must be one of: {valid_targets}")
 
+        # Validate scaling factors exist
+        if source not in self._VAE_SCALES:
+            raise self.argument_error(
+                f"No VAE scaling factor available for source '{source}'")
+
+        if target not in self._VAE_SCALES:
+            raise self.argument_error(
+                f"No VAE scaling factor available for target '{target}'")
+
+        if source == target:
+            raise self.argument_error(
+                f"Source argument cannot be equal to target.")
+
         self._source = source
         self._target = target
-        self._version = version
+        self._version = 4.0
         self._model_name = f"{source}-to-{target}"
 
         # Check if conversion is supported
@@ -98,13 +127,8 @@ class InterposerProcessor(_latentsprocessor.LatentsProcessor):
             raise self.argument_error(
                 f"Conversion from '{source}' to '{target}' is not supported")
 
-        # No-op if source equals target
-        self._is_noop = (source == target)
-
-        if not self._is_noop:
-            # Load the interposer model
-            self._model = self._load_interposer_model()
-            self.register_module(self._model)
+        self._model = self._load_interposer_model()
+        self.register_module(self._model)
 
     def _get_model_path(self, model_name: str) -> str:
         """Get the path to an interposer model file."""
@@ -129,29 +153,30 @@ class InterposerProcessor(_latentsprocessor.LatentsProcessor):
             return versioned_path
 
         # Download from Hugging Face hub if not found locally and not local_files_only
-        if not self.local_files_only:
+        try:
             _messages.debug_log("InterposerProcessor: Using HF Hub model")
-            return str(hf_hub_download(
+            return str(huggingface_hub.hf_hub_download(
                 repo_id="city96/SD-Latent-Interposer",
                 subfolder=f"v{self._version}",
                 filename=fname,
+                local_files_only=self.local_files_only
             ))
-        else:
+        except huggingface_hub.errors.LocalEntryNotFoundError:
             raise self.argument_error(
                 f"Local interposer model file not found: {fname} "
-                f"and local_files_only=True prevents downloading from Hugging Face Hub")
+                f"and --offline-mode prevents downloading from Hugging Face Hub")
 
-    def _load_interposer_model(self) -> InterposerModel:
+    def _load_interposer_model(self) -> _InterposerModel:
         """Load and initialize the interposer model."""
 
         def _load():
             config_dict = _INTERPOSER_CONFIG[self._model_name]
-            model = InterposerModel(**config_dict)
+            model = _InterposerModel(**config_dict)
             model.eval()
 
             # Load model weights
             path = self._get_model_path(self._model_name)
-            state_dict = load_file(path)
+            state_dict = safetensors.torch.load_file(path)
             model.load_state_dict(state_dict)
 
             return model
@@ -171,34 +196,47 @@ class InterposerProcessor(_latentsprocessor.LatentsProcessor):
             memory_guard_device=self.device
         )
 
-    def process(self,
-                pipeline,
-                latents: torch.Tensor) -> torch.Tensor:
+    def impl_process(self,
+                     pipeline: diffusers.DiffusionPipeline,
+                     latents: torch.Tensor) -> torch.Tensor:
         """
         Convert latents between diffusion model latent spaces.
         
         :param pipeline: The pipeline object (unused but required by interface)
-        :param latents: Input latents tensor with shape [B, C, W, H]
+        :param latents: Input latents tensor with shape [B, C, H, W]
         :return: Converted latents tensor with shape [B, C', W, H] where C' depends on target space
         """
-        if self._is_noop:
-            return latents
 
         original_device = latents.device
         original_dtype = latents.dtype
 
-        # Move model to same device as latents if needed
-        if self.modules_device != latents.device:
-            self.to(latents.device)
+        latents = latents.to(self.modules_device)
+
+        _messages.debug_log(f"InterposerProcessor: Input latents shape: {latents.shape}")
+
+        # Apply VAE scaling for source latent space
+        source_scale = self._VAE_SCALES[self._source]
+        target_scale = self._VAE_SCALES[self._target]
+
+        _messages.debug_log(
+            f"InterposerProcessor: Applying VAE scaling - source: {source_scale}, target: {target_scale}")
 
         with torch.no_grad():
             # Convert to float32 for processing (models trained on fp32)
             latents_fp32 = latents.float()
 
+            # Apply source VAE scaling (divide by source scale to normalize)
+            latents_fp32 = latents_fp32 / source_scale
+
             # Process the latents
             converted_latents = self._model(latents_fp32)
 
+            # Apply target VAE scaling (multiply by target scale)
+            converted_latents = converted_latents * target_scale
+
             # Convert back to original dtype and ensure on original device
             converted_latents = converted_latents.to(dtype=original_dtype, device=original_device)
+
+        _messages.debug_log(f"InterposerProcessor: Output latents shape: {converted_latents.shape}")
 
         return converted_latents

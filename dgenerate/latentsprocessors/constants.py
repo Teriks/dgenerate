@@ -61,4 +61,4 @@ amount of memory the latents processor plugin requested to be available,
 and ``cache_size`` which is the current size of the latents processor object cache.
 """
 
-dgenerate.globalconfig.register_all() 
+dgenerate.globalconfig.register_all()

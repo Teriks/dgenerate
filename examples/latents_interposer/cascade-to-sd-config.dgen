@@ -1,6 +1,10 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 5.0.0
 
+{% if "--output-metadata" in injected_args %}
+    \set _ {{ injected_args.remove("--output-metadata") }}
+{% endif %}
+
 # Example demonstrating Stable Cascade to SD1.x latents conversion
 
 # This shows how to convert latents from Stable Cascade models

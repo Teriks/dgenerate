@@ -1,6 +1,10 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 5.0.0
 
+{% if "--output-metadata" in injected_args %}
+    \set _ {{ injected_args.remove("--output-metadata") }}
+{% endif %}
+
 # Basic example of using the latents interposer processor
 # to convert SD1.x latents to SDXL latents
 

@@ -81,6 +81,47 @@ class DiffusionArguments(_types.SetFromMixin):
     This corresponds to the ``--second-model-prompt-weighter`` argument of the dgenerate command line tool.
     """
 
+    latents_processors: _types.OptionalUris = None
+    """
+    One or more latents processor URI strings for processing raw input latents before pipeline execution.
+    
+    These processors are applied to latents provided through the :py:attr:`DiffusionArguments.latents` 
+    argument (raw latents used as noise initialization). The processors are applied in sequence
+    before the latents are passed to the diffusion pipeline.
+    """
+
+    latents_post_processors: _types.OptionalUris = None
+    """
+    One or more latents processor URI strings for processing output latents when outputting to latents.
+    
+    These processors are applied to latents when :py:attr:`DiffusionArguments.output_latents` is `True`. 
+    The processors are applied in sequence after the diffusion pipeline generates the latents 
+    but before they are returned in the result.
+    """
+
+    img2img_latents_processors: _types.OptionalUris = None
+    """
+    One or more latents processor URI strings for processing ``img2img`` latents before pipeline execution.
+    
+    These processors are applied to latent tensors provided through the :py:attr:`DiffusionArguments.images` 
+    argument when doing ``img2img`` with tensor inputs. The processors are applied in sequence and may occur 
+    before VAE decoding (for models that decode ``img2img`` latents) or before direct pipeline usage.
+    """
+
+    decoded_latents_image_processor_uris: _types.OptionalUris = None
+    """
+    One or more image processor URI strings for processing images decoded from incoming latents.
+    
+    These processors are applied to images that are decoded from latent tensors provided through the 
+    :py:attr:`DiffusionArguments.images` argument when doing ``img2img`` with tensor inputs. The processors 
+    are applied in sequence after VAE decoding but before the images are used in the pipeline.
+    
+    The processing flow is: decoded images → pre-resize processing → resize to user dimensions → post-resize processing.
+    This allows both preprocessing the raw decoded images and postprocessing after they are resized to the target dimensions.
+    
+    If no processors are specified, images are simply resized to user dimensions without additional processing.
+    """
+
     vae_slicing: bool = False
     """
     Enable VAE slicing?
@@ -107,10 +148,10 @@ class DiffusionArguments(_types.SetFromMixin):
     All other pipelines interpret multiple image inputs as a batching request.
     """
 
-    latents: _types.OptionalTensorsOrTensor = None
+    latents: _types.OptionalTensors = None
     """
-    Noisy latents to serve as a starting point for generation, this can be a list of tensors
-    in the format ``[C, W, H]`` or ``[B, C, W, H]``, or a single tensor.  A list of tensors
+    Noisy latents to serve as a starting point for generation, this should be a list of tensors
+    in the format ``[C, H, W]`` or ``[B, C, H, W]``, A list of tensors
     with a batch dimension will be concatenated intelligently.
     """
 
@@ -183,6 +224,12 @@ class DiffusionArguments(_types.SetFromMixin):
     Width will be the width of the input image in those cases.
     
     Output image width, must be aligned by 8
+    """
+
+    aspect_correct: bool = False
+    """
+    When resizing input images according to :py:attr:`DiffusionArguments.width` 
+    and :py:attr:`DiffusionArguments.height`, should the resize be aspect correct?
     """
 
     batch_size: _types.OptionalInteger = None

@@ -21,6 +21,13 @@
 
 import dgenerate.globalconfig
 
+
+LATENTS_PROCESSOR_SEP: str = '+'
+"""
+Used to separate unique latents processor chains 
+when running processors on batched latents input.
+"""
+
 DEFAULT_INFERENCE_STEPS: int = 30
 """
 Default value for inference steps.

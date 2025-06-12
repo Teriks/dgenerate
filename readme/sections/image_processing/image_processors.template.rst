@@ -22,35 +22,7 @@ Using the option ``--image-processor-help`` with no arguments will yield a list 
 
 Output:
 
-.. code-block:: text
-
-    Available image processors:
-
-        "adetailer"
-        "anyline"
-        "canny"
-        "flip"
-        "grayscale"
-        "hed"
-        "invert"
-        "leres"
-        "letterbox"
-        "lineart"
-        "lineart-anime"
-        "lineart-standard"
-        "midas"
-        "mirror"
-        "mlsd"
-        "normal-bae"
-        "openpose"
-        "pidi"
-        "posterize"
-        "resize"
-        "sam"
-        "solarize"
-        "teed"
-        "upscaler"
-        "zoe"
+@COMMAND_OUTPUT[dgenerate --no-stdin --image-processor-help]
 
 
 Specifying one or more specific processors for example: ``--image-processor-help canny openpose`` will yield

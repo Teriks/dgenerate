@@ -21,6 +21,7 @@
 import abc
 import typing
 
+import diffusers
 import torch
 
 import dgenerate.pipelinewrapper.enums as _enums
@@ -54,6 +55,10 @@ class PromptWeighter(_plugin.Plugin, abc.ABC):
 
     # you cannot specify these via a URI
     HIDE_ARGS = ['model-type', 'dtype', 'local-files-only']
+
+    @classmethod
+    def inheritable_help(cls, subclass, loaded_by_name):
+        return None
 
     def __init__(self,
                  loaded_by_name: str,
@@ -258,7 +263,7 @@ class PromptWeighter(_plugin.Plugin, abc.ABC):
 
     @abc.abstractmethod
     def translate_to_embeds(self,
-                            pipeline,
+                            pipeline: diffusers.DiffusionPipeline,
                             device: str,
                             args: dict[str, any]):
         """

@@ -82,7 +82,7 @@ def prompt_weighter_names():
     return list(PromptWeighterLoader().get_all_names())
 
 
-def prompt_weighter_name_from_uri(uri):
+def prompt_weighter_name_from_uri(uri: _types.Uri):
     """
     Extract just the implementation name from a prompt weighter URI.
 
@@ -93,7 +93,7 @@ def prompt_weighter_name_from_uri(uri):
     return uri.split(';')[0].strip()
 
 
-def prompt_weighter_exists(uri):
+def prompt_weighter_exists(uri: _types.Uri):
     """
     Check if a prompt weighter implementation exists for a given URI.
 
@@ -105,7 +105,7 @@ def prompt_weighter_exists(uri):
     return prompt_weighter_name_from_uri(uri) in prompt_weighter_names()
 
 
-def create_prompt_weighter(uri,
+def create_prompt_weighter(uri: _types.Uri,
                            model_type: _enums.ModelType,
                            dtype: _enums.DataType,
                            local_files_only: bool = False,

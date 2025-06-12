@@ -1,6 +1,11 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 5.0.0
 
+{% if "--output-metadata" in injected_args %}
+    \set _ {{ injected_args.remove("--output-metadata") }}
+{% endif %}
+
+
 \set token %HF_TOKEN%
 
 {% if not token.strip() and not '--auth-token' in injected_args %}

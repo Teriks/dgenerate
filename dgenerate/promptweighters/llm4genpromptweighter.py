@@ -527,7 +527,7 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
 
     @staticmethod
     def _remove_compel_prompting_syntax(text: str) -> str:
-        import compel.prompt_parser as _parser
+        import dgenerate.extras.compel.prompt_parser as _parser
         parser = _parser.PromptParser()
         conjunction = parser.parse_conjunction(text)
         plain_text_fragments = []
@@ -586,7 +586,7 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
 
     @torch.inference_mode()
     def translate_to_embeds(self,
-                            pipeline,
+                            pipeline: diffusers.DiffusionPipeline,
                             device: str,
                             args: dict[str, any]):
 

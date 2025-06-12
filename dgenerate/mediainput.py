@@ -257,11 +257,9 @@ class VideoReader(_imageprocessors.ImageProcessorMixin, AnimationReader):
             or ``1`` disables alignment.
 
         :param image_processor: optionally process every frame with this image processor
-
-        :raises ValueError: if file_source lacks a file extension, it is needed
-            to determine the video file format.
             
-        :raises MediaIdentificationError: If the video data is an unknown format or corrupt.
+        :raises MediaIdentificationError: If the video data is an unknown format or corrupt. or if
+            file_source lacks a file extension, it is needed to determine the video file format.
         """
         self._filename = file
         self._file_source = file_source
@@ -274,7 +272,7 @@ class VideoReader(_imageprocessors.ImageProcessorMixin, AnimationReader):
         else:
             _, ext = os.path.splitext(file_source)
             if not ext:
-                raise ValueError(
+                raise MediaIdentificationError(
                     'Cannot determine the format of a video file from a file_source lacking a file extension.')
             self._container = av.open(file, format=ext.lstrip('.').lower())
 
@@ -827,8 +825,7 @@ def load_tensor_file(path_or_file: typing.BinaryIO | str, file_source: str) -> t
     :param path_or_file: file path or binary IO object
     :param file_source: source filename for error reporting
     :return: loaded tensor
-    :raises MediaIdentificationError: if the file cannot be loaded
-    :raises ValueError: if the file format is not supported
+    :raises MediaIdentificationError: if the file cannot be loaded or if the file format is not supported
     """
     _, ext = os.path.splitext(file_source)
     ext = ext.lstrip('.').lower()
@@ -883,7 +880,7 @@ def load_tensor_file(path_or_file: typing.BinaryIO | str, file_source: str) -> t
                     # If no common key found, take the first tensor
                     tensor = next(iter(tensor_dict.values()))
         else:
-            raise ValueError(f'Unsupported tensor file format: {ext}')
+            raise MediaIdentificationError(f'Unsupported tensor file format: {ext}')
 
         # Ensure we have a tensor
         if not isinstance(tensor, torch.Tensor):
@@ -893,13 +890,15 @@ def load_tensor_file(path_or_file: typing.BinaryIO | str, file_source: str) -> t
         return tensor
 
     except Exception as e:
-        if isinstance(e, (MediaIdentificationError, ValueError)):
+        if isinstance(e, MediaIdentificationError):
             raise
         raise MediaIdentificationError(
             f'Error loading tensor file "{file_source}": {str(e)}')
 
 
-def separate_images_and_tensors(items: _types.ImagesOrTensors) -> tuple[_types.Images, _types.Tensors]:
+def separate_images_and_tensors(
+        items: _types.ImagesOrTensors
+) -> tuple[list[PIL.Image.Image], list[torch.Tensor]]:
     """
     Separate a sequence of images or tensors into separate sequences.
     
@@ -909,6 +908,7 @@ def separate_images_and_tensors(items: _types.ImagesOrTensors) -> tuple[_types.I
     :param items: Sequence of PIL Images or torch Tensors (should be homogeneous)
     :return: Tuple of (images, tensors) where each can be empty if no items of that type exist
     """
+
     images = []
     tensors = []
 
@@ -918,6 +918,7 @@ def separate_images_and_tensors(items: _types.ImagesOrTensors) -> tuple[_types.I
         elif _torchutil.is_tensor(item):
             tensors.append(item)
 
+    # noinspection PyTypeChecker
     return images, tensors
 
 
@@ -1457,6 +1458,8 @@ def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResul
     :param align: do not allow per image seed resize resolutions that are not aligned to this value,
         setting this value to 1 or ``None`` disables alignment checks.
 
+    :raise ValueError: On ``align < 1``
+
     :return: :py:class:`.ImageSeedParseResult`
     """
 
@@ -1726,7 +1729,7 @@ def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResul
         if len(result.images) != len(result.latents):
             raise ImageSeedParseError(
                 f'Number of images ({len(result.images)}) must equal number of latents ({len(result.latents)}) '
-                f'when both are provided. Diffusers requires equal batch sizes.')
+                f'when both are provided. An equal batch size is required.')
 
     return result
 
@@ -2058,6 +2061,8 @@ class MediaReaderSpec:
         :param align: Images which are read are aligned to this amount of pixels,
             ``None`` or ``1`` will disable alignment. (ignored for tensor files)
         :param image_processor: Optional image processor associated with the file (ignored for tensor files)
+
+        :raise ValueError: On ``align < 1``
         """
 
         if align is not None and align < 1:
@@ -2173,8 +2178,8 @@ class MultiMediaReader:
                  frame_end: _types.OptionalInteger = None,
                  path_opener: typing.Callable[[str], typing.BinaryIO] = fetch_media_data_stream):
         """
-        :raise ValueError: if ``frame_start`` > ``frame_end``
-        :raise FrameStartOutOfBounds: if ``frame_start`` > ``total_frames - 1``
+        :raise ValueError: if ``frame_start > frame_end``
+        :raise FrameStartOutOfBounds: if ``frame_start > total_frames - 1``
 
         :param specs: list of :py:class:`.MediaReaderSpec`
         :param frame_start: inclusive frame slice start frame
@@ -2202,7 +2207,7 @@ class MultiMediaReader:
                 tensor = load_tensor_file(file_stream, spec.path)
                 file_stream.close()  # Close immediately after loading tensor
 
-                # Warn about ignored operations on tensor files
+                # debug ignored operations on tensor files
                 ignored_operations = []
 
                 if spec.resize_resolution is not None:
@@ -2219,8 +2224,10 @@ class MultiMediaReader:
 
                 if ignored_operations:
                     operations_str = ", ".join(ignored_operations)
-                    _messages.warning(f'Tensor file "{url_aware_basename(spec.path)}" is latents input - '
-                                      f'ignoring {operations_str} (tensor files are loaded as-is)')
+                    _messages.debug_log(
+                        f'Tensor file "{url_aware_basename(spec.path)}" is latents input - '
+                        f'mediainput module ignoring {operations_str} (tensor files are loaded as-is)'
+                    )
 
                 # Create a mock reader that yields the tensor
                 self._readers.append(
@@ -2361,8 +2368,8 @@ class MediaReader(AnimationReader):
                  path_opener: typing.Callable[[str], typing.BinaryIO] = fetch_media_data_stream):
         """
 
-        :raise ValueError: if ``frame_start`` > ``frame_end``
-        :raise FrameStartOutOfBounds: if ``frame_start`` > ``total_frames - 1``
+        :raise ValueError: if ``frame_start > frame_end``
+        :raise FrameStartOutOfBounds: if ``frame_start > total_frames - 1``
 
         :param path: File path or URL
         :param resize_resolution: Resize resolution
@@ -2589,9 +2596,9 @@ def _validate_image_processor_count(processors, images, error_title):
     num_processors = len(processors)
     num_images = len(images)
     if num_processors > num_images:
-        raise ValueError(f'Too many {error_title} image processors specified, '
-                         f'there are {num_processors} processors and '
-                         f'{num_images} {error_title} image sources.')
+        raise ImageSeedError(f'Too many {error_title} image processors specified, '
+                             f'there are {num_processors} processors and '
+                             f'{num_images} {error_title} image sources.')
 
 
 def _reshape_ip_adapter_image_seed(adapter_images, reader_output):
@@ -2724,8 +2731,11 @@ def iterate_image_seed(uri: str | ImageSeedParseResult,
         this does not matter, input images can be any dimension as they are used as a
         style reference and not a noise base similar to IP Adapters.
 
-    :raise ValueError: if there are more **control_image_processor** values than
-        there are control guidance image sources in the URI.
+    :raise ImageSeedError: if multiple images are passed without using
+        the ``"images: ..."`` syntax for batching.  Or if the ``"adapter: ..."``
+        syntax is used with the ``floyd`` keyword argument for floyd stage images.
+        Or if too many image processor chains are specified for the amount of
+        images given.
 
     :return: an iterator over :py:class:`.ImageSeed` objects
     """
@@ -2745,10 +2755,10 @@ def iterate_image_seed(uri: str | ImageSeedParseResult,
     if parse_result.images is not None and \
             len(parse_result.images) > 1 and \
             not parse_result.multi_image_mode:
-        raise ValueError(
-            'images cannot contain multiple elements '
-            'without using "images: ..." syntax, use '
-            f'{_types.fullname(iterate_control_image)} for that.')
+        raise ImageSeedParseError(
+            'Image seed img2img input cannot contain multiple elements '
+            'without using "images: ..." batching syntax. This syntax is reserved '
+            'for ControlNet input.')
 
     if parse_result.resize_resolution is not None:
         resize_resolution = parse_result.resize_resolution
@@ -2837,7 +2847,7 @@ def iterate_image_seed(uri: str | ImageSeedParseResult,
         append_range('control_images', len(control_paths))
 
     if parse_result.adapter_images is not None and parse_result.floyd_image is not None:
-        raise ValueError('IP adapter images not supported with floyd stage image.')
+        raise ImageSeedError('IP adapter images not supported with floyd stage image.')
 
     if parse_result.adapter_images is not None:
         adapter_image_cnt = 0
@@ -2977,11 +2987,13 @@ def iterate_control_image(uri: str | ImageSeedParseResult,
         set to ``None``, specifying extra processors as compared to control guidance image sources will
         cause :py:exc:`ValueError` to be raised.
 
-    :raise ValueError: if there are more **image_processor** values than
-        there are control guidance image sources in the URI.
 
-    :raise ImageSeedError: if a tensor file is passed in a control guidance image specification,
-        latents input is not supported for controlnet guidance images.
+    :raise ImageSeedError: If any other image inputs are specified, such as ``mask``, ``control``, or ``floyd``.
+        Or if a tensor file is passed in a control guidance image specification, latents input is not supported
+        for controlnet guidance images. Or if too many image processor chains are specified for the amount of
+        images given.
+
+    :raise ValueError: On ``frame_start > frame_end``, or ``align < 1``
 
     :return: an iterator over :py:class:`.ImageSeed` objects
     """
