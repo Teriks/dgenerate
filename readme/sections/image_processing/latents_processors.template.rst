@@ -33,7 +33,7 @@ in the same fashion as other dgenerate plugins.
 Processing Raw Latent Input
 ---------------------------
 
-When using the ``--image-seeds "latents: ..." or ``--image-seeds "img2img.png;latents ..."`` syntax to pass in
+When using the ``--image-seeds "latents: ..."`` or ``--image-seeds "img2img.png;latents ..."`` syntax to pass in
 raw / noisy latents, you can use ``--latents-processors`` to run a process on this type of latent input.
 
 .. code-block:: bash
