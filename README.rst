@@ -70,7 +70,7 @@ without any dependency issues. This installer can be found in the release artifa
 release located on the `github releases page <https://github.com/Teriks/dgenerate/releases>`_.
 
 This software requires a Nvidia GPU supporting CUDA 12.1+, AMD GPU supporting ROCm (Linux Only),
-or MacOS on Apple Silicon, and supports ``python>=3.10,<3.13``. CPU rendering is possible for
+or MacOS on Apple Silicon, and supports ``python>=3.10,<3.14``. CPU rendering is possible for
 some operations but extraordinarily slow.
 
 For library documentation, and a better README reading experience which
