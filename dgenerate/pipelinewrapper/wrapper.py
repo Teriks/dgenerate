@@ -1733,7 +1733,15 @@ class DiffusionPipelineWrapper:
                     f"latents, or a missmatch in the size of incoming img2img images / latents with the "
                     f"raw latents."
                 )
-        latents.to(self._device, dtype=_enums.get_torch_dtype(self._dtype))
+
+        if latents.dtype != self._pipeline.dtype:
+            _messages.debug_log(
+                f'Casting incoming raw latents from: {latents.dtype}, to: {self._pipeline.dtype}'
+            )
+            latents = latents.to(self._device, dtype=self._pipeline.dtype)
+        else:
+            latents = latents.to(self._device)
+
         if _enums.model_type_is_flux(self._model_type):
             latents = self._repack_flux_latents(latents)
         return latents
