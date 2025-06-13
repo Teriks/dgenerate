@@ -365,14 +365,14 @@ class Prompt:
         :param prompt: The prompt to copy.
         :return: A copy of the provided prompt.
         """
-        prompt = Prompt(
+        new_prompt = Prompt(
             positive=prompt.positive,
             negative=prompt.negative,
             delimiter=prompt.delimiter
         )
 
-        prompt.copy_embedded_args_from(prompt)
-        return prompt
+        new_prompt.copy_embedded_args_from(prompt)
+        return new_prompt
 
     @staticmethod
     def parse(
