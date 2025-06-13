@@ -1276,7 +1276,7 @@ class DiffusionPipelineWrapper:
         args['generator'] = torch.Generator(device=self._device).manual_seed(
             _types.default(user_args.seed, _constants.DEFAULT_SEED))
 
-        if user_args.latents is not None:
+        if user_args.latents:
             args['latents'] = self._process_raw_input_latents(user_args)
 
         def set_strength():

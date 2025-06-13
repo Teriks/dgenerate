@@ -1417,13 +1417,32 @@ def _parse_image_seed_uri_legacy(uri: str, align: int = 8) -> ImageSeedParseResu
 
             result.resize_resolution = dimensions
 
+    if result.multi_image_mode:
+        if not result.images:
+            raise ImageSeedParseError(
+                'Must specify at least one file when using the "images: ..." '
+                'image seed syntax, no files were specified.'
+            )
+
     if ip_adapter_mode:
+        if not result.adapter_images:
+            raise ImageSeedParseError(
+                'Must specify at least one file when using the "adapter: ..." '
+                'image seed syntax, no files were specified.'
+            )
+
         if result.resize_resolution or result.mask_images:
             raise ImageSeedParseError(
                 'Cannot use resize resolution or inpaint mask '
                 'syntax with IP adapter only image seed input.')
 
     if latents_mode:
+        if not result.latents:
+            raise ImageSeedParseError(
+                'Must specify at least one file when using the "latents: ..." '
+                'image seed syntax, no files were specified.'
+            )
+
         if result.resize_resolution or result.mask_images:
             raise ImageSeedParseError(
                 'Cannot use resize resolution or inpaint mask '
@@ -1540,16 +1559,30 @@ def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResul
         adapters_parsed = True
         parse_adapters(images.removeprefix('adapter:').strip())
         result.images = None
+
+        if not result.adapter_images:
+            raise ImageSeedParseError(
+                'Must specify at least one file when using the "adapter: ..." '
+                'image seed syntax, no files were specified.'
+            )
+
     elif images.startswith('latents:'):
         latent_paths = [p.strip() for p in
                         _textprocessing.tokenized_split(
                             images.removeprefix('latents:').strip(),
                             ',', strict=True, remove_quotes=True, escapes_in_quoted=True)]
+        if not latent_paths:
+            raise ImageSeedParseError(
+                'Must specify at least one file when using the "latents: ..." '
+                'image seed syntax, no files were specified.'
+            )
+
         for latent_path in latent_paths:
             if not is_tensor_file(latent_path):
                 raise ImageSeedParseError(
                     f'Latent file "{latent_path}" must be a tensor file (.pt, .pth, or .safetensors).')
             _ensure_exists(latent_path, 'Latent tensor')
+
         result.latents = latent_paths
         result.images = None
     elif result.multi_image_mode:
@@ -1557,6 +1590,13 @@ def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResul
                        _textprocessing.tokenized_split(
                            images.removeprefix('images:').strip(),
                            ',', strict=True, remove_quotes=True, escapes_in_quoted=True)]
+
+        if not seed_images:
+            raise ImageSeedParseError(
+                'Must specify at least one file when using the "images: ..." '
+                'image seed syntax, no files were specified.'
+            )
+
         for img in seed_images:
             _ensure_exists(img, 'Image seed')
         result.images = seed_images
