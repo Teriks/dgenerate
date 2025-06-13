@@ -952,12 +952,13 @@ class DiffusionArguments(_types.SetFromMixin):
     """
 
     @staticmethod
-    def prompt_embedded_arg_checker(name):
+    def prompt_embedded_arg_checker(name: str, value: typing.Any):
         """
-        Checks if a class member is forbidden to use
+        Checks if a class member / value is forbidden to use
         with a prompt embedded argument specification.
 
         :param name: the argument name
+        :param value: the argument value
         """
         return 'prompt' in name
 
