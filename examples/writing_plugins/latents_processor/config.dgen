@@ -1,0 +1,23 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 5.0.0
+
+
+{% if "--output-metadata" in injected_args %}
+    \set _ {{ injected_args.remove("--output-metadata") }}
+{% endif %}
+
+
+# Run the FooLatentsProcessor plugin
+
+# we can \import_plugins to import plugins globally to the config,
+# they will be used by dgenerate invocations, and directives that
+# make use of the plugins within
+
+\import_plugins demo_plugin
+
+
+"Lykon/dreamshaper-8"
+--prompts "hello world"
+--image-format safetensors
+--latents-post-processors foo;my-argument=1
+
