@@ -167,6 +167,7 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/version_5.0.0/>`_.
     * `Adetailer (YOLO based inpainting)`_
         * `Adetailer Image Processor`_
         * `Adetailer Pipeline`_
+        * `YOLO Detection Processor`_
     * `Writing and Running Configs`_
         * `Basic config syntax`_
         * `Built in template variables`_
@@ -209,7 +210,8 @@ Help Output
                      [--directives-help [DIRECTIVE_NAME ...]] [--functions-help [FUNCTION_NAME ...]] [-gc FILE]
                      [-mt MODEL_TYPE] [-rev BRANCH] [-var VARIANT] [-sbf SUBFOLDER] [-olc FILE] [-olc2 FILE]
                      [-atk TOKEN] [-bs INTEGER] [-bgs SIZE]
-                     [-ad ADETAILER_DETECTOR_URIS [ADETAILER_DETECTOR_URIS ...]] [-adi INTEGER [INTEGER ...]]
+                     [-ad ADETAILER_DETECTOR_URIS [ADETAILER_DETECTOR_URIS ...]] [-adm]
+                     [-adf CLASS_FILTER [CLASS_FILTER ...]] [-adi INTEGER [INTEGER ...]]
                      [-ads ADETAILER_MASK_SHAPE [ADETAILER_MASK_SHAPE ...]]
                      [-addp ADETAILER_DETECTOR_PADDING [ADETAILER_DETECTOR_PADDING ...]]
                      [-admp ADETAILER_MASK_PADDING [ADETAILER_MASK_PADDING ...]]
@@ -438,20 +440,48 @@ Help Output
             The "weight-name" argument indicates the name of the weights file to be loaded when loading from a
             Hugging Face repository or folder on disk.
             
-            The "index-filter" (overrides --adetailer-index-filter) argument is a list values or a single value
-            that indicates what YOLO detection indices to keep, the index values start at zero. Detections are
-            sorted by their top left bounding box coordinate from left to right, top to bottom, by (confidence
-            descending). The order of detections in the image is identical to the reading order of words on a
-            page (english). Inpainting will only be preformed on the specified detection indices, if no indices
-            are specified, then inpainting will be preformed on all detections.
+            The "class-filter" (overrides --adetailer-class-filter) argument is a list of class IDs or class
+            names that indicates what YOLO detection classes to keep. This filter is applied first, before
+            index-filter. Detections that don't match any of the specified classes will be ignored.
+            
+            Example "class-filter" values:
+            
+                * Only keep detection class ID 0:
+                class-filter=0
+            
+                * Only keep detection class "hand":
+                class-filter=hand
+            
+                * Keep class IDs 2 and 3:
+                class-filter=2,3
+            
+                * Keep class ID 0 and class name "hand":
+                class-filter=0,hand
+            
+                * String digits are interpreted as integers:
+                class-filter="0" (interpreted as class name "0", not likely useful)
+            
+                * List syntax is also supported:
+                class-filter=[0, "hand"]
+            
+            The "index-filter" (overrides --adetailer-index-filter) argument is a list values or a
+            single value that indicates what YOLO detection indices to keep, the index values start
+            at zero. Detections are sorted by their top left bounding box coordinate from left to right,
+            top to bottom, by (confidence descending). The order of detections in the image is identical to
+            the reading order of words on a page (english). Inpainting will only be preformed on the
+            specified detection indices, if no indices are specified, then inpainting
+            will be preformed on all detections. This filter is applied after class-filter.
             
             Example "index-filter" values:
             
-            * keep the first, leftmost, topmost detection: index-filter=0
+                * keep the first, leftmost, topmost detection:
+                index-filter=0
             
-            * keep detections 1 and 3: index-filter=[1, 3]
+                * keep detections 1 and 3:
+                index-filter=[1, 3]
             
-            * CSV syntax is supported (tuple): index-filter=1,3
+                * CSV syntax is supported (tuple):
+                index-filter=1,3
             
             The "detector-padding" (overrides --adetailer-detector-paddings) argument specifies the amount of
             padding that will be added to the detection rectangle which is used to generate a masked area. The
@@ -460,11 +490,11 @@ Help Output
             
             Padding examples:
             
-            32 (32px Uniform, all sides)
+                32 (32px Uniform, all sides)
             
-            10x20 (10px Horizontal, 20px Vertical)
+                10x20 (10px Horizontal, 20px Vertical)
             
-            10x20x30x40 (10px Left, 20px Top, 30px Right, 40px Bottom)
+                10x20x30x40 (10px Left, 20px Top, 30px Right, 40px Bottom)
             
             The "mask-padding" (overrides --adetailer-mask-paddings) argument indicates how much padding to
             place around the masked area when cropping out the image to be inpainted. This value must be large
@@ -502,13 +532,30 @@ Help Output
             
             Example: --adetailer-detectors https://modelsite.com/yolo-model.pt
             ------------------------------------------------------------------
+      -adm, --adetailer-model-masks
+            Indicates that masks generated by the model itself should be preferred over masks generated from the
+            detection bounding box. If this is specified, and the model itself returns mask data,
+            --adetailer-mask-shapes, --adetailer-mask-paddings, and --adetailer-detector-paddings will all be
+            ignored.
+            --------
+      -adf, --adetailer-class-filter CLASS_FILTER [CLASS_FILTER ...]
+            A list of class IDs or class names that indicates what YOLO detection classes to keep. This filter
+            is applied before index-filter. Detections that don't match any of the specified classes will be
+            ignored. This filtering occurs before --adetailer-index-filter.
+            
+            Examples:
+            --adetailer-class-filter 0 2        # Keep only class IDs 0 and 2
+            --adetailer-class-filter person car # Keep only "person" and "car" classes
+            --adetailer-class-filter 0 person   # Keep class ID 0 and class name "person"
+            -----------------------------------------------------------------------------
       -adi, --adetailer-index-filter INTEGER [INTEGER ...]
             A list index values that indicates what adetailer YOLO detection indices to keep, the index values
             start at zero. Detections are sorted by their top left bounding box coordinate from left to right,
             top to bottom, by (confidence descending). The order of detections in the image is identical to the
             reading order of words on a page (english). Inpainting will only be preformed on the specified
             detection indices, if no indices are specified, then inpainting will be preformed on all detections.
-            ----------------------------------------------------------------------------------------------------
+            This filter is applied after class-filter.
+            ------------------------------------------
       -ads, --adetailer-mask-shapes ADETAILER_MASK_SHAPE [ADETAILER_MASK_SHAPE ...]
             One or more adetailer mask shapes to try. This indicates what mask shape adetailer should attempt to
             draw around a detected feature, the default value is "rectangle". You may also specify "circle" to
@@ -1000,7 +1047,7 @@ Help Output
             
             The "variant" argument specifies the T2IAdapter model variant, if "variant" is specified when
             loading from a Hugging Face repository or folder, weights will be loaded from "variant" filename,
-            e.g. "pytorch_model.<variant>.safetensors. "variant" defaults to automatic selection. "variant" in
+            e.g. "pytorch_model.<variant>.safetensors. "variant"  defaults to automatic selection. "variant" in
             the case of --t2i-adapters does not default to the value of --variant to prevent failures during
             common use cases.
             
@@ -6721,10 +6768,10 @@ as the ``compel`` prompt weighter currently does not.
         See: https://github.com/xhinker/sd_embed
     
         @misc{sd_embed_2024,
-        author = {Shudong Zhu(Andrew Zhu)},
-        title = {Long Prompt Weighted Stable Diffusion Embedding},
-        howpublished = {\url{https://github.com/xhinker/sd_embed}},
-        year = {2024},
+          author       = {Shudong Zhu(Andrew Zhu)},
+          title        = {Long Prompt Weighted Stable Diffusion Embedding},
+          howpublished = {\url{https://github.com/xhinker/sd_embed}},
+          year         = {2024},
         }
     
         This prompt weighter supports the model types:
@@ -6858,9 +6905,9 @@ See: `LLM4GEN <https://github.com/YUHANG-Ma/LLM4GEN>`_
         The "token" argument allows you to explicitly specify a Hugging Face auth token for downloads.
     
         @misc{liu2024llm4genleveragingsemanticrepresentation,
-        title={LLM4GEN: Leveraging Semantic Representation of LLMs for Text-to-Image Generation},
-        author={Mushui Liu and Yuhang Ma and Xinfeng Zhang and Yang Zhen and Zeng Zhao and Zhipeng Hu and Bai Liu and Changjie Fan},
-        year={2024},
+          title={LLM4GEN: Leveraging Semantic Representation of LLMs for Text-to-Image Generation},
+          author={Mushui Liu and Yuhang Ma and Xinfeng Zhang and Yang Zhen and Zeng Zhao and Zhipeng Hu and Bai Liu and Changjie Fan},
+          year={2024},
         }
     
     ==============================================================================================================
@@ -6965,7 +7012,7 @@ these are the arguments that are available for use:
     inference-steps: int
     clip-skip: int
     sdxl-refiner-clip-skip: int
-    adetailer-index-filter: [int, ...]
+    adetailer-model-masks: bool
     adetailer-mask-shape: str
     adetailer-detector-padding: Padding: P, WxH, LxTxRxB
     adetailer-mask-padding: Padding: P, WxH, LxTxRxB
@@ -7175,7 +7222,9 @@ Output:
         "anyline"
         "canny"
         "crop"
+        "dilate"
         "flip"
+        "gaussian-blur"
         "grayscale"
         "hed"
         "invert"
@@ -7197,6 +7246,7 @@ Output:
         "teed"
         "upscaler"
         "upscaler-ncnn"
+        "yolo"
         "zoe"
 
 
@@ -8438,9 +8488,216 @@ inpaint multiple types of objects in an image, or different detection indices se
     strength=0.7
 
 
-This leads to a large amount of possible use cases that are hard to fully demonstrate,
-as always, be creative :)
+The processor argument "class-filter" can also be used to filter to only detections with
+a certain class ID or class name in the model, this filter acts before "index-filter",
+"class-filter" can be specified as a mix of IDs (integers) or direct names, this is useful
+when using models that can detect multiple classes of objects. This is described in the
+adetailer processor help output below.
 
+.. code-block:: text
+
+    adetailer:
+        arguments:
+            model: str
+            prompt: str
+            negative-prompt: str | None = None
+            prompt-weighter: str | None = None
+            weight-name: str | None = None
+            subfolder: str | None = None
+            revision: str | None = None
+            token: str | None = None
+            seed: int | None = None
+            inference-steps: int = 30
+            guidance-scale: float = 5
+            pag-scale: float | None = None
+            pag-adaptive-scale: float | None = None
+            strength: float = 0.4
+            detector-padding: int | str = 0
+            mask-shape: str = "rectangle"
+            class-filter: int | str | list | tuple | set | None = None
+            index-filter: int | list | tuple | set | None = None
+            mask-padding: int | str = 32
+            mask-blur: int = 4
+            mask-dilation: int = 4
+            model-masks: bool = False
+            confidence: float = 0.3
+            detector-device: Optional[str] = None
+            pre-resize: bool = False
+            device: str | None = None
+            output-file: Optional[str] = None
+            output-overwrite: bool = False
+    
+        adetailer, diffusion based post processor for SD1.5, SDXL, Kolors, SD3, and Flux
+    
+        adetailer can detect features of your image and automatically generate an inpaint mask for them, such as
+        faces, hands etc. and then re-run diffusion over those portions of the image using inpainting to enhance
+        detail.
+    
+        This image processor may only be used if a diffusion pipeline has been previously executed by dgenerate,
+        that pipeline will be used to process the inpainting done by adetailer. For a single command line
+        invocation you must use --post-processors to use this image processor correctly. In dgenerate config
+        script, you may use it anywhere, and the last executed diffusion pipeline will be reused for inpainting.
+    
+        Inpainting will occur on the device used by the last executed diffusion pipeline unless the "device"
+        argument is specified, the detector model can be run on an alternate GPU if desired using the
+        "detector-device" argument, otherwise the detector will run on "device".
+    
+        Example:
+    
+        --post-processors "adetailer;\
+                           model=Bingsu/adetailer;\
+                           weight-name=face_yolov8n.pt;\
+                           prompt=detailed image of a mans face;\
+                           negative-prompt=nsfw, blurry, disfigured;\
+                           guidance-scale=7;\
+                           inference-steps=30;\
+                           strength=0.4"
+    
+        -----
+    
+        The "model" argument specifies the YOLO detector model used to detect a feature of the image.
+    
+        The "prompt" argument specifies the positive prompt to use for inpainting.
+    
+        The "negative-prompt" argument specifies the negative prompt for inpainting.
+    
+        The "prompt-weighter" argument specifies a prompt weighter plugin for applying prompt weighting to the
+        provided positive and negative prompts. Prompt weighters may have arguments, when supplying URI arguments
+        to a prompt weighter you must use double quoting around the prompt weighter definition, i.e:
+        --post-processors "adetailer;model=...;prompt=test;prompt-weighter='compel;syntax=sdwui'"
+    
+        The "weight-name" argument specifies the file name in a HuggingFace repository for the model weights, if
+        you have provided a HuggingFace repository slug to the model argument.
+    
+        The "subfolder" argument specifies the subfolder in a HuggingFace repository for the model weights, if you
+        have provided a HuggingFace repository slug to the model argument.
+    
+        The "revision" argument specifies the revision of a HuggingFace repository for the model weights, if you
+        have provided a HuggingFace repository slug to the model argument. For example: "main"
+    
+        The "token" argument specifies your HuggingFace authentication token explicitly if needed.
+    
+        The "local-files-only" argument specifies that dgenerate should not attempt to download any model files,
+        and to only look for them locally in the cache or otherwise.
+    
+        The "seed" argument can be used to specify a specific seed for diffusion when preforming inpainting on the
+        input image.
+    
+        The "inference-steps" argument specifies the amount of inference steps when preforming inpainting on the
+        input image.
+    
+        The "guidance-scale" argument specifies the guidance scale for inpainting.
+    
+        The "pag-scale" argument indicates the perturbed attention guidance scale, this enables a PAG inpaint
+        pipeline if supported. If the previously used pipeline was a PAG pipeline, PAG is automatically enabled
+        for inpainting if supported and this value defaults to 3.0 if not supplied. The adetailer processor
+        supports PAG with --model-type torch and torch-sdxl.
+    
+        The "pag-adaptive-scale" argument indicates the perturbed attention guidance adaptive scale, this enables
+        a PAG inpaint pipeline if supported. If the previously usee pipeline was a PAG pipeline, PAG is
+        automatically enabled for inpainting if supported and this value defaults to 0.0 if not supplied. The
+        adetailer processor supports PAG with --model-type torch and torch-sdxl.
+    
+        The "strength" argument is analogous to --image-seed-strengths
+    
+        The "class-filter" argument can be used to detect only specific classes. This should be a comma-separated
+        list of class IDs or class names, or a single value, for example: "0,2,person,car". This filter is applied
+        before "index-filter".
+    
+        Example "class-filter" values:
+    
+            # Only keep detection class ID 0
+            class-filter=0
+    
+            # Only keep detection class "hand"
+            class-filter=hand
+    
+            # keep class ID 2,3
+            class-filter=2,3
+    
+            # keep class ID 0 & class Name "hand"
+            # if entry cannot be parsed as an integer
+            # it is interpreted as a name
+            class-filter=0,hand
+    
+            # "0" is interpreted as a name and not an ID,
+            # this is not likely to be useful
+            class-filter="0",hand
+    
+            # List syntax is supported, you must quote
+            # class names
+            index-filter=[0, "hand"]
+    
+        The "index-filter" argument is a list values or a single value that indicates what YOLO detection indices
+        to keep, the index values start at zero. Detections are sorted by their top left bounding box coordinate
+        from left to right, top to bottom, by (confidence descending). The order of detections in the image is
+        identical to the reading order of words on a page (english). Inpainting will only be preformed on the
+        specified detection indices, if no indices are specified, then inpainting will be preformed on all
+        detections.
+    
+        Example "index-filter" values:
+    
+            # keep the first, leftmost, topmost detection
+            index-filter=0
+    
+            # keep detections 1 and 3
+            index-filter=[1, 3]
+    
+            # CSV syntax is supported (tuple)
+            index-filter=1,3
+    
+        The "detector-padding" argument specifies the amount of padding that will be added to the detection
+        rectangle which is used to generate a masked area. The default is 0, you can make the mask area around the
+        detected feature larger with positive padding and smaller with negative padding.
+    
+        Padding examples:
+    
+            32 (32px Uniform, all sides)
+    
+            10x20 (10px Horizontal, 20px Vertical)
+    
+            10x20x30x40 (10px Left, 20px Top, 30px Right, 40px Bottom)
+    
+        The "mask-padding" argument indicates how much padding to place around the masked area when cropping out
+        the image to be inpainted. This value must be large enough to accommodate any feathering on the edge of
+        the mask caused by "mask-blur" or "mask-dilation" for the best result, the default value is 32. The syntax
+        for specifying this value is identical to "detector-padding".
+    
+        The "mask-shape" argument indicates what mask shape adetailer should attempt to draw around a detected
+        feature, the default value is "rectangle". You may also specify "circle" to generate an ellipsoid shaped
+        mask, which might be helpful for achieving better blending.
+    
+        The "mask-blur" argument indicates the level of gaussian blur to apply to the generated inpaint mask,
+        which can help with smooth blending in of the inpainted feature
+    
+        The "mask-dilation" argument indicates the amount of dilation applied to the inpaint mask, see: cv2.dilate
+    
+        The "model-masks" argument indicates that masks generated by the model itself should be preferred over
+        masks generated from the detection bounding box. If this is True, and the model itself returns mask data,
+        "mask-shape", "mask-padding", and "detector-padding" will all be ignored.
+    
+        The "confidence" argument can be used to adjust the confidence value for the YOLO detector model. Defaults
+        to: 0.3
+    
+        The "detector-device" argument can be used to specify a device override for the YOLO detector, i.e. the
+        GPU / Accelerate device the model will run on. Example: cuda:0, cuda:1, cpu
+    
+        The "pre-resize" argument determines if the processing occurs before or after dgenerate resizes the image.
+        This defaults to False, meaning the image is processed after dgenerate is done resizing it.
+    
+        The "device" argument can be used to set the device the processor will run on, for example: cpu, cuda,
+        cuda:1. If you are using this image processor as a preprocess or postprocess step for dgenerate, or with
+        the image-process subcommand, or \image_process directive, this argument will default to the value of
+        --device.
+    
+        The "output-file" argument can be used to set the output path for a processor debug image, this will save
+        the processed image to a path of your choosing.
+    
+        The "output-overwrite" argument can be used to enable overwrite for a processor debug image. If this is
+        not enabled, new images written by the processor while it is being used will be written with a numbered
+        suffix instead of being overwritten.
+    
+    ==============================================================================================================
 
 Adetailer Pipeline
 ------------------
@@ -8516,7 +8773,7 @@ original generation, or with  different model types all together.
 
 
 Almost all of the arguments of the ``adetailer`` image processor exist as URI arguments
-when specifying detectors with ``--adetailer-detectors``
+when specifying detectors with ``--adetailer-detectors`` including ``class-filter`` and ``index-filter``
 
 .. code-block:: jinja
 
@@ -8545,6 +8802,200 @@ when specifying detectors with ``--adetailer-detectors``
     --adetailer-detector-paddings 40
     --prompt-weighter sd-embed
     --output-path multi-subject-config
+
+
+YOLO Detection Processor
+------------------------
+
+The ``yolo`` image processor can be used to preview YOLO model detections in an image.
+
+It will draw boxes around detections on the image, displaying the detection
+index, class ID, and class name of the detection.
+
+It can also draw the outlines of the detection masks, if the model supports
+generating masks.
+
+This can be used to determine what is being classified in an image when
+preparing to use the ``adetailer`` image processor.
+
+The detection behavior mimics that of the ``adetailer`` image processor
+and adetailer pipeline mode.
+
+This processor also supports generating black and white masks from
+detections, in an identical way to the ``adetailer`` image processors
+internal inpaint mask generation, minus the gaussian blur and dilation
+steps, which can be applied using separate image processors and image
+processor chaining if desired.
+
+.. code-block:: text
+
+    yolo:
+        arguments:
+            model: str
+            weight-name: str | None = None
+            subfolder: str | None = None
+            revision: str | None = None
+            token: str | None = None
+            font-size: int = 12
+            line-width: int = 2
+            line-color: str | None = None
+            class-filter: int | str | list | tuple | set | None = None
+            index-filter: int | list | tuple | set | None = None
+            confidence: float = 0.3
+            model-masks: bool = False
+            masks: bool = False
+            outpaint: bool = False
+            detector-padding: int | str = 0
+            mask-shape: str = "rectangle"
+            pre-resize: bool = False
+            device: str | None = None
+            output-file: Optional[str] = None
+            output-overwrite: bool = False
+            model-offload: bool = False
+    
+        Process the input image with Ultralytics YOLO object detection.
+    
+        This processor operates in two distinct modes:
+    
+        Detection Mode (default, masks=False):
+    
+        Returns the original image with bounding boxes or mask outlines drawn around detected objects, along with
+        labels showing the detection index, class ID, and class name. The colors of the boxes and text are
+        automatically chosen to contrast with the background for optimal visibility.
+    
+        Mask Mode (masks=True):
+    
+        Returns a single composite mask image containing all detected objects combined together. This is useful
+        for inpainting, outpainting, or other mask-based image processing operations.
+    
+        -----
+    
+        The "model" argument specifies which YOLO model to use. This can be a path to a local model file, a URL to
+        download the model from, or a HuggingFace repository slug.
+    
+        The "weight-name" argument specifies the file name in a HuggingFace repository for the model weights, if
+        you have provided a HuggingFace repository slug to the model argument.
+    
+        The "subfolder" argument specifies the subfolder in a HuggingFace repository for the model weights, if you
+        have provided a HuggingFace repository slug to the model argument.
+    
+        The "revision" argument specifies the revision of a HuggingFace repository for the model weights, if you
+        have provided a HuggingFace repository slug to the model argument. For example: "main"
+    
+        The "token" argument specifies your HuggingFace authentication token explicitly if needed for accessing
+        private repositories.
+    
+        The "local-files-only" argument specifies that dgenerate should not attempt to download any model files,
+        and to only look for them locally in the cache or otherwise.
+    
+        The "font-size" argument determines the size of the label text.
+    
+        The "line-width" argument controls the thickness of the bounding box lines.
+    
+        The "line-color" argument overrides the color for bounding box lines, mask outlines, and text label
+        backgrounds. This should be specified as a HEX color code, e.g. "#FFFFFF" or "#FFF". If not specified,
+        colors are automatically chosen to contrast with the background. The text color will always be
+        automatically chosen to contrast with the background for optimal readability.
+    
+        The "class-filter" argument can be used to detect only specific classes. This should be a comma-separated
+        list of class IDs or class names, or a single value, for example: "0,2,person,car". This filter is applied
+        before "index-filter".
+    
+        Example "class-filter" values:
+    
+            # Only keep detection class ID 0
+            class-filter=0
+    
+            # Only keep detection class "hand"
+            class-filter=hand
+    
+            # keep class ID 2,3
+            class-filter=2,3
+    
+            # keep class ID 0 & class Name "hand"
+            # if entry cannot be parsed as an integer
+            # it is interpreted as a name
+            class-filter=0,hand
+    
+            # "0" is interpreted as a name and not an ID,
+            # this is not likely to be useful
+            class-filter="0",hand
+    
+            # List syntax is supported, you must quote
+            # class names
+            class-filter=[0, "hand"]
+    
+        The "index-filter" argument is a list values or a single value that indicates what YOLO detection indices
+        to keep, the index values start at zero. Detections are sorted by their top left bounding box coordinate
+        from left to right, top to bottom, by (confidence descending). The order of detections in the image is
+        identical to the reading order of words on a page (english). Processing will only be performed on the
+        specified detection indices, if no indices are specified, then processing will be performed on all
+        detections.
+    
+        Example "index-filter" values:
+    
+            # keep the first, leftmost, topmost detection
+            index-filter=0
+    
+            # keep detections 1 and 3
+            index-filter=[1, 3]
+    
+            # CSV syntax is supported (tuple)
+            index-filter=1,3
+    
+        The "confidence" argument sets the confidence threshold for detections (0.0 to 1.0), defaults to: 0.3
+    
+        The "model-masks" argument indicates that masks generated by the model itself should be overlaid on the
+        image instead of just bounding boxes. If this is True, and the model returns mask data, mask outlines will
+        be drawn instead of bounding boxes. This defaults to False.
+    
+        The "masks" argument enables mask generation mode. When True, the processor returns a composite mask image
+        instead of the annotated detection image. This defaults to False.
+    
+        The "outpaint" argument inverts the generated masks, creating inverted masks suitable for outpainting
+        operations. This only has an effect when "masks" is True. This defaults to False.
+    
+        The "detector-padding" argument specifies the amount of padding that will be added to the detection
+        rectangle for both bounding box drawing and mask generation. The default is 0, you can make the bounding
+        box and mask area around the detected feature larger with positive padding and smaller with negative
+        padding.
+    
+        Padding examples:
+    
+            32 (32px Uniform, all sides)
+    
+            10x20 (10px Horizontal, 20px Vertical)
+    
+            10x20x30x40 (10px Left, 20px Top, 30px Right, 40px Bottom)
+    
+        The "mask-shape" argument indicates what mask shape should be drawn around a detected feature, the default
+        value is "rectangle". You may also specify "circle" to generate an ellipsoid shaped mask.
+    
+        Note: When "model-masks" is True and the model returns mask data, the "detector-padding" and "mask-shape"
+        arguments will be ignored as the model's own masks are used directly.
+    
+        The "pre-resize" argument determines if the processing occurs before or after dgenerate resizes the image.
+        This defaults to False, meaning the image is processed after dgenerate is done resizing it.
+    
+        The "device" argument can be used to set the device the processor will run on, for example: cpu, cuda,
+        cuda:1. If you are using this image processor as a preprocess or postprocess step for dgenerate, or with
+        the image-process subcommand, or \image_process directive, this argument will default to the value of
+        --device.
+    
+        The "output-file" argument can be used to set the output path for a processor debug image, this will save
+        the processed image to a path of your choosing.
+    
+        The "output-overwrite" argument can be used to enable overwrite for a processor debug image. If this is
+        not enabled, new images written by the processor while it is being used will be written with a numbered
+        suffix instead of being overwritten.
+    
+        The "model-offload" argument can be used to enable cpu model offloading for a processor. If this is
+        disabled, any torch tensors or modules placed on the GPU will remain there until the processor is done
+        being used, instead of them being moved back to the CPU after each image. Enabling this may help save VRAM
+        when using an image processor as a preprocessor or postprocessor for diffusion with dgenerate but will
+        impact rendering speed when generating many images.
+    
+    ==============================================================================================================
 
 Writing and Running Configs
 ===========================
@@ -8810,6 +9261,9 @@ The ``\templates_help`` output from the above example is:
         Name: "injected_verbose"
             Type: typing.Optional[bool]
             Value: False
+        Name: "last_adetailer_class_filter"
+            Type: typing.Optional[collections.abc.Collection[int | str]]
+            Value: None
         Name: "last_adetailer_crop_control_image"
             Type: typing.Optional[bool]
             Value: None
@@ -8820,8 +9274,8 @@ The ``\templates_help`` output from the above example is:
             Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
         Name: "last_adetailer_index_filter"
-            Type: typing.Optional[collections.abc.Sequence[int]]
-            Value: []
+            Type: typing.Optional[collections.abc.Collection[int]]
+            Value: None
         Name: "last_adetailer_mask_blurs"
             Type: typing.Optional[collections.abc.Sequence[int]]
             Value: []
@@ -8834,6 +9288,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_adetailer_mask_shapes"
             Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
+        Name: "last_adetailer_model_masks"
+            Type: typing.Optional[bool]
+            Value: None
         Name: "last_animation_format"
             Type: <class 'str'>
             Value: 'mp4'
@@ -9223,7 +9680,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [93562545431233]
+            Value: [2456738300116]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -9552,21 +10009,21 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
         bytearray(bytes_or_buffer) -> mutable copy of bytes_or_buffer bytearray(int) -> bytes array of size given
         by the parameter initialized with null bytes bytearray() -> empty bytes array
     
-        Construct a mutable bytearray object from: - an iterable yielding integers in range(256) - a text string
-        encoded using the specified encoding - a bytes or a buffer object - any object implementing the buffer
-        API. - an integer
+        Construct a mutable bytearray object from:   - an iterable yielding integers in range(256)   - a text
+        string encoded using the specified encoding   - a bytes or a buffer object   - any object implementing the
+        buffer API.   - an integer
     
-    =============================================================================================================
+    ==============================================================================================================
     bytes(args, kwargs):
     
         bytes(iterable_of_ints) -> bytes bytes(string, encoding[, errors]) -> bytes bytes(bytes_or_buffer) ->
         immutable copy of bytes_or_buffer bytes(int) -> bytes object of size given by the parameter initialized
         with null bytes bytes() -> empty bytes object
     
-        Construct an immutable array of bytes from: - an iterable yielding integers in range(256) - a text string
-        encoded using the specified encoding - any object implementing the buffer API. - an integer
+        Construct an immutable array of bytes from:   - an iterable yielding integers in range(256)   - a text
+        string encoded using the specified encoding   - any object implementing the buffer API.   - an integer
     
-    =============================================================================================================
+    ===========================================================================================================
     callable(args, kwargs):
     
         Return whether the object is callable (i.e., some kind of function).
@@ -9590,27 +10047,27 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
     ============================================================================================================
     dict(args, kwargs):
     
-        dict() -> new empty dictionary dict(mapping) -> new dictionary initialized from a mapping object's (key,
-        value) pairs dict(iterable) -> new dictionary initialized as if via: d = {} for k, v in iterable: d[k] = v
-        dict(**kwargs) -> new dictionary initialized with the name=value pairs in the keyword argument list. For
-        example: dict(one=1, two=2)
+        dict() -> new empty dictionary dict(mapping) -> new dictionary initialized from a mapping object's
+        (key, value) pairs dict(iterable) -> new dictionary initialized as if via:     d = {}     for k, v in
+        iterable:         d[k] = v dict(**kwargs) -> new dictionary initialized with the name=value pairs     in
+        the keyword argument list.  For example:  dict(one=1, two=2)
     
-    ==============================================================================================================
+    ============================================================================================================
     divmod(args, kwargs):
     
-        Return the tuple (x//y, x%y). Invariant: div*y + mod == x.
+        Return the tuple (x//y, x%y).  Invariant: div*y + mod == x.
     
-    ==============================================================
+    ===============================================================
     enumerate(args, kwargs):
     
         Return an enumerate object.
     
-        iterable an object supporting iteration
+          iterable     an object supporting iteration
     
         The enumerate object yields pairs containing a count (from start, which defaults to zero) and a value
         yielded by the iterable argument.
     
-        enumerate is useful for obtaining an indexed list: (0, seq[0]), (1, seq[1]), (2, seq[2]), ...
+        enumerate is useful for obtaining an indexed list:     (0, seq[0]), (1, seq[1]), (2, seq[2]), ...
     
     =========================================================================================================
     filter(args, kwargs):
@@ -9674,23 +10131,23 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
     
         int([x]) -> integer int(x, base=10) -> integer
     
-        Convert a number or string to an integer, or return 0 if no arguments are given. If x is a number, return
-        x.__int__(). For floating-point numbers, this truncates towards zero.
+        Convert a number or string to an integer, or return 0 if no arguments are given.  If x is a number, return
+        x.__int__().  For floating-point numbers, this truncates towards zero.
     
         If x is not a number or if base is given, then x must be a string, bytes, or bytearray instance
-        representing an integer literal in the given base. The literal can be preceded by '+' or '-' and be
-        surrounded by whitespace. The base defaults to 10. Valid bases are 0 and 2-36. Base 0 means to interpret
+        representing an integer literal in the given base.  The literal can be preceded by '+' or '-' and be
+        surrounded by whitespace.  The base defaults to 10.  Valid bases are 0 and 2-36. Base 0 means to interpret
         the base from the string as an integer literal. >>> int('0b100', base=0) 4
     
-    =============================================================================================================
+    ==============================================================================================================
     iter(args, kwargs):
     
         iter(iterable) -> iterator iter(callable, sentinel) -> iterator
     
-        Get an iterator from an object. In the first form, the argument must supply its own iterator, or be a
+        Get an iterator from an object.  In the first form, the argument must supply its own iterator, or be a
         sequence. In the second form, the callable is called until it returns the sentinel.
     
-    =========================================================================================================
+    ==========================================================================================================
     len(args, kwargs):
     
         Return the number of items in a container.
@@ -9706,10 +10163,10 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
     ==========================================================================================================
     map(args, kwargs):
     
-        Make an iterator that computes the function using arguments from each of the iterables. Stops when the
+        Make an iterator that computes the function using arguments from each of the iterables.  Stops when the
         shortest iterable is exhausted.
     
-    ==========================================================================================================
+    ===========================================================================================================
     max(args, kwargs):
     
         max(iterable, *[, default=obj, key=func]) -> value max(arg1, arg2, *args, *[, key=func]) -> value
@@ -9769,8 +10226,8 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
         range(stop) -> range object range(start, stop[, step]) -> range object
     
         Return an object that produces a sequence of integers from start (inclusive) to stop (exclusive) by step.
-        range(i, j) produces i, i+1, i+2, ..., j-1. start defaults to 0, and stop is omitted! range(4) produces 0,
-        1, 2, 3. These are exactly the valid indices for a list of 4 elements. When step is given, it specifies
+        range(i, j) produces i, i+1, i+2, ..., j-1. start defaults to 0, and stop is omitted!  range(4) produces
+        0, 1, 2, 3. These are exactly the valid indices for a list of 4 elements. When step is given, it specifies
         the increment (or decrement).
     
     ==============================================================================================================
@@ -9790,10 +10247,10 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
     
         Round a number to a given precision in decimal digits.
     
-        The return value is an integer if ndigits is omitted or None. Otherwise the return value has the same type
-        as the number. ndigits may be negative.
+        The return value is an integer if ndigits is omitted or None.  Otherwise the return value has the same
+        type as the number.  ndigits may be negative.
     
-    ==============================================================================================================
+    ==========================================================================================================
     set(args, kwargs):
     
         Build an unordered collection of unique elements.
@@ -9803,9 +10260,9 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
     
         slice(stop) slice(start, stop[, step])
     
-        Create a slice object. This is used for extended slicing (e.g. a[0:10:2]).
+        Create a slice object.  This is used for extended slicing (e.g. a[0:10:2]).
     
-    ==============================================================================
+    ===============================================================================
     sorted(args, kwargs):
     
         Return a new list containing all items from the iterable in ascending order.
@@ -9850,14 +10307,14 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
     zip(args, kwargs):
     
         The zip object yields n-length tuples, where n is the number of iterables passed as positional arguments
-        to zip(). The i-th element in every tuple comes from the i-th iterable argument to zip(). This continues
+        to zip().  The i-th element in every tuple comes from the i-th iterable argument to zip().  This continues
         until the shortest argument is exhausted.
     
         If strict is true and one of the arguments is exhausted before the others, raise a ValueError.
     
-        >>> list(zip('abcdefg', range(3), range(4))) [('a', 0, 0), ('b', 1, 1), ('c', 2, 2)]
+           >>> list(zip('abcdefg', range(3), range(4)))    [('a', 0, 0), ('b', 1, 1), ('c', 2, 2)]
     
-    ============================================================================================================
+    ==============================================================================================================
 
 
 Directives, and applying templating

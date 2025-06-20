@@ -1871,7 +1871,7 @@ class DiffusionPipelineWrapper:
             if arg_name not in arg_map:
                 raise RuntimeError(
                     f'Prompt weighter plugin: {prompt_weighter.__class__.__name__}, '
-                    f'returned invalid "get_extra_supported_args()" value: {arg_name}.  '
+                    f'returned invalid "get_extra_supported_args()" value: {arg_name}. '
                     f'This is a bug, acceptable values are: {", ".join(arg_map.keys())}')
 
             source = arg_map[arg_name]
@@ -2190,6 +2190,12 @@ class DiffusionPipelineWrapper:
             input_images = pipeline_args['image'] if asdff_output is None else asdff_output.images
             input_images *= (batch_size // len(input_images))
 
+            model_masks = _types.default(user_args.adetailer_model_masks, _constants.DEFAULT_ADETAILER_MODEL_MASKS)
+            if detector_uri.model_masks is not None:
+                model_masks = detector_uri.model_masks
+                _messages.log(f'Overriding global adetailer model-masks '
+                              f'value with adetailer detector URI value: {model_masks}')
+
             mask_blur = int(_types.default(user_args.adetailer_mask_blur, _constants.DEFAULT_ADETAILER_MASK_BLUR))
             if detector_uri.mask_blur is not None:
                 mask_blur = detector_uri.mask_blur
@@ -2228,6 +2234,12 @@ class DiffusionPipelineWrapper:
                 _messages.log(f'Overriding global adetailer index-filter '
                               f'value with adetailer detector URI value: {index_filter}')
 
+            class_filter = _types.default(user_args.adetailer_class_filter, None)
+            if detector_uri.class_filter is not None:
+                class_filter = detector_uri.class_filter
+                _messages.log(f'Overriding global adetailer class-filter '
+                              f'value with adetailer detector URI value: {class_filter}')
+
             if detector_uri.prompt is not None:
                 pipeline_args['prompt'] = detector_uri.prompt
                 _messages.log(f'Overriding global positive prompt '
@@ -2248,11 +2260,13 @@ class DiffusionPipelineWrapper:
                 confidence=detector_uri.confidence,
                 prompt_weighter=prompt_weighter,
                 index_filter=index_filter,
+                class_filter=class_filter,
                 mask_blur=mask_blur,
                 mask_shape=mask_shape,
                 detector_padding=detector_padding,
                 mask_padding=mask_padding,
-                mask_dilation=mask_dilation
+                mask_dilation=mask_dilation,
+                model_masks=model_masks
             )
 
         return self._create_pipeline_result(asdff_output, user_args=user_args, pipeline_kwargs=pipeline_args)

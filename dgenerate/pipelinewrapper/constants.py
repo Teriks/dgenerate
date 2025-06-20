@@ -183,9 +183,24 @@ DEFAULT_ADETAILER_MASK_DILATION: int = 4
 Default adetailer mask dilation
 """
 
+DEFAULT_ADETAILER_MODEL_MASKS: bool = False
+"""
+Default adetailer model masks setting.
+"""
+
 DEFAULT_ADETAILER_MASK_BLUR: int = 4
 """
 Default adetailer mask blur.
+"""
+
+DEFAULT_YOLO_DETECTOR_PADDING: int = 0
+"""
+Default YOLO detector padding.
+"""
+
+DEFAULT_YOLO_MASK_SHAPE: str = 'rectangle'
+"""
+Default YOLO mask shape.
 """
 
 DEFAULT_PAG_SCALE: float = 3.0

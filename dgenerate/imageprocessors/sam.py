@@ -36,7 +36,7 @@ from dgenerate.imageprocessors import imageprocessor as _imageprocessor
 
 class SegmentAnythingProcessor(_imageprocessor.ImageProcessor):
     """
-    Segment Anything Model, this processor attempts to creates cutouts for every distinct objects in an image.
+    Segment Anything Model, this processor attempts to create cutouts for every distinct object in an image.
 
     The "detect-resolution" argument is the resolution the image is resized to internal to the processor before
     detection is run on it. It should be a single dimension for example: "detect-resolution=512" or the X/Y dimensions
@@ -66,7 +66,7 @@ class SegmentAnythingProcessor(_imageprocessor.ImageProcessor):
                  **kwargs):
         """
         :param detect_resolution: the input image is resized to this dimension before being processed,
-            providing ``None`` indicates it is not to be resized.  If there is no resize requested during
+            providing ``None`` indicates it is not to be resized. If there is no resize requested during
             the processing action via ``resize_resolution`` it will be resized back to its original size.
         :param detect_aspect: if the input image is resized by ``detect_resolution`` or ``detect_align``
             before processing, will it be an aspect correct resize?
@@ -96,7 +96,7 @@ class SegmentAnythingProcessor(_imageprocessor.ImageProcessor):
 
         self.set_size_estimate(2564363480)  # 2.56436348 GB
 
-        with _util._with_hf_local_files_only(self.local_files_only):
+        with _util.with_hf_local_files_only(self.local_files_only):
             self._sam: _cna.SamDetector = self.load_object_cached(
                 tag="ybelkada/segment-anything;subfolder=checkpoints",
                 estimated_size=self.size_estimate,

@@ -1305,7 +1305,7 @@ def indent_text(text,
 def _clean_lines(lines: list):
     l = []
     for line in lines:
-        l.append(re.sub(r'\s+', ' ', line).strip())
+        l.append(line.rstrip())
     return l
 
 
@@ -1327,7 +1327,7 @@ def wrap_paragraphs(text: str,
     :param width: Wrap with in characters
     :param break_long_words: break on long words? default ``False``
     :param break_on_hyphens: break on hyphens? default ``False``
-    :param clean_lines: Remove sequential whitespace / right strip lines?
+    :param clean_lines: Right strip lines?
     :param fill_args: extra keyword arguments to :py:func:`textwrap.fill` if desired
     :return: text wrapped string
     """
@@ -1338,8 +1338,14 @@ def wrap_paragraphs(text: str,
         # Check if the paragraph contains 'NOWRAP!' after leading whitespace
         if paragraph.lstrip().startswith('NOWRAP!'):
             # Add the paragraph to the wrapped text as is
-            lines = paragraph.split('\n')[1:]
-            wrapped_text += indent_text('\n'.join(_clean_lines(lines) if clean_lines else lines),
+            lines = paragraph.split('\n')
+            # Find and remove the line containing NOWRAP!
+            lines_without_nowrap = []
+            for line in lines:
+                if line.lstrip().startswith('NOWRAP!'):
+                    continue
+                lines_without_nowrap.append(line)
+            wrapped_text += indent_text('\n'.join(_clean_lines(lines_without_nowrap) if clean_lines else lines_without_nowrap),
                                         initial_indent=fill_args.get('initial_indent', None),
                                         subsequent_indent=fill_args.get('subsequent_indent', None)) + '\n\n'
         else:

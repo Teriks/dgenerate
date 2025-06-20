@@ -25,8 +25,10 @@ import sys
 import typing
 from argparse import Action
 
-import dgenerate.latentsprocessors as _latentsprocessors
+import torch
+
 import dgenerate.imageprocessors as _imageprocessors
+import dgenerate.latentsprocessors as _latentsprocessors
 import dgenerate.mediaoutput as _mediaoutput
 import dgenerate.memoize as _memoize
 import dgenerate.memory as _memory
@@ -40,7 +42,6 @@ import dgenerate.resources as _resources
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.torchutil as _torchutil
 import dgenerate.types as _types
-import torch
 
 __doc__ = """
 Argument parsing for the dgenerate command line tool.
@@ -403,6 +404,20 @@ def _type_adetailer_index_filter_value(val):
     return val
 
 
+def _type_adetailer_class_filter_value(val):
+    """
+    Parse a class filter value which can be either an integer (class ID) or a string (class name).
+    """
+    try:
+        # Try to convert to integer if it's a digit
+        if val.isdigit():
+            return int(val)
+    except (ValueError, AttributeError):
+        pass
+    # Return as is if it's a string
+    return val
+
+
 def _type_adetailer_mask_shape(val):
     val = val.lower()
 
@@ -410,7 +425,6 @@ def _type_adetailer_mask_shape(val):
         raise argparse.ArgumentTypeError(
             'Must be one of: rectangle or circle'
         )
-
     return val
 
 
@@ -626,11 +640,11 @@ def _type_latents(val: str) -> torch.Tensor:
     """
     import os
     import dgenerate.mediainput as _mediainput
-    
+
     # Check if file exists
     if not os.path.exists(val):
         raise argparse.ArgumentTypeError(f'Tensor file not found: {val}')
-    
+
     # Check if it's a valid tensor file format
     if not _mediainput.is_tensor_file(val):
         supported_formats = _mediainput.get_supported_tensor_formats()
@@ -638,7 +652,7 @@ def _type_latents(val: str) -> torch.Tensor:
             f'File "{val}" is not a supported tensor format. '
             f'Supported formats: {", ".join(supported_formats)}'
         )
-    
+
     # Load the tensor
     try:
         tensor = _mediainput.load_tensor_file(val, val)
@@ -665,8 +679,13 @@ def _type_denoising_fraction(val: str) -> float:
     if val < 0.0 or val > 1.0:
         raise argparse.ArgumentTypeError(
             'Must be between 0.0 and 1.0 (inclusive)')
-    
+
     return val
+
+
+class _SetAction(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        setattr(namespace, self.dest, set(values))
 
 
 _ARG_PARSER_CACHE = dict()
@@ -929,7 +948,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     If --batch-grid-size is specified when producing an animation then the image grid is used
                     for the output frames.
                     
-                    During animation rendering each image in the batch will still be  written to the output directory
+                    During animation rendering each image in the batch will still be written to the output directory
                     along side the produced animation as either suffixed files or image grids depending on the
                     options you choose. (Default: 1)"""
         )
@@ -975,22 +994,55 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     The "weight-name" argument indicates the name of the weights file to be loaded when
                     loading from a Hugging Face repository or folder on disk.
                     
+                    The "class-filter" (overrides --adetailer-class-filter) argument is a list of class IDs or 
+                    class names that indicates what YOLO detection classes to keep. This filter is applied first, 
+                    before index-filter. Detections that don't match any of the specified classes will be ignored.
+                    
+                    Example "class-filter" values:
+                    
+                        NOWRAP!
+                        * Only keep detection class ID 0:
+                        class-filter=0
+                        
+                        NOWRAP!
+                        * Only keep detection class "hand":
+                        class-filter=hand
+                        
+                        NOWRAP!
+                        * Keep class IDs 2 and 3:
+                        class-filter=2,3
+                        
+                        NOWRAP!
+                        * Keep class ID 0 and class name "hand":
+                        class-filter=0,hand
+                        
+                        NOWRAP!
+                        * String digits are interpreted as integers:
+                        class-filter="0" (interpreted as class name "0", not likely useful)
+                        
+                        NOWRAP!
+                        * List syntax is also supported:
+                        class-filter=[0, "hand"]
+                        
                     The "index-filter" (overrides --adetailer-index-filter) argument is a list values or a
                     single value that indicates what YOLO detection indices to keep, the index values start
                     at zero. Detections are sorted by their top left bounding box coordinate from left to right, 
                     top to bottom, by (confidence descending). The order of detections in the image is identical to
                     the reading order of words on a page (english). Inpainting will only be preformed on the 
-                    specified detection indices, if no indices are specified, then
-                    inpainting will be preformed on all detections.
+                    specified detection indices, if no indices are specified, then inpainting 
+                    will be preformed on all detections. This filter is applied after class-filter.
                 
                     Example "index-filter" values:
-                
+                    
+                        NOWRAP!
                         * keep the first, leftmost, topmost detection:
                         index-filter=0
-                
+                        
+                        NOWRAP!
                         * keep detections 1 and 3:
                         index-filter=[1, 3]
-                
+                        
+                        NOWRAP!
                         * CSV syntax is supported (tuple):
                         index-filter=1,3
                 
@@ -1001,11 +1053,14 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     and smaller with negative padding.
                 
                     Padding examples:
-                
+                    
+                        NOWRAP!
                         32 (32px Uniform, all sides)
-                
+                        
+                        NOWRAP!
                         10x20 (10px Horizontal, 20px Vertical)
-                
+                        
+                        NOWRAP!
                         10x20x30x40 (10px Left, 20px Top, 30px Right, 40px Bottom)
                 
                     The "mask-padding" (overrides --adetailer-mask-paddings) argument indicates how 
@@ -1050,9 +1105,41 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '-adm', '--adetailer-model-masks',
+            dest='adetailer_model_masks',
+            action='store_true',
+            help="""Indicates that masks generated by the model itself should be preferred over 
+                    masks generated from the detection bounding box. If this is specified, and the model itself
+                    returns mask data, --adetailer-mask-shapes, --adetailer-mask-paddings, 
+                    and --adetailer-detector-paddings will all be ignored."""
+        ))
+
+    actions.append(
+        parser.add_argument(
+            '-adf', '--adetailer-class-filter',
+            nargs='+',
+            action=_SetAction,
+            type=_type_adetailer_class_filter_value,
+            default=None,
+            metavar='CLASS_FILTER',
+            dest='adetailer_class_filter',
+            help="""A list of class IDs or class names that indicates what YOLO detection classes to keep.
+                    This filter is applied before index-filter. Detections that don't match any of the 
+                    specified classes will be ignored. This filtering occurs before --adetailer-index-filter.
+                    
+                    NOWRAP!
+                    Examples:
+                    --adetailer-class-filter 0 2        # Keep only class IDs 0 and 2
+                    --adetailer-class-filter person car # Keep only "person" and "car" classes
+                    --adetailer-class-filter 0 person   # Keep class ID 0 and class name "person"
+                    """)
+    )
+
+    actions.append(
+        parser.add_argument(
             '-adi', '--adetailer-index-filter',
             nargs='+',
-            action='store',
+            action=_SetAction,
             type=_type_adetailer_index_filter_value,
             default=None,
             metavar='INTEGER',
@@ -1063,6 +1150,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     detections in the image is identical to the reading order of words on a page (english). 
                     Inpainting will only be preformed on the specified detection indices, if no indices 
                     are specified, then inpainting will be preformed on all detections.
+                    This filter is applied after class-filter.
                     """)
     )
 
@@ -1406,7 +1494,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                     The "extract" argument specifies that "model" points at a combind single file 
                     checkpoint containing multiple components such as the UNet and Text Encoders, and 
-                    that we should extract the VAE.  When using this argument you can use "subfolder" to
+                    that we should extract the VAE. When using this argument you can use "subfolder" to
                     indicate the key in the checkpoint containing the model, this defaults to "vae".
                     
                     The "dtype" argument specifies the VAE model precision, it defaults to the value of -t/--dtype
@@ -1486,7 +1574,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     actions.append(
         parser.add_argument(
             '-lrfs', '--lora-fuse-scale', default=None, type=float, metavar="LORA_FUSE_SCALE",
-            help="""LoRA weights are merged into the main model at this scale.  When specifying multiple
+            help="""LoRA weights are merged into the main model at this scale. When specifying multiple
                     LoRA models, they are fused together into one set of weights using their individual scale values,
                     after which they are fused into the main model at this scale value. (default: 1.0)."""
         )
@@ -1496,10 +1584,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '-ie', '--image-encoder', action='store', default=None, metavar="IMAGE_ENCODER_URI",
             dest='image_encoder_uri',
-            help=f"""Specify an Image Encoder using a URI.  
+            help=f"""Specify an Image Encoder using a URI. 
                     
                     Image Encoders are used with --ip-adapters models, and must be specified if none of the
-                    loaded --ip-adapters contain one.  An error will be produced in this situation, which
+                    loaded --ip-adapters contain one. An error will be produced in this situation, which
                     requires you to use this argument.
                     
                     An image encoder can also be manually specified for Stable Cascade models.
@@ -1648,11 +1736,11 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     The "start" argument specifies at what fraction of the total inference steps to begin applying
                     the ControlNet, defaults to 0.0, IE: the very beginning.
                     
-                    The "end"  argument specifies at what fraction of the total inference steps to stop applying
+                    The "end" argument specifies at what fraction of the total inference steps to stop applying
                     the ControlNet, defaults to 1.0, IE: the very end.
                     
                     The "mode" argument can be used when using --model-type torch-flux and ControlNet Union
-                    to specify the ControlNet mode.  Acceptable values are: "canny", "tile", "depth", "blur",
+                    to specify the ControlNet mode. Acceptable values are: "canny", "tile", "depth", "blur",
                     "pose", "gray", "lq". This value may also be an integer between 0 and 6, inclusive.
                     
                     The "revision" argument specifies the model revision to use for the ControlNet model
@@ -2781,7 +2869,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     --model-type values (torch-if*).
                     
                     If only one integer value is provided, that is the value for both dimensions.
-                    X/Y dimension values should be separated by "x".  
+                    X/Y dimension values should be separated by "x". 
                     
                     This value defaults to 512x512 for Stable Diffusion when no --image-seeds are
                     specified (IE txt2img mode), 1024x1024 for Stable Cascade and Stable Diffusion 3/XL or
@@ -2838,7 +2926,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             help="""Write a configuration text file for every output image or animation.
                     The text file can be used reproduce that particular output image or animation by piping
                     it to dgenerate STDIN or by using the --file option, for example "dgenerate < config.dgen" 
-                    or "dgenerate --file config.dgen".  These files will be written to --output-path and are
+                    or "dgenerate --file config.dgen". These files will be written to --output-path and are
                     affected by --output-prefix and --output-overwrite as well. The files will be named
                     after their corresponding image or animation file. Configuration files produced for
                     animation frame images will utilize --frame-start and --frame-end to specify the
@@ -3286,7 +3374,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     of frames. The keyword argument "aspect" can be used to determine resizing behavior when
                     the global argument --output-size or the local keyword argument "resize" is specified,
                     it is a boolean argument indicating whether aspect ratio of the input image should be
-                    respected or ignored.  
+                    respected or ignored. 
                     
                     The keyword argument "floyd" can be used to specify images from
                     a previous deep floyd stage when using --model-type torch-ifs*. When keyword arguments
@@ -3295,7 +3383,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                     In place of static images, you may pass a latents file generated by dgenerate
                     containing the raw un-decoded latents from a previous generation, latents can
-                    be generated with --image-format pt, pth, or safetensors.  Latents may be passed 
+                    be generated with --image-format pt, pth, or safetensors. Latents may be passed 
                     for img2img input only. Latents will first be decoded back into pixel space 
                     (into a normal image) by the receiving models VAE. Except in the case of
                     --model-type torch-upscaler-x2, which can handle the denoised latents directly.

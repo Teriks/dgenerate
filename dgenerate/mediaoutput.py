@@ -33,7 +33,7 @@ import torch
 import dgenerate.filelock as _filelock
 
 __doc__ = """
-Media output, handles writing videos, animations, and tensor files (latents).  
+Media output, handles writing videos, animations, and tensor files (latents). 
 
 Provides information about supported output formats including tensor formats for latent data.
 """

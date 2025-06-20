@@ -195,8 +195,15 @@ class IPAdapterUri:
         try:
             r = _ip_adapter_uri_parser.parse(uri)
 
+            scale = r.args.get('scale', 1.0)
+            try:
+                scale = float(scale)
+            except ValueError:
+                raise _exceptions.InvalidIPAdapterUriError(
+                    f'IP Adapter "scale" must be a floating point number, received: {scale}')
+
             return IPAdapterUri(model=r.concept,
-                                scale=float(r.args.get('scale', 1.0)),
+                                scale=scale,
                                 weight_name=r.args.get('weight-name', None),
                                 revision=r.args.get('revision', None),
                                 subfolder=r.args.get('subfolder', None))

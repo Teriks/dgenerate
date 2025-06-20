@@ -45,7 +45,7 @@ def join_with_globs(args):
     return ' '.join(arg if '*' in arg else shlex.quote(arg) for arg in args)
 
 
-if runner.run(unittest.defaultTestLoader.discover("tests", pattern='*_test.py')).wasSuccessful():
+if runner.run(unittest.defaultTestLoader.discover("tests", pattern='test_*.py')).wasSuccessful():
 
     if not args.examples:
         exit(0)

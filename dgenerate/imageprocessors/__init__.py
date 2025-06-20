@@ -25,6 +25,10 @@ import dgenerate.types as _types
 from .adetailer import AdetailerProcessor
 from .anyline import AnylineProcessor
 from .canny import CannyEdgeDetectProcessor
+from .cv2imageops import (
+    DilateProcessor,
+    GaussianBlurProcessor
+)
 from .exceptions import (
     ImageProcessorNotFoundError,
     ImageProcessorArgumentError,
@@ -57,6 +61,7 @@ from .pidi import PidiNetProcessor
 from .sam import SegmentAnythingProcessor
 from .teed import TEEDProcessor
 from .upscaler import UpscalerProcessor
+from .yolo import YOLODetectionProcessor
 from .zoe import ZoeDepthProcessor
 
 try:

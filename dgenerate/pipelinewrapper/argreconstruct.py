@@ -150,6 +150,12 @@ def reconstruct_dgenerate_opts(
     if wrapper.adetailer_detector_uris:
         opts.append(('--adetailer-detectors', wrapper.adetailer_detector_uris))
 
+    if args.adetailer_model_masks:
+        opts.append(('--adetailer-model-masks',))
+
+    if args.adetailer_class_filter:
+        opts.append(('--adetailer-class-filter', ' '.join(str(s) for s in args.adetailer_class_filter)))
+
     if args.adetailer_index_filter is not None:
         opts.append(('--adetailer-index-filter',
                      ' '.join(str(i) for i in args.adetailer_index_filter)))

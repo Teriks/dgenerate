@@ -1,0 +1,16 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 5.0.0
+
+# see what sort of clothing we can outline on the monalisa
+# this model classifies clothes, and can produce its own masks, model-masks=True
+# here indicates we should use the masks to produce a preview outline
+
+\image_process ../media/monalisa.png
+-o mona-yolo-preview.png
+--processors yolo;model=Bingsu/adetailer;weight-name=deepfashion2_yolov8s-seg.pt;model-masks=True
+
+# create a black and white mask, white where the object was detected
+
+\image_process ../media/monalisa.png
+-o mona-yolo-mask.png
+--processors yolo;model=Bingsu/adetailer;weight-name=deepfashion2_yolov8s-seg.pt;model-masks=True;masks=True
