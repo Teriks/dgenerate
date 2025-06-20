@@ -1723,7 +1723,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     downloaded to dgenerate's web cache.
                     
                     Optional arguments can be provided after the ControlNet model specification,
-                    these are: "scale", "start", "end", "revision", "variant", "subfolder", and "dtype".
+                    these are: "scale", "start", "end", "mode", "revision", "variant", "subfolder", and "dtype".
                     
                     They can be specified as so in any order, they are not positional:
                     
