@@ -65,7 +65,7 @@ class ZoeDepthProcessor(_imageprocessor.ImageProcessor):
         """
         :param gamma_corrected: perform gamma correction on the depth map?
         :param detect_resolution: the input image is resized to this dimension before being processed,
-            providing ``None`` indicates it is not to be resized.  If there is no resize requested during
+            providing ``None`` indicates it is not to be resized. If there is no resize requested during
             the processing action via ``resize_resolution`` it will be resized back to its original size.
         :param detect_aspect: if the input image is resized by ``detect_resolution`` or ``detect_align``
             before processing, will it be an aspect correct resize?
@@ -90,7 +90,7 @@ class ZoeDepthProcessor(_imageprocessor.ImageProcessor):
 
         self.set_size_estimate(1443288172)  # 1.443288172 GB ZoeD_M12_N.pt['model']
 
-        with _util._with_hf_local_files_only(self.local_files_only):
+        with _util.with_hf_local_files_only(self.local_files_only):
             self._zoe = self.load_object_cached(
                 tag="lllyasviel/Annotators",
                 estimated_size=self.size_estimate,

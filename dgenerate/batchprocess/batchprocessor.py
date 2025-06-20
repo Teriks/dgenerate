@@ -175,7 +175,7 @@ class BatchProcessor:
             of names to functions which accept a single parameter, a list of directive arguments, and return
             a return code.
         :param builtins: builtin functions available as template functions and ``\\setp`` functions.
-            A safe default collection of functions is used if this is not specified.  Builtins may
+            A safe default collection of functions is used if this is not specified. Builtins may
             be overridden by functions defined in ``template_functions``
         :param injected_args: Arguments to be injected at the end of user specified arguments for every shell invocation.
             If ``-v/--verbose`` is present in ``injected_args`` debugging output will be enabled globally while the config

@@ -855,7 +855,7 @@ class RenderLoop:
                                                  diffusion_args,
                                                  generation_result,
                                                  image_seed)
-            else:
+            elif has_images and is_output_latents:
                 assert False, (
                     f"Mismatch between output format and generation result: "
                     f"tensor_output={is_output_latents}, has_images={has_images}, has_latents={has_latents}"

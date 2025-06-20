@@ -774,7 +774,7 @@ def convert_and_insert_metadata(
     :param output_path: output image path, this can be a JPEG or PNG file,
         if not provided the input image will be modified.
     :param dgenerate_config: dgenerate config text produced by ``--output-configs``, in the case that the
-        image does not contain metadata produced by ``--output-metadata``.  This is not a file path,
+        image does not contain metadata produced by ``--output-metadata``. This is not a file path,
         it should be the config text itself as a string.
 
     :raise Auto1111MetadataCreationError: if there is an error creating or writing the metadata.

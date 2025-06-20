@@ -1112,7 +1112,7 @@ class ImageSeedParseResult:
     floyd_image: _types.OptionalPath = None
     """
     Optional path to a result from a Deep Floyd IF stage, used only for img2img and inpainting mode
-    with Deep Floyd.  This is the only way to specify the image that was output by a stage in that case.
+    with Deep Floyd. This is the only way to specify the image that was output by a stage in that case.
     
     the arguments floyd and control are mutually exclusive.
     
@@ -2744,7 +2744,7 @@ def iterate_image_seed(uri: str | ImageSeedParseResult,
 
     :param seed_image_processor: optional :py:class:`dgenerate.imageprocessors.ImageProcessor` or list of them.
         A list is used to specify processors for individual images in a multi img2img image specification
-        such as uri = "images: img2img-1.png, img2img-2.png".  In the case that a multi img2img image
+        such as uri = "images: img2img-1.png, img2img-2.png". In the case that a multi img2img image
         specification is used and only one processor is given, that processor will be used on only the
         first image / video in the specification. Images in a multi img2img specification with no corresponding
         processor value will have their processor set to ``None``, specifying extra processors
@@ -2752,7 +2752,7 @@ def iterate_image_seed(uri: str | ImageSeedParseResult,
 
     :param mask_image_processor: optional :py:class:`dgenerate.imageprocessors.ImageProcessor` or list of them.
         A list is used to specify processors for individual mask images in a multi inpaint mask specification
-        such as uri = "images: img2img-1.png, img2img-2.png;mask=mask-1.png, mask-2.png".  In the case that
+        such as uri = "images: img2img-1.png, img2img-2.png;mask=mask-1.png, mask-2.png". In the case that
         a multi inpaint mask specification is used and only one processor is given, that processor will
         be used on only the first image / video in the specification. Images in an inpaint mask specification
         with no corresponding processor value will have their processor set to ``None``, specifying extra
@@ -2760,7 +2760,7 @@ def iterate_image_seed(uri: str | ImageSeedParseResult,
 
     :param control_image_processor: optional :py:class:`dgenerate.imageprocessors.ImageProcessor` or list of them.
         A list is used to specify processors for individual images in a multi guidance image specification
-        such as uri = "img2img.png;control=img1.png, img2.png".  In the case that a multi guidance image
+        such as uri = "img2img.png;control=img1.png, img2.png". In the case that a multi guidance image
         specification is used and only one processor is given, that processor will be used on only the
         first image / video in the specification. Images in a guidance specification with no corresponding
         processor value will have their processor set to ``None``, specifying extra processors
@@ -2772,7 +2772,7 @@ def iterate_image_seed(uri: str | ImageSeedParseResult,
         style reference and not a noise base similar to IP Adapters.
 
     :raise ImageSeedError: if multiple images are passed without using
-        the ``"images: ..."`` syntax for batching.  Or if the ``"adapter: ..."``
+        the ``"images: ..."`` syntax for batching. Or if the ``"adapter: ..."``
         syntax is used with the ``floyd`` keyword argument for floyd stage images.
         Or if too many image processor chains are specified for the amount of
         images given.
@@ -3021,7 +3021,7 @@ def iterate_control_image(uri: str | ImageSeedParseResult,
 
     :param image_processor: optional :py:class:`dgenerate.imageprocessors.ImageProcessor` or list of them.
         A list is used to specify processors for individual images in a multi guidance image specification
-        such as uri = "img1.png, img2.png".  In the case that a multi guidance image specification is used and only
+        such as uri = "img1.png, img2.png". In the case that a multi guidance image specification is used and only
         one processor is given, that processor will be used on only the first image / video in the specification.
         Images in a guidance specification with no corresponding processor value will have their processor
         set to ``None``, specifying extra processors as compared to control guidance image sources will

@@ -596,7 +596,7 @@ class ImageProcessor(_plugin.Plugin, abc.ABC):
 
         :param image: image to process
         :param resize_resolution: image will be resized to this resolution
-            after this process is complete.  If None is passed no resize is
+            after this process is complete. If None is passed no resize is
             going to occur. It is not the duty of the inheritor to resize the
             image, in fact it should NEVER be resized.
 

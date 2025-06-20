@@ -40,10 +40,10 @@ class TestPluginLoading(unittest.TestCase):
 
         loader.add_class(PluginUnNamed)
 
-        instance = loader.load('unit.plugin_loading_test.PluginUnNamed')
+        instance = loader.load('unit.test_plugin_loading.PluginUnNamed')
 
         self.assertEqual(instance.loaded_by_name,
-                         'unit.plugin_loading_test.PluginUnNamed')
+                         'unit.test_plugin_loading.PluginUnNamed')
 
         with self.assertRaises(_plugin.PluginNotFoundError):
             loader.load('Exception')
@@ -54,10 +54,10 @@ class TestPluginLoading(unittest.TestCase):
 
         loader.add_search_module(sys.modules[__name__])
 
-        instance = loader.load('unit.plugin_loading_test.PluginUnNamed')
+        instance = loader.load('unit.test_plugin_loading.PluginUnNamed')
 
         self.assertEqual(instance.loaded_by_name,
-                         'unit.plugin_loading_test.PluginUnNamed')
+                         'unit.test_plugin_loading.PluginUnNamed')
 
         with self.assertRaises(_plugin.PluginNotFoundError):
             loader.load('Exception')
@@ -68,10 +68,10 @@ class TestPluginLoading(unittest.TestCase):
 
         loader.add_search_module_string(__name__)
 
-        instance = loader.load('unit.plugin_loading_test.PluginUnNamed')
+        instance = loader.load('unit.test_plugin_loading.PluginUnNamed')
 
         self.assertEqual(instance.loaded_by_name,
-                         'unit.plugin_loading_test.PluginUnNamed')
+                         'unit.test_plugin_loading.PluginUnNamed')
 
         with self.assertRaises(_plugin.PluginNotFoundError):
             loader.load('Exception')

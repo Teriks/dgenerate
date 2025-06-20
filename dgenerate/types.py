@@ -74,6 +74,8 @@ Integers = collections.abc.Sequence[int]
 
 OptionalInteger = typing.Optional[int]
 OptionalIntegers = typing.Optional[Integers]
+OptionalIntegersBag = typing.Optional[collections.abc.Collection[int]]
+OptionalIntegersAndStringsBag = typing.Optional[collections.abc.Collection[int | str]]
 
 Float = float
 Floats = collections.abc.Sequence[float]

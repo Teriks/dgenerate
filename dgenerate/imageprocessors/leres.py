@@ -73,7 +73,7 @@ class LeresDepthProcessor(_imageprocessor.ImageProcessor):
         :param threshold_far: argument is the far threshold, think the high threshold of canny
         :param boost: argument determines if monocular depth boost is used
         :param detect_resolution: the input image is resized to this dimension before being processed,
-            providing ``None`` indicates it is not to be resized.  If there is no resize requested during
+            providing ``None`` indicates it is not to be resized. If there is no resize requested during
             the processing action via ``resize_resolution`` it will be resized back to its original size.
         :param detect_aspect: if the input image is resized by ``detect_resolution`` or ``detect_align``
             before processing, will it be an aspect correct resize?
@@ -102,7 +102,7 @@ class LeresDepthProcessor(_imageprocessor.ImageProcessor):
 
         # this is the size of res101.pth['depth_model'] + latest_net_G.pth in bytes
         self.set_size_estimate(780273156)
-        with _util._with_hf_local_files_only(self.local_files_only):
+        with _util.with_hf_local_files_only(self.local_files_only):
             self._leres = self.load_object_cached(
                 tag="lllyasviel/Annotators",
                 estimated_size=self.size_estimate,

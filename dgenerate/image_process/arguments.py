@@ -155,7 +155,7 @@ def _create_arg_parser(prog, description):
         '-fs', '--frame-start', default=0, type=_arguments._type_frame_start,
         metavar="FRAME_NUMBER",
         help="""Starting frame slice point for animated files (zero-indexed), the specified
-                frame will be included.  (default: 0)"""))
+                frame will be included. (default: 0)"""))
 
     actions.append(parser.add_argument(
         '-fe', '--frame-end', default=None, type=_arguments._type_frame_end,

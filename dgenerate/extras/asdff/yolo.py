@@ -3,13 +3,13 @@ from __future__ import annotations
 from pathlib import Path
 
 import torch
-from huggingface_hub import hf_hub_download
 from PIL import Image, ImageDraw
+from huggingface_hub import hf_hub_download
 from torchvision.transforms.functional import to_pil_image
-from dgenerate.extras.asdff.utils import bbox_padding
-import dgenerate.memory
 
+import dgenerate.memory
 import dgenerate.messages
+from dgenerate.extras.asdff.utils import bbox_padding
 
 try:
     from ultralytics import YOLO
@@ -97,6 +97,7 @@ def mask_to_pil(
         return [to_pil_image(masks[i], mode="L").resize(shape) for i in range(n)]
 
 
+@torch.no_grad()
 def yolo_detector(
         image: Image.Image,
         model_path: str | Path | None = None,
@@ -105,7 +106,9 @@ def yolo_detector(
         padding: int | tuple[int, int] | tuple[int, int, int, int] = 0,
         mask_shape: str = "rectangle",
         boxes_only: bool = False,
-        index_filter: set[int] | list[int] | None = None
+        class_filter: set[int | str] | list[int | str] | None = None,
+        index_filter: set[int] | list[int] | None = None,
+        model_masks: bool = False
 ) -> list[Image.Image] | list[tuple[int, int, int, int]] | None:
     if not model_path:
         model_path = hf_hub_download("Bingsu/adetailer", "face_yolov8n.pt")
@@ -113,16 +116,21 @@ def yolo_detector(
     dgenerate.messages.debug_log(
         f'running adetailer YOLO detector on device: {device}')
 
+    if class_filter is not None and not isinstance(class_filter, set):
+        class_filter = set(class_filter)
+
     model = None
     try:
         model = YOLO(model_path).to(device)
 
         pred = model(image, conf=confidence)
 
-        bboxes = pred[0].boxes.xyxy.cpu().numpy()
+        original_bboxes = pred[0].boxes.xyxy.cpu().numpy()
         confidences = pred[0].boxes.conf.cpu().numpy()  # Extract confidence scores
+        class_ids = pred[0].boxes.cls
+        class_names = [model.names[int(c)] for c in class_ids]
 
-        if bboxes.size == 0:
+        if original_bboxes.size == 0:
             return None
 
         # Sort boxes: first by x (left to right),
@@ -133,24 +141,35 @@ def yolo_detector(
         # words on a page (euro languages)
         # deterministically
         sorted_indices = sorted(
-            range(len(bboxes)), key=lambda i: (bboxes[i][0], bboxes[i][1], -confidences[i]))
+            range(len(original_bboxes)), key=lambda i: (original_bboxes[i][0], original_bboxes[i][1], -confidences[i]))
 
-        bboxes = bboxes[sorted_indices]
+        filtered_bboxes = []
+        filtered_indices = []
+
+        for idx in sorted_indices:
+            cls_id = int(class_ids[idx])
+            cls_name = class_names[idx]
+
+            if class_filter and not ({cls_id, cls_name} & class_filter):
+                continue
+            filtered_bboxes.append(original_bboxes[idx])
+            filtered_indices.append(idx)
 
         if boxes_only:
-            return bboxes
+            return filtered_bboxes
 
-        if pred[0].masks is None:
+        if not model_masks or pred[0].masks is None:
             masks = create_mask_from_bbox(
-                bboxes=bboxes,
+                bboxes=filtered_bboxes,
                 shape=image.size,
                 padding=padding,
                 mask_shape=mask_shape,
                 index_filter=index_filter
             )
         else:
+            # use masks from the model itself
             masks = mask_to_pil(
-                masks=pred[0].masks.data[sorted_indices],
+                masks=pred[0].masks.data[filtered_indices],
                 shape=image.size,
                 index_filter=index_filter
             )

@@ -138,9 +138,13 @@ inpaint multiple types of objects in an image, or different detection indices se
     strength=0.7
 
 
-This leads to a large amount of possible use cases that are hard to fully demonstrate,
-as always, be creative :)
+The processor argument "class-filter" can also be used to filter to only detections with
+a certain class ID or class name in the model, this filter acts before "index-filter",
+"class-filter" can be specified as a mix of IDs (integers) or direct names, this is useful
+when using models that can detect multiple classes of objects. This is described in the
+adetailer processor help output below.
 
+@COMMAND_OUTPUT[dgenerate --no-stdin --image-processor-help adetailer]
 
 Adetailer Pipeline
 ------------------
@@ -216,7 +220,7 @@ original generation, or with  different model types all together.
 
 
 Almost all of the arguments of the ``adetailer`` image processor exist as URI arguments
-when specifying detectors with ``--adetailer-detectors``
+when specifying detectors with ``--adetailer-detectors`` including ``class-filter`` and ``index-filter``
 
 .. code-block:: jinja
 
@@ -246,4 +250,29 @@ when specifying detectors with ``--adetailer-detectors``
     --prompt-weighter sd-embed
     --output-path multi-subject-config
 
+
+YOLO Detection Processor
+------------------------
+
+The ``yolo`` image processor can be used to preview YOLO model detections in an image.
+
+It will draw boxes around detections on the image, displaying the detection
+index, class ID, and class name of the detection.
+
+It can also draw the outlines of the detection masks, if the model supports
+generating masks.
+
+This can be used to determine what is being classified in an image when
+preparing to use the ``adetailer`` image processor.
+
+The detection behavior mimics that of the ``adetailer`` image processor
+and adetailer pipeline mode.
+
+This processor also supports generating black and white masks from
+detections, in an identical way to the ``adetailer`` image processors
+internal inpaint mask generation, minus the gaussian blur and dilation
+steps, which can be applied using separate image processors and image
+processor chaining if desired.
+
+@COMMAND_OUTPUT[dgenerate --no-stdin --image-processor-help yolo]
 

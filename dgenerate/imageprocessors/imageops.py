@@ -28,6 +28,8 @@ import dgenerate.imageprocessors.imageprocessor as _imageprocessor
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 
+__doc__ = """This module provides some basic image processing capabilities using PIL (Pillow)."""
+
 
 class MirrorFlipProcessor(_imageprocessor.ImageProcessor):
     """

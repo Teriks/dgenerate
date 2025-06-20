@@ -45,7 +45,7 @@ class TranslatePromptUpscaler(_promptupscaler.PromptUpscaler):
     name of the language, this value defaults to "en" (English).
 
     The "provider" argument indicates the translation provider, which may be one of "argos"
-    or "mariana".  The default value is "argos", indicating argostranslate.  argos will only
+    or "mariana". The default value is "argos", indicating argostranslate. argos will only
     ever use the "cpu" regardless of the current --device or "device" argument value. Mariana
     will default to using the value of --device which will usually be a GPU.
 
