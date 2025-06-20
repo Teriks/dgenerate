@@ -643,9 +643,6 @@ class YOLODetectionProcessor(_imageprocessor.ImageProcessor):
                     mask_data = results[0].masks.data[sorted_indices]
                     for i in range(len(mask_data)):
                         mask_img = to_pil_image(mask_data[i], mode="L").resize(image.size)
-                        if self._outpaint:
-                            # Invert mask for outpainting
-                            mask_img = PIL.ImageOps.invert(mask_img)
                         mask_images.append(mask_img)
                 else:
                     # Create masks from bounding boxes using our sizing options
