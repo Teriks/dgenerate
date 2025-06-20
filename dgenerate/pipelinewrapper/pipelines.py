@@ -2050,10 +2050,11 @@ def _create_torch_diffusion_pipeline(
 
         for check_func, (pattern, title) in model_checks:
             if check_func(model_type) and re.match(pattern, model_class_name) is None:
-                raise UnsupportedPipelineConfigError(
-                    f'{model_path} is not a {title} model, '
-                    f'incorrect --model-type value: {_enums.get_model_type_string(model_type)}'
-                )
+                if not (model_type == _enums.ModelType.TORCH and model_class_name.startswith('LatentConsistency')):
+                    raise UnsupportedPipelineConfigError(
+                        f'{model_path} is not a {title} model, '
+                        f'incorrect --model-type value: {_enums.get_model_type_string(model_type)}'
+                    )
 
     pipeline_class = get_torch_pipeline_class(
         model_type=model_type,
