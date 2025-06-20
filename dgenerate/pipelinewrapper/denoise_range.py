@@ -108,14 +108,14 @@ def _is_problematic_scheduler(scheduler):
         # Multistep schedulers have complex state that causes runtime errors
         diffusers.schedulers.DEISMultistepScheduler,
         diffusers.schedulers.UniPCMultistepScheduler,
-        
-        # LCM scheduler requires LatentConsistencyPipeline for SD1.5 models (not implemented)
+
+        # LCM scheduler is stateful and cannot be reliably split into ranges
         diffusers.schedulers.LCMScheduler,
-        
+
         # Wuerstchen scheduler not compatible with denoise range
         diffusers.schedulers.DDPMWuerstchenScheduler,
     )
-    
+
     return isinstance(scheduler, problematic_schedulers)
 
 
@@ -130,7 +130,7 @@ def _create_progress_bar_modifier(original_scheduler, original_progress_bar, inf
     def modified_progress_bar(total=None, **kwargs):
         # Get current inference_steps value (may not be set yet)
         current_inference_steps = inference_steps_ref[0] if inference_steps_ref[0] > 0 else None
-        
+
         # If inference_steps isn't available yet, fall back to original behavior
         if current_inference_steps is None or total is None:
             if original_progress_bar:
@@ -184,7 +184,7 @@ def _create_progress_bar_modifier(original_scheduler, original_progress_bar, inf
                         pass
 
                 return DummyProgressBar()
-    
+
     return modified_progress_bar
 
 
@@ -193,66 +193,66 @@ def _apply_flow_matching_denoise_range(pipeline, start, end, inference_steps_ref
     original_scheduler = pipeline.scheduler
     original_set_timesteps = original_scheduler.set_timesteps
     original_progress_bar = getattr(pipeline, 'progress_bar', None)
-    
+
     def modified_set_timesteps(num_inference_steps=None, device=None, sigmas=None, mu=None, timesteps=None, **kwargs):
         # Update the reference so progress bar can access it
         if num_inference_steps is not None:
             inference_steps_ref[0] = num_inference_steps
-        
+
         # Call original to set up the full schedule
         original_set_timesteps(num_inference_steps=num_inference_steps, device=device, sigmas=sigmas, mu=mu, timesteps=timesteps, **kwargs)
-        
+
         # Get the full timesteps and sigmas
         full_timesteps = original_scheduler.timesteps.clone()
         full_sigmas = original_scheduler.sigmas.clone()
-        
+
         # Calculate the range indices
         num_steps = len(full_timesteps)
         start_idx = int(start * num_steps)
         end_idx = int(end * num_steps)
         end_idx = min(end_idx, num_steps)
-        
+
         if start_idx >= end_idx:
             end_idx = start_idx + 1
-        
+
         # Select timesteps for this range
         selected_timesteps = full_timesteps[start_idx:end_idx]
-        
+
         # For sigmas, include one extra element to handle scheduler boundary access
-        # The flow matching scheduler needs to access sigma[i+1] 
+        # The flow matching scheduler needs to access sigma[i+1]
         sigma_end_idx = min(end_idx + 1, len(full_sigmas))
         selected_sigmas = full_sigmas[start_idx:sigma_end_idx]
-        
+
         # Update scheduler state
         original_scheduler.timesteps = selected_timesteps
         original_scheduler.sigmas = selected_sigmas
         original_scheduler._step_index = None  # Reset step index
-        
+
         # For Flux pipelines, ensure the number of inference steps matches the selected range
         # This helps maintain proper quality by ensuring the scheduler knows the actual step count
         if _is_flux_pipeline(pipeline):
             original_scheduler.num_inference_steps = len(selected_timesteps)
 
     modified_progress_bar = _create_progress_bar_modifier(original_scheduler, original_progress_bar, inference_steps_ref)
-    
+
     # Store original num_inference_steps for Flux pipelines
     original_num_inference_steps = getattr(original_scheduler, 'num_inference_steps', None)
-    
+
     try:
         original_scheduler.set_timesteps = modified_set_timesteps
-        
+
         # Override progress_bar method if it exists
         if hasattr(pipeline, 'progress_bar'):
             pipeline.progress_bar = modified_progress_bar
-            
+
         yield
     finally:
         original_scheduler.set_timesteps = original_set_timesteps
-        
+
         # Restore original num_inference_steps for Flux pipelines
         if _is_flux_pipeline(pipeline) and original_num_inference_steps is not None:
             original_scheduler.num_inference_steps = original_num_inference_steps
-        
+
         # Restore original progress_bar if it was modified
         if original_progress_bar is not None:
             pipeline.progress_bar = original_progress_bar
@@ -263,35 +263,35 @@ def _apply_sigma_based_denoise_range(pipeline, start, end, inference_steps_ref):
     original_scheduler = pipeline.scheduler
     original_set_timesteps = original_scheduler.set_timesteps
     original_progress_bar = getattr(pipeline, 'progress_bar', None)
-    
+
     def modified_set_timesteps(num_inference_steps=None, device=None, **kwargs):
         # Update the reference so progress bar can access it
         if num_inference_steps is not None:
             inference_steps_ref[0] = num_inference_steps
-        
+
         # Filter kwargs to only include parameters the scheduler accepts
         sig = inspect.signature(original_set_timesteps)
         filtered_kwargs = {k: v for k, v in kwargs.items() if k in sig.parameters}
-        
+
         # Call original to set up the full schedule
         original_set_timesteps(num_inference_steps=num_inference_steps, device=device, **filtered_kwargs)
-        
+
         # Get the full timesteps and sigmas
         full_timesteps = original_scheduler.timesteps.clone()
-        
+
         # Calculate the range indices
         num_steps = len(full_timesteps)
         start_idx = int(start * num_steps)
         end_idx = int(end * num_steps)
         end_idx = min(end_idx, num_steps)
-        
+
         if start_idx >= end_idx:
             end_idx = start_idx + 1
-        
+
         # Select timesteps for this range
         selected_timesteps = full_timesteps[start_idx:end_idx]
         original_scheduler.timesteps = selected_timesteps
-        
+
         # For schedulers with sigmas, update them as well
         if hasattr(original_scheduler, 'sigmas') and original_scheduler.sigmas is not None:
             full_sigmas = original_scheduler.sigmas.clone()
@@ -301,18 +301,18 @@ def _apply_sigma_based_denoise_range(pipeline, start, end, inference_steps_ref):
             original_scheduler.sigmas = selected_sigmas
 
     modified_progress_bar = _create_progress_bar_modifier(original_scheduler, original_progress_bar, inference_steps_ref)
-    
+
     try:
         original_scheduler.set_timesteps = modified_set_timesteps
-        
+
         # Override progress_bar method if it exists
         if hasattr(pipeline, 'progress_bar'):
             pipeline.progress_bar = modified_progress_bar
-            
+
         yield
     finally:
         original_scheduler.set_timesteps = original_set_timesteps
-        
+
         # Restore original progress_bar if it was modified
         if original_progress_bar is not None:
             pipeline.progress_bar = original_progress_bar
@@ -323,39 +323,39 @@ def _apply_dpm_solver_denoise_range(pipeline, start, end, inference_steps_ref):
     original_scheduler = pipeline.scheduler
     original_set_timesteps = original_scheduler.set_timesteps
     original_progress_bar = getattr(pipeline, 'progress_bar', None)
-    
+
     def modified_set_timesteps(num_inference_steps=None, device=None, **kwargs):
         # Update the reference so progress bar can access it
         if num_inference_steps is not None:
             inference_steps_ref[0] = num_inference_steps
-        
+
         # Filter kwargs to only include parameters the scheduler accepts
         sig = inspect.signature(original_set_timesteps)
         filtered_kwargs = {k: v for k, v in kwargs.items() if k in sig.parameters}
-        
+
         # Call original to set up the full schedule
         original_set_timesteps(num_inference_steps=num_inference_steps, device=device, **filtered_kwargs)
-        
+
         # Get the full timesteps
         full_timesteps = original_scheduler.timesteps.clone()
-        
+
         # Calculate the range indices
         num_steps = len(full_timesteps)
         start_idx = int(start * num_steps)
         end_idx = int(end * num_steps)
         end_idx = min(end_idx, num_steps)
-        
+
         if start_idx >= end_idx:
             end_idx = start_idx + 1
-        
+
         # Select timesteps for this range
         selected_timesteps = full_timesteps[start_idx:end_idx]
         original_scheduler.timesteps = selected_timesteps
-        
+
         # Reset DPM solver state
         if hasattr(original_scheduler, 'model_outputs'):
             original_scheduler.model_outputs = [None] * original_scheduler.config.solver_order
-        
+
         # For DPM solvers with sigmas
         if hasattr(original_scheduler, 'sigmas') and original_scheduler.sigmas is not None:
             full_sigmas = original_scheduler.sigmas.clone()
@@ -365,18 +365,18 @@ def _apply_dpm_solver_denoise_range(pipeline, start, end, inference_steps_ref):
             original_scheduler.sigmas = selected_sigmas
 
     modified_progress_bar = _create_progress_bar_modifier(original_scheduler, original_progress_bar, inference_steps_ref)
-    
+
     try:
         original_scheduler.set_timesteps = modified_set_timesteps
-        
+
         # Override progress_bar method if it exists
         if hasattr(pipeline, 'progress_bar'):
             pipeline.progress_bar = modified_progress_bar
-            
+
         yield
     finally:
         original_scheduler.set_timesteps = original_set_timesteps
-        
+
         # Restore original progress_bar if it was modified
         if original_progress_bar is not None:
             pipeline.progress_bar = original_progress_bar
@@ -387,35 +387,35 @@ def _apply_multistep_denoise_range(pipeline, start, end, inference_steps_ref):
     original_scheduler = pipeline.scheduler
     original_set_timesteps = original_scheduler.set_timesteps
     original_progress_bar = getattr(pipeline, 'progress_bar', None)
-    
+
     def modified_set_timesteps(num_inference_steps=None, device=None, **kwargs):
         # Update the reference so progress bar can access it
         if num_inference_steps is not None:
             inference_steps_ref[0] = num_inference_steps
-        
+
         # Filter kwargs to only include parameters the scheduler accepts
         sig = inspect.signature(original_set_timesteps)
         filtered_kwargs = {k: v for k, v in kwargs.items() if k in sig.parameters}
-        
+
         # Call original to set up the full schedule
         original_set_timesteps(num_inference_steps=num_inference_steps, device=device, **filtered_kwargs)
-        
+
         # Get the full timesteps
         full_timesteps = original_scheduler.timesteps.clone()
-        
+
         # Calculate the range indices
         num_steps = len(full_timesteps)
         start_idx = int(start * num_steps)
         end_idx = int(end * num_steps)
         end_idx = min(end_idx, num_steps)
-        
+
         if start_idx >= end_idx:
             end_idx = start_idx + 1
-        
+
         # Select timesteps for this range
         selected_timesteps = full_timesteps[start_idx:end_idx]
         original_scheduler.timesteps = selected_timesteps
-        
+
         # Reset multistep state
         if hasattr(original_scheduler, 'model_outputs'):
             original_scheduler.model_outputs = []
@@ -429,81 +429,24 @@ def _apply_multistep_denoise_range(pipeline, start, end, inference_steps_ref):
             original_scheduler.ets = []
 
     modified_progress_bar = _create_progress_bar_modifier(original_scheduler, original_progress_bar, inference_steps_ref)
-    
+
     try:
         original_scheduler.set_timesteps = modified_set_timesteps
-        
+
         # Override progress_bar method if it exists
         if hasattr(pipeline, 'progress_bar'):
             pipeline.progress_bar = modified_progress_bar
-            
+
         yield
     finally:
         original_scheduler.set_timesteps = original_set_timesteps
-        
+
         # Restore original progress_bar if it was modified
         if original_progress_bar is not None:
             pipeline.progress_bar = original_progress_bar
 
 
-def _apply_lcm_denoise_range(pipeline, start, end, inference_steps_ref):
-    """Apply denoise range for LCM (Latent Consistency Model) scheduler."""
-    original_scheduler = pipeline.scheduler
-    original_set_timesteps = original_scheduler.set_timesteps
-    original_progress_bar = getattr(pipeline, 'progress_bar', None)
-    
-    def modified_set_timesteps(num_inference_steps=None, device=None, **kwargs):
-        # Update the reference so progress bar can access it
-        if num_inference_steps is not None:
-            inference_steps_ref[0] = num_inference_steps
-        
-        # Filter kwargs to only include parameters the scheduler accepts
-        sig = inspect.signature(original_set_timesteps)
-        filtered_kwargs = {k: v for k, v in kwargs.items() if k in sig.parameters}
-        
-        # Call original to set up the full schedule
-        original_set_timesteps(num_inference_steps=num_inference_steps, device=device, **filtered_kwargs)
-        
-        # Get the full timesteps
-        full_timesteps = original_scheduler.timesteps.clone()
-        
-        # Calculate the range indices
-        num_steps = len(full_timesteps)
-        start_idx = int(start * num_steps)
-        end_idx = int(end * num_steps)
-        end_idx = min(end_idx, num_steps)
-        
-        if start_idx >= end_idx:
-            end_idx = start_idx + 1
-        
-        # Select timesteps for this range
-        selected_timesteps = full_timesteps[start_idx:end_idx]
-        original_scheduler.timesteps = selected_timesteps
-        
-        # LCM scheduler uses sigmas
-        if hasattr(original_scheduler, 'sigmas') and original_scheduler.sigmas is not None:
-            full_sigmas = original_scheduler.sigmas.clone()
-            # Include one extra element for boundary access
-            sigma_end_idx = min(end_idx + 1, len(full_sigmas))
-            selected_sigmas = full_sigmas[start_idx:sigma_end_idx]
-            original_scheduler.sigmas = selected_sigmas
 
-    modified_progress_bar = _create_progress_bar_modifier(original_scheduler, original_progress_bar, inference_steps_ref)
-    
-    try:
-        original_scheduler.set_timesteps = modified_set_timesteps
-        
-        # Override progress_bar method if it exists
-        if hasattr(pipeline, 'progress_bar'):
-            pipeline.progress_bar = modified_progress_bar
-            
-        yield
-    finally:
-        original_scheduler.set_timesteps = original_set_timesteps
-        
-        # Restore original progress_bar if it was modified
-        if original_progress_bar is not None:
-            pipeline.progress_bar = original_progress_bar
 
 
 def _apply_standard_denoise_range(pipeline, start, end, inference_steps_ref):
@@ -580,8 +523,8 @@ def denoise_range(pipeline, start: float | None = 0.0, end: float | None = 1.0):
     This allows you to split the denoising process into a specific range, allowing
     for cooperative denoising with multiple pipelines.
 
-    For SDXL pipelines, this transparently uses the native denoising_start/denoising_end 
-    parameters and supports ALL schedulers. For other pipelines (SD 1.5, etc.), it falls 
+    For SDXL pipelines, this transparently uses the native denoising_start/denoising_end
+    parameters and supports ALL schedulers. For other pipelines (SD 1.5, etc.), it falls
     back to scheduler-specific manipulation that only works with stateless schedulers.
 
     SD 1.5 Supported schedulers (stateless):
@@ -656,13 +599,13 @@ def denoise_range(pipeline, start: float | None = 0.0, end: float | None = 1.0):
 
     # Determine scheduler type and apply appropriate denoise range strategy
     scheduler = pipeline.scheduler
-    
+
     # Check for problematic schedulers first
     if _is_problematic_scheduler(scheduler):
         scheduler_name = scheduler.__class__.__name__
-        
+
         # Provide specific error messages based on scheduler type using isinstance
-        if isinstance(scheduler, (diffusers.schedulers.EulerAncestralDiscreteScheduler, 
+        if isinstance(scheduler, (diffusers.schedulers.EulerAncestralDiscreteScheduler,
                                  diffusers.schedulers.KDPM2AncestralDiscreteScheduler)):
             error_msg = (f"Scheduler {scheduler_name} is an ancestral sampler that adds noise "
                         f"stochastically at each step. Denoise range splitting disrupts this noise "
@@ -685,10 +628,11 @@ def denoise_range(pipeline, start: float | None = 0.0, end: float | None = 1.0):
                         f"errors with denoise range splitting. Consider using DPMSolverMultistepScheduler, "
                         f"EulerDiscreteScheduler, PNDMScheduler, or DDIMScheduler instead.")
         elif isinstance(scheduler, diffusers.schedulers.LCMScheduler):
-            error_msg = (f"Scheduler {scheduler_name} (Latent Consistency Model) requires "
-                        f"LatentConsistencyPipeline for SD1.5 models, which is not implemented in dgenerate. "
-                        f"For SDXL models, LCM may work but denoise range splitting is not typical for LCM's "
-                        f"few-step design. Consider using EulerDiscreteScheduler or DPMSolverMultistepScheduler instead.")
+            error_msg = (f"Scheduler {scheduler_name} uses timestep-dependent boundary conditions and consistency "
+                        f"distillation that require the complete original timestep sequence from training. "
+                        f"Splitting the timestep schedule breaks the learned consistency mapping and produces "
+                        f"corrupted outputs. Consider using EulerDiscreteScheduler, DPMSolverMultistepScheduler, "
+                        f"or DDIMScheduler instead.")
         elif isinstance(scheduler, diffusers.schedulers.DDPMWuerstchenScheduler):
             error_msg = (f"Scheduler {scheduler_name} is specific to Wuerstchen models and not "
                         f"compatible with denoise range splitting. Consider using DDIMScheduler "
@@ -712,9 +656,6 @@ def denoise_range(pipeline, start: float | None = 0.0, end: float | None = 1.0):
     elif _is_multistep_scheduler(scheduler):
         # Multistep schedulers (PNDM)
         yield from _apply_multistep_denoise_range(pipeline, start, end, inference_steps_ref)
-    elif _is_lcm_scheduler(scheduler):
-        # LCM scheduler
-        yield from _apply_lcm_denoise_range(pipeline, start, end, inference_steps_ref)
     else:
         # Standard timestep-based schedulers (DDIM, DDPM, Wuerstchen, etc.)
         yield from _apply_standard_denoise_range(pipeline, start, end, inference_steps_ref)
