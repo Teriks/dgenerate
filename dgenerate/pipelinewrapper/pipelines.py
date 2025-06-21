@@ -22,7 +22,6 @@ import collections.abc
 import gc
 import hashlib
 import inspect
-import json
 import os.path
 import pathlib
 import random
@@ -2048,9 +2047,20 @@ def _create_torch_diffusion_pipeline(
             (_enums.model_type_is_floyd, ('^IF.*', 'Deep Floyd')),
         ]
 
+        # exceptions to the rules above
+        # where left and right evaluate True
+        model_fallback_checks = [
+            (lambda x: x == _enums.ModelType.TORCH, '^LatentConsistency.*')
+        ]
+
         for check_func, (pattern, title) in model_checks:
             if check_func(model_type) and re.match(pattern, model_class_name) is None:
-                if not (model_type == _enums.ModelType.TORCH and model_class_name.startswith('LatentConsistency')):
+                # are there any exceptions to this such as legacy configs?
+                if not any(
+                        check(model_type) and
+                        re.match(pattern, model_class_name) is not None
+                        for check, pattern in model_fallback_checks
+                ):
                     raise UnsupportedPipelineConfigError(
                         f'{model_path} is not a {title} model, '
                         f'incorrect --model-type value: {_enums.get_model_type_string(model_type)}'
