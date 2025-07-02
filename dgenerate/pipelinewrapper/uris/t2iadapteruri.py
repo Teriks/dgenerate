@@ -20,8 +20,8 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import diffusers
-import huggingface_hub
 
+import dgenerate.hfhub as _hfhub
 import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
@@ -144,16 +144,15 @@ class T2IAdapterUri:
 
         :return: :py:class:`diffusers.T2IAdapter`
         """
-        try:
-            args = locals()
-            args.pop('self')
-            return self._load(**args)
-        except (huggingface_hub.utils.HFValidationError,
-                huggingface_hub.utils.HfHubHTTPError) as e:
-            raise _pipelinewrapper_util.ModelNotFoundError(e) from e
-        except Exception as e:
+        def cache_all(e):
             raise _exceptions.T2IAdapterUriLoadError(
                 f'error loading t2i adapter "{self.model}": {e}') from e
+
+        with _hfhub.with_hf_errors_as_model_not_found(cache_all):
+            args = locals()
+            args.pop('self')
+            args.pop('cache_all')
+            return self._load(**args)
 
     @staticmethod
     def _enforce_cache_size(new_adapter_size):
@@ -175,9 +174,9 @@ class T2IAdapterUri:
               local_files_only: bool = False,
               no_cache: bool = False) -> diffusers.T2IAdapter:
 
-        model_path = _pipelinewrapper_util.download_non_hf_model(self.model)
+        model_path = _hfhub.download_non_hf_slug_model(self.model)
 
-        single_file_load_path = _pipelinewrapper_util.is_single_file_model_load(model_path)
+        single_file_load_path = _hfhub.is_single_file_model_load(model_path)
 
         torch_dtype = _enums.get_torch_dtype(
             dtype_fallback if self.dtype is None else self.dtype)

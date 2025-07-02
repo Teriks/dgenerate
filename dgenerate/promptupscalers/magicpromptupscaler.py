@@ -323,11 +323,22 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
         self._max_attempts = max_attempts
         self._prepend_prompt = prepend_prompt
 
-    def _load_pipeline(self, model_name: str, dtype: torch.dtype,
+
+    def _load_pipeline(self,
+                       model_name: str,
+                       dtype: torch.dtype,
                        quantization_config: typing.Optional = None) -> _TextGenerationPipeline:
-        model = transformers.AutoModelForCausalLM.from_pretrained(
-            model_name, trust_remote_code=True, torch_dtype=dtype,
-            quantization_config=quantization_config)
+
+        try:
+            model = transformers.AutoModelForCausalLM.from_pretrained(
+                model_name,
+                trust_remote_code=True,
+                torch_dtype=dtype,
+                quantization_config=quantization_config,
+                local_files_only=self.local_files_only
+            )
+        except Exception as e:
+            raise self.argument_error(f'Could not load model "{model_name}": {e}')
 
         tokenizer = transformers.AutoTokenizer.from_pretrained(model_name)
         tokenizer.pad_token_id = model.config.eos_token_id

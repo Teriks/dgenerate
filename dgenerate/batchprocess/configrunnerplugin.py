@@ -37,6 +37,7 @@ class ConfigRunnerPlugin(_plugin.Plugin):
                  loaded_by_name: str,
                  config_runner: typing.Optional['dgenerate.batchprocess.ConfigRunner'] = None,
                  render_loop: typing.Optional[_renderloop.RenderLoop] = None,
+                 local_files_only: bool = False,
                  **kwargs):
 
         super().__init__(loaded_by_name=loaded_by_name,
@@ -45,6 +46,7 @@ class ConfigRunnerPlugin(_plugin.Plugin):
 
         self.__config_runner = config_runner
         self.__render_loop = render_loop
+        self.__local_files_only = local_files_only
 
     def set_template_variable(self, name, value):
         """
@@ -148,6 +150,13 @@ class ConfigRunnerPlugin(_plugin.Plugin):
         if self.config_runner is not None:
             return self.config_runner.plugin_module_paths
         return frozenset()
+
+    @property
+    def local_files_only(self) -> bool:
+        """
+        Is this plugin only going to look for resources such as models in cache / on disk?
+        """
+        return self.__local_files_only
 
 
 __all__ = _types.module_all()

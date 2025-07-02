@@ -103,11 +103,13 @@ class AttentionUpscaler(_promptupscaler.PromptUpscaler):
         self._rng = random.Random(seed)
 
         try:
-            self._nlp = _spacycache.load_spacy_model(f"{lang.lower()}_core_web_sm")
-        except _spacycache.SpacyModelNotFoundException as e:
-            raise _exceptions.PromptUpscalerProcessingError(f'Could not load spaCy model: {e}') from e
+            self._nlp = _spacycache.load_spacy_model(
+                f"{lang.lower()}_core_web_sm", local_files_only=self.local_files_only
+            )
+        except _spacycache.SpacyModelNotFoundError as e:
+            raise self.argument_error(f'Could not load spaCy model: {e}') from e
 
-    def _find_noun_chunks(self, text: str) -> list[str, ...]:
+    def _find_noun_chunks(self, text: str) -> list[str]:
         return [str(chunk) for chunk in self._nlp(text).noun_chunks]
 
     def _generate(self, prompt: str):

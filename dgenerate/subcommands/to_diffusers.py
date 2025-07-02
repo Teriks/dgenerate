@@ -34,6 +34,7 @@ def _dtype_type(plugin):
 
         if lower not in {'float16', 'float32'}:
             raise plugin.argument_error(f'Unsupported --dtype value: {lower}')
+        return lower
 
     return f
 
@@ -93,6 +94,9 @@ class ToDiffusersSubCommand(_subcommand.SubCommand):
         parser.add_argument('-v', '--verbose', action='store_true',
                             help='Enable debug output?')
 
+        parser.add_argument('-ofm', '--offline-mode', action='store_true',
+                            help="""Prevent downloads of resources that do not exist on disk already.""")
+
     def __call__(self) -> int:
 
         args = self._parser.parse_args(self.args)
@@ -118,17 +122,17 @@ class ToDiffusersSubCommand(_subcommand.SubCommand):
                         revision=args.revision,
                         subfolder=args.subfolder,
                         variant='fp16' if dtype == dgenerate.DataType.FLOAT16 else None,
-                        dtype=dtype,
+                        dtype=dtype if dtype is not None else dgenerate.DataType.AUTO,
                         auth_token=args.auth_token,
-                        missing_submodules_ok=True
+                        missing_submodules_ok=True,
+                        local_files_only=self.local_files_only or args.offline_mode
                     )
             except (_pipelinewrapper.InvalidModelFileError,
-                    _pipelinewrapper.ModelNotFoundError,
                     _pipelinewrapper.InvalidModelUriError,
                     _pipelinewrapper.InvalidSchedulerNameError,
                     _pipelinewrapper.UnsupportedPipelineConfigError,
-                    dgenerate.NonHFModelDownloadError,
-                    dgenerate.NonHFConfigDownloadError) as e:
+                    dgenerate.ModelNotFoundError,
+                    dgenerate.NonHFDownloadError) as e:
                 raise self.argument_error(f'Failed to save pretrained model: {e}') from e
             finally:
                 if args.verbose:

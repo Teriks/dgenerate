@@ -56,6 +56,10 @@ class ToDiffusersDirective(_configrunnerplugin.ConfigRunnerPlugin):
         """
 
         subcommand = _subcommandloader.SubCommandLoader().load(
-            'to-diffusers', args=args, program_name='\\to_diffusers')
+            'to-diffusers',
+            args=args,
+            program_name='\\to_diffusers',
+            local_files_only=self.local_files_only
+        )
 
         return subcommand()

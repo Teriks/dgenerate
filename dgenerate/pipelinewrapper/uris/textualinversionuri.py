@@ -23,10 +23,9 @@ import os.path
 import typing
 
 import diffusers
-import huggingface_hub
 
+import dgenerate.hfhub as _hfhub
 import dgenerate.messages as _messages
-import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
@@ -45,7 +44,7 @@ def _load_textual_inversion_state_dict(pretrained_model_name_or_path, **kwargs):
     cache_dir = kwargs.pop("cache_dir", None)
     force_download = kwargs.pop("force_download", False)
     proxies = kwargs.pop("proxies", None)
-    local_files_only = kwargs.pop("local_files_only", None)
+    local_files_only = kwargs.pop("local_files_only", False)
     token = kwargs.pop("token", None)
     revision = kwargs.pop("revision", None)
     subfolder = kwargs.pop("subfolder", None)
@@ -184,20 +183,19 @@ class TextualInversionUri:
         :raises dgenerate.pipelinewrapper.uris.exceptions.InvalidTextualInversionUriError: On URI parsing errors.
         :raises dgenerate.pipelinewrapper.uris.exceptions.TextualInversionUriLoadError: On loading errors.
         """
-        try:
+        def cache_all(e):
+            if isinstance(e, _exceptions.InvalidTextualInversionUriError):
+                raise e
+            else:
+                raise _exceptions.TextualInversionUriLoadError(
+                    f'error loading Textual Inversions: {e}') from e
+
+        with _hfhub.with_hf_errors_as_model_not_found(cache_all):
             TextualInversionUri._load_on_pipeline(
                 uris=uris,
                 pipeline=pipeline,
                 use_auth_token=use_auth_token,
                 local_files_only=local_files_only)
-        except (huggingface_hub.utils.HFValidationError,
-                huggingface_hub.utils.HfHubHTTPError) as e:
-            raise _pipelinewrapper_util.ModelNotFoundError(e) from e
-        except _exceptions.InvalidTextualInversionUriError:
-            raise
-        except Exception as e:
-            raise _exceptions.TextualInversionUriLoadError(
-                f'error loading Textual Inversions: {e}') from e
 
     @staticmethod
     def _load_on_pipeline(pipeline: diffusers.DiffusionPipeline,
@@ -211,10 +209,7 @@ class TextualInversionUri:
                 if not isinstance(textual_inversion_uri, TextualInversionUri):
                     textual_inversion_uri = TextualInversionUri.parse(textual_inversion_uri)
 
-                model_path = _pipelinewrapper_util.download_non_hf_model(textual_inversion_uri.model)
-
-                # this is tricky because there is stupidly a positional argument named 'token'
-                # as well as an accepted kwargs value with the key 'token'
+                model_path = _hfhub.download_non_hf_slug_model(textual_inversion_uri.model)
 
                 is_sdxl = pipeline.__class__.__name__.startswith('StableDiffusionXL')
                 is_flux = pipeline.__class__.__name__.startswith('Flux')

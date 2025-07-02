@@ -179,12 +179,6 @@ from .uris import (
     get_quantizer_uri_class
 )
 
-# Utility
-from .util import (
-    ModelNotFoundError,
-    NonHFModelDownloadError,
-    NonHFConfigDownloadError,
-)
 # Wrapper
 from .wrapper import (
     PipelineWrapperResult,

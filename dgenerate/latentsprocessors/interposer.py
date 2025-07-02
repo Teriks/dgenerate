@@ -26,6 +26,7 @@ import huggingface_hub
 import safetensors.torch
 import torch
 
+import dgenerate.hfhub as _hfhub
 import dgenerate.latentsprocessors.latentsprocessor as _latentsprocessor
 import dgenerate.messages as _messages
 from dgenerate.extras.sd_latent_interposer.interposer import InterposerModel as _InterposerModel
@@ -153,18 +154,20 @@ class InterposerProcessor(_latentsprocessor.LatentsProcessor):
             return versioned_path
 
         # Download from Hugging Face hub if not found locally and not local_files_only
-        try:
-            _messages.debug_log("InterposerProcessor: Using HF Hub model")
-            return str(huggingface_hub.hf_hub_download(
-                repo_id="city96/SD-Latent-Interposer",
-                subfolder=f"v{self._version}",
-                filename=fname,
-                local_files_only=self.local_files_only
-            ))
-        except huggingface_hub.errors.LocalEntryNotFoundError:
-            raise self.argument_error(
-                f"Local interposer model file not found: {fname} "
-                f"and --offline-mode prevents downloading from Hugging Face Hub")
+        with _hfhub.with_hf_errors_as_model_not_found():
+            # other errors as model not found
+            try:
+                _messages.debug_log("InterposerProcessor: Using HF Hub model")
+                return huggingface_hub.hf_hub_download(
+                    repo_id="city96/SD-Latent-Interposer",
+                    subfolder=f"v{self._version}",
+                    filename=fname,
+                    local_files_only=self.local_files_only
+                )
+            except huggingface_hub.errors.LocalEntryNotFoundError:
+                raise self.argument_error(
+                    f"Local interposer model file not found: {fname} "
+                    f"and --offline-mode prevents downloading from Hugging Face Hub")
 
     def _load_interposer_model(self) -> _InterposerModel:
         """Load and initialize the interposer model."""

@@ -33,14 +33,14 @@ import diffusers
 import diffusers.loaders
 import diffusers.loaders.single_file_utils
 import diffusers.quantizers.quantization_config
-import huggingface_hub
 import torch.nn
 import torch.nn
 
 import dgenerate.devicecache as _devicecache
 import dgenerate.exceptions as _d_exceptions
-import dgenerate.extras.kolors
+import dgenerate.extras.kolors as _kolors
 import dgenerate.filecache as _filecache
+import dgenerate.hfhub as _hfhub
 import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
@@ -167,7 +167,7 @@ def estimate_pipeline_cache_footprint(
         extra_args = dict()
 
     usage = _util.estimate_model_memory_use(
-        repo_id=_util.download_non_hf_model(model_path),
+        repo_id=_hfhub.download_non_hf_slug_model(model_path),
         revision=revision,
         variant=variant,
         subfolder=subfolder,
@@ -185,7 +185,7 @@ def estimate_pipeline_cache_footprint(
     if image_encoder_uri:
         parsed = _uris.ImageEncoderUri.parse(image_encoder_uri)
         usage += _util.estimate_model_memory_use(
-            repo_id=_util.download_non_hf_model(parsed.model),
+            repo_id=_hfhub.download_non_hf_slug_model(parsed.model),
             revision=parsed.revision,
             subfolder=parsed.subfolder,
             use_auth_token=auth_token,
@@ -197,7 +197,7 @@ def estimate_pipeline_cache_footprint(
             parsed = _uris.LoRAUri.parse(lora_uri)
 
             usage += _util.estimate_model_memory_use(
-                repo_id=_util.download_non_hf_model(parsed.model),
+                repo_id=_hfhub.download_non_hf_slug_model(parsed.model),
                 revision=parsed.revision,
                 subfolder=parsed.subfolder,
                 weight_name=parsed.weight_name,
@@ -210,7 +210,7 @@ def estimate_pipeline_cache_footprint(
             parsed = _uris.IPAdapterUri.parse(ip_adapter_uri)
 
             usage += _util.estimate_model_memory_use(
-                repo_id=_util.download_non_hf_model(parsed.model),
+                repo_id=_hfhub.download_non_hf_slug_model(parsed.model),
                 revision=parsed.revision,
                 subfolder=parsed.subfolder,
                 weight_name=parsed.weight_name,
@@ -223,7 +223,7 @@ def estimate_pipeline_cache_footprint(
             parsed = _uris.TextualInversionUri.parse(textual_inversion_uri)
 
             usage += _util.estimate_model_memory_use(
-                repo_id=_util.download_non_hf_model(parsed.model),
+                repo_id=_hfhub.download_non_hf_slug_model(parsed.model),
                 revision=parsed.revision,
                 subfolder=parsed.subfolder,
                 weight_name=parsed.weight_name,
@@ -1241,12 +1241,14 @@ def create_torch_diffusion_pipeline(
     :param missing_submodules_ok: It is okay if Text Encoders or VAE is missing from the checkpoint?
 
     :raises InvalidModelFileError:
-    :raises ModelNotFoundError:
     :raises InvalidModelUriError:
     :raises InvalidSchedulerNameError:
     :raises UnsupportedPipelineConfigError:
+    :raises dgenerate.ModelNotFoundError:
+    :raises dgenerate.ConfigNotFoundError:
     :raises dgenerate.NonHFModelDownloadError:
     :raises dgenerate.NonHFConfigDownloadError:
+    :raises dgenerate.WebFileCacheOfflineModeException:
 
     :return: :py:class:`.TorchPipelineCreationResult`
     """
@@ -1256,12 +1258,8 @@ def create_torch_diffusion_pipeline(
         if name.endswith('_uris') and isinstance(value, str):
             __locals[name] = [value]
 
-    try:
+    with _hfhub.with_hf_errors_as_model_not_found():
         return _create_torch_diffusion_pipeline(**__locals)
-    except (huggingface_hub.utils.HFValidationError,
-            huggingface_hub.utils.HfHubHTTPError) as e:
-        raise _util.ModelNotFoundError(e) from e
-
 
 class TorchPipelineFactory:
     """
@@ -1682,7 +1680,7 @@ def get_torch_pipeline_class(
                         raise UnsupportedPipelineConfigError(
                             'Kolors ControlNet mode does not support PAG')
                     else:
-                        pipeline_class = dgenerate.extras.kolors.KolorsControlNetPipeline
+                        pipeline_class = _kolors.KolorsControlNetPipeline
                 else:
                     if pag:
                         pipeline_class = diffusers.KolorsPAGPipeline
@@ -1775,7 +1773,7 @@ def get_torch_pipeline_class(
                         raise UnsupportedPipelineConfigError(
                             'Kolors ControlNet does not support PAG in img2img mode'
                         )
-                    pipeline_class = dgenerate.extras.kolors.KolorsControlNetImg2ImgPipeline
+                    pipeline_class = _kolors.KolorsControlNetImg2ImgPipeline
                 else:
                     if pag:
                         raise UnsupportedPipelineConfigError(
@@ -1862,13 +1860,13 @@ def get_torch_pipeline_class(
                         raise UnsupportedPipelineConfigError(
                             'Kolors ControlNet does not support PAG in inpaint mode'
                         )
-                    pipeline_class = dgenerate.extras.kolors.KolorsControlNetInpaintPipeline
+                    pipeline_class = _kolors.KolorsControlNetInpaintPipeline
                 else:
                     if pag:
                         raise UnsupportedPipelineConfigError(
                             'Kolors does not support PAG in inpaint mode'
                         )
-                    pipeline_class = dgenerate.extras.kolors.KolorsInpaintPipeline
+                    pipeline_class = _kolors.KolorsInpaintPipeline
             elif t2i_adapter_uris:
                 raise UnsupportedPipelineConfigError(
                     'inpaint mode is not supported with --t2i-adapters.')
@@ -2005,7 +2003,7 @@ def _create_torch_diffusion_pipeline(
                     f'must be one of: {_textprocessing.oxford_comma(quantizer_map_vals, "or")}'
                 )
 
-    if not _util.is_single_file_model_load(model_path) and original_config:
+    if not _hfhub.is_single_file_model_load(model_path) and original_config:
         raise UnsupportedPipelineConfigError(
             'Loading original config .yaml file is not supported '
             'when loading from a Hugging Face repo.'
@@ -2017,21 +2015,20 @@ def _create_torch_diffusion_pipeline(
             dtype = _enums.DataType.FLOAT32
 
     if original_config:
-        original_config = _util.download_non_hf_config(original_config)
+        # only instance where it really makes sense to raise config not found
+        # everything else is indicative of a missing model
+        with _hfhub.with_hf_errors_as_config_not_found():
+            original_config = _hfhub.download_non_hf_slug_config(original_config)
 
-    model_path = _util.download_non_hf_model(model_path)
+    model_path = _hfhub.download_non_hf_slug_model(model_path)
 
-    try:
-        model_index = _util.fetch_model_index_dict(
-            model_path,
-            subfolder=subfolder,
-            revision=revision,
-            use_auth_token=auth_token,
-            local_files_only=local_files_only
-        )
-    except FileNotFoundError:
-        raise UnsupportedPipelineConfigError(
-            f'Could not locate model_index.json on Hugging Face hub or locally for: {model_path}')
+    model_index = _util.fetch_model_index_dict(
+        model_path,
+        subfolder=subfolder,
+        revision=revision,
+        use_auth_token=auth_token,
+        local_files_only=local_files_only
+    )
 
     if '_class_name' in model_index:
         model_class_name = model_index['_class_name']
@@ -2226,7 +2223,7 @@ def _create_torch_diffusion_pipeline(
     components_to_cache = []
 
     # Determine if we need granular caching
-    needs_granular_caching = (quantizer_uri and (_util.is_single_file_model_load(model_path) or lora_uris)) or \
+    needs_granular_caching = (quantizer_uri and (_hfhub.is_single_file_model_load(model_path) or lora_uris)) or \
                              (manual_quantizer_components and lora_uris)
 
     if needs_granular_caching:
@@ -2385,7 +2382,7 @@ def _create_torch_diffusion_pipeline(
                 )
             )
         else:
-            if _util.is_single_file_model_load(model_path) and should_quantize:
+            if _hfhub.is_single_file_model_load(model_path) and should_quantize:
                 raise UnsupportedPipelineConfigError(
                     'Cannot use global --quantizer URI when attempting to '
                     f'load default text encoder for "{encoder_name}" from a single file checkpoint. '
@@ -2418,7 +2415,7 @@ def _create_torch_diffusion_pipeline(
         if text_encoder_override_states[idx]:
             continue
 
-        if _util.is_single_file_model_load(model_path):
+        if _hfhub.is_single_file_model_load(model_path):
             encoder_subfolder = name
         else:
             encoder_subfolder = os.path.join(subfolder, name) if subfolder else name
@@ -2450,7 +2447,7 @@ def _create_torch_diffusion_pipeline(
             _messages.debug_log(lambda:
                                 f'Added Torch VAE: "{vae_uri}" to pipeline: "{pipeline_class.__name__}"')
         elif 'vae' in pipe_params:
-            if _util.is_single_file_model_load(model_path):
+            if _hfhub.is_single_file_model_load(model_path):
                 vae_subfolder = 'vae'
             else:
                 vae_subfolder = os.path.join(subfolder, 'vae') if subfolder else 'vae'
@@ -2477,7 +2474,7 @@ def _create_torch_diffusion_pipeline(
                     )
 
             if vae_encoder_name is not None:
-                vae_extract_from_checkpoint = _util.is_single_file_model_load(model_path)
+                vae_extract_from_checkpoint = _hfhub.is_single_file_model_load(model_path)
                 try:
                     creation_kwargs['vae'] = \
                         load_vae(_uris.VAEUri(
@@ -2489,7 +2486,7 @@ def _create_torch_diffusion_pipeline(
                             extract=vae_extract_from_checkpoint,
                             dtype=dtype
                         ))
-                except dgenerate.ModelNotFoundError:
+                except _d_exceptions.ModelNotFoundError:
                     if vae_extract_from_checkpoint:
                         raise
                     creation_kwargs['vae'] = \
@@ -2529,7 +2526,7 @@ def _create_torch_diffusion_pipeline(
                                 f'Added Torch UNet: "{unet_uri}" to pipeline: "{pipeline_class.__name__}"')
         elif 'unet' in pipe_params:
 
-            if _util.is_single_file_model_load(model_path):
+            if _hfhub.is_single_file_model_load(model_path):
                 unet_subfolder = unet_parameter
             else:
                 unet_subfolder = os.path.join(subfolder, unet_parameter) if subfolder else unet_parameter
@@ -2586,7 +2583,7 @@ def _create_torch_diffusion_pipeline(
         elif 'transformer' in pipe_params:
             assert transformer_class is not None
 
-            if _util.is_single_file_model_load(model_path):
+            if _hfhub.is_single_file_model_load(model_path):
                 transformer_subfolder = 'transformer'
             else:
                 transformer_subfolder = os.path.join(subfolder, 'transformer') if subfolder else 'transformer'
@@ -2744,7 +2741,7 @@ def _create_torch_diffusion_pipeline(
 
         raise InvalidModelFileError(e) from e
 
-    if _util.is_single_file_model_load(model_path):
+    if _hfhub.is_single_file_model_load(model_path):
         if subfolder is not None:
             raise UnsupportedPipelineConfigError(
                 'Single file model loads do not support the subfolder option.')
@@ -3101,7 +3098,7 @@ def _create_minimal_pipeline_for_component_extraction(
             # Load default text encoder for this parameter
             # We need to load it even if we're not caching it to prevent errors
             try:
-                if _util.is_single_file_model_load(model_path):
+                if _hfhub.is_single_file_model_load(model_path):
                     encoder_subfolder = encoder_param
                 else:
                     encoder_subfolder = os.path.join(subfolder, encoder_param) if subfolder else encoder_param
@@ -3228,7 +3225,7 @@ def _create_minimal_pipeline_for_component_extraction(
         )
 
     # Load the pipeline with all required components
-    if _util.is_single_file_model_load(model_path):
+    if _hfhub.is_single_file_model_load(model_path):
         try:
             pipeline = pipeline_class.from_single_file(
                 model_path,

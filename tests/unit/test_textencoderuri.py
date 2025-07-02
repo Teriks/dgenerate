@@ -3,7 +3,7 @@ import unittest.mock as mock
 
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.uris.textencoderuri as _textencoderuri
-import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
+import dgenerate.hfhub as _hfhub
 from dgenerate.pipelinewrapper.uris.exceptions import InvalidTextEncoderUriError
 
 
@@ -110,7 +110,7 @@ class TestTextEncoderUri(unittest.TestCase):
         # Test that single file loads with quantizer are not supported unless a valid mode is specified
         
         # Mock is_single_file_model_load to return True
-        with mock.patch.object(_pipelinewrapper_util, 'is_single_file_model_load', return_value=True):
+        with mock.patch.object(_hfhub, 'is_single_file_model_load', return_value=True):
             # Valid: Single file with mode and quantizer
             mode = _textencoderuri.TextEncoderUri._valid_modes()[0]
             uri = f"CLIPTextModel;model=path/to/model;mode={mode};quantizer=bnb"

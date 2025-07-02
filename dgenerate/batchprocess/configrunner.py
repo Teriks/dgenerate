@@ -69,6 +69,15 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         """
         return frozenset(self._plugin_module_paths)
 
+    @property
+    def local_files_only(self) -> bool:
+        """
+        Is this config runner only going to look for resources such as models in cache / on disk?
+
+        This will be ``True`` if ``-ofm/--offline-mode`` was parsed from ``injected_args``
+        """
+        return self._local_files_only
+
     def __init__(self,
                  injected_args: collections.abc.Sequence[str] | None = None,
                  render_loop: _renderloop.RenderLoop | None = None,
@@ -84,7 +93,10 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         :param injected_args: dgenerate command line arguments in the form of a list, see: shlex module, or sys.argv.
             These arguments will be injected at the end of every dgenerate invocation in the config. ``--plugin-modules``
             are parsed from ``injected_args`` and added to ``plugin_loader``. If ``-v/--verbose`` is present in ``injected_args``
-            debugging output will be enabled globally while the config runs, and not just for invocations.
+            debugging output will be enabled globally while the config runs, and not just for invocations. Passing ``-v/--verbose``
+            also enables printing stack traces for all unhandled directive exceptions to ``stderr``. If ``-ofm/--offline-mode``
+            is present in ``injected_args``, plugins will be instructed to only look for resources such as models in cache / on disk
+            and never attempt to download from the internet.
 
         :param render_loop: RenderLoop instance, if ``None`` is provided one will be created.
         :param plugin_loader: Batch processor plugin loader, if one is not provided one will be created.
@@ -136,6 +148,12 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                 _plugin.import_plugins(self._plugin_module_paths)
             else:
                 injected_plugin_modules = []
+
+        # Parse local_files_only from injected_args
+        if injected_args:
+            self._local_files_only = _arguments.parse_offline_mode(injected_args)[0]
+        else:
+            self._local_files_only = False
 
         self.render_loop = render_loop
 
@@ -220,7 +238,8 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         for plugin_class in self.plugin_loader.get_available_classes():
             self.plugin_loader.load(plugin_class.get_names()[0],
                                     config_runner=self,
-                                    render_loop=self.render_loop)
+                                    render_loop=self.render_loop,
+                                    local_files_only=self._local_files_only)
 
         self.directives['import_plugins'] = self._import_plugins_directive
 
@@ -246,7 +265,8 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         for cls in new_classes:
             self.plugin_loader.load(cls.get_names()[0],
                                     config_runner=self,
-                                    render_loop=self.render_loop)
+                                    render_loop=self.render_loop,
+                                    local_files_only=self._local_files_only)
 
         return 0
 

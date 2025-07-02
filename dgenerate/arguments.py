@@ -829,10 +829,16 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     actions.append(
         parser.add_argument(
             '-ofm', '--offline-mode', action='store_true',
-            help="""Prevent dgenerate from downloading Hugging Face models that do not
-                    exist in the disk cache or a folder on disk. Referencing a model on 
-                    Hugging Face hub that has not been cached because it was not 
-                    previously downloaded will result in a failure when using this option."""
+            help="""Prevent dgenerate from downloading resources that do not already exist on disk. 
+                    Referencing a model on Hugging Face hub that has not been cached because it was not 
+                    previously downloaded will result in a failure when using this option, as well as
+                    attempting to download any new content into dgenerates web cache.  This will 
+                    prevent dgenerate from downloading anything, it will only look for cached 
+                    resources when processing URLs or Hugging Face slugs. It will not be able to download 
+                    any default models that have been baked into the code as well. This option is fed to 
+                    sub-commands when using the --sub-command argument, meaning that all sub-commands can 
+                    parse this argument by default, though they may complain if it is not supported, 
+                    such as with the "civitai-links" sub-command."""
         )
     )
 
@@ -1543,14 +1549,12 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '-lra', '--loras', nargs='+', action='store', default=None, metavar="LORA_URI", dest='lora_uris',
             help="""Specify one or more LoRA models using URIs. These should be a
-                    Hugging Face repository slug, path to model file on disk (for example, a .pt, .pth, .bin,
+                    Hugging Face repository slug / blob link, path to model file on disk (for example, a .pt, .pth, .bin,
                     .ckpt, or .safetensors file), or model folder containing model files.
                     
                     If a LoRA model file exists at a URL which serves the file as
                     a raw download, you may provide an http/https link to it and it will be
                     downloaded to dgenerate's web cache.
-                    
-                    Hugging Face blob links are not supported, see "subfolder" and "weight-name" below instead.
                     
                     Optional arguments can be provided after a LoRA model specification,
                     these are: "scale", "revision", "subfolder", and "weight-name".
@@ -1635,14 +1639,12 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '-ipa', '--ip-adapters', nargs='+', action='store', default=None, metavar="IP_ADAPTER_URI",
             dest='ip_adapter_uris',
             help="""Specify one or more IP Adapter models using URIs. These should be a
-                    Hugging Face repository slug, path to model file on disk (for example, a .pt, .pth, .bin,
+                    Hugging Face repository slug / blob link, path to model file on disk (for example, a .pt, .pth, .bin,
                     .ckpt, or .safetensors file), or model folder containing model files.
                     
                     If an IP Adapter model file exists at a URL which serves the file as
                     a raw download, you may provide an http/https link to it and it will be
                     downloaded to dgenerate's web cache.
-                    
-                    Hugging Face blob links are not supported, see "subfolder" and "weight-name" below instead.
                     
                     Optional arguments can be provided after an IP Adapter model specification,
                     these are: "scale", "revision", "subfolder", and "weight-name".
@@ -1674,15 +1676,13 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '-ti', '--textual-inversions', nargs='+', action='store', default=None, metavar="URI",
             dest='textual_inversion_uris',
             help="""Specify one or more Textual Inversion models using URIs.
-                    These should be a Hugging Face repository slug, path to model file on disk
+                    These should be a Hugging Face repository slug / blob link, path to model file on disk
                     (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or model folder
                     containing model files.
                     
                     If a Textual Inversion model file exists at a URL which serves the file as
                     a raw download, you may provide an http/https link to it and it will be
                     downloaded to dgenerate's web cache.
-                    
-                    Hugging Face blob links are not supported, see "subfolder" and "weight-name" below instead.
                     
                     Optional arguments can be provided after the Textual Inversion model specification,
                     these are: "token", "revision", "subfolder", and "weight-name".
@@ -3858,9 +3858,11 @@ def config_attribute_name_to_option(name):
     return _attr_name_to_option[name]
 
 
-def _parse_args(args=None, print_usage=True) -> DgenerateArguments:
+def _parse_args(args=None, print_usage=True, overrides: dict[str, typing.Any] | None = None) -> DgenerateArguments:
     parser = _create_parser(prints_usage=print_usage)[0]
     args = parser.parse_args(args, namespace=DgenerateArguments())
+    if overrides:
+        args.set_from(overrides, missing_value_throws=False)
     args.check(config_attribute_name_to_option)
     return args
 
@@ -4149,6 +4151,28 @@ def parse_sub_command(
     return parsed.sub_command, unknown
 
 
+def parse_offline_mode(
+        args: collections.abc.Sequence[str] | None = None) -> tuple[bool, list[str]]:
+    """
+    Parse out ``-ofm/--offline-mode``
+
+    :param args: command line arguments
+
+    :raise DgenerateUsageError: If no argument value was provided.
+
+    :return: (value | ``None``, unknown_args_list)
+    """
+
+    try:
+        parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
+        parser.add_argument('-ofm', '--offline-mode', action='store_true', default=False)
+        parsed, unknown = parser.parse_known_args(args)
+    except argparse.ArgumentError as e:
+        raise DgenerateUsageError(e) from e
+
+    return parsed.offline_mode, unknown
+
+
 def parse_sub_command_help(
         args: collections.abc.Sequence[str] | None = None,
         throw_unknown: bool = False,
@@ -4299,6 +4323,7 @@ def parse_known_args(args: collections.abc.Sequence[str] | None = None,
 
 
 def parse_args(args: collections.abc.Sequence[str] | None = None,
+               overrides: dict[str, str] | None = None,
                throw: bool = True,
                log_error: bool = True,
                help_raises: bool = False) -> DgenerateArguments | None:
@@ -4306,6 +4331,9 @@ def parse_args(args: collections.abc.Sequence[str] | None = None,
     Parse dgenerate's command line arguments and return a configuration object.
 
     :param args: arguments list, as in args taken from sys.argv, or in that format
+    :param overrides: Optional dictionary of overrides to apply to the
+        :py:class:`.DgenerateArguments` object after parsing but before validation,
+        this should consist of attribute names with values.
     :param throw: throw :py:exc:`.DgenerateUsageError` on error? defaults to ``True``
     :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
     :param help_raises: ``--help`` raises :py:exc:`dgenerate.arguments.DgenerateHelpException` ?
@@ -4319,7 +4347,7 @@ def parse_args(args: collections.abc.Sequence[str] | None = None,
     """
 
     try:
-        return _parse_args(args, print_usage=log_error)
+        return _parse_args(args, print_usage=log_error, overrides=overrides)
     except DgenerateHelpException:
         if help_raises:
             raise

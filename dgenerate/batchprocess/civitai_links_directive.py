@@ -22,7 +22,7 @@ import collections.abc
 
 import dgenerate.batchprocess.configrunnerplugin as _configrunnerplugin
 import dgenerate.subcommands.subcommandloader as _subcommandloader
-
+import dgenerate.messages as _messages
 
 class CivitAILinksDirective(_configrunnerplugin.ConfigRunnerPlugin):
     def __init__(self, **kwargs):
@@ -45,7 +45,14 @@ class CivitAILinksDirective(_configrunnerplugin.ConfigRunnerPlugin):
         This does not cause the config to exit.
         """
 
+        if self.local_files_only:
+            _messages.error('The \\civitai_links directive does not support --offline-mode')
+            return 1
+
         subcommand = _subcommandloader.SubCommandLoader().load(
-            'civitai-links', args=args, program_name='\\civitai_links')
+            'civitai-links',
+            args=args,
+            program_name='\\civitai_links'
+        )
 
         return subcommand()

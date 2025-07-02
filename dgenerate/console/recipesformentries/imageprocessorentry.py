@@ -40,7 +40,7 @@ class _ImageProcessorEntry(_schemaentry._PluginSchemaEntry):
 
         self._file_in_arguments = {
             'model': _resources.get_file_dialog_args(['models']),
-            'param': {'filetypes': [('param', ('*.param'))]}}
+            'param': {'filetypes': [('param', ['*.param'])]}}
 
         self._file_out_arguments = {
             'output-file': _resources.get_file_dialog_args(['images-out'])

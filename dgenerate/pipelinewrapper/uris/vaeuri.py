@@ -23,8 +23,9 @@ import typing
 
 import diffusers
 import diffusers.loaders
-import huggingface_hub
 
+import dgenerate.exceptions as _d_exceptions
+import dgenerate.hfhub as _hfhub
 import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
@@ -146,7 +147,7 @@ class VAEUri:
                 f'Unknown VAE encoder class {encoder}, must be one of: {_textprocessing.oxford_comma(self._encoders.keys(), "or")}')
 
         can_single_file_load = hasattr(self._encoders[encoder], 'from_single_file')
-        single_file_load_path = _pipelinewrapper_util.is_single_file_model_load(model)
+        single_file_load_path = _hfhub.is_single_file_model_load(model)
 
         if single_file_load_path and not can_single_file_load and not extract:
             raise _exceptions.InvalidVaeUriError(
@@ -208,16 +209,15 @@ class VAEUri:
         :return: :py:class:`diffusers.AutoencoderKL`, :py:class:`diffusers.AsymmetricAutoencoderKL`,
             :py:class:`diffusers.AutoencoderKLTemporalDecoder`, or :py:class:`diffusers.AutoencoderTiny`
         """
-        try:
-            args = locals()
-            args.pop('self')
-            return self._load(**args)
-        except (huggingface_hub.utils.HFValidationError,
-                huggingface_hub.utils.HfHubHTTPError) as e:
-            raise _pipelinewrapper_util.ModelNotFoundError(e) from e
-        except Exception as e:
+        def cache_all(e):
             raise _exceptions.VAEUriLoadError(
                 f'error loading vae "{self.model}": {e}') from e
+
+        with _hfhub.with_hf_errors_as_model_not_found(cache_all):
+            args = locals()
+            args.pop('self')
+            args.pop('cache_all')
+            return self._load(**args)
 
     @staticmethod
     def _enforce_cache_size(new_vae_size):
@@ -252,15 +252,15 @@ class VAEUri:
 
         encoder = self._encoders[self.encoder]
 
-        model_path = _pipelinewrapper_util.download_non_hf_model(self.model)
+        model_path = _hfhub.download_non_hf_slug_model(self.model)
 
-        single_file_load_path = _pipelinewrapper_util.is_single_file_model_load(model_path)
+        single_file_load_path = _hfhub.is_single_file_model_load(model_path)
 
         if single_file_load_path:
             try:
-                original_config = _pipelinewrapper_util.download_non_hf_config(
+                original_config = _hfhub.download_non_hf_slug_config(
                     original_config) if original_config else None
-            except _pipelinewrapper_util.NonHFConfigDownloadError as e:
+            except _hfhub.NonHFConfigDownloadError as e:
                 raise _exceptions.VAEUriLoadError(
                     f'original config file "{original_config}" for VAE could not be downloaded: {e}'
                 ) from e
@@ -309,7 +309,7 @@ class VAEUri:
                     )
                 except FileNotFoundError as e:
                     # cannot find configs
-                    raise _pipelinewrapper_util.ModelNotFoundError(e) from e
+                    raise _d_exceptions.ModelNotFoundError(e) from e
                 except diffusers.loaders.single_file.SingleFileComponentError as e:
                     if missing_ok:
                         # noinspection PyTypeChecker

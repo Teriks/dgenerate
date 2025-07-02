@@ -44,5 +44,14 @@ class ImageProcessSubCommand(_subcommand.SubCommand):
 
     def __call__(self) -> int:
         render_loop = _image_process.ImageProcessRenderLoop()
+
+        config_overrides = None
+        if self.local_files_only:
+            config_overrides = {'offline_mode': True}
+
         render_loop.image_processor_loader.load_plugin_modules(self.plugin_module_paths)
-        return _image_process.invoke_image_process(self.args, render_loop=render_loop)
+        return _image_process.invoke_image_process(
+            self.args,
+            render_loop=render_loop,
+            config_overrides=config_overrides
+        )

@@ -38,7 +38,9 @@ class _ImageSeedEntry(_uriwithfloatargentry._UriWithFloatArgEntry):
 
         self.build_uri_button.pack(side=tk.RIGHT)
 
+    def _insert(self, value: str):
+        if value is not None and value.strip():
+            self.uri_var.set(value)
+
     def _build_uri(self):
-        r = _imageseedselect.request_uri(self.recipe_form)
-        if r is not None and r.strip():
-            self.uri_var.set(r)
+        _imageseedselect.request_uri(self.recipe_form, self._insert)

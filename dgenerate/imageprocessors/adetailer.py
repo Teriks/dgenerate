@@ -72,8 +72,8 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
 
     -----
 
-    The "model" argument specifies the YOLO detector model used to detect a feature
-    of the image.
+    The "model" argument specifies which YOLO model to use. This can be a path to a local
+    model file, a URL to download the model from, or a HuggingFace repository slug / blob link.
 
     The "prompt" argument specifies the positive prompt to use for inpainting.
 

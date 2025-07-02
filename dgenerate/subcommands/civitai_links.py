@@ -18,7 +18,7 @@ class CivitAILinksSubCommand(_subcommand.SubCommand):
 
     dgenerate --sub-command civitai-links https://civitai.com/models/4384/dreamshaper
 
-    dgenerate --sub-command civitai-links https://civitai.com/models/4384/dreamshaper --token $CIVITAI_API_TOKEN
+    dgenerate --sub-command civitai-links https://civitai.com/models/4384/dreamshaper --token $CIVIT_AI_TOKEN
 
     See: dgenerate --sub-command civitai-links --help
     """
@@ -108,6 +108,11 @@ class CivitAILinksSubCommand(_subcommand.SubCommand):
 
         :return: Exit code.
         """
+
+        if self.local_files_only:
+            _messages.error("The civitai-links subcommand does not support --offline-mode")
+            return 1
+
         args = self._parser.parse_args(self.args)
 
         if self._parser.return_code is not None:

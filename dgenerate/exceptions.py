@@ -22,6 +22,7 @@
 __doc__ = 'Common exceptions'
 
 import torch.cuda
+import dgenerate.types as _types
 
 
 class OutOfMemoryError(Exception):
@@ -51,4 +52,17 @@ def raise_if_not_cuda_oom(e):
         if 'cuda' in msg and 'memory' in msg:
             return
     raise e
+
+
+class ModelNotFoundError(Exception):
+    """Raised when a specified model can not be located either locally or remotely"""
+    pass
+
+
+class ConfigNotFoundError(Exception):
+    """Raised when a specified config can not be located either locally or remotely"""
+    pass
+
+
+__all__ = _types.module_all()
 

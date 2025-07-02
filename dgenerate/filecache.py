@@ -42,6 +42,13 @@ On disk file cache implementation and primitives.
 """
 
 
+class WebFileCacheOfflineModeException(Exception):
+    """
+    Exception raised when the web cache is in offline mode and a file is not found in the cache.
+    """
+    pass
+
+
 class KeyValueStore:
     """
     A key-value store using SQLite3 for storage.
@@ -339,7 +346,7 @@ class FileCache:
             file_data: bytes | typing.Iterable[bytes],
             metadata: typing.Dict[str, str] = None,
             ext: str | None = None) \
-            -> CachedFile | None:
+            -> CachedFile:
         """
         Adds a file to the cache. If a file with the same key already exists, it overwrites the existing file.
         Otherwise, it creates a new file with a unique filename.
@@ -409,10 +416,29 @@ class WebFileCache(FileCache):
         """
         super().__init__(db_path, cache_dir)
         self.expiry_delta = expiry_delta
+        self._local_files_only = False
         try:
             self._clear_old_files()
         except sqlite3.Error:
             self._remove_cache_files_except_locks()
+
+    @property
+    def local_files_only(self) -> bool:
+        """
+        Get the local_files_only mode status.
+
+        :return: ``True`` if local_files_only mode is enabled, ``False`` otherwise.
+        """
+        return self._local_files_only
+
+    @local_files_only.setter
+    def local_files_only(self, value: bool):
+        """
+        Set the local_files_only mode status.
+
+        :param value: ``True`` to enable local_files_only mode, ``False`` to disable it.
+        """
+        self._local_files_only = value
 
     def _remove_cache_files_except_locks(self):
         """
@@ -442,21 +468,30 @@ class WebFileCache(FileCache):
             except FileNotFoundError:
                 pass
 
-    def request_mimetype(self, url) -> str:
+    def request_mimetype(self, url, local_files_only: bool = False) -> str:
         """
         Requests the mimetype of a file at a URL. If the file exists in the cache, a known mimetype
         is returned without connecting to the internet. Otherwise, it connects to the internet
         to retrieve the mimetype. This action does not update the cache.
 
         :raise HTTPError: On http status errors.
+        :raise WebFileCacheOfflineModeException: If local_files_only mode is enabled and the file is not found in the cache.
 
         :param url: The URL of the file.
+        :param local_files_only: If ``True``, do not make a request, only check the cache.
         :return: The mimetype of the file.
         """
         with self:
             exists = self.get(url)
             if exists is not None:
                 return exists.metadata['mime-type']
+
+        # Check if we're in offline mode (either from property or parameter)
+        if self._local_files_only or local_files_only:
+            raise WebFileCacheOfflineModeException(
+                f'Web cache is in offline mode, and the '
+                f'file for "{url}" was not found in the local cache.'
+            )
 
         headers = {'User-Agent': fake_useragent.UserAgent().chrome}
 
@@ -481,13 +516,15 @@ class WebFileCache(FileCache):
                  mimetype_is_supported: typing.Callable[[str], bool] | None = None,
                  unknown_mimetype_exception=ValueError,
                  overwrite: bool = False,
-                 tqdm_pbar=tqdm.tqdm):
+                 tqdm_pbar=tqdm.tqdm,
+                 local_files_only: bool = False) -> CachedFile:
         """
         Downloads a file and/or returns a file path from the cache. If the mimetype
         of the file is not supported, it raises an exception.
 
         :raise requests.RequestException: Can raise any exception
             raised by ``requests.get`` for request related errors.
+        :raise WebFileCacheOfflineModeException: If local_files_only mode is enabled and the file is not found in the cache.
 
         :param url: The URL of the file.
         :param mime_acceptable_desc: A description of acceptable mimetypes for use in exceptions.
@@ -495,6 +532,7 @@ class WebFileCache(FileCache):
         :param unknown_mimetype_exception: The exception type to raise when an unknown mimetype is encountered.
         :param overwrite: Always overwrite any previously cached file?
         :param tqdm_pbar: tqdm progress bar type, if set to `None` no progress bar will be used. Defaults to `tqdm.tqdm`
+        :param local_files_only: If ``True``, do not attempt to download files, only check cache.
         :return: The path to the downloaded file.
         """
 
@@ -505,11 +543,21 @@ class WebFileCache(FileCache):
                 return mimetype_is_supported(mimetype)
             return True
 
+        # Check if we're in offline mode (either from property or parameter)
+        is_offline = self._local_files_only or local_files_only
+
         if not overwrite:
             with self:
                 cached_file = self.get(url)
                 if cached_file is not None and os.path.exists(cached_file.path):
                     return cached_file
+
+        # If we're in offline mode and the file wasn't found in cache, raise an exception
+        if is_offline:
+            raise WebFileCacheOfflineModeException(
+                f'Web cache is in offline mode, and the '
+                f'file for "{url}" was not found in the local cache.'
+            )
 
         with requests.get(url,
                           headers={'User-Agent': fake_useragent.UserAgent().chrome},

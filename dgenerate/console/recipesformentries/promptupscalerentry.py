@@ -67,7 +67,7 @@ class _PromptUpscalerEntry(_schemaentry._PluginSchemaEntry):
     def _apply_file_dir_selects(self, param_name: str, entry: _schemaentry._PluginArgEntry):
         if param_name == 'model':
             if self.plugin_name_var.get() == 'gpt4all':
-                entry.file_types = {'filetypes': [('gguf', ('*.gguf'))]}
+                entry.file_types = {'filetypes': [('gguf', ['*.gguf'])]}
             elif self.plugin_name_var.get() == 'magicprompt':
                 entry.directory = True
             entry.raw = False

@@ -21,6 +21,7 @@
 
 import collections.abc
 import datetime
+import functools
 import itertools
 import os
 import pathlib
@@ -1236,6 +1237,15 @@ class RenderLoop:
                 else:
                     control_image_processor.to('cpu')
 
+    def _get_media_reader_path_opener(self):
+        """
+        Returns a function that can be used to open media files for reading.
+        This is used by the image seed processor to read images and videos.
+        """
+        return functools.partial(
+            _mediainput.fetch_media_data_stream,
+            local_files_only=self._c_config.offline_mode)
+
     def _render_with_image_seeds_unmanaged(
             self,
             seed_image_processor: _mediainput.ImageProcessorSpec,
@@ -1267,10 +1277,18 @@ class RenderLoop:
 
             if is_control_guidance_spec:
                 seed_info = _mediainput.get_control_image_info(
-                    parsed_image_seed, self._c_config.frame_start, self._c_config.frame_end)
+                    parsed_image_seed,
+                    self._c_config.frame_start,
+                    self._c_config.frame_end,
+                    path_opener=self._get_media_reader_path_opener()
+                )
             else:
                 seed_info = _mediainput.get_image_seed_info(
-                    parsed_image_seed, self._c_config.frame_start, self._c_config.frame_end)
+                    parsed_image_seed,
+                    self._c_config.frame_start,
+                    self._c_config.frame_end,
+                    path_opener=self._get_media_reader_path_opener()
+                )
 
             if is_control_guidance_spec:
                 def image_seed_iterator():
@@ -1280,7 +1298,9 @@ class RenderLoop:
                         frame_end=self._c_config.frame_end,
                         resize_resolution=self._c_config.output_size,
                         aspect_correct=not self._c_config.no_aspect,
-                        image_processor=control_image_processor)
+                        image_processor=control_image_processor,
+                        path_opener=self._get_media_reader_path_opener()
+                    )
 
             else:
                 def image_seed_iterator():
@@ -1296,6 +1316,7 @@ class RenderLoop:
                         seed_image_processor=seed_image_processor,
                         mask_image_processor=mask_image_processor,
                         control_image_processor=control_image_processor,
+                        path_opener=self._get_media_reader_path_opener(),
                         check_dimensions_match=
                         not _pipelinewrapper.model_type_is_s_cascade(self._c_config.model_type))
 

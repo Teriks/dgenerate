@@ -18,7 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
+import contextlib
 
 import dgenerate.types as _types
 from .argos import ArgosTranslator
@@ -29,5 +29,63 @@ from .util import get_language_code
 __doc__ = """
 Translation backends for language translation via local inference.
 """
+
+_offline_mode = False
+
+def is_offline_mode() -> bool:
+    """
+    Check if the translators module is in offline mode.
+
+    :return: ``True`` if in offline mode, ``False`` otherwise.
+    """
+    global _offline_mode
+    return _offline_mode
+
+
+def enable_offline_mode():
+    """
+    Enable offline mode for the translators module.
+
+    This will prevent any network requests from being made.
+    """
+    global _offline_mode
+    _offline_mode = True
+    ArgosTranslator._offline_mode = True
+    MarianaTranslator._offline_mode = True
+
+
+def disable_offline_mode():
+    """
+    Disable offline mode for the translators module.
+
+    This will allow network requests to be made again.
+    """
+    global _offline_mode
+    _offline_mode = False
+    ArgosTranslator._offline_mode = False
+    MarianaTranslator._offline_mode = False
+
+
+@contextlib.contextmanager
+def offline_mode_context(enabled=True):
+    """
+    Context manager to temporarily enable or disable offline mode for the translators module.
+
+    :param enabled: If `True`, enables offline mode. If `False`, disables it.
+    """
+    global _offline_mode
+    original_mode = _offline_mode
+
+    if enabled:
+        enable_offline_mode()
+    else:
+        disable_offline_mode()
+    try:
+        yield
+    finally:
+        if original_mode:
+            enable_offline_mode()
+        else:
+            disable_offline_mode()
 
 __all__ = _types.module_all()

@@ -128,10 +128,18 @@ class DgenerateConsole(tk.Tk):
 
         self._run_menu.add_separator()
 
+        self._offline_mode_var = tk.BooleanVar(value=False)
+
+        self._offline_mode_var.trace_add('write',
+                                       lambda *a: self._update_shell_options_state())
+
+        self._run_menu.add_checkbutton(label='Offline Mode',
+                                       variable=self._offline_mode_var)
+
         self._debug_mode_var = tk.BooleanVar(value=False)
 
         self._debug_mode_var.trace_add('write',
-                                       lambda *a: self._update_debug_mode_state())
+                                       lambda *a: self._update_shell_options_state())
 
         self._run_menu.add_checkbutton(label='Debug Mode',
                                        variable=self._debug_mode_var)
@@ -527,9 +535,11 @@ class DgenerateConsole(tk.Tk):
 
         self._update_cwd_title(os.getcwd())
 
-    def _update_debug_mode_state(self):
+    def _update_shell_options_state(self):
         self._shell_procmon.popen_args = \
-            [[DGENERATE_EXE, '--shell'] + (['-v'] if self._debug_mode_var.get() else [])]
+            [[DGENERATE_EXE, '--shell'] +
+             (['-v'] if self._debug_mode_var.get() else []) +
+             (['-ofm'] if self._offline_mode_var.get() else [])]
 
         self.kill_shell_process(restart=True)
 

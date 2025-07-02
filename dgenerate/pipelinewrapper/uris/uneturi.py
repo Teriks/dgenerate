@@ -21,8 +21,9 @@
 
 import diffusers
 import diffusers.loaders
-import huggingface_hub
 
+import dgenerate.exceptions as _d_exceptions
+import dgenerate.hfhub as _hfhub
 import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
@@ -117,7 +118,7 @@ class UNetUri:
             invalid data type string.
         """
 
-        if _pipelinewrapper_util.is_single_file_model_load(model):
+        if _hfhub.is_single_file_model_load(model):
             if quantizer:
                 raise _exceptions.InvalidTextEncoderUriError(
                     'specifying a UNet quantizer URI is only supported for Hugging Face '
@@ -161,16 +162,15 @@ class UNetUri:
 
         :return: :py:class:`diffusers.UNet2DConditionModel`
         """
-        try:
-            args = locals()
-            args.pop('self')
-            return self._load(**args)
-        except (huggingface_hub.utils.HFValidationError,
-                huggingface_hub.utils.HfHubHTTPError) as e:
-            raise _pipelinewrapper_util.ModelNotFoundError(e) from e
-        except Exception as e:
+        def cache_all(e):
             raise _exceptions.UNetUriLoadError(
                 f'error loading unet "{self.model}": {e}') from e
+
+        with _hfhub.with_hf_errors_as_model_not_found(cache_all):
+            args = locals()
+            args.pop('self')
+            args.pop('cache_all')
+            return self._load(**args)
 
     @staticmethod
     def _enforce_cache_size(new_unet_size):
@@ -205,7 +205,7 @@ class UNetUri:
         else:
             variant = self.variant
 
-        model_path = _pipelinewrapper_util.download_non_hf_model(self.model)
+        model_path = _hfhub.download_non_hf_slug_model(self.model)
 
         if self.quantizer:
             quant_config = _util.get_quantizer_uri_class(
@@ -215,11 +215,11 @@ class UNetUri:
         else:
             quant_config = None
 
-        if _pipelinewrapper_util.is_single_file_model_load(model_path):
+        if _hfhub.is_single_file_model_load(model_path):
             try:
-                original_config = _pipelinewrapper_util.download_non_hf_config(
+                original_config = _hfhub.download_non_hf_slug_config(
                     original_config) if original_config else None
-            except _pipelinewrapper_util.NonHFConfigDownloadError as e:
+            except _hfhub.NonHFConfigDownloadError as e:
                 raise _exceptions.UNetUriLoadError(
                     f'original config file "{original_config}" for UNet could not be downloaded: {e}'
                 ) from e
@@ -247,7 +247,7 @@ class UNetUri:
                 )
             except FileNotFoundError as e:
                 # cannot find configs
-                raise _pipelinewrapper_util.ModelNotFoundError(e) from e
+                raise _d_exceptions.ModelNotFoundError(e) from e
             except diffusers.loaders.single_file.SingleFileComponentError as e:
                 raise _exceptions.UNetUriLoadError(
                     f'Failed to load UNet from single file checkpoint {model_path}, '
@@ -288,6 +288,7 @@ class UNetUri:
 
         _util._patch_module_to_for_sized_cache(_unet_cache, unet)
 
+        # noinspection PyTypeChecker
         return unet, _d_memoize.CachedObjectMetadata(
             size=estimated_memory_use,
             skip=self.quantizer or no_cache

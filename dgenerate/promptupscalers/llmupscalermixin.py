@@ -87,7 +87,7 @@ class LLMPromptUpscalerMixin(abc.ABC):
             self._custom_cleanup_operations = cleanup_config_operations
             self._cleanup_config_path = cleanup_config
 
-    def _validate_custom_cleanup_operations(self, operations: list[dict, [str, typing.Any]]) -> bool:
+    def _validate_custom_cleanup_operations(self, operations: list[dict[str, typing.Any]]) -> bool:
         for operation in operations:
             if 'function' in operation:
                 if not isinstance(operation['function'], str) or ':' not in operation['function']:
@@ -161,7 +161,7 @@ class LLMPromptUpscalerMixin(abc.ABC):
 
         return text
 
-    def _load_custom_cleanup_operations(self, file_path: str) -> list[dict, [str, typing.Any]]:
+    def _load_custom_cleanup_operations(self, file_path: str) -> list[dict[str, typing.Any]]:
         with open(file_path, 'r', encoding='utf-8') as f:
             if file_path.endswith('.json'):
                 return json.load(f)
@@ -225,7 +225,9 @@ class LLMPromptUpscalerMixin(abc.ABC):
         return generated_prompts
 
     def _load_smart_truncate_model(self):
-        nlp = _spacycache.load_spacy_model("xx_ent_wiki_sm")
+        nlp = _spacycache.load_spacy_model(
+            "xx_ent_wiki_sm", local_files_only=getattr(self, 'local_files_only', False)
+        )
 
         if "sentencizer" not in nlp.pipe_names:
             nlp.add_pipe("sentencizer", first=True)

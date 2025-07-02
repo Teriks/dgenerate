@@ -24,13 +24,15 @@ import json
 import logging
 import typing
 
+import accelerate
+import diffusers.loaders
 import diffusers.pipelines.kolors
-import huggingface_hub
 import torch
 import transformers.models.clip
-import diffusers.loaders
-import accelerate
 
+import dgenerate.exceptions as _d_exceptions
+import dgenerate.extras.DistillT5.models.T5_encoder as _distill_t5_encoder
+import dgenerate.hfhub as _hfhub
 import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
@@ -43,7 +45,6 @@ import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 from dgenerate.pipelinewrapper.uris import util as _util
-import dgenerate.extras.DistillT5.models.T5_encoder as _distill_t5_encoder
 
 DistillT5EncoderModel = _distill_t5_encoder.T5EncoderWithProjection
 
@@ -106,17 +107,6 @@ def _load_clip_l_from_single_file(
 
             text_encoder = model_class(config)
 
-        blob_link = _pipelinewrapper_util.HFBlobLink.parse(model_path)
-
-        if blob_link is not None:
-            model_path = huggingface_hub.hf_hub_download(
-                repo_id=blob_link.repo_id,
-                revision=blob_link.revision,
-                subfolder=blob_link.subfolder,
-                filename=blob_link.weight_name,
-                local_files_only=local_files_only
-            )
-
         _messages.log(
             f'Loading monolithic clip-l state dict from: "{model_path}", this may take a while, please wait...',
             level=_messages.WARNING
@@ -170,17 +160,6 @@ def _load_clip_l_sd3_from_single_file(
                 config.quantization_config = quantization_config
 
             text_encoder = model_class(config)
-
-        blob_link = _pipelinewrapper_util.HFBlobLink.parse(model_path)
-
-        if blob_link is not None:
-            model_path = huggingface_hub.hf_hub_download(
-                repo_id=blob_link.repo_id,
-                revision=blob_link.revision,
-                subfolder=blob_link.subfolder,
-                filename=blob_link.weight_name,
-                local_files_only=local_files_only
-            )
 
         _messages.log(
             f'Loading monolithic CLIP-L SD3/SD3.5 state dict from: "{model_path}", this may take a while, please wait...',
@@ -236,17 +215,6 @@ def _load_clip_g_sd3_from_single_file(
 
             text_encoder = model_class(config)
 
-        blob_link = _pipelinewrapper_util.HFBlobLink.parse(model_path)
-
-        if blob_link is not None:
-            model_path = huggingface_hub.hf_hub_download(
-                repo_id=blob_link.repo_id,
-                revision=blob_link.revision,
-                subfolder=blob_link.subfolder,
-                filename=blob_link.weight_name,
-                local_files_only=local_files_only
-            )
-
         _messages.log(
             f'Loading monolithic CLIP-G SD3/SD3.5 state dict from: "{model_path}", this may take a while, please wait...',
             level=_messages.WARNING
@@ -298,17 +266,6 @@ def _load_t5_xxl_sd3_from_single_file(
                 config.quantization_config = quantization_config
 
             text_encoder = model_class(config)
-
-        blob_link = _pipelinewrapper_util.HFBlobLink.parse(model_path)
-
-        if blob_link is not None:
-            model_path = huggingface_hub.hf_hub_download(
-                repo_id=blob_link.repo_id,
-                revision=blob_link.revision,
-                subfolder=blob_link.subfolder,
-                filename=blob_link.weight_name,
-                local_files_only=local_files_only
-            )
 
         # Load state dict and update weights
         _messages.log(
@@ -362,17 +319,6 @@ def _load_t5_xxl_from_single_file(
 
             text_encoder = model_class(config)
 
-        blob_link = _pipelinewrapper_util.HFBlobLink.parse(model_path)
-
-        if blob_link is not None:
-            model_path = huggingface_hub.hf_hub_download(
-                repo_id=blob_link.repo_id,
-                revision=blob_link.revision,
-                subfolder=blob_link.subfolder,
-                filename=blob_link.weight_name,
-                local_files_only=local_files_only
-            )
-
         # Load state dict and update weights
         _messages.log(
             f'Loading monolithic t5-xxl state dict from: '
@@ -423,17 +369,6 @@ def _load_clip_l_sd35_large_from_single_file(
 
             text_encoder = model_class(config)
 
-        blob_link = _pipelinewrapper_util.HFBlobLink.parse(model_path)
-
-        if blob_link is not None:
-            model_path = huggingface_hub.hf_hub_download(
-                repo_id=blob_link.repo_id,
-                revision=blob_link.revision,
-                subfolder=blob_link.subfolder,
-                filename=blob_link.weight_name,
-                local_files_only=local_files_only
-            )
-
         _messages.log(
             f'Loading monolithic clip-l-sd35-large state dict from: "{model_path}", this may take a while, please wait...',
             level=_messages.WARNING
@@ -482,17 +417,6 @@ def _load_clip_g_sd35_large_from_single_file(
                 config.quantization_config = quantization_config
 
             text_encoder = model_class(config)
-
-        blob_link = _pipelinewrapper_util.HFBlobLink.parse(model_path)
-
-        if blob_link is not None:
-            model_path = huggingface_hub.hf_hub_download(
-                repo_id=blob_link.repo_id,
-                revision=blob_link.revision,
-                subfolder=blob_link.subfolder,
-                filename=blob_link.weight_name,
-                local_files_only=local_files_only
-            )
 
         _messages.log(
             f'Loading monolithic clip-g-sd35-large state dict from: "{model_path}", this may take a while, please wait...',
@@ -649,7 +573,7 @@ class TextEncoderUri:
 
         valid_modes = TextEncoderUri._valid_modes()
 
-        if _pipelinewrapper_util.is_single_file_model_load(model):
+        if _hfhub.is_single_file_model_load(model):
             if quantizer and mode not in valid_modes:
                 raise _exceptions.InvalidTextEncoderUriError(
                     'specifying a Text Encoder quantizer URI is only supported for Hugging Face '
@@ -725,16 +649,15 @@ class TextEncoderUri:
             :py:class:`transformers.models.t5.T5EncoderModel`, or
             :py:class:`diffusers.pipelines.kolors.ChatGLMModel`
         """
-        try:
-            args = locals()
-            args.pop('self')
-            return self._load(**args)
-        except (huggingface_hub.utils.HFValidationError,
-                huggingface_hub.utils.HfHubHTTPError) as e:
-            raise _pipelinewrapper_util.ModelNotFoundError(e) from e
-        except Exception as e:
+        def cache_all(e):
             raise _exceptions.TextEncoderUriLoadError(
                 f'error loading text encoder "{self.model}": {e}') from e
+
+        with _hfhub.with_hf_errors_as_model_not_found(cache_all):
+            args = locals()
+            args.pop('self')
+            args.pop('cache_all')
+            return self._load(**args)
 
     @staticmethod
     def _enforce_cache_size(new_text_encoder_size):
@@ -795,7 +718,7 @@ class TextEncoderUri:
             raise _exceptions.TextEncoderUriLoadError(
                 f'Encoder "{self.encoder}" does not support loading with mode "{self.mode}".')
 
-        model_path = _pipelinewrapper_util.download_non_hf_model(self.model)
+        model_path = _hfhub.download_non_hf_slug_model(self.model)
 
         if self.quantizer:
             quant_config = _util.get_quantizer_uri_class(
@@ -805,7 +728,7 @@ class TextEncoderUri:
         else:
             quant_config = None
 
-        if _pipelinewrapper_util.is_single_file_model_load(model_path):
+        if _hfhub.is_single_file_model_load(model_path):
             # Ensure these modes are only used with safetensors files
 
             if self.mode in TextEncoderUri._valid_modes():
@@ -966,9 +889,9 @@ class TextEncoderUri:
                 estimated_memory_use = _torchutil.estimate_module_memory_usage(text_encoder)
             else:
                 try:
-                    original_config = _pipelinewrapper_util.download_non_hf_config(
+                    original_config = _hfhub.download_non_hf_slug_config(
                         original_config) if original_config else None
-                except _pipelinewrapper_util.NonHFConfigDownloadError as e:
+                except _hfhub.NonHFConfigDownloadError as e:
                     raise _exceptions.TextEncoderUriLoadError(
                         f'original config file "{original_config}" for Text Encoder could not be downloaded: {e}'
                     ) from e
@@ -996,7 +919,7 @@ class TextEncoderUri:
                     )
                 except FileNotFoundError as e:
                     # cannot find configs
-                    raise _pipelinewrapper_util.ModelNotFoundError(e) from e
+                    raise _d_exceptions.ModelNotFoundError(e) from e
                 except diffusers.loaders.single_file.SingleFileComponentError as e:
                     if missing_ok:
                         # noinspection PyTypeChecker

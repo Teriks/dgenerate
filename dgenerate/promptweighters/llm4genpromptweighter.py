@@ -22,9 +22,11 @@
 import gc
 import inspect
 import re
+import typing
 
 import diffusers
 
+import dgenerate.hfhub as _hfhub
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.enums as _enums
 from dgenerate.pipelinewrapper.uris import get_quantizer_uri_class as _get_quantizer_uri_class
@@ -32,7 +34,6 @@ import dgenerate.promptweighters.exceptions as _exceptions
 import dgenerate.promptweighters.promptweighter as _promptweighter
 import dgenerate.memory as _memory
 import dgenerate.textprocessing as _textprocessing
-import dgenerate.pipelinewrapper.util as _util
 import os
 
 import torch
@@ -459,11 +460,11 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
                             local_files_only: bool = False,
                             use_auth_token: str | None = None):
         try:
-            if _util.is_single_file_model_load(model):
+            if _hfhub.is_single_file_model_load(model):
                 if os.path.exists(model):
                     return model
                 else:
-                    return _util.download_non_hf_model(model)
+                    return _hfhub.download_non_hf_slug_model(model)
             else:
                 return huggingface_hub.hf_hub_download(
                     model,
@@ -588,7 +589,7 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
     def translate_to_embeds(self,
                             pipeline: diffusers.DiffusionPipeline,
                             device: str,
-                            args: dict[str, any]):
+                            args: dict[str, typing.Any]):
 
         # we are responsible for generating these arguments
         # if they exist already then we cannot do our job

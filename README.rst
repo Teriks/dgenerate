@@ -342,10 +342,15 @@ Help Output
             by the specified plugins will also be listed.
             ---------------------------------------------
       -ofm, --offline-mode
-            Prevent dgenerate from downloading Hugging Face models that do not exist in the disk cache or a
-            folder on disk. Referencing a model on Hugging Face hub that has not been cached because it was not
-            previously downloaded will result in a failure when using this option.
-            ----------------------------------------------------------------------
+            Prevent dgenerate from downloading resources that do not already exist on disk. Referencing a model
+            on Hugging Face hub that has not been cached because it was not previously downloaded will result in
+            a failure when using this option, as well as attempting to download any new content into dgenerates
+            web cache.  This will prevent dgenerate from downloading anything, it will only look for cached
+            resources when processing URLs or Hugging Face slugs. It will not be able to download any default
+            models that have been baked into the code as well. This option is fed to sub-commands when using the
+            --sub-command argument, meaning that all sub-commands can parse this argument by default, though
+            they may complain if it is not supported, such as with the "civitai-links" sub-command.
+            ---------------------------------------------------------------------------------------
       --templates-help [VARIABLE_NAME ...]
             Print a list of template variables available in the interpreter environment used for dgenerate
             config scripts, particularly the variables set after a dgenerate invocation occurs. When used as a
@@ -835,14 +840,12 @@ Help Output
             --control-nets you may still run into memory issues generating large images.
             ----------------------------------------------------------------------------
       -lra, --loras LORA_URI [LORA_URI ...]
-            Specify one or more LoRA models using URIs. These should be a Hugging Face repository slug, path to
-            model file on disk (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or model folder
-            containing model files.
+            Specify one or more LoRA models using URIs. These should be a Hugging Face repository slug / blob
+            link, path to model file on disk (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or
+            model folder containing model files.
             
             If a LoRA model file exists at a URL which serves the file as a raw download, you may provide an
             http/https link to it and it will be downloaded to dgenerate's web cache.
-            
-            Hugging Face blob links are not supported, see "subfolder" and "weight-name" below instead.
             
             Optional arguments can be provided after a LoRA model specification, these are: "scale", "revision",
             "subfolder", and "weight-name".
@@ -910,14 +913,12 @@ Help Output
             downloaded repository folder from Hugging Face.
             -----------------------------------------------
       -ipa, --ip-adapters IP_ADAPTER_URI [IP_ADAPTER_URI ...]
-            Specify one or more IP Adapter models using URIs. These should be a Hugging Face repository slug,
-            path to model file on disk (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or model
-            folder containing model files.
+            Specify one or more IP Adapter models using URIs. These should be a Hugging Face repository slug /
+            blob link, path to model file on disk (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file),
+            or model folder containing model files.
             
             If an IP Adapter model file exists at a URL which serves the file as a raw download, you may provide
             an http/https link to it and it will be downloaded to dgenerate's web cache.
-            
-            Hugging Face blob links are not supported, see "subfolder" and "weight-name" below instead.
             
             Optional arguments can be provided after an IP Adapter model specification, these are: "scale",
             "revision", "subfolder", and "weight-name".
@@ -943,13 +944,11 @@ Help Output
             ---------------------------------------------------------------------------
       -ti, --textual-inversions URI [URI ...]
             Specify one or more Textual Inversion models using URIs. These should be a Hugging Face repository
-            slug, path to model file on disk (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or
-            model folder containing model files.
+            slug / blob link, path to model file on disk (for example, a .pt, .pth, .bin, .ckpt, or .safetensors
+            file), or model folder containing model files.
             
             If a Textual Inversion model file exists at a URL which serves the file as a raw download, you may
             provide an http/https link to it and it will be downloaded to dgenerate's web cache.
-            
-            Hugging Face blob links are not supported, see "subfolder" and "weight-name" below instead.
             
             Optional arguments can be provided after the Textual Inversion model specification, these are:
             "token", "revision", "subfolder", and "weight-name".
@@ -7728,10 +7727,8 @@ The help output of ``image-process`` is as follows:
             Do not write an animation file, only frames. Cannot be used with --no-frames.
             -----------------------------------------------------------------------------
       -ofm, --offline-mode
-            Prevent dgenerate from downloading Hugging Face hub models that do not exist in the disk cache or a
-            folder on disk. Referencing a model on Hugging Face hub that has not been cached because it was not
-            previously downloaded will result in a failure when using this option.
-            ----------------------------------------------------------------------
+            Prevent downloads of resources that do not exist on disk already.
+            -----------------------------------------------------------------
 
 
 Overview of specifying ``image-process`` inputs and outputs
@@ -7877,7 +7874,7 @@ The help output of ``image-process`` is as follows:
 
 .. code-block:: text
 
-    usage: auto1111-metadata [-h] [-o OUTPUT] [-c CONFIG] [-v] image
+    usage: auto1111-metadata [-h] [-o OUTPUT] [-c CONFIG] [-v] [-ofm] image
     
     Automatic1111 Metadata Tool.
     
@@ -7917,6 +7914,9 @@ The help output of ``image-process`` is as follows:
       -v, --verbose
             Enable debug output?
             --------------------
+      -ofm, --offline-mode
+            Prevent downloads of resources that do not exist on disk already.
+            -----------------------------------------------------------------
 
 
 Example of using the ``auto1111-metadata`` sub-command with ``--output-metadata``
@@ -8014,7 +8014,7 @@ The help output of ``to-diffusers`` is as follows:
 .. code-block:: text
 
     usage: to-diffusers [-h] [-mt MODEL_TYPE] [-rev REVISION] [-sbf SUBFOLDER] [-t [DTYPES ...]]
-                        [-olc ORIGINAL_CONFIG] [-atk AUTH_TOKEN] -o OUTPUT [-v]
+                        [-olc ORIGINAL_CONFIG] [-atk AUTH_TOKEN] -o OUTPUT [-v] [-ofm]
                         model_path
     
     Save a loaded model to a diffusers format pretrained model folder, models can be loaded from a single file
@@ -8057,6 +8057,9 @@ The help output of ``to-diffusers`` is as follows:
       -v, --verbose
             Enable debug output?
             --------------------
+      -ofm, --offline-mode
+            Prevent downloads of resources that do not exist on disk already.
+            -----------------------------------------------------------------
 
 
 Sub Command: prompt-upscale
@@ -8096,7 +8099,7 @@ The help output of ``prompt-upscale`` is as follows:
 .. code-block:: text
 
     usage: prompt-upscale [-h] [-u PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]] [-d DEVICE]
-                          [-of OUTPUT_FORMAT] [-o OUTPUT] [-q QUOTE]
+                          [-of OUTPUT_FORMAT] [-o OUTPUT] [-q QUOTE] [-ofm]
                           prompts [prompts ...]
     
     Upscale prompts without preforming image generation.
@@ -8131,6 +8134,9 @@ The help output of ``prompt-upscale`` is as follows:
             output in text mode, and you intend to do something with the output other than just look at it,
             --quote "none" will be problematic for multiline prompts.
             ---------------------------------------------------------
+      -ofm, --offline-mode
+            Prevent downloads of resources that do not exist on disk already.
+            -----------------------------------------------------------------
 
 Upscaling Images
 ================
@@ -8560,7 +8566,8 @@ adetailer processor help output below.
     
         -----
     
-        The "model" argument specifies the YOLO detector model used to detect a feature of the image.
+        The "model" argument specifies which YOLO model to use. This can be a path to a local model file, a URL to
+        download the model from, or a HuggingFace repository slug / blob link.
     
         The "prompt" argument specifies the positive prompt to use for inpainting.
     
@@ -8876,7 +8883,7 @@ processor chaining if desired.
         -----
     
         The "model" argument specifies which YOLO model to use. This can be a path to a local model file, a URL to
-        download the model from, or a HuggingFace repository slug.
+        download the model from, or a HuggingFace repository slug / blob link.
     
         The "weight-name" argument specifies the file name in a HuggingFace repository for the model weights, if
         you have provided a HuggingFace repository slug to the model argument.
@@ -9685,7 +9692,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [26567398286712]
+            Value: [13191346800362]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

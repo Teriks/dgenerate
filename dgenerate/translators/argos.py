@@ -23,12 +23,12 @@ import urllib.request
 
 import dgenerate.extras.argostranslate.package as argostranslate_package
 import dgenerate.extras.argostranslate.settings as argostranslate_settings
-import dgenerate.extras.argostranslate.translate as argostranslate_translate
 
 import dgenerate.filelock
 import dgenerate.messages as _messages
 import dgenerate.translators.exceptions as _exceptions
 import dgenerate.translators.util as _util
+import dgenerate.spacycache as _spacycache
 
 
 class ArgosTranslator:
@@ -37,6 +37,8 @@ class ArgosTranslator:
 
     Supports automatic pivot language selection.
     """
+
+    _offline_mode = False
 
     def __init__(self, from_lang: str, to_lang: str, local_files_only: bool = False):
         """
@@ -76,7 +78,7 @@ class ArgosTranslator:
             # download package index if we do not have it, and the user allows it
             if not os.path.exists(argostranslate_settings.local_package_index):
 
-                if not local_files_only:
+                if not (local_files_only or self._offline_mode):
                     _messages.debug_log('argostranslate, updating package index...')
                     self._argos_update_package_index()
                 else:
@@ -123,7 +125,7 @@ class ArgosTranslator:
                 # if it does not exist on disk, and we are not in offline mode,
                 # then download the model
                 if not os.path.exists(pivot_model_path):
-                    if local_files_only:
+                    if local_files_only or self._offline_mode:
                         raise _exceptions.TranslatorLoadError(
                             f'argostranslate needs to download a pivot model '
                             f'for: "{pivot_lang.from_code}" -> "{pivot_lang.to_code}", '
@@ -151,7 +153,7 @@ class ArgosTranslator:
 
                 # If that model does not exist, download it if the user allows
                 if not os.path.exists(model_path):
-                    if local_files_only:
+                    if local_files_only or self._offline_mode:
                         raise _exceptions.TranslatorLoadError(
                             f'argostranslate needs to download a model '
                             f'for: "{package_to_install.from_code}" -> "{package_to_install.to_code}", '
@@ -168,7 +170,7 @@ class ArgosTranslator:
 
                 # download the model if it does not exist
                 if not os.path.exists(model_path):
-                    if local_files_only:
+                    if local_files_only or self._offline_mode:
                         raise _exceptions.TranslatorLoadError(
                             f'argostranslate needs to download a model '
                             f'for: "{package_to_install.from_code}" -> "{package_to_install.to_code}", '
@@ -185,6 +187,16 @@ class ArgosTranslator:
 
         self._translation = None
         self._translation2 = None
+
+        try:
+            with _spacycache.offline_mode_context(local_files_only):
+                # this trys to download to the spacy cache if the models
+                # do not exist, we want it to throw if we are in offline mode
+                import dgenerate.extras.argostranslate.translate as argostranslate_translate
+        except _spacycache.SpacyModelNotFoundError as e:
+            raise _exceptions.TranslatorLoadError(
+                'Unable to load argostranslate model due to being '
+                'unable to download required SpaCy model with offline mode active.') from e
 
         if pivot_lang:
             _messages.debug_log(

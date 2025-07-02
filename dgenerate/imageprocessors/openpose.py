@@ -25,9 +25,9 @@ import dgenerate.extras.controlnet_aux.util as _cna_util
 import numpy
 import torch
 
+import dgenerate.hfhub as _hfhub
 import dgenerate.image as _image
 import dgenerate.imageprocessors.imageprocessor as _imageprocessor
-import dgenerate.imageprocessors.util as _util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 
@@ -110,7 +110,8 @@ class OpenPoseProcessor(_imageprocessor.ImageProcessor):
             self._detect_resolution = None
 
         self.set_size_estimate(510 * (1000 ** 2))  # 510 MB body_pose_model.pth + hand_pose_model.pth + facenet.pth
-        with _util.with_hf_local_files_only(self.local_files_only):
+        with (_hfhub.with_hf_errors_as_model_not_found(),
+              _hfhub.offline_mode_context(self.local_files_only)):
             self._openpose = self.load_object_cached(
                 tag="lllyasviel/Annotators",
                 estimated_size=self.size_estimate,

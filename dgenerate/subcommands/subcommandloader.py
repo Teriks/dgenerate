@@ -40,14 +40,24 @@ class SubCommandLoader(_plugin.PluginLoader):
         super().__init__(base_class=_subcommand.SubCommand,
                          description='sub-command',
                          reserved_args=[_Pa('args', type=list),
-                                        _Pa('plugin-module-paths', type=list, default=None)],
+                                        _Pa('plugin-module-paths', type=list, default=None),
+                                        _Pa('local-files-only', type=bool, default=False)],
                          argument_error_type=_exceptions.SubCommandArgumentError,
                          not_found_error_type=_exceptions.SubCommandNotFoundError)
 
         self.add_search_module_string('dgenerate.subcommands')
 
-    def load(self, uri: _types.Uri,  **kwargs) -> _subcommand.SubCommand:
-        return typing.cast(_subcommand.SubCommand, super().load(uri, **kwargs))
+    def load(self, uri: _types.Uri, local_files_only: bool = False, **kwargs) -> _subcommand.SubCommand:
+        """
+        Load a sub-command by URI.
+
+        :param uri: sub-command URI
+        :param local_files_only: Should the sub-command avoid downloading
+            files from the internet and only check the cache or local directories?
+        :param kwargs: Additional plugin arguments
+        :return: :py:class:`dgenerate.subcommands.SubCommand`
+        """
+        return typing.cast(_subcommand.SubCommand, super().load(uri, local_files_only=local_files_only, **kwargs))
 
 
 __all__ = _types.module_all()

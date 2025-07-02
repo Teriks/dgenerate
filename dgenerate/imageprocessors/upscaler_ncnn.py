@@ -37,6 +37,7 @@ import dgenerate.pipelinewrapper.pipelines as _pipelines
 import dgenerate.types as _types
 import dgenerate.webcache as _webcache
 import dgenerate.imageprocessors.exceptions as _exceptions
+import dgenerate.hfhub as _hfhub
 
 
 class _UnsupportedModelError(Exception):
@@ -63,8 +64,10 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
     Implements tiled upscaling with NCNN upscaler models.
 
     The "model" argument should be a path or URL to a NCNN compatible upscaler model.
+    This may also be a Hugging Face blob link.
 
     The "param" argument should be a path or URL to the NCNN param file for the model.
+    This may also be a Hugging Face blob link.
 
     Downloaded model / param files are cached in the dgenerate web cache on disk
     until the cache expiry time for the file is met.
@@ -250,12 +253,24 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
                 )
 
         if _webcache.is_downloadable_url(model):
-            self._model_path = _webcache.create_web_cache_file(model)[1]
+            try:
+                self._model_path = _hfhub.webcache_or_hf_blob_download(
+                    model, local_files_only=self.local_files_only
+                )
+            except Exception as e:
+                raise self.argument_error(
+                    f'Could not download argument "model": "{model}", error: {e}') from e
         else:
             self._model_path = model
 
         if _webcache.is_downloadable_url(param):
-            self._param_path = _webcache.create_web_cache_file(param)[1]
+            try:
+                self._param_path = _hfhub.webcache_or_hf_blob_download(
+                    param, local_files_only=self.local_files_only
+                )
+            except Exception as e:
+                raise self.argument_error(
+                    f'Could not download argument "param": "{param}", error: {e}') from e
         else:
             self._param_path = param
 

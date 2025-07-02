@@ -1,5 +1,11 @@
 .. py:currentmodule:: dgenerate.pipelinewrapper.constants
 
+.. data:: LATENTS_PROCESSOR_SEP
+    :annotation: = '+'
+
+    Used to separate unique latents processor chains 
+    when running processors on batched latents input.
+
 .. data:: DEFAULT_INFERENCE_STEPS
     :annotation: = 30
 
@@ -155,10 +161,25 @@
 
     Default adetailer mask dilation
 
+.. data:: DEFAULT_ADETAILER_MODEL_MASKS
+    :annotation: = False
+
+    Default adetailer model masks setting.
+
 .. data:: DEFAULT_ADETAILER_MASK_BLUR
     :annotation: = 4
 
     Default adetailer mask blur.
+
+.. data:: DEFAULT_YOLO_DETECTOR_PADDING
+    :annotation: = 0
+
+    Default YOLO detector padding.
+
+.. data:: DEFAULT_YOLO_MASK_SHAPE
+    :annotation: = 'rectangle'
+
+    Default YOLO mask shape.
 
 .. data:: DEFAULT_PAG_SCALE
     :annotation: = 3.0

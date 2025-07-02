@@ -31,18 +31,29 @@ class SubCommand(_plugin.Plugin, abc.ABC):
     """
 
     # you cannot specify these via a URI
-    HIDE_ARGS = ['plugin-module-paths', 'args']
+    HIDE_ARGS = ['plugin-module-paths', 'args', 'local-files-only']
 
     def __init__(self,
                  loaded_by_name: str,
                  plugin_module_paths: list[str],
                  args: list[str],
+                 local_files_only: bool = False,
                  **kwargs):
+        """
+        :param loaded_by_name: The name the sub-command was loaded by
+        :param plugin_module_paths: Plugin module paths to search
+        :param args: Command line arguments for the sub-command
+        :param local_files_only: if ``True``, the sub-command should never try to download
+            models from the internet automatically, and instead only look
+            for them in cache / on disk.
+        :param kwargs: child class forwarded arguments
+        """
         super().__init__(loaded_by_name=loaded_by_name,
                          argument_error_type=_exceptions.SubCommandArgumentError,
                          **kwargs)
         self.__args = list(args)
         self.__plugin_module_paths = frozenset(plugin_module_paths) if plugin_module_paths else frozenset()
+        self.__local_files_only = local_files_only
 
     @property
     def plugin_module_paths(self) -> frozenset[str]:
@@ -51,6 +62,13 @@ class SubCommand(_plugin.Plugin, abc.ABC):
     @property
     def args(self) -> collections.abc.Sequence:
         return self.__args
+
+    @property
+    def local_files_only(self) -> bool:
+        """
+        Is this sub-command only going to look for resources such as models in cache / on disk?
+        """
+        return self.__local_files_only
 
     @abc.abstractmethod
     def __call__(self) -> int:

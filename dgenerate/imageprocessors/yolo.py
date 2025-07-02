@@ -34,10 +34,10 @@ import torch
 from torchvision.transforms.functional import to_pil_image
 from ultralytics import YOLO
 
+import dgenerate.hfhub as _hfhub
 import dgenerate.imageprocessors.util as _util
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.constants as _constants
-import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 import dgenerate.webcache as _webcache
@@ -64,7 +64,7 @@ class YOLODetectionProcessor(_imageprocessor.ImageProcessor):
     -----
     
     The "model" argument specifies which YOLO model to use. This can be a path to a local
-    model file, a URL to download the model from, or a HuggingFace repository slug.
+    model file, a URL to download the model from, or a HuggingFace repository slug / blob link.
 
     The "weight-name" argument specifies the file name in a HuggingFace repository
     for the model weights, if you have provided a HuggingFace repository slug to the
@@ -336,15 +336,12 @@ class YOLODetectionProcessor(_imageprocessor.ImageProcessor):
             else:
                 ext = ''
 
-            if _pipelinewrapper_util.is_single_file_model_load(model) or ext in {'.pt', '.pth', '.yaml', '.yml'}:
+            if _hfhub.is_single_file_model_load(model) or ext in {'.pt', '.pth', '.yaml', '.yml'}:
                 if os.path.exists(model):
                     return model
                 else:
-                    if self.local_files_only:
-                        raise self.argument_error(f'Could not find YOLO model: {model}')
-                    # Handle URL downloads 
-                    _, file_path = _webcache.create_web_cache_file(model)
-                    return file_path
+                    # Handle URL downloads
+                    return _hfhub.webcache_or_hf_blob_download(model, local_files_only=self.local_files_only)
             else:
                 # Handle HuggingFace repository
                 return huggingface_hub.hf_hub_download(
@@ -458,7 +455,7 @@ class YOLODetectionProcessor(_imageprocessor.ImageProcessor):
         contrast_r, contrast_g, contrast_b = colorsys.hsv_to_rgb(complementary_h, contrast_s, contrast_v)
 
         # Convert back to 0-255 range and return as integers
-        return (int(contrast_r * 255), int(contrast_g * 255), int(contrast_b * 255))
+        return int(contrast_r * 255), int(contrast_g * 255), int(contrast_b * 255)
 
     @torch.no_grad()
     def _process(self, image):
@@ -620,11 +617,35 @@ class YOLODetectionProcessor(_imageprocessor.ImageProcessor):
                 text_color = text_info['text_color']
                 label = text_info['label']
 
-                # Draw text background
-                draw.rectangle([x1, y1 - text_height - 4, x1 + text_width + 4, y1], fill=text_bg_color)
+                # Calculate text position and ensure it stays within image bounds
+                text_y_top = y1 - text_height - 4
+                text_y_bottom = y1
+                text_x_left = x1
+                text_x_right = x1 + text_width + 4
 
-                # Draw text with contrasting color
-                draw.text((x1 + 2, y1 - text_height - 2), label, fill=text_color, font=font)
+                # If text would go above the image, draw it below the top edge of the bbox instead
+                if text_y_top < 0:
+                    text_y_top = y1
+                    text_y_bottom = y1 + text_height + 4
+
+                # If text would go off the right edge, shift it left
+                if text_x_right > image.size[0]:
+                    offset = text_x_right - image.size[0]
+                    text_x_left = max(0, text_x_left - offset)
+                    text_x_right = image.size[0]
+
+                # Ensure text doesn't go off the left edge
+                if text_x_left < 0:
+                    text_x_left = 0
+                    text_x_right = min(image.size[0], text_width + 4)
+
+                # Draw text background
+                draw.rectangle([text_x_left, text_y_top, text_x_right, text_y_bottom], fill=text_bg_color)
+
+                # Draw text with contrasting color (adjust text position accordingly)
+                text_x = text_x_left + 2
+                text_y = text_y_top + 2 if text_y_top >= y1 else text_y_bottom - text_height - 2
+                draw.text((text_x, text_y), label, fill=text_color, font=font)
 
             if not sorted_indices:
                 _messages.debug_log("YOLO detection: No objects matched the filters.")

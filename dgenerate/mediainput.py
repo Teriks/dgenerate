@@ -1793,7 +1793,8 @@ class UnknownMimetypeError(Exception):
 
 def create_web_cache_file(url,
                           mime_acceptable_desc: str | None = None,
-                          mimetype_is_supported: typing.Callable[[str], bool] | None = mimetype_is_supported) \
+                          mimetype_is_supported: typing.Callable[[str], bool] | None = mimetype_is_supported,
+                          local_files_only: bool = False) \
         -> tuple[str, str]:
     """
     Download a file from a url and add it to dgenerate's temporary web cache that is
@@ -1809,6 +1810,9 @@ def create_web_cache_file(url,
 
     :param mimetype_is_supported: a function that test if a mimetype string is supported, if you
         supply the value ``None`` all mimetypes are considered supported.
+        
+    :param local_files_only: if ``True`` no downloads will be 
+        allowed, only cached files and direct paths to files on disk.
 
     :raise UnknownMimetypeError: if a mimetype is considered not supported
 
@@ -1821,21 +1825,31 @@ def create_web_cache_file(url,
     if mime_acceptable_desc is None:
         mime_acceptable_desc = _textprocessing.oxford_comma(get_supported_mimetypes(), conjunction='or')
 
-    return _webcache.create_web_cache_file(url, mime_acceptable_desc, mimetype_is_supported, UnknownMimetypeError)
+    return _webcache.create_web_cache_file(
+        url=url,
+        mime_acceptable_desc=mime_acceptable_desc,
+        mimetype_is_supported=mimetype_is_supported,
+        unknown_mimetype_exception=UnknownMimetypeError,
+        local_files_only=local_files_only
+    )
 
 
-def request_mimetype(url) -> str:
+def request_mimetype(url, local_files_only: bool = False) -> str:
     """
     Request the mimetype of a file at a URL, if the file exists in the cache, a known mimetype
     is returned without connecting to the internet. Otherwise, connect to the internet
     to retrieve the mimetype, this action does not update the cache.
 
     :param url: The url
+    :param local_files_only: If ``True``, do not make a request, only check the cache.
+
+    :raise dgenerate.webcache.WebFileCacheOfflineModeException:
+        If the web cache is in offline mode and the file data is not found in the cache.
 
     :return: mimetype string
     """
 
-    return _webcache.request_mimetype(url)
+    return _webcache.request_mimetype(url, local_files_only=local_files_only)
 
 
 _MIME_TYPES_GUESS_EXTRA = {
@@ -1871,8 +1885,11 @@ def guess_mimetype(filename) -> str | None:
     return mime_type
 
 
+MediaPathOpenerFunc = typing.Callable[[str], tuple[str, typing.BinaryIO]]
+
+
 # noinspection HttpUrlsUsage
-def fetch_media_data_stream(uri: str) -> tuple[str, typing.BinaryIO]:
+def fetch_media_data_stream(uri: str, local_files_only: bool = False) -> tuple[str, typing.BinaryIO]:
     """
     Get an open stream to a local file, or file at an HTTP or HTTPS URL, with caching for web files.
 
@@ -1880,6 +1897,8 @@ def fetch_media_data_stream(uri: str) -> tuple[str, typing.BinaryIO]:
     module can share the cache simultaneously, the last process alive clears the cache when it exits.
 
     :param uri: Local file path or URL
+    :param local_files_only: If ``True`` no downloads will be allowed, 
+        only cached files and direct paths to files on disk.
 
     :raise UnknownMimetypeError: If a remote file serves an unsupported mimetype value
 
@@ -1887,7 +1906,9 @@ def fetch_media_data_stream(uri: str) -> tuple[str, typing.BinaryIO]:
     """
 
     if is_downloadable_url(uri):
-        mime_type, filename = create_web_cache_file(uri)
+        mime_type, filename = create_web_cache_file(
+            uri, local_files_only=local_files_only
+        )
         return mime_type, open(filename, mode='rb')
     else:
         # Check if it's a tensor file first
@@ -2216,7 +2237,7 @@ class MultiMediaReader:
                  specs: list[MediaReaderSpec],
                  frame_start: int = 0,
                  frame_end: _types.OptionalInteger = None,
-                 path_opener: typing.Callable[[str], typing.BinaryIO] = fetch_media_data_stream):
+                 path_opener: MediaPathOpenerFunc = fetch_media_data_stream):
         """
         :raise ValueError: if ``frame_start > frame_end``
         :raise FrameStartOutOfBounds: if ``frame_start > total_frames - 1``
@@ -2405,7 +2426,7 @@ class MediaReader(AnimationReader):
                  align: int | None = 8,
                  frame_start: int = 0,
                  frame_end: _types.OptionalInteger = None,
-                 path_opener: typing.Callable[[str], typing.BinaryIO] = fetch_media_data_stream):
+                 path_opener: MediaPathOpenerFunc = fetch_media_data_stream):
         """
 
         :raise ValueError: if ``frame_start > frame_end``
@@ -2662,7 +2683,8 @@ def iterate_image_seed(uri: str | ImageSeedParseResult,
                        seed_image_processor: ImageProcessorSpec = None,
                        mask_image_processor: ImageProcessorSpec = None,
                        control_image_processor: ImageProcessorSpec = None,
-                       check_dimensions_match: bool = True) -> \
+                       check_dimensions_match: bool = True,
+                       path_opener: MediaPathOpenerFunc = fetch_media_data_stream) -> \
         collections.abc.Iterator[ImageSeed]:
     """
     Parse and load images/videos/tensors in an ``--image-seeds`` uri and return an iterator that
@@ -2770,6 +2792,9 @@ def iterate_image_seed(uri: str | ImageSeedParseResult,
         and control images to confirm that they match? For pipelines like stable cascade,
         this does not matter, input images can be any dimension as they are used as a
         style reference and not a noise base similar to IP Adapters.
+
+    :param path_opener: a function that opens a file stream from a path,
+        defaults to :py:func:`dgenerate.media.fetch_media_data_stream`.
 
     :raise ImageSeedError: if multiple images are passed without using
         the ``"images: ..."`` syntax for batching. Or if the ``"adapter: ..."``
@@ -2937,7 +2962,8 @@ def iterate_image_seed(uri: str | ImageSeedParseResult,
 
     with MultiMediaReader(specs=reader_specs,
                           frame_start=frame_start,
-                          frame_end=frame_end) as reader:
+                          frame_end=frame_end,
+                          path_opener=path_opener) as reader:
 
         is_animation = reader.total_frames > 1
 
@@ -2982,7 +3008,8 @@ def iterate_control_image(uri: str | ImageSeedParseResult,
                           resize_resolution: _types.OptionalSize = None,
                           aspect_correct: bool = True,
                           align: int | None = 8,
-                          image_processor: ImageProcessorSpec = None) -> \
+                          image_processor: ImageProcessorSpec = None,
+                          path_opener: MediaPathOpenerFunc = fetch_media_data_stream) -> \
         collections.abc.Iterator[ImageSeed]:
     """
     Parse and load a control image/video in an ``--image-seeds`` uri and return an iterator that
@@ -3027,6 +3054,7 @@ def iterate_control_image(uri: str | ImageSeedParseResult,
         set to ``None``, specifying extra processors as compared to control guidance image sources will
         cause :py:exc:`ValueError` to be raised.
 
+    :param path_opener: opens a binary file stream from paths, defaults to :py:func:`dgenerate.fetch_media_data_stream`.
 
     :raise ImageSeedError: If any other image inputs are specified, such as ``mask``, ``control``, or ``floyd``.
         Or if a tensor file is passed in a control guidance image specification, latents input is not supported
@@ -3102,7 +3130,8 @@ def iterate_control_image(uri: str | ImageSeedParseResult,
 
     with MultiMediaReader(specs=reader_specs,
                           frame_start=frame_start,
-                          frame_end=frame_end) as reader:
+                          frame_end=frame_end,
+                          path_opener=path_opener) as reader:
 
         is_animation = reader.total_frames > 1
 
@@ -3165,22 +3194,26 @@ class ImageSeedInfo:
 
 def get_image_seed_info(uri: _types.Uri | ImageSeedParseResult,
                         frame_start: int = 0,
-                        frame_end: _types.OptionalInteger = None) -> ImageSeedInfo:
+                        frame_end: _types.OptionalInteger = None,
+                        path_opener: MediaPathOpenerFunc = fetch_media_data_stream) -> ImageSeedInfo:
     """
     Get an informational object from a dgenerate ``--image-seeds`` uri.
 
     :param uri: The uri string or :py:class:`.ImageSeedParseResult`
     :param frame_start: slice start
     :param frame_end: slice end
+    :param path_opener: a function that opens a file stream from a path, defaults to :py:func:`dgenerate.media.fetch_media_data_stream`.
     :return: :py:class:`.ImageSeedInfo`
     """
-    with next(iterate_image_seed(uri, frame_start, frame_end, check_dimensions_match=False)) as seed:
+
+    with next(iterate_image_seed(uri, frame_start, frame_end, path_opener=path_opener, check_dimensions_match=False)) as seed:
         return ImageSeedInfo(seed.is_animation_frame, seed.total_frames, seed.fps, seed.frame_duration)
 
 
 def get_control_image_info(uri: _types.Path | ImageSeedParseResult,
                            frame_start: int = 0,
-                           frame_end: _types.OptionalInteger = None) -> ImageSeedInfo:
+                           frame_end: _types.OptionalInteger = None,
+                           path_opener: MediaPathOpenerFunc = fetch_media_data_stream) -> ImageSeedInfo:
     """
     Get an informational object from a dgenerate ``--image-seeds`` uri that is known to be a
     control image/video specification.
@@ -3197,7 +3230,8 @@ def get_control_image_info(uri: _types.Path | ImageSeedParseResult,
     :param uri: The path string or :py:class:`.ImageSeedParseResult`
     :param frame_start: slice start
     :param frame_end: slice end
+    :param path_opener: a function that opens a file stream from a path, defaults to :py:func:`dgenerate.media.fetch_media_data_stream`.
     :return: :py:class:`.ImageSeedInfo`
     """
-    with next(iterate_control_image(uri, frame_start, frame_end)) as seed:
+    with next(iterate_control_image(uri, frame_start, frame_end, path_opener=path_opener)) as seed:
         return ImageSeedInfo(seed.is_animation_frame, seed.total_frames, seed.fps, seed.frame_duration)

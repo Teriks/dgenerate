@@ -65,11 +65,20 @@ class PromptUpscaleDirective(_configrunnerplugin.ConfigRunnerPlugin):
         if parsed_args.setp:
             prompts = []
             subcommand = _subcommandloader.SubCommandLoader().load(
-                'prompt-upscale', args=args, program_name='\\prompt_upscale', output_list=prompts)
+                'prompt-upscale',
+                args=args,
+                program_name='\\prompt_upscale',
+                output_list=prompts,
+                local_files_only=self.local_files_only
+            )
             return_code = subcommand()
             self.set_template_variable(parsed_args.setp, prompts)
             return return_code
         else:
             subcommand = _subcommandloader.SubCommandLoader().load(
-                'prompt-upscale', args=args, program_name='\\prompt_upscale')
+                'prompt-upscale',
+                args=args,
+                program_name='\\prompt_upscale',
+                local_files_only=self.local_files_only
+            )
             return subcommand()

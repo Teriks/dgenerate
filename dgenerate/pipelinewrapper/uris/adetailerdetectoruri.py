@@ -24,14 +24,13 @@ import os.path
 
 import huggingface_hub
 
+import dgenerate.hfhub as _hfhub
 import dgenerate.pipelinewrapper.constants as _pipelinewrapper_constants
-import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.torchutil as _torchutil
 import dgenerate.types as _types
 import dgenerate.webcache as _webcache
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
-
 
 _lora_uri_parser = _textprocessing.ConceptUriParser(
     'Adetailer Detector', [
@@ -278,16 +277,12 @@ class AdetailerDetectorUri:
             else:
                 ext = ''
 
-            if _pipelinewrapper_util.is_single_file_model_load(self.model) or ext in {'.yaml', '.yml'}:
+            if _hfhub.is_single_file_model_load(self.model) or ext in {'.yaml', '.yml'}:
                 if os.path.exists(self.model):
                     return self.model
                 else:
-                    if local_files_only:
-                        raise _exceptions.AdetailerDetectorUriLoadError(
-                            f'Could not find adetailer model: {self.model}')
                     # any mimetype
-                    _, file_path = _webcache.create_web_cache_file(self.model)
-                    return file_path
+                    return _hfhub.webcache_or_hf_blob_download(self.model, local_files_only=local_files_only)
             else:
                 return huggingface_hub.hf_hub_download(
                     self.model,

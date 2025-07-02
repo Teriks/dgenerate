@@ -45,6 +45,10 @@ class Auto1111MetadataDirective(_configrunnerplugin.ConfigRunnerPlugin):
         """
 
         subcommand = _subcommandloader.SubCommandLoader().load(
-            'auto1111-metadata', args=args, program_name='\\auto1111_metadata')
+            'auto1111-metadata',
+            args=args,
+            program_name='\\auto1111_metadata',
+            local_files_only=self.local_files_only
+        )
 
         return subcommand()
