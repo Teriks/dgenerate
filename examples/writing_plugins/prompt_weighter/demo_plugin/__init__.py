@@ -1,3 +1,5 @@
+import typing
+
 import dgenerate.promptweighters.promptweighter as _promptweighter
 
 
@@ -52,7 +54,7 @@ class MyPromptWeighter(_promptweighter.PromptWeighter):
     def translate_to_embeds(self,
                             pipeline,
                             device: str,
-                            args: dict[str, any]):
+                            args: dict[str, typing.Any]):
         """
         Translate the pipeline prompt arguments to ``prompt_embeds`` and ``pooled_prompt_embeds`` as needed.
 

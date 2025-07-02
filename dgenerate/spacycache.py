@@ -18,31 +18,35 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import contextlib
+import email.parser
 import importlib.metadata
 import json
 import os
 import pathlib
 import re
 import shutil
-import types
 import sys
+import types
 import typing
 import urllib.parse
 import zipfile
-import email.parser
+
 import requests
 import spacy
 import tqdm
+
+import dgenerate.filelock as _filelock
 import dgenerate.memory as _memory
 import dgenerate.types as _types
-import dgenerate.filelock as _filelock
+import dgenerate.exceptions as _d_exceptions
 
 __doc__ = """
 Tools for downloading spaCy models to arbitrary locations, compatible with dgenerate's frozen environment.
 """
 
 
-class SpacyModelNotFoundException(Exception):
+class SpacyModelNotFoundError(_d_exceptions.ModelNotFoundError):
     """
     Raised when a spacy model cannot be loaded, due to being unable to
     locate it either online or in the cache.
@@ -92,7 +96,7 @@ def get_spacy_cache_directory() -> str:
 def _get_version(model: str, comp: dict) -> str:
     import spacy.about as _about
     if model not in comp:
-        raise SpacyModelNotFoundException(
+        raise SpacyModelNotFoundError(
             f"No compatible package found for '{model}' (spaCy v{_about.__version__})",
         )
     return comp[model][0]
@@ -121,8 +125,8 @@ def _get_compatibility(local_files_only: bool, attempt: int = 0) -> dict:
     compatibility_file = os.path.join(cache_directory, 'compatibility.json')
 
     if not os.path.exists(compatibility_file):
-        if local_files_only:
-            raise SpacyModelNotFoundException(
+        if local_files_only or _offline_mode:
+            raise SpacyModelNotFoundError(
                 f'Could not download spaCy "{_about.__compatibility__}" '
                 f'due to offline mode being active.'
             )
@@ -137,7 +141,7 @@ def _get_compatibility(local_files_only: bool, attempt: int = 0) -> dict:
                 json.dump(comp_table, file)
 
         except requests.RequestException as e:
-            raise SpacyModelNotFoundException(
+            raise SpacyModelNotFoundError(
                 f'Could not download spaCy "{_about.__compatibility__}", reason: {e}')
 
         return comp_table[version]
@@ -155,7 +159,7 @@ def _get_compatibility(local_files_only: bool, attempt: int = 0) -> dict:
                 return comp_table[version]
         if attempt == 1:
             if version not in comp_table:
-                raise SpacyModelNotFoundException(
+                raise SpacyModelNotFoundError(
                     f'Current version of spaCy ({version}) '
                     f'not found in "{compatibility_file}"')
             return comp_table[version]
@@ -184,11 +188,61 @@ def _install_whl(model_name, filepath, install_dir):
         missing_dependencies = [i for i in package_names if not importlib.metadata.metadata(i)]
 
         if missing_dependencies:
-            raise SpacyModelNotFoundException(
+            raise SpacyModelNotFoundError(
                 f'Cannot install spaCy model "{model_name}" due to '
                 f'dependencies not being met: {",".join(missing_dependencies)}')
 
         whl.extractall(install_dir)
+
+
+_offline_mode = False
+
+
+def is_offline_mode() -> bool:
+    """
+    Check if the global offline mode for the spacy cache is enabled.
+
+    :return: `True` if offline mode is enabled, `False` otherwise.
+    """
+    global _offline_mode
+    return _offline_mode
+
+
+def enable_offline_mode():
+    """
+    Enable global offline mode for the spacy cache.
+
+    This will prevent any network requests from being made, and will only use files
+    that are already in the spacy cache.
+    """
+    global _offline_mode
+    _offline_mode = True
+
+
+def disable_offline_mode():
+    """
+    Disable global offline mode for the spacy cache.
+
+    This will allow network requests to be made again.
+    """
+    global _offline_mode
+    _offline_mode = False
+
+
+@contextlib.contextmanager
+def offline_mode_context(enabled=True):
+    """
+    Context manager to temporarily enable or disable global offline mode for the spacy cache.
+
+    :param enabled: If `True`, enables offline mode. If `False`, disables it.
+    """
+    global _offline_mode
+    original_mode = _offline_mode
+    _offline_mode = enabled
+    try:
+        yield
+    finally:
+        _offline_mode = original_mode
 
 
 def load_spacy_model(
@@ -215,6 +269,7 @@ def load_spacy_model(
     :param local_files_only: Avoid connecting to the internet? look in the cache only.
     :return: The loaded nlp object. :py:class:`spacy.Language`
     """
+    global _offline_mode
     import spacy.cli.download as _download_module
     import spacy.about as _about
 
@@ -232,8 +287,8 @@ def load_spacy_model(
 
         if not os.path.isdir(model_site_package):
 
-            if local_files_only:
-                raise SpacyModelNotFoundException(
+            if local_files_only or _offline_mode:
+                raise SpacyModelNotFoundError(
                     f'Cannot find spaCy model "{name}" in the spaCy model cache, '
                     f'offline mode is active and it may need to be downloaded.')
 
@@ -249,13 +304,13 @@ def load_spacy_model(
             try:
                 _download_whl_file(name, download_url, whl_download_to)
             except requests.RequestException as e:
-                raise SpacyModelNotFoundException(
+                raise SpacyModelNotFoundError(
                     f'Unable to downloaded spaCy model "{name}", reason: {e}')
 
             try:
                 _install_whl(name, whl_download_to, spacy_cache_dir)
             except Exception as e:
-                raise SpacyModelNotFoundException(
+                raise SpacyModelNotFoundError(
                     f'Unable to extract spaCy model whl file "{whl_download_to}", reason: {e}'
                 )
 

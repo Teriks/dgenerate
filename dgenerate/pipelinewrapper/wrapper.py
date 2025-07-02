@@ -37,6 +37,7 @@ import dgenerate.eval as _eval
 import dgenerate.extras.asdff.base as _asdff_base
 import dgenerate.extras.hidiffusion as _hidiffusion
 import dgenerate.extras.teacache.teacache_flux as _teacache_flux
+import dgenerate.hfhub as _hfhub
 import dgenerate.image as _image
 import dgenerate.imageprocessors as _imageprocessors
 import dgenerate.latentsprocessors as _latentsprocessors
@@ -50,7 +51,6 @@ import dgenerate.pipelinewrapper.help as _help
 import dgenerate.pipelinewrapper.pipelines as _pipelines
 import dgenerate.pipelinewrapper.schedulers as _schedulers
 import dgenerate.pipelinewrapper.uris as _uris
-import dgenerate.pipelinewrapper.util as _util
 import dgenerate.prompt as _prompt
 import dgenerate.promptweighters as _promptweighters
 import dgenerate.textprocessing as _textprocessing
@@ -488,7 +488,7 @@ class DiffusionPipelineWrapper:
                 'if "model_type" is not TORCH_S_CASCADE.'
             )
 
-        if not _util.is_single_file_model_load(model_path):
+        if not _hfhub.is_single_file_model_load(model_path):
             if original_config:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'You cannot specify "original_config" when the main '
@@ -503,7 +503,7 @@ class DiffusionPipelineWrapper:
                 )
 
             if sdxl_refiner_uri and \
-                    not _util.is_single_file_model_load(
+                    not _hfhub.is_single_file_model_load(
                         _uris.SDXLRefinerUri.parse(sdxl_refiner_uri).model):
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'You cannot specify "second_model_original_config" '
@@ -511,7 +511,7 @@ class DiffusionPipelineWrapper:
                     'single file checkpoint.'
                 )
             if s_cascade_decoder_uri and \
-                    not _util.is_single_file_model_load(
+                    not _hfhub.is_single_file_model_load(
                         _uris.SCascadeDecoderUri.parse(s_cascade_decoder_uri).model):
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'You cannot specify "second_model_original_config" '
@@ -3995,7 +3995,7 @@ class DiffusionPipelineWrapper:
         # this needs to happen even if a cached pipeline
         # was loaded, since the settings for scheduler
         # and vae tiling / slicing may be different
-        self._set_scheduler_and_vae_settings(args)
+        self._set_scheduler_and_vae_settings(copy_args)
 
         if loaded_new:
             _enforce_cache_constraints()

@@ -33,6 +33,7 @@ import dgenerate.imageprocessors.upscale_tiler as _upscale_tiler
 import dgenerate.messages as _messages
 import dgenerate.types as _types
 import dgenerate.webcache as _webcache
+import dgenerate.hfhub as _hfhub
 
 spandrel.MAIN_REGISTRY.add(*spandrel_extra_arches.EXTRA_REGISTRY)
 
@@ -43,7 +44,7 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
 
     The "model" argument should be a path to a chaiNNer compatible upscaler model on disk,
     such as a model downloaded from https://openmodeldb.info/, or an HTTP/HTTPS URL
-    that points to a raw model file.
+    that points to a raw model file. This may also be a Hugging Face blob link.
 
     For example: "upscaler;model=https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesr-general-x4v3.pth"
 
@@ -158,7 +159,13 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
 
         if _webcache.is_downloadable_url(model_path):
             # Any mimetype
-            _, model_path = _webcache.create_web_cache_file(model_path)
+            try:
+                model_path = _hfhub.webcache_or_hf_blob_download(
+                    model_path, local_files_only=self.local_files_only
+                )
+            except Exception as e:
+                raise self.argument_error(
+                    f'Could not download argument "model": "{model_path}", error: {e}') from e
 
         # use the model file size as a heuristic
         self.set_size_estimate(os.path.getsize(model_path))

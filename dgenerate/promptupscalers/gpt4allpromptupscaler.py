@@ -33,6 +33,7 @@ import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.webcache as _webcache
 import dgenerate.promptupscalers.llmupscalermixin as _llmupscalermixin
+import dgenerate.hfhub as _hfhub
 
 
 class GPT4ALLPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupscaler.PromptUpscaler):
@@ -195,7 +196,11 @@ class GPT4ALLPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptups
 
         if _webcache.is_downloadable_url(model):
             # Any mimetype
-            _, model = _webcache.create_web_cache_file(model)
+            try:
+                model = _hfhub.webcache_or_hf_blob_download(model, local_files_only=self.local_files_only)
+            except Exception as e:
+                raise self.argument_error(
+                    f'Could not download argument "model": "{model}", error: {e}') from e
         else:
             if not os.path.exists(model):
                 raise self.argument_error(

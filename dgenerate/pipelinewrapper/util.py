@@ -19,7 +19,6 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import collections.abc
-import contextlib
 import glob
 import json
 import os
@@ -31,20 +30,12 @@ import diffusers.pipelines
 import huggingface_hub
 import huggingface_hub.errors
 import torch
+import transformers.utils.quantization_config
 
 import dgenerate.messages as _messages
 import dgenerate.types as _types
-import dgenerate.webcache as _webcache
-import transformers.utils.quantization_config
-
-
-@contextlib.contextmanager
-def _disable_tqdm():
-    huggingface_hub.utils.disable_progress_bars()
-    try:
-        yield
-    finally:
-        huggingface_hub.utils.enable_progress_bars()
+import dgenerate.hfhub as _hfhub
+import dgenerate.exceptions as _d_exceptions
 
 
 def fetch_model_index_dict(
@@ -64,9 +55,11 @@ def fetch_model_index_dict(
     :param use_auth_token: Use this HF auth token?
     :param local_files_only: Only look through the cache?
 
+    :raises ConfigNotFoundError: If ``model_index.json`` could not be found.
+
     :return: config dict
     """
-    single_file_load = is_single_file_model_load(path)
+    single_file_load = _hfhub.is_single_file_model_load(path)
 
     if single_file_load:
         checkpoint = _single_file.load_single_file_checkpoint(
@@ -82,48 +75,25 @@ def fetch_model_index_dict(
         default_pretrained_model_config_name = path
 
     if single_file_load or not os.path.isdir(default_pretrained_model_config_name):
-
-        allow_patterns = ["**/*.json", "*.json", "*.txt", "**/*.txt", "**/*.model"]
-
-        with _disable_tqdm():
-            # the mischief I am doing here does not really integrate well with
-            # the diffusers tqdm bars for single file loads, so disable them
-            # for this helper function
-
-            try:
-                cached_model_config_path = huggingface_hub.snapshot_download(
-                    default_pretrained_model_config_name,
-                    revision=revision,
-                    local_files_only=True,
-                    token=use_auth_token,
-                    allow_patterns=allow_patterns
-                )
-            except huggingface_hub.errors.LocalEntryNotFoundError as e:
-                if local_files_only:
-                    raise FileNotFoundError(
-                        f'offline mode is active, but a config file is needed from Hugging Face '
-                        f'hub to utilize: {path}') from e
-                else:
-                    try:
-                        cached_model_config_path = huggingface_hub.snapshot_download(
-                            default_pretrained_model_config_name,
-                            revision=revision,
-                            local_files_only=False,
-                            token=use_auth_token,
-                            allow_patterns=allow_patterns
-                        )
-                    except huggingface_hub.errors.LocalEntryNotFoundError as e:
-                        raise FileNotFoundError(
-                            f'could not find the config file on Hugging Face hub '
-                            f'for: {path}') from e
+        with _hfhub.with_hf_errors_as_config_not_found():
+            cached_model_config_path = huggingface_hub.hf_hub_download(
+                default_pretrained_model_config_name,
+                filename='model_index.json',
+                subfolder=subfolder,
+                revision=revision,
+                local_files_only=local_files_only,
+                token=use_auth_token
+            )
     else:
         cached_model_config_path = default_pretrained_model_config_name
 
-    extra_path_args = []
-    if subfolder:
-        extra_path_args = [subfolder]
+        extra_path_args = []
+        if subfolder:
+            extra_path_args = [subfolder]
 
-    with open(os.path.join(cached_model_config_path, *extra_path_args, 'model_index.json')) as config_file:
+        cached_model_config_path = os.path.join(cached_model_config_path, *extra_path_args, 'model_index.json')
+
+    with open(cached_model_config_path) as config_file:
         return json.load(config_file)
 
 
@@ -140,8 +110,7 @@ def single_file_load_sub_module(
         original_config: _types.OptionalPath = None
 ) -> torch.nn.Module:
     """
-    Load a submodule (vae, unet, textencoder, etc..) by name out of an
-    all-in-one checkpoint file, directory, or Hugging Face repo slug.
+    Load a submodule (vae, unet, textencoder, etc..) by name out of an all-in-one checkpoint file.
 
     :param path: checkpoint file path
     :param class_name: submodule class name
@@ -154,10 +123,15 @@ def single_file_load_sub_module(
     :param config: Path to model configuration, Hugging Face repo, or Hugging Face blob link, or `.json` file on disk.
     :param original_config: Path to original model configuration for single file checkpoints, URL or `.yaml` file on disk.
 
+    :raises ValueError: If the path does not appear to be a single file model load.
+
+    :raises ConfigNotFoundError: If a config for the specified module could not be found.
+
     :return: The module.
     """
 
-    single_file_load = is_single_file_model_load(path)
+    if not _hfhub.is_single_file_model_load(path):
+        raise ValueError('The path provided does not appear to be a single file model load.')
 
     checkpoint = _single_file.load_single_file_checkpoint(
         path,
@@ -173,41 +147,17 @@ def single_file_load_sub_module(
     else:
         default_pretrained_model_config_name = config
 
-    if single_file_load or not os.path.isdir(default_pretrained_model_config_name):
-        allow_patterns = ["**/*.json", "*.json", "*.txt", "**/*.txt", "**/*.model"]
-        with _disable_tqdm():
-            # the mischief I am doing here does not really integrate well with
-            # the diffusers tqdm bars for single file loads, so disable them
-            # for this helper function
 
-            try:
-                cached_model_config_path = huggingface_hub.snapshot_download(
-                    default_pretrained_model_config_name,
-                    revision=revision,
-                    local_files_only=True,
-                    token=use_auth_token,
-                    allow_patterns=allow_patterns
-                )
-            except huggingface_hub.errors.LocalEntryNotFoundError as e:
-                if local_files_only:
-                    raise FileNotFoundError(
-                        f'offline mode is active, but a config file is needed from Hugging Face '
-                        f'hub to utilize the {class_name} in: {path}') from e
-                else:
-                    try:
-                        cached_model_config_path = huggingface_hub.snapshot_download(
-                            default_pretrained_model_config_name,
-                            revision=revision,
-                            local_files_only=False,
-                            token=use_auth_token,
-                            allow_patterns=allow_patterns
-                        )
-                    except huggingface_hub.errors.LocalEntryNotFoundError as e:
-                        raise FileNotFoundError(
-                            f'could not find the config file on Hugging Face hub '
-                            f'for {class_name} in: {path}') from e
-    else:
-        cached_model_config_path = default_pretrained_model_config_name
+    with _hfhub.with_hf_errors_as_config_not_found():
+        cached_model_config_path = huggingface_hub.hf_hub_download(
+            default_pretrained_model_config_name,
+            revision=revision,
+            local_files_only=local_files_only,
+            token=use_auth_token,
+            subfolder=name,
+            filename='config.json'
+        )
+
 
     args = {
         "cached_model_config_path": cached_model_config_path,
@@ -232,76 +182,6 @@ def single_file_load_sub_module(
     )
 
     return model
-
-
-class ModelNotFoundError(Exception):
-    """Raised when a specified model can not be located either locally or remotely"""
-    pass
-
-
-class NonHFModelDownloadError(Exception):
-    pass
-
-
-class NonHFConfigDownloadError(Exception):
-    pass
-
-
-class HFBlobLink:
-    """
-    Represents the constituents of a huggingface blob link.
-    """
-
-    repo_id: str
-    revision: str
-    subfolder: str
-    weight_name: str
-
-    def __init__(self,
-                 repo_id: str,
-                 revision: str,
-                 subfolder: str,
-                 weight_name: str):
-        self.repo_id = repo_id
-        self.revision = revision
-        self.subfolder = subfolder
-        self.weight_name = weight_name
-
-    def __str__(self):
-        return str(_types.get_public_attributes(self))
-
-    def __repr__(self):
-        return str(self)
-
-    __REGEX = re.compile(
-        r'(https|http)://(?:www\.)?huggingface\.co/'
-        r'(?P<repo_id>.+)/blob/(?P<revision>.+?)/'
-        r'(?:(?P<subfolder>.+)/)?(?P<weight_name>.+)')
-
-    @staticmethod
-    def parse(blob_link):
-        """
-        Attempt to parse a huggingface blob link out of a string.
-
-        If the string does not contain a blob link, return None.
-
-        :param blob_link: supposed blob link string
-        :return: :py:class:`.HFBlobLink` or None
-        """
-
-        match = HFBlobLink.__REGEX.match(blob_link)
-
-        if match:
-            result = HFBlobLink(match.group('repo_id'),
-                                match.group('revision'),
-                                match.group('subfolder'),
-                                match.group('weight_name'))
-
-            _messages.debug_log(
-                f'Parsed huggingface Blob Link: {blob_link} -> {result}')
-            return result
-
-        return None
 
 
 def variant_match(filename: str, variant: str | None = None):
@@ -363,54 +243,8 @@ def _hf_try_to_load_from_cache(repo_id: str,
             revision=revision,
             repo_type=repo_type
         )
-    except huggingface_hub.utils.HFValidationError as e:
-        raise ModelNotFoundError(e) from e
-
-
-def download_non_hf_model(model_path):
-    """
-    Check for a non hugging face link or reference to a model that is possibly downloadable as a single file.
-
-    If this is applicable, download it to the web cache and return its path.
-    If the file already exists in the web cache simply return a path to it.
-
-    If this is not applicable, return the path unchanged.
-
-    :param model_path: proposed model path
-    :return: path to downloaded file or unchanged model path.
-    """
-    if _webcache.is_downloadable_url(model_path) and \
-            HFBlobLink.parse(model_path) is None:
-        _, model_path = _webcache.create_web_cache_file(
-            model_path,
-            mime_acceptable_desc='not text',
-            mimetype_is_supported=lambda m: m is not None and not m.startswith('text/'),
-            unknown_mimetype_exception=NonHFModelDownloadError)
-    return model_path
-
-
-def download_non_hf_config(path):
-    """
-    Check for a non hugging face link or reference to a config file
-    that is possibly downloadable as a single file.
-
-    If this is applicable, download it to the web cache and return its path.
-    If the file already exists in the web cache simply return a path to it.
-
-    If this is not applicable, return the path unchanged.
-
-    :param path: proposed model path
-    :return: path to downloaded file or unchanged model path.
-    """
-    if _webcache.is_downloadable_url(path) and \
-            HFBlobLink.parse(path) is None:
-        _, path = _webcache.create_web_cache_file(
-            path,
-            mime_acceptable_desc='text / yaml / json',
-            mimetype_is_supported=lambda m:
-            m.startswith('text/') or m.startswith('application/'),
-            unknown_mimetype_exception=NonHFConfigDownloadError)
-    return path
+    except huggingface_hub.errors.HFValidationError as e:
+        raise _d_exceptions.ModelNotFoundError(e) from e
 
 
 def fetch_model_files_with_size(repo_id: str,
@@ -429,8 +263,6 @@ def fetch_model_files_with_size(repo_id: str,
     Either from huggingface disk cache or through the huggingface API if not on disk and ``local_files_only`` is ``False``.
 
     This function also works on blob links, paths to folders, or singular files on disk.
-
-
 
     :param repo_id: huggingface repo_id, or path to folder or file on disk
     :param revision: repo revision, IE: branch
@@ -452,7 +284,7 @@ def fetch_model_files_with_size(repo_id: str,
     _messages.debug_log(
         f'{_types.fullname(fetch_model_files_with_size)}({__args_debug})')
 
-    blob_link = HFBlobLink.parse(repo_id)
+    blob_link = _hfhub.HFBlobLink.parse(repo_id)
 
     if blob_link is not None:
         repo_id = blob_link.repo_id
@@ -624,16 +456,13 @@ def fetch_model_files_with_size(repo_id: str,
 
             api = huggingface_hub.HfApi(token=use_auth_token)
 
-            try:
+            with _hfhub.with_hf_errors_as_model_not_found():
                 info_entries = list(
                     i for i in api.list_repo_tree(
                         repo_id,
                         revision=revision,
                         path_in_repo=subfolder,
                         recursive=True) if isinstance(i, huggingface_hub.hf_api.RepoFile))
-            except (huggingface_hub.utils.HFValidationError,
-                    huggingface_hub.utils.HfHubHTTPError) as e:
-                raise ModelNotFoundError(e) from e
 
             def detect_unet(path):
                 try:
@@ -839,31 +668,6 @@ def estimate_model_memory_use(repo_id: str,
         f'{_types.fullname(estimate_model_memory_use)}() = {e} Bytes')
 
     return e
-
-
-# noinspection HttpUrlsUsage
-def is_single_file_model_load(path):
-    """
-    Should we use :py:meth:`diffusers.loaders.FromSingleFileMixin.from_single_file` on this path?
-
-    :param path: The path
-    :return: ``True`` or ``False``
-    """
-    path, ext = os.path.splitext(path)
-
-    if path.startswith('http://') or path.startswith('https://'):
-        return True
-
-    if os.path.isfile(path):
-        return True
-
-    if not ext:
-        return False
-
-    if ext in {'.pt', '.pth', '.bin', '.ckpt', '.safetensors'}:
-        return True
-
-    return False
 
 
 def is_loaded_in_8bit_bnb(module):

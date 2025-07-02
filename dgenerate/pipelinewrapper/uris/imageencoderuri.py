@@ -19,9 +19,9 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import huggingface_hub
 import transformers
 
+import dgenerate.hfhub as _hfhub
 import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
@@ -100,7 +100,7 @@ class ImageEncoderUri:
             invalid data type string.
         """
 
-        if _pipelinewrapper_util.is_single_file_model_load(model):
+        if _hfhub.is_single_file_model_load(model):
             raise _exceptions.InvalidImageEncoderUriError(
                 'Loading an Image Encoder from a single file is not supported.')
 
@@ -135,16 +135,15 @@ class ImageEncoderUri:
 
         :return: :py:class:`transformers.CLIPVisionModelWithProjection`
         """
-        try:
-            args = locals()
-            args.pop('self')
-            return self._load(**args)
-        except (huggingface_hub.utils.HFValidationError,
-                huggingface_hub.utils.HfHubHTTPError) as e:
-            raise _pipelinewrapper_util.ModelNotFoundError(e) from e
-        except Exception as e:
+        def cache_all(e):
             raise _exceptions.ImageEncoderUriLoadError(
                 f'error loading Image Encoder "{self.model}": {e}') from e
+
+        with _hfhub.with_hf_errors_as_model_not_found(cache_all):
+                args = locals()
+                args.pop('self')
+                args.pop('cache_all')
+                return self._load(**args)
 
     @staticmethod
     def _enforce_cache_size(new_image_encoder_size):

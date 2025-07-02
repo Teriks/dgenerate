@@ -140,7 +140,7 @@ def upscale_prompts(
     :param default_upscaler_uri: The default upscaler plugin URI, or a list of URIs (chain upscalers together sequentially)
     :param device: Execution device for upscalers that can utilize hardware acceleration
     :param local_files_only: Should all prompt upscalers involved avoid downloading
-        files from Hugging Face hub and only check the cache or local directories?
+        files only check the cache or locally specified files?
     :return: Altered prompts list
     """
 

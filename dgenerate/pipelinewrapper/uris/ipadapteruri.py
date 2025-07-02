@@ -21,10 +21,9 @@
 import typing
 
 import diffusers
-import huggingface_hub
 
+import dgenerate.hfhub as _hfhub
 import dgenerate.messages as _messages
-import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
@@ -109,24 +108,24 @@ class IPAdapterUri:
         :raises dgenerate.pipelinewrapper.uris.exceptions.InvalidIPAdapterUriError: On URI parsing errors.
         :raises dgenerate.pipelinewrapper.uris.exceptions.IPAdapterUriLoadError: On loading errors.
         """
-        try:
+
+        def cache_all(e):
+            if isinstance(e, _exceptions.InvalidIPAdapterUriError):
+                raise e
+            else:
+                if "NoneType" in str(e):
+                    # Rectify highly useless error caused by bug in diffusers
+                    raise _exceptions.IPAdapterUriLoadError(
+                        'Cannot find IP Adapter weights in repository, '
+                        'you may need to specify a "subfolder" and/or "weight-name" URI value.') from e
+            raise _exceptions.IPAdapterUriLoadError(
+                f'error loading IP Adapter: {e}') from e
+
+        with _hfhub.with_hf_errors_as_model_not_found(cache_all):
             IPAdapterUri._load_on_pipeline(uris=uris,
                                            pipeline=pipeline,
                                            use_auth_token=use_auth_token,
                                            local_files_only=local_files_only)
-        except (huggingface_hub.utils.HFValidationError,
-                huggingface_hub.utils.HfHubHTTPError) as e:
-            raise _pipelinewrapper_util.ModelNotFoundError(e) from e
-        except _exceptions.InvalidIPAdapterUriError:
-            raise
-        except Exception as e:
-            if "NoneType" in str(e):
-                # Rectify highly useless error caused by bug in diffusers
-                raise _exceptions.IPAdapterUriLoadError(
-                    'Cannot find IP Adapter weights in repository, '
-                    'you may need to specify a "subfolder" and/or "weight-name" URI value.') from e
-            raise _exceptions.IPAdapterUriLoadError(
-                f'error loading IP Adapter: {e}') from e
 
     @staticmethod
     def _load_on_pipeline(pipeline: diffusers.DiffusionPipeline,
@@ -145,7 +144,7 @@ class IPAdapterUri:
                 if isinstance(ip_adapter_uri, str):
                     ip_adapter_uri = IPAdapterUri.parse(ip_adapter_uri)
 
-                models.append(_pipelinewrapper_util.download_non_hf_model(ip_adapter_uri.model))
+                models.append(_hfhub.download_non_hf_slug_model(ip_adapter_uri.model))
                 if ip_adapter_uri.subfolder is None:
                     subfolders.append('.')
                 else:

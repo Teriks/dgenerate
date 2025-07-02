@@ -22,11 +22,11 @@ import collections.abc
 import random
 import typing
 
+import dgenerate.hfhub as _hfhub
 import dgenerate.image as _image
 import dgenerate.mediainput as _mediainput
 import dgenerate.mediaoutput as _mediaoutput
 import dgenerate.pipelinewrapper as _pipelinewrapper
-import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 import dgenerate.prompt as _prompt
 import dgenerate.promptupscalers as _promptupscalers
 import dgenerate.promptweighters as _promptweighters
@@ -1222,9 +1222,9 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     offline_mode: bool = False
     """
-    Avoid ever connecting to Hugging Face hub to download models? this can be used if 
-    all your models are cached or if you are only ever using hub models that exist on disk. 
-    Corresponds to the ``--offline-mode`` argument of the dgenerate command line tool.
+    Avoid ever connecting to the internet to download anything? this can be used if 
+    all your models / media are cached or if you are only ever using resources that exist 
+    on disk already. Corresponds to the ``--offline-mode`` argument of the dgenerate command line tool.
     """
 
     model_cpu_offload: bool = False
@@ -1706,7 +1706,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     def _check_configuration_files_compatibility(self, a_namer: typing.Callable[[str], str]):
         """Check compatibility of configuration files with model types."""
         # Check original config compatibility
-        if not _pipelinewrapper_util.is_single_file_model_load(self.model_path):
+        if not _hfhub.is_single_file_model_load(self.model_path):
             if self.original_config:
                 raise RenderLoopConfigError(
                     f'You cannot specify {a_namer("original_config")} when the main '
@@ -1722,7 +1722,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                 )
 
             if self.sdxl_refiner_uri and \
-                    not _pipelinewrapper_util.is_single_file_model_load(
+                    not _hfhub.is_single_file_model_load(
                         _pipelinewrapper.uris.SDXLRefinerUri.parse(self.sdxl_refiner_uri).model):
                 raise RenderLoopConfigError(
                     f'You cannot specify {a_namer("second_model_original_config")} '
@@ -1730,7 +1730,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'single file checkpoint.'
                 )
             if self.s_cascade_decoder_uri and \
-                    not _pipelinewrapper_util.is_single_file_model_load(
+                    not _hfhub.is_single_file_model_load(
                         _pipelinewrapper.uris.SCascadeDecoderUri.parse(self.s_cascade_decoder_uri).model):
                 raise RenderLoopConfigError(
                     f'You cannot specify {a_namer("second_model_original_config")} '

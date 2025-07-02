@@ -21,8 +21,8 @@
 import enum
 
 import diffusers
-import huggingface_hub
 
+import dgenerate.hfhub as _hfhub
 import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
@@ -232,7 +232,12 @@ class ControlNetUri:
 
         :return: :py:class:`diffusers.ControlNetModel`, :py:class:`diffusers.SD3ControlNetModel`, or :py:class:`diffusers.FluxControlNetModel`
         """
-        try:
+        def cache_all(e):
+            raise _exceptions.ControlNetUriLoadError(
+                f'error loading controlnet "{self.model}": {e}') from e
+
+        with _hfhub.with_hf_errors_as_model_not_found(cache_all):
+
             if model_class is None:
                 if _enums.model_type_is_flux(self.model_type):
                     model_class = diffusers.FluxControlNetModel
@@ -248,12 +253,7 @@ class ControlNetUri:
                               local_files_only,
                               no_cache,
                               model_class)
-        except (huggingface_hub.utils.HFValidationError,
-                huggingface_hub.utils.HfHubHTTPError) as e:
-            raise _pipelinewrapper_util.ModelNotFoundError(e) from e
-        except Exception as e:
-            raise _exceptions.ControlNetUriLoadError(
-                f'error loading controlnet "{self.model}": {e}') from e
+
 
     @staticmethod
     def _enforce_cache_size(new_controlnet_size):
@@ -291,9 +291,9 @@ class ControlNetUri:
                     'with non Flux / SDXL ControlNet Union models.'
                 )
 
-        model_path = _pipelinewrapper_util.download_non_hf_model(self.model)
+        model_path = _hfhub.download_non_hf_slug_model(self.model)
 
-        single_file_load_path = _pipelinewrapper_util.is_single_file_model_load(model_path)
+        single_file_load_path = _hfhub.is_single_file_model_load(model_path)
 
         torch_dtype = _enums.get_torch_dtype(
             dtype_fallback if self.dtype is None else self.dtype)

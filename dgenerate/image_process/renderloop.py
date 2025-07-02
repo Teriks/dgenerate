@@ -21,6 +21,7 @@
 
 import collections.abc
 import datetime
+import functools
 import os.path
 import pathlib
 import tempfile
@@ -446,7 +447,6 @@ class ImageProcessRenderLoop:
                               underline=True)
 
     def _process_file(self, file, out_filename, generation_step, total_generation_steps, processor):
-
         with _mediainput.MediaReader(
                 path=file,
                 image_processor=processor,
@@ -454,7 +454,10 @@ class ImageProcessRenderLoop:
                 aspect_correct=not self._c_config.no_aspect,
                 align=self._c_config.align,
                 frame_start=self._c_config.frame_start,
-                frame_end=self._c_config.frame_end) as reader:
+                frame_end=self._c_config.frame_end,
+                path_opener=functools.partial(
+                    _mediainput.fetch_media_data_stream,
+                    local_files_only=self._c_config.offline_mode)) as reader:
             self._last_frame_time = 0
             self._frame_time_sum = 0
 

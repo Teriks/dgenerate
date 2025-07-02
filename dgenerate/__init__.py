@@ -19,51 +19,17 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import importlib.metadata
 import argparse
+import contextlib
 import glob
 import itertools
 import os
 import sys
 
 if os.environ.get('DGENERATE_PYINSTALLER', '0') == '1':
-    import inspect
+    import dgenerate._patches.pyinstaller_inpect_patch
 
-    original_getsourcefile = inspect.getsourcefile
-
-
-    def patched_getsourcefile(obj):
-        try:
-            result = original_getsourcefile(obj)
-            if result and result.endswith('.pyc'):
-                result = result[:-1]
-            return result
-        except Exception:
-            return None
-
-
-    inspect.getsourcefile = patched_getsourcefile
-
-# The following patch is required for diffusers and transformers
-# import_util introspection to work with the sentencepiece fork
-
-# Store the original function
-_original_importlib_metadata_version = importlib.metadata.version
-
-
-def _patched_importlib_metadata_version(distribution_name):
-    """
-    Patched version of importlib_metadata.version that redirects
-    'sentencepiece' lookups to 'dbowring-sentencepiece'
-    """
-    if distribution_name == "sentencepiece":
-        distribution_name = "dbowring-sentencepiece"
-
-    return _original_importlib_metadata_version(distribution_name)
-
-
-# Apply the patch
-importlib.metadata.version = _patched_importlib_metadata_version
+import dgenerate._patches.dbowring_sentencepiece_patch
 
 # Set the maximum split size for the CUDA memory allocator
 # and GC threshold to handle large allocations efficiently
@@ -121,30 +87,39 @@ try:
     from dgenerate.resources import __version__
 
     if os.environ.get('DGENERATE_PYINSTALLER', '0') == '1':
-        import dgenerate.pyinstaller_transformers_patches
+        import dgenerate._patches.pyinstaller_transformers_patch
 
     import diffusers
     import transformers
 
-    if not hasattr(transformers.DynamicCache, 'get_max_length'):
-        # they changed this, get_max_length no longer exists
-        # this breaks some LLMs with custom modeling code,
-        # and who knows when those repositories will update.
-        transformers.DynamicCache.get_max_length = transformers.DynamicCache.get_max_cache_shape
+    import dgenerate._patches.transformers_dynamiccache_patch
+    import dgenerate._patches.tqdm_huggingface_hub_patch
+    import dgenerate._patches.hfhub_local_entry_missing_message_patch
+
+    from dgenerate.hfhub import (
+        NonHFDownloadError,
+        NonHFModelDownloadError,
+        NonHFConfigDownloadError
+    )
+
+    from dgenerate.spacycache import (
+        SpacyModelNotFoundError
+    )
+
+    from dgenerate.webcache import (
+        WebFileCacheOfflineModeException
+    )
 
     from dgenerate.pipelinewrapper import (
         InvalidModelFileError,
         InvalidModelUriError,
         ModelUriLoadError,
-        NonHFModelDownloadError,
-        NonHFConfigDownloadError,
         SchedulerLoadError,
         SchedulerArgumentError,
         InvalidSchedulerNameError,
         UnsupportedPipelineConfigError,
         ModelType,
         DataType,
-        ModelNotFoundError,
         PipelineType,
         DiffusionPipelineWrapper,
         DiffusionArguments
@@ -174,7 +149,7 @@ try:
     from dgenerate.promptupscalers import PromptUpscalerProcessingError
     from dgenerate.promptweighters import PromptWeightingUnsupported
 
-    from dgenerate.exceptions import OutOfMemoryError
+    from dgenerate.exceptions import OutOfMemoryError, ModelNotFoundError
 
     from dgenerate.prompt import Prompt, PromptEmbeddedArgumentError
 
@@ -232,6 +207,7 @@ try:
     import dgenerate.messages
     import dgenerate.types
     import dgenerate.files
+    import dgenerate.translators
 
     transformers.logging.set_verbosity(transformers.logging.CRITICAL)
     diffusers.logging.set_verbosity(diffusers.logging.CRITICAL)
@@ -239,6 +215,69 @@ except KeyboardInterrupt:
     if __am_dgenerate_app:
         print('Exiting dgenerate due to keyboard interrupt!', file=sys.stderr)
     sys.exit(1)
+
+_offline_mode = False
+
+
+def is_offline_mode() -> bool:
+    """
+    Check if dgenerate is in global offline mode.
+
+    :return: ``True`` if dgenerate is in offline mode, ``False`` otherwise.
+    """
+    global _offline_mode
+    return _offline_mode
+
+
+def enable_offline_mode():
+    """
+    Enable global offline mode for dgenerate.
+
+    This will prevent any network requests from being made.
+    """
+    global _offline_mode
+    _offline_mode = True
+    dgenerate.hfhub.enable_offline_mode()
+    dgenerate.webcache.enable_offline_mode()
+    dgenerate.spacycache.enable_offline_mode()
+    dgenerate.translators.enable_offline_mode()
+
+
+def disable_offline_mode():
+    """
+    Disable offline mode for dgenerate.
+
+    This will allow network requests to be made again.
+    """
+    global _offline_mode
+    _offline_mode = False
+    dgenerate.hfhub.disable_offline_mode()
+    dgenerate.webcache.disable_offline_mode()
+    dgenerate.spacycache.disable_offline_mode()
+    dgenerate.translators.disable_offline_mode()
+
+
+@contextlib.contextmanager
+def offline_mode_context(enabled=True):
+    """
+    Context manager to temporarily enable or disable offline mode for dgenerate.
+
+    :param enabled: If `True`, enables offline mode. If `False`, disables it.
+    """
+    global _offline_mode
+    original_mode = _offline_mode
+
+    if enabled:
+        enable_offline_mode()
+    else:
+        disable_offline_mode()
+    try:
+        yield
+    finally:
+        if original_mode:
+            enable_offline_mode()
+        else:
+            disable_offline_mode()
 
 
 def main(args: collections.abc.Sequence[str] | None = None):
@@ -291,9 +330,13 @@ def main(args: collections.abc.Sequence[str] | None = None):
 
     meta_args, args = meta_args_parser.parse_known_args(args)
 
+    if '-ofm' in args or '--offline-mode' in args:
+        enable_offline_mode()
+
     try:
         render_loop = RenderLoop()
         render_loop.config = DgenerateArguments()
+
         # ^ this is necessary for --templates-help to
         # render all the correct values
         if meta_args.file:

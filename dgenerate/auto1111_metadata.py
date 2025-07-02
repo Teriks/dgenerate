@@ -25,7 +25,6 @@ import pathlib
 import re
 import urllib.parse
 
-import huggingface_hub
 import tqdm
 import os
 import typing
@@ -39,7 +38,7 @@ import dgenerate.batchprocess.batchprocessor as _batchprocessor
 import dgenerate.pipelinewrapper.enums
 import dgenerate.webcache as _webcache
 import dgenerate.pipelinewrapper.uris as _uris
-import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
+import dgenerate.hfhub as _hfhub
 import dgenerate.messages as _messages
 import dgenerate.arguments as _arguments
 
@@ -214,7 +213,7 @@ def _get_auto1111_sampler(args: _arguments.DgenerateArguments) -> str | None:
     return automatic1111_sampler
 
 
-def _config_to_automatic1111_dict(config: str) -> typing.Dict[str, any]:
+def _config_to_automatic1111_dict(config: str, local_files_only: bool) -> typing.Dict[str, any]:
     """
     Parse a dgenerate config using dgenerate's shell and convert it to
     a dictionary of Automaticc1111 image metadata parameters.
@@ -263,7 +262,8 @@ def _config_to_automatic1111_dict(config: str) -> typing.Dict[str, any]:
 
         model_name, model_hash = _process_model_path(
             model_title='Primary',
-            model_path=args.model_path
+            model_path=args.model_path,
+            local_files_only=local_files_only
         )
         if model_hash:
             parameters["Model hash"] = model_hash
@@ -298,7 +298,8 @@ def _config_to_automatic1111_dict(config: str) -> typing.Dict[str, any]:
         vae_uri = _uris.VAEUri.parse(args.vae_uri)
         vae_name, vae_hash = _process_model_path(
             model_title='VAE',
-            model_path=vae_uri.model
+            model_path=vae_uri.model,
+            local_files_only=local_files_only
         )
         if vae_name:
             parameters["VAE"] = vae_name
@@ -314,7 +315,8 @@ def _config_to_automatic1111_dict(config: str) -> typing.Dict[str, any]:
             text_encoder_uri = _uris.TextEncoderUri.parse(text_encoder_uri_str)
             text_encoder_name, text_encoder_hash = _process_model_path(
                 model_title='TextEncoder',
-                model_path=text_encoder_uri.model
+                model_path=text_encoder_uri.model,
+                local_files_only=local_files_only
             )
             if text_encoder_name and text_encoder_hash:
                 text_encoder_info[text_encoder_name] = text_encoder_hash
@@ -333,7 +335,8 @@ def _config_to_automatic1111_dict(config: str) -> typing.Dict[str, any]:
             lora_uri = _uris.LoRAUri.parse(lora_uri_str)
             lora_name, lora_hash = _process_model_path(
                 model_title='LoRA',
-                model_path=lora_uri.model
+                model_path=lora_uri.model,
+                local_files_only=local_files_only
             )
             if lora_name and lora_hash:
                 lora_info[lora_name] = lora_hash
@@ -352,7 +355,8 @@ def _config_to_automatic1111_dict(config: str) -> typing.Dict[str, any]:
             embedding_uri = _uris.TextualInversionUri.parse(embedding_uri_str)
             embedding_name, embedding_hash = _process_model_path(
                 model_title='TextualInversion',
-                model_path=embedding_uri.model
+                model_path=embedding_uri.model,
+                local_files_only=local_files_only
             )
             if embedding_name and embedding_hash:
                 embedding_info[embedding_name] = embedding_hash
@@ -371,7 +375,8 @@ def _config_to_automatic1111_dict(config: str) -> typing.Dict[str, any]:
             controlnet_uri = _uris.ControlNetUri.parse(controlnet_uri_str)
             controlnet_name, controlnet_hash = _process_model_path(
                 model_title='ControlNet',
-                model_path=controlnet_uri.model
+                model_path=controlnet_uri.model,
+                local_files_only=local_files_only
             )
             if controlnet_name and controlnet_hash:
                 controlnet_info[controlnet_name] = controlnet_hash
@@ -428,6 +433,7 @@ def _get_dgenerate_metadata_from_image(img: PIL.Image.Image):
 
 def _add_exif_to_image(
         image_path: str,
+        local_files_only: bool,
         output_path: typing.Optional[str] = None,
         dgenerate_config: typing.Optional[str] = None
 ):
@@ -458,7 +464,9 @@ def _add_exif_to_image(
     try:
         # If dgenerate config is provided, parse it
         if dgenerate_config:
-            config_params = _config_to_automatic1111_dict(dgenerate_config)
+            config_params = _config_to_automatic1111_dict(
+                dgenerate_config, local_files_only=local_files_only
+            )
             if config_params:
                 _messages.debug_log(f"Found {len(config_params)} applicable parameters in config text.")
                 parameters.update(config_params)
@@ -471,7 +479,9 @@ def _add_exif_to_image(
             image_metadata = _get_dgenerate_metadata_from_image(img)
 
             if image_metadata:
-                config_params = _config_to_automatic1111_dict(image_metadata)
+                config_params = _config_to_automatic1111_dict(
+                    image_metadata, local_files_only=local_files_only
+                )
                 if config_params:
                     _messages.debug_log(f"Found {len(config_params)} applicable parameters in image metadata.")
                     parameters.update(config_params)
@@ -643,7 +653,7 @@ def _extract_civitai_id(url):
     return None
 
 
-def _process_model_path(model_title: str, model_path: str):
+def _process_model_path(model_title: str, model_path: str, local_files_only):
     """
     Process a model path, handling URLs using web cache if necessary.
 
@@ -669,20 +679,13 @@ def _process_model_path(model_title: str, model_path: str):
         )
 
         try:
-            hf_blob_check = _pipelinewrapper_util.HFBlobLink.parse(model_path)
-            if hf_blob_check is not None:
-                cached_path = huggingface_hub.hf_hub_download(
-                    repo_id=hf_blob_check.repo_id,
-                    revision=hf_blob_check.revision,
-                    subfolder=hf_blob_check.subfolder,
-                    filename=hf_blob_check.weight_name
-                )
-            else:
-                _, cached_path = _webcache.create_web_cache_file(
+            with _hfhub.with_hf_errors_as_model_not_found():
+                cached_path = _hfhub.webcache_or_hf_blob_download(
                     url=model_path,
                     mime_acceptable_desc='not text',
                     mimetype_is_supported=lambda m: m is not None and not m.startswith('text/'),
-                    unknown_mimetype_exception=_ModelMimetypeException
+                    unknown_mimetype_exception=_ModelMimetypeException,
+                    local_files_only=local_files_only
                 )
 
             if cached_path and os.path.exists(cached_path):
@@ -756,7 +759,9 @@ def _process_model_path(model_title: str, model_path: str):
 def convert_and_insert_metadata(
         image_path: str,
         output_path: typing.Optional[str] = None,
-        dgenerate_config: typing.Optional[str] = None):
+        dgenerate_config: typing.Optional[str] = None,
+        local_files_only: bool = False
+):
     """
     Convert a dgenerate config to Automatic1111 metadata and add it to an image.
 
@@ -776,12 +781,14 @@ def convert_and_insert_metadata(
     :param dgenerate_config: dgenerate config text produced by ``--output-configs``, in the case that the
         image does not contain metadata produced by ``--output-metadata``. This is not a file path,
         it should be the config text itself as a string.
+    :param local_files_only: if ``True``, do not download any files, only use local files and cache.
 
     :raise Auto1111MetadataCreationError: if there is an error creating or writing the metadata.
     """
     try:
         _add_exif_to_image(
             image_path,
+            local_files_only,
             output_path,
             dgenerate_config
         )

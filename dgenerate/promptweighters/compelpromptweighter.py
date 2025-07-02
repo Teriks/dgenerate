@@ -190,7 +190,7 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
     def translate_to_embeds(self,
                             pipeline: diffusers.DiffusionPipeline,
                             device: str,
-                            args: dict[str, any]):
+                            args: dict[str, typing.Any]):
 
         # we are responsible for generating these arguments
         # if they exist already then we cannot do our job

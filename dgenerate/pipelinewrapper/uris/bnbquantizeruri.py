@@ -24,8 +24,8 @@ import torch
 
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
-from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 from dgenerate.pipelinewrapper.enums import get_torch_dtype as _get_torch_dtype
+from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 
 _bnb_quantizer_uri_parser = _textprocessing.ConceptUriParser(
     'BNB Quantizer',
@@ -61,7 +61,7 @@ class BNBQuantizerUri:
     @staticmethod
     def _dtype_check(s):
         if s is None:
-            return
+            return None
         if s not in {"float16", "float32", "int8", "uint8", "float64", "bfloat16"}:
             raise _exceptions.InvalidBNBQuantizerUriError(
                 'BNB Quant dtypes must be one of: float16, float32, int8, uint8, float64 or bfloat16.')

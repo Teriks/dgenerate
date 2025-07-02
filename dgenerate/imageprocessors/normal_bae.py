@@ -26,8 +26,8 @@ import einops
 import numpy
 import torch
 
+import dgenerate.hfhub as _hfhub
 import dgenerate.image as _image
-import dgenerate.imageprocessors.util as _util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.imageprocessors import imageprocessor as _imageprocessor
@@ -84,7 +84,8 @@ class NormalBaeProcessor(_imageprocessor.ImageProcessor):
             self._detect_resolution = None
 
         self.set_size_estimate(291 * (1000 ** 2))  # 6.34 MB scannet.pt
-        with _util.with_hf_local_files_only(self.local_files_only):
+        with (_hfhub.with_hf_errors_as_model_not_found(),
+              _hfhub.offline_mode_context(self.local_files_only)):
             self._normal_bae = self.load_object_cached(
                 tag="lllyasviel/Annotators",
                 estimated_size=self.size_estimate,

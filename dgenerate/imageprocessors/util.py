@@ -18,39 +18,9 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import contextlib
 import typing
 
-import huggingface_hub
-
 import dgenerate.textprocessing as _textprocessing
-
-
-@contextlib.contextmanager
-def with_hf_local_files_only(status: bool):
-    """
-    Directly patch ``huggingface_hub`` to set the ``local_files_only`` status on ``hf_hub_download``
-
-    :param status: ``local_files_only`` value
-    """
-    og1 = huggingface_hub.file_download._hf_hub_download_to_local_dir
-    og2 = huggingface_hub.file_download._hf_hub_download_to_cache_dir
-
-    try:
-        def patch_status1(*args, **kwargs):
-            kwargs['local_files_only'] = status
-            return og1(*args, **kwargs)
-
-        def patch_status2(*args, **kwargs):
-            kwargs['local_files_only'] = status
-            return og2(*args, **kwargs)
-
-        huggingface_hub.file_download._hf_hub_download_to_local_dir = patch_status1
-        huggingface_hub.file_download._hf_hub_download_to_cache_dir = patch_status2
-        yield
-    finally:
-        huggingface_hub.file_download._hf_hub_download_to_local_dir = og1
-        huggingface_hub.file_download._hf_hub_download_to_cache_dir = og2
 
 
 def yolo_filters_parse(

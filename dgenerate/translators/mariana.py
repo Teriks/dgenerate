@@ -20,7 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import importlib.resources
 import json
-
+import huggingface_hub
 import torch
 import transformers
 
@@ -37,6 +37,7 @@ class MarianaTranslator:
     """
 
     _translation_map = None
+    _offline_mode = False
 
     def __init__(self, from_lang: str, to_lang: str, local_files_only: bool = False):
         """
@@ -125,6 +126,18 @@ class MarianaTranslator:
 
     @staticmethod
     def _load_mariana(model_name: str, from_lang: str, to_lang: str, local_files_only: bool):
+        if MarianaTranslator._offline_mode:
+            local_files_only = True
+
+        if local_files_only:
+            # If we are in offline mode, we need to ensure the model is cached
+            if huggingface_hub.try_to_load_from_cache(
+                model_name, 'config.json',
+            ) is None:
+                raise _exceptions.TranslatorLoadError(
+                    f'Helsinki-NLP translation model for "{from_lang}" -> "{to_lang}" '
+                    f'cannot be loaded in offline mode as it has not been cached.')
+
         try:
             tokenizer = transformers.MarianTokenizer.from_pretrained(
                 model_name, local_files_only=local_files_only)

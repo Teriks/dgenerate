@@ -175,10 +175,7 @@ def _create_arg_parser(prog, description):
 
     actions.append(parser.add_argument(
         '-ofm', '--offline-mode', action='store_true',
-        help="""Prevent dgenerate from downloading Hugging Face hub models that do not
-                exist in the disk cache or a folder on disk. Referencing a model on 
-                Hugging Face hub that has not been cached because it was not 
-                previously downloaded will result in a failure when using this option."""))
+        help="""Prevent downloads of resources that do not exist on disk already."""))
 
     return parser, actions
 
@@ -196,8 +193,9 @@ def config_attribute_name_to_option(name):
 
 
 def parse_args(args: collections.abc.Sequence[str] | None = None,
-               help_name='image-process',
-               help_desc=None,
+               overrides: dict[str, typing.Any] | None = None,
+               help_name: str = 'image-process',
+               help_desc: str = None,
                throw: bool = True,
                log_error: bool = True,
                help_raises: bool = False) -> ImageProcessArgs | None:
@@ -206,6 +204,9 @@ def parse_args(args: collections.abc.Sequence[str] | None = None,
     sub-command as well as config directive.
 
     :param args: command line arguments
+    :param overrides: Optional dictionary of overrides to apply to the
+        :py:class:`.ImageProcessArgs` object after parsing but before validation,
+        this should consist of attribute names with values.
     :param help_name: program name displayed in ``--help`` output.
     :param help_desc: program description displayed in ``--help`` output.
     :param throw: throw :py:exc:`.ImageProcessUsageError` on error? defaults to ``True``
@@ -223,6 +224,8 @@ def parse_args(args: collections.abc.Sequence[str] | None = None,
     parsed = None
     try:
         parsed = typing.cast(ImageProcessArgs, parser.parse_args(args, namespace=ImageProcessArgs()))
+        if overrides:
+            parsed.set_from(overrides, missing_value_throws=False)
         parsed.check()
     except ImageProcessHelpException as e:
         if help_raises:

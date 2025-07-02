@@ -23,6 +23,7 @@ import inspect
 import io
 import os
 import re
+import traceback
 import typing
 import warnings
 
@@ -179,9 +180,8 @@ class BatchProcessor:
             be overridden by functions defined in ``template_functions``
         :param injected_args: Arguments to be injected at the end of user specified arguments for every shell invocation.
             If ``-v/--verbose`` is present in ``injected_args`` debugging output will be enabled globally while the config
-            runs, and not just for invocations. Passing ``-v/--verbose`` also disables handling of unhandled non
-            :py:exc:`SystemExit` exceptions raised by config directive implementations, a stack trace will be
-            printed when these exceptions are encountered.
+            runs, and not just for invocations. Passing ``-v/--verbose`` also enables printing stack traces for all
+            unhandled directive exceptions to ``stderr``.
         :param disable_directives: If ``True``, disables the use of all directives, including the built-in ones.
             This also disable template continuations, (lines starting with "{") which are a form of directive.
         """
@@ -199,7 +199,7 @@ class BatchProcessor:
 
         self.disable_directives = disable_directives
 
-        self._directive_exceptions = False
+        self._directive_error_traces = False
 
         self.injected_args = injected_args if injected_args else []
 
@@ -763,8 +763,11 @@ class BatchProcessor:
                 raise BatchProcessError(
                     f'Directive "{directive}" error return code: {return_code}')
         except Exception as e:
-            if self._directive_exceptions:
-                raise e
+            if self._directive_error_traces:
+                _messages.error(
+                    _textprocessing.underline(f'\\{directive} error trace:') + "\n" +
+                    _textprocessing.underline('\n'.join(traceback.format_exception(e)))
+                )
             raise BatchProcessError(e) from e
         return True
 
@@ -955,11 +958,11 @@ class BatchProcessor:
         except _arguments.DgenerateUsageError as e:
             raise BatchProcessError(f'Error parsing injected arguments: {str(e).strip()}') from e
 
-        directive_exceptions_last = self._directive_exceptions
+        directive_error_traces = self._directive_error_traces
 
         if parsed.verbose:
             _messages.push_level(_messages.DEBUG)
-            self._directive_exceptions = True
+            self._directive_error_traces = True
 
         try:
             self._run_file(stream)
@@ -972,7 +975,7 @@ class BatchProcessor:
         finally:
             if parsed.verbose:
                 _messages.pop_level()
-            self._directive_exceptions = directive_exceptions_last
+            self._directive_error_traces = directive_error_traces
 
     def run_string(self, string: str):
         """

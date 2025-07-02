@@ -28,8 +28,8 @@ import numpy
 import skimage
 import torch
 
+import dgenerate.hfhub as _hfhub
 import dgenerate.image as _image
-import dgenerate.imageprocessors.util as _util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.imageprocessors import imageprocessor as _imageprocessor
@@ -115,7 +115,8 @@ class AnylineProcessor(_imageprocessor.ImageProcessor):
 
         self.set_size_estimate(248 * 1000)  # 248 KB -> bytes
 
-        with _util.with_hf_local_files_only(self.local_files_only):
+        with (_hfhub.with_hf_errors_as_model_not_found(),
+              _hfhub.offline_mode_context(self.local_files_only)):
             self._anyline = self.load_object_cached(
                 tag="TheMistoAI/MistoLine;weight-name=MTEED.pth;subfolder=Anyline",
                 estimated_size=self.size_estimate,

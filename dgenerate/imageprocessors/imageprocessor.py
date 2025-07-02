@@ -282,7 +282,7 @@ class ImageProcessor(_plugin.Plugin, abc.ABC):
     @property
     def local_files_only(self) -> bool:
         """
-        Is this image processor only going to look for Hugging Face hub model files in cache / on disk?
+        Is this image processor only going to look for resources such as models in cache / on disk?
         """
         return self.__local_files_only
 

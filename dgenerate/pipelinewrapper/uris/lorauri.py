@@ -25,8 +25,8 @@ import typing
 import diffusers
 import huggingface_hub
 
+import dgenerate.hfhub as _hfhub
 import dgenerate.messages as _messages
-import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
@@ -115,20 +115,19 @@ class LoRAUri:
         :raises dgenerate.pipelinewrapper.uris.exceptions.InvalidLoRAUriError: On URI parsing errors.
         :raises dgenerate.pipelinewrapper.uris.exceptions.LoRAUriLoadError: On loading errors.
         """
-        try:
+        def cache_all(e):
+            if isinstance(e, _exceptions.InvalidLoRAUriError):
+                raise e
+            else:
+                raise _exceptions.LoRAUriLoadError(
+                    f'error loading LoRAs: {e}') from e
+
+        with _hfhub.with_hf_errors_as_model_not_found(cache_all):
             LoRAUri._load_on_pipeline(pipeline,
                                       uris=uris,
                                       fuse_scale=fuse_scale,
                                       use_auth_token=use_auth_token,
                                       local_files_only=local_files_only)
-        except (huggingface_hub.utils.HFValidationError,
-                huggingface_hub.utils.HfHubHTTPError) as e:
-            raise _pipelinewrapper_util.ModelNotFoundError(e) from e
-        except _exceptions.InvalidLoRAUriError:
-            raise
-        except Exception as e:
-            raise _exceptions.LoRAUriLoadError(
-                f'error loading LoRAs: {e}') from e
 
     @staticmethod
     def _load_on_pipeline(pipeline: diffusers.DiffusionPipeline,
@@ -145,7 +144,7 @@ class LoRAUri:
                 if not isinstance(lora_uri, LoRAUri):
                     lora_uri = LoRAUri.parse(lora_uri)
 
-                model_path = _pipelinewrapper_util.download_non_hf_model(lora_uri.model)
+                model_path = _hfhub.download_non_hf_slug_model(lora_uri.model)
 
                 weight_name = lora_uri.weight_name
 

@@ -51,6 +51,7 @@ class ImageProcessDirective(_configrunnerplugin.ConfigRunnerPlugin):
         try:
             return_code = _image_process.invoke_image_process(
                 args,
+                config_overrides={'offline_mode:': self.local_files_only},
                 render_loop=render_loop,
                 help_raises=True,
                 help_name='\\image_process')

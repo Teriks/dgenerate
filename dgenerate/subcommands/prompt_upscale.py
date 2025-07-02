@@ -129,6 +129,10 @@ class PromptUpscaleSubCommand(_subcommand.SubCommand):
                 type=_quote_style
             )
 
+        parser.add_argument(
+            '-ofm', '--offline-mode', action='store_true',
+            help="""Prevent downloads of resources that do not exist on disk already.""")
+
     @staticmethod
     def _do_quote(args, s):
         if args.quote == 'none':
@@ -147,7 +151,12 @@ class PromptUpscaleSubCommand(_subcommand.SubCommand):
             return self._parser.return_code
 
         def get_upscaled():
-            return _promptupscalers.upscale_prompts(args.prompts, args.upscaler, args.device)
+            return _promptupscalers.upscale_prompts(
+                prompts=args.prompts,
+                default_upscaler_uri=args.upscaler,
+                device=args.device,
+                local_files_only=self.local_files_only or args.offline_mode
+            )
 
         if self._output_list is not None:
             for upscaled in get_upscaled():

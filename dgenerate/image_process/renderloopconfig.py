@@ -22,6 +22,7 @@
 import os
 import typing
 
+import dgenerate.webcache as _webcache
 import dgenerate.mediainput as _mediainput
 import dgenerate.mediaoutput as _mediaoutput
 import dgenerate.types as _types
@@ -174,7 +175,11 @@ class ImageProcessRenderLoopConfig(_types.SetFromMixin):
 
                 input_mime_type = _mediainput.guess_mimetype(file)
             else:
-                input_mime_type = _mediainput.request_mimetype(file)
+                try:
+                    input_mime_type = _mediainput.request_mimetype(file, local_files_only=self.offline_mode)
+                except _webcache.WebFileCacheOfflineModeException:
+                    raise ImageProcessRenderLoopConfigError(
+                        f'File input "{file}" is not cached and cannot be downloaded in offline mode.')
 
             if input_mime_type is None:
                 raise ImageProcessRenderLoopConfigError(f'File type of "{file}" could not be determined.')

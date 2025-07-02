@@ -101,7 +101,7 @@ class PromptWeighter(_plugin.Plugin, abc.ABC):
     @property
     def local_files_only(self) -> bool:
         """
-        Is this prompt weighter only going to look for Hugging Face hub model files in cache / on disk?
+        Is this prompt weighter only going to look for resources such as model files in cache / on disk?
         """
         return self.__local_files_only
 
@@ -265,7 +265,7 @@ class PromptWeighter(_plugin.Plugin, abc.ABC):
     def translate_to_embeds(self,
                             pipeline: diffusers.DiffusionPipeline,
                             device: str,
-                            args: dict[str, any]):
+                            args: dict[str, typing.Any]):
         """
         Override me to implement.
 

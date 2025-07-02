@@ -28,10 +28,10 @@ import dgenerate.memoize as _memoize
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.uris.bnbquantizeruri as _bnbquantizeruri
+import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
+import dgenerate.textprocessing as _textprocessing
 import dgenerate.torchutil as _torchutil
 import dgenerate.types as _types
-import dgenerate.textprocessing as _textprocessing
-import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 
 
 def uri_hash_with_parser(parser, exclude: set[str] | None = None):
@@ -113,11 +113,11 @@ def get_uri_accepted_args_schema(uri_cls: type):
             return (str(t) if t.__module__ != 'builtins' else t.__name__).strip()
 
         def _resolve_union(t):
-            name = _type_name(t)
+            n = _type_name(t)
             if _types.is_union(t):
                 return set(itertools.chain.from_iterable(
                     [_resolve_union(t) for t in arg.annotation.__args__]))
-            return [name]
+            return [n]
 
         type_name = _type_name(arg.annotation)
 

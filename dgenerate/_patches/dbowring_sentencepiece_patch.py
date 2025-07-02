@@ -19,28 +19,26 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import tkinter as tk
 
-import dgenerate.console.imageseedselect as _imageseedselect
-import dgenerate.console.recipesformentries.uriwithfloatargentry as _uriwithfloatargentry
+import importlib.metadata
+
+# The following patch is required for diffusers and transformers
+# import_util introspection to work with the sentencepiece fork
+
+# Store the original function
+_original_importlib_metadata_version = importlib.metadata.version
 
 
-class _ImageSeedEntry(_uriwithfloatargentry._UriWithFloatArgEntry):
-    NAME = 'imageseed'
+def _patched_importlib_metadata_version(distribution_name):
+    """
+    Patched version of importlib_metadata.version that redirects
+    'sentencepiece' lookups to 'dbowring-sentencepiece'
+    """
+    if distribution_name == "sentencepiece":
+        distribution_name = "dbowring-sentencepiece"
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    return _original_importlib_metadata_version(distribution_name)
 
-        self.build_uri_button = tk.Button(
-            self.button_frame,
-            text='Build URI',
-            command=self._build_uri)
 
-        self.build_uri_button.pack(side=tk.RIGHT)
-
-    def _insert(self, value: str):
-        if value is not None and value.strip():
-            self.uri_var.set(value)
-
-    def _build_uri(self):
-        _imageseedselect.request_uri(self.recipe_form, self._insert)
+# Apply the patch
+importlib.metadata.version = _patched_importlib_metadata_version

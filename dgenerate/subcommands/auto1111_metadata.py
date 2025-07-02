@@ -19,13 +19,14 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import dgenerate.subcommands.subcommand as _subcommand
+import os
+
+import dgenerate.auto1111_metadata as _auto1111_metadata
 import dgenerate.batchprocess.util as _b_util
 import dgenerate.mediainput as _mediainput
-import dgenerate.textprocessing as _textprocessing
 import dgenerate.messages as _messages
-import dgenerate.auto1111_metadata as _auto1111_metadata
-import os
+import dgenerate.subcommands.subcommand as _subcommand
+import dgenerate.textprocessing as _textprocessing
 
 
 class Auto1111MetadataSubCommand(_subcommand.SubCommand):
@@ -96,6 +97,10 @@ class Auto1111MetadataSubCommand(_subcommand.SubCommand):
             help='Enable debug output?'
         )
 
+        parser.add_argument(
+            '-ofm', '--offline-mode', action='store_true',
+            help="""Prevent downloads of resources that do not exist on disk already.""")
+
     def __call__(self) -> int:
         """
         Main entry point for the subcommand. Parses arguments, fetches model data,
@@ -157,9 +162,10 @@ class Auto1111MetadataSubCommand(_subcommand.SubCommand):
         try:
             with _messages.with_level(_messages.DEBUG if args.verbose else _messages.INFO):
                 _auto1111_metadata.convert_and_insert_metadata(
-                    args.image,
-                    args.output,
-                    config
+                    image_path=args.image,
+                    output_path=args.output,
+                    dgenerate_config=config,
+                    local_files_only=self.local_files_only or args.offline_mode,
                 )
         except _auto1111_metadata.Auto1111MetadataCreationError as e:
             _messages.error(e)
