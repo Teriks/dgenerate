@@ -1312,7 +1312,7 @@ def _parse_image_seed_uri_legacy(uri: str, align: int = 8) -> ImageSeedParseResu
         first = first.removeprefix('latents:').strip()
 
     if not ip_adapter_mode and not latents_mode:
-        result.images = [first]
+        result.images = []
 
     try:
         first_parts = [t.strip() for t in _textprocessing.tokenized_split(
@@ -1351,6 +1351,7 @@ def _parse_image_seed_uri_legacy(uri: str, align: int = 8) -> ImageSeedParseResu
                 else:
                     raise ImageSeedFileNotFoundError(
                         f'Image seed file "{part}" does not exist.')
+            result.images.append(part)
 
     if len(first_parts) > 1 and not ip_adapter_mode and not latents_mode:
         result.images = first_parts
@@ -1392,30 +1393,37 @@ def _parse_image_seed_uri_legacy(uri: str, align: int = 8) -> ImageSeedParseResu
 
         if (multi_mask := parse_multi_mask(part))[0]:
             result.mask_images = multi_mask[1]
-        elif is_downloadable_url(part):
-            result.mask_images = [part]
-        elif os.path.exists(part):
-            result.mask_images = [part]
         else:
-            try:
-                dimensions = _textprocessing.parse_image_size(part)
-            except ValueError:
-                # This is correct and more informative
-                # though it is counter intuitive
-                raise ImageSeedFileNotFoundError(
-                    f'Inpaint mask file "{part}" does not exist.')
+            # For single mask images, strip quotes if present
+            if _textprocessing.is_quoted(part):
+                part = _textprocessing.unquote(
+                    part, escapes_in_quoted=True
+                    )
+            
+            if is_downloadable_url(part):
+                result.mask_images = [part]
+            elif os.path.exists(part):
+                result.mask_images = [part]
+            else:
+                try:
+                    dimensions = _textprocessing.parse_image_size(part)
+                except ValueError:
+                    # This is correct and more informative
+                    # though it is counter intuitive
+                    raise ImageSeedFileNotFoundError(
+                        f'Inpaint mask file "{part}" does not exist.')
 
-            for d_idx, d in enumerate(dimensions):
-                if d % align != 0:
+                for d_idx, d in enumerate(dimensions):
+                    if d % align != 0:
+                        raise ImageSeedArgumentError(
+                            f'Image seed resize {["width", "height"][d_idx]} '
+                            f'dimension {d} is not divisible by {align}.')
+
+                if result.resize_resolution is not None:
                     raise ImageSeedArgumentError(
-                        f'Image seed resize {["width", "height"][d_idx]} '
-                        f'dimension {d} is not divisible by {align}.')
+                        'Resize resolution argument defined multiple times.')
 
-            if result.resize_resolution is not None:
-                raise ImageSeedArgumentError(
-                    'Resize resolution argument defined multiple times.')
-
-            result.resize_resolution = dimensions
+                result.resize_resolution = dimensions
 
     if result.multi_image_mode:
         if not result.images:
