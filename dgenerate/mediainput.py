@@ -1385,7 +1385,7 @@ def _parse_image_seed_uri_legacy(uri: str, align: int = 8) -> ImageSeedParseResu
         except _textprocessing.TokenizedSplitSyntaxError:
             return False, None
 
-    for idx, part in enumerate(parts_iter):
+    for part in parts_iter:
         if part == '':
             raise ImageSeedParseError(
                 'Missing inpaint mask image or output size specification, '
