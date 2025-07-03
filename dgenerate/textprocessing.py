@@ -112,14 +112,27 @@ def is_escape_code(code: str) -> bool:
     return code in {'n', 'r', 't', 'b', 'f', '\\'}
 
 
-def has_unescaped_quotes(string):
+def has_unescaped_quotes(string, double: bool = True, single: bool = True) -> bool:
     """
     Does a string contain unescaped quotes?
 
+
     :param string: The string
+    :param double: Detect double quotes?
+    :param single: Detect single quotes?
+
     :return: ``True`` or ``False``.
     """
-    return bool(re.search(r'(?<!\\)(?:\\\\)*["\']', string))
+    quote_pattern = ''
+    if double:
+        quote_pattern += '"'
+    if single:
+        quote_pattern += "'"
+
+    if not quote_pattern:
+        raise ValueError('At least one of double or single quotes must be enabled.')
+
+    return bool(re.search(rf'(?<!\\)(?:\\\\)*[{quote_pattern}]', string))
 
 
 def tokenized_split(string: str,
@@ -288,10 +301,20 @@ def tokenized_split(string: str,
                 parts.append(text_to_append)
 
     def post_process_token(token):
-        if process_string_token and token[0] == '"' and token[-1] == '"':
-            return process_string_token(token)
-        elif process_string_token and token[0] == "'" and token[-1] == "'":
-            return process_string_token(token)
+        if process_string_token and len(token) > 1 and \
+                ((token[0] == "'" and token[-1] == "'") or
+                 (token[0] == '"' and token[-1] == '"')):
+            if has_unescaped_quotes(
+                    token[1:-1],
+                    double=(token[0] == '"'),
+                    single=(token[0] == "'")
+            ):
+                if process_intermixed_token:
+                    return process_intermixed_token(token)
+                else:
+                    return token
+            else:
+                return process_string_token(token)
         elif process_intermixed_token and has_unescaped_quotes(token):
             return process_intermixed_token(token)
         return token
