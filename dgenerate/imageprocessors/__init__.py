@@ -59,6 +59,7 @@ from .normal_bae import NormalBaeProcessor
 from .openpose import OpenPoseProcessor
 from .pidi import PidiNetProcessor
 from .sam import SegmentAnythingProcessor
+from .u_sam import USAMProcessor
 from .teed import TEEDProcessor
 from .upscaler import UpscalerProcessor
 from .yolo import YOLODetectionProcessor

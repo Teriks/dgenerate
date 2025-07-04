@@ -1,0 +1,659 @@
+# Copyright (c) 2023, Teriks
+#
+# dgenerate is distributed under the following BSD 3-Clause License
+#
+# Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in
+#    the documentation and/or other materials provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived
+#    from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+# ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import contextlib
+import os
+import re
+
+import PIL.Image
+import PIL.ImageDraw
+import PIL.ImageFont
+import PIL.ImageOps
+import PIL.ImageStat
+import cv2
+import numpy
+import torch
+from ultralytics import SAM as _SAM
+from ultralytics.models.sam.build import sam_model_map as _sam_model_map
+
+import dgenerate.messages as _messages
+import dgenerate.textprocessing as _textprocessing
+import dgenerate.types as _types
+import dgenerate.webcache as _webcache
+from dgenerate.imageprocessors import imageprocessor as _imageprocessor
+
+_sam_assets_url = "https://github.com/ultralytics/assets/releases/download/v8.3.0/"
+
+
+@contextlib.contextmanager
+def _ultralytics_download_patch(local_files_only: bool):
+    import ultralytics.models.sam.build
+
+    og = ultralytics.models.sam.build.attempt_download_asset
+
+    def attempt_download_asset(file) -> str:
+        _, path = _webcache.create_web_cache_file(
+            f'{_sam_assets_url}{file}',
+            local_files_only=local_files_only)
+        return path
+
+    ultralytics.models.sam.build.attempt_download_asset = attempt_download_asset
+
+    try:
+        yield
+    finally:
+        ultralytics.models.sam.build.attempt_download_asset = og
+
+
+class USAMProcessor(_imageprocessor.ImageProcessor):
+
+    @staticmethod
+    def help(loaded_by_name: str):
+        models = ('\n'+' '*12+'* ').join(_sam_model_map.keys())
+        # the indentation level of this here string is important
+        # to the template, it is at level 8, plus 4 extra (doc indent), star, space
+        return \
+            f"""
+        Process the input image with Ultralytics SAM (Segment Anything Model) using point or bounding box prompts.
+        
+        This processor operates in two distinct modes:
+        
+        Preview Mode (default, masks=False):
+    
+        Returns the original image with generated masks outlined and labeled with prompt indices.
+        The colors of the outlines and text are automatically chosen to contrast with the background 
+        for optimal visibility.
+        
+        Mask Mode (masks=True):
+    
+        Returns a single composite mask image containing all generated masks combined together.
+        This is useful for inpainting, outpainting, or other mask-based image processing operations.
+        
+        -----
+        
+        The "asset" argument specifies which SAM model asset to use. This should be the name
+        of an Ultralytics SAM model asset, loading arbitrary checkpoints is not supported.
+        This argument may be one of:
+        
+        NOWRAP!
+            * {models}
+        
+        You may exclude the `.pt` suffix if desired.
+    
+        The "local-files-only" argument specifies that dgenerate should not attempt to
+        download any model files, and to only look for them locally in the cache or
+        otherwise.
+    
+        The "points" argument specifies point prompts as a list of coordinates. Each point
+        can be specified as either:
+        
+        NOWRAP!
+        - Single point: [x, y] or x,y
+        - Nested list/tuple: [[x, y], ...] or [[x, y, label], ...] where label is 1 for foreground, 0 for background
+        - String format: ["x,y", ...] or ["x,y,label", ...]
+    
+        If no label is provided, it defaults to 1 (foreground).
+    
+        NOWRAP!
+        Examples:
+            points=[100,100]                    # Single point
+            points=100,100                      # Single point
+            points=[[100, 100], [200, 200, 0]]  # Nested format
+            points=["100,100", "200,200,0"]     # String format
+            points="100,100","200,200,0"        # String format
+    
+        The "boxes" argument specifies bounding box prompts as a list of coordinates. Each box
+        can be specified as either:
+    
+        NOWRAP!
+        - Single box: [x1, y1, x2, y2] or x1,y1,x2,y2
+        - Nested list/tuple: [[x1, y1, x2, y2], ...]
+        - String format: ["x1,y1,x2,y2", ...]
+    
+        NOWRAP!
+        Examples:
+            boxes=[50, 50, 150, 150]                          # Single box
+            boxes=50,50,150,150                               # Single box
+            boxes=[[50, 50, 150, 150], [200, 200, 300, 300]]  # Nested format
+            boxes=["50,50,150,150", "200,200,300,300"]        # String format
+            boxes="50,50,150,150","200,200,300,300"           # String format
+    
+        Note: You may use python tuple syntax as well as list syntax, additionally
+        something such as: (100,100),(100,100) will be interpreted as a tuple of
+        of tuples, and: [100,100],[100,100] a tuple of lists.
+    
+        The "font-size" argument determines the size of the label text. If not specified,
+        it will be automatically calculated based on the image dimensions.
+    
+        The "line-width" argument controls the thickness of the mask outline lines. If not specified,
+        it will be automatically calculated based on the image dimensions.
+    
+        The "line-color" argument overrides the color for mask outlines and text label backgrounds.
+        This should be specified as a HEX color code, e.g. "#FFFFFF" or "#FFF". If not specified,
+        colors are automatically chosen to contrast with the background. The text color will always
+        be automatically chosen to contrast with the background for optimal readability.
+    
+        The "masks" argument enables mask generation mode. When True, the processor returns a
+        composite mask image instead of the annotated preview image. This defaults to False.
+    
+        The "outpaint" argument inverts the generated masks, creating inverted masks suitable
+        for outpainting operations. This only has an effect when "masks" is True. This defaults to False.
+    
+        The "pre-resize" argument determines if the processing occurs before or after dgenerate resizes the image.
+        This defaults to False, meaning the image is processed after dgenerate is done resizing it.
+        """
+
+    NAMES = ['u-sam']
+
+    @staticmethod
+    def _match_hex_color(color):
+        pattern = r'^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$'
+        return bool(re.match(pattern, color))
+
+    @staticmethod
+    def _hex_to_rgb(hex_color):
+        """Convert hex color to RGB tuple."""
+        hex_color = hex_color.lstrip('#')
+        if len(hex_color) == 3:
+            hex_color = ''.join([c * 2 for c in hex_color])
+        return tuple(int(hex_color[i:i + 2], 16) for i in (0, 2, 4))
+
+    @staticmethod
+    def _parse_points(points_input):
+        """Parse point coordinates from nested lists/tuples or string format."""
+        if not points_input:
+            return []
+
+        if any(isinstance(x, int) for x in points_input):
+            # singular point
+            points_input = [points_input]
+
+        points = []
+        for point in points_input:
+            if isinstance(point, (list, tuple)):
+                # Already parsed nested structure: [x, y] or [x, y, label]
+                if len(point) < 2:
+                    raise ValueError(f"Point must have at least x,y coordinates: {point}")
+                elif len(point) == 2:
+                    x, y = map(float, point)
+                    points.append([x, y, 1])  # Default to foreground
+                elif len(point) == 3:
+                    x, y, label = map(float, point)
+                    points.append([x, y, int(label)])
+                else:
+                    raise ValueError(f"Point should have 2 or 3 coordinates: {point}")
+            elif isinstance(point, str):
+                # String format for backward compatibility: "x,y" or "x,y,label"
+                coords = point.split(',')
+                if len(coords) < 2:
+                    raise ValueError(f"Point must have at least x,y coordinates: {point}")
+                elif len(coords) == 2:
+                    x, y = map(float, coords)
+                    points.append([x, y, 1])  # Default to foreground
+                elif len(coords) == 3:
+                    x, y, label = map(float, coords)
+                    points.append([x, y, int(label)])
+                else:
+                    raise ValueError(f"Point format should be x,y or x,y,label: {point}")
+            else:
+                raise ValueError(f"Point must be a list/tuple or string, got: {type(point).__name__}")
+        return points
+
+    @staticmethod
+    def _parse_boxes(boxes_input):
+        """Parse bounding box coordinates from nested lists/tuples or string format."""
+        if not boxes_input:
+            return []
+
+        if any(isinstance(x, int) for x in boxes_input):
+            # singular box
+            boxes_input = [boxes_input]
+
+        boxes = []
+        for box in boxes_input:
+            if isinstance(box, (list, tuple)):
+                # Already parsed nested structure: [x1, y1, x2, y2]
+                if len(box) != 4:
+                    raise ValueError(f"Box must have x1,y1,x2,y2 coordinates: {box}")
+                x1, y1, x2, y2 = map(float, box)
+                boxes.append([x1, y1, x2, y2])
+            elif isinstance(box, str):
+                # String format for backward compatibility: "x1,y1,x2,y2"
+                coords = box.split(',')
+                if len(coords) != 4:
+                    raise ValueError(f"Box must have x1,y1,x2,y2 coordinates: {box}")
+                x1, y1, x2, y2 = map(float, coords)
+                boxes.append([x1, y1, x2, y2])
+            else:
+                raise ValueError(f"Box must be a list/tuple or string, got: {type(box).__name__}")
+        return boxes
+
+    def __init__(self,
+                 asset: str,
+                 points: list | tuple | None = None,
+                 boxes: list | tuple | None = None,
+                 font_size: int | None = None,
+                 line_width: int | None = None,
+                 line_color: str | None = None,
+                 masks: bool = False,
+                 outpaint: bool = False,
+                 pre_resize: bool = False,
+                 **kwargs):
+        """
+        :param asset: SAM model asset to use, an Ultralytics asset name
+        :param points: list of point prompts - can be nested lists [[x,y], [x,y,label]] or strings ["x,y", "x,y,label"]
+        :param boxes: list of bounding box prompts - can be nested lists [[x1,y1,x2,y2]] or strings ["x1,y1,x2,y2"]
+        :param font_size: size of label text, if None will be calculated based on image dimensions
+        :param line_width: thickness of mask outline lines, if None will be calculated based on image dimensions
+        :param line_color: override color for mask outlines and text label backgrounds as hex color code (e.g. "#FF0000" or "#F00")
+
+        :param masks: generate mask images instead of preview, default is ``False``
+        :param outpaint: invert generated masks for outpainting, only effective when masks is ``True``, default is ``False``
+        :param pre_resize: process the image before it is resized, or after? default is ``False`` (after).
+        :param kwargs: forwarded to base class
+        """
+        super().__init__(**kwargs)
+
+        if line_width is not None and line_width < 1:
+            raise self.argument_error('Argument "line-width" must be at least 1.')
+
+        if font_size is not None and font_size < 8:
+            raise self.argument_error('Argument "font-size" must be at least 8.')
+
+        # Validate color arguments
+        if line_color is not None and not self._match_hex_color(line_color):
+            raise self.argument_error('line-color must be a HEX color code, e.g. #FFFFFF or #FFF')
+
+        if not asset.endswith('.pt'):
+            asset += '.pt'
+
+        # get model path on disk
+        self._model_path = self._get_model_path(asset)
+
+        self._line_width = line_width
+        self._font_size = font_size
+        self._line_color = line_color
+        self._masks = masks
+        self._outpaint = outpaint
+        self._pre_resize = pre_resize
+
+        # Parse prompts
+        try:
+            self._points = self._parse_points(points or [])
+            self._boxes = self._parse_boxes(boxes or [])
+        except ValueError as e:
+            raise self.argument_error(f'Error parsing prompts: {e}') from e
+
+        if not self._points and not self._boxes:
+            raise self.argument_error('At least one point or box prompt must be specified.')
+
+        model_size = os.path.getsize(self._model_path)
+        self.set_size_estimate(model_size)
+
+        # Load the SAM model
+        with _ultralytics_download_patch(self.local_files_only):
+            try:
+                self._model = self.load_object_cached(
+                    tag=self._model_path,
+                    estimated_size=self.size_estimate,
+                    method=lambda: _SAM(asset),
+                )
+                self.register_module(self._model.model)
+            except Exception as e:
+                raise self.argument_error(f'Failed to load SAM model: {e}') from e
+
+    def _get_model_path(self, asset_name: str) -> str:
+
+        if asset_name not in _sam_model_map:
+            raise self.argument_error(
+                f'Unknown SAM model: {asset_name}, must be one of: '
+                f'{_textprocessing.oxford_comma(_sam_model_map.keys(), 'or')}')
+
+        try:
+            _, file = _webcache.create_web_cache_file(
+                f'{_sam_assets_url}{asset_name}', local_files_only=self.local_files_only
+            )
+        except Exception as e:
+            raise self.argument_error(f'Error downloading ultralytics asset "model": {e}')
+
+        return file
+
+    def _get_contrasting_color(self, background_color):
+        """
+        Calculate the best contrasting color for text based on background color.
+        Uses HSV color space to find a high-contrast complementary color.
+        
+        :param background_color: RGB tuple of the background color
+        :return: RGB tuple of the contrasting color
+        """
+        import colorsys
+
+        # Normalize RGB values to 0-1 range
+        r, g, b = [c / 255.0 for c in background_color[:3]]
+
+        # Convert to HSV
+        h, s, v = colorsys.rgb_to_hsv(r, g, b)
+
+        # Calculate complementary hue (opposite on color wheel)
+        complementary_h = (h + 0.5) % 1.0
+
+        # For high contrast, we want high saturation and appropriate value
+        # If background is dark, use bright contrasting color
+        # If background is bright, use darker contrasting color
+        if v < 0.5:  # Dark background
+            contrast_s = min(1.0, s + 0.3)  # Increase saturation
+            contrast_v = min(1.0, v + 0.6)  # Increase brightness
+        else:  # Bright background  
+            contrast_s = min(1.0, s + 0.2)  # Slightly increase saturation
+            contrast_v = max(0.2, v - 0.5)  # Decrease brightness
+
+        # Convert back to RGB
+        contrast_r, contrast_g, contrast_b = colorsys.hsv_to_rgb(complementary_h, contrast_s, contrast_v)
+
+        # Convert back to 0-255 range and return as integers
+        return int(contrast_r * 255), int(contrast_g * 255), int(contrast_b * 255)
+
+    def _calculate_line_width_font_size(self, image_size):
+        """
+        Calculate appropriate line width and font size based on image dimensions.
+        
+        :param image_size: tuple of (width, height)
+        :return: tuple of (line_width, font_size, text_padding)
+        """
+        # Use the larger dimension to calculate sizes
+        max_dim = max(image_size)
+        
+        # Calculate line width as 0.3% of max dimension, with min of 1 and max of 10
+        if self._line_width is None:
+            line_width = max(1, min(10, int(0.003 * max_dim)))
+        else:
+            line_width = self._line_width
+            
+        # Calculate font size as 1.5% of max dimension, with min of 10 and max of 48
+        if self._font_size is None:
+            font_size = max(10, min(48, int(0.015 * max_dim)))
+        else:
+            font_size = self._font_size
+            
+        # Calculate text padding as 0.3% of max dimension, with min of 2 and max of 8
+        text_padding = max(2, min(8, int(0.003 * max_dim)))
+            
+        return line_width, font_size, text_padding
+
+    @torch.no_grad()
+    def _process(self, image):
+        # Convert PIL image to numpy array for SAM
+        input_image = numpy.array(image)
+        
+        # Calculate dynamic sizes based on image dimensions
+        line_width, font_size, text_padding = self._calculate_line_width_font_size(image.size)
+
+        # Prepare prompts for batching
+        batch_points = []
+        batch_labels = []
+        
+        # Collect all points for batch processing
+        if self._points:
+            for point in self._points:
+                # point is [x, y, label]
+                batch_points.append([point[0], point[1]])
+                batch_labels.append(int(point[2]))
+        
+        # Process based on what prompts we have
+        if not self._points and not self._boxes:
+            _messages.debug_log("SAM mask: No prompts were specified.")
+            # Return empty result based on mode
+            if self._masks:
+                empty_color = 0 if not self._outpaint else 255
+                empty_mask = PIL.Image.new("RGB", image.size, (empty_color, empty_color, empty_color))
+                return empty_mask
+            else:
+                return image.copy()
+
+        # Run SAM with batched prompts
+        try:
+            if batch_points and self._boxes:
+                # If we have both points and boxes, we need to process them separately
+                # and combine the results, as SAM doesn't support mixed prompt types in one call
+                results_points = None
+                results_boxes = None
+                
+                if batch_points:
+                    results_points = self._model(input_image, points=batch_points, labels=batch_labels)
+                
+                if self._boxes:
+                    results_boxes = self._model(input_image, bboxes=self._boxes)
+                
+                # Combine results
+                all_results = []
+                prompt_types = []
+                prompt_indices = []
+                
+                if results_points and len(results_points) > 0:
+                    for i, result in enumerate(results_points):
+                        if result.masks is not None:
+                            all_results.append(result)
+                            prompt_types.append('point')
+                            prompt_indices.append(i)
+                
+                if results_boxes and len(results_boxes) > 0:
+                    for i, result in enumerate(results_boxes):
+                        if result.masks is not None:
+                            all_results.append(result)
+                            prompt_types.append('box')
+                            prompt_indices.append(len(self._points) + i if self._points else i)
+                
+                results = list(zip(all_results, prompt_types, prompt_indices))
+                
+            elif batch_points:
+                # Only points
+                results_points = self._model(input_image, points=batch_points, labels=batch_labels)
+                results = []
+                for i, result in enumerate(results_points):
+                    if result.masks is not None:
+                        results.append((result, 'point', i))
+                    else:
+                        _messages.debug_log(f"SAM mask: No mask generated for point prompt {i}")
+                        
+            elif self._boxes:
+                # Only boxes
+                results_boxes = self._model(input_image, bboxes=self._boxes)
+                results = []
+                for i, result in enumerate(results_boxes):
+                    if result.masks is not None:
+                        results.append((result, 'box', i))
+                    else:
+                        _messages.debug_log(f"SAM mask: No mask generated for box prompt {i}")
+                        
+        except Exception as e:
+            _messages.debug_log(f"SAM mask: Error processing prompts in batch: {e}")
+            results = []
+
+        if not results:
+            _messages.debug_log("SAM mask: No masks were generated from prompts.")
+            # Return empty result based on mode
+            if self._masks:
+                empty_color = 0 if not self._outpaint else 255
+                empty_mask = PIL.Image.new("RGB", image.size, (empty_color, empty_color, empty_color))
+                return empty_mask
+            else:
+                return image.copy()
+
+        # If masks mode is enabled, return composite mask
+        if self._masks:
+            composite_mask = PIL.Image.new("L", image.size, 0)
+
+            for result, prompt_type, prompt_idx in results:
+                if result.masks is not None:
+                    # Get the mask data
+                    mask_data = result.masks.data[0]  # Take the first (and usually only) mask
+
+                    # Convert to PIL Image
+                    mask_np = mask_data.cpu().numpy()
+                    mask_img = PIL.Image.fromarray((mask_np * 255).astype(numpy.uint8), mode="L")
+
+                    # Resize to match original image size
+                    mask_img = mask_img.resize(image.size, PIL.Image.LANCZOS)
+
+                    # Combine with composite mask (logical OR)
+                    composite_array = numpy.array(composite_mask)
+                    mask_array = numpy.array(mask_img)
+                    combined_array = numpy.maximum(composite_array, mask_array)
+                    composite_mask = PIL.Image.fromarray(combined_array, mode="L")
+
+            _messages.debug_log(f"SAM mask: Generated composite mask from {len(results)} prompts.")
+
+            if self._outpaint:
+                # Invert the composite mask for outpainting
+                composite_mask = PIL.ImageOps.invert(composite_mask)
+                _messages.debug_log("SAM mask: Inverted composite mask for outpainting.")
+
+            return composite_mask.convert('RGB')
+
+        # Preview mode - return annotated image
+        output_image = image.copy()
+        draw = PIL.ImageDraw.Draw(output_image)
+
+        # Try to load a font, fall back to default if not available
+        try:
+            font = PIL.ImageFont.truetype("arial.ttf", font_size)
+        except IOError:
+            try:
+                font = PIL.ImageFont.truetype(PIL.ImageFont.load_default().path, font_size)
+            except:
+                font = PIL.ImageFont.load_default()
+
+        # Draw mask outlines and labels
+        for result, prompt_type, prompt_idx in results:
+            if result.masks is not None:
+                # Get the mask data
+                mask_data = result.masks.data[0]  # Take the first (and usually only) mask
+
+                # Convert to PIL Image
+                mask_np = mask_data.cpu().numpy()
+                mask_img = PIL.Image.fromarray((mask_np * 255).astype(numpy.uint8), mode="L")
+
+                # Resize to match original image size
+                mask_img = mask_img.resize(image.size, PIL.Image.LANCZOS)
+                mask_array = numpy.array(mask_img)
+
+                # Sample background color from the masked area
+                image_array = numpy.array(image)
+                masked_pixels = image_array[mask_array > 128]
+
+                if len(masked_pixels) > 0:
+                    bg_color = numpy.mean(masked_pixels.reshape(-1, 3), axis=0)
+                else:
+                    # Fallback to sampling from center of image
+                    center_x, center_y = image.size[0] // 2, image.size[1] // 2
+                    bg_sample_area = image.crop((center_x - 25, center_y - 25, center_x + 25, center_y + 25))
+                    bg_color = PIL.ImageStat.Stat(bg_sample_area).mean
+
+                # Determine colors
+                if self._line_color is not None:
+                    line_color = self._hex_to_rgb(self._line_color)
+                else:
+                    line_color = self._get_contrasting_color(bg_color)
+
+                text_bg_color = line_color
+                text_color = self._get_contrasting_color(text_bg_color)
+
+                # Find mask contours
+                contours, _ = cv2.findContours(mask_array, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+                # Draw mask contours
+                for contour in contours:
+                    # Convert contour to the format PIL expects
+                    points = []
+                    for point in contour:
+                        points.extend([int(point[0][0]), int(point[0][1])])
+
+                    if len(points) >= 6:  # Need at least 3 points (6 coordinates) for a polygon
+                        draw.polygon(points, outline=line_color, width=line_width)
+
+                # Draw label
+                label = f"{prompt_idx}: {prompt_type}"
+                
+                # Get proper text bounding box
+                # textbbox returns (left, top, right, bottom) including ascent/descent
+                bbox = draw.textbbox((0, 0), label, font=font)
+                text_width = bbox[2] - bbox[0]
+                text_height = bbox[3] - bbox[1]
+                # The text baseline offset (negative value of top coordinate)
+                text_offset_y = -bbox[1]
+
+                # Find a good position for the label (top-left of the mask)
+                mask_coords = numpy.where(mask_array > 128)
+                if len(mask_coords[0]) > 0:
+                    min_y = numpy.min(mask_coords[0])
+                    min_x = numpy.min(mask_coords[1])
+
+                    # Calculate text background box position
+                    box_x = min_x
+                    box_y = max(0, min_y - text_height - text_padding * 2)
+
+                    # If box would go above the image, place it below
+                    if box_y < 0:
+                        box_y = min_y + text_padding
+
+                    # Ensure box doesn't go off the right edge
+                    if box_x + text_width + text_padding * 2 > image.size[0]:
+                        box_x = max(0, image.size[0] - text_width - text_padding * 2)
+
+                    # Draw text background box
+                    box_right = box_x + text_width + text_padding * 2
+                    box_bottom = box_y + text_height + text_padding * 2
+                    draw.rectangle([box_x, box_y, box_right, box_bottom], fill=text_bg_color)
+
+                    # Draw text centered in the box with proper baseline adjustment
+                    text_x = box_x + text_padding
+                    text_y = box_y + text_padding + text_offset_y
+                    draw.text((text_x, text_y), label, fill=text_color, font=font)
+
+        _messages.debug_log(f"SAM mask: Drew mask outlines for {len(results)} prompts.")
+        return output_image
+
+    def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
+        """
+        Pre resize, SAM mask processing may or may not occur here depending
+        on the boolean value of the processor argument "pre-resize"
+
+        :param image: image to process
+        :param resize_resolution: purely informational, is unused by this processor
+        :return: possibly a SAM mask processed image, or the input image
+        """
+        if self._pre_resize:
+            return self._process(image)
+        return image
+
+    def impl_post_resize(self, image: PIL.Image.Image):
+        """
+        Post resize, SAM mask processing may or may not occur here depending
+        on the boolean value of the processor argument "pre-resize"
+
+        :param image: image to process
+        :return: possibly a SAM mask processed image, or the input image
+        """
+        if not self._pre_resize:
+            return self._process(image)
+        return image
+
+
+__all__ = _types.module_all()

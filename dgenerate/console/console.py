@@ -387,19 +387,28 @@ class DgenerateConsole(tk.Tk):
 
         self._paned_window_vertical.add(self._output_text)
 
-        # Optional latest image pane
+        # Optional image pane
 
         self._displayed_image = None
         self._displayed_image_path = None
+
         self._image_pane_window = None
         self._image_pane_window_last_pos = None
+        self._image_pane_last_right_clicked_coords = None
         self._image_pane = tk.Frame(self._paned_window_horizontal, bg='black')
-        image_label = tk.Label(self._image_pane, bg='black')
-        image_label.pack(fill=tk.BOTH, expand=True)
-        image_label.bind('<Configure>',
-                         lambda e: self._resize_image_pane_image(image_label))
+
+        self._image_pane_image_label = tk.Label(self._image_pane, bg='black')
+        self._image_pane_image_label.pack(fill=tk.BOTH, expand=True)
+        self._image_pane_image_label.bind('<Configure>',
+                         lambda e: self._resize_image_pane_image(self._image_pane_image_label))
+        
+        # Remove the left-click binding - coordinates will come from right-click instead
 
         self._image_pane_context = tk.Menu(self._image_pane, tearoff=0)
+
+        self._install_common_image_pane_context_options(self._image_pane_context)
+        
+        self._image_pane_context.add_separator()
 
         if self._install_show_in_directory_entry(
                 self._image_pane_context, lambda: self._displayed_image_path):
@@ -413,9 +422,14 @@ class DgenerateConsole(tk.Tk):
             label='Make Window',
             command=lambda: self._image_pane_window_visible_var.set(True))
 
-        image_label.bind('<Button-3>',
-                         lambda e: self._image_pane_context.tk_popup(
-                             self.winfo_pointerx(), self.winfo_pointery()))
+        self._image_pane_image_label.bind(
+            '<Button-3>',
+            lambda e: self._show_image_pane_context_menu(
+                e,
+                self._image_pane_image_label,
+                self._image_pane_context
+            )
+        )
 
         # Misc Config
 
@@ -749,12 +763,18 @@ class DgenerateConsole(tk.Tk):
         self._image_pane_window.title('Latest Image')
         image_pane = tk.Frame(self._image_pane_window, bg='black')
         image_pane.pack(fill=tk.BOTH, expand=True)
-        image_label = tk.Label(image_pane, bg='black')
-        image_label.pack(fill=tk.BOTH, expand=True)
-        image_label.bind(
-            '<Configure>', lambda e: self._resize_image_pane_image(image_label))
+        self._image_pane_window_image_label = tk.Label(image_pane, bg='black')
+        self._image_pane_window_image_label.pack(fill=tk.BOTH, expand=True)
+        self._image_pane_window_image_label.bind(
+            '<Configure>', lambda e: self._resize_image_pane_image(
+                self._image_pane_window_image_label)
+        )
 
         image_window_context = tk.Menu(self._image_pane_window, tearoff=0)
+
+        self._install_common_image_pane_context_options(image_window_context)
+
+        image_window_context.add_separator()
 
         if self._install_show_in_directory_entry(image_window_context,
                                                  lambda: self._displayed_image_path):
@@ -763,9 +783,14 @@ class DgenerateConsole(tk.Tk):
         image_window_context.add_command(label='Make Pane',
                                          command=lambda: self._image_pane_visible_var.set(True))
 
-        image_label.bind(
+        self._image_pane_window_image_label.bind(
             '<Button-3>', lambda e:
-            image_window_context.tk_popup(self.winfo_pointerx(), self.winfo_pointery()))
+            self._show_image_pane_context_menu(
+                e,
+                self._image_pane_window_image_label,
+                image_window_context
+            )
+        )
 
         def on_closing():
             self._image_pane_window_visible_var.set(False)
@@ -794,10 +819,10 @@ class DgenerateConsole(tk.Tk):
         self._displayed_image = PIL.Image.open(image_path)
         self._displayed_image_path = image_path
 
-        self._image_pane.winfo_children()[0].event_generate('<Configure>')
+        self._image_pane_image_label.event_generate('<Configure>')
 
         if self._image_pane_window is not None:
-            self._image_pane_window.winfo_children()[0].winfo_children()[0].event_generate('<Configure>')
+            self._image_pane_window_image_label.event_generate('<Configure>')
 
     def _resize_image_pane_image(self, label: tk.Label):
         if self._displayed_image is None:
@@ -1252,6 +1277,126 @@ class DgenerateConsole(tk.Tk):
         menu.add_cascade(label='Insert Path', menu=path_submenu)
 
         return menu
+
+    def _install_common_image_pane_context_options(self, context_menu: tk.Menu):
+        context_menu.add_command(
+            label='Load Image',
+            command=self._load_image_manually)
+
+        context_menu.add_command(
+            label='Copy Coordinates',
+            command=self._copy_image_coordinates)
+
+        context_menu.add_command(
+            label='Copy Path',
+            command=self._copy_image_path)
+
+    def _show_image_pane_context_menu(self, event, image_label: tk.Label, context_menu: tk.Menu):
+        # Capture coordinates from the right-click event
+        if self._displayed_image is not None:
+            # Get the label widget (first child of the first child - Frame -> Label)
+            image_x, image_y = self._widget_to_image_coordinates(event.x, event.y, image_label)
+            if image_x is not None and image_y is not None:
+                self._image_pane_last_right_clicked_coords = (image_x, image_y)
+
+        # Enable/disable Load Image (always enabled)
+        context_menu.entryconfigure('Load Image', state=tk.NORMAL)
+        
+        # Enable/disable Copy Coordinates based on whether coordinates are available
+        if self._image_pane_last_right_clicked_coords is not None:
+            context_menu.entryconfigure('Copy Coordinates', state=tk.NORMAL)
+        else:
+            context_menu.entryconfigure('Copy Coordinates', state=tk.DISABLED)
+
+        # Enable/disable Copy Path based on whether path is available
+        if self._displayed_image_path is not None:
+            context_menu.entryconfigure('Copy Path', state=tk.NORMAL)
+        else:
+            context_menu.entryconfigure('Copy Path', state=tk.DISABLED)
+        
+        context_menu.tk_popup(self.winfo_pointerx(), self.winfo_pointery())
+
+    def _widget_to_image_coordinates(self, widget_x, widget_y, label):
+        if self._displayed_image is None:
+            return None, None
+
+        label_width = label.winfo_width()
+        label_height = label.winfo_height()
+        
+        image_width = self._displayed_image.width
+        image_height = self._displayed_image.height
+        
+        # Calculate the displayed image size (same logic as _resize_image_pane_image)
+        image_aspect = image_width / image_height
+        label_aspect = label_width / label_height
+        
+        if image_aspect > label_aspect:
+            # Image is wider than label - fit to width
+            display_width = label_width
+            display_height = int(display_width / image_aspect)
+        else:
+            # Image is taller than label - fit to height
+            display_height = label_height
+            display_width = int(display_height * image_aspect)
+        
+        # Calculate offsets for centering
+        x_offset = (label_width - display_width) // 2
+        y_offset = (label_height - display_height) // 2
+        
+        # Check if click is within the displayed image bounds
+        if (widget_x < x_offset or widget_x >= x_offset + display_width or
+            widget_y < y_offset or widget_y >= y_offset + display_height):
+            return None, None
+        
+        # Convert to image coordinates
+        relative_x = widget_x - x_offset
+        relative_y = widget_y - y_offset
+        
+        image_x = int((relative_x / display_width) * image_width)
+        image_y = int((relative_y / display_height) * image_height)
+        
+        # Ensure coordinates are within bounds
+        image_x = max(0, min(image_x, image_width - 1))
+        image_y = max(0, min(image_y, image_height - 1))
+        
+        return image_x, image_y
+
+    def _copy_image_coordinates(self):
+        if self._image_pane_last_right_clicked_coords is None:
+            return
+        
+        x, y = self._image_pane_last_right_clicked_coords
+        coordinate_text = f"{x},{y}"
+        
+        try:
+            self.clipboard_clear()
+            self.clipboard_append(coordinate_text)
+        except Exception as e:
+            self._write_stderr_output(f"Failed to copy coordinates to clipboard: {e}\n")
+
+    def _copy_image_path(self):
+        if self._displayed_image_path is None:
+            return
+
+        try:
+            self.clipboard_clear()
+            self.clipboard_append(self._displayed_image_path)
+        except Exception as e:
+            self._write_stderr_output(f"Failed to copy image path to clipboard: {e}\n")
+
+    def _load_image_manually(self):
+        f = _filedialog.open_file_dialog(
+            **_resources.get_file_dialog_args(['images-in']),
+            initialdir=self._shell_procmon.cwd())
+        
+        if f is None:
+            return
+        
+        try:
+            self._image_pane_load_image(f)
+            self._write_stdout_output(f"Manually loaded image: {f}\n")
+        except Exception as e:
+            self._write_stderr_output(f"Failed to load image: {e}\n")
 
 
 def main(args: collections.abc.Sequence[str]):

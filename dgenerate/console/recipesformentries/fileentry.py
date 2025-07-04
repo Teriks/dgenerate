@@ -24,6 +24,7 @@ import tkinter as tk
 import dgenerate.console.filedialog as _filedialog
 import dgenerate.console.recipesformentries.entry as _entry
 import dgenerate.console.resources as _resources
+import dgenerate.console.textentry as _t_entry
 
 
 class _FileEntry(_entry._Entry):
@@ -37,7 +38,7 @@ class _FileEntry(_entry._Entry):
         self.label_widget = tk.Label(self.master,
                                      text=self.get_label('File'), anchor='e')
 
-        self.entry = tk.Entry(self.master, textvariable=self.text_var)
+        self.entry = _t_entry.TextEntry(self.master, textvariable=self.text_var)
         self.select_mode = self.config.get('mode', 'input')
         self.file_types = self.config.get('file-types', [])
 

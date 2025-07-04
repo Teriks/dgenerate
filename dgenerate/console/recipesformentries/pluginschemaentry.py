@@ -29,6 +29,7 @@ import dgenerate.console.resources as _resources
 from dgenerate.console.mousewheelbind import bind_mousewheel, un_bind_mousewheel
 from dgenerate.console.spinbox import FloatSpinbox, IntSpinbox
 from dgenerate.console.combobox import ComboBox
+import dgenerate.console.textentry as _t_entry
 
 
 class _PluginArgEntry:
@@ -322,7 +323,7 @@ class _PluginSchemaEntry(_entry._Entry):
         default_value = str(default_value)
         variable = tk.StringVar(
             value=default_value if default_value != 'None' else '')
-        entry = tk.Entry(self.master, textvariable=variable)
+        entry = _t_entry.TextEntry(self.master, textvariable=variable)
         entry.grid(row=row, column=1, sticky='we', padx=_entry.ROW_XPAD)
         return _PluginArgEntry(raw=True, widgets=[entry], variable=variable)
 

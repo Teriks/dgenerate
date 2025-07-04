@@ -1,0 +1,15 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 5.0.0
+
+# Ultralytics segment anything processor, the point is
+# approximately center mass on the horse
+
+\image_process ../media/horse2.jpeg
+-o horse2-u-sam-preview.png
+--processors u-sam;asset=sam_l;points=1084,586
+
+# create a black and white mask, white where the horse was detected
+
+\image_process ../media/horse2.jpeg
+-o horse2-u-sam-mask.png
+--processors u-sam;asset=sam_l;points=1084,586;masks=True

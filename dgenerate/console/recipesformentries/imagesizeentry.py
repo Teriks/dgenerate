@@ -23,6 +23,7 @@ import tkinter as tk
 
 import dgenerate.console.recipesformentries.entry as _entry
 import dgenerate.textprocessing as _textprocessing
+import dgenerate.console.textentry as _t_entry
 
 
 class _ImageSizeEntry(_entry._Entry):
@@ -38,7 +39,7 @@ class _ImageSizeEntry(_entry._Entry):
             self.master,
             text=self.get_label('Size'), anchor='e')
 
-        self.entry = tk.Entry(self.master, textvariable=self.text_var)
+        self.entry = _t_entry.TextEntry(self.master, textvariable=self.text_var)
 
         self.label_widget.grid(row=self.row, column=0, padx=_entry.ROW_XPAD, sticky='e')
         self.entry.grid(row=self.row, column=1, padx=_entry.ROW_XPAD, sticky='ew')
