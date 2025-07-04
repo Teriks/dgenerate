@@ -29,10 +29,10 @@ import PIL.ImageOps
 import PIL.ImageStat
 import cv2
 import huggingface_hub
-import numpy as np
+import numpy
 import torch
-from torchvision.transforms.functional import to_pil_image
-from ultralytics import YOLO
+from torchvision.transforms.functional import to_pil_image as _to_pil_image
+from ultralytics import YOLO as _YOLO
 
 import dgenerate.hfhub as _hfhub
 import dgenerate.imageprocessors.util as _util
@@ -85,9 +85,11 @@ class YOLODetectionProcessor(_imageprocessor.ImageProcessor):
     download any model files, and to only look for them locally in the cache or
     otherwise.
 
-    The "font-size" argument determines the size of the label text.
+    The "font-size" argument determines the size of the label text. If not specified,
+    it will be automatically calculated based on the image dimensions.
 
-    The "line-width" argument controls the thickness of the bounding box lines.
+    The "line-width" argument controls the thickness of the bounding box lines. If not specified,
+    it will be automatically calculated based on the image dimensions.
 
     The "line-color" argument overrides the color for bounding box lines, mask outlines, 
     and text label backgrounds. This should be specified as a HEX color code, e.g. "#FFFFFF" 
@@ -213,8 +215,8 @@ class YOLODetectionProcessor(_imageprocessor.ImageProcessor):
                  subfolder: str | None = None,
                  revision: str | None = None,
                  token: str | None = None,
-                 font_size: int = 12,
-                 line_width: int = 2,
+                 font_size: int | None = None,
+                 line_width: int | None = None,
                  line_color: str | None = None,
                  class_filter: int | str | list | tuple | set | None = None,
                  index_filter: int | list | tuple | set | None = None,
@@ -235,8 +237,8 @@ class YOLODetectionProcessor(_imageprocessor.ImageProcessor):
         :param revision: revision of a HuggingFace repository for the model weights,
             if you have provided a HuggingFace repository slug to the model argument (e.g. "main")
         :param token: HuggingFace authentication token if needed for accessing private repositories
-        :param font_size: size of label text
-        :param line_width: thickness of bounding box lines
+        :param font_size: size of label text, if None will be calculated based on image dimensions
+        :param line_width: thickness of bounding box lines, if None will be calculated based on image dimensions
         :param line_color: override color for bounding box lines, mask outlines,
             and text label backgrounds as hex color code (e.g. "#FF0000" or "#F00")
         :param class_filter: list of class IDs or class names to include (e.g. ``[0,2,"person","car"]``)
@@ -255,10 +257,10 @@ class YOLODetectionProcessor(_imageprocessor.ImageProcessor):
         if confidence < 0.0 or confidence > 1.0:
             raise self.argument_error('Argument "confidence" must be between 0.0 and 1.0.')
 
-        if line_width < 1:
+        if line_width is not None and line_width < 1:
             raise self.argument_error('Argument "line-width" must be at least 1.')
 
-        if font_size < 8:
+        if font_size is not None and font_size < 8:
             raise self.argument_error('Argument "font-size" must be at least 8.')
 
         # Validate color arguments
@@ -317,7 +319,7 @@ class YOLODetectionProcessor(_imageprocessor.ImageProcessor):
             self._model = self.load_object_cached(
                 tag=self._model_path,
                 estimated_size=self.size_estimate,
-                method=lambda: YOLO(self._model_path)
+                method=lambda: _YOLO(self._model_path)
             )
             self.register_module(self._model.model)
         except Exception as e:
@@ -457,10 +459,40 @@ class YOLODetectionProcessor(_imageprocessor.ImageProcessor):
         # Convert back to 0-255 range and return as integers
         return int(contrast_r * 255), int(contrast_g * 255), int(contrast_b * 255)
 
+    def _calculate_line_width_font_size(self, image_size):
+        """
+        Calculate appropriate line width and font size based on image dimensions.
+        
+        :param image_size: tuple of (width, height)
+        :return: tuple of (line_width, font_size, text_padding)
+        """
+        # Use the larger dimension to calculate sizes
+        max_dim = max(image_size)
+        
+        # Calculate line width as 0.2% of max dimension, with min of 1 and max of 10
+        if self._line_width is None:
+            line_width = max(1, min(10, int(0.003 * max_dim)))
+        else:
+            line_width = self._line_width
+            
+        # Calculate font size as 1.5% of max dimension, with min of 10 and max of 48
+        if self._font_size is None:
+            font_size = max(10, min(48, int(0.015 * max_dim)))
+        else:
+            font_size = self._font_size
+            
+        # Calculate text padding as 0.3% of max dimension, with min of 2 and max of 8
+        text_padding = max(2, min(8, int(0.003 * max_dim)))
+            
+        return line_width, font_size, text_padding
+
     @torch.no_grad()
     def _process(self, image):
         # Convert PIL image to numpy array for YOLO
-        input_image = np.array(image)
+        input_image = numpy.array(image)
+
+        # Calculate dynamic sizes based on image dimensions
+        line_width, font_size, text_padding = self._calculate_line_width_font_size(image.size)
 
         # Run YOLO detection
         results = self._model(input_image, conf=self._confidence)
@@ -471,10 +503,10 @@ class YOLODetectionProcessor(_imageprocessor.ImageProcessor):
 
         # Try to load a font, fall back to default if not available
         try:
-            font = PIL.ImageFont.truetype("arial.ttf", self._font_size)
+            font = PIL.ImageFont.truetype("arial.ttf", font_size)
         except IOError:
             try:
-                font = PIL.ImageFont.truetype(PIL.ImageFont.load_default().path, self._font_size)
+                font = PIL.ImageFont.truetype(PIL.ImageFont.load_default().path, font_size)
             except:
                 font = PIL.ImageFont.load_default()
 
@@ -518,7 +550,7 @@ class YOLODetectionProcessor(_imageprocessor.ImageProcessor):
             if use_masks:
                 # Convert masks to PIL images, applying the same filtering
                 mask_data = results[0].masks.data[sorted_indices]  # Apply filtering to mask data
-                masks = [to_pil_image(mask_data[i], mode="L").resize(image.size)
+                masks = [_to_pil_image(mask_data[i], mode="L").resize(image.size)
                          for i in range(len(mask_data))]
 
             # First pass: Draw all bounding boxes and mask outlines
@@ -542,15 +574,15 @@ class YOLODetectionProcessor(_imageprocessor.ImageProcessor):
                 if use_masks and idx < len(masks):
                     # Use mask to sample color from actual detected object pixels
                     mask = masks[idx]
-                    mask_array = np.array(mask)
-                    image_array = np.array(image)
+                    mask_array = numpy.array(mask)
+                    image_array = numpy.array(image)
 
                     # Get pixels where mask is non-zero (detected object area)
                     masked_pixels = image_array[mask_array > 128]  # Threshold mask at 128
 
                     if len(masked_pixels) > 0:
                         # Calculate mean color from masked pixels
-                        bg_color = np.mean(masked_pixels.reshape(-1, 3), axis=0)
+                        bg_color = numpy.mean(masked_pixels.reshape(-1, 3), axis=0)
                     else:
                         # Fallback to bounding box sampling if mask is empty
                         bg_sample_area = image.crop((x1, y1, min(x1 + 50, x2), min(y1 + 10, y2)))
@@ -576,7 +608,7 @@ class YOLODetectionProcessor(_imageprocessor.ImageProcessor):
                 if use_masks and idx < len(masks):
                     # Draw mask outline instead of bounding box
                     mask = masks[idx]
-                    mask_array = np.array(mask)
+                    mask_array = numpy.array(mask)
 
                     # Find contours of the mask
                     contours, _ = cv2.findContours(mask_array, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -589,15 +621,24 @@ class YOLODetectionProcessor(_imageprocessor.ImageProcessor):
                             points.extend([int(point[0][0]), int(point[0][1])])
 
                         if len(points) >= 6:  # Need at least 3 points (6 coordinates) for a polygon
-                            draw.polygon(points, outline=line_color, width=self._line_width)
+                            draw.polygon(points, outline=line_color, width=line_width)
                 else:
                     # Draw the bounding box
-                    draw.rectangle([x1, y1, x2, y2], outline=line_color, width=self._line_width)
+                    draw.rectangle([x1, y1, x2, y2], outline=line_color, width=line_width)
 
                 # Store text label information for second pass
                 label = f"{idx}: {class_id}-{class_name} ({confidence:.2f})"
-                text_width, text_height = draw.textsize(label, font=font) if \
-                    hasattr(draw, 'textsize') else (len(label) * (self._font_size // 2), self._font_size)
+                
+                # Get proper text bounding box using textbbox
+                try:
+                    bbox = draw.textbbox((0, 0), label, font=font)
+                    text_width = bbox[2] - bbox[0]
+                    text_height = bbox[3] - bbox[1]
+                    text_offset_y = -bbox[1]  # Baseline offset
+                except AttributeError:
+                    # Fallback for older Pillow versions
+                    text_width, text_height = draw.textsize(label, font=font)
+                    text_offset_y = 0
 
                 text_labels.append({
                     'label': label,
@@ -605,6 +646,7 @@ class YOLODetectionProcessor(_imageprocessor.ImageProcessor):
                     'y': y1,
                     'text_width': text_width,
                     'text_height': text_height,
+                    'text_offset_y': text_offset_y,
                     'text_bg_color': text_bg_color,
                     'text_color': text_color
                 })
@@ -613,38 +655,39 @@ class YOLODetectionProcessor(_imageprocessor.ImageProcessor):
             for text_info in text_labels:
                 x1, y1 = text_info['x'], text_info['y']
                 text_width, text_height = text_info['text_width'], text_info['text_height']
+                text_offset_y = text_info['text_offset_y']
                 text_bg_color = text_info['text_bg_color']
                 text_color = text_info['text_color']
                 label = text_info['label']
 
-                # Calculate text position and ensure it stays within image bounds
-                text_y_top = y1 - text_height - 4
-                text_y_bottom = y1
-                text_x_left = x1
-                text_x_right = x1 + text_width + 4
+                # Calculate text background box position and ensure it stays within image bounds
+                box_y_top = y1 - text_height - text_padding * 2
+                box_y_bottom = y1
+                box_x_left = x1
+                box_x_right = x1 + text_width + text_padding * 2
 
-                # If text would go above the image, draw it below the top edge of the bbox instead
-                if text_y_top < 0:
-                    text_y_top = y1
-                    text_y_bottom = y1 + text_height + 4
+                # If box would go above the image, draw it below the top edge of the bbox instead
+                if box_y_top < 0:
+                    box_y_top = y1
+                    box_y_bottom = y1 + text_height + text_padding * 2
 
-                # If text would go off the right edge, shift it left
-                if text_x_right > image.size[0]:
-                    offset = text_x_right - image.size[0]
-                    text_x_left = max(0, text_x_left - offset)
-                    text_x_right = image.size[0]
+                # If box would go off the right edge, shift it left
+                if box_x_right > image.size[0]:
+                    offset = box_x_right - image.size[0]
+                    box_x_left = max(0, box_x_left - offset)
+                    box_x_right = image.size[0]
 
-                # Ensure text doesn't go off the left edge
-                if text_x_left < 0:
-                    text_x_left = 0
-                    text_x_right = min(image.size[0], text_width + 4)
+                # Ensure box doesn't go off the left edge
+                if box_x_left < 0:
+                    box_x_left = 0
+                    box_x_right = min(image.size[0], text_width + text_padding * 2)
 
-                # Draw text background
-                draw.rectangle([text_x_left, text_y_top, text_x_right, text_y_bottom], fill=text_bg_color)
+                # Draw text background box
+                draw.rectangle([box_x_left, box_y_top, box_x_right, box_y_bottom], fill=text_bg_color)
 
-                # Draw text with contrasting color (adjust text position accordingly)
-                text_x = text_x_left + 2
-                text_y = text_y_top + 2 if text_y_top >= y1 else text_y_bottom - text_height - 2
+                # Draw text centered in the box with proper baseline adjustment
+                text_x = box_x_left + text_padding
+                text_y = box_y_top + text_padding + text_offset_y
                 draw.text((text_x, text_y), label, fill=text_color, font=font)
 
             if not sorted_indices:
@@ -663,7 +706,7 @@ class YOLODetectionProcessor(_imageprocessor.ImageProcessor):
                     # Use model-generated masks (ignore sizing options as per adetailer behavior)
                     mask_data = results[0].masks.data[sorted_indices]
                     for i in range(len(mask_data)):
-                        mask_img = to_pil_image(mask_data[i], mode="L").resize(image.size)
+                        mask_img = _to_pil_image(mask_data[i], mode="L").resize(image.size)
                         mask_images.append(mask_img)
                 else:
                     # Create masks from bounding boxes using our sizing options
@@ -682,11 +725,11 @@ class YOLODetectionProcessor(_imageprocessor.ImageProcessor):
                 for mask_img in mask_images:
                     # Use PIL.Image.composite to combine masks (logical OR operation)
                     # Convert to binary masks first
-                    mask_array = np.array(mask_img)
-                    composite_array = np.array(composite_mask)
+                    mask_array = numpy.array(mask_img)
+                    composite_array = numpy.array(composite_mask)
 
                     # Combine using logical OR (any pixel that's white in either mask becomes white)
-                    combined_array = np.maximum(mask_array, composite_array)
+                    combined_array = numpy.maximum(mask_array, composite_array)
                     composite_mask = PIL.Image.fromarray(combined_array, mode="L")
 
                 _messages.debug_log(f"YOLO detection: Generated composite mask from {len(mask_images)} detections.")

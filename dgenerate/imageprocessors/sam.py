@@ -38,6 +38,10 @@ class SegmentAnythingProcessor(_imageprocessor.ImageProcessor):
     """
     Segment Anything Model, this processor attempts to create cutouts for every distinct object in an image.
 
+    Note that this processor is just for use with controlnet models that support SAM annotated input images.
+
+    If you want to generate masks or preview segmentation using prompting, use the "u-sam" processor instead.
+
     The "detect-resolution" argument is the resolution the image is resized to internal to the processor before
     detection is run on it. It should be a single dimension for example: "detect-resolution=512" or the X/Y dimensions
     seperated by an "x" character, like so: "detect-resolution=1024x512". If you do not specify this argument,

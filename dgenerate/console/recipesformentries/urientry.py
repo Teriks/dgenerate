@@ -23,6 +23,7 @@ import tkinter as tk
 import dgenerate.console.filedialog as _filedialog
 import dgenerate.console.recipesformentries.entry as _entry
 import dgenerate.console.resources as _resources
+import dgenerate.console.textentry as _t_entry
 
 
 class _UriEntry(_entry._Entry):
@@ -46,7 +47,7 @@ class _UriEntry(_entry._Entry):
             anchor='e')
 
         self.uri_entry = \
-            tk.Entry(self.master, textvariable=self.uri_var)
+            _t_entry.TextEntry(self.master, textvariable=self.uri_var)
 
         file_types = self.config.get('file-types', [])
         is_dir = self.config.get('dir', False)

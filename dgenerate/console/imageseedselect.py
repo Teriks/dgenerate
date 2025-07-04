@@ -28,6 +28,7 @@ import dgenerate.console.resources as _resources
 import dgenerate.console.spinbox as _spinbox
 import dgenerate.console.util as _util
 import dgenerate.textprocessing as _textprocessing
+import dgenerate.console.textentry as _t_entry
 
 _dialog_state = _util.DialogState(save_position=True, save_size=False)
 
@@ -66,7 +67,7 @@ class _ImageSeedSelect(tk.Toplevel):
         for i, label in enumerate(labels):
             tk.Label(self, text=label).grid(row=i, column=0, sticky=tk.E)
 
-            entry = tk.Entry(self)
+            entry = _t_entry.TextEntry(self)
             entry.grid(row=i, column=1, padx=(2, 5), sticky=tk.EW)
             entry.bind("<Key>", self._valid)
             self.entries.append(entry)
@@ -88,7 +89,7 @@ class _ImageSeedSelect(tk.Toplevel):
         tk.Label(self, text='(Optional) Resize Dimension (WxH)').grid(
             row=5, column=0, sticky=tk.E)
 
-        self.resize_entry = tk.Entry(self)
+        self.resize_entry = _t_entry.TextEntry(self)
         self.resize_entry.grid(row=5, column=1, padx=(2, 5), sticky=tk.EW)
         self.resize_entry.bind("<Key>", self._valid)
         self.entries.append(self.resize_entry)

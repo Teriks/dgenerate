@@ -21,11 +21,12 @@
 import re
 import sys
 import tkinter as tk
+import dgenerate.console.textentry as _t_entry
 
 from dgenerate.console.mousewheelbind import bind_mousewheel, un_bind_mousewheel
 
 
-class IntSpinbox(tk.Entry):
+class IntSpinbox(_t_entry.TextEntry):
     """
     Spin box for integer values.
     """
@@ -151,7 +152,7 @@ class IntSpinbox(tk.Entry):
         super().destroy()
 
 
-class FloatSpinbox(tk.Entry):
+class FloatSpinbox(_t_entry.TextEntry):
     """
     Spinbox for floats where the accuracy of the value retrieved is important.
     """
