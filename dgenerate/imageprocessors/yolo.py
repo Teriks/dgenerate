@@ -459,6 +459,101 @@ class YOLODetectionProcessor(_imageprocessor.ImageProcessor):
         # Convert back to 0-255 range and return as integers
         return int(contrast_r * 255), int(contrast_g * 255), int(contrast_b * 255)
 
+    def _sample_bbox_line_area_background_color(self, image, x1, y1, x2, y2, line_width, extra_pixels=3):
+        """
+        Sample background color from the area where the bounding box lines will be drawn,
+        including pixels both inside and outside the line area for better contrast.
+        
+        :param image: PIL Image to sample from
+        :param x1, y1, x2, y2: bounding box coordinates
+        :param line_width: width of the line that will be drawn
+        :param extra_pixels: additional pixels to sample beyond the line width
+        :return: RGB tuple of the average background color around the line area
+        """
+        image_array = numpy.array(image)
+        h, w = image_array.shape[:2]
+        
+        # Calculate the thickness of the sampling area
+        sample_thickness = line_width + extra_pixels * 2
+        half_thickness = sample_thickness // 2
+        
+        # Create lists to collect pixels from all four sides of the box
+        pixels = []
+        
+        # Top edge
+        y_start = max(0, y1 - half_thickness)
+        y_end = min(h, y1 + half_thickness + 1)
+        x_start = max(0, x1 - half_thickness)
+        x_end = min(w, x2 + half_thickness + 1)
+        if y_end > y_start and x_end > x_start:
+            pixels.extend(image_array[y_start:y_end, x_start:x_end].reshape(-1, 3))
+        
+        # Bottom edge
+        y_start = max(0, y2 - half_thickness)
+        y_end = min(h, y2 + half_thickness + 1)
+        if y_end > y_start and x_end > x_start:
+            pixels.extend(image_array[y_start:y_end, x_start:x_end].reshape(-1, 3))
+        
+        # Left edge (excluding corners to avoid double-counting)
+        x_start = max(0, x1 - half_thickness)
+        x_end = min(w, x1 + half_thickness + 1)
+        y_start = max(0, y1 + half_thickness + 1)
+        y_end = min(h, y2 - half_thickness)
+        if x_end > x_start and y_end > y_start:
+            pixels.extend(image_array[y_start:y_end, x_start:x_end].reshape(-1, 3))
+        
+        # Right edge (excluding corners to avoid double-counting)
+        x_start = max(0, x2 - half_thickness)
+        x_end = min(w, x2 + half_thickness + 1)
+        if x_end > x_start and y_end > y_start:
+            pixels.extend(image_array[y_start:y_end, x_start:x_end].reshape(-1, 3))
+        
+        if pixels:
+            bg_color = numpy.mean(pixels, axis=0)
+        else:
+            # Fallback to sampling from center of image
+            center_x, center_y = image.size[0] // 2, image.size[1] // 2
+            bg_sample_area = image.crop((center_x - 25, center_y - 25, center_x + 25, center_y + 25))
+            bg_color = PIL.ImageStat.Stat(bg_sample_area).mean
+        
+        return bg_color
+
+    def _sample_mask_line_area_background_color(self, image, contours, line_width, extra_thickness=3):
+        """
+        Sample background color from the area where the mask outline will be drawn,
+        including pixels both inside and outside the line area for better contrast.
+        
+        :param image: PIL Image to sample from
+        :param contours: list of contours from cv2.findContours
+        :param line_width: width of the line that will be drawn
+        :param extra_thickness: additional pixels to sample beyond the line width
+        :return: RGB tuple of the average background color around the line area
+        """
+        # Create a mask for the line area
+        line_mask = numpy.zeros((image.size[1], image.size[0]), dtype=numpy.uint8)
+        
+        # Draw the contours with the actual line width plus extra thickness
+        # This gives us the area where the line will be plus some surrounding pixels
+        sample_width = line_width + extra_thickness * 2
+        cv2.drawContours(line_mask, contours, -1, 255, thickness=sample_width)
+        
+        # Convert image to numpy array
+        image_array = numpy.array(image)
+        
+        # Sample colors from the line area
+        line_pixels = image_array[line_mask > 0]
+        
+        if len(line_pixels) > 0:
+            # Calculate mean color from line area pixels
+            bg_color = numpy.mean(line_pixels.reshape(-1, 3), axis=0)
+        else:
+            # Fallback to sampling from center of image if line area is empty
+            center_x, center_y = image.size[0] // 2, image.size[1] // 2
+            bg_sample_area = image.crop((center_x - 25, center_y - 25, center_x + 25, center_y + 25))
+            bg_color = PIL.ImageStat.Stat(bg_sample_area).mean
+        
+        return bg_color
+
     def _calculate_line_width_font_size(self, image_size):
         """
         Calculate appropriate line width and font size based on image dimensions.
@@ -571,27 +666,16 @@ class YOLODetectionProcessor(_imageprocessor.ImageProcessor):
                 confidence = confidences[i]
 
                 # Sample color for contrast calculation
+                contours = None  # Initialize for potential reuse
                 if use_masks and idx < len(masks):
-                    # Use mask to sample color from actual detected object pixels
+                    # For mask outlines, we need to find contours first to sample the line area
                     mask = masks[idx]
                     mask_array = numpy.array(mask)
-                    image_array = numpy.array(image)
-
-                    # Get pixels where mask is non-zero (detected object area)
-                    masked_pixels = image_array[mask_array > 128]  # Threshold mask at 128
-
-                    if len(masked_pixels) > 0:
-                        # Calculate mean color from masked pixels
-                        bg_color = numpy.mean(masked_pixels.reshape(-1, 3), axis=0)
-                    else:
-                        # Fallback to bounding box sampling if mask is empty
-                        bg_sample_area = image.crop((x1, y1, min(x1 + 50, x2), min(y1 + 10, y2)))
-                        bg_color = PIL.ImageStat.Stat(bg_sample_area).mean
+                    contours, _ = cv2.findContours(mask_array, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                    bg_color = self._sample_mask_line_area_background_color(image, contours, line_width)
                 else:
-                    # Sample background color from the image at the top of the bounding box
-                    # for determining contrasting color
-                    bg_sample_area = image.crop((x1, y1, min(x1 + 50, x2), min(y1 + 10, y2)))
-                    bg_color = PIL.ImageStat.Stat(bg_sample_area).mean
+                    # For bounding boxes, sample from where the box lines will be drawn
+                    bg_color = self._sample_bbox_line_area_background_color(image, x1, y1, x2, y2, line_width)
 
                 # Determine colors - use overrides if provided, otherwise use contrasting colors
                 if self._line_color is not None:
@@ -607,12 +691,8 @@ class YOLODetectionProcessor(_imageprocessor.ImageProcessor):
 
                 if use_masks and idx < len(masks):
                     # Draw mask outline instead of bounding box
-                    mask = masks[idx]
-                    mask_array = numpy.array(mask)
-
-                    # Find contours of the mask
-                    contours, _ = cv2.findContours(mask_array, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
+                    # (contours were already calculated above for color sampling)
+                    
                     # Draw mask contours
                     for contour in contours:
                         # Convert contour to the format PIL expects
