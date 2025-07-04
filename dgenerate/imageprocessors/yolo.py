@@ -469,20 +469,20 @@ class YOLODetectionProcessor(_imageprocessor.ImageProcessor):
         # Use the larger dimension to calculate sizes
         max_dim = max(image_size)
         
-        # Calculate line width as 0.2% of max dimension, with min of 1 and max of 10
+        # Calculate line width as 0.2% of max dimension, with min of 1
         if self._line_width is None:
-            line_width = max(1, min(10, int(0.003 * max_dim)))
+            line_width = max(1, int(0.003 * max_dim))
         else:
             line_width = self._line_width
             
-        # Calculate font size as 1.5% of max dimension, with min of 10 and max of 48
+        # Calculate font size as 1.5% of max dimension, with min of 10
         if self._font_size is None:
-            font_size = max(10, min(48, int(0.015 * max_dim)))
+            font_size = max(10, int(0.015 * max_dim))
         else:
             font_size = self._font_size
             
-        # Calculate text padding as 0.3% of max dimension, with min of 2 and max of 8
-        text_padding = max(2, min(8, int(0.003 * max_dim)))
+        # Calculate text padding as 0.3% of max dimension, with min of 2
+        text_padding = max(2, int(0.003 * max_dim))
             
         return line_width, font_size, text_padding
 
