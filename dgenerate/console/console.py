@@ -1279,19 +1279,27 @@ class DgenerateConsole(tk.Tk):
         return menu
 
     def _install_common_image_pane_context_options(self, context_menu: tk.Menu):
+
         context_menu.add_command(
-            label='Load Image',
-            command=self._load_image_manually)
+            label='Copy Coordinates "x"',
+            command=lambda: self._copy_image_coordinates('x'))
+
+        context_menu.add_command(
+            label='Copy Coordinates CSV',
+            command=lambda: self._copy_image_coordinates(','))
 
         context_menu.add_separator()
 
         context_menu.add_command(
-            label='Copy Coordinates',
-            command=self._copy_image_coordinates)
-
-        context_menu.add_command(
             label='Copy Path',
             command=self._copy_image_path)
+
+        context_menu.add_separator()
+
+        context_menu.add_command(
+            label='Load Image',
+            command=self._load_image_manually)
+
 
     def _show_image_pane_context_menu(self, event, image_label: tk.Label, context_menu: tk.Menu):
         # Capture coordinates from the right-click event
@@ -1306,9 +1314,11 @@ class DgenerateConsole(tk.Tk):
         
         # Enable/disable Copy Coordinates based on whether coordinates are available
         if self._image_pane_last_right_clicked_coords is not None:
-            context_menu.entryconfigure('Copy Coordinates', state=tk.NORMAL)
+            context_menu.entryconfigure('Copy Coordinates "x"', state=tk.NORMAL)
+            context_menu.entryconfigure('Copy Coordinates CSV', state=tk.NORMAL)
         else:
-            context_menu.entryconfigure('Copy Coordinates', state=tk.DISABLED)
+            context_menu.entryconfigure('Copy Coordinates "x"', state=tk.DISABLED)
+            context_menu.entryconfigure('Copy Coordinates CSV', state=tk.DISABLED)
 
         # Enable/disable Copy Path based on whether path is available
         if self._displayed_image_path is not None:
@@ -1363,12 +1373,12 @@ class DgenerateConsole(tk.Tk):
         
         return image_x, image_y
 
-    def _copy_image_coordinates(self):
+    def _copy_image_coordinates(self, sep):
         if self._image_pane_last_right_clicked_coords is None:
             return
         
         x, y = self._image_pane_last_right_clicked_coords
-        coordinate_text = f"{x},{y}"
+        coordinate_text = f"{x}{sep}{y}"
         
         try:
             self.clipboard_clear()

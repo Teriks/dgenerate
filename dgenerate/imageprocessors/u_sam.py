@@ -105,9 +105,11 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
         can be specified as either:
         
         NOWRAP!
-        - Single point: [x, y] or x,y
+        - Single point: [x, y] or x,y or "x,y"
         - Nested list/tuple: [[x, y], ...] or [[x, y, label], ...] where label is 1 for foreground, 0 for background
         - String format: ["x,y", ...] or ["x,y,label", ...]
+        
+        Note that for string format, comma is interchangeable and mixable with the character "x".
     
         If no label is provided, it defaults to 1 (foreground).
     
@@ -115,15 +117,18 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
         Examples:
             points=[100,100]                    # Single point
             points=100,100                      # Single point
+            points=100x100                      # Single point
             points=[[100, 100], [200, 200, 0]]  # Nested format
             points=["100,100", "200,200,0"]     # String format
             points="100,100","200,200,0"        # String format
+            points=["100x100", "200x200x0"]     # String format
+            points="100x100","200x200x0"        # String format
     
         The "boxes" argument specifies bounding box prompts as a list of coordinates. Each box
         can be specified as either:
     
         NOWRAP!
-        - Single box: [x1, y1, x2, y2] or x1,y1,x2,y2
+        - Single box: [x1, y1, x2, y2] or x1,y1,x2,y2 or "x1,y1,x2,y2"
         - Nested list/tuple: [[x1, y1, x2, y2], ...]
         - String format: ["x1,y1,x2,y2", ...]
     
@@ -131,9 +136,11 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
         Examples:
             boxes=[50, 50, 150, 150]                          # Single box
             boxes=50,50,150,150                               # Single box
+            boxes=50x50x150x150                               # Single box
             boxes=[[50, 50, 150, 150], [200, 200, 300, 300]]  # Nested format
             boxes=["50,50,150,150", "200,200,300,300"]        # String format
             boxes="50,50,150,150","200,200,300,300"           # String format
+            boxes="50x50x150x150","200x200x300x300"           # String format
     
         Note: You may use python tuple syntax as well as list syntax, additionally
         something such as: (100,100),(100,100) will be interpreted as a tuple of
@@ -181,7 +188,7 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
         if not points_input:
             return []
 
-        if any(isinstance(x, int) for x in points_input):
+        if isinstance(points_input, str) or any(isinstance(x, int) for x in points_input):
             # singular point
             points_input = [points_input]
 
@@ -201,7 +208,8 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
                     raise ValueError(f"Point should have 2 or 3 coordinates: {point}")
             elif isinstance(point, str):
                 # String format for backward compatibility: "x,y" or "x,y,label"
-                coords = point.split(',')
+                # And: "X-COORDxY-COORD"
+                coords = re.split(r'[x,]', point)
                 if len(coords) < 2:
                     raise ValueError(f"Point must have at least x,y coordinates: {point}")
                 elif len(coords) == 2:
@@ -222,7 +230,7 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
         if not boxes_input:
             return []
 
-        if any(isinstance(x, int) for x in boxes_input):
+        if isinstance(boxes_input, str) or any(isinstance(x, int) for x in boxes_input):
             # singular box
             boxes_input = [boxes_input]
 
@@ -236,7 +244,8 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
                 boxes.append([x1, y1, x2, y2])
             elif isinstance(box, str):
                 # String format for backward compatibility: "x1,y1,x2,y2"
-                coords = box.split(',')
+                # And "TOPxLEFTxBOTTOMxRIGHT"
+                coords = re.split(r'[x,]', box)
                 if len(coords) != 4:
                     raise ValueError(f"Box must have x1,y1,x2,y2 coordinates: {box}")
                 x1, y1, x2, y2 = map(float, coords)
@@ -247,8 +256,8 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
 
     def __init__(self,
                  asset: str,
-                 points: list | tuple | None = None,
-                 boxes: list | tuple | None = None,
+                 points: str | list | tuple | None = None,
+                 boxes: str | list | tuple | None = None,
                  font_size: int | None = None,
                  line_width: int | None = None,
                  line_color: str | None = None,
