@@ -370,6 +370,42 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
         # Convert back to 0-255 range and return as integers
         return int(contrast_r * 255), int(contrast_g * 255), int(contrast_b * 255)
 
+    def _sample_line_area_background_color(self, image, contours, line_width, extra_thickness=3):
+        """
+        Sample background color from the area where the outline will be drawn,
+        including pixels both inside and outside the line area for better contrast.
+        
+        :param image: PIL Image to sample from
+        :param contours: list of contours from cv2.findContours
+        :param line_width: width of the line that will be drawn
+        :param extra_thickness: additional pixels to sample beyond the line width
+        :return: RGB tuple of the average background color around the line area
+        """
+        # Create a mask for the line area
+        line_mask = numpy.zeros((image.size[1], image.size[0]), dtype=numpy.uint8)
+        
+        # Draw the contours with the actual line width plus extra thickness
+        # This gives us the area where the line will be plus some surrounding pixels
+        sample_width = line_width + extra_thickness * 2
+        cv2.drawContours(line_mask, contours, -1, 255, thickness=sample_width)
+        
+        # Convert image to numpy array
+        image_array = numpy.array(image)
+        
+        # Sample colors from the line area
+        line_pixels = image_array[line_mask > 0]
+        
+        if len(line_pixels) > 0:
+            # Calculate mean color from line area pixels
+            bg_color = numpy.mean(line_pixels.reshape(-1, 3), axis=0)
+        else:
+            # Fallback to sampling from center of image if line area is empty
+            center_x, center_y = image.size[0] // 2, image.size[1] // 2
+            bg_sample_area = image.crop((center_x - 25, center_y - 25, center_x + 25, center_y + 25))
+            bg_color = PIL.ImageStat.Stat(bg_sample_area).mean
+        
+        return bg_color
+
     def _calculate_line_width_font_size(self, image_size):
         """
         Calculate appropriate line width and font size based on image dimensions.
@@ -554,17 +590,11 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
                 mask_img = mask_img.resize(image.size, PIL.Image.LANCZOS)
                 mask_array = numpy.array(mask_img)
 
-                # Sample background color from the masked area
-                image_array = numpy.array(image)
-                masked_pixels = image_array[mask_array > 128]
+                # Find mask contours first
+                contours, _ = cv2.findContours(mask_array, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-                if len(masked_pixels) > 0:
-                    bg_color = numpy.mean(masked_pixels.reshape(-1, 3), axis=0)
-                else:
-                    # Fallback to sampling from center of image
-                    center_x, center_y = image.size[0] // 2, image.size[1] // 2
-                    bg_sample_area = image.crop((center_x - 25, center_y - 25, center_x + 25, center_y + 25))
-                    bg_color = PIL.ImageStat.Stat(bg_sample_area).mean
+                # Sample background color from the area where the line will be drawn
+                bg_color = self._sample_line_area_background_color(image, contours, line_width)
 
                 # Determine colors
                 if self._line_color is not None:
@@ -574,9 +604,6 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
 
                 text_bg_color = line_color
                 text_color = self._get_contrasting_color(text_bg_color)
-
-                # Find mask contours
-                contours, _ = cv2.findContours(mask_array, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
                 # Draw mask contours
                 for contour in contours:
