@@ -1283,6 +1283,8 @@ class DgenerateConsole(tk.Tk):
             label='Load Image',
             command=self._load_image_manually)
 
+        context_menu.add_separator()
+
         context_menu.add_command(
             label='Copy Coordinates',
             command=self._copy_image_coordinates)
