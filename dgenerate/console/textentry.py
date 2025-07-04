@@ -41,12 +41,6 @@ class TextEntry(tk.Entry):
         self.context_menu.add_command(label="Select All", command=self.__context_select_all)
 
         self.bind("<Button-3>", self.__show_context_menu)
-
-        self.bind("<Control-c>", lambda e: self.__context_copy())
-        self.bind("<Control-x>", lambda e: self.__context_cut())
-        self.bind("<Control-v>", lambda e: self.__context_paste())
-        self.bind("<Control-a>", lambda e: self.__context_select_all())
-        self.bind("<Delete>", lambda e: self.__context_delete())
     
     def __show_context_menu(self, event):
         self.focus()
