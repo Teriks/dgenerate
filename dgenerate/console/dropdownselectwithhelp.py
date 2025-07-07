@@ -23,9 +23,8 @@ import tkinter as tk
 import tkinter.ttk as ttk
 import typing
 
-import dgenerate.console.resources as _resources
 import dgenerate.console.util as _util
-from dgenerate.console.mousewheelbind import bind_mousewheel, un_bind_mousewheel
+import dgenerate.console.helpdialog as _helpdialog
 
 
 def _adjust_combobox_width(combo, options):
@@ -111,63 +110,10 @@ class _DropdownSelectWithHelp(tk.Toplevel):
         if self._current_value.get() not in self._values_dict:
             return
 
-        top = tk.Toplevel(self.master if self.master else self)
-        top.title(f'{self._item_name} Help: {self._current_value.get()}')
-        top.attributes('-topmost', 1)
-        top.attributes('-topmost', 0)
-
-        frame = tk.Frame(top)
-        frame.pack(expand=True, fill='both')
-
-        v_scrollbar = tk.Scrollbar(frame, orient=tk.VERTICAL)
-        v_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-        h_scrollbar = tk.Scrollbar(frame, orient=tk.HORIZONTAL)
-        h_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
-
-        text_widget = tk.Text(frame, wrap=tk.NONE, state='disabled', yscrollcommand=v_scrollbar.set,
-                              xscrollcommand=h_scrollbar.set)
-
-        text_widget.configure(**_resources.get_textbox_theme())
-
-        text_widget.config(state='normal')
-
-        text_widget.insert(
-            tk.END, self._values_dict[self._current_value.get()] + '\n\n')
-
-        text_widget.config(state='disabled')
-
-        v_scrollbar.config(command=text_widget.yview)
-        h_scrollbar.config(command=text_widget.xview)
-        text_widget.pack(expand=True, fill='both')
-
-        width = 850
-        height = 600
-
-        # Dock right
-        master_x = self.winfo_rootx()
-        master_y = self.winfo_rooty()
-        master_width = self.winfo_width()
-
-        # Calculate position x, y to dock the help window to the right of recipe_form
-        x = master_x + master_width
-        y = master_y
-
-        top.geometry(f'{width}x{height}+{x}+{y}')
-
-        bind_mousewheel(top.bind, self._on_help_mouse_wheel)
-
-        og_destroy = top.destroy
-
-        def new_destroy():
-            un_bind_mousewheel(top.bind)
-            og_destroy()
-
-        top.destroy = new_destroy
-
-    @staticmethod
-    def _on_help_mouse_wheel(event):
-        return "break"
+        title = f'{self._item_name} Help: {self._current_value.get()}'
+        help_text = self._values_dict[self._current_value.get()]
+        parent = self.master if self.master else self
+        _helpdialog.show_help_dialog(parent, title, help_text, position_widget=self)
 
     def _insert_action(self):
         value = self._current_value.get()
