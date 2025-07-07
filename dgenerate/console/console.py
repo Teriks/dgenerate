@@ -1392,7 +1392,9 @@ class DgenerateConsole(tk.Tk):
 
         try:
             self.clipboard_clear()
-            self.clipboard_append(self._displayed_image_path)
+            self.clipboard_append(
+                pathlib.Path(self._displayed_image_path).as_posix()
+            )
         except Exception as e:
             self._write_stderr_output(f"Failed to copy image path to clipboard: {e}\n")
 
