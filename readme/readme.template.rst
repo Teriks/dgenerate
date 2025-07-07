@@ -69,5 +69,5 @@ please visit `readthedocs <http://dgenerate.readthedocs.io/en/@REVISION/>`_.
 
 ----
 
-.. image:: https://raw.githubusercontent.com/Teriks/dgenerate-readme-embeds/master/ui.gif
+.. image:: https://raw.githubusercontent.com/Teriks/dgenerate-readme-embeds/master/ui5.gif
    :alt: console ui
