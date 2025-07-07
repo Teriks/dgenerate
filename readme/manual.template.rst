@@ -1,6 +1,3 @@
-Command Line Manual
-===================
-
 * `Help Output`_
 * `Diffusion Feature Table <https://github.com/Teriks/dgenerate/blob/@REVISION/FEATURE_TABLE.rst>`_
 
