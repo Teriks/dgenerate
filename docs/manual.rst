@@ -11493,7 +11493,7 @@ which does not automatically recieve injected arguments, use the
 Console UI
 ==========
 
-.. image:: https://raw.githubusercontent.com/Teriks/dgenerate-readme-embeds/master/ui.gif
+.. image:: https://raw.githubusercontent.com/Teriks/dgenerate-readme-embeds/master/ui5.gif
    :alt: console ui
 
 You can launch a cross platform Tkinter GUI for interacting with a
