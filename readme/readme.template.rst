@@ -67,7 +67,7 @@ some operations but extraordinarily slow.
 For command line usage manual and library documentation,
 please visit `readthedocs <http://dgenerate.readthedocs.io/en/@REVISION/>`_.
 
-===
+----
 
 .. image:: https://raw.githubusercontent.com/Teriks/dgenerate-readme-embeds/master/ui.gif
    :alt: console ui
