@@ -7,9 +7,6 @@
 .. _ncnn: https://github.com/Tencent/ncnn
 .. _chaiNNer: https://github.com/chaiNNer-org/chaiNNer
 
-Command Line Manual
-===================
-
 * `Help Output`_
 * `Diffusion Feature Table <https://github.com/Teriks/dgenerate/blob/version_5.0.0/FEATURE_TABLE.rst>`_
 
