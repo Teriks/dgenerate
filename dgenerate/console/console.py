@@ -326,6 +326,17 @@ class DgenerateConsole(tk.Tk):
         # Create the input text context menu
         self._input_text_context = tk.Menu(self._input_text, tearoff=0)
         self._create_edit_menu(self._input_text_context)
+        
+        # Patch the input text context menu to enable/disable Preview Selected Image
+        og_input_popup = self._input_text_context.tk_popup
+        def patch_input_tk_popup(*args, **kwargs):
+            selected_text = self._get_selected_text(self._input_text.text)
+            if selected_text and self._is_valid_image_path(selected_text):
+                self._input_text_context.entryconfigure('Preview Selected Image', state=tk.NORMAL)
+            else:
+                self._input_text_context.entryconfigure('Preview Selected Image', state=tk.DISABLED)
+            og_input_popup(*args, **kwargs)
+        self._input_text_context.tk_popup = patch_input_tk_popup
 
         if platform.system() == 'Darwin':
             # these are not native
@@ -384,6 +395,20 @@ class DgenerateConsole(tk.Tk):
                                               accelerator='Ctrl+Down Arrow',
                                               command=
                                               lambda: self._output_text.text.see(tk.END))
+        self._output_text_context.add_separator()
+        self._output_text_context.add_command(label='Preview Selected Image',
+                                              command=lambda: self._preview_selected_image(self._output_text.text))
+
+        # Patch the output text context menu to enable/disable Preview Selected Image
+        og_output_popup = self._output_text_context.tk_popup
+        def patch_output_tk_popup(*args, **kwargs):
+            selected_text = self._get_selected_text(self._output_text.text)
+            if selected_text and self._is_valid_image_path(selected_text):
+                self._output_text_context.entryconfigure('Preview Selected Image', state=tk.NORMAL)
+            else:
+                self._output_text_context.entryconfigure('Preview Selected Image', state=tk.DISABLED)
+            og_output_popup(*args, **kwargs)
+        self._output_text_context.tk_popup = patch_output_tk_popup
 
         self._paned_window_vertical.add(self._output_text)
 
@@ -1276,6 +1301,11 @@ class DgenerateConsole(tk.Tk):
                                  command=self._input_text_insert_directory_path)
         menu.add_cascade(label='Insert Path', menu=path_submenu)
 
+        # Add separator and Preview Selected Image option
+        menu.add_separator()
+        menu.add_command(label='Preview Selected Image',
+                         command=lambda: self._preview_selected_image(self._input_text.text))
+
         return menu
 
     def _install_common_image_pane_context_options(self, context_menu: tk.Menu):
@@ -1411,6 +1441,70 @@ class DgenerateConsole(tk.Tk):
             self._write_stdout_output(f"Manually loaded image: {f}\n")
         except Exception as e:
             self._write_stderr_output(f"Failed to load image: {e}\n")
+
+    def _shell_unquote_path(self, path: str) -> str:
+        try:
+            parsed = _textprocessing.shell_parse(
+                path.strip(),
+                expand_home=False,
+                expand_vars=False,
+                expand_glob=False
+            )
+            return parsed[0] if parsed else path.strip()
+        except _textprocessing.ShellParseSyntaxError:
+            return path.strip()
+
+    def _is_valid_image_path(self, path: str) -> bool:
+        if not path or not path.strip():
+            return False
+        
+        path = self._shell_unquote_path(path)
+        
+        if not os.path.exists(path):
+            abs_path = os.path.join(self._shell_procmon.cwd(deep=True), path)
+            if not os.path.exists(abs_path):
+                return False
+            path = abs_path
+        
+        if not os.path.isfile(path):
+            return False
+        
+        try:
+            schema = _resources.get_schema('mediaformats')
+            supported_extensions = schema['images-in']
+            file_ext = os.path.splitext(path)[1].lower().lstrip('.')
+            return file_ext in supported_extensions
+        except Exception:
+            return False
+
+    def _preview_selected_image(self, text_widget):
+        try:
+            selected_text = text_widget.selection_get()
+        except tk.TclError:
+            return
+        
+        if not self._is_valid_image_path(selected_text):
+            return
+        
+        path = self._shell_unquote_path(selected_text)
+        
+        if not os.path.isabs(path):
+            path = os.path.join(self._shell_procmon.cwd(deep=True), path)
+        
+        if not self._image_pane_visible_var.get() and not self._image_pane_window_visible_var.get():
+            self._image_pane_visible_var.set(True)
+        
+        try:
+            self._image_pane_load_image(path)
+            self._write_stdout_output(f"Manually loaded image: {path}\n")
+        except Exception as e:
+            self._write_stderr_output(f"Failed to load image: {e}\n")
+
+    def _get_selected_text(self, text_widget):
+        try:
+            return text_widget.selection_get()
+        except tk.TclError:
+            return None
 
 
 def main(args: collections.abc.Sequence[str]):
