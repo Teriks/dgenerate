@@ -18,7 +18,7 @@ Overview
 and animation sequences using Stable Diffusion and related models.
 
 Alongside the command line tool, this project features a syntax-highlighting
-REPL `Console UI`_ for the dgenerate configuration / scripting language, which is built on
+REPL Console UI for the dgenerate configuration / scripting language, which is built on
 Tkinter to be lightweight and portable. This GUI serves as an interface to dgenerate running
 in the background via the ``--shell`` option.
 
@@ -66,6 +66,8 @@ some operations but extraordinarily slow.
 
 For command line usage manual and library documentation,
 please visit `readthedocs <http://dgenerate.readthedocs.io/en/version_5.0.0/>`_.
+
+===
 
 .. image:: https://raw.githubusercontent.com/Teriks/dgenerate-readme-embeds/master/ui.gif
    :alt: console ui
