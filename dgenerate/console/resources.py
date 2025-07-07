@@ -298,13 +298,13 @@ def add_help_menu_links(menu: tk.Menu):
         label='Config Documentation',
         command=lambda:
         webbrowser.open(
-            f'https://dgenerate.readthedocs.io/en/{read_the_docs}/readme.html#writing-and-running-configs'))
+            f'https://dgenerate.readthedocs.io/en/{read_the_docs}/manual.html#writing-and-running-configs'))
 
     menu.add_command(
         label='Project Documentation',
         command=lambda:
         webbrowser.open(
-            f'https://dgenerate.readthedocs.io/en/{read_the_docs}/readme.html'))
+            f'https://dgenerate.readthedocs.io/en/{read_the_docs}/manual.html'))
 
     if release_info.pre_release:
         return
