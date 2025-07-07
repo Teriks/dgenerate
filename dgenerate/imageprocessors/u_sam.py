@@ -472,63 +472,49 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
             else:
                 return image.copy()
 
-        # Run SAM with batched prompts
+        # Run SAM with prompts - each call returns a single Results object with multiple masks
+        results = []
         try:
             if batch_points and self._boxes:
-                # If we have both points and boxes, we need to process them separately
-                # and combine the results, as SAM doesn't support mixed prompt types in one call
-                results_points = None
-                results_boxes = None
-                
+                # Process points first
                 if batch_points:
-                    results_points = self._model(input_image, points=batch_points, labels=batch_labels)
+                    sam_result = self._model(input_image, points=batch_points, labels=batch_labels)[0]
+                    if sam_result.masks is not None and len(sam_result.masks) > 0:
+                        # Extract each mask individually
+                        for i in range(len(sam_result.masks)):
+                            results.append((sam_result, 'point', i, i))  # (result, type, prompt_idx, mask_idx)
                 
+                # Process boxes
                 if self._boxes:
-                    results_boxes = self._model(input_image, bboxes=self._boxes)
-                
-                # Combine results
-                all_results = []
-                prompt_types = []
-                prompt_indices = []
-                
-                if results_points and len(results_points) > 0:
-                    for i, result in enumerate(results_points):
-                        if result.masks is not None:
-                            all_results.append(result)
-                            prompt_types.append('point')
-                            prompt_indices.append(i)
-                
-                if results_boxes and len(results_boxes) > 0:
-                    for i, result in enumerate(results_boxes):
-                        if result.masks is not None:
-                            all_results.append(result)
-                            prompt_types.append('box')
-                            prompt_indices.append(len(self._points) + i if self._points else i)
-                
-                results = list(zip(all_results, prompt_types, prompt_indices))
+                    sam_result = self._model(input_image, bboxes=self._boxes)[0]
+                    if sam_result.masks is not None and len(sam_result.masks) > 0:
+                        # Extract each mask individually
+                        for i in range(len(sam_result.masks)):
+                            prompt_idx = len(self._points) + i if self._points else i
+                            results.append((sam_result, 'box', prompt_idx, i))  # (result, type, prompt_idx, mask_idx)
                 
             elif batch_points:
                 # Only points
-                results_points = self._model(input_image, points=batch_points, labels=batch_labels)
-                results = []
-                for i, result in enumerate(results_points):
-                    if result.masks is not None:
-                        results.append((result, 'point', i))
-                    else:
-                        _messages.debug_log(f"SAM mask: No mask generated for point prompt {i}")
+                sam_result = self._model(input_image, points=batch_points, labels=batch_labels)[0]
+                if sam_result.masks is not None and len(sam_result.masks) > 0:
+                    # Extract each mask individually
+                    for i in range(len(sam_result.masks)):
+                        results.append((sam_result, 'point', i, i))  # (result, type, prompt_idx, mask_idx)
+                else:
+                    _messages.debug_log(f"SAM mask: No masks generated for point prompts")
                         
             elif self._boxes:
                 # Only boxes
-                results_boxes = self._model(input_image, bboxes=self._boxes)
-                results = []
-                for i, result in enumerate(results_boxes):
-                    if result.masks is not None:
-                        results.append((result, 'box', i))
-                    else:
-                        _messages.debug_log(f"SAM mask: No mask generated for box prompt {i}")
+                sam_result = self._model(input_image, bboxes=self._boxes)[0]
+                if sam_result.masks is not None and len(sam_result.masks) > 0:
+                    # Extract each mask individually
+                    for i in range(len(sam_result.masks)):
+                        results.append((sam_result, 'box', i, i))  # (result, type, prompt_idx, mask_idx)
+                else:
+                    _messages.debug_log(f"SAM mask: No masks generated for box prompts")
                         
         except Exception as e:
-            _messages.debug_log(f"SAM mask: Error processing prompts in batch: {e}")
+            _messages.debug_log(f"SAM mask: Error processing prompts: {e}")
             results = []
 
         if not results:
@@ -545,10 +531,10 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
         if self._masks:
             composite_mask = PIL.Image.new("L", image.size, 0)
 
-            for result, prompt_type, prompt_idx in results:
-                if result.masks is not None:
-                    # Get the mask data
-                    mask_data = result.masks.data[0]  # Take the first (and usually only) mask
+            for result, prompt_type, prompt_idx, mask_idx in results:
+                if result.masks is not None and mask_idx < len(result.masks.data):
+                    # Get the specific mask data
+                    mask_data = result.masks.data[mask_idx]
 
                     # Convert to PIL Image
                     mask_np = mask_data.cpu().numpy()
@@ -586,10 +572,10 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
                 font = PIL.ImageFont.load_default()
 
         # Draw mask outlines and labels
-        for result, prompt_type, prompt_idx in results:
-            if result.masks is not None:
-                # Get the mask data
-                mask_data = result.masks.data[0]  # Take the first (and usually only) mask
+        for result, prompt_type, prompt_idx, mask_idx in results:
+            if result.masks is not None and mask_idx < len(result.masks.data):
+                # Get the specific mask data
+                mask_data = result.masks.data[mask_idx]
 
                 # Convert to PIL Image
                 mask_np = mask_data.cpu().numpy()
