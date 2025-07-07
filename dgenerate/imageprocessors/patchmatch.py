@@ -41,6 +41,9 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
     The "mask" argument should point to a file path on disk or a URL that can be downloaded.
     Both local files and remote URLs are supported. The mask will be resized to the
     dimension of the incoming image if they are not the same size.
+
+    The "invert" argument allows you to treat the incoming mask image as if it has
+    been inverted.
     
     The "patch-size" argument specifies the patch size for the PatchMatch algorithm.
     Larger patch sizes can provide better coherence but may be slower.
@@ -60,12 +63,14 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
 
     def __init__(self,
                  mask: str,
+                 invert: bool = False,
                  patch_size: int = 5,
                  seed: int | None = None,
                  pre_resize: bool = False,
                  **kwargs):
         """
         :param mask: Path to mask image file or URL. White pixels indicate areas to inpaint.
+        :param invert: Treat the incoming mask as if it has been inverted.
         :param patch_size: Patch size for PatchMatch algorithm. Default is 5.
         :param seed: Random number generator seed for reproducible results. If None, uses random seed.
         :param pre_resize: process the image before it is resized, or after? default is ``False`` (after).
@@ -80,6 +85,7 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
             raise self.argument_error('Argument "patch-size" must be a positive integer.')
 
         self._mask_path = mask
+        self._invert = invert
         self._patch_size = patch_size
         self._seed = seed
         self._pre_resize = pre_resize
@@ -115,7 +121,12 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
 
             # Convert to numpy array and create binary mask
             # White pixels (>128) indicate areas to inpaint
-            mask_array = np.array(mask_image) > 128
+            # when not in invert mode
+
+            if self._invert:
+                mask_array = np.array(mask_image) < 128
+            else:
+                mask_array = np.array(mask_image) > 128
 
             return mask_array
 
