@@ -25,8 +25,7 @@ import typing
 
 import dgenerate.console.filedialog as _filedialog
 import dgenerate.console.recipesformentries.entry as _entry
-import dgenerate.console.resources as _resources
-from dgenerate.console.mousewheelbind import bind_mousewheel, un_bind_mousewheel
+import dgenerate.console.helpdialog as _helpdialog
 from dgenerate.console.spinbox import FloatSpinbox, IntSpinbox
 from dgenerate.console.combobox import ComboBox
 import dgenerate.console.textentry as _t_entry
@@ -394,74 +393,9 @@ class _PluginSchemaEntry(_entry._Entry):
         return arg_entry
 
     def _show_help(self):
-        top = tk.Toplevel(
-            self.recipe_form.master if self.recipe_form.master else self.recipe_form
-        )
-
-        top.title(f'{self._label} Help: {self.plugin_name_var.get()}')
-        top.attributes('-topmost', 1)
-        top.attributes('-topmost', 0)
-
-        frame = tk.Frame(top)
-        frame.pack(expand=True, fill='both')
-
-        v_scrollbar = tk.Scrollbar(frame, orient=tk.VERTICAL)
-        v_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-        h_scrollbar = tk.Scrollbar(frame, orient=tk.HORIZONTAL)
-        h_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
-
-        text_widget = tk.Text(frame, wrap=tk.NONE, state='disabled', yscrollcommand=v_scrollbar.set,
-                              xscrollcommand=h_scrollbar.set)
-
-        text_widget.configure(**_resources.get_textbox_theme())
-
-        text_widget.config(state='normal')
-        text_widget.insert(tk.END, self.current_help_text + '\n\n')
-        text_widget.config(state='disabled')
-
-        v_scrollbar.config(command=text_widget.yview)
-        h_scrollbar.config(command=text_widget.xview)
-        text_widget.pack(expand=True, fill='both')
-
-        width = 850
-        height = 600
-
-        # Centering logic
-
-        # master_x = self.recipe_form.winfo_rootx()
-        # master_y = self.recipe_form.winfo_rooty()
-        # master_width = self.recipe_form.winfo_width()
-        # master_height = self.recipe_form.winfo_height()
-
-        # # Calculate position x, y
-        # x = master_x + (master_width // 2) - (width // 2)
-        # y = master_y + (master_height // 2) - (height // 2)
-
-        # Dock right
-        master_x = self.recipe_form.winfo_rootx()
-        master_y = self.recipe_form.winfo_rooty()
-        master_width = self.recipe_form.winfo_width()
-
-        # Calculate position x, y to dock the help window to the right of recipe_form
-        x = master_x + master_width
-        y = master_y
-
-        top.geometry(f'{width}x{height}+{x}+{y}')
-
-        bind_mousewheel(top.bind, self._on_help_mouse_wheel)
-
-        og_destroy = top.destroy
-
-        def new_destroy():
-            un_bind_mousewheel(top.bind)
-            og_destroy()
-
-        top.destroy = new_destroy
-
-    @staticmethod
-    def _on_help_mouse_wheel(event):
-        return "break"
+        title = f'{self._label} Help: {self.plugin_name_var.get()}'
+        parent = self.recipe_form.master if self.recipe_form.master else self.recipe_form
+        _helpdialog.show_help_dialog(parent, title, self.current_help_text, position_widget=self.recipe_form)
 
     def _show_help_button(self):
         if self.plugin_help_button is not None:
