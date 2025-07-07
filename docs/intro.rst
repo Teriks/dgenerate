@@ -7,6 +7,6 @@ using stable diffusion and related techniques, with an accompanying UI scripting
 For library usage examples see the `Library Usage Examples <https://github.com/Teriks/dgenerate/tree/version_5.0.0/examples/library_usage>`_
 folder under the examples folder in the github repository.
 
-For command line usage documentation see the `Command Line Manual`_
+For command line usage documentation see the `Usage Manual`_
 or the `Examples Folder <https://github.com/Teriks/dgenerate/tree/version_5.0.0/examples>`_ in
 the github repository.

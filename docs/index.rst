@@ -20,8 +20,8 @@ Library Documentation
 
 .. include:: ../FEATURE_TABLE.rst
 
-Command Line Manual
-===================
+Usage Manual
+============
 
 .. toctree::
    :maxdepth: 2
