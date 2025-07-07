@@ -333,7 +333,7 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
         if asset_name not in _sam_model_map:
             raise self.argument_error(
                 f'Unknown SAM model: {asset_name}, must be one of: '
-                f'{_textprocessing.oxford_comma(_sam_model_map.keys(), 'or')}')
+                f'{_textprocessing.oxford_comma(_sam_model_map.keys(), "or")}')
 
         try:
             _, file = _webcache.create_web_cache_file(

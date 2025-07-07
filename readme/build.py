@@ -346,6 +346,20 @@ def render_templates(rst_content, filename=None):
 
     return rst_content
 
+def render_template(input_file, output_file):
+    with open(input_file, 'r') as file:
+        content = file.read()
+
+    print(f'Rendering template {input_file} to {output_file}...')
+    updated_content = render_templates(content, filename=input_file)
+    print('Template rendered.')
+
+    with open(output_file, 'w') as file:
+        file.write(find_and_condense_links(updated_content))
+
+    with open(command_cache_path, 'w') as cache:
+        json.dump(COMMAND_CACHE, cache)
+
 
 parser = argparse.ArgumentParser(
     description='Build the README.rst file from template'
@@ -388,17 +402,18 @@ if args.no_cache is not None or args.no_cache_regex is not None:
 # default command output width
 os.environ['COLUMNS'] = '110'
 
-input_file = os.path.join(project_dir, 'readme', 'readme.template.rst')
-output_file = os.path.join(project_dir, 'README.rst')
-with open(input_file, 'r') as file:
-    content = file.read()
+render_template(
+    os.path.join(project_dir, 'readme', 'readme.template.rst'),
+    os.path.join(project_dir, 'README.rst')
+)
 
-print('Rendering templates...')
-updated_content = render_templates(content, filename=input_file)
-print('Templates rendered.')
+render_template(
+    os.path.join(project_dir, 'readme', 'manual.template.rst'),
+    os.path.join(project_dir, 'docs/manual.rst')
+)
 
-with open(output_file, 'w') as file:
-    file.write(find_and_condense_links(updated_content))
 
-with open(command_cache_path, 'w') as cache:
-    json.dump(COMMAND_CACHE, cache)
+render_template(
+    os.path.join(project_dir, 'readme', 'docs_intro.template.rst'),
+    os.path.join(project_dir, 'docs/intro.rst')
+)
