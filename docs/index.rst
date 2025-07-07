@@ -20,12 +20,13 @@ Library Documentation
 
 .. include:: ../FEATURE_TABLE.rst
 
+
 Usage Manual
 ============
 
 .. toctree::
    :maxdepth: 2
-   
+
    manual
 
 Indices and tables
