@@ -7242,12 +7242,14 @@ Output:
         "mlsd"
         "normal-bae"
         "openpose"
+        "patchmatch"
         "pidi"
         "posterize"
         "resize"
         "sam"
         "solarize"
         "teed"
+        "u-sam"
         "upscaler"
         "upscaler-ncnn"
         "yolo"
@@ -8848,8 +8850,8 @@ processor chaining if desired.
             subfolder: str | None = None
             revision: str | None = None
             token: str | None = None
-            font-size: int = 12
-            line-width: int = 2
+            font-size: int | None = None
+            line-width: int | None = None
             line-color: str | None = None
             class-filter: int | str | list | tuple | set | None = None
             index-filter: int | list | tuple | set | None = None
@@ -8900,9 +8902,11 @@ processor chaining if desired.
         The "local-files-only" argument specifies that dgenerate should not attempt to download any model files,
         and to only look for them locally in the cache or otherwise.
     
-        The "font-size" argument determines the size of the label text.
+        The "font-size" argument determines the size of the label text. If not specified, it will be automatically
+        calculated based on the image dimensions.
     
-        The "line-width" argument controls the thickness of the bounding box lines.
+        The "line-width" argument controls the thickness of the bounding box lines. If not specified, it will be
+        automatically calculated based on the image dimensions.
     
         The "line-color" argument overrides the color for bounding box lines, mask outlines, and text label
         backgrounds. This should be specified as a HEX color code, e.g. "#FFFFFF" or "#FFF". If not specified,
@@ -9692,7 +9696,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [13191346800362]
+            Value: [15505870576260]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
