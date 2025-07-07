@@ -57,6 +57,7 @@ from .midas import MidasDepthProcessor
 from .mlsd import MLSDProcessor
 from .normal_bae import NormalBaeProcessor
 from .openpose import OpenPoseProcessor
+from .patchmatch import PatchMatchProcessor
 from .pidi import PidiNetProcessor
 from .sam import SegmentAnythingProcessor
 from .u_sam import USAMProcessor

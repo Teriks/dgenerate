@@ -40,6 +40,7 @@ class _ImageProcessorEntry(_schemaentry._PluginSchemaEntry):
 
         self._file_in_arguments = {
             'model': _resources.get_file_dialog_args(['models']),
+            'mask': _resources.get_file_dialog_args(['images-in']),
             'param': {'filetypes': [('param', ['*.param'])]}}
 
         self._file_out_arguments = {
