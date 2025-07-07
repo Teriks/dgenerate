@@ -92,8 +92,8 @@ Diffusion Model Feature Support Tables
      - ✅
 
    * - ``torch-flux-fill``
-     - ✅
-     - ✅
+     - ❌
+     - ❌
      - ✅
 
 .. list-table:: Guidance by ``--model-type``
