@@ -64,7 +64,7 @@ This software requires a Nvidia GPU supporting CUDA 12.1+, AMD GPU supporting RO
 or MacOS on Apple Silicon, and supports ``python>=3.10,<3.14``. CPU rendering is possible for
 some operations but extraordinarily slow.
 
-For command line usage manual and library documentation,
+For command line usage manual, manual installation instructions, and library documentation,
 please visit `readthedocs <http://dgenerate.readthedocs.io/en/version_5.0.0/>`_.
 
 ----
