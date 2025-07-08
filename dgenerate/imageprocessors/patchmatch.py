@@ -21,7 +21,9 @@
 
 import PIL.Image
 import numpy as np
+import cv2
 
+import dgenerate.image as _image
 import dgenerate.imageprocessors.imageprocessor as _imageprocessor
 import dgenerate.types as _types
 import dgenerate.webcache as _webcache
@@ -115,9 +117,13 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
             # Load mask image and convert to grayscale
             mask_image = PIL.Image.open(mask_path).convert('L')
 
-            # Resize mask to match target size if specified
+            # Resize mask to match target size if specified using optimal interpolation
             if target_size is not None:
-                mask_image = mask_image.resize(target_size, PIL.Image.LANCZOS)
+                mask_array_temp = np.array(mask_image)
+                old_size = (mask_array_temp.shape[1], mask_array_temp.shape[0])  # (width, height)
+                interpolation = _image.best_cv2_resampling(old_size, target_size)
+                mask_array_temp = cv2.resize(mask_array_temp, target_size, interpolation=interpolation)
+                mask_image = PIL.Image.fromarray(mask_array_temp)
 
             # Convert to numpy array and create binary mask
             # White pixels (>128) indicate areas to inpaint
@@ -144,7 +150,20 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
         image_array = np.array(image)
 
         # Load mask and ensure it matches the image size
+        # Note: image.size is (width, height) but numpy arrays are (height, width, channels)
         mask_array = self._load_mask(target_size=image.size)
+        
+        # Ensure mask dimensions match the image array
+        if mask_array.shape != image_array.shape[:2]:
+            # Resize mask to match image array dimensions exactly using optimal interpolation
+            mask_uint8 = (mask_array.astype(np.uint8) * 255)
+            old_size = (mask_array.shape[1], mask_array.shape[0])  # (width, height)
+            new_size = (image_array.shape[1], image_array.shape[0])  # (width, height)
+            interpolation = _image.best_cv2_resampling(old_size, new_size)
+            mask_resized = cv2.resize(mask_uint8, new_size, interpolation=interpolation)
+            mask_array = mask_resized > 128
+            if self._invert:
+                mask_array = ~mask_array
 
         # Perform PatchMatch inpainting
         try:
@@ -155,6 +174,14 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
                 patch_size=self._patch_size,
                 seed=self._seed
             )
+
+            # Ensure result array has the same shape as input (fallback for edge cases)
+            if result_array.shape != image_array.shape:
+                # Use optimal interpolation for resizing back to original size
+                old_size = (result_array.shape[1], result_array.shape[0])  # (width, height)
+                new_size = image.size  # (width, height)
+                interpolation = _image.best_cv2_resampling(old_size, new_size)
+                result_array = cv2.resize(result_array, new_size, interpolation=interpolation)
 
             return PIL.Image.fromarray(result_array)
 
