@@ -111,7 +111,7 @@ This can allow you to convert between the latent space of one model type to anot
 
 This only works for fully denoised latents, and not for partially denoised latents.
 
-@EXAMPLE[../../../examples/latents_interposer/sd1-to-sdxl-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/latents_interposer/sd1-to-sdxl-config.dgen]
 
 The ``interposer`` supports several conversions, described in its help output:
 

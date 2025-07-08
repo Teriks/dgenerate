@@ -1,12 +1,40 @@
+#!/usr/bin/env python3
+# Copyright (c) 2023, Teriks
+#
+# dgenerate is distributed under the following BSD 3-Clause License
+#
+# Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in
+#    the documentation and/or other materials provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived
+#    from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+# ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 import json
-import os
-import pathlib
 import re
+from pathlib import Path
+from typing import Optional, Set
 
-import langcodes
-import requests
+try:
+    import langcodes
+except ImportError:
+    langcodes = None
 
-os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+try:
+    import requests
+except ImportError:
+    requests = None
+
 
 # scraped from: https://huggingface.co/Helsinki-NLP
 # console.log(Array.from(document.getElementsByClassName("text-md truncate font-mono text-black dark:group-hover/repo:text-yellow-500 group-hover/repo:text-indigo-600 text-smd")).map(element => element.innerHTML));
@@ -1541,81 +1569,139 @@ models = [
     "Helsinki-NLP/opus-mt-he-fr"
 ]
 
-ieft_custom_mappings = {
-    'jap': 'ja'
-}
 
-pattern = re.compile(r"Helsinki-NLP/opus-mt-([a-z]{2,3})-([a-z]{2,3})$")
+class HelsinkiNLPTranslationMapBuilder:
+    """Builder for Helsinki NLP translation mapping."""
 
-translation_dict = {}
+    def __init__(self, project_dir: Optional[Path] = None):
+        """
+        Initialize the HelsinkiNLPTranslationMapBuilder.
 
+        :param project_dir: Project directory (defaults to current working directory)
+        :type project_dir: Optional[Path]
+        """
+        self.project_dir = project_dir or Path.cwd()
+        self.data_dir = Path(__file__).parent.parent.joinpath('cache')
+        self.output_file = self.project_dir / 'dgenerate' / 'translators' / 'data' / 'helsinki-nlp-translation-map.json'
+        
+        # IETF custom mappings for special cases
+        self.ietf_custom_mappings = {
+            'jap': 'ja'
+        }
+        
+        # Pattern to match Helsinki NLP model names
+        self.pattern = re.compile(r"Helsinki-NLP/opus-mt-([a-z]{2,3})-([a-z]{2,3})$")
+        
+        # Helsinki NLP models list (scraped from https://huggingface.co/Helsinki-NLP)
+        self.models = models
 
-def get_ietf_codes():
-    if os.path.exists('devscripts/data/ietf_codes.json'):
-        with open('devscripts/data/ietf_codes.json', 'r') as codes_file:
-            return set(json.load(codes_file))
-    else:
-        pathlib.Path('devscripts/data').mkdir(parents=True, exist_ok=True)
+    def build(self):
+        """Build the Helsinki NLP translation mapping."""
+        print("Building Helsinki NLP translation map...")
+        
+        if langcodes is None:
+            print("✗ Warning: langcodes package not available, translation map may be incomplete")
+        
+        if requests is None:
+            print("✗ Warning: requests package not available, IETF codes will be loaded from cache if available")
+        
+        # Ensure output directory exists
+        self.output_file.parent.mkdir(parents=True, exist_ok=True)
+        
+        try:
+            translation_dict = self._generate_translation_mapping()
+            
+            with open(self.output_file, 'w') as schema:
+                json.dump(translation_dict, schema)
+            
+            print("✓ Helsinki NLP translation map built successfully")
+        except Exception as e:
+            print(f"✗ Error building Helsinki NLP translation map: {e}")
+            raise
 
-        response = requests.get('https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry')
-        ietf_registry = response.text
+    def _get_ietf_codes(self) -> Set[str]:
+        """Get IETF language codes."""
+        cache_file = self.data_dir / 'ietf_codes.cache.json'
+        
+        if cache_file.exists():
+            with open(cache_file, 'r') as codes_file:
+                return set(json.load(codes_file))
+        
+        if requests is None:
+            print("Warning: requests not available and no cache found, using empty IETF codes set")
+            return set()
+        
+        # Ensure data directory exists
+        self.data_dir.mkdir(parents=True, exist_ok=True)
 
-        codes = set()
+        try:
+            response = requests.get('https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry')
+            ietf_registry = response.text
 
-        for line in ietf_registry.split('\n'):
-            if line.startswith('Subtag:'):
-                code = line.split(': ')[1].strip()
-                codes.add(code)
+            codes = set()
 
-        with open('devscripts/data/ietf_codes.json', 'w') as codes_file:
-            json.dump(list(codes), codes_file)
+            for line in ietf_registry.split('\n'):
+                if line.startswith('Subtag:'):
+                    code = line.split(': ')[1].strip()
+                    codes.add(code)
 
-        return codes
+            with open(cache_file, 'w') as codes_file:
+                json.dump(list(codes), codes_file)
 
+            return codes
+        except Exception as e:
+            print(f"Warning: Failed to fetch IETF codes: {e}")
+            return set()
 
-def get_ietf_code(iso639_3_code):
-    try:
-        if iso639_3_code in ieft_custom_mappings:
-            return ieft_custom_mappings[iso639_3_code]
+    def _get_ietf_code(self, iso639_3_code: str) -> Optional[str]:
+        """Convert ISO 639-3 code to IETF language tag."""
+        if langcodes is None:
+            return None
+            
+        try:
+            if iso639_3_code in self.ietf_custom_mappings:
+                return self.ietf_custom_mappings[iso639_3_code]
 
-        language = langcodes.Language.get(iso639_3_code)
+            language = langcodes.Language.get(iso639_3_code)
+            return language.to_tag()
+        except Exception:  # langcodes.LanguageTagError or other exceptions
+            return None
 
-        return language.to_tag()
-    except langcodes.LanguageTagError:
-        return None
+    def _generate_translation_mapping(self) -> dict:
+        """Generate the translation mapping dictionary."""
+        translated_codes = set()
+        ietf_codes = self._get_ietf_codes()
+        translation_dict = {}
 
+        for model in self.models:
+            match = self.pattern.match(model)
+            if match:
+                from_lang, to_lang = match.groups()
 
-def main():
-    translated_codes = set()
-    ietf_codes = get_ietf_codes()
+                # Handle from_lang
+                if from_lang not in ietf_codes:
+                    code = self._get_ietf_code(from_lang)
+                    if from_lang not in translated_codes:
+                        print(f'{from_lang} not in IETF codes, translating to: {code}')
+                    translated_codes.add(from_lang)
+                    from_lang = code
 
-    for model in models:
-        match = pattern.match(model)
-        if match:
-            from_lang, to_lang = match.groups()
+                # Handle to_lang
+                if to_lang not in ietf_codes:
+                    code = self._get_ietf_code(to_lang)
+                    if to_lang not in translated_codes:
+                        print(f'{to_lang} not in IETF codes, translating to: {code}')
+                    translated_codes.add(to_lang)
+                    to_lang = code
 
-            if from_lang not in ietf_codes:
-                code = get_ietf_code(from_lang)
-                if from_lang not in translated_codes:
-                    print(f'{from_lang} not in IETF codes, translating to: {code}')
-                translated_codes.add(from_lang)
-                from_lang = code
+                # Only add to mapping if both codes are valid
+                if from_lang and to_lang:
+                    if from_lang not in translation_dict:
+                        translation_dict[from_lang] = {}
+                    translation_dict[from_lang][to_lang] = model
 
-            if to_lang not in ietf_codes:
+        return translation_dict
 
-                code = get_ietf_code(to_lang)
-                if to_lang not in translated_codes:
-                    print(f'{to_lang} not in IETF codes, translating to: {code}')
-                translated_codes.add(to_lang)
-                to_lang = code
-
-            if from_lang not in translation_dict:
-                translation_dict[from_lang] = {}
-            translation_dict[from_lang][to_lang] = model
-
-    with open('dgenerate/translators/data/helsinki-nlp-translation-map.json', 'w') as schema:
-        json.dump(translation_dict, schema)
-
-
-if __name__ == '__main__':
-    main()
+    def get_output_path(self) -> Path:
+        """Get the path to the translation map output file."""
+        return self.output_file

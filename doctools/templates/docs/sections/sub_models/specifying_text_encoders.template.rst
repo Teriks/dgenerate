@@ -112,20 +112,20 @@ one not included with the main model file.
 This text encoder is loaded from a subfolder of the Stable Diffusion 3
 repository on huggingface.
 
-@EXAMPLE[../../../examples/stablediffusion3/text_encoders/specify-encoders-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/stablediffusion3/text_encoders/specify-encoders-config.dgen]
 
 You may also use the URI value ``null``, to indicate that you do not want to ever load a specific text encoder at all.
 
 For instance, you can prevent Stable Diffusion 3 from loading and using the T5 encoder all together.
 
-@EXAMPLE[../../../examples/stablediffusion3/text_encoders/without-t5-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/stablediffusion3/text_encoders/without-t5-config.dgen]
 
 
 Any text encoder shared via the ``\use_modules`` directive in a config files is considered a default
 value for the text encoder in the next pipeline that runs, using ``+`` will maintain this value
 and using ``null`` will override it.
 
-@EXAMPLE[../../../examples/stablediffusion3/text_encoders/share-encoders-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/stablediffusion3/text_encoders/share-encoders-config.dgen]
 
 
 Monolithic CLIP-L, CLIP-G, and T5-XXL checkpoints (Used with Flux and SD3) can be loaded by utilizing the ``mode`` argument.
@@ -134,8 +134,8 @@ For instance, this can be used to load the Flux text encoders from ComfyUI style
 which are also sometimes distributed alongside Flux transformer only checkpoints on CivitAI
 with additional fine-tuning.
 
-@EXAMPLE[../../../examples/flux/civitai/clip-L-T5-XXL-monolithic-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/flux/civitai/clip-L-T5-XXL-monolithic-config.dgen]
 
 This can also be utilized with SD3.
 
-@EXAMPLE[../../../examples/stablediffusion3/civitai/clip-L-G-T5-XXL-monolithic-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/stablediffusion3/civitai/clip-L-G-T5-XXL-monolithic-config.dgen]

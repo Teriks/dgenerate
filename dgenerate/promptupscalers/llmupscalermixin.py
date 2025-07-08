@@ -152,12 +152,21 @@ class LLMPromptUpscalerMixin(abc.ABC):
                 text = func(text)
             elif 'pattern' in operation and 'substitution' in operation:
                 flags = 0
-                if operation.get('ignore_case', False):
+                if (operation.get('ignore_case', False) or
+                    operation.get('ignorecase', False)):
                     flags |= re.IGNORECASE
                 if operation.get('multiline', False):
                     flags |= re.MULTILINE
+                if operation.get('dotall', False):
+                    flags |= re.DOTALL
 
-                text = re.sub(operation['pattern'], operation['substitution'], text, flags=flags)
+                text = re.sub(
+                    pattern=operation['pattern'],
+                    repl=operation['substitution'],
+                    string=text,
+                    count=operation.get('count', 0),
+                    flags=flags
+                )
 
         return text
 

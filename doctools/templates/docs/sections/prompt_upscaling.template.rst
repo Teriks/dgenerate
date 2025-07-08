@@ -138,7 +138,7 @@ Basic prompt upscaling example
 
 The following is an example making use of the ``dynamicprompts``, ``magicprompt``, and ``attention`` prompt upscaler plugins.
 
-@EXAMPLE[../../examples/prompt_upscaler/basic_llm/dynamic-magic-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/prompt_upscaler/basic_llm/dynamic-magic-config.dgen]
 
 
 Prompt upscaling with LLMs (transformers)
@@ -152,7 +152,7 @@ The ``magicprompt`` plugin supports quantization when ``bitsandbytes`` is instal
 
 Quantization backend packages will be installed by dgenerate's packaging on platforms where they are supported.
 
-@EXAMPLE[../../examples/prompt_upscaler/basic_llm/magic-phi3-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/prompt_upscaler/basic_llm/magic-phi3-config.dgen]
 
 
 Prompt upscaling with LLMs (gpt4all)
@@ -165,7 +165,7 @@ for memory efficient inference on the cpu or gpu.
 
 Here is an example using `Phi-3 Mini Abliterated Q4 GGUF by failspy <https://huggingface.co/failspy/Phi-3-mini-128k-instruct-abliterated-v3-GGUF>`_
 
-@EXAMPLE[../../examples/prompt_upscaler/basic_llm/gpt4all-phi3-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/prompt_upscaler/basic_llm/gpt4all-phi3-config.dgen]
 
 
 Customizing LLM output cleanup
@@ -189,13 +189,17 @@ For example, in ``.json``, you would specify a list of text processing operation
         "pattern": "\\byes\\b",
         "substitution": "no",
         "ignore_case": true,
-        "multiline": false
+        "multiline": false,
+        "dotall": false,
+        "count": 0
       },
       {
         "pattern": "\\bthe\\b",
         "substitution": "and",
         "ignore_case": true,
-        "multiline": false
+        "multiline": false,
+        "dotall": false,
+        "count": 0
       },
       {
         "function": "cleanup.py:my_function2"
@@ -205,7 +209,11 @@ For example, in ``.json``, you would specify a list of text processing operation
 These operations occur in the order that you specify, python files are loaded relative
 to the directory of the config unless you specify an absolute path.
 
-The options ``ignore_case`` and ``multiline`` of the pattern operation are optional, and both default to ``false``.
+The options ``ignore_case`` / ``ignorecase``, ``multiline``, and ``dotall``` of the pattern operation are optional, and default to ``false``.
+
+You may also optionally specify ``count``, which defaults to zero (meaning replace all).
+
+These arguments are passed straight into pythons ``re.sub`` method, for reference.
 
 The python function in ``cleanup.py``, would be defined as so:
 
@@ -235,12 +243,16 @@ In ``.toml``, an equivalent config would look like this:
     substitution = "no"
     ignore_case = true
     multiline = false
+    dotall = false
+    count = 0
 
     [[operations]]
     pattern = "\\bthe\\b"
     substitution = "and"
     ignore_case = true
     multiline = false
+    dotall = false
+    count = 0
 
     [[operations]]
     function = "cleanup.py:my_function2"
@@ -255,11 +267,15 @@ And in ``.yaml``:
       substitution: "no"
       ignore_case: true
       multiline: false
+      dotall: false
+      count: 0
 
     - pattern: "\\bthe\\b"
       substitution: "and"
       ignore_case: true
       multiline: false
+      dotall: false
+      count: 0
 
     - function: "cleanup.py:my_function2"
 
