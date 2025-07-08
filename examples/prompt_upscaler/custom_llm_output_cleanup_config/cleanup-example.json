@@ -6,7 +6,9 @@
     "pattern": "\\bcat\\b",
     "substitution": "dog",
     "ignore_case": true,
-    "multiline": false
+    "multiline": false,
+    "dotall": false,
+    "count": 0
   },
   {
     "pattern": "\\bfeline\\b",

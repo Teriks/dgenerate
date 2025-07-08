@@ -38,4 +38,4 @@ All other arguments are fair game, for example ``inference_steps``
 Of the arguments mentioned in the `DiffusionArguments <https://dgenerate.readthedocs.io/en/@REVISION/dgenerate_submodules.html#dgenerate.pipelinewrapper.DiffusionArguments>`_ class,
 these are the arguments that are available for use:
 
-@COMMAND_OUTPUT[python ../scripts/prompt_embedded_args_list.py]
+@COMMAND_OUTPUT[python ../../../scripts/prompt_embedded_args_list.py]

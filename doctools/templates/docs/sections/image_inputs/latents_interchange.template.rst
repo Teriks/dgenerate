@@ -119,22 +119,22 @@ This is compatible with the following stateless schedulers when using an SD1.5/2
 
 Stable Diffusion 1.5/2.x Cooperative Denoising:
 
-@EXAMPLE[../../../examples/latents_interchange/sd/cooperative-denoising-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/latents_interchange/sd/cooperative-denoising-config.dgen]
 
 Stable Diffusion 3 Cooperative Denoising:
 
-@EXAMPLE[../../../examples/latents_interchange/sd3/cooperative-denoising-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/latents_interchange/sd3/cooperative-denoising-config.dgen]
 
 Flux Cooperative Denoising:
 
-@EXAMPLE[../../../examples/latents_interchange/flux/cooperative-denoising-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/latents_interchange/flux/cooperative-denoising-config.dgen]
 
 SDXL and Kolors models handle latents interchange differently than other model families.
 For SDXL or Kolors cooperative denoising, latents are passed directly as img2img input without
 the special ``latents:`` syntax, these latents will not be decoded by the receiving VAE
 when ``--denoising-start`` has been specified with an SDXL or Kolors model:
 
-@EXAMPLE[../../../examples/latents_interchange/sdxl/two-stage-refining-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/latents_interchange/sdxl/two-stage-refining-config.dgen]
 
 Advanced Usage with Image Input:
 
@@ -171,4 +171,4 @@ Img2Img with VAE Decode Example:
 
 For cases where you want to generate latents and then decode them through a different model's VAE:
 
-@EXAMPLE[../../../examples/latents_interchange/sd/img2img-with-vae-decode-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/latents_interchange/sd/img2img-with-vae-decode-config.dgen]

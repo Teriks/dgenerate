@@ -6302,13 +6302,17 @@ For example, in ``.json``, you would specify a list of text processing operation
         "pattern": "\\byes\\b",
         "substitution": "no",
         "ignore_case": true,
-        "multiline": false
+        "multiline": false,
+        "dotall": false,
+        "count": 0
       },
       {
         "pattern": "\\bthe\\b",
         "substitution": "and",
         "ignore_case": true,
-        "multiline": false
+        "multiline": false,
+        "dotall": false,
+        "count": 0
       },
       {
         "function": "cleanup.py:my_function2"
@@ -6318,7 +6322,11 @@ For example, in ``.json``, you would specify a list of text processing operation
 These operations occur in the order that you specify, python files are loaded relative
 to the directory of the config unless you specify an absolute path.
 
-The options ``ignore_case`` and ``multiline`` of the pattern operation are optional, and both default to ``false``.
+The options ``ignore_case`` / ``ignorecase``, ``multiline``, and ``dotall``` of the pattern operation are optional, and default to ``false``.
+
+You may also optionally specify ``count``, which defaults to zero (meaning replace all).
+
+These arguments are passed straight into pythons ``re.sub`` method, for reference.
 
 The python function in ``cleanup.py``, would be defined as so:
 
@@ -6348,12 +6356,16 @@ In ``.toml``, an equivalent config would look like this:
     substitution = "no"
     ignore_case = true
     multiline = false
+    dotall = false
+    count = 0
 
     [[operations]]
     pattern = "\\bthe\\b"
     substitution = "and"
     ignore_case = true
     multiline = false
+    dotall = false
+    count = 0
 
     [[operations]]
     function = "cleanup.py:my_function2"
@@ -6368,11 +6380,15 @@ And in ``.yaml``:
       substitution: "no"
       ignore_case: true
       multiline: false
+      dotall: false
+      count: 0
 
     - pattern: "\\bthe\\b"
       substitution: "and"
       ignore_case: true
       multiline: false
+      dotall: false
+      count: 0
 
     - function: "cleanup.py:my_function2"
 
@@ -9211,7 +9227,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_inference_steps"
             Type: collections.abc.Sequence[int]
-            Value: [1]
+            Value: [30]
         Name: "last_ip_adapter_uris"
             Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
@@ -9505,7 +9521,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [58658935028502]
+            Value: [43364558018516]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -9566,6 +9582,7 @@ The ``\templates_help`` output from the above example is:
         Name: "saved_modules"
             Type: dict[str, dict[str, typing.Any]]
             Value: {}
+
 
 
 Built in template functions

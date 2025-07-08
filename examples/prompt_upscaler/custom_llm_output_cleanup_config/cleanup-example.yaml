@@ -2,8 +2,10 @@
 
 - pattern: "\\bcat\\b"
   substitution: "dog"
-  ignore_case: true  # optional
+  ignore_case: true  # optional (ignorecase also works)
   multiline: false  # optional
+  dotall: false # optional
+  count: 0 # optional, 0 means replace all
 
 - pattern: "\\bfeline\\b"
   substitution: "canine"

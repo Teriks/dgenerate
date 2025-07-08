@@ -104,7 +104,7 @@ above individual arguments instead of at the tail end of them.
 
 The following is a config file example that covers the most basic syntax concepts.
 
-@EXAMPLE[../../examples/config_syntax/basic-syntax-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/config_syntax/basic-syntax-config.dgen]
 
 
 Built in template variables
@@ -135,21 +135,26 @@ the mentioned variable names.
 Template variables set with the ``\set``, ``\setp``, and ``\sete`` directive will
 also be mentioned in this output.
 
-@EXAMPLE[../../examples/config_syntax/templates-help-directive-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/config_syntax/templates-help-directive-config.dgen]
 
 The ``\templates_help`` output from the above example is:
 
 @COMMAND_OUTPUT[{
-  "command": "dgenerate --file ../../examples/config_syntax/templates-help-directive-config.dgen --inference-steps 1 --output-path ../../examples/config_syntax/output",
-  "replace": {
-          "(?s).*Config": "Config",
-          " from.*>": ">",
-          "'--inference-steps', '1'.*]": "]",
-          " object at.*>": " object>",
-          "\\.\\./\\.\\./examples/config_syntax/output": "output",
-          "Value: [1]": "Value: [30]"
-      }
+  "command": "dgenerate --file @PROJECT_DIR/examples/config_syntax/templates-help-directive-config.dgen --inference-steps 1 --device cpu --output-size 8 --output-path @PROJECT_DIR/examples/config_syntax/output",
+  "replace": [
+          ["(?s).*?Config", "Config"],
+          [" from.*?>", ">"],
+          ["'--inference-steps', '1'.*?]", "]"],
+          [" object at.*?>", " object>"],
+          ["Value: '[^']*examples/config_syntax/output'", "Value: 'output'"],
+          ["Value: \\[1\\]", "Value: [30]"],
+          ["Value: \\(8, 8\\)", "Value: None"],
+          ["Value: 'cpu'", {"value":"Value: None", "count":1}],
+          ["Value: 'cpu'", {"value":"Value: 'cuda'", "count":1}]
+      ],
+  "reflags": ["multiline", "dotall"]
 }]
+
 
 
 Built in template functions
@@ -164,11 +169,11 @@ Functions with arguments can be used as either a function or filter IE: ``{{ "qu
 
 The dgenerate specific jinja2 functions/filters are:
 
-@COMMAND_OUTPUT[python ../scripts/get_dgenerate_shell_functions.py]
+@COMMAND_OUTPUT[python ../../../scripts/get_dgenerate_shell_functions.py]
 
 In addition to the dgenerate specific jinja2 functions, some python builtins are available:
 
-@COMMAND_OUTPUT[python ../scripts/get_builtin_shell_functions.py]
+@COMMAND_OUTPUT[python ../../../scripts/get_builtin_shell_functions.py]
 
 
 Directives, and applying templating
@@ -189,7 +194,7 @@ Here are examples of other available directives such as ``\set``, ``\setp``, and
 the usage and purpose of ``\save_modules`` for saving and reusing pipeline modules
 such as VAEs etc. outside of relying on the caching system.
 
-@EXAMPLE[../../examples/config_syntax/directives-templating-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/config_syntax/directives-templating-config.dgen]
 
 Setting template variables, in depth
 ------------------------------------
@@ -207,14 +212,14 @@ the templates or environment variables in the value expand to, unmodified or par
 
 This is for assigning literal text values to a template variable.
 
-@EXAMPLE[../../examples/config_syntax/set-directive-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/config_syntax/set-directive-config.dgen]
 
 The ``\sete`` directive can be used to assign the result of shell parsing and expansion to a
 template variable, the value provided will be shell parsed into tokens as if it were a line of
 dgenerate config. This is useful because you can use the config languages built in shell globbing
 feature to assign template variables.
 
-@EXAMPLE[../../examples/config_syntax/sete-directive-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/config_syntax/sete-directive-config.dgen]
 
 The ``\setp`` directive can be used to assign the result of evaluating a limited subset of python
 expressions to a template variable.  This can be used to set a template variable to the result
@@ -222,7 +227,7 @@ of a mathematical expression, python literal value such as a list, dictionary, s
 python comprehension, or python ternary statement.  In addition, all template functions
 implemented by dgenerate are available for use in the evaluated expressions.
 
-@EXAMPLE[../../examples/config_syntax/setp-directive-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/config_syntax/setp-directive-config.dgen]
 
 Setting environmental variables, in depth
 -----------------------------------------
@@ -236,7 +241,7 @@ for debugging purposes.
 
 Indirect expansion is allowed just like with ``\set``, ``\sete``, and ``\setp``.
 
-@EXAMPLE[../../examples/config_syntax/env-directive-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/config_syntax/env-directive-config.dgen]
 
 Globbing and path manipulation
 ------------------------------
@@ -247,7 +252,7 @@ globbing.
 
 The glob modules is set to the ``glob`` template variable, and the ``os.path`` module is set to the ``path`` template variable.
 
-@EXAMPLE[../../examples/config_syntax/globbing-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/config_syntax/globbing-config.dgen]
 
 
 Importing arbitrary python modules
@@ -289,11 +294,11 @@ as well, and can also be directly used inside a template.
 
 You can use this to calculate and scale linear Flux sigmas for instance.
 
-@EXAMPLE[../../examples/flux/sigmas/sigmas-manual-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/flux/sigmas/sigmas-manual-config.dgen]
 
 Or try scaling exponential SDXL sigmas.
 
-@EXAMPLE[../../examples/stablediffusion_xl/sigmas/sigmas-manual-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/stablediffusion_xl/sigmas/sigmas-manual-config.dgen]
 
 String and text escaping behavior
 ---------------------------------
@@ -311,7 +316,7 @@ of quote escaping.
 
 Most if not all behaviors are covered in the example below.
 
-@EXAMPLE[../../examples/config_syntax/token-escaping-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/config_syntax/token-escaping-config.dgen]
 
 
 The \\print and \\echo directive
