@@ -1762,11 +1762,10 @@ def get_torch_pipeline_class(
                         '--model-type torch-sd3 does not support --loras in img2img mode.')
 
                 if pag:
-                    raise UnsupportedPipelineConfigError(
-                        '--model-type torch-sd3 does not support --pag in img2img mode.'
-                    )
+                    pipeline_class = diffusers.StableDiffusion3PAGImg2ImgPipeline
+                else:
+                    pipeline_class = diffusers.StableDiffusion3Img2ImgPipeline
 
-                pipeline_class = diffusers.StableDiffusion3Img2ImgPipeline
             elif model_type == _enums.ModelType.TORCH_KOLORS:
                 if controlnet_uris:
                     if pag:
