@@ -7,7 +7,7 @@ Diffusion Model Feature Support Tables
    * ``--model-type torch-kolors`` (Kolors)
    * ``--model-type torch-if`` (Deep Floyd Stage 1)
    * ``--model-type torch-ifs`` (Deep Floyd Stage 2)
-   * ``--model-type torch-if-img2img`` (Deep Floyd Stage 2 - Img2Img)
+   * ``--model-type torch-ifs-img2img`` (Deep Floyd Stage 2 - Img2Img)
    * ``--model-type torch-sdxl-pix2pix`` (Stable Diffusion XL - Pix2Pix)
    * ``--model-type torch-upscaler-x2`` (Stable Diffusion x2 Upscaler)
    * ``--model-type torch-upscaler-x4`` (Stable Diffusion x4 Upscaler)
@@ -255,67 +255,82 @@ Diffusion Model Feature Support Tables
      - ❌
 
 .. list-table:: Prompt enhancement by ``--model-type``
-   :widths: 40 10 10
+   :widths: 40 10 10 10
    :header-rows: 1
 
    * - Model Type
      - sd-embed Prompt Weighting
      - compel Prompt Weighting
+     - llm4gen Prompt Weighting
 
    * - ``torch``
+     - ✅
      - ✅
      - ✅
 
    * - ``torch-pix2pix``
      - ✅
      - ✅
+     - ✅
 
    * - ``torch-sdxl``
      - ✅
      - ✅
+     - ❌
 
    * - ``torch-kolors``
+     - ❌
      - ❌
      - ❌
 
    * - ``torch-if``
      - ❌
      - ❌
+     - ❌
 
    * - ``torch-ifs``
+     - ❌
      - ❌
      - ❌
 
    * - ``torch-ifs-img2img``
      - ❌
      - ❌
+     - ❌
 
    * - ``torch-sdxl-pix2pix``
      - ✅
      - ✅
+     - ❌
 
    * - ``torch-upscaler-x2``
+     - ❌
      - ❌
      - ❌
 
    * - ``torch-upscaler-x4``
      - ✅
      - ✅
+     - ✅
 
    * - ``torch-s-cascade``
      - ✅
      - ✅
+     - ❌
 
    * - ``torch-sd3``
      - ✅
+     - ❌
      - ❌
 
    * - ``torch-flux``
      - ✅
      - ❌
+     - ❌
 
    * - ``torch-flux-fill``
      - ✅
+     - ❌
      - ❌
 
 
@@ -327,7 +342,7 @@ cases in which PAG is not supported.
 
 There is no support for using T2I Adapters with PAG.
 
-Stable Diffusion 3 does not currently support PAG in img2img mode, or with ControlNets at all.
+Stable Diffusion 3 does not currently support PAG with ControlNets at all.
 
 Stable Diffusion XL does not support PAG in (inpaint + ControlNets) mode.
 
