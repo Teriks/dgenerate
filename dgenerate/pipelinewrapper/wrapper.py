@@ -2638,11 +2638,6 @@ class DiffusionPipelineWrapper:
             ras_args = self._get_sd3_ras_args(user_args)
 
             with _freeu(self._pipeline, user_args.freeu_params), \
-                    _hi_diffusion(self._pipeline,
-                                  generator=generator,
-                                  enabled=user_args.hi_diffusion,
-                                  no_raunet=user_args.hi_diffusion_no_raunet,
-                                  no_window_attn=user_args.hi_diffusion_no_win_attn), \
                     _sd3_ras_context(self._pipeline, args=ras_args, enabled=user_args.ras), \
                     _deep_cache_context(self._pipeline,
                                         cache_interval=_types.default(
@@ -2650,6 +2645,11 @@ class DiffusionPipelineWrapper:
                                         cache_branch_id=_types.default(
                                             user_args.deep_cache_branch_id, _constants.DEFAULT_DEEP_CACHE_BRANCH_ID),
                                         enabled=user_args.deep_cache), \
+                    _hi_diffusion(self._pipeline,
+                                  generator=generator,
+                                  enabled=user_args.hi_diffusion,
+                                  no_raunet=user_args.hi_diffusion_no_raunet,
+                                  no_window_attn=user_args.hi_diffusion_no_win_attn), \
                     _denoise_range(self._pipeline, user_args.denoising_start, user_args.denoising_end):
 
                 if self._parsed_adetailer_detector_uris:
@@ -2690,17 +2690,17 @@ class DiffusionPipelineWrapper:
             output_type = 'pil'
 
         with _freeu(self._pipeline, user_args.freeu_params), \
-                _hi_diffusion(self._pipeline,
-                              generator=generator,
-                              enabled=user_args.hi_diffusion,
-                              no_raunet=user_args.hi_diffusion_no_raunet,
-                              no_window_attn=user_args.hi_diffusion_no_win_attn), \
                 _deep_cache_context(self._pipeline,
                                     cache_interval=_types.default(
                                         user_args.deep_cache_interval, _constants.DEFAULT_DEEP_CACHE_INTERVAL),
                                     cache_branch_id=_types.default(
                                         user_args.deep_cache_branch_id, _constants.DEFAULT_DEEP_CACHE_BRANCH_ID),
-                                    enabled=user_args.deep_cache):
+                                    enabled=user_args.deep_cache), \
+                _hi_diffusion(self._pipeline,
+                              generator=generator,
+                              enabled=user_args.hi_diffusion,
+                              no_raunet=user_args.hi_diffusion_no_raunet,
+                              no_window_attn=user_args.hi_diffusion_no_win_attn):
 
             if self._parsed_adetailer_detector_uris:
                 image = generate_asdff().images
