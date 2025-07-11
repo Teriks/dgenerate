@@ -1300,6 +1300,8 @@ class RenderLoopConfig(_types.SetFromMixin):
     This indicates what mask shape adetailer should attempt to draw around a detected feature,
     the default value is "rectangle". You may also specify "circle" to generate an ellipsoid 
     shaped mask, which might be helpful for achieving better blending.
+    
+    Valid values are: ("r", "rect", "rectangle"), or ("c", "circle", "ellipse")
     """
 
     adetailer_detector_paddings: _types.OptionalPaddings = None
@@ -1765,6 +1767,20 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'Outputting latents with {a_namer("image_format")} {self.image_format} '
                 f'is not supported with {a_namer("adetailer_detector_uris")}'
             )
+
+        if self.adetailer_mask_shapes:
+            for shape in self.adetailer_mask_shapes:
+                try:
+                    parsed_shape = _textprocessing.parse_basic_mask_shape(shape)
+                except ValueError:
+                    parsed_shape = None
+
+                if parsed_shape is None or parsed_shape not in {
+                        _textprocessing.BasicMaskShape.RECTANGLE,
+                        _textprocessing.BasicMaskShape.ELLIPSE
+                }:
+                    raise RenderLoopConfigError(
+                        f'Unknown {"adetailer_mask_shapes"} value: {shape}')
 
     def _check_image_seeds_requirements(self, a_namer: typing.Callable[[str], str], help_mode: bool):
         """Verify requirements for image seeds based on model type."""

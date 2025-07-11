@@ -319,7 +319,7 @@ Help Output
             The "mask-shape" (overrides --adetailer-mask-shapes) argument indicates what mask shape adetailer
             should attempt to draw around a detected feature, the default value is "rectangle". You may also
             specify "circle" to generate an ellipsoid shaped mask, which might be helpful for achieving better
-            blending.
+            blending. Valid values are: ("r", "rect", "rectangle"), or ("c", "circle", "ellipse").
             
             The "mask-blur" (overrides --adetailer-mask-blurs) argument indicates the level of gaussian blur to
             apply to the generated inpaint mask, which can help with smooth blending in of the inpainted feature
@@ -378,9 +378,12 @@ Help Output
       -ads, --adetailer-mask-shapes ADETAILER_MASK_SHAPE [ADETAILER_MASK_SHAPE ...]
             One or more adetailer mask shapes to try. This indicates what mask shape adetailer should attempt to
             draw around a detected feature, the default value is "rectangle". You may also specify "circle" to
-            generate an ellipsoid shaped mask, which might be helpful for achieving better blending. (default:
-            rectangle).
-            -----------
+            generate an ellipsoid shaped mask, which might be helpful for achieving better blending.
+            
+            Valid values are: ("r", "rect", "rectangle"), or ("c", "circle", "ellipse")
+            
+            (default: rectangle).
+            ---------------------
       -addp, --adetailer-detector-paddings ADETAILER_DETECTOR_PADDING [ADETAILER_DETECTOR_PADDING ...]
             One or more adetailer detector padding values to try. This value specifies the amount of padding
             that will be added to the detection rectangle which is used to generate a masked area. The default
@@ -7067,6 +7070,7 @@ Output:
         "mlsd"
         "normal-bae"
         "openpose"
+        "paste"
         "patchmatch"
         "pidi"
         "posterize"
@@ -9521,7 +9525,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [43364558018516]
+            Value: [96017071079525]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

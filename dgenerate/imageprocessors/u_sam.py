@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 import contextlib
 import os
 import re
@@ -244,7 +245,6 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
                 boxes.append([x1, y1, x2, y2])
             elif isinstance(box, str):
                 # String format for backward compatibility: "x1,y1,x2,y2"
-                # And "TOPxLEFTxBOTTOMxRIGHT"
                 coords = re.split(r'[x,]', box)
                 if len(coords) != 4:
                     raise ValueError(f"Box must have x1,y1,x2,y2 coordinates: {box}")

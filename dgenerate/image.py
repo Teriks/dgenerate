@@ -22,11 +22,14 @@ import math
 import typing
 
 import PIL.Image
+import PIL.ImageDraw
+import PIL.ImageFilter
+import PIL.ImageChops
 import cv2
 import numpy
 import piexif
 import piexif.helper
-
+import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 
 __doc__ = """
@@ -308,6 +311,108 @@ def resize_image(img: PIL.Image.Image,
         r.filename = img.filename
 
     return r
+
+
+def paste_with_feather(
+        background: PIL.Image.Image,
+        foreground: PIL.Image.Image,
+        location: tuple[int, int] | tuple[int, int, int, int] | list[int],
+        feather: int = 30,
+        shape: str = 'rectangle'
+) -> PIL.Image.Image:
+    """
+    Composite an image onto a background with feathered (soft) edges.
+
+    Creates smooth, blended transitions between foreground and background images
+    by applying Gaussian blur to a mask, eliminating hard edges. The feathering
+    effect is achieved by shrinking the mask and then blurring it.
+
+    :param background: The background image to paste onto. Will be converted to RGBA mode.
+    :param foreground: The foreground image to paste. Will be resized to fit the specified location.
+    :param location: Specifies where to place the image. 2 elements (x, y) for top-left corner
+                     offset using input_img original size, 4 elements (x0, y0, x1, y1) for
+                     bounding box coordinates, or None to center with margin based on feather width.
+    :param feather: The desired width of the feathered edge in pixels.
+    :param shape: The shape of the mask. ``r`` / ``rect`` / ``rectangle`` for rectangular
+        mask, ``c`` / ``circle`` / ``ellipse`` for circular.
+    :returns: The composite image with feathered edges in the mode (channels) of the background image.
+    :raises ValueError: If location is provided but doesn't contain 2 or 4 elements.
+                        If shape is not recognized.
+    """
+
+    input_mode = background.mode
+    background = background.convert("RGBA")
+
+    inset = feather // 2
+    blur_radius = max(1, feather / 6.0) if feather > 0 else 0
+
+    margin = math.ceil(feather)
+
+    if len(location) == 2:
+        paste_offset = tuple(location)
+        paste_size = foreground.size
+    elif len(location) == 4:
+        x0, y0, x1, y1 = location
+        paste_offset = (x0, y0)
+        paste_size = (x1 - x0, y1 - y0)
+    else:
+        raise ValueError("location must be a tuple/list of length 2 or 4")
+
+    mask_size = (paste_size[0] + 2 * margin, paste_size[1] + 2 * margin)
+    mask = PIL.Image.new("L", mask_size, 0)
+    draw = PIL.ImageDraw.Draw(mask)
+
+    mask_shape = _textprocessing.parse_basic_mask_shape(shape)
+
+    if mask_shape == _textprocessing.BasicMaskShape.ELLIPSE:
+        cx = mask_size[0] // 2
+        cy = mask_size[1] // 2
+        r = min(paste_size) // 2 - inset
+        if r < 0:
+            r = 0
+        bbox = (cx - r, cy - r, cx + r, cy + r)
+        draw.ellipse(bbox, fill=255)
+    elif mask_shape == _textprocessing.BasicMaskShape.RECTANGLE:
+        left = margin + inset
+        top = margin + inset
+        right = margin + paste_size[0] - inset
+        bottom = margin + paste_size[1] - inset
+
+        if left >= right or top >= bottom:
+            left = top = right = bottom = 0
+        draw.rectangle((left, top, right, bottom), fill=255)
+    else:
+        raise ValueError(f'Unknown mask shape: {shape}')
+
+    if blur_radius > 0:
+        blurred_mask = mask.filter(PIL.ImageFilter.GaussianBlur(radius=blur_radius))
+    else:
+        blurred_mask = mask
+
+    input_rgba = foreground.convert("RGBA").resize(
+        paste_size, PIL.Image.Resampling.LANCZOS
+    )
+
+    input_with_margin = PIL.Image.new("RGBA", mask_size, (0, 0, 0, 0))
+    input_with_margin.paste(input_rgba, (margin, margin))
+
+    if input_rgba.mode == 'RGBA':
+        existing_alpha = input_rgba.split()[-1]
+        alpha_with_margin = PIL.Image.new("L", mask_size, 0)
+        alpha_with_margin.paste(existing_alpha, (margin, margin))
+
+        combined_alpha = PIL.ImageChops.multiply(alpha_with_margin, blurred_mask)
+        input_with_margin.putalpha(combined_alpha)
+    else:
+        input_with_margin.putalpha(blurred_mask)
+
+    composite = background.copy()
+
+    adjusted_offset = (paste_offset[0] - margin, paste_offset[1] - margin)
+
+    composite.paste(input_with_margin, adjusted_offset, input_with_margin)
+
+    return composite.convert(input_mode)
 
 
 def letterbox_image(img,

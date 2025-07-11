@@ -215,8 +215,8 @@ class AdPipelineBase:
         return yolo_detector
 
     def _get_inpaint_args(
-            self, pipeline_args: Mapping[str, Any]
-    ):
+            self, pipeline_args: dict[str, Any]
+    ) -> dict[str, Any]:
         pipeline_args = dict(pipeline_args)
         sig = inspect.signature(self.inpaint_pipeline)
         if (
@@ -233,9 +233,9 @@ class AdPipelineBase:
 
     def process_inpainting(
             self,
-            pipeline_args: Mapping[str, Any],
+            pipeline_args: dict[str, Any],
             init_image: Image.Image,
-            control_image: Image.Image,
+            control_image: Image.Image | None,
             mask: Image.Image,
             bbox_padded: tuple[int, int, int, int],
             device: str,

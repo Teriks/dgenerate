@@ -170,7 +170,7 @@ class ConsoleSchemaBuilder:
 
         schema = dict()
 
-        for directive in config_runner.directives.keys():
+        for directive in sorted(config_runner.directives.keys()):
             schema['\\' + directive] = config_runner.generate_directives_help(
                 [directive], help_wrap_width=100
             )
@@ -185,7 +185,7 @@ class ConsoleSchemaBuilder:
 
         schema = dict()
 
-        for function in itertools.chain(config_runner.template_functions.keys(), config_runner.builtins.keys()):
+        for function in sorted(itertools.chain(config_runner.template_functions.keys(), config_runner.builtins.keys())):
             schema[function] = config_runner.generate_functions_help(
                 [function], help_wrap_width=100
             )

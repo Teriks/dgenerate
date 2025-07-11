@@ -10,6 +10,7 @@ from torchvision.transforms.functional import to_pil_image
 import dgenerate.memory
 import dgenerate.messages
 from dgenerate.extras.asdff.utils import bbox_padding
+import dgenerate.textprocessing as _textprocessing
 
 try:
     from ultralytics import YOLO
@@ -35,7 +36,7 @@ def create_mask_from_bbox(
         padding: int | tuple[int, int] | tuple[int, int, int, int], optional
             Padding to apply to the bounding box (default: 0).
         mask_shape: str, optional
-            Shape of the mask ("rectangle" or "circle").
+            Shape of the mask ("r", "rect", "rectangle" or "c", "circle", "ellipse").
         index_filter: set[int] | list[int] | None
             Include only these detection indices
 
@@ -54,9 +55,11 @@ def create_mask_from_bbox(
         mask = Image.new("L", shape, 0)
         mask_draw = ImageDraw.Draw(mask)
 
-        if mask_shape == "rectangle":
+        m_shape = _textprocessing.parse_basic_mask_shape(mask_shape)
+
+        if m_shape == _textprocessing.BasicMaskShape.RECTANGLE:
             mask_draw.rectangle(bbox, fill=255)
-        elif mask_shape == "circle":
+        elif m_shape == _textprocessing.BasicMaskShape.ELLIPSE:
             # Compute center and radius
             cx, cy = (bbox[0] + bbox[2]) // 2, (bbox[1] + bbox[3]) // 2
             radius = min((bbox[2] - bbox[0]) // 2, (bbox[3] - bbox[1]) // 2)

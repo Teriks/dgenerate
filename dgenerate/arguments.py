@@ -421,10 +421,19 @@ def _type_adetailer_class_filter_value(val):
 def _type_adetailer_mask_shape(val):
     val = val.lower()
 
-    if val not in {'rectangle', 'circle'}:
+    try:
+        parsed_shape = _textprocessing.parse_basic_mask_shape(val)
+    except ValueError:
+        parsed_shape = None
+
+    if parsed_shape is None or parsed_shape not in {
+        _textprocessing.BasicMaskShape.RECTANGLE,
+        _textprocessing.BasicMaskShape.ELLIPSE
+    }:
         raise argparse.ArgumentTypeError(
-            'Must be one of: rectangle or circle'
+            'Must be one of: "r", "rect", "rectangle", or "c", "circle", "ellipse"'
         )
+
     return val
 
 
@@ -1080,6 +1089,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     what mask shape adetailer should attempt to draw around a detected feature, 
                     the default value is "rectangle". You may also specify "circle" to generate 
                     an ellipsoid shaped mask, which might be helpful for achieving better blending.
+                    Valid values are: ("r", "rect", "rectangle"), or ("c", "circle", "ellipse").
                 
                     The "mask-blur" (overrides --adetailer-mask-blurs) argument indicates the 
                     level of gaussian blur to apply to the generated inpaint mask, which 
@@ -1178,7 +1188,12 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             help="""One or more adetailer mask shapes to try. This indicates what mask shape 
                     adetailer should attempt to draw around a detected feature, the default value is 
                     "rectangle". You may also specify "circle" to generate an ellipsoid shaped mask, 
-                    which might be helpful for achieving better blending. (default: rectangle).""")
+                    which might be helpful for achieving better blending. 
+                    
+                    Valid values are: ("r", "rect", "rectangle"), or ("c", "circle", "ellipse")
+                    
+                    (default: rectangle).
+                    """)
     )
 
     actions.append(
