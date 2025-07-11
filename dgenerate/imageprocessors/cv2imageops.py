@@ -47,10 +47,11 @@ class DilateProcessor(_imageprocessor.ImageProcessor):
     More steps result in more expansion.
     
     The "shape" argument specifies the shape of the structuring element:
-    
-    - "rect": rectangular kernel (default)
-    - "ellipse": elliptical kernel
-    - "cross": cross-shaped kernel
+
+    NOWRAP!
+    - "r" or "rect" or "rectangle": rectangular kernel (default)
+    - "c" or "circle" or "ellipse": elliptical kernel
+    - "+" or "cross": cross-shaped kernel
     
     The "pre-resize" argument determines if the processing occurs before or after dgenerate resizes the image.
     This defaults to False, meaning the image is processed after dgenerate is done resizing it.
@@ -65,13 +66,13 @@ class DilateProcessor(_imageprocessor.ImageProcessor):
     def __init__(self,
                  size: int | str = 3,
                  steps: int = 1,
-                 shape: str = 'rect',
+                 shape: str = 'rectangle',
                  pre_resize: bool = False,
                  **kwargs):
         """
         :param size: size of the structuring element (must be odd integer or string like "5x3")
         :param steps: number of times to apply the dilation operation
-        :param shape: shape of the structuring element ("rect", "ellipse", or "cross")
+        :param shape: shape of the structuring element ("r" or "rect" or "rectangle", "c" or "circle" or "ellipse", or "+" or "cross")
         :param pre_resize: process the image before it is resized, or after? default is False (after)
         :param kwargs: forwarded to base class
         """
@@ -107,22 +108,27 @@ class DilateProcessor(_imageprocessor.ImageProcessor):
         if steps < 1:
             raise self.argument_error('Argument "steps" must be a positive integer.')
 
-        if shape not in {'rect', 'ellipse', 'cross'}:
-            raise self.argument_error('Argument "shape" must be one of: "rect", "ellipse", "cross".')
-
         self._kernel_width = kernel_width
         self._kernel_height = kernel_height
         self._iterations = steps
-        self._kernel_shape = shape
         self._pre_resize = pre_resize
 
         # Create the kernel based on shape
-        if shape == 'rect':
-            self._kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (kernel_width, kernel_height))
-        elif shape == 'ellipse':
-            self._kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernel_width, kernel_height))
-        elif shape == 'cross':
+
+        if shape.lower() in {'+', 'cross'}:
             self._kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (kernel_width, kernel_height))
+        else:
+            try:
+                parsed_shape = _textprocessing.parse_basic_mask_shape(shape)
+            except ValueError:
+                parsed_shape = None
+
+            if parsed_shape == _textprocessing.BasicMaskShape.RECTANGLE:
+                self._kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (kernel_width, kernel_height))
+            elif parsed_shape == _textprocessing.BasicMaskShape.ELLIPSE:
+                self._kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernel_width, kernel_height))
+            else:
+                raise self.argument_error(f'Unknown kernel shape: {shape}')
 
     def _process(self, image: PIL.Image.Image) -> PIL.Image.Image:
         """

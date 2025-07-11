@@ -212,9 +212,18 @@ class AdetailerDetectorUri:
 
         if mask_shape is not None:
             mask_shape = mask_shape.lower()
-            if mask_shape not in {'rectangle', 'circle'}:
+            try:
+                parsed_shape = _textprocessing.parse_basic_mask_shape(mask_shape)
+            except ValueError:
+                parsed_shape = None
+
+            if parsed_shape is None or parsed_shape not in {
+                _textprocessing.BasicMaskShape.RECTANGLE,
+                _textprocessing.BasicMaskShape.ELLIPSE
+            }:
                 raise _exceptions.InvalidAdetailerDetectorUriError(
-                    'adetailer detector mask-shape must be one of: rectangle or circle.'
+                    'adetailer detector mask-shape must be one of: '
+                    '"r", "rect", "rectangle" or "c", "circle", "ellipse".'
                 )
 
         self._mask_shape = mask_shape

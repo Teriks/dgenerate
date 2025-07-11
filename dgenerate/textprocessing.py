@@ -1368,9 +1368,10 @@ def wrap_paragraphs(text: str,
                 if line.lstrip().startswith('NOWRAP!'):
                     continue
                 lines_without_nowrap.append(line)
-            wrapped_text += indent_text('\n'.join(_clean_lines(lines_without_nowrap) if clean_lines else lines_without_nowrap),
-                                        initial_indent=fill_args.get('initial_indent', None),
-                                        subsequent_indent=fill_args.get('subsequent_indent', None)) + '\n\n'
+            wrapped_text += indent_text(
+                '\n'.join(_clean_lines(lines_without_nowrap) if clean_lines else lines_without_nowrap),
+                initial_indent=fill_args.get('initial_indent', None),
+                subsequent_indent=fill_args.get('subsequent_indent', None)) + '\n\n'
         else:
             # Wrap the paragraph as before
             wrapped_paragraph = textwrap.fill(
@@ -1499,6 +1500,37 @@ def parse_image_size(string):
         return dimensions[0], dimensions[0]
 
     return dimensions
+
+
+class BasicMaskShape(enum.Enum):
+    """Represents a basic mask shape"""
+    RECTANGLE = 0
+    ELLIPSE = 1
+
+
+def parse_basic_mask_shape(string: str) -> BasicMaskShape:
+    """
+    Parse a basic mask shape from a string.
+
+    ``r`` -> ``RECTANGLE``
+    ``rect`` -> ``RECTANGLE``
+    ``rectangle`` -> ``RECTANGLE``
+    ``c`` -> ``ELLIPSE``
+    ``circle`` -> ``ELLIPSE``
+    ``ellipse`` -> ``ELLIPSE``
+
+
+    :param string: mask shape
+    :return: :py:enum:`BasicMaskShape`
+    """
+    l_string = string.lower()
+
+    if l_string in {'r', 'rect', 'rectangle'}:
+        return BasicMaskShape.RECTANGLE
+    elif l_string in {'c', 'circle', 'ellipse'}:
+        return BasicMaskShape.ELLIPSE
+
+    raise ValueError(f'Unknown mask shape: {string}')
 
 
 def debug_format_args(args_dict: dict[str, typing.Any],
