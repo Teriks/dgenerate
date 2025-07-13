@@ -59,6 +59,10 @@ class PasteProcessor(_imageprocessor.ImageProcessor):
     the transparency of the pasted image. The mask should be a grayscale image where white
     areas represent full opacity and black areas represent full transparency. Cannot be used 
     together with the "feather" parameter.
+
+    The "reverse" argument allows you to reverse the paste operation, meaning the "image"
+    argument is to be considered the background, and the processed image is to be the pasted
+    content.
     
     The "pre-resize" argument determines if the processing occurs before or after dgenerate 
     resizes the image. This defaults to False, meaning the image is processed after dgenerate 
@@ -76,6 +80,7 @@ class PasteProcessor(_imageprocessor.ImageProcessor):
                  feather: int | None = None,
                  feather_shape: str = "rectangle",
                  mask: str | None = None,
+                 reverse: bool = False,
                  pre_resize: bool = False,
                  **kwargs):
         """
@@ -84,6 +89,7 @@ class PasteProcessor(_imageprocessor.ImageProcessor):
         :param feather: feathering radius in pixels for softening edges (cannot be used with mask)
         :param feather_shape: shape of feathering ("rectangle", "rect", "circle", or "ellipse")
         :param mask: path to a mask image file for controlling transparency (cannot be used with feather)
+        :param reverse: Reverse the paste operation?
         :param pre_resize: process the image before it is resized, or after? default is False (after)
         :param kwargs: forwarded to base class
         """
@@ -114,6 +120,7 @@ class PasteProcessor(_imageprocessor.ImageProcessor):
         self._feather = feather
         self._feather_shape = feather_shape
         self._pre_resize = pre_resize
+        self._reverse = reverse
 
         # Load source image upfront
         if not os.path.exists(image):
@@ -177,10 +184,10 @@ class PasteProcessor(_imageprocessor.ImageProcessor):
     def _process(self, image: PIL.Image.Image) -> PIL.Image.Image:
         """Process the image by pasting the source image onto it"""
         # Make a copy of the base image to avoid modifying the original
-        result_image = image.copy()
+        result_image = image.copy() if not self._reverse else self._source_image.copy()
 
         # Use the preloaded source image
-        source_image = self._source_image
+        source_image = self._source_image if not self._reverse else image
 
         if len(self._position) == 2:
             left, top = self._position
