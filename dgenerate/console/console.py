@@ -33,6 +33,7 @@ import tkinter as tk
 import typing
 
 import PIL.Image
+import PIL.ImageDraw
 import PIL.ImageTk
 import charset_normalizer
 
@@ -420,6 +421,17 @@ class DgenerateConsole(tk.Tk):
         self._image_pane_window = None
         self._image_pane_window_last_pos = None
         self._image_pane_last_right_clicked_coords = None
+        
+        # Bounding box selection state
+        self._bbox_selection_thickness = 3
+        self._bbox_selection_dash_length = 8
+        self._bbox_selection_gap_length = 4
+        self._bbox_selection_mode = False
+        self._bbox_selection_format = None  # 'csv' or 'x'
+        self._bbox_start_coords = None
+        self._bbox_end_coords = None
+        self._original_displayed_image = None  # Keep original image for restoration
+        
         self._image_pane = tk.Frame(self._paned_window_horizontal, bg='black')
 
         self._image_pane_image_label = tk.Label(self._image_pane, bg='black')
@@ -427,7 +439,17 @@ class DgenerateConsole(tk.Tk):
         self._image_pane_image_label.bind('<Configure>',
                          lambda e: self._resize_image_pane_image(self._image_pane_image_label))
         
-        # Remove the left-click binding - coordinates will come from right-click instead
+        # Bounding box selection mouse events
+        self._image_pane_image_label.bind('<Button-1>', 
+                         lambda e: self._handle_image_left_click(e, self._image_pane_image_label))
+        self._image_pane_image_label.bind('<B1-Motion>', 
+                         lambda e: self._handle_image_drag(e, self._image_pane_image_label))
+        self._image_pane_image_label.bind('<ButtonRelease-1>', 
+                         lambda e: self._handle_image_left_release(e, self._image_pane_image_label))
+        
+        # Key binding for canceling selection (bind to main window)
+        self.bind('<Escape>', lambda e: self._cancel_bbox_selection())
+        self.bind('<KeyPress-Escape>', lambda e: self._cancel_bbox_selection())
 
         self._image_pane_context = tk.Menu(self._image_pane, tearoff=0)
 
@@ -794,6 +816,14 @@ class DgenerateConsole(tk.Tk):
             '<Configure>', lambda e: self._resize_image_pane_image(
                 self._image_pane_window_image_label)
         )
+        
+        # Bounding box selection mouse events for window
+        self._image_pane_window_image_label.bind('<Button-1>', 
+                         lambda e: self._handle_image_left_click(e, self._image_pane_window_image_label))
+        self._image_pane_window_image_label.bind('<B1-Motion>', 
+                         lambda e: self._handle_image_drag(e, self._image_pane_window_image_label))
+        self._image_pane_window_image_label.bind('<ButtonRelease-1>', 
+                         lambda e: self._handle_image_left_release(e, self._image_pane_window_image_label))
 
         image_window_context = tk.Menu(self._image_pane_window, tearoff=0)
 
@@ -841,13 +871,26 @@ class DgenerateConsole(tk.Tk):
         if self._displayed_image is not None:
             self._displayed_image.close()
 
-        self._displayed_image = PIL.Image.open(image_path)
-        self._displayed_image_path = image_path
+        # Clear any existing bounding box selection
+        if self._bbox_selection_mode:
+            self._end_bbox_selection()
 
-        self._image_pane_image_label.event_generate('<Configure>')
+        try:
+            self._displayed_image = PIL.Image.open(image_path)
+            
+            # Ensure image is in RGB mode for compatibility
+            if self._displayed_image.mode not in ['RGB', 'RGBA']:
+                self._displayed_image = self._displayed_image.convert('RGB')
+                
+            self._original_displayed_image = self._displayed_image.copy()  # Keep original
+            self._displayed_image_path = image_path
 
-        if self._image_pane_window is not None:
-            self._image_pane_window_image_label.event_generate('<Configure>')
+            self._image_pane_image_label.event_generate('<Configure>')
+
+            if self._image_pane_window is not None:
+                self._image_pane_window_image_label.event_generate('<Configure>')
+        except Exception as e:
+            self._write_stderr_output(f"Error loading image: {e}\n")
 
     def _resize_image_pane_image(self, label: tk.Label):
         if self._displayed_image is None:
@@ -1214,6 +1257,11 @@ class DgenerateConsole(tk.Tk):
     def destroy(self) -> None:
         self.save_settings()
         self.kill_shell_process()
+        
+        # Clean up bounding box selection
+        if self._bbox_selection_mode:
+            self._end_bbox_selection()
+        
         super().destroy()
 
     def _create_edit_menu(self, menu):
@@ -1321,6 +1369,18 @@ class DgenerateConsole(tk.Tk):
         context_menu.add_separator()
 
         context_menu.add_command(
+            label='Copy Bounding Box "x"',
+            command=lambda: self._start_bbox_selection('x')
+        )
+
+        context_menu.add_command(
+            label='Copy Bounding Box CSV',
+            command=lambda: self._start_bbox_selection('csv')
+        )
+
+        context_menu.add_separator()
+
+        context_menu.add_command(
             label='Copy Path',
             command=self._copy_image_path)
 
@@ -1349,6 +1409,14 @@ class DgenerateConsole(tk.Tk):
         else:
             context_menu.entryconfigure('Copy Coordinates "x"', state=tk.DISABLED)
             context_menu.entryconfigure('Copy Coordinates CSV', state=tk.DISABLED)
+
+        # Enable/disable Copy Bounding Box based on whether image is loaded
+        if self._displayed_image is not None:
+            context_menu.entryconfigure('Copy Bounding Box "x"', state=tk.NORMAL)
+            context_menu.entryconfigure('Copy Bounding Box CSV', state=tk.NORMAL)
+        else:
+            context_menu.entryconfigure('Copy Bounding Box "x"', state=tk.DISABLED)
+            context_menu.entryconfigure('Copy Bounding Box CSV', state=tk.DISABLED)
 
         # Enable/disable Copy Path based on whether path is available
         if self._displayed_image_path is not None:
@@ -1442,7 +1510,8 @@ class DgenerateConsole(tk.Tk):
         except Exception as e:
             self._write_stderr_output(f"Failed to load image: {e}\n")
 
-    def _shell_unquote_path(self, path: str) -> str:
+    @staticmethod
+    def _shell_unquote_path(path: str) -> str:
         try:
             parsed = _textprocessing.shell_parse(
                 path.strip(),
@@ -1500,11 +1569,343 @@ class DgenerateConsole(tk.Tk):
         except Exception as e:
             self._write_stderr_output(f"Failed to load image: {e}\n")
 
-    def _get_selected_text(self, text_widget):
+    @staticmethod
+    def _get_selected_text(text_widget: tk.Text):
         try:
             return text_widget.selection_get()
         except tk.TclError:
             return None
+
+    def _start_bbox_selection(self, format_type):
+        if self._displayed_image is None:
+            return
+            
+        self._bbox_selection_mode = True
+        self._bbox_selection_format = format_type
+        self._bbox_start_coords = None
+        self._bbox_end_coords = None
+        
+        # Ensure we have the original image
+        if self._original_displayed_image is None:
+            self._original_displayed_image = self._displayed_image.copy()
+        
+        self._write_stdout_output(
+            "Bounding box selection mode started. Left-click and drag to select area. Press Escape to cancel.\n")
+
+
+    def _handle_image_left_click(self, event, label):
+        if not self._bbox_selection_mode:
+            return
+            
+        # Convert to image coordinates
+        image_x, image_y = self._widget_to_image_coordinates(event.x, event.y, label)
+        if image_x is None or image_y is None:
+            return
+            
+        self._bbox_start_coords = (image_x, image_y)
+        self._bbox_end_coords = (image_x, image_y)
+        
+        # Start drawing the selection rectangle on the image
+        self._draw_selection_on_image()
+        
+        return "break"
+
+    def _handle_image_drag(self, event, label):
+        if not self._bbox_selection_mode or self._bbox_start_coords is None:
+            return
+            
+        # Convert to image coordinates
+        image_x, image_y = self._widget_to_image_coordinates(event.x, event.y, label)
+        if image_x is None or image_y is None:
+            return
+            
+        self._bbox_end_coords = (image_x, image_y)
+        # Update the selection rectangle on the image
+        self._draw_selection_on_image()
+        
+        return "break"
+
+    def _handle_image_left_release(self, event, label):
+        if not self._bbox_selection_mode or self._bbox_start_coords is None:
+            return
+            
+        # Convert to image coordinates
+        image_x, image_y = self._widget_to_image_coordinates(event.x, event.y, label)
+        if image_x is None or image_y is None:
+            return
+            
+        self._bbox_end_coords = (image_x, image_y)
+        
+        # Complete the selection
+        self._complete_bbox_selection()
+        
+        return "break"
+
+    def _draw_selection_on_image(self):
+        if (self._bbox_start_coords is None or 
+            self._bbox_end_coords is None or
+            self._original_displayed_image is None):
+            return
+            
+        try:
+            # Create a copy of the original image to draw on
+            working_image = self._original_displayed_image.copy()
+            
+            # Ensure image is in RGB mode for drawing
+            if working_image.mode not in ['RGB', 'RGBA']:
+                working_image = working_image.convert('RGB')
+                
+            draw = PIL.ImageDraw.Draw(working_image)
+        except Exception as e:
+            self._write_stderr_output(f"Error creating drawing context: {e}\n")
+            return
+        
+        x1, y1 = self._bbox_start_coords
+        x2, y2 = self._bbox_end_coords
+        
+        # Ensure x1,y1 is top-left and x2,y2 is bottom-right
+        if x1 > x2:
+            x1, x2 = x2, x1
+        if y1 > y2:
+            y1, y2 = y2, y1
+            
+        try:
+            # Fixed visual thickness values (in screen pixels)
+            visual_thickness = self._bbox_selection_thickness
+            visual_dash_length = self._bbox_selection_dash_length
+            visual_gap_length = self._bbox_selection_gap_length
+            
+            # Get the current display size to calculate how the image is scaled
+            display_width, display_height = self._get_current_image_display_size()
+            
+            if display_width is None or display_height is None:
+                # Fallback to fixed values if we can't get display size
+                original_thickness = self._bbox_selection_thickness
+                original_dash_length = self._bbox_selection_dash_length
+                original_gap_length = self._bbox_selection_gap_length
+            else:
+                original_width = working_image.width
+                original_height = working_image.height
+
+                width_scale = display_width / original_width
+                height_scale = display_height / original_height
+
+                display_scale = min(width_scale, height_scale)
+
+                # Calculate scaled values maintaining float precision
+                original_thickness = visual_thickness / display_scale
+                original_dash_length = visual_dash_length / display_scale
+                original_gap_length = visual_gap_length / display_scale
+                
+                # Ensure minimum values that maintain visual distinction
+                # The gap should be at least 1 pixel to ensure dashes don't merge
+                min_gap = 1.0
+                if original_gap_length < min_gap:
+                    # Scale all values proportionally to maintain ratio
+                    scale_factor = min_gap / original_gap_length
+                    original_thickness = max(1.0, original_thickness * scale_factor)
+                    original_dash_length = max(2.0, original_dash_length * scale_factor)
+                    original_gap_length = min_gap
+
+            # Top line
+            self._draw_dotted_line(draw, x1, y1, x2, y1, original_dash_length, original_gap_length, original_thickness)
+            # Right line
+            self._draw_dotted_line(draw, x2, y1, x2, y2, original_dash_length, original_gap_length, original_thickness)
+            # Bottom line
+            self._draw_dotted_line(draw, x2, y2, x1, y2, original_dash_length, original_gap_length, original_thickness)
+            # Left line
+            self._draw_dotted_line(draw, x1, y2, x1, y1, original_dash_length, original_gap_length, original_thickness)
+
+            self._displayed_image = working_image
+
+            # Trigger redisplay
+            self._image_pane_image_label.event_generate('<Configure>')
+            if self._image_pane_window is not None:
+                self._image_pane_window_image_label.event_generate('<Configure>')
+
+        except Exception as e:
+            self._write_stderr_output(f"Error drawing selection rectangle: {e}\n")
+            return
+
+    def _get_current_image_label_size(self):
+        # Determine which label to use
+        if hasattr(self, '_image_pane_image_label') and self._image_pane_image_label.winfo_exists():
+            label = self._image_pane_image_label
+        elif hasattr(self, '_image_pane_window_image_label') and self._image_pane_window_image_label.winfo_exists():
+            label = self._image_pane_window_image_label
+        else:
+            return None, None
+            
+        label_width = label.winfo_width()
+        label_height = label.winfo_height()
+        
+        # Return None if label hasn't been sized yet
+        if label_width <= 0 or label_height <= 0:
+            return None, None
+            
+        return label_width, label_height
+
+    def _get_current_image_display_size(self):
+        if self._displayed_image is None:
+            return None, None
+            
+        # Get label size
+        label_width, label_height = self._get_current_image_label_size()
+        
+        if label_width is None or label_height is None:
+            return None, None
+            
+        image_width = self._displayed_image.width
+        image_height = self._displayed_image.height
+        
+        image_aspect = image_width / image_height
+        label_aspect = label_width / label_height
+        
+        if image_aspect > label_aspect:
+            display_width = label_width
+            display_height = int(display_width / image_aspect)
+        else:
+            display_height = label_height
+            display_width = int(display_height * image_aspect)
+            
+        return display_width, display_height
+
+    @staticmethod
+    def _draw_dotted_line(
+             draw: PIL.ImageDraw.Draw,
+             x1: int,
+             y1: int,
+             x2: int,
+             y2: int,
+             dash_length: float,
+             gap_length: float,
+             line_thickness: float
+     ):
+        try:
+            dx = x2 - x1
+            dy = y2 - y1
+            
+            # Calculate true line length using Pythagorean theorem
+            length = (dx * dx + dy * dy) ** 0.5
+            
+            if length == 0:
+                return
+                
+            # Normalize direction vectors
+            dx_norm = dx / length
+            dy_norm = dy / length
+                
+            # Draw dotted line
+            current_pos = 0
+            dash_count = 0
+            
+            while current_pos < length:
+                # Calculate dash start and end
+                dash_start = current_pos
+                dash_end = min(length, current_pos + dash_length)
+                
+                if dash_end > dash_start:
+                    # Calculate actual coordinates for this dash
+                    start_x = x1 + int(dash_start * dx_norm)
+                    start_y = y1 + int(dash_start * dy_norm)
+                    end_x = x1 + int(dash_end * dx_norm)
+                    end_y = y1 + int(dash_end * dy_norm)
+                    
+                    # Draw alternating black and white dashes for contrast
+                    # Use scaled thickness - convert to int for draw.line
+                    int_thickness = max(1, int(round(line_thickness)))
+                    
+                    # Determine color based on dash count (alternate between black and white)
+                    color = 'black' if dash_count % 2 == 0 else 'white'
+                    
+                    draw.line([start_x, start_y, end_x, end_y], fill=color, width=int_thickness)
+                
+                # Move to next dash position
+                current_pos = dash_end + gap_length
+                dash_count += 1
+        except Exception:
+            pass
+
+    def _image_to_widget_coordinates(self, image_x, image_y):
+        if self._displayed_image is None:
+            return None
+
+        label_width, label_height = self._get_current_image_label_size()
+        
+        image_width = self._displayed_image.width
+        image_height = self._displayed_image.height
+        
+        # Calculate the displayed image size (same logic as _resize_image_pane_image)
+        image_aspect = image_width / image_height
+        label_aspect = label_width / label_height
+        
+        if image_aspect > label_aspect:
+            display_width = label_width
+            display_height = int(display_width / image_aspect)
+        else:
+            display_height = label_height
+            display_width = int(display_height * image_aspect)
+        
+        # Calculate offsets for centering
+        x_offset = (label_width - display_width) // 2
+        y_offset = (label_height - display_height) // 2
+        
+        # Convert image coordinates to widget coordinates
+        widget_x = int((image_x / image_width) * display_width) + x_offset
+        widget_y = int((image_y / image_height) * display_height) + y_offset
+        
+        return widget_x, widget_y
+
+
+    def _complete_bbox_selection(self):
+        if (self._bbox_start_coords is None or 
+            self._bbox_end_coords is None or 
+            self._bbox_selection_format is None):
+            return
+            
+        x1, y1 = self._bbox_start_coords
+        x2, y2 = self._bbox_end_coords
+        
+        # Ensure x1,y1 is top-left and x2,y2 is bottom-right
+        if x1 > x2:
+            x1, x2 = x2, x1
+        if y1 > y2:
+            y1, y2 = y2, y1
+            
+        # Format the bounding box coordinates
+        if self._bbox_selection_format == 'csv':
+            bbox_text = f"{x1},{y1},{x2},{y2}"
+        else:  # 'x' format
+            bbox_text = f"{x1}x{y1}x{x2}x{y2}"
+            
+        # Copy to clipboard
+        try:
+            self.clipboard_clear()
+            self.clipboard_append(bbox_text)
+            self._write_stdout_output(f"Bounding box copied to clipboard: {bbox_text}\n")
+        except Exception as e:
+            self._write_stderr_output(f"Failed to copy bounding box to clipboard: {e}\n")
+            
+        # Clean up selection
+        self._end_bbox_selection()
+
+    def _end_bbox_selection(self):
+        self._bbox_selection_mode = False
+        self._bbox_selection_format = None
+        self._bbox_start_coords = None
+        self._bbox_end_coords = None
+
+        # Restore original image
+        if self._original_displayed_image is not None:
+            self._displayed_image = self._original_displayed_image.copy()
+            self._image_pane_image_label.event_generate('<Configure>')
+            if self._image_pane_window is not None:
+                self._image_pane_window_image_label.event_generate('<Configure>')
+
+    def _cancel_bbox_selection(self):
+        if self._bbox_selection_mode:
+            self._write_stdout_output("Bounding box selection cancelled.\n")
+            self._end_bbox_selection()
 
 
 def main(args: collections.abc.Sequence[str]):
