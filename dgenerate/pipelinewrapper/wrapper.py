@@ -1234,13 +1234,10 @@ class DiffusionPipelineWrapper:
         :param user_args: DiffusionArguments containing width and height
         :return: List of resized PIL Images
         """
-        if not images or (user_args.width is None and user_args.height is None):
-            return list(images)
+        if not images:
+            return []
 
         target_size = self._calc_image_target_size(images[0], user_args)
-
-        if target_size is None:
-            return list(images)
 
         resized_images = []
 
@@ -3372,7 +3369,7 @@ class DiffusionPipelineWrapper:
                     # The processor handles pre-resize, resize, and post-resize steps
                     image = processor.process(
                         image,
-                        resize_resolution=target_size,
+                        resize_resolution=target_size if target_size != image.size else None,
                         aspect_correct=user_args.aspect_correct,
                         align=8
                     )
@@ -3389,13 +3386,14 @@ class DiffusionPipelineWrapper:
 
     @staticmethod
     def _calc_image_target_size(image: PIL.Image.Image, user_args: DiffusionArguments):
-        target_size = None
         if user_args.width is not None and user_args.height is not None:
             target_size = (user_args.width, user_args.height)
         elif user_args.width is not None:
             target_size = (user_args.width, image.height)
         elif user_args.height is not None:
             target_size = (image.width, user_args.height)
+        else:
+            target_size = image.size
         return target_size
 
     def _create_pipeline_result(self,
