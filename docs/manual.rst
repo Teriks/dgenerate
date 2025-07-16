@@ -8842,6 +8842,228 @@ processor chaining if desired.
     
     ==============================================================================================================
 
+Segment Anything Mask Generation
+--------------------------------
+
+Segment anything promptable mask generation and preview is supported through
+the ``u-sam`` image processor.  This processor is implemented with Ultralytics,
+and not to be mistaken for the ``sam`` processor which is to be used for
+generating input compatible with legacy SAM ControlNet models.
+
+This processor can be prompted with point image coordinates, or bounding boxes,
+or both. It will select the most likely object you want to segment given the prompts,
+and then draw outlines around them in preview mode, or generate a black and white
+mask in masks mode.
+
+This can be used to quickly generate inpaint masks in an interactive way, especially
+when combined with the Console UI's coordinate / bounding box selection utilities
+provided in the image preview pane context menu.
+
+
+.. code-block:: text
+
+    u-sam:
+        arguments:
+            asset: str
+            points: str | list | tuple | None = None
+            boxes: str | list | tuple | None = None
+            font-size: int | None = None
+            line-width: int | None = None
+            line-color: str | None = None
+            masks: bool = False
+            outpaint: bool = False
+            pre-resize: bool = False
+            device: str | None = None
+            output-file: Optional[str] = None
+            output-overwrite: bool = False
+            model-offload: bool = False
+    
+        Process the input image with Ultralytics SAM (Segment Anything Model) using point or bounding box prompts.
+    
+        This processor operates in two distinct modes:
+    
+        Preview Mode (default, masks=False):
+    
+        Returns the original image with generated masks outlined and labeled with prompt indices. The colors of
+        the outlines and text are automatically chosen to contrast with the background for optimal visibility.
+    
+        Mask Mode (masks=True):
+    
+        Returns a single composite mask image containing all generated masks combined together. This is useful for
+        inpainting, outpainting, or other mask-based image processing operations.
+    
+        -----
+    
+        The "asset" argument specifies which SAM model asset to use. This should be the name of an Ultralytics SAM
+        model asset, loading arbitrary checkpoints is not supported. This argument may be one of:
+    
+            * sam_h.pt
+            * sam_l.pt
+            * sam_b.pt
+            * mobile_sam.pt
+            * sam2_t.pt
+            * sam2_s.pt
+            * sam2_b.pt
+            * sam2_l.pt
+            * sam2.1_t.pt
+            * sam2.1_s.pt
+            * sam2.1_b.pt
+            * sam2.1_l.pt
+    
+        You may exclude the `.pt` suffix if desired.
+    
+        The "local-files-only" argument specifies that dgenerate should not attempt to download any model files,
+        and to only look for them locally in the cache or otherwise.
+    
+        The "points" argument specifies point prompts as a list of coordinates. Each point can be specified as
+        either:
+    
+        - Single point: [x,y] or x,y or "x,y" or 50x50 or "50x50"
+        - Single point: [x,y,label] or x,y,label or "x,y,label" or 50x50xLabel or "50x50xLabel"
+        - Nested list/tuple literal: [[x,y], ...] or [[x,y,label], ...]
+        - String format: ["x,y", ...] or ["x,y,label", ...] or "x,y","x,y,label"
+        - Token list format: 25x25,50x50xLabel
+    
+        Where label is 1 for foreground, 0 for background. If no label is provided, it defaults to 1 (foreground).
+    
+        Note that for string format, comma is interchangeable and mixable with the character "x", as the quotes
+        delimit the bounds of the point or box value.
+    
+        lists / tuple literals may not contain space.
+    
+        
+        Examples:
+            points=[100,100]                    # Single point
+            points=100,100                      # Single point
+            points=100x100                      # Single point
+            points=[100,100,1]                  # Single point (label)
+            points=100,100,1                    # Single point (label)
+            points=100x100x1                    # Single point (label)
+            points=[[100,100],[200,200,0]]      # Nested list format
+            points=["100,100","200,200,0"]      # String format
+            points="100,100","200,200,0"        # String format
+            points=["100x100","200x200x0"]      # String format
+            points="100x100","200x200x0"        # String format
+            points=100x100,200x200x0            # Token format
+    
+        The "boxes" argument specifies bounding box prompts as a list of coordinates. Each box can be specified as
+        either:
+    
+        - Single box: [x1,y1,x2,y2] or x1,y1,x2,y2 or "x1,y1,x2,y2"
+        - Nested list/tuple: [[x1,y1,x2,y2], ...]
+        - String format: ["x1,y1,x2,y2", ...]
+        - Token list format: 50x50x100x100,200x200x400x400
+    
+        Examples:
+            boxes=[50,50,150,150]                             # Single box
+            boxes=50,50,150,150                               # Single box
+            boxes=50x50x150x150                               # Single box
+            boxes=[[50,50,150,150],[200,200,300,300]]         # Nested list format
+            boxes=["50,50,150,150","200,200,300,300"]         # String format
+            boxes="50,50,150,150","200,200,300,300"           # String format
+            boxes="50x50x150x150","200x200x300x300"           # String format
+            boxes=50x50x150x150,200x200x300x300               # Token format
+    
+        Note: You may use python tuple syntax as well as list syntax, additionally something such as:
+        (100,100),(100,100) will be interpreted as a tuple of of tuples, and: [100,100],[100,100] a tuple of
+        lists.
+    
+        The "font-size" argument determines the size of the label text. If not specified, it will be automatically
+        calculated based on the image dimensions.
+    
+        The "line-width" argument controls the thickness of the mask outline lines. If not specified, it will be
+        automatically calculated based on the image dimensions.
+    
+        The "line-color" argument overrides the color for mask outlines and text label backgrounds. This should be
+        specified as a HEX color code, e.g. "#FFFFFF" or "#FFF". If not specified, colors are automatically chosen
+        to contrast with the background. The text color will always be automatically chosen to contrast with the
+        background for optimal readability.
+    
+        The "masks" argument enables mask generation mode. When True, the processor returns a composite mask image
+        instead of the annotated preview image. This defaults to False.
+    
+        The "outpaint" argument inverts the generated masks, creating inverted masks suitable for outpainting
+        operations. This only has an effect when "masks" is True. This defaults to False.
+    
+        The "pre-resize" argument determines if the processing occurs before or after dgenerate resizes the image.
+        This defaults to False, meaning the image is processed after dgenerate is done resizing it.
+    
+        The "device" argument can be used to set the device the processor will run on, for example: cpu, cuda,
+        cuda:1. If you are using this image processor as a preprocess or postprocess step for dgenerate, or with
+        the image-process subcommand, or \image_process directive, this argument will default to the value of
+        --device.
+    
+        The "output-file" argument can be used to set the output path for a processor debug image, this will save
+        the processed image to a path of your choosing.
+    
+        The "output-overwrite" argument can be used to enable overwrite for a processor debug image. If this is
+        not enabled, new images written by the processor while it is being used will be written with a numbered
+        suffix instead of being overwritten.
+    
+        The "model-offload" argument can be used to enable cpu model offloading for a processor. If this is
+        disabled, any torch tensors or modules placed on the GPU will remain there until the processor is done
+        being used, instead of them being moved back to the CPU after each image. Enabling this may help save VRAM
+        when using an image processor as a preprocessor or postprocessor for diffusion with dgenerate but will
+        impact rendering speed when generating many images.
+    
+    ==============================================================================================================
+
+You can combine this processor with the ``paste`` processor to preform
+manual / interactive adetailer like editing.
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 5.0.0
+    
+    # example of a manual adetailer like usage using segment anything
+    # and a bounding box prompt to create a mask for a specific image feature
+    
+    # This utilizes the "u-sam" processor (Ultralytics)
+    
+    # 1.) align input image by 8
+    # 2.) detect a mask of the face within the face bounding box
+    # 3.) crop image and mask down to the face bounding box
+    # 4.) scale up the mask and cropped portion of the image close to SDXL native resolution
+    # 5.) inpaint with prompt using the cropped image and cropped mask
+    # 6.) paste the result back over the original input image
+    #     into the face bounding box with feathering to blend it in
+    
+    
+    # input image (american gothic)
+    \set input_image "../../media/americangothic.jpg"
+    
+    # we need to align the input image by 8 to match the diffusion output
+    # (overwrite existing files). If we do not do this the pasted output
+    # from inpainting will not line up correctly
+    
+    \image_process {{input_image}} --align 8 -o output/input_aligned.png -ox
+    
+    # assign the path of the result from above to a variable
+    \set input_image {{quote(last_images)}}
+    
+    # bounding box is around the mans face on the right
+    \set face_box 451x86x751x448
+    
+    # preform all steps mentioned in the list above at once
+    # utilizing image input preprocessors and a post processor
+    
+    stabilityai/stable-diffusion-xl-base-1.0
+    --model-type torch-sdxl
+    --dtype float16
+    --variant fp16
+    --image-seeds {{input_image}};{{input_image}}
+    --seed-image-processors crop;box={{face_box}} resize;size=1024
+    --mask-image-processors \
+        u-sam;asset=sam_l.pt;boxes={{face_box}};masks=True \
+        crop;box={{face_box}} resize;size=1024
+    --inference-steps 30
+    --guidance-scales 5
+    --seeds 92105821284900
+    --output-path output
+    --prompts "a smiling mans face"
+    --post-processors paste;image={{input_image}};position={{face_box}};feather=10;reverse=True
+
 Writing and Running Configs
 ===========================
 
