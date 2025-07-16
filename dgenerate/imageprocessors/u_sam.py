@@ -106,42 +106,55 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
         can be specified as either:
         
         NOWRAP!
-        - Single point: [x, y] or x,y or "x,y"
-        - Nested list/tuple: [[x, y], ...] or [[x, y, label], ...] where label is 1 for foreground, 0 for background
-        - String format: ["x,y", ...] or ["x,y,label", ...]
+        - Single point: [x,y] or x,y or "x,y" or 50x50 or "50x50"
+        - Single point: [x,y,label] or x,y,label or "x,y,label" or 50x50xLabel or "50x50xLabel"
+        - Nested list/tuple literal: [[x,y], ...] or [[x,y,label], ...]
+        - String format: ["x,y", ...] or ["x,y,label", ...] or "x,y","x,y,label"
+        - Token list format: 25x25,50x50xLabel
         
-        Note that for string format, comma is interchangeable and mixable with the character "x".
-    
+        Where label is 1 for foreground, 0 for background. 
         If no label is provided, it defaults to 1 (foreground).
+        
+        Note that for string format, comma is interchangeable and mixable with the character "x",
+        as the quotes delimit the bounds of the point or box value.
+        
+        lists / tuple literals may not contain space.
+    
     
         NOWRAP!
         Examples:
             points=[100,100]                    # Single point
             points=100,100                      # Single point
             points=100x100                      # Single point
-            points=[[100, 100], [200, 200, 0]]  # Nested format
-            points=["100,100", "200,200,0"]     # String format
+            points=[100,100,1]                  # Single point (label)
+            points=100,100,1                    # Single point (label)
+            points=100x100x1                    # Single point (label)
+            points=[[100,100],[200,200,0]]      # Nested list format
+            points=["100,100","200,200,0"]      # String format
             points="100,100","200,200,0"        # String format
-            points=["100x100", "200x200x0"]     # String format
+            points=["100x100","200x200x0"]      # String format
             points="100x100","200x200x0"        # String format
+            points=100x100,200x200x0            # Token format
     
         The "boxes" argument specifies bounding box prompts as a list of coordinates. Each box
         can be specified as either:
     
         NOWRAP!
-        - Single box: [x1, y1, x2, y2] or x1,y1,x2,y2 or "x1,y1,x2,y2"
-        - Nested list/tuple: [[x1, y1, x2, y2], ...]
+        - Single box: [x1,y1,x2,y2] or x1,y1,x2,y2 or "x1,y1,x2,y2"
+        - Nested list/tuple: [[x1,y1,x2,y2], ...]
         - String format: ["x1,y1,x2,y2", ...]
+        - Token Format: 50x50x100x100,200x200x400x400
     
         NOWRAP!
         Examples:
-            boxes=[50, 50, 150, 150]                          # Single box
+            boxes=[50,50,150,150]                             # Single box
             boxes=50,50,150,150                               # Single box
             boxes=50x50x150x150                               # Single box
-            boxes=[[50, 50, 150, 150], [200, 200, 300, 300]]  # Nested format
-            boxes=["50,50,150,150", "200,200,300,300"]        # String format
+            boxes=[[50,50,150,150],[200,200,300,300]]         # Nested list format
+            boxes=["50,50,150,150","200,200,300,300"]         # String format
             boxes="50,50,150,150","200,200,300,300"           # String format
             boxes="50x50x150x150","200x200x300x300"           # String format
+            boxes=50x50x150x150,200x200x300x300               # Token format 
     
         Note: You may use python tuple syntax as well as list syntax, additionally
         something such as: (100,100),(100,100) will be interpreted as a tuple of
@@ -209,7 +222,8 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
                     raise ValueError(f"Point should have 2 or 3 coordinates: {point}")
             elif isinstance(point, str):
                 # String format for backward compatibility: "x,y" or "x,y,label"
-                # And: "X-COORDxY-COORD"
+                # And: "0x0"
+                # And: 0x0,0x0x0
                 coords = re.split(r'[x,]', point)
                 if len(coords) < 2:
                     raise ValueError(f"Point must have at least x,y coordinates: {point}")
@@ -220,7 +234,15 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
                     x, y, label = map(float, coords)
                     points.append([x, y, int(label)])
                 else:
-                    raise ValueError(f"Point format should be x,y or x,y,label: {point}")
+                    coords = point.split(',')
+                    points = []
+                    for c in coords:
+                        p = USAMProcessor._parse_points(c)
+                        if p:
+                            points.append(p[0])
+                        else:
+                            raise ValueError(
+                                f'Missing point definition in: "{point}", stray comma?')
             else:
                 raise ValueError(f"Point must be a list/tuple or string, got: {type(point).__name__}")
         return points
@@ -245,11 +267,24 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
                 boxes.append([x1, y1, x2, y2])
             elif isinstance(box, str):
                 # String format for backward compatibility: "x1,y1,x2,y2"
+                # or: 0x0x0x0,0x0x0x0
                 coords = re.split(r'[x,]', box)
-                if len(coords) != 4:
-                    raise ValueError(f"Box must have x1,y1,x2,y2 coordinates: {box}")
-                x1, y1, x2, y2 = map(float, coords)
-                boxes.append([x1, y1, x2, y2])
+                if len(coords) > 4:
+                    coords = box.split(',')
+                    boxes = []
+                    for c in coords:
+                        b = USAMProcessor._parse_boxes(c)
+                        if b:
+                            boxes.append(b[0])
+                        else:
+                            raise ValueError(
+                                f'Missing box definition in: "{box}", stray comma?')
+                elif len(coords) < 4:
+                    raise ValueError(
+                        f'Box must have x1,y1,x2,y2 coordinates: {box}')
+                else:
+                    x1, y1, x2, y2 = map(float, coords)
+                    boxes.append([x1, y1, x2, y2])
             else:
                 raise ValueError(f"Box must be a list/tuple or string, got: {type(box).__name__}")
         return boxes
