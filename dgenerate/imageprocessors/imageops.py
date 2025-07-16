@@ -427,12 +427,18 @@ class LetterboxProcessor(_imageprocessor.ImageProcessor):
 
     The "box-size" argument is the size of the outer letterbox.
 
+    In non-padding mode "box-size" may be specified as the absolute size of the final image "WIDTHxHEIGHT",
+    or with a single integer denoting both width and height.
+
     The "box-is-padding" argument can be used to indicate that "box-size" should be interpreted as padding.
+
+    When in padding mode, "box-size" can be specified as a width / height padding around the original image
+    i.e. "WIDTHxHEIGHT", (a single integer can also suffice). Or as a four part padding value: "LEFTxTOPxRIGHTxBOTTOM"
 
     The "box-color" argument specifies the color to use for the letter box background, the default is black.
     This should be specified as a HEX color code. e.g. #FFFFFF or #FFF
 
-    The "inner-size" argument specifies the size of the inner image.
+    The "inner-size" argument specifies the size of the inner image, in the form: "WIDTHxHEIGHT"
 
     The "aspect-correct" argument can be used to determine if the aspect ratio
     of the inner image is maintained or not.
@@ -464,7 +470,7 @@ class LetterboxProcessor(_imageprocessor.ImageProcessor):
                  pre_resize: bool = False,
                  **kwargs):
         """
-        :param box_size: Size of the outer letterbox
+        :param box_size: Size of the outer letterbox, or padding
         :param box_is_padding: The ``letterbox_size`` argument should be interpreted as padding?
         :param box_color: What color to use for the letter box background, the default is black.
             This should be specified in as a HEX color code.
@@ -477,9 +483,21 @@ class LetterboxProcessor(_imageprocessor.ImageProcessor):
             raise self.argument_error('box-color must be a HEX color code, e.g. #FFFFFF or #FFF')
 
         try:
-            self._box_size = _textprocessing.parse_image_size(box_size)
+            dim = _textprocessing.parse_dimensions(box_size)
+
+            if box_is_padding:
+                if len(dim) not in {1, 2, 4}:
+                    raise self.argument_error('Argument "box_size" must be a 1, 2, or 4 dimensional padding value.')
+            else:
+                if len(dim) not in {1, 2}:
+                    raise self.argument_error('Argument "box_size" must be a 1 or 2 dimensional image size value.')
+
+            if len(dim) == 1:
+                self._box_size = dim[0]
+            else:
+                self._box_size = dim
         except ValueError as e:
-            raise self.argument_error(f'Could not parse the "box_size" argument as an image dimension: {e}') from e
+            raise self.argument_error(f'Could not parse the "box_size" argument as a dimension: {e}') from e
 
         self._box_is_padding = box_is_padding
         self._box_color = box_color

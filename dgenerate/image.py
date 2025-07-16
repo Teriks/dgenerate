@@ -415,8 +415,8 @@ def paste_with_feather(
     return composite.convert(input_mode)
 
 
-def letterbox_image(img,
-                    box_size: _types.Size,
+def letterbox_image(img: PIL.Image,
+                    box_size: _types.Padding,
                     box_is_padding: bool = False,
                     box_color: str | int | float | tuple[int, int, int] | tuple[float, float, float] | None = None,
                     inner_size: _types.Size = None,
@@ -425,8 +425,15 @@ def letterbox_image(img,
     Letterbox an image on to a colored background.
 
     :param img: The image to letterbox
-    :param box_size: Size of the outer letterbox
-    :param box_is_padding: The ``letterbox_size`` argument should be interpreted as padding?
+    :param box_size: Size of the outer letterbox, or padding values.
+        - If ``box_is_padding=False``:
+            - (int) both width and height equal to this integer
+            - (width, height) tuple for final letterbox size
+        - If ``box_is_padding=True``: Can be either:
+            - (padding) for uniform padding
+            - (horizontal_padding, vertical_padding) for uniform padding
+            - (left, top, right, bottom) for individual padding on each side
+    :param box_is_padding: The ``box_size`` argument should be interpreted as padding?
     :param box_color: What color to use for the letter box background, the default is black.
         This should be specified as a HEX color code, or as a 3 tuple of integer or floating
         point RGB values, or as a single integer or float representing all color channels.
@@ -438,19 +445,55 @@ def letterbox_image(img,
         inner_size = img.size
 
     if box_is_padding:
-        box_size = (inner_size[0] + 2 * box_size[0], inner_size[1] + 2 * box_size[1])
+        if isinstance(box_size, int):
+            # Single integer: uniform padding on all sides
+            padding_left = padding_top = box_size
+            final_box_size = (inner_size[0] + 2 * box_size,
+                              inner_size[1] + 2 * box_size)
+        elif len(box_size) == 2:
+            # Two values: (horizontal_padding, vertical_padding)
+            horizontal_padding, vertical_padding = box_size
+            final_box_size = (inner_size[0] + 2 * horizontal_padding,
+                              inner_size[1] + 2 * vertical_padding)
+            padding_left = horizontal_padding
+            padding_top = vertical_padding
+        elif len(box_size) == 4:
+            # Four values: (left, top, right, bottom)
+            padding_left, padding_top, padding_right, padding_bottom = box_size
+            final_box_size = (inner_size[0] + padding_left + padding_right,
+                              inner_size[1] + padding_top + padding_bottom)
+        else:
+            raise ValueError("box_size must be an int, 2-tuple, or 4-tuple when box_is_padding=True")
+    else:
+        if isinstance(box_size, int):
+            # Single integer: square letterbox
+            final_box_size = (box_size, box_size)
+        else:
+            # Two values: (width, height)
+            final_box_size = box_size
+        # Calculate padding for centering when not in padding mode
+        padding_left = (final_box_size[0] - inner_size[0]) // 2
+        padding_top = (final_box_size[1] - inner_size[1]) // 2
 
-    inner_size = (min(inner_size[0], box_size[0]), min(inner_size[1], box_size[1]))
+    # Ensure inner_size fits within the final box
+    inner_size = (min(inner_size[0], final_box_size[0]),
+                  min(inner_size[1], final_box_size[1]))
 
     if box_color is None:
         box_color = 0
 
-    letterbox = PIL.Image.new('RGB', box_size, box_color)
+    letterbox = PIL.Image.new('RGB', final_box_size, box_color)
 
     img = resize_image(img, inner_size, aspect_correct=aspect_correct)
 
-    x = (box_size[0] - img.size[0]) // 2
-    y = (box_size[1] - img.size[1]) // 2
+    if box_is_padding and (isinstance(box_size, int) or len(box_size) == 4):
+        # Use the specific padding values for positioning
+        x = padding_left
+        y = padding_top
+    else:
+        # Center the image (original behavior for 2-tuple padding and non-padding mode)
+        x = (final_box_size[0] - img.size[0]) // 2
+        y = (final_box_size[1] - img.size[1]) // 2
 
     letterbox.paste(img, (x, y))
 
