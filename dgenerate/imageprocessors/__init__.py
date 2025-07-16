@@ -25,6 +25,7 @@ import dgenerate.types as _types
 from .adetailer import AdetailerProcessor
 from .anyline import AnylineProcessor
 from .canny import CannyEdgeDetectProcessor
+from .outpaint_mask import OutpaintMaskProcessor
 from .cv2imageops import (
     DilateProcessor,
     GaussianBlurProcessor

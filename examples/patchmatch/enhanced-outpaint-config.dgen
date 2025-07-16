@@ -1,0 +1,53 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 5.0.0
+
+# Extend the image of the mountain by 128 pixels in every direction
+# use patchmatch to create similar content in the expanded area
+# before inpainting the area with SDXL
+
+# This can be specified as width/height combined (single integer)
+# Uniform: WIDTHxHEIGHT
+# Individual Side Padding: LEFTxTOPxRIGHTxBOTTOM
+
+\set outpaint_box 128
+\set input_image ../media/mountain.png
+
+# First create the mask using the "outpaint-mask" image processor
+# This creates a mask expanded from the original image dimension
+# by 128 pixels on each side, where the original image was there
+# are black pixels, the expanded area is white pixels
+
+\image_process {{ input_image }}
+--processors outpaint-mask;box={{ outpaint_box }}
+--output enhanced_outpaint/mask.png -ox
+
+
+# Fill the new area with similar patches using patchmatch,
+# first letterbox the original image by the outpaint size,
+# just to expand its dimensions to the same size as the mask
+# it is unimportant what letterbox color is used, just that
+# the image is expanded by the padding amount
+
+# after the letterboxing, patchmatch runs on the image using
+# the mask we created above, which generates similar content
+# in the white part of the mask area to help guide the diffusion
+# based inpainting
+
+\image_process {{ input_image }}
+--processors letterbox;box-size={{ outpaint_box }};box-is-padding=True patchmatch;mask=enhanced_outpaint/mask.png;seed=42
+--output enhanced_outpaint/patchmatch.png -ox
+
+# A model tailored for inpainting will yield the best results
+# Inpaint the patchmatch image with the generated mask
+
+diffusers/stable-diffusion-xl-1.0-inpainting-0.1
+--model-type torch-sdxl
+--dtype float16
+--variant fp16
+--inference-steps 30
+--guidance-scales 5
+--image-seed-strengths 0.85
+--image-seeds enhanced_outpaint/patchmatch.png;enhanced_outpaint/mask.png
+--seeds 11137629041966
+--output-path enhanced_outpaint
+--prompts "photo of forested mountains under a blue sky"
