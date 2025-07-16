@@ -8843,7 +8843,7 @@ processor chaining if desired.
     ==============================================================================================================
 
 Segment Anything Mask Generation
---------------------------------
+================================
 
 Segment anything promptable mask generation and preview is supported through
 the ``u-sam`` image processor.  This processor is implemented with Ultralytics,
