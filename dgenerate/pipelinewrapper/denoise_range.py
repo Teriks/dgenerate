@@ -19,9 +19,13 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import inspect
+import itertools
+
 import diffusers.schedulers
 import torch
 from contextlib import contextmanager
+
+import dgenerate.extras.kolors
 
 
 def _is_sdxl_pipeline(pipeline):
@@ -516,6 +520,50 @@ class DenoiseRangeError(Exception):
     pass
 
 
+def _class_predicate(o):
+    return (inspect.isclass(o) and
+            (o.__name__.startswith('StableDiffusionXL') or o.__name__.startswith('Kolors')))
+
+_classes_to_check = list(
+    itertools.chain(
+        inspect.getmembers(diffusers, _class_predicate),
+        inspect.getmembers(dgenerate.extras.kolors, _class_predicate)
+    )
+)
+
+_supports_native_denoising_end = set()
+
+for name, cls in _classes_to_check:
+    if 'denoising_end' in inspect.signature(cls.__call__).parameters:
+        _supports_native_denoising_end.add(cls)
+
+_supports_native_denoising_start = set()
+
+for name, cls in _classes_to_check:
+    if 'denoising_start' in inspect.signature(cls.__call__).parameters:
+        _supports_native_denoising_start.add(cls)
+
+_classes_to_check = None
+
+
+def supports_native_denoising_end(cls: type):
+    """
+    Does a pipeline class natively support ``denoising_end``
+
+    :param cls: The pipeline class
+    :return: ``True`` or ``False``
+    """
+    return cls in _supports_native_denoising_end
+
+def supports_native_denoising_start(cls: type):
+    """
+    Does a pipeline class natively support ``denoising_start``
+
+    :param cls: The pipeline class
+    :return: ``True`` or ``False``
+    """
+    return cls in _supports_native_denoising_start
+
 @contextmanager
 def denoise_range(pipeline, start: float | None = 0.0, end: float | None = 1.0):
     """Context manager to temporarily set denoising range for a pipeline.
@@ -562,14 +610,14 @@ def denoise_range(pipeline, start: float | None = 0.0, end: float | None = 1.0):
         original_call = pipeline_class.__call__
 
         if start is not None and start != 0.0:
-            if not inspect.signature(original_call).parameters.get('denoising_start'):
+            if not supports_native_denoising_start(pipeline_class):
                 raise DenoiseRangeError(
                     f"{pipeline_class} not support a denoising_start parameter > 0.0, "
                     f"use an img2img or inpaint pipeline to refine and pass the "
                     f"latents in the image parameter.")
 
         if end is not None and end != 1.0:
-            if not inspect.signature(original_call).parameters.get('denoising_end'):
+            if not supports_native_denoising_end(pipeline_class):
                 raise DenoiseRangeError(
                     f"{pipeline_class} not support a denoising_end parameter < 1.0, "
                     f"use a txt2img pipeline to create the initial latents.")

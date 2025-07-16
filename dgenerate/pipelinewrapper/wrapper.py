@@ -61,6 +61,7 @@ from dgenerate.extras.ras import sd3_ras_context as _sd3_ras_context
 from dgenerate.pipelinewrapper.arguments import DiffusionArguments
 from dgenerate.pipelinewrapper.denoise_range import DenoiseRangeError as _DenoiseRangeError
 from dgenerate.pipelinewrapper.denoise_range import denoise_range as _denoise_range
+from dgenerate.pipelinewrapper.denoise_range import supports_native_denoising_start as _supports_native_denoising_start
 
 
 class DiffusionArgumentsHelpException(Exception):
@@ -1256,6 +1257,454 @@ class DiffusionPipelineWrapper:
 
         return resized_images
 
+    def _set_pipeline_strength(self, user_args: DiffusionArguments, pipeline_args: dict[str, typing.Any]):
+        strength = float(_types.default(user_args.image_seed_strength, _constants.DEFAULT_IMAGE_SEED_STRENGTH))
+        ifs = int(_types.default(user_args.inference_steps, _constants.DEFAULT_INFERENCE_STEPS))
+        if (strength * ifs) < 1.0:
+            strength = 1.0 / ifs
+            _messages.warning(
+                f'image-seed-strength * inference-steps '
+                f'was calculated at < 1, image-seed-strength defaulting to (1.0 / inference-steps): {strength}'
+            )
+
+        pipeline_args['strength'] = strength
+
+    def _set_pipeline_controlnet_defaults(self, user_args: DiffusionArguments, pipeline_args: dict[str, typing.Any]):
+        control_images = user_args.control_images
+
+        if not control_images:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'Must provide control_images argument when using ControlNet models.')
+
+        # sanity check that control images are the same dimension
+        self._validate_images_all_same_size(
+            "control guidance images", control_images
+        )
+
+        # Resize control images to user-specified dimensions first thing
+        control_images = self._resize_images_to_user_dimensions(
+            control_images, user_args
+        )
+
+        image_arg_inputs = self._get_pipeline_img2img_inputs(user_args)
+
+        if image_arg_inputs is not None:
+            non_latent_input = not _torchutil.is_tensor(image_arg_inputs[0])
+
+            if non_latent_input:
+                if not image_arg_inputs[0].size == control_images[0].size:
+                    raise _pipelines.UnsupportedPipelineConfigError(
+                        'Img2Img images and ControlNet images must be equal in dimension.'
+                    )
+            else:
+                if not self.get_decoded_latents_size(image_arg_inputs[0]) == control_images[0].size:
+                    raise _pipelines.UnsupportedPipelineConfigError(
+                        'Img2Img latents must decode to the same dimension as any provided ControlNet images.'
+                    )
+
+        control_images_cnt = len(control_images)
+        controlnet_uris_cnt = len(self._controlnet_uris)
+
+        if control_images_cnt != controlnet_uris_cnt:
+            # User provided a mismatched number of ControlNet models and control_images, behavior is undefined.
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'You specified {control_images_cnt} control guidance images and '
+                f'only {controlnet_uris_cnt} ControlNet URIs. The amount of '
+                f'control guidance images must be equal to the amount of ControlNet URIs.')
+
+        # Set width and height based on control images
+        pipeline_args['width'] = control_images[0].width
+        pipeline_args['height'] = control_images[0].height
+
+        sdxl_cn_union = _enums.model_type_is_sdxl(self._model_type) and \
+                        any(p.mode is not None for p in self._parsed_controlnet_uris)
+
+        if self._pipeline_type == _enums.PipelineType.TXT2IMG:
+            if _enums.model_type_is_sd3(self._model_type):
+                # Handle SD3 model specifics for control images
+                pipeline_args['control_image'] = self._sd3_force_control_to_a16(
+                    pipeline_args, control_images, user_args
+                )
+            elif _enums.model_type_is_flux(self._model_type):
+                pipeline_args['control_image'] = control_images
+            elif sdxl_cn_union:
+                # controlnet union pipeline does not use "image"
+                # it also destructively modifies
+                # this input value if it is a list for
+                # whatever reason
+                pipeline_args['control_image'] = list(control_images)
+            else:
+                pipeline_args['image'] = control_images
+        elif self._pipeline_type in {_enums.PipelineType.IMG2IMG, _enums.PipelineType.INPAINT}:
+            pipeline_args['image'] = image_arg_inputs
+            pipeline_args['control_image'] = control_images if not sdxl_cn_union else list(control_images)
+            self._set_pipeline_strength(user_args, pipeline_args)
+
+        mask_images = user_args.mask_images
+        if mask_images is not None:
+            # Resize mask images to user-specified dimensions (includes RGB conversion)
+            self._validate_images_all_same_size("inpaint mask images", mask_images)
+            mask_images = self._resize_images_to_user_dimensions(mask_images, user_args)
+            pipeline_args['mask_image'] = mask_images
+
+    def _set_pipeline_t2iadapter_defaults(self, user_args: DiffusionArguments, pipeline_args: dict[str, typing.Any]):
+        adapter_control_images = list(user_args.control_images)
+
+        if not adapter_control_images:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'Must provide control_images argument when using T2IAdapter models.')
+
+        control_images_cnt = len(adapter_control_images)
+        t2i_adapter_uris_cnt = len(self._t2i_adapter_uris)
+
+        if control_images_cnt != t2i_adapter_uris_cnt:
+            # User provided a mismatched number of T2IAdapter models and control_images, behavior is undefined.
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'You specified {control_images_cnt} control guidance images and '
+                f'only {t2i_adapter_uris_cnt} T2IAdapter URIs. The amount of '
+                f'control guidance images must be equal to the amount of T2IAdapter URIs.')
+
+        first_control_image_size = adapter_control_images[0].size
+
+        # Check if all control images have the same size
+        for img in adapter_control_images[1:]:
+            if img.size != first_control_image_size:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    "All control guidance images must have the same dimension.")
+
+        # Resize control images to user-specified dimensions first thing
+        self._validate_images_all_same_size("T2I adapter control images", adapter_control_images)
+        adapter_control_images = self._resize_images_to_user_dimensions(adapter_control_images, user_args)
+
+        if not _image.is_aligned(first_control_image_size, 16):
+            # noinspection PyTypeChecker
+            new_size: tuple[int, int] = _image.align_by(first_control_image_size, 16)
+            _messages.warning(
+                f'T2I Adapter control image(s) of size {first_control_image_size} being forcefully '
+                f'aligned by 16 to {new_size} to prevent errors.'
+            )
+
+            for idx, img in enumerate(adapter_control_images):
+                adapter_control_images[idx] = _image.resize_image(img, new_size)
+
+        if _enums.model_type_is_sdxl(self.model_type) and user_args.sdxl_t2i_adapter_factor is not None:
+            pipeline_args['adapter_conditioning_factor'] = user_args.sdxl_t2i_adapter_factor
+
+        # Set width and height based on control images
+        pipeline_args['width'] = adapter_control_images[0].width
+        pipeline_args['height'] = adapter_control_images[0].height
+
+        if self._pipeline_type == _enums.PipelineType.TXT2IMG:
+            pipeline_args['image'] = adapter_control_images
+        else:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'T2IAdapter models only work in txt2img mode.'
+            )
+
+    def _get_pipeline_img2img_inputs(self, user_args: DiffusionArguments):
+        # Separate images and tensors but skip validation initially
+        images, img2img_latents = self._separate_images_and_tensors(user_args.images)
+
+        # Don't allow mixing images and tensors in the same input
+        if images and img2img_latents:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'Cannot mix PIL Images and latents tensors in img2img inputs. '
+                f'All inputs must be either images or latents tensors, not both.'
+            )
+
+        # Process input tensors
+        if img2img_latents:
+            img2img_latents = self._process_input_latents(
+                "img2img", img2img_latents, user_args.img2img_latents_processors
+            )
+
+        # Resize input images to user-specified dimensions first thing
+        if images:
+            if not _enums.model_type_uses_image_encoder(self._model_type):
+                self._validate_images_all_same_size('img2img images', images)
+                images = self._resize_images_to_user_dimensions(images, user_args)
+
+        if self._model_type != _enums.ModelType.TORCH_UPSCALER_X2 and \
+                hasattr(self._pipeline, 'vae') and self._pipeline.vae is not None:
+            # we need to decode the latents into an image using the VAE for
+            # the best img2img result, passing already denoised latents
+            # in does not make sense to the receiving UNet/Transformer
+            # except in the case of the X2 latent upscaler, which can
+            # work with the already denoised latents
+            if img2img_latents and not (
+                    _supports_native_denoising_start(self._pipeline.__class__)
+                    and user_args.denoising_start is not None
+                    and user_args.denoising_start > 0.0
+            ):
+                if _enums.model_type_is_flux(self._model_type):
+                    img2img_latents = self._repack_flux_latents(self._stack_latents(img2img_latents))
+
+                images = self.decode_latents(img2img_latents)
+                # Process decoded images if processors are configured (handles pre-resize, resize, post-resize)
+                images = self._process_decoded_latents_images(
+                    images, user_args.decoded_latents_image_processor_uris, user_args
+                )
+                img2img_latents = None
+
+        # Use the final result (tensors or images)
+        if img2img_latents:
+            inputs = img2img_latents
+        else:
+            inputs = images
+
+        return inputs
+
+    # noinspection PyUnresolvedReferences,PyTypeChecker
+    def _set_pipeline_img2img_defaults(self, user_args: DiffusionArguments, pipeline_args: dict[str, typing.Any]):
+
+        image_arg_inputs = self._get_pipeline_img2img_inputs(user_args)
+
+        non_latent_input = not _torchutil.is_tensor(image_arg_inputs[0])
+
+        floyd_og_image_needed = (self._pipeline_type == _enums.PipelineType.INPAINT and
+                                 _enums.model_type_is_floyd_ifs(self._model_type)
+                                 ) or (self._model_type == _enums.ModelType.TORCH_IFS_IMG2IMG)
+
+        if floyd_og_image_needed:
+            if user_args.floyd_image is None:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'must specify "floyd_image" to disambiguate this operation, '
+                    '"floyd_image" being the output of a previous floyd stage.')
+            pipeline_args['original_image'] = image_arg_inputs
+            pipeline_args['image'] = user_args.floyd_image
+        elif self._model_type == _enums.ModelType.TORCH_S_CASCADE:
+            pipeline_args['images'] = image_arg_inputs
+        else:
+            pipeline_args['image'] = image_arg_inputs
+
+        def check_no_image_seed_strength():
+            if user_args.image_seed_strength is not None:
+                _messages.warning(
+                    f'image_seed_strength is not supported by model_type '
+                    f'"{_enums.get_model_type_string(self._model_type)}" in '
+                    f'mode "{self._pipeline_type.name}" and is being ignored.'
+                )
+
+        if _enums.model_type_is_upscaler(self._model_type):
+            if self._model_type == _enums.ModelType.TORCH_UPSCALER_X4:
+                pipeline_args['noise_level'] = int(
+                    _types.default(
+                        user_args.upscaler_noise_level,
+                        _constants.DEFAULT_X4_UPSCALER_NOISE_LEVEL
+                    )
+                )
+            check_no_image_seed_strength()
+        elif self._model_type == _enums.ModelType.TORCH_FLUX_FILL:
+            check_no_image_seed_strength()
+        elif self._model_type == _enums.ModelType.TORCH_IFS:
+            if self._pipeline_type != _enums.PipelineType.INPAINT:
+                pipeline_args['noise_level'] = int(
+                    _types.default(
+                        user_args.upscaler_noise_level,
+                        _constants.DEFAULT_FLOYD_SUPERRESOLUTION_NOISE_LEVEL
+                    )
+                )
+                check_no_image_seed_strength()
+            else:
+                pipeline_args['noise_level'] = int(
+                    _types.default(
+                        user_args.upscaler_noise_level,
+                        _constants.DEFAULT_FLOYD_SUPERRESOLUTION_INPAINT_NOISE_LEVEL
+                    )
+                )
+                self._set_pipeline_strength(user_args, pipeline_args)
+        elif self._model_type == _enums.ModelType.TORCH_IFS_IMG2IMG:
+            pipeline_args['noise_level'] = int(
+                _types.default(
+                    user_args.upscaler_noise_level,
+                    _constants.DEFAULT_FLOYD_SUPERRESOLUTION_IMG2IMG_NOISE_LEVEL
+                )
+            )
+            self._set_pipeline_strength(user_args, pipeline_args)
+        elif not _enums.model_type_is_pix2pix(self._model_type) and \
+                self._model_type != _enums.ModelType.TORCH_S_CASCADE:
+            self._set_pipeline_strength(user_args, pipeline_args)
+        else:
+            check_no_image_seed_strength()
+
+        mask_images = user_args.mask_images
+
+        if mask_images is not None:
+            # Resize mask images to user-specified dimensions (includes RGB conversion)
+            self._validate_images_all_same_size('inpaint mask images', mask_images)
+            mask_images = self._resize_images_to_user_dimensions(mask_images, user_args)
+
+            if non_latent_input:
+                images_size = image_arg_inputs[0].size
+            else:
+                images_size = self.get_decoded_latents_size(image_arg_inputs[0])
+
+            if mask_images[0].size != images_size:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    f'Image seed img2img images and inpaint masks must '
+                    f'have the same dimension, got: {images_size}, '
+                    f'and {mask_images[0].size} respectively.'
+                )
+
+            pipeline_args['mask_image'] = mask_images
+
+            if not (_enums.model_type_is_floyd(self._model_type) or
+                    _enums.model_type_is_sd3(self._model_type)):
+                if non_latent_input:
+                    pipeline_args['width'] = image_arg_inputs[0].width
+                    pipeline_args['height'] = image_arg_inputs[0].height
+                else:
+                    # For tensors, dimensions are encoded in the tensor itself
+                    # Only set width/height if user explicitly provided them
+                    if user_args.width is not None:
+                        pipeline_args['width'] = user_args.width
+                    if user_args.height is not None:
+                        pipeline_args['height'] = user_args.height
+
+        if self._parsed_adetailer_detector_uris:
+            # inpainting pipeline, just no mask
+            # because it is auto generated
+            if not _enums.model_type_is_sd3(self._model_type):
+                if non_latent_input:
+                    pipeline_args['width'] = image_arg_inputs[0].width
+                    pipeline_args['height'] = image_arg_inputs[0].height
+                else:
+                    # For tensors, dimensions are encoded in the tensor itself
+                    # Only set width/height if user explicitly provided them
+                    if user_args.width is not None:
+                        pipeline_args['width'] = user_args.width
+                    if user_args.height is not None:
+                        pipeline_args['height'] = user_args.height
+
+        if self._model_type == _enums.ModelType.TORCH_SDXL_PIX2PIX:
+            if non_latent_input:
+                pipeline_args['width'] = image_arg_inputs[0].width
+                pipeline_args['height'] = image_arg_inputs[0].height
+            else:
+                # For tensors, dimensions are encoded in the tensor itself
+                # Only set width/height if user explicitly provided them
+                if user_args.width is not None:
+                    pipeline_args['width'] = user_args.width
+                if user_args.height is not None:
+                    pipeline_args['height'] = user_args.height
+
+        elif self._model_type == _enums.ModelType.TORCH_UPSCALER_X2:
+            image_arg_inputs = list(image_arg_inputs)
+            pipeline_args['image'] = image_arg_inputs
+
+            if non_latent_input:
+                # Only resize PIL Images, not tensors
+                for idx, image in enumerate(image_arg_inputs):
+                    if not _image.is_aligned(image.size, 64):
+                        size = _image.align_by(image.size, 64)
+                        _messages.warning(
+                            f'Input image size {image.size} is not aligned by 64. '
+                            f'Output dimensions will be forcefully aligned to 64: {size}.'
+                        )
+                        image_arg_inputs[idx] = _image.resize_image(image, size)
+
+        elif self._model_type == _enums.ModelType.TORCH_S_CASCADE:
+            # stable cascade uses an image encoder, so the concept
+            # from the image is copied, it is not used as a noise seed
+
+            # Validate output dimensions for both PIL and tensor inputs
+            if user_args.width and user_args.width > 0:
+                if not (user_args.width % 128) == 0:
+                    raise _pipelines.UnsupportedPipelineConfigError(
+                        'Stable Cascade requires an output dimension that is aligned by 128.')
+
+            if user_args.height and user_args.height > 0:
+                if not (user_args.height % 128) == 0:
+                    raise _pipelines.UnsupportedPipelineConfigError(
+                        'Stable Cascade requires an output dimension that is aligned by 128.')
+
+            pipeline_args['width'] = _types.default(
+                user_args.width, _constants.DEFAULT_S_CASCADE_OUTPUT_WIDTH)
+            pipeline_args['height'] = _types.default(
+                user_args.height, _constants.DEFAULT_S_CASCADE_OUTPUT_HEIGHT)
+
+        elif self._model_type == _enums.ModelType.TORCH_SD3:
+            image_arg_inputs = list(image_arg_inputs)
+            pipeline_args['image'] = image_arg_inputs
+            if non_latent_input:
+                for idx, image in enumerate(image_arg_inputs):
+                    if not _image.is_aligned(image.size, 16):
+                        size = _image.align_by(image.size, 16)
+                        _messages.warning(
+                            f'Input image size {image.size} is not aligned by 16. '
+                            f'Dimensions will be forcefully aligned to 16: {size}.'
+                        )
+                        image_arg_inputs[idx] = _image.resize_image(image, size)
+
+                pipeline_args['width'] = image_arg_inputs[0].width
+                pipeline_args['height'] = image_arg_inputs[0].height
+
+            if mask_images:
+                mask_images = list(mask_images)
+                pipeline_args['mask_image'] = mask_images
+
+                for idx, image in enumerate(mask_images):
+                    if not _image.is_aligned(image.size, 16):
+                        size = _image.align_by(image.size, 16)
+                        _messages.warning(
+                            f'Input mask image size {image.size} is not aligned by 16. '
+                            f'Dimensions will be forcefully aligned to 16: {size}.'
+                        )
+                        mask_images[idx] = _image.resize_image(image, size)
+
+                pipeline_args['width'] = mask_images[0].width
+                pipeline_args['height'] = mask_images[0].height
+
+    def _set_pipeline_txt2img_defaults(self, user_args: DiffusionArguments, pipeline_args: dict[str, typing.Any]):
+
+        if user_args.height is not None:
+            if user_args.height % 8 != 0:
+                _messages.warning('Forcing alignment of txt2img generation argument "height" to 8.')
+                height = user_args.height - (user_args.height % 8)
+            else:
+                height = user_args.height
+        else:
+            height = None
+
+        if user_args.width is not None:
+            if user_args.height % 8 != 0:
+                _messages.warning('Forcing alignment of txt2img generation argument "width" to 8.')
+                width = user_args.width - (user_args.width % 8)
+            else:
+                width = user_args.width
+        else:
+            width = None
+
+        if _enums.model_type_is_sdxl(self._model_type):
+            pipeline_args['height'] = _types.default(height, _constants.DEFAULT_SDXL_OUTPUT_HEIGHT)
+            pipeline_args['width'] = _types.default(width, _constants.DEFAULT_SDXL_OUTPUT_WIDTH)
+        elif _enums.model_type_is_kolors(self._model_type):
+            pipeline_args['height'] = _types.default(height, _constants.DEFAULT_KOLORS_OUTPUT_HEIGHT)
+            pipeline_args['width'] = _types.default(width, _constants.DEFAULT_KOLORS_OUTPUT_WIDTH)
+        elif _enums.model_type_is_floyd_if(self._model_type):
+            pipeline_args['height'] = _types.default(height, _constants.DEFAULT_FLOYD_IF_OUTPUT_HEIGHT)
+            pipeline_args['width'] = _types.default(width, _constants.DEFAULT_FLOYD_IF_OUTPUT_WIDTH)
+        elif self._model_type == _enums.ModelType.TORCH_S_CASCADE:
+            pipeline_args['height'] = _types.default(height, _constants.DEFAULT_S_CASCADE_OUTPUT_HEIGHT)
+            pipeline_args['width'] = _types.default(width, _constants.DEFAULT_S_CASCADE_OUTPUT_WIDTH)
+
+            if not _image.is_aligned((pipeline_args['width'], pipeline_args['height']), 128):
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'Stable Cascade requires an output dimension that is aligned by 128.')
+        elif self._model_type == _enums.ModelType.TORCH_SD3:
+            pipeline_args['height'] = _types.default(height, _constants.DEFAULT_SD3_OUTPUT_HEIGHT)
+            pipeline_args['width'] = _types.default(width, _constants.DEFAULT_SD3_OUTPUT_WIDTH)
+
+            if not _image.is_aligned((pipeline_args['height'], pipeline_args['width']), 16):
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'Stable Diffusion 3 requires an output dimension that is aligned by 16.')
+        elif self._model_type == _enums.ModelType.TORCH_FLUX:
+            pipeline_args['height'] = _types.default(height, _constants.DEFAULT_FLUX_OUTPUT_HEIGHT)
+            pipeline_args['width'] = _types.default(width, _constants.DEFAULT_FLUX_OUTPUT_WIDTH)
+        else:
+            pipeline_args['height'] = _types.default(height, _constants.DEFAULT_OUTPUT_HEIGHT)
+            pipeline_args['width'] = _types.default(width, _constants.DEFAULT_OUTPUT_WIDTH)
+
     def _get_pipeline_defaults(self, user_args: DiffusionArguments):
         """
         Get a default arrangement of arguments to be passed to a huggingface
@@ -1265,436 +1714,33 @@ class DiffusionPipelineWrapper:
         :return: kwargs dictionary
         """
 
-        args: dict[str, typing.Any] = dict()
-        args['guidance_scale'] = float(_types.default(user_args.guidance_scale, _constants.DEFAULT_GUIDANCE_SCALE))
-        args['num_inference_steps'] = int(_types.default(user_args.inference_steps, _constants.DEFAULT_INFERENCE_STEPS))
+        pipeline_args: dict[str, typing.Any] = dict()
+        pipeline_args['guidance_scale'] = float(
+            _types.default(user_args.guidance_scale, _constants.DEFAULT_GUIDANCE_SCALE))
+        pipeline_args['num_inference_steps'] = int(
+            _types.default(user_args.inference_steps, _constants.DEFAULT_INFERENCE_STEPS))
 
         # Create generator once and reuse it throughout
-        args['generator'] = torch.Generator(device=self._device).manual_seed(
+        pipeline_args['generator'] = torch.Generator(device=self._device).manual_seed(
             _types.default(user_args.seed, _constants.DEFAULT_SEED))
 
-        if user_args.latents:
-            args['latents'] = self._process_raw_input_latents(user_args)
-
-        def set_strength():
-            strength = float(_types.default(user_args.image_seed_strength, _constants.DEFAULT_IMAGE_SEED_STRENGTH))
-            ifs = int(_types.default(user_args.inference_steps, _constants.DEFAULT_INFERENCE_STEPS))
-            if (strength * ifs) < 1.0:
-                strength = 1.0 / ifs
-                _messages.warning(
-                    f'image-seed-strength * inference-steps '
-                    f'was calculated at < 1, image-seed-strength defaulting to (1.0 / inference-steps): {strength}'
-                )
-
-            args['strength'] = strength
-
-        def set_controlnet_defaults():
-            control_images = user_args.control_images
-
-            if not control_images:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'Must provide control_images argument when using ControlNet models.')
-
-            # sanity check that control images are the same dimension
-            self._validate_images_all_same_size(
-                "control guidance images", control_images
-            )
-
-            # Resize control images to user-specified dimensions first thing
-            control_images = self._resize_images_to_user_dimensions(
-                control_images, user_args
-            )
-
-            control_images_cnt = len(control_images)
-            controlnet_uris_cnt = len(self._controlnet_uris)
-
-            if control_images_cnt != controlnet_uris_cnt:
-                # User provided a mismatched number of ControlNet models and control_images, behavior is undefined.
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    f'You specified {control_images_cnt} control guidance images and '
-                    f'only {controlnet_uris_cnt} ControlNet URIs. The amount of '
-                    f'control guidance images must be equal to the amount of ControlNet URIs.')
-
-            # Set width and height based on control images
-            args['width'] = _types.default(user_args.width, control_images[0].width)
-            args['height'] = _types.default(user_args.height, control_images[0].height)
-
-            sdxl_cn_union = _enums.model_type_is_sdxl(self._model_type) and \
-                            any(p.mode is not None for p in self._parsed_controlnet_uris)
-
-            if self._pipeline_type == _enums.PipelineType.TXT2IMG:
-                if _enums.model_type_is_sd3(self._model_type):
-                    # Handle SD3 model specifics for control images
-                    args['control_image'] = self._sd3_force_control_to_a16(args, control_images, user_args)
-                elif _enums.model_type_is_flux(self._model_type):
-                    args['control_image'] = control_images
-                elif sdxl_cn_union:
-                    # controlnet union pipeline does not use "image"
-                    # it also destructively modifies
-                    # this input value if it is a list for
-                    # whatever reason
-                    args['control_image'] = list(control_images)
-                else:
-                    args['image'] = control_images
-            elif self._pipeline_type in {_enums.PipelineType.IMG2IMG, _enums.PipelineType.INPAINT}:
-                args['image'] = user_args.images
-                args['control_image'] = control_images if not sdxl_cn_union else list(control_images)
-                set_strength()
-
-            mask_images = user_args.mask_images
-            if mask_images is not None:
-                # Resize mask images to user-specified dimensions (includes RGB conversion)
-                self._validate_images_all_same_size("inpaint mask images", mask_images)
-                mask_images = self._resize_images_to_user_dimensions(mask_images, user_args)
-                args['mask_image'] = mask_images
-
-        def set_t2iadapter_defaults():
-            adapter_control_images = list(user_args.control_images)
-
-            if not adapter_control_images:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'Must provide control_images argument when using T2IAdapter models.')
-
-            control_images_cnt = len(adapter_control_images)
-            t2i_adapter_uris_cnt = len(self._t2i_adapter_uris)
-
-            if control_images_cnt != t2i_adapter_uris_cnt:
-                # User provided a mismatched number of T2IAdapter models and control_images, behavior is undefined.
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    f'You specified {control_images_cnt} control guidance images and '
-                    f'only {t2i_adapter_uris_cnt} T2IAdapter URIs. The amount of '
-                    f'control guidance images must be equal to the amount of T2IAdapter URIs.')
-
-            first_control_image_size = adapter_control_images[0].size
-
-            # Check if all control images have the same size
-            for img in adapter_control_images[1:]:
-                if img.size != first_control_image_size:
-                    raise _pipelines.UnsupportedPipelineConfigError(
-                        "All control guidance images must have the same dimension.")
-
-            # Resize control images to user-specified dimensions first thing
-            self._validate_images_all_same_size("T2I adapter control images", adapter_control_images)
-            adapter_control_images = self._resize_images_to_user_dimensions(adapter_control_images, user_args)
-
-            if not _image.is_aligned(first_control_image_size, 16):
-                new_size = _image.align_by(first_control_image_size, 16)
-                _messages.warning(
-                    f'T2I Adapter control image(s) of size {first_control_image_size} being forcefully '
-                    f'aligned by 16 to {new_size} to prevent errors.'
-                )
-
-                for idx, img in enumerate(adapter_control_images):
-                    adapter_control_images[idx] = _image.resize_image(img, new_size)
-
-            if _enums.model_type_is_sdxl(self.model_type) and user_args.sdxl_t2i_adapter_factor is not None:
-                args['adapter_conditioning_factor'] = user_args.sdxl_t2i_adapter_factor
-
-            # Set width and height based on control images
-            args['width'] = _types.default(user_args.width, adapter_control_images[0].width)
-            args['height'] = _types.default(user_args.height, adapter_control_images[0].height)
-
-            if self._pipeline_type == _enums.PipelineType.TXT2IMG:
-                args['image'] = adapter_control_images
-            else:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    'T2IAdapter models only work in txt2img mode.'
-                )
-
-        def set_img2img_defaults():
-            # Separate images and tensors but skip validation initially
-            images, img2img_latents = self._separate_images_and_tensors(user_args.images)
-
-            # Don't allow mixing images and tensors in the same input
-            if images and img2img_latents:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    f'Cannot mix PIL Images and latents tensors in img2img inputs. '
-                    f'All inputs must be either images or latents tensors, not both.'
-                )
-
-            # Process input tensors
-            if img2img_latents:
-                img2img_latents = self._process_input_latents(
-                    "img2img", img2img_latents, user_args.img2img_latents_processors
-                )
-
-            # Resize input images to user-specified dimensions first thing
-            if images:
-                if not _enums.model_type_uses_image_encoder(self._model_type):
-                    self._validate_images_all_same_size('img2img images', images)
-                    images = self._resize_images_to_user_dimensions(images, user_args)
-
-            if self._model_type != _enums.ModelType.TORCH_UPSCALER_X2 and \
-                    hasattr(self._pipeline, 'vae') and self._pipeline.vae is not None:
-                # we need to decode the latents into an image using the VAE for
-                # the best img2img result, passing already denoised latents
-                # in does not make sense to the receiving UNet/Transformer
-                # except in the case of the X2 latent upscaler, which can
-                # work with the already denoised latents
-                if img2img_latents and not (
-                        (_enums.model_type_is_sdxl(self._model_type) or
-                         _enums.model_type_is_kolors(self._model_type))
-                        and user_args.denoising_start is not None
-                        and user_args.denoising_start > 0.0
-                ):
-                    if _enums.model_type_is_flux(self._model_type):
-                        img2img_latents = self._repack_flux_latents(self._stack_latents(img2img_latents))
-
-                    images = self.decode_latents(img2img_latents)
-                    # Process decoded images if processors are configured (handles pre-resize, resize, post-resize)
-                    images = self._process_decoded_latents_images(
-                        images, user_args.decoded_latents_image_processor_uris, user_args
-                    )
-                    img2img_latents = None
-
-            # Use the final result (tensors or images)
-            if img2img_latents:
-                inputs = img2img_latents
-            else:
-                inputs = images
-
-            floyd_og_image_needed = (self._pipeline_type == _enums.PipelineType.INPAINT and
-                                     _enums.model_type_is_floyd_ifs(self._model_type)
-                                     ) or (self._model_type == _enums.ModelType.TORCH_IFS_IMG2IMG)
-
-            if floyd_og_image_needed:
-                if user_args.floyd_image is None:
-                    raise _pipelines.UnsupportedPipelineConfigError(
-                        'must specify "floyd_image" to disambiguate this operation, '
-                        '"floyd_image" being the output of a previous floyd stage.')
-                args['original_image'] = inputs
-                args['image'] = user_args.floyd_image
-            elif self._model_type == _enums.ModelType.TORCH_S_CASCADE:
-                args['images'] = inputs
-            else:
-                args['image'] = inputs
-
-            def check_no_image_seed_strength():
-                if user_args.image_seed_strength is not None:
-                    _messages.warning(
-                        f'image_seed_strength is not supported by model_type '
-                        f'"{_enums.get_model_type_string(self._model_type)}" in '
-                        f'mode "{self._pipeline_type.name}" and is being ignored.'
-                    )
-
-            if _enums.model_type_is_upscaler(self._model_type):
-                if self._model_type == _enums.ModelType.TORCH_UPSCALER_X4:
-                    args['noise_level'] = int(
-                        _types.default(
-                            user_args.upscaler_noise_level,
-                            _constants.DEFAULT_X4_UPSCALER_NOISE_LEVEL
-                        )
-                    )
-                check_no_image_seed_strength()
-            elif self._model_type == _enums.ModelType.TORCH_FLUX_FILL:
-                check_no_image_seed_strength()
-            elif self._model_type == _enums.ModelType.TORCH_IFS:
-                if self._pipeline_type != _enums.PipelineType.INPAINT:
-                    args['noise_level'] = int(
-                        _types.default(
-                            user_args.upscaler_noise_level,
-                            _constants.DEFAULT_FLOYD_SUPERRESOLUTION_NOISE_LEVEL
-                        )
-                    )
-                    check_no_image_seed_strength()
-                else:
-                    args['noise_level'] = int(
-                        _types.default(
-                            user_args.upscaler_noise_level,
-                            _constants.DEFAULT_FLOYD_SUPERRESOLUTION_INPAINT_NOISE_LEVEL
-                        )
-                    )
-                    set_strength()
-            elif self._model_type == _enums.ModelType.TORCH_IFS_IMG2IMG:
-                args['noise_level'] = int(
-                    _types.default(
-                        user_args.upscaler_noise_level,
-                        _constants.DEFAULT_FLOYD_SUPERRESOLUTION_IMG2IMG_NOISE_LEVEL
-                    )
-                )
-                set_strength()
-            elif not _enums.model_type_is_pix2pix(self._model_type) and \
-                    self._model_type != _enums.ModelType.TORCH_S_CASCADE:
-                set_strength()
-            else:
-                check_no_image_seed_strength()
-
-            mask_images = user_args.mask_images
-
-            if mask_images is not None:
-                # Resize mask images to user-specified dimensions (includes RGB conversion)
-                self._validate_images_all_same_size('inpaint mask images', mask_images)
-                mask_images = self._resize_images_to_user_dimensions(mask_images, user_args)
-
-                if images:
-                    images_size = images[0].size
-                else:
-                    images_size = self.get_decoded_latents_size(img2img_latents[0])
-
-                if mask_images[0].size != images_size:
-                    raise _pipelines.UnsupportedPipelineConfigError(
-                        f'Image seed img2img images and inpaint masks must '
-                        f'have the same dimension, got: {images_size}, '
-                        f'and {mask_images[0].size} respectively.'
-                    )
-
-                args['mask_image'] = mask_images
-
-                if not (_enums.model_type_is_floyd(self._model_type) or
-                        _enums.model_type_is_sd3(self._model_type)):
-                    if images:
-                        args['width'] = images[0].size[0]
-                        args['height'] = images[0].size[1]
-                    else:
-                        # For tensors, dimensions are encoded in the tensor itself
-                        # Only set width/height if user explicitly provided them
-                        if user_args.width is not None:
-                            args['width'] = user_args.width
-                        if user_args.height is not None:
-                            args['height'] = user_args.height
-
-            if self._parsed_adetailer_detector_uris:
-                # inpainting pipeline, just no mask
-                # because it is auto generated
-                if not _enums.model_type_is_sd3(self._model_type):
-                    if images:
-                        args['width'] = images[0].size[0]
-                        args['height'] = images[0].size[1]
-                    else:
-                        # For tensors, dimensions are encoded in the tensor itself
-                        # Only set width/height if user explicitly provided them
-                        if user_args.width is not None:
-                            args['width'] = user_args.width
-                        if user_args.height is not None:
-                            args['height'] = user_args.height
-
-            if self._model_type == _enums.ModelType.TORCH_SDXL_PIX2PIX:
-                if images:
-                    args['width'] = images[0].size[0]
-                    args['height'] = images[0].size[1]
-                else:
-                    # For tensors, dimensions are encoded in the tensor itself
-                    # Only set width/height if user explicitly provided them
-                    if user_args.width is not None:
-                        args['width'] = user_args.width
-                    if user_args.height is not None:
-                        args['height'] = user_args.height
-
-            elif self._model_type == _enums.ModelType.TORCH_UPSCALER_X2:
-                inputs = list(inputs)
-                args['image'] = inputs
-
-                if images:
-                    # Only resize PIL Images, not tensors
-                    for idx, image in enumerate(inputs):
-                        if not _image.is_aligned(image.size, 64):
-                            size = _image.align_by(image.size, 64)
-                            _messages.warning(
-                                f'Input image size {image.size} is not aligned by 64. '
-                                f'Output dimensions will be forcefully aligned to 64: {size}.'
-                            )
-                            inputs[idx] = _image.resize_image(image, size)
-
-            elif self._model_type == _enums.ModelType.TORCH_S_CASCADE:
-                # stable cascade uses an image encoder, so the concept
-                # from the image is copied, it is not used as a noise seed
-
-                # Validate output dimensions for both PIL and tensor inputs
-                if user_args.width and user_args.width > 0:
-                    if not (user_args.width % 128) == 0:
-                        raise _pipelines.UnsupportedPipelineConfigError(
-                            'Stable Cascade requires an output dimension that is aligned by 128.')
-
-                if user_args.height and user_args.height > 0:
-                    if not (user_args.height % 128) == 0:
-                        raise _pipelines.UnsupportedPipelineConfigError(
-                            'Stable Cascade requires an output dimension that is aligned by 128.')
-
-                args['width'] = _types.default(
-                    user_args.width, _constants.DEFAULT_S_CASCADE_OUTPUT_WIDTH)
-                args['height'] = _types.default(
-                    user_args.height, _constants.DEFAULT_S_CASCADE_OUTPUT_HEIGHT)
-
-            elif self._model_type == _enums.ModelType.TORCH_SD3:
-                inputs = list(inputs)
-                args['image'] = inputs
-                if images:
-                    for idx, image in enumerate(inputs):
-                        if not _image.is_aligned(image.size, 16):
-                            size = _image.align_by(image.size, 16)
-                            _messages.warning(
-                                f'Input image size {image.size} is not aligned by 16. '
-                                f'Dimensions will be forcefully aligned to 16: {size}.'
-                            )
-                            inputs[idx] = _image.resize_image(image, size)
-
-                    args['width'] = _types.default(
-                        user_args.width, inputs[0].width
-                    )
-
-                    args['height'] = _types.default(
-                        user_args.height, inputs[0].height
-                    )
-
-                if mask_images:
-                    mask_images = list(mask_images)
-                    args['mask_image'] = mask_images
-
-                    for idx, image in enumerate(mask_images):
-                        if not _image.is_aligned(image.size, 16):
-                            size = _image.align_by(image.size, 16)
-                            _messages.warning(
-                                f'Input mask image size {image.size} is not aligned by 16. '
-                                f'Dimensions will be forcefully aligned to 16: {size}.'
-                            )
-                            mask_images[idx] = _image.resize_image(image, size)
-
-                    args['width'] = mask_images[0].size[0]
-                    args['height'] = mask_images[0].size[1]
-
-        def set_txt2img_defaults():
-            if _enums.model_type_is_sdxl(self._model_type):
-                args['height'] = _types.default(user_args.height, _constants.DEFAULT_SDXL_OUTPUT_HEIGHT)
-                args['width'] = _types.default(user_args.width, _constants.DEFAULT_SDXL_OUTPUT_WIDTH)
-            elif _enums.model_type_is_kolors(self._model_type):
-                args['height'] = _types.default(user_args.height, _constants.DEFAULT_KOLORS_OUTPUT_HEIGHT)
-                args['width'] = _types.default(user_args.width, _constants.DEFAULT_KOLORS_OUTPUT_WIDTH)
-            elif _enums.model_type_is_floyd_if(self._model_type):
-                args['height'] = _types.default(user_args.height, _constants.DEFAULT_FLOYD_IF_OUTPUT_HEIGHT)
-                args['width'] = _types.default(user_args.width, _constants.DEFAULT_FLOYD_IF_OUTPUT_WIDTH)
-            elif self._model_type == _enums.ModelType.TORCH_S_CASCADE:
-                args['height'] = _types.default(user_args.height, _constants.DEFAULT_S_CASCADE_OUTPUT_HEIGHT)
-                args['width'] = _types.default(user_args.width, _constants.DEFAULT_S_CASCADE_OUTPUT_WIDTH)
-
-                if not _image.is_aligned((args['width'], args['height']), 128):
-                    raise _pipelines.UnsupportedPipelineConfigError(
-                        'Stable Cascade requires an output dimension that is aligned by 128.')
-            elif self._model_type == _enums.ModelType.TORCH_SD3:
-                args['height'] = _types.default(user_args.height, _constants.DEFAULT_SD3_OUTPUT_HEIGHT)
-                args['width'] = _types.default(user_args.width, _constants.DEFAULT_SD3_OUTPUT_WIDTH)
-
-                if not _image.is_aligned((args['width'], args['height']), 16):
-                    raise _pipelines.UnsupportedPipelineConfigError(
-                        'Stable Diffusion 3 requires an output dimension that is aligned by 16.')
-            elif self._model_type == _enums.ModelType.TORCH_FLUX:
-                args['height'] = _types.default(user_args.height, _constants.DEFAULT_FLUX_OUTPUT_HEIGHT)
-                args['width'] = _types.default(user_args.width, _constants.DEFAULT_FLUX_OUTPUT_WIDTH)
-            else:
-                args['height'] = _types.default(user_args.height, _constants.DEFAULT_OUTPUT_HEIGHT)
-                args['width'] = _types.default(user_args.width, _constants.DEFAULT_OUTPUT_WIDTH)
-
         if self._controlnet_uris:
-            set_controlnet_defaults()
+            self._set_pipeline_controlnet_defaults(user_args, pipeline_args)
         elif self._t2i_adapter_uris:
-            set_t2iadapter_defaults()
+            self._set_pipeline_t2iadapter_defaults(user_args, pipeline_args)
         elif user_args.images is not None:
-            set_img2img_defaults()
+            self._set_pipeline_img2img_defaults(user_args, pipeline_args)
         else:
-            set_txt2img_defaults()
+            self._set_pipeline_txt2img_defaults(user_args, pipeline_args)
 
-        return args
+        if user_args.latents:
+            # this uses 'width' and 'height' from pipeline_args as input
+            pipeline_args['latents'] = self._process_raw_input_latents(user_args, pipeline_args)
 
-    def _process_raw_input_latents(self, user_args: DiffusionArguments) -> torch.Tensor:
+        return pipeline_args
+
+    def _process_raw_input_latents(self, user_args: DiffusionArguments,
+                                   pipeline_args: dict[str, typing.Any]) -> torch.Tensor:
         """
         Process and validate incoming raw / noisy latents from ``latents``
 
@@ -1704,23 +1750,26 @@ class DiffusionPipelineWrapper:
         latents = self._process_input_latents("raw", user_args.latents, user_args.latents_processors)
         latents = self._stack_latents(latents)
         decoded_latents_size = self.get_decoded_latents_size(latents)
-        expected_width = user_args.width
-        expected_height = user_args.height
+
+        expected_width = pipeline_args.get('width', None)
+        expected_height = pipeline_args.get('height', None)
+
         if user_args.images:
             if not _torchutil.is_tensor(user_args.images[0]):
-                if expected_width is None:
-                    expected_width = user_args.images[0].width
-
-                if expected_height is None:
-                    expected_height = user_args.images[0].height
+                expected_width, expected_height = _image.resize_image_calc(
+                    user_args.images[0].size,
+                    self._calc_image_target_size(user_args.images[0], user_args),
+                    aspect_correct=user_args.aspect_correct,
+                    align=8
+                )
             else:
-                img2img_decode_width, \
-                    img2img_decode_height = self.get_decoded_latents_size(user_args.images[0])
+                # noinspection PyTypeChecker
+                expected_width, expected_height = self.get_decoded_latents_size(
+                    user_args.images[0]
+                )
 
-                expected_width = img2img_decode_width if expected_width is None else expected_width
-                expected_height = img2img_decode_height if expected_height is None else expected_height
         if expected_width is not None and expected_height is not None:
-            output_size_expected = _image.align_by((expected_width, expected_height), 8)
+            output_size_expected = (expected_width, expected_height)
             if output_size_expected != decoded_latents_size:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     f"Render width / height not compatible with "
@@ -1760,8 +1809,10 @@ class DiffusionPipelineWrapper:
     def _sd3_force_control_to_a16(args, control_images, user_args):
         processed_control_images = list(control_images)
         for idx, img in enumerate(processed_control_images):
+
             if not _image.is_aligned(img.size, 16):
-                size = _image.align_by(img.size, 16)
+                # noinspection PyTypeChecker
+                size: tuple[int, int] = _image.align_by(img.size, 16)
 
                 if user_args.width:
                     if not (user_args.width % 16) == 0:
@@ -1773,8 +1824,8 @@ class DiffusionPipelineWrapper:
                         raise _pipelines.UnsupportedPipelineConfigError(
                             'Stable Diffusion 3 requires an output dimension aligned by 16.')
 
-                args['width'] = _types.default(user_args.width, size[0])
-                args['height'] = _types.default(user_args.height, size[1])
+                args['width'] = size[0]
+                args['height'] = size[1]
 
                 _messages.warning(
                     f'Control image size {img.size} is not aligned by 16. '
@@ -1782,6 +1833,7 @@ class DiffusionPipelineWrapper:
                 )
 
                 processed_control_images[idx] = _image.resize_image(img, size)
+
         return processed_control_images
 
     def _get_adapter_conditioning_scale(self):

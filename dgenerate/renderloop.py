@@ -614,8 +614,6 @@ class RenderLoop:
                                       generation_result: _pipelinewrapper.PipelineWrapperResult):
 
         if generation_result.image_count > 1:
-            extra_opts_out.append(('--batch-size', self._c_config.batch_size))
-
             if self._c_config.batch_grid_size is not None:
                 extra_opts_out.append(('--batch-grid-size',
                                        _textprocessing.format_size(self._c_config.batch_grid_size)))
