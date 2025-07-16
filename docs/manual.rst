@@ -9008,7 +9008,7 @@ provided in the image preview pane context menu.
     
     ==============================================================================================================
 
-You can combine this processor with the ``paste`` processor to preform
+You can combine this processor with the ``crop`` and ``paste`` processor to preform
 manual / interactive adetailer like editing.
 
 .. code-block:: jinja
