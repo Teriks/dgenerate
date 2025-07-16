@@ -143,7 +143,7 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
         - Single box: [x1,y1,x2,y2] or x1,y1,x2,y2 or "x1,y1,x2,y2"
         - Nested list/tuple: [[x1,y1,x2,y2], ...]
         - String format: ["x1,y1,x2,y2", ...]
-        - Token Format: 50x50x100x100,200x200x400x400
+        - Token list format: 50x50x100x100,200x200x400x400
     
         NOWRAP!
         Examples:
