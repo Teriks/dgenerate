@@ -9,65 +9,105 @@
    :target: https://ko-fi.com/teriks
    :alt: ko-fi
 
-Overview
-========
+=========
+dgenerate
+=========
 
 |Documentation| |Latest Release| |Support Dgenerate|
 
-``dgenerate`` is a cross-platform command line tool and library for generating images
-and animation sequences using Stable Diffusion and related models.
+``dgenerate`` is a scriptable command-line tool (and library) for generating/editing images and processing animated inputs with AI.
 
-Alongside the command line tool, this project features a syntax-highlighting
-REPL Console UI for the dgenerate configuration / scripting language, which is built on
-Tkinter to be lightweight and portable. This GUI serves as an interface to dgenerate running
-in the background via the ``--shell`` option.
+Whether you're generating or editing single images, batch processing hundreds of variations, or transforming entire videos frame-by-frame,
+dgenerate provides a flexible, scriptable interface for a multitude of image generation and editing tasks.
 
-You can use dgenerate to generate multiple images or animated outputs using multiple
-combinations of diffusion input parameters in batch, so that the differences in
-generated output can be compared / curated easily.  This can be accomplished via a single command,
-or through more advanced scripting with the built-in interpreted shell-like language if needed.
+For the extensive usage manual, manual installation guide, and API documentation, visit `readthedocs <http://dgenerate.readthedocs.io/en/version_5.0.0/>`_.
 
-Animated output can be produced by processing every frame of a Video, GIF, WebP, or APNG through
-various implementations of diffusion in img2img or inpainting mode, as well as with ControlNets and
-control guidance images, in any combination thereof. MP4 (h264) video can be written without memory
-constraints related to frame count. GIF, WebP, and PNG/APNG can be written WITH memory constraints,
-IE: all frames exist in memory at once before being written.
+What You Can Do
+===============
 
-Video input of any runtime can be processed without memory constraints related to the video size.
-Many video formats are supported through the use of PyAV (ffmpeg).
+Image Generation
+----------------
 
-Animated image input such as GIF, APNG (extension must be .apng), and WebP, can also be processed
-WITH memory constraints, IE: all frames exist in memory at once after an animated image is read.
+* Generate images using a number of popular model architectures such as: SD, SDXL, SD3, Flux, and Kolors
+* Batch process multiple parameter combinations combinatorially to generate variations
+* Utilize models from HuggingFace and CivitAI for generation
+* Advanced prompt weighting (LPW), generation control & guidance
+* Text to image, image to image, and inpainting with diffusion
+* Diffusion-based image upscaling
+* Run large models on limited hardware with inference optimizations and quantization
 
-PNG, JPEG, JPEG-2000, TGA (Targa), BMP, and PSD (Photoshop) are supported for static image inputs.
+Image Processing
+----------------
 
-In addition to diffusion, dgenerate also supports the processing of any supported image, video, or
-animated image using any of its built-in image processors, which include various edge detectors,
-depth detectors, segment generation, normal map generation, pose detection, non-diffusion based
-AI upscaling, and more.  dgenerate's image processors may be used to pre-process image / video
-input to diffusion, post-process diffusion output, or to process images and video directly.
+* Easily chain image processors together for advanced scripted image manipulation
+* Utilize built-in image processors for edge detection, depth mapping, segmentation, feature detection, and more
+* Run upscaling / image restoration models such as ESRGAN, SwinIR, etc... via ``spandrel``
+* Run image processors generically on any image
 
-dgenerate brings many major features of the HuggingFace ``diffusers`` library directly to the
-command line in a very flexible way with a near one-to-one mapping, akin to ffmpeg, allowing
-for creative uses as powerful as direct implementation in python with less effort and
-environmental setup.
+Animation & Video Processing
+----------------------------
 
-dgenerate is compatible with HuggingFace as well as typical CivitAI-hosted models,
-prompt weighting and many other useful generation features are supported.
+* Transform videos into artistic non-temporally consistent animations
+* Process GIF, WebP, APNG, MP4, and any other video format supported by ``av`` (ffmpeg)
+* Memory-efficient, streamed processing of video content from disk
+* Apply image processors to any animated input, for example upscaling / classification / mask generation
 
-dgenerate can be easily installed on Windows via a Windows Installer MSI containing a
-frozen python environment, making setup for Windows users easy, and likely to "just work"
-without any dependency issues. This installer can be found in the release artifact under each
-release located on the `github releases page <https://github.com/Teriks/dgenerate/releases>`_.
+Scripting
+---------
 
-This software requires a Nvidia GPU supporting CUDA 12.1+, AMD GPU supporting ROCm (Linux Only),
-or MacOS on Apple Silicon, and supports ``python>=3.10,<3.14``. CPU rendering is possible for
-some operations but extraordinarily slow.
+* Utilize a built-in shell language to script image generation / editing tasks, work in REPL mode from the Console UI
+* Write scripted workflows with intelligent VRAM/RAM memory management, garbage collection, and caching
+* Write plugins such as image processors, prompt weighters, shell language features, etc. in Python if desired
 
-For command line usage manual, manual installation instructions, and library documentation,
-please visit `readthedocs <http://dgenerate.readthedocs.io/en/version_5.0.0/>`_.
+Getting Started
+===============
+
+Quick Install (Windows)
+------------------------
+
+Download the Windows Installer MSI (multipart zip) from the `releases page <https://github.com/Teriks/dgenerate/releases>`_ for a hassle-free setup into a frozen / isolated Python environment.
+
+Manual Install
+--------------
+
+* `Windows <https://dgenerate.readthedocs.io/en/version_5.0.0/manual.html#windows-install>`_
+* `Linux / WSL <https://dgenerate.readthedocs.io/en/version_5.0.0/manual.html#linux-or-wsl-install>`_
+* `Linux ROCm <https://dgenerate.readthedocs.io/en/version_5.0.0/manual.html#linux-with-rocm-amd-cards>`_
+* `MacOS <https://dgenerate.readthedocs.io/en/version_5.0.0/manual.html#macos-install-apple-silicon-only>`_
+
+System Requirements
+-------------------
+
+* **GPU**: NVIDIA (CUDA 12.1+), AMD (ROCm on Linux), or Apple Silicon
+* **Python**: 3.10 to 3.13
+* **OS**: Windows, macOS, or Linux
+
+Note: CPU rendering is possible but extremely slow unless the given model is tailored for it.
+
+Two Ways to Use dgenerate
+=========================
+
+Command Line
+------------
+
+Perfect for automation and batch processing:
+
+.. code-block:: bash
+
+    dgenerate stable-diffusion-v1-5/stable-diffusion-v1-5 --prompts "a cute cat" --inference-steps 15 20 30
+
+    dgenerate --file workflow-config.dgen
+
+Interactive GUI
+---------------
+
+Features a syntax-highlighting console / editor:
+
+* REPL / code editor for the built in shell language to assist with building complex workflows
+* Image preview and various utilities for quickly creating scripts and testing
+* Lightweight multiplatform Tkinter-based UI
 
 ----
 
 .. image:: https://raw.githubusercontent.com/Teriks/dgenerate-readme-embeds/master/ui5.gif
-   :alt: console ui
+   :alt: Console UI Demo
