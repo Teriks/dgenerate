@@ -21,4 +21,4 @@ provided in the image preview pane context menu.
 You can combine this processor with the ``crop`` and ``paste`` processor to preform
 manual / interactive adetailer like editing.
 
-@EXAMPLE[@PROJECT_DIR/examples/adetailer/manual_with_sam/config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/sam/manual-adetailer-config.dgen]
