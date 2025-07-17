@@ -41,14 +41,14 @@ Image Processing
 
 * Easily chain image processors together for advanced scripted image manipulation
 * Utilize built-in image processors for edge detection, depth mapping, segmentation, feature detection, and more
-* Run upscaling / image restoration models such as ESRGAN, SwinIR, etc... via ``spandrel``
+* Run upscaling / image restoration models such as ESRGAN, SwinIR, etc... via `spandrel <https://github.com/chaiNNer-org/spandrel>`_
 * Run image processors generically on any image
 
 Animation & Video Processing
 ----------------------------
 
 * Transform videos into artistic non-temporally consistent animations
-* Process GIF, WebP, APNG, MP4, and any other video format supported by ``av`` (ffmpeg)
+* Process GIF, WebP, APNG, MP4, and any other video format supported by `av <https://github.com/PyAV-Org/PyAV>`_ (ffmpeg)
 * Memory-efficient, streamed processing of video content from disk
 * Apply image processors to any animated input, for example upscaling / classification / mask generation
 
