@@ -104,7 +104,7 @@ Interactive GUI
 Features a syntax-highlighting console / editor:
 
 * REPL / code editor for the built in shell language to assist with building complex workflows
-* Image preview and various utilities for quickly creating scripts and testing
+* Image preview and various utilities for quickly creating scripts and working interactively
 * Lightweight multiplatform Tkinter-based UI
 
 ----
