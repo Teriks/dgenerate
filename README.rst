@@ -55,7 +55,7 @@ Animation & Video Processing
 Scripting
 ---------
 
-* Utilize a built-in shell language to script image generation / editing tasks, work in REPL mode from the Console UI
+* Utilize the built-in shell language to script generation tasks, work in REPL mode from the Console UI
 * Write scripted workflows with intelligent VRAM/RAM memory management, garbage collection, and caching
 * Write plugins such as image processors, prompt weighters, shell language features, etc. in Python if desired
 
