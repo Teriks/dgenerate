@@ -1,0 +1,24 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 5.0.0
+
+# This example shows how to reduce the "enhanced-outpaint-config.dgen"
+# workflow into a "one-liner" dgenerate invocation.
+
+\set outpaint_box 128
+\set input_image ../media/mountain.png
+
+diffusers/stable-diffusion-xl-1.0-inpainting-0.1
+--model-type torch-sdxl
+--dtype float16
+--variant fp16
+--inference-steps 30
+--guidance-scales 5
+--image-seed-strengths 0.85
+--image-seeds {{ input_image }};{{ input_image }}
+--seed-image-processors \
+    letterbox;box-size={{ outpaint_box }};box-is-padding=True \
+    patchmatch;mask={{ input_image }};mask-processors="outpaint-mask;box={{ outpaint_box }}";seed=42
+--mask-image-processors outpaint-mask;box={{ outpaint_box }}
+--seeds 11137629041966
+--output-path enhanced_outpaint_one_liner
+--prompts "photo of forested mountains under a blue sky"
