@@ -25,6 +25,7 @@ import cv2
 
 import dgenerate.image as _image
 import dgenerate.imageprocessors.imageprocessor as _imageprocessor
+import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 import dgenerate.webcache as _webcache
 import patchmatch_cython
@@ -122,9 +123,7 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
             mask_image = PIL.Image.open(mask_path)
 
             if self._mask_processor is not None:
-                import dgenerate.imageprocessors as _imgp
-
-                mask_image = _imgp.create_image_processor(
+                mask_image = self._create_image_processor(
                     self._mask_processor
                 ).process(mask_image.convert('RGB'), align=1)
 
@@ -144,6 +143,19 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
 
         except Exception as e:
             raise self.argument_error(f'Failed to load mask from "{self._mask_path}": {e}')
+
+    @staticmethod
+    def _create_image_processor(uri_chain_string):
+        """ Create an image processor from a URI chain string."""
+        import dgenerate.imageprocessors as _imgp
+        return _imgp.create_image_processor(
+            _textprocessing.shell_parse(
+                uri_chain_string,
+                expand_home=False,
+                expand_glob=False,
+                expand_vars=False
+            )
+        )
 
     def _process(self, image: PIL.Image.Image) -> PIL.Image.Image:
         """

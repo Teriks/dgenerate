@@ -164,9 +164,7 @@ class PasteProcessor(_imageprocessor.ImageProcessor):
             raise self.argument_error(f'Failed to load source image: {e}')
 
         if image_processor:
-            import dgenerate.imageprocessors as _imgp
-
-            self._source_image = _imgp.create_image_processor(
+            self._source_image = self._create_image_processor(
                 image_processor
             ).process(self._source_image, align=1)
 
@@ -182,9 +180,7 @@ class PasteProcessor(_imageprocessor.ImageProcessor):
                 raise self.argument_error(f'Failed to load mask image: {e}')
 
             if mask_processor:
-                import dgenerate.imageprocessors as _imgp
-
-                self._source_image = _imgp.create_image_processor(
+                self._mask_image = self._create_image_processor(
                     mask_processor
                 ).process(self._mask_image.convert('RGB'), align=1)
 
@@ -194,6 +190,20 @@ class PasteProcessor(_imageprocessor.ImageProcessor):
 
         # Parse position argument
         self._position = self._parse_position(position)
+
+
+    @staticmethod
+    def _create_image_processor(uri_chain_string):
+        """ Create an image processor from a URI chain string."""
+        import dgenerate.imageprocessors as _imgp
+        return _imgp.create_image_processor(
+            _textprocessing.shell_parse(
+                uri_chain_string,
+                expand_home=False,
+                expand_glob=False,
+                expand_vars=False
+            )
+        )
 
     def _load_image(self, image_path: str) -> PIL.Image.Image:
         """Load an image from a file or URL."""

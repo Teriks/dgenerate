@@ -18,6 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import collections.abc
 
 import dgenerate.imageprocessors.constants
 import dgenerate.plugin as _plugin
@@ -148,7 +149,7 @@ def image_processor_exists(uri: _types.Uri):
     return image_processor_name_from_uri(uri) in image_processor_names()
 
 
-def create_image_processor(uri: _types.Uri,
+def create_image_processor(uri: _types.Uri | collections.abc.Iterable[_types.Uri],
                            output_file: str | None = None,
                            output_overwrite: bool = True,
                            device: str = 'cpu',
@@ -156,6 +157,8 @@ def create_image_processor(uri: _types.Uri,
                            local_files_only: bool = False) -> ImageProcessor:
     """
     Create an image processor implementation using the default :py:class:`ImageProcessorLoader` instance.
+
+    Providing a collection of URIs will create an :py:class:`ImageProcessorChain` object.
 
     :param output_file: Output path for the processor debug image
     :param output_overwrite: enable overwrite for the processor debug image?
