@@ -7070,6 +7070,7 @@ Output:
         "mlsd"
         "normal-bae"
         "openpose"
+        "outpaint-mask"
         "paste"
         "patchmatch"
         "pidi"
@@ -9032,10 +9033,6 @@ manual / interactive adetailer like editing.
     
     # input image (american gothic)
     \set input_image "../media/americangothic.jpg"
-    
-    # we need to align the input image by 8 to match the diffusion output
-    # (overwrite existing files). If we do not do this the pasted output
-    # from inpainting will not line up correctly
     
     # bounding box is around the mans face on the right
     \set face_box 451x86x751x448

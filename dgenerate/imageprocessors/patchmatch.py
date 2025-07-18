@@ -45,7 +45,7 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
     Both local files and remote URLs are supported. The mask will be resized to the
     dimension of the incoming image if they are not the same size.
 
-    The "mask-processor" argument allows you to pre-process the "mask" argument with an
+    The "mask-processors" argument allows you to pre-process the "mask" argument with an
     arbitrary image processor chain, for example: invert, gaussian-blur, etc. This
     arguments value must be quoted (single or double string quotes) if you intend
     to supply arguments to the processors in the chain. The pixel alignment of this
@@ -70,14 +70,14 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
 
     def __init__(self,
                  mask: str,
-                 mask_processor: str | None = None,
+                 mask_processors: str | None = None,
                  patch_size: int = 5,
                  seed: int | None = None,
                  pre_resize: bool = False,
                  **kwargs):
         """
         :param mask: Path to mask image file or URL. White pixels indicate areas to inpaint.
-        :param mask_processor: Pre-process ``mask`` with an arbitrary image processor chain.
+        :param mask_processors: Pre-process ``mask`` with an arbitrary image processor chain.
         :param patch_size: Patch size for PatchMatch algorithm. Default is 5.
         :param seed: Random number generator seed for reproducible results. If None, uses random seed.
         :param pre_resize: process the image before it is resized, or after? default is ``False`` (after).
@@ -92,7 +92,7 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
             raise self.argument_error('Argument "patch-size" must be a positive integer.')
 
         self._mask_path = mask
-        self._mask_processor = mask_processor
+        self._mask_processors = mask_processors
         self._patch_size = patch_size
         self._seed = seed
         self._pre_resize = pre_resize
@@ -122,9 +122,9 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
             # Load mask image and convert to grayscale
             mask_image = PIL.Image.open(mask_path)
 
-            if self._mask_processor is not None:
+            if self._mask_processors is not None:
                 mask_image = self._create_image_processor(
-                    self._mask_processor
+                    self._mask_processors
                 ).process(mask_image.convert('RGB'), align=1)
 
             # Convert to grayscale if needed
