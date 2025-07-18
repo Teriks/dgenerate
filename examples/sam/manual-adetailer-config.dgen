@@ -6,26 +6,21 @@
 
 # This utilizes the "u-sam" processor (Ultralytics)
 
-# 1.) align input image by 8
-# 2.) detect a mask of the face within the face bounding box
-# 3.) crop image and mask down to the face bounding box
-# 4.) scale up the mask and cropped portion of the image close to SDXL native resolution
-# 5.) inpaint with prompt using the cropped image and cropped mask
-# 6.) paste the result back over the original input image
+# 1.) detect a mask of the face within the face bounding box
+# 2.) crop image and mask down to the face bounding box
+# 3.) scale up the mask and cropped portion of the image close to SDXL native resolution
+# 4.) inpaint with prompt using the cropped image and cropped mask
+# 5.) paste the result back over the original input image,
+#     with the background aligned to 8 pixels to match the diffusion output,
 #     into the face bounding box with feathering to blend it in
 
 
 # input image (american gothic)
-\set input_image "../../media/americangothic.jpg"
+\set input_image "../media/americangothic.jpg"
 
 # we need to align the input image by 8 to match the diffusion output
 # (overwrite existing files). If we do not do this the pasted output
 # from inpainting will not line up correctly
-
-\image_process {{input_image}} --align 8 -o output/input_aligned.png -ox
-
-# assign the path of the result from above to a variable
-\set input_image {{quote(last_images)}}
 
 # bounding box is around the mans face on the right
 \set face_box 451x86x751x448
@@ -47,4 +42,4 @@ stabilityai/stable-diffusion-xl-base-1.0
 --seeds 92105821284900
 --output-path output
 --prompts "a smiling mans face"
---post-processors paste;image={{input_image}};position={{face_box}};feather=10;reverse=True
+--post-processors paste;image={{input_image}};image-processor="resize;align=8";position={{face_box}};feather=10;reverse=True

@@ -28,13 +28,22 @@ import dgenerate.image as _image
 import dgenerate.imageprocessors.imageprocessor as _imageprocessor
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
+import dgenerate.webcache as _webcache
 
 
 class PasteProcessor(_imageprocessor.ImageProcessor):
     """
     Paste an image on top of the incoming image at a specified position.
     
-    The "image" argument specifies the path to the image file to paste.
+    The "image" argument specifies the path to the image file to paste,
+    this may be path on disk or a URL link to an image file.
+
+    The "image-processor" argument allows you to pre-process "image" with an
+    arbitrary image processor chain. This arguments value must be quoted
+    (single or double string quotes) if you intend to supply arguments to
+    the processors in the chain. The pixel alignment of this processor
+    chain defaults to 1, meaning no forced alignment will occur, you can
+    force alignment using the "resize" image processor if desired.
     
     The "position" argument specifies where to paste the image. It can be:
 
@@ -45,7 +54,8 @@ class PasteProcessor(_imageprocessor.ImageProcessor):
 
     The "feather" argument specifies the feathering radius in pixels for softening edges.
     This creates smooth transitions from opaque to transparent. If not specified, no feathering 
-    is applied. Cannot be used together with the "mask" parameter.
+    is applied. Cannot be used together with the "mask" parameter, as this auto generates a
+    feather mask for you.
 
     The "feather-shape" argument controls the shape of the feathering:
 
@@ -56,9 +66,17 @@ class PasteProcessor(_imageprocessor.ImageProcessor):
     Only used when "feather" is specified.
     
     The "mask" argument allows you to specify a mask image path that will be used to control
-    the transparency of the pasted image. The mask should be a grayscale image where white
-    areas represent full opacity and black areas represent full transparency. Cannot be used 
-    together with the "feather" parameter.
+    the transparency of the pasted image. This may be a path on disk or a URL link to an image file.
+    The mask should be a grayscale image where white areas represent full opacity and black areas
+    represent full transparency. Cannot be used together with the "feather" parameter.
+
+    The "mask-processor" argument allows you to pre-process the "mask" argument with an
+    arbitrary image processor chain. For example: invert, gaussian-blur, etc. This
+    cannot be used in "feather" mode on the auto generated feather mask, only on
+    user supplied masks. This arguments value must be quoted (single or double string quotes)
+    if you intend to supply arguments to the processors in the chain. The pixel alignment
+    of this processor chain defaults to 1, meaning no forced alignment will occur, you
+    can force alignment using the "resize" image processor if desired.
 
     The "reverse" argument allows you to reverse the paste operation, meaning the "image"
     argument is to be considered the background, and the processed image is to be the pasted
@@ -76,19 +94,23 @@ class PasteProcessor(_imageprocessor.ImageProcessor):
 
     def __init__(self,
                  image: str,
+                 image_processor: str | None = None,
                  position: str = "0x0",
                  feather: int | None = None,
                  feather_shape: str = "rectangle",
                  mask: str | None = None,
+                 mask_processor: str | None = None,
                  reverse: bool = False,
                  pre_resize: bool = False,
                  **kwargs):
         """
-        :param image: path to the image file to paste
+        :param image: path to the image file to paste, or paste on to if ``reverse=True``
+        :param image_processor: Pre-process ``image`` with an arbitrary image processor chain
         :param position: position specification in "LEFTxTOP" or "LEFTxTOPxRIGHTxBOTTOM" format
         :param feather: feathering radius in pixels for softening edges (cannot be used with mask)
         :param feather_shape: shape of feathering ("rectangle", "rect", "circle", or "ellipse")
         :param mask: path to a mask image file for controlling transparency (cannot be used with feather)
+        :param mask_processor: Pre-process ``mask`` with an arbitrary image processor chain, not compatible with ``feather``.
         :param reverse: Reverse the paste operation?
         :param pre_resize: process the image before it is resized, or after? default is False (after)
         :param kwargs: forwarded to base class
@@ -97,7 +119,14 @@ class PasteProcessor(_imageprocessor.ImageProcessor):
 
         if feather is not None and mask is not None:
             raise self.argument_error(
-                'Cannot use both feather and mask parameters together. Choose one method for transparency.')
+                'Cannot use both "feather" and "mask" arguments together. '
+                'Choose one method for transparency.'
+            )
+
+        if mask is None and mask_processor:
+            raise self.argument_error(
+                'Cannot use "mask-processor" without specifying "mask"'
+            )
 
         if feather is not None and feather < 0:
             raise self.argument_error(
@@ -127,12 +156,19 @@ class PasteProcessor(_imageprocessor.ImageProcessor):
             raise self.argument_error(f'Source image file does not exist: {image}')
 
         try:
-            self._source_image = PIL.Image.open(image)
+            self._source_image = self._load_image(image)
             # Ensure source image is in RGB mode
             if self._source_image.mode != 'RGB':
                 self._source_image = self._source_image.convert('RGB')
         except Exception as e:
             raise self.argument_error(f'Failed to load source image: {e}')
+
+        if image_processor:
+            import dgenerate.imageprocessors as _imgp
+
+            self._source_image = _imgp.create_image_processor(
+                image_processor
+            ).process(self._source_image, align=1)
 
         # Load mask image upfront if provided
         self._mask_image = None
@@ -141,15 +177,39 @@ class PasteProcessor(_imageprocessor.ImageProcessor):
                 raise self.argument_error(f'Mask image file does not exist: {mask}')
 
             try:
-                self._mask_image = PIL.Image.open(mask)
-                # Convert to grayscale if needed
-                if self._mask_image.mode != 'L':
-                    self._mask_image = self._mask_image.convert('L')
+                self._mask_image = self._load_image(mask)
             except Exception as e:
                 raise self.argument_error(f'Failed to load mask image: {e}')
 
+            if mask_processor:
+                import dgenerate.imageprocessors as _imgp
+
+                self._source_image = _imgp.create_image_processor(
+                    mask_processor
+                ).process(self._mask_image.convert('RGB'), align=1)
+
+            # Convert to grayscale if needed
+            if self._mask_image.mode != 'L':
+                self._mask_image = self._mask_image.convert('L')
+
         # Parse position argument
         self._position = self._parse_position(position)
+
+    def _load_image(self, image_path: str) -> PIL.Image.Image:
+        """Load an image from a file or URL."""
+
+        # Handle URL downloads using webcache
+        if _webcache.is_downloadable_url(image_path):
+            # Download and cache the URL
+            _, image_path = _webcache.create_web_cache_file(
+                image_path,
+                mime_acceptable_desc='image files',
+                mimetype_is_supported=lambda m: m.startswith('image/'),
+                local_files_only=self.local_files_only
+            )
+            return PIL.Image.open(image_path)
+        else:
+            return PIL.Image.open(image_path)
 
     def _parse_position(self, position: str) -> tuple:
         """Parse position string into coordinates"""

@@ -44,8 +44,12 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
     Both local files and remote URLs are supported. The mask will be resized to the
     dimension of the incoming image if they are not the same size.
 
-    The "invert" argument allows you to treat the incoming mask image as if it has
-    been inverted.
+    The "mask-processor" argument allows you to pre-process the "mask" argument with an
+    arbitrary image processor chain, for example: invert, gaussian-blur, etc. This
+    arguments value must be quoted (single or double string quotes) if you intend
+    to supply arguments to the processors in the chain. The pixel alignment of this
+    processor chain defaults to 1, meaning no forced alignment will occur, you
+    can force alignment using the "resize" image processor if desired.
     
     The "patch-size" argument specifies the patch size for the PatchMatch algorithm.
     Larger patch sizes can provide better coherence but may be slower.
@@ -65,14 +69,14 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
 
     def __init__(self,
                  mask: str,
-                 invert: bool = False,
+                 mask_processor: str | None = None,
                  patch_size: int = 5,
                  seed: int | None = None,
                  pre_resize: bool = False,
                  **kwargs):
         """
         :param mask: Path to mask image file or URL. White pixels indicate areas to inpaint.
-        :param invert: Treat the incoming mask as if it has been inverted.
+        :param mask_processor: Pre-process ``mask`` with an arbitrary image processor chain.
         :param patch_size: Patch size for PatchMatch algorithm. Default is 5.
         :param seed: Random number generator seed for reproducible results. If None, uses random seed.
         :param pre_resize: process the image before it is resized, or after? default is ``False`` (after).
@@ -87,7 +91,7 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
             raise self.argument_error('Argument "patch-size" must be a positive integer.')
 
         self._mask_path = mask
-        self._invert = invert
+        self._mask_processor = mask_processor
         self._patch_size = patch_size
         self._seed = seed
         self._pre_resize = pre_resize
@@ -115,7 +119,18 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
                 mask_path = self._mask_path
 
             # Load mask image and convert to grayscale
-            mask_image = PIL.Image.open(mask_path).convert('L')
+            mask_image = PIL.Image.open(mask_path)
+
+            if self._mask_processor is not None:
+                import dgenerate.imageprocessors as _imgp
+
+                mask_image = _imgp.create_image_processor(
+                    self._mask_processor
+                ).process(mask_image.convert('RGB'), align=1)
+
+            # Convert to grayscale if needed
+            if mask_image.mode != 'L':
+                mask_image = mask_image.convert('L')
 
             # Resize mask to match target size if specified using optimal interpolation
             if target_size is not None:
@@ -125,16 +140,7 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
                 mask_array_temp = cv2.resize(mask_array_temp, target_size, interpolation=interpolation)
                 mask_image = PIL.Image.fromarray(mask_array_temp)
 
-            # Convert to numpy array and create binary mask
-            # White pixels (>128) indicate areas to inpaint
-            # when not in invert mode
-
-            if self._invert:
-                mask_array = np.array(mask_image) < 128
-            else:
-                mask_array = np.array(mask_image) > 128
-
-            return mask_array
+            return np.array(mask_image) > 128
 
         except Exception as e:
             raise self.argument_error(f'Failed to load mask from "{self._mask_path}": {e}')
@@ -162,8 +168,6 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
             interpolation = _image.best_cv2_resampling(old_size, new_size)
             mask_resized = cv2.resize(mask_uint8, new_size, interpolation=interpolation)
             mask_array = mask_resized > 128
-            if self._invert:
-                mask_array = ~mask_array
 
         # Perform PatchMatch inpainting
         try:
