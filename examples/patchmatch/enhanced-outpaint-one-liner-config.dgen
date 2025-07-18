@@ -4,7 +4,12 @@
 # This example shows how to reduce the "enhanced-outpaint-config.dgen"
 # workflow into a "one-liner" dgenerate invocation.
 
+# This can be specified as width/height combined (single integer)
+# Uniform: WIDTHxHEIGHT
+# Individual Side Padding: LEFTxTOPxRIGHTxBOTTOM
+
 \set outpaint_box 128
+
 \set input_image ../media/mountain.png
 
 diffusers/stable-diffusion-xl-1.0-inpainting-0.1
