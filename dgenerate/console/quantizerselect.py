@@ -44,10 +44,10 @@ class _QuantizerSelect(_pluginuriselector._PluginUriSelect):
 _dialog_state = _util.DialogState(save_position=True, save_size=True)
 
 
-def request_uri(master, insert: typing.Callable[[str], None]):
+def request_uri(master, insert: typing.Callable[[str], None], dialog_state: _util.DialogState | None = None):
     return _util.create_singleton_dialog(
         master=master,
         dialog_class=_QuantizerSelect,
-        state=_dialog_state,
+        state=_dialog_state if dialog_state is None else dialog_state,
         dialog_kwargs={'insert': insert}
     )

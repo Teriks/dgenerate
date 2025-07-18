@@ -38,6 +38,7 @@ class _PluginArgEntry:
                  variable: tk.Variable,
                  file_types: dict | None = None,
                  file_out: bool = False,
+                 insert_text_callback: tuple[str, typing.Callable[[tk.Variable], None]] | None = None,
                  directory: bool = False,
                  widget_rows: int = 1,
                  widgets_delete: typing.Optional[typing.Callable] = None):
@@ -47,6 +48,7 @@ class _PluginArgEntry:
         :param variable: Tk.Variable associated with the entry
         :param file_types: File select dialog file types
         :param file_out: Output file dialog?
+        :param insert_text_callback: Add callback button to insert text into the entry, (title, callback)
         :param directory: Directory select?
         :param widget_rows: The entry uses up this many grid rows.
         :param widgets_delete: dynamic widgets deletion callback, use this
@@ -58,6 +60,7 @@ class _PluginArgEntry:
         self.variable = variable
         self.file_types = file_types
         self.file_out = file_out
+        self.insert_text_callback = insert_text_callback
         self.directory = directory
         self.widget_rows = widget_rows
         self.widgets_delete = widgets_delete
@@ -234,6 +237,12 @@ class _PluginSchemaEntry(_entry._Entry):
         file_button.grid(row=row, column=2, padx=_entry.ROW_XPAD, sticky='w')
         self.dynamic_widgets.append(file_button)
 
+    def _add_insert_text_callback_button(self, row, arg_entry):
+        insert_button = tk.Button(self.master, text=arg_entry.insert_text_callback[0],
+                                command=lambda a=arg_entry: a.insert_text_callback[1](a.variable))
+        insert_button.grid(row=row, column=2, padx=_entry.ROW_XPAD, sticky='w')
+        self.dynamic_widgets.append(insert_button)
+
     def _add_file_out_button(self, row, entry, dialog_args):
 
         file_button = tk.Button(self.master, text='Save File',
@@ -384,6 +393,8 @@ class _PluginSchemaEntry(_entry._Entry):
                 self._add_file_in_button(row, entry, arg_entry.file_types)
         elif arg_entry.directory:
             self._add_directory_in_button(row, entry)
+        elif arg_entry.insert_text_callback is not None:
+            self._add_insert_text_callback_button(row, arg_entry)
 
         # editing resets invalid border
         arg_entry.variable.trace_add('write', lambda *a, e=entry: _entry.valid_colors(e))

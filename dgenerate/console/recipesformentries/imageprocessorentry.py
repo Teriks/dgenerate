@@ -23,6 +23,8 @@ import typing
 
 import dgenerate.console.resources as _resources
 import dgenerate.console.recipesformentries.pluginschemaentry as _schemaentry
+import dgenerate.console.util
+import dgenerate.textprocessing as _textprocessing
 
 
 class _ImageProcessorEntry(_schemaentry._PluginSchemaEntry):
@@ -82,6 +84,30 @@ class _ImageProcessorEntry(_schemaentry._PluginSchemaEntry):
                 optional,
                 row
             )
+        elif param_name in {'image-processor', 'mask-processor'}:
+            raw = self._create_raw_type_entry(param_type, default_value, optional, row)
+
+            dialog_state = dgenerate.console.util.DialogState()
+
+            def select_processor(variable):
+                import dgenerate.console.imageprocessorselect as _s
+                def quote_processor(t: str) -> str:
+                    # does not handle more than 1x nesting
+                    # but should be sufficient for most cases
+                    if ';' in t:
+                        if "'" in t:
+                            return _textprocessing.quote(t, '"')
+                        elif '"' in t:
+                            return _textprocessing.quote(t, "'")
+                        else:
+                            return _textprocessing.quote(t, '"')
+                    return t
+
+                _s.request_uri(self.recipe_form, insert=lambda t: variable.set(quote_processor(t)), dialog_state=dialog_state)
+
+            raw.insert_text_callback = ('Select', select_processor)
+
+            return raw
         else:
             return self._apply_file_selects(
                 param_name, self._create_raw_type_entry(param_type, default_value, optional, row))

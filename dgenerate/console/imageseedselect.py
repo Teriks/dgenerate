@@ -255,10 +255,10 @@ class _ImageSeedSelect(tk.Toplevel):
             _entry.valid_colors(entry)
 
 
-def request_uri(master, insert: typing.Callable[[str], None]):
+def request_uri(master, insert: typing.Callable[[str], None], dialog_state: _util.DialogState | None = None):
     return _util.create_singleton_dialog(
         master=master,
         dialog_class=_ImageSeedSelect,
-        state=_dialog_state,
+        state=_dialog_state if dialog_state is None else dialog_state,
         dialog_kwargs={'insert': insert}
     )
