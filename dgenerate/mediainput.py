@@ -278,15 +278,18 @@ class VideoReader(_imageprocessors.ImageProcessorMixin, AnimationReader):
 
         self._aspect_correct = aspect_correct
         self._align = align
+        self._resize_resolution = resize_resolution
 
         width = int(self._container.streams.video[0].width)
         height = int(self._container.streams.video[0].height)
 
-        width, height = _image.resize_image_calc(old_size=(width, height),
-                                                 new_size=resize_resolution,
-                                                 aspect_correct=aspect_correct,
-                                                 align=align)
-        self._resize_resolution = (width, height)
+        # predict size after processing
+        width, height = _image.resize_image_calc(
+            old_size=(width, height),
+            new_size=resize_resolution,
+            aspect_correct=aspect_correct,
+            align=align
+        )
 
         fps = float(self._container.streams.video[0].average_rate)
         frame_duration = 1000 / fps
@@ -368,6 +371,7 @@ class AnimatedImageReader(_imageprocessors.ImageProcessorMixin, AnimationReader)
         self._iter = PIL.ImageSequence.Iterator(self._img)
         self._aspect_correct = aspect_correct
         self._align = align
+        self._resize_resolution = resize_resolution
 
         total_frames = self._img.n_frames
 
@@ -381,11 +385,13 @@ class AnimatedImageReader(_imageprocessors.ImageProcessorMixin, AnimationReader)
 
         fps = 1000 / frame_duration
 
-        width, height = _image.resize_image_calc(old_size=self._img.size,
-                                                 new_size=resize_resolution,
-                                                 aspect_correct=aspect_correct,
-                                                 align=align)
-        self._resize_resolution = (width, height)
+        # predict size after processing
+        width, height = _image.resize_image_calc(
+            old_size=self._img.size,
+            new_size=resize_resolution,
+            aspect_correct=aspect_correct,
+            align=align
+        )
 
         super().__init__(width=width,
                          height=height,
@@ -447,16 +453,19 @@ class MockImageAnimationReader(_imageprocessors.ImageProcessorMixin, AnimationRe
         self._idx = 0
         self._aspect_correct = aspect_correct
         self._align = align
+        self._resize_resolution = resize_resolution
 
         total_frames = image_repetitions
         fps = 30.0
         frame_duration = 1000 / fps
 
-        width, height = _image.resize_image_calc(old_size=self._img.size,
-                                                 new_size=resize_resolution,
-                                                 aspect_correct=aspect_correct,
-                                                 align=align)
-        self._resize_resolution = (width, height)
+        # predict size after processing
+        width, height = _image.resize_image_calc(
+            old_size=self._img.size,
+            new_size=resize_resolution,
+            aspect_correct=aspect_correct,
+            align=align
+        )
 
         super().__init__(width=width,
                          height=height,
@@ -498,6 +507,7 @@ class MockImageAnimationReader(_imageprocessors.ImageProcessorMixin, AnimationRe
                                            resize_resolution=self._resize_resolution,
                                            aspect_correct=self._aspect_correct,
                                            align=self._align)
+
             self._processed_flag = True
 
         if self._idx < self.total_frames:
