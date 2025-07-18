@@ -1,0 +1,12 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 5.0.0
+
+# Remove the horse from the image using patchmatch
+# The mask is the opposite of what we want for this
+# task so use the invert image processor on the mask
+
+
+\image_process ../media/horse1.jpg
+--output patchmatch-horse1.png
+--align 1
+--processors patchmatch;mask=../media/horse1-mask.jpg;mask-processor=invert
