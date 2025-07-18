@@ -84,7 +84,7 @@ class _ImageProcessorEntry(_schemaentry._PluginSchemaEntry):
                 optional,
                 row
             )
-        elif param_name in {'image-processor', 'mask-processor'}:
+        elif param_name in {'image-processors', 'mask-processors'}:
             raw = self._create_raw_type_entry(param_type, default_value, optional, row)
 
             dialog_state = dgenerate.console.util.DialogState()

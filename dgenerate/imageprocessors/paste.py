@@ -38,7 +38,7 @@ class PasteProcessor(_imageprocessor.ImageProcessor):
     The "image" argument specifies the path to the image file to paste,
     this may be path on disk or a URL link to an image file.
 
-    The "image-processor" argument allows you to pre-process "image" with an
+    The "image-processors" argument allows you to pre-process "image" with an
     arbitrary image processor chain. This arguments value must be quoted
     (single or double string quotes) if you intend to supply arguments to
     the processors in the chain. The pixel alignment of this processor
@@ -70,7 +70,7 @@ class PasteProcessor(_imageprocessor.ImageProcessor):
     The mask should be a grayscale image where white areas represent full opacity and black areas
     represent full transparency. Cannot be used together with the "feather" parameter.
 
-    The "mask-processor" argument allows you to pre-process the "mask" argument with an
+    The "mask-processors" argument allows you to pre-process the "mask" argument with an
     arbitrary image processor chain. For example: invert, gaussian-blur, etc. This
     cannot be used in "feather" mode on the auto generated feather mask, only on
     user supplied masks. This arguments value must be quoted (single or double string quotes)
@@ -94,23 +94,23 @@ class PasteProcessor(_imageprocessor.ImageProcessor):
 
     def __init__(self,
                  image: str,
-                 image_processor: str | None = None,
+                 image_processors: str | None = None,
                  position: str = "0x0",
                  feather: int | None = None,
                  feather_shape: str = "rectangle",
                  mask: str | None = None,
-                 mask_processor: str | None = None,
+                 mask_processors: str | None = None,
                  reverse: bool = False,
                  pre_resize: bool = False,
                  **kwargs):
         """
         :param image: path to the image file to paste, or paste on to if ``reverse=True``
-        :param image_processor: Pre-process ``image`` with an arbitrary image processor chain
+        :param image_processors: Pre-process ``image`` with an arbitrary image processor chain
         :param position: position specification in "LEFTxTOP" or "LEFTxTOPxRIGHTxBOTTOM" format
         :param feather: feathering radius in pixels for softening edges (cannot be used with mask)
         :param feather_shape: shape of feathering ("rectangle", "rect", "circle", or "ellipse")
         :param mask: path to a mask image file for controlling transparency (cannot be used with feather)
-        :param mask_processor: Pre-process ``mask`` with an arbitrary image processor chain, not compatible with ``feather``.
+        :param mask_processors: Pre-process ``mask`` with an arbitrary image processor chain, not compatible with ``feather``.
         :param reverse: Reverse the paste operation?
         :param pre_resize: process the image before it is resized, or after? default is False (after)
         :param kwargs: forwarded to base class
@@ -123,9 +123,9 @@ class PasteProcessor(_imageprocessor.ImageProcessor):
                 'Choose one method for transparency.'
             )
 
-        if mask is None and mask_processor:
+        if mask is None and mask_processors:
             raise self.argument_error(
-                'Cannot use "mask-processor" without specifying "mask"'
+                'Cannot use "mask-processors" without specifying "mask"'
             )
 
         if feather is not None and feather < 0:
@@ -163,9 +163,9 @@ class PasteProcessor(_imageprocessor.ImageProcessor):
         except Exception as e:
             raise self.argument_error(f'Failed to load source image: {e}')
 
-        if image_processor:
+        if image_processors:
             self._source_image = self._create_image_processor(
-                image_processor
+                image_processors
             ).process(self._source_image, align=1)
 
         # Load mask image upfront if provided
@@ -179,9 +179,9 @@ class PasteProcessor(_imageprocessor.ImageProcessor):
             except Exception as e:
                 raise self.argument_error(f'Failed to load mask image: {e}')
 
-            if mask_processor:
+            if mask_processors:
                 self._mask_image = self._create_image_processor(
-                    mask_processor
+                    mask_processors
                 ).process(self._mask_image.convert('RGB'), align=1)
 
             # Convert to grayscale if needed
