@@ -38,4 +38,4 @@ stabilityai/stable-diffusion-xl-base-1.0
 --seeds 92105821284900
 --output-path output
 --prompts "a smiling mans face"
---post-processors paste;image={{input_image}};image-processor="resize;align=8";position={{face_box}};feather=10;reverse=True
+--post-processors paste;image={{input_image}};image-processors="resize;align=8";position={{face_box}};feather=10;reverse=True

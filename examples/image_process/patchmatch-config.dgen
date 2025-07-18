@@ -9,4 +9,4 @@
 \image_process ../media/horse1.jpg
 --output patchmatch-horse1.png
 --align 1
---processors patchmatch;mask=../media/horse1-mask.jpg;mask-processor=invert
+--processors patchmatch;mask=../media/horse1-mask.jpg;mask-processors=invert
