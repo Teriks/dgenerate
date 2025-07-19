@@ -149,7 +149,10 @@ _scheduler_option_args = {
     diffusers.DDPMScheduler: {
         "beta_schedule": ["linear", "scaled_linear", "squaredcos_cap_v2", "sigmoid"],
         "prediction_type": ["epsilon", "sample", "v_prediction"],
-        "timestep_spacing": ["leading", "trailing", "linspace"]
+        "timestep_spacing": ["leading", "trailing", "linspace"],
+        'variance_type': ["fixed_small", "fixed_small_log",
+                          "fixed_large", "fixed_large_log",
+                          "learned", "learned_range"]
     },
 
     diffusers.DDPMWuerstchenScheduler: {
@@ -166,7 +169,11 @@ _scheduler_option_args = {
     diffusers.DPMSolverMultistepScheduler: {
         "beta_schedule": ["linear", "scaled_linear", "squaredcos_cap_v2"],
         "prediction_type": ["epsilon", "sample", "v_prediction"],
-        "timestep_spacing": ["leading", "trailing", "linspace"]
+        "timestep_spacing": ["leading", "trailing", "linspace"],
+        "algorithm_type": ["dpmsolver", "dpmsolver++", "sde-dpmsolver", "sde-dpmsolver++"],
+        "solver_type": ["midpoint", "heun"],
+        "final_sigmas_type": ["zero", "sigma_min"],
+        "variance_type": ["learned", "learned_range"]
     },
 
     diffusers.DPMSolverSDEScheduler: {
@@ -178,15 +185,17 @@ _scheduler_option_args = {
     diffusers.DPMSolverSinglestepScheduler: {
         "beta_schedule": ["linear", "scaled_linear", "squaredcos_cap_v2"],
         "prediction_type": ["epsilon", "sample", "v_prediction"],
+        "algorithm_type": ["dpmsolver", "dpmsolver++", "sde-dpmsolver++"],
+        "solver_type": ["midpoint", "heun"],
+        "final_sigmas_type": ["zero", "sigma_min"],
+        "variance_type": ["learned", "learned_range"]
 
-        # Note: timestep_spacing not listed in the parameters for this scheduler
     },
 
     diffusers.EDMEulerScheduler: {
         "sigma_schedule": ["karras", "exponential"],
         "prediction_type": ["epsilon", "sample", "v_prediction"],
-
-        # Note: timestep_spacing not listed in the parameters
+        "final_sigmas_type": ["zero", "sigma_min"]
     },
 
     diffusers.EulerAncestralDiscreteScheduler: {
@@ -198,12 +207,14 @@ _scheduler_option_args = {
     diffusers.EulerDiscreteScheduler: {
         "beta_schedule": ["linear", "scaled_linear", "squaredcos_cap_v2"],
         "prediction_type": ["epsilon", "sample", "v_prediction"],
-        "timestep_spacing": ["leading", "trailing", "linspace"]
+        "timestep_spacing": ["leading", "trailing", "linspace"],
+        "timestep_type": ["discrete", "continuous"],
+        "interpolation_type": ["linear", "log_linear"],
+        "final_sigmas_type": ["zero", "sigma_min"]
     },
 
     diffusers.FlowMatchEulerDiscreteScheduler: {
-        # Note: This scheduler doesn't use standard beta_schedule, prediction_type, or timestep_spacing
-        # It's designed for flow matching with different parameters
+        "time_shift_type": ["exponential", "linear"]
     },
 
     diffusers.HeunDiscreteScheduler: {
@@ -245,7 +256,9 @@ _scheduler_option_args = {
     diffusers.UniPCMultistepScheduler: {
         "beta_schedule": ["linear", "scaled_linear", "squaredcos_cap_v2"],
         "prediction_type": ["epsilon", "sample", "v_prediction"],
-        "timestep_spacing": ["leading", "trailing", "linspace"]
+        "timestep_spacing": ["leading", "trailing", "linspace"],
+        "solver_type": ["bh1", "bh2"],
+        "final_sigmas_type": ["zero", "sigma_min"]
     }
 }
 
