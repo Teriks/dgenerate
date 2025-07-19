@@ -156,6 +156,10 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
 
     NAMES = ['compel']
 
+    OPTION_ARGS = {
+        'syntax': ['compel', 'sdwui']
+    }
+
     def __init__(self, syntax: str = 'compel', **kwargs):
         super().__init__(**kwargs)
 

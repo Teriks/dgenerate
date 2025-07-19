@@ -92,6 +92,10 @@ class PasteProcessor(_imageprocessor.ImageProcessor):
     # hide inherited arguments that are device related
     HIDE_ARGS = ['device', 'model-offload']
 
+    OPTION_ARGS = {
+        'feather_shape': ['r', 'rect', 'rectangle', 'c', 'circle', 'ellipse'],
+    }
+
     def __init__(self,
                  image: str,
                  image_processors: str | None = None,

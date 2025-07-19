@@ -47,6 +47,19 @@ class ImageEncoderUri:
     Representation of ``--image-encoder`` uri when ``--model-type`` torch*
     """
 
+    # pipelinewrapper.uris.util.get_uri_accepted_args_schema metadata
+
+    @staticmethod
+    def help():
+        import dgenerate.arguments as _a
+        return _a.get_raw_help_text('--image-encoder')
+
+    OPTION_ARGS = {
+        'dtype': ['float16', 'bfloat16', 'float32']
+    }
+
+    # ===
+
     @property
     def model(self) -> str:
         """

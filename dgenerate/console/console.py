@@ -49,6 +49,7 @@ import dgenerate.console.karrasschedulerselect as _karrasschedulerselect
 import dgenerate.console.promptupscalerselect as _promptupscalerselect
 import dgenerate.console.promptweighterselect as _promptweighterselect
 import dgenerate.console.quantizerselect as _quantizerselect
+import dgenerate.console.submodelselect as _submodelselect
 import dgenerate.console.recipesform as _recipesform
 import dgenerate.console.resources as _resources
 import dgenerate.textprocessing as _textprocessing
@@ -765,6 +766,11 @@ class DgenerateConsole(tk.Tk):
             master=self, insert=self._insert_or_replace_input_text
         )
 
+    def _input_text_insert_sub_model(self):
+        _submodelselect.request_uri(
+            master=self, insert=self._insert_or_replace_input_text
+        )
+
     def _input_text_insert_directory_path(self):
         d = _filedialog.open_directory_dialog(
             initialdir=self._shell_procmon.cwd())
@@ -1335,6 +1341,8 @@ class DgenerateConsole(tk.Tk):
                                 command=self._input_text_insert_prompt_upscaler)
         uri_submenu.add_command(label='Prompt Weighter URI',
                                 command=self._input_text_insert_prompt_weighter)
+        uri_submenu.add_command(label='Sub Model URI',
+                                command=self._input_text_insert_sub_model)
         uri_submenu.add_command(label='Quantizer URI',
                                 command=self._input_text_insert_quantizer)
         menu.add_cascade(label='Insert URI', menu=uri_submenu)

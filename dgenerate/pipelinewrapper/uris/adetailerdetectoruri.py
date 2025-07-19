@@ -57,6 +57,19 @@ class AdetailerDetectorUri:
     Representation of a ``--adetailer-detectors`` uri
     """
 
+    # pipelinewrapper.uris.util.get_uri_accepted_args_schema metadata
+
+    @staticmethod
+    def help():
+        import dgenerate.arguments as _a
+        return _a.get_raw_help_text('--adetailer-detectors')
+
+    OPTION_ARGS = {
+        'mask-shape': ['r', 'rect', 'rectangle', 'c', 'circle', 'ellipse'],
+    }
+
+    # ===
+
     @property
     def model(self) -> str:
         """

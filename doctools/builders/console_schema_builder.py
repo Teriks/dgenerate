@@ -71,6 +71,7 @@ class ConsoleSchemaBuilder:
             self._build_functions_schema()
             self._build_mediaformats_schema()
             self._build_arguments_schema()
+            self._build_sub_models_schema()
             
             print("✓ Console schemas built successfully")
         except Exception as e:
@@ -159,6 +160,34 @@ class ConsoleSchemaBuilder:
         schema = {
             'bnb': _pipelinewrapper.get_uri_accepted_args_schema(_pipelinewrapper.uris.BNBQuantizerUri)
         }
+
+        with open(schema_file, 'w') as file:
+            json.dump(schema, file)
+
+    def _build_sub_models_schema(self):
+        """Build sub-models schema."""
+        schema_file = self.schemas_dir / 'submodels.json'
+
+        uris = [
+            ('UNet', _pipelinewrapper.uris.UNetUri),
+            ('Transformer', _pipelinewrapper.uris.TransformerUri),
+            ('Text Encoder', _pipelinewrapper.uris.TextEncoderUri),
+            ('VAE', _pipelinewrapper.uris.VAEUri),
+            ('Image Encoder', _pipelinewrapper.uris.ImageEncoderUri),
+            ('LoRA', _pipelinewrapper.uris.LoRAUri),
+            ('IP Adapter', _pipelinewrapper.uris.IPAdapterUri),
+            ('Control Net', _pipelinewrapper.uris.ControlNetUri),
+            ('T2I Adapter', _pipelinewrapper.uris.T2IAdapterUri),
+            ('Textual Inversion', _pipelinewrapper.uris.TextualInversionUri),
+            ('Adetailer Detector', _pipelinewrapper.uris.AdetailerDetectorUri),
+            ('Stable Cascade Decoder', _pipelinewrapper.uris.SCascadeDecoderUri),
+            ('SDXL Refiner', _pipelinewrapper.uris.SDXLRefinerUri)
+        ]
+
+        schema = dict()
+        for name, uri in uris:
+            schema[name] = _pipelinewrapper.get_uri_accepted_args_schema(uri)
+            schema[name]['HELP'] = _pipelinewrapper.get_uri_help(uri, wrap_width=100)
 
         with open(schema_file, 'w') as file:
             json.dump(schema, file)

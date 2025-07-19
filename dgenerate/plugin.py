@@ -45,6 +45,7 @@ class PluginArg:
         self.name = name
         self.have_default = 'default' in kwargs
         self.default = kwargs['default'] if self.have_default else None
+        self.options = kwargs.get('options', None)
         self.type = type
 
     @property
@@ -389,6 +390,7 @@ class Plugin:
         :return: dict
         """
         schema = dict()
+
         for arg in cls.get_accepted_args(loaded_by_name, include_bases=include_bases):
             entry = {}
             schema[arg.name] = entry
@@ -421,6 +423,10 @@ class Plugin:
 
             if arg.have_default:
                 schema[arg.name]['default'] = arg.default
+
+            if arg.options:
+                schema[arg.name]['options'] = arg.options
+
         return schema
 
     @classmethod
@@ -428,7 +434,7 @@ class Plugin:
         """
         Get argument names that have been explicitly
         hidden from use or disabled by the plugin for
-        URI use.
+        URI use. i.e. ``HIDE_ARGS``.
 
         These may be unsupported arguments inherited
         from a base class, or just arguments the plugin
@@ -459,6 +465,41 @@ class Plugin:
         return args_hidden
 
     @classmethod
+    def get_option_args(cls, loaded_by_name: str) -> dict[str, list]:
+        """
+        Get argument names that have an associated
+        list of option valid values. i.e. ``OPTION_ARGS``.
+
+        This returns metadata provided by the plugin about
+        specific arguments which accept a limited set of
+        values, such as shape names like ``circle`` or ``rectangle```
+        etc.
+
+        :param loaded_by_name: The name used to load the plugin.
+            Argument signature may vary by name used to load.
+
+        :return: options argument names
+        """
+        args_option = dict()
+
+        for base in cls.mro():
+            if hasattr(base, 'OPTION_ARGS'):
+                if isinstance(base.OPTION_ARGS, dict):
+                    values = list(base.OPTION_ARGS.values())
+                    if values and isinstance(values[0], dict):
+                        # segregated by loaded_by_name
+                        if loaded_by_name in base.OPTION_ARGS:
+                            options = base.OPTION_ARGS[loaded_by_name]
+                            args_option.update({_textprocessing.dashup(k): list(v) for k, v in options.items()})
+                    else:
+                        args_option.update({_textprocessing.dashup(k): list(v) for k, v in base.OPTION_ARGS.items()})
+                else:
+                    raise RuntimeError(
+                        f'Plugin metadata {cls.__name__}.OPTION_ARGS must be a dict.')
+
+        return args_option
+
+    @classmethod
     def get_accepted_args(cls, loaded_by_name: str, include_bases: bool = False):
         """
         Retrieve the argument signature of a plugin implementation.
@@ -479,6 +520,7 @@ class Plugin:
 
         arg_name_set = dict()
         hidden_args = cls.get_hidden_args(loaded_by_name)
+
         for a in itertools.chain(cls._get_accepted_args(loaded_by_name), rest):
             if a.name == 'loaded-by-name':
                 continue
@@ -513,6 +555,7 @@ class Plugin:
 
         args_with_defaults = []
 
+        option_args = cls.get_option_args(loaded_by_name)
         spec = list(_types.get_accepted_args_with_defaults(cls.__init__))[1:]
         hints = typing.get_type_hints(cls.__init__)
 
@@ -522,18 +565,20 @@ class Plugin:
             hint = hints.get(name)
             extra = {}
 
+            name = _textprocessing.dashup(name)
+
             if hint is not None:
                 extra['type'] = hint
 
+            if name in option_args:
+                extra['options'] = option_args[name]
+
             if len(arg) == 1:
                 args_with_defaults.append(
-                    PluginArg(_textprocessing.dashup(name),
-                              **extra))
+                    PluginArg(name, **extra))
             else:
                 args_with_defaults.append(
-                    PluginArg(_textprocessing.dashup(name),
-                              default=arg[1],
-                              **extra))
+                    PluginArg(name, default=arg[1], **extra))
 
         return args_with_defaults
 

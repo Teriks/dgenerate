@@ -119,6 +119,22 @@ class VAEUri:
     def supported_encoder_names() -> list[str]:
         return list(VAEUri._encoders.keys())
 
+
+    # pipelinewrapper.uris.util.get_uri_accepted_args_schema metadata
+
+    OPTION_ARGS = {
+        'encoder': list(_encoders.keys()),
+        'dtype': ['float16', 'bfloat16', 'float32']
+    }
+
+    @staticmethod
+    def help():
+        import dgenerate.arguments as _a
+
+        return _a.get_raw_help_text('--vae')
+
+    # ===
+
     def __init__(self,
                  encoder: str,
                  model: str,

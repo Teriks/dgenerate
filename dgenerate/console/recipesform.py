@@ -26,7 +26,7 @@ import tkinter as tk
 import tkinter.ttk as ttk
 import typing
 
-import dgenerate.console.recipesformentries as _recipesformentries
+import dgenerate.console.formentries as _formentries
 import dgenerate.console.resources as _resources
 import dgenerate.console.util as _util
 from dgenerate.console.mousewheelbind import bind_mousewheel, handle_canvas_scroll, un_bind_mousewheel
@@ -100,8 +100,8 @@ class _RecipesForm(tk.Toplevel):
         # Get all entry classes
         self._entry_classes = {
             c.NAME: c for c in
-            _recipesformentries.__dict__.values()
-            if inspect.isclass(c) and issubclass(c, _recipesformentries._Entry)
+            _formentries.__dict__.values()
+            if inspect.isclass(c) and issubclass(c, _formentries._Entry)
         }
 
         self.minsize(width=600, height=200)
@@ -112,7 +112,7 @@ class _RecipesForm(tk.Toplevel):
         self._template_names: list[str] = list(_resources.get_recipes().keys())
 
         self._current_template = tk.StringVar(value=self._template_names[0])
-        self._entries: list[_recipesformentries._Entry] = []
+        self._entries: list[_formentries._Entry] = []
         self._content: typing.Optional[str] = None
 
         self._last_known_selection = None
@@ -202,9 +202,15 @@ class _RecipesForm(tk.Toplevel):
         self._dropdown.grid(row=0, column=0, columnspan=2, sticky='ew', padx=5, pady=5)
 
         # Bind mouse wheel events
-        bind_mousewheel(self.canvas.bind_all, self._on_mouse_wheel)
+        self.bind_mousewheel()
 
         self._update_form(self._current_template.get())
+
+    def bind_mousewheel(self):
+        bind_mousewheel(self.canvas.bind_all, self._on_mouse_wheel)
+
+    def unbind_mousewheel(self):
+        un_bind_mousewheel(self.canvas.unbind_all)
 
     def _on_mouse_wheel(self, event):
         if 'popdown' in str(event.widget).lower():
@@ -244,12 +250,12 @@ class _RecipesForm(tk.Toplevel):
             if config.get('divider-before', False):
                 separator = ttk.Separator(self.scrollable_frame, orient='horizontal')
                 separator.grid(row=row_offset, column=0, sticky='ew', columnspan=100,
-                               pady=_recipesformentries.DIVIDER_YPAD)
+                               pady=_formentries.DIVIDER_YPAD)
                 row_offset += 1
 
             if classname in self._entry_classes:
                 entry = self._entry_classes[classname](
-                    recipe_form=self,
+                    form=self,
                     master=self.scrollable_frame,
                     row=row_offset,
                     config=config,
@@ -262,7 +268,7 @@ class _RecipesForm(tk.Toplevel):
             if config.get('divider-after', False):
                 separator = ttk.Separator(self.scrollable_frame, orient='horizontal')
                 separator.grid(row=row_offset, column=0, sticky='ew', columnspan=100,
-                               pady=_recipesformentries.DIVIDER_YPAD)
+                               pady=_formentries.DIVIDER_YPAD)
                 row_offset += 1
 
             self._entries.append(entry)
@@ -271,7 +277,7 @@ class _RecipesForm(tk.Toplevel):
         apply_button.grid(row=3, column=0, padx=5, pady=5, columnspan=2)
 
     def destroy(self) -> None:
-        un_bind_mousewheel(self.canvas.unbind_all)
+        self.unbind_mousewheel()
         super().destroy()
 
 

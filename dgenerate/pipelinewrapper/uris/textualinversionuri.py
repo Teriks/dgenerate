@@ -111,6 +111,15 @@ class TextualInversionUri:
     Representation of ``--textual-inversions`` uri
     """
 
+    # pipelinewrapper.uris.util.get_uri_accepted_args_schema metadata
+
+    @staticmethod
+    def help():
+        import dgenerate.arguments as _a
+        return _a.get_raw_help_text('--textual-inversions')
+
+    # ===
+
     @property
     def model(self) -> str:
         """

@@ -139,6 +139,117 @@ def get_compatible_schedulers(pipeline_cls: type[diffusers.DiffusionPipeline]) -
     return compatibles
 
 
+_scheduler_option_args = {
+    diffusers.DDIMScheduler: {
+        "beta_schedule": ["linear", "scaled_linear", "squaredcos_cap_v2"],
+        "prediction_type": ["epsilon", "sample", "v_prediction"],
+        "timestep_spacing": ["leading", "trailing", "linspace"]
+    },
+
+    diffusers.DDPMScheduler: {
+        "beta_schedule": ["linear", "scaled_linear", "squaredcos_cap_v2", "sigmoid"],
+        "prediction_type": ["epsilon", "sample", "v_prediction"],
+        "timestep_spacing": ["leading", "trailing", "linspace"]
+    },
+
+    diffusers.DDPMWuerstchenScheduler: {
+        # Note: This scheduler doesn't use the standard beta_schedule, prediction_type, or timestep_spacing
+        # It uses custom parameters: scaler and s
+    },
+
+    diffusers.DEISMultistepScheduler: {
+        "beta_schedule": ["linear", "scaled_linear", "squaredcos_cap_v2"],
+        "prediction_type": ["epsilon", "sample", "v_prediction"],
+        "timestep_spacing": ["leading", "trailing", "linspace"]
+    },
+
+    diffusers.DPMSolverMultistepScheduler: {
+        "beta_schedule": ["linear", "scaled_linear", "squaredcos_cap_v2"],
+        "prediction_type": ["epsilon", "sample", "v_prediction"],
+        "timestep_spacing": ["leading", "trailing", "linspace"]
+    },
+
+    diffusers.DPMSolverSDEScheduler: {
+        "beta_schedule": ["linear", "scaled_linear"],
+        "prediction_type": ["epsilon", "sample", "v_prediction"],
+        "timestep_spacing": ["leading", "trailing", "linspace"]
+    },
+
+    diffusers.DPMSolverSinglestepScheduler: {
+        "beta_schedule": ["linear", "scaled_linear", "squaredcos_cap_v2"],
+        "prediction_type": ["epsilon", "sample", "v_prediction"],
+
+        # Note: timestep_spacing not listed in the parameters for this scheduler
+    },
+
+    diffusers.EDMEulerScheduler: {
+        "sigma_schedule": ["karras", "exponential"],
+        "prediction_type": ["epsilon", "sample", "v_prediction"],
+
+        # Note: timestep_spacing not listed in the parameters
+    },
+
+    diffusers.EulerAncestralDiscreteScheduler: {
+        "beta_schedule": ["linear", "scaled_linear"],
+        "prediction_type": ["epsilon", "sample", "v_prediction"],
+        "timestep_spacing": ["leading", "trailing", "linspace"]
+    },
+
+    diffusers.EulerDiscreteScheduler: {
+        "beta_schedule": ["linear", "scaled_linear", "squaredcos_cap_v2"],
+        "prediction_type": ["epsilon", "sample", "v_prediction"],
+        "timestep_spacing": ["leading", "trailing", "linspace"]
+    },
+
+    diffusers.FlowMatchEulerDiscreteScheduler: {
+        # Note: This scheduler doesn't use standard beta_schedule, prediction_type, or timestep_spacing
+        # It's designed for flow matching with different parameters
+    },
+
+    diffusers.HeunDiscreteScheduler: {
+        "beta_schedule": ["linear", "scaled_linear"],
+        "prediction_type": ["epsilon", "sample", "v_prediction"],
+        "timestep_spacing": ["leading", "trailing", "linspace"]
+    },
+
+    diffusers.KDPM2AncestralDiscreteScheduler: {
+        "beta_schedule": ["linear", "scaled_linear"],
+        "prediction_type": ["epsilon", "sample", "v_prediction"],
+        "timestep_spacing": ["leading", "trailing", "linspace"]
+    },
+
+    diffusers.KDPM2DiscreteScheduler: {
+        "beta_schedule": ["linear", "scaled_linear"],
+        "prediction_type": ["epsilon", "sample", "v_prediction"],
+        "timestep_spacing": ["leading", "trailing", "linspace"]
+    },
+
+    diffusers.LCMScheduler: {
+        "beta_schedule": ["linear", "scaled_linear", "squaredcos_cap_v2"],
+        "prediction_type": ["epsilon", "sample", "v_prediction"],
+        "timestep_spacing": ["leading", "trailing", "linspace"]
+    },
+
+    diffusers.LMSDiscreteScheduler: {
+        "beta_schedule": ["linear", "scaled_linear"],
+        "prediction_type": ["epsilon", "sample", "v_prediction"],
+        "timestep_spacing": ["leading", "trailing", "linspace"]
+    },
+
+    diffusers.PNDMScheduler: {
+        "beta_schedule": ["linear", "scaled_linear", "squaredcos_cap_v2"],
+        "prediction_type": ["epsilon", "sample", "v_prediction"],
+        "timestep_spacing": ["leading", "trailing", "linspace"]
+    },
+
+    diffusers.UniPCMultistepScheduler: {
+        "beta_schedule": ["linear", "scaled_linear", "squaredcos_cap_v2"],
+        "prediction_type": ["epsilon", "sample", "v_prediction"],
+        "timestep_spacing": ["leading", "trailing", "linspace"]
+    }
+}
+
+
 def get_scheduler_uri_schema(scheduler: type[diffusers.SchedulerMixin] | list[type[diffusers.SchedulerMixin]]):
     """
     Return a schema describing initialization arguments from a ``diffusers`` scheduler type, or list of scheduler types.
@@ -184,6 +295,8 @@ def get_scheduler_uri_schema(scheduler: type[diffusers.SchedulerMixin] | list[ty
                     o.add(t)
             return list(o)
 
+        option_args = _scheduler_option_args.get(class_type, dict())
+
         for parameter_name, parameter in inspect.signature(class_type.__init__).parameters.items():
             if parameter_name == 'self':
                 continue
@@ -222,6 +335,9 @@ def get_scheduler_uri_schema(scheduler: type[diffusers.SchedulerMixin] | list[ty
 
             if parameter.default is not inspect.Parameter.empty:
                 parameter_details['default'] = parameter.default
+
+            if parameter.name in option_args:
+                parameter_details['options'] = option_args[parameter.name]
 
             parameter_schema[_textprocessing.dashup(parameter_name)] = parameter_details
     return schema
@@ -322,6 +438,15 @@ def load_scheduler(pipeline: diffusers.DiffusionPipeline, scheduler_uri: _types.
             args = {_textprocessing.dashdown(k): _get_uri_arg_value(
                 scheduler_type.__name__, v, k, schema[k]['optional'], schema[k]['types'])
                 for k, v in result.args.items()}
+
+            option_args = _scheduler_option_args.get(scheduler_type, dict())
+            for arg, value in args.items():
+                if arg in option_args and value not in option_args[arg]:
+                    raise SchedulerArgumentError(
+                        f'Invalid value "{value}" for argument "{_textprocessing.dashup(arg)}" '
+                        f'of scheduler "{scheduler_type.__name__}", '
+                        f'valid options are: '
+                        f'{_textprocessing.oxford_comma(option_args[arg], "or")}')
 
             _messages.debug_log(
                 f'Constructing Scheduler: "{scheduler_type.__name__}", URI Args: {args}')

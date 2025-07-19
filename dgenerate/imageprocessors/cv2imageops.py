@@ -63,6 +63,10 @@ class DilateProcessor(_imageprocessor.ImageProcessor):
     # that are device related
     HIDE_ARGS = ['device', 'model-offload']
 
+    OPTION_ARGS = {
+        'shape': ['r', 'rect', 'rectangle', 'c', 'circle', 'ellipse', '+', 'cross'],
+    }
+
     def __init__(self,
                  size: int | str = 3,
                  steps: int = 1,

@@ -12,6 +12,7 @@ order: 19
 --variant fp16
 @file[{"label":"Input Image File", "arg":"--image-seeds", "optional":false, "mode":"input", "file-types":["images-in", "videos-in"]}]
 @imageprocessor[{"arg":"--seed-image-processors", "label":"Input Image Processor", "divider-after":true}]
+@submodelbuilder[{"label":"VAE", "arg":"--vae", "model": "VAE"}]
 @switch[{"label":"VAE Tiling", "arg":"--vae-tiling"}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing", "divider-after":true}]
 @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":30, "min":1}]

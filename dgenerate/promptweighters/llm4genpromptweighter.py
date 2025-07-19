@@ -288,6 +288,11 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
 
     _weighter: _promptweighter.PromptWeighter | None
 
+    OPTION_ARGS = {
+        'encoder': ['base-all', 'large-all', 'xl-all', 'xl-pg19'],
+        'llm_dtype': ['float32', 'float16', 'bfloat16']
+    }
+
     def __init__(self,
                  encoder: str = "xl-all",
                  projector: str = 'Shui-VL/LLM4GEN-models',

@@ -239,6 +239,10 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
 
     HIDE_ARGS = ['pipe', 'model-offload']
 
+    OPTION_ARGS = {
+        'mask-shape': ['r', 'rect', 'rectangle', 'c', 'circle', 'ellipse'],
+    }
+
     def __init__(self,
                  model: str,
                  prompt: str,

@@ -195,6 +195,10 @@ class YOLODetectionProcessor(_imageprocessor.ImageProcessor):
 
     NAMES = ['yolo']
 
+    OPTION_ARGS = {
+        'mask-shape': ['r', 'rect', 'rectangle', 'c', 'circle', 'ellipse'],
+    }
+
     @staticmethod
     def _match_hex_color(color):
         pattern = r'^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$'
@@ -267,7 +271,7 @@ class YOLODetectionProcessor(_imageprocessor.ImageProcessor):
 
         # Validate color arguments
         if line_color is not None and not self._match_hex_color(line_color):
-            raise self.argument_error('line-color must be a HEX color code, e.g. #FFFFFF or #FFF')
+            raise self.argument_error('Argument "line-color" must be a HEX color code, e.g. #FFFFFF or #FFF')
 
         if not isinstance(detector_padding, int):
             # Validate and parse padding arguments
@@ -277,14 +281,22 @@ class YOLODetectionProcessor(_imageprocessor.ImageProcessor):
                     raise ValueError()
             except ValueError:
                 raise self.argument_error(
-                    'detector-padding must be an integer value, WIDTHxHEIGHT, or LEFTxTOPxRIGHTxBOTTOM')
+                    'Argument "detector-padding" must be an integer value, WIDTHxHEIGHT, or LEFTxTOPxRIGHTxBOTTOM')
 
             if len(detector_padding) == 1:
                 detector_padding = detector_padding[0]
 
-        mask_shape = mask_shape.lower()
-        if mask_shape not in {'rectangle', 'circle'}:
-            raise self.argument_error('mask-shape must be either "rectangle" or "circle".')
+        try:
+            parsed_shape = _textprocessing.parse_basic_mask_shape(mask_shape)
+        except ValueError:
+            parsed_shape = None
+
+        if parsed_shape is None or parsed_shape not in {
+            _textprocessing.BasicMaskShape.RECTANGLE,
+            _textprocessing.BasicMaskShape.ELLIPSE
+        }:
+            raise self.argument_error(
+                'Argument "mask-shape" must be: "r", "rect", "rectangle", or "c", "circle", "ellipse"')
 
         # HuggingFace parameters
         self._weight_name = weight_name

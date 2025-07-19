@@ -67,6 +67,11 @@ class TranslatePromptUpscaler(_promptupscaler.PromptUpscaler):
 
     NAMES = ['translate']
 
+    OPTION_ARGS = {
+        'part': ['both', 'positive', 'negative'],
+        'provider': ['argos', 'mariana']
+    }
+
     def __init__(self,
                  input: str,
                  output: str = 'en',

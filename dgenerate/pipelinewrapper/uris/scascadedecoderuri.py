@@ -32,6 +32,18 @@ class SCascadeDecoderUri:
     """
     Representation of ``--s-cascade-decoder`` uri
     """
+    # pipelinewrapper.uris.util.get_uri_accepted_args_schema metadata
+
+    @staticmethod
+    def help():
+        import dgenerate.arguments as _a
+        return _a.get_raw_help_text('--s-cascade-decoder')
+
+    OPTION_ARGS = {
+        'dtype': ['float16', 'bfloat16', 'float32']
+    }
+
+    # ===
 
     @property
     def model(self) -> str:

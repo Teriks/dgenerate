@@ -182,6 +182,11 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
 
     NAMES = ['magicprompt']
 
+    OPTION_ARGS = {
+        'part': ['both', 'positive', 'negative'],
+        'dtype': ['float32', 'float16', 'bfloat16']
+    }
+
     def __init__(self,
                  part: str = 'both',
                  model: str = "Gustavosta/MagicPrompt-Stable-Diffusion",

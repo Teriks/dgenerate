@@ -18,14 +18,14 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import collections.abc
 import platform
 import tkinter as tk
 import typing
 
-import dgenerate.console.recipesformentries.pluginschemaentry as _pluginschemaentry
+import dgenerate.console.formentries.pluginschemaentry as _pluginschemaentry
 import dgenerate.console.util as _util
 from dgenerate.console.mousewheelbind import bind_mousewheel, handle_canvas_scroll, un_bind_mousewheel
-from dgenerate.console.combobox import ComboBox
 
 
 class _PluginUriSelect(tk.Toplevel):
@@ -34,6 +34,7 @@ class _PluginUriSelect(tk.Toplevel):
                  plugin_entry_class: type[_pluginschemaentry._PluginSchemaEntry],
                  insert: typing.Callable[[str], None],
                  master=None,
+                 filter: collections.abc.Collection[str] = None,
                  position: tuple[int, int] = None,
                  size: tuple[int, int] = None
                  ):
@@ -78,10 +79,18 @@ class _PluginUriSelect(tk.Toplevel):
         self.plugin_frame = tk.Frame(self.scrollable_frame)
         self.plugin_frame.grid(row=0, column=0, sticky='nsew')
 
+        config: dict[str, typing.Any] = {
+            "optional": False,
+            "internal-divider": False
+        }
+
+        if filter:
+            config['filter'] = filter
+
         self.plugin_entry = plugin_entry_class(
-            recipe_form=self,
+            form=self,
             master=self.plugin_frame,
-            config={"optional": False, "internal-divider": False},
+            config=config,
             placeholder='URI',
             row=0,
             dropdown_parent=self.plugin_dropdown_master,
@@ -101,7 +110,7 @@ class _PluginUriSelect(tk.Toplevel):
 
         self.bind("<Configure>", self._on_resize)
 
-        bind_mousewheel(self.canvas.bind_all, self._on_mouse_wheel)
+        self.bind_mousewheel()
 
         if platform.system() == 'Windows':
             default_size = (500, 400)
@@ -116,6 +125,12 @@ class _PluginUriSelect(tk.Toplevel):
         )
 
         self.plugin_entry.on_updated_callback = self._on_plugin_change
+
+    def bind_mousewheel(self):
+        bind_mousewheel(self.canvas.bind_all, self._on_mouse_wheel)
+
+    def unbind_mousewheel(self):
+        un_bind_mousewheel(self.canvas.unbind_all)
 
     def _on_plugin_change(self, *args):
         self.canvas.yview_moveto(0)
@@ -147,5 +162,5 @@ class _PluginUriSelect(tk.Toplevel):
         self.destroy()
 
     def destroy(self) -> None:
-        un_bind_mousewheel(self.canvas.unbind_all)
+        self.unbind_mousewheel()
         super().destroy()

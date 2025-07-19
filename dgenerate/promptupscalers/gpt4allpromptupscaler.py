@@ -123,6 +123,11 @@ class GPT4ALLPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptups
 
     HIDE_ARGS = ['device']
 
+    OPTION_ARGS = {
+        'part': ['both', 'positive', 'negative'],
+        'compute': ['cpu', 'gpu', 'kompute', 'cuda', 'amd']
+    }
+
     def __init__(self,
                  part: str = 'both',
                  model: str = "https://huggingface.co/failspy/Phi-3-mini-128k-instruct-abliterated-v3-GGUF/resolve/main/Phi-3-mini-128k-instruct-abliterated-v3_q4.gguf",
