@@ -82,6 +82,12 @@ class InterposerProcessor(_latentsprocessor.LatentsProcessor):
         'cc': 1 / 32,  # Stable Cascade (Stage C) - not used in interposer
     }
 
+
+    OPTION_ARGS = {
+        'source': ['v1', 'xl', 'v3', 'fx', 'ca'],
+        'target': ['v1', 'xl', 'v3']
+    }
+
     def __init__(self,
                  source: str,
                  target: str,

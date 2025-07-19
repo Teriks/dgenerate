@@ -811,9 +811,34 @@ Help Output
             The "end" argument specifies at what fraction of the total inference steps to stop applying the
             ControlNet, defaults to 1.0, IE: the very end.
             
-            The "mode" argument can be used when using --model-type torch-flux and ControlNet Union to specify
-            the ControlNet mode. Acceptable values are: "canny", "tile", "depth", "blur", "pose", "gray", "lq".
-            This value may also be an integer between 0 and 6, inclusive.
+            The "mode" argument can be used when using --model-type torch-sdxl / torch-flux and a ControlNet
+            Union model to specify the ControlNet mode. This may be a string or an integer.
+            
+            For --model-type torch-sdxl Acceptable "mode" values are:
+            
+                "openpose" = 0
+                "depth" = 1
+                "hed" = 2
+                "pidi" = 2
+                "scribble" = 2
+                "ted" = 2
+                "canny" = 3
+                "lineart" = 3
+                "anime_lineart" = 3
+                "mlsd" = 3
+                "normal" = 4
+                "segment" = 5
+            
+            
+            For --model-type torch-flux Acceptable "mode" values are:
+            
+                "canny" = 0
+                "tile" = 1
+                "depth" = 2
+                "blur" = 3
+                "pose" = 4
+                "gray" = 5
+                "lq" = 6
             
             The "revision" argument specifies the model revision to use for the ControlNet model when loading
             from Hugging Face repository, (The Git branch / tag, default is "main").
@@ -9742,7 +9767,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [82574864588192]
+            Value: [42692149403247]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

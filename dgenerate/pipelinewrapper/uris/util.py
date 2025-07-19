@@ -18,6 +18,8 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import collections.abc
+import enum
 import inspect
 import itertools
 
@@ -85,9 +87,44 @@ def uri_list_hash_with_parser(parser, exclude: set[str] | None = None):
     return hasher
 
 
-def get_uri_accepted_args_schema(uri_cls: type):
+def get_uri_help(uri_cls: type, wrap_width: int | None) -> str | None:
+    """
+    Get the help text for a URI class.
+
+    This function introspects the ``help`` method of the URI class, if it exists.
+
+    :return: str
+    """
+
+    if not hasattr(uri_cls, '__init__'):
+        raise RuntimeError(f'URI class: {uri_cls.__name__} has no __init__ method.')
+
+    if hasattr(uri_cls, 'help') and callable(uri_cls.help):
+        # noinspection PyTypeChecker
+        help_str: str = uri_cls.help()
+
+        return _textprocessing.wrap_paragraphs(
+            inspect.cleandoc(help_str).strip(),
+            width=_textprocessing.long_text_wrap_width()
+            if wrap_width is None else wrap_width)
+
+    return None
+
+
+def get_uri_accepted_args_schema(uri_cls: type) -> dict:
     """
     Get the accepted arguments as a schema dict for a URI class.
+
+    This function introspects the ``__init__`` method of the URI class and returns an argument schema.
+
+    The ``HIDE_ARGS`` static class attribute (list or set) can be used to hide arguments from the schema,
+    in the same fashion as the dgenerate plugin API. This is useful for arguments that are not part of the
+    parseable URI, but are used internally as supplemental arguments when parsing the URI. Arguments
+    such as ``model_type`` (indicating parent model type for sub-models) etc. are examples
+    of such arguments.
+
+    The ``OPTION_ARGS`` static class attribute (dict) can be used to specify a that an arguments
+    values consists of a set of valid options, such as specific strings.
 
     Keyed by argument ``name``, content keys include:
 
@@ -97,8 +134,33 @@ def get_uri_accepted_args_schema(uri_cls: type):
 
     ``optional`` can the argument accept the value ``None``?
 
+    ``options`` contains a list of valid options for the argument, if the argument is an option argument
+    annotated with the ``OPTION_ARGS`` static class attribute. This list may contain ``None`` if the argument
+    can accept the value ``None``, i.e. it is optional.
+
+    :param uri_cls: The URI class to introspect, must have an ``__init__`` method.
+
     :return: dict
     """
+
+    args_hidden = getattr(uri_cls, 'HIDE_ARGS', set())
+
+    args_hidden = {_textprocessing.dashup(a) for a in args_hidden}
+
+    args_options = getattr(uri_cls, 'OPTION_ARGS', dict())
+
+    args_options = {_textprocessing.dashup(k): v for k, v in args_options.items()}
+
+    if not isinstance(args_hidden, collections.abc.Collection):
+        raise RuntimeError(
+            f'URI class: {uri_cls.__name__} HIDE_ARGS must be a collection, got: {type(args_hidden).__name__}'
+        )
+
+    if not isinstance(args_options, collections.abc.Mapping):
+        raise RuntimeError(
+            f'URI class: {uri_cls.__name__} OPTION_ARGS must be a dict / map, got: {type(args_hidden).__name__}'
+        )
+
     schema = dict()
     for name, arg in inspect.signature(uri_cls.__init__).parameters.items():
         if name == 'self':
@@ -106,17 +168,38 @@ def get_uri_accepted_args_schema(uri_cls: type):
 
         name = _textprocessing.dashup(name)
 
+        if name in args_hidden:
+            # skip hidden arguments
+            continue
+
         entry = {}
         schema[name] = entry
 
         def _type_name(t):
+            if getattr(t,'__module__','') == 'collections.abc':
+                n = getattr(t, '__name__', '')
+                if n in {'Collection', 'Sequence', 'MutableSequence', 'Iterable'}:
+                    # simplified compatible type name for collections
+                    return 'list'
+                if n in {'Mapping', 'MutableMapping', 'Dict'}:
+                    # simplified compatible type name for mappings
+                    return 'dict'
+                if n in {'Set', 'MutableSet'}:
+                    # simplified compatible type name for sets
+                    return 'set'
+
+
             return (str(t) if t.__module__ != 'builtins' else t.__name__).strip()
+
+        # all arguments that accept enum in a union should also accept a string
+        def _not_enum(t):
+            return not (inspect.isclass(t) and issubclass(t, enum.Enum))
 
         def _resolve_union(t):
             n = _type_name(t)
             if _types.is_union(t):
                 return set(itertools.chain.from_iterable(
-                    [_resolve_union(t) for t in arg.annotation.__args__]))
+                    [_resolve_union(t) for t in arg.annotation.__args__ if _not_enum(t)]))
             return [n]
 
         type_name = _type_name(arg.annotation)
@@ -127,7 +210,12 @@ def get_uri_accepted_args_schema(uri_cls: type):
                 entry['optional'] = True
                 union_args.remove('NoneType')
 
-            entry['types'] = list(sorted(union_args))
+            if union_args:
+                entry['types'] = list(sorted(union_args))
+            else:
+                raise RuntimeError(
+                    f'pipelinewrapper.uri union type argument with no '
+                    f'valid types found in it, class: {uri_cls.__name__}.')
 
         else:
             entry['optional'] = False
@@ -135,6 +223,16 @@ def get_uri_accepted_args_schema(uri_cls: type):
 
         if arg.default is not inspect.Parameter.empty:
             schema[name]['default'] = arg.default
+
+        if name in args_options:
+            if not isinstance(args_options[name], collections.abc.Collection):
+                raise RuntimeError(
+                    f'URI class: {uri_cls.__name__} OPTION_ARGS for argument: {name} '
+                    f'must be a collection, got: {type(args_options[name]).__name__}'
+                )
+
+            schema[name]['options'] = args_options[name]
+
     return schema
 
 

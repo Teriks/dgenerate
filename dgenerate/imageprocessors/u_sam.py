@@ -183,6 +183,10 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
 
     NAMES = ['u-sam']
 
+    OPTION_ARGS = {
+        'asset': list(_sam_model_map.keys()),
+    }
+
     @staticmethod
     def _match_hex_color(color):
         pattern = r'^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$'

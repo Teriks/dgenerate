@@ -450,7 +450,7 @@ def _load_clip_g_sd35_large_from_single_file(
 
 class TextEncoderUri:
     """
-    Representation of ``--text-encoders*`` uri when ``--model-type`` torch*
+    Representation of ``--text-encoders`` uri when ``--model-type`` torch*
     """
 
     @property
@@ -541,6 +541,21 @@ class TextEncoderUri:
     @staticmethod
     def supported_encoder_names() -> list[str]:
         return list(TextEncoderUri._encoders.keys())
+
+    # pipelinewrapper.uris.util.get_uri_accepted_args_schema metadata
+
+    @staticmethod
+    def help():
+        import dgenerate.arguments as _a
+        return _a.get_raw_help_text('--text-encoders')
+
+    OPTION_ARGS = {
+        'encoder': list(_encoders.keys()),
+        'mode': _clip_modes + _t5_modes,
+        'dtype': ['auto', 'float16', 'bfloat16', 'float32']
+    }
+
+    # ===
 
     def __init__(self,
                  encoder: str,

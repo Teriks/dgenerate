@@ -64,6 +64,10 @@ class DynamicPromptsUpscaler(_promptupscaler.PromptUpscaler):
 
     HIDE_ARGS = ['device']
 
+    OPTION_ARGS = {
+        'part': ['both', 'positive', 'negative']
+    }
+
     def __init__(self,
                  part: str = 'both',
                  random: bool = False,

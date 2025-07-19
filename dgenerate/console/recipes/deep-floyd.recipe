@@ -21,13 +21,13 @@ order: 12
 
 \set output_dir @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output", "optional":false}]
 
-\set image_format @imageformat[{"divider-after":true}]
+\set image_format @imageformat[{"default": "png", "optional":false, "divider-after":true}]
 
 \set auth_token {{ '--auth-token ' + quote(auth_token) if auth_token else '' }}
 
 @uri[{"label":"Stage 1 Model Path / HF Slug", "default": "DeepFloyd/IF-I-M-v1.0", "optional":false, "dir":true, "file-types":["models"]}]
 --model-type torch-if
-@dropdown[{"label":"Stage 1 Model dtype", "arg":"--dtype", "options":["float16", "float32"], "default":"float16"}]
+@dropdown[{"label":"Stage 1 Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"], "default":"float16"}]
 @dropdown[{"label":"Stage 1 Model variant", "arg":"--variant", "options":["fp16"], "default":"fp16"}]
 @karrasscheduler[{"label":"Stage 1 Scheduler", "arg":"--scheduler", "filter": ["DDPMScheduler"]}]
 @switchradio[{"labels":["Stage 1 Model CPU Offload", "Stage 1 Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "default":1}]
@@ -43,7 +43,7 @@ order: 12
 
 @uri[{"label":"Stage 2 Model Path / HF Slug", "default": "DeepFloyd/IF-II-M-v1.0", "optional":false, "dir":true, "file-types":["models"]}]
 --model-type torch-ifs
-@dropdown[{"label":"Stage 2 Model dtype", "arg":"--dtype", "options":["float16", "float32"], "default":"float16"}]
+@dropdown[{"label":"Stage 2 Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"], "default":"float16"}]
 @dropdown[{"label":"Stage 2 Model variant", "arg":"--variant", "options":["fp16"], "default":"fp16"}]
 @karrasscheduler[{"label":"Stage 2 Scheduler", "arg":"--scheduler", "filter": ["DDPMScheduler"]}]
 @switchradio[{"labels":["Stage 2 Model CPU Offload", "Stage 2 Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "default":1}]
@@ -61,11 +61,11 @@ order: 12
 
 @uri[{"label":"Stage 3 - x4 Upscaler Model Path / HF Slug", "default": "stabilityai/stable-diffusion-x4-upscaler", "optional":false, "dir":true, "file-types":["models"]}]
 --model-type torch-upscaler-x4
-@dropdown[{"label":"Stage 3 Model dtype", "arg":"--dtype", "options":["float16", "float32"], "default":"float16"}]
+@dropdown[{"label":"Stage 3 Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"], "default":"float16"}]
 @dropdown[{"label":"Stage 3 Model variant", "arg":"--variant", "options":["fp16"], "default":"fp16"}]
 @karrasscheduler[{"label":"Stage 3 Scheduler", "arg":"--scheduler"}]
 @switchradio[{"labels":["Stage 3 Model CPU Offload", "Stage 3 Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"]}]
-@torchvae[{"label":"Stage 3 VAE File / URI", "dir":true, "file-types":["models"]}]
+@submodelbuilder[{"label":"Stage 3 VAE", "arg":"--vae", "model": "VAE"}]
 @int[{"label":"Stage 3 Inference Steps", "arg":"--inference-steps", "default":30, "min":1}]
 @float[{"label":"Stage 3 Guidance Scale", "arg":"--guidance-scales", "default":9, "min":0}]
 --prompts {{ format_prompt(last_prompts) }}

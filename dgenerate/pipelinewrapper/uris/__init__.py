@@ -99,7 +99,8 @@ from .util import (
     uri_hash_with_parser,
     uri_list_hash_with_parser,
     get_uri_accepted_args_schema,
-    get_quantizer_uri_class
+    get_quantizer_uri_class,
+    get_uri_help
 )
 from .vaeuri import VAEUri
 

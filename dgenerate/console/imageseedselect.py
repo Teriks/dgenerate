@@ -23,7 +23,7 @@ import tkinter as tk
 import typing
 
 import dgenerate.console.filedialog as _filedialog
-import dgenerate.console.recipesformentries.entry as _entry
+import dgenerate.console.formentries.entry as _entry
 import dgenerate.console.resources as _resources
 import dgenerate.console.spinbox as _spinbox
 import dgenerate.console.util as _util

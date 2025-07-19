@@ -61,6 +61,11 @@ class AttentionUpscaler(_promptupscaler.PromptUpscaler):
 
     HIDE_ARGS = ['device']
 
+    OPTION_ARGS = {
+        'part': ['both', 'positive', 'negative'],
+        'lang': ['en', 'de', 'fr', 'es', 'it', 'nl', 'pt', 'ru', 'zh']
+    }
+
     # these are languages where noun chunking is supported
     _langs = ['en', 'de', 'fr', 'es', 'it', 'nl', 'pt', 'ru', 'zh']
 

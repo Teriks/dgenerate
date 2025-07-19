@@ -84,6 +84,10 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
 
     NAMES = ['upscaler']
 
+    OPTION_ARGS = {
+        'dtype': ['float32', 'float16']
+    }
+
     def __init__(self,
                  model: str,
                  tile: int | str = 512,

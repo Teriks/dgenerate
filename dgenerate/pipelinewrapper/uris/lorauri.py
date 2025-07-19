@@ -40,6 +40,15 @@ class LoRAUri:
     Representation of a ``--loras`` uri
     """
 
+    # pipelinewrapper.uris.util.get_uri_accepted_args_schema metadata
+
+    @staticmethod
+    def help():
+        import dgenerate.arguments as _a
+        return _a.get_raw_help_text('--loras')
+
+    # ===
+
     @property
     def model(self) -> str:
         """

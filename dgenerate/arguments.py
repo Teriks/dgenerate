@@ -1760,9 +1760,37 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     The "end" argument specifies at what fraction of the total inference steps to stop applying
                     the ControlNet, defaults to 1.0, IE: the very end.
                     
-                    The "mode" argument can be used when using --model-type torch-flux and ControlNet Union
-                    to specify the ControlNet mode. Acceptable values are: "canny", "tile", "depth", "blur",
-                    "pose", "gray", "lq". This value may also be an integer between 0 and 6, inclusive.
+                    The "mode" argument can be used when using --model-type torch-sdxl / torch-flux 
+                    and a ControlNet Union model to specify the ControlNet mode. This may be a 
+                    string or an integer.
+                    
+                    For --model-type torch-sdxl Acceptable "mode" values are: 
+                    
+                    NOWRAP!
+                        "openpose" = 0
+                        "depth" = 1
+                        "hed" = 2
+                        "pidi" = 2
+                        "scribble" = 2
+                        "ted" = 2
+                        "canny" = 3
+                        "lineart" = 3
+                        "anime_lineart" = 3
+                        "mlsd" = 3
+                        "normal" = 4
+                        "segment" = 5
+                        
+                    
+                    For --model-type torch-flux Acceptable "mode" values are: 
+                    
+                    NOWRAP!
+                        "canny" = 0
+                        "tile" = 1
+                        "depth" = 2
+                        "blur" = 3
+                        "pose" = 4
+                        "gray" = 5
+                        "lq" = 6
                     
                     The "revision" argument specifies the model revision to use for the ControlNet model
                     when loading from Hugging Face repository, (The Git branch / tag, default is "main").
@@ -3871,6 +3899,31 @@ def config_attribute_name_to_option(name):
     :return: the command line argument name as a string
     """
     return _attr_name_to_option[name]
+
+
+def get_raw_help_text(option: str) -> str:
+    """
+    Get the raw help text for a given command line option.
+
+    This text will not be formatted in any way, and may be
+    indented as is defined in source code.
+
+    You should utilize :py:func:`inspect.cleandoc` and
+    :py:func:`dgenerate.textprocessing.wrap_paragraphs` to
+    format the text if displaying it to the user is intended.
+
+    :param option: The command line option name, short or long opt.
+    :return: The help text for the option.
+    :raises ValueError: If the option is not valid.
+    """
+    if not is_valid_option(option):
+        raise ValueError(f"Unknown option: {option}")
+
+    for a in _actions:
+        if option in a.option_strings:
+            return a.help
+
+    raise ValueError(f"Option {option} not found in actions.")
 
 
 def _parse_args(args=None, print_usage=True, overrides: dict[str, typing.Any] | None = None) -> DgenerateArguments:

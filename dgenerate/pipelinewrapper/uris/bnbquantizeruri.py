@@ -37,6 +37,24 @@ class BNBQuantizerUri:
     Representation of ``--quantizer`` uri when ``--model-type`` torch*
     """
 
+    _valid_dtypes = ["float16", "bfloat16", "float32", "float64", "int8", "uint8"]
+
+    # pipelinewrapper.uris.util.get_uri_accepted_args_schema metadata
+
+    @staticmethod
+    def help():
+        import dgenerate.arguments as _a
+        return _a.get_raw_help_text('--quantizer')
+
+    OPTION_ARGS = {
+        'bits': [8, 4],
+        'bits4-compute-dtype': _valid_dtypes,
+        'bits4-quant-type': ["fp4", "nf4"],
+        'bits4-quant-storage': _valid_dtypes
+    }
+
+    # ===
+
     def __init__(self,
                  bits: int = 8,
                  bits4_compute_dtype: str | None = None,
@@ -62,9 +80,10 @@ class BNBQuantizerUri:
     def _dtype_check(s):
         if s is None:
             return None
-        if s not in {"float16", "float32", "int8", "uint8", "float64", "bfloat16"}:
+        if s not in BNBQuantizerUri._valid_dtypes:
             raise _exceptions.InvalidBNBQuantizerUriError(
-                'BNB Quant dtypes must be one of: float16, float32, int8, uint8, float64 or bfloat16.')
+                f'BNB Quant dtypes must be one of: '
+                f'{_textprocessing.oxford_comma(BNBQuantizerUri._valid_dtypes, "or")}.')
         return s
 
     def to_config(self, compute_dtype: str | torch.dtype | None = None) -> diffusers.BitsAndBytesConfig:

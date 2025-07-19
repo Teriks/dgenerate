@@ -21,7 +21,7 @@
 import typing
 
 import dgenerate.console.pluginuriselector as _pluginuriselector
-import dgenerate.console.recipesformentries as _entries
+import dgenerate.console.formentries as _entries
 import dgenerate.console.util as _util
 
 _dialog_state = _util.DialogState(save_position=True, save_size=True)
