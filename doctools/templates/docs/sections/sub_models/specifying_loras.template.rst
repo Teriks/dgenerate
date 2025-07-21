@@ -5,15 +5,15 @@ It is possible to specify one or more LoRA models using ``--loras``
 
 LoRAs are supported for these model types:
 
-    * ``--model-type torch``
-    * ``--model-type torch-pix2pix``
-    * ``--model-type torch-upscaler-x4``
-    * ``--model-type torch-sdxl``
-    * ``--model-type torch-sdxl-pix2pix``
-    * ``--model-type torch-kolors``
-    * ``--model-type torch-sd3``
-    * ``--model-type torch-flux``
-    * ``--model-type torch-flux-fill``
+    * ``--model-type sd``
+    * ``--model-type pix2pix``
+    * ``--model-type upscaler-x4``
+    * ``--model-type sdxl``
+    * ``--model-type sdxl-pix2pix``
+    * ``--model-type kolors``
+    * ``--model-type sd3``
+    * ``--model-type flux``
+    * ``--model-type flux-fill``
 
 When multiple specifications are given, all mentioned models will be fused together
 into one set of weights at their individual scale, and then those weights will be
@@ -64,7 +64,7 @@ Shown below is an SDXL compatible LoRA being used with the SDXL base model and a
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
+    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type sdxl \
     --inference-steps 30 \
     --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
     --prompts "sketch of a horse by Leonardo da Vinci" \

@@ -34,7 +34,7 @@ _bnb_quantizer_uri_parser = _textprocessing.ConceptUriParser(
 
 class BNBQuantizerUri:
     """
-    Representation of ``--quantizer`` uri when ``--model-type`` torch*
+    Representation of ``--quantizer`` URI.
     """
 
     _valid_dtypes = ["float16", "bfloat16", "float32", "float64", "int8", "uint8"]

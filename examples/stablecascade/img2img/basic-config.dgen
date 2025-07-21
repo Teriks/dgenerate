@@ -2,7 +2,7 @@
 #! dgenerate 5.0.0
 
 stabilityai/stable-cascade-prior
---model-type torch-s-cascade
+--model-type s-cascade
 --image-seeds "../../media/beach.jpg"
 --variant bf16
 --dtype bfloat16

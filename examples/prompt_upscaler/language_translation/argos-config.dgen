@@ -8,7 +8,7 @@
 # Translate to chinese, which Kolors is capable of understanding
 
 Kwai-Kolors/Kolors-diffusers
---model-type torch-kolors
+--model-type kolors
 --variant fp16
 --dtype float16
 --inference-steps 40

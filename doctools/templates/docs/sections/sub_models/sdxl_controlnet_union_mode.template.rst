@@ -54,7 +54,7 @@ Here is an example making use of ``depth`` and ``openpose``:
 
     # even 50/50 split on mode contribution
 
-    stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
+    stabilityai/stable-diffusion-xl-base-1.0 --model-type sdxl
     --variant fp16 --dtype float16
     --vae AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix
     --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0

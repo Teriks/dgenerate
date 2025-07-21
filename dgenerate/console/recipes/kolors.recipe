@@ -2,7 +2,7 @@ title: Kolors
 order: 10
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "Kwai-Kolors/Kolors-diffusers", "optional":false, "file-types":["models"]}]
---model-type torch-kolors
+--model-type kolors
 @dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"], "default":"float16"}]
 @dropdown[{"label":"Model variant", "arg":"--variant", "options":["fp16", "bf16"], "default":"fp16"}]
 @karrasscheduler[{"label":"Scheduler", "arg":"--scheduler"}]

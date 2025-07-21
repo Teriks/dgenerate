@@ -1,20 +1,20 @@
 Diffusion Model Feature Support Tables
 ======================================
 
-   * ``--model-type torch`` (SD 1.5 - SD 2.*)
-   * ``--model-type torch-pix2pix`` (SD 1.5 - SD 2.* - Pix2Pix)
-   * ``--model-type torch-sdxl`` (Stable Diffusion XL)
-   * ``--model-type torch-kolors`` (Kolors)
-   * ``--model-type torch-if`` (Deep Floyd Stage 1)
-   * ``--model-type torch-ifs`` (Deep Floyd Stage 2)
-   * ``--model-type torch-ifs-img2img`` (Deep Floyd Stage 2 - Img2Img)
-   * ``--model-type torch-sdxl-pix2pix`` (Stable Diffusion XL - Pix2Pix)
-   * ``--model-type torch-upscaler-x2`` (Stable Diffusion x2 Upscaler)
-   * ``--model-type torch-upscaler-x4`` (Stable Diffusion x4 Upscaler)
-   * ``--model-type torch-s-cascade`` (Stable Cascade)
-   * ``--model-type torch-sd3`` (Stable Diffusion 3 and 3.5)
-   * ``--model-type torch-flux`` (Flux.1)
-   * ``--model-type torch-flux-fill`` (Flux.1 - Infill / Outfill)
+   * ``--model-type sd`` (SD 1.5 - SD 2.*)
+   * ``--model-type pix2pix`` (SD 1.5 - SD 2.* - Pix2Pix)
+   * ``--model-type sdxl`` (Stable Diffusion XL)
+   * ``--model-type kolors`` (Kolors)
+   * ``--model-type if`` (Deep Floyd Stage 1)
+   * ``--model-type ifs`` (Deep Floyd Stage 2)
+   * ``--model-type ifs-img2img`` (Deep Floyd Stage 2 - Img2Img)
+   * ``--model-type sdxl-pix2pix`` (Stable Diffusion XL - Pix2Pix)
+   * ``--model-type upscaler-x2`` (Stable Diffusion x2 Upscaler)
+   * ``--model-type upscaler-x4`` (Stable Diffusion x4 Upscaler)
+   * ``--model-type s-cascade`` (Stable Cascade)
+   * ``--model-type sd3`` (Stable Diffusion 3 and 3.5)
+   * ``--model-type flux`` (Flux.1)
+   * ``--model-type flux-fill`` (Flux.1 - Infill / Outfill)
 
 
 .. list-table:: Generation modes by ``--model-type``
@@ -26,72 +26,72 @@ Diffusion Model Feature Support Tables
      - Img2Img
      - Inpainting
 
-   * - ``torch``
+   * - ``sd``
      - ✅
      - ✅
      - ✅
 
-   * - ``torch-pix2pix``
+   * - ``pix2pix``
      - ❌
      - ✅
      - ❌
 
-   * - ``torch-sdxl``
+   * - ``sdxl``
      - ✅
      - ✅
      - ✅
 
-   * - ``torch-kolors``
+   * - ``kolors``
      - ✅
      - ✅
      - ✅
 
-   * - ``torch-if``
+   * - ``if``
      - ✅
      - ✅
      - ✅
 
-   * - ``torch-ifs``
+   * - ``ifs``
      - ❌
      - ✅
      - ✅
 
-   * - ``torch-ifs-img2img``
+   * - ``ifs-img2img``
      - ❌
      - ✅
      - ✅
 
-   * - ``torch-sdxl-pix2pix``
+   * - ``sdxl-pix2pix``
      - ❌
      - ✅
      - ❌
 
-   * - ``torch-upscaler-x2``
+   * - ``upscaler-x2``
      - ❌
      - ✅
      - ❌
 
-   * - ``torch-upscaler-x4``
+   * - ``upscaler-x4``
      - ❌
      - ✅
      - ❌
 
-   * - ``torch-s-cascade``
+   * - ``s-cascade``
      - ✅
      - ✅
      - ❌
 
-   * - ``torch-sd3``
+   * - ``sd3``
      - ✅
      - ✅
      - ✅
 
-   * - ``torch-flux``
+   * - ``flux``
      - ✅
      - ✅
      - ✅
 
-   * - ``torch-flux-fill``
+   * - ``flux-fill``
      - ❌
      - ❌
      - ✅
@@ -106,85 +106,85 @@ Diffusion Model Feature Support Tables
      - ControlNet
      - Perturbed Attention Guidance (PAG)
 
-   * - ``torch``
+   * - ``sd``
      - ✅
      - ✅
      - ✅
      - ✅
 
-   * - ``torch-pix2pix``
+   * - ``pix2pix``
      - ✅
      - ✅
      - ❌
      - ❌
 
-   * - ``torch-sdxl``
+   * - ``sdxl``
      - ✅
      - ✅
      - ✅
      - ✅
 
-   * - ``torch-kolors``
+   * - ``kolors``
      - ✅
      - ❌
      - ✅
      - ✅
 
-   * - ``torch-if``
+   * - ``if``
      - ❌
      - ❌
      - ❌
      - ❌
 
-   * - ``torch-ifs``
+   * - ``ifs``
      - ❌
      - ❌
      - ❌
      - ❌
 
-   * - ``torch-ifs-img2img``
+   * - ``ifs-img2img``
      - ❌
      - ❌
      - ❌
      - ❌
 
-   * - ``torch-sdxl-pix2pix``
+   * - ``sdxl-pix2pix``
      - ✅
      - ✅
      - ❌
      - ❌
 
-   * - ``torch-upscaler-x2``
+   * - ``upscaler-x2``
      - ❌
      - ❌
      - ❌
      - ❌
 
-   * - ``torch-upscaler-x4``
+   * - ``upscaler-x4``
      - ❌
      - ✅
      - ❌
      - ❌
 
-   * - ``torch-s-cascade``
+   * - ``s-cascade``
      - ❌
      - ❌
      - ❌
      - ❌
 
-   * - ``torch-sd3``
+   * - ``sd3``
      - ✅
      - ❌
      - ✅
      - ✅
 
-   * - ``torch-flux``
+   * - ``flux``
      - ✅
      - ✅
      - ✅
      - ❌
 
-   * - ``torch-flux-fill``
+   * - ``flux-fill``
      - ✅
      - ✅
      - ❌
@@ -198,59 +198,59 @@ Diffusion Model Feature Support Tables
      - T2I Adapter
      - IP Adapter
 
-   * - ``torch``
+   * - ``sd``
      - ✅
      - ✅
 
-   * - ``torch-pix2pix``
+   * - ``pix2pix``
      - ❌
      - ✅
 
-   * - ``torch-sdxl``
+   * - ``sdxl``
      - ✅
      - ✅
 
-   * - ``torch-kolors``
+   * - ``kolors``
      - ❌
      - ✅
 
-   * - ``torch-if``
+   * - ``if``
      - ❌
      - ❌
 
-   * - ``torch-ifs``
+   * - ``ifs``
      - ❌
      - ❌
 
-   * - ``torch-ifs-img2img``
+   * - ``ifs-img2img``
      - ❌
      - ❌
 
-   * - ``torch-sdxl-pix2pix``
+   * - ``sdxl-pix2pix``
      - ❌
      - ❌
 
-   * - ``torch-upscaler-x2``
+   * - ``upscaler-x2``
      - ❌
      - ❌
 
-   * - ``torch-upscaler-x4``
+   * - ``upscaler-x4``
      - ❌
      - ❌
 
-   * - ``torch-s-cascade``
+   * - ``s-cascade``
      - ❌
      - ❌
 
-   * - ``torch-sd3``
+   * - ``sd3``
      - ❌
      - ❌
 
-   * - ``torch-flux``
+   * - ``flux``
      - ❌
      - ✅
 
-   * - ``torch-flux-fill``
+   * - ``flux-fill``
      - ❌
      - ❌
 
@@ -263,72 +263,72 @@ Diffusion Model Feature Support Tables
      - compel Prompt Weighting
      - llm4gen Prompt Weighting
 
-   * - ``torch``
+   * - ``sd``
      - ✅
      - ✅
      - ✅
 
-   * - ``torch-pix2pix``
+   * - ``pix2pix``
      - ✅
      - ✅
      - ✅
 
-   * - ``torch-sdxl``
+   * - ``sdxl``
      - ✅
      - ✅
      - ❌
 
-   * - ``torch-kolors``
+   * - ``kolors``
      - ❌
      - ❌
      - ❌
 
-   * - ``torch-if``
+   * - ``if``
      - ❌
      - ❌
      - ❌
 
-   * - ``torch-ifs``
+   * - ``ifs``
      - ❌
      - ❌
      - ❌
 
-   * - ``torch-ifs-img2img``
+   * - ``ifs-img2img``
      - ❌
      - ❌
      - ❌
 
-   * - ``torch-sdxl-pix2pix``
+   * - ``sdxl-pix2pix``
      - ✅
      - ✅
      - ❌
 
-   * - ``torch-upscaler-x2``
+   * - ``upscaler-x2``
      - ❌
      - ❌
      - ❌
 
-   * - ``torch-upscaler-x4``
+   * - ``upscaler-x4``
      - ✅
      - ✅
      - ✅
 
-   * - ``torch-s-cascade``
+   * - ``s-cascade``
      - ✅
      - ✅
      - ❌
 
-   * - ``torch-sd3``
+   * - ``sd3``
      - ✅
      - ❌
      - ❌
 
-   * - ``torch-flux``
+   * - ``flux``
      - ✅
      - ❌
      - ❌
 
-   * - ``torch-flux-fill``
+   * - ``flux-fill``
      - ✅
      - ❌
      - ❌

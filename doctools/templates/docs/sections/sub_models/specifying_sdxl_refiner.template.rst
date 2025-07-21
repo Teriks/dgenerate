@@ -1,7 +1,7 @@
 Specifying an SDXL Refiner
 ==========================
 
-When the main model is an SDXL model and ``--model-type torch-sdxl`` is specified,
+When the main model is an SDXL model and ``--model-type sdxl`` is specified,
 you may specify a refiner model with ``--sdxl-refiner``.
 
 You can provide a path to a huggingface repo/blob link, folder on disk, or a model file
@@ -23,7 +23,7 @@ or folder that may or may not be a local git repository on disk.
 
     # Basic usage of SDXL with a refiner
 
-    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
+    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type sdxl \
     --variant fp16 --dtype float16 \
     --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
     --sdxl-high-noise-fractions 0.8 \
@@ -40,7 +40,7 @@ If you want to select the repository revision, such as ``main`` etc, use the nam
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
+    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type sdxl \
     --variant fp16 --dtype float16 \
     --sdxl-refiner "stabilityai/stable-diffusion-xl-refiner-1.0;revision=main" \
     --sdxl-high-noise-fractions 0.8 \
@@ -58,7 +58,7 @@ value is the same as ``--variant`` unless you override it.
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
+    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type sdxl \
     --variant fp16 --dtype float16 \
     --sdxl-refiner "stabilityai/stable-diffusion-xl-refiner-1.0;variant=fp16" \
     --sdxl-high-noise-fractions 0.8 \
@@ -76,7 +76,7 @@ If your weights file exists in a subfolder of the repository, use the named argu
 
     # This is only a syntax example
 
-    dgenerate huggingface/sdxl_model --model-type torch-sdxl \
+    dgenerate huggingface/sdxl_model --model-type sdxl \
     --variant fp16 --dtype float16 \
     --sdxl-refiner "huggingface/sdxl_refiner;subfolder=repo_subfolder"
 
@@ -89,7 +89,7 @@ values are the same as ``--dtype``, IE: 'float32', 'float16', 'auto'
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
+    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type sdxl \
     --variant fp16 --dtype float16 \
     --sdxl-refiner "stabilityai/stable-diffusion-xl-refiner-1.0;dtype=float16" \
     --sdxl-high-noise-fractions 0.8 \
@@ -107,7 +107,7 @@ If you are loading a .safetensors or other file from a path on disk, simply do:
 
     # This is only a syntax example
 
-    dgenerate huggingface/sdxl_model --model-type torch-sdxl \
+    dgenerate huggingface/sdxl_model --model-type sdxl \
     --sdxl-refiner my_refinermodel.safetensors
 
 

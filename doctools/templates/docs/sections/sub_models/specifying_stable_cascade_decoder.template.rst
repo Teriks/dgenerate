@@ -1,7 +1,7 @@
 Specifying a Stable Cascade Decoder
 ===================================
 
-When the main model is a Stable Cascade prior model and ``--model-type torch-s-cascade`` is specified,
+When the main model is a Stable Cascade prior model and ``--model-type s-cascade`` is specified,
 you may specify a decoder model with ``--s-cascade-decoder``.
 
 The syntax (and URI arguments) for specifying the decoder model is identical to specifying an SDXL refiner
@@ -12,7 +12,7 @@ model as mentioned above.
     #!/usr/bin/env bash
 
     dgenerate stabilityai/stable-cascade-prior \
-    --model-type torch-s-cascade \
+    --model-type s-cascade \
     --variant bf16 \
     --dtype bfloat16 \
     --model-cpu-offload \

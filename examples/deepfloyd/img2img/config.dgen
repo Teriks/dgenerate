@@ -14,7 +14,7 @@
 DeepFloyd/IF-I-M-v1.0
 --variant fp16
 --dtype float16
---model-type torch-if
+--model-type if
 --model-sequential-offload
 --inference-steps 100
 --guidance-scales 5
@@ -29,7 +29,7 @@ DeepFloyd/IF-I-M-v1.0
 # when doing an img2img generation. This can be done with Jinja2 templating, --seeds-to-image is used
 # to indicate that --seeds is mentioning a seed for each input image and not combinations to try.
 
-# The special --model-type torch-ifs-img2img is need here to disambiguate that this is
+# The special --model-type ifs-img2img is need here to disambiguate that this is
 # the super resolution stage2 pipeline with an img2img variation, and not just a single
 # image input (the image from the last batch)
 
@@ -37,7 +37,7 @@ DeepFloyd/IF-I-M-v1.0
 DeepFloyd/IF-II-M-v1.0
 --variant fp16
 --dtype float16
---model-type torch-ifs-img2img
+--model-type ifs-img2img
 --model-sequential-offload
 --inference-steps 70
 --guidance-scales 5
@@ -55,7 +55,7 @@ DeepFloyd/IF-II-M-v1.0
 stabilityai/stable-diffusion-x4-upscaler
 --variant fp16
 --dtype float16
---model-type torch-upscaler-x4
+--model-type upscaler-x4
 --inference-steps 30
 --prompts {{ format_prompt(last_prompts) }}
 --seeds {{ last_seeds | join(' ') }}

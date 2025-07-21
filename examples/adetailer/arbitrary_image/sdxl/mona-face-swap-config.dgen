@@ -27,7 +27,7 @@
 # create multiple variations of the image with those values.
 
 stabilityai/stable-diffusion-xl-base-1.0
---model-type torch-sdxl
+--model-type sdxl
 --variant fp16
 --dtype float16
 --image-seeds ../../../media/monalisa.png;control=../../../media/monalisa.png

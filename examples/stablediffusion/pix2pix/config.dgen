@@ -1,7 +1,7 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 5.0.0
 
-timbrooks/instruct-pix2pix --model-type "torch-pix2pix" --dtype float16
+timbrooks/instruct-pix2pix --model-type "pix2pix" --dtype float16
 --inference-steps 30
 --guidance-scales 5
 --image-seeds "../../media/beach.jpg"

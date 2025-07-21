@@ -21,7 +21,7 @@
 # Use a depth controlnet to help orient the face without duplicating features
 
 black-forest-labs/FLUX.1-dev
---model-type torch-flux {{ optimization }}
+--model-type flux {{ optimization }}
 --dtype bfloat16
 --image-seeds ../../../media/monalisa.png;control=../../../media/monalisa.png
 --adetailer-detectors Bingsu/adetailer;weight-name=face_yolov8n.pt

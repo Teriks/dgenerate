@@ -20,7 +20,7 @@
 
 
 Kwai-Kolors/Kolors-diffusers
---model-type torch-kolors {{ optimization }}
+--model-type kolors {{ optimization }}
 --dtype float16
 --variant fp16
 --inference-steps 30
@@ -58,7 +58,7 @@ Kwai-Kolors/Kolors-diffusers
 # so that we can observe differences in the output
 
 Kwai-Kolors/Kolors-diffusers
---model-type torch-kolors {{ optimization }}
+--model-type kolors {{ optimization }}
 --variant fp16
 --dtype float16
 --image-seeds {{ quote(last_images) }}

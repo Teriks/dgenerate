@@ -54,7 +54,7 @@ _unet_cache = _d_memoize.create_object_cache(
 
 class UNetUri:
     """
-    Representation of ``--unet`` uri when ``--model-type`` torch*
+    Representation of ``--unet`` URI.
     """
 
     # pipelinewrapper.uris.util.get_uri_accepted_args_schema metadata
@@ -310,7 +310,7 @@ class UNetUri:
     @staticmethod
     def parse(uri: _types.Uri) -> 'UNetUri':
         """
-        Parse a ``--model-type`` torch* ``--unet`` uri and return an object representing its constituents
+        Parse a ``--unet`` uri and return an object representing its constituents
 
         :param uri: string with ``--unet`` uri syntax
 

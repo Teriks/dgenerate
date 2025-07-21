@@ -18,7 +18,7 @@
 
 
 black-forest-labs/FLUX.1-schnell
---model-type torch-flux {{ optimization }}
+--model-type flux {{ optimization }}
 --dtype bfloat16
 --inference-steps 4
 --guidance-scales 0

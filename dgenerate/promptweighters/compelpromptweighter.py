@@ -142,12 +142,12 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
     This prompt weighter supports the model types:
 
     NOWRAP!
-    --model-type torch
-    --model-type torch-pix2pix
-    --model-type torch-upscaler-x4
-    --model-type torch-sdxl
-    --model-type torch-sdxl-pix2pix
-    --model-type torch-s-cascade
+    --model-type sd
+    --model-type pix2pix
+    --model-type upscaler-x4
+    --model-type sdxl
+    --model-type sdxl-pix2pix
+    --model-type s-cascade
 
     The secondary prompt option for SDXL --second-prompts is supported by this prompt weighter
     implementation. However, --second-model-second-prompts is not supported and will be ignored
@@ -164,12 +164,12 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
         super().__init__(**kwargs)
 
         supported = {
-            _enums.ModelType.TORCH,
-            _enums.ModelType.TORCH_PIX2PIX,
-            _enums.ModelType.TORCH_UPSCALER_X4,
-            _enums.ModelType.TORCH_SDXL,
-            _enums.ModelType.TORCH_SDXL_PIX2PIX,
-            _enums.ModelType.TORCH_S_CASCADE
+            _enums.ModelType.SD,
+            _enums.ModelType.PIX2PIX,
+            _enums.ModelType.UPSCALER_X4,
+            _enums.ModelType.SDXL,
+            _enums.ModelType.SDXL_PIX2PIX,
+            _enums.ModelType.S_CASCADE
         }
 
         if self.model_type not in supported:
@@ -185,7 +185,7 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
         self._syntax = syntax
 
     def get_extra_supported_args(self) -> list[str]:
-        if self.model_type == _enums.ModelType.TORCH_S_CASCADE:
+        if self.model_type == _enums.ModelType.S_CASCADE:
             return ['clip_skip']
         else:
             return []
@@ -439,7 +439,7 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
         if pos_pooled is not None:
             self._tensors.append(pos_pooled)
 
-            if self.model_type == _enums.ModelType.TORCH_S_CASCADE:
+            if self.model_type == _enums.ModelType.S_CASCADE:
                 output.update({
                     'prompt_embeds_pooled': pos_pooled,
                 })
@@ -451,7 +451,7 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
         if neg_pooled is not None:
             self._tensors.append(neg_pooled)
 
-            if self.model_type == _enums.ModelType.TORCH_S_CASCADE:
+            if self.model_type == _enums.ModelType.S_CASCADE:
                 output.update({
                     'negative_prompt_embeds_pooled': neg_pooled,
                 })

@@ -68,7 +68,7 @@ option ``--image-format`` with the value ``pt``, ``pth``,  or ``safetensors``.
 These latents will be decoded by the receiving VAE and used as the img2img input,
 for passing raw latents without a VAE decode, see: `Latents Interchange`_ for details.
 
-Latent ``img2img`` input is not supported for ``--model-type torch-s-cascade`` as Stable Cascade
+Latent ``img2img`` input is not supported for ``--model-type s-cascade`` as Stable Cascade
 cannot perform traditional ``img2img``, and will result in an error if attempted. Latent input
 is also not supported for ControlNet/T2I Adapter guidance images, or IP Adapter images, as
 these guidance models operate on images in pixel space.

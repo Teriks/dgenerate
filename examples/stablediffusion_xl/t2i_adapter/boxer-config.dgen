@@ -10,7 +10,7 @@
 
 # this does not matter as much for depth or canny images etc.
 
-stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
+stabilityai/stable-diffusion-xl-base-1.0 --model-type sdxl
 --variant fp16 --dtype float16
 --vae AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix
 --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0

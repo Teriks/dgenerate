@@ -2,7 +2,7 @@ Specifying Text Encoders
 ========================
 
 Diffusion pipelines supported by dgenerate may use a varying number of
-text encoder sub models, currently up to 3. ``--model-type torch-sd3``
+text encoder sub models, currently up to 3. ``--model-type sd3``
 for instance uses 3 text encoder sub models, all of which can be
 individually specified from the command line if desired.
 
@@ -84,7 +84,7 @@ when passing ``help`` or ``helpargs`` to any ``--scheduler`` type argument.
     # ask for text encoder help on the main model that is mentioned
 
     dgenerate https://huggingface.co/stabilityai/stable-diffusion-3-medium/blob/main/sd3_medium_incl_clips.safetensors \
-    --model-type torch-sd3 \
+    --model-type sd3 \
     --variant fp16 \
     --dtype float16 \
     --text-encoders help

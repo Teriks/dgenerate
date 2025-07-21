@@ -18,7 +18,7 @@
 
 
 Kwai-Kolors/Kolors-diffusers
---model-type torch-kolors {{ optimization }}
+--model-type kolors {{ optimization }}
 --dtype float16
 --variant fp16
 --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0

@@ -31,7 +31,7 @@ The controlnet "mode" option may be set to one of:
     # union repository, with the mode specified as "pose"
 
     dgenerate black-forest-labs/FLUX.1-schnell \
-    --model-type torch-flux \
+    --model-type flux \
     --dtype bfloat16 \
     --model-sequential-offload \
     --control-nets "InstantX/FLUX.1-dev-Controlnet-Union;scale=0.8;mode=pose" \

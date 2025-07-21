@@ -183,10 +183,10 @@ Help Output
             various default values for generation and garbage collection settings for the in memory caches.
             -----------------------------------------------------------------------------------------------
       -mt, --model-type MODEL_TYPE
-            Use when loading different model types. Currently supported: torch, torch-pix2pix, torch-sdxl,
-            torch-sdxl-pix2pix, torch-kolors, torch-upscaler-x2, torch-upscaler-x4, torch-if, torch-ifs,
-            torch-ifs-img2img, torch-s-cascade, torch-sd3, torch-flux, or torch-flux-fill. (default: torch)
-            -----------------------------------------------------------------------------------------------
+            Use when loading different model types. Currently supported: sd, pix2pix, sdxl, sdxl-pix2pix,
+            kolors, upscaler-x2, upscaler-x4, if, ifs, ifs-img2img, s-cascade, sd3, flux, or flux-fill.
+            (default: sd)
+            -------------
       -rev, --revision BRANCH
             The model revision to use when loading from a Hugging Face repository, (The Git branch / tag,
             default is "main")
@@ -240,8 +240,7 @@ Help Output
             areas. This can be used for face detailing, face swapping, hand detailing, etc. on any arbitrary
             image provided using an image generation model of your choice.
             
-            This option supports: --model-type torch, torch-sdxl, torch-kolors, torch-sd3, torch-flux, and
-            torch-flux-fill
+            This option supports: --model-type sd, sdxl, kolors, sd3, flux, and flux-fill
             
             Example: --adetailer-detectors Bingsu/adetailer;weight-name=face_yolov8n.pt
             
@@ -811,10 +810,10 @@ Help Output
             The "end" argument specifies at what fraction of the total inference steps to stop applying the
             ControlNet, defaults to 1.0, IE: the very end.
             
-            The "mode" argument can be used when using --model-type torch-sdxl / torch-flux and a ControlNet
-            Union model to specify the ControlNet mode. This may be a string or an integer.
+            The "mode" argument can be used when using --model-type sdxl / flux and a ControlNet Union model to
+            specify the ControlNet mode. This may be a string or an integer.
             
-            For --model-type torch-sdxl Acceptable "mode" values are:
+            For --model-type sdxl Acceptable "mode" values are:
             
                 "openpose" = 0
                 "depth" = 1
@@ -830,7 +829,7 @@ Help Output
                 "segment" = 5
             
             
-            For --model-type torch-flux Acceptable "mode" values are:
+            For --model-type flux Acceptable "mode" values are:
             
                 "canny" = 0
                 "tile" = 1
@@ -1008,8 +1007,8 @@ Help Output
             
             See: https://github.com/megvii-research/HiDiffusion
             
-            This is supported for --model-type torch, torch-sdxl, and --torch-kolors.
-            -------------------------------------------------------------------------
+            This is supported for --model-type sd, sdxl, and --kolors.
+            ----------------------------------------------------------
       --hi-diffusion-no-win-attn
             Disable window attention when using HiDiffusion for the primary model?
             
@@ -1017,8 +1016,8 @@ Help Output
             
             See: https://github.com/megvii-research/HiDiffusion
             
-            This is supported for: --model-type torch, torch-sdxl, and --torch-kolors.
-            --------------------------------------------------------------------------
+            This is supported for: --model-type sd, sdxl, and --kolors.
+            -----------------------------------------------------------
       --hi-diffusion-no-raunet
             Disable RAU-Net when using HiDiffusion for the primary model?
             
@@ -1026,8 +1025,8 @@ Help Output
             
             See: https://github.com/megvii-research/HiDiffusion
             
-            This is supported for: --model-type torch, torch-sdxl, and --torch-kolors.
-            --------------------------------------------------------------------------
+            This is supported for: --model-type sd, sdxl, and --kolors.
+            -----------------------------------------------------------
       -rfu, --sdxl-refiner-freeu-params CSV_FLOAT [CSV_FLOAT ...]
             FreeU parameters for the SDXL refiner, see: --freeu-params
             ----------------------------------------------------------
@@ -1124,8 +1123,8 @@ Help Output
             
             Also see: --tea-cache-rel-l1-thresholds
             
-            This is supported for: --model-type torch-flux*.
-            ------------------------------------------------
+            This is supported for: --model-type flux*.
+            ------------------------------------------
       -tcr, --tea-cache-rel-l1-thresholds [FLOAT ...]
             TeaCache relative L1 thresholds to try when --tea-cache is enabled.
             
@@ -1140,7 +1139,7 @@ Help Output
             
             Supplying any values implies --tea-cache.
             
-            This is supported for: --model-type torch-flux*.
+            This is supported for: --model-type flux*.
             
             (default: 0.6)
             --------------
@@ -1151,8 +1150,8 @@ Help Output
             
             See: https://github.com/microsoft/ras
             
-            This is supported for: --model-type torch-sd3.
-            ----------------------------------------------
+            This is supported for: --model-type sd3.
+            ----------------------------------------
       -rif, --ras-index-fusion
             Enable index fusion in RAS (Reinforcement Attention System) for the primary model?
             
@@ -1160,8 +1159,8 @@ Help Output
             
             Supplying this flag implies --ras.
             
-            This is supported for: --model-type torch-sd3, (but not for SD3.5 models)
-            -------------------------------------------------------------------------
+            This is supported for: --model-type sd3, (but not for SD3.5 models)
+            -------------------------------------------------------------------
       -rsr, --ras-sample-ratios FLOAT [FLOAT ...]
             Average sample ratios for each RAS step.
             
@@ -1174,7 +1173,7 @@ Help Output
             
             Supplying any values implies --ras.
             
-            This is supported for: --model-type torch-sd3.
+            This is supported for: --model-type sd3.
             
             (default: 0.5)
             --------------
@@ -1190,7 +1189,7 @@ Help Output
             
             Supplying any values implies --ras.
             
-            This is supported for: --model-type torch-sd3.
+            This is supported for: --model-type sd3.
             
             (default: 1.0)
             --------------
@@ -1209,7 +1208,7 @@ Help Output
             
             Supplying any values implies --ras.
             
-            This is supported for: --model-type torch-sd3.
+            This is supported for: --model-type sd3.
             
             (default: 0.1)
             --------------
@@ -1226,7 +1225,7 @@ Help Output
             
             Supplying any values implies --ras.
             
-            This is supported for: --model-type torch-sd3.
+            This is supported for: --model-type sd3.
             
             (default: "12,22")
             ------------------
@@ -1240,7 +1239,7 @@ Help Output
             
             Supplying any values implies --ras.
             
-            This is supported for: --model-type torch-sd3.
+            This is supported for: --model-type sd3.
             
             (default: "std")
             ----------------
@@ -1253,7 +1252,7 @@ Help Output
             
             Supplying any values implies --ras.
             
-            This is supported for: --model-type torch-sd3.
+            This is supported for: --model-type sd3.
             
             (default: 4)
             ------------
@@ -1266,7 +1265,7 @@ Help Output
             
             Supplying any values implies --ras.
             
-            This is supported for: --model-type torch-sd3.
+            This is supported for: --model-type sd3.
             
             (default: --inference-steps)
             ----------------------------
@@ -1286,7 +1285,7 @@ Help Output
             
             Supplying any values implies --ras.
             
-            This is supported for: --model-type torch-sd3.
+            This is supported for: --model-type sd3.
             
             (default: 0)
             ------------
@@ -1306,14 +1305,14 @@ Help Output
             
             Supplying any values implies --ras.
             
-            This is supported for: --model-type torch-sd3.
+            This is supported for: --model-type sd3.
             
             (default: 0)
             ------------
       -pag, --pag
-            Use perturbed attention guidance? This is supported for --model-type torch, torch-sdxl, and
-            torch-sd3 for most use cases. This enables PAG for the main model using default scale values.
-            ---------------------------------------------------------------------------------------------
+            Use perturbed attention guidance? This is supported for --model-type sd, sdxl, and sd3 for most use
+            cases. This enables PAG for the main model using default scale values.
+            ----------------------------------------------------------------------
       -pags, --pag-scales FLOAT [FLOAT ...]
             One or more perturbed attention guidance scales to try. Specifying values enables PAG for the main
             model. (default: [3.0])
@@ -1323,9 +1322,9 @@ Help Output
             the main model. (default: [0.0])
             --------------------------------
       -rpag, --sdxl-refiner-pag
-            Use perturbed attention guidance in the SDXL refiner? This is supported for --model-type torch-sdxl
-            for most use cases. This enables PAG for the SDXL refiner model using default scale values.
-            -------------------------------------------------------------------------------------------
+            Use perturbed attention guidance in the SDXL refiner? This is supported for --model-type sdxl for
+            most use cases. This enables PAG for the SDXL refiner model using default scale values.
+            ---------------------------------------------------------------------------------------
       -rpags, --sdxl-refiner-pag-scales FLOAT [FLOAT ...]
             One or more perturbed attention guidance scales to try with the SDXL refiner pass. Specifying values
             enables PAG for the refiner. (default: [3.0])
@@ -1356,9 +1355,9 @@ Help Output
             VRAM. Inference will be slower. Mutually exclusive with --second-model-sequential-offload
             -----------------------------------------------------------------------------------------
       --s-cascade-decoder MODEL_URI
-            Specify a Stable Cascade (torch-s-cascade) decoder model path using a URI. This should be a Hugging
-            Face repository slug / blob link, path to model file on disk (for example, a .pt, .pth, .bin, .ckpt,
-            or .safetensors file), or model folder containing model files.
+            Specify a Stable Cascade (s-cascade) decoder model path using a URI. This should be a Hugging Face
+            repository slug / blob link, path to model file on disk (for example, a .pt, .pth, .bin, .ckpt, or
+            .safetensors file), or model folder containing model files.
             
             Optional arguments can be provided after the decoder model specification, these are: "revision",
             "variant", "subfolder", and "dtype".
@@ -1390,9 +1389,9 @@ Help Output
             argument may be used with this syntax.
             --------------------------------------
       --sdxl-refiner MODEL_URI
-            Specify a Stable Diffusion XL (torch-sdxl) refiner model path using a URI. This should be a Hugging
-            Face repository slug / blob link, path to model file on disk (for example, a .pt, .pth, .bin, .ckpt,
-            or .safetensors file), or model folder containing model files.
+            Specify a Stable Diffusion XL (sdxl) refiner model path using a URI. This should be a Hugging Face
+            repository slug / blob link, path to model file on disk (for example, a .pt, .pth, .bin, .ckpt, or
+            .safetensors file), or model folder containing model files.
             
             Optional arguments can be provided after the SDXL refiner model specification, these are:
             "revision", "variant", "subfolder", and "dtype".
@@ -1438,54 +1437,53 @@ Help Output
             takes to completely render an image.
             ------------------------------------
       --sdxl-aesthetic-scores FLOAT [FLOAT ...]
-            One or more Stable Diffusion XL (torch-sdxl) "aesthetic-score" micro-conditioning parameters. Used
-            to simulate an aesthetic score of the generated image by influencing the positive text condition.
-            Part of SDXL's micro-conditioning as explained in section 2.2 of
+            One or more Stable Diffusion XL (sdxl) "aesthetic-score" micro-conditioning parameters. Used to
+            simulate an aesthetic score of the generated image by influencing the positive text condition. Part
+            of SDXL's micro-conditioning as explained in section 2.2 of
             [https://huggingface.co/papers/2307.01952].
             -------------------------------------------
       --sdxl-crops-coords-top-left COORD [COORD ...]
-            One or more Stable Diffusion XL (torch-sdxl) "negative-crops-coords-top-left" micro-conditioning
+            One or more Stable Diffusion XL (sdxl) "negative-crops-coords-top-left" micro-conditioning
             parameters in the format "0,0". --sdxl-crops-coords-top-left can be used to generate an image that
             appears to be "cropped" from the position --sdxl-crops-coords-top-left downwards. Favorable,
             well-centered images are usually achieved by setting --sdxl-crops-coords-top-left to "0,0". Part of
             SDXL's micro-conditioning as explained in section 2.2 of [https://huggingface.co/papers/2307.01952].
             ----------------------------------------------------------------------------------------------------
       --sdxl-original-size, --sdxl-original-sizes SIZE [SIZE ...]
-            One or more Stable Diffusion XL (torch-sdxl) "original-size" micro-conditioning parameters in the
-            format (WIDTH)x(HEIGHT). If not the same as --sdxl-target-size the image will appear to be down or
+            One or more Stable Diffusion XL (sdxl) "original-size" micro-conditioning parameters in the format
+            (WIDTH)x(HEIGHT). If not the same as --sdxl-target-size the image will appear to be down or
             up-sampled. --sdxl-original-size defaults to --output-size or the size of any input images if not
             specified. Part of SDXL's micro-conditioning as explained in section 2.2 of
             [https://huggingface.co/papers/2307.01952]
             ------------------------------------------
       --sdxl-target-size, --sdxl-target-sizes SIZE [SIZE ...]
-            One or more Stable Diffusion XL (torch-sdxl) "target-size" micro-conditioning parameters in the
-            format (WIDTH)x(HEIGHT). For most cases, --sdxl-target-size should be set to the desired height and
-            width of the generated image. If not specified it will default to --output-size or the size of any
-            input images. Part of SDXL's micro-conditioning as explained in section 2.2 of
+            One or more Stable Diffusion XL (sdxl) "target-size" micro-conditioning parameters in the format
+            (WIDTH)x(HEIGHT). For most cases, --sdxl-target-size should be set to the desired height and width
+            of the generated image. If not specified it will default to --output-size or the size of any input
+            images. Part of SDXL's micro-conditioning as explained in section 2.2 of
             [https://huggingface.co/papers/2307.01952]
             ------------------------------------------
       --sdxl-negative-aesthetic-scores FLOAT [FLOAT ...]
-            One or more Stable Diffusion XL (torch-sdxl) "negative-aesthetic-score" micro-conditioning
-            parameters. Part of SDXL's micro-conditioning as explained in section 2.2 of
+            One or more Stable Diffusion XL (sdxl) "negative-aesthetic-score" micro-conditioning parameters.
+            Part of SDXL's micro-conditioning as explained in section 2.2 of
             [https://huggingface.co/papers/2307.01952]. Can be used to simulate an aesthetic score of the
             generated image by influencing the negative text condition.
             -----------------------------------------------------------
       --sdxl-negative-original-sizes SIZE [SIZE ...]
-            One or more Stable Diffusion XL (torch-sdxl) "negative-original-sizes" micro-conditioning
-            parameters. Negatively condition the generation process based on a specific image resolution. Part
-            of SDXL's micro-conditioning as explained in section 2.2 of
-            [https://huggingface.co/papers/2307.01952]. For more information, refer to this issue thread:
-            https://github.com/huggingface/diffusers/issues/4208
-            ----------------------------------------------------
+            One or more Stable Diffusion XL (sdxl) "negative-original-sizes" micro-conditioning parameters.
+            Negatively condition the generation process based on a specific image resolution. Part of SDXL's
+            micro-conditioning as explained in section 2.2 of [https://huggingface.co/papers/2307.01952]. For
+            more information, refer to this issue thread: https://github.com/huggingface/diffusers/issues/4208
+            --------------------------------------------------------------------------------------------------
       --sdxl-negative-target-sizes SIZE [SIZE ...]
-            One or more Stable Diffusion XL (torch-sdxl) "negative-original-sizes" micro-conditioning
-            parameters. To negatively condition the generation process based on a target image resolution. It
-            should be as same as the "--sdxl-target-size" for most cases. Part of SDXL's micro-conditioning as
-            explained in section 2.2 of [https://huggingface.co/papers/2307.01952]. For more information, refer
-            to this issue thread: https://github.com/huggingface/diffusers/issues/4208.
-            ---------------------------------------------------------------------------
+            One or more Stable Diffusion XL (sdxl) "negative-original-sizes" micro-conditioning parameters. To
+            negatively condition the generation process based on a target image resolution. It should be as same
+            as the "--sdxl-target-size" for most cases. Part of SDXL's micro-conditioning as explained in
+            section 2.2 of [https://huggingface.co/papers/2307.01952]. For more information, refer to this issue
+            thread: https://github.com/huggingface/diffusers/issues/4208.
+            -------------------------------------------------------------
       --sdxl-negative-crops-coords-top-left COORD [COORD ...]
-            One or more Stable Diffusion XL (torch-sdxl) "negative-crops-coords-top-left" micro-conditioning
+            One or more Stable Diffusion XL (sdxl) "negative-crops-coords-top-left" micro-conditioning
             parameters in the format "0,0". Negatively condition the generation process based on a specific crop
             coordinates. Part of SDXL's micro-conditioning as explained in section 2.2 of
             [https://huggingface.co/papers/2307.01952]. For more information, refer to this issue thread:
@@ -1516,14 +1514,14 @@ Help Output
             See: --sdxl-negative-crops-coords-top-left, applied to SDXL refiner pass.
             -------------------------------------------------------------------------
       -hnf, --sdxl-high-noise-fractions FLOAT [FLOAT ...]
-            One or more high-noise-fraction values for Stable Diffusion XL (torch-sdxl), this fraction of
-            inference steps will be processed by the base model, while the rest will be processed by the refiner
-            model. Multiple values to this argument will result in additional generation steps for each value.
-            In certain situations when collaborative denoising is not supported, such as when using
-            --control-nets and inpainting with SDXL, the inverse proportion of this value IE: (1.0 -
-            high-noise-fraction) becomes the --image-seed-strengths input to the SDXL refiner in plain img2img
-            mode. Edit mode may be forced with the option --sdxl-refiner-edit (default: [0.8])
-            ----------------------------------------------------------------------------------
+            One or more high-noise-fraction values for Stable Diffusion XL (sdxl), this fraction of inference
+            steps will be processed by the base model, while the rest will be processed by the refiner model.
+            Multiple values to this argument will result in additional generation steps for each value. In
+            certain situations when collaborative denoising is not supported, such as when using --control-nets
+            and inpainting with SDXL, the inverse proportion of this value IE: (1.0 - high-noise-fraction)
+            becomes the --image-seed-strengths input to the SDXL refiner in plain img2img mode. Edit mode may be
+            forced with the option --sdxl-refiner-edit (default: [0.8])
+            -----------------------------------------------------------
       -rgr, --sdxl-refiner-guidance-rescales FLOAT [FLOAT ...]
             One or more guidance rescale values for the SDXL refiner when in use. Override the guidance rescale
             value used by the SDXL refiner, which defaults to the value taken from --guidance-rescales.
@@ -1551,19 +1549,19 @@ Help Output
             If --no-aspect is not specified, width will be fixed and a new height (aligned by 8) will be
             calculated for the input images. In most cases resizing the image inputs will result in an image
             output of an equal size to the inputs, except for upscalers and Deep Floyd --model-type values
-            (torch-if*).
+            (if*).
             
             If only one integer value is provided, that is the value for both dimensions. X/Y dimension values
             should be separated by "x".
             
             This value defaults to 512x512 for Stable Diffusion when no --image-seeds are specified (IE txt2img
             mode), 1024x1024 for Stable Cascade and Stable Diffusion 3/XL or Flux model types, and 64x64 for
-            --model-type torch-if (Deep Floyd stage 1).
+            --model-type if (Deep Floyd stage 1).
             
-            Deep Floyd stage 1 images passed to superscaler models (--model-type torch-ifs*) that are specified
-            with the 'floyd' keyword argument in an --image-seeds definition are never resized or processed in
-            any way.
-            --------
+            Deep Floyd stage 1 images passed to superscaler models (--model-type ifs*) that are specified  with
+            the 'floyd' keyword argument in an --image-seeds definition are never resized or processed in any
+            way.
+            ----
       -na, --no-aspect
             This option disables aspect correct resizing of images provided to --image-seeds globally. Seed,
             Mask, and Control guidance images will be resized to the closest dimension specified by
@@ -1739,17 +1737,17 @@ Help Output
             (default: [(empty string)])
             ---------------------------
       --second-prompts PROMPT [PROMPT ...]
-            One or more secondary prompts to try using the torch-sdxl (SDXL), torch-sd3 (Stable Diffusion 3) or
-            torch-flux (Flux) secondary text encoder. By default the model is passed the primary prompt for this
+            One or more secondary prompts to try using the sdxl (SDXL), sd3 (Stable Diffusion 3) or flux (Flux)
+            secondary text encoder. By default the model is passed the primary prompt for this value, this
+            option allows you to choose a different prompt. The negative prompt component can be specified with
+            the same syntax as --prompts
+            ----------------------------
+      --third-prompts PROMPT [PROMPT ...]
+            One or more tertiary prompts to try using the sd3 (Stable Diffusion 3) tertiary (T5) text encoder,
+            Flux does not support this argument. By default the model is passed the primary prompt for this
             value, this option allows you to choose a different prompt. The negative prompt component can be
             specified with the same syntax as --prompts
             -------------------------------------------
-      --third-prompts PROMPT [PROMPT ...]
-            One or more tertiary prompts to try using the torch-sd3 (Stable Diffusion 3) tertiary (T5) text
-            encoder, Flux does not support this argument. By default the model is passed the primary prompt for
-            this value, this option allows you to choose a different prompt. The negative prompt component can
-            be specified with the same syntax as --prompts
-            ----------------------------------------------
       --second-model-prompts PROMPT [PROMPT ...]
             One or more prompts to try with the SDXL Refiner or Stable Cascade decoder model, by default the
             decoder model gets the primary prompt, this argument overrides that with a prompt of your choosing.
@@ -1770,8 +1768,8 @@ Help Output
             One or more clip skip values to try. Clip skip is the number of layers to be skipped from CLIP while
             computing the prompt embeddings, it must be a value greater than or equal to zero. A value of 1
             means that the output of the pre-final layer will be used for computing the prompt embeddings. This
-            is only supported for --model-type values "torch", "torch-sdxl", and "torch-sd3".
-            ---------------------------------------------------------------------------------
+            is only supported for --model-type values "sd", "sdxl", and "sd3".
+            ------------------------------------------------------------------
       -se, --seeds SEED [SEED ...]
             One or more seeds to try, define fixed seeds to achieve deterministic output. This argument may not
             be used when --gse/--gen-seeds is used. (default: [randint(0, 99999999999999)])
@@ -1847,21 +1845,20 @@ Help Output
             aspect ratio of the input image should be respected or ignored.
             
             The keyword argument "floyd" can be used to specify images from a previous deep floyd stage when
-            using --model-type torch-ifs*. When keyword arguments are present, all applicable images such as
-            "mask", "control", etc. must also be defined with keyword arguments instead of with the short
-            syntax.
+            using --model-type ifs*. When keyword arguments are present, all applicable images such as "mask",
+            "control", etc. must also be defined with keyword arguments instead of with the short syntax.
             
             In place of static images, you may pass a latents file generated by dgenerate containing the raw
             un-decoded latents from a previous generation, latents can be generated with --image-format pt, pth,
             or safetensors. Latents may be passed for img2img input only. Latents will first be decoded back
             into pixel space (into a normal image) by the receiving models VAE. Except in the case of
-            --model-type torch-upscaler-x2, which can handle the denoised latents directly.
+            --model-type upscaler-x2, which can handle the denoised latents directly.
             
-            Latent img2img input is not supported for --model-type torch-s-cascade as Stable Cascade cannot
-            perform traditional img2img, and will result in an error if attempted. Latent input is also not
-            supported for ControlNet/T2I Adapter guidance images, or IP Adapter images, as these guidance models
-            operate on images in pixel space.
-            ---------------------------------
+            Latent img2img input is not supported for --model-type s-cascade as Stable Cascade cannot perform
+            traditional img2img, and will result in an error if attempted. Latent input is also not supported
+            for ControlNet/T2I Adapter guidance images, or IP Adapter images, as these guidance models operate
+            on images in pixel space.
+            -------------------------
       -sip, --seed-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
             Specify one or more image processor actions to perform on the primary img2img image(s) specified by
             --image-seeds.
@@ -1977,11 +1974,10 @@ Help Output
             ---------------------------------------------
       -uns, --upscaler-noise-levels INTEGER [INTEGER ...]
             One or more upscaler noise level values to try when using the super resolution upscaler --model-type
-            torch-upscaler-x4 or torch-ifs. Specifying this option for --model-type torch-upscaler-x2 will
-            produce an error message. The higher this value the more noise is added to the image before
-            upscaling (similar to --image-seed-strengths). (default: [20 for x4, 250 for
-            torch-ifs/torch-ifs-img2img, 0 for torch-ifs inpainting mode])
-            --------------------------------------------------------------
+            upscaler-x4 or ifs. Specifying this option for --model-type upscaler-x2 will produce an error
+            message. The higher this value the more noise is added to the image before upscaling (similar to
+            --image-seed-strengths). (default: [20 for x4, 250 for ifs/ifs-img2img, 0 for ifs inpainting mode])
+            ---------------------------------------------------------------------------------------------------
       -gs, --guidance-scales FLOAT [FLOAT ...]
             One or more guidance scale values to try. Guidance scale effects how much your text prompt is
             considered. Low values draw more data from images unrelated to text prompt.
@@ -2029,11 +2025,10 @@ Help Output
             [Common Diffusion Noise Schedules and Sample Steps are Flawed](https://arxiv.org/pdf/2305.08891.pdf).
             
             Guidance rescale factor should fix overexposure when using zero terminal SNR. This is supported for
-            basic text to image generation when using --model-type "torch" but not inpainting, img2img, or
-            --control-nets. When using --model-type "torch-sdxl" it is supported for basic generation,
-            inpainting, and img2img, unless --control-nets is specified in which case only inpainting is
-            supported. It is supported for --model-type "torch-sdxl-pix2pix" but not --model-type
-            "torch-pix2pix".
+            basic text to image generation when using --model-type "sd" but not inpainting, img2img, or
+            --control-nets. When using --model-type "sdxl" it is supported for basic generation, inpainting, and
+            img2img, unless --control-nets is specified in which case only inpainting is supported. It is
+            supported for --model-type "sdxl-pix2pix" but not --model-type "pix2pix".
             
             (default: [0.0])
             ----------------
@@ -2773,7 +2768,7 @@ recommended to prevent out of memory conditions on the average GPU :)
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
+    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type sdxl \
     --sdxl-high-noise-fractions 0.6 0.7 0.8 \
     --gen-seeds 5 \
     --inference-steps 50 \
@@ -2905,7 +2900,7 @@ option ``--image-format`` with the value ``pt``, ``pth``,  or ``safetensors``.
 These latents will be decoded by the receiving VAE and used as the img2img input,
 for passing raw latents without a VAE decode, see: `Latents Interchange`_ for details.
 
-Latent ``img2img`` input is not supported for ``--model-type torch-s-cascade`` as Stable Cascade
+Latent ``img2img`` input is not supported for ``--model-type s-cascade`` as Stable Cascade
 cannot perform traditional ``img2img``, and will result in an error if attempted. Latent input
 is also not supported for ControlNet/T2I Adapter guidance images, or IP Adapter images, as
 these guidance models operate on images in pixel space.
@@ -3473,7 +3468,7 @@ Stable Diffusion 3 Cooperative Denoising:
     
     
     stabilityai/stable-diffusion-3-medium-diffusers
-    --model-type torch-sd3 {{ optimization }}
+    --model-type sd3 {{ optimization }}
     --variant fp16
     --dtype float16
     --inference-steps {{ steps }}
@@ -3494,7 +3489,7 @@ Stable Diffusion 3 Cooperative Denoising:
     # pipeline.
     
     stabilityai/stable-diffusion-3-medium-diffusers
-    --model-type torch-sd3 {{ optimization }}
+    --model-type sd3 {{ optimization }}
     --variant fp16
     --dtype float16
     --inference-steps {{ steps }}
@@ -3539,7 +3534,7 @@ Flux Cooperative Denoising:
     
     
     black-forest-labs/FLUX.1-dev
-    --model-type torch-flux {{ optimization }}
+    --model-type flux {{ optimization }}
     --dtype bfloat16
     --inference-steps 50
     --guidance-scales 3.5
@@ -3553,7 +3548,7 @@ Flux Cooperative Denoising:
     
     
     black-forest-labs/FLUX.1-dev
-    --model-type torch-flux {{ optimization }}
+    --model-type flux {{ optimization }}
     --dtype bfloat16
     --inference-steps 50
     --guidance-scales 3.5
@@ -3601,7 +3596,7 @@ when ``--denoising-start`` has been specified with an SDXL or Kolors model:
     
     
     stabilityai/stable-diffusion-xl-base-1.0
-    --model-type torch-sdxl
+    --model-type sdxl
     --dtype float16
     --variant 'fp16'
     --inference-steps {{ steps }}
@@ -3617,7 +3612,7 @@ when ``--denoising-start`` has been specified with an SDXL or Kolors model:
     stabilityai/stable-diffusion-xl-refiner-1.0
     --dtype float16
     --variant 'fp16'
-    --model-type torch-sdxl
+    --model-type sdxl
     --inference-steps {{ steps }}
     --guidance-scales 5
     --gen-seeds 1
@@ -3817,7 +3812,7 @@ For example there is only one compatible scheduler for this upscaler configurati
     #!/usr/bin/env bash
 
     dgenerate stabilityai/sd-x2-latent-upscaler --variant fp16 --dtype float16 \
-    --model-type torch-upscaler-x2 \
+    --model-type upscaler-x2 \
     --prompts "none" \
     --image-seeds my-image.png \
     --output-size 256 \
@@ -3945,7 +3940,7 @@ output file name, in the order: ``(scheduler)_(refiner / decoder scheduler)``
     # all possible combinations of schedulers provided
 
     dgenerate stabilityai/stable-diffusion-xl-base-1.0 \
-    --model-type torch-sdxl \
+    --model-type sdxl \
     --dtype float16 \
     --variant fp16 \
     --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
@@ -4024,7 +4019,7 @@ curve that Flux already uses and scaling it by a value.
     \set sigmas {{ csv(np.linspace(1.0, 1 / inference_steps, inference_steps) * sigma_scale) }}
     
     black-forest-labs/FLUX.1-dev
-    --model-type torch-flux {{ auth_token }} {{ optimization }}
+    --model-type flux {{ auth_token }} {{ optimization }}
     --dtype bfloat16
     --inference-steps {{ inference_steps }}
     --guidance-scales 3.5
@@ -4069,7 +4064,7 @@ set of sigmas may not be so trivial.
     # You may also use python builtins such as "max", "min" etc.
     
     black-forest-labs/FLUX.1-dev
-    --model-type torch-flux {{ auth_token }} {{ optimization }}
+    --model-type flux {{ auth_token }} {{ optimization }}
     --dtype bfloat16
     --inference-steps 50
     --guidance-scales 3.5
@@ -4086,15 +4081,15 @@ To specify a VAE directly use ``--vae``.
 
 VAEs are supported for these model types:
 
-    * ``--model-type torch``
-    * ``--model-type torch-pix2pix``
-    * ``--model-type torch-upscaler-x2``
-    * ``--model-type torch-upscaler-x4``
-    * ``--model-type torch-sdxl``
-    * ``--model-type torch-sdxl-pix2pix``
+    * ``--model-type sd``
+    * ``--model-type pix2pix``
+    * ``--model-type upscaler-x2``
+    * ``--model-type upscaler-x4``
+    * ``--model-type sdxl``
+    * ``--model-type sdxl-pix2pix``
     * ``--model-type kolors``
-    * ``--model-type torch-sd3``
-    * ``--model-type torch-flux``
+    * ``--model-type sd3``
+    * ``--model-type flux``
 
 The URI syntax for ``--vae`` is ``AutoEncoderClass;model=(huggingface repository slug/blob link or file/folder path)``
 
@@ -4244,7 +4239,7 @@ when ``--batch-size`` is greater than 1.
 
     # Here is an SDXL example of high resolution image generation utilizing VAE tiling/slicing
 
-    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
+    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type sdxl \
     --variant fp16 --dtype float16 \
     --vae "AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix" \
     --vae-tiling \
@@ -4265,17 +4260,17 @@ similar fashion to ``--vae`` and other model arguments that accept URIs.
 
 UNets are supported for these model types:
 
-    * ``--model-type torch``
-    * ``--model-type torch-if``
-    * ``--model-type torch-ifs``
-    * ``--model-type torch-ifs-img2img``
-    * ``--model-type torch-pix2pix``
-    * ``--model-type torch-upscaler-x2``
-    * ``--model-type torch-upscaler-x4``
-    * ``--model-type torch-sdxl``
-    * ``--model-type torch-sdxl-pix2pix``
+    * ``--model-type sd``
+    * ``--model-type if``
+    * ``--model-type ifs``
+    * ``--model-type ifs-img2img``
+    * ``--model-type pix2pix``
+    * ``--model-type upscaler-x2``
+    * ``--model-type upscaler-x4``
+    * ``--model-type sdxl``
+    * ``--model-type sdxl-pix2pix``
     * ``--model-type kolors``
-    * ``--model-type torch-s-cascade``
+    * ``--model-type s-cascade``
 
 This is useful in particular for using the latent consistency scheduler as well as the
 ``lite`` variants of the unet models used with Stable Cascade.
@@ -4290,7 +4285,7 @@ The latent consistency UNet for SDXL can be specified with the ``--unet`` argume
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
+    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type sdxl \
     --variant fp16 --dtype float16 \
     --unet latent-consistency/lcm-sdxl \
     --scheduler LCMScheduler \
@@ -4320,7 +4315,7 @@ UNet models which have a smaller memory footprint using ``--unet`` and ``--secon
     #!/usr/bin/env bash
 
     dgenerate stabilityai/stable-cascade-prior \
-    --model-type torch-s-cascade \
+    --model-type s-cascade \
     --variant bf16 \
     --dtype bfloat16 \
     --unet "stabilityai/stable-cascade-prior;subfolder=prior_lite" \
@@ -4358,7 +4353,7 @@ SD3 Example:
     # This just loads the default transformer out of the repo on huggingface
 
     dgenerate stabilityai/stable-diffusion-3-medium-diffusers \
-    --model-type torch-sd3 \
+    --model-type sd3 \
     --transformer "stabilityai/stable-diffusion-3-medium-diffusers;subfolder=transformer" \
     --variant fp16 \
     --dtype float16 \
@@ -4379,7 +4374,7 @@ Flux Example:
     # use Flux with quantized transformer and T5 text encoder (bitsandbytes, 4 bits)
 
     dgenerate black-forest-labs/FLUX.1-dev \
-    --model-type torch-flux \
+    --model-type flux \
     --dtype bfloat16 \
     --transformer "black-forest-labs/FLUX.1-dev;subfolder=transformer;quantizer='bnb;bits=4'" \
     --text-encoders + "T5EncoderModel;model=black-forest-labs/FLUX.1-dev;subfolder=text_encoder_2;quantizer='bnb;bits=4'" \
@@ -4393,7 +4388,7 @@ Flux Example:
 Specifying an SDXL Refiner
 ==========================
 
-When the main model is an SDXL model and ``--model-type torch-sdxl`` is specified,
+When the main model is an SDXL model and ``--model-type sdxl`` is specified,
 you may specify a refiner model with ``--sdxl-refiner``.
 
 You can provide a path to a huggingface repo/blob link, folder on disk, or a model file
@@ -4415,7 +4410,7 @@ or folder that may or may not be a local git repository on disk.
 
     # Basic usage of SDXL with a refiner
 
-    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
+    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type sdxl \
     --variant fp16 --dtype float16 \
     --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
     --sdxl-high-noise-fractions 0.8 \
@@ -4432,7 +4427,7 @@ If you want to select the repository revision, such as ``main`` etc, use the nam
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
+    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type sdxl \
     --variant fp16 --dtype float16 \
     --sdxl-refiner "stabilityai/stable-diffusion-xl-refiner-1.0;revision=main" \
     --sdxl-high-noise-fractions 0.8 \
@@ -4450,7 +4445,7 @@ value is the same as ``--variant`` unless you override it.
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
+    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type sdxl \
     --variant fp16 --dtype float16 \
     --sdxl-refiner "stabilityai/stable-diffusion-xl-refiner-1.0;variant=fp16" \
     --sdxl-high-noise-fractions 0.8 \
@@ -4468,7 +4463,7 @@ If your weights file exists in a subfolder of the repository, use the named argu
 
     # This is only a syntax example
 
-    dgenerate huggingface/sdxl_model --model-type torch-sdxl \
+    dgenerate huggingface/sdxl_model --model-type sdxl \
     --variant fp16 --dtype float16 \
     --sdxl-refiner "huggingface/sdxl_refiner;subfolder=repo_subfolder"
 
@@ -4481,7 +4476,7 @@ values are the same as ``--dtype``, IE: 'float32', 'float16', 'auto'
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
+    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type sdxl \
     --variant fp16 --dtype float16 \
     --sdxl-refiner "stabilityai/stable-diffusion-xl-refiner-1.0;dtype=float16" \
     --sdxl-high-noise-fractions 0.8 \
@@ -4499,7 +4494,7 @@ If you are loading a .safetensors or other file from a path on disk, simply do:
 
     # This is only a syntax example
 
-    dgenerate huggingface/sdxl_model --model-type torch-sdxl \
+    dgenerate huggingface/sdxl_model --model-type sdxl \
     --sdxl-refiner my_refinermodel.safetensors
 
 
@@ -4522,7 +4517,7 @@ from the main model in this use case.
 Specifying a Stable Cascade Decoder
 ===================================
 
-When the main model is a Stable Cascade prior model and ``--model-type torch-s-cascade`` is specified,
+When the main model is a Stable Cascade prior model and ``--model-type s-cascade`` is specified,
 you may specify a decoder model with ``--s-cascade-decoder``.
 
 The syntax (and URI arguments) for specifying the decoder model is identical to specifying an SDXL refiner
@@ -4533,7 +4528,7 @@ model as mentioned above.
     #!/usr/bin/env bash
 
     dgenerate stabilityai/stable-cascade-prior \
-    --model-type torch-s-cascade \
+    --model-type s-cascade \
     --variant bf16 \
     --dtype bfloat16 \
     --model-cpu-offload \
@@ -4553,15 +4548,15 @@ It is possible to specify one or more LoRA models using ``--loras``
 
 LoRAs are supported for these model types:
 
-    * ``--model-type torch``
-    * ``--model-type torch-pix2pix``
-    * ``--model-type torch-upscaler-x4``
-    * ``--model-type torch-sdxl``
-    * ``--model-type torch-sdxl-pix2pix``
-    * ``--model-type torch-kolors``
-    * ``--model-type torch-sd3``
-    * ``--model-type torch-flux``
-    * ``--model-type torch-flux-fill``
+    * ``--model-type sd``
+    * ``--model-type pix2pix``
+    * ``--model-type upscaler-x4``
+    * ``--model-type sdxl``
+    * ``--model-type sdxl-pix2pix``
+    * ``--model-type kolors``
+    * ``--model-type sd3``
+    * ``--model-type flux``
+    * ``--model-type flux-fill``
 
 When multiple specifications are given, all mentioned models will be fused together
 into one set of weights at their individual scale, and then those weights will be
@@ -4612,7 +4607,7 @@ Shown below is an SDXL compatible LoRA being used with the SDXL base model and a
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
+    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type sdxl \
     --inference-steps 30 \
     --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
     --prompts "sketch of a horse by Leonardo da Vinci" \
@@ -4668,13 +4663,13 @@ One or more Textual Inversion models (otherwise known as embeddings) may be spec
 
 Textual inversions are supported for these model types:
 
-    * ``--model-type torch``
-    * ``--model-type torch-pix2pix``
-    * ``--model-type torch-upscaler-x4``
-    * ``--model-type torch-sdxl``
-    * ``--model-type torch-sdxl-pix2pix``
-    * ``--model-type torch-flux`` (``txt2img``, ``txt2img + ControlNets``, ``inpainting + ControlNets`` only)
-    * ``--model-type torch-flux-fill`` (``inpainting`` only)
+    * ``--model-type sd``
+    * ``--model-type pix2pix``
+    * ``--model-type upscaler-x4``
+    * ``--model-type sdxl``
+    * ``--model-type sdxl-pix2pix``
+    * ``--model-type flux`` (``txt2img``, ``txt2img + ControlNets``, ``inpainting + ControlNets`` only)
+    * ``--model-type flux-fill`` (``inpainting`` only)
 
 You can provide a huggingface repository slug, .pt, .pth, .bin, .ckpt, or .safetensors files.
 Blob links are not accepted, for that use ``subfolder`` and ``weight-name`` described below.
@@ -4779,11 +4774,11 @@ multiple controlnet models.
 
 ControlNet models are supported for these model types:
 
-    * ``--model-type torch``
-    * ``--model-type torch-sdxl``
+    * ``--model-type sd``
+    * ``--model-type sdxl``
     * ``--model-type kolors``
-    * ``--model-type torch-sd3`` (img2img and inpainting not supported)
-    * ``--model-type torch-flux``
+    * ``--model-type sd3`` (img2img and inpainting not supported)
+    * ``--model-type flux``
 
 You can provide a huggingface repository slug / blob link, .pt, .pth, .bin, .ckpt, or .safetensors files.
 
@@ -4876,7 +4871,7 @@ These examples use: `vermeer_canny_edged.png <vermeer_canny_edged.png_>`_
 
     # SDXL example
 
-    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
+    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type sdxl \
     --variant fp16 --dtype float16 \
     --vae "AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix" \
     --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
@@ -4982,7 +4977,7 @@ Here is an example making use of ``depth`` and ``openpose``:
 
     # even 50/50 split on mode contribution
 
-    stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
+    stabilityai/stable-diffusion-xl-base-1.0 --model-type sdxl
     --variant fp16 --dtype float16
     --vae AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix
     --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0
@@ -5032,7 +5027,7 @@ The controlnet "mode" option may be set to one of:
     # union repository, with the mode specified as "pose"
 
     dgenerate black-forest-labs/FLUX.1-schnell \
-    --model-type torch-flux \
+    --model-type flux \
     --dtype bfloat16 \
     --model-sequential-offload \
     --control-nets "InstantX/FLUX.1-dev-Controlnet-Union;scale=0.8;mode=pose" \
@@ -5066,8 +5061,8 @@ with control images for guidance, img2img and inpainting is not supported with T
 
 T2I Adapter models are supported for these model types:
 
-    * ``--model-type torch``
-    * ``--model-type torch-sdxl``
+    * ``--model-type sd``
+    * ``--model-type sdxl``
 
 You can provide a huggingface repository slug / blob link, .pt, .pth, .bin, .ckpt, or .safetensors files.
 
@@ -5115,7 +5110,7 @@ These examples use: `vermeer_canny_edged.png <vermeer_canny_edged.png_>`_
 
     # SDXL example
 
-    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
+    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type sdxl \
     --variant fp16 --dtype float16 \
     --vae "AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix" \
     --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
@@ -5174,11 +5169,11 @@ The URI syntax for this argument is identical to ``--loras``, which is discussed
 
 IP Adapters are supported for these model types:
 
-    * ``--model-type torch``
-    * ``--model-type torch-pix2pix``
-    * ``--model-type torch-sdxl``
+    * ``--model-type sd``
+    * ``--model-type pix2pix``
+    * ``--model-type sdxl``
     * ``--model-type kolors``
-    * ``--model-type torch-flux`` (basic adapter image specification only)
+    * ``--model-type flux`` (basic adapter image specification only)
 
 Here is a brief example of loading an IP Adapter in the most basic way and passing it an image via ``--image-seeds``.
 
@@ -5192,7 +5187,7 @@ This example nearly duplicates an image created with a code snippet in the diffu
     # this uses one IP Adapter input image with the IP Adapter h94/IP-Adapter
 
     dgenerate stabilityai/stable-diffusion-xl-base-1.0 \
-    --model-type torch-sdxl \
+    --model-type sdxl \
     --dtype float16 \
     --variant fp16 \
     --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
@@ -5332,7 +5327,7 @@ Specifying Text Encoders
 ========================
 
 Diffusion pipelines supported by dgenerate may use a varying number of
-text encoder sub models, currently up to 3. ``--model-type torch-sd3``
+text encoder sub models, currently up to 3. ``--model-type sd3``
 for instance uses 3 text encoder sub models, all of which can be
 individually specified from the command line if desired.
 
@@ -5414,7 +5409,7 @@ when passing ``help`` or ``helpargs`` to any ``--scheduler`` type argument.
     # ask for text encoder help on the main model that is mentioned
 
     dgenerate https://huggingface.co/stabilityai/stable-diffusion-3-medium/blob/main/sd3_medium_incl_clips.safetensors \
-    --model-type torch-sd3 \
+    --model-type sd3 \
     --variant fp16 \
     --dtype float16 \
     --text-encoders help
@@ -5470,7 +5465,7 @@ repository on huggingface.
     # loaded from the checkpoint file for the main model
     
     https://huggingface.co/stabilityai/stable-diffusion-3-medium/blob/main/sd3_medium_incl_clips.safetensors
-    --model-type torch-sd3 {{ optimization }}
+    --model-type sd3 {{ optimization }}
     --variant fp16
     --dtype float16
     --inference-steps 30
@@ -5511,7 +5506,7 @@ For instance, you can prevent Stable Diffusion 3 from loading and using the T5 e
     # the value "null" in place of a text encoder URI
     
     https://huggingface.co/stabilityai/stable-diffusion-3-medium/blob/main/sd3_medium_incl_clips.safetensors
-    --model-type torch-sd3 {{ optimization }}
+    --model-type sd3 {{ optimization }}
     --variant fp16
     --dtype float16
     --inference-steps 30
@@ -5553,7 +5548,7 @@ and using ``null`` will override it.
     # as a whole
     
     stabilityai/stable-diffusion-3-medium-diffusers
-    --model-type torch-sd3 {{ optimization }}
+    --model-type sd3 {{ optimization }}
     --variant fp16
     --dtype float16
     --inference-steps 30
@@ -5577,7 +5572,7 @@ and using ``null`` will override it.
     # of memory
     
     stabilityai/stable-diffusion-3-medium-diffusers
-    --model-type torch-sd3 {{ optimization }}
+    --model-type sd3 {{ optimization }}
     --variant fp16
     --dtype float16
     --inference-steps 30
@@ -5645,7 +5640,7 @@ with additional fine-tuning.
     \set t5_xxl https://huggingface.co/comfyanonymous/flux_text_encoders/blob/main/t5xxl_fp16.safetensors
     
     {{ model }}
-    --model-type torch-flux
+    --model-type flux
     --dtype bfloat16
     --quantizer {{ quantizer }}
     --text-encoders CLIPTextModel;model={{ clip_l }};mode=clip-l;quantizer="{{ quantizer }}" \
@@ -5699,7 +5694,7 @@ This can also be utilized with SD3.
     \set t5_xxl https://huggingface.co/stabilityai/stable-diffusion-3-medium/blob/main/text_encoders/t5xxl_fp16.safetensors
     
     {{ model }}
-    --model-type torch-sd3
+    --model-type sd3
     --dtype float16
     --quantizer {{ quantizer }}
     --text-encoders CLIPTextModelWithProjection;model={{ clip_l }};mode=clip-l-sd3;quantizer="{{ quantizer }}" \
@@ -6185,7 +6180,7 @@ The following is an example making use of the ``dynamicprompts``, ``magicprompt`
     # then the attention upscaler will add random attention values to the resulting prompts
     
     stabilityai/stable-diffusion-xl-base-1.0
-    --model-type torch-sdxl
+    --model-type sdxl
     --dtype float16
     --variant fp16
     --inference-steps 30
@@ -6241,7 +6236,7 @@ Quantization backend packages will be installed by dgenerate's packaging on plat
     
     
     stabilityai/stable-diffusion-xl-base-1.0
-    --model-type torch-sdxl
+    --model-type sdxl
     --dtype float16
     --variant fp16
     --inference-steps 30
@@ -6296,7 +6291,7 @@ Here is an example using `Phi-3 Mini Abliterated Q4 GGUF by failspy <Phi-3_Mini_
     \set llm_preamble 'Enhance this photo description:'
     
     stabilityai/stable-diffusion-xl-base-1.0
-    --model-type torch-sdxl
+    --model-type sdxl
     --dtype float16
     --variant fp16
     --inference-steps 30
@@ -6503,12 +6498,12 @@ features not mentioned in this documentation, that are worth reading about in th
     
         This prompt weighter supports the model types:
     
-        --model-type torch
-        --model-type torch-pix2pix
-        --model-type torch-upscaler-x4
-        --model-type torch-sdxl
-        --model-type torch-sdxl-pix2pix
-        --model-type torch-s-cascade
+        --model-type sd
+        --model-type pix2pix
+        --model-type upscaler-x4
+        --model-type sdxl
+        --model-type sdxl-pix2pix
+        --model-type s-cascade
     
         The secondary prompt option for SDXL --second-prompts is supported by this prompt weighter implementation.
         However, --second-model-second-prompts is not supported and will be ignored with a warning message.
@@ -6634,14 +6629,14 @@ as the ``compel`` prompt weighter currently does not.
     
         This prompt weighter supports the model types:
     
-        --model-type torch
-        --model-type torch-pix2pix
-        --model-type torch-upscaler-x4
-        --model-type torch-sdxl
-        --model-type torch-sdxl-pix2pix
-        --model-type torch-s-cascade
-        --model-type torch-sd3
-        --model-type torch-flux
+        --model-type sd
+        --model-type pix2pix
+        --model-type upscaler-x4
+        --model-type sdxl
+        --model-type sdxl-pix2pix
+        --model-type s-cascade
+        --model-type sd3
+        --model-type flux
     
         The secondary prompt option for SDXL --second-prompts is supported by this prompt weighter implementation.
         However, --second-model-second-prompts is not supported and will be ignored with a warning message.
@@ -6666,7 +6661,7 @@ You can enable the ``sd-embed`` prompt weighter by specifying it with the ``--pr
     # You need a huggingface API token to run this example
 
     dgenerate stabilityai/stable-diffusion-3-medium-diffusers \
-    --model-type torch-sd3 \
+    --model-type sd3 \
     --variant fp16 \
     --dtype float16 \
     --inference-steps 30 \
@@ -6720,9 +6715,9 @@ See: `LLM4GEN <https://github.com/YUHANG-Ma/LLM4GEN>`_
     
         This prompt weighter supports the model types:
     
-        --model-type torch
-        --model-type torch-pix2pix
-        --model-type torch-upscaler-x4
+        --model-type sd
+        --model-type pix2pix
+        --model-type upscaler-x4
     
         You may use the --second-prompts argument of dgenerate to pass a prompt explicitly to the T5 rankgen
         encoder, which uses the primary prompt by default otherwise.
@@ -6934,7 +6929,7 @@ CivitAI API links automatically, this example appends it manually.
     MODEL="https://civitai.com/api/download/models/133832?type=Model&format=SafeTensor&size=full&fp=fp16&token=$TOKEN"
 
     dgenerate $MODEL \
-    --model-type torch-sdxl \
+    --model-type sdxl \
     --variant fp16 --dtype float16 \
     --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
     --sdxl-high-noise-fractions 0.8 \
@@ -7171,7 +7166,7 @@ is used in the example below with a ControlNet that is trained to generate image
     # in this case the single image seed is considered a control image
     # because --control-nets is being used
 
-    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
+    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type sdxl \
     --variant fp16 --dtype float16 \
     --vae "AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix" \
     --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
@@ -7424,7 +7419,7 @@ This only works for fully denoised latents, and not for partially denoised laten
     # The interposer;source=v1;target=xl converts SD1.x latents to SDXL space
     
     stabilityai/stable-diffusion-xl-base-1.0
-    --model-type torch-sdxl
+    --model-type sdxl
     --dtype float16
     --variant fp16
     --inference-steps 30
@@ -7862,7 +7857,7 @@ the models involved with the loaded pipeline are garbage collected immediately a
 
     dgenerate --sub-command to-diffusers \
     "https://civitai.com/api/download/models/3002?type=Model&format=PickleTensor&size=full&fp=fp16" \
-    --model-type torch \
+    --model-type sd \
     --dtypes float16 float32 \
     --output modern_buildings
 
@@ -8019,8 +8014,8 @@ Upscaling with Diffusion Upscaler Models
 
 Stable diffusion image upscaling models can be used via the model types:
 
-    * ``--model-type torch-upscaler-x2``
-    * ``--model-type torch-upscaler-x4``
+    * ``--model-type upscaler-x2``
+    * ``--model-type upscaler-x4``
 
 The image used in the example below is this `low resolution cat <https://raw.githubusercontent.com/Teriks/dgenerate/version_5.0.0/examples/media/low_res_cat.png>`_
 
@@ -8033,7 +8028,7 @@ The image used in the example below is this `low resolution cat <https://raw.git
     # The image is being resized to 256x256, and then upscaled by 2x
 
     dgenerate stabilityai/sd-x2-latent-upscaler --variant fp16 --dtype float16 \
-    --model-type torch-upscaler-x2 \
+    --model-type upscaler-x2 \
     --prompts "a picture of a white cat" \
     --image-seeds low_res_cat.png \
     --output-size 256
@@ -8044,7 +8039,7 @@ The image used in the example below is this `low resolution cat <https://raw.git
     # The image is being resized to 256x256, and then upscaled by 4x
 
     dgenerate stabilityai/stable-diffusion-x4-upscaler --variant fp16 --dtype float16 \
-     --model-type torch-upscaler-x4 \
+     --model-type upscaler-x4 \
     --prompts "a picture of a white cat" \
     --image-seeds low_res_cat.png \
     --output-size 256 \
@@ -8071,7 +8066,7 @@ The ``upscaler`` image processor respects the ``--device`` option of dgenerate, 
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
+    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type sdxl \
     --variant fp16 --dtype float16 \
     --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
     --sdxl-high-noise-fractions 0.8 \
@@ -8231,12 +8226,12 @@ type.
 
 Currently adetailer supports these model types:
 
-    * ``--model-type torch``
-    * ``--model-type torch-sdxl``
-    * ``--model-type torch-kolors``
-    * ``--model-type torch-sd3``
-    * ``--model-type torch-flux``
-    * ``--model-type torch-flux-fill``
+    * ``--model-type sd``
+    * ``--model-type sdxl``
+    * ``--model-type kolors``
+    * ``--model-type sd3``
+    * ``--model-type flux``
+    * ``--model-type flux-fill``
 
 
 In effect, adetailer is supported by most pipelines that support any kind of inpainting, except for
@@ -8277,7 +8272,7 @@ for usage information.
     # possible use cases
 
     stabilityai/stable-diffusion-xl-base-1.0
-    --model-type torch-sdxl
+    --model-type sdxl
     --dtype float16
     --variant fp16
     --inference-steps 30
@@ -8316,7 +8311,7 @@ inpaint multiple types of objects in an image, or different detection indices se
     #! dgenerate 5.0.0
 
     stabilityai/stable-diffusion-xl-base-1.0
-    --model-type torch-sdxl
+    --model-type sdxl
     --variant fp16
     --dtype float16
     --inference-steps 30
@@ -8461,12 +8456,12 @@ adetailer processor help output below.
         The "pag-scale" argument indicates the perturbed attention guidance scale, this enables a PAG inpaint
         pipeline if supported. If the previously used pipeline was a PAG pipeline, PAG is automatically enabled
         for inpainting if supported and this value defaults to 3.0 if not supplied. The adetailer processor
-        supports PAG with --model-type torch and torch-sdxl.
+        supports PAG with --model-type sd and sdxl.
     
         The "pag-adaptive-scale" argument indicates the perturbed attention guidance adaptive scale, this enables
         a PAG inpaint pipeline if supported. If the previously usee pipeline was a PAG pipeline, PAG is
         automatically enabled for inpainting if supported and this value defaults to 0.0 if not supplied. The
-        adetailer processor supports PAG with --model-type torch and torch-sdxl.
+        adetailer processor supports PAG with --model-type sd and sdxl.
     
         The "strength" argument is analogous to --image-seed-strengths
     
@@ -8589,7 +8584,7 @@ original generation, or with  different model types all together.
     # do this
 
     stabilityai/stable-diffusion-xl-base-1.0
-    --model-type torch-sdxl
+    --model-type sdxl
     --dtype float16
     --variant fp16
     --inference-steps 30
@@ -8626,7 +8621,7 @@ original generation, or with  different model types all together.
     # so that we can observe differences in the output
 
     stabilityai/stable-diffusion-xl-base-1.0
-    --model-type torch-sdxl
+    --model-type sdxl
     --variant fp16
     --dtype float16
     --image-seeds {{ quote(last_images) }}
@@ -8657,7 +8652,7 @@ when specifying detectors with ``--adetailer-detectors`` including ``class-filte
     # the URI prompts are weighted with --prompt-weighter sd-embed
 
     stabilityai/stable-diffusion-xl-base-1.0
-    --model-type torch-sdxl
+    --model-type sdxl
     --variant fp16
     --dtype float16
     --inference-steps 30
@@ -9069,7 +9064,7 @@ manual / interactive adetailer like editing.
     # utilizing image input preprocessors and a post processor
     
     stabilityai/stable-diffusion-xl-base-1.0
-    --model-type torch-sdxl
+    --model-type sdxl
     --dtype float16
     --variant fp16
     --image-seeds {{input_image}};{{input_image}}
@@ -9509,7 +9504,7 @@ The ``\templates_help`` output from the above example is:
             Value: False
         Name: "last_model_type"
             Type: <enum 'ModelType'>
-            Value: <ModelType.TORCH: 0>
+            Value: <ModelType.SD: 0>
         Name: "last_no_aspect"
             Type: <class 'bool'>
             Value: False
@@ -9767,7 +9762,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [42692149403247]
+            Value: [2780767960719]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -10674,7 +10669,7 @@ such as VAEs etc. outside of relying on the caching system.
     stabilityai/stable-diffusion-x4-upscaler
     --variant fp16
     --dtype float16
-    --model-type torch-upscaler-x4
+    --model-type upscaler-x4
     --prompts {{ format_prompt(last_prompts) }}
     --image-seeds {{ quote(last_images) }}
     --vae-tiling
@@ -11066,7 +11061,7 @@ You can use this to calculate and scale linear Flux sigmas for instance.
     \set sigmas {{ csv(np.linspace(1.0, 1 / inference_steps, inference_steps) * sigma_scale) }}
     
     black-forest-labs/FLUX.1-dev
-    --model-type torch-flux {{ auth_token }} {{ optimization }}
+    --model-type flux {{ auth_token }} {{ optimization }}
     --dtype bfloat16
     --inference-steps {{ inference_steps }}
     --guidance-scales 3.5
@@ -11098,7 +11093,7 @@ Or try scaling exponential SDXL sigmas.
     \set sigmas {{ csv(np.exp(np.linspace(np.log(sigma_max), np.log(sigma_min), inference_steps)) * sigma_scale) }}
     
     stabilityai/stable-diffusion-xl-base-1.0
-    --model-type torch-sdxl
+    --model-type sdxl
     --dtype float16
     --variant fp16
     --inference-steps {{ inference_steps }}

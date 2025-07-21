@@ -450,7 +450,7 @@ def _load_clip_g_sd35_large_from_single_file(
 
 class TextEncoderUri:
     """
-    Representation of ``--text-encoders`` uri when ``--model-type`` torch*
+    Representation of ``--text-encoders`` URI.
     """
 
     @property
@@ -990,7 +990,7 @@ class TextEncoderUri:
     @staticmethod
     def parse(uri: _types.Uri) -> 'TextEncoderUri':
         """
-        Parse a ``--model-type`` torch* ``--text-encoders*`` uri and return an object representing its constituents
+        Parse a ``--text-encoders*`` uri and return an object representing its constituents
 
         :param uri: string with ``--text-encoders*`` uri syntax
 

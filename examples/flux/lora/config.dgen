@@ -16,7 +16,7 @@
 
 
 black-forest-labs/FLUX.1-schnell
---model-type torch-flux {{ optimization }}
+--model-type flux {{ optimization }}
 --dtype bfloat16
 --loras veryVANYA/ps1-style-flux;scale=1.0
 --max-sequence-length 256

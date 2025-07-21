@@ -116,14 +116,14 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
     this enables a PAG inpaint pipeline if supported. If the previously used
     pipeline was a PAG pipeline, PAG is automatically enabled for inpainting
     if supported and this value defaults to 3.0 if not supplied. The adetailer
-    processor supports PAG with --model-type torch and torch-sdxl.
+    processor supports PAG with --model-type sd and sdxl.
 
     The "pag-adaptive-scale" argument indicates the perturbed attention guidance
     adaptive scale, this enables a PAG inpaint pipeline if supported.
     If the previously usee pipeline was a PAG pipeline, PAG is automatically
     enabled for inpainting if supported and this value defaults to 0.0 if
     not supplied. The adetailer processor supports PAG with
-    --model-type torch and torch-sdxl.
+    --model-type sd and sdxl.
 
     The "strength" argument is analogous to --image-seed-strengths
 
@@ -429,7 +429,7 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
             if not (is_sd or is_sdxl):
                 raise self.argument_error(
                     'adetailer arguments "pag-scale" and "pag-adaptive-scale" may not '
-                    'be used with anything other than --model-type torch and torch-sdxl')
+                    'be used with anything other than --model-type sd and sdxl')
 
             ad_pipe.force_pag = True
 
@@ -453,15 +453,15 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
             loader = _promptweighters.PromptWeighterLoader()
 
             if is_flux:
-                model_type = _enums.ModelType.TORCH_FLUX
+                model_type = _enums.ModelType.FLUX
             elif is_sdxl:
-                model_type = _enums.ModelType.TORCH_SDXL
+                model_type = _enums.ModelType.SDXL
             elif is_kolors:
-                model_type = _enums.ModelType.TORCH_KOLORS
+                model_type = _enums.ModelType.KOLORS
             elif is_sd3:
-                model_type = _enums.ModelType.TORCH_SD3
+                model_type = _enums.ModelType.SD3
             elif is_sd:
-                model_type = _enums.ModelType.TORCH
+                model_type = _enums.ModelType.SD
             else:
                 raise self.argument_error(
                     f'Pipeline: "{last_pipe.__class__.__name__}" does not support adetailer use.')

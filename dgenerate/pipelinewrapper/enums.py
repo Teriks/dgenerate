@@ -161,59 +161,59 @@ class ModelType(enum.Enum):
     Enum representation of ``--model-type``
     """
 
-    TORCH = 0
+    SD = 0
     """Stable Diffusion, such as SD 1.0 - 2.x"""
 
-    TORCH_PIX2PIX = 1
+    PIX2PIX = 1
     """Stable Diffusion pix2pix prompt guided editing."""
 
-    TORCH_SDXL = 2
+    SDXL = 2
     """Stable Diffusion XL"""
 
-    TORCH_IF = 3
+    IF = 3
     """Deep Floyd IF stage 1"""
 
-    TORCH_IFS = 4
+    IFS = 4
     """Deep Floyd IF superscaler (stage 2)"""
 
-    TORCH_IFS_IMG2IMG = 5
+    IFS_IMG2IMG = 5
     """Deep Floyd IF superscaler (stage 2) image to image / variation mode."""
 
-    TORCH_SDXL_PIX2PIX = 6
+    SDXL_PIX2PIX = 6
     """Stable Diffusion XL pix2pix prompt guided editing."""
 
-    TORCH_UPSCALER_X2 = 7
+    UPSCALER_X2 = 7
     """Stable Diffusion X2 upscaler"""
 
-    TORCH_UPSCALER_X4 = 8
+    UPSCALER_X4 = 8
     """Stable Diffusion X4 upscaler"""
 
-    TORCH_S_CASCADE = 9
+    S_CASCADE = 9
     """
     Stable Cascade prior
     """
 
-    TORCH_S_CASCADE_DECODER = 10
+    S_CASCADE_DECODER = 10
     """
     Stable Cascade decoder
     """
 
-    TORCH_SD3 = 11
+    SD3 = 11
     """
     Stable Diffusion 3
     """
 
-    TORCH_FLUX = 12
+    FLUX = 12
     """
     Flux pipeline
     """
 
-    TORCH_FLUX_FILL = 13
+    FLUX_FILL = 13
     """
     Flux infill / outfill pipeline
     """
 
-    TORCH_KOLORS = 14
+    KOLORS = 14
     """Kolors (SDXL + ChatGLM)"""
 
 
@@ -221,20 +221,20 @@ def supported_model_type_strings():
     """
     Return a list of supported ``--model-type`` strings
     """
-    return ['torch',
-            'torch-pix2pix',
-            'torch-sdxl',
-            'torch-sdxl-pix2pix',
-            'torch-kolors',
-            'torch-upscaler-x2',
-            'torch-upscaler-x4',
-            'torch-if',
-            'torch-ifs',
-            'torch-ifs-img2img',
-            'torch-s-cascade',
-            'torch-sd3',
-            'torch-flux',
-            'torch-flux-fill']
+    return ['sd',
+            'pix2pix',
+            'sdxl',
+            'sdxl-pix2pix',
+            'kolors',
+            'upscaler-x2',
+            'upscaler-x4',
+            'if',
+            'ifs',
+            'ifs-img2img',
+            's-cascade',
+            'sd3',
+            'flux',
+            'flux-fill']
 
 
 def supported_model_type_enums() -> list[ModelType]:
@@ -259,20 +259,20 @@ def get_model_type_enum(id_str: ModelType | str) -> ModelType:
         return id_str
 
     try:
-        return {'torch': ModelType.TORCH,
-                'torch-pix2pix': ModelType.TORCH_PIX2PIX,
-                'torch-sdxl': ModelType.TORCH_SDXL,
-                'torch-kolors': ModelType.TORCH_KOLORS,
-                'torch-if': ModelType.TORCH_IF,
-                'torch-ifs': ModelType.TORCH_IFS,
-                'torch-ifs-img2img': ModelType.TORCH_IFS_IMG2IMG,
-                'torch-sdxl-pix2pix': ModelType.TORCH_SDXL_PIX2PIX,
-                'torch-upscaler-x2': ModelType.TORCH_UPSCALER_X2,
-                'torch-upscaler-x4': ModelType.TORCH_UPSCALER_X4,
-                'torch-s-cascade': ModelType.TORCH_S_CASCADE,
-                'torch-sd3': ModelType.TORCH_SD3,
-                'torch-flux': ModelType.TORCH_FLUX,
-                'torch-flux-fill': ModelType.TORCH_FLUX_FILL}[id_str.strip().lower()]
+        return {'sd': ModelType.SD,
+                'pix2pix': ModelType.PIX2PIX,
+                'sdxl': ModelType.SDXL,
+                'kolors': ModelType.KOLORS,
+                'if': ModelType.IF,
+                'ifs': ModelType.IFS,
+                'ifs-img2img': ModelType.IFS_IMG2IMG,
+                'sdxl-pix2pix': ModelType.SDXL_PIX2PIX,
+                'upscaler-x2': ModelType.UPSCALER_X2,
+                'upscaler-x4': ModelType.UPSCALER_X4,
+                's-cascade': ModelType.S_CASCADE,
+                'sd3': ModelType.SD3,
+                'flux': ModelType.FLUX,
+                'flux-fill': ModelType.FLUX_FILL}[id_str.strip().lower()]
     except KeyError:
         raise ValueError('invalid ModelType string')
 
@@ -287,28 +287,28 @@ def get_model_type_string(model_type_enum: ModelType) -> str:
 
     model_type = get_model_type_enum(model_type_enum)
 
-    return {ModelType.TORCH: 'torch',
-            ModelType.TORCH_PIX2PIX: 'torch-pix2pix',
-            ModelType.TORCH_SDXL: 'torch-sdxl',
-            ModelType.TORCH_KOLORS: 'torch-kolors',
-            ModelType.TORCH_IF: 'torch-if',
-            ModelType.TORCH_IFS: 'torch-ifs',
-            ModelType.TORCH_IFS_IMG2IMG: 'torch-ifs-img2img',
-            ModelType.TORCH_SDXL_PIX2PIX: 'torch-sdxl-pix2pix',
-            ModelType.TORCH_UPSCALER_X2: 'torch-upscaler-x2',
-            ModelType.TORCH_UPSCALER_X4: 'torch-upscaler-x4',
-            ModelType.TORCH_S_CASCADE: 'torch-s-cascade',
-            ModelType.TORCH_S_CASCADE_DECODER: 'torch-s-cascade-decoder',
-            ModelType.TORCH_SD3: 'torch-sd3',
-            ModelType.TORCH_FLUX: 'torch-flux',
-            ModelType.TORCH_FLUX_FILL: 'torch-flux-fill'}[model_type]
+    return {ModelType.SD: 'sd',
+            ModelType.PIX2PIX: 'pix2pix',
+            ModelType.SDXL: 'sdxl',
+            ModelType.KOLORS: 'kolors',
+            ModelType.IF: 'if',
+            ModelType.IFS: 'ifs',
+            ModelType.IFS_IMG2IMG: 'ifs-img2img',
+            ModelType.SDXL_PIX2PIX: 'sdxl-pix2pix',
+            ModelType.UPSCALER_X2: 'upscaler-x2',
+            ModelType.UPSCALER_X4: 'upscaler-x4',
+            ModelType.S_CASCADE: 's-cascade',
+            ModelType.S_CASCADE_DECODER: 's-cascade-decoder',
+            ModelType.SD3: 'sd3',
+            ModelType.FLUX: 'flux',
+            ModelType.FLUX_FILL: 'flux-fill'}[model_type]
 
 
 def model_type_is_sd15(model_type: ModelType | str) -> bool:
     """
     Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent an SD1.5 model?
 
-    These model types may also be able to load SD2 checkpoints, specifically: :py:attr:`.ModelType.TORCH` can.
+    These model types may also be able to load SD2 checkpoints, specifically: :py:attr:`.ModelType.SD` can.
 
     :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
     :return: bool
@@ -316,9 +316,9 @@ def model_type_is_sd15(model_type: ModelType | str) -> bool:
     model_type = get_model_type_enum(model_type)
 
     return model_type in {
-        ModelType.TORCH,
-        ModelType.TORCH_PIX2PIX,
-        ModelType.TORCH_UPSCALER_X2
+        ModelType.SD,
+        ModelType.PIX2PIX,
+        ModelType.UPSCALER_X2
     }
 
 
@@ -326,14 +326,16 @@ def model_type_is_sd2(model_type: ModelType | str) -> bool:
     """
     Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent an SD 2.X compatible model?
 
+    These model types may also be able to load SD1.5 checkpoints, specifically: :py:attr:`.ModelType.SD` can.
+
     :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
     :return: bool
     """
     model_type = get_model_type_enum(model_type)
 
     return model_type in {
-        ModelType.TORCH,
-        ModelType.TORCH_UPSCALER_X4
+        ModelType.SD,
+        ModelType.UPSCALER_X4
     }
 
 
@@ -409,18 +411,6 @@ def model_type_is_s_cascade(model_type: ModelType | str) -> bool:
     return 's-cascade' in model_type
 
 
-def model_type_is_torch(model_type: ModelType | str) -> bool:
-    """
-    Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent an Torch model?
-
-    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
-    :return: bool
-    """
-    model_type = get_model_type_string(model_type)
-
-    return 'torch' in model_type
-
-
 def model_type_is_pix2pix(model_type: ModelType | str) -> bool:
     """
     Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent an pix2pix type model?
@@ -442,9 +432,9 @@ def model_type_is_floyd(model_type: ModelType | str) -> bool:
     """
     model_type = get_model_type_enum(model_type)
 
-    return model_type == ModelType.TORCH_IF or \
-        model_type == ModelType.TORCH_IFS or \
-        model_type == ModelType.TORCH_IFS_IMG2IMG
+    return model_type == ModelType.IF or \
+        model_type == ModelType.IFS or \
+        model_type == ModelType.IFS_IMG2IMG
 
 
 def model_type_is_floyd_if(model_type: ModelType | str) -> bool:
@@ -456,7 +446,7 @@ def model_type_is_floyd_if(model_type: ModelType | str) -> bool:
     """
     model_type = get_model_type_enum(model_type)
 
-    return model_type == ModelType.TORCH_IF
+    return model_type == ModelType.IF
 
 
 def model_type_is_floyd_ifs(model_type: ModelType | str) -> bool:
@@ -468,7 +458,7 @@ def model_type_is_floyd_ifs(model_type: ModelType | str) -> bool:
     """
     model_type = get_model_type_enum(model_type)
 
-    return model_type == ModelType.TORCH_IFS or model_type == ModelType.TORCH_IFS_IMG2IMG
+    return model_type == ModelType.IFS or model_type == ModelType.IFS_IMG2IMG
 
 
 def model_type_uses_image_encoder(model_type: ModelType | str) -> bool:

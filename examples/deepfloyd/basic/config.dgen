@@ -12,12 +12,12 @@
 # Deep Floyd IF consist of 3 stages, an initial stage that produces a 64x64 image, a second stage that takes
 # that image and scales it to 256x265, and a third stage that takes that image and x4 scales it to 1024x1024
 
-# The first stage can be invoked with the --model-type torch-ifs
+# The first stage can be invoked with the --model-type ifs
 
 DeepFloyd/IF-I-M-v1.0
 --variant fp16
 --dtype float16
---model-type torch-if
+--model-type if
 --model-sequential-offload
 --inference-steps 60
 --guidance-scales 7
@@ -57,7 +57,7 @@ DeepFloyd/IF-I-M-v1.0
 DeepFloyd/IF-II-M-v1.0
 --variant fp16
 --dtype float16
---model-type torch-ifs
+--model-type ifs
 --model-sequential-offload
 --inference-steps 30
 --guidance-scales 4
@@ -78,7 +78,7 @@ DeepFloyd/IF-II-M-v1.0
 stabilityai/stable-diffusion-x4-upscaler
 --variant fp16
 --dtype float16
---model-type torch-upscaler-x4
+--model-type upscaler-x4
 --inference-steps 30
 --guidance-scales 9.00
 --prompts {{ format_prompt(last_prompts) }}

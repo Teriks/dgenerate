@@ -25,7 +25,7 @@
 
 
 stabilityai/stable-diffusion-xl-base-1.0
---model-type torch-sdxl
+--model-type sdxl
 --dtype float16
 --variant fp16
 --scheduler DDIMScheduler

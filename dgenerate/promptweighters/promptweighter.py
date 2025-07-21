@@ -255,7 +255,7 @@ class PromptWeighter(_plugin.Plugin, abc.ABC):
         :param pipeline: The diffusion pipeline.
         :param device: The desired device.
         """
-        for name, module in _pipelinewrapper.get_torch_pipeline_modules(pipeline).items():
+        for name, module in _pipelinewrapper.get_pipeline_modules(pipeline).items():
             # module will never be None, _pipelinewrapper.get_torch_pipeline_modules
             # filters that out for you
             if name.startswith('text_encoder'):

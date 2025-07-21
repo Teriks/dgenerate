@@ -6,7 +6,7 @@
 # The image is being resized to 256x256, and then upscaled by 2x
 
 stabilityai/sd-x2-latent-upscaler --dtype float16
---model-type torch-upscaler-x2
+--model-type upscaler-x2
 --prompts "a picture of a white cat"
 --image-seeds "../../media/low_res_cat.png"
 --output-size 256
@@ -16,7 +16,7 @@ stabilityai/sd-x2-latent-upscaler --dtype float16
 # The image is being resized to 256x256, and then upscaled by 4x
 
 stabilityai/stable-diffusion-x4-upscaler --variant fp16 --dtype float16
- --model-type torch-upscaler-x4
+ --model-type upscaler-x4
 --prompts "a picture of a white cat"
 --image-seeds "../../media/low_res_cat.png"
 --output-size 256

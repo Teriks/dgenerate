@@ -299,8 +299,8 @@ class DiffusionPipelineWrapper:
     Monolithic diffusion pipelines wrapper.
     """
 
-    __LAST_RECALL_PIPELINE: _pipelines.TorchPipelineFactory = None
-    __LAST_RECALL_SECONDARY_PIPELINE: _pipelines.TorchPipelineFactory = None
+    __LAST_RECALL_PIPELINE: _pipelines.PipelineFactory = None
+    __LAST_RECALL_SECONDARY_PIPELINE: _pipelines.PipelineFactory = None
 
     @staticmethod
     def _normalize_uris(uris: _types.OptionalUris | str | None) -> _types.OptionalUris:
@@ -318,7 +318,7 @@ class DiffusionPipelineWrapper:
 
     def __init__(self,
                  model_path: _types.Path,
-                 model_type: _enums.ModelType | str = _enums.ModelType.TORCH,
+                 model_type: _enums.ModelType | str = _enums.ModelType.SD,
                  revision: _types.OptionalName = None,
                  variant: _types.OptionalName = None,
                  subfolder: _types.OptionalName = None,
@@ -483,10 +483,10 @@ class DiffusionPipelineWrapper:
                 'Cannot use "controlnet_uris" and "t2i_adapter_uris" together.'
             )
 
-        if image_encoder_uri and not ip_adapter_uris and model_type != _enums.ModelType.TORCH_S_CASCADE:
+        if image_encoder_uri and not ip_adapter_uris and model_type != _enums.ModelType.S_CASCADE:
             raise _pipelines.UnsupportedPipelineConfigError(
                 'Cannot use "image_encoder_uri" without "ip_adapter_uris" '
-                'if "model_type" is not TORCH_S_CASCADE.'
+                'if "model_type" is not S_CASCADE.'
             )
 
         if not _hfhub.is_single_file_model_load(model_path):
@@ -525,32 +525,32 @@ class DiffusionPipelineWrapper:
                     _enums.model_type_is_kolors(model_type)):
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'Only Stable Diffusion XL models support refiners, '
-                    'please use model_type "torch-sdxl" if you are trying to load an sdxl model.'
+                    'please use model_type "sdxl" if you are trying to load an sdxl model.'
                 )
 
         if s_cascade_decoder_uri is not None:
             if not _enums.model_type_is_s_cascade(model_type):
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'Only Stable Cascade models support decoders, '
-                    'please use model_type "torch-s-cascade" if you are trying to load an Stable Cascade model.'
+                    'please use model_type "s-cascade" if you are trying to load an Stable Cascade model.'
                 )
 
         if transformer_uri:
             if not _enums.model_type_is_sd3(model_type) and not _enums.model_type_is_flux(model_type):
                 raise _pipelines.UnsupportedPipelineConfigError(
-                    '--transformer is only supported for --model-type torch-sd3 and torch-flux.')
+                    '--transformer is only supported for --model-type sd3 and flux.')
 
         if adetailer_detector_uris and model_type not in {
-            _enums.ModelType.TORCH,
-            _enums.ModelType.TORCH_SDXL,
-            _enums.ModelType.TORCH_KOLORS,
-            _enums.ModelType.TORCH_SD3,
-            _enums.ModelType.TORCH_FLUX,
-            _enums.ModelType.TORCH_FLUX_FILL
+            _enums.ModelType.SD,
+            _enums.ModelType.SDXL,
+            _enums.ModelType.KOLORS,
+            _enums.ModelType.SD3,
+            _enums.ModelType.FLUX,
+            _enums.ModelType.FLUX_FILL
         }:
             raise _pipelines.UnsupportedPipelineConfigError(
                 f'--adetailer-detectors is only compatible with '
-                f'--model-type torch, torch-sdxl, torch-kolors, torch-sd3, and torch-flux')
+                f'--model-type sd, sdxl, kolors, sd3, and flux')
 
         if quantizer_uri is not None:
             try:
@@ -1424,7 +1424,7 @@ class DiffusionPipelineWrapper:
                 self._validate_images_all_same_size('img2img images', images)
                 images = self._resize_images_to_user_dimensions(images, user_args)
 
-        if self._model_type != _enums.ModelType.TORCH_UPSCALER_X2 and \
+        if self._model_type != _enums.ModelType.UPSCALER_X2 and \
                 hasattr(self._pipeline, 'vae') and self._pipeline.vae is not None:
             # we need to decode the latents into an image using the VAE for
             # the best img2img result, passing already denoised latents
@@ -1463,7 +1463,7 @@ class DiffusionPipelineWrapper:
 
         floyd_og_image_needed = (self._pipeline_type == _enums.PipelineType.INPAINT and
                                  _enums.model_type_is_floyd_ifs(self._model_type)
-                                 ) or (self._model_type == _enums.ModelType.TORCH_IFS_IMG2IMG)
+                                 ) or (self._model_type == _enums.ModelType.IFS_IMG2IMG)
 
         if floyd_og_image_needed:
             if user_args.floyd_image is None:
@@ -1472,7 +1472,7 @@ class DiffusionPipelineWrapper:
                     '"floyd_image" being the output of a previous floyd stage.')
             pipeline_args['original_image'] = image_arg_inputs
             pipeline_args['image'] = user_args.floyd_image
-        elif self._model_type == _enums.ModelType.TORCH_S_CASCADE:
+        elif self._model_type == _enums.ModelType.S_CASCADE:
             pipeline_args['images'] = image_arg_inputs
         else:
             pipeline_args['image'] = image_arg_inputs
@@ -1486,7 +1486,7 @@ class DiffusionPipelineWrapper:
                 )
 
         if _enums.model_type_is_upscaler(self._model_type):
-            if self._model_type == _enums.ModelType.TORCH_UPSCALER_X4:
+            if self._model_type == _enums.ModelType.UPSCALER_X4:
                 pipeline_args['noise_level'] = int(
                     _types.default(
                         user_args.upscaler_noise_level,
@@ -1494,9 +1494,9 @@ class DiffusionPipelineWrapper:
                     )
                 )
             check_no_image_seed_strength()
-        elif self._model_type == _enums.ModelType.TORCH_FLUX_FILL:
+        elif self._model_type == _enums.ModelType.FLUX_FILL:
             check_no_image_seed_strength()
-        elif self._model_type == _enums.ModelType.TORCH_IFS:
+        elif self._model_type == _enums.ModelType.IFS:
             if self._pipeline_type != _enums.PipelineType.INPAINT:
                 pipeline_args['noise_level'] = int(
                     _types.default(
@@ -1513,7 +1513,7 @@ class DiffusionPipelineWrapper:
                     )
                 )
                 self._set_pipeline_strength(user_args, pipeline_args)
-        elif self._model_type == _enums.ModelType.TORCH_IFS_IMG2IMG:
+        elif self._model_type == _enums.ModelType.IFS_IMG2IMG:
             pipeline_args['noise_level'] = int(
                 _types.default(
                     user_args.upscaler_noise_level,
@@ -1522,7 +1522,7 @@ class DiffusionPipelineWrapper:
             )
             self._set_pipeline_strength(user_args, pipeline_args)
         elif not _enums.model_type_is_pix2pix(self._model_type) and \
-                self._model_type != _enums.ModelType.TORCH_S_CASCADE:
+                self._model_type != _enums.ModelType.S_CASCADE:
             self._set_pipeline_strength(user_args, pipeline_args)
         else:
             check_no_image_seed_strength()
@@ -1576,7 +1576,7 @@ class DiffusionPipelineWrapper:
                     if user_args.height is not None:
                         pipeline_args['height'] = user_args.height
 
-        if self._model_type == _enums.ModelType.TORCH_SDXL_PIX2PIX:
+        if self._model_type == _enums.ModelType.SDXL_PIX2PIX:
             if non_latent_input:
                 pipeline_args['width'] = image_arg_inputs[0].width
                 pipeline_args['height'] = image_arg_inputs[0].height
@@ -1588,7 +1588,7 @@ class DiffusionPipelineWrapper:
                 if user_args.height is not None:
                     pipeline_args['height'] = user_args.height
 
-        elif self._model_type == _enums.ModelType.TORCH_UPSCALER_X2:
+        elif self._model_type == _enums.ModelType.UPSCALER_X2:
             image_arg_inputs = list(image_arg_inputs)
             pipeline_args['image'] = image_arg_inputs
 
@@ -1603,7 +1603,7 @@ class DiffusionPipelineWrapper:
                         )
                         image_arg_inputs[idx] = _image.resize_image(image, size)
 
-        elif self._model_type == _enums.ModelType.TORCH_S_CASCADE:
+        elif self._model_type == _enums.ModelType.S_CASCADE:
             # stable cascade uses an image encoder, so the concept
             # from the image is copied, it is not used as a noise seed
 
@@ -1623,7 +1623,7 @@ class DiffusionPipelineWrapper:
             pipeline_args['height'] = _types.default(
                 user_args.height, _constants.DEFAULT_S_CASCADE_OUTPUT_HEIGHT)
 
-        elif self._model_type == _enums.ModelType.TORCH_SD3:
+        elif self._model_type == _enums.ModelType.SD3:
             image_arg_inputs = list(image_arg_inputs)
             pipeline_args['image'] = image_arg_inputs
             if non_latent_input:
@@ -1684,21 +1684,21 @@ class DiffusionPipelineWrapper:
         elif _enums.model_type_is_floyd_if(self._model_type):
             pipeline_args['height'] = _types.default(height, _constants.DEFAULT_FLOYD_IF_OUTPUT_HEIGHT)
             pipeline_args['width'] = _types.default(width, _constants.DEFAULT_FLOYD_IF_OUTPUT_WIDTH)
-        elif self._model_type == _enums.ModelType.TORCH_S_CASCADE:
+        elif self._model_type == _enums.ModelType.S_CASCADE:
             pipeline_args['height'] = _types.default(height, _constants.DEFAULT_S_CASCADE_OUTPUT_HEIGHT)
             pipeline_args['width'] = _types.default(width, _constants.DEFAULT_S_CASCADE_OUTPUT_WIDTH)
 
             if not _image.is_aligned((pipeline_args['width'], pipeline_args['height']), 128):
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'Stable Cascade requires an output dimension that is aligned by 128.')
-        elif self._model_type == _enums.ModelType.TORCH_SD3:
+        elif self._model_type == _enums.ModelType.SD3:
             pipeline_args['height'] = _types.default(height, _constants.DEFAULT_SD3_OUTPUT_HEIGHT)
             pipeline_args['width'] = _types.default(width, _constants.DEFAULT_SD3_OUTPUT_WIDTH)
 
             if not _image.is_aligned((pipeline_args['height'], pipeline_args['width']), 16):
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'Stable Diffusion 3 requires an output dimension that is aligned by 16.')
-        elif self._model_type == _enums.ModelType.TORCH_FLUX:
+        elif self._model_type == _enums.ModelType.FLUX:
             pipeline_args['height'] = _types.default(height, _constants.DEFAULT_FLUX_OUTPUT_HEIGHT)
             pipeline_args['width'] = _types.default(width, _constants.DEFAULT_FLUX_OUTPUT_WIDTH)
         else:
@@ -2598,7 +2598,7 @@ class DiffusionPipelineWrapper:
                         f'provided number of input images.'
                     )
 
-        if self._model_type != _enums.ModelType.TORCH_UPSCALER_X2:
+        if self._model_type != _enums.ModelType.UPSCALER_X2:
             pipeline_args['num_images_per_prompt'] = batch_size
         else:
             in_img_cnt = len(pipeline_args['image'])
@@ -3036,13 +3036,13 @@ class DiffusionPipelineWrapper:
                 return False
 
         if pag:
-            if not (self.model_type == _enums.ModelType.TORCH or
-                    self.model_type == _enums.ModelType.TORCH_SDXL or
-                    self.model_type == _enums.ModelType.TORCH_SD3 or
-                    self.model_type == _enums.ModelType.TORCH_KOLORS):
+            if not (self.model_type == _enums.ModelType.SD or
+                    self.model_type == _enums.ModelType.SDXL or
+                    self.model_type == _enums.ModelType.SD3 or
+                    self.model_type == _enums.ModelType.KOLORS):
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'Perturbed attention guidance (pag arguments) are only supported with '
-                    '--model-type torch, torch-sdxl, torch-kolors (txt2img), and torch-sd3.')
+                    '--model-type sd, sdxl, kolors (txt2img), and sd3.')
 
             if self.t2i_adapter_uris:
                 raise _pipelines.UnsupportedPipelineConfigError(
@@ -3073,13 +3073,13 @@ class DiffusionPipelineWrapper:
         if self._parsed_adetailer_detector_uris:
             pipeline_type = _enums.PipelineType.INPAINT
 
-        if self._model_type == _enums.ModelType.TORCH_S_CASCADE:
+        if self._model_type == _enums.ModelType.S_CASCADE:
 
             if self._s_cascade_decoder_uri is None:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'Stable Cascade must be used with a decoder model.')
 
-            self._recall_main_pipeline = _pipelines.TorchPipelineFactory(
+            self._recall_main_pipeline = _pipelines.PipelineFactory(
                 model_path=self._model_path,
                 model_type=self._model_type,
                 pipeline_type=pipeline_type,
@@ -3105,9 +3105,9 @@ class DiffusionPipelineWrapper:
             creation_result = self._recall_main_pipeline()
             self._pipeline = creation_result.pipeline
 
-            self._recall_secondary_pipeline = _pipelines.TorchPipelineFactory(
+            self._recall_secondary_pipeline = _pipelines.PipelineFactory(
                 model_path=self._parsed_s_cascade_decoder_uri.model,
-                model_type=_enums.ModelType.TORCH_S_CASCADE_DECODER,
+                model_type=_enums.ModelType.S_CASCADE_DECODER,
                 pipeline_type=_enums.PipelineType.TXT2IMG,
                 subfolder=self._parsed_s_cascade_decoder_uri.subfolder,
                 revision=self._parsed_s_cascade_decoder_uri.revision,
@@ -3136,7 +3136,7 @@ class DiffusionPipelineWrapper:
 
         elif self._sdxl_refiner_uri is not None:
 
-            self._recall_main_pipeline = _pipelines.TorchPipelineFactory(
+            self._recall_main_pipeline = _pipelines.PipelineFactory(
                 model_path=self._model_path,
                 model_type=self._model_type,
                 pipeline_type=pipeline_type,
@@ -3190,9 +3190,9 @@ class DiffusionPipelineWrapper:
             else:
                 refiner_extra_modules = self._second_model_extra_modules
 
-            self._recall_secondary_pipeline = _pipelines.TorchPipelineFactory(
+            self._recall_secondary_pipeline = _pipelines.PipelineFactory(
                 model_path=self._parsed_sdxl_refiner_uri.model,
-                model_type=_enums.ModelType.TORCH_SDXL,
+                model_type=_enums.ModelType.SDXL,
                 pipeline_type=refiner_pipeline_type,
                 subfolder=self._parsed_sdxl_refiner_uri.subfolder,
                 revision=self._parsed_sdxl_refiner_uri.revision,
@@ -3219,7 +3219,7 @@ class DiffusionPipelineWrapper:
             )
             self._sdxl_refiner_pipeline = self._recall_secondary_pipeline().pipeline
         else:
-            self._recall_main_pipeline = _pipelines.TorchPipelineFactory(
+            self._recall_main_pipeline = _pipelines.PipelineFactory(
                 model_path=self._model_path,
                 model_type=self._model_type,
                 pipeline_type=pipeline_type,
@@ -3567,7 +3567,7 @@ class DiffusionPipelineWrapper:
         model_path = self.model_path
 
         if scheduler_help or second_model_scheduler_help:
-            pipe_class = _pipelines.get_torch_pipeline_class(
+            pipe_class = _pipelines.get_pipeline_class(
                 model_type=self.model_type,
                 pipeline_type=args.determine_pipeline_type(),
                 unet_uri=self.unet_uri,
@@ -3600,9 +3600,9 @@ class DiffusionPipelineWrapper:
                     ))
 
         if second_model_scheduler_help or second_model_text_encoder_help:
-            second_pipe_class = _pipelines.get_torch_pipeline_class(
-                model_type=_enums.ModelType.TORCH_SDXL if
-                self.sdxl_refiner_uri else _enums.ModelType.TORCH_S_CASCADE_DECODER,
+            second_pipe_class = _pipelines.get_pipeline_class(
+                model_type=_enums.ModelType.SDXL if
+                self.sdxl_refiner_uri else _enums.ModelType.S_CASCADE_DECODER,
                 pipeline_type=_enums.PipelineType.IMG2IMG,
                 unet_uri=self.second_model_unet_uri,
                 vae_uri=self.vae_uri,
@@ -3772,12 +3772,12 @@ class DiffusionPipelineWrapper:
 
         if args.deep_cache:
             if not (
-                    self.model_type == _enums.ModelType.TORCH_SDXL or
-                    self.model_type == _enums.ModelType.TORCH_SDXL_PIX2PIX or
-                    self.model_type == _enums.ModelType.TORCH_KOLORS or
-                    self.model_type == _enums.ModelType.TORCH or
-                    self.model_type == _enums.ModelType.TORCH_PIX2PIX or
-                    self.model_type == _enums.ModelType.TORCH_UPSCALER_X4):
+                    self.model_type == _enums.ModelType.SDXL or
+                    self.model_type == _enums.ModelType.SDXL_PIX2PIX or
+                    self.model_type == _enums.ModelType.KOLORS or
+                    self.model_type == _enums.ModelType.SD or
+                    self.model_type == _enums.ModelType.PIX2PIX or
+                    self.model_type == _enums.ModelType.UPSCALER_X4):
                 raise _pipelines.UnsupportedPipelineConfigError(
                     f'DeepCache is only supported with Stable Diffusion, Stable Diffusion XL, '
                     f'Stable Diffusion Upscaler X4, Kolors, and Pix2Pix variants.'
@@ -3793,12 +3793,12 @@ class DiffusionPipelineWrapper:
     def _auto_hi_diffusion_check(self, args: DiffusionArguments):
         if args.hi_diffusion:
             if not (
-                    self.model_type == _enums.ModelType.TORCH_SDXL or
-                    self.model_type == _enums.ModelType.TORCH_KOLORS or
-                    self.model_type == _enums.ModelType.TORCH):
+                    self.model_type == _enums.ModelType.SDXL or
+                    self.model_type == _enums.ModelType.KOLORS or
+                    self.model_type == _enums.ModelType.SD):
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'HiDiffusion is only supported for '
-                    '--model-type torch, torch-sdxl, and torch-kolors'
+                    '--model-type sd, sdxl, and kolors'
                 )
 
             if self.t2i_adapter_uris:
@@ -3836,13 +3836,13 @@ class DiffusionPipelineWrapper:
 
     def _auto_freeu_check(self, args: DiffusionArguments):
         freeu_model_types = {
-            _enums.ModelType.TORCH,
-            _enums.ModelType.TORCH_SDXL,
-            _enums.ModelType.TORCH_KOLORS,
-            _enums.ModelType.TORCH_PIX2PIX,
-            _enums.ModelType.TORCH_SDXL_PIX2PIX,
-            _enums.ModelType.TORCH_UPSCALER_X2,
-            _enums.ModelType.TORCH_UPSCALER_X4
+            _enums.ModelType.SD,
+            _enums.ModelType.SDXL,
+            _enums.ModelType.KOLORS,
+            _enums.ModelType.PIX2PIX,
+            _enums.ModelType.SDXL_PIX2PIX,
+            _enums.ModelType.UPSCALER_X2,
+            _enums.ModelType.UPSCALER_X4
         }
 
         if args.freeu_params is not None:
@@ -4057,7 +4057,7 @@ class DiffusionPipelineWrapper:
         self._auto_ras_check(copy_args)
 
         try:
-            if self.model_type == _enums.ModelType.TORCH_S_CASCADE:
+            if self.model_type == _enums.ModelType.S_CASCADE:
                 result = self._call_torch_s_cascade(
                     pipeline_args=pipeline_args,
                     user_args=copy_args)

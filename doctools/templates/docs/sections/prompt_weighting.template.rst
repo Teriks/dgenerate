@@ -169,7 +169,7 @@ You can enable the ``sd-embed`` prompt weighter by specifying it with the ``--pr
     # You need a huggingface API token to run this example
 
     dgenerate stabilityai/stable-diffusion-3-medium-diffusers \
-    --model-type torch-sd3 \
+    --model-type sd3 \
     --variant fp16 \
     --dtype float16 \
     --inference-steps 30 \

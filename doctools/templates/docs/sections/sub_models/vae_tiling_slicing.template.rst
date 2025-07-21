@@ -20,7 +20,7 @@ when ``--batch-size`` is greater than 1.
 
     # Here is an SDXL example of high resolution image generation utilizing VAE tiling/slicing
 
-    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
+    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type sdxl \
     --variant fp16 --dtype float16 \
     --vae "AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix" \
     --vae-tiling \

@@ -48,7 +48,7 @@ CivitAI API links automatically, this example appends it manually.
     MODEL="https://civitai.com/api/download/models/133832?type=Model&format=SafeTensor&size=full&fp=fp16&token=$TOKEN"
 
     dgenerate $MODEL \
-    --model-type torch-sdxl \
+    --model-type sdxl \
     --variant fp16 --dtype float16 \
     --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
     --sdxl-high-noise-fractions 0.8 \

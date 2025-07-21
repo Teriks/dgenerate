@@ -6,7 +6,7 @@
 # plugin
 
 stabilityai/stable-diffusion-xl-base-1.0
---model-type torch-sdxl
+--model-type sdxl
 --pag
 --dtype float16
 --variant fp16

@@ -10,7 +10,7 @@
 
 
 black-forest-labs/FLUX.1-schnell
---model-type torch-flux --model-sequential-offload
+--model-type flux --model-sequential-offload
 --dtype bfloat16
 --inference-steps 4
 --guidance-scales 0

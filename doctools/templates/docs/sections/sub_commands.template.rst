@@ -261,7 +261,7 @@ the models involved with the loaded pipeline are garbage collected immediately a
 
     dgenerate --sub-command to-diffusers \
     "https://civitai.com/api/download/models/3002?type=Model&format=PickleTensor&size=full&fp=fp16" \
-    --model-type torch \
+    --model-type sd \
     --dtypes float16 float32 \
     --output modern_buildings
 

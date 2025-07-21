@@ -15,7 +15,7 @@ if device is None:
 config = RenderLoopConfig()
 
 config.model_path = 'stabilityai/stable-cascade-prior'
-config.model_type = ModelType.TORCH_S_CASCADE
+config.model_type = ModelType.S_CASCADE
 config.dtype = DataType.BFLOAT16
 config.s_cascade_decoder_uri = 'stabilityai/stable-cascade;dtype=float16'
 config.inference_steps = [20]

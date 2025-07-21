@@ -10,7 +10,7 @@
 # cover all of them
 
 stabilityai/stable-diffusion-xl-base-1.0
---model-type torch-sdxl
+--model-type sdxl
 --dtype float16
 --variant fp16
 --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0

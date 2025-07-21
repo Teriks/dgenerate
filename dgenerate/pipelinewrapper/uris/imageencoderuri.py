@@ -44,7 +44,7 @@ _image_encoder_cache = _d_memoize.create_object_cache(
 
 class ImageEncoderUri:
     """
-    Representation of ``--image-encoder`` uri when ``--model-type`` torch*
+    Representation of ``--image-encoder`` URI.
     """
 
     # pipelinewrapper.uris.util.get_uri_accepted_args_schema metadata
@@ -226,7 +226,7 @@ class ImageEncoderUri:
     @staticmethod
     def parse(uri: _types.Uri) -> 'ImageEncoderUri':
         """
-        Parse a ``--model-type`` torch* ``--image-encoder`` uri and return an object representing its constituents
+        Parse a ``--image-encoder`` uri and return an object representing its constituents
 
         :param uri: string with ``--image-encoder`` uri syntax
 

@@ -894,9 +894,9 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '-mt', '--model-type', action='store', default='torch', type=_model_type,
+            '-mt', '--model-type', action='store', default='sd', type=_model_type,
             help=f"""Use when loading different model types.
-                     Currently supported: {_SUPPORTED_MODEL_TYPES_PRETTY}. (default: torch)"""
+                     Currently supported: {_SUPPORTED_MODEL_TYPES_PRETTY}. (default: sd)"""
         )
     )
 
@@ -995,7 +995,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     the detection areas. This can be used for face detailing, face swapping, hand detailing, 
                     etc. on any arbitrary image provided using an image generation model of your choice.
                     
-                    This option supports: --model-type torch, torch-sdxl, torch-kolors, torch-sd3, torch-flux, and torch-flux-fill
+                    This option supports: --model-type sd, sdxl, kolors, sd3, flux, and flux-fill
                     
                     NOWRAP!
                     Example: --adetailer-detectors Bingsu/adetailer;weight-name=face_yolov8n.pt
@@ -1760,11 +1760,11 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     The "end" argument specifies at what fraction of the total inference steps to stop applying
                     the ControlNet, defaults to 1.0, IE: the very end.
                     
-                    The "mode" argument can be used when using --model-type torch-sdxl / torch-flux 
+                    The "mode" argument can be used when using --model-type sdxl / flux 
                     and a ControlNet Union model to specify the ControlNet mode. This may be a 
                     string or an integer.
                     
-                    For --model-type torch-sdxl Acceptable "mode" values are: 
+                    For --model-type sdxl Acceptable "mode" values are: 
                     
                     NOWRAP!
                         "openpose" = 0
@@ -1781,7 +1781,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                         "segment" = 5
                         
                     
-                    For --model-type torch-flux Acceptable "mode" values are: 
+                    For --model-type flux Acceptable "mode" values are: 
                     
                     NOWRAP!
                         "canny" = 0
@@ -2034,7 +2034,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                      NOWRAP!
                      See: https://github.com/megvii-research/HiDiffusion
                      
-                     This is supported for --model-type torch, torch-sdxl, and --torch-kolors.
+                     This is supported for --model-type sd, sdxl, and --kolors.
                      """
         )
     )
@@ -2050,7 +2050,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                      NOWRAP!
                      See: https://github.com/megvii-research/HiDiffusion
                      
-                     This is supported for: --model-type torch, torch-sdxl, and --torch-kolors.
+                     This is supported for: --model-type sd, sdxl, and --kolors.
                      """
         )
     )
@@ -2066,7 +2066,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                      NOWRAP!
                      See: https://github.com/megvii-research/HiDiffusion
                      
-                     This is supported for: --model-type torch, torch-sdxl, and --torch-kolors.
+                     This is supported for: --model-type sd, sdxl, and --kolors.
                      """
         )
     )
@@ -2222,7 +2222,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                      
                      Also see: --tea-cache-rel-l1-thresholds
                      
-                     This is supported for: --model-type torch-flux*.
+                     This is supported for: --model-type flux*.
                      """
         )
     )
@@ -2245,7 +2245,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                      
                      Supplying any values implies --tea-cache.
                     
-                     This is supported for: --model-type torch-flux*.
+                     This is supported for: --model-type flux*.
                      
                      (default: 0.6)
                      """
@@ -2263,7 +2263,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                      NOWRAP!
                      See: https://github.com/microsoft/ras
                     
-                     This is supported for: --model-type torch-sd3.
+                     This is supported for: --model-type sd3.
                      """
         )
     )
@@ -2278,7 +2278,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying this flag implies --ras.
 
-            This is supported for: --model-type torch-sd3, (but not for SD3.5 models)"""
+            This is supported for: --model-type sd3, (but not for SD3.5 models)"""
         )
     )
 
@@ -2298,7 +2298,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --ras.
 
-            This is supported for: --model-type torch-sd3.
+            This is supported for: --model-type sd3.
 
             (default: 0.5)"""
         )
@@ -2320,7 +2320,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --ras.
 
-            This is supported for: --model-type torch-sd3.
+            This is supported for: --model-type sd3.
 
             (default: 1.0)"""
         )
@@ -2345,7 +2345,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --ras.
 
-            This is supported for: --model-type torch-sd3.
+            This is supported for: --model-type sd3.
 
             (default: 0.1)"""
         )
@@ -2369,7 +2369,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --ras.
 
-            This is supported for: --model-type torch-sd3.
+            This is supported for: --model-type sd3.
 
             (default: "12,22")"""
         )
@@ -2389,7 +2389,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --ras.
             
-            This is supported for: --model-type torch-sd3.
+            This is supported for: --model-type sd3.
             
             (default: "std")"""
         )
@@ -2409,7 +2409,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --ras.
 
-            This is supported for: --model-type torch-sd3.
+            This is supported for: --model-type sd3.
 
             (default: 4)"""
         )
@@ -2429,7 +2429,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --ras.
 
-            This is supported for: --model-type torch-sd3.
+            This is supported for: --model-type sd3.
 
             (default: --inference-steps)"""
         )
@@ -2455,7 +2455,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --ras.
 
-            This is supported for: --model-type torch-sd3.
+            This is supported for: --model-type sd3.
 
             (default: 0)"""
         )
@@ -2482,7 +2482,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             
             Supplying any values implies --ras.
 
-            This is supported for: --model-type torch-sd3.
+            This is supported for: --model-type sd3.
 
             (default: 0)"""
         )
@@ -2492,7 +2492,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '-pag', '--pag', action='store_true', default=False,
             help=f"""Use perturbed attention guidance? This is supported
-            for --model-type torch, torch-sdxl, and torch-sd3 for most use cases.
+            for --model-type sd, sdxl, and sd3 for most use cases.
             This enables PAG for the main model using default scale values."""
         )
     )
@@ -2521,7 +2521,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '-rpag', '--sdxl-refiner-pag', action='store_true', default=None,
             help=f"""Use perturbed attention guidance in the SDXL refiner? 
-            This is supported for --model-type torch-sdxl for most use cases.
+            This is supported for --model-type sdxl for most use cases.
             This enables PAG for the SDXL refiner model using default scale
             values."""
         )
@@ -2596,7 +2596,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     actions.append(
         parser.add_argument(
             '--s-cascade-decoder', action='store', default=None, metavar="MODEL_URI", dest='s_cascade_decoder_uri',
-            help=f"""Specify a Stable Cascade (torch-s-cascade) decoder model path using a URI.
+            help=f"""Specify a Stable Cascade (s-cascade) decoder model path using a URI.
                     This should be a Hugging Face repository slug / blob link, path to model file
                     on disk (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or model
                     folder containing model files.
@@ -2637,7 +2637,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     actions.append(
         parser.add_argument(
             '--sdxl-refiner', action='store', default=None, metavar="MODEL_URI", dest='sdxl_refiner_uri',
-            help=f"""Specify a Stable Diffusion XL (torch-sdxl) refiner model path using a URI.
+            help=f"""Specify a Stable Diffusion XL (sdxl) refiner model path using a URI.
                     This should be a Hugging Face repository slug / blob link, path to model file
                     on disk (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or model
                     folder containing model files.
@@ -2703,7 +2703,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     actions.append(
         parser.add_argument(
             '--sdxl-aesthetic-scores', metavar="FLOAT", action='store', nargs='+', default=[], type=float,
-            help="""One or more Stable Diffusion XL (torch-sdxl) "aesthetic-score" micro-conditioning parameters.
+            help="""One or more Stable Diffusion XL (sdxl) "aesthetic-score" micro-conditioning parameters.
                     Used to simulate an aesthetic score of the generated image by influencing the positive text
                     condition. Part of SDXL's micro-conditioning as explained in section 2.2 of
                     [https://huggingface.co/papers/2307.01952]."""
@@ -2714,7 +2714,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '--sdxl-crops-coords-top-left', metavar="COORD", action='store', nargs='+', default=[],
             type=_type_image_coordinate,
-            help="""One or more Stable Diffusion XL (torch-sdxl) "negative-crops-coords-top-left" micro-conditioning
+            help="""One or more Stable Diffusion XL (sdxl) "negative-crops-coords-top-left" micro-conditioning
                     parameters in the format "0,0". --sdxl-crops-coords-top-left can be used to generate an image that
                     appears to be "cropped" from the position --sdxl-crops-coords-top-left downwards. Favorable,
                     well-centered images are usually achieved by setting --sdxl-crops-coords-top-left to "0,0".
@@ -2727,7 +2727,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '--sdxl-original-size', '--sdxl-original-sizes', dest='sdxl_original_sizes', metavar="SIZE", action='store',
             nargs='+', default=[], type=_type_size,
-            help="""One or more Stable Diffusion XL (torch-sdxl) "original-size" micro-conditioning parameters in
+            help="""One or more Stable Diffusion XL (sdxl) "original-size" micro-conditioning parameters in
                     the format (WIDTH)x(HEIGHT). If not the same as --sdxl-target-size the image will appear to be
                     down or up-sampled. --sdxl-original-size defaults to --output-size or the size of any input
                     images if not specified. Part of SDXL's micro-conditioning as explained in section 2.2 of
@@ -2739,7 +2739,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '--sdxl-target-size', '--sdxl-target-sizes', dest='sdxl_target_sizes', metavar="SIZE", action='store',
             nargs='+', default=[], type=_type_size,
-            help="""One or more Stable Diffusion XL (torch-sdxl) "target-size" micro-conditioning parameters in
+            help="""One or more Stable Diffusion XL (sdxl) "target-size" micro-conditioning parameters in
                     the format (WIDTH)x(HEIGHT). For most cases, --sdxl-target-size should be set to the desired
                     height and width of the generated image. If not specified it will default to --output-size or
                     the size of any input images. Part of SDXL\'s micro-conditioning as explained in section 2.2 of
@@ -2750,7 +2750,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     actions.append(
         parser.add_argument(
             '--sdxl-negative-aesthetic-scores', metavar="FLOAT", action='store', nargs='+', default=[], type=float,
-            help="""One or more Stable Diffusion XL (torch-sdxl) "negative-aesthetic-score" micro-conditioning parameters.
+            help="""One or more Stable Diffusion XL (sdxl) "negative-aesthetic-score" micro-conditioning parameters.
                     Part of SDXL's micro-conditioning as explained in section 2.2 of [https://huggingface.co/papers/2307.01952].
                     Can be used to simulate an aesthetic score of the generated image by influencing the negative text condition."""
         )
@@ -2759,7 +2759,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     actions.append(
         parser.add_argument(
             '--sdxl-negative-original-sizes', metavar="SIZE", action='store', nargs='+', default=[], type=_type_size,
-            help="""One or more Stable Diffusion XL (torch-sdxl) "negative-original-sizes" micro-conditioning parameters.
+            help="""One or more Stable Diffusion XL (sdxl) "negative-original-sizes" micro-conditioning parameters.
                     Negatively condition the generation process based on a specific image resolution. Part of SDXL's
                     micro-conditioning as explained in section 2.2 of [https://huggingface.co/papers/2307.01952].
                     For more information, refer to this issue thread: https://github.com/huggingface/diffusers/issues/4208"""
@@ -2769,7 +2769,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     actions.append(
         parser.add_argument(
             '--sdxl-negative-target-sizes', metavar="SIZE", action='store', nargs='+', default=[], type=_type_size,
-            help="""One or more Stable Diffusion XL (torch-sdxl) "negative-original-sizes" micro-conditioning parameters.
+            help="""One or more Stable Diffusion XL (sdxl) "negative-original-sizes" micro-conditioning parameters.
                     To negatively condition the generation process based on a target image resolution. It should be as same
                     as the "--sdxl-target-size" for most cases. Part of SDXL's micro-conditioning as explained in section 2.2 of
                     [https://huggingface.co/papers/2307.01952]. For more information, refer to this issue thread:
@@ -2781,7 +2781,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '--sdxl-negative-crops-coords-top-left', metavar="COORD", action='store', nargs='+', default=[],
             type=_type_image_coordinate,
-            help="""One or more Stable Diffusion XL (torch-sdxl) "negative-crops-coords-top-left" micro-conditioning
+            help="""One or more Stable Diffusion XL (sdxl) "negative-crops-coords-top-left" micro-conditioning
                     parameters in the format "0,0". Negatively condition the generation process based on a specific
                     crop coordinates. Part of SDXL's micro-conditioning as explained in section 2.2 of
                     [https://huggingface.co/papers/2307.01952]. For more information, refer
@@ -2854,7 +2854,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '-hnf', '--sdxl-high-noise-fractions', action='store', nargs='+', default=None, metavar="FLOAT",
             type=_type_sdxl_high_noise_fractions,
-            help="""One or more high-noise-fraction values for Stable Diffusion XL (torch-sdxl),
+            help="""One or more high-noise-fraction values for Stable Diffusion XL (sdxl),
                     this fraction of inference steps will be processed by the base model, while the rest
                     will be processed by the refiner model. Multiple values to this argument will result in
                     additional generation steps for each value. In certain situations when collaborative denoising
@@ -2915,16 +2915,16 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     If --no-aspect is not specified, width will be fixed and a new height
                     (aligned by 8) will be calculated for the input images. In most cases resizing the image inputs
                     will result in an image output of an equal size to the inputs, except for upscalers and Deep Floyd
-                    --model-type values (torch-if*).
+                    --model-type values (if*).
                     
                     If only one integer value is provided, that is the value for both dimensions.
                     X/Y dimension values should be separated by "x". 
                     
                     This value defaults to 512x512 for Stable Diffusion when no --image-seeds are
                     specified (IE txt2img mode), 1024x1024 for Stable Cascade and Stable Diffusion 3/XL or
-                    Flux model types, and 64x64 for --model-type torch-if (Deep Floyd stage 1).
+                    Flux model types, and 64x64 for --model-type if (Deep Floyd stage 1).
                     
-                    Deep Floyd stage 1 images passed to superscaler models (--model-type torch-ifs*) 
+                    Deep Floyd stage 1 images passed to superscaler models (--model-type ifs*) 
                     that are specified  with the 'floyd' keyword argument in an --image-seeds definition are
                     never resized or processed in any way."""
         )
@@ -3243,8 +3243,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '--second-prompts', nargs='+', action='store', metavar="PROMPT", default=None,
             type=_type_secondary_prompts,
-            help="""One or more secondary prompts to try using the torch-sdxl (SDXL), torch-sd3 
-                    (Stable Diffusion 3) or torch-flux (Flux) secondary text encoder. By default 
+            help="""One or more secondary prompts to try using the sdxl (SDXL), sd3 
+                    (Stable Diffusion 3) or flux (Flux) secondary text encoder. By default 
                     the model is passed the primary prompt for this value, this option allows you 
                     to choose a different prompt. The negative prompt component can be specified 
                     with the same syntax as --prompts"""
@@ -3255,7 +3255,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '--third-prompts', nargs='+', action='store', metavar="PROMPT", default=None,
             type=_type_secondary_prompts,
-            help="""One or more tertiary prompts to try using the torch-sd3 (Stable Diffusion 3) 
+            help="""One or more tertiary prompts to try using the sd3 (Stable Diffusion 3) 
                     tertiary (T5) text encoder, Flux does not support this argument. By default the 
                     model is passed the primary prompt for this value, this option allows you to choose 
                     a different prompt. The negative prompt component can be specified with the 
@@ -3304,7 +3304,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             help="""One or more clip skip values to try. Clip skip is the number of layers to be skipped from CLIP
                     while computing the prompt embeddings, it must be a value greater than or equal to zero. A value of 1 means
                     that the output of the pre-final layer will be used for computing the prompt embeddings. This is only
-                    supported for --model-type values "torch", "torch-sdxl", and "torch-sd3"."""
+                    supported for --model-type values "sd", "sdxl", and "sd3"."""
         )
     )
 
@@ -3426,7 +3426,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     respected or ignored. 
                     
                     The keyword argument "floyd" can be used to specify images from
-                    a previous deep floyd stage when using --model-type torch-ifs*. When keyword arguments
+                    a previous deep floyd stage when using --model-type ifs*. When keyword arguments
                     are present, all applicable images such as "mask", "control", etc. must also be defined
                     with keyword arguments instead of with the short syntax.
                     
@@ -3435,9 +3435,9 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     be generated with --image-format pt, pth, or safetensors. Latents may be passed 
                     for img2img input only. Latents will first be decoded back into pixel space 
                     (into a normal image) by the receiving models VAE. Except in the case of
-                    --model-type torch-upscaler-x2, which can handle the denoised latents directly.
+                    --model-type upscaler-x2, which can handle the denoised latents directly.
                     
-                    Latent img2img input is not supported for --model-type torch-s-cascade as Stable Cascade
+                    Latent img2img input is not supported for --model-type s-cascade as Stable Cascade
                     cannot perform traditional img2img, and will result in an error if attempted. Latent input 
                     is also not supported for ControlNet/T2I Adapter guidance images, or IP Adapter images, as 
                     these guidance models operate on images in pixel space.
@@ -3616,11 +3616,11 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '-uns', '--upscaler-noise-levels', action='store', nargs='+', default=None, metavar="INTEGER",
             type=_type_upscaler_noise_levels,
             help=f"""One or more upscaler noise level values to try when using the super
-                    resolution upscaler --model-type torch-upscaler-x4 or torch-ifs. Specifying
-                    this option for --model-type torch-upscaler-x2 will produce an error message.
+                    resolution upscaler --model-type upscaler-x4 or ifs. Specifying
+                    this option for --model-type upscaler-x2 will produce an error message.
                     The higher this value the more noise is added to the image before upscaling
                     (similar to --image-seed-strengths). (default: [20 for x4, 250 for
-                    torch-ifs/torch-ifs-img2img, 0 for torch-ifs inpainting mode])
+                    ifs/ifs-img2img, 0 for ifs inpainting mode])
                     """
         )
     )
@@ -3704,10 +3704,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                     Guidance rescale factor should fix overexposure
                     when using zero terminal SNR. This is supported for basic text to image generation
-                    when using --model-type "torch" but not inpainting, img2img, or --control-nets.
-                    When using --model-type "torch-sdxl" it is supported for basic generation, inpainting,
+                    when using --model-type "sd" but not inpainting, img2img, or --control-nets.
+                    When using --model-type "sdxl" it is supported for basic generation, inpainting,
                     and img2img, unless --control-nets is specified in which case only inpainting is supported.
-                    It is supported for --model-type "torch-sdxl-pix2pix" but not --model-type "torch-pix2pix".
+                    It is supported for --model-type "sdxl-pix2pix" but not --model-type "pix2pix".
                     
                     NOWRAP!
                     (default: [0.0])"""

@@ -29,7 +29,7 @@
 \set sigmas {{ csv(np.exp(np.linspace(np.log(sigma_max), np.log(sigma_min), inference_steps)) * sigma_scale) }}
 
 stabilityai/stable-diffusion-xl-base-1.0
---model-type torch-sdxl
+--model-type sdxl
 --dtype float16
 --variant fp16
 --inference-steps {{ inference_steps }}

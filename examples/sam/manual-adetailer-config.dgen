@@ -25,7 +25,7 @@
 # utilizing image input preprocessors and a post processor
 
 stabilityai/stable-diffusion-xl-base-1.0
---model-type torch-sdxl
+--model-type sdxl
 --dtype float16
 --variant fp16
 --image-seeds {{input_image}};{{input_image}}

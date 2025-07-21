@@ -10,12 +10,12 @@
 
 # List out possible scheduler names for the main model
 
-stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl --pag --scheduler help
+stabilityai/stable-diffusion-xl-base-1.0 --model-type sdxl --pag --scheduler help
 
 # List out possible scheduler names for the refiner model
 
 stabilityai/stable-diffusion-xl-base-1.0
---model-type torch-sdxl
+--model-type sdxl
 --pag
 --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0
 --second-model-scheduler help
@@ -24,7 +24,7 @@ stabilityai/stable-diffusion-xl-base-1.0
 # Try every combination of these schedulers for the main model and refiner.
 # With one seed, this amounts to 4 generation steps
 
-stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
+stabilityai/stable-diffusion-xl-base-1.0 --model-type sdxl
 --variant fp16 --dtype float16
 --pag
 --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0

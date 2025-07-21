@@ -27,7 +27,7 @@
 \set llm_preamble 'Enhance this photo description:'
 
 stabilityai/stable-diffusion-xl-base-1.0
---model-type torch-sdxl
+--model-type sdxl
 --dtype float16
 --variant fp16
 --inference-steps 30

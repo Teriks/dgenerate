@@ -7,11 +7,11 @@ The URI syntax for this argument is identical to ``--loras``, which is discussed
 
 IP Adapters are supported for these model types:
 
-    * ``--model-type torch``
-    * ``--model-type torch-pix2pix``
-    * ``--model-type torch-sdxl``
+    * ``--model-type sd``
+    * ``--model-type pix2pix``
+    * ``--model-type sdxl``
     * ``--model-type kolors``
-    * ``--model-type torch-flux`` (basic adapter image specification only)
+    * ``--model-type flux`` (basic adapter image specification only)
 
 Here is a brief example of loading an IP Adapter in the most basic way and passing it an image via ``--image-seeds``.
 
@@ -25,7 +25,7 @@ This example nearly duplicates an image created with a code snippet in the diffu
     # this uses one IP Adapter input image with the IP Adapter h94/IP-Adapter
 
     dgenerate stabilityai/stable-diffusion-xl-base-1.0 \
-    --model-type torch-sdxl \
+    --model-type sdxl \
     --dtype float16 \
     --variant fp16 \
     --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \

@@ -13,7 +13,7 @@
 {% endif %}
 
 Kwai-Kolors/Kolors-diffusers
---model-type torch-kolors {{ optimization }}
+--model-type kolors {{ optimization }}
 --variant fp16
 --dtype float16
 --pag

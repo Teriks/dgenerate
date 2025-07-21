@@ -22,7 +22,7 @@
 # a dog made out of yarn.
 
 stabilityai/stable-diffusion-3-medium-diffusers
---model-type torch-sd3 {{ optimization }}
+--model-type sd3 {{ optimization }}
 --variant fp16
 --dtype float16
 --loras linoyts/Yarn_art_SD3_LoRA;scale=0.6 ainjarts/gray_cat_sd3_lora;scale=0.4

@@ -13,8 +13,8 @@ with control images for guidance, img2img and inpainting is not supported with T
 
 T2I Adapter models are supported for these model types:
 
-    * ``--model-type torch``
-    * ``--model-type torch-sdxl``
+    * ``--model-type sd``
+    * ``--model-type sdxl``
 
 You can provide a huggingface repository slug / blob link, .pt, .pth, .bin, .ckpt, or .safetensors files.
 
@@ -62,7 +62,7 @@ These examples use: `vermeer_canny_edged.png <https://raw.githubusercontent.com/
 
     # SDXL example
 
-    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
+    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type sdxl \
     --variant fp16 --dtype float16 \
     --vae "AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix" \
     --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \

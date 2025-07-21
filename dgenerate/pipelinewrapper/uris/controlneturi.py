@@ -76,7 +76,7 @@ class SDXLControlNetUnionUriModes(enum.IntEnum):
 
 class ControlNetUri:
     """
-    Representation of ``--control-nets`` uri when ``--model-type`` torch*
+    Representation of ``--control-nets`` URI.
     """
 
     # pipelinewrapper.uris.util.get_uri_accepted_args_schema metadata
@@ -176,7 +176,7 @@ class ControlNetUri:
                  start: float = 0.0,
                  end: float = 1.0,
                  mode: int | str | FluxControlNetUnionUriModes | None = None,
-                 model_type: _enums.ModelType = _enums.ModelType.TORCH):
+                 model_type: _enums.ModelType = _enums.ModelType.SD):
         """
         :param model: model path
         :param revision: model revision (branch name)
@@ -367,9 +367,9 @@ class ControlNetUri:
 
     @staticmethod
     def parse(uri: _types.Uri,
-              model_type=_enums.ModelType.TORCH) -> 'ControlNetUri':
+              model_type=_enums.ModelType.SD) -> 'ControlNetUri':
         """
-        Parse a ``--model-type`` torch* ``--control-nets`` uri specification and return an object representing its constituents
+        Parse a ``--control-nets`` uri specification and return an object representing its constituents
 
         :param uri: string with ``--control-nets`` uri syntax
         :param model_type: model type that the ControlNet will be attached to.
