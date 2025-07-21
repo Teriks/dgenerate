@@ -26,7 +26,6 @@ import dgenerate.console.formentries.entry as _entry
 import dgenerate.console.resources
 import dgenerate.console.textentry as _t_entry
 import dgenerate.console.filedialog as _filedialog
-import dgenerate.console.resources as _resources
 
 class _SubModelBuilderEntry(_entry._Entry):
     NAME = 'submodelbuilder'
@@ -61,11 +60,16 @@ class _SubModelBuilderEntry(_entry._Entry):
 
         self.button_frame = tk.Frame(self.master)
 
-        is_file = self.config.get('file', True)
-        is_dir = self.config.get('dir', True)
+        files_metadata = self._submodels_schema[self.model]['model'].get('files', None)
+
+        is_file = (files_metadata and isinstance(files_metadata['mode'], list)
+                   and 'in' in files_metadata['mode'] or files_metadata['mode'] == 'in')
+
+        is_dir = (files_metadata and isinstance(files_metadata['mode'], list)
+                  and 'dir' in files_metadata['mode'] or files_metadata['mode'] == 'dir')
 
         def select_file_command():
-            dialog_args = _resources.get_file_dialog_args(['models'])
+            dialog_args = {'filetypes': files_metadata['filetypes']}
             r = _filedialog.open_file_dialog(**dialog_args)
 
             if r is not None:
@@ -128,13 +132,13 @@ class _SubModelBuilderEntry(_entry._Entry):
                 parts =  text.split(';')
                 if len(parts) == 1 or not any(parts[0] == option for option in vae_options):
                     # we specified a raw file, default to AutoEncoderKL
-                    prefix = 'AutoencoderKL;model='
+                    prefix = f'{vae_options[0]};model='
             elif self.model == 'Text Encoder':
                 text_encoder_options = self._submodels_schema['Text Encoder']['encoder']['options']
                 parts =  text.split(';')
                 if len(parts) == 1 or not any(parts[0] == option for option in text_encoder_options):
                     # we specified a raw file, default to CLIPTextModel
-                    prefix = 'CLIPTextModel;model='
+                    prefix = f'{text_encoder_options[0]};model='
 
         return self._template(
             content, prefix + _entry.shell_quote_if(
