@@ -23,6 +23,7 @@
 import tkinter as tk
 
 import dgenerate.console.formentries.entry as _entry
+import dgenerate.console.resources
 import dgenerate.console.textentry as _t_entry
 import dgenerate.console.filedialog as _filedialog
 import dgenerate.console.resources as _resources
@@ -41,6 +42,8 @@ class _SubModelBuilderEntry(_entry._Entry):
             kwargs['widget_rows'] = 1
 
         super().__init__(*args, **kwargs)
+
+        self._submodels_schema = dgenerate.console.resources.get_schema('submodels')
 
         uri_label_text = self.get_label('URI')
 
@@ -117,5 +120,15 @@ class _SubModelBuilderEntry(_entry._Entry):
         dialog.destroy = _destroy
 
     def template(self, content):
-        return self._template(content, _entry.shell_quote_if(
+        text = self.uri_var.get().strip()
+        prefix = ''
+        if text and self.model == 'VAE':
+            vae_options = self._submodels_schema['VAE']['encoder']['options']
+            parts =  text.split(';')
+            if len(parts) == 1 or not any(parts[0] == option for option in vae_options):
+                # we specified a raw file, default to AutoEncoderKL
+                prefix = 'AutoencoderKL;model='
+
+        return self._template(
+            content, prefix + _entry.shell_quote_if(
             self.uri_var.get().strip()))
