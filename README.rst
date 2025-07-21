@@ -74,6 +74,8 @@ Manual Install
 * `Linux / WSL <https://dgenerate.readthedocs.io/en/version_5.0.0/manual.html#linux-or-wsl-install>`_
 * `Linux ROCm <https://dgenerate.readthedocs.io/en/version_5.0.0/manual.html#linux-with-rocm-amd-cards>`_
 * `MacOS <https://dgenerate.readthedocs.io/en/version_5.0.0/manual.html#macos-install-apple-silicon-only>`_
+* `Google Colab <https://dgenerate.readthedocs.io/en/version_5.0.0/manual.html#google-colab-install>`_
+* `Installing From Development Branches <https://dgenerate.readthedocs.io/en/version_5.0.0/manual.html#installing-from-development-branches>`_
 
 System Requirements
 -------------------
