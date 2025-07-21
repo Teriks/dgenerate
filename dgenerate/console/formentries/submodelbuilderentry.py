@@ -122,12 +122,19 @@ class _SubModelBuilderEntry(_entry._Entry):
     def template(self, content):
         text = self.uri_var.get().strip()
         prefix = ''
-        if text and self.model == 'VAE':
-            vae_options = self._submodels_schema['VAE']['encoder']['options']
-            parts =  text.split(';')
-            if len(parts) == 1 or not any(parts[0] == option for option in vae_options):
-                # we specified a raw file, default to AutoEncoderKL
-                prefix = 'AutoencoderKL;model='
+        if text:
+            if self.model == 'VAE':
+                vae_options = self._submodels_schema['VAE']['encoder']['options']
+                parts =  text.split(';')
+                if len(parts) == 1 or not any(parts[0] == option for option in vae_options):
+                    # we specified a raw file, default to AutoEncoderKL
+                    prefix = 'AutoencoderKL;model='
+            elif self.model == 'Text Encoder':
+                text_encoder_options = self._submodels_schema['Text Encoder']['encoder']['options']
+                parts =  text.split(';')
+                if len(parts) == 1 or not any(parts[0] == option for option in text_encoder_options):
+                    # we specified a raw file, default to CLIPTextModel
+                    prefix = 'CLIPTextModel;model='
 
         return self._template(
             content, prefix + _entry.shell_quote_if(
