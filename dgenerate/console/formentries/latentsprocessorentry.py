@@ -73,6 +73,8 @@ class _LatentsProcessorEntry(_schemaentry._PluginSchemaEntry):
                 optional,
                 row
             )
+        elif 'quantizer' in param_name:
+            return self._create_quantizer_entry(row)
         else:
             return self._create_raw_type_entry(
                     param_type, default_value, optional, options, row
