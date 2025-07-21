@@ -26,7 +26,6 @@ import typing
 ROW_XPAD = (5, 2)
 DIVIDER_YPAD = (5, 5)
 
-
 def replace_first(text, old, new):
     out = []
     replaced = False
@@ -53,21 +52,13 @@ def shell_quote_if(text, strict: bool = False):
 
 
 def valid_colors(widget):
-    if isinstance(widget, ttk.Combobox):
-        widget.config(
-            foreground="black",
-            background="white")
-    else:
+    if not isinstance(widget, ttk.Combobox):
         widget.config(
             highlightthickness=0)
 
 
 def invalid_colors(widget):
-    if isinstance(widget, ttk.Combobox):
-        widget.config(
-            foreground="black",
-            background="red")
-    else:
+    if not isinstance(widget, ttk.Combobox):
         widget.config(
             highlightbackground="red",
             highlightcolor="red",

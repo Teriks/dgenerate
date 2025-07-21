@@ -99,6 +99,13 @@ class _SubModelEntry(_schemaentry._PluginSchemaEntry):
                                   row: int) -> _schemaentry._PluginArgEntry:
 
         if options:
+            model_name = self.plugin_name_var.get()
+            if model_name == 'VAE' and param_name == 'encoder':
+                # Special case for VAE encoder default
+                default_value = 'AutoencoderKL'
+            elif model_name == 'Text Encoder' and param_name == 'encoder':
+                # Special case for Text Encoder default
+                default_value = 'CLIPTextModel'
             return self._create_dropdown_entry(options, default_value, optional, row)
 
         created_simple_type, entry = self._create_int_float_bool_entries(
