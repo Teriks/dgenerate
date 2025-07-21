@@ -124,7 +124,8 @@ _CLASS_KEYWORDS = sorted((
     "CLIPTextModel",
     "CLIPTextModelWithProjection",
     "T5EncoderModel",
-    "ChatGLMModel"
+    "ChatGLMModel",
+    "DistillT5EncoderModel"
 ), key=lambda s: len(s), reverse=True)
 
 _MODEL_TYPE_KEYWORDS = sorted((
