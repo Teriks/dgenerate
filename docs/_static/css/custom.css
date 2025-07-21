@@ -1,0 +1,33 @@
+.wy-nav-content {
+    max-width: 1200px; /* command examples can become long */
+}
+
+p {
+    max-width: 800px;
+}
+
+/* Force properties to display as blocks, not inline */
+.py.property {
+    display: block !important;
+    margin-bottom: 1.5em !important;
+    clear: both !important;
+}
+
+/* Ensure property signatures don't wrap awkwardly */
+.sig-name {
+    display: inline-block !important;
+    margin-right: 0.5em !important;
+}
+
+/* Fix property type annotations */
+.sig-return-typehint {
+    display: block !important;
+    margin-left: 2em !important;
+    font-style: italic !important;
+}
+
+/* Space out property descriptions */
+.property .docstring {
+    margin-top: 0.5em !important;
+    margin-bottom: 1em !important;
+}
