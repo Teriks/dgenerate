@@ -18,7 +18,7 @@
 
 # If we wanted we could use --batch-grid-size to put these images into a grid
 
-diffusers/stable-diffusion-xl-1.0-inpainting-0.1 --model-type torch-sdxl
+diffusers/stable-diffusion-xl-1.0-inpainting-0.1 --model-type sdxl
 --variant fp16 --dtype float16
 --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0
 --pag
@@ -37,7 +37,7 @@ diffusers/stable-diffusion-xl-1.0-inpainting-0.1 --model-type torch-sdxl
 # Enable PAG in the refiner with --sdxl-refiner-pag
 
 
-diffusers/stable-diffusion-xl-1.0-inpainting-0.1 --model-type torch-sdxl
+diffusers/stable-diffusion-xl-1.0-inpainting-0.1 --model-type sdxl
 --variant fp16 --dtype float16
 --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0
 --pag

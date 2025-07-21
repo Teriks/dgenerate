@@ -47,8 +47,8 @@ class LatentsProcessorChain(_latentsprocessor.LatentsProcessor):
         else:
             self._latents_processors = list(latents_processors)
         
-        # Use the model_type from the first processor if available, otherwise default to TORCH
-        model_type = _enums.ModelType.TORCH
+        # Use the model_type from the first processor if available, otherwise default to SD
+        model_type = _enums.ModelType.SD
         if self._latents_processors:
             model_type = self._latents_processors[0].model_type
         

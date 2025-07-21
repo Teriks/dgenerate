@@ -3,7 +3,7 @@
 
 # Use an already processed image with the canny controlnet
 
-stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
+stabilityai/stable-diffusion-xl-base-1.0 --model-type sdxl
 --variant fp16 --dtype float16
 --vae AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix
 --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0
@@ -23,7 +23,7 @@ stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
 # Enable PAG in the refiner with --sdxl-refiner-pag
 
 
-stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
+stabilityai/stable-diffusion-xl-base-1.0 --model-type sdxl
 --variant fp16 --dtype float16
 --vae AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix
 --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0

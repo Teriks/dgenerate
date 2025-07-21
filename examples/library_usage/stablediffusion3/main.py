@@ -22,7 +22,7 @@ if device is None:
 config = RenderLoopConfig()
 
 config.model_path = 'stabilityai/stable-diffusion-3-medium-diffusers'
-config.model_type = ModelType.TORCH_SD3
+config.model_type = ModelType.SD3
 config.variant = 'fp16'
 config.dtype = DataType.FLOAT16
 config.inference_steps = [20]

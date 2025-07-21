@@ -4,7 +4,7 @@
 # this uses one IP Adapter input image with the IP Adapter h94/IP-Adapter
 
 stabilityai/stable-diffusion-xl-base-1.0
---model-type torch-sdxl
+--model-type sdxl
 --dtype float16
 --variant fp16
 --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0

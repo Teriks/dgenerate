@@ -5,13 +5,13 @@ One or more Textual Inversion models (otherwise known as embeddings) may be spec
 
 Textual inversions are supported for these model types:
 
-    * ``--model-type torch``
-    * ``--model-type torch-pix2pix``
-    * ``--model-type torch-upscaler-x4``
-    * ``--model-type torch-sdxl``
-    * ``--model-type torch-sdxl-pix2pix``
-    * ``--model-type torch-flux`` (``txt2img``, ``txt2img + ControlNets``, ``inpainting + ControlNets`` only)
-    * ``--model-type torch-flux-fill`` (``inpainting`` only)
+    * ``--model-type sd``
+    * ``--model-type pix2pix``
+    * ``--model-type upscaler-x4``
+    * ``--model-type sdxl``
+    * ``--model-type sdxl-pix2pix``
+    * ``--model-type flux`` (``txt2img``, ``txt2img + ControlNets``, ``inpainting + ControlNets`` only)
+    * ``--model-type flux-fill`` (``inpainting`` only)
 
 You can provide a huggingface repository slug, .pt, .pth, .bin, .ckpt, or .safetensors files.
 Blob links are not accepted, for that use ``subfolder`` and ``weight-name`` described below.

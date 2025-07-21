@@ -237,9 +237,9 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
     This prompt weighter supports the model types:
 
     NOWRAP!
-    --model-type torch
-    --model-type torch-pix2pix
-    --model-type torch-upscaler-x4
+    --model-type sd
+    --model-type pix2pix
+    --model-type upscaler-x4
 
     You may use the --second-prompts argument of dgenerate to pass a prompt
     explicitly to the T5 rankgen encoder, which uses the primary prompt by default otherwise.
@@ -308,9 +308,9 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
         import dgenerate.promptweighters as _promptweighters
 
         supported = {
-            _enums.ModelType.TORCH,
-            _enums.ModelType.TORCH_PIX2PIX,
-            _enums.ModelType.TORCH_UPSCALER_X4
+            _enums.ModelType.SD,
+            _enums.ModelType.PIX2PIX,
+            _enums.ModelType.UPSCALER_X4
         }
 
         encoder = encoder.lower()
@@ -448,7 +448,7 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
         if weighter:
             self._weighter = _promptweighters.create_prompt_weighter(
                 weighter,
-                model_type=_enums.ModelType.TORCH,
+                model_type=_enums.ModelType.SD,
                 dtype=self.dtype,
                 local_files_only=self.local_files_only
             )

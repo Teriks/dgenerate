@@ -29,7 +29,7 @@ stable-diffusion-v1-5/stable-diffusion-v1-5
 # Step 2: Upscale and refine with SDXL using interposer
 
 stabilityai/stable-diffusion-xl-base-1.0
---model-type torch-sdxl
+--model-type sdxl
 --dtype float16
 --variant fp16
 --inference-steps 25
@@ -50,7 +50,7 @@ stabilityai/stable-diffusion-xl-base-1.0
 {% endif %}
 
 stabilityai/stable-diffusion-3-medium-diffusers
---model-type torch-sd3 {{ optimization }}
+--model-type sd3 {{ optimization }}
 --variant fp16
 --dtype float16
 --inference-steps 30

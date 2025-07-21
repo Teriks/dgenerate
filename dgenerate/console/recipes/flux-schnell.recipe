@@ -9,7 +9,7 @@ order: 15
 \set auth_token {{ '--auth-token ' + quote(auth_token) if auth_token else '' }}
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "black-forest-labs/FLUX.1-schnell", "optional":false, "file-types":["models"]}]
---model-type torch-flux {{ auth_token }}
+--model-type flux {{ auth_token }}
 @dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"], "default":"bfloat16"}]
 @karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "filter": ["FlowMatchEulerDiscreteScheduler"]}]
 @checkboxwithfloatarg[{"label":"Use TeaCache", "default":false, "float-arg":"--tea-cache-rel-l1-thresholds", "float-label":"TeaCache L1 Threshold", "float": 0.6, "min":0.0, "max":1.0}]

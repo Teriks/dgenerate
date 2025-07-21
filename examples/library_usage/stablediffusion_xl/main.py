@@ -42,7 +42,7 @@ config.prompts = [Prompt.parse('an astronaut walking on the moon; fake')]
 
 config.device = device
 
-config.model_type = ModelType.TORCH_SDXL
+config.model_type = ModelType.SDXL
 
 # Lower GPU memory consumption with this data type
 config.dtype = DataType.FLOAT16

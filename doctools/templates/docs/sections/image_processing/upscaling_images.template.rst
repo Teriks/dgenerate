@@ -21,8 +21,8 @@ Upscaling with Diffusion Upscaler Models
 
 Stable diffusion image upscaling models can be used via the model types:
 
-    * ``--model-type torch-upscaler-x2``
-    * ``--model-type torch-upscaler-x4``
+    * ``--model-type upscaler-x2``
+    * ``--model-type upscaler-x4``
 
 The image used in the example below is this `low resolution cat <https://raw.githubusercontent.com/Teriks/dgenerate/@REVISION/examples/media/low_res_cat.png>`_
 
@@ -35,7 +35,7 @@ The image used in the example below is this `low resolution cat <https://raw.git
     # The image is being resized to 256x256, and then upscaled by 2x
 
     dgenerate stabilityai/sd-x2-latent-upscaler --variant fp16 --dtype float16 \
-    --model-type torch-upscaler-x2 \
+    --model-type upscaler-x2 \
     --prompts "a picture of a white cat" \
     --image-seeds low_res_cat.png \
     --output-size 256
@@ -46,7 +46,7 @@ The image used in the example below is this `low resolution cat <https://raw.git
     # The image is being resized to 256x256, and then upscaled by 4x
 
     dgenerate stabilityai/stable-diffusion-x4-upscaler --variant fp16 --dtype float16 \
-     --model-type torch-upscaler-x4 \
+     --model-type upscaler-x4 \
     --prompts "a picture of a white cat" \
     --image-seeds low_res_cat.png \
     --output-size 256 \
@@ -73,7 +73,7 @@ The ``upscaler`` image processor respects the ``--device`` option of dgenerate, 
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
+    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type sdxl \
     --variant fp16 --dtype float16 \
     --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
     --sdxl-high-noise-fractions 0.8 \

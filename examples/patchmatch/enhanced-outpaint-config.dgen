@@ -41,7 +41,7 @@
 # Inpaint the patchmatch image with the generated mask
 
 diffusers/stable-diffusion-xl-1.0-inpainting-0.1
---model-type torch-sdxl
+--model-type sdxl
 --dtype float16
 --variant fp16
 --inference-steps 30

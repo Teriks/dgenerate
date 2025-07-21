@@ -16,7 +16,7 @@
 
 
 black-forest-labs/FLUX.1-schnell
---model-type torch-flux {{ optimization }}
+--model-type flux {{ optimization }}
 --dtype bfloat16
 --max-sequence-length 256
 --inference-steps 4

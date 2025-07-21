@@ -75,7 +75,7 @@ class InvalidModelFileError(Exception):
     pass
 
 
-_torch_pipeline_cache = _d_memoize.create_object_cache(
+_pipeline_cache = _d_memoize.create_object_cache(
     'pipeline', cache_type=_memory.SizedConstrainedObjectCache
 )
 
@@ -96,7 +96,7 @@ def _floyd_disabled_safety_checker(images, clip_input):
         return images, False, False
 
 
-def _set_torch_safety_checker(pipeline: diffusers.DiffusionPipeline, safety_checker: bool):
+def _set_sd_safety_checker(pipeline: diffusers.DiffusionPipeline, safety_checker: bool):
     if not safety_checker:
         if hasattr(pipeline, 'safety_checker') and pipeline.safety_checker is not None:
             # If it's already None for some reason you'll get a call
@@ -157,7 +157,7 @@ def estimate_pipeline_cache_footprint(
     :param safety_checker: consider the safety checker? dgenerate usually loads the safety checker and then retroactively
         disables it if needed, so it usually considers the size of the safety checker model.
     :param auth_token: optional huggingface auth token to access restricted repositories that your account has access to.
-    :param extra_args: ``extra_args`` as to be passed to :py:func:`.create_torch_diffusion_pipeline`
+    :param extra_args: ``extra_args`` as to be passed to :py:func:`.create_diffusion_pipeline`
     :param local_files_only: Only ever attempt to look in the local huggingface cache? if ``False`` the huggingface
         API will be contacted when necessary.
     :return: size estimate in bytes.
@@ -292,7 +292,7 @@ def set_vae_tiling_and_slicing(
             pipeline.vae.disable_slicing()
 
 
-def get_torch_pipeline_modules(pipeline: diffusers.DiffusionPipeline):
+def get_pipeline_modules(pipeline: diffusers.DiffusionPipeline):
     """
     Get all component modules of a torch diffusers pipeline.
 
@@ -371,7 +371,7 @@ def enable_sequential_cpu_offload(pipeline: diffusers.DiffusionPipeline,
     pipeline.remove_all_hooks()
 
     _set_sequential_cpu_offload_flag(pipeline, True)
-    for name, model in get_torch_pipeline_modules(pipeline).items():
+    for name, model in get_pipeline_modules(pipeline).items():
         quant, _, _ = _util.check_bnb_status(model)
 
         if name in pipeline._exclude_from_cpu_offload or quant:
@@ -494,7 +494,7 @@ def _pipeline_to(pipeline, device: torch.device | str | None):
     pipeline_device = get_torch_device(pipeline)
 
     all_modules_on_device = all(
-        _torchutil.devices_equal(device, get_torch_device(m)) for m in get_torch_pipeline_modules(pipeline).values())
+        _torchutil.devices_equal(device, get_torch_device(m)) for m in get_pipeline_modules(pipeline).values())
 
     pipeline_on_device = _torchutil.devices_equal(get_torch_device(pipeline), pipeline_device)
 
@@ -520,10 +520,10 @@ def _pipeline_to(pipeline, device: torch.device | str | None):
 
     if not _torchutil.devices_equal(pipeline_device, device):
         try:
-            cache_metadata = _torch_pipeline_cache.get_metadata(pipeline)
+            cache_metadata = _pipeline_cache.get_metadata(pipeline)
 
             if device.type != 'cpu':
-                _torch_pipeline_cache.size -= cache_metadata.size
+                _pipeline_cache.size -= cache_metadata.size
 
                 _messages.debug_log(
                     f'Cached {_types.class_and_id_string(pipeline)} Size = '
@@ -544,12 +544,12 @@ def _pipeline_to(pipeline, device: torch.device | str | None):
                     f'{cache_metadata.size} Bytes '
                     f'({_memory.bytes_best_human_unit(cache_metadata.size)})')
 
-                _torch_pipeline_cache.size += cache_metadata.size
+                _pipeline_cache.size += cache_metadata.size
         except _d_memoize.ObjectCacheKeyError:
             # does not exist in the cache
             pass
 
-    for name, value in get_torch_pipeline_modules(pipeline).items():
+    for name, value in get_pipeline_modules(pipeline).items():
 
         is_loaded_in_8bit_bnb = _util.is_loaded_in_8bit_bnb(value)
 
@@ -743,15 +743,15 @@ def _evict_last_pipeline(device: torch.device | None):
 def _evict_8bit_bnb_pipelines(device: torch.device | None):
     # clear out any 8bit bnb pipelines in the cache, they are
     # on the GPU and cannot be moved
-    for cached_pipeline in _torch_pipeline_cache.values():
+    for cached_pipeline in _pipeline_cache.values():
 
         bit8 = any(_util.is_loaded_in_8bit_bnb(module) for
-                   module in get_torch_pipeline_modules(cached_pipeline.pipeline).values())
+                   module in get_pipeline_modules(cached_pipeline.pipeline).values())
 
         if bit8 and (device is None or _torchutil.devices_equal(device, get_torch_device(cached_pipeline.pipeline))):
             _messages.debug_log(
                 f'Clearing out cached 8bit pipeline from cache: {cached_pipeline.pipeline.__class__.__name__}')
-            _torch_pipeline_cache.un_cache(cached_pipeline)
+            _pipeline_cache.un_cache(cached_pipeline)
             del cached_pipeline
 
 
@@ -918,18 +918,18 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline,
             if old_execution_device_property is not None:
                 pipeline.__class__._execution_device = old_execution_device_property
 
-    for cached_pipeline in _torch_pipeline_cache.values():
+    for cached_pipeline in _pipeline_cache.values():
         # hack to clear out cached 8bit pipelines, only one should ever
         # be in the object cache for sequential calls, this is necessary
         # for efficient main pipeline recall in DiffusionPipelineWrapper
         # which is used for the adetailer post processor
         if cached_pipeline.pipeline is not pipeline:
             bit8 = any(_util.is_loaded_in_8bit_bnb(module) for
-                       module in get_torch_pipeline_modules(cached_pipeline.pipeline).values())
+                       module in get_pipeline_modules(cached_pipeline.pipeline).values())
             if bit8 and _torchutil.devices_equal(device, get_torch_device(cached_pipeline.pipeline)):
                 _messages.debug_log(
                     f'Clearing out cached 8bit pipeline from cache: {cached_pipeline.pipeline.__class__.__name__}')
-                _torch_pipeline_cache.un_cache(cached_pipeline)
+                _pipeline_cache.un_cache(cached_pipeline)
                 del cached_pipeline
                 gc.collect()
                 _memory.torch_gc()
@@ -976,83 +976,6 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline,
 
 
 class PipelineCreationResult:
-    def __init__(self, pipeline):
-        self._pipeline = pipeline
-
-    @property
-    def pipeline(self):
-        return self._pipeline
-
-    def get_pipeline_modules(self, names=collections.abc.Iterable[str]):
-        """
-        Get associated pipeline module such as ``vae`` etc, in
-        a dictionary mapped from name to module value.
-
-        Possible Module Names:
-
-            * ``unet``
-            * ``vae``
-            * ``transformer``
-            * ``text_encoder``
-            * ``text_encoder_2``
-            * ``text_encoder_3``
-            * ``tokenizer``
-            * ``tokenizer_2``
-            * ``tokenizer_3``
-            * ``safety_checker``
-            * ``feature_extractor``
-            * ``image_encoder``
-            * ``adapter``
-            * ``controlnet``
-            * ``scheduler``
-
-
-        If the module is not present or a recognized name, a :py:exc:`ValueError`
-        will be thrown describing the module that is not part of the pipeline.
-
-        :raise ValueError:
-
-        :param names: module names, such as ``vae``, ``text_encoder``
-        :return: dictionary
-        """
-
-        module_values = dict()
-
-        acceptable_lookups = {
-            'unet',
-            'vae',
-            'transformer',
-            'text_encoder',
-            'text_encoder_2',
-            'text_encoder_3',
-            'tokenizer',
-            'tokenizer_2',
-            'tokenizer_3',
-            'safety_checker',
-            'feature_extractor',
-            'image_encoder',
-            'adapter',
-            'controlnet',
-            'scheduler'
-        }
-
-        for name in names:
-            if name not in acceptable_lookups:
-                raise ValueError(f'"{name}" is not a recognized pipeline module name.')
-            if not hasattr(self.pipeline, name):
-                raise ValueError(f'Created pipeline does not possess a module named: "{name}".')
-            module_values[name] = getattr(self.pipeline, name)
-
-        return module_values
-
-
-class TorchPipelineCreationResult(PipelineCreationResult):
-    @property
-    def pipeline(self) -> diffusers.DiffusionPipeline:
-        """
-        A created subclass of :py:class:`diffusers.DiffusionPipeline`
-        """
-        return super().pipeline
 
     model_path: _types.OptionalPath
     """
@@ -1136,7 +1059,6 @@ class TorchPipelineCreationResult(PipelineCreationResult):
                  parsed_textual_inversion_uris: collections.abc.Sequence[_uris.TextualInversionUri],
                  parsed_controlnet_uris: collections.abc.Sequence[_uris.ControlNetUri],
                  parsed_t2i_adapter_uris: collections.abc.Sequence[_uris.T2IAdapterUri]):
-        super().__init__(pipeline)
         self.model_path = model_path
         self.parsed_unet_uri = parsed_unet_uri
         self.parsed_vae_uri = parsed_vae_uri
@@ -1147,6 +1069,73 @@ class TorchPipelineCreationResult(PipelineCreationResult):
         self.parsed_ip_adapter_uris = parsed_ip_adapter_uris
         self.parsed_image_encoder_uri = parsed_image_encoder_uri
         self.parsed_transformer_uri = parsed_transformer_uri
+        self._pipeline = pipeline
+
+    @property
+    def pipeline(self):
+        return self._pipeline
+
+    def get_pipeline_modules(self, names: collections.abc.Iterable[str]):
+        """
+        Get associated pipeline module such as ``vae`` etc, in
+        a dictionary mapped from name to module value.
+
+        Possible Module Names:
+
+            * ``unet``
+            * ``vae``
+            * ``transformer``
+            * ``text_encoder``
+            * ``text_encoder_2``
+            * ``text_encoder_3``
+            * ``tokenizer``
+            * ``tokenizer_2``
+            * ``tokenizer_3``
+            * ``safety_checker``
+            * ``feature_extractor``
+            * ``image_encoder``
+            * ``adapter``
+            * ``controlnet``
+            * ``scheduler``
+
+
+        If the module is not present or a recognized name, a :py:exc:`ValueError`
+        will be thrown describing the module that is not part of the pipeline.
+
+        :raise ValueError:
+
+        :param names: module names, such as ``vae``, ``text_encoder``
+        :return: dictionary
+        """
+
+        module_values = dict()
+
+        acceptable_lookups = {
+            'unet',
+            'vae',
+            'transformer',
+            'text_encoder',
+            'text_encoder_2',
+            'text_encoder_3',
+            'tokenizer',
+            'tokenizer_2',
+            'tokenizer_3',
+            'safety_checker',
+            'feature_extractor',
+            'image_encoder',
+            'adapter',
+            'controlnet',
+            'scheduler'
+        }
+
+        for name in names:
+            if name not in acceptable_lookups:
+                raise ValueError(f'"{name}" is not a recognized pipeline module name.')
+            if not hasattr(self.pipeline, name):
+                raise ValueError(f'Created pipeline does not possess a module named: "{name}".')
+            module_values[name] = getattr(self.pipeline, name)
+
+        return module_values
 
     def call(self,
              device: torch.device | str | None = _torchutil.default_device(),
@@ -1166,9 +1155,9 @@ class TorchPipelineCreationResult(PipelineCreationResult):
                              **kwargs)
 
 
-def create_torch_diffusion_pipeline(
+def create_diffusion_pipeline(
         model_path: str,
-        model_type: _enums.ModelType = _enums.ModelType.TORCH,
+        model_type: _enums.ModelType = _enums.ModelType.SD,
         pipeline_type: _enums.PipelineType = _enums.PipelineType.TXT2IMG,
         revision: _types.OptionalString = None,
         variant: _types.OptionalString = None,
@@ -1197,7 +1186,7 @@ def create_torch_diffusion_pipeline(
         sequential_cpu_offload: bool = False,
         local_files_only: bool = False,
         missing_submodules_ok: bool = False
-) -> TorchPipelineCreationResult:
+) -> PipelineCreationResult:
     """
     Create a :py:class:`diffusers.DiffusionPipeline` in dgenerate's in memory cacheing system.
 
@@ -1259,17 +1248,17 @@ def create_torch_diffusion_pipeline(
             __locals[name] = [value]
 
     with _hfhub.with_hf_errors_as_model_not_found():
-        return _create_torch_diffusion_pipeline(**__locals)
+        return _create_diffusion_pipeline(**__locals)
 
-class TorchPipelineFactory:
+class PipelineFactory:
     """
-    Turns :py:func:`.create_torch_diffusion_pipeline` into a factory that can
+    Turns :py:func:`.create_diffusion_pipeline` into a factory that can
     repeatedly create a pipeline with the same arguments, possibly from cache.
     """
 
     def __init__(self,
                  model_path: str,
-                 model_type: _enums.ModelType = _enums.ModelType.TORCH,
+                 model_type: _enums.ModelType = _enums.ModelType.SD,
                  pipeline_type: _enums.PipelineType = _enums.PipelineType.TXT2IMG,
                  revision: _types.OptionalString = None,
                  variant: _types.OptionalString = None,
@@ -1301,7 +1290,7 @@ class TorchPipelineFactory:
                       _types.partial_deep_copy_container(locals()).items()
                       if k not in {'self'}}
 
-    def __call__(self) -> TorchPipelineCreationResult:
+    def __call__(self) -> PipelineCreationResult:
         """
         :raises InvalidModelFileError:
         :raises ModelNotFoundError:
@@ -1313,7 +1302,7 @@ class TorchPipelineFactory:
 
         :return: :py:class:`.TorchPipelineCreationResult`
         """
-        return create_torch_diffusion_pipeline(**self._args)
+        return create_diffusion_pipeline(**self._args)
 
 
 def _format_pipeline_creation_debug_arg(arg_name, v):
@@ -1355,7 +1344,7 @@ def _text_encoder_null(uri):
     return uri and uri.strip().lower() == 'null'
 
 
-def _torch_args_hasher(args):
+def _pipeline_args_hasher(args):
     def text_encoder_uri_parse(uri):
         if _text_encoder_default(uri):
             return None
@@ -1393,11 +1382,11 @@ def _torch_args_hasher(args):
     return _d_memoize.args_cache_key(args, custom_hashes=custom_hashes)
 
 
-def _torch_on_hit(key, hit):
+def _pipeline_on_hit(key, hit):
     _d_memoize.simple_cache_hit_debug("Torch Pipeline", key, hit.pipeline)
 
 
-def _torch_on_create(key, new):
+def _pipeline_on_create(key, new):
     _d_memoize.simple_cache_miss_debug('Torch Pipeline', key, new.pipeline)
 
 
@@ -1431,8 +1420,8 @@ def pipeline_class_supports_ip_adapter(cls: typing.Type[diffusers.DiffusionPipel
     return any('IPAdapterMixin' in x.__name__ for x in cls.__bases__)
 
 
-def get_torch_pipeline_class(
-        model_type: _enums.ModelType = _enums.ModelType.TORCH,
+def get_pipeline_class(
+        model_type: _enums.ModelType = _enums.ModelType.SD,
         pipeline_type: _enums.PipelineType = _enums.PipelineType.TXT2IMG,
         unet_uri: _types.OptionalUri = None,
         transformer_uri: _types.OptionalUri = None,
@@ -1467,19 +1456,15 @@ def get_torch_pipeline_class(
     :raises UnsupportedPipelineConfigError:
     """
 
-    # Ensure model type is a Torch ModelType
-    if not _enums.model_type_is_torch(model_type):
-        raise UnsupportedPipelineConfigError('model_type must be a TORCH ModelType enum value.')
-
     # PAG check
     if pag:
-        if not (model_type == _enums.ModelType.TORCH or
-                model_type == _enums.ModelType.TORCH_SDXL or
-                model_type == _enums.ModelType.TORCH_SD3 or
-                model_type == _enums.ModelType.TORCH_KOLORS):
+        if not (model_type == _enums.ModelType.SD or
+                model_type == _enums.ModelType.SDXL or
+                model_type == _enums.ModelType.SD3 or
+                model_type == _enums.ModelType.KOLORS):
             raise UnsupportedPipelineConfigError(
                 'Perturbed attention guidance (--pag*) is only supported with '
-                '--model-type torch, torch-sdxl, torch-kolors (txt2img), and torch-sd3.')
+                '--model-type sd, sdxl, kolors (txt2img), and sd3.')
 
         if t2i_adapter_uris:
             raise UnsupportedPipelineConfigError(
@@ -1498,7 +1483,7 @@ def get_torch_pipeline_class(
             raise UnsupportedPipelineConfigError(
                 'Flux --model-type values do not support multiple --ip-adapters.')
 
-    if model_type == _enums.ModelType.TORCH_FLUX_FILL:
+    if model_type == _enums.ModelType.FLUX_FILL:
         if pipeline_type != _enums.PipelineType.INPAINT:
             raise UnsupportedPipelineConfigError(
                 'Flux fill --model-type value does not support anything but inpaint mode.'
@@ -1535,33 +1520,33 @@ def get_torch_pipeline_class(
     if _enums.model_type_is_sd3(model_type):
         if t2i_adapter_uris:
             raise UnsupportedPipelineConfigError(
-                '--model-type torch-sd3 is not compatible with --t2i-adapters.')
+                '--model-type sd3 is not compatible with --t2i-adapters.')
         if unet_uri:
             raise UnsupportedPipelineConfigError(
-                '--model-type torch-sd3 is not compatible with --unet.')
+                '--model-type sd3 is not compatible with --unet.')
         if image_encoder_uri:
             raise UnsupportedPipelineConfigError(
-                '--model-type torch-sd3 is not compatible with --image-encoder.')
+                '--model-type sd3 is not compatible with --image-encoder.')
 
     # Torch Kolors restrictions
     if _enums.model_type_is_sd3(model_type):
         if t2i_adapter_uris:
             raise UnsupportedPipelineConfigError(
-                '--model-type torch-kolors is not compatible with --t2i-adapters.')
+                '--model-type kolors is not compatible with --t2i-adapters.')
 
     if transformer_uri:
         if not _enums.model_type_is_sd3(model_type) and not _enums.model_type_is_flux(model_type):
             raise UnsupportedPipelineConfigError(
-                '--transformer is only supported for --model-type torch-sd3 and torch-flux.')
+                '--transformer is only supported for --model-type sd3 and flux.')
 
     # Incompatible combinations
     if controlnet_uris and t2i_adapter_uris:
         raise UnsupportedPipelineConfigError(
             '--control-nets and --t2i-adapters cannot be used together.')
 
-    if image_encoder_uri and not ip_adapter_uris and model_type != _enums.ModelType.TORCH_S_CASCADE:
+    if image_encoder_uri and not ip_adapter_uris and model_type != _enums.ModelType.S_CASCADE:
         raise UnsupportedPipelineConfigError(
-            '--image-encoder cannot be specified without --ip-adapters if --model-type is not torch-s-cascade.')
+            '--image-encoder cannot be specified without --ip-adapters if --model-type is not s-cascade.')
 
     # Pix2Pix model restrictions
     is_pix2pix = _enums.model_type_is_pix2pix(model_type)
@@ -1573,9 +1558,9 @@ def get_torch_pipeline_class(
         if t2i_adapter_uris:
             raise UnsupportedPipelineConfigError(
                 'Pix2Pix --model-type values are not compatible with --t2i-adapters.')
-        if image_encoder_uri and model_type != _enums.ModelType.TORCH_PIX2PIX:
+        if image_encoder_uri and model_type != _enums.ModelType.PIX2PIX:
             raise UnsupportedPipelineConfigError(
-                'Only Pix2Pix --model-type torch-pix2pix is compatible '
+                'Only Pix2Pix --model-type pix2pix is compatible '
                 'with --image-encoder. Pix2Pix SDXL is not supported.')
 
     is_sdxl = _enums.model_type_is_sdxl(model_type)
@@ -1628,7 +1613,7 @@ def get_torch_pipeline_class(
 
         pipeline_class = (
             diffusers.StableDiffusionUpscalePipeline
-            if model_type == _enums.ModelType.TORCH_UPSCALER_X4
+            if model_type == _enums.ModelType.UPSCALER_X4
             else diffusers.StableDiffusionLatentUpscalePipeline
         )
     else:
@@ -1645,25 +1630,25 @@ def get_torch_pipeline_class(
                         else diffusers.StableDiffusionInstructPix2PixPipeline
                     )
 
-            if model_type == _enums.ModelType.TORCH_IF:
+            if model_type == _enums.ModelType.IF:
                 pipeline_class = diffusers.IFPipeline
-            elif model_type == _enums.ModelType.TORCH_IFS:
+            elif model_type == _enums.ModelType.IFS:
                 if not help_mode:
                     raise UnsupportedPipelineConfigError(
                         'Deep Floyd IF super-resolution (IFS) only works in '
                         'img2img mode and cannot work without --image-seeds.')
                 else:
                     pipeline_class = diffusers.IFSuperResolutionPipeline
-            elif model_type == _enums.ModelType.TORCH_S_CASCADE:
+            elif model_type == _enums.ModelType.S_CASCADE:
                 pipeline_class = diffusers.StableCascadePriorPipeline
-            elif model_type == _enums.ModelType.TORCH_S_CASCADE_DECODER:
+            elif model_type == _enums.ModelType.S_CASCADE_DECODER:
                 pipeline_class = diffusers.StableCascadeDecoderPipeline
-            elif model_type == _enums.ModelType.TORCH_FLUX:
+            elif model_type == _enums.ModelType.FLUX:
                 if controlnet_uris:
                     pipeline_class = diffusers.FluxControlNetPipeline
                 else:
                     pipeline_class = diffusers.FluxPipeline
-            elif model_type == _enums.ModelType.TORCH_SD3:
+            elif model_type == _enums.ModelType.SD3:
                 if pag:
                     pipeline_class = diffusers.StableDiffusion3PAGPipeline
                 elif controlnet_uris:
@@ -1674,7 +1659,7 @@ def get_torch_pipeline_class(
                     pipeline_class = diffusers.StableDiffusion3ControlNetPipeline
                 else:
                     pipeline_class = diffusers.StableDiffusion3Pipeline
-            elif model_type == _enums.ModelType.TORCH_KOLORS:
+            elif model_type == _enums.ModelType.KOLORS:
                 if controlnet_uris:
                     if pag:
                         raise UnsupportedPipelineConfigError(
@@ -1737,36 +1722,36 @@ def get_torch_pipeline_class(
                     if is_sdxl
                     else diffusers.StableDiffusionInstructPix2PixPipeline
                 )
-            elif model_type == _enums.ModelType.TORCH_IF:
+            elif model_type == _enums.ModelType.IF:
                 pipeline_class = diffusers.IFImg2ImgPipeline
-            elif model_type == _enums.ModelType.TORCH_IFS:
+            elif model_type == _enums.ModelType.IFS:
                 pipeline_class = diffusers.IFSuperResolutionPipeline
-            elif model_type == _enums.ModelType.TORCH_IFS_IMG2IMG:
+            elif model_type == _enums.ModelType.IFS_IMG2IMG:
                 pipeline_class = diffusers.IFImg2ImgSuperResolutionPipeline
-            elif model_type == _enums.ModelType.TORCH_S_CASCADE:
+            elif model_type == _enums.ModelType.S_CASCADE:
                 pipeline_class = diffusers.StableCascadePriorPipeline
-            elif model_type == _enums.ModelType.TORCH_S_CASCADE_DECODER:
+            elif model_type == _enums.ModelType.S_CASCADE_DECODER:
                 raise UnsupportedPipelineConfigError(
                     'Stable Cascade decoder models do not support img2img.')
-            elif model_type == _enums.ModelType.TORCH_FLUX:
+            elif model_type == _enums.ModelType.FLUX:
                 if controlnet_uris:
                     pipeline_class = diffusers.FluxControlNetImg2ImgPipeline
                 else:
                     pipeline_class = diffusers.FluxImg2ImgPipeline
-            elif model_type == _enums.ModelType.TORCH_SD3:
+            elif model_type == _enums.ModelType.SD3:
                 if controlnet_uris:
                     raise UnsupportedPipelineConfigError(
-                        '--model-type torch-sd3 does not support img2img mode with ControlNet models.')
+                        '--model-type sd3 does not support img2img mode with ControlNet models.')
                 if lora_uris:
                     raise UnsupportedPipelineConfigError(
-                        '--model-type torch-sd3 does not support --loras in img2img mode.')
+                        '--model-type sd3 does not support --loras in img2img mode.')
 
                 if pag:
                     pipeline_class = diffusers.StableDiffusion3PAGImg2ImgPipeline
                 else:
                     pipeline_class = diffusers.StableDiffusion3Img2ImgPipeline
 
-            elif model_type == _enums.ModelType.TORCH_KOLORS:
+            elif model_type == _enums.ModelType.KOLORS:
                 if controlnet_uris:
                     if pag:
                         raise UnsupportedPipelineConfigError(
@@ -1798,7 +1783,7 @@ def get_torch_pipeline_class(
                 else:
                     if pag:
                         raise UnsupportedPipelineConfigError(
-                            '--model-type torch (Stable Diffusion 1.5 - 2.*) '
+                            '--model-type sd (Stable Diffusion 1.5 - 2.*) '
                             'does not support --pag in img2img mode with ControlNet models.')
                     else:
                         pipeline_class = diffusers.StableDiffusionControlNetImg2ImgPipeline
@@ -1811,7 +1796,7 @@ def get_torch_pipeline_class(
                 else:
                     if pag:
                         raise UnsupportedPipelineConfigError(
-                            '--model-type torch (Stable Diffusion 1.5 - 2.*) '
+                            '--model-type sd (Stable Diffusion 1.5 - 2.*) '
                             'does not support --pag in img2img mode.')
                     else:
                         pipeline_class = diffusers.StableDiffusionImg2ImgPipeline
@@ -1826,34 +1811,34 @@ def get_torch_pipeline_class(
             if _enums.model_type_is_upscaler(model_type):
                 raise UnsupportedPipelineConfigError(
                     'Stable Diffusion upscaler model types do not support inpainting.')
-            if model_type == _enums.ModelType.TORCH_FLUX:
+            if model_type == _enums.ModelType.FLUX:
                 if controlnet_uris:
                     pipeline_class = diffusers.FluxControlNetInpaintPipeline
                 else:
                     pipeline_class = diffusers.FluxInpaintPipeline
-            elif model_type == _enums.ModelType.TORCH_FLUX_FILL:
+            elif model_type == _enums.ModelType.FLUX_FILL:
                 if controlnet_uris:
                     raise UnsupportedPipelineConfigError(
-                        '--model-type torch-flux-fill does not support ControlNet models.')
+                        '--model-type flux-fill does not support ControlNet models.')
                 pipeline_class = diffusers.FluxFillPipeline
-            elif model_type == _enums.ModelType.TORCH_IF:
+            elif model_type == _enums.ModelType.IF:
                 pipeline_class = diffusers.IFInpaintingPipeline
-            elif model_type == _enums.ModelType.TORCH_IFS:
+            elif model_type == _enums.ModelType.IFS:
                 pipeline_class = diffusers.IFInpaintingSuperResolutionPipeline
-            elif model_type == _enums.ModelType.TORCH_SD3:
+            elif model_type == _enums.ModelType.SD3:
                 if controlnet_uris:
                     raise UnsupportedPipelineConfigError(
-                        '--model-type torch-sd3 does not support inpaint mode with ControlNet models.')
+                        '--model-type sd3 does not support inpaint mode with ControlNet models.')
                 if lora_uris:
                     raise UnsupportedPipelineConfigError(
-                        '--model-type torch-sd3 does not support --loras in inpaint mode.')
+                        '--model-type sd3 does not support --loras in inpaint mode.')
                 if pag:
                     raise UnsupportedPipelineConfigError(
-                        '--model-type torch-sd3 does not support --pag in inpaint mode.'
+                        '--model-type sd3 does not support --pag in inpaint mode.'
                     )
 
                 pipeline_class = diffusers.StableDiffusion3InpaintPipeline
-            elif model_type == _enums.ModelType.TORCH_KOLORS:
+            elif model_type == _enums.ModelType.KOLORS:
                 if controlnet_uris:
                     if pag:
                         raise UnsupportedPipelineConfigError(
@@ -1873,7 +1858,7 @@ def get_torch_pipeline_class(
                 if is_sdxl:
                     if pag:
                         raise UnsupportedPipelineConfigError(
-                            '--model-type torch-sdxl does not support --pag '
+                            '--model-type sdxl does not support --pag '
                             'in inpaint mode with ControlNet models.'
                         )
                     else:
@@ -1896,7 +1881,7 @@ def get_torch_pipeline_class(
                 else:
                     if pag:
                         raise UnsupportedPipelineConfigError(
-                            '--model-type torch (Stable Diffusion 1.5 - 2.*) '
+                            '--model-type sd (Stable Diffusion 1.5 - 2.*) '
                             'does not support --pag in inpaint mode.')
                     else:
                         pipeline_class = diffusers.StableDiffusionInpaintPipeline
@@ -1925,22 +1910,22 @@ def get_torch_pipeline_class(
     return pipeline_class
 
 
-def _enforce_torch_pipeline_cache_size(new_pipeline_size):
-    _torch_pipeline_cache.enforce_cpu_mem_constraints(
+def _enforce_pipeline_cache_size(new_pipeline_size):
+    _pipeline_cache.enforce_cpu_mem_constraints(
         _constants.PIPELINE_CACHE_MEMORY_CONSTRAINTS,
         size_var='pipeline_size',
         new_object_size=new_pipeline_size)
 
 
-@_memoize(_torch_pipeline_cache,
+@_memoize(_pipeline_cache,
           exceptions={'local_files_only', 'missing_submodules_ok'},
-          hasher=_torch_args_hasher,
+          hasher=_pipeline_args_hasher,
           extra_identities=[lambda m: m.pipeline],
-          on_hit=_torch_on_hit,
-          on_create=_torch_on_create)
-def _create_torch_diffusion_pipeline(
+          on_hit=_pipeline_on_hit,
+          on_create=_pipeline_on_create)
+def _create_diffusion_pipeline(
         model_path: str,
-        model_type: _enums.ModelType = _enums.ModelType.TORCH,
+        model_type: _enums.ModelType = _enums.ModelType.SD,
         pipeline_type: _enums.PipelineType = _enums.PipelineType.TXT2IMG,
         revision: _types.OptionalString = None,
         variant: _types.OptionalString = None,
@@ -1969,7 +1954,7 @@ def _create_torch_diffusion_pipeline(
         sequential_cpu_offload: bool = False,
         local_files_only: bool = False,
         missing_submodules_ok: bool = False
-) -> TorchPipelineCreationResult:
+) -> PipelineCreationResult:
     # Ensure model path is specified
     if not model_path:
         raise ValueError('model_path must be specified.')
@@ -2046,7 +2031,7 @@ def _create_torch_diffusion_pipeline(
         # exceptions to the rules above
         # where left and right evaluate True
         model_fallback_checks = [
-            (lambda x: x == _enums.ModelType.TORCH, '^LatentConsistency.*')
+            (lambda x: x == _enums.ModelType.SD, '^LatentConsistency.*')
         ]
 
         for check_func, (pattern, title) in model_checks:
@@ -2062,7 +2047,7 @@ def _create_torch_diffusion_pipeline(
                         f'incorrect --model-type value: {_enums.get_model_type_string(model_type)}'
                     )
 
-    pipeline_class = get_torch_pipeline_class(
+    pipeline_class = get_pipeline_class(
         model_type=model_type,
         pipeline_type=pipeline_type,
         unet_uri=unet_uri,
@@ -2174,7 +2159,7 @@ def _create_torch_diffusion_pipeline(
         f'Creating Torch Pipeline: "{pipeline_class.__name__}", '
         f'Estimated CPU Side Memory Use: {_memory.bytes_best_human_unit(estimated_memory_usage)}')
 
-    _enforce_torch_pipeline_cache_size(estimated_memory_usage)
+    _enforce_pipeline_cache_size(estimated_memory_usage)
 
     # Helper function to determine if quantization should be applied to a module
     def should_apply_quantizer(module_name):
@@ -2500,9 +2485,9 @@ def _create_torch_diffusion_pipeline(
     # Load UNet
     if not unet_override:
         unet_parameter = 'unet'
-        if model_type == _enums.ModelType.TORCH_S_CASCADE:
+        if model_type == _enums.ModelType.S_CASCADE:
             unet_parameter = 'prior'
-        elif model_type == _enums.ModelType.TORCH_S_CASCADE_DECODER:
+        elif model_type == _enums.ModelType.S_CASCADE_DECODER:
             unet_parameter = 'decoder'
 
         unet_class = diffusers.UNet2DConditionModel if unet_parameter == 'unet' \
@@ -2843,7 +2828,7 @@ def _create_torch_diffusion_pipeline(
         if _enums.model_type_is_floyd(model_type):
             _set_floyd_safety_checker(pipeline, safety_checker)
         else:
-            _set_torch_safety_checker(pipeline, safety_checker)
+            _set_sd_safety_checker(pipeline, safety_checker)
 
     # Model Offloading
 
@@ -2859,12 +2844,12 @@ def _create_torch_diffusion_pipeline(
     # there is a sequence in call_pipeline that garbage collects them out of the
     # cache before calling other pipelines, there is also a dgenerate.devicecache
     # hook to clear them out when requested
-    for module in get_torch_pipeline_modules(pipeline).values():
+    for module in get_pipeline_modules(pipeline).values():
         if _util.is_loaded_in_8bit_bnb(module):
             _disable_to(module)
 
     # noinspection PyTypeChecker
-    return TorchPipelineCreationResult(
+    return PipelineCreationResult(
         model_path=model_path,
         pipeline=pipeline,
         parsed_unet_uri=parsed_unet_uri,
@@ -3048,7 +3033,7 @@ def _create_minimal_pipeline_for_component_extraction(
         manual_component_uris: dict[str, str] | None = None,
         vae_uri: _types.OptionalUri = None
 ):
-    pipeline_class = get_torch_pipeline_class(
+    pipeline_class = get_pipeline_class(
         model_type=model_type,
         pipeline_type=pipeline_type,
         help_mode=True  # Allow creation even if pipeline_type doesn't match

@@ -3,7 +3,7 @@
 
 # The simplest use case is without a refiner, good results are achieved with very few inference steps
 
-stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
+stabilityai/stable-diffusion-xl-base-1.0 --model-type sdxl
 --variant fp16 --dtype float16
 --unet latent-consistency/lcm-sdxl
 --scheduler LCMScheduler

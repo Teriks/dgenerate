@@ -22,7 +22,7 @@ if device is None:
 
 wrapper = dgenerate.DiffusionPipelineWrapper(
     model_path='stabilityai/stable-diffusion-xl-base-1.0',
-    model_type=dgenerate.ModelType.TORCH_SDXL,
+    model_type=dgenerate.ModelType.SDXL,
     dtype=dgenerate.DataType.FLOAT16,
     variant='fp16',
     device=device

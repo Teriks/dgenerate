@@ -30,7 +30,7 @@
 # this is the only style of checkpoint diffusers can load from CivitAI
 
 https://civitai.com/api/download/models/686696?type=Model&format=SafeTensor&size=full&fp=fp16
---model-type torch-sd3
+--model-type sd3
 --dtype float16
 --quantizer {{ quantizer }}
 --text-encoders CLIPTextModelWithProjection;model=stabilityai/stable-diffusion-3-medium-diffusers;subfolder=text_encoder;quantizer="{{ quantizer }}" \

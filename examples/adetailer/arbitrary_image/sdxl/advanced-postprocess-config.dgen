@@ -7,7 +7,7 @@
 # do this
 
 stabilityai/stable-diffusion-xl-base-1.0
---model-type torch-sdxl
+--model-type sdxl
 --dtype float16
 --variant fp16
 --inference-steps 30
@@ -44,7 +44,7 @@ stabilityai/stable-diffusion-xl-base-1.0
 # so that we can observe differences in the output
 
 stabilityai/stable-diffusion-xl-base-1.0
---model-type torch-sdxl
+--model-type sdxl
 --variant fp16
 --dtype float16
 --image-seeds {{ quote(last_images) }}

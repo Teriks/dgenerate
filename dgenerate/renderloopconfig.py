@@ -301,7 +301,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     """
     List of clip skip values. Clip skip is the number of layers to be skipped from CLIP while computing the 
     prompt embeddings. A value of 1 means that the output of the pre-final layer will be used for computing 
-    the prompt embeddings. Only supported for ``model_type`` values ``torch`` and ``torch-sdxl``, including with 
+    the prompt embeddings. Only supported for ``model_type`` values ``sd`` and ``sdxl``, including with 
     ``controlnet_uris`` defined.
     """
 
@@ -331,7 +331,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     upscaler_noise_levels: _types.OptionalIntegers = None
     """
     Optional list of integer upscaler noise levels, this corresponds to the ``--upscaler-noise-levels`` argument
-    of the dgenerate command line tool that is used for the :py:attr:`dgenerate.pipelinewrapper.ModelType.TORCH_UPSCALER_X4`
+    of the dgenerate command line tool that is used for the :py:attr:`dgenerate.pipelinewrapper.ModelType.UPSCALER_X4`
     model type only.
     """
 
@@ -689,7 +689,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     See: https://github.com/megvii-research/HiDiffusion
     
-    This is supported for: ``--model-type torch, torch-sdxl, and --torch-kolors``.
+    This is supported for: ``--model-type sd, sdxl, and kolors``.
     """
 
     hi_diffusion_no_win_attn: _types.OptionalBoolean = None
@@ -700,7 +700,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     See: https://github.com/megvii-research/HiDiffusion
     
-    This is supported for: ``--model-type torch, torch-sdxl, and --torch-kolors``.
+    This is supported for: ``--model-type sd, sdxl, and kolors``.
     """
 
     hi_diffusion_no_raunet: _types.OptionalBoolean = None
@@ -711,7 +711,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     See: https://github.com/megvii-research/HiDiffusion
     
-    This is supported for: ``--model-type torch, torch-sdxl, and --torch-kolors``.
+    This is supported for: ``--model-type sd, sdxl, and kolors``.
     """
 
     tea_cache: bool = False
@@ -727,7 +727,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     Also see: :py:attr:`RenderLoopConfig.tea_cache_rel_l1_thresholds`
     
-    This is supported for: ``--model-type torch-flux*``.
+    This is supported for: ``--model-type flux*``.
     
     """
 
@@ -745,7 +745,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     Supplying any value implies that :py:attr:`RenderLoopConfig.tea_cache` is enabled.
 
-    This is supported for: ``--model-type torch-flux*``.
+    This is supported for: ``--model-type flux*``.
     """
 
     deep_cache: bool = False
@@ -854,7 +854,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     See: https://github.com/microsoft/ras
     
-    This is supported for: ``--model-type torch-sd3``.
+    This is supported for: ``--model-type sd3``.
     """
 
     ras_index_fusion: _types.OptionalBoolean = None
@@ -867,7 +867,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     Setting to ``True`` implies that :py:attr:`RenderLoopConfig.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``, (but not for SD3.5 models)
+    This is supported for: ``--model-type sd3``, (but not for SD3.5 models)
     """
 
     ras_sample_ratios: _types.OptionalFloats = None
@@ -881,7 +881,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     Supplying any values implies that :py:attr:`RenderLoopConfig.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``.
+    This is supported for: ``--model-type sd3``.
     """
 
     ras_high_ratios: _types.OptionalFloats = None
@@ -896,7 +896,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     Supplying any values implies that :py:attr:`RenderLoopConfig.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``.
+    This is supported for: ``--model-type sd3``.
     """
 
     ras_starvation_scales: _types.OptionalFloats = None
@@ -912,7 +912,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     Supplying any values implies that :py:attr:`RenderLoopConfig.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``.
+    This is supported for: ``--model-type sd3``.
     """
 
     ras_metrics: _types.OptionalStrings = None
@@ -927,7 +927,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     Supplying any values implies that :py:attr:`RenderLoopConfig.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``.
+    This is supported for: ``--model-type sd3``.
     """
 
     ras_error_reset_steps: typing.Optional[collections.abc.Sequence[_types.Integers]] = None
@@ -941,7 +941,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     Supplying any values implies that :py:attr:`RenderLoopConfig.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``.
+    This is supported for: ``--model-type sd3``.
     """
 
     ras_start_steps: _types.OptionalIntegers = None
@@ -956,7 +956,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     Supplying any values implies that :py:attr:`RenderLoopConfig.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``.
+    This is supported for: ``--model-type sd3``.
     """
 
     ras_end_steps: _types.OptionalIntegers = None
@@ -971,7 +971,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     Supplying any values implies that :py:attr:`RenderLoopConfig.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``.
+    This is supported for: ``--model-type sd3``.
     """
 
     ras_skip_num_steps: _types.OptionalIntegers = None
@@ -991,7 +991,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     Supplying any value implies that :py:attr:`RenderLoopConfig.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``.
+    This is supported for: ``--model-type sd3``.
     
     (default: 0)
     """
@@ -1014,7 +1014,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     Supplying any value implies that :py:attr:`RenderLoopConfig.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``.
+    This is supported for: ``--model-type sd3``.
     
     (default: 0)
     """
@@ -1069,7 +1069,7 @@ class RenderLoopConfig(_types.SetFromMixin):
     Enable safety checker? ``--safety-checker``
     """
 
-    model_type: _pipelinewrapper.ModelType = _pipelinewrapper.ModelType.TORCH
+    model_type: _pipelinewrapper.ModelType = _pipelinewrapper.ModelType.SD
     """
     Corresponds to the ``--model-type`` argument of the dgenerate command line tool.
     """
@@ -1589,7 +1589,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         if tea_cache_enabled and not _pipelinewrapper.model_type_is_flux(self.model_type):
             raise RenderLoopConfigError(
                 f'{a_namer("tea_cache")} and related arguments are only '
-                f'compatible with {a_namer("model_type")} torch-flux*'
+                f'compatible with {a_namer("model_type")} flux*'
             )
         if tea_cache_enabled and self.model_cpu_offload:
             raise RenderLoopConfigError(
@@ -1602,7 +1602,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         if ras_enabled and not _pipelinewrapper.model_type_is_sd3(self.model_type):
             raise RenderLoopConfigError(
                 f'{a_namer("ras")} and related arguments are only '
-                f'compatible with {a_namer("model_type")} torch-sd3'
+                f'compatible with {a_namer("model_type")} sd3'
             )
         if ras_enabled and self.model_cpu_offload:
             raise RenderLoopConfigError(
@@ -1624,9 +1624,9 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         if self.hi_diffusion:
             if not (
-                    self.model_type == _pipelinewrapper.ModelType.TORCH_SDXL or
-                    self.model_type == _pipelinewrapper.ModelType.TORCH_KOLORS or
-                    self.model_type == _pipelinewrapper.ModelType.TORCH):
+                    self.model_type == _pipelinewrapper.ModelType.SDXL or
+                    self.model_type == _pipelinewrapper.ModelType.KOLORS or
+                    self.model_type == _pipelinewrapper.ModelType.SD):
                 raise RenderLoopConfigError(
                     f'{a_namer("hi_diffusion")} is only supported for '
                     f'Stable Diffusion, Stable Diffusion XL, and Kolors'
@@ -1648,12 +1648,12 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         deep_cache_enabled = (self.deep_cache or any(self._non_null_attr_that_start_with('deep_cache_')))
         if deep_cache_enabled and not (
-                self.model_type == _pipelinewrapper.ModelType.TORCH_SDXL or
-                self.model_type == _pipelinewrapper.ModelType.TORCH_SDXL_PIX2PIX or
-                self.model_type == _pipelinewrapper.ModelType.TORCH_KOLORS or
-                self.model_type == _pipelinewrapper.ModelType.TORCH or
-                self.model_type == _pipelinewrapper.ModelType.TORCH_PIX2PIX or
-                self.model_type == _pipelinewrapper.ModelType.TORCH_UPSCALER_X4):
+                self.model_type == _pipelinewrapper.ModelType.SDXL or
+                self.model_type == _pipelinewrapper.ModelType.SDXL_PIX2PIX or
+                self.model_type == _pipelinewrapper.ModelType.KOLORS or
+                self.model_type == _pipelinewrapper.ModelType.SD or
+                self.model_type == _pipelinewrapper.ModelType.PIX2PIX or
+                self.model_type == _pipelinewrapper.ModelType.UPSCALER_X4):
             raise RenderLoopConfigError(
                 f'{a_namer("deep_cache")} and related arguments are only '
                 f'supported with Stable Diffusion, Stable Diffusion XL, '
@@ -1663,13 +1663,13 @@ class RenderLoopConfig(_types.SetFromMixin):
         # Check FreeU compatibility
         if self.freeu_params is not None:
             freeu_model_types = {
-                _pipelinewrapper.ModelType.TORCH,
-                _pipelinewrapper.ModelType.TORCH_SDXL,
-                _pipelinewrapper.ModelType.TORCH_KOLORS,
-                _pipelinewrapper.ModelType.TORCH_PIX2PIX,
-                _pipelinewrapper.ModelType.TORCH_SDXL_PIX2PIX,
-                _pipelinewrapper.ModelType.TORCH_UPSCALER_X2,
-                _pipelinewrapper.ModelType.TORCH_UPSCALER_X4
+                _pipelinewrapper.ModelType.SD,
+                _pipelinewrapper.ModelType.SDXL,
+                _pipelinewrapper.ModelType.KOLORS,
+                _pipelinewrapper.ModelType.PIX2PIX,
+                _pipelinewrapper.ModelType.SDXL_PIX2PIX,
+                _pipelinewrapper.ModelType.UPSCALER_X2,
+                _pipelinewrapper.ModelType.UPSCALER_X4
             }
 
             if self.model_type not in freeu_model_types:
@@ -1751,16 +1751,16 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'May not use {bad_adetailer_args} without {a_namer("adetailer_detector_uris")}.')
 
         if self.adetailer_detector_uris and self.model_type not in {
-            _pipelinewrapper.ModelType.TORCH,
-            _pipelinewrapper.ModelType.TORCH_SDXL,
-            _pipelinewrapper.ModelType.TORCH_KOLORS,
-            _pipelinewrapper.ModelType.TORCH_SD3,
-            _pipelinewrapper.ModelType.TORCH_FLUX,
-            _pipelinewrapper.ModelType.TORCH_FLUX_FILL
+            _pipelinewrapper.ModelType.SD,
+            _pipelinewrapper.ModelType.SDXL,
+            _pipelinewrapper.ModelType.KOLORS,
+            _pipelinewrapper.ModelType.SD3,
+            _pipelinewrapper.ModelType.FLUX,
+            _pipelinewrapper.ModelType.FLUX_FILL
         }:
             raise RenderLoopConfigError(
                 f'{a_namer("adetailer_detector_uris")} is only compatible with '
-                f'{a_namer("model_type")} torch, torch-sdxl, torch-kolors, torch-sd3, and torch-flux')
+                f'{a_namer("model_type")} sd, sdxl, kolors, sd3, and flux')
 
         if self.adetailer_detector_uris and self.is_output_latents():
             raise RenderLoopConfigError(
@@ -1806,10 +1806,10 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'({a_namer("model_type")} "{self.model_type})" without {a_namer("image_seeds")}.'
                 )
 
-            if self.model_type == _pipelinewrapper.ModelType.TORCH_FLUX_FILL:
+            if self.model_type == _pipelinewrapper.ModelType.FLUX_FILL:
                 raise RenderLoopConfigError(
                     f'you cannot use {a_namer("model_type")} '
-                    f'torch-flux-fill without {a_namer("image_seeds")}.'
+                    f'flux-fill without {a_namer("image_seeds")}.'
                 )
 
             # Check arguments that require image seeds
@@ -1862,7 +1862,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
             # Check pipeline class compatibility
             try:
-                _pipelinewrapper.get_torch_pipeline_class(
+                _pipelinewrapper.get_pipeline_class(
                     model_type=self.model_type,
                     pipeline_type=_pipelinewrapper.PipelineType.TXT2IMG,
                     unet_uri=self.unet_uri,
@@ -2023,9 +2023,9 @@ class RenderLoopConfig(_types.SetFromMixin):
         # Check clip skip compatibility
         if self.clip_skips:
             if (
-                    self.model_type != _pipelinewrapper.ModelType.TORCH and
-                    self.model_type != _pipelinewrapper.ModelType.TORCH_SDXL and
-                    self.model_type != _pipelinewrapper.ModelType.TORCH_SD3 and
+                    self.model_type != _pipelinewrapper.ModelType.SD and
+                    self.model_type != _pipelinewrapper.ModelType.SDXL and
+                    self.model_type != _pipelinewrapper.ModelType.SD3 and
                     self.prompt_weighter_uri is None
             ):
                 # prompt weighter may be able to handle clip skips
@@ -2033,7 +2033,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise RenderLoopConfigError(
                     f'you cannot specify {a_namer("clip_skips")} for '
                     f'{a_namer("model_type")} values other than '
-                    f'"torch", "torch-sdxl", or "torch-sd3" when a '
+                    f'"sd", "sdxl", or "sd3" when a '
                     f'{a_namer("prompt_weighter_uri")} is not specified.')
 
         # Check tensor output compatibility with batch grid
@@ -2052,7 +2052,6 @@ class RenderLoopConfig(_types.SetFromMixin):
         self._check_flux_model_requirements(a_namer)
         self._check_sd3_model_requirements(a_namer)
         self._check_sdxl_model_requirements(a_namer)
-        self._check_vae_compatibility(a_namer)
         self._check_floyd_requirements(a_namer)
 
     def _check_floyd_requirements(self, a_namer: typing.Callable[[str], str]):
@@ -2066,11 +2065,11 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     def _check_stable_cascade_requirements(self, a_namer: typing.Callable[[str], str]):
         """Check Stable Cascade specific requirements."""
-        if self.model_type == _pipelinewrapper.ModelType.TORCH_S_CASCADE_DECODER:
+        if self.model_type == _pipelinewrapper.ModelType.S_CASCADE_DECODER:
             raise RenderLoopConfigError(
                 f'Stable Cascade decoder {a_namer("model_type")} may not be used as the primary model.')
 
-        if self.model_type == _pipelinewrapper.ModelType.TORCH_S_CASCADE:
+        if self.model_type == _pipelinewrapper.ModelType.S_CASCADE:
             if self.hi_diffusion:
                 raise RenderLoopConfigError(
                     f'{a_namer("hi_diffusion")} is not supported with Stable Cascade.'
@@ -2090,7 +2089,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         elif self.s_cascade_decoder_uri:
             raise RenderLoopConfigError(
-                f'{a_namer("s_cascade_decoder_uri")} may only be used with "torch-s-cascade"')
+                f'{a_namer("s_cascade_decoder_uri")} may only be used with "s-cascade"')
 
     def _check_upscaler_requirements(self, a_namer: typing.Callable[[str], str]) -> bool:
         """
@@ -2107,14 +2106,14 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'you cannot specify {a_namer("upscaler_noise_levels")} for a '
                     f'non upscaler model type, see: {a_namer("model_type")}.')
         elif self.upscaler_noise_levels is None:
-            if self.model_type == _pipelinewrapper.ModelType.TORCH_UPSCALER_X4:
+            if self.model_type == _pipelinewrapper.ModelType.UPSCALER_X4:
                 upscaler_noise_levels_default_set = True
                 self.upscaler_noise_levels = [_pipelinewrapper.constants.DEFAULT_X4_UPSCALER_NOISE_LEVEL]
-        elif self.model_type != _pipelinewrapper.ModelType.TORCH_UPSCALER_X4 and \
+        elif self.model_type != _pipelinewrapper.ModelType.UPSCALER_X4 and \
                 not _pipelinewrapper.model_type_is_floyd_ifs(self.model_type):
             raise RenderLoopConfigError(
                 f'you cannot specify {a_namer("upscaler_noise_levels")} for an upscaler '
-                f'model type that is not "torch-upscaler-x4" or "torch-ifs-*", '
+                f'model type that is not "upscaler-x4" or "ifs-*", '
                 f'see: {a_namer("model_type")}.')
 
         return upscaler_noise_levels_default_set
@@ -2136,7 +2135,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                     and not _pipelinewrapper.model_type_is_flux(self.model_type):
                 raise _pipelinewrapper.UnsupportedPipelineConfigError(
                     f'{a_namer("transformer_uri")} is only supported for '
-                    f'{a_namer("model_type")} torch-sd3 and torch-flux.')
+                    f'{a_namer("model_type")} sd3 and flux.')
 
     def _check_flux_model_requirements(self, a_namer: typing.Callable[[str], str]):
         """Check Flux model specific requirements."""
@@ -2237,14 +2236,6 @@ class RenderLoopConfig(_types.SetFromMixin):
             if self.sdxl_high_noise_fractions is None:
                 self.sdxl_high_noise_fractions = [_pipelinewrapper.constants.DEFAULT_SDXL_HIGH_NOISE_FRACTION]
 
-    def _check_vae_compatibility(self, a_namer: typing.Callable[[str], str]):
-        """Check VAE compatibility with model type."""
-        if not _pipelinewrapper.model_type_is_torch(self.model_type):
-            if self.vae_tiling or self.vae_slicing:
-                raise RenderLoopConfigError(
-                    f'{a_namer("vae_tiling")}/{a_namer("vae_slicing")} not supported for '
-                    f'non torch model type, see: {a_namer("model_type")}.')
-
     def _process_image_seeds(self, a_namer: typing.Callable[[str], str], help_mode: bool):
         """Process image seeds and verify compatibility."""
         if not self.image_seeds:
@@ -2254,7 +2245,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         no_seed_strength = (_pipelinewrapper.model_type_is_upscaler(self.model_type) or
                             _pipelinewrapper.model_type_is_pix2pix(self.model_type) or
                             _pipelinewrapper.model_type_is_s_cascade(self.model_type) or
-                            self.model_type == _pipelinewrapper.ModelType.TORCH_FLUX_FILL)
+                            self.model_type == _pipelinewrapper.ModelType.FLUX_FILL)
 
         # Set default image seed strength if needed
         image_seed_strengths_default_set = False
@@ -2325,7 +2316,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                     pipeline_type = _pipelinewrapper.PipelineType.TXT2IMG
 
                 # Check if a class can handle the operation
-                _pipelinewrapper.get_torch_pipeline_class(
+                _pipelinewrapper.get_pipeline_class(
                     model_type=self.model_type,
                     pipeline_type=pipeline_type,
                     unet_uri=self.unet_uri,
@@ -2371,20 +2362,20 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         # Check flux-fill compatibility
         if not all(p.mask_images is not None for p in parsed_image_seeds):
-            if self.model_type == _pipelinewrapper.ModelType.TORCH_FLUX_FILL \
+            if self.model_type == _pipelinewrapper.ModelType.FLUX_FILL \
                     and not self.adetailer_detector_uris:
                 raise RenderLoopConfigError(
                     f'Only inpainting {a_namer("image_seeds")} '
-                    f'definitions can be used with {a_namer("model_type")} torch-flux-fill.')
+                    f'definitions can be used with {a_namer("model_type")} flux-fill.')
 
         # Check deep floyd inpainting mode compatibility
         if all(p.mask_images is None for p in parsed_image_seeds):
-            if self.model_type == _pipelinewrapper.ModelType.TORCH_IFS:
+            if self.model_type == _pipelinewrapper.ModelType.IFS:
                 self.image_seed_strengths = None
                 if user_provided_image_seed_strengths:
                     raise RenderLoopConfigError(
                         f'{a_namer("image_seed_strengths")} '
-                        f'cannot be used with {a_namer("model_type")} torch-ifs '
+                        f'cannot be used with {a_namer("model_type")} ifs '
                         f'when no inpainting is taking place in any image seed '
                         f'specification.')
 
@@ -2710,7 +2701,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                                    a_namer: typing.Callable[[str], str],
                                    mask_part: str):
         """Check compatibility with Deep Floyd IF models."""
-        if self.model_type == _pipelinewrapper.ModelType.TORCH_IFS_IMG2IMG or \
+        if self.model_type == _pipelinewrapper.ModelType.IFS_IMG2IMG or \
                 (parsed.mask_images and _pipelinewrapper.model_type_is_floyd_ifs(self.model_type)):
 
             if not parsed.floyd_image:

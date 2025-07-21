@@ -6,7 +6,7 @@ order: 18
 @karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "filter": ["EulerDiscreteScheduler"]}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"]}]
 @quantizer[{"divider-after": true}]
---model-type torch-upscaler-x2
+--model-type upscaler-x2
 --dtype float16
 @file[{"label":"Input Image File", "arg":"--image-seeds", "optional":false, "mode":"input", "file-types":["images-in", "videos-in"]}]
 @imageprocessor[{"arg":"--seed-image-processors", "label":"Input Image Processor", "divider-after":true}]

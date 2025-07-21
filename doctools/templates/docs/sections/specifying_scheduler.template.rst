@@ -24,7 +24,7 @@ For example there is only one compatible scheduler for this upscaler configurati
     #!/usr/bin/env bash
 
     dgenerate stabilityai/sd-x2-latent-upscaler --variant fp16 --dtype float16 \
-    --model-type torch-upscaler-x2 \
+    --model-type upscaler-x2 \
     --prompts "none" \
     --image-seeds my-image.png \
     --output-size 256 \
@@ -152,7 +152,7 @@ output file name, in the order: ``(scheduler)_(refiner / decoder scheduler)``
     # all possible combinations of schedulers provided
 
     dgenerate stabilityai/stable-diffusion-xl-base-1.0 \
-    --model-type torch-sdxl \
+    --model-type sdxl \
     --dtype float16 \
     --variant fp16 \
     --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \

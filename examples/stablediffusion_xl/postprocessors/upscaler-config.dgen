@@ -1,7 +1,7 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 5.0.0
 
-stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
+stabilityai/stable-diffusion-xl-base-1.0 --model-type sdxl \
 --variant fp16 --dtype float16 \
 --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \
 --sdxl-high-noise-fractions 0.8 \

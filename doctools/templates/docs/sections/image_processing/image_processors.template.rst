@@ -84,7 +84,7 @@ is used in the example below with a ControlNet that is trained to generate image
     # in this case the single image seed is considered a control image
     # because --control-nets is being used
 
-    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
+    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type sdxl \
     --variant fp16 --dtype float16 \
     --vae "AutoencoderKL;model=madebyollin/sdxl-vae-fp16-fix" \
     --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0 \

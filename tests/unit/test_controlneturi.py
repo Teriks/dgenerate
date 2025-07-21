@@ -21,7 +21,7 @@ class TestControlNetUri(unittest.TestCase):
         self.assertEqual(result.end, 1.0)
         self.assertEqual(result.mode, None)
         self.assertEqual(result.dtype, None)
-        self.assertEqual(result.model_type, _enums.ModelType.TORCH)
+        self.assertEqual(result.model_type, _enums.ModelType.SD)
 
     def test_full_options_parsing(self):
         # Test parsing with all options
@@ -95,29 +95,29 @@ class TestControlNetUri(unittest.TestCase):
         
         # String mode (flux)
         uri = "model;mode=canny"
-        result = _controlneturi.ControlNetUri.parse(uri, model_type=_enums.ModelType.TORCH_FLUX)
+        result = _controlneturi.ControlNetUri.parse(uri, model_type=_enums.ModelType.FLUX)
         self.assertIsInstance(result.mode, int)
         
         # Integer mode
         uri = "model;mode=2"
-        result = _controlneturi.ControlNetUri.parse(uri, model_type=_enums.ModelType.TORCH_FLUX)
+        result = _controlneturi.ControlNetUri.parse(uri, model_type=_enums.ModelType.FLUX)
         self.assertEqual(result.mode, 2)
         
         # Invalid mode for TORCH model type
         with self.assertRaises(InvalidControlNetUriError):
-            _controlneturi.ControlNetUri.parse("model;mode=canny", model_type=_enums.ModelType.TORCH)
+            _controlneturi.ControlNetUri.parse("model;mode=canny", model_type=_enums.ModelType.SD)
 
     def test_mode_parsing_for_sdxl(self):
         # Test mode parsing for SDXL model type
         
         # String mode (sdxl)
         uri = "model;mode=openpose"
-        result = _controlneturi.ControlNetUri.parse(uri, model_type=_enums.ModelType.TORCH_SDXL)
+        result = _controlneturi.ControlNetUri.parse(uri, model_type=_enums.ModelType.SDXL)
         self.assertIsInstance(result.mode, int)
         
         # Integer mode
         uri = "model;mode=2"
-        result = _controlneturi.ControlNetUri.parse(uri, model_type=_enums.ModelType.TORCH_SDXL)
+        result = _controlneturi.ControlNetUri.parse(uri, model_type=_enums.ModelType.SDXL)
         self.assertEqual(result.mode, 2)
 
 

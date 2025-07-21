@@ -52,9 +52,9 @@ class ToDiffusersSubCommand(_subcommand.SubCommand):
 
     Examples:
 
-    dgenerate --sub-command to-diffusers "all_in_one.safetensors" --model-type torch --output model_directory
+    dgenerate --sub-command to-diffusers "all_in_one.safetensors" --model-type sd --output model_directory
 
-    dgenerate --sub-command to-diffusers "https://modelsite.com/all_in_one.safetensors" --model-type torch-sdxl --output model_directory
+    dgenerate --sub-command to-diffusers "https://modelsite.com/all_in_one.safetensors" --model-type sdxl --output model_directory
 
     See: dgenerate --sub-command to-diffusers --help
     """
@@ -73,7 +73,7 @@ class ToDiffusersSubCommand(_subcommand.SubCommand):
                             help='Model path, as you would provide to dgenerate to generate images.')
         parser.add_argument('-mt', '--model-type',
                             help='Model type, as you would provide to dgenerate to generate images, '
-                                 'must match the checkpoint model type.', required=False, default=dgenerate.ModelType.TORCH)
+                                 'must match the checkpoint model type.', required=False, default=dgenerate.ModelType.SD)
         parser.add_argument('-rev', '--revision',
                             help='Model revision, if loading from Hugging Face hub.', required=False, default=None)
         parser.add_argument('-sbf', '--subfolder',
@@ -116,7 +116,7 @@ class ToDiffusersSubCommand(_subcommand.SubCommand):
                     dgenerate.messages.push_level(dgenerate.messages.DEBUG)
 
                 with _memoize.disable_memoization_context():
-                    pipe = _pipelinewrapper.create_torch_diffusion_pipeline(
+                    pipe = _pipelinewrapper.create_diffusion_pipeline(
                         model_path=args.model_path,
                         model_type=_pipelinewrapper.get_model_type_enum(args.model_type),
                         revision=args.revision,

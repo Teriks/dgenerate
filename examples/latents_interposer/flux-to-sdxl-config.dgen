@@ -24,7 +24,7 @@
 
 
 black-forest-labs/FLUX.1-schnell
---model-type torch-flux {{ optimization }}
+--model-type flux {{ optimization }}
 --dtype bfloat16
 --max-sequence-length 256
 --inference-steps 4
@@ -37,7 +37,7 @@ black-forest-labs/FLUX.1-schnell
 # The interposer handles the conversion from Flux (fx) to SDXL (xl) space
 
 stabilityai/stable-diffusion-xl-base-1.0
---model-type torch-sdxl
+--model-type sdxl
 --dtype float16
 --variant fp16
 --inference-steps 30

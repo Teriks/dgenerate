@@ -25,7 +25,7 @@
 
 
 stabilityai/stable-cascade-prior
---model-type torch-s-cascade
+--model-type s-cascade
 --image-seeds "images: {{ ziggy_style_images }}"
 --variant bf16
 --dtype bfloat16

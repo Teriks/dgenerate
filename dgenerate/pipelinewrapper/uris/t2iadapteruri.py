@@ -45,7 +45,7 @@ _t2i_adapter_cache = _d_memoize.create_object_cache(
 
 class T2IAdapterUri:
     """
-    Representation of ``--t2i-adapters`` uri when ``--model-type`` torch*
+    Representation of ``--t2i-adapters`` URI.
     """
 
     # pipelinewrapper.uris.util.get_uri_accepted_args_schema metadata
@@ -247,7 +247,7 @@ class T2IAdapterUri:
     @staticmethod
     def parse(uri: _types.Uri) -> 'T2IAdapterUri':
         """
-        Parse a ``--model-type`` torch* ``--t2i-adapters`` uri specification and
+        Parse a ``--t2i-adapters`` uri specification and
         return an object representing its constituents
 
         :param uri: string with ``--t2i-adapters`` uri syntax

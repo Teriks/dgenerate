@@ -16,7 +16,7 @@
 
 
 stabilityai/stable-diffusion-xl-base-1.0
---model-type torch-sdxl
+--model-type sdxl
 --dtype float16
 --variant 'fp16'
 --inference-steps 30
@@ -33,7 +33,7 @@ stabilityai/stable-diffusion-xl-base-1.0
 stabilityai/stable-diffusion-xl-base-1.0
 --dtype float16
 --variant 'fp16'
---model-type torch-sdxl
+--model-type sdxl
 --inference-steps 30
 --guidance-scales 5
 --gen-seeds 1

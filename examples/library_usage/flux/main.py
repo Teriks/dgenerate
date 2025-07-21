@@ -25,7 +25,7 @@ config = RenderLoopConfig()
 # Flux schnell for minimal inference steps
 
 config.model_path = 'black-forest-labs/FLUX.1-schnell'
-config.model_type = ModelType.TORCH_FLUX
+config.model_type = ModelType.FLUX
 
 # reduce memory consumption with brain float
 config.dtype = DataType.BFLOAT16

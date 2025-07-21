@@ -13,7 +13,7 @@
 # Generate initial latents with Stable Cascade
 
 stabilityai/stable-cascade-prior
---model-type torch-s-cascade
+--model-type s-cascade
 --variant bf16
 --dtype bfloat16
 --model-cpu-offload

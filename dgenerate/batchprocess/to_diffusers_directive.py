@@ -46,9 +46,9 @@ class ToDiffusersDirective(_configrunnerplugin.ConfigRunnerPlugin):
 
         Examples:
 
-        \\to_diffusers "all_in_one.safetensors" --model-type torch --output model_directory
+        \\to_diffusers "all_in_one.safetensors" --model-type sd --output model_directory
 
-        \\to_diffusers "https://modelsite.com/all_in_one.safetensors" --model-type torch-sdxl --output model_directory
+        \\to_diffusers "https://modelsite.com/all_in_one.safetensors" --model-type sdxl --output model_directory
 
         See: \\to_diffusers --help
 

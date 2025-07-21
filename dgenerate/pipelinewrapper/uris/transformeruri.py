@@ -52,7 +52,7 @@ _transformer_cache = _d_memoize.create_object_cache(
 
 class TransformerUri:
     """
-    Representation of ``--transformer`` uri when ``--model-type`` torch*
+    Representation of ``--transformer`` URI.
     """
 
     # pipelinewrapper.uris.util.get_uri_accepted_args_schema metadata
@@ -304,7 +304,7 @@ class TransformerUri:
     @staticmethod
     def parse(uri: _types.Uri) -> 'TransformerUri':
         """
-        Parse a ``--model-type`` torch* ``--transformer`` uri and return an object representing its constituents
+        Parse a ``--transformer`` uri and return an object representing its constituents
 
         :param uri: string with ``--transformer`` uri syntax
 

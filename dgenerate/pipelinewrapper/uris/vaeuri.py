@@ -56,7 +56,7 @@ _vae_cache = _d_memoize.create_object_cache(
 
 class VAEUri:
     """
-    Representation of ``--vae`` uri when ``--model-type`` torch*
+    Representation of ``--vae`` URI.
     """
 
     @property
@@ -378,7 +378,7 @@ class VAEUri:
     @staticmethod
     def parse(uri: _types.Uri) -> 'VAEUri':
         """
-        Parse a ``--model-type`` torch* ``--vae`` uri and return an object representing its constituents
+        Parse a ``--vae`` uri and return an object representing its constituents
 
         :param uri: string with ``--vae`` uri syntax
 

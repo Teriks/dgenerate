@@ -21,7 +21,7 @@ SD3 Example:
     # This just loads the default transformer out of the repo on huggingface
 
     dgenerate stabilityai/stable-diffusion-3-medium-diffusers \
-    --model-type torch-sd3 \
+    --model-type sd3 \
     --transformer "stabilityai/stable-diffusion-3-medium-diffusers;subfolder=transformer" \
     --variant fp16 \
     --dtype float16 \
@@ -42,7 +42,7 @@ Flux Example:
     # use Flux with quantized transformer and T5 text encoder (bitsandbytes, 4 bits)
 
     dgenerate black-forest-labs/FLUX.1-dev \
-    --model-type torch-flux \
+    --model-type flux \
     --dtype bfloat16 \
     --transformer "black-forest-labs/FLUX.1-dev;subfolder=transformer;quantizer='bnb;bits=4'" \
     --text-encoders + "T5EncoderModel;model=black-forest-labs/FLUX.1-dev;subfolder=text_encoder_2;quantizer='bnb;bits=4'" \

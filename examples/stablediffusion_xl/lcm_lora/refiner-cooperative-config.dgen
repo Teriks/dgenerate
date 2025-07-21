@@ -7,7 +7,7 @@
 # for the main model. If you want that, use --sdxl-refiner-edit, you are likely
 # to get a better result unless you know something that I don't :)
 
-stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
+stabilityai/stable-diffusion-xl-base-1.0 --model-type sdxl
 --variant fp16 --dtype float16
 --loras latent-consistency/lcm-lora-sdxl
 --sdxl-high-noise-fractions 0.8 # HNF = 0.8

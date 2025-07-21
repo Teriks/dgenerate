@@ -6,17 +6,17 @@ similar fashion to ``--vae`` and other model arguments that accept URIs.
 
 UNets are supported for these model types:
 
-    * ``--model-type torch``
-    * ``--model-type torch-if``
-    * ``--model-type torch-ifs``
-    * ``--model-type torch-ifs-img2img``
-    * ``--model-type torch-pix2pix``
-    * ``--model-type torch-upscaler-x2``
-    * ``--model-type torch-upscaler-x4``
-    * ``--model-type torch-sdxl``
-    * ``--model-type torch-sdxl-pix2pix``
+    * ``--model-type sd``
+    * ``--model-type if``
+    * ``--model-type ifs``
+    * ``--model-type ifs-img2img``
+    * ``--model-type pix2pix``
+    * ``--model-type upscaler-x2``
+    * ``--model-type upscaler-x4``
+    * ``--model-type sdxl``
+    * ``--model-type sdxl-pix2pix``
     * ``--model-type kolors``
-    * ``--model-type torch-s-cascade``
+    * ``--model-type s-cascade``
 
 This is useful in particular for using the latent consistency scheduler as well as the
 ``lite`` variants of the unet models used with Stable Cascade.
@@ -31,7 +31,7 @@ The latent consistency UNet for SDXL can be specified with the ``--unet`` argume
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
+    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type sdxl \
     --variant fp16 --dtype float16 \
     --unet latent-consistency/lcm-sdxl \
     --scheduler LCMScheduler \
@@ -61,7 +61,7 @@ UNet models which have a smaller memory footprint using ``--unet`` and ``--secon
     #!/usr/bin/env bash
 
     dgenerate stabilityai/stable-cascade-prior \
-    --model-type torch-s-cascade \
+    --model-type s-cascade \
     --variant bf16 \
     --dtype bfloat16 \
     --unet "stabilityai/stable-cascade-prior;subfolder=prior_lite" \

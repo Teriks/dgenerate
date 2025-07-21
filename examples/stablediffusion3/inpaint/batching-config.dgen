@@ -34,7 +34,7 @@
 # If we wanted we could use --batch-grid-size to put these images into a grid
 
 stabilityai/stable-diffusion-3-medium-diffusers
---model-type torch-sd3 {{ optimization }}
+--model-type sd3 {{ optimization }}
 --variant fp16
 --dtype float16
 --inference-steps 30

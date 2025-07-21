@@ -1,7 +1,7 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 5.0.0
 
-diffusers/stable-diffusion-xl-1.0-inpainting-0.1 --model-type torch-sdxl
+diffusers/stable-diffusion-xl-1.0-inpainting-0.1 --model-type sdxl
 --variant fp16 --dtype float16
 --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0
 --inference-steps 20

@@ -21,7 +21,7 @@
 
 
 black-forest-labs/FLUX.1-Fill-dev
---model-type torch-flux-fill {{ optimization }}
+--model-type flux-fill {{ optimization }}
 --dtype bfloat16
 --output-size 768
 --inference-steps 50

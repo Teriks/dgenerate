@@ -14,7 +14,7 @@
 DeepFloyd/IF-I-M-v1.0
 --variant fp16
 --dtype float16
---model-type torch-if
+--model-type if
 --model-sequential-offload
 --inference-steps 100
 --image-seed-strengths 0.5
@@ -30,7 +30,7 @@ DeepFloyd/IF-I-M-v1.0
 DeepFloyd/IF-II-M-v1.0
 --variant fp16
 --dtype float16
---model-type torch-ifs-img2img
+--model-type ifs-img2img
 --model-sequential-offload
 --inference-steps 70
 --image-seed-strengths 0.5
@@ -46,7 +46,7 @@ DeepFloyd/IF-II-M-v1.0
 stabilityai/stable-diffusion-x4-upscaler
 --variant fp16
 --dtype float16
---model-type torch-upscaler-x4
+--model-type upscaler-x4
 --inference-steps 30
 --prompts {{ format_prompt(last_prompts) }}
 --seeds {{ last_seeds | join(' ') }}

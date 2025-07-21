@@ -275,7 +275,7 @@ class DiffusionArguments(_types.SetFromMixin):
 
     upscaler_noise_level: _types.OptionalInteger = None
     """
-    Upscaler noise level for the :py:attr:`dgenerate.pipelinewrapper.ModelType.TORCH_UPSCALER_X4` model type only.
+    Upscaler noise level for the :py:attr:`dgenerate.pipelinewrapper.ModelType.UPSCALER_X4` model type only.
     """
 
     sdxl_high_noise_fraction: _types.OptionalFloat = None
@@ -497,7 +497,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     See: https://github.com/megvii-research/HiDiffusion
     
-    This is supported for: ``--model-type torch, torch-sdxl, and --torch-kolors``.
+    This is supported for: ``--model-type sd, sdxl, and kolors``.
     """
 
     hi_diffusion_no_win_attn: _types.OptionalBoolean = None
@@ -508,7 +508,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     See: https://github.com/megvii-research/HiDiffusion
     
-    This is supported for: ``--model-type torch, torch-sdxl, and --torch-kolors``.
+    This is supported for: ``--model-type sd, sdxl, and kolors``.
     """
 
     hi_diffusion_no_raunet: _types.OptionalBoolean = None
@@ -519,7 +519,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     See: https://github.com/megvii-research/HiDiffusion
     
-    This is supported for: ``--model-type torch, torch-sdxl, and --torch-kolors``.
+    This is supported for: ``--model-type sd, sdxl, and kolors``.
     """
 
     tea_cache: bool = False
@@ -535,7 +535,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     Also see: :py:attr:`DiffusionArguments.tea_cache_rel_l1_threshold`
     
-    This is supported for: ``--model-type torch-flux*``.
+    This is supported for: ``--model-type flux*``.
     
     """
 
@@ -552,7 +552,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     Supplying any value implies that :py:attr:`DiffusionArguments.tea_cache` is enabled.
     
-    This is supported for: ``--model-type torch-flux*``.
+    This is supported for: ``--model-type flux*``.
     """
 
     ras: bool = False
@@ -563,7 +563,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     See: https://github.com/microsoft/ras
     
-    This is supported for: ``--model-type torch-sd3``.
+    This is supported for: ``--model-type sd3``.
     """
 
     ras_index_fusion: _types.OptionalBoolean = None
@@ -576,7 +576,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``, (but not for SD3.5 models)
+    This is supported for: ``--model-type sd3``, (but not for SD3.5 models)
     """
 
     ras_sample_ratio: _types.OptionalFloat = None
@@ -588,7 +588,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``.
+    This is supported for: ``--model-type sd3``.
     """
 
     ras_high_ratio: _types.OptionalFloat = None
@@ -601,7 +601,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``.
+    This is supported for: ``--model-type sd3``.
     """
 
     ras_starvation_scale: _types.OptionalFloat = None
@@ -615,7 +615,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``.
+    This is supported for: ``--model-type sd3``.
     """
 
     ras_error_reset_steps: _types.OptionalIntegers = None
@@ -627,7 +627,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``.
+    This is supported for: ``--model-type sd3``.
     """
 
     ras_start_step: _types.OptionalInteger = None
@@ -641,7 +641,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``.
+    This is supported for: ``--model-type sd3``.
     """
 
     ras_end_step: _types.OptionalInteger = None
@@ -655,7 +655,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``.
+    This is supported for: ``--model-type sd3``.
     """
 
     ras_metric: _types.OptionalString = None
@@ -668,7 +668,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     Supplying any value implies that :py:attr:`DiffusionArguments.ras` is enabled.
     
-    This is supported for: ``--model-type torch-sd3``.
+    This is supported for: ``--model-type sd3``.
     """
 
     ras_skip_num_step: _types.OptionalInteger = None
@@ -687,7 +687,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     Supplying any values implies :py:attr:`DiffusionArguments.ras`.
     
-    This is supported for: ``--model-type torch-sd3``.
+    This is supported for: ``--model-type sd3``.
     """
 
     ras_skip_num_step_length: _types.OptionalInteger = None
@@ -705,7 +705,7 @@ class DiffusionArguments(_types.SetFromMixin):
     
     Supplying any values implies :py:attr:`DiffusionArguments.ras`.
     
-    This is supported for: ``--model-type torch-sd3``.
+    This is supported for: ``--model-type sd3``.
     """
 
     pag_scale: _types.OptionalFloat = None
@@ -759,7 +759,7 @@ class DiffusionArguments(_types.SetFromMixin):
     """
     Number of layers to be skipped from CLIP while computing the prompt embeddings. A value of 1 means that
     the output of the pre-final layer will be used for computing the prompt embeddings. Only supported for 
-    ``model_type`` values ``torch`` and ``torch-sdxl``, including with ``controlnet_uris`` defined.
+    ``model_type`` values ``sd`` and ``sdxl``, including with ``controlnet_uris`` defined.
     """
 
     sdxl_refiner_clip_skip: _types.OptionalInteger = None

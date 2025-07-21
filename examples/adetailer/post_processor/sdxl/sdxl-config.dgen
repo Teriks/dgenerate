@@ -2,7 +2,7 @@
 #! dgenerate 5.0.0
 
 stabilityai/stable-diffusion-xl-base-1.0
---model-type torch-sdxl
+--model-type sdxl
 --dtype float16
 --variant fp16
 --inference-steps 30

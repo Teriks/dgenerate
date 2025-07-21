@@ -30,7 +30,7 @@
 \set t5_xxl https://huggingface.co/stabilityai/stable-diffusion-3-medium/blob/main/text_encoders/t5xxl_fp16.safetensors
 
 {{ model }}
---model-type torch-sd3
+--model-type sd3
 --dtype float16
 --quantizer {{ quantizer }}
 --text-encoders CLIPTextModelWithProjection;model={{ clip_l }};mode=clip-l-sd3;quantizer="{{ quantizer }}" \

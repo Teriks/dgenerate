@@ -46,7 +46,7 @@
 \set t5_xxl https://huggingface.co/comfyanonymous/flux_text_encoders/blob/main/t5xxl_fp16.safetensors
 
 {{ model }}
---model-type torch-flux
+--model-type flux
 --dtype bfloat16
 --quantizer {{ quantizer }}
 --text-encoders CLIPTextModel;model={{ clip_l }};mode=clip-l;quantizer="{{ quantizer }}" \

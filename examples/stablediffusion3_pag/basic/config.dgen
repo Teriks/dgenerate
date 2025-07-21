@@ -17,7 +17,7 @@
 
 
 stabilityai/stable-diffusion-3-medium-diffusers
---model-type torch-sd3 {{ optimization }}
+--model-type sd3 {{ optimization }}
 --variant fp16
 --dtype float16
 --pag

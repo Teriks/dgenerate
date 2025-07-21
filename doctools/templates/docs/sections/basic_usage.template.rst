@@ -52,7 +52,7 @@ recommended to prevent out of memory conditions on the average GPU :)
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl \
+    dgenerate stabilityai/stable-diffusion-xl-base-1.0 --model-type sdxl \
     --sdxl-high-noise-fractions 0.6 0.7 0.8 \
     --gen-seeds 5 \
     --inference-steps 50 \

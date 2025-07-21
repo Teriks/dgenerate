@@ -2,7 +2,7 @@
 #! dgenerate 5.0.0
 
 stabilityai/stable-cascade-prior
---model-type torch-s-cascade
+--model-type s-cascade
 --dtype bfloat16
 --variant bf16
 --model-cpu-offload
@@ -21,7 +21,7 @@ stabilityai/stable-cascade-prior
 # Translate our prompt into compel from Stable Diffusion Web UI syntax
 
 stabilityai/stable-cascade-prior
---model-type torch-s-cascade
+--model-type s-cascade
 --dtype bfloat16
 --variant bf16
 --model-cpu-offload

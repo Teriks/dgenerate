@@ -24,7 +24,7 @@
 # loaded from the checkpoint file for the main model
 
 https://huggingface.co/stabilityai/stable-diffusion-3-medium/blob/main/sd3_medium_incl_clips.safetensors
---model-type torch-sd3 {{ optimization }}
+--model-type sd3 {{ optimization }}
 --variant fp16
 --dtype float16
 --inference-steps 30

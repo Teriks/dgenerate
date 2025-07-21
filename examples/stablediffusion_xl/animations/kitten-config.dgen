@@ -3,7 +3,7 @@
 
 # Strange but interesting SDXL upscaling effect on a gif
 
-stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
+stabilityai/stable-diffusion-xl-base-1.0 --model-type sdxl
 --variant fp16 --dtype float16
 --sdxl-refiner stabilityai/stable-diffusion-xl-refiner-1.0
 --sdxl-high-noise-fractions 0.9

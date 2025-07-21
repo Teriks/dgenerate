@@ -3,7 +3,7 @@
 
 # This config forces the refiner into edit mode
 
-stabilityai/stable-diffusion-xl-base-1.0 --model-type torch-sdxl
+stabilityai/stable-diffusion-xl-base-1.0 --model-type sdxl
 --variant fp16 --dtype float16
 --loras latent-consistency/lcm-lora-sdxl
 --sdxl-refiner-edit

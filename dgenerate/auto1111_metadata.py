@@ -88,31 +88,31 @@ _SCHEDULER_TO_AUTOMATIC1111 = {
 
 _DEFAULT_MODEL_TYPE_TO_SCHEDULER_MAP = {
     # Standard Stable Diffusion models
-    _enums.ModelType.TORCH: "PNDMScheduler",
-    _enums.ModelType.TORCH_PIX2PIX: "PNDMScheduler",
-    _enums.ModelType.TORCH_SDXL: "DPMSolverMultistepScheduler",
-    _enums.ModelType.TORCH_SDXL_PIX2PIX: "DPMSolverMultistepScheduler",
-    _enums.ModelType.TORCH_KOLORS: "DPMSolverMultistepScheduler",
+    _enums.ModelType.SD: "PNDMScheduler",
+    _enums.ModelType.PIX2PIX: "PNDMScheduler",
+    _enums.ModelType.SDXL: "DPMSolverMultistepScheduler",
+    _enums.ModelType.SDXL_PIX2PIX: "DPMSolverMultistepScheduler",
+    _enums.ModelType.KOLORS: "DPMSolverMultistepScheduler",
 
     # Upscaler models
-    _enums.ModelType.TORCH_UPSCALER_X2: "EulerDiscreteScheduler",
-    _enums.ModelType.TORCH_UPSCALER_X4: "PNDMScheduler",
+    _enums.ModelType.UPSCALER_X2: "EulerDiscreteScheduler",
+    _enums.ModelType.UPSCALER_X4: "PNDMScheduler",
 
     # Stable Diffusion 3
-    _enums.ModelType.TORCH_SD3: "FlowMatchEulerDiscreteScheduler",
+    _enums.ModelType.SD3: "FlowMatchEulerDiscreteScheduler",
 
     # Stable Cascade models
-    _enums.ModelType.TORCH_S_CASCADE: "DDPMWuerstchenScheduler",
-    _enums.ModelType.TORCH_S_CASCADE_DECODER: "DDPMWuerstchenScheduler",
+    _enums.ModelType.S_CASCADE: "DDPMWuerstchenScheduler",
+    _enums.ModelType.S_CASCADE_DECODER: "DDPMWuerstchenScheduler",
 
     # DeepFloyd IF models - all use DDPMScheduler
-    _enums.ModelType.TORCH_IF: "DDPMScheduler",
-    _enums.ModelType.TORCH_IFS: "DDPMScheduler",
-    _enums.ModelType.TORCH_IFS_IMG2IMG: "DDPMScheduler",
+    _enums.ModelType.IF: "DDPMScheduler",
+    _enums.ModelType.IFS: "DDPMScheduler",
+    _enums.ModelType.IFS_IMG2IMG: "DDPMScheduler",
 
     # Flux models
-    _enums.ModelType.TORCH_FLUX: "FlowMatchEulerDiscreteScheduler",
-    _enums.ModelType.TORCH_FLUX_FILL: "FlowMatchEulerDiscreteScheduler"
+    _enums.ModelType.FLUX: "FlowMatchEulerDiscreteScheduler",
+    _enums.ModelType.FLUX_FILL: "FlowMatchEulerDiscreteScheduler"
 }
 
 

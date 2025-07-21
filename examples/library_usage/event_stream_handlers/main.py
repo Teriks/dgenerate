@@ -9,7 +9,7 @@ dgenerate.messages.errors_to_null()
 rl = dgenerate.RenderLoop()
 
 rl.config.model_path = 'stabilityai/stable-diffusion-2'
-rl.config.model_type = dgenerate.ModelType.TORCH
+rl.config.model_type = dgenerate.ModelType.SD
 rl.config.inference_steps = [30]
 rl.config.guidance_scales = [5, 8]
 rl.config.image_seed_strengths = [0.3]

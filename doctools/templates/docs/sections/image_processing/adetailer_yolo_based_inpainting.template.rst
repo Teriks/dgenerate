@@ -12,12 +12,12 @@ type.
 
 Currently adetailer supports these model types:
 
-    * ``--model-type torch``
-    * ``--model-type torch-sdxl``
-    * ``--model-type torch-kolors``
-    * ``--model-type torch-sd3``
-    * ``--model-type torch-flux``
-    * ``--model-type torch-flux-fill``
+    * ``--model-type sd``
+    * ``--model-type sdxl``
+    * ``--model-type kolors``
+    * ``--model-type sd3``
+    * ``--model-type flux``
+    * ``--model-type flux-fill``
 
 
 In effect, adetailer is supported by most pipelines that support any kind of inpainting, except for
@@ -58,7 +58,7 @@ for usage information.
     # possible use cases
 
     stabilityai/stable-diffusion-xl-base-1.0
-    --model-type torch-sdxl
+    --model-type sdxl
     --dtype float16
     --variant fp16
     --inference-steps 30
@@ -97,7 +97,7 @@ inpaint multiple types of objects in an image, or different detection indices se
     #! dgenerate @VERSION
 
     stabilityai/stable-diffusion-xl-base-1.0
-    --model-type torch-sdxl
+    --model-type sdxl
     --variant fp16
     --dtype float16
     --inference-steps 30
@@ -166,7 +166,7 @@ original generation, or with  different model types all together.
     # do this
 
     stabilityai/stable-diffusion-xl-base-1.0
-    --model-type torch-sdxl
+    --model-type sdxl
     --dtype float16
     --variant fp16
     --inference-steps 30
@@ -203,7 +203,7 @@ original generation, or with  different model types all together.
     # so that we can observe differences in the output
 
     stabilityai/stable-diffusion-xl-base-1.0
-    --model-type torch-sdxl
+    --model-type sdxl
     --variant fp16
     --dtype float16
     --image-seeds {{ quote(last_images) }}
@@ -234,7 +234,7 @@ when specifying detectors with ``--adetailer-detectors`` including ``class-filte
     # the URI prompts are weighted with --prompt-weighter sd-embed
 
     stabilityai/stable-diffusion-xl-base-1.0
-    --model-type torch-sdxl
+    --model-type sdxl
     --variant fp16
     --dtype float16
     --inference-steps 30

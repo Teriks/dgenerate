@@ -5,15 +5,15 @@ To specify a VAE directly use ``--vae``.
 
 VAEs are supported for these model types:
 
-    * ``--model-type torch``
-    * ``--model-type torch-pix2pix``
-    * ``--model-type torch-upscaler-x2``
-    * ``--model-type torch-upscaler-x4``
-    * ``--model-type torch-sdxl``
-    * ``--model-type torch-sdxl-pix2pix``
+    * ``--model-type sd``
+    * ``--model-type pix2pix``
+    * ``--model-type upscaler-x2``
+    * ``--model-type upscaler-x4``
+    * ``--model-type sdxl``
+    * ``--model-type sdxl-pix2pix``
     * ``--model-type kolors``
-    * ``--model-type torch-sd3``
-    * ``--model-type torch-flux``
+    * ``--model-type sd3``
+    * ``--model-type flux``
 
 The URI syntax for ``--vae`` is ``AutoEncoderClass;model=(huggingface repository slug/blob link or file/folder path)``
 

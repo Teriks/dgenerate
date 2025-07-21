@@ -25,7 +25,7 @@ stable-diffusion-v1-5/stable-diffusion-v1-5
 # The interposer;source=v1;target=xl converts SD1.x latents to SDXL space
 
 stabilityai/stable-diffusion-xl-base-1.0
---model-type torch-sdxl
+--model-type sdxl
 --dtype float16
 --variant fp16
 --inference-steps 30
