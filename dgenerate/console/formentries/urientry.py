@@ -69,12 +69,12 @@ class _UriEntry(_entry._Entry):
             self.button_frame = tk.Frame(self.master)
 
             file_button = tk.Button(self.button_frame,
-                                    text="Select File",
+                                    text="File",
                                     command=select_file_command)
             file_button.pack(side=tk.LEFT)
 
             directory_button = tk.Button(self.button_frame,
-                                         text="Select Directory",
+                                         text="Directory",
                                          command=select_dir_command)
             directory_button.pack(side=tk.LEFT)
 
@@ -95,7 +95,7 @@ class _UriEntry(_entry._Entry):
             self.button_frame = tk.Frame(self.master)
 
             button = tk.Button(self.button_frame,
-                               text="Select File" if file_types else "Select Directory",
+                               text="File" if file_types else "Directory",
                                command=select_command)
             button.pack(side=tk.LEFT)
 

@@ -45,7 +45,7 @@ class _DirectoryEntry(_entry._Entry):
                 self.text_var.set(r)
 
         self.button = tk.Button(self.master,
-                                text="Select Directory", command=select_command)
+                                text="Directory", command=select_command)
 
         self.label_widget.grid(row=self.row, column=0, padx=_entry.ROW_XPAD, sticky='e')
         self.entry.grid(row=self.row, column=1, padx=_entry.ROW_XPAD, sticky='ew')

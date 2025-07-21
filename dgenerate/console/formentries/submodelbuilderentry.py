@@ -24,6 +24,8 @@ import tkinter as tk
 
 import dgenerate.console.formentries.entry as _entry
 import dgenerate.console.textentry as _t_entry
+import dgenerate.console.filedialog as _filedialog
+import dgenerate.console.resources as _resources
 
 class _SubModelBuilderEntry(_entry._Entry):
     NAME = 'submodelbuilder'
@@ -53,15 +55,50 @@ class _SubModelBuilderEntry(_entry._Entry):
         self.uri_entry = \
             _t_entry.TextEntry(self.master, textvariable=self.uri_var)
 
+
+        self.button_frame = tk.Frame(self.master)
+
+        is_file = self.config.get('file', True)
+        is_dir = self.config.get('dir', True)
+
+        def select_file_command():
+            dialog_args = _resources.get_file_dialog_args(['models'])
+            r = _filedialog.open_file_dialog(**dialog_args)
+
+            if r is not None:
+                self.uri_var.set(r)
+
+        def select_dir_command():
+            r = _filedialog.open_directory_dialog()
+            if r is not None:
+                self.uri_var.set(r)
+
+        if is_file:
+            self.open_file_button = tk.Button(
+                self.button_frame,
+                text='File',
+                command=select_file_command)
+            self.open_file_button.pack(side='left')
+        if is_dir:
+            self.open_dir_button = tk.Button(
+                self.button_frame,
+                text='Directory',
+                command=select_dir_command)
+            self.open_dir_button.pack(side='left')
+
         self.build_uri_button = tk.Button(
-            self.master,
+            self.button_frame,
             text='Build URI',
             command=self._build_uri)
 
+        self.build_uri_button.pack(side='left')
 
         self.uri_label.grid(row=self.row, column=0, padx=_entry.ROW_XPAD, sticky='e')
         self.uri_entry.grid(row=self.row, column=1, padx=_entry.ROW_XPAD, sticky='ew')
-        self.build_uri_button.grid(row=self.row, column=2, padx=(2, 5), sticky='w')
+        self.button_frame.grid(row=self.row, column=2, padx=(2,5), sticky='w')
+
+        self.uri_entry.bind('<Key>', lambda e: self.valid())
+
 
     def _insert(self, value: str):
         if value is not None and value.strip():
