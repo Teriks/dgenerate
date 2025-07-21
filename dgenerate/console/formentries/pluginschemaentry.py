@@ -128,7 +128,7 @@ class _PluginSchemaEntry(_entry._Entry):
         self._dropdown_parent = dropdown_parent if dropdown_parent else self.master
 
         self._create_dropdown(label, values)
-        self._cur_button_col = collections.defaultdict(lambda: 2)
+        self._button_frame_map = dict()
 
         self.entries = {}
         self.dynamic_widgets = []
@@ -190,7 +190,7 @@ class _PluginSchemaEntry(_entry._Entry):
         for callback in self._widget_delete_callbacks:
             callback()
         self._widget_delete_callbacks.clear()
-        self._cur_button_col.clear()
+        self._button_frame_map.clear()
         self.dynamic_widgets.clear()
         self.entries.clear()
 
@@ -237,38 +237,42 @@ class _PluginSchemaEntry(_entry._Entry):
         if self.on_updated_callback is not None:
             self.on_updated_callback()
 
+    def _add_field_button(self, row, *args, **kwargs):
+        if row in self._button_frame_map:
+            button_frame = self._button_frame_map[row]
+            button = tk.Button(button_frame, *args, **kwargs)
+            button.pack(side='left')
+            self.dynamic_widgets.append(button_frame)
+            return button
+        else:
+            button_frame = tk.Frame(self.master)
+            button_frame.grid(row=row, column=2, padx=_entry.ROW_XPAD, sticky='w')
+            self._button_frame_map[row] = button_frame
+            button = tk.Button(button_frame, *args, **kwargs)
+            button.pack(side='left')
+            self.dynamic_widgets.append(button_frame)
+            return button
+
+
     def _add_file_in_button(self, row, entry, dialog_args):
-        padx = (5,0) if self._cur_button_col[row] == 2 else (2,2)
-        file_button = tk.Button(self.master, text='File',
-                                command=lambda e=entry, d=dialog_args: self._select_in_file_command(e, d))
-        file_button.grid(row=row, column=self._cur_button_col[row], padx=padx, sticky='w')
-        self._cur_button_col[row] += 1
-        self.dynamic_widgets.append(file_button)
+        self._add_field_button(
+            row, text='File',
+            command=lambda e=entry, d=dialog_args: self._select_in_file_command(e, d))
 
     def _add_file_out_button(self, row, entry, dialog_args):
-
-        padx = (5,0) if self._cur_button_col[row] == 2 else (2,2)
-        file_button = tk.Button(self.master, text='Save File',
-                                command=lambda e=entry, d=dialog_args: self._select_out_file_command(e, d))
-        file_button.grid(row=row, column=self._cur_button_col[row], padx=padx, sticky='w')
-        self._cur_button_col[row] += 1
-        self.dynamic_widgets.append(file_button)
+        self._add_field_button(
+            row, text='File',
+            command=lambda e=entry, d=dialog_args: self._select_out_file_command(e, d))
 
     def _add_directory_in_button(self, row, entry):
-        padx = (5,0) if self._cur_button_col[row] == 2 else (2,2)
-        file_button = tk.Button(self.master, text='Directory',
-                                command=lambda e=entry: self._select_in_directory_command(e))
-        file_button.grid(row=row, column=self._cur_button_col[row], padx=padx, sticky='w')
-        self._cur_button_col[row] += 1
-        self.dynamic_widgets.append(file_button)
+        self._add_field_button(
+            row, text='Directory',
+            command=lambda e=entry: self._select_in_directory_command(e))
 
     def _add_insert_text_callback_button(self, row, arg_entry):
-        padx = (5,0) if self._cur_button_col[row] == 2 else (2,2)
-        insert_button = tk.Button(self.master, text=arg_entry.insert_text_callback[0],
-                                  command=lambda a=arg_entry: a.insert_text_callback[1](a.variable))
-        insert_button.grid(row=row, column=2, padx=padx, sticky='w')
-        self._cur_button_col[row] += 1
-        self.dynamic_widgets.append(insert_button)
+        self._add_field_button(
+            row, text=arg_entry.insert_text_callback[0],
+            command=lambda a=arg_entry: a.insert_text_callback[1](a.variable))
 
     @staticmethod
     def _select_in_file_command(entry, dialog_args):

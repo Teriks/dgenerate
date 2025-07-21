@@ -43,7 +43,8 @@ class _SubModelEntry(_schemaentry._PluginSchemaEntry):
 
         # models that cannot load from a single file
         self._models_no_file = {
-            'Image Encoder'
+            'Image Encoder',
+            'UNet'
         }
 
         # models that cannot load from a directory
