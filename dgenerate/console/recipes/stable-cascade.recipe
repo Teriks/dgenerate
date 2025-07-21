@@ -13,7 +13,7 @@ order: 13
 @switchradio[{"labels":["Decoder CPU Offload", "Decoder Sequential Offload"], "args":["--second-model-cpu-offload", "--second-model-sequential-offload"], "default":0}]
 @quantizer[{"label": "Decoder Quantizer", "arg":"--second-model-quantizer", "divider-after":true}]
 @submodelbuilder[{"label":"UNet", "arg":"--unet", "model": "UNet"}]
-@submodelbuilder[{"label":"Decoder UNet", "arg":"--second-model-unet", "model": "UNet", "file":false,  "divider-after":true}]
+@submodelbuilder[{"label":"Decoder UNet", "arg":"--second-model-unet", "model": "UNet", "divider-after":true}]
 @file[{"label":"Image Seed", "arg":"--image-seeds", "file-types":["images-in", "videos-in"]}]
 @imageprocessor[{"arg":"--seed-image-processors", "label":"Seed Image Processor", "divider-after":true}]
 @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":20, "min":1}]
