@@ -20,8 +20,6 @@ order: 17
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing", "divider-after":true}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA"}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "divider-after":true}]
-@submodelbuilder[{"label":"IP Adapter", "arg":"--ip-adapters", "model": "IP Adapter"}]
-@submodelbuilder[{"label":"Image Encoder", "arg":"--image-encoder", "model": "Image Encoder", "divider-after":true}]
 --image-seeds @file[{"label":"Input Image File", "optional":false, "mode":"input", "file-types":["images-in", "videos-in"]}];@file[{"label":"Input Mask File", "optional":false, "mode":"input", "file-types":["images-in", "videos-in"]}]
 @switch[{"label":"No Aspect Correction?", "arg":"--no-aspect"}]
 @imageprocessor[{"arg":"--seed-image-processors", "label":"Seed Image Processor"}]
