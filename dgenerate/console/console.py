@@ -328,17 +328,6 @@ class DgenerateConsole(tk.Tk):
         # Create the input text context menu
         self._input_text_context = tk.Menu(self._input_text, tearoff=0)
         self._create_edit_menu(self._input_text_context)
-        
-        # Patch the input text context menu to enable/disable Preview Selected Image
-        og_input_popup = self._input_text_context.tk_popup
-        def patch_input_tk_popup(*args, **kwargs):
-            selected_text = self._get_selected_text(self._input_text.text)
-            if selected_text and self._is_valid_image_path(selected_text):
-                self._input_text_context.entryconfigure('Preview Selected Image', state=tk.NORMAL)
-            else:
-                self._input_text_context.entryconfigure('Preview Selected Image', state=tk.DISABLED)
-            og_input_popup(*args, **kwargs)
-        self._input_text_context.tk_popup = patch_input_tk_popup
 
         if platform.system() == 'Darwin':
             # these are not native
@@ -1361,6 +1350,17 @@ class DgenerateConsole(tk.Tk):
         menu.add_separator()
         menu.add_command(label='Preview Selected Image',
                          command=lambda: self._preview_selected_image(self._input_text.text))
+
+        def menu_post(*args, **kwargs):
+            selected_text = self._get_selected_text(self._input_text.text)
+            if selected_text and self._is_valid_image_path(selected_text):
+                menu.entryconfigure(
+                    'Preview Selected Image', state=tk.NORMAL)
+            else:
+               menu.entryconfigure(
+                    'Preview Selected Image', state=tk.DISABLED)
+
+        menu.configure(postcommand=menu_post)
 
         return menu
 
