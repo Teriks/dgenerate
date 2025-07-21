@@ -23,7 +23,7 @@ order: 10
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA"}]
 @submodelbuilder[{"label":"Control Net", "arg":"--control-nets", "model": "Control Net"}]
 @submodelbuilder[{"label":"UNet", "arg":"--unet", "model": "UNet"}]
-@submodelbuilder[{"label":"Refiner UNet", "arg":"--second-model-unet", "model": "UNet", "divider-after":true}]
+@submodelbuilder[{"label":"Refiner UNet", "arg":"--second-model-unet", "model": "UNet", "file":false,  "divider-after":true}]
 @imageseed[{"label":"Image Seed", "arg":"--image-seeds", "file-types":["images-in", "videos-in"], "float-label":"Image Seed Strength", "float-arg":"--image-seed-strengths", "min":0.01, "max":1, "default":"", "float":""}]
 @switch[{"label":"No Aspect Correction?", "arg":"--no-aspect"}]
 @imageprocessor[{"arg":"--seed-image-processors", "label":"Seed Image Processor"}]

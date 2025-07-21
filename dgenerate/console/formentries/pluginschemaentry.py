@@ -239,7 +239,7 @@ class _PluginSchemaEntry(_entry._Entry):
 
     def _add_file_in_button(self, row, entry, dialog_args):
         padx = (5,0) if self._cur_button_col[row] == 2 else (2,2)
-        file_button = tk.Button(self.master, text='Select File',
+        file_button = tk.Button(self.master, text='File',
                                 command=lambda e=entry, d=dialog_args: self._select_in_file_command(e, d))
         file_button.grid(row=row, column=self._cur_button_col[row], padx=padx, sticky='w')
         self._cur_button_col[row] += 1
@@ -256,7 +256,7 @@ class _PluginSchemaEntry(_entry._Entry):
 
     def _add_directory_in_button(self, row, entry):
         padx = (5,0) if self._cur_button_col[row] == 2 else (2,2)
-        file_button = tk.Button(self.master, text='Select Directory',
+        file_button = tk.Button(self.master, text='Directory',
                                 command=lambda e=entry: self._select_in_directory_command(e))
         file_button.grid(row=row, column=self._cur_button_col[row], padx=padx, sticky='w')
         self._cur_button_col[row] += 1

@@ -56,7 +56,7 @@ class _FileEntry(_entry._Entry):
             self.button = tk.Button(self.master, text="Save File",
                                     command=select_command)
         else:
-            self.button = tk.Button(self.master, text="Select File",
+            self.button = tk.Button(self.master, text="File",
                                     command=select_command)
 
         self.label_widget.grid(row=self.row, column=0, padx=_entry.ROW_XPAD, sticky='e')
