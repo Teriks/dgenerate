@@ -298,12 +298,7 @@ class AdetailerDetectorUri:
                        local_files_only: bool = False,
                        use_auth_token: _types.OptionalString = None):
         try:
-            if not _webcache.is_downloadable_url(self.model):
-                _, ext = os.path.splitext(self.model)
-            else:
-                ext = ''
-
-            if _hfhub.is_single_file_model_load(self.model) or ext in {'.yaml', '.yml'}:
+            if _hfhub.is_single_file_model_load(self.model):
                 if os.path.exists(self.model):
                     return self.model
                 else:
