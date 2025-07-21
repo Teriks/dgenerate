@@ -299,7 +299,7 @@ class _PluginSchemaEntry(_entry._Entry):
         if default_value:
             variable = tk.StringVar(value=str(default_value))
         else:
-            variable = tk.StringVar(value='')
+            variable = tk.StringVar(value='' if (optional or not values) else values[0])
             
         if optional:
             values = [''] + values
