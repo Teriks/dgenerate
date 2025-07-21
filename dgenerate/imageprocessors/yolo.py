@@ -199,6 +199,10 @@ class YOLODetectionProcessor(_imageprocessor.ImageProcessor):
         'mask-shape': ['r', 'rect', 'rectangle', 'c', 'circle', 'ellipse'],
     }
 
+    FILE_ARGS = {
+        'model': {'mode': 'in', 'filetypes': [('Models', ['*.safetensors', '*.pt', '*.pth', '*.cpkt', '*.bin'])]},
+    }
+
     @staticmethod
     def _match_hex_color(color):
         pattern = r'^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$'

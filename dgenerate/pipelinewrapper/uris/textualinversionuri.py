@@ -118,6 +118,10 @@ class TextualInversionUri:
         import dgenerate.arguments as _a
         return _a.get_raw_help_text('--textual-inversions')
 
+    FILE_ARGS = {
+        'model': {'mode': ['in', 'dir'], 'filetypes': [('Models', ['*.safetensors', '*.pt', '*.pth', '*.cpkt', '*.bin'])]}
+    }
+
     # ===
 
     @property

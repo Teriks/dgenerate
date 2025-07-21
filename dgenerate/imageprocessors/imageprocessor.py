@@ -55,13 +55,46 @@ def _cache_debug_miss(key, new):
     _memoize.simple_cache_miss_debug("Image Processor Model", key, new)
 
 
+_in_filetypes = None
+_out_filetypes = None
+
 class ImageProcessor(_plugin.Plugin, abc.ABC):
     """
     Abstract base class for image processor implementations.
     """
 
+    @staticmethod
+    def image_out_filetypes():
+        """
+        Utility for derived classes to get a list of supported image output file types for use with ``FILE_ARGS``.
+        :return: List of supported image output file types, for example ``['*.png', '*.jpg']``.
+        """
+        import dgenerate.mediaoutput as _mediaoutput
+        global _out_filetypes
+        if _out_filetypes is None:
+            _out_filetypes = ['*.' + i for i in _mediaoutput.get_supported_static_image_formats()]
+            return list(_out_filetypes)
+        else:
+            return list(_out_filetypes)
+
+    @staticmethod
+    def image_in_filetypes():
+        """
+        Utility for derived classes to get a list of supported image input file types for use with ``FILE_ARGS``.
+        :return: List of supported image input file types, for example ``['*.png', '*.jpg']``.
+        """
+        import dgenerate.mediainput as _mediainput
+        global _in_filetypes
+        if _in_filetypes is None:
+            _in_filetypes = ['*.' + i for i in _mediainput.get_supported_image_formats()]
+            return list(_in_filetypes)
+        else:
+            return list(_in_filetypes)
+
     # you cannot specify these via a URI
     HIDE_ARGS = ['local-files-only']
+
+    FILE_ARGS = {'output-file': {'mode': 'out', 'filetypes': [('Images', image_out_filetypes())]}}
 
     @classmethod
     def inheritable_help(cls, subclass, loaded_by_name):

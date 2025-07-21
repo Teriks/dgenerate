@@ -243,6 +243,10 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
         'mask-shape': ['r', 'rect', 'rectangle', 'c', 'circle', 'ellipse'],
     }
 
+    FILE_ARGS = {
+        'model': {'mode': 'in', 'filetypes': [('Models', ['*.safetensors', '*.pt', '*.pth', '*.cpkt', '*.bin'])]},
+    }
+
     def __init__(self,
                  model: str,
                  prompt: str,

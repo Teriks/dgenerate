@@ -44,6 +44,10 @@ class IPAdapterUri:
         import dgenerate.arguments as _a
         return _a.get_raw_help_text('--ip-adapters')
 
+    FILE_ARGS = {
+        'model': {'mode': ['in', 'dir'], 'filetypes': [('Models', ['*.safetensors', '*.pt', '*.pth', '*.cpkt', '*.bin'])]}
+    }
+
     # ===
 
     @property

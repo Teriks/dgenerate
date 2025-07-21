@@ -122,16 +122,20 @@ class VAEUri:
 
     # pipelinewrapper.uris.util.get_uri_accepted_args_schema metadata
 
-    OPTION_ARGS = {
-        'encoder': list(_encoders.keys()),
-        'dtype': ['float16', 'bfloat16', 'float32']
-    }
-
     @staticmethod
     def help():
         import dgenerate.arguments as _a
 
         return _a.get_raw_help_text('--vae')
+
+    OPTION_ARGS = {
+        'encoder': list(_encoders.keys()),
+        'dtype': ['float16', 'bfloat16', 'float32']
+    }
+
+    FILE_ARGS = {
+        'model': {'mode': ['in', 'dir'], 'filetypes': [('Models', ['*.safetensors', '*.pt', '*.pth', '*.cpkt', '*.bin'])]}
+    }
 
     # ===
 

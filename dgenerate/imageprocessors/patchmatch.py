@@ -68,6 +68,10 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
     # hide inherited arguments that are device related since PatchMatch runs on CPU
     HIDE_ARGS = ['device', 'model-offload']
 
+    FILE_ARGS = {
+        'mask': {'mode': 'in', 'filetypes': [('Images', _imageprocessor.ImageProcessor.image_in_filetypes())]}
+    }
+
     def __init__(self,
                  mask: str,
                  mask_processors: str | None = None,

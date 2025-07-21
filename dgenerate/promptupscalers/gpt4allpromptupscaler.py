@@ -128,6 +128,11 @@ class GPT4ALLPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptups
         'compute': ['cpu', 'gpu', 'kompute', 'cuda', 'amd']
     }
 
+    FILE_ARGS = {
+        'model': {'mode': 'in', 'filetypes': [('GGUF', ['*.gguf'])]},
+        'cleanup-config': {'mode': 'in', 'filetypes': [('Cleanup Config', ('*.json', '*.toml', '*.yaml', '*.yml'))]}
+    }
+
     def __init__(self,
                  part: str = 'both',
                  model: str = "https://huggingface.co/failspy/Phi-3-mini-128k-instruct-abliterated-v3-GGUF/resolve/main/Phi-3-mini-128k-instruct-abliterated-v3_q4.gguf",

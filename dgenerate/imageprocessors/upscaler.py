@@ -88,6 +88,10 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
         'dtype': ['float32', 'float16']
     }
 
+    FILE_ARGS = {
+        'model': {'mode': 'in', 'filetypes': [('Models', ['*.safetensors', '*.pt', '*.pth', '*.cpkt', '*.bin'])]},
+    }
+
     def __init__(self,
                  model: str,
                  tile: int | str = 512,
