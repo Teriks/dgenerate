@@ -73,11 +73,11 @@ class _ImageSeedSelect(tk.Toplevel):
             self.entries.append(entry)
 
             if i == 3:  # Adapter image entry
-                button = tk.Button(self, text="Open File", command=lambda e=entry: self._open_adapter_file(e))
+                button = tk.Button(self, text="File", command=lambda e=entry: self._open_adapter_file(e))
             elif i == 4:  # Latents entry
-                button = tk.Button(self, text="Open File", command=lambda e=entry: self._open_latents_file(e))
+                button = tk.Button(self, text="File", command=lambda e=entry: self._open_latents_file(e))
             else:
-                button = tk.Button(self, text="Open File", command=lambda e=entry: self._open_file(e))
+                button = tk.Button(self, text="File", command=lambda e=entry: self._open_file(e))
             button.grid(row=i, column=2, padx=(0, 5), sticky=tk.W)
 
         self.seed_image_entry = self.entries[0]

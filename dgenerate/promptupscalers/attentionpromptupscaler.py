@@ -63,7 +63,8 @@ class AttentionUpscaler(_promptupscaler.PromptUpscaler):
 
     OPTION_ARGS = {
         'part': ['both', 'positive', 'negative'],
-        'lang': ['en', 'de', 'fr', 'es', 'it', 'nl', 'pt', 'ru', 'zh']
+        'lang': ['en', 'de', 'fr', 'es', 'it', 'nl', 'pt', 'ru', 'zh'],
+        'syntax': ['sd-embed', 'compel']
     }
 
     # these are languages where noun chunking is supported

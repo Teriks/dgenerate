@@ -59,6 +59,10 @@ class T2IAdapterUri:
         'dtype': ['float16', 'bfloat16', 'float32']
     }
 
+    FILE_ARGS = {
+        'model': {'mode': ['in', 'dir'], 'filetypes': [('Models', ['*.safetensors', '*.pt', '*.pth', '*.cpkt', '*.bin'])]}
+    }
+
     # ===
 
     @property

@@ -96,6 +96,11 @@ class PasteProcessor(_imageprocessor.ImageProcessor):
         'feather_shape': ['r', 'rect', 'rectangle', 'c', 'circle', 'ellipse'],
     }
 
+    FILE_ARGS = {
+        'image': {'mode': 'in', 'filetypes': [('Images', _imageprocessor.ImageProcessor.image_in_filetypes())]},
+        'mask': {'mode': 'in', 'filetypes': [('Images', _imageprocessor.ImageProcessor.image_in_filetypes())]}
+    }
+
     def __init__(self,
                  image: str,
                  image_processors: str | None = None,

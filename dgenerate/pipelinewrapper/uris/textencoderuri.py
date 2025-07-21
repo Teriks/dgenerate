@@ -555,6 +555,10 @@ class TextEncoderUri:
         'dtype': ['auto', 'float16', 'bfloat16', 'float32']
     }
 
+    FILE_ARGS = {
+        'model': {'mode': ['in', 'dir'], 'filetypes': [('Models', ['*.safetensors', '*.pt', '*.pth', '*.cpkt', '*.bin'])]}
+    }
+
     # ===
 
     def __init__(self,

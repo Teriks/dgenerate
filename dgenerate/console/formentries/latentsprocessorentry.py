@@ -38,9 +38,6 @@ class _LatentsProcessorEntry(_schemaentry._PluginSchemaEntry):
         if config.get('hide-device', False):
             hidden_args.add('device')
 
-        self._file_in_arguments = {
-            'model': _resources.get_file_dialog_args(['models'])
-        }
 
         super().__init__(*args,
                          label='Latents Processor',
@@ -48,12 +45,6 @@ class _LatentsProcessorEntry(_schemaentry._PluginSchemaEntry):
                          help_button=True,
                          schema_help_node='PROCESSOR_HELP',
                          schema=schema, **kwargs)
-
-    def _apply_file_selects(self, param_name: str, entry: _schemaentry._PluginArgEntry):
-        if param_name in self._file_in_arguments:
-            entry.file_types = self._file_in_arguments[param_name]
-            entry.raw = False
-        return entry
 
     def _create_entry_single_type(self,
                                   param_name: str,
@@ -83,8 +74,6 @@ class _LatentsProcessorEntry(_schemaentry._PluginSchemaEntry):
                 row
             )
         else:
-            return self._apply_file_selects(
-                param_name, self._create_raw_type_entry(
+            return self._create_raw_type_entry(
                     param_type, default_value, optional, options, row
                 )
-            )

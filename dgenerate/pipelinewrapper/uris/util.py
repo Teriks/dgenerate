@@ -22,6 +22,7 @@ import collections.abc
 import enum
 import inspect
 import itertools
+import typing
 
 import diffusers
 import torch
@@ -111,6 +112,60 @@ def get_uri_help(uri_cls: type, wrap_width: int | None) -> str | None:
     return None
 
 
+def _validate_file_arg_metadata(cls, d: dict[str, typing.Any]):
+    if not isinstance(d, dict):
+        raise RuntimeError(
+            f'URI metadata {cls.__name__}.FILE_ARGS descriptor '
+            f'values must be dicts, not {type(d).__name__}.')
+
+
+    if 'mode' not in d:
+        raise RuntimeError(
+            f'URI metadata {cls.__name__}.FILE_ARGS descriptor missing "mode" key.'
+        )
+
+    mode = d['mode']
+
+    if isinstance(mode, list):
+        if any(m not in {'in', 'out', 'dir'} for m in mode):
+            raise RuntimeError(
+                f'URI metadata {cls.__name__}.FILE_ARGS descriptor "mode" '
+                f'values must be "in", "out", or "dir", not: {d["mode"]}.'
+            )
+        else:
+            if 'in' in mode and 'out' in mode:
+                raise RuntimeError(
+                    f'URI metadata {cls.__name__}.FILE_ARGS descriptor "mode" '
+                    f'cannot contain both "in" and "out" at the same time: {d["mode"]}.'
+                )
+    elif isinstance(mode, str) and mode not in {'in', 'out', 'dir'}:
+        raise RuntimeError(
+            f'URI metadata {cls.__name__}.FILE_ARGS descriptor "mode" '
+            f'values must be "in", "out", or "dir", not: {d["mode"]}.'
+        )
+
+    dir_only = (isinstance(mode, list) and all(m == 'dir' for m in mode)) or mode == 'dir'
+
+    if 'filetypes' not in d and not dir_only:
+        raise RuntimeError(
+            f'URI metadata {cls.__name__}.FILE_ARGS descriptor missing '
+            f'"filetypes" key and not in directory only "mode".'
+        )
+
+    if not dir_only:
+        if not isinstance(d['filetypes'], (list, tuple)) or not all(
+                isinstance(ft, (tuple, list)) and len(ft) == 2 and isinstance(ft[0], str)
+                and isinstance(ft[1], (tuple, list))
+                for ft in d['filetypes']
+        ):
+            raise RuntimeError(
+                f'URI metadata {cls.__name__}.FILE_ARGS descriptor "filetypes" '
+                f'must be a list/tuple of lists/tuples, where each tuple contains '
+                f'a descriptor string and a list of file extensions, not: {d["filetypes"]}.'
+            )
+
+    return d
+
 def get_uri_accepted_args_schema(uri_cls: type) -> dict:
     """
     Get the accepted arguments as a schema dict for a URI class.
@@ -126,6 +181,13 @@ def get_uri_accepted_args_schema(uri_cls: type) -> dict:
     The ``OPTION_ARGS`` static class attribute (dict) can be used to specify a that an arguments
     values consists of a set of valid options, such as specific strings.
 
+    The ``FILE_ARGS`` static class attribute (dict) can be used to specify that an argument
+    accepts a file or directory, and can contain metadata about the filetypes.
+
+    The static metadata attributes for URI classes are defined identically to plugins,
+    aside from the absent ``loaded_by_name`` API. The schema output is identical to
+    dgenerate plugin schema output.
+
     Keyed by argument ``name``, content keys include:
 
     ``default`` contains any default value, this key may not exist if the argument has no default value.
@@ -138,18 +200,17 @@ def get_uri_accepted_args_schema(uri_cls: type) -> dict:
     annotated with the ``OPTION_ARGS`` static class attribute. This list may contain ``None`` if the argument
     can accept the value ``None``, i.e. it is optional.
 
+    ``files`` contains a dict with metadata about what sort of file types (and/or directory)
+    the argument accepts if applicable.
+
     :param uri_cls: The URI class to introspect, must have an ``__init__`` method.
 
     :return: dict
     """
 
     args_hidden = getattr(uri_cls, 'HIDE_ARGS', set())
-
-    args_hidden = {_textprocessing.dashup(a) for a in args_hidden}
-
     args_options = getattr(uri_cls, 'OPTION_ARGS', dict())
-
-    args_options = {_textprocessing.dashup(k): v for k, v in args_options.items()}
+    args_files = getattr(uri_cls, 'FILE_ARGS', dict())
 
     if not isinstance(args_hidden, collections.abc.Collection):
         raise RuntimeError(
@@ -160,6 +221,15 @@ def get_uri_accepted_args_schema(uri_cls: type) -> dict:
         raise RuntimeError(
             f'URI class: {uri_cls.__name__} OPTION_ARGS must be a dict / map, got: {type(args_hidden).__name__}'
         )
+
+    if not isinstance(args_files, collections.abc.Mapping):
+        raise RuntimeError(
+            f'URI class: {uri_cls.__name__} FILE_ARGS must be a dict / map, got: {type(args_files).__name__}'
+        )
+
+    args_hidden = {_textprocessing.dashup(a) for a in args_hidden}
+    args_options = {_textprocessing.dashup(k): list(v) for k, v in args_options.items()}
+    args_files = {_textprocessing.dashup(k): _validate_file_arg_metadata(uri_cls, v) for k, v in args_files.items()}
 
     schema = dict()
     for name, arg in inspect.signature(uri_cls.__init__).parameters.items():
@@ -232,6 +302,9 @@ def get_uri_accepted_args_schema(uri_cls: type) -> dict:
                 )
 
             schema[name]['options'] = args_options[name]
+
+        if name in args_files:
+            schema[name]['files'] = args_files[name]
 
     return schema
 

@@ -85,33 +85,3 @@ class _PromptWeighterEntry(_schemaentry._PluginSchemaEntry):
             return self._create_quantizer_entry(row)
         else:
             return self._create_raw_type_entry(param_type, default_value, optional, options, row)
-
-    def _create_quantizer_entry(self, row):
-        entry = _quantizerurientry._QuantizerEntry(
-            master=self.master,
-            row=row,
-            form=self.master,
-            placeholder='URI',
-            config={'optional': True, 'default': ''}
-        )
-
-        entry.arg = None
-
-        class _Var(tk.Variable):
-            def get(self) -> str:
-                uri_value = entry.template('URI')
-                if uri_value:
-                    return f"'{uri_value}'"
-                else:
-                    return ''
-
-            def set(self, value) -> None:
-                entry.plugin_name_var.set(value)
-
-        return _schemaentry._PluginArgEntry(
-            raw=False,
-            widgets=entry.primary_widgets(),
-            variable=_Var(),
-            widget_rows=entry.widget_rows,
-            widgets_delete=entry.destroy_dynamic_widgets
-        )

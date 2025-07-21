@@ -187,6 +187,11 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
         'dtype': ['float32', 'float16', 'bfloat16']
     }
 
+    FILE_ARGS = {
+        'model': {'mode': 'dir'},
+        'cleanup-config': {'mode': 'in', 'filetypes': [('Cleanup Config', ('*.json', '*.toml', '*.yaml', '*.yml'))]}
+    }
+
     def __init__(self,
                  part: str = 'both',
                  model: str = "Gustavosta/MagicPrompt-Stable-Diffusion",

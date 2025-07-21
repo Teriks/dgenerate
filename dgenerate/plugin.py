@@ -46,6 +46,7 @@ class PluginArg:
         self.have_default = 'default' in kwargs
         self.default = kwargs['default'] if self.have_default else None
         self.options = kwargs.get('options', None)
+        self.files = kwargs.get('files', None)
         self.type = type
 
     @property
@@ -427,6 +428,9 @@ class Plugin:
             if arg.options:
                 schema[arg.name]['options'] = arg.options
 
+            if arg.files:
+                schema[arg.name]['files'] = arg.files
+
         return schema
 
     @classmethod
@@ -444,6 +448,17 @@ class Plugin:
         code in the interest of maintaining a generic
         interface, but they may be ignored by the plugin
         implementation.
+
+        .. code-block:: python
+
+            HIDE_ARGS = ['hide-me', 'dont-use-me']
+
+            # or
+
+            HIDE_ARGS = {
+                "plugin_name": ['hide-me', 'dont-use-me'],
+                "alt_plugin_name": ['hide-me-2']
+            }
 
         :param loaded_by_name: The name used to load the plugin.
             Argument signature may vary by name used to load.
@@ -475,6 +490,32 @@ class Plugin:
         values, such as shape names like ``circle`` or ``rectangle```
         etc.
 
+        ``OPTION_ARGS`` should be in the form of a dict,
+        where the keys are argument names, and the values
+        are lists of valid values for that argument.
+
+        .. code-block:: python
+
+            OPTION_ARGS = {
+                "shape": ['circle', 'rectangle', 'triangle'],
+            }
+
+
+        If the plugin supports multiple names for loading,
+        this can be a dict of dicts, where the outer keys are
+        the names used to load the plugin, and the inner
+        keys are the argument names.
+
+        .. code-block:: python
+
+            OPTION_ARGS = {
+                "plugin_name": {
+                    "shape": ['circle', 'rectangle', 'triangle']
+                }
+            }
+
+        These values can be inherited.
+
         :param loaded_by_name: The name used to load the plugin.
             Argument signature may vary by name used to load.
 
@@ -498,6 +539,156 @@ class Plugin:
                         f'Plugin metadata {cls.__name__}.OPTION_ARGS must be a dict.')
 
         return args_option
+
+    @classmethod
+    def get_file_args(cls, loaded_by_name: str) -> dict[str, dict[str, typing.Any]]:
+        """
+        Get argument names that have an associated
+        list of option valid file types. i.e. ``FILE_ARGS``.
+
+        This returns metadata provided by the plugin about
+        specific arguments which accept a limited set of
+        file types, such as model file types or config file types.
+
+        ``FILE_ARGS`` should be a dictionary where keys are
+        argument names, for example:
+
+        .. code-block:: python
+
+            FILE_ARGS = {
+                "model": {
+                    "mode": "in/out"
+                    "filetypes": [('Model', ['*.safetensors', '*.pt'])]
+                }
+            }
+
+            # only accepts directories
+
+            FILE_ARGS = {
+                "model": {
+                    "mode": "dir"
+                }
+            }
+
+            # accepts input files or directories
+
+            FILE_ARGS = {
+                "model": {
+                    "mode": ["in", "dir"]
+                    "filetypes": [('Model', ['*.safetensors', '*.pt'])]
+                }
+            }
+
+            # output files or directories
+            # (mutually exclusive with "in" mode)
+
+            FILE_ARGS = {
+                "model": {
+                    "mode": ["out", "dir"]
+                    "filetypes": [('Model', ['*.safetensors', '*.pt'])]
+                }
+            }
+
+        If the plugin supports multiple names for loading, this
+        can be a dict of dicts, where the outer keys are the names
+        used to load the plugin, and the inner keys are the argument
+        names.
+
+        .. code-block:: python
+
+            FILE_ARGS = {
+                "plugin_name": {
+                    "model": {
+                        "mode": "in/out"
+                        "filetypes": [('Model', ['*.safetensors', '*.pt'])]
+                    }
+                }
+            }
+
+        These values can be inherited.
+
+        :param loaded_by_name: The name used to load the plugin.
+            Argument signature may vary by name used to load.
+
+        :return: options argument names
+        """
+        args_file = dict()
+
+        def _descriptor_format(d: dict[str, typing.Any]):
+            if not isinstance(d, dict):
+                raise RuntimeError(
+                    f'Plugin metadata {cls.__name__}.FILE_ARGS descriptor '
+                    f'values must be dicts, not {type(d).__name__}.')
+
+
+            if 'mode' not in d:
+                raise RuntimeError(
+                    f'Plugin metadata {cls.__name__}.FILE_ARGS descriptor missing "mode" key.'
+                )
+
+            mode = d['mode']
+
+            if isinstance(mode, list):
+                if any(m not in {'in', 'out', 'dir'} for m in mode):
+                    raise RuntimeError(
+                        f'Plugin metadata {cls.__name__}.FILE_ARGS descriptor "mode" '
+                        f'values must be "in", "out", or "dir", not: {d["mode"]}.'
+                    )
+                else:
+                    if 'in' in mode and 'out' in mode:
+                        raise RuntimeError(
+                            f'Plugin metadata {cls.__name__}.FILE_ARGS descriptor "mode" '
+                            f'cannot contain both "in" and "out" at the same time: {d["mode"]}.'
+                        )
+            elif isinstance(mode, str) and mode not in {'in', 'out', 'dir'}:
+                raise RuntimeError(
+                    f'Plugin metadata {cls.__name__}.FILE_ARGS descriptor "mode" '
+                    f'values must be "in", "out", or "dir", not: {d["mode"]}.'
+                )
+
+            dir_only = (isinstance(mode, list) and all(m == 'dir' for m in mode)) or mode == 'dir'
+
+            if 'filetypes' not in d and not dir_only:
+                raise RuntimeError(
+                    f'Plugin metadata {cls.__name__}.FILE_ARGS descriptor missing '
+                    f'"filetypes" key and not in directory only "mode".'
+                )
+
+            if not dir_only:
+                if not isinstance(d['filetypes'], (list, tuple)) or not all(
+                        isinstance(ft, (tuple, list)) and len(ft) == 2 and isinstance(ft[0], str)
+                        and isinstance(ft[1], (tuple, list))
+                        for ft in d['filetypes']
+                ):
+                    raise RuntimeError(
+                        f'Plugin metadata {cls.__name__}.FILE_ARGS descriptor "filetypes" '
+                        f'must be a list/tuple of lists/tuples, where each tuple contains '
+                        f'a descriptor string and a list of file extensions, not: {d["filetypes"]}.'
+                    )
+
+            return d
+
+        for base in cls.mro():
+            if hasattr(base, 'FILE_ARGS'):
+                if isinstance(base.FILE_ARGS, dict):
+                    values = list(base.FILE_ARGS.values())
+                    if (values and isinstance(values[0], dict)
+                            and isinstance(list(values[0].values())[0], dict)):
+                        # segregated by loaded_by_name
+                        if loaded_by_name in base.FILE_ARGS:
+                            options = base.FILE_ARGS[loaded_by_name]
+                            args_file.update(
+                                {_textprocessing.dashup(k): _descriptor_format(v) for k, v in options.items()}
+                            )
+                    else:
+                        args_file.update(
+                            {_textprocessing.dashup(k): _descriptor_format(v) for k, v in base.FILE_ARGS.items()}
+                        )
+                else:
+                    raise RuntimeError(
+                        f'Plugin metadata {cls.__name__}.FILE_ARGS must be a dict.')
+
+        return args_file
 
     @classmethod
     def get_accepted_args(cls, loaded_by_name: str, include_bases: bool = False):
@@ -556,6 +747,7 @@ class Plugin:
         args_with_defaults = []
 
         option_args = cls.get_option_args(loaded_by_name)
+        file_args = cls.get_file_args(loaded_by_name)
         spec = list(_types.get_accepted_args_with_defaults(cls.__init__))[1:]
         hints = typing.get_type_hints(cls.__init__)
 
@@ -572,6 +764,9 @@ class Plugin:
 
             if name in option_args:
                 extra['options'] = option_args[name]
+
+            if name in file_args:
+                extra['files'] = file_args[name]
 
             if len(arg) == 1:
                 args_with_defaults.append(

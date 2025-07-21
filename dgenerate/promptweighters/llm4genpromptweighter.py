@@ -293,6 +293,10 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
         'llm_dtype': ['float32', 'float16', 'bfloat16']
     }
 
+    FILE_ARGS = {
+        'projector': {'mode': 'dir'}
+    }
+
     def __init__(self,
                  encoder: str = "xl-all",
                  projector: str = 'Shui-VL/LLM4GEN-models',

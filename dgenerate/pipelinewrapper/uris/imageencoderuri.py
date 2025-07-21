@@ -58,6 +58,10 @@ class ImageEncoderUri:
         'dtype': ['float16', 'bfloat16', 'float32']
     }
 
+    FILE_ARGS = {
+        'model': {'mode': 'dir'}
+    }
+
     # ===
 
     @property

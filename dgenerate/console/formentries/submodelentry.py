@@ -79,16 +79,6 @@ class _SubModelEntry(_schemaentry._PluginSchemaEntry):
 
         return ';'.join(uri_parts)
 
-    def _apply_file_selects(self, param_name: str, entry: _schemaentry._PluginArgEntry):
-        model_name = self.plugin_name_var.get()
-
-        if param_name in self._file_in_arguments and model_name not in self._models_no_file:
-            entry.file_types = self._file_in_arguments[param_name]
-            entry.raw = False
-        if param_name in self._dir_in_arguments and model_name not in self._models_no_dir:
-            entry.directory = True
-            entry.raw = False
-        return entry
 
     def _create_entry_single_type(self,
                                   param_name: str,
@@ -110,38 +100,6 @@ class _SubModelEntry(_schemaentry._PluginSchemaEntry):
         elif 'quantizer' in param_name:
             return self._create_quantizer_entry(row)
         else:
-            return self._apply_file_selects(
-                param_name, self._create_raw_type_entry(
+            return self._create_raw_type_entry(
                     param_type, default_value, optional, options, row
                 )
-            )
-
-    def _create_quantizer_entry(self, row):
-        entry = _quantizerurientry._QuantizerEntry(
-            master=self.master,
-            row=row,
-            form=self.master,
-            placeholder='URI',
-            config={'optional': True, 'default': ''}
-        )
-
-        entry.arg = None
-
-        class _Var(tk.Variable):
-            def get(self) -> str:
-                uri_value = entry.template('URI')
-                if uri_value:
-                    return f"'{uri_value}'"
-                else:
-                    return ''
-
-            def set(self, value) -> None:
-                entry.plugin_name_var.set(value)
-
-        return _schemaentry._PluginArgEntry(
-            raw=False,
-            widgets=entry.primary_widgets(),
-            variable=_Var(),
-            widget_rows=entry.widget_rows,
-            widgets_delete=entry.destroy_dynamic_widgets
-        )

@@ -68,6 +68,10 @@ class AdetailerDetectorUri:
         'mask-shape': ['r', 'rect', 'rectangle', 'c', 'circle', 'ellipse'],
     }
 
+    FILE_ARGS = {
+        'model': {'mode': 'in', 'filetypes': [('Models', ['*.safetensors', '*.pt', '*.pth', '*.cpkt', '*.bin'])]}
+    }
+
     # ===
 
     @property

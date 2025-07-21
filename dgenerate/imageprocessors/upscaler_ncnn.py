@@ -161,6 +161,11 @@ class UpscalerNCNNProcessor(_imageprocessor.ImageProcessor):
     # that are device related
     HIDE_ARGS = ['device', 'model-offload']
 
+    FILE_ARGS = {
+        'model': {'mode': 'in', 'filetypes': [('Models', ['*.bin'])]},
+        'param': {'mode': 'in', 'filetypes': [('Params', ['*.param'])]},
+    }
+
     def __init__(self,
                  model: str,
                  param: str,

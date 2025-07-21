@@ -18,12 +18,11 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-import collections
+import collections.abc
 import tkinter as tk
 import tkinter.ttk as ttk
 import typing
 
-from spacy.tokens.doc import defaultdict
 
 import dgenerate.console.filedialog as _filedialog
 import dgenerate.console.formentries.entry as _entry
@@ -344,6 +343,40 @@ class _PluginSchemaEntry(_entry._Entry):
 
         return False, None
 
+    def _create_quantizer_entry(self, row):
+        # prevent circular import
+        import dgenerate.console.formentries.quantizerurientry as _quantizerurientry
+
+        entry = _quantizerurientry._QuantizerEntry(
+            master=self.master,
+            row=row,
+            form=self.master,
+            placeholder='URI',
+            config={'optional': True, 'default': ''}
+        )
+
+        entry.arg = None
+
+        class _Var(tk.Variable):
+            def get(self) -> str:
+                uri_value = entry.template('URI')
+                if uri_value:
+                    # always quote the URI value in this context
+                    return f"'{uri_value}'"
+                else:
+                    return ''
+
+            def set(self, value) -> None:
+                entry.plugin_name_var.set(value)
+
+        return _PluginArgEntry(
+            raw=False,
+            widgets=entry.primary_widgets(),
+            variable=_Var(),
+            widget_rows=entry.widget_rows,
+            widgets_delete=entry.destroy_dynamic_widgets
+        )
+
     def _create_raw_type_entry(self,
                                param_type: str,
                                default_value: typing.Any,
@@ -396,6 +429,7 @@ class _PluginSchemaEntry(_entry._Entry):
         default_value: typing.Any = param_info.get('default', "")
         param_types: list[str] = param_info['types']
         options: list | None = param_info.get('options', None)
+        files: dict | None = param_info.get('files', None)
 
         arg_entry = self._create_entry_multi_type(param_name, param_types, default_value, optional, options, row)
 
@@ -407,7 +441,8 @@ class _PluginSchemaEntry(_entry._Entry):
         optional_label = '(Optional) ' if optional else ''
 
         label_text = \
-            f"{optional_label}{param_name} ({', '.join(param_info['types'])})" if arg_entry.raw else \
+            f"{optional_label}{param_name} ({', '.join(param_info['types'])})" \
+                if not files and arg_entry.raw else \
                 f"{optional_label}{param_name}"
 
         label = tk.Label(self.master, text=label_text)
@@ -417,13 +452,33 @@ class _PluginSchemaEntry(_entry._Entry):
         for widget in arg_entry.widgets:
             self.dynamic_widgets.append(widget)
 
-        if arg_entry.file_types:
+        added_schema_directory_button = False
+
+        if files:
+
+            args = files.copy()
+            mode = args.pop('mode')
+
+            if isinstance(mode, collections.abc.Collection) and 'out' in mode or mode == 'out':
+                filetypes = args.pop('filetypes')
+                self._add_file_out_button(row, entry, {'filetypes': filetypes})
+            elif isinstance(mode, collections.abc.Collection) and 'in' in mode or mode == 'in':
+                filetypes = args.pop('filetypes')
+                self._add_file_in_button(row, entry, {'filetypes': filetypes})
+
+            if isinstance(mode, collections.abc.Collection) and 'dir' in mode or mode == 'dir':
+                self._add_directory_in_button(row, entry)
+                added_schema_directory_button = True
+
+        elif arg_entry.file_types:
             if arg_entry.file_out:
                 self._add_file_out_button(row, entry, arg_entry.file_types)
             else:
                 self._add_file_in_button(row, entry, arg_entry.file_types)
-        if arg_entry.directory:
+
+        if not added_schema_directory_button and arg_entry.directory:
             self._add_directory_in_button(row, entry)
+
         if arg_entry.insert_text_callback is not None:
             self._add_insert_text_callback_button(row, arg_entry)
 
