@@ -1,0 +1,30 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 5.0.0
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+
+{% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 24 %}
+    \set optimization --quantizer bnb;bits=8
+{% else %}
+    \set optimization --model-sequential-offload
+{% endif %}
+
+
+stabilityai/stable-diffusion-3-medium-diffusers
+--model-type sd3 {{ optimization }}
+--variant fp16
+--dtype float16
+--loras linoyts/Yarn_art_SD3_LoRA
+--image-seeds ../../media/dog-on-bench.png
+--image-seed-strengths 0.75
+--inference-steps 30
+--guidance-scales 5.00
+--output-size 1024
+--output-path img2img
+--prompts "a photo of TOK yarn art dog on a bench"

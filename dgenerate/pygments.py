@@ -144,7 +144,8 @@ _MODEL_TYPE_KEYWORDS = sorted((
     'upscaler-x4',
     's-cascade',
     'help',
-    'helpargs'
+    'helpargs',
+    'null'
 ), key=lambda s: len(s), reverse=True)
 
 _DTYPE_KEYWORDS = sorted((

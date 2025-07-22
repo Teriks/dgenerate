@@ -31,7 +31,6 @@ import torch
 import transformers.models.clip
 
 import dgenerate.exceptions as _d_exceptions
-import dgenerate.extras.DistillT5.models.T5_encoder as _distill_t5_encoder
 import dgenerate.hfhub as _hfhub
 import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
@@ -45,8 +44,9 @@ import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 from dgenerate.pipelinewrapper.uris import util as _util
+import dgenerate.pipelinewrapper.models as _models
 
-DistillT5EncoderModel = _distill_t5_encoder.T5EncoderWithProjection
+
 
 _text_encoder_uri_parser = _textprocessing.ConceptUriParser(
     'TextEncoder', [
@@ -246,7 +246,7 @@ def _load_clip_g_sd3_from_single_file(
 
 
 def _load_t5_xxl_sd3_from_single_file(
-        model_class: transformers.models.t5.T5EncoderModel | DistillT5EncoderModel,
+        model_class: transformers.models.t5.T5EncoderModel | _models.DistillT5EncoderModel,
         model_path: str,
         dtype: torch.dtype,
         local_files_only: bool = False,
@@ -299,7 +299,7 @@ def _load_t5_xxl_sd3_from_single_file(
 
 
 def _load_t5_xxl_from_single_file(
-        model_class: transformers.models.t5.T5EncoderModel | DistillT5EncoderModel,
+        model_class: transformers.models.t5.T5EncoderModel | _models.DistillT5EncoderModel,
         model_path: str,
         dtype: torch.dtype,
         local_files_only: bool = False,
@@ -517,7 +517,7 @@ class TextEncoderUri:
         'CLIPTextModel': transformers.models.clip.CLIPTextModel,
         'CLIPTextModelWithProjection': transformers.models.clip.CLIPTextModelWithProjection,
         'T5EncoderModel': transformers.models.t5.T5EncoderModel,
-        'DistillT5EncoderModel': DistillT5EncoderModel,
+        'DistillT5EncoderModel': _models.DistillT5EncoderModel,
         'ChatGLMModel': diffusers.pipelines.kolors.ChatGLMModel
     }
 
@@ -643,7 +643,7 @@ class TextEncoderUri:
                 transformers.models.clip.CLIPTextModel,
                 transformers.models.clip.CLIPTextModelWithProjection,
                 transformers.models.t5.T5EncoderModel,
-                DistillT5EncoderModel,
+                _models.DistillT5EncoderModel,
                 diffusers.pipelines.kolors.ChatGLMModel, None]:
         """
         Load a torch Text Encoder of type :py:class:`transformers.models.clip.CLIPTextModel`,
@@ -703,7 +703,7 @@ class TextEncoderUri:
                 transformers.models.clip.CLIPTextModel,
                 transformers.models.clip.CLIPTextModelWithProjection,
                 transformers.models.t5.T5EncoderModel,
-                DistillT5EncoderModel,
+                _models.DistillT5EncoderModel,
                 diffusers.pipelines.kolors.ChatGLMModel, None]:
 
         if self.dtype is None:
@@ -727,7 +727,7 @@ class TextEncoderUri:
 
         # Validate mode and encoder class compatibility
         clip_encoders = (transformers.CLIPTextModel, transformers.CLIPTextModelWithProjection)
-        t5_encoders = (transformers.T5EncoderModel, DistillT5EncoderModel)
+        t5_encoders = (transformers.T5EncoderModel, _models.DistillT5EncoderModel)
 
         if self.mode in TextEncoderUri._clip_modes and encoder not in clip_encoders:
             raise _exceptions.TextEncoderUriLoadError(

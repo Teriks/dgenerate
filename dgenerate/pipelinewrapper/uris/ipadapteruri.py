@@ -153,23 +153,40 @@ class IPAdapterUri:
             weight_names = []
             revisions = set()
 
-            for ip_adapter_uri in uris:
-                if isinstance(ip_adapter_uri, str):
-                    ip_adapter_uri = IPAdapterUri.parse(ip_adapter_uri)
-
-                models.append(_hfhub.download_non_hf_slug_model(ip_adapter_uri.model))
-                if ip_adapter_uri.subfolder is None:
-                    subfolders.append('.')
+            if pipeline.__class__.__name__.startswith('StableDiffusion3'):
+                uris = list(uris)
+                if len(uris) > 1:
+                    raise ValueError(
+                        'Stable Diffusion 3 does not support loading'
+                        'multiple IP Adapters, you may only specify one IP Adapter model.'
+                    )
+                if isinstance(uris[0], str):
+                    ip_adapter_uri = IPAdapterUri.parse(uris[0])
                 else:
-                    subfolders.append(ip_adapter_uri.subfolder)
-                weight_names.append(ip_adapter_uri.weight_name)
-                revisions.add(ip_adapter_uri.revision)
+                    ip_adapter_uri = uris[0]
 
-            if len(revisions) > 1:
-                raise ValueError(
-                    f'All IP Adapter URIs must have matching "revision" URI argument values.')
+                models = ip_adapter_uri.model
+                subfolders = ip_adapter_uri.subfolder
+                weight_names = ip_adapter_uri.weight_name
+                revision = ip_adapter_uri.revision
+            else:
+                for ip_adapter_uri in uris:
+                    if isinstance(ip_adapter_uri, str):
+                        ip_adapter_uri = IPAdapterUri.parse(ip_adapter_uri)
 
-            revision = revisions.pop()
+                    models.append(_hfhub.download_non_hf_slug_model(ip_adapter_uri.model))
+                    if ip_adapter_uri.subfolder is None:
+                        subfolders.append('.')
+                    else:
+                        subfolders.append(ip_adapter_uri.subfolder)
+                    weight_names.append(ip_adapter_uri.weight_name)
+                    revisions.add(ip_adapter_uri.revision)
+
+                if len(revisions) > 1:
+                    raise ValueError(
+                        f'All IP Adapter URIs must have matching "revision" URI argument values.')
+
+                revision = revisions.pop()
 
             try:
                 pipeline.load_ip_adapter(models,

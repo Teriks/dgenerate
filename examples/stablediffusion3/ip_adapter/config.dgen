@@ -1,0 +1,37 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 5.0.0
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+
+# SD3 Can only use 1 IP Adapter model at a time
+# Currently, this is the only one that exists.
+
+# Sequential offload allows this to run with about 2 gigs of VRAM
+# It is quite slow
+
+# bnb 8 bit quant is not quite enough to drop it under 16gb of usage,
+# unless you exclude the T5 encoder or use a smaller T5 encoder.
+
+# bnb 4 bit quant affects quality quite a bit
+
+# Quantization is also an option with reduced quality
+
+stabilityai/stable-diffusion-3.5-large
+--model-type sd3 {{ auth_token }}
+--dtype float16
+--model-sequential-offload
+--inference-steps 30
+--guidance-scales 5
+--image-seeds "adapter: https://huggingface.co/InstantX/SD3.5-Large-IP-Adapter/resolve/main/assets/1.jpg"
+--ip-adapters guiyrt/InstantX-SD3.5-Large-IP-Adapter-diffusers;weight-name=ip-adapter.bin;scale=0.5
+--image-encoder google/siglip-so400m-patch14-384
+--gen-seeds 1
+--output-path output
+--output-size 1024x1024
+--prompts "a cat running; lowres, low quality, worst quality"

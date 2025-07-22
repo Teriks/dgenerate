@@ -33,6 +33,7 @@ from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper import constants as _constants
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 from dgenerate.pipelinewrapper.uris import util as _util
+from dgenerate.pipelinewrapper import models as _models
 
 _image_encoder_uri_parser = _textprocessing.ConceptUriParser(
     'ImageEncoder', ['revision', 'variant', 'subfolder', 'dtype'])
@@ -137,7 +138,11 @@ class ImageEncoderUri:
              dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
              use_auth_token: _types.OptionalString = None,
              local_files_only: bool = False,
-             no_cache: bool = False) -> transformers.CLIPVisionModelWithProjection:
+             no_cache: bool = False,
+             image_encoder_class:
+             type[transformers.CLIPVisionModelWithProjection] |
+             type[_models.SiglipImageEncoder] = transformers.CLIPVisionModelWithProjection) \
+            -> type[transformers.CLIPVisionModelWithProjection] | type[_models.SiglipImageEncoder]:
         """
         Load an Image Encoder Model of type :py:class:`transformers.CLIPVisionModelWithProjection`
 
@@ -147,6 +152,8 @@ class ImageEncoderUri:
             when the model path is a huggingface slug or blob link
 
         :param no_cache: If True, force the returned object not to be cached by the memoize decorator.
+        
+        :param image_encoder_class: Image Encoder class to load.
 
         :raises ModelNotFoundError: If the model could not be found.
 
@@ -178,7 +185,11 @@ class ImageEncoderUri:
               dtype_fallback: _enums.DataType = _enums.DataType.AUTO,
               use_auth_token: _types.OptionalString = None,
               local_files_only: bool = False,
-              no_cache: bool = False) -> transformers.CLIPVisionModelWithProjection:
+              no_cache: bool = False,
+              image_encoder_class:
+              type[transformers.CLIPVisionModelWithProjection] |
+              type[_models.SiglipImageEncoder] = transformers.CLIPVisionModelWithProjection) \
+            -> type[transformers.CLIPVisionModelWithProjection] | type[_models.SiglipImageEncoder]:
 
         if self.dtype is None:
             torch_dtype = _enums.get_torch_dtype(dtype_fallback)
@@ -205,7 +216,7 @@ class ImageEncoderUri:
             # flux null reference bug
             extra_args = dict()
 
-        image_encoder = transformers.CLIPVisionModelWithProjection.from_pretrained(
+        image_encoder = image_encoder_class.from_pretrained(
             path,
             revision=self.revision,
             variant=self.variant,
