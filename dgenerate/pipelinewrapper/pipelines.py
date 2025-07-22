@@ -35,6 +35,7 @@ import diffusers.loaders.single_file_utils
 import diffusers.quantizers.quantization_config
 import torch.nn
 import torch.nn
+import transformers
 
 import dgenerate.devicecache as _devicecache
 import dgenerate.exceptions as _d_exceptions
@@ -54,6 +55,7 @@ import dgenerate.torchutil as _torchutil
 import dgenerate.types as _types
 from dgenerate.memoize import memoize as _memoize
 from dgenerate.pipelinewrapper import constants as _constants
+import dgenerate.pipelinewrapper.models as _models
 
 
 class UnsupportedPipelineConfigError(Exception):
@@ -1524,9 +1526,6 @@ def get_pipeline_class(
         if unet_uri:
             raise UnsupportedPipelineConfigError(
                 '--model-type sd3 is not compatible with --unet.')
-        if image_encoder_uri:
-            raise UnsupportedPipelineConfigError(
-                '--model-type sd3 is not compatible with --image-encoder.')
 
     # Torch Kolors restrictions
     if _enums.model_type_is_sd3(model_type):
@@ -1742,10 +1741,6 @@ def get_pipeline_class(
                 if controlnet_uris:
                     raise UnsupportedPipelineConfigError(
                         '--model-type sd3 does not support img2img mode with ControlNet models.')
-                if lora_uris:
-                    raise UnsupportedPipelineConfigError(
-                        '--model-type sd3 does not support --loras in img2img mode.')
-
                 if pag:
                     pipeline_class = diffusers.StableDiffusion3PAGImg2ImgPipeline
                 else:
@@ -1827,11 +1822,7 @@ def get_pipeline_class(
                 pipeline_class = diffusers.IFInpaintingSuperResolutionPipeline
             elif model_type == _enums.ModelType.SD3:
                 if controlnet_uris:
-                    raise UnsupportedPipelineConfigError(
-                        '--model-type sd3 does not support inpaint mode with ControlNet models.')
-                if lora_uris:
-                    raise UnsupportedPipelineConfigError(
-                        '--model-type sd3 does not support --loras in inpaint mode.')
+                    return diffusers.StableDiffusion3ControlNetInpaintingPipeline
                 if pag:
                     raise UnsupportedPipelineConfigError(
                         '--model-type sd3 does not support --pag in inpaint mode.'
@@ -2601,12 +2592,28 @@ def _create_diffusion_pipeline(
     if image_encoder_uri is not None and not image_encoder_override:
         parsed_image_encoder_uri = _uris.ImageEncoderUri.parse(image_encoder_uri)
 
-        creation_kwargs['image_encoder'] = parsed_image_encoder_uri.load(
+        if _enums.model_type_is_sd3(model_type):
+            # image encoder does not participate in offloading for SD3
+            no_cache_image_encoder = model_cpu_offload
+        else:
+            no_cache_image_encoder = model_cpu_offload or sequential_cpu_offload
+
+        loaded_image_encoder = parsed_image_encoder_uri.load(
             dtype_fallback=dtype,
             use_auth_token=auth_token,
             local_files_only=local_files_only,
-            no_cache=model_cpu_offload or sequential_cpu_offload
+            no_cache=no_cache_image_encoder,
+            image_encoder_class=
+            _models.SiglipImageEncoder
+            if _enums.model_type_is_sd3(model_type) else
+            transformers.CLIPVisionModelWithProjection
         )
+
+        if isinstance(loaded_image_encoder, _models.SiglipImageEncoder):
+            creation_kwargs['image_encoder'] = loaded_image_encoder.image_encoder
+            creation_kwargs['feature_extractor'] = loaded_image_encoder.feature_extractor
+        else:
+            creation_kwargs['image_encoder'] = loaded_image_encoder
 
         _messages.debug_log(lambda:
                             f'Added Torch Image Encoder: "{image_encoder_uri}" to '
@@ -2831,6 +2838,11 @@ def _create_diffusion_pipeline(
             _set_sd_safety_checker(pipeline, safety_checker)
 
     # Model Offloading
+
+    # SD3 image_encoder needs to be excluded to avoid meta tensor errors.
+
+    if _enums.model_type_is_sd3(model_type) and sequential_cpu_offload and 'image_encoder' in creation_kwargs:
+        pipeline._exclude_from_cpu_offload.append("image_encoder")
 
     if not device.startswith('cpu'):
         if sequential_cpu_offload:

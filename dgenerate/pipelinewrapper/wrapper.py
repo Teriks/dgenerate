@@ -2571,7 +2571,15 @@ class DiffusionPipelineWrapper:
                                              'IP Adapter images')
 
         if user_args.ip_adapter_images is not None:
-            self._pipeline.set_ip_adapter_scale([u.scale for u in self._parsed_ip_adapter_uris])
+            if not self._parsed_ip_adapter_uris:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'Cannot specify IP Adapter images without loading any IP Adapter models.'
+                )
+
+            if _enums.model_type_is_sd3(self.model_type):
+                self._pipeline.set_ip_adapter_scale(self._parsed_ip_adapter_uris[0].scale)
+            else:
+                self._pipeline.set_ip_adapter_scale([u.scale for u in self._parsed_ip_adapter_uris])
 
         batch_size = _types.default(user_args.batch_size, 1)
 

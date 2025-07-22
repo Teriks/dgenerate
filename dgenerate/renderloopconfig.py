@@ -2462,15 +2462,6 @@ class RenderLoopConfig(_types.SetFromMixin):
                                                       uri: str,
                                                       a_namer: typing.Callable[[str], str]):
         """Check model-specific requirements for image seeds."""
-        if _pipelinewrapper.model_type_is_sd3(self.model_type):
-            if not parsed.is_single_spec:
-                # Only simple img2img and inpaint are supported
-                if parsed.control_images or parsed.adapter_images:
-                    raise RenderLoopConfigError(
-                        f'{a_namer("image_seeds")} configurations other than plain img2img and '
-                        f'inpaint are currently not supported for {a_namer("model_type")} '
-                        f'{_pipelinewrapper.get_model_type_string(self.model_type)}')
-
         if _pipelinewrapper.model_type_is_s_cascade(self.model_type):
             if not parsed.is_single_spec:
                 raise RenderLoopConfigError(

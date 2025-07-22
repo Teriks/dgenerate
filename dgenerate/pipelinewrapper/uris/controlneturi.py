@@ -179,7 +179,7 @@ class ControlNetUri:
                  scale: float = 1.0,
                  start: float = 0.0,
                  end: float = 1.0,
-                 mode: int | str | FluxControlNetUnionUriModes | None = None,
+                 mode: int | str | FluxControlNetUnionUriModes | SDXLControlNetUnionUriModes | None = None,
                  model_type: _enums.ModelType = _enums.ModelType.SD):
         """
         :param model: model path
@@ -190,7 +190,7 @@ class ControlNetUri:
         :param scale: controlnet scale
         :param start: controlnet guidance start value
         :param end: controlnet guidance end value
-        :param mode: Flux Union controlnet mode.
+        :param mode: Flux / SDXL Union controlnet mode.
         :param model_type: Model type this ControlNet will be attached to.
 
         :raises InvalidControlNetUriError: If ``dtype`` is passed an invalid data type string.
@@ -203,7 +203,15 @@ class ControlNetUri:
         self._model_type = model_type
 
         if isinstance(mode, str):
-            self._mode = self._flux_mode_int_from_str(mode)
+            if _enums.model_type_is_sdxl(model_type):
+                self._mode = ControlNetUri._sdxl_mode_int_from_str(mode)
+            elif _enums.model_type_is_flux(model_type):
+                self._mode = ControlNetUri._flux_mode_int_from_str(mode)
+            else:
+                raise _exceptions.InvalidControlNetUriError(
+                    f'Torch ControlNet "mode" argument not supported '
+                    f'for model type: {_enums.get_model_type_string(model_type)}.'
+                )
         else:
             self._mode = int(mode) if mode is not None else None
 
