@@ -95,6 +95,16 @@ _path_patterns = (
     (rf'(?<!\w){_ecos}+\.{_ecos}+', _token.String)
 )
 
+_MISC_KEYWORDS = sorted((
+    'help',
+    'helpargs',
+    'null',
+    'auto',
+    'cpu',
+    'cuda',
+    'mps'
+), key=lambda s: len(s), reverse=True)
+
 _SCHEDULER_KEYWORDS = sorted((
     "DDIMScheduler",
     "DDPMScheduler",
@@ -142,10 +152,7 @@ _MODEL_TYPE_KEYWORDS = sorted((
     'sdxl-pix2pix',
     'upscaler-x2',
     'upscaler-x4',
-    's-cascade',
-    'help',
-    'helpargs',
-    'null'
+    's-cascade'
 ), key=lambda s: len(s), reverse=True)
 
 _DTYPE_KEYWORDS = sorted((
@@ -229,7 +236,7 @@ def _create_wait_for_var(name, next_state):
     }
 
 def _keyword_top_level(s):
-    return rf'(?<![-_])\b(%{s})\b(?![-_])'
+    return rf'(?<![-_])\b({s})\b(?![-_])'
 
 class DgenerateLexer(_lexer.RegexLexer):
     """
@@ -259,14 +266,11 @@ class DgenerateLexer(_lexer.RegexLexer):
              _lexer.bygroups(_token.Name.Builtin, _token.Text.Whitespace), 'var_then_root'),
             (r'(?<!\w)(\\[a-zA-Z_][a-zA-Z0-9_]*)', _lexer.bygroups(_token.Name.Builtin)),
             (r'\\[^\s]', _token.Escape),
+            (_keyword_top_level('|'.join(_MISC_KEYWORDS)), _token.Keyword),
             (_keyword_top_level('|'.join(_SCHEDULER_KEYWORDS)), _token.Keyword),
             (_keyword_top_level('|'.join(_CLASS_KEYWORDS)), _token.Keyword),
             (_keyword_top_level('|'.join(_MODEL_TYPE_KEYWORDS)), _token.Keyword),
             (_keyword_top_level('|'.join(_DTYPE_KEYWORDS)), _token.Keyword),
-            (_keyword_top_level('auto'), _token.Keyword),
-            (_keyword_top_level('cpu'), _token.Keyword),
-            (_keyword_top_level('cuda'), _token.Keyword),
-            (_keyword_top_level('mps'), _token.Keyword),
             (_keyword_top_level('True|true'), _token.Keyword),
             (_keyword_top_level('False|false'), _token.Keyword),
             _jinja_block_pattern,
