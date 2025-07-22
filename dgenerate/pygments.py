@@ -228,6 +228,8 @@ def _create_wait_for_var(name, next_state):
         ]
     }
 
+def _keyword_top_level(s):
+    return rf'(?<![-_])\b(%{s})\b(?![-_])'
 
 class DgenerateLexer(_lexer.RegexLexer):
     """
@@ -257,16 +259,16 @@ class DgenerateLexer(_lexer.RegexLexer):
              _lexer.bygroups(_token.Name.Builtin, _token.Text.Whitespace), 'var_then_root'),
             (r'(?<!\w)(\\[a-zA-Z_][a-zA-Z0-9_]*)', _lexer.bygroups(_token.Name.Builtin)),
             (r'\\[^\s]', _token.Escape),
-            (r'(?<!-)\b(%s)\b' % '|'.join(_SCHEDULER_KEYWORDS), _token.Keyword),
-            (r'(?<!-)\b(%s)\b' % '|'.join(_CLASS_KEYWORDS), _token.Keyword),
-            (r'(?<!-)\b(%s)\b' % '|'.join(_MODEL_TYPE_KEYWORDS), _token.Keyword),
-            (r'(?<!-)\b(%s)\b' % '|'.join(_DTYPE_KEYWORDS), _token.Keyword),
-            (r'(?<!-)\bauto\b', _token.Keyword),
-            (r'(?<!-)\bcpu\b', _token.Keyword),
-            (r'(?<!-)\bcuda\b', _token.Keyword),
-            (r'(?<!-)\bmps\b', _token.Keyword),
-            (r'(?<!-)\bTrue|true\b', _token.Keyword),
-            (r'(?<!-)\bFalse|false\b', _token.Keyword),
+            (_keyword_top_level('|'.join(_SCHEDULER_KEYWORDS)), _token.Keyword),
+            (_keyword_top_level('|'.join(_CLASS_KEYWORDS)), _token.Keyword),
+            (_keyword_top_level('|'.join(_MODEL_TYPE_KEYWORDS)), _token.Keyword),
+            (_keyword_top_level('|'.join(_DTYPE_KEYWORDS)), _token.Keyword),
+            (_keyword_top_level('auto'), _token.Keyword),
+            (_keyword_top_level('cpu'), _token.Keyword),
+            (_keyword_top_level('cuda'), _token.Keyword),
+            (_keyword_top_level('mps'), _token.Keyword),
+            (_keyword_top_level('True|true'), _token.Keyword),
+            (_keyword_top_level('False|false'), _token.Keyword),
             _jinja_block_pattern,
             _jinja_comment_pattern,
             _jinja_interpolate_pattern,
