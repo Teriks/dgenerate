@@ -306,16 +306,6 @@ Default branch ID for DeepCache on SDXL Refiner.
 Controls which branches to apply DeepCache to in the UNet.
 """
 
-PIPELINE_WRAPPER_CACHE_GC_CONSTRAINTS: list[str] = ['used_percent > 70']
-"""
-Cache constraint expressions for when to clear all object caches, 
-before calling the diffusion pipeline wrapper.
-
-Syntax provided via :py:func:`dgenerate.memory.memory_constraints`
-
-If any of these constraints are met, all cached objects will be garbage collected
-before a generation starts.
-"""
 
 PIPELINE_CACHE_MEMORY_CONSTRAINTS: list[str] = ['pipeline_size > (available * 0.75)']
 """

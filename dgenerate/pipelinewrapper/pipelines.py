@@ -2150,8 +2150,6 @@ def _create_diffusion_pipeline(
         f'Creating Torch Pipeline: "{pipeline_class.__name__}", '
         f'Estimated CPU Side Memory Use: {_memory.bytes_best_human_unit(estimated_memory_usage)}')
 
-    _enforce_pipeline_cache_size(estimated_memory_usage)
-
     # Helper function to determine if quantization should be applied to a module
     def should_apply_quantizer(module_name):
         if not quantizer_uri:
@@ -2737,6 +2735,8 @@ def _create_diffusion_pipeline(
             raise UnsupportedPipelineConfigError(
                 'Single file model loads do not support the subfolder option.')
         try:
+            _enforce_pipeline_cache_size(estimated_memory_usage)
+
             pipeline = _pipeline_creation_args_debug(
                 backend='Torch',
                 cls=pipeline_class,
