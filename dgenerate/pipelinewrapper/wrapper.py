@@ -75,18 +75,6 @@ class DiffusionArgumentsHelpException(Exception):
     pass
 
 
-def _enforce_cache_constraints():
-    if _memory.memory_constraints(_constants.PIPELINE_WRAPPER_CACHE_GC_CONSTRAINTS):
-        _messages.debug_log(f'dgenerate.pipelinewrapper.constants.PIPELINE_WRAPPER_CACHE_GC_CONSTRAINTS '
-                            f'{_constants.PIPELINE_WRAPPER_CACHE_GC_CONSTRAINTS} met, '
-                            f'calling {_types.fullname(_memoize.clear_object_caches)}.')
-
-        _memoize.clear_object_caches()
-        return True
-
-    return False
-
-
 class PipelineWrapperResult:
     """
     The result of calling :py:class:`.DiffusionPipelineWrapper`
@@ -4046,17 +4034,12 @@ class DiffusionPipelineWrapper:
                             lambda: _textprocessing.debug_format_args(
                                 copy_args.get_pipeline_wrapper_kwargs()))
 
-        _enforce_cache_constraints()
-
-        loaded_new = self._lazy_init_pipeline(copy_args)
+        self._lazy_init_pipeline(copy_args)
 
         # this needs to happen even if a cached pipeline
         # was loaded, since the settings for scheduler
         # and vae tiling / slicing may be different
         self._set_scheduler_and_vae_settings(copy_args)
-
-        if loaded_new:
-            _enforce_cache_constraints()
 
         pipeline_args = \
             self._get_pipeline_defaults(user_args=copy_args)

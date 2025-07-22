@@ -465,12 +465,15 @@ def load_scheduler(pipeline: diffusers.DiffusionPipeline, scheduler_uri: _types.
                 f'Constructing Scheduler: "{scheduler_type.__name__}", URI Args: {args}')
 
             try:
-                og_scheduler = pipeline.scheduler
-
-                pipeline.scheduler = scheduler_type.from_config(pipeline.scheduler.config, **args)
-
                 if not hasattr(pipeline, '_DGENERATE_ORIGINAL_SCHEDULER'):
-                    pipeline._DGENERATE_ORIGINAL_SCHEDULER = og_scheduler
+                    # first time
+                    pipeline._DGENERATE_ORIGINAL_SCHEDULER = pipeline.scheduler
+
+                # always init from original scheduler config
+                pipeline.scheduler = scheduler_type.from_config(
+                    pipeline._DGENERATE_ORIGINAL_SCHEDULER.config, **args
+                )
+
             except Exception as e:
                 raise SchedulerArgumentError(
                     f'Error constructing scheduler "{scheduler_type.__name__}" '
