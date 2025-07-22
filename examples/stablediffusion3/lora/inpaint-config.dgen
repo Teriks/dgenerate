@@ -26,5 +26,5 @@ stabilityai/stable-diffusion-3-medium-diffusers
 --inference-steps 30
 --guidance-scales 5.00
 --output-size 1024
---output-path img2img
+--output-path inpaint
 --prompts "a photo of TOK yarn art dog on a bench"
