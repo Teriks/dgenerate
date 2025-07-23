@@ -919,7 +919,7 @@ Help Output
             use the "quantizer" URI argument of --text-encoders and or --unet / --transformer to specify the
             quantization settings on a per model basis.
             
-            Available backends are: (bnb / bitsandbytes)
+            Available backends are: (bnb / bitsandbytes, sdnq)
             
             bitsandbytes can be specified with "bnb" or "bitsandbytes"
             
@@ -936,9 +936,30 @@ Help Output
             * bits: int = 8 (must be 4 or 8)
             * bits4-compute-dtype: str = None (auto set when not specified)
             * bits4-quant-type: str = "fp4"
-            * bits4-use-double-quant = False,
+            * bits4-use-double-quant = False
             * bits4-quant-storage: str = None
-            ---------------------------------
+            
+            SDNQ (SD.Next Quantization) backend can be specified with "sdnq"
+            
+            Example:
+            
+            --quantizer sdnq;type=int4
+            
+            The SDNQ backend URI possesses these arguments and defaults:
+            
+            * type: str = "int8"
+            * group-size: int = 0 (how many tensor elements will share a quantization group, must be >= 0)
+            * quant-conv: bool = False (quantize convolutional layers)
+            * quantized-matmul: bool = False (use quantized matrix multiplication)
+            * quantized-matmul-conv: bool = False (use quantized matrix multiplication for convolutional layers)
+            
+            SDNQ supports the quantization types:
+            
+            * bool
+            * int8, int7, int6, int5, int4, int3, int2
+            * uint8, uint7, uint6, uint5, uint4, uint3, uint2, uint1,
+            * float8_e4m3fn, float8_e4m3fnuz, float8_e5m2, float8_e5m2fnuz
+            --------------------------------------------------------------
       -qm, --quantizer-map SUBMODULE [SUBMODULE ...]
             Global quantization map, used with --quantizer.
             
@@ -9793,7 +9814,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [2780767960719]
+            Value: [5780672988658]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
