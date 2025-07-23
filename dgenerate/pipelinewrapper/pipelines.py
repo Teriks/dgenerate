@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import collections.abc
+import functools
 import gc
 import hashlib
 import inspect
@@ -2158,6 +2159,18 @@ def _create_diffusion_pipeline(
             return True
         return module_name in quantizer_map
 
+    # we need to manually emulate bitsandbytes 'compute_dtype'
+    # casting for sdnq as it has trouble dequanting to anything
+    # but float16 on forward which messes with diffusers
+    # in various ways when a model is loaded in float32
+    sdnq_cast_hack = False
+
+    if quantizer_uri and isinstance(
+        _uris.get_quantizer_uri_class(quantizer_uri),
+        _uris.SDNQQuantizerUri
+    ):
+        sdnq_cast_hack = True
+
     uri_quant_check = []
     manual_quantizer_components = set()
 
@@ -2169,6 +2182,11 @@ def _create_diffusion_pipeline(
             if parsed_uri.quantizer:
                 encoder_name = f'text_encoder{"_2" if idx == 1 else "_3" if idx == 2 else ""}'
                 manual_quantizer_components.add(encoder_name)
+                if isinstance(
+                    _uris.get_quantizer_uri_class(parsed_uri.quantizer),
+                    _uris.SDNQQuantizerUri
+                ):
+                    sdnq_cast_hack = True
 
     # Check transformer URI
     if transformer_uri:
@@ -2176,6 +2194,11 @@ def _create_diffusion_pipeline(
         uri_quant_check.append(parsed_uri)
         if parsed_uri.quantizer:
             manual_quantizer_components.add('transformer')
+            if isinstance(
+                _uris.get_quantizer_uri_class(parsed_uri.quantizer),
+                _uris.SDNQQuantizerUri
+            ):
+                sdnq_cast_hack = True
 
     # Check unet URI
     if unet_uri:
@@ -2183,6 +2206,11 @@ def _create_diffusion_pipeline(
         uri_quant_check.append(parsed_uri)
         if parsed_uri.quantizer:
             manual_quantizer_components.add('unet')
+            if isinstance(
+                _uris.get_quantizer_uri_class(parsed_uri.quantizer),
+                _uris.SDNQQuantizerUri
+            ):
+                sdnq_cast_hack = True
 
     if quantizer_uri or any(p.quantizer for p in uri_quant_check):
         # for now, just knock out anything cached on the gpu, such as the last pipeline
@@ -2303,7 +2331,7 @@ def _create_diffusion_pipeline(
         )
 
     def load_vae(uri: _uris.VAEUri):
-        return uri.load(
+        vae_model = uri.load(
             dtype_fallback=dtype,
             original_config=original_config,
             use_auth_token=auth_token,
@@ -2312,8 +2340,27 @@ def _create_diffusion_pipeline(
             missing_ok=missing_submodules_ok
         )
 
+        if sdnq_cast_hack:
+            og_decode = vae_model.decode
+            def sdnq_decode(latents, *args, **kwargs):
+                cur_dtype = _enums.get_torch_dtype(dtype)
+                return og_decode(latents.to(
+                    dtype=vae_model.dtype if cur_dtype is None else cur_dtype), *args, **kwargs)
+            vae_model.decode = sdnq_decode
+        return vae_model
+
+    def sdnq_forward(og_forward, model, *args, **kwargs):
+        args = list(args)
+        for i, arg in enumerate(args):
+            if isinstance(arg, torch.Tensor):
+                args[i] = arg.to(dtype=model.dtype)
+        for k,v in kwargs.items():
+            if isinstance(v, torch.Tensor):
+                kwargs[k] = v.to(dtype=model.dtype)
+        return og_forward(*args, **kwargs)
+
     def load_unet(uri: _uris.UNetUri, unet_class):
-        return uri.load(
+        unet_model = uri.load(
             variant_fallback=variant,
             dtype_fallback=dtype,
             original_config=original_config,
@@ -2326,8 +2373,16 @@ def _create_diffusion_pipeline(
             unet_class=unet_class
         )
 
+        if sdnq_cast_hack:
+            unet_model.forward = functools.partial(
+                sdnq_forward,
+                unet_model.forward,
+                unet_model
+            )
+        return unet_model
+
     def load_transformer(uri: _uris.TransformerUri, transformer_class):
-        return uri.load(
+        transformer_model = uri.load(
             variant_fallback=variant,
             dtype_fallback=dtype,
             original_config=original_config,
@@ -2336,6 +2391,13 @@ def _create_diffusion_pipeline(
             no_cache=bool(lora_uris) or model_cpu_offload or sequential_cpu_offload,
             transformer_class=transformer_class
         )
+        if sdnq_cast_hack:
+            transformer_model.forward = functools.partial(
+                sdnq_forward,
+                transformer_model.forward,
+                transformer_model
+            )
+        return transformer_model
 
     def load_default_text_encoder(encoder, encoder_name):
         should_quantize = should_apply_quantizer(encoder_name)

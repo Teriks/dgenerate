@@ -158,7 +158,8 @@ class ConsoleSchemaBuilder:
         """Build quantizers schema."""
         schema_file = self.schemas_dir / 'quantizers.json'
         schema = {
-            'bnb': _pipelinewrapper.get_uri_accepted_args_schema(_pipelinewrapper.uris.BNBQuantizerUri)
+            'bnb': _pipelinewrapper.get_uri_accepted_args_schema(_pipelinewrapper.uris.BNBQuantizerUri),
+            'sdnq': _pipelinewrapper.get_uri_accepted_args_schema(_pipelinewrapper.uris.SDNQQuantizerUri)
         }
 
         with open(schema_file, 'w') as file:

@@ -324,6 +324,9 @@ def get_quantizer_uri_class(uri: str, exception: type[Exception] = ValueError):
                 f'Cannot load quantization backend bitsandbytes, '
                 f'as bitsandbytes is not installed.')
         return _bnbquantizeruri.BNBQuantizerUri
+    elif concept == 'sdnq':
+        from . import sdnquantizeruri as _sdnquantizeruri
+        return _sdnquantizeruri.SDNQQuantizerUri
     else:
         raise exception(f'Unknown quantization backend: {concept}')
 
