@@ -282,7 +282,15 @@ def get_scheduler_uri_schema(scheduler: type[diffusers.SchedulerMixin] | list[ty
     schema = dict()
 
     for class_type in scheduler:
-        parameter_schema = dict()
+        # first argument is the config cloning behavior
+        parameter_schema = {
+            'clone-config': {
+                'optional': False,
+                'default': True,
+                'types': ['bool']
+            }
+        }
+
         schema[class_type.__name__] = parameter_schema
 
         def _type_name(t):
@@ -469,10 +477,17 @@ def load_scheduler(pipeline: diffusers.DiffusionPipeline, scheduler_uri: _types.
                     # first time
                     pipeline._DGENERATE_ORIGINAL_SCHEDULER = pipeline.scheduler
 
-                # always init from original scheduler config
-                pipeline.scheduler = scheduler_type.from_config(
-                    pipeline._DGENERATE_ORIGINAL_SCHEDULER.config, **args
-                )
+                clone_config = args.pop('clone_config', True)
+
+                if clone_config:
+                    # init from original scheduler config
+                    # apply any user overrides over top
+                    pipeline.scheduler = scheduler_type.from_config(
+                        pipeline._DGENERATE_ORIGINAL_SCHEDULER.config, **args
+                    )
+                else:
+                    # raw init with possible overrides to defaults
+                    pipeline.scheduler = scheduler_type(**args)
 
             except Exception as e:
                 raise SchedulerArgumentError(
