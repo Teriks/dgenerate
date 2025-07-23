@@ -2165,8 +2165,8 @@ def _create_diffusion_pipeline(
     # in various ways when a model is loaded in float32
     sdnq_cast_hack = False
 
-    if quantizer_uri and isinstance(
-        _uris.get_quantizer_uri_class(quantizer_uri),
+    if quantizer_uri and (
+        _uris.get_quantizer_uri_class(quantizer_uri) is
         _uris.SDNQQuantizerUri
     ):
         sdnq_cast_hack = True
@@ -2194,10 +2194,8 @@ def _create_diffusion_pipeline(
         uri_quant_check.append(parsed_uri)
         if parsed_uri.quantizer:
             manual_quantizer_components.add('transformer')
-            if isinstance(
-                _uris.get_quantizer_uri_class(parsed_uri.quantizer),
-                _uris.SDNQQuantizerUri
-            ):
+            if (_uris.get_quantizer_uri_class(parsed_uri.quantizer) is
+                _uris.SDNQQuantizerUri):
                 sdnq_cast_hack = True
 
     # Check unet URI
@@ -2206,10 +2204,8 @@ def _create_diffusion_pipeline(
         uri_quant_check.append(parsed_uri)
         if parsed_uri.quantizer:
             manual_quantizer_components.add('unet')
-            if isinstance(
-                _uris.get_quantizer_uri_class(parsed_uri.quantizer),
-                _uris.SDNQQuantizerUri
-            ):
+            if (_uris.get_quantizer_uri_class(parsed_uri.quantizer) is
+                _uris.SDNQQuantizerUri):
                 sdnq_cast_hack = True
 
     if quantizer_uri or any(p.quantizer for p in uri_quant_check):
@@ -2339,11 +2335,13 @@ def _create_diffusion_pipeline(
             no_cache=model_cpu_offload or sequential_cpu_offload,
             missing_ok=missing_submodules_ok
         )
-
         if sdnq_cast_hack:
             og_decode = vae_model.decode
             def sdnq_decode(latents, *args, **kwargs):
-                cur_dtype = _enums.get_torch_dtype(dtype)
+                if getattr(vae_model.config, 'use_post_quant_conv', False):
+                    cur_dtype = vae_model.post_quant_conv.weight.dtype
+                else:
+                    cur_dtype = _enums.get_torch_dtype(dtype)
                 return og_decode(latents.to(
                     dtype=vae_model.dtype if cur_dtype is None else cur_dtype), *args, **kwargs)
             vae_model.decode = sdnq_decode
