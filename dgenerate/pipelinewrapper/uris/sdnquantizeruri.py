@@ -62,9 +62,7 @@ class SDNQQuantizerUri:
                  group_size: int = 0,
                  quant_conv: bool = False,
                  use_quantized_matmul: bool = False,
-                 use_quantized_matmul_conv: bool = False,
-                 quantization_device: str | None = None,
-                 return_device: str | None = None):
+                 use_quantized_matmul_conv: bool = False):
 
         if type not in self._valid_weight_dtypes:
             raise _exceptions.InvalidSDNQQuantizerUriError(
@@ -80,21 +78,6 @@ class SDNQQuantizerUri:
         self.quant_conv = quant_conv
         self.use_quantized_matmul = use_quantized_matmul
         self.use_quantized_matmul_conv = use_quantized_matmul_conv
-        self.quantization_device = self._device_check(quantization_device)
-        self.return_device = self._device_check(return_device)
-
-    @staticmethod
-    def _device_check(device: str | None) -> torch.device | None:
-        if device is None:
-            return None
-        if device == "auto":
-            # Let diffusers handle auto device mapping
-            return None
-        try:
-            return torch.device(device)
-        except Exception as e:
-            raise _exceptions.InvalidSDNQQuantizerUriError(
-                f'Invalid device specification: {device}') from e
 
     def to_config(self, compute_dtype: str | torch.dtype | None = None) -> SDNQConfig:
         return SDNQConfig(
@@ -102,9 +85,7 @@ class SDNQQuantizerUri:
             group_size=self.group_size,
             quant_conv=self.quant_conv,
             use_quantized_matmul=self.use_quantized_matmul,
-            use_quantized_matmul_conv=self.use_quantized_matmul_conv,
-            quantization_device=self.quantization_device,
-            return_device=self.return_device
+            use_quantized_matmul_conv=self.use_quantized_matmul_conv
         )
 
     @staticmethod
@@ -122,17 +103,13 @@ class SDNQQuantizerUri:
             quant_conv = _types.parse_bool(r.args.get('quant-conv', False))
             use_quantized_matmul = _types.parse_bool(r.args.get('use-quantized-matmul', False))
             use_quantized_matmul_conv = _types.parse_bool(r.args.get('use-quantized-matmul-conv', False))
-            quantization_device = r.args.get('quantization-device', None)
-            return_device = r.args.get('return-device', None)
 
             return SDNQQuantizerUri(
                 type=weights_dtype,
                 group_size=group_size,
                 quant_conv=quant_conv,
                 use_quantized_matmul=use_quantized_matmul,
-                use_quantized_matmul_conv=use_quantized_matmul_conv,
-                quantization_device=quantization_device,
-                return_device=return_device
+                use_quantized_matmul_conv=use_quantized_matmul_conv
             )
 
         except _textprocessing.ConceptUriParseError as e:
