@@ -45,6 +45,13 @@ class InvalidBNBQuantizerUriError(InvalidModelUriError):
     pass
 
 
+class InvalidSDNQQuantizerUriError(InvalidModelUriError):
+    """
+    Error in ``--quantizer`` uri for SDNQ backend
+    """
+    pass
+
+
 class InvalidSDXLRefinerUriError(InvalidModelUriError):
     """
     Error in ``--sdxl-refiner`` uri

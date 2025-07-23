@@ -22,6 +22,7 @@
 import dgenerate.types as _types
 from .adetailerdetectoruri import AdetailerDetectorUri
 from .bnbquantizeruri import BNBQuantizerUri
+from .sdnquantizeruri import SDNQQuantizerUri
 from .controlneturi import (
     ControlNetUri,
     FluxControlNetUnionUriModes,
@@ -80,6 +81,9 @@ from .exceptions import (
 
     # BNB Quantizer
     InvalidBNBQuantizerUriError,
+
+    # SDNQ Quantizer
+    InvalidSDNQQuantizerUriError,
 
     # Adetailer Detector
     AdetailerDetectorUriLoadError,

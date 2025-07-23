@@ -166,6 +166,8 @@ from .uris import (
     # Quantizer URIs
     BNBQuantizerUri,
     InvalidBNBQuantizerUriError,
+    SDNQQuantizerUri,
+    InvalidSDNQQuantizerUriError,
 
     # Adetailer
     AdetailerDetectorUri,

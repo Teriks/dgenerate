@@ -21,7 +21,7 @@ order: 2
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA"}]
 @submodelbuilder[{"label":"Control Net", "arg":"--control-nets", "model": "Control Net"}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "divider-after":true}]
-submodelbuilder[{"label":"IP Adapter", "arg":"--ip-adapters", "model": "IP Adapter"}]
+@submodelbuilder[{"label":"IP Adapter", "arg":"--ip-adapters", "model": "IP Adapter"}]
 @submodelbuilder[{"label":"Image Encoder", "arg":"--image-encoder", "model": "Image Encoder", "divider-after":true}]
 @imageseed[{"label":"Image Seed", "arg":"--image-seeds", "file-types":["images-in", "videos-in"], "float-label":"Image Seed Strength", "float-arg":"--image-seed-strengths", "min":0.01, "max":1, "default":"", "float":""}]
 @switch[{"label":"No Aspect Correction?", "arg":"--no-aspect"}]
