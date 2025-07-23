@@ -94,7 +94,7 @@ can be overridden via a URI syntax, for every possible scheduler.
     #    ...
     #
     #    PNDMScheduler:
-    #            clone-config: True
+    #            clone-config: bool = True
     #            num-train-timesteps: int = 1000
     #            beta-start: float = 0.0001
     #            beta-end: float = 0.02
