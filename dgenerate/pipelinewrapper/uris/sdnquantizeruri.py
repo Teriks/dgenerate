@@ -28,9 +28,13 @@ from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 
 _sdnq_quantizer_uri_parser = _textprocessing.ConceptUriParser(
     'SDNQ Quantizer',
-    ['type', 'group-size', 'quant-conv', 'use-quantized-matmul',
-     'use-quantized-matmul-conv', 'quantization-device',
-     'return-device'])
+    [
+        'type',
+        'group-size',
+        'quant-conv',
+        'quantized-matmul',
+        'quantized-matmul-conv'
+    ])
 
 
 class SDNQQuantizerUri:
@@ -61,8 +65,8 @@ class SDNQQuantizerUri:
                  type: str = "int8",
                  group_size: int = 0,
                  quant_conv: bool = False,
-                 use_quantized_matmul: bool = False,
-                 use_quantized_matmul_conv: bool = False):
+                 quantized_matmul: bool = False,
+                 quantized_matmul_conv: bool = False):
 
         if type not in self._valid_weight_dtypes:
             raise _exceptions.InvalidSDNQQuantizerUriError(
@@ -76,16 +80,16 @@ class SDNQQuantizerUri:
         self.type = type
         self.group_size = group_size
         self.quant_conv = quant_conv
-        self.use_quantized_matmul = use_quantized_matmul
-        self.use_quantized_matmul_conv = use_quantized_matmul_conv
+        self.quantized_matmul = quantized_matmul
+        self.quantized_matmul_conv = quantized_matmul_conv
 
     def to_config(self, compute_dtype: str | torch.dtype | None = None) -> SDNQConfig:
         return SDNQConfig(
             weights_dtype=self.type,
             group_size=self.group_size,
             quant_conv=self.quant_conv,
-            use_quantized_matmul=self.use_quantized_matmul,
-            use_quantized_matmul_conv=self.use_quantized_matmul_conv
+            use_quantized_matmul=self.quantized_matmul,
+            use_quantized_matmul_conv=self.quantized_matmul_conv
         )
 
     @staticmethod
@@ -101,15 +105,15 @@ class SDNQQuantizerUri:
             weights_dtype = r.args.get('type', 'int8')
             group_size = int(r.args.get('group-size', 0))
             quant_conv = _types.parse_bool(r.args.get('quant-conv', False))
-            use_quantized_matmul = _types.parse_bool(r.args.get('use-quantized-matmul', False))
-            use_quantized_matmul_conv = _types.parse_bool(r.args.get('use-quantized-matmul-conv', False))
+            quantized_matmul = _types.parse_bool(r.args.get('quantized-matmul', False))
+            quantized_matmul_conv = _types.parse_bool(r.args.get('quantized-matmul-conv', False))
 
             return SDNQQuantizerUri(
                 type=weights_dtype,
                 group_size=group_size,
                 quant_conv=quant_conv,
-                use_quantized_matmul=use_quantized_matmul,
-                use_quantized_matmul_conv=use_quantized_matmul_conv
+                quantized_matmul=quantized_matmul,
+                quantized_matmul_conv=quantized_matmul_conv
             )
 
         except _textprocessing.ConceptUriParseError as e:
