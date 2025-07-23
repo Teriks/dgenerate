@@ -3882,6 +3882,7 @@ can be overridden via a URI syntax, for every possible scheduler.
     #    ...
     #
     #    PNDMScheduler:
+    #            clone-config: True
     #            num-train-timesteps: int = 1000
     #            beta-start: float = 0.0001
     #            beta-end: float = 0.02
@@ -3916,7 +3917,37 @@ As an example, you may override the mentioned arguments for any scheduler in thi
 In the case of list / array arguments such as ``trained-betas`` you may use python
 literal syntax, i.e: ``[1, 2, 3]`` or CSV (tuple) ``1,2,3``.
 
-Like diffusion parameter arguments, you may specify multiple scheduler URIs and they will be tried in turn.
+Take note that the default values displayed by ``helpargs`` may not be how the scheduler
+gets configured internally unless you manually specify scheduler config argument
+with said value, this is due to the default behavior of cloning the models original
+scheduler configuration into the alternate scheduler that you have specified.
+
+You may notice that every scheduler possesses the argument ``clone-config`` with a default
+value of ``True``.  This indicates that the schedulers config will be cloned from the
+scheduler config that the model was originally loaded with.
+
+Usually a diffusion model will be loaded with a pre-configured scheduler that is appropriate
+for the way it was trained. And when you specify an alternate scheduler, the original configuration or
+parts of it that are applicable to the alternate scheduler, are cloned into the new
+schedulers config.
+
+This allows you to have a somewhat sane configuration for the alternate scheduler without
+specifying many argument overrides.
+
+If you would rather this not occur, and to manually configure the scheduler without the interference
+of the values from the original scheduler configuration, or to just use it with the default values
+that are presented by ``helpargs``, you can set ``clone-config`` to ``False`` and the config cloning
+behavior will be disabled.
+
+Setting ``clone-config`` to ``False`` results in the new scheduler being initialized entirely
+with the default argument values that are presented by ``helpargs``, you can then specify
+overrides as needed.
+
+These scheduler arguments and default values may also be easily viewed in the `Console UI`_ from the
+``Edit -> Insert URI -> Karras Scheduler URI`` dialog, or the recipes form scheduler selection field.
+
+Like diffusion parameter arguments, you may specify multiple scheduler URIs and they will be tried in turn,
+this allows you to iterate over alternate schedulers, to produce variations that use different schedulers.
 
 When you specify multiple schedulers in this manner they will be added to the beginning of the
 output file name, in the order: ``(scheduler)_(refiner / decoder scheduler)``
