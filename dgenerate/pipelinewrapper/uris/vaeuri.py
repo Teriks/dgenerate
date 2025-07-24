@@ -122,6 +122,8 @@ class VAEUri:
 
     # pipelinewrapper.uris.util.get_uri_accepted_args_schema metadata
 
+    NAMES = ['VAE']
+
     @staticmethod
     def help():
         import dgenerate.arguments as _a

@@ -32,31 +32,11 @@ class _SubModelEntry(_schemaentry._PluginSchemaEntry):
     NAME = 'submodel'
 
     def __init__(self, *args, **kwargs):
-
-        self._file_in_arguments = {
-            'model': _resources.get_file_dialog_args(['models'])
-        }
-
-        self._dir_in_arguments = {
-            'model'
-        }
-
-        # models that cannot load from a single file
-        self._models_no_file = {
-            'Image Encoder',
-            'UNet'
-        }
-
-        # models that cannot load from a directory
-        self._models_no_dir = {
-            'Adetailer Detector'
-        }
-
         super().__init__(
             *args,
             label='Sub Model',
             help_button=True,
-            schema_help_node='HELP',
+            schema_help_node='SUBMODEL_HELP',
             schema=_resources.get_schema('submodels'),
             **kwargs)
 

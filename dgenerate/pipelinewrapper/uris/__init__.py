@@ -22,7 +22,7 @@
 import dgenerate.types as _types
 from .adetailerdetectoruri import AdetailerDetectorUri
 from .bnbquantizeruri import BNBQuantizerUri
-from .sdnquantizeruri import SDNQQuantizerUri
+from .sdnqquantizeruri import SDNQQuantizerUri
 from .controlneturi import (
     ControlNetUri,
     FluxControlNetUnionUriModes,
@@ -104,7 +104,8 @@ from .util import (
     uri_list_hash_with_parser,
     get_uri_accepted_args_schema,
     get_quantizer_uri_class,
-    get_uri_help
+    get_uri_help,
+    get_uri_names
 )
 from .vaeuri import VAEUri
 

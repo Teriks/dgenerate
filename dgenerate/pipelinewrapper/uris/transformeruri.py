@@ -57,6 +57,8 @@ class TransformerUri:
 
     # pipelinewrapper.uris.util.get_uri_accepted_args_schema metadata
 
+    NAMES = ['Transformer']
+
     @staticmethod
     def help():
         import dgenerate.arguments as _a

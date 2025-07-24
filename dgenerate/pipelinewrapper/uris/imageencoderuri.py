@@ -50,6 +50,8 @@ class ImageEncoderUri:
 
     # pipelinewrapper.uris.util.get_uri_accepted_args_schema metadata
 
+    NAMES = ['Image Encoder']
+
     @staticmethod
     def help():
         import dgenerate.arguments as _a
