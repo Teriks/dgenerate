@@ -32,11 +32,11 @@ Help Output
                      [-lrfs LORA_FUSE_SCALE] [-ie IMAGE_ENCODER_URI] [-ipa IP_ADAPTER_URI [IP_ADAPTER_URI ...]]
                      [-ti URI [URI ...]] [-cn CONTROLNET_URI [CONTROLNET_URI ...] |
                      -t2i T2I_ADAPTER_URI [T2I_ADAPTER_URI ...]] [-q QUANTIZER_URI]
-                     [-qm SUBMODULE [SUBMODULE ...]] [-q2 QUANTIZER_URI] [-qm2 SUBMODULE [SUBMODULE ...]]
-                     [-sch SCHEDULER_URI [SCHEDULER_URI ...]] [-sch2 SCHEDULER_URI [SCHEDULER_URI ...]]
-                     [-fu CSV_FLOAT [CSV_FLOAT ...]] [-hd] [--hi-diffusion-no-win-attn]
-                     [--hi-diffusion-no-raunet] [-rfu CSV_FLOAT [CSV_FLOAT ...]] [-dc]
-                     [-dci INTEGER [INTEGER ...]] [-dcb INTEGER [INTEGER ...]] [-rdc]
+                     [--quantizer-help [QUANTIZER_NAME ...]] [-qm SUBMODULE [SUBMODULE ...]] [-q2 QUANTIZER_URI]
+                     [-qm2 SUBMODULE [SUBMODULE ...]] [-sch SCHEDULER_URI [SCHEDULER_URI ...]]
+                     [-sch2 SCHEDULER_URI [SCHEDULER_URI ...]] [-fu CSV_FLOAT [CSV_FLOAT ...]] [-hd]
+                     [--hi-diffusion-no-win-attn] [--hi-diffusion-no-raunet] [-rfu CSV_FLOAT [CSV_FLOAT ...]]
+                     [-dc] [-dci INTEGER [INTEGER ...]] [-dcb INTEGER [INTEGER ...]] [-rdc]
                      [-rdci INTEGER [INTEGER ...]] [-rdcb INTEGER [INTEGER ...]] [-tc] [-tcr [FLOAT ...]] [-ra]
                      [-rif] [-rsr FLOAT [FLOAT ...]] [-rhr FLOAT [FLOAT ...]] [-rss FLOAT [FLOAT ...]]
                      [-rer CSV_INT [CSV_INT ...]] [-rme RAS_METRIC [RAS_METRIC ...]]
@@ -960,6 +960,11 @@ Help Output
             * uint8, uint7, uint6, uint5, uint4, uint3, uint2, uint1,
             * float8_e4m3fn, float8_e4m3fnuz, float8_e5m2, float8_e5m2fnuz
             --------------------------------------------------------------
+      --quantizer-help [QUANTIZER_NAME ...]
+            Use this option alone with no model specification in order to list quantizer (quantization backend)
+            names.  Specifying one or more quantizer names after this option will cause usage documentation for
+            the specified quantization backend to be printed.
+            -------------------------------------------------
       -qm, --quantizer-map SUBMODULE [SUBMODULE ...]
             Global quantization map, used with --quantizer.
             
@@ -9814,7 +9819,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [5780672988658]
+            Value: [79618366287480]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -10499,6 +10504,7 @@ Example output:
         "\prompt_weighter_help"
         "\pushd"
         "\pwd"
+        "\quantizer_help"
         "\reset_lineno"
         "\rm"
         "\rmdir"

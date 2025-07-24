@@ -45,8 +45,40 @@ class BNBQuantizerUri:
 
     @staticmethod
     def help():
-        import dgenerate.arguments as _a
-        return _a.get_raw_help_text('--quantizer')
+        return """
+        Bitsandbytes quantization backend configuration.
+
+        This backend can be specified as "bnb" or "bitsandbytes" in the URI.
+
+        URI Format: bnb;argument1=value1;argument2=value2
+        
+        Example: bnb;bits=4;bits4-quant-type=nf4
+
+        The argument "bits" is Quantization bit width. Must be 4 or 8.
+        
+        NOWRAP!
+          - bits=8: Uses LLM.int8() quantization method
+          - bits=4: Uses QLoRA 4-bit quantization method
+
+        The argument "bits4-compute-dtype" is the compute data type for 4-bit quantization.
+        Only applies when bits=4. When None, automatically determined. This should generally
+        match the dtype that you loaded the model with.
+
+        The argument "bits4-quant-type" is the quantization data type for 4-bit weights.
+        Only applies when bits=4.
+        
+        NOWRAP!
+          - "fp4": 4-bit floating point (default)
+          - "nf4": Normal Float 4 data type, adapted for weights from normal distribution.
+
+        The argument "bits4-use-double-quant" Enables nested quantization for 4-bit mode.
+        Only applies when bits=4. When True, performs a second quantization of already
+        quantized weights to save an additional 0.4 bits/parameter with no performance cost.
+
+        The argument "bits4-quant-storage" is the storage data type for 4-bit quantized weights.
+        Only applies when bits=4. When None, uses default storage format. Controls memory
+        layout of quantized parameters.
+        """
 
     OPTION_ARGS = {
         'bits': [8, 4],

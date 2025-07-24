@@ -105,7 +105,7 @@ def get_uri_names(uri_cls: type) -> list:
     return result
 
 
-def get_uri_help(uri_cls: type, wrap_width: int | None) -> str | None:
+def get_uri_help(uri_cls: type, wrap_width: int | None = None) -> str | None:
     """
     Get the help text for a URI class.
 
@@ -361,7 +361,12 @@ def get_uri_accepted_args_schema(uri_cls: type) -> dict:
     return schema
 
 
-def get_quantizer_uri_class(uri: str, exception: type[Exception] = ValueError):
+class UnknownQuantizerName(Exception):
+    """Raised upon referencing an unknown quantization backend name."""
+    pass
+
+
+def get_quantizer_uri_class(uri: str, exception: type[Exception] = UnknownQuantizerName):
     """
     Get the URI parser class needed for a particular quantizer URI
     :param uri: The URI
@@ -380,6 +385,42 @@ def get_quantizer_uri_class(uri: str, exception: type[Exception] = ValueError):
         return _sdnqquantizeruri.SDNQQuantizerUri
     else:
         raise exception(f'Unknown quantization backend: {concept}')
+
+
+def quantizer_help(names: _types.Names,
+                   throw: bool =False,
+                   log_error: bool =True) -> int:
+    """
+    Implements ``--quantizer-help`` command line argument.
+
+    :param names: backend names, may be an empty list.
+    :param throw: Raise :py:exc:`UnknownQuantizerName` instead of handling unknown names?
+    :param log_error: Log errors to ``stderr``?
+    :return: return code, 0 for success, 1 for failure
+    """
+    qnames = ['bnb', 'sdnq']
+
+    if len(names) == 0:
+        available = ('\n' + ' ' * 4).join(_textprocessing.quote(name) for name in qnames)
+        _messages.log(
+            f'Available quantizers:\n\n{" " * 4}{available}')
+        return 0
+
+    help_strs = []
+    for name in names:
+        try:
+            help_strs.append(get_uri_help(get_quantizer_uri_class(name)))
+        except UnknownQuantizerName:
+            if log_error:
+                _messages.error(
+                    f'A quantizer backend with the name of "{name}" could not be found.'
+                )
+            if throw:
+                raise
+            return 1
+    for help_str in help_strs:
+        _messages.log(help_str + '\n', underline=True)
+    return 0
 
 
 def _patch_module_to_for_sized_cache(cache: _memory.SizedConstrainedObjectCache, module):

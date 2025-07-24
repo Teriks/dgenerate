@@ -179,7 +179,9 @@ from .uris import (
     get_uri_accepted_args_schema,
     get_quantizer_uri_class,
     get_uri_help,
-    get_uri_names
+    get_uri_names,
+    quantizer_help,
+    UnknownQuantizerName
 )
 
 # Wrapper
