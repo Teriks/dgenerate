@@ -94,6 +94,8 @@ Help Output
 
 @INCLUDE[sections/image_processing/sam_mask_generation.template.rst]
 
+@INCLUDE[sections/quantization.template.rst]
+
 @INCLUDE[sections/writing_and_running_configs.template.rst]
 
 @INCLUDE[sections/console_ui.template.rst]
