@@ -6257,7 +6257,7 @@ Any LLM that is supported by ``transformers`` can be used to upscale prompts via
 
 Here is an example using `Phi-3 Mini Abliterated by failspy <https://huggingface.co/failspy/Phi-3-mini-128k-instruct-abliterated-v3>`_
 
-The ``magicprompt`` plugin supports quantization when ``bitsandbytes`` is installed.
+The ``magicprompt`` plugin supports quantization with ``bitsandbytes`` and ``sdnq``.
 
 Quantization backend packages will be installed by dgenerate's packaging on platforms where they are supported.
 
@@ -9135,6 +9135,189 @@ manual / interactive adetailer like editing.
     --output-path output
     --prompts "a smiling mans face"
     --post-processors paste;image={{input_image}};image-processors="resize;align=8";position={{face_box}};feather=10;reverse=True
+
+Quantization
+============
+
+Quantization via ``bitsandbytes`` and ``sdnq`` is supported for certain
+diffusion submodels, for instance, the unet/transformer, and all text encoders.
+
+It is also supported for certain plugins which utilize LLMs, such as the
+``magicprompt`` upscaler, and ``llm4gen`` prompt weighter.
+
+Quantization in dgenerate is implemented through layer substitution, and
+can run as a pre-process on models as they are loaded into memory with
+very little processing time / overhead.
+
+Quantization can be used to effectively cut the VRAM overhead for inference
+in half or even by a fourth at the cost of slightly reduced output quality
+due to precision loss.
+
+There are a few ways to utilize quantization with dgenerate, the easiest
+way being the ``--quantizer`` and ``--quantizer-map`` arguments.
+
+The ``--quantizer`` argument takes a dgenerate quantizer URI to define
+the quantization backend and settings, and applies the quantization
+pre-process to the unet/transformer, and all text encoders of the
+diffusion pipeline as it loads.
+
+You can control which sub modules of the diffusion pipeline get quantized
+by using the ``--quantizer-map`` argument, which accepts a list
+of ``diffusers`` module names, e.g.
+
+.. code-block:: bash
+
+    #!/usr/bin/env bash
+
+    # only quantize the listed sub models
+
+    dgenerate stabilityai/stable-diffusion-xl-base-1.0 \
+    --model-type sdxl \
+    --dtype float16 \
+    --variant fp16 \
+    --quantizer "bnb;bits=8" \
+    --quantizer-map unet text_encoder text_encoder_2 \
+    --inference-steps 30 \
+    --guidance-scales 5 \
+    --prompts "a cute cat"
+
+
+Quantization URI can also be supplied via sub-model URIs, the arguments
+``--unet``, ``--transformer``, and ``--text-encoders`` all support a ``quantizer``
+sub URI argument for specifying the quantization backend for that particular sub-model.
+
+This allows you to set specific quantization settings for sub-models individually.
+
+When specifying from the command line, this may require some sub-quoting depending
+on the shell, ``;`` is generally a special shell character, it is also used by
+dgenerate as a URI argument seperator.
+
+.. code-block:: bash
+
+    #!/usr/bin/env bash
+
+    dgenerate stabilityai/stable-diffusion-xl-base-1.0 \
+    --model-type sdxl \
+    --dtype float16 \
+    --variant fp16 \
+    --unet 'stabilityai/stable-diffusion-xl-base-1.0;subfolder=unet;quantizer="bnb;bits=8"' \
+    --inference-steps 30 \
+    --guidance-scales 5 \
+    --prompts "a cute cat"
+
+
+Quantizer usage documentation can be obtained with ``--quantizer-help``, you can use this
+argument alone to list quantization backend names, when you supply backend names
+as arguments to this option, documentation will he listed for that backend. This
+covers the URI arguments and how they affect the quantization pre-process.
+
+The ``bitsandbytes`` backend documentation is as follows:
+
+
+.. code-block:: text
+
+    bnb | bitsandbytes:
+        arguments:
+            bits: int = 8
+            bits4-compute-dtype: str | None = None
+            bits4-quant-type: str = "fp4"
+            bits4-use-double-quant: bool = False
+            bits4-quant-storage: str | None = None
+    
+        Bitsandbytes quantization backend configuration.
+    
+        This backend can be specified as "bnb" or "bitsandbytes" in the URI.
+    
+        URI Format: bnb;argument1=value1;argument2=value2
+    
+        Example: bnb;bits=4;bits4-quant-type=nf4
+    
+        The argument "bits" is Quantization bit width. Must be 4 or 8.
+    
+          - bits=8: Uses LLM.int8() quantization method
+          - bits=4: Uses QLoRA 4-bit quantization method
+    
+        The argument "bits4-compute-dtype" is the compute data type for 4-bit quantization. Only applies when
+        bits=4. When None, automatically determined. This should generally match the dtype that you loaded the
+        model with.
+    
+        The argument "bits4-quant-type" is the quantization data type for 4-bit weights. Only applies when bits=4.
+    
+          - "fp4": 4-bit floating point (default)
+          - "nf4": Normal Float 4 data type, adapted for weights from normal distribution.
+    
+        The argument "bits4-use-double-quant" Enables nested quantization for 4-bit mode. Only applies when
+        bits=4. When True, performs a second quantization of already quantized weights to save an additional 0.4
+        bits/parameter with no performance cost.
+    
+        The argument "bits4-quant-storage" is the storage data type for 4-bit quantized weights. Only applies when
+        bits=4. When None, uses default storage format. Controls memory layout of quantized parameters.
+    
+    ==============================================================================================================
+
+And for ``sdnq``:
+
+.. code-block:: text
+
+    sdnq:
+        arguments:
+            type: str = "int8"
+            group-size: int = 0
+            quant-conv: bool = False
+            quantized-matmul: bool = False
+            quantized-matmul-conv: bool = False
+    
+        SD.Next quantization backend configuration.
+    
+        This backend can be specified as "sdnq" in the URI.
+    
+        URI Format: sdnq;argument1=value1;argument2=value2
+    
+        Example: sdnq;type=int4;group-size=8;quant-conv=true
+    
+        The argument "type" is the target data type for weights after quantization.
+    
+        Integer types:
+          - int8 (default),
+          - int7
+          - int6
+          - int5
+          - int4
+          - int3
+          - int2
+        
+        Unsigned integer types:
+          - uint8
+          - uint7
+          - uint6
+          - uint5
+          - uint4
+          - uint3
+          - uint2
+          - uint1
+          - bool
+        
+        Floating point types:
+          - float8_e4m3fn
+          - float8_e4m3fnuz
+          - float8_e5m2
+          - float8_e5m2fnuz
+    
+        The argument "group-size" is used to decide how many elements of a tensor will share the same quantization
+        group. Must be >= 0. When 0 (default), uses per-tensor quantization. When > 0, groups tensor elements for
+        more granular quantization scaling.
+    
+        The argument "quant-conv" is enables quantization of convolutional layers in UNet models. When True,
+        quantizes Conv2d layers in addition to Linear layers. Only affects UNet architectures.
+    
+        The argument "quantized-matmul" is enables use of quantized INT8 or FP8 matrix multiplication instead of
+        BF16/FP16. When True, uses optimized quantized matmul operations for improved performance and reduced
+        memory usage.
+    
+        The argument "quantized-matmul-conv" is enables quantized matrix multiplication for convolutional layers.
+        Same as quantized-matmul but specifically for convolutional layers in UNets like SDXL.
+    
+    ==============================================================================================================
 
 Writing and Running Configs
 ===========================
