@@ -29,14 +29,12 @@ class _QuantizerEntry(_schemaentry._PluginSchemaEntry):
     NAME = 'quantizer'
 
     def __init__(self, *args, **kwargs):
-
-        schema = _resources.get_schema('quantizers')
-
         super().__init__(
             *args,
             label='Quantizer',
-            help_button=False,
-            schema=schema,
+            help_button=True,
+            schema_help_node='QUANTIZER_HELP',
+            schema=_resources.get_schema('quantizers'),
             **kwargs)
 
         if self.arg is None:

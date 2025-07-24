@@ -157,10 +157,18 @@ class ConsoleSchemaBuilder:
     def _build_quantizers_schema(self):
         """Build quantizers schema."""
         schema_file = self.schemas_dir / 'quantizers.json'
-        schema = {
-            'bnb': _pipelinewrapper.get_uri_accepted_args_schema(_pipelinewrapper.uris.BNBQuantizerUri),
-            'sdnq': _pipelinewrapper.get_uri_accepted_args_schema(_pipelinewrapper.uris.SDNQQuantizerUri)
-        }
+
+        uris = [
+            _pipelinewrapper.uris.BNBQuantizerUri,
+             _pipelinewrapper.uris.SDNQQuantizerUri
+        ]
+
+        schema = dict()
+
+        for uri in uris:
+            name = _pipelinewrapper.get_uri_names(uri)[0]
+            schema[name] = _pipelinewrapper.get_uri_accepted_args_schema(uri)
+            schema[name]['QUANTIZER_HELP'] = _pipelinewrapper.get_uri_help(uri, wrap_width=100)
 
         with open(schema_file, 'w') as file:
             json.dump(schema, file)
@@ -170,25 +178,26 @@ class ConsoleSchemaBuilder:
         schema_file = self.schemas_dir / 'submodels.json'
 
         uris = [
-            ('UNet', _pipelinewrapper.uris.UNetUri),
-            ('Transformer', _pipelinewrapper.uris.TransformerUri),
-            ('Text Encoder', _pipelinewrapper.uris.TextEncoderUri),
-            ('VAE', _pipelinewrapper.uris.VAEUri),
-            ('Image Encoder', _pipelinewrapper.uris.ImageEncoderUri),
-            ('LoRA', _pipelinewrapper.uris.LoRAUri),
-            ('IP Adapter', _pipelinewrapper.uris.IPAdapterUri),
-            ('Control Net', _pipelinewrapper.uris.ControlNetUri),
-            ('T2I Adapter', _pipelinewrapper.uris.T2IAdapterUri),
-            ('Textual Inversion', _pipelinewrapper.uris.TextualInversionUri),
-            ('Adetailer Detector', _pipelinewrapper.uris.AdetailerDetectorUri),
-            ('Stable Cascade Decoder', _pipelinewrapper.uris.SCascadeDecoderUri),
-            ('SDXL Refiner', _pipelinewrapper.uris.SDXLRefinerUri)
+            _pipelinewrapper.uris.UNetUri,
+            _pipelinewrapper.uris.TransformerUri,
+            _pipelinewrapper.uris.TextEncoderUri,
+            _pipelinewrapper.uris.VAEUri,
+            _pipelinewrapper.uris.ImageEncoderUri,
+            _pipelinewrapper.uris.LoRAUri,
+            _pipelinewrapper.uris.IPAdapterUri,
+            _pipelinewrapper.uris.ControlNetUri,
+            _pipelinewrapper.uris.T2IAdapterUri,
+            _pipelinewrapper.uris.TextualInversionUri,
+            _pipelinewrapper.uris.AdetailerDetectorUri,
+            _pipelinewrapper.uris.SCascadeDecoderUri,
+            _pipelinewrapper.uris.SDXLRefinerUri
         ]
 
         schema = dict()
-        for name, uri in uris:
+        for uri in uris:
+            name = _pipelinewrapper.get_uri_names(uri)[0]
             schema[name] = _pipelinewrapper.get_uri_accepted_args_schema(uri)
-            schema[name]['HELP'] = _pipelinewrapper.get_uri_help(uri, wrap_width=100)
+            schema[name]['SUBMODEL_HELP'] = _pipelinewrapper.get_uri_help(uri, wrap_width=100)
 
         with open(schema_file, 'w') as file:
             json.dump(schema, file)

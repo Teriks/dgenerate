@@ -41,6 +41,8 @@ class BNBQuantizerUri:
 
     # pipelinewrapper.uris.util.get_uri_accepted_args_schema metadata
 
+    NAMES = ['bnb', 'bitsandbytes']
+
     @staticmethod
     def help():
         import dgenerate.arguments as _a

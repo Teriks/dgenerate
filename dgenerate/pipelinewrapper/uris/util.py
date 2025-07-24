@@ -31,6 +31,7 @@ import dgenerate.memoize as _memoize
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.uris.bnbquantizeruri as _bnbquantizeruri
+import dgenerate.pipelinewrapper.uris.sdnqquantizeruri as _sdnqquantizeruri
 import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.torchutil as _torchutil
@@ -88,6 +89,22 @@ def uri_list_hash_with_parser(parser, exclude: set[str] | None = None):
     return hasher
 
 
+def get_uri_names(uri_cls: type) -> list:
+    """
+    Return human names / loading names for a URI type.
+
+    :param uri_cls: the URI class
+    :return: list of names, guaranteed to be `len() > 0`
+    """
+
+    result = getattr(uri_cls, 'NAMES', [uri_cls.__name__])
+    if not isinstance(result, (list, tuple, set)):
+        result = [result]
+    else:
+        result = list(result)
+    return result
+
+
 def get_uri_help(uri_cls: type, wrap_width: int | None) -> str | None:
     """
     Get the help text for a URI class.
@@ -101,13 +118,48 @@ def get_uri_help(uri_cls: type, wrap_width: int | None) -> str | None:
         raise RuntimeError(f'URI class: {uri_cls.__name__} has no __init__ method.')
 
     if hasattr(uri_cls, 'help') and callable(uri_cls.help):
-        # noinspection PyTypeChecker
-        help_str: str = uri_cls.help()
 
-        return _textprocessing.wrap_paragraphs(
-            inspect.cleandoc(help_str).strip(),
-            width=_textprocessing.long_text_wrap_width()
-            if wrap_width is None else wrap_width)
+        arg_descriptors = []
+
+        for arg, properties in get_uri_accepted_args_schema(uri_cls).items():
+
+            if 'types' in properties:
+                type_string = ': ' + ' | '.join(properties['types'])
+                if 'optional' in properties and properties['optional']:
+                    type_string += ' | None'
+            else:
+                type_string = ''
+
+            if not 'default' in properties:
+                arg_descriptors.append(arg + type_string)
+            else:
+                default_value = properties['default']
+                if isinstance(default_value, str):
+                    default_value = _textprocessing.quote(default_value)
+                arg_descriptors.append(f'{arg}{type_string} = {default_value}')
+
+        if arg_descriptors:
+            args_part = f'\n{" " * 4}arguments:\n{" " * 8}{(chr(10) + " " * 8).join(arg_descriptors)}\n'
+        else:
+            args_part = '\n'
+
+        help_str: str = uri_cls.help()
+        name = getattr(uri_cls, 'NAMES', uri_cls.__name__)
+        if isinstance(name, (list, tuple, set)):
+            name = ' | '.join(name)
+
+        if help_str:
+            wrap = \
+                _textprocessing.wrap_paragraphs(
+                    inspect.cleandoc(help_str),
+                    initial_indent=' ' * 4,
+                    subsequent_indent=' ' * 4,
+                    width=_textprocessing.long_text_wrap_width()
+                    if wrap_width is None else wrap_width)
+
+            return name + f':{args_part}\n' + wrap
+        else:
+            return name + f':{args_part}'
 
     return None
 
@@ -318,15 +370,14 @@ def get_quantizer_uri_class(uri: str, exception: type[Exception] = ValueError):
     """
 
     concept = uri.split(';')[0].strip()
-    if concept in {'bnb', 'bitsandbytes'}:
+    if concept in get_uri_names(_bnbquantizeruri.BNBQuantizerUri):
         if not diffusers.utils.is_bitsandbytes_available():
             raise exception(
                 f'Cannot load quantization backend bitsandbytes, '
                 f'as bitsandbytes is not installed.')
         return _bnbquantizeruri.BNBQuantizerUri
-    elif concept == 'sdnq':
-        from . import sdnquantizeruri as _sdnquantizeruri
-        return _sdnquantizeruri.SDNQQuantizerUri
+    elif concept in get_uri_names(_sdnqquantizeruri.SDNQQuantizerUri):
+        return _sdnqquantizeruri.SDNQQuantizerUri
     else:
         raise exception(f'Unknown quantization backend: {concept}')
 

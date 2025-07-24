@@ -81,6 +81,8 @@ class ControlNetUri:
 
     # pipelinewrapper.uris.util.get_uri_accepted_args_schema metadata
 
+    NAMES = ['Control Net']
+
     @staticmethod
     def help():
         import dgenerate.arguments as _a

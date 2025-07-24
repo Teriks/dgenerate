@@ -113,6 +113,8 @@ class TextualInversionUri:
 
     # pipelinewrapper.uris.util.get_uri_accepted_args_schema metadata
 
+    NAMES = ['Textual Inversion']
+
     @staticmethod
     def help():
         import dgenerate.arguments as _a

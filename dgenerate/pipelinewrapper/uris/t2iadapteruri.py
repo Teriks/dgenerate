@@ -50,6 +50,8 @@ class T2IAdapterUri:
 
     # pipelinewrapper.uris.util.get_uri_accepted_args_schema metadata
 
+    NAMES = ['T2I Adapter']
+
     @staticmethod
     def help():
         import dgenerate.arguments as _a

@@ -59,6 +59,8 @@ class UNetUri:
 
     # pipelinewrapper.uris.util.get_uri_accepted_args_schema metadata
 
+    NAMES = ['UNet']
+
     @staticmethod
     def help():
         import dgenerate.arguments as _a

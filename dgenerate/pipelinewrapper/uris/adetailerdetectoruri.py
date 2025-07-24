@@ -59,6 +59,8 @@ class AdetailerDetectorUri:
 
     # pipelinewrapper.uris.util.get_uri_accepted_args_schema metadata
 
+    NAMES = ['Adetailer Detector']
+
     @staticmethod
     def help():
         import dgenerate.arguments as _a
