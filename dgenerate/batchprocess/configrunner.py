@@ -203,6 +203,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'templates_help': self._templates_help_directive,
             'directives_help': self._directives_help_directive,
             'functions_help': self._functions_help_directive,
+            'quantizer_help': self._quantizer_help,
             'image_processor_help': self._image_processor_help_directive,
             'latents_processor_help': self._latents_processor_help_directive,
             'prompt_weighter_help': self._prompt_weighter_help_directive,
@@ -1317,6 +1318,18 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         This does not cause the config to exit.
         """
         _messages.log(self.generate_functions_help(args) + '\n')
+        return 0
+
+    def _quantizer_help(self, args: collections.abc.Sequence[str]):
+        """
+        Prints all quantizer names. Alias for --quantizer-help
+
+        Providing quantizer names as arguments prints documentation for those quantizers.
+
+        This does not cause the config to exit.
+        """
+
+        self.run_string(shlex.join(['--quantizer-help'] + list(args)))
         return 0
 
     def _image_processor_help_directive(self, args: collections.abc.Sequence[str]):

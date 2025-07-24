@@ -230,6 +230,30 @@ def invoke_dgenerate_events(
     if plugin_module_paths:
         _plugin.import_plugins(plugin_module_paths)
 
+
+    try:
+        quantizer_help, _ = _arguments.parse_quantizer_help(
+            args, throw_unknown=True, log_error=log_error)
+    except _arguments.DgenerateUsageError as e:
+        debug_exception(e)
+        if throw:
+            raise
+        yield DgenerateExitEvent(invoke_dgenerate_events, 1)
+        return
+
+    if quantizer_help is not None:
+        try:
+            yield DgenerateExitEvent(
+                origin=invoke_dgenerate_events,
+                return_code=_pipelinewrapper.quantizer_help(
+                    names=quantizer_help,
+                    log_error=False,
+                    throw=True))
+
+        except _pipelinewrapper.UnknownQuantizerName as e:
+            yield rethrow_with_message(e)
+        return
+
     try:
         prompt_weighter_help, _ = _arguments.parse_prompt_weighter_help(
             args, throw_unknown=True, log_error=log_error)

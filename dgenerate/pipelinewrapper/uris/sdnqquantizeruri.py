@@ -54,8 +54,61 @@ class SDNQQuantizerUri:
 
     @staticmethod
     def help():
-        import dgenerate.arguments as _a
-        return _a.get_raw_help_text('--quantizer')
+        return """
+        SD.Next quantization backend configuration.
+        
+        This backend can be specified as "sdnq" in the URI.
+        
+        URI Format: sdnq;argument1=value1;argument2=value2
+        
+        Example: sdnq;type=int4;group-size=8;quant-conv=true
+        
+        The argument "type" is the target data type for weights after quantization.
+        
+        NOWRAP!
+        Integer types: 
+          - int8 (default), 
+          - int7 
+          - int6 
+          - int5 
+          - int4 
+          - int3 
+          - int2
+            
+        NOWRAP! 
+        Unsigned integer types: 
+          - uint8
+          - uint7
+          - uint6
+          - uint5
+          - uint4
+          - uint3
+          - uint2
+          - uint1
+          - bool
+            
+        NOWRAP!
+        Floating point types: 
+          - float8_e4m3fn
+          - float8_e4m3fnuz
+          - float8_e5m2
+          - float8_e5m2fnuz
+        
+        The argument "group-size" is used to decide how many elements of a tensor 
+        will share the same quantization group. Must be >= 0. When 0 (default), uses per-tensor 
+        quantization. When > 0, groups tensor elements for more granular quantization scaling.
+        
+        The argument "quant-conv" is enables quantization of convolutional layers in UNet models.
+        When True, quantizes Conv2d layers in addition to Linear layers. Only affects UNet architectures.
+        
+        The argument "quantized-matmul" is enables use of quantized INT8 or FP8 matrix multiplication 
+        instead of BF16/FP16. When True, uses optimized quantized matmul operations for improved 
+        performance and reduced memory usage.
+        
+        The argument "quantized-matmul-conv" is enables quantized matrix multiplication for 
+        convolutional layers. Same as quantized-matmul but specifically for convolutional 
+        layers in UNets like SDXL.
+        """
 
     OPTION_ARGS = {
         'type': _valid_weight_dtypes

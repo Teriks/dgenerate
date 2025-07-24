@@ -1937,6 +1937,18 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '--quantizer-help', action='store', nargs='*', default=None, metavar="QUANTIZER_NAME", dest=None,
+            help="""
+            Use this option alone with no model specification in order to list quantizer 
+            (quantization backend) names.
+                    
+            Specifying one or more quantizer names after this option will cause usage
+            documentation for the specified quantization backend to be printed."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
             '-qm', '--quantizer-map', type=_type_quantizer_map,
             nargs='+', action='store', default=None, metavar="SUBMODULE", dest='quantizer_map',
             help=f"""Global quantization map, used with --quantizer.
@@ -4102,6 +4114,35 @@ def parse_plugin_modules(
         _check_unknown_args(unknown, log_error)
 
     return parsed.plugin_modules, unknown
+
+
+def parse_quantizer_help(
+        args: collections.abc.Sequence[str] | None = None,
+        throw_unknown: bool = False,
+        log_error: bool = False) -> tuple[list[str] | None, list[str]]:
+    """
+    Retrieve the ``--quantizer-help`` argument value
+
+    :param args: command line arguments
+
+    :param throw_unknown: Raise :py:class:`DgenerateUsageError` if any other
+     specified argument is not a valid dgenerate argument? This treats the
+     primary model argument as optional, and only goes into effect if the specific
+     argument is detected.
+
+    :param log_error: Write ERROR diagnostics with :py:mod:`dgenerate.messages`?
+
+    :return: (values | ``None``, unknown_args_list)
+    """
+
+    parser = argparse.ArgumentParser(exit_on_error=False, allow_abbrev=False, add_help=False)
+    parser.add_argument('--quantizer-help', action='store', nargs='*', default=None)
+    parsed, unknown = parser.parse_known_args(args)
+
+    if parsed.quantizer_help is not None and throw_unknown:
+        _check_unknown_args(unknown, log_error)
+
+    return parsed.quantizer_help, unknown
 
 
 def parse_image_processor_help(
