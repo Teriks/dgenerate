@@ -21,12 +21,13 @@
 
 import tkinter as tk
 
+import dgenerate.console.finddialog as _finddialog
 import dgenerate.console.resources as _resources
 from dgenerate.console.mousewheelbind import bind_mousewheel, un_bind_mousewheel
 
 
 class HelpDialog:
-    
+
     def __init__(self, parent, title: str, help_text: str, dock_to_right: bool = True, position_widget=None):
         """
         Create and show a help dialog.
@@ -42,13 +43,13 @@ class HelpDialog:
         self.title = title
         self.help_text = help_text
         self.dock_to_right = dock_to_right
-        
+
         self.top = None
         self.text_widget = None
         self.context_menu = None
-        
+
         self._create_dialog()
-        
+
     def _create_dialog(self):
         """Create the help dialog window."""
         self.top = tk.Toplevel(self.parent)
@@ -65,7 +66,7 @@ class HelpDialog:
         h_scrollbar = tk.Scrollbar(frame, orient=tk.HORIZONTAL)
         h_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
 
-        self.text_widget = tk.Text(frame, wrap=tk.NONE, state='disabled', 
+        self.text_widget = tk.Text(frame, wrap=tk.NONE, state='disabled',
                                    yscrollcommand=v_scrollbar.set,
                                    xscrollcommand=h_scrollbar.set)
 
@@ -74,6 +75,13 @@ class HelpDialog:
         self.text_widget.config(state='normal')
         self.text_widget.insert(tk.END, self.help_text + '\n\n')
         self.text_widget.config(state='disabled')
+
+        self.text_widget.bind(
+            '<Control-f>',
+            lambda e: _finddialog.open_find_dialog(
+                self.top,
+                f'Find In {self.title}',
+                self.text_widget))
 
         v_scrollbar.config(command=self.text_widget.yview)
         h_scrollbar.config(command=self.text_widget.xview)
@@ -88,10 +96,18 @@ class HelpDialog:
         self.context_menu = tk.Menu(self.text_widget, tearoff=0)
         self.context_menu.add_command(label="Copy", command=self._copy_text)
         self.context_menu.add_command(label="Copy All", command=self._copy_all_text)
-        
+        self.context_menu.add_command(
+            label='Find',
+            accelerator='Ctrl+F',
+            command=lambda:
+            _finddialog.open_find_dialog(
+                self.top,
+                f'Find In {self.title}',
+                self.text_widget))
+
         # Bind right-click to show context menu
         self.text_widget.bind("<Button-3>", self._show_context_menu)
-        
+
     def _show_context_menu(self, event):
         """Show the context menu at the cursor position."""
         try:
@@ -100,13 +116,13 @@ class HelpDialog:
                 self.context_menu.entryconfig("Copy", state="normal")
             else:
                 self.context_menu.entryconfig("Copy", state="disabled")
-                
+
             self.context_menu.tk_popup(event.x_root, event.y_root)
         except tk.TclError:
             pass
         finally:
             self.context_menu.grab_release()
-            
+
     def _copy_text(self):
         """Copy selected text to clipboard."""
         try:
@@ -116,7 +132,7 @@ class HelpDialog:
                 self.text_widget.clipboard_append(selected_text)
         except tk.TclError:
             pass
-            
+
     def _copy_all_text(self):
         """Copy all text to clipboard."""
         try:
@@ -136,7 +152,7 @@ class HelpDialog:
             pos_x = self.position_widget.winfo_rootx()
             pos_y = self.position_widget.winfo_rooty()
             pos_width = self.position_widget.winfo_width()
-            
+
             x = pos_x + pos_width
             y = pos_y
         else:
@@ -145,7 +161,7 @@ class HelpDialog:
             pos_y = self.position_widget.winfo_rooty()
             pos_width = self.position_widget.winfo_width()
             pos_height = self.position_widget.winfo_height()
-            
+
             x = pos_x + (pos_width // 2) - (width // 2)
             y = pos_y + (pos_height // 2) - (height // 2)
 
@@ -169,7 +185,8 @@ class HelpDialog:
         return "break"
 
 
-def show_help_dialog(parent, title: str, help_text: str, dock_to_right: bool = True, position_widget=None) -> HelpDialog:
+def show_help_dialog(parent, title: str, help_text: str, dock_to_right: bool = True,
+                     position_widget=None) -> HelpDialog:
     """
     Convenience function to create and show a help dialog.
     

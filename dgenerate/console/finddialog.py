@@ -336,7 +336,7 @@ class _FindReplaceDialogState:
         self.last_find_replace_dialog_width = None
 
     def open_find_dialog(self, master, name, text_box):
-        if self.find_dialog is not None:
+        if self.find_dialog is not None and self.find_dialog.winfo_exists():
             last_width = self.find_dialog.winfo_width()
             self.regex_mode = self.find_dialog.regex_var.get()
             self.case_sensitive = self.find_dialog.case_var.get()
