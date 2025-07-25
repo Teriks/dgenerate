@@ -45,8 +45,13 @@ class _FindDialog(tk.Toplevel):
         self.replace_mode = replace_mode
 
         self.find_entry = tk.Text(self, height=1, width=40)
-        if find_text:
-            self.find_entry.insert('1.0', find_text)
+        try:
+            self.find_entry.insert(
+                '1.0', self.text_widget.get(tk.SEL_FIRST, tk.SEL_LAST)
+            )
+        except tk.TclError:
+            if find_text:
+                self.find_entry.insert('1.0', find_text)
         self.find_entry.grid(row=0, column=0, sticky='ew', padx=2, pady=2)
 
         self.find_entry.bind('<KeyRelease>', lambda e: self._validate_find())
