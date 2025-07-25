@@ -9206,9 +9206,10 @@ dgenerate as a URI argument seperator.
     --prompts "a cute cat"
 
 
-Quantizer usage documentation can be obtained with ``--quantizer-help``, you can use this
-argument alone to list quantization backend names, when you supply backend names
-as arguments to this option, documentation will he listed for that backend. This
+Quantizer usage documentation can be obtained with ``--quantizer-help`` or the
+equivalent ``\quantizer_help`` config directive, you can use this argument or
+directive to list quantization backend names, when you supply backend names as
+arguments to this option, documentation will he listed for that backend. This
 covers the URI arguments and how they affect the quantization pre-process.
 
 The ``bitsandbytes`` backend documentation is as follows:
