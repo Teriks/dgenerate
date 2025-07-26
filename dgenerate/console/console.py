@@ -1364,7 +1364,7 @@ class DgenerateConsole(tk.Tk):
         context_menu.add_separator()
 
         context_menu.add_command(
-            label='Reset View',
+            label='View Actual Size',
             command=lambda: self._reset_image_view(image_viewer))
 
         context_menu.add_command(
