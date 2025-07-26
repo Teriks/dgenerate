@@ -1407,12 +1407,12 @@ class DgenerateConsole(tk.Tk):
         if image_viewer.has_image():
             context_menu.entryconfigure('Copy Bounding Box "x"', state=tk.NORMAL)
             context_menu.entryconfigure('Copy Bounding Box CSV', state=tk.NORMAL)
-            context_menu.entryconfigure('Reset View', state=tk.NORMAL)
+            context_menu.entryconfigure('View Actual Size', state=tk.NORMAL)
             context_menu.entryconfigure('Zoom to Fit', state=tk.NORMAL)
         else:
             context_menu.entryconfigure('Copy Bounding Box "x"', state=tk.DISABLED)
             context_menu.entryconfigure('Copy Bounding Box CSV', state=tk.DISABLED)
-            context_menu.entryconfigure('Reset View', state=tk.DISABLED)
+            context_menu.entryconfigure('View Actual Size', state=tk.DISABLED)
             context_menu.entryconfigure('Zoom to Fit', state=tk.DISABLED)
 
         # Enable/disable Copy Path based on whether path is available
