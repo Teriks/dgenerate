@@ -21,16 +21,26 @@
 import tkinter as tk
 
 
-def bind_mousewheel(bind_func, callback):
-    bind_func("<MouseWheel>", callback)
-    bind_func("<Button-4>", callback)  # Linux
-    bind_func("<Button-5>", callback)  # Linux
+def bind_mousewheel(bind_func, callback, modifier=None):
+    if modifier is None:
+        bind_func("<MouseWheel>", callback)
+        bind_func("<Button-4>", callback)  # Linux
+        bind_func("<Button-5>", callback)  # Linux
+    else:
+        bind_func(f"<{modifier}-MouseWheel>", callback)
+        bind_func(f"<{modifier}-Button-4>", callback)  # Linux
+        bind_func(f"<{modifier}-Button-5>", callback)  # Linux
 
 
-def un_bind_mousewheel(bind_func):
-    bind_func("<MouseWheel>")
-    bind_func("<Button-4>")  # Linux
-    bind_func("<Button-5>")  # Linux
+def un_bind_mousewheel(bind_func, modifier=None):
+    if modifier is None:
+        bind_func("<MouseWheel>")
+        bind_func("<Button-4>")  # Linux
+        bind_func("<Button-5>")  # Linux
+    else:
+        bind_func(f"<{modifier}-MouseWheel>")
+        bind_func(f"<{modifier}-Button-4>")  # Linux
+        bind_func(f"<{modifier}-Button-5>")  # Linux
 
 
 def handle_canvas_scroll(canvas: tk.Canvas, event: tk.Event):
