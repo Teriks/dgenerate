@@ -28,13 +28,21 @@ from dgenerate.console.mousewheelbind import bind_mousewheel, un_bind_mousewheel
 
 class HelpDialog:
 
-    def __init__(self, parent, title: str, help_text: str, dock_to_right: bool = True, position_widget=None):
+    def __init__(self,
+                 parent,
+                 title: str,
+                 help_text: str,
+                 size: tuple = (850,600),
+                 dock_to_right: bool = True,
+                 position_widget=None
+                 ):
         """
         Create and show a help dialog.
         
         :param parent: Parent widget for the dialog hierarchy
         :param title: Title for the dialog window
         :param help_text: Text content to display in the dialog
+        :param size: Window size.
         :param dock_to_right: If True, dock the dialog to the right of the position_widget
         :param position_widget: Widget to use for positioning calculations (defaults to parent)
         """
@@ -43,6 +51,7 @@ class HelpDialog:
         self.title = title
         self.help_text = help_text
         self.dock_to_right = dock_to_right
+        self.size = size
 
         self.top = None
         self.text_widget = None
@@ -144,8 +153,7 @@ class HelpDialog:
 
     def _position_dialog(self):
         """Position the dialog window."""
-        width = 850
-        height = 600
+        width, height = self.size
 
         if self.dock_to_right:
             # Dock to the right of the position widget
@@ -185,7 +193,11 @@ class HelpDialog:
         return "break"
 
 
-def show_help_dialog(parent, title: str, help_text: str, dock_to_right: bool = True,
+def show_help_dialog(parent,
+                     title: str,
+                     help_text: str,
+                     size: tuple = (850,600),
+                     dock_to_right: bool = True,
                      position_widget=None) -> HelpDialog:
     """
     Convenience function to create and show a help dialog.
@@ -193,8 +205,9 @@ def show_help_dialog(parent, title: str, help_text: str, dock_to_right: bool = T
     :param parent: Parent widget for the dialog hierarchy
     :param title: Title for the dialog window
     :param help_text: Text content to display in the dialog
+    :param size: Window size.
     :param dock_to_right: If ``True``, dock the dialog to the right of the position_widget
     :param position_widget: Widget to use for positioning calculations (defaults to parent)
     :return: HelpDialog instance
     """
-    return HelpDialog(parent, title, help_text, dock_to_right, position_widget)
+    return HelpDialog(parent, title, help_text, size, dock_to_right, position_widget)
