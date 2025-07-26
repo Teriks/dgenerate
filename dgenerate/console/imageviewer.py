@@ -30,6 +30,7 @@ import cv2
 import numpy as np
 
 import dgenerate.console.mousewheelbind as _mousewheelbind
+import dgenerate.console.helpdialog as _helpdialog
 
 
 class ImageViewer(tk.Frame):
@@ -555,7 +556,7 @@ class ImageViewer(tk.Frame):
             if self._bbox_selection_mode:
                 self._cancel_bbox_selection()
 
-    def report_help(self):
+    def request_help(self):
         """Show help information for macOS users"""
         if self.on_info:
             if self._is_macos:
@@ -576,7 +577,15 @@ class ImageViewer(tk.Frame):
                     "• Ctrl+/Ctrl-: Zoom in/out",
                     "• Escape: Cancel bounding box selection"
                 ]
-            self.on_info("\n".join(help_text))
+
+            _helpdialog.show_help_dialog(
+                title='Image viewer help',
+                help_text='\n'.join(help_text),
+                parent=self.master,
+                size=(400,300),
+                position_widget=self.master,
+                dock_to_right=False
+            )
 
     def _update_display_metrics(self):
         """Update display metrics without redrawing"""

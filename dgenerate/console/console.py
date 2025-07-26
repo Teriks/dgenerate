@@ -437,7 +437,7 @@ class DgenerateConsole(tk.Tk):
 
         self._image_pane_context.add_command(
             label='Help',
-            command=lambda: self._image_pane_viewer.report_help()
+            command=lambda: self._image_pane_viewer.request_help()
         )
 
         self._image_pane_viewer._canvas.bind(
@@ -836,7 +836,7 @@ class DgenerateConsole(tk.Tk):
 
         image_window_context.add_command(
             label='Help',
-            command=lambda: self._image_pane_window_viewer.report_help()
+            command=lambda: self._image_pane_window_viewer.request_help()
         )
 
         self._image_pane_window_viewer._canvas.bind(
