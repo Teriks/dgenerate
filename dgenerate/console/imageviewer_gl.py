@@ -65,11 +65,20 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
 
         # OpenGL state
         self._shader_program = None
+        self._overlay_shader_program = None
         self._vao = None
+        self._overlay_vao = None
         self._vbo = None
+        self._overlay_vbo = None
+        self._ebo = None
         self._scale_uniform = None
         self._translate_uniform = None
         self._texture_uniform = None
+        self._overlay_color_uniform = None
+        self._overlay_viewport_uniform = None
+        self._overlay_dash_size_uniform = None
+        self._overlay_gap_size_uniform = None
+        self._overlay_is_dashed_uniform = None
         self._gl_initialized = False
 
         # Pending operations system for handling calls before OpenGL is ready
@@ -409,10 +418,18 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
             size_width, size_height = self._original_image_size
             if array_width != size_width or array_height != size_height:
                 if self.on_error:
-                    self.on_error(f"Detected image data/size mismatch during redraw: array {array_width}x{array_height} vs size {size_width}x{size_height}")
+                    self.on_error(f"Image viewer: Detected image data/size mismatch during redraw: array {array_width}x{array_height} vs size {size_width}x{size_height}")
                 return
 
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+        
+        # Validate shader program before use
+        if self._shader_program is None:
+            if self.on_error:
+                self.on_error("Image viewer: Shader program is None, cannot render")
+            self.tkSwapBuffers()
+            return
+            
         gl.glUseProgram(self._shader_program)
 
         # Calculate and set scale and translate uniforms
@@ -426,6 +443,13 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
             gl.glBindTexture(gl.GL_TEXTURE_2D, self._gl_texture_id)
             gl.glUniform1i(self._texture_uniform, 0)
 
+        # Validate VAO before use
+        if self._vao is None:
+            if self.on_error:
+                self.on_error("Image viewer: VAO is None, cannot render")
+            self.tkSwapBuffers()
+            return
+            
         # Draw quad
         gl.glBindVertexArray(self._vao)
         gl.glDrawElements(gl.GL_TRIANGLES, 6, gl.GL_UNSIGNED_INT, None)
@@ -513,6 +537,14 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
             
         line_vertices = np.array(vertices, dtype=np.float32)
         num_vertices = len(vertices) // 2
+
+        # Validate overlay resources before use
+        if (self._overlay_shader_program is None or
+            self._overlay_vao is None or
+            self._overlay_vbo is None):
+            if self.on_error:
+                self.on_error("Image viewer: Overlay shader resources not available, cannot draw bounding box")
+            return
 
         # Update the overlay VBO with the line vertices
         gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self._overlay_vbo)
@@ -619,8 +651,23 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
     def _create_texture_from_array(self, img_array):
         """Create OpenGL texture from numpy array"""
         try:
+            # Query maximum texture size supported by GPU
+            max_texture_size = gl.glGetIntegerv(gl.GL_MAX_TEXTURE_SIZE)
+            
+            height, width = img_array.shape[:2]
+            
+            # Check if image dimensions exceed GPU limits
+            if width > max_texture_size or height > max_texture_size:
+                error_msg = (f"Image viewer: Image size ({width}x{height}) exceeds GPU maximum texture size "
+                           f"({max_texture_size}x{max_texture_size}). Cannot load texture.")
+                if self.on_error:
+                    self.on_error(error_msg)
+                return
+            
+            # Clean up existing texture first and set to None immediately
             if self._gl_texture_id is not None:
                 gl.glDeleteTextures([self._gl_texture_id])
+                self._gl_texture_id = None
             
             # Ensure image is in RGB format
             if len(img_array.shape) == 3 and img_array.shape[2] == 3:
@@ -634,10 +681,9 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
                 texture_data = np.stack([img_array] * 3, axis=-1)
                 format = gl.GL_RGB
             
-            height, width = texture_data.shape[:2]
-            
             # No need to flip - texture coordinates are properly set
             
+            # Generate new texture ID
             self._gl_texture_id = gl.glGenTextures(1)
             gl.glBindTexture(gl.GL_TEXTURE_2D, self._gl_texture_id)
             
@@ -654,11 +700,25 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
             gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP_TO_EDGE)
         
         except gl.GLError as e:
+            # If texture creation failed, make sure ID is nullified
+            if self._gl_texture_id is not None:
+                try:
+                    gl.glDeleteTextures([self._gl_texture_id])
+                except:
+                    pass  # Ignore errors during cleanup
+                self._gl_texture_id = None
             if self.on_error:
-                self.on_error(f"OpenGL error creating texture: {e}")
+                self.on_error(f"Image viewer: OpenGL error creating texture: {e}")
         except Exception as e:
+            # If texture creation failed, make sure ID is nullified
+            if self._gl_texture_id is not None:
+                try:
+                    gl.glDeleteTextures([self._gl_texture_id])
+                except:
+                    pass  # Ignore errors during cleanup
+                self._gl_texture_id = None
             if self.on_error:
-                self.on_error(f"Error creating texture: {e}")
+                self.on_error(f"Image viewer: Error creating texture: {e}")
 
     def load_image(self, image_path: str, fit: bool = False, view_state: typing.Optional[typing.Dict] = None):
         """Load an image and create OpenGL texture, queuing if OpenGL not ready"""
@@ -763,7 +823,7 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
 
         except Exception as e:
             if self.on_error:
-                self.on_error(f"Error loading image: {e}")
+                self.on_error(f"Image viewer: Error loading image: {e}")
 
     def _try_apply_pending_view_state(self):
         """Attempt to apply pending view state if the widget is ready"""
@@ -1110,7 +1170,7 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
                 self.on_info(f"Bounding box copied to clipboard: {bbox_text}")
         except Exception as e:
             if self.on_error:
-                self.on_error(f"Failed to copy bounding box to clipboard: {e}")
+                self.on_error(f"Image viewer: Failed to copy bounding box to clipboard: {e}")
 
         self._end_bbox_selection()
 
@@ -1146,7 +1206,7 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
                 self.on_info(f"Coordinates copied to clipboard: {coordinate_text}")
         except Exception as e:
             if self.on_error:
-                self.on_error(f"Failed to copy coordinates to clipboard: {e}")
+                self.on_error(f"Image viewer: Failed to copy coordinates to clipboard: {e}")
 
     def copy_path(self):
         """Copy image path to clipboard"""
@@ -1161,7 +1221,7 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
                 self.on_info(f"Image path copied to clipboard: {self._image_path}")
         except Exception as e:
             if self.on_error:
-                self.on_error(f"Failed to copy image path to clipboard: {e}")
+                self.on_error(f"Image viewer: Failed to copy image path to clipboard: {e}")
 
     def reset_view(self):
         """Reset to show image at actual pixel size (1:1 zoom)"""
@@ -1257,22 +1317,76 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
 
     def cleanup(self):
         """Clean up resources"""
+        # Only attempt OpenGL cleanup if OpenGL was initialized
+        gl_was_initialized = hasattr(self, '_gl_initialized') and self._gl_initialized
+        
         # Clean up OpenGL resources
         if self._gl_texture_id is not None:
-            gl.glDeleteTextures([self._gl_texture_id])
+            if gl_was_initialized:
+                try:
+                    gl.glDeleteTextures([self._gl_texture_id])
+                except:
+                    pass  # Ignore errors during cleanup
             self._gl_texture_id = None
 
         if self._shader_program is not None:
-            gl.glDeleteProgram(self._shader_program)
+            if gl_was_initialized:
+                try:
+                    gl.glDeleteProgram(self._shader_program)
+                except:
+                    pass  # Ignore errors during cleanup
             self._shader_program = None
 
+        if self._overlay_shader_program is not None:
+            if gl_was_initialized:
+                try:
+                    gl.glDeleteProgram(self._overlay_shader_program)
+                except:
+                    pass  # Ignore errors during cleanup
+            self._overlay_shader_program = None
+
         if self._vao is not None:
-            gl.glDeleteVertexArrays(1, [self._vao])
+            if gl_was_initialized:
+                try:
+                    gl.glDeleteVertexArrays(1, [self._vao])
+                except:
+                    pass  # Ignore errors during cleanup
             self._vao = None
 
+        if self._overlay_vao is not None:
+            if gl_was_initialized:
+                try:
+                    gl.glDeleteVertexArrays(1, [self._overlay_vao])
+                except:
+                    pass  # Ignore errors during cleanup
+            self._overlay_vao = None
+
         if self._vbo is not None:
-            gl.glDeleteBuffers(1, [self._vbo])
+            if gl_was_initialized:
+                try:
+                    gl.glDeleteBuffers(1, [self._vbo])
+                except:
+                    pass  # Ignore errors during cleanup
             self._vbo = None
+
+        if self._overlay_vbo is not None:
+            if gl_was_initialized:
+                try:
+                    gl.glDeleteBuffers(1, [self._overlay_vbo])
+                except:
+                    pass  # Ignore errors during cleanup
+            self._overlay_vbo = None
+
+        if self._ebo is not None:
+            if gl_was_initialized:
+                try:
+                    gl.glDeleteBuffers(1, [self._ebo])
+                except:
+                    pass  # Ignore errors during cleanup
+            self._ebo = None
+            
+        # Mark OpenGL as no longer initialized to prevent further operations
+        self._gl_initialized = False
 
         # Clear image data
         self._original_image_array = None
