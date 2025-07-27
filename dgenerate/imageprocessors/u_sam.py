@@ -32,13 +32,16 @@ import cv2
 import numpy
 import torch
 from ultralytics import SAM as _SAM
-from ultralytics.models.sam.build import sam_model_map as _sam_model_map
+from ultralytics.models.sam.build import sam_model_map as _sam_model_map_u
 
 import dgenerate.messages as _messages
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 import dgenerate.webcache as _webcache
 from dgenerate.imageprocessors import imageprocessor as _imageprocessor
+
+# sam_h.pt is not actually an available ultralytics asset for whatever reason.
+_sam_model_names = [k for k in _sam_model_map_u.keys() if not k == 'sam_h.pt']
 
 _sam_assets_url = "https://github.com/ultralytics/assets/releases/download/v8.3.0/"
 
@@ -67,7 +70,7 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
 
     @staticmethod
     def help(loaded_by_name: str):
-        models = ('\n'+' '*12+'* ').join(_sam_model_map.keys())
+        models = ('\n'+' '*12+'* ').join(_sam_model_names)
         # the indentation level of this here string is important
         # to the template, it is at level 8, plus 4 extra (doc indent), star, space
         return \
@@ -184,7 +187,7 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
     NAMES = ['u-sam']
 
     OPTION_ARGS = {
-        'asset': list(_sam_model_map.keys()),
+        'asset': list(_sam_model_names),
     }
 
     @staticmethod
@@ -369,10 +372,10 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
 
     def _get_model_path(self, asset_name: str) -> str:
 
-        if asset_name not in _sam_model_map:
+        if asset_name not in _sam_model_names:
             raise self.argument_error(
                 f'Unknown SAM model: {asset_name}, must be one of: '
-                f'{_textprocessing.oxford_comma(_sam_model_map.keys(), "or")}')
+                f'{_textprocessing.oxford_comma(_sam_model_names, "or")}')
 
         try:
             _, file = _webcache.create_web_cache_file(
