@@ -413,8 +413,8 @@ class DgenerateConsole(tk.Tk):
         self._image_pane_viewer.pack(fill=tk.BOTH, expand=True)
         
         # Set up callbacks for the image viewer
-        self._image_pane_viewer.on_error = self._write_stderr_output
-        self._image_pane_viewer.on_info = self._write_stdout_output
+        self._image_pane_viewer.on_error = lambda s: self._write_stderr_output(s + '\n')
+        self._image_pane_viewer.on_info = lambda s: self._write_stdout_output(s + '\n')
 
         self._image_pane_context = self._create_image_viewer_context_menu(
             self._image_pane, self._image_pane_viewer, 'pane')
@@ -739,8 +739,8 @@ class DgenerateConsole(tk.Tk):
         self._image_pane_window_viewer.pack(fill=tk.BOTH, expand=True)
         
         # Set up callbacks for the window image viewer
-        self._image_pane_window_viewer.on_error = self._write_stderr_output
-        self._image_pane_window_viewer.on_info = self._write_stdout_output
+        self._image_pane_window_viewer.on_error = lambda s: self._write_stderr_output(s + '\n')
+        self._image_pane_window_viewer.on_info = lambda s: self._write_stdout_output(s + '\n')
 
         # Ensure the window is fully realized
         self._image_pane_window.update_idletasks()
