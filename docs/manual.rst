@@ -2194,7 +2194,8 @@ Install dgenerate:
     # * gpt4all_cuda
     # * quant (bitsandbytes)
     # * bitsandbytes (individual)
-    # * triton-windows
+    # * triton_windows
+    # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
     pipx install dgenerate ^
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu128/"
@@ -2244,6 +2245,7 @@ a cloned repository like this:
     # * gpt4all_cuda
     # * quant (bitsandbytes)
     # * bitsandbytes (individual)
+    # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
     pip install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu128/
 
@@ -2343,6 +2345,7 @@ Install dgenerate
     # * gpt4all_cuda
     # * quant (bitsandbytes)
     # * bitsandbytes (individual)
+    # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
     # install with just support for torch
 
@@ -2592,9 +2595,17 @@ global python site packages.
     # install dgenerate into an isolated
     # environment with pipx
 
-    # possible dgenerate package extras: ncnn, gpt4all
+    # possible dgenerate package extras:
+
+    # * ncnn
+    # * gpt4all
+    # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
     pipx install dgenerate==5.0.0
+
+    # or with extras
+
+    pipx install dgenerate[ncnn,gpt4all,console_ui_opengl]==5.0.0
 
 
     # you can attempt to install the pre-release bitsandbytes
@@ -2653,10 +2664,17 @@ of your own creation.
 
     # install dgenerate into an isolated environment
 
-    # possible dgenerate package extras: ncnn, gpt4all
+    # possible dgenerate package extras:
+
+    # * ncnn
+    # * gpt4all
+    # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
     pip3 install dgenerate==5.0.0
 
+    # or with extras
+
+    pip3 install dgenerate[ncnn,gpt4all,console_ui_opengl]==5.0.0
 
     # you can attempt to install the pre-release bitsandbytes
     # multiplatform version for MacOS, though, I am not sure if it will

@@ -25,12 +25,12 @@ import os
 import pathlib
 import platform
 import re
-import shutil
 import signal
-import subprocess
 import sys
 import tkinter as tk
+import subprocess
 import typing
+
 import charset_normalizer
 
 import dgenerate.console.argumentselect as _argumentselect
@@ -54,6 +54,7 @@ from dgenerate.console.procmon import ProcessMonitor
 from dgenerate.console.scrolledtext import ScrolledText
 from dgenerate.console.stdinpipe import StdinPipeFullError
 from dgenerate.console.imageviewer import ImageViewer
+import dgenerate.console.showindirectory as _showindirectory
 
 DGENERATE_EXE = \
     os.path.splitext(
@@ -214,9 +215,9 @@ class DgenerateConsole(tk.Tk):
         self._image_pane_window_visible_var = tk.BooleanVar(value=False)
 
         self._view_menu = tk.Menu(self._menu_bar, tearoff=0)
-        self._view_menu.add_checkbutton(label='Latest Image Pane',
+        self._view_menu.add_checkbutton(label='Image Pane',
                                         variable=self._image_pane_visible_var)
-        self._view_menu.add_checkbutton(label='Latest Image Window',
+        self._view_menu.add_checkbutton(label='Image Window',
                                         variable=self._image_pane_window_visible_var)
 
         self._image_pane_visible_var.trace_add('write',
@@ -415,32 +416,10 @@ class DgenerateConsole(tk.Tk):
         self._image_pane_viewer.on_error = self._write_stderr_output
         self._image_pane_viewer.on_info = self._write_stdout_output
 
-        self._image_pane_context = tk.Menu(self._image_pane, tearoff=0)
+        self._image_pane_context = self._create_image_viewer_context_menu(
+            self._image_pane, self._image_pane_viewer, 'pane')
 
-        self._install_common_image_pane_context_options(self._image_pane_context, self._image_pane_viewer)
-        
-        self._image_pane_context.add_separator()
-
-        if self._install_show_in_directory_entry(
-                self._image_pane_context, lambda: self._image_pane_viewer.get_image_path()):
-            self._image_pane_context.add_separator()
-
-        self._image_pane_context.add_command(
-            label='Hide Image Pane',
-            command=lambda: self._image_pane_visible_var.set(False))
-
-        self._image_pane_context.add_command(
-            label='Make Window',
-            command=lambda: self._image_pane_window_visible_var.set(True))
-
-        self._image_pane_context.add_separator()
-
-        self._image_pane_context.add_command(
-            label='Help',
-            command=lambda: self._image_pane_viewer.request_help()
-        )
-
-        self._image_pane_viewer._canvas.bind(
+        self._image_pane_viewer.bind_event(
             '<Button-3>',
             lambda e: self._show_image_pane_context_menu(
                 e,
@@ -615,58 +594,7 @@ class DgenerateConsole(tk.Tk):
 
         self.save_settings()
 
-    @staticmethod
-    def _install_show_in_directory_entry(menu: tk.Menu, get_path: typing.Callable[[], str]):
-        open_file_explorer_support = platform.system() in {'Windows', 'Darwin'} or shutil.which('nautilus')
 
-        if open_file_explorer_support:
-
-            if platform.system() == 'Windows':
-                def open_image_pane_directory_in_explorer():
-                    subprocess.Popen(
-                        ['explorer', '/select', ',', get_path()],
-                        stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL)
-            elif platform.system() == 'Darwin':  # macOS
-                def open_image_pane_directory_in_explorer():
-                    file_path = get_path()
-                    # Use AppleScript to open Finder and highlight the file
-                    subprocess.Popen(
-                        ['osascript', '-e', f'tell application "Finder" to reveal POSIX file "{file_path}"'],
-                        stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL)
-                    subprocess.Popen(
-                        ['osascript', '-e', 'tell application "Finder" to activate'],
-                        stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL)
-            else:  # Linux (assuming nautilus is available)
-                def open_image_pane_directory_in_explorer():
-                    subprocess.Popen(
-                        ['nautilus', get_path()],
-                        stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL)
-
-            menu.add_command(label='Open In Directory',
-                             command=open_image_pane_directory_in_explorer)
-
-            og_popup = menu.tk_popup
-
-            def patch_tk_popup(*args, **kwargs):
-                path = get_path()
-
-                if path is not None and \
-                        os.path.exists(path):
-                    menu.entryconfigure(
-                        'Open In Directory', state=tk.NORMAL)
-                else:
-                    menu.entryconfigure(
-                        'Open In Directory', state=tk.DISABLED)
-                og_popup(*args, **kwargs)
-
-            menu.tk_popup = patch_tk_popup
-
-            return True
-        return False
 
     def _insert_or_replace_input_text(self, text):
         try:
@@ -783,14 +711,18 @@ class DgenerateConsole(tk.Tk):
             
             self._paned_window_horizontal.add(self._image_pane)
             
-            # Load the transferred image and restore view state in the pane viewer
+            # Load the transferred image
             if current_image_path is not None:
-                try:
-                    self._image_pane_viewer.load_image(current_image_path, fit=False)
-                    if current_view_state is not None:
-                        self._image_pane_viewer.set_view_state(current_view_state)
-                except Exception as e:
-                    self._write_stderr_output(f"Error transferring image to pane: {e}\n")
+                self._image_pane_viewer.load_image(
+                    current_image_path,
+                    fit=False,
+                    view_state=current_view_state
+                )
+                # Force immediate processing to ensure view state is applied
+                self._image_pane_viewer.update_idletasks()
+                self._image_pane_viewer.update()
+
+
 
     def _create_image_pane_window(self, initial_image_path=None, initial_view_state=None):
         self._image_pane_window = tk.Toplevel(self)
@@ -799,7 +731,7 @@ class DgenerateConsole(tk.Tk):
             '+{}+{}'.format(*self._image_pane_window_last_pos) if
             self._image_pane_window_last_pos is not None else ''))
 
-        self._image_pane_window.title('Latest Image')
+        self._image_pane_window.title('Image Preview')
         image_pane = tk.Frame(self._image_pane_window, bg='black')
         image_pane.pack(fill=tk.BOTH, expand=True)
         
@@ -810,36 +742,24 @@ class DgenerateConsole(tk.Tk):
         self._image_pane_window_viewer.on_error = self._write_stderr_output
         self._image_pane_window_viewer.on_info = self._write_stdout_output
 
-        # Load initial image and restore view state if provided
+        # Ensure the window is fully realized
+        self._image_pane_window.update_idletasks()
+        
+        # Load initial image
         if initial_image_path is not None:
-            try:
-                self._image_pane_window_viewer.load_image(initial_image_path, fit=False)
-                if initial_view_state is not None:
-                    self._image_pane_window_viewer.set_view_state(initial_view_state)
-            except Exception as e:
-                self._write_stderr_output(f"Error loading image in new window: {e}\n")
+            self._image_pane_window_viewer.load_image(
+                initial_image_path, 
+                fit=False, 
+                view_state=initial_view_state
+            )
+        
+        self._image_pane_window.lift()
+        self._image_pane_window.focus_force()
 
-        image_window_context = tk.Menu(self._image_pane_window, tearoff=0)
+        image_window_context = self._create_image_viewer_context_menu(
+            self._image_pane_window, self._image_pane_window_viewer, 'window')
 
-        self._install_common_image_pane_context_options(image_window_context, self._image_pane_window_viewer)
-
-        image_window_context.add_separator()
-
-        if self._install_show_in_directory_entry(image_window_context,
-                                                 lambda: self._image_pane_window_viewer.get_image_path()):
-            image_window_context.add_separator()
-
-        image_window_context.add_command(label='Make Pane',
-                                         command=lambda: self._image_pane_visible_var.set(True))
-
-        image_window_context.add_separator()
-
-        image_window_context.add_command(
-            label='Help',
-            command=lambda: self._image_pane_window_viewer.request_help()
-        )
-
-        self._image_pane_window_viewer._canvas.bind(
+        self._image_pane_window_viewer.bind_event(
             '<Button-3>', lambda e:
             self._show_image_pane_context_menu(
                 e,
@@ -869,14 +789,18 @@ class DgenerateConsole(tk.Tk):
 
             if self._image_pane_window is not None:
                 self._image_pane_window.deiconify()
-                # Load the transferred image and restore view state in the window viewer
+                # Ensure window is fully restored
+                self._image_pane_window.update_idletasks()
+                self._image_pane_window.lift()
+                self._image_pane_window.focus_force()
+                
+                # Load image
                 if current_image_path is not None and hasattr(self, '_image_pane_window_viewer'):
-                    try:
-                        self._image_pane_window_viewer.load_image(current_image_path, fit=False)
-                        if current_view_state is not None:
-                            self._image_pane_window_viewer.set_view_state(current_view_state)
-                    except Exception as e:
-                        self._write_stderr_output(f"Error transferring image to window: {e}\n")
+                    self._image_pane_window_viewer.load_image(
+                        current_image_path,
+                        fit=False,
+                        view_state=current_view_state
+                    )
                 return
 
             self._create_image_pane_window(current_image_path, current_view_state)
@@ -1364,7 +1288,7 @@ class DgenerateConsole(tk.Tk):
         context_menu.add_separator()
 
         context_menu.add_command(
-            label='View Actual Size',
+            label='Reset View',
             command=lambda: self._reset_image_view(image_viewer))
 
         context_menu.add_command(
@@ -1374,14 +1298,13 @@ class DgenerateConsole(tk.Tk):
         context_menu.add_separator()
 
         context_menu.add_command(
+            label='Load Image',
+            command=self._load_image_manually)
+
+        context_menu.add_command(
             label='Copy Path',
             command=lambda: self._copy_image_path_from_menu(image_viewer))
 
-        context_menu.add_separator()
-
-        context_menu.add_command(
-            label='Load Image',
-            command=self._load_image_manually)
 
 
     def _show_image_pane_context_menu(self, event, image_viewer: ImageViewer, context_menu: tk.Menu):
@@ -1407,12 +1330,12 @@ class DgenerateConsole(tk.Tk):
         if image_viewer.has_image():
             context_menu.entryconfigure('Copy Bounding Box "x"', state=tk.NORMAL)
             context_menu.entryconfigure('Copy Bounding Box CSV', state=tk.NORMAL)
-            context_menu.entryconfigure('View Actual Size', state=tk.NORMAL)
+            context_menu.entryconfigure('Reset View', state=tk.NORMAL)
             context_menu.entryconfigure('Zoom to Fit', state=tk.NORMAL)
         else:
             context_menu.entryconfigure('Copy Bounding Box "x"', state=tk.DISABLED)
             context_menu.entryconfigure('Copy Bounding Box CSV', state=tk.DISABLED)
-            context_menu.entryconfigure('View Actual Size', state=tk.DISABLED)
+            context_menu.entryconfigure('Reset View', state=tk.DISABLED)
             context_menu.entryconfigure('Zoom to Fit', state=tk.DISABLED)
 
         # Enable/disable Copy Path based on whether path is available
@@ -1536,9 +1459,60 @@ class DgenerateConsole(tk.Tk):
         except tk.TclError:
             return None
 
+    def _create_image_viewer_context_menu(self,
+                                          master: tk.Misc,
+                                          image_viewer: ImageViewer,
+                                          menu_type: typing.Literal['pane', 'window'] = 'pane') -> tk.Menu:
+        context_menu = tk.Menu(master, tearoff=0)
 
+        # Add common options
+        self._install_common_image_pane_context_options(context_menu, image_viewer)
 
+        # Add show in directory option if supported
+        if _showindirectory.is_supported():
+            def open_in_directory():
+                file_path = image_viewer.get_image_path()
+                if file_path:
+                    _showindirectory.show_in_directory(file_path)
+            
+            context_menu.add_command(label='Show In Directory', command=open_in_directory)
+            
+            # Set up dynamic enable/disable for the menu item
+            original_popup = context_menu.tk_popup
+            
+            def patched_popup(*args, **kwargs):
+                path = image_viewer.get_image_path()
+                if path is not None and os.path.exists(path):
+                    context_menu.entryconfigure('Show In Directory', state=tk.NORMAL)
+                else:
+                    context_menu.entryconfigure('Show In Directory', state=tk.DISABLED)
+                original_popup(*args, **kwargs)
+            
+            context_menu.tk_popup = patched_popup
+            context_menu.add_separator()
 
+        # Add menu-type-specific options
+        if menu_type == 'pane':
+            context_menu.add_command(
+                label='Hide Image Pane',
+                command=lambda: self._image_pane_visible_var.set(False))
+            
+            context_menu.add_command(
+                label='Make Window',
+                command=lambda: self._image_pane_window_visible_var.set(True))
+        elif menu_type == 'window':
+            context_menu.add_command(
+                label='Make Pane',
+                command=lambda: self._image_pane_visible_var.set(True))
+
+        context_menu.add_separator()
+
+        context_menu.add_command(
+            label='Help',
+            command=lambda: image_viewer.request_help()
+        )
+
+        return context_menu
 
 
 def main(args: collections.abc.Sequence[str]):

@@ -250,6 +250,7 @@ if __name__ != 'setup_as_library':
 
     extras: dict[str, list[str]] = {
         'ncnn': ['ncnn==1.0.20241226'],
+        'console_ui_opengl': ['pyopengltk==0.0.4', 'PyOpenGL==3.1.9', 'PyOpenGL-accelerate==3.1.9'],
         'gpt4all': ['gpt4all==2.8.2'],
         'dev': [*pyinstaller_requires,
                 *sphinx_requires,
@@ -288,13 +289,14 @@ if __name__ != 'setup_as_library':
         extras['gpt4all_cuda'] = ['gpt4all[cuda]==2.8.2']
 
     if dgenerate_platform == 'windows':
-        extras['triton-windows'] = ['triton-windows==3.3.0.post19']
+        extras['triton_windows'] = ['triton-windows==3.3.1.post19']
         
         extras['win-installer'] = (
                 pyinstaller_requires +
                 extras['ncnn'] +
                 extras['gpt4all_cuda'] +
-                extras['triton-windows'] +
+                extras['triton_windows'] +
+                extras['console_ui_opengl'] +
                 quant_extras
         )
 

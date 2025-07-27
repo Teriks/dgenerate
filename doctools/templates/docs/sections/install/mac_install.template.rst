@@ -41,9 +41,17 @@ global python site packages.
     # install dgenerate into an isolated
     # environment with pipx
 
-    # possible dgenerate package extras: ncnn, gpt4all
+    # possible dgenerate package extras:
+
+    # * ncnn
+    # * gpt4all
+    # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
     pipx install dgenerate==@VERSION
+
+    # or with extras
+
+    pipx install dgenerate[ncnn,gpt4all,console_ui_opengl]==@VERSION
 
 
     # you can attempt to install the pre-release bitsandbytes
@@ -102,10 +110,17 @@ of your own creation.
 
     # install dgenerate into an isolated environment
 
-    # possible dgenerate package extras: ncnn, gpt4all
+    # possible dgenerate package extras:
+
+    # * ncnn
+    # * gpt4all
+    # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
     pip3 install dgenerate==@VERSION
 
+    # or with extras
+
+    pip3 install dgenerate[ncnn,gpt4all,console_ui_opengl]==@VERSION
 
     # you can attempt to install the pre-release bitsandbytes
     # multiplatform version for MacOS, though, I am not sure if it will

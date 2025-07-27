@@ -74,6 +74,7 @@ Install dgenerate
     # * gpt4all_cuda
     # * quant (bitsandbytes)
     # * bitsandbytes (individual)
+    # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
     # install with just support for torch
 

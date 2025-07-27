@@ -58,7 +58,8 @@ Install dgenerate:
     # * gpt4all_cuda
     # * quant (bitsandbytes)
     # * bitsandbytes (individual)
-    # * triton-windows
+    # * triton_windows
+    # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
     pipx install dgenerate ^
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu128/"
@@ -108,6 +109,7 @@ a cloned repository like this:
     # * gpt4all_cuda
     # * quant (bitsandbytes)
     # * bitsandbytes (individual)
+    # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
     pip install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu128/
 
