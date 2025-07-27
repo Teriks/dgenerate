@@ -30,11 +30,12 @@ Image Generation
 
 * Generate images using a number of popular model architectures such as: SD, SDXL, SD3, Flux, and Kolors
 * Batch process multiple parameter combinations combinatorially to generate variations
-* Utilize models from HuggingFace and CivitAI for generation
-* Advanced prompt weighting (LPW), generation control & guidance
-* Text to image, image to image, and inpainting with diffusion
-* Diffusion-based image upscaling
 * Run large models on limited hardware with inference optimizations and quantization
+* Utilize models from HuggingFace and CivitAI for generation
+* Advanced prompt weighting (LPW), SD-WebUI (Common syntax), InvokeAI syntax, and ``llm4gen`` (SD1.5 only)
+* Control Nets, T2I Adapters, IP Adapters, LoRA, and Textual Inversion (embeddings)
+* Text to image, image to image, and inpainting
+* Diffusion-based image upscaling
 
 Image Processing
 ----------------
@@ -103,10 +104,20 @@ Perfect for automation and batch processing:
 Interactive GUI
 ---------------
 
+
+.. code-block:: bash
+
+    # launch the Console UI
+
+    dgenerate --console
+
+
 Features a syntax-highlighting console / editor:
 
 * REPL / code editor for the built in shell language to assist with building complex workflows
-* Image preview and various utilities for quickly creating scripts and working interactively
+* OpenGL accelerated image preview, featuring smooth zoom / pan, and bounding box / coordinate picker
+* Various templating utilities (recipes, and URI builders) for quickly creating scripts and working interactively
+* In editor documentation for all arguments, and built in image processors / plugins
 * Lightweight multiplatform Tkinter-based UI
 
 ----
