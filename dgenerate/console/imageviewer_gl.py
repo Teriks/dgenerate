@@ -47,8 +47,8 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
 
         # Initialize zoom and pan state
         self._zoom_factor = 1.0
-        self._min_zoom = 0.01
-        self._max_zoom = 15.0
+        self._min_zoom = 0.1
+        self._max_zoom = 80.0
         self._zoom_step = 1.2
         self._pan_x = 0
         self._pan_y = 0
