@@ -4,4 +4,4 @@ python -m venv venv
 
 call venv\Scripts\activate
 
-pip install --editable "%~dp0[dev,ncnn,gpt4all_cuda,quant,triton-windows]" --extra-index-url https://download.pytorch.org/whl/cu128/
+pip install --editable "%~dp0[dev,ncnn,gpt4all_cuda,quant,triton_windows,console_ui_opengl]" --extra-index-url https://download.pytorch.org/whl/cu128/
