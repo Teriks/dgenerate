@@ -59,6 +59,10 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
         self._image_path = None
         self._gl_texture_id = None
 
+        # Base display size - maintains fixed size for clipping behavior
+        self._base_display_width = None
+        self._base_display_height = None
+
         # OpenGL state
         self._shader_program = None
         self._vao = None
@@ -564,24 +568,14 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
         if width <= 0 or height <= 0:
             return (1.0, 1.0), (0.0, 0.0)
 
-        img_width, img_height = self._original_image_size
+        # Use base display size for clipping behavior (instead of fitting to current widget size)
+        if self._base_display_width is None or self._base_display_height is None:
+            # Fallback: calculate base display size if not set
+            self._calculate_base_display_size()
         
-        # Calculate how much of the widget the image should occupy (maintaining aspect ratio)
-        widget_aspect = width / height
-        image_aspect = img_width / img_height
-        
-        if image_aspect > widget_aspect:
-            # Image is wider than widget - fit to width
-            display_width = width
-            display_height = width / image_aspect
-        else:
-            # Image is taller than widget - fit to height  
-            display_width = height * image_aspect
-            display_height = height
-        
-        # Apply zoom
-        display_width *= self._zoom_factor
-        display_height *= self._zoom_factor
+        # Apply zoom to base display size
+        display_width = self._base_display_width * self._zoom_factor
+        display_height = self._base_display_height * self._zoom_factor
         
         # Convert to normalized device coordinates (-1 to 1)
         scale_x = display_width / width
@@ -593,6 +587,34 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
         translate_y = -(self._pan_y * 2.0) / height  # Flip Y for correct pan direction
         
         return (scale_x, scale_y), (translate_x, translate_y)
+
+    def _calculate_base_display_size(self):
+        """Calculate and store the base display size for the image"""
+        if not self.has_image():
+            return
+
+        width = self.winfo_width()
+        height = self.winfo_height()
+        
+        if width <= 0 or height <= 0:
+            # Use a default size if widget dimensions aren't available yet
+            width = 800
+            height = 600
+
+        img_width, img_height = self._original_image_size
+        
+        # Calculate how much of the widget the image should occupy (maintaining aspect ratio)
+        widget_aspect = width / height
+        image_aspect = img_width / img_height
+        
+        if image_aspect > widget_aspect:
+            # Image is wider than widget - fit to width
+            self._base_display_width = width
+            self._base_display_height = width / image_aspect
+        else:
+            # Image is taller than widget - fit to height  
+            self._base_display_width = height * image_aspect
+            self._base_display_height = height
 
     def _create_texture_from_array(self, img_array):
         """Create OpenGL texture from numpy array"""
@@ -673,6 +695,10 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
                 gl.glDeleteTextures([self._gl_texture_id])
                 self._gl_texture_id = None
 
+            # Clear base display size to recalculate for new image
+            self._base_display_width = None
+            self._base_display_height = None
+
             # Load image with PIL
             pil_image = PIL.Image.open(image_path)
             if pil_image.mode not in ['RGB', 'RGBA']:
@@ -697,6 +723,9 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
                 self._zoom_factor = 1.0
                 self._pan_x = 0
                 self._pan_y = 0
+
+            # Calculate base display size for clipping behavior
+            self._calculate_base_display_size()
 
             # Auto-fit if requested
             if fit:
@@ -770,8 +799,9 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
 
     def _fit_to_widget(self):
         """Calculate zoom to fit image in widget"""
-        # For OpenGL version, zoom factor 1.0 already fits image to widget
-        # This is because our base display calculation already does the fitting
+        # Recalculate base display size based on current widget dimensions
+        self._calculate_base_display_size()
+        # Reset zoom factor since base size now fits the widget
         self._zoom_factor = 1.0
 
     def _widget_to_image_coordinates(self, widget_x: int, widget_y: int) -> typing.Tuple[typing.Optional[int], typing.Optional[int]]:
@@ -787,20 +817,12 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
 
         img_width, img_height = self._original_image_size
         
-        # Calculate the display size (same logic as MVP matrix)
-        widget_aspect = width / height
-        image_aspect = img_width / img_height
+        # Use base display size with zoom applied
+        if self._base_display_width is None or self._base_display_height is None:
+            self._calculate_base_display_size()
         
-        if image_aspect > widget_aspect:
-            display_width = width
-            display_height = width / image_aspect
-        else:
-            display_width = height * image_aspect
-            display_height = height
-        
-        # Apply zoom
-        display_width *= self._zoom_factor
-        display_height *= self._zoom_factor
+        display_width = self._base_display_width * self._zoom_factor
+        display_height = self._base_display_height * self._zoom_factor
         
         # Calculate image position on screen (centered + pan offset)
         image_left = (width - display_width) / 2 + self._pan_x
@@ -839,20 +861,12 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
 
         img_width, img_height = self._original_image_size
         
-        # Calculate the display size (same logic as MVP matrix)
-        widget_aspect = width / height
-        image_aspect = img_width / img_height
+        # Use base display size with zoom applied
+        if self._base_display_width is None or self._base_display_height is None:
+            self._calculate_base_display_size()
         
-        if image_aspect > widget_aspect:
-            display_width = width
-            display_height = width / image_aspect
-        else:
-            display_width = height * image_aspect
-            display_height = height
-        
-        # Apply zoom
-        display_width *= self._zoom_factor
-        display_height *= self._zoom_factor
+        display_width = self._base_display_width * self._zoom_factor
+        display_height = self._base_display_height * self._zoom_factor
         
         # Calculate image position on screen (centered + pan offset)
         image_left = (width - display_width) / 2 + self._pan_x
@@ -1150,8 +1164,24 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
                 self.on_error(f"Failed to copy image path to clipboard: {e}")
 
     def reset_view(self):
-        """Reset zoom and pan to default"""
-        self._zoom_factor = 1.0
+        """Reset to show image at actual pixel size (1:1 zoom)"""
+        if not self.has_image():
+            return
+            
+        # Recalculate base display size for current widget dimensions
+        self._calculate_base_display_size()
+        
+        # Calculate zoom factor to show image at actual pixel size
+        img_width, img_height = self._original_image_size
+        
+        # Set zoom to show actual image size relative to base display size
+        if self._base_display_width > 0:
+            # Calculate zoom needed to show image at actual pixel size
+            # Since base display size maintains aspect ratio, we can use either dimension
+            self._zoom_factor = img_width / self._base_display_width
+        else:
+            self._zoom_factor = 1.0
+            
         self._pan_x = 0
         self._pan_y = 0
         self.redraw()
@@ -1161,7 +1191,9 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
         if not self.has_image():
             return
 
-        self._fit_to_widget()
+        # Recalculate base display size and reset view
+        self._calculate_base_display_size()
+        self._zoom_factor = 1.0
         self._pan_x = 0
         self._pan_y = 0
         self.redraw()
@@ -1245,6 +1277,8 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
         # Clear image data
         self._original_image_array = None
         self._original_image_size = None
+        self._base_display_width = None
+        self._base_display_height = None
         
         # Clear pending operations
         while True:
