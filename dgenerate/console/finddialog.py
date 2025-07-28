@@ -468,17 +468,35 @@ class FindDialog(tk.Toplevel):
         # Keep dialog visible on top while remaining modeless
         self.attributes('-topmost', True)
         
-        # Find entry
-        self.find_entry = tk.Text(self, height=1, width=40)
-        self.find_entry.grid(row=0, column=0, sticky='ew', padx=2, pady=2)
+        # Find entry with frame for potential scrollbar
+        self.find_frame = tk.Frame(self)
+        self.find_frame.grid(row=0, column=0, sticky='ew', padx=2, pady=2)
+        self.find_frame.grid_columnconfigure(0, weight=1)
+        
+        self.find_entry = tk.Text(self.find_frame, height=1, width=40, wrap='none')
+        self.find_entry.grid(row=0, column=0, sticky='ew')
         self.find_entry.tag_config('invalid', background='#ffcccc', foreground='#800000')
         
-        # Replace entry (if needed)
+        # Create scrollbar but keep it hidden initially
+        self.find_scrollbar = tk.Scrollbar(self.find_frame, orient='vertical', command=self.find_entry.yview)
+        self.find_entry.configure(yscrollcommand=self.find_scrollbar.set)
+        
+        # Replace entry (if needed) with frame for potential scrollbar
         self.replace_entry = None
+        self.replace_frame = None
+        self.replace_scrollbar = None
         if self.replace_mode:
-            self.replace_entry = tk.Text(self, height=1, width=40)
-            self.replace_entry.grid(row=1, column=0, sticky='ew', padx=2, pady=2)
+            self.replace_frame = tk.Frame(self)
+            self.replace_frame.grid(row=1, column=0, sticky='ew', padx=2, pady=2)
+            self.replace_frame.grid_columnconfigure(0, weight=1)
+            
+            self.replace_entry = tk.Text(self.replace_frame, height=1, width=40, wrap='none')
+            self.replace_entry.grid(row=0, column=0, sticky='ew')
             self.replace_entry.tag_config('invalid', background='#ffcccc', foreground='#800000')
+            
+            # Create scrollbar but keep it hidden initially
+            self.replace_scrollbar = tk.Scrollbar(self.replace_frame, orient='vertical', command=self.replace_entry.yview)
+            self.replace_entry.configure(yscrollcommand=self.replace_scrollbar.set)
         
         # Options and buttons frame
         button_frame = tk.Frame(self)
@@ -638,6 +656,9 @@ class FindDialog(tk.Toplevel):
         pattern = self._get_find_text()
         options = self._get_search_options()
         
+        # Check if we need to expand the entry box
+        self._check_entry_expansion(self.find_entry, self.find_frame, 'find')
+        
         # Validate pattern
         is_valid = self.search_engine.validate_pattern(pattern, options.regex_mode)
         self.highlight_manager.mark_invalid(self.find_entry, not is_valid)
@@ -653,7 +674,10 @@ class FindDialog(tk.Toplevel):
         """Handle replace text changes"""
         if not self.replace_entry:
             return
-        
+
+        # Check if we need to expand the entry box
+        self._check_entry_expansion(self.replace_entry, self.replace_frame, 'replace')
+
         find_text = self._get_find_text()
         replace_text = self._get_replace_text()
         options = self._get_search_options()
@@ -686,6 +710,49 @@ class FindDialog(tk.Toplevel):
         """Handle text selection - clear highlights when user is selecting"""
         self.highlight_manager.clear_highlights()
         self.state.current_match = SearchResult(found=False)
+    
+    def _check_entry_expansion(self, entry_widget, frame_widget, entry_type):
+        """Check if entry widget needs to expand and add scrollbar"""
+        # Get the actual line count
+        line_count = int(entry_widget.index('end-1c').split('.')[0])
+        
+        # Get scrollbar reference
+        scrollbar_attr = f'{entry_type}_scrollbar'
+        scrollbar = getattr(self, scrollbar_attr)
+        
+        # Track if size changed
+        size_changed = False
+        
+        # If more than 1 line and not already expanded
+        if line_count > 1 and entry_widget['height'] == 1:
+            # Expand to 3 lines
+            entry_widget.configure(height=3)
+            size_changed = True
+            
+            # Show scrollbar
+            if scrollbar:
+                scrollbar.grid(row=0, column=1, sticky='nsew')
+                
+        # If back to 1 line and expanded
+        elif line_count <= 1 and entry_widget['height'] > 1:
+            # Shrink back to 1 line
+            entry_widget.configure(height=1)
+            size_changed = True
+            
+            # Hide scrollbar (but don't destroy it)
+            if scrollbar:
+                scrollbar.grid_forget()
+        
+        # If size changed, update the window geometry
+        if size_changed:
+            # Let Tkinter process the widget size changes
+            self.update_idletasks()
+            
+            # Get the new required height
+            req_height = self.winfo_reqheight()
+            
+            # Update window height while preserving width and position
+            self.geometry(f"{self.winfo_width()}x{req_height}+{self.winfo_x()}+{self.winfo_y()}")
     
     def _show_help(self):
         """Show help dialog for substitution syntax"""
