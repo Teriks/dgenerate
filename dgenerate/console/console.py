@@ -402,9 +402,10 @@ class DgenerateConsole(tk.Tk):
 
         self._paned_window_vertical.add(self._output_text)
 
-        # Optional image pane
+        # Optional image pane / window
 
         self._image_pane_window = None
+        self._image_pane_window_viewer = None
         self._image_pane_window_last_pos = None
         self._image_pane_last_right_clicked_coords = None
         
@@ -799,7 +800,7 @@ class DgenerateConsole(tk.Tk):
                 self._image_pane_window.focus_force()
                 
                 # Load image
-                if current_image_path is not None and hasattr(self, '_image_pane_window_viewer'):
+                if current_image_path is not None:
                     self._image_pane_window_viewer.load_image(
                         current_image_path,
                         fit=False,
@@ -814,7 +815,7 @@ class DgenerateConsole(tk.Tk):
             self._image_pane_viewer.load_image(image_path, fit=True)
 
             # Load image in the window viewer if it exists with auto-fit enabled
-            if self._image_pane_window is not None and hasattr(self, '_image_pane_window_viewer'):
+            if self._image_pane_window is not None:
                 self._image_pane_window_viewer.load_image(image_path, fit=True)
         except Exception as e:
             self._write_stderr_output(f"Error loading image: {e}\n")
@@ -1153,9 +1154,9 @@ class DgenerateConsole(tk.Tk):
         self.kill_shell_process()
         
         # Clean up image viewers
-        if hasattr(self, '_image_pane_viewer'):
-            self._image_pane_viewer.cleanup()
-        if hasattr(self, '_image_pane_window_viewer'):
+        self._image_pane_viewer.cleanup()
+
+        if self._image_pane_window_viewer is not None:
             self._image_pane_window_viewer.cleanup()
         
         super().destroy()
