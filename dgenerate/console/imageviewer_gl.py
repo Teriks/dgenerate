@@ -21,7 +21,6 @@
 
 import platform as _std_platform
 import typing
-import queue
 
 import PIL.Image
 import numpy as np
@@ -82,8 +81,8 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
         self._gl_initialized = False
 
         # Pending operations system for handling calls before OpenGL is ready
-        self._pending_load_operations = queue.Queue() # (image_path, fit, view_state)
-        self._pending_view_states = queue.Queue()  # Queue of view states to apply after widget is configured
+        self._pending_load_operation = None  # (image_path, fit, view_state) tuple or None
+        self._pending_view_state = None  # View state dict or None to apply after widget is configured
 
         # Bounding box selection state
         self._bbox_selection_mode = False
@@ -148,17 +147,30 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
                     gl.glViewport(0, 0, width, height)
                     
                     # Apply pending view state now that we have proper dimensions
-                    try:
-                        view_state_to_apply = self._pending_view_states.get_nowait()
+                    if self._pending_view_state is not None:
+                        view_state_to_apply = self._pending_view_state
+                        self._pending_view_state = None
                         self.set_view_state(view_state_to_apply)
                         return  # Let set_view_state trigger its own redraw
-                    except queue.Empty:
-                        pass
                     
                     self.redraw()
                 except gl.GLError:
                     # OpenGL context might not be ready
                     pass
+
+    def tkMap(self, evt):
+        """Called on <Map>"""
+        super().tkMap(evt)
+        # Try to apply pending view state when widget becomes visible
+        self._try_apply_pending_view_state()
+        self.redraw()
+
+    def tkExpose(self, evt):
+        """Called on <Expose>"""
+        super().tkExpose(evt)
+        # Try to apply pending view state when widget is exposed
+        self._try_apply_pending_view_state()
+        self.redraw()
 
     def initgl(self):
         """Initialize OpenGL resources"""
@@ -237,13 +249,11 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
             self._create_texture_from_array(self._original_image_array)
 
         # Process any pending operations
-        try:
-            while True:
-                image_path, fit, view_state = self._pending_load_operations.get_nowait()
-                # Perform the load operation now that OpenGL is ready
-                self._load_image_immediate(image_path, fit, view_state)
-        except queue.Empty:
-            pass
+        if self._pending_load_operation is not None:
+            image_path, fit, view_state = self._pending_load_operation
+            self._pending_load_operation = None
+            # Perform the load operation now that OpenGL is ready
+            self._load_image_immediate(image_path, fit, view_state)
 
     def _create_shader_program(self):
         """Create and compile shader program"""
@@ -390,13 +400,12 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
                 gl.glViewport(0, 0, width, height)
                 
                 # Apply pending view state now that viewport is properly set up
-                try:
-                    view_state_to_apply = self._pending_view_states.get_nowait()
+                if self._pending_view_state is not None:
+                    view_state_to_apply = self._pending_view_state
+                    self._pending_view_state = None
                     self.set_view_state(view_state_to_apply)
                     # Early return to let set_view_state trigger its own redraw
                     return
-                except queue.Empty:
-                    pass
                     
             except gl.GLError:
                 # OpenGL context might not be ready yet
@@ -721,13 +730,13 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
                 self.on_error(f"Image viewer: Error creating texture: {e}")
 
     def load_image(self, image_path: str, fit: bool = False, view_state: typing.Optional[typing.Dict] = None):
-        """Load an image and create OpenGL texture, queuing if OpenGL not ready"""
+        """Load an image and create OpenGL texture, storing pending operation if OpenGL not ready"""
         if self._gl_initialized:
             # OpenGL is ready, load immediately
             self._load_image_immediate(image_path, fit, view_state)
         else:
-            # Queue the operation for when OpenGL is ready
-            self._pending_load_operations.put((image_path, fit, view_state))
+            # Store the operation for when OpenGL is ready
+            self._pending_load_operation = (image_path, fit, view_state)
 
 
 
@@ -735,17 +744,8 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
         """Internal method to load an image immediately (OpenGL must be ready)"""
         try:
             # Clear ALL pending operations to prevent conflicts and race conditions
-            while True:
-                try:
-                    self._pending_view_states.get_nowait()
-                except queue.Empty:
-                    break
-            
-            while True:
-                try:
-                    self._pending_load_operations.get_nowait()
-                except queue.Empty:
-                    break
+            self._pending_view_state = None
+            self._pending_load_operation = None
             
             if self._bbox_selection_mode:
                 self._cancel_bbox_selection()
@@ -814,9 +814,8 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
                     # Widget is ready, apply view state immediately
                     self.set_view_state(view_state)
                 else:
-                    # Widget not ready, store for later
-                    self._pending_view_states.put(view_state)
-                    self.after_idle(self._try_apply_pending_view_state)
+                    # Widget not ready, store for later - will be applied when widget becomes visible
+                    self._pending_view_state = view_state
             
             # Trigger redraw
             self.redraw()
@@ -827,35 +826,22 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
 
     def _try_apply_pending_view_state(self):
         """Attempt to apply pending view state if the widget is ready"""
-        try:
-            # Check if widget has proper dimensions now
-            width = self.winfo_width()
-            height = self.winfo_height()
-            if width > 1 and height > 1:
-                # Force viewport setup before applying view state
-                try:
-                    gl.glViewport(0, 0, width, height)
-                except gl.GLError:
-                    pass
-                
-                view_state = self._pending_view_states.get_nowait()
-                self.set_view_state(view_state)
-            else:
-                # Widget still not ready, try once more after a short delay
-                def final_attempt():
-                    try:
-                        if self.winfo_width() > 1 and self.winfo_height() > 1:
-                            view_state = self._pending_view_states.get_nowait()
-                            self.set_view_state(view_state)
-                        else:
-                            # Clear the item if widget still not ready
-                            self._pending_view_states.get_nowait()
-                    except queue.Empty:
-                        pass
-                
-                self.after(25, final_attempt)
-        except queue.Empty:
-            pass
+        if self._pending_view_state is None:
+            return
+            
+        # Check if widget has proper dimensions now
+        width = self.winfo_width()
+        height = self.winfo_height()
+        if width > 1 and height > 1:
+            # Force viewport setup before applying view state
+            try:
+                gl.glViewport(0, 0, width, height)
+            except gl.GLError:
+                pass
+            
+            view_state = self._pending_view_state
+            self._pending_view_state = None
+            self.set_view_state(view_state)
 
     def _fit_to_widget(self):
         """Calculate zoom to fit image in widget"""
@@ -1395,17 +1381,8 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
         self._base_display_height = None
         
         # Clear pending operations
-        while True:
-            try:
-                self._pending_load_operations.get_nowait()
-            except queue.Empty:
-                break
-        
-        while True:
-            try:
-                self._pending_view_states.get_nowait()
-            except queue.Empty:
-                break
+        self._pending_load_operation = None
+        self._pending_view_state = None
 
         # End any active selection
         if self._bbox_selection_mode:
