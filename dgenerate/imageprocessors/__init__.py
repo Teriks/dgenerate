@@ -23,9 +23,19 @@ import collections.abc
 import dgenerate.imageprocessors.constants
 import dgenerate.plugin as _plugin
 import dgenerate.types as _types
+
+# these need to be up here to prevent circular import problems
+from .imageprocessor import ImageProcessor
+from .imageprocessorchain import ImageProcessorChain
+from .imageprocessorloader import ImageProcessorLoader
+from .imageprocessormixin import ImageProcessorMixin
+# =====================
+
+
 from .adetailer import AdetailerProcessor
 from .anyline import AnylineProcessor
 from .canny import CannyEdgeDetectProcessor
+from .crop_to_mask import CropToMaskProcessor
 from .outpaint_mask import OutpaintMaskProcessor
 from .cv2imageops import (
     DilateProcessor,
@@ -47,10 +57,7 @@ from .imageops import (
     ResizeProcessor,
     CropProcessor
 )
-from .imageprocessor import ImageProcessor
-from .imageprocessorchain import ImageProcessorChain
-from .imageprocessorloader import ImageProcessorLoader
-from .imageprocessormixin import ImageProcessorMixin
+
 from .leres import LeresDepthProcessor
 from .linart_anime import LineArtAnimeProcessor
 from .linart_standard import LineArtStandardProcessor
