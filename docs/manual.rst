@@ -7150,6 +7150,7 @@ Output:
         "anyline"
         "canny"
         "crop"
+        "crop-to-mask"
         "dilate"
         "flip"
         "gaussian-blur"
@@ -7635,7 +7636,7 @@ The help output of ``image-process`` is as follows:
             Make --resize ignore aspect ratio.
             ----------------------------------
       -al, --align ALIGN
-            Align images / videos to this value in pixels, default is 8. Specifying 1 will disable resolution
+            Align images / videos dimensions to this value in pixels. Default is 1, meaning no particular
             alignment.
             ----------
       -d, --device DEVICE
@@ -8996,7 +8997,6 @@ provided in the image preview pane context menu.
         The "asset" argument specifies which SAM model asset to use. This should be the name of an Ultralytics SAM
         model asset, loading arbitrary checkpoints is not supported. This argument may be one of:
     
-            * sam_h.pt
             * sam_l.pt
             * sam_b.pt
             * mobile_sam.pt
@@ -9150,9 +9150,10 @@ manual / interactive adetailer like editing.
     --inference-steps 30
     --guidance-scales 5
     --seeds 92105821284900
+    --image-seed-strengths 0
     --output-path output
     --prompts "a smiling mans face"
-    --post-processors paste;image={{input_image}};image-processors="resize;align=8";position={{face_box}};feather=10;reverse=True
+    --post-processors paste;image={{input_image}};position={{face_box}};feather=10;reverse=True
 
 Quantization
 ============
@@ -10021,7 +10022,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [79618366287480]
+            Value: [56963813329029]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

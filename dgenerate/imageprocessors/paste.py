@@ -175,7 +175,7 @@ class PasteProcessor(_imageprocessor.ImageProcessor):
         if image_processors:
             self._source_image = self._create_image_processor(
                 image_processors
-            ).process(self._source_image, align=1)
+            ).process(self._source_image)
 
         # Load mask image upfront if provided
         self._mask_image = None
@@ -191,7 +191,7 @@ class PasteProcessor(_imageprocessor.ImageProcessor):
             if mask_processors:
                 self._mask_image = self._create_image_processor(
                     mask_processors
-                ).process(self._mask_image.convert('RGB'), align=1)
+                ).process(self._mask_image.convert('RGB'))
 
             # Convert to grayscale if needed
             if self._mask_image.mode != 'L':

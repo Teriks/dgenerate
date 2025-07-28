@@ -42,8 +42,6 @@ import dgenerate.image as _image
 import dgenerate.imageprocessors as _imageprocessors
 import dgenerate.latentsprocessors as _latentsprocessors
 import dgenerate.mediainput as _mediainput
-import dgenerate.memoize as _memoize
-import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.constants as _constants
 import dgenerate.pipelinewrapper.enums as _enums
@@ -1245,6 +1243,49 @@ class DiffusionPipelineWrapper:
 
         return resized_images
 
+    @staticmethod
+    def _process_ip_adapter_images(images: _types.OptionalImagesSequence):
+        """
+        Align IP Adapter images by 8
+        :param images: sequence of image sequences
+        :return: processed array
+        """
+        if not images:
+            return None
+
+        output = []
+
+        for img_s in images:
+            processed_images = []
+
+            for img in img_s:
+
+                new_size = _image.resize_image_calc(old_size=img.size, new_size=None, align=8)
+
+                if img.size != new_size:
+                    img = _image.resize_image(img=img, size=new_size)
+
+                processed_images.append(img.convert('RGB'))
+
+            output.append(processed_images)
+
+        return output
+
+    @staticmethod
+    def _process_floyd_image(image: _types.ImageOrTensor):
+        """
+        Align floyd image by 8
+        :param image: floyd image (maybe tensor)
+        :return: processed image, untouched tensor
+        """
+        if not isinstance(image, torch.Tensor):
+            new_size = _image.resize_image_calc(old_size=image.size, new_size=None, align=8)
+
+            if image.size != new_size:
+                return _image.resize_image(image, size=None, align=8)
+
+        return image
+
     def _set_pipeline_strength(self, user_args: DiffusionArguments, pipeline_args: dict[str, typing.Any]):
         strength = float(_types.default(user_args.image_seed_strength, _constants.DEFAULT_IMAGE_SEED_STRENGTH))
         ifs = int(_types.default(user_args.inference_steps, _constants.DEFAULT_INFERENCE_STEPS))
@@ -1724,6 +1765,12 @@ class DiffusionPipelineWrapper:
         if user_args.latents:
             # this uses 'width' and 'height' from pipeline_args as input
             pipeline_args['latents'] = self._process_raw_input_latents(user_args, pipeline_args)
+
+        if user_args.ip_adapter_images:
+            user_args.ip_adapter_images = self._process_ip_adapter_images(user_args.ip_adapter_images)
+
+        if user_args.floyd_image is not None:
+            user_args.floyd_image = self._process_floyd_image(user_args.floyd_image)
 
         return pipeline_args
 
@@ -3423,7 +3470,7 @@ class DiffusionPipelineWrapper:
                     )
 
                 else:
-                    # align to 8 just to be safe
+                    # just align to 8
                     image = processor.process(image, align=8)
 
                 processed_images.append(image.convert('RGB'))  # Ensure images are in RGB format

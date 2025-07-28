@@ -72,7 +72,7 @@ class ImageProcessRenderLoopConfig(_types.SetFromMixin):
     Disable aspect correction? corresponds to ``-na/--no-aspect``
     """
 
-    align: int = 8
+    align: int = 1
     """
     Forced image alignment, corresponds to ``-al/--align``
     """

@@ -129,7 +129,7 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
             if self._mask_processors is not None:
                 mask_image = self._create_image_processor(
                     self._mask_processors
-                ).process(mask_image.convert('RGB'), align=1)
+                ).process(mask_image.convert('RGB'))
 
             # Convert to grayscale if needed
             if mask_image.mode != 'L':

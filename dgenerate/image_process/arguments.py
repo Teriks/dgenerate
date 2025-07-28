@@ -140,9 +140,9 @@ def _create_arg_parser(prog, description):
         help='Make --resize ignore aspect ratio.'))
 
     actions.append(parser.add_argument(
-        '-al', '--align', default=8, type=_type_align,
-        help="""Align images / videos to this value in pixels, default is 8.
-            Specifying 1 will disable resolution alignment."""))
+        '-al', '--align', default=1, type=_type_align,
+        help="""Align images / videos dimensions to this value in pixels. 
+                Default is 1, meaning no particular alignment."""))
 
     actions.append(parser.add_argument(
         '-d', '--device',
