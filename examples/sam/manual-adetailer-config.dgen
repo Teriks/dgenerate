@@ -36,6 +36,7 @@ stabilityai/stable-diffusion-xl-base-1.0
 --inference-steps 30
 --guidance-scales 5
 --seeds 92105821284900
+--image-seed-strengths 0
 --output-path output
 --prompts "a smiling mans face"
---post-processors paste;image={{input_image}};image-processors="resize;align=8";position={{face_box}};feather=10;reverse=True
+--post-processors paste;image={{input_image}};position={{face_box}};feather=10;reverse=True

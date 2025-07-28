@@ -225,8 +225,6 @@ class AnimationReader:
 class VideoReader(_imageprocessors.ImageProcessorMixin, AnimationReader):
     """
     Implementation :py:class:`.AnimationReader` that reads Video files with PyAV.
-
-    All frame images from this animation reader will be aligned by 8 pixels by default.
     """
 
     def __init__(self,
@@ -234,7 +232,7 @@ class VideoReader(_imageprocessors.ImageProcessorMixin, AnimationReader):
                  file_source: str,
                  resize_resolution: _types.OptionalSize = None,
                  aspect_correct: bool = True,
-                 align: int | None = 8,
+                 align: int | None = None,
                  image_processor: _imageprocessors.ImageProcessor = None):
         """
         :param file: a file path or binary file stream
@@ -325,8 +323,6 @@ class VideoReader(_imageprocessors.ImageProcessorMixin, AnimationReader):
 class AnimatedImageReader(_imageprocessors.ImageProcessorMixin, AnimationReader):
     """
     Implementation of :py:class:`.AnimationReader` that reads animated image formats using Pillow.
-
-    All frames from this animation reader will be aligned by 8 pixels by default.
     """
 
     def __init__(self,
@@ -334,7 +330,7 @@ class AnimatedImageReader(_imageprocessors.ImageProcessorMixin, AnimationReader)
                  file_source: str,
                  resize_resolution: _types.OptionalSize = None,
                  aspect_correct: bool = True,
-                 align: int | None = 8,
+                 align: int | None = None,
                  image_processor: _imageprocessors.ImageProcessor = None):
         """
         :param file: a file path or binary file stream
@@ -417,15 +413,13 @@ class MockImageAnimationReader(_imageprocessors.ImageProcessorMixin, AnimationRe
     """
     Implementation of :py:class:`.AnimationReader` that repeats a single PIL image
     as many times as desired in order to mock/emulate an animation.
-
-    All frame images from this animation reader will be aligned by 8 pixels by default.
     """
 
     def __init__(self,
                  img: PIL.Image.Image,
                  resize_resolution: _types.OptionalSize = None,
                  aspect_correct: bool = True,
-                 align: int | None = 8,
+                 align: int | None = None,
                  image_repetitions: int = 1,
                  image_processor: _imageprocessors.ImageProcessor = None):
         """
@@ -1163,8 +1157,8 @@ class ImageSeedParseResult:
         * ``--image-seeds "img2img.png;mask=mask.png;control=control.png;align=64"``
         * ``--image-seeds "img2img.png;mask=mask.png;control=control1.png, control2.png;align=64"``
         
-    This will overwrite any default global value (usually 8), the provided value must be divisible by 
-    the global value defined by the parser (i.e. 8 pixels), or a parse error will occur.
+    This will overwrite any default global value (usually 1), the provided value must be divisible by 
+    the global value defined by the parser, or a parse error will occur.
     """
 
     aspect_correct: _types.OptionalBoolean = None
@@ -1965,7 +1959,7 @@ def create_image(
         file_source: str,
         resize_resolution: _types.OptionalSize = None,
         aspect_correct: bool = True,
-        align: int | None = 8) -> PIL.Image.Image:
+        align: int | None = None) -> PIL.Image.Image:
     """
     Create an RGB format PIL image from a file path or binary file stream.
     The image is oriented according to any EXIF directives. Image is aligned
@@ -2022,7 +2016,7 @@ def create_animation_reader(mimetype: str,
                             file: typing.BinaryIO,
                             resize_resolution: _types.OptionalSize = None,
                             aspect_correct: bool = True,
-                            align: int | None = 8,
+                            align: int | None = None,
                             image_processor: _imageprocessors.ImageProcessor | None = None,
                             ) -> AnimationReader:
     """
@@ -2114,7 +2108,7 @@ class MediaReaderSpec:
     Note: Resize operations are ignored for tensor files.
     """
 
-    align: int | None = 8
+    align: int | None = None
     """
     Images which are read are aligned to this amount of pixels, ``None`` or ``1`` will disable alignment.
     
@@ -2132,7 +2126,7 @@ class MediaReaderSpec:
                  image_processor: _imageprocessors.ImageProcessor | None = None,
                  resize_resolution: _types.OptionalSize = None,
                  aspect_correct: bool = True,
-                 align: int | None = 8):
+                 align: int | None = None):
         """
         :param path: File path or URL
         :param resize_resolution: Resize resolution (ignored for tensor files)
@@ -2295,7 +2289,7 @@ class MultiMediaReader:
                 if not spec.aspect_correct:  # Check if non-default value was set
                     ignored_operations.append(f"aspect ({spec.aspect_correct})")
 
-                if spec.align is not None and spec.align != 8:  # Check if non-default value was set
+                if spec.align is not None and spec.align != 1:  # Check if non-default value was set
                     ignored_operations.append(f"align ({spec.align})")
 
                 if spec.image_processor is not None:
@@ -2411,8 +2405,6 @@ class MediaReader(AnimationReader):
 
     With the default path opener, URLs will be downloaded,
     dgenerate's temporary web cache will be utilized.
-
-    All images produced from this reader will be aligned to 8 pixels by default.
     """
 
     @property
@@ -2441,7 +2433,7 @@ class MediaReader(AnimationReader):
                  image_processor: _imageprocessors.ImageProcessor | None = None,
                  resize_resolution: _types.OptionalSize = None,
                  aspect_correct: bool = True,
-                 align: int | None = 8,
+                 align: int | None = None,
                  frame_start: int = 0,
                  frame_end: _types.OptionalInteger = None,
                  path_opener: MediaPathOpenerFunc = fetch_media_data_stream):
@@ -2697,7 +2689,7 @@ def iterate_image_seed(uri: str | ImageSeedParseResult,
                        frame_end: _types.OptionalInteger = None,
                        resize_resolution: _types.OptionalSize = None,
                        aspect_correct: bool = True,
-                       align: int | None = 8,
+                       align: int | None = None,
                        seed_image_processor: ImageProcessorSpec = None,
                        mask_image_processor: ImageProcessorSpec = None,
                        control_image_processor: ImageProcessorSpec = None,
@@ -3025,7 +3017,7 @@ def iterate_control_image(uri: str | ImageSeedParseResult,
                           frame_end: _types.OptionalInteger = None,
                           resize_resolution: _types.OptionalSize = None,
                           aspect_correct: bool = True,
-                          align: int | None = 8,
+                          align: int | None = None,
                           image_processor: ImageProcessorSpec = None,
                           path_opener: MediaPathOpenerFunc = fetch_media_data_stream) -> \
         collections.abc.Iterator[ImageSeed]:

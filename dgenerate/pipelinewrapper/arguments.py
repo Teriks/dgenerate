@@ -141,9 +141,12 @@ class DiffusionArguments(_types.SetFromMixin):
     When tensors are provided, they represent latent space data and bypass VAE encoding.
     Tensor inputs cannot be resized or processed with image processors.
     
-    All input images involved in a generation except for ``adapter_images`` must match in dimension and be aligned by 8 pixels,
+    All input images involved in a generation except for ``ip_adapter_images`` must match in dimension,
     except in the case of Stable Cascade, which can accept multiple images of any dimension for the purpose of image based
     prompting similar to IP Adapters.
+    
+    All incoming images will be aligned by 8 automatically, if they need to be aligned by
+    a value higher than this, a warning will be issued.
     
     All other pipelines interpret multiple image inputs as a batching request.
     """
@@ -163,10 +166,10 @@ class DiffusionArguments(_types.SetFromMixin):
     
     Note: Mask images are always PIL Images, tensor masks are not supported.
     
-    All input images involved in a generation except for ``adapter_images``  must match in dimension and be aligned by 8 pixels,
-    except in the case of Stable Cascade, which can accept multiple images of any dimension for the purpose of image based
-    prompting similar to IP Adapters. Stable Cascade cannot perform inpainting, so ``mask_images`` is irrelevant in
-    this case. All other pipelines interpret multiple image inputs as a batching request.
+    All input images involved in a generation except for ``ip_adapter_images`` must match in dimension.
+    
+    All incoming mask images will be aligned by 8 automatically, if they need to be aligned by a value
+    higher than this, a warning will be issued to ``stdout`` via :py:mod:`dgenerate.messages`.
     """
 
     control_images: _types.OptionalImages = None
@@ -177,7 +180,10 @@ class DiffusionArguments(_types.SetFromMixin):
     Note: Control images must be PIL Images, tensors are not supported since ControlNet/T2I-Adapter 
     operate in pixel space.
     
-    All input images involved in a generation must match in dimension and be aligned by 8 pixels.
+    All input images involved in a generation must match in dimension.
+    
+    All incoming ControlNet images will be aligned by 8 automatically, if they need to be 
+    aligned by a value higher than this, a warning will be issued to ``stdout`` via :py:mod:`dgenerate.messages`.
     """
 
     ip_adapter_images: _types.OptionalImagesSequence = None
@@ -193,6 +199,9 @@ class DiffusionArguments(_types.SetFromMixin):
     Each list entry corresponds to an IP adapter URI.
     
     Multiple IP Adapter URIs can be provided, each IP Adapter can get its own set of images.
+    
+    All incoming IP Adapter images will be aligned by 8 automatically, if they need to be 
+    aligned by a value higher than this, a warning will be issued to ``stdout`` via :py:mod:`dgenerate.messages`.
     """
 
     floyd_image: _types.OptionalImageOrTensor = None
@@ -202,28 +211,28 @@ class DiffusionArguments(_types.SetFromMixin):
     generation :py:attr:`DiffusionArguments.image` is used.
     
     When a tensor is provided, it represents latent space data from a previous Floyd stage.
+    
+    Incoming floyd images will be automatically aligned by 8.
     """
 
     width: _types.OptionalInteger = None
     """
     Output image width.
     
-    Ignored when img2img, inpainting, or controlnet guidance images are involved.
+    Will be automatically aligned by 8.
     
-    Width will be the width of the input image in those cases.
-    
-    Output image width, must be aligned by 8
+    If alignments of more than 8 need to be forced, 
+    a warning will be issued to ``stdout`` via :py:mod:`dgenerate.messages`.
     """
 
     height: _types.OptionalInteger = None
     """
     Output image height.
     
-    Ignored when img2img, inpainting, or controlnet guidance images are involved.
+    Will be automatically aligned by 8.
     
-    Width will be the width of the input image in those cases.
-    
-    Output image width, must be aligned by 8
+    If alignments of more than 8 need to be forced, 
+    a warning will be issued to ``stdout`` via :py:mod:`dgenerate.messages`.
     """
 
     aspect_correct: bool = False

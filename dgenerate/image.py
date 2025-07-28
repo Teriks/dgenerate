@@ -50,7 +50,7 @@ def is_image(obj) -> bool:
 def resize_image_calc(old_size: _types.Size,
                       new_size: _types.OptionalSize,
                       aspect_correct: bool = False,
-                      align: int | None = 1):
+                      align: int | None = None):
     """
     Calculate the new dimensions for a requested resize of an image..
 
@@ -234,7 +234,7 @@ def best_cv2_resampling(old_size: _types.Size, new_size: _types.Size) -> int:
 def cv2_resize_image(img: numpy.ndarray,
                      size: _types.OptionalSize,
                      aspect_correct: bool = False,
-                     align: int | None = 1,
+                     align: int | None = None,
                      algo: typing.Optional[int] = None):
     """
     Resize a :py:class:`numpy.ndarray` image and return a copy.
@@ -249,7 +249,7 @@ def cv2_resize_image(img: numpy.ndarray,
     :param img: the image to resize
     :param size: requested new size for the image, may be ``None``.
     :param aspect_correct: preserve aspect ratio?
-    :param align: Force alignment by this amount of pixels (default 1).
+    :param align: Force alignment by this amount of pixels.
     :param algo: cv2 resampling algorithm
     :return: the resized image
     """
@@ -275,7 +275,7 @@ def cv2_resize_image(img: numpy.ndarray,
 def resize_image(img: PIL.Image.Image,
                  size: _types.OptionalSize,
                  aspect_correct: bool = False,
-                 align: int | None = 1,
+                 align: int | None = None,
                  algo: typing.Optional[PIL.Image.Resampling] = None):
     """
     Resize a :py:class:`PIL.Image.Image` and return a copy.

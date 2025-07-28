@@ -560,7 +560,7 @@ class ImageProcessor(_plugin.Plugin, abc.ABC):
                 image: PIL.Image.Image,
                 resize_resolution: dgenerate.types.OptionalSize = None,
                 aspect_correct: bool = True,
-                align: int | None = 8):
+                align: int | None = None):
         """
         Preform image processing on an image, including the requested resizing step.
 

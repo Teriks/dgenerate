@@ -6,7 +6,7 @@ order: 21
 @switch[{"label":"Output Overwrite", "arg":"--output-overwrite", "divider-after":true}]
 @imagesize[{"label":"Resize Dimension (WxH)", "arg":"--resize"}]
 @switch[{"label":"Resize Ignores Aspect", "arg":"--no-aspect"}]
-@int[{"label":"Image Alignment", "arg":"--align", "min":1, "default":8, "divider-after":true}]
+@int[{"label":"Image Alignment", "arg":"--align", "min":1, "default":"", "divider-after":true}]
 @int[{"label":"Frame Start (inclusive)", "arg":"--frame-start", "min":0, "default":""}]
 @int[{"label":"Frame End (inclusive)", "arg":"--frame-end", "min":0, "default":""}]
 @switch[{"label":"Don't Output Frames", "arg":"--no-frames"}]
