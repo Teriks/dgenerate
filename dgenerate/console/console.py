@@ -576,8 +576,15 @@ class DgenerateConsole(tk.Tk):
 
         bg = self._input_text.text.cget('bg')
         fg = self._input_text.text.cget('fg')
+        sel_bg = self._input_text.text.cget('selectbackground')
+        sel_fg = self._input_text.text.cget('selectforeground')
 
-        _themetext.configure(bg=bg, fg=fg)
+        _themetext.configure(
+            bg=bg,
+            fg=fg,
+            selectbackground=sel_bg,
+            selectforeground=sel_fg
+        )
 
         error_color = fg
 
