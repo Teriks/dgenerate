@@ -18,46 +18,29 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 import tkinter as tk
-import dgenerate.console.themetext as _themetext
+
+_configure = set()
+
+_cur_args = []
+_cur_kwargs = dict()
+
+def configure(*args, **kwargs):
+    global _cur_kwargs
+    global _cur_args
+    for c in _configure:
+        c.configure(*args, **kwargs)
+    _cur_args = args
+    _cur_kwargs = kwargs
 
 
-class ScrolledText(tk.Frame):
-    def __init__(self, master=None, undo=False, **kwargs):
-        super().__init__(master, **kwargs)
+class ThemeText(tk.Text):
+    def __init__(self, master=None, cnf={}, **kw):
+        super().__init__(master, cnf, **kw)
+        self.configure(*_cur_args, **_cur_kwargs)
+        _configure.add(self)
 
-        text_args = {}
-        if undo:
-            text_args['undo'] = True
-            text_args['autoseparators'] = True
-            text_args['maxundo'] = -1
-
-        self.text = _themetext.ThemeText(
-            self,
-            wrap='word',
-            **text_args
-        )
-
-        kwargs.setdefault('font', ('Courier', 10))
-
-        self.text.configure(
-            font=kwargs['font'],
-            tabs=tk.font.Font(font=kwargs["font"]).measure(" " * 4),
-        )
-
-        self.y_scrollbar = tk.Scrollbar(self, orient='vertical', command=self.text.yview)
-        self.y_scrollbar.pack(side='right', fill='y')
-
-        self.x_scrollbar = tk.Scrollbar(self, orient='horizontal', command=self.text.xview)
-        self.x_scrollbar.pack(side='bottom', fill='x')
-
-        self.text['yscrollcommand'] = self.y_scrollbar.set
-        self.text['xscrollcommand'] = self.x_scrollbar.set
-
-        self.text.pack(side='left', fill='both', expand=True)
-
-    def enable_word_wrap(self):
-        self.text.config(wrap='word')
-
-    def disable_word_wrap(self):
-        self.text.config(wrap='none')
+    def destroy(self):
+        _configure.remove(self)
+        super().destroy()

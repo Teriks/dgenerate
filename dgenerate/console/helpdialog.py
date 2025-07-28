@@ -22,9 +22,8 @@
 import tkinter as tk
 
 import dgenerate.console.finddialog as _finddialog
-import dgenerate.console.resources as _resources
 from dgenerate.console.mousewheelbind import bind_mousewheel, un_bind_mousewheel
-
+import dgenerate.console.themetext as _themetext
 
 class HelpDialog:
 
@@ -75,11 +74,13 @@ class HelpDialog:
         h_scrollbar = tk.Scrollbar(frame, orient=tk.HORIZONTAL)
         h_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
 
-        self.text_widget = tk.Text(frame, wrap=tk.NONE, state='disabled',
-                                   yscrollcommand=v_scrollbar.set,
-                                   xscrollcommand=h_scrollbar.set)
-
-        self.text_widget.configure(**_resources.get_textbox_theme())
+        self.text_widget = _themetext.ThemeText(
+            frame,
+            wrap=tk.NONE,
+            state='disabled',
+            yscrollcommand=v_scrollbar.set,
+            xscrollcommand=h_scrollbar.set
+        )
 
         self.text_widget.config(state='normal')
         self.text_widget.insert(tk.END, self.help_text + '\n\n')
