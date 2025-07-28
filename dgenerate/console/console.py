@@ -789,7 +789,7 @@ class DgenerateConsole(tk.Tk):
         else:
             # Transfer image and view state from pane viewer to window viewer if pane was visible
             current_image_path = self._image_pane_viewer.get_image_path()
-            current_view_state = None
+            current_view_state = self._image_pane_viewer.get_view_state()
 
 
             if self._image_pane_visible_var.get():
@@ -797,8 +797,8 @@ class DgenerateConsole(tk.Tk):
 
             if self._image_pane_window is not None:
 
-                if current_image_path == self._image_pane_window_viewer.get_image_path():
-                    current_view_state = self._image_pane_viewer.get_view_state()
+                if current_image_path != self._image_pane_window_viewer.get_image_path():
+                    current_view_state = None
 
                 self._image_pane_window.deiconify()
                 # Ensure window is fully restored
@@ -814,6 +814,7 @@ class DgenerateConsole(tk.Tk):
                         view_state=current_view_state
                     )
                 return
+
             self._create_image_pane_window(current_image_path, current_view_state)
 
     def _image_preview_load_image(self, image_path):

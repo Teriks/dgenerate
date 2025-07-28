@@ -1254,7 +1254,7 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
 
     def get_view_state(self) -> typing.Optional[typing.Dict]:
         """Get current zoom and pan state"""
-        if not self.has_image():
+        if not self.has_image() or not self.winfo_viewable():
             return None
         return {
             'zoom_factor': self._zoom_factor,
