@@ -778,17 +778,22 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
                 if array_width != size_width or array_height != size_height:
                     raise RuntimeError(f"Image data/size mismatch: array {array_width}x{array_height} vs size {size_width}x{size_height}")
 
-            # Reset zoom and pan (unless view_state will override)
-            if view_state is None:
+            # Calculate base display size for clipping behavior
+            self._calculate_base_display_size()
+
+            # Apply view state immediately if provided to prevent visual flashing
+            if view_state is not None:
+                self._zoom_factor = view_state.get('zoom_factor', 1.0)
+                self._pan_x = view_state.get('pan_x', 0)
+                self._pan_y = view_state.get('pan_y', 0)
+            else:
+                # Reset zoom and pan to defaults only if no view_state provided
                 self._zoom_factor = 1.0
                 self._pan_x = 0
                 self._pan_y = 0
 
-            # Calculate base display size for clipping behavior
-            self._calculate_base_display_size()
-
-            # Auto-fit if requested
-            if fit:
+            # Auto-fit if requested (but only if no view_state provided)
+            if fit and view_state is None:
                 self._fit_to_widget()
 
             # Force widget to get proper dimensions, especially important for PanedWindows
@@ -807,15 +812,10 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
             # Create OpenGL texture (we know OpenGL is initialized here)
             self._create_texture_from_array(self._original_image_array)
             
-            # Store view state for application after widget is configured
-            if view_state is not None:
-                # Try to apply immediately if widget is properly sized
-                if width > 1 and height > 1:
-                    # Widget is ready, apply view state immediately
-                    self.set_view_state(view_state)
-                else:
-                    # Widget not ready, store for later - will be applied when widget becomes visible
-                    self._pending_view_state = view_state
+            # If view state wasn't applied above due to widget sizing, store for later
+            if view_state is not None and (width <= 1 or height <= 1):
+                # Widget not ready, store for later - will be applied when widget becomes visible
+                self._pending_view_state = view_state
             
             # Trigger redraw
             self.redraw()
