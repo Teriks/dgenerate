@@ -706,10 +706,12 @@ class DgenerateConsole(tk.Tk):
             # Transfer image and view state from window viewer to pane viewer if window was visible
             current_image_path = None
             current_view_state = None
+
+            if self._image_pane_window is not None:
+                current_image_path = self._image_pane_window_viewer.get_image_path()
+                current_view_state = self._image_pane_window_viewer.get_view_state()
+
             if self._image_pane_window_visible_var.get():
-                if self._image_pane_window is not None and hasattr(self, '_image_pane_window_viewer'):
-                    current_image_path = self._image_pane_window_viewer.get_image_path()
-                    current_view_state = self._image_pane_window_viewer.get_view_state()
                 self._image_pane_window_visible_var.set(False)
             
             self._paned_window_horizontal.add(self._image_pane)
@@ -783,11 +785,10 @@ class DgenerateConsole(tk.Tk):
                 self._image_pane_window.withdraw()
         else:
             # Transfer image and view state from pane viewer to window viewer if pane was visible
-            current_image_path = None
-            current_view_state = None
+            current_image_path = self._image_pane_viewer.get_image_path()
+            current_view_state = self._image_pane_viewer.get_view_state()
+
             if self._image_pane_visible_var.get():
-                current_image_path = self._image_pane_viewer.get_image_path()
-                current_view_state = self._image_pane_viewer.get_view_state()
                 self._image_pane_visible_var.set(False)
 
             if self._image_pane_window is not None:
@@ -805,10 +806,9 @@ class DgenerateConsole(tk.Tk):
                         view_state=current_view_state
                     )
                 return
-
             self._create_image_pane_window(current_image_path, current_view_state)
 
-    def _image_pane_load_image(self, image_path):
+    def _image_preview_load_image(self, image_path):
         try:
             # Load image in the pane viewer with auto-fit enabled
             self._image_pane_viewer.load_image(image_path, fit=True)
@@ -818,7 +818,6 @@ class DgenerateConsole(tk.Tk):
                 self._image_pane_window_viewer.load_image(image_path, fit=True)
         except Exception as e:
             self._write_stderr_output(f"Error loading image: {e}\n")
-
 
 
     def _update_input_wrap(self, *args):
@@ -969,11 +968,11 @@ class DgenerateConsole(tk.Tk):
         if match is not None:
             mentioned_path = ''.join(filter(None, match.groups()))
             if os.path.isabs(mentioned_path):
-                self._image_pane_load_image(mentioned_path)
+                self._image_preview_load_image(mentioned_path)
             else:
                 path = os.path.join(
                     self._shell_procmon.cwd(deep=True), mentioned_path)
-                self._image_pane_load_image(path)
+                self._image_preview_load_image(path)
 
     def _update_cwd_title(self, directory=None):
         if directory is None:
@@ -1391,7 +1390,7 @@ class DgenerateConsole(tk.Tk):
             return
         
         try:
-            self._image_pane_load_image(f)
+            self._image_preview_load_image(f)
             self._write_stdout_output(f"Manually loaded image: {f}\n")
         except Exception as e:
             self._write_stderr_output(f"Failed to load image: {e}\n")
@@ -1450,7 +1449,7 @@ class DgenerateConsole(tk.Tk):
             self._image_pane_visible_var.set(True)
         
         try:
-            self._image_pane_load_image(path)
+            self._image_preview_load_image(path)
             self._write_stdout_output(f"Manually loaded image: {path}\n")
         except Exception as e:
             self._write_stderr_output(f"Failed to load image: {e}\n")

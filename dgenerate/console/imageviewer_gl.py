@@ -731,6 +731,10 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
 
     def load_image(self, image_path: str, fit: bool = False, view_state: typing.Optional[typing.Dict] = None):
         """Load an image and create OpenGL texture, storing pending operation if OpenGL not ready"""
+
+        # immediately set even if not displayed yet
+        self._image_path = image_path
+
         if self._gl_initialized:
             # OpenGL is ready, load immediately
             self._load_image_immediate(image_path, fit, view_state)
@@ -768,8 +772,6 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
             self._original_image_array = np.array(pil_image)
             self._original_image_size = (pil_image.width, pil_image.height)
             pil_image.close()
-
-            self._image_path = image_path
 
             # Validate that image data and size are consistent
             if len(self._original_image_array.shape) >= 2:
