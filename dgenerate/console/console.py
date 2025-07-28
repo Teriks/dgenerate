@@ -55,6 +55,7 @@ from dgenerate.console.scrolledtext import ScrolledText
 from dgenerate.console.stdinpipe import StdinPipeFullError
 from dgenerate.console.imageviewer import ImageViewer
 import dgenerate.console.showindirectory as _showindirectory
+import dgenerate.console.themetext as _themetext
 
 DGENERATE_EXE = \
     os.path.splitext(
@@ -576,12 +577,7 @@ class DgenerateConsole(tk.Tk):
         bg = self._input_text.text.cget('bg')
         fg = self._input_text.text.cget('fg')
 
-        self._output_text.text.configure(
-            bg=bg,
-            fg=fg
-        )
-
-        _resources.set_textbox_theme(bg=bg, fg=fg)
+        _themetext.configure(bg=bg, fg=fg)
 
         error_color = fg
 

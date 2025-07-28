@@ -19,6 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import tkinter as tk
+import dgenerate.console.themetext as _themetext
 
 
 class ScrolledText(tk.Frame):
@@ -31,9 +32,11 @@ class ScrolledText(tk.Frame):
             text_args['autoseparators'] = True
             text_args['maxundo'] = -1
 
-        self.text = tk.Text(self,
-                            wrap='word',
-                            **text_args)
+        self.text = _themetext.ThemeText(
+            self,
+            wrap='word',
+            **text_args
+        )
 
         kwargs.setdefault('font', ('Courier', 10))
 

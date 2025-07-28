@@ -240,36 +240,6 @@ def supported_torch_model_formats_open() -> list[str]:
     return ['safetensors', 'pt', 'pth', 'cpkt', 'bin']
 
 
-_textbox_theme = dict()
-
-
-def get_textbox_theme() -> dict[str, typing.Any]:
-    """
-    Get textbox configuration arguments that are applied
-    To all text boxes which wish to appear the same as the
-    editor / console main input textbox.
-
-    Usage: text_widget.configure(**resources.get_textbox_theme())
-
-    :return: config argument dict
-    """
-    return dict(_textbox_theme)
-
-
-def set_textbox_theme(**kwargs):
-    """
-    Set textbox configuration arguments that are applied
-    To all text boxes which wish to appear the same as the
-    editor / console main input textbox.
-
-    Usage: resources.set_textbox_theme(bg='white', fg='black')
-
-    :param kwargs: tk.config arguments
-    """
-    global _textbox_theme
-    _textbox_theme = dict(kwargs)
-
-
 def add_help_menu_links(menu: tk.Menu):
     release_info = _d_resources.get_release_info()
 
