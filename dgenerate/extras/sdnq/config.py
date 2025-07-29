@@ -4,6 +4,7 @@ Replaces functionality from modules.shared.
 """
 
 import logging
+import sys
 from typing import Optional
 
 # Create logger
@@ -14,8 +15,14 @@ class SDNQConfig:
     
     def __init__(self):
         # SDNQ specific options
-        self.sdnq_dequantize_compile = True  # Enable torch.compile for dequantization
+        # Automatically disable torch.compile in PyInstaller bundles to avoid FileNotFoundError
+        # when torch._inductor tries to access files that don't exist in the packaged distribution
+        is_frozen = getattr(sys, 'frozen', False)
+        self.sdnq_dequantize_compile = not is_frozen  # Enable torch.compile for dequantization (disabled if frozen)
         self.diffusers_offload_mode = "none"  # Offload mode: "none", "sequential", "model"
+        
+        if is_frozen:
+            logger.info("PyInstaller bundle detected - torch.compile disabled for SDNQ to prevent compilation errors")
     
     def set_dequantize_compile(self, enabled: bool):
         """Enable/disable torch.compile for dequantization"""

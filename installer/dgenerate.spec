@@ -117,7 +117,7 @@ for package_name in required_package_names:
                   '**/NOTICE'] +
                  (['**/*.py', '**/*.pyi']
                   if include_source else []))
-    binaries += collect_dynamic_libs(package_name, search_patterns=['*.dll', '*.pyd'])
+    binaries += collect_dynamic_libs(package_name, search_patterns=['*.dll', '*.pyd', '*.pyc'])
 
 a = Analysis(
     ['../dgenerate/__winentry__.py'],
@@ -125,7 +125,18 @@ a = Analysis(
     binaries=binaries,
     datas=datas + [('../dgenerate/icon.ico', './dgenerate'),
                    ('../dgenerate/config_icon.ico', './dgenerate')],
-    hiddenimports=[],
+    hiddenimports=[
+        # Hidden imports for torch._inductor to work properly
+        'torch._inductor',
+        'torch._inductor.codecache',
+        'torch._inductor.config',
+        'torch._dynamo',
+        'torch._dynamo.config',
+        'torch.fx',
+        'torch.fx.experimental',
+        'torch.utils._config_module',
+        'torch.version'
+    ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
