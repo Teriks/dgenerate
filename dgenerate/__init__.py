@@ -87,6 +87,10 @@ try:
     from dgenerate.resources import __version__
 
     if os.environ.get('DGENERATE_PYINSTALLER', '0') == '1':
+
+        import dgenerate.extras.sdnq.config as _sdnq_config
+        _sdnq_config.opts.sdnq_dequantize_compile = False
+
         import dgenerate._patches.pyinstaller_transformers_patch
 
     import diffusers
