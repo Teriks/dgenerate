@@ -88,8 +88,6 @@ try:
 
     if os.environ.get('DGENERATE_PYINSTALLER', '0') == '1':
         import dgenerate._patches.pyinstaller_transformers_patch
-        import dgenerate.extras.sdnq.config as _sdnq_config
-        _sdnq_config.opts.sdnq_dequantize_compile = False
 
     import diffusers
     import transformers

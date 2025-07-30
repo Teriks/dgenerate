@@ -4,6 +4,7 @@ Replaces functionality from modules.shared.
 """
 
 import logging
+import os
 from typing import Optional
 
 # Create logger
@@ -14,7 +15,10 @@ class SDNQConfig:
 
     def __init__(self):
         # SDNQ specific options
-        self.sdnq_dequantize_compile = True  # Enable torch.compile for dequantization
+        if os.environ.get('DGENERATE_PYINSTALLER', '0') == '1':
+            self.sdnq_dequantize_compile = False  # Disable torch.compile for dequantization
+        else:
+            self.sdnq_dequantize_compile = True   # Enable torch.compile for dequantization
         self.diffusers_offload_mode = "none"  # Offload mode: "none", "sequential", "model"
 
     def set_dequantize_compile(self, enabled: bool):

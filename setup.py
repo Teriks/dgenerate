@@ -245,7 +245,7 @@ if __name__ != 'setup_as_library':
         if name in requires:
             requires.pop(name)
 
-    pyinstaller_requires = ['pyinstaller==6.13.0']
+    pyinstaller_requires = ['pyinstaller==6.14.2']
     sphinx_requires = ['sphinx_rtd_theme==3.0.2']
 
     extras: dict[str, list[str]] = {
