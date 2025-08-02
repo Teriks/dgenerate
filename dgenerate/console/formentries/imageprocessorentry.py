@@ -18,7 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
+import re
 import typing
 
 import dgenerate.console.resources as _resources
@@ -71,7 +71,7 @@ class _ImageProcessorEntry(_schemaentry._PluginSchemaEntry):
                 optional,
                 row
             )
-        elif param_name in {'image-processors', 'mask-processors'}:
+        elif re.match(r'.*(image|mask)-processors', param_name):
             raw = self._create_raw_type_entry(param_type, default_value, optional, options, row)
 
             dialog_state = dgenerate.console.util.DialogState()
