@@ -487,4 +487,4 @@ The DeepCache branch ID and interval can be specified with the ``--deep-cache-br
 
 Microsoft Region-Adaptive Sampling (RAS) has numerous configurable options that can be reviewed `here <https://github.com/microsoft/ras?tab=readme-ov-file#customize-hyperparameters>`__. Note that the ``--ras-index-fusion`` parameter is not compatible with SD3.5.
 
-The TeaCache threshold can be specified with the ``--tea-cache-rel-l1_threshold`` parameter. Information about this parameter can be reviewed `here <https://github.com/ali-vilab/TeaCache/blob/main/TeaCache4FLUX/README.md>`__.
+The TeaCache threshold can be specified with the ``--tea-cache-rel-l1-threshold`` parameter. Information about this parameter can be reviewed `here <https://github.com/ali-vilab/TeaCache/blob/main/TeaCache4FLUX/README.md>`__.
