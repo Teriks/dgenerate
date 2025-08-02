@@ -32,7 +32,7 @@ class MyDirective(_configrunnerplugin.ConfigRunnerPlugin):
         print(self.render_loop)
 
         # access to the ConfigRunner object running the config, you could add
-        # template variables / functions etc if desired. Or preform templating
+        # template variables / functions etc if desired. Or perform templating
         # operations on strings / files, and many other things.
         print(self.config_runner)
 

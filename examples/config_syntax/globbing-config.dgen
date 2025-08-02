@@ -1,14 +1,14 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 5.0.0
 
-# globbing can be preformed via shell expansion or using
+# globbing can be performed via shell expansion or using
 # the glob module inside jinja templates
 
 # note that shell globbing and home directory expansion
 # does not occur inside quoted strings
 
 # \echo can be use to show the results of globbing that
-# occurs during shell expansion, \print does not preform shell expansion
+# occurs during shell expansion, \print does not perform shell expansion
 
 # shell globs which produce 0 files are considered an error
 

@@ -21,7 +21,7 @@
 # bounding box is around the mans face on the right
 \set face_box 451x86x751x448
 
-# preform all steps mentioned in the list above at once
+# perform all steps mentioned in the list above at once
 # utilizing image input preprocessors and a post processor
 
 stabilityai/stable-diffusion-xl-base-1.0

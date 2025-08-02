@@ -6,7 +6,7 @@ through the use of the arguments ``--seed-image-processors``, ``--mask-image-pro
 ``--control-image-processors``. In addition, dgenerate's output can be post processed with the
 used of the ``--post-processors`` argument, which is useful for using the ``upscaler`` processor.
 An important note about ``--post-processors`` is that post processing occurs before any image grid
-rendering is preformed when ``--batch-grid-size`` is specified with a ``--batch-size`` greater than one,
+rendering is performed when ``--batch-grid-size`` is specified with a ``--batch-size`` greater than one,
 meaning that the output images are processed with your processor before being put into a grid.
 
 Each of these options can receive one or more specifications for image processing actions,

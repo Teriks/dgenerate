@@ -87,11 +87,11 @@ class MyPromptWeighter(_promptweighter.PromptWeighter):
 
     def cleanup(self):
         """
-        Preform any cleanup required after translating the pipeline arguments to embeds
+        Perform any cleanup required after translating the pipeline arguments to embeds
         """
 
         # if we created and large tensors or anything of the sort,
-        # we would move them back to the CPU here and preform any
+        # we would move them back to the CPU here and perform any
         # garbage collection that might be needed
 
         pass

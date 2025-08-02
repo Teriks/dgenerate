@@ -411,7 +411,7 @@ class DiffusionPipelineWrapper:
         :param latents_processor_loader: Plugin loader for latents processor implementations, if you pass ``None`` a default instance will be created.
         :param decoded_latents_image_processor_loader: Plugin loader for image processor implementations that process images decoded from incoming latents, if you pass ``None`` a default instance will be created.
         :param adetailer_detector_uris: adetailer subject detection model URIs, specifying this argument indicates ``img2img`` mode implicitly,
-            the pipeline wrapper will accept a single image and preform the adetailer inpainting algorithm on it using the provided
+            the pipeline wrapper will accept a single image and perform the adetailer inpainting algorithm on it using the provided
             detector URIs.
         :param adetailer_crop_control_image: Should adetailer crop any provided ControlNet control image
             in the same way that it crops the generated mask to the detection area? Otherwise,
@@ -3909,7 +3909,7 @@ class DiffusionPipelineWrapper:
         """
         if self._pipeline is None:
             raise _pipelines.UnsupportedPipelineConfigError(
-                'Cannot decode latents as a pipeline has not been initialized, you must preform a generation first.'
+                'Cannot decode latents as a pipeline has not been initialized, you must perform a generation first.'
             )
 
         if not hasattr(self._pipeline, 'vae') or self._pipeline.vae is None:
@@ -3956,7 +3956,7 @@ class DiffusionPipelineWrapper:
 
         if self._pipeline is None:
             raise _pipelines.UnsupportedPipelineConfigError(
-                'Cannot decode latents as a pipeline has not been initialized, you must preform a generation first.'
+                'Cannot decode latents as a pipeline has not been initialized, you must perform a generation first.'
             )
 
         if not hasattr(self._pipeline, 'vae') or self._pipeline.vae is None:

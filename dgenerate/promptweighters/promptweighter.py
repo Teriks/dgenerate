@@ -280,6 +280,6 @@ class PromptWeighter(_plugin.Plugin, abc.ABC):
 
     def cleanup(self):
         """
-        Preform any cleanup required after translating the pipeline arguments to embeds
+        Perform any cleanup required after translating the pipeline arguments to embeds
         """
         pass

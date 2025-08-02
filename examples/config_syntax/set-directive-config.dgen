@@ -1,8 +1,8 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 5.0.0
 
-# The \set directive behaves like a macro, and does not preform any shell parsing.
-# It preforms template expansion and then environmental variable expansion in that
+# The \set directive behaves like a macro, and does not perform any shell parsing.
+# It performs template expansion and then environmental variable expansion in that
 # order in all cases
 
 

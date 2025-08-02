@@ -19,7 +19,7 @@
 
 \set mask {{ first(last_images) }}
 
-# The following basically preforms a sort of adetailer like operation
+# The following basically performs a sort of adetailer like operation
 # to inpaint the face, the inpainting is processed around SDXL native
 # resolution with a bit of padding around the cropped down image/mask
 # then the generated rectangular image is pasted back over the background {{image}}

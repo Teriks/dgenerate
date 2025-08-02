@@ -281,9 +281,9 @@ Help Output
             single value that indicates what YOLO detection indices to keep, the index values start
             at zero. Detections are sorted by their top left bounding box coordinate from left to right,
             top to bottom, by (confidence descending). The order of detections in the image is identical to
-            the reading order of words on a page (english). Inpainting will only be preformed on the
+            the reading order of words on a page (english). Inpainting will only be performed on the
             specified detection indices, if no indices are specified, then inpainting
-            will be preformed on all detections. This filter is applied after class-filter.
+            will be performed on all detections. This filter is applied after class-filter.
             
             Example "index-filter" values:
             
@@ -370,8 +370,8 @@ Help Output
             A list index values that indicates what adetailer YOLO detection indices to keep, the index values
             start at zero. Detections are sorted by their top left bounding box coordinate from left to right,
             top to bottom, by (confidence descending). The order of detections in the image is identical to the
-            reading order of words on a page (english). Inpainting will only be preformed on the specified
-            detection indices, if no indices are specified, then inpainting will be preformed on all detections.
+            reading order of words on a page (english). Inpainting will only be performed on the specified
+            detection indices, if no indices are specified, then inpainting will be performed on all detections.
             This filter is applied after class-filter.
             ------------------------------------------
       -ads, --adetailer-mask-shapes ADETAILER_MASK_SHAPE [ADETAILER_MASK_SHAPE ...]
@@ -968,7 +968,7 @@ Help Output
       -qm, --quantizer-map SUBMODULE [SUBMODULE ...]
             Global quantization map, used with --quantizer.
             
-            This argument can be used to specify which sub-modules have the quantization pre-process preformed
+            This argument can be used to specify which sub-modules have the quantization pre-process performed
             on them.
             
             By default when a --quantizer URI is specified, the UNet / Transformer, and all Text Encoders are
@@ -1723,7 +1723,7 @@ Help Output
             ----------------------------------------------------------------------------------------------
       -pu, --prompt-upscaler PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]
             Specify a prompt upscaler implementation by URI, for example: --prompt-weighter dynamicprompts.
-            Prompt upscaler plugins can preform pure text processing and expansion on incoming prompt text,
+            Prompt upscaler plugins can perform pure text processing and expansion on incoming prompt text,
             possibly resulting in more generation steps (variations) if the prompt upscaler returns multiple
             prompts per input prompt.
             
@@ -2557,7 +2557,7 @@ MacOS Install (Apple Silicon Only)
 
 MacOS on Apple Silicon (arm64) is experimentally supported.
 
-Rendering can be preformed in CPU only mode, and with hardware acceleration using ``--device mps`` (Metal Performance Shaders).
+Rendering can be performed in CPU only mode, and with hardware acceleration using ``--device mps`` (Metal Performance Shaders).
 
 The default device on MacOS is ``mps`` unless specified otherwise.
 
@@ -2952,7 +2952,7 @@ these guidance models operate on images in pixel space.
 Inpainting
 ==========
 
-Inpainting on an image can be preformed by providing a mask image with your image seed. This mask should be a black and white image
+Inpainting on an image can be performed by providing a mask image with your image seed. This mask should be a black and white image
 of identical size to your image seed.  White areas of the mask image will be used to tell the AI what areas of the seed image should be filled
 in with generated content.
 
@@ -2964,7 +2964,7 @@ Some possible definitions for inpainting are:
     * ``--image-seeds "my-image-seed.png;mask=my-mask-image.png"``
 
 The format is your image seed and mask image separated by ``;``, optionally ``mask`` can be named argument.
-The alternate syntax is for disambiguation when preforming img2img or inpainting operations while `Specifying ControlNets`_
+The alternate syntax is for disambiguation when performing img2img or inpainting operations while `Specifying ControlNets`_
 or other operations where keyword arguments might be necessary for disambiguation such as per image seed `Animation Slicing`_,
 and the specification of the image from a previous Deep Floyd stage using the ``floyd`` argument.
 
@@ -3016,7 +3016,7 @@ Here are some possible definitions:
     * ``--image-seeds "my-image-seed.png;mask=my-mask-image.png;resize=512x512"`` (inpainting)
 
 The alternate syntax with named arguments is for disambiguation when `Specifying ControlNets`_, or
-preforming per image seed `Animation Slicing`_, or specifying the previous Deep Floyd stage output
+performing per image seed `Animation Slicing`_, or specifying the previous Deep Floyd stage output
 with the ``floyd`` keyword argument.
 
 When one dimension is specified, that dimension is the width, and the height.
@@ -3048,7 +3048,7 @@ Some possible definitions with ``align``:
     * ``--image-seeds "my-image-seed.png;resize=1000;align=64"`` (equates to ``960x960``)
     * ``--image-seeds "my-image-seed.png;align=64"`` (force the original size to 64 pixel alignment)
 
-The following example preforms img2img generation, followed by inpainting generation using 2 image seed definitions.
+The following example performs img2img generation, followed by inpainting generation using 2 image seed definitions.
 The involved images are resized using the basic syntax with no keyword arguments present in the image seeds.
 
 .. code-block:: bash
@@ -4573,7 +4573,7 @@ If you are loading a .safetensors or other file from a path on disk, simply do:
     --sdxl-refiner my_refinermodel.safetensors
 
 
-When preforming inpainting or when using `ControlNets <#specifying-control-nets>`_, the
+When performing inpainting or when using `ControlNets <#specifying-control-nets>`_, the
 refiner will automatically operate in edit mode instead of cooperative denoising mode.
 Edit mode can be forced in other situations with the option ``--sdxl-refiner-edit``.
 
@@ -6141,7 +6141,7 @@ The translate prompt upscaler
 The ``translate`` upscaler can use ``argostranslate`` or `Helsinki-NLP <https://huggingface.co/Helsinki-NLP>`_ opus models via
 ``transformers`` to translate your prompts from one language to another locally.
 
-All translation models require a one time download that is preformed when the ``translate`` prompt upscaler is first invoked
+All translation models require a one time download that is performed when the ``translate`` prompt upscaler is first invoked
 with specific ``input`` and ``output`` values.
 
 The translator upscaler defaults to translating your provided ``input`` language code to english, which is useful for CLIP
@@ -7126,7 +7126,7 @@ through the use of the arguments ``--seed-image-processors``, ``--mask-image-pro
 ``--control-image-processors``. In addition, dgenerate's output can be post processed with the
 used of the ``--post-processors`` argument, which is useful for using the ``upscaler`` processor.
 An important note about ``--post-processors`` is that post processing occurs before any image grid
-rendering is preformed when ``--batch-grid-size`` is specified with a ``--batch-size`` greater than one,
+rendering is performed when ``--batch-grid-size`` is specified with a ``--batch-size`` greater than one,
 meaning that the output images are processed with your processor before being put into a grid.
 
 Each of these options can receive one or more specifications for image processing actions,
@@ -7630,7 +7630,7 @@ The help output of ``image-process`` is as follows:
             Indicate that it is okay to overwrite files, instead of appending a duplicate suffix.
             -------------------------------------------------------------------------------------
       -r, --resize RESIZE
-            Preform naive image resizing, the best resampling algorithm is auto selected.
+            Perform naive image resizing, the best resampling algorithm is auto selected.
             -----------------------------------------------------------------------------
       -na, --no-aspect
             Make --resize ignore aspect ratio.
@@ -8031,7 +8031,7 @@ The help output of ``prompt-upscale`` is as follows:
                           [-of OUTPUT_FORMAT] [-o OUTPUT] [-q QUOTE] [-ofm]
                           prompts [prompts ...]
     
-    Upscale prompts without preforming image generation.
+    Upscale prompts without performing image generation.
     
     positional arguments:
       prompts
@@ -8224,7 +8224,7 @@ If you are using dgenerate interactively in shell mode or from the Console UI,
 this will occur without consequence when the interpreter process exits.
 
 Note that if any other process runs diffusion / inference via torch on
-the same GPU as this image processor while ncnn is preforming inference,
+the same GPU as this image processor while ncnn is performing inference,
 you will likely encounter a segfault in either of the processes and
 a very hard crash.
 
@@ -8521,10 +8521,10 @@ adetailer processor help output below.
         The "local-files-only" argument specifies that dgenerate should not attempt to download any model files,
         and to only look for them locally in the cache or otherwise.
     
-        The "seed" argument can be used to specify a specific seed for diffusion when preforming inpainting on the
+        The "seed" argument can be used to specify a specific seed for diffusion when performing inpainting on the
         input image.
     
-        The "inference-steps" argument specifies the amount of inference steps when preforming inpainting on the
+        The "inference-steps" argument specifies the amount of inference steps when performing inpainting on the
         input image.
     
         The "guidance-scale" argument specifies the guidance scale for inpainting.
@@ -8572,8 +8572,8 @@ adetailer processor help output below.
         The "index-filter" argument is a list values or a single value that indicates what YOLO detection indices
         to keep, the index values start at zero. Detections are sorted by their top left bounding box coordinate
         from left to right, top to bottom, by (confidence descending). The order of detections in the image is
-        identical to the reading order of words on a page (english). Inpainting will only be preformed on the
-        specified detection indices, if no indices are specified, then inpainting will be preformed on all
+        identical to the reading order of words on a page (english). Inpainting will only be performed on the
+        specified detection indices, if no indices are specified, then inpainting will be performed on all
         detections.
     
         Example "index-filter" values:
@@ -9107,7 +9107,7 @@ provided in the image preview pane context menu.
     
     ==============================================================================================================
 
-You can combine this processor with the ``crop`` and ``paste`` processor to preform
+You can combine this processor with the ``crop`` and ``paste`` processor to perform
 manual / interactive adetailer like editing.
 
 .. code-block:: jinja
@@ -9135,7 +9135,7 @@ manual / interactive adetailer like editing.
     # bounding box is around the mans face on the right
     \set face_box 451x86x751x448
     
-    # preform all steps mentioned in the list above at once
+    # perform all steps mentioned in the list above at once
     # utilizing image input preprocessors and a post processor
     
     stabilityai/stable-diffusion-xl-base-1.0
@@ -10965,8 +10965,8 @@ This is for assigning literal text values to a template variable.
     #! /usr/bin/env dgenerate --file
     #! dgenerate 5.0.0
     
-    # The \set directive behaves like a macro, and does not preform any shell parsing.
-    # It preforms template expansion and then environmental variable expansion in that
+    # The \set directive behaves like a macro, and does not perform any shell parsing.
+    # It performs template expansion and then environmental variable expansion in that
     # order in all cases
     
     
@@ -11007,7 +11007,7 @@ feature to assign template variables.
     #! /usr/bin/env dgenerate --file
     #! dgenerate 5.0.0
     
-    # The \sete directive preforms full shell parsing just like \echo, the difference
+    # The \sete directive performs full shell parsing just like \echo, the difference
     # is that instead of just printing the parsed tokens back, it assigns
     # them to a template variable as a python array.
     
@@ -11193,14 +11193,14 @@ The glob modules is set to the ``glob`` template variable, and the ``os.path`` m
     #! /usr/bin/env dgenerate --file
     #! dgenerate 5.0.0
     
-    # globbing can be preformed via shell expansion or using
+    # globbing can be performed via shell expansion or using
     # the glob module inside jinja templates
     
     # note that shell globbing and home directory expansion
     # does not occur inside quoted strings
     
     # \echo can be use to show the results of globbing that
-    # occurs during shell expansion, \print does not preform shell expansion
+    # occurs during shell expansion, \print does not perform shell expansion
     
     # shell globs which produce 0 files are considered an error
     
@@ -11390,7 +11390,7 @@ Most if not all behaviors are covered in the example below.
     # dgenerates string escaping rules are something between bash and python
     # for these examples, \echo will be used.
     
-    # \echo preforms full shell parsing and prints the result to stdout
+    # \echo performs full shell parsing and prints the result to stdout
     # so it is useful for showing what escaping or expansion results in
     
     # Built in directives such as \set, \setp, \unset, \env, and \unset_env
@@ -11562,7 +11562,7 @@ similar to the behavior of ``\set``
     \print {{ header }} ${PATH}
     \print {{ header }} %PATH%
 
-The ``\echo`` directive preforms shell expansion into tokens before printing, like ``\sete``,
+The ``\echo`` directive performs shell expansion into tokens before printing, like ``\sete``,
 This can be useful for debugging / displaying the results of a shell expansion.
 
 .. code-block:: jinja

@@ -566,7 +566,7 @@ class ImageProcessor(_plugin.Plugin, abc.ABC):
                 aspect_correct: bool = True,
                 align: int | None = None):
         """
-        Preform image processing on an image, including the requested resizing step.
+        Perform image processing on an image, including the requested resizing step.
 
         Invokes the image processor pre and post resizing with
         appropriate arguments and correct resource management.

@@ -206,8 +206,8 @@ class DiffusionArguments(_types.SetFromMixin):
 
     floyd_image: _types.OptionalImageOrTensor = None
     """
-    The output image or tensor of the last stage when preforming img2img or 
-    inpainting generation with Deep Floyd. When preforming txt2img 
+    The output image or tensor of the last stage when performing img2img or 
+    inpainting generation with Deep Floyd. When performing txt2img 
     generation :py:attr:`DiffusionArguments.image` is used.
     
     When a tensor is provided, it represents latent space data from a previous Floyd stage.
@@ -306,7 +306,7 @@ class DiffusionArguments(_types.SetFromMixin):
 
     second_model_inference_steps: _types.OptionalInteger = None
     """
-    Override the default amount of inference steps preformed by the SDXL refiner or Stable Cascade decoder.
+    Override the default amount of inference steps performed by the SDXL refiner or Stable Cascade decoder.
     """
 
     second_model_guidance_scale: _types.OptionalFloat = None
@@ -791,8 +791,8 @@ class DiffusionArguments(_types.SetFromMixin):
     the index values start at zero. Detections are sorted by their top left bounding box 
     coordinate from left to right, top to bottom, by (confidence descending). The order of 
     detections in the image is identical to the reading order of words on a page (english). 
-    Inpainting will only be preformed on the specified detection indices, if no indices 
-    are specified, then inpainting will be preformed on all detections.
+    Inpainting will only be performed on the specified detection indices, if no indices 
+    are specified, then inpainting will be performed on all detections.
     This filter is applied after class-filter.
     """
 

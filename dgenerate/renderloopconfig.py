@@ -1271,8 +1271,8 @@ class RenderLoopConfig(_types.SetFromMixin):
     the index values start at zero. Detections are sorted by their top left bounding box 
     coordinate from left to right, top to bottom, by (confidence descending). The order of 
     detections in the image is identical to the reading order of words on a page (english). 
-    Inpainting will only be preformed on the specified detection indices, if no indices 
-    are specified, then inpainting will be preformed on all detections.
+    Inpainting will only be performed on the specified detection indices, if no indices 
+    are specified, then inpainting will be performed on all detections.
     This filter is applied after class-filter.
     """
 

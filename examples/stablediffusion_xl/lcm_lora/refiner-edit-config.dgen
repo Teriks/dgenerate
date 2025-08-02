@@ -17,7 +17,7 @@ stabilityai/stable-diffusion-xl-base-1.0 --model-type sdxl
 
 --scheduler LCMScheduler # the main model uses the LCMScheduler
 --model-cpu-offload
---inference-steps 8 # The main model will preform this amount of inference steps in full, in edit mode
+--inference-steps 8 # The main model will perform this amount of inference steps in full, in edit mode
 --guidance-scales 1
 --gen-seeds 2
 --output-size 1024

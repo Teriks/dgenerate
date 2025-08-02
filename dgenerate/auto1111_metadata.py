@@ -162,7 +162,7 @@ class _ParseOnlyInvoker:
                 width=_textprocessing.long_text_wrap_width()) + '\n'
 
         _messages.debug_log(
-            f"preforming Automatic1111 metadata "
+            f"performing Automatic1111 metadata "
             f"conversion on dgenerate config:\n\n{args_wrapped}",
             underline=True
         )

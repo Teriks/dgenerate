@@ -24,7 +24,7 @@ Here are some possible definitions:
     * ``--image-seeds "my-image-seed.png;mask=my-mask-image.png;resize=512x512"`` (inpainting)
 
 The alternate syntax with named arguments is for disambiguation when `Specifying ControlNets`_, or
-preforming per image seed `Animation Slicing`_, or specifying the previous Deep Floyd stage output
+performing per image seed `Animation Slicing`_, or specifying the previous Deep Floyd stage output
 with the ``floyd`` keyword argument.
 
 When one dimension is specified, that dimension is the width, and the height.
@@ -56,7 +56,7 @@ Some possible definitions with ``align``:
     * ``--image-seeds "my-image-seed.png;resize=1000;align=64"`` (equates to ``960x960``)
     * ``--image-seeds "my-image-seed.png;align=64"`` (force the original size to 64 pixel alignment)
 
-The following example preforms img2img generation, followed by inpainting generation using 2 image seed definitions.
+The following example performs img2img generation, followed by inpainting generation using 2 image seed definitions.
 The involved images are resized using the basic syntax with no keyword arguments present in the image seeds.
 
 .. code-block:: bash

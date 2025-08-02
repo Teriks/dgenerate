@@ -1253,7 +1253,7 @@ class RenderLoop:
         pipeline_wrapper = self._create_pipeline_wrapper()
 
         def iterate_image_seeds():
-            # image seeds have already had logical and syntax validation preformed
+            # image seeds have already had logical and syntax validation performed
             for idx, uri_to_parsed in enumerate(zip(self._c_config.image_seeds, self._c_config.parsed_image_seeds)):
                 yield uri_to_parsed[0], uri_to_parsed[1], self._c_config.seeds[idx % len(self._c_config.seeds)]
 
@@ -1490,7 +1490,7 @@ class RenderLoop:
                                 )
 
                             if image_seed_frame.frame_index == 0:
-                                # Preform on first frame write
+                                # Perform on first frame write
 
                                 if not not_writing_animation_file:
 

@@ -1043,9 +1043,9 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     single value that indicates what YOLO detection indices to keep, the index values start
                     at zero. Detections are sorted by their top left bounding box coordinate from left to right, 
                     top to bottom, by (confidence descending). The order of detections in the image is identical to
-                    the reading order of words on a page (english). Inpainting will only be preformed on the 
+                    the reading order of words on a page (english). Inpainting will only be performed on the 
                     specified detection indices, if no indices are specified, then inpainting 
-                    will be preformed on all detections. This filter is applied after class-filter.
+                    will be performed on all detections. This filter is applied after class-filter.
                 
                     Example "index-filter" values:
                     
@@ -1170,8 +1170,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     the index values start at zero. Detections are sorted by their top left bounding box 
                     coordinate from left to right, top to bottom, by (confidence descending). The order of 
                     detections in the image is identical to the reading order of words on a page (english). 
-                    Inpainting will only be preformed on the specified detection indices, if no indices 
-                    are specified, then inpainting will be preformed on all detections.
+                    Inpainting will only be performed on the specified detection indices, if no indices 
+                    are specified, then inpainting will be performed on all detections.
                     This filter is applied after class-filter.
                     """)
     )
@@ -1954,7 +1954,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             help=f"""Global quantization map, used with --quantizer.
             
             This argument can be used to specify which sub-modules have the quantization pre-process
-            preformed on them.
+            performed on them.
             
             By default when a --quantizer URI is specified, the UNet / Transformer, and all Text Encoders
             are processed.
@@ -3194,7 +3194,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             metavar='PROMPT_UPSCALER_URI', dest='prompt_upscaler_uri', action='store', nargs='+',
             default=None, type=_type_prompt_upscaler,
             help="""Specify a prompt upscaler implementation by URI, for example: --prompt-weighter dynamicprompts.
-                    Prompt upscaler plugins can preform pure text processing and expansion on incoming prompt text, 
+                    Prompt upscaler plugins can perform pure text processing and expansion on incoming prompt text, 
                     possibly resulting in more generation steps (variations) if the prompt upscaler returns multiple 
                     prompts per input prompt.
                     
