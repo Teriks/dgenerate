@@ -483,8 +483,8 @@ FreeU parameters differ by model type and can be specified using the ``--freeu-p
 
 Faster generation speeds can be achieved by using DeepCache, Microsoft RAS, or TeaCache, but may lead to reduced image quality. The default values for each of these features are conservative, providing some speed increases without major impacts on quality.
 
-The DeepCache branch ID and interval can be specified with the ``--deep-cache-branch-id`` and ``--deep-cache-interval`` options. Benchmarks for different parameters can be reviewed `here <https://huggingface.co/docs/diffusers/main/en/optimization/deepcache#benchmark>`__.
+The DeepCache branch ID and interval can be specified with the ``--deep-cache-branch-ids`` and ``--deep-cache-intervals`` options. Benchmarks for different parameters can be reviewed `here <https://huggingface.co/docs/diffusers/main/en/optimization/deepcache#benchmark>`__.
 
 Microsoft Region-Adaptive Sampling (RAS) has numerous configurable options that can be reviewed `here <https://github.com/microsoft/ras?tab=readme-ov-file#customize-hyperparameters>`__. Note that the ``--ras-index-fusion`` parameter is not compatible with SD3.5.
 
-The TeaCache threshold can be specified with the ``--tea-cache-rel-l1-threshold`` parameter. Information about this parameter can be reviewed `here <https://github.com/ali-vilab/TeaCache/blob/main/TeaCache4FLUX/README.md>`__.
+The TeaCache threshold can be specified with the ``--tea-cache-rel-l1-thresholds`` parameter. Information about this parameter can be reviewed `here <https://github.com/ali-vilab/TeaCache/blob/main/TeaCache4FLUX/README.md>`__.
