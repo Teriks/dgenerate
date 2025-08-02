@@ -4,7 +4,7 @@
 # dgenerates string escaping rules are something between bash and python
 # for these examples, \echo will be used.
 
-# \echo preforms full shell parsing and prints the result to stdout
+# \echo performs full shell parsing and prints the result to stdout
 # so it is useful for showing what escaping or expansion results in
 
 # Built in directives such as \set, \setp, \unset, \env, and \unset_env

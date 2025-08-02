@@ -32,7 +32,7 @@
 # This is so the resulting image aligns well with the background
 # we are going to paste on to
 
-# preform the diffusion inpainting at near native resolution
+# perform the diffusion inpainting at near native resolution
 # scale up the cropped images with correct aspect, to 1024 width
 # the default behavior is aspect correct, width determined by --output-size
 

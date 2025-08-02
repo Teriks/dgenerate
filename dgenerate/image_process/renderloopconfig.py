@@ -135,7 +135,7 @@ class ImageProcessRenderLoopConfig(_types.SetFromMixin):
 
     def check(self, attribute_namer: typing.Callable[[str], str] = None):
         """
-        Preforms logical validation on the configuration.
+        Performs logical validation on the configuration.
 
         This may modify the configuration.
         """

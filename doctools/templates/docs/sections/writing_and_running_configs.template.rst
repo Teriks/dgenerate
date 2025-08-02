@@ -345,7 +345,7 @@ similar to the behavior of ``\set``
     \print {{ header }} ${PATH}
     \print {{ header }} %PATH%
 
-The ``\echo`` directive preforms shell expansion into tokens before printing, like ``\sete``,
+The ``\echo`` directive performs shell expansion into tokens before printing, like ``\sete``,
 This can be useful for debugging / displaying the results of a shell expansion.
 
 .. code-block:: jinja

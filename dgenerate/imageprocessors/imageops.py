@@ -207,7 +207,7 @@ class PosterizeProcessor(_imageprocessor.ImageProcessor):
 
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         """
-        Posterize operation is preformed by this method if ``pre_resize`` constructor argument was ``True``.
+        Posterize operation is performed by this method if ``pre_resize`` constructor argument was ``True``.
 
         :param image: image to process
         :param resize_resolution: purely informational, is unused by this imageprocessor
@@ -219,7 +219,7 @@ class PosterizeProcessor(_imageprocessor.ImageProcessor):
 
     def impl_post_resize(self, image: PIL.Image.Image):
         """
-        Posterize operation is preformed by this method if ``pre_resize`` constructor argument was ``False``.
+        Posterize operation is performed by this method if ``pre_resize`` constructor argument was ``False``.
 
         :param image: image to process
         :return: the posterized image
@@ -269,7 +269,7 @@ class SolarizeProcessor(_imageprocessor.ImageProcessor):
 
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         """
-        Solarize operation is preformed by this method if ``pre_resize`` constructor argument was ``True``.
+        Solarize operation is performed by this method if ``pre_resize`` constructor argument was ``True``.
 
         :param image: image to process
         :param resize_resolution: purely informational, is unused by this imageprocessor
@@ -281,7 +281,7 @@ class SolarizeProcessor(_imageprocessor.ImageProcessor):
 
     def impl_post_resize(self, image: PIL.Image.Image):
         """
-        Solarize operation is preformed by this method if ``pre_resize`` constructor argument was ``False``.
+        Solarize operation is performed by this method if ``pre_resize`` constructor argument was ``False``.
 
         :param image: image to process
         :return: the solarized image
@@ -402,7 +402,7 @@ class ResizeProcessor(_imageprocessor.ImageProcessor):
 
     def impl_post_resize(self, image: PIL.Image.Image):
         """
-        Preform the resize operation.
+        Perform the resize operation.
 
         :param image: The image after being resized by dgenerate.
         :return: The resized image.
@@ -523,7 +523,7 @@ class LetterboxProcessor(_imageprocessor.ImageProcessor):
 
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         """
-        Letterbox operation is preformed by this method if ``pre_resize`` constructor argument was ``True``.
+        Letterbox operation is performed by this method if ``pre_resize`` constructor argument was ``True``.
 
         :param image: image to process
         :param resize_resolution: purely informational, is unused by this imageprocessor
@@ -535,7 +535,7 @@ class LetterboxProcessor(_imageprocessor.ImageProcessor):
 
     def impl_post_resize(self, image: PIL.Image.Image):
         """
-        Letterbox operation is preformed by this method if ``pre_resize`` constructor argument was ``False``.
+        Letterbox operation is performed by this method if ``pre_resize`` constructor argument was ``False``.
 
         :param image: image to process
         :return: the letterboxed image

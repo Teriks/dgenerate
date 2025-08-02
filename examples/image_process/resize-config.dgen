@@ -4,7 +4,7 @@
 \set device_switch {{ '--device '+injected_device if injected_device else '' }}
 
 
-# image process can be used without any processor URIs to preform
+# image process can be used without any processor URIs to perform
 # simple resizing and pixel alignment on an image, --align is 8 by default
 # for 8 pixel alignment
 

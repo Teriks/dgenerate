@@ -1,7 +1,7 @@
 Inpainting
 ==========
 
-Inpainting on an image can be preformed by providing a mask image with your image seed. This mask should be a black and white image
+Inpainting on an image can be performed by providing a mask image with your image seed. This mask should be a black and white image
 of identical size to your image seed.  White areas of the mask image will be used to tell the AI what areas of the seed image should be filled
 in with generated content.
 
@@ -13,7 +13,7 @@ Some possible definitions for inpainting are:
     * ``--image-seeds "my-image-seed.png;mask=my-mask-image.png"``
 
 The format is your image seed and mask image separated by ``;``, optionally ``mask`` can be named argument.
-The alternate syntax is for disambiguation when preforming img2img or inpainting operations while `Specifying ControlNets`_
+The alternate syntax is for disambiguation when performing img2img or inpainting operations while `Specifying ControlNets`_
 or other operations where keyword arguments might be necessary for disambiguation such as per image seed `Animation Slicing`_,
 and the specification of the image from a previous Deep Floyd stage using the ``floyd`` argument.
 

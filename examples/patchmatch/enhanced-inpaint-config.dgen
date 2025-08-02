@@ -4,7 +4,7 @@
 # Remove the dog from the image, use patchmatch
 # to generate an approximate inpainting using
 # existing patches of the image before
-# preforming diffusion based inpainting
+# performing diffusion based inpainting
 
 \set image ../media/dog-on-bench.png
 \set mask ../media/dog-on-bench-mask.png

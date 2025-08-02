@@ -2,7 +2,7 @@
 #! dgenerate 5.0.0
 
 # The prompt_upscale directive can be use to upscale prompts with prompt upscaler plugins,
-# without preforming any image generation. This directive is designed in the same
+# without performing any image generation. This directive is designed in the same
 # vein as dgenerate --sub-command image-process and the \image_process directive
 
 # It allows you to output the prompts in various formats such as plain text

@@ -111,7 +111,7 @@ If you are loading a .safetensors or other file from a path on disk, simply do:
     --sdxl-refiner my_refinermodel.safetensors
 
 
-When preforming inpainting or when using `ControlNets <#specifying-control-nets>`_, the
+When performing inpainting or when using `ControlNets <#specifying-control-nets>`_, the
 refiner will automatically operate in edit mode instead of cooperative denoising mode.
 Edit mode can be forced in other situations with the option ``--sdxl-refiner-edit``.
 

@@ -75,7 +75,7 @@ class SubCommand(_plugin.Plugin, abc.ABC):
         """
         Inheritor must implement.
 
-        Preform the sub-command functionality and return a return code.
+        Perform the sub-command functionality and return a return code.
 
         :return: return code.
         """

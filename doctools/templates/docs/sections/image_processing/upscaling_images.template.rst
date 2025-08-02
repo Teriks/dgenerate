@@ -155,7 +155,7 @@ If you are using dgenerate interactively in shell mode or from the Console UI,
 this will occur without consequence when the interpreter process exits.
 
 Note that if any other process runs diffusion / inference via torch on
-the same GPU as this image processor while ncnn is preforming inference,
+the same GPU as this image processor while ncnn is performing inference,
 you will likely encounter a segfault in either of the processes and
 a very hard crash.
 

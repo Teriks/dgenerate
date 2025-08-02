@@ -466,7 +466,7 @@ def partial_deep_copy_container(container: list | tuple | dict | set):
 def type_check_struct(obj,
                       attribute_namer: typing.Callable[[str], str] | None = None):
     """
-    Preform some basic type checks on a struct like objects attributes using their type hints.
+    Perform some basic type checks on a struct like objects attributes using their type hints.
 
     This function can only handle ``typing.Union`` and ``types.UnionType`` constructs in a very basic capacity.
 

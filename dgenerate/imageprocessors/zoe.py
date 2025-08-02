@@ -37,7 +37,7 @@ class ZoeDepthProcessor(_imageprocessor.ImageProcessor):
     """
     zoe depth detector, a SOTA depth estimation model which produces high-quality depth maps.
 
-    The "gamma-corrected" argument determines if gamma correction is preformed on the produced depth math.
+    The "gamma-corrected" argument determines if gamma correction is performed on the produced depth math.
 
     The "detect-resolution" argument is the resolution the image is resized to internal to the processor before
     detection is run on it. It should be a single dimension for example: "detect-resolution=512" or the X/Y dimensions

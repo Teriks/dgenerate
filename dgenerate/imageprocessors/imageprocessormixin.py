@@ -72,12 +72,12 @@ class ImageProcessorMixin:
                       aspect_correct: bool = True,
                       align: int | None = None):
         """
-        Preform image processing on an image, including the requested resizing step.
+        Perform image processing on an image, including the requested resizing step.
 
         Invokes the assigned image processor on an image.
 
         If no processor is assigned or the processor is disabled, only necessary
-        resizing will be preformed based on the given arguments.
+        resizing will be performed based on the given arguments.
 
         The original image will be closed if the processor returns a new image
         instead of modifying it in place, you should not count on the original image

@@ -60,7 +60,7 @@ def _type_prompts(prompt):
 
 class PromptUpscaleSubCommand(_subcommand.SubCommand):
     """
-    Upscale prompts without preforming image generation.
+    Upscale prompts without performing image generation.
 
     This allows you to run prompt upscalers on prompts and simply output the results.
 
@@ -74,7 +74,7 @@ class PromptUpscaleSubCommand(_subcommand.SubCommand):
 
         self._parser = parser = _b_util.DirectiveArgumentParser(
             prog=program_name,
-            description='Upscale prompts without preforming image generation.')
+            description='Upscale prompts without performing image generation.')
 
         self._output_list = output_list
 

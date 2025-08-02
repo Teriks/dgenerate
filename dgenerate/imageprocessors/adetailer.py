@@ -105,10 +105,10 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
     otherwise.
 
     The "seed" argument can be used to specify a specific seed for diffusion
-    when preforming inpainting on the input image.
+    when performing inpainting on the input image.
 
     The "inference-steps" argument specifies the amount of inference steps
-    when preforming inpainting on the input image.
+    when performing inpainting on the input image.
 
     The "guidance-scale" argument specifies the guidance scale for inpainting.
 
@@ -166,8 +166,8 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
     sorted by their top left bounding box coordinate from left to right, top to bottom,
     by (confidence descending). The order of detections in the image is identical to
     the reading order of words on a page (english). Inpainting will only be
-    preformed on the specified detection indices, if no indices are specified, then
-    inpainting will be preformed on all detections.
+    performed on the specified detection indices, if no indices are specified, then
+    inpainting will be performed on all detections.
 
     Example "index-filter" values:
 
@@ -406,7 +406,7 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
         if last_pipe is None:
             raise self.argument_error(
                 'adetailer could not find the last image generation pipeline that was used '
-                'for image generation, please preform an image generation operation before attempting to '
+                'for image generation, please perform an image generation operation before attempting to '
                 'use this processor. This processor is best used with the --post-processors option '
                 'of dgenerate. It is possible however, to use this processor elsewhere in a config '
                 'script if image generation has occurred previously. It will re-use the last '

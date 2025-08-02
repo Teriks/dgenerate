@@ -2,7 +2,7 @@
 #! dgenerate 5.0.0
 
 # You can use any SDXL model you want in combination with the adetailer inpainting algorithm
-# this can be preformed on any image of your choosing in this manner
+# this can be performed on any image of your choosing in this manner
 
 # This can be used for highly configurable face detailing on diffusion output, or
 # for face swapping and other interesting effects

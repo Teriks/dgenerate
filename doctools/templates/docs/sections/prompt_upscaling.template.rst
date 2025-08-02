@@ -112,7 +112,7 @@ The translate prompt upscaler
 The ``translate`` upscaler can use ``argostranslate`` or `Helsinki-NLP <https://huggingface.co/Helsinki-NLP>`_ opus models via
 ``transformers`` to translate your prompts from one language to another locally.
 
-All translation models require a one time download that is preformed when the ``translate`` prompt upscaler is first invoked
+All translation models require a one time download that is performed when the ``translate`` prompt upscaler is first invoked
 with specific ``input`` and ``output`` values.
 
 The translator upscaler defaults to translating your provided ``input`` language code to english, which is useful for CLIP

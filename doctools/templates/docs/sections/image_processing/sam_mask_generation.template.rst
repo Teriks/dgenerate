@@ -18,7 +18,7 @@ provided in the image preview pane context menu.
 
 @COMMAND_OUTPUT[dgenerate --no-stdin --image-processor-help u-sam]
 
-You can combine this processor with the ``crop`` and ``paste`` processor to preform
+You can combine this processor with the ``crop`` and ``paste`` processor to perform
 manual / interactive adetailer like editing.
 
 @EXAMPLE[@PROJECT_DIR/examples/sam/manual-adetailer-config.dgen]

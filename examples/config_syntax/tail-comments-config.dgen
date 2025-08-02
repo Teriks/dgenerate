@@ -23,7 +23,7 @@
 
 
 # when the comment token exists inside an uncompleted string, such as
-# when you are preforming a continuation on a prompt, you must escape it
+# when you are performing a continuation on a prompt, you must escape it
 # if you want it to appear literally. However, a quoted string always quotes
 # the comment token, so the first string in this case does not need an escape
 

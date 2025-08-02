@@ -44,7 +44,7 @@
 .. data:: DEFAULT_FLOYD_SUPERRESOLUTION_IMG2IMG_NOISE_LEVEL
     :annotation: = 250
 
-    Default noise level for floyd super resolution upscalers when preforming img2img.
+    Default noise level for floyd super resolution upscalers when performing img2img.
 
 .. data:: DEFAULT_FLOYD_SUPERRESOLUTION_INPAINT_NOISE_LEVEL
     :annotation: = 0

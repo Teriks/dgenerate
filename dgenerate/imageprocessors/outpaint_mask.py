@@ -80,7 +80,7 @@ class OutpaintMaskProcessor(_imageprocessor.ImageProcessor):
 
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         """
-        Operation is preformed by this method if ``pre_resize`` constructor argument was ``True``.
+        Operation is performed by this method if ``pre_resize`` constructor argument was ``True``.
 
         :param image: image to process
         :param resize_resolution: purely informational, is unused by this imageprocessor
@@ -92,7 +92,7 @@ class OutpaintMaskProcessor(_imageprocessor.ImageProcessor):
 
     def impl_post_resize(self, image: PIL.Image.Image):
         """
-        Operation is preformed by this method if ``pre_resize`` constructor argument was ``False``.
+        Operation is performed by this method if ``pre_resize`` constructor argument was ``False``.
 
         :param image: image to process
         :return: the letterboxed image

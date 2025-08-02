@@ -3,7 +3,7 @@ MacOS Install (Apple Silicon Only)
 
 MacOS on Apple Silicon (arm64) is experimentally supported.
 
-Rendering can be preformed in CPU only mode, and with hardware acceleration using ``--device mps`` (Metal Performance Shaders).
+Rendering can be performed in CPU only mode, and with hardware acceleration using ``--device mps`` (Metal Performance Shaders).
 
 The default device on MacOS is ``mps`` unless specified otherwise.
 
