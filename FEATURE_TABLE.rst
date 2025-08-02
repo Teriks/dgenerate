@@ -333,6 +333,129 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
 
+.. list-table:: Generation Features by ``--model-type``
+   :widths: 40 30 20 40 30 40 30
+   :header-rows: 1
+
+   * - Model Type
+     - ADetailer
+     - FreeU
+     - Hi-Diffusion
+     - DeepCache
+     - Microsoft RAS
+     - TeaCache
+
+   * - ``sd``
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ❌
+     - ❌
+
+   * - ``pix2pix``
+     - ❌
+     - ❌
+     - ❌
+     - ✅
+     - ❌
+     - ❌
+
+   * - ``sdxl``
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ❌
+     - ❌
+
+   * - ``kolors``
+     - ✅
+     - ✅
+     - ✅
+     - ✅
+     - ❌
+     - ❌
+
+   * - ``if``
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+
+   * - ``ifs``
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+
+   * - ``ifs-img2img``
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+
+   * - ``sdxl-pix2pix``
+     - ❌
+     - ❌
+     - ❌
+     - ✅
+     - ❌
+     - ❌
+
+   * - ``upscaler-x2``
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+
+   * - ``upscaler-x4``
+     - ❌
+     - ❌
+     - ❌
+     - ✅
+     - ❌
+     - ❌
+
+   * - ``s-cascade``
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+
+   * - ``sd3``
+     - ✅
+     - ❌
+     - ❌
+     - ❌
+     - ✅
+     - ❌
+
+   * - ``flux``
+     - ✅
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ✅
+
+   * - ``flux-fill``
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ✅
 
 PAG Support Caveats
 -------------------
@@ -351,3 +474,17 @@ It does however support PAG in (inpaint + ControlNets) mode.
 
 Kolors only supports PAG in txt2img mode.
 
+Generation Feature Notes
+------------------------
+
+Hi-Diffusion requires the ``--hi-diffusion-no-raunet`` option when inpainting (`reference <https://github.com/megvii-research/HiDiffusion/blob/580c838d8d7ac1f742137127fe0c493792df6543/hidiffusion/hidiffusion.py#L100>`__). This may be automatically applied in some circumstances.
+
+FreeU parameters differ by model type and can be specified using the ``--freeu-params`` option. The recommended parameters for SD1.4, SD1.5, SD2.1, and SDXL can be reviewed `here <https://github.com/ChenyangSi/FreeU?tab=readme-ov-file#parameters>`__. Kolors is compatible with FreeU's SDXL settings.
+
+Faster generation speeds can be achieved by using DeepCache, Microsoft RAS, or TeaCache, but may lead to reduced image quality. The default values for each of these features are conservative, providing some speed increases without major impacts on quality.
+
+The DeepCache branch ID and interval can be specified with the ``--deep-cache-branch-id`` and ``--deep-cache-interval`` options. Benchmarks for different parameters can be reviewed `here <https://huggingface.co/docs/diffusers/main/en/optimization/deepcache#benchmark>`__.
+
+Microsoft Region-Adaptive Sampling (RAS) has numerous configurable options that can be reviewed `here <https://github.com/microsoft/ras?tab=readme-ov-file#customize-hyperparameters>`__. Note that the ``--ras-index-fusion`` parameter is not compatible with SD3.5.
+
+The TeaCache threshold can be specified with the ``--tea-cache-rel-l1-threshold`` parameter. Information about this parameter can be reviewed `here <https://github.com/ali-vilab/TeaCache/blob/main/TeaCache4FLUX/README.md>`__.
