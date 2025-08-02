@@ -70,8 +70,7 @@ class LatentsProcessor(_plugin.Plugin, abc.ABC):
     HIDE_ARGS = ['model-type', 'local-files-only']
 
     @classmethod
-    def inheritable_help(cls, subclass, loaded_by_name):
-        hidden_args = subclass.get_hidden_args(loaded_by_name)
+    def inheritable_help(cls, loaded_by_name):
         help_messages = {
             'device': (
                 'The "device" argument can be used to set the device '
@@ -86,9 +85,7 @@ class LatentsProcessor(_plugin.Plugin, abc.ABC):
                 'but will impact rendering speed with multiple inputs / outputs.'
             )
         }
-        help_str = '\n\n'.join(
-            message for arg, message in help_messages.items() if arg not in hidden_args)
-        return help_str
+        return help_messages
 
     def __init__(self,
                  loaded_by_name: str,
@@ -140,6 +137,15 @@ class LatentsProcessor(_plugin.Plugin, abc.ABC):
         :return: Device string
         """
         return self.__device
+
+    @property
+    def model_offload(self) -> bool:
+        """
+        Model offload status.
+
+        :return: ``True`` or ``False``
+        """
+        return self.__model_offload
 
     @property
     def local_files_only(self) -> bool:

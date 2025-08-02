@@ -36,6 +36,7 @@ from dgenerate.pipelinewrapper.arguments import DiffusionArguments
 from dgenerate.pipelinewrapper.wrapper import DiffusionPipelineWrapper
 
 
+# noinspection PyTypeChecker
 def reconstruct_dgenerate_opts(
         wrapper: DiffusionPipelineWrapper,
         args: DiffusionArguments | None = None,

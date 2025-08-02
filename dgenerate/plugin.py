@@ -293,16 +293,25 @@ class Plugin:
             help_str = inspect.cleandoc(cls.__doc__).strip()
 
         if include_bases:
-            base_help = []
+            base_help = dict()
             for base in cls.get_bases():
                 if hasattr(base, 'inheritable_help'):
-                    bhelp_val = base.inheritable_help(cls, loaded_by_name)
+                    bhelp_val = base.inheritable_help(loaded_by_name)
                     if bhelp_val:
-                        base_help.append(inspect.cleandoc(bhelp_val).strip())
-                elif base.__doc__:
-                    base_help.append(inspect.cleandoc(base.__doc__).strip())
+                        base_help.update(bhelp_val)
+
+            if hasattr(cls, 'inheritable_help'):
+                bhelp_val = cls.inheritable_help(loaded_by_name)
+                if bhelp_val:
+                    base_help.update(bhelp_val)
+
+            hidden_args = cls.get_hidden_args(loaded_by_name)
+
+            base_help = '\n\n'.join(
+                message for arg, message in base_help.items() if arg not in hidden_args)
+
             if base_help:
-                help_str = help_str + '\n\n' + ('\n\n'.join(base_help))
+                help_str = help_str + '\n\n' + base_help
 
         args_with_defaults = cls.get_accepted_args(
             loaded_by_name, include_bases=include_bases)

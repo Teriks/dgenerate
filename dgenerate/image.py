@@ -184,6 +184,99 @@ def copy_img(img: PIL.Image.Image):
 
     return c
 
+def normalize_padding_value(padding: str | int | tuple[int, int] | tuple[int, int, int, int]) -> tuple[int, int, int, int]:
+    """
+    Normalize a padding value.
+
+    This value can be a string, e.g. ``"10"``, or ``"10x10"``, or ``"10x10x10x10"``
+
+    It can also be specified as a python ``int`` or ``tuple``
+
+    Multidimensional padding values are laid out as: ``LEFTxTOPxRIGHTxBOTTOM``, or ``WIDTHxHEIGHT``
+
+    This is the same all across dgenerate.
+
+    :raise ValueError: If the padding value is specified incorrectly.
+
+    :param padding: Padding value
+    :return: Normalized padding (4 tuple of int)
+    """
+
+    # Parse padding argument
+    if isinstance(padding, int):
+        padding = (padding, padding, padding, padding)  # left, top, right, bottom
+    else:
+        if isinstance(padding, str):
+            try:
+                padding_dims = _textprocessing.parse_dimensions(str(padding))
+            except ValueError as e:
+                raise ValueError(f'Could not parse the padding value: {padding}') from e
+        else:
+            padding_dims = padding
+
+        if len(padding_dims) == 1:
+            # Uniform padding
+            p = padding_dims[0]
+            padding = (p, p, p, p)
+        elif len(padding_dims) == 2:
+            # Width x Height padding
+            width_pad, height_pad = padding_dims
+            padding = (width_pad, height_pad, width_pad, height_pad)
+        elif len(padding_dims) == 4:
+            # Left x Top x Right x Bottom padding
+            padding = tuple(padding_dims)
+        else:
+            raise ValueError(
+                'Padding value must be 1, 2, or 4 dimensional. '
+                'Use format: "10" (uniform), "10x20" (width x height), '
+                'or "5x10x5x15" (left x top x right x bottom)')
+
+    return padding
+
+def find_mask_bounds(
+        img: PIL.Image.Image,
+        padding: str | int | tuple[int, int] | tuple[int, int, int, int]) -> tuple[int, int, int, int] | None:
+    """
+    Find the bounding box of white pixels in the mask. If no bounding box can be found, return ``None``.
+
+    :raise ValueError: If the padding value is specified incorrectly.
+
+    :param img: The mask image (PIL Image)
+    :param padding: Bounding box padding value, see: :py:func:`normalize_padding_value` for accepted values.
+    :return: Tuple of (left, top, right, bottom) bounds, or ``None`` if no white pixels found.
+    """
+
+    # bit map grayscale
+    if img.mode != 'L':
+        img = img.convert('L')
+
+    # Convert to numpy array
+    mask_array = numpy.array(img)
+
+    # Find coordinates of white pixels (assuming white is > 127)
+    white_coords = numpy.where(mask_array > 127)
+
+    if len(white_coords[0]) == 0:
+        # No white pixels found
+        return None
+
+    # Get bounding box
+    top = int(numpy.min(white_coords[0]))
+    bottom = int(numpy.max(white_coords[0]))
+    left = int(numpy.min(white_coords[1]))
+    right = int(numpy.max(white_coords[1]))
+
+    # Apply padding
+    pad_left, pad_top, pad_right, pad_bottom = normalize_padding_value(padding)
+
+    # final bounds with padding
+    left = max(0, left - pad_left)
+    top = max(0, top - pad_top)
+    right = min(img.width, right + pad_right + 1)  # +1 because right bound is exclusive
+    bottom = min(img.height, bottom + pad_bottom + 1)  # +1 because bottom bound is exclusive
+
+    return left, top, right, bottom
+
 
 def best_pil_resampling(old_size: _types.Size, new_size: _types.Size) -> PIL.Image.Resampling:
     """

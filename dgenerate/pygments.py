@@ -59,7 +59,7 @@ _jinja_comment_pattern = (r'(\{#)', _token.Comment.Multiline, 'jinja_comment')
 _jinja_interpolate_pattern = (r'(\{\{)', _token.String.Interpol, 'jinja_interpolate')
 _operators_punctuation_pattern = (r'[\[\]{}()=\\;,:]', _token.Operator)
 _operators_pattern = (r'\*\*|<<|>>|[-+*/%^|&<>!.$]', _token.Operator)
-_size_pattern = (r'(?<!\w)\d+[xX]\d+([xX]\d+){0,2}(?!\w)', _token.Number.Hex)
+_dimensions_pattern = (r'(?<!\w)-?\d+[xX]-?\d+([xX]-?\d+){0,2}(?!\w)', _token.Number.Hex)
 _number_float_pattern = (r'(?<!\w)(-?\d+(\.\d*)?([eE][-+]?\d+)?)(?!\w)', _token.Number.Float)
 _decimal_integer_pattern = (r'(?<!\w)-?\d+(?!\w)', _token.Number.Integer)
 _binary_integer_pattern = (r'(?<!\w)0[bB][01]+(?!\w)', _token.Number.Binary)
@@ -276,7 +276,7 @@ class DgenerateLexer(_lexer.RegexLexer):
             _jinja_block_pattern,
             _jinja_comment_pattern,
             _jinja_interpolate_pattern,
-            _size_pattern,
+            _dimensions_pattern,
             *_number_patterns,
             *_path_patterns,
             _operators_punctuation_pattern,
@@ -299,7 +299,7 @@ class DgenerateLexer(_lexer.RegexLexer):
             _jinja_block_pattern,
             _jinja_comment_pattern,
             _jinja_interpolate_pattern,
-            _size_pattern,
+            _dimensions_pattern,
             *_number_patterns,
             *_path_patterns,
             _operators_punctuation_pattern,
