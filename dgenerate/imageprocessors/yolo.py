@@ -626,7 +626,7 @@ class YOLODetectionProcessor(_imageprocessor.ImageProcessor):
         sorted_indices = []
         bboxes = None
 
-        if len(results) > 0 and len(results[0].boxes) > 0:
+        if results and len(results) > 0 and results[0].boxes and len(results[0].boxes) > 0:
             boxes = results[0].boxes
 
             bboxes = boxes.xyxy.cpu().numpy()  # [x1, y1, x2, y2]

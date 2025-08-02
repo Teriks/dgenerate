@@ -1,0 +1,43 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 5.0.0
+
+# We can repeat the concept described in hi-res-auto-cropped.dgen
+# with the yolo processor for automatic mask generation based on
+# a bounding box, this time we will face replace the woman in
+# american gothic, with upscaled inpainting
+
+\set image ../media/americangothic.jpg
+
+# create the face mask with face_yolov8n.pt from the adetailer repository on huggingface
+# I could not find a yolo seg model for (whole face), so we will create a simple
+# circle mask that encompasses the face, this circle is generated from the bounding box
+# give the detector a bit of padding to affect face coverage
+
+\image_process ../media/americangothic.jpg
+--output hi_res_auto_cropped_yolo/mask.png -ox
+--processors yolo;model=Bingsu/adetailer;weight-name=face_yolov8n.pt;index-filter=0;masks=True;mask-shape=circle;detector-padding=5
+
+\set mask {{ first(last_images) }}
+
+# The following basically preforms a sort of adetailer like operation
+# to inpaint the face, the inpainting is processed around SDXL native
+# resolution with a bit of padding around the cropped down image/mask
+# then the generated rectangular image is pasted back over the background {{image}}
+
+stabilityai/stable-diffusion-xl-base-1.0
+--model-type sdxl
+--dtype float16
+--variant fp16
+--image-seeds "{{image}};{{mask}}"
+--seed-image-processors crop-to-mask;mask="{{mask}}";padding=50;pre-resize=True
+--mask-image-processors crop-to-mask;padding=50;pre-resize=True
+--inference-steps 40
+--guidance-scales 7
+--output-path hi_res_auto_cropped_yolo
+--vae-tiling
+--seeds 92051405511913
+--output-size 1024
+--image-seed-strengths 0.65
+--prompt-weighter sd-embed
+--prompts "a smiling woman"
+--post-processors paste;image="{{image}}";position-mask="{{mask}}";position-mask-padding=50;reverse=True

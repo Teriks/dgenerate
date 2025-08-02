@@ -65,12 +65,27 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
 
     NAMES = ['patchmatch']
 
-    # hide inherited arguments that are device related since PatchMatch runs on CPU
-    HIDE_ARGS = ['device', 'model-offload']
-
     FILE_ARGS = {
         'mask': {'mode': 'in', 'filetypes': [('Images', _imageprocessor.ImageProcessor.image_in_filetypes())]}
     }
+
+    @classmethod
+    def inheritable_help(cls, loaded_by_name):
+        help_messages = {
+            'device': (
+                'The "device" argument can be used to set the device '
+                'the mask-processors will run on, for example: cpu, cuda, cuda:1.'
+            ),
+            'model-offload': (
+                'The "model-offload" argument can be used to enable '
+                'cpu model offloading for the mask-processors. If this is disabled, '
+                'any torch tensors or modules placed on the GPU will remain there until '
+                'the mask-processor is done being used, instead of them being moved back to the CPU '
+                'after each invocation. Enabling this may help save VRAM when using multiple mask processors '
+                'that make use of the GPU.'
+            )
+        }
+        return help_messages
 
     def __init__(self,
                  mask: str,
@@ -127,9 +142,13 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
             mask_image = PIL.Image.open(mask_path)
 
             if self._mask_processors is not None:
-                mask_image = self._create_image_processor(
-                    self._mask_processors
-                ).process(mask_image.convert('RGB'))
+                mask_image = self._run_image_processor(
+                    self._mask_processors,
+                    mask_image,
+                    aspect_correct=False,
+                    resize_resolution=None,
+                    align=1
+                )
 
             # Convert to grayscale if needed
             if mask_image.mode != 'L':
@@ -148,18 +167,40 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
         except Exception as e:
             raise self.argument_error(f'Failed to load mask from "{self._mask_path}": {e}')
 
-    @staticmethod
-    def _create_image_processor(uri_chain_string):
-        """ Create an image processor from a URI chain string."""
+    def _run_image_processor(
+            self,
+            uri_chain_string,
+            image,
+            resize_resolution,
+            aspect_correct,
+            align,
+    ):
+        """run an image processor from a URI chain string."""
         import dgenerate.imageprocessors as _imgp
-        return _imgp.create_image_processor(
+        
+        # Convert image to RGB mode for consistent processing
+        if image.mode != 'RGB':
+            image = image.convert('RGB')
+            
+        processor = _imgp.create_image_processor(
             _textprocessing.shell_parse(
                 uri_chain_string,
                 expand_home=False,
                 expand_glob=False,
                 expand_vars=False
-            )
+            ),
+            device=self.device,
+            model_offload=self.model_offload,
         )
+        try:
+            return processor.process(
+                image,
+                resize_resolution=resize_resolution,
+                aspect_correct=aspect_correct,
+                align=align
+            )
+        finally:
+            processor.to('cpu')
 
     def _process(self, image: PIL.Image.Image) -> PIL.Image.Image:
         """

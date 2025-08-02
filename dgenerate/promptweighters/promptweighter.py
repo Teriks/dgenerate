@@ -57,7 +57,7 @@ class PromptWeighter(_plugin.Plugin, abc.ABC):
     HIDE_ARGS = ['model-type', 'dtype', 'local-files-only']
 
     @classmethod
-    def inheritable_help(cls, subclass, loaded_by_name):
+    def inheritable_help(cls, loaded_by_name):
         return None
 
     def __init__(self,

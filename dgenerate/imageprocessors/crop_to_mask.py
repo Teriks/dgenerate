@@ -19,13 +19,13 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import numpy as np
 import PIL.Image
 
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.webcache as _webcache
 import dgenerate.types as _types
 from dgenerate.imageprocessors import imageprocessor as _imageprocessor
+import dgenerate.image as _image
 
 
 class CropToMaskProcessor(_imageprocessor.ImageProcessor):
@@ -37,6 +37,7 @@ class CropToMaskProcessor(_imageprocessor.ImageProcessor):
     for the area of interest and black/dark pixels for areas to ignore.
     
     The "mask" argument specifies the path to a mask file or URL to download the mask from.
+    If you do not specify "mask", the processed image is assumed to be a mask.
     
     The "mask-processors" argument allows you to pre-process the "mask" argument with an
     arbitrary image processor chain, for example: invert, gaussian-blur, etc. This
@@ -61,21 +62,37 @@ class CropToMaskProcessor(_imageprocessor.ImageProcessor):
 
     NAMES = ['crop-to-mask']
 
-    # hide inherited arguments that are device related
-    HIDE_ARGS = ['device', 'model-offload']
-
     FILE_ARGS = {
         'mask': {'mode': 'in', 'filetypes': [('Images', _imageprocessor.ImageProcessor.image_in_filetypes())]}
     }
 
+    @classmethod
+    def inheritable_help(cls, loaded_by_name):
+        help_messages = {
+            'device': (
+                'The "device" argument can be used to set the device '
+                'the mask-processors will run on, for example: cpu, cuda, cuda:1.'
+            ),
+            'model-offload': (
+                'The "model-offload" argument can be used to enable '
+                'cpu model offloading for the mask-processors. If this is disabled, '
+                'any torch tensors or modules placed on the GPU will remain there until '
+                'the mask-processor is done being used, instead of them being moved back to the CPU '
+                'after each invocation. Enabling this may help save VRAM when using multiple mask processors '
+                'that make use of the GPU.'
+            )
+        }
+        return help_messages
+
     def __init__(self,
-                 mask: str,
+                 mask: str | None = None,
                  mask_processors: str | None = None,
-                 padding: str | int = 0,
+                 padding: str | int | None = None,
                  pre_resize: bool = False,
                  **kwargs):
         """
         :param mask: Path to mask image file or URL. White pixels indicate areas of interest.
+            Or ``None`` indicating that the processed image is the mask.
         :param mask_processors: Pre-process ``mask`` with an arbitrary image processor chain.
         :param padding: Padding to apply around the detected bounds. Can be an integer for uniform 
                         padding, ``WIDTHxHEIGHT`` for horizontal/vertical padding, or
@@ -85,38 +102,17 @@ class CropToMaskProcessor(_imageprocessor.ImageProcessor):
         """
         super().__init__(**kwargs)
 
-        if not mask:
-            raise self.argument_error('Argument "mask" is required and cannot be empty.')
-
         self._mask_path = mask
         self._mask_processors = mask_processors
         self._pre_resize = pre_resize
-        
-        # Parse padding argument
-        if isinstance(padding, int):
-            self._padding = (padding, padding, padding, padding)  # left, top, right, bottom
-        else:
-            try:
-                padding_dims = _textprocessing.parse_dimensions(str(padding))
-                
-                if len(padding_dims) == 1:
-                    # Uniform padding
-                    p = padding_dims[0]
-                    self._padding = (p, p, p, p)
-                elif len(padding_dims) == 2:
-                    # Width x Height padding  
-                    width_pad, height_pad = padding_dims
-                    self._padding = (width_pad, height_pad, width_pad, height_pad)
-                elif len(padding_dims) == 4:
-                    # Left x Top x Right x Bottom padding
-                    self._padding = tuple(padding_dims)
-                else:
-                    raise self.argument_error(
-                        'Argument "padding" must be 1, 2, or 4 dimensional. '
-                        'Use format: "10" (uniform), "10x20" (width x height), or "5x10x5x15" (left x top x right x bottom)')
-                    
-            except ValueError as e:
-                raise self.argument_error(f'Could not parse the "padding" argument: {e}') from e
+
+        if padding is None:
+            padding = 0
+
+        try:
+            self._padding = _image.normalize_padding_value(padding)
+        except ValueError as e:
+            raise self.argument_error(f'Error in "padding" argument: {e}') from e
 
     def _load_mask(self, target_size: _types.Size = None) -> PIL.Image.Image:
         """
@@ -145,9 +141,13 @@ class CropToMaskProcessor(_imageprocessor.ImageProcessor):
 
             # Apply mask processors if specified
             if self._mask_processors is not None:
-                mask_image = self._create_image_processor(
-                    self._mask_processors
-                ).process(mask_image.convert('RGB'))
+                mask_image = self._run_image_processor(
+                    self._mask_processors,
+                    mask_image,
+                    resize_resolution=None,
+                    aspect_correct=False,
+                    align=1
+                )
 
             # Convert to L for consistency
             if mask_image.mode != 'L':
@@ -162,44 +162,40 @@ class CropToMaskProcessor(_imageprocessor.ImageProcessor):
         except Exception as e:
             raise self.argument_error(f'Failed to load mask from "{self._mask_path}": {e}')
 
-    @staticmethod
-    def _create_image_processor(uri_chain_string):
-        """ Create an image processor from a URI chain string."""
+    def _run_image_processor(
+            self,
+            uri_chain_string,
+            image,
+            resize_resolution,
+            aspect_correct,
+            align,
+    ):
+        """run an image processor from a URI chain string."""
         import dgenerate.imageprocessors as _imgp
-        return _imgp.create_image_processor(
+        
+        # Convert image to RGB mode for consistent processing
+        if image.mode != 'RGB':
+            image = image.convert('RGB')
+            
+        processor = _imgp.create_image_processor(
             _textprocessing.shell_parse(
                 uri_chain_string,
                 expand_home=False,
                 expand_glob=False,
                 expand_vars=False
-            )
+            ),
+            device=self.device,
+            model_offload=self.model_offload,
         )
-
-    @staticmethod
-    def _find_mask_bounds(mask_image: PIL.Image.Image):
-        """
-        Find the bounding box of white pixels in the mask.
-        
-        :param mask_image: The mask image (PIL Image)
-        :return: Tuple of (left, top, right, bottom) bounds, or None if no white pixels found
-        """
-        # Convert to numpy array
-        mask_array = np.array(mask_image)
-        
-        # Find coordinates of white pixels (assuming white is > 127)
-        white_coords = np.where(mask_array > 127)
-        
-        if len(white_coords[0]) == 0:
-            # No white pixels found
-            return None
-            
-        # Get bounding box
-        top = int(np.min(white_coords[0]))
-        bottom = int(np.max(white_coords[0]))
-        left = int(np.min(white_coords[1]))
-        right = int(np.max(white_coords[1]))
-        
-        return left, top, right, bottom
+        try:
+            return processor.process(
+                image,
+                resize_resolution=resize_resolution,
+                aspect_correct=aspect_correct,
+                align=align
+            )
+        finally:
+            processor.to('cpu')
 
     def _process(self, image: PIL.Image.Image):
         """
@@ -208,30 +204,21 @@ class CropToMaskProcessor(_imageprocessor.ImageProcessor):
         :param image: Input image to process
         :return: Cropped image
         """
-        # Load and process the mask image
-        mask_image = self._load_mask(target_size=image.size)
+
+        if self._mask_path:
+            # Load and process the mask image
+            mask_image = self._load_mask(target_size=image.size)
+        else:
+            mask_image = image
             
         # Find the bounds of white pixels in the mask
-        bounds = self._find_mask_bounds(mask_image)
+        bounds = _image.find_mask_bounds(mask_image, self._padding)
         
         if bounds is None:
             raise self.argument_error('No white pixels found in the mask image')
-            
-        left, top, right, bottom = bounds
-        
-        # Apply padding
-        pad_left, pad_top, pad_right, pad_bottom = self._padding
-        
-        # Calculate final crop bounds with padding
-        crop_left = max(0, left - pad_left)
-        crop_top = max(0, top - pad_top)
-        crop_right = min(image.width, right + pad_right + 1)  # +1 because right bound is inclusive
-        crop_bottom = min(image.height, bottom + pad_bottom + 1)  # +1 because bottom bound is inclusive
-        
+
         # Crop the image
-        cropped_image = image.crop((crop_left, crop_top, crop_right, crop_bottom))
-        
-        return cropped_image
+        return image.crop(bounds)
 
     def impl_pre_resize(self, image: PIL.Image.Image, resize_resolution: _types.OptionalSize):
         """

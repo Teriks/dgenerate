@@ -1,0 +1,68 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 5.0.0
+
+# You can use the crop-to-mask and paste processor
+# To automatically crop your inpainting task to a bounding
+# box around the mask with some padding, then process cropped
+# image with diffusion at a higher resolution for a better result,
+# and paste the result back over the original image to complete the
+# image
+
+# The image we will be inpainting
+
+\set image ../media/horse1.jpg
+
+
+# invert the mask, making the horse the
+# inpainted area instead of the background
+# add some blur to the mask to make it a bit
+# softer
+
+\image_process ../media/horse1-mask.jpg
+--output hi_res_auto_cropped/mask.png -ox
+--processors invert gaussian-blur;size=9
+
+# Set the mask variable to the image we just processed
+
+\set mask {{ first(last_images) }}
+
+# crop the input image and mask down to the bounding box of the mask
+# itself, with an additional 50 pixels of padding
+# these processors should run before the resize to 1024, hence pre-resize=True
+# This is so the resulting image aligns well with the background
+# we are going to paste on to
+
+# preform the diffusion inpainting at near native resolution
+# scale up the cropped images with correct aspect, to 1024 width
+# the default behavior is aspect correct, width determined by --output-size
+
+stabilityai/stable-diffusion-xl-base-1.0
+--model-type sdxl
+--dtype float16
+--variant fp16
+--image-seeds "{{image}};{{mask}}"
+--seed-image-processors crop-to-mask;mask="{{mask}}";padding=50;pre-resize=True
+--mask-image-processors crop-to-mask;padding=50;pre-resize=True
+--inference-steps 40
+--guidance-scales 7
+--output-path hi_res_auto_cropped
+--vae-tiling
+--output-size 1024
+--image-seed-strengths 0.70
+--prompts "a pink horse from a fantasy world, standing and looking towards the viewer"
+--post-processors paste;image="{{image}}";position-mask="{{mask}}";position-mask-padding=50;reverse=True
+
+# at the end, the generated image is pasted back on to our background with --post-processors
+# the initial mask is used again to calculate the bounding box where the generated
+# image will be pasted, reverse=True means we are taking the image that is
+# being processed and pasting it onto "image", we add identical padding to the
+# bounding box (50) where it will be pasted
+
+# The generated image will be scaled into this box, to fit where it needs to
+# go to replace the original content
+
+# the result is that the inpainting has been performed at a higher resolution, leading
+# to better results since most of the area being inpainted is close to SDXLs native output resolution
+# of 1024, this resolution could be further increased with --hi-diffusion if desired
+
+# The result in this example is not spectacular, but it demonstrates the concept

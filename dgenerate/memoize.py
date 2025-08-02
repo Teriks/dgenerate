@@ -142,7 +142,7 @@ class ObjectCache:
         if collect:
             gc.collect()
 
-    def get(self, key: str, default):
+    def get(self, key: str, default: typing.Any | None = None):
         """
         Get an object by its cache key.
 
