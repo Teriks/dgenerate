@@ -283,10 +283,10 @@ class ImageProcessRenderLoop:
         return Iterable(self._written_animations)
 
     def _record_save_image(self, filename):
-        self._written_images.write(os.path.abspath(filename) + '\n')
+        self._written_images.write(pathlib.Path(filename).absolute().as_posix() + '\n')
 
     def _record_save_animation(self, filename):
-        self._written_animations.write(os.path.abspath(filename) + '\n')
+        self._written_animations.write(pathlib.Path(filename).absolute().as_posix() + '\n')
 
     def _process_reader(self, file, reader: _mediainput.MediaReader, out_filename, generation_step):
         out_directory = os.path.dirname(out_filename)

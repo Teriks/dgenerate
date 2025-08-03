@@ -27,6 +27,7 @@ import inspect
 import itertools
 import math
 import os
+import pathlib
 import re
 import shutil
 import textwrap
@@ -900,20 +901,20 @@ def shell_parse(
     def text_expander(token):
 
         if expand_home and '~' in token:
-            token = os.path.expanduser(token)
+            token = pathlib.Path(os.path.expanduser(token)).as_posix()
 
         if expand_vars and ('$' in token or '%' in token):
             token = expand_vars_func(token)
 
         if expand_glob and '*' in token:
 
-            globs = list(
-                glob.glob(
+            globs = [
+                pathlib.Path(p).as_posix() for p in glob.glob(
                     token,
                     recursive=True,
                     include_hidden=glob_include_hidden
                 )
-            )
+            ]
 
             if len(globs) == 0:
                 raise ShellParseSyntaxError(

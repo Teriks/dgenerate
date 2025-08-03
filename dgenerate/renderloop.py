@@ -811,7 +811,7 @@ class RenderLoop:
                           underline=is_last_output)
 
         # Append to written images for the current run
-        self._written_images.write(os.path.abspath(output_filename) + '\n')
+        self._written_images.write(pathlib.Path(output_filename).absolute().as_posix() + '\n')
 
     def _write_generation_result(self,
                                  filename_components: list[str],
@@ -1540,7 +1540,7 @@ class RenderLoop:
                 written_filenames = anim_writer.filenames.copy() if not not_writing_animation_file else []
                 anim_writer.end()
                 for idx, file in enumerate(written_filenames):
-                    self._written_animations.write(os.path.abspath(file) + '\n')
+                    self._written_animations.write(pathlib.Path(file).absolute().as_posix() + '\n')
                     yield AnimationFileFinishedEvent(
                         origin=self,
                         path=file,
