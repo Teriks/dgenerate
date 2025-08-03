@@ -248,12 +248,8 @@ def _type_sdxl_high_noise_fractions(val):
 
 
 def _type_device(device):
-    try:
-        if not _torchutil.is_valid_device_string(device):
-            raise argparse.ArgumentTypeError(
-                f'Must be cuda or cpu, or other device supported by torch. Unknown value: {device}')
-    except _torchutil.InvalidDeviceOrdinalException as e:
-        raise argparse.ArgumentTypeError(e) from e
+    if not _torchutil.is_valid_device_string(device):
+        raise argparse.ArgumentTypeError(_torchutil.invalid_device_message(device))
 
     return device
 
@@ -2922,11 +2918,18 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '-d', '--device', action='store',
+            '-d', '--device', action='store', type=_type_device,
             default=_torchutil.default_device(),
-            help="""cuda / cpu, or other device supported by torch, for example mps on MacOS.
-            (default: cuda, mps on MacOS). Use: cuda:0, cuda:1, cuda:2, etc. to specify a specific
-            cuda supporting GPU."""
+            help="""cuda / cpu, or other device supported by torch.
+             
+            For example mps on MacOS, and xpu for intel GPUs. 
+            
+            default: cuda [prioritize when available] then xpu. And only mps on MacOS. 
+            
+            Use: cuda:0, cuda:1, cuda:2, etc. to specify a specific cuda supporting GPU.
+            
+            Device indices are also supported for xpu, but not for mps.
+            """
         )
     )
 

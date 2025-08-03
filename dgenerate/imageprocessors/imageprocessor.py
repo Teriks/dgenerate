@@ -157,13 +157,9 @@ class ImageProcessor(_plugin.Plugin, abc.ABC):
                          **kwargs)
 
         if device is not None:
-            try:
-                if not _torchutil.is_valid_device_string(device):
-                    raise _exceptions.ImageProcessorArgumentError(
-                        f'Invalid device argument: "{device}" is not a valid device string.')
-            except _torchutil.InvalidDeviceOrdinalException as e:
+            if not _torchutil.is_valid_device_string(device):
                 raise _exceptions.ImageProcessorArgumentError(
-                    f'Invalid device argument: {e}')
+                    f'Invalid device argument, {_torchutil.invalid_device_message(device, cap=False)}')
 
         self.__output_file = output_file
         self.__output_overwrite = output_overwrite
@@ -210,9 +206,9 @@ class ImageProcessor(_plugin.Plugin, abc.ABC):
         """
         Check a specific device against an amount of memory in bytes.
 
-        If the device is a cuda device and any of the memory constraints specified by
-        :py:attr:`dgenerate.imageprocessors.constants.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS`
-        are met on that device, attempt to remove cached objects off the cuda device to free space.
+        If the device is a gpu device and any of the memory constraints specified by
+        :py:attr:`dgenerate.imageprocessors.constants.IMAGE_PROCESSOR_GPU_MEMORY_CONSTRAINTS`
+        are met on that device, attempt to remove cached objects off a gpu device to free space.
 
         If the device is a cpu and any of the memory constraints specified by
         :py:attr:`dgenerate.imageprocessors.constants.IMAGE_PROCESSOR_CACHE_GC_CONSTRAINTS`
@@ -227,9 +223,9 @@ class ImageProcessor(_plugin.Plugin, abc.ABC):
         device = torch.device(device)
         cleared = False
 
-        if device.type == 'cuda':
-            if _memory.cuda_memory_constraints(
-                    _constants.IMAGE_PROCESSOR_CUDA_MEMORY_CONSTRAINTS,
+        if _memory.is_supported_gpu_device(device):
+            if _memory.gpu_memory_constraints(
+                    _constants.IMAGE_PROCESSOR_GPU_MEMORY_CONSTRAINTS,
                     extra_vars={'memory_required': memory_required},
                     device=device):
                 _messages.debug_log(

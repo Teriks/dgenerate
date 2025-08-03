@@ -13,7 +13,7 @@ dtype = torch.float16
 # Detect backend
 def _detect_backend():
     """Detect the computation backend"""
-    if torch.cuda.is_available():
+    if hasattr(torch, 'cuda') and torch.cuda.is_available():
         return "cuda"
     elif hasattr(torch, 'xpu') and torch.xpu.is_available():
         return "xpu"

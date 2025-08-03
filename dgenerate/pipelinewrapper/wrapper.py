@@ -440,8 +440,7 @@ class DiffusionPipelineWrapper:
         # Check for valid device string
         if not _torchutil.is_valid_device_string(device):
             raise _pipelines.UnsupportedPipelineConfigError(
-                'device must be "cuda" (optionally with a device ordinal "cuda:N") or "cpu", '
-                'or other device supported by torch.')
+                f'Invalid device argument, {_torchutil.invalid_device_message(device, cap=False)}')
 
         # Offload options should not be enabled simultaneously
         if model_cpu_offload and model_sequential_offload:

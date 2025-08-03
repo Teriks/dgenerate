@@ -21,11 +21,11 @@
 
 import dgenerate.globalconfig
 
-PROMPT_WEIGHTER_CUDA_MEMORY_CONSTRAINTS = ['memory_required > (available * 0.70)']
+PROMPT_WEIGHTER_GPU_MEMORY_CONSTRAINTS = ['memory_required > (available * 0.70)']
 """
 Cache constraint expressions for when to attempt to clear cuda VRAM
 upon a prompt weighter plugin calling :py:meth:`dgenerate.promptweighters.PromptWeighter.memory_guard_device`
-on a cuda device, syntax provided via :py:func:`dgenerate.memory.cuda_memory_constraints`
+on a cuda device, syntax provided via :py:func:`dgenerate.memory.gpu_memory_constraints`
 
 If any of these constraints are met, an effort is made to clear modules off a GPU
 which are cached for fast repeat usage but are okay to flush.

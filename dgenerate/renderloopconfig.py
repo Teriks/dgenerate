@@ -1081,6 +1081,8 @@ class RenderLoopConfig(_types.SetFromMixin):
     This corresponds to the ``--device`` argument of the dgenerate command line tool.
 
     The default device on MacOS is "mps".
+    
+    "xpu" is an option for intel GPUs, for which device indices are also supported.
     """
 
     dtype: _pipelinewrapper.DataType = _pipelinewrapper.DataType.AUTO
@@ -2001,8 +2003,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         # Check device
         if not _torchutil.is_valid_device_string(self.device):
             raise RenderLoopConfigError(
-                f'{a_namer("device")} must be "cuda" (optionally with a device ordinal "cuda:N") or "cpu", '
-                f'or other device supported by torch.')
+                f'{a_namer("device")} {_torchutil.invalid_device_message(self.device, cap=False)}')
 
         # Check model offload options
         if self.model_cpu_offload and self.model_sequential_offload:
