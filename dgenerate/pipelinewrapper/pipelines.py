@@ -1985,6 +1985,9 @@ def _create_diffusion_pipeline(
         )
 
     if quantizer_uri and quantizer_uri.split(';')[0].strip() in {'bnb', 'bitsandbytes'}:
+        if device.startswith('cpu'):
+            raise UnsupportedPipelineConfigError(
+                'bitsandbytes quantization is not supported with CPU device.')
         if dtype is _enums.DataType.AUTO:
             # Default to all modules to float32 if no dtype is specified when using bitsandbytes
             dtype = _enums.DataType.FLOAT32
@@ -2181,11 +2184,13 @@ def _create_diffusion_pipeline(
             if parsed_uri.quantizer:
                 encoder_name = f'text_encoder{"_2" if idx == 1 else "_3" if idx == 2 else ""}'
                 manual_quantizer_components.add(encoder_name)
-                if isinstance(
-                    _uris.get_quantizer_uri_class(parsed_uri.quantizer),
-                    _uris.SDNQQuantizerUri
-                ):
+                quantizer_class = _uris.get_quantizer_uri_class(parsed_uri.quantizer)
+                if quantizer_class is _uris.SDNQQuantizerUri:
                     sdnq_cast_hack = True
+                if (quantizer_class is _uris.BNBQuantizerUri and 
+                    device.startswith('cpu')):
+                    raise UnsupportedPipelineConfigError(
+                        'bitsandbytes quantization is not supported with CPU device.')
 
     # Check transformer URI
     if transformer_uri:
@@ -2193,9 +2198,13 @@ def _create_diffusion_pipeline(
         uri_quant_check.append(parsed_uri)
         if parsed_uri.quantizer:
             manual_quantizer_components.add('transformer')
-            if (_uris.get_quantizer_uri_class(parsed_uri.quantizer) is
-                _uris.SDNQQuantizerUri):
+            quantizer_class = _uris.get_quantizer_uri_class(parsed_uri.quantizer)
+            if quantizer_class is _uris.SDNQQuantizerUri:
                 sdnq_cast_hack = True
+            if (quantizer_class is _uris.BNBQuantizerUri and 
+                device.startswith('cpu')):
+                raise UnsupportedPipelineConfigError(
+                    'bitsandbytes quantization is not supported with CPU device.')
 
     # Check unet URI
     if unet_uri:
@@ -2203,9 +2212,13 @@ def _create_diffusion_pipeline(
         uri_quant_check.append(parsed_uri)
         if parsed_uri.quantizer:
             manual_quantizer_components.add('unet')
-            if (_uris.get_quantizer_uri_class(parsed_uri.quantizer) is
-                _uris.SDNQQuantizerUri):
+            quantizer_class = _uris.get_quantizer_uri_class(parsed_uri.quantizer)
+            if quantizer_class is _uris.SDNQQuantizerUri:
                 sdnq_cast_hack = True
+            if (quantizer_class is _uris.BNBQuantizerUri and 
+                device.startswith('cpu')):
+                raise UnsupportedPipelineConfigError(
+                    'bitsandbytes quantization is not supported with CPU device.')
 
     if quantizer_uri or any(p.quantizer for p in uri_quant_check):
         # for now, just knock out anything cached on the gpu, such as the last pipeline
