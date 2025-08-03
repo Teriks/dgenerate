@@ -160,7 +160,7 @@ class CropToMaskProcessor(_imageprocessor.ImageProcessor):
             return mask_image
 
         except Exception as e:
-            raise self.argument_error(f'Failed to load mask from "{self._mask_path}": {e}')
+            raise self.argument_error(f'Failed to load argument "mask" from "{self._mask_path}": {e}')
 
     def _run_image_processor(
             self,

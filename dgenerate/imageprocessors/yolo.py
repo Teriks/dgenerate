@@ -656,6 +656,21 @@ class YOLODetectionProcessor(_imageprocessor.ImageProcessor):
                         filtered_indices.append(i)
                 sorted_indices = filtered_indices
 
+            # Filter out very small boxes (likely noise)
+            original_count = len(sorted_indices)
+            filtered_indices = []
+            for i in sorted_indices:
+                x1, y1, x2, y2 = bboxes[i].tolist()
+                width = x2 - x1
+                height = y2 - y1
+                if width >= 3 and height >= 3:
+                    filtered_indices.append(i)
+            sorted_indices = filtered_indices
+            filtered_count = original_count - len(sorted_indices)
+            if filtered_count > 0:
+                _messages.debug_log(f"YOLO detection: Filtered out {filtered_count} tiny boxes (< 3x3 pixels)")
+            
+
             # Check if we should use model masks and they are available
             use_masks = self._model_masks and results[0].masks is not None
             masks = None

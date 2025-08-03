@@ -211,7 +211,7 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
             return np.array(mask_image) > 128
 
         except Exception as e:
-            raise self.argument_error(f'Failed to load mask from "{self._mask_path}": {e}')
+            raise self.argument_error(f'Failed to load argument "mask" from "{self._mask_path}": {e}')
 
     def _load_subject_image(self, target_size: _types.Size = None) -> PIL.Image.Image:
         """
@@ -262,7 +262,7 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
             return subject_image
 
         except Exception as e:
-            raise self.argument_error(f'Failed to load subject image from "{self._image_path}": {e}')
+            raise self.argument_error(f'Failed to load argument "image" from "{self._image_path}": {e}')
 
     def _run_image_processor(
             self,

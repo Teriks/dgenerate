@@ -223,7 +223,7 @@ class PasteProcessor(_imageprocessor.ImageProcessor):
 
         # Load source image upfront
         if not _webcache.is_downloadable_url(image) and not os.path.exists(image):
-            raise self.argument_error(f'Source image file does not exist: {image}')
+            raise self.argument_error(f'Argument "image" file does not exist: {image}')
 
         try:
             self._paste_image = self._load_image(image)
@@ -231,7 +231,7 @@ class PasteProcessor(_imageprocessor.ImageProcessor):
             if self._paste_image.mode != 'RGB':
                 self._paste_image = self._paste_image.convert('RGB')
         except Exception as e:
-            raise self.argument_error(f'Failed to load source image: {e}')
+            raise self.argument_error(f'Failed to load argument "image": {e}')
 
         if image_processors:
             self._paste_image = self._run_image_processor(
@@ -246,12 +246,12 @@ class PasteProcessor(_imageprocessor.ImageProcessor):
         self._mask_image = None
         if mask is not None:
             if not _webcache.is_downloadable_url(mask) and not os.path.exists(mask):
-                raise self.argument_error(f'Mask image file does not exist: {mask}')
+                raise self.argument_error(f'Argument "mask" file does not exist: {mask}')
 
             try:
                 self._mask_image = self._load_image(mask)
             except Exception as e:
-                raise self.argument_error(f'Failed to load mask image: {e}')
+                raise self.argument_error(f'Failed to load argument "mask": {e}')
 
             if mask_processors:
                 self._mask_image = self._run_image_processor(
@@ -323,9 +323,8 @@ class PasteProcessor(_imageprocessor.ImageProcessor):
                 mimetype_is_supported=lambda m: m.startswith('image/'),
                 local_files_only=self.local_files_only
             )
-            return PIL.Image.open(image_path)
-        else:
-            return PIL.Image.open(image_path)
+        
+        return PIL.Image.open(image_path)
 
     def _parse_position(self, position: str) -> tuple:
         """Parse position string into coordinates"""
@@ -372,12 +371,12 @@ class PasteProcessor(_imageprocessor.ImageProcessor):
             # processed, or the argument "image" depending on "reverse"
 
             if not _webcache.is_downloadable_url(self._position_mask_path) and not os.path.exists(self._position_mask_path):
-                raise self.argument_error(f'Position mask image file does not exist: {self._position_mask_path}')
+                raise self.argument_error(f'Argument "position-mask" file does not exist: {self._position_mask_path}')
 
             try:
                 position_mask_image = self._load_image(self._position_mask_path)
             except Exception as e:
-                raise self.argument_error(f'Failed to load position mask image: {e}')
+                raise self.argument_error(f'Failed to load argument "position-mask": {e}')
 
             if self._position_mask_processors:
                 position_mask_image = self._run_image_processor(

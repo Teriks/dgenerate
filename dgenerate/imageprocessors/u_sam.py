@@ -31,6 +31,7 @@ import PIL.ImageStat
 import cv2
 import numpy
 import torch
+import dgenerate.image as _image
 from ultralytics import SAM as _SAM
 from ultralytics.models.sam.build import sam_model_map as _sam_model_map_u
 
@@ -157,7 +158,16 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
             boxes=["50,50,150,150","200,200,300,300"]         # String format
             boxes="50,50,150,150","200,200,300,300"           # String format
             boxes="50x50x150x150","200x200x300x300"           # String format
-            boxes=50x50x150x150,200x200x300x300               # Token format 
+            boxes=50x50x150x150,200x200x300x300               # Token format
+    
+        The "boxes-mask" argument specifies a black and white mask image where white areas
+        will be automatically converted to bounding box prompts. This is useful for integrating
+        with YOLO detection results or other object detection masks. The mask will be resized
+        to match the input image dimensions before processing.
+    
+        The "boxes-mask-processors" argument allows you to pre-process the boxes mask with an
+        image processor chain before extracting bounding boxes. This is useful for applying
+        filters, transforms, or other modifications to the mask. 
     
         Note: You may use python tuple syntax as well as list syntax, additionally
         something such as: (100,100),(100,100) will be interpreted as a tuple of
@@ -188,6 +198,10 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
 
     OPTION_ARGS = {
         'asset': list(_sam_model_names),
+    }
+
+    FILE_ARGS = {
+        'boxes-mask': {'mode': 'in', 'filetypes': [('Images', _imageprocessor.ImageProcessor.image_in_filetypes())]}
     }
 
     @staticmethod
@@ -300,6 +314,8 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
                  asset: str,
                  points: str | list | tuple | None = None,
                  boxes: str | list | tuple | None = None,
+                 boxes_mask: str | None = None,
+                 boxes_mask_processors: str | None = None,
                  font_size: int | None = None,
                  line_width: int | None = None,
                  line_color: str | None = None,
@@ -311,6 +327,8 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
         :param asset: SAM model asset to use, an Ultralytics asset name
         :param points: list of point prompts - can be nested lists [[x,y], [x,y,label]] or strings ["x,y", "x,y,label"]
         :param boxes: list of bounding box prompts - can be nested lists [[x1,y1,x2,y2]] or strings ["x1,y1,x2,y2"]
+        :param boxes_mask: path or URL to a black and white mask image where white areas will be converted to bounding boxes
+        :param boxes_mask_processors: image processor chain to apply to the boxes mask before extracting bounding boxes
         :param font_size: size of label text, if None will be calculated based on image dimensions
         :param line_width: thickness of mask outline lines, if None will be calculated based on image dimensions
         :param line_color: override color for mask outlines and text label backgrounds as hex color code (e.g. "#FF0000" or "#F00")
@@ -332,6 +350,12 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
         if line_color is not None and not self._match_hex_color(line_color):
             raise self.argument_error('line-color must be a HEX color code, e.g. #FFFFFF or #FFF')
 
+        # Validate boxes-mask arguments
+        if boxes_mask_processors and not boxes_mask:
+            raise self.argument_error(
+                'Cannot use "boxes-mask-processors" without specifying "boxes-mask"'
+            )
+
         if not asset.endswith('.pt'):
             asset += '.pt'
 
@@ -344,6 +368,8 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
         self._masks = masks
         self._outpaint = outpaint
         self._pre_resize = pre_resize
+        self._boxes_mask = boxes_mask
+        self._boxes_mask_processors = boxes_mask_processors
 
         # Parse prompts
         try:
@@ -352,8 +378,8 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
         except ValueError as e:
             raise self.argument_error(f'Error parsing prompts: {e}') from e
 
-        if not self._points and not self._boxes:
-            raise self.argument_error('At least one point or box prompt must be specified.')
+        if not self._points and not self._boxes and not self._boxes_mask:
+            raise self.argument_error('At least one point, box, or boxes-mask prompt must be specified.')
 
         model_size = os.path.getsize(self._model_path)
         self.set_size_estimate(model_size)
@@ -385,6 +411,120 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
             raise self.argument_error(f'Error downloading ultralytics asset "model": {e}')
 
         return file
+
+    def _run_image_processor(
+            self,
+            uri_chain_string,
+            image,
+            resize_resolution,
+            aspect_correct,
+            align,
+    ):
+        """Run an image processor from a URI chain string."""
+        import dgenerate.imageprocessors as _imgp
+        
+        # Convert image to RGB mode for consistent processing
+        if image.mode != 'RGB':
+            image = image.convert('RGB')
+            
+        processor = _imgp.create_image_processor(
+            _textprocessing.shell_parse(
+                uri_chain_string,
+                expand_home=False,
+                expand_glob=False,
+                expand_vars=False
+            ),
+            device=self.device,
+            model_offload=self.model_offload,
+        )
+        try:
+            return processor.process(
+                image,
+                resize_resolution=resize_resolution,
+                aspect_correct=aspect_correct,
+                align=align
+            )
+        finally:
+            processor.to('cpu')
+
+    def _extract_boxes_from_mask(self, target_size: _types.Size) -> list:
+        """
+        Extract bounding boxes from a black and white mask image.
+        
+        :param target_size: Size to resize mask to match input image
+        :return: List of bounding boxes in format [[x1,y1,x2,y2], ...]
+        """
+        if not self._boxes_mask:
+            return []
+            
+        try:
+            # Handle URL downloads using webcache
+            if _webcache.is_downloadable_url(self._boxes_mask):
+                # Download and cache the URL
+                _, mask_file_path = _webcache.create_web_cache_file(
+                    self._boxes_mask,
+                    mime_acceptable_desc='image files',
+                    mimetype_is_supported=lambda m: m.startswith('image/'),
+                    local_files_only=self.local_files_only
+                )
+                mask_path = mask_file_path
+            else:
+                # Use local file path directly
+                mask_path = self._boxes_mask
+
+            # Load mask image and convert to grayscale
+            mask_image = PIL.Image.open(mask_path)
+
+            # Apply processors if specified
+            if self._boxes_mask_processors is not None:
+                mask_image = self._run_image_processor(
+                    self._boxes_mask_processors,
+                    mask_image,
+                    aspect_correct=False,
+                    resize_resolution=None,
+                    align=1
+                )
+
+            # Convert to grayscale if needed
+            if mask_image.mode != 'L':
+                mask_image = mask_image.convert('L')
+
+            # Resize mask to match target image size
+            if mask_image.size != target_size:
+                old_size = mask_image.size
+                mask_image = mask_image.resize(
+                    target_size,
+                    _image.best_pil_resampling(mask_image.size, target_size)
+                )
+                _messages.debug_log(f"Boxes mask resized from {old_size} to {target_size}")
+
+            # Convert to numpy array for OpenCV processing
+            mask_array = numpy.array(mask_image)
+            
+            # Threshold to ensure we have a proper binary mask
+            # Values > 128 are considered white (areas of interest)
+            _, binary_mask = cv2.threshold(mask_array, 128, 255, cv2.THRESH_BINARY)
+            
+            # Find contours of white areas
+            contours, _ = cv2.findContours(binary_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            
+            # Extract bounding boxes from contours
+            boxes = []
+            for contour in contours:
+                # Get bounding rectangle for each contour
+                x, y, w, h = cv2.boundingRect(contour)
+                # Skip very small contours (likely noise)
+                if w < 3 or h < 3:
+                    continue
+                # Convert to [x1, y1, x2, y2] format
+                x1, y1, x2, y2 = x, y, x + w, y + h
+                boxes.append([float(x1), float(y1), float(x2), float(y2)])
+            
+            _messages.debug_log(f"Extracted {len(boxes)} bounding boxes from boxes-mask")
+            return boxes
+            
+        except Exception as e:
+            raise self.argument_error(f'Failed to process argument "boxes-mask" "{self._boxes_mask}": {e}')
 
     def _get_contrasting_color(self, background_color):
         """
@@ -492,6 +632,10 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
         # Calculate dynamic sizes based on image dimensions
         line_width, font_size, text_padding = self._calculate_line_width_font_size(image.size)
 
+        # Extract boxes from mask if provided and combine with existing boxes
+        extracted_boxes = self._extract_boxes_from_mask(image.size)
+        all_boxes = list(self._boxes) + extracted_boxes
+
         # Prepare prompts for batching
         batch_points = []
         batch_labels = []
@@ -504,7 +648,7 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
                 batch_labels.append(int(point[2]))
         
         # Process based on what prompts we have
-        if not self._points and not self._boxes:
+        if not self._points and not all_boxes:
             _messages.debug_log("SAM mask: No prompts were specified.")
             # Return empty result based on mode
             if self._masks:
@@ -517,7 +661,7 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
         # Run SAM with prompts - each call returns a single Results object with multiple masks
         results = []
         try:
-            if batch_points and self._boxes:
+            if batch_points and all_boxes:
                 # Process points first
                 if batch_points:
                     sam_result = self._model(input_image, points=batch_points, labels=batch_labels)[0]
@@ -527,13 +671,18 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
                             results.append((sam_result, 'point', i, i))  # (result, type, prompt_idx, mask_idx)
                 
                 # Process boxes
-                if self._boxes:
-                    sam_result = self._model(input_image, bboxes=self._boxes)[0]
+                if all_boxes:
+                    sam_result = self._model(input_image, bboxes=all_boxes)[0]
                     if sam_result.masks is not None and len(sam_result.masks) > 0:
                         # Extract each mask individually
                         for i in range(len(sam_result.masks)):
                             prompt_idx = len(self._points) + i if self._points else i
-                            results.append((sam_result, 'box', prompt_idx, i))  # (result, type, prompt_idx, mask_idx)
+                            # Determine box type (original vs mask-extracted)
+                            if i < len(self._boxes):
+                                box_type = 'box'
+                            else:
+                                box_type = 'mask-box'
+                            results.append((sam_result, box_type, prompt_idx, i))  # (result, type, prompt_idx, mask_idx)
                 
             elif batch_points:
                 # Only points
@@ -545,13 +694,18 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
                 else:
                     _messages.debug_log(f"SAM mask: No masks generated for point prompts")
                         
-            elif self._boxes:
+            elif all_boxes:
                 # Only boxes
-                sam_result = self._model(input_image, bboxes=self._boxes)[0]
+                sam_result = self._model(input_image, bboxes=all_boxes)[0]
                 if sam_result.masks is not None and len(sam_result.masks) > 0:
                     # Extract each mask individually
                     for i in range(len(sam_result.masks)):
-                        results.append((sam_result, 'box', i, i))  # (result, type, prompt_idx, mask_idx)
+                        # Determine box type (original vs mask-extracted)
+                        if i < len(self._boxes):
+                            box_type = 'box'
+                        else:
+                            box_type = 'mask-box'
+                        results.append((sam_result, box_type, i, i))  # (result, type, prompt_idx, mask_idx)
                 else:
                     _messages.debug_log(f"SAM mask: No masks generated for box prompts")
                         
