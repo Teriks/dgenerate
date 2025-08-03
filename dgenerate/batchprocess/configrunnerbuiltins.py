@@ -22,6 +22,7 @@ import collections.abc
 import importlib.util
 import itertools
 import os
+import pathlib
 import platform as _platform
 import typing
 
@@ -155,7 +156,7 @@ def cwd() -> str:
     """
     Return the current working directory as a string.
     """
-    return os.getcwd()
+    return pathlib.Path.cwd().as_posix()
 
 
 def format_model_type(model_type: _pipelinewrapper.ModelType) -> str:
@@ -235,7 +236,7 @@ def download(url: str,
                             _messages.log(
                                 f'Downloaded file already exists, using: '
                                 f'{os.path.relpath(downloaded_file)}', underline=True)
-                            return downloaded_file
+                            return pathlib.Path(downloaded_file).as_posix()
                         else:
                             del web_cache[cache_key]
 
@@ -267,7 +268,7 @@ def download(url: str,
                     _webcache.cache.add(
                         cache_key,
                         os.path.abspath(output).encode('utf8'))
-                    return output
+                    return pathlib.Path(output).absolute().as_posix()
 
                 _messages.log(f'Downloading: "{url}"\n'
                               f'Destination: "{output}"',
@@ -328,7 +329,7 @@ def download(url: str,
         except requests.RequestException as e:
             raise _batchprocessor.BatchProcessError(f'Failed to download "{url}": {e}') from e
 
-    return file_path
+    return pathlib.Path(file_path).as_posix()
 
 
 def align_size(size: str | tuple, align: int, format_size: bool = True) -> str | tuple:
