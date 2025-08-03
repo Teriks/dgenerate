@@ -10042,7 +10042,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [32107011656742]
+            Value: [86110887747997]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -11271,6 +11271,20 @@ The glob modules is set to the ``glob`` template variable, and the ``os.path`` m
     --prompts "In the style of picaso"
     --image-seeds ../media/*.png
     --output-path ./output
+    
+    
+    # we can also manually invoke shell expansion
+    # using the unquote function with expand=True
+    # note that this will always return posix
+    # style paths
+    
+    # the shell and its builtins will always
+    # prefer to return posix style paths when
+    # a path is generated
+    
+    {% for i in unquote('../media/*.png', expand=True) %}
+        \print "{{i}}"
+    {% endfor %}
 
 
 Importing arbitrary python modules
