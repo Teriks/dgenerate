@@ -30,6 +30,7 @@ import dgenerate.hfhub as _hfhub
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.enums as _enums
 from dgenerate.pipelinewrapper.uris import get_quantizer_uri_class as _get_quantizer_uri_class
+from dgenerate.pipelinewrapper.uris import BNBQuantizerUri as _BNBQuantizerUri
 import dgenerate.promptweighters.exceptions as _exceptions
 import dgenerate.promptweighters.promptweighter as _promptweighter
 import dgenerate.memory as _memory
@@ -338,12 +339,14 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
 
         if llm_quantizer:
             try:
-                llm_quantization_config = \
-                    _get_quantizer_uri_class(llm_quantizer).parse(llm_quantizer).to_config(llm_dtype)
+                self._llm_quantizer_class = _get_quantizer_uri_class(llm_quantizer)
+                self._llm_quantization_config = \
+                    self._llm_quantizer_class.parse(llm_quantizer).to_config(llm_dtype)
             except Exception as e:
                 raise self.argument_error(f'Error loading "llm-quantizer" argument "{llm_quantizer}": {e}') from e
         else:
-            llm_quantization_config = None
+            self._llm_quantizer_class = None
+            self._llm_quantization_config = None
 
         if self.model_type not in supported:
             raise _exceptions.PromptWeightingUnsupported(
@@ -399,7 +402,7 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
                 local_files_only=self.local_files_only,
                 use_auth_token=token,
                 torch_dtype=self._llm_dtype,
-                quantization_config=llm_quantization_config
+                quantization_config=self._llm_quantization_config
             )
         )
 
@@ -662,6 +665,12 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
                 module.head_dim = head_dim
 
             self.memory_guard_device(device, self.size_estimate)
+
+            # Check for bitsandbytes with CPU device
+            if (self._llm_quantizer_class is _BNBQuantizerUri and 
+                device.startswith('cpu')):
+                raise _exceptions.PromptWeightingUnsupported(
+                    'bitsandbytes quantization is not supported with CPU device.')
 
             self.move_text_encoders(pipeline, device)
 

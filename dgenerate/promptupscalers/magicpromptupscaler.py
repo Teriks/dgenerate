@@ -34,6 +34,7 @@ import dgenerate.promptupscalers.exceptions as _exceptions
 import dgenerate.promptupscalers.llmupscalermixin as _llmupscalermixin
 import dgenerate.promptupscalers.promptupscaler as _promptupscaler
 from dgenerate.pipelinewrapper.uris import get_quantizer_uri_class as _get_quantizer_uri_class
+from dgenerate.pipelinewrapper.uris import BNBQuantizerUri as _BNBQuantizerUri
 
 
 @contextlib.contextmanager
@@ -232,8 +233,12 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
 
         if quantizer:
             try:
-                quantization_config = \
-                    _get_quantizer_uri_class(quantizer).parse(quantizer).to_config(dtype)
+                quantizer_class = _get_quantizer_uri_class(quantizer)
+                if (quantizer_class is _BNBQuantizerUri and 
+                    self.device.startswith('cpu')):
+                    raise self.argument_error(
+                        'bitsandbytes quantization is not supported with CPU device.')
+                quantization_config = quantizer_class.parse(quantizer).to_config(dtype)
             except Exception as e:
                 raise self.argument_error(f'Error loading "quantizer" argument "{quantizer}": {e}') from e
         else:
@@ -337,7 +342,7 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
     def _load_pipeline(self,
                        model_name: str,
                        dtype: torch.dtype,
-                       quantization_config: typing.Optional = None) -> _TextGenerationPipeline:
+                       quantization_config: typing.Optional[typing.Any] = None) -> _TextGenerationPipeline:
 
         try:
             model = transformers.AutoModelForCausalLM.from_pretrained(

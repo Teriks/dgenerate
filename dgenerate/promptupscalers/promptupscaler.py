@@ -193,7 +193,7 @@ class PromptUpscaler(_plugin.Plugin, abc.ABC):
         return load_cached()
 
     @property
-    def device(self):
+    def device(self) -> str:
         """
         Device that will be used for any text processing models.
         """
