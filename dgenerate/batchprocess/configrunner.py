@@ -303,7 +303,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
         for arg in args:
             if not _torchutil.is_valid_device_string(arg):
                 raise _batchprocessor.BatchProcessError(
-                    f'\\clear_device_cache unknown device: {arg}')
+                    f'\\clear_device_cache invalid device, {_torchutil.invalid_device_message(arg, cap=False)}')
 
         for arg in set(args):
             _devicecache.clear_device_cache(arg)

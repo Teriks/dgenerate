@@ -1959,8 +1959,7 @@ def _create_diffusion_pipeline(
     # Device check
     if not _torchutil.is_valid_device_string(device):
         raise UnsupportedPipelineConfigError(
-            'device must be "cuda" (optionally with a device ordinal "cuda:N") or "cpu", '
-            'or other device supported by torch.')
+            f'Invalid device argument, {_torchutil.invalid_device_message(device, cap=False)}')
 
     # Quantizer map check
     quantizer_map_vals = [

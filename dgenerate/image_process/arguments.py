@@ -149,7 +149,8 @@ def _create_arg_parser(prog, description):
         default=_torchutil.default_device(),
         type=_arguments._type_device,
         help='Processing device, for example "cuda", "cuda:1". '
-             'Or "mps" on MacOS. (default: cuda, mps on MacOS)'))
+             'Or "mps" on MacOS. "xpu" is available for intel '
+             'devices and also supports device indices. (default: cuda, mps on MacOS)'))
 
     actions.append(parser.add_argument(
         '-fs', '--frame-start', default=0, type=_arguments._type_frame_start,

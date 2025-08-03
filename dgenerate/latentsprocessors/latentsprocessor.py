@@ -179,9 +179,9 @@ class LatentsProcessor(_plugin.Plugin, abc.ABC):
         """
         Check a specific device against an amount of memory in bytes.
 
-        If the device is a cuda device and any of the memory constraints specified by
-        :py:attr:`dgenerate.latentsprocessors.constants.LATENTS_PROCESSOR_CUDA_MEMORY_CONSTRAINTS`
-        are met on that device, attempt to remove cached objects off the cuda device to free space.
+        If the device is a gpu device and any of the memory constraints specified by
+        :py:attr:`dgenerate.latentsprocessors.constants.LATENTS_PROCESSOR_GPU_MEMORY_CONSTRAINTS`
+        are met on that device, attempt to remove cached objects off a gpu device to free space.
 
         If the device is a cpu and any of the memory constraints specified by
         :py:attr:`dgenerate.latentsprocessors.constants.LATENTS_PROCESSOR_CACHE_GC_CONSTRAINTS`
@@ -196,9 +196,9 @@ class LatentsProcessor(_plugin.Plugin, abc.ABC):
         device = torch.device(device)
         cleared = False
 
-        if device.type == 'cuda':
-            if _memory.cuda_memory_constraints(
-                    _constants.LATENTS_PROCESSOR_CUDA_MEMORY_CONSTRAINTS,
+        if _memory.is_supported_gpu_device(device):
+            if _memory.gpu_memory_constraints(
+                    _constants.LATENTS_PROCESSOR_GPU_MEMORY_CONSTRAINTS,
                     extra_vars={'memory_required': memory_required},
                     device=device):
                 _messages.debug_log(

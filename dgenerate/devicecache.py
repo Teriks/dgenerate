@@ -20,9 +20,11 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import gc
 import typing
-import dgenerate.types as _types
+
 import torch
+
 import dgenerate.memory as _memory
+import dgenerate.types as _types
 
 __doc__ = """
 High level utilitys for interacting with objects cached by dgenerate in GPU side memory.

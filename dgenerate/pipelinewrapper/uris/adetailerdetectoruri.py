@@ -288,7 +288,8 @@ class AdetailerDetectorUri:
             else:
                 self._device = None
                 raise _exceptions.InvalidAdetailerDetectorUriError(
-                    f'invalid adetailer detector device specification: {device}')
+                    f'invalid adetailer detector device specification, '
+                    f'{_torchutil.invalid_device_message(device, cap=False)}')
 
     def __str__(self):
         return f'{self.__class__.__name__}({str(_types.get_public_attributes(self))})'

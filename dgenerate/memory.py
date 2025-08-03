@@ -23,7 +23,6 @@ import collections.abc
 import os
 import typing
 
-import asteval
 import psutil
 import torch
 
@@ -32,6 +31,7 @@ import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
 import dgenerate.memoize as _memoize
 import dgenerate.eval as _eval
+import dgenerate.torchutil as _torchutil
 
 __doc__ = """
 System memory information and memory constraint expressions.
@@ -284,15 +284,54 @@ def get_total_memory(unit: str = 'b'):
     return psutil.virtual_memory().total / _MEM_FACTORS[unit.strip().lower()]
 
 
-def get_cuda_total_memory(device: str | torch.device, unit: str = 'b'):
+def is_supported_gpu_device(device: str | torch.device) -> bool:
     """
-    Return the total memory processed by a cuda device.
+    Check if a device is a supported GPU device (CUDA or XPU) that can be used
+    with the GPU memory functions in this module.
 
-    Devices other than "cuda" always return 0.
+    MPS statistics are unsupported due to using a unified memory model.
 
-    Passing "cpu" raises ``ValueError``
+    :param device: The device to check (string like 'cuda:0', 'xpu:1' or torch.device object)
+    :return: True if the device is a supported GPU device, False otherwise
+    """
+    if isinstance(device, str):
+        device = device.strip()
+        return device.startswith('cuda') or device.startswith('xpu')
+    elif isinstance(device, torch.device):
+        return device.type in ('cuda', 'xpu')
+    else:
+        return False
 
-    :raise ValueError: If device "cpu" is passed.
+
+def _parse_gpu_device(device: str | torch.device) -> tuple[str, int]:
+    """
+    Parse a GPU device identifier and return the device type and index.
+    
+    :param device: The device to parse (string like 'cuda:0', 'xpu:1' or torch.device object)
+    :return: Tuple of (device_type, device_index)
+    :raises ValueError: If device is not a valid GPU device identifier
+    """
+    if isinstance(device, str):
+        device = device.strip()
+        device_type = device.split(':')[0]
+        if ':' in device:
+            device_index = int(device.split(':')[1].strip())
+        else:
+            device_index = 0  # default to device 0 if no index is specified
+    elif isinstance(device, torch.device):
+        device_type = device.type
+        device_index = device.index if device.index is not None else 0
+    else:
+        raise ValueError('device must be a str or torch.device object.')
+    
+    return device_type, device_index
+
+
+def get_gpu_total_memory(device: str | torch.device, unit: str = 'b'):
+    """
+    Return the total memory processed by a GPU device.
+
+    Non GPU devices always return 0.
 
     :param device: The device.
     :param unit: one of (case insensitive): b (bytes), kb (kilobytes),
@@ -300,33 +339,22 @@ def get_cuda_total_memory(device: str | torch.device, unit: str = 'b'):
         mib (mebibytes), gib (gibibytes)
     :return: Requested value.
     """
-    if isinstance(device, str):
-        device = device.strip()
-        if not device.startswith('cuda'):
-            return 0
-        if ':' in device:
-            device_index = int(device.split(':')[1].strip())
-        else:
-            device_index = 0  # default to device 0 if no index is specified
-    elif isinstance(device, torch.device):
-        if device.type != 'cuda':
-            return 0
-        device_index = device.index if device.index is not None else 0
-    else:
-        raise ValueError('device must be a str or torch.device object.')
+    if not is_supported_gpu_device(device):
+        return 0
+    
+    device_type, device_index = _parse_gpu_device(device)
 
-    return torch.cuda.get_device_properties(device_index).total_memory / _MEM_FACTORS[unit.strip().lower()]
+    if device_type == 'cuda':
+        return torch.cuda.get_device_properties(device_index).total_memory / _MEM_FACTORS[unit.strip().lower()]
+    elif device_type == 'xpu':
+        return torch.xpu.get_device_properties(device_index).total_memory / _MEM_FACTORS[unit.strip().lower()]
 
 
-def get_cuda_allocated_memory(device: str | torch.device, unit: str = 'b'):
+def get_gpu_allocated_memory(device: str | torch.device, unit: str = 'b'):
     """
-    Return the total memory allocated on a cuda device.
+    Return the total memory allocated on a GPU device.
 
-    Devices other than "cuda" always return 0.
-
-    Passing "cpu" raises ``ValueError``
-
-    :raise ValueError: If device "cpu" is passed.
+    Non GPU devices always return 0.
 
     :param device: The device.
     :param unit: one of (case insensitive): b (bytes), kb (kilobytes),
@@ -334,34 +362,24 @@ def get_cuda_allocated_memory(device: str | torch.device, unit: str = 'b'):
         mib (mebibytes), gib (gibibytes)
     :return: Requested value.
     """
-    if isinstance(device, str):
-        device = device.strip()
-        if not device.startswith('cuda'):
-            return 0
-        if ':' in device:
-            device_index = int(device.split(':')[1].strip())
-        else:
-            device_index = 0  # default to device 0 if no index is specified
-    elif isinstance(device, torch.device):
-        if device.type != 'cuda':
-            return 0
-        device_index = device.index if device.index is not None else 0
-    else:
-        raise ValueError('device must be a str or torch.device object.')
+    if not is_supported_gpu_device(device):
+        return 0
+    
+    device_type, device_index = _parse_gpu_device(device)
 
-    with torch.cuda.device(device_index):
-        return torch.cuda.memory_allocated() / _MEM_FACTORS[unit.strip().lower()]
+    if device_type == 'cuda':
+        with torch.cuda.device(device_index):
+            return torch.cuda.memory_allocated() / _MEM_FACTORS[unit.strip().lower()]
+    elif device_type == 'xpu':
+        with torch.xpu.device(device_index):
+            return torch.xpu.memory_allocated() / _MEM_FACTORS[unit.strip().lower()]
 
 
-def get_cuda_free_memory(device: str | torch.device, unit: str = 'b'):
+def get_gpu_free_memory(device: str | torch.device, unit: str = 'b'):
     """
-    Return the amount of free memory available on a cuda device.
+    Return the amount of free memory available on a GPU device.
 
-    Devices other than "cuda" always return 0.
-
-    Passing "cpu" raises ``ValueError``
-
-    :raise ValueError: If device "cpu" is passed.
+    Non GPU devices always return 0.
 
     :param device: The device.
     :param unit: one of (case insensitive): b (bytes), kb (kilobytes),
@@ -369,36 +387,28 @@ def get_cuda_free_memory(device: str | torch.device, unit: str = 'b'):
         mib (mebibytes), gib (gibibytes)
     :return: Requested value.
     """
-    if isinstance(device, str):
-        device = device.strip()
-        if not device.startswith('cuda'):
-            return 0
-        if ':' in device:
-            device_index = int(device.split(':')[1].strip())
-        else:
-            device_index = 0  # default to device 0 if no index is specified
-    elif isinstance(device, torch.device):
-        if device.type != 'cuda':
-            return 0
-        device_index = device.index if device.index is not None else 0
-    else:
-        raise ValueError('device must be a str or torch.device object.')
+    if not is_supported_gpu_device(device):
+        return 0
+    
+    device_type, device_index = _parse_gpu_device(device)
 
-    total_memory = torch.cuda.get_device_properties(device_index).total_memory
-    with torch.cuda.device(device_index):
-        reserved_memory = torch.cuda.memory_reserved()
-        return (total_memory - reserved_memory) / _MEM_FACTORS[unit.strip().lower()]
+    if device_type == 'cuda':
+        total_memory = torch.cuda.get_device_properties(device_index).total_memory
+        with torch.cuda.device(device_index):
+            reserved_memory = torch.cuda.memory_reserved()
+            return (total_memory - reserved_memory) / _MEM_FACTORS[unit.strip().lower()]
+    elif device_type == 'xpu':
+        total_memory = torch.xpu.get_device_properties(device_index).total_memory
+        with torch.xpu.device(device_index):
+            reserved_memory = torch.xpu.memory_reserved()
+            return (total_memory - reserved_memory) / _MEM_FACTORS[unit.strip().lower()]
 
 
-def get_cuda_reserved_memory(device: str | torch.device, unit: str = 'b'):
+def get_gpu_reserved_memory(device: str | torch.device, unit: str = 'b'):
     """
-    Return the amount of reserved memory on a cuda device.
+    Return the amount of reserved memory on a GPU device.
 
-    Devices other than "cuda" always return 0.
-
-    Passing "cpu" raises ``ValueError``
-
-    :raise ValueError: If device "cpu" is passed.
+    Non GPU devices always return 0.
 
     :param device: The device.
     :param unit: one of (case insensitive): b (bytes), kb (kilobytes),
@@ -406,23 +416,17 @@ def get_cuda_reserved_memory(device: str | torch.device, unit: str = 'b'):
         mib (mebibytes), gib (gibibytes)
     :return: Requested value.
     """
-    if isinstance(device, str):
-        device = device.strip()
-        if not device.startswith('cuda'):
-            return 0
-        if ':' in device:
-            device_index = int(device.split(':')[1].strip())
-        else:
-            device_index = 0  # default to device 0 if no index is specified
-    elif isinstance(device, torch.device):
-        if device.type != 'cuda':
-            return 0
-        device_index = device.index if device.index is not None else 0
-    else:
-        raise ValueError('device must be a str or torch.device object.')
+    if not is_supported_gpu_device(device):
+        return 0
+    
+    device_type, device_index = _parse_gpu_device(device)
 
-    with torch.cuda.device(device_index):
-        return torch.cuda.memory_reserved() / _MEM_FACTORS[unit.strip().lower()]
+    if device_type == 'cuda':
+        with torch.cuda.device(device_index):
+            return torch.cuda.memory_reserved() / _MEM_FACTORS[unit.strip().lower()]
+    elif device_type == 'xpu':
+        with torch.xpu.device(device_index):
+            return torch.xpu.memory_reserved() / _MEM_FACTORS[unit.strip().lower()]
 
 
 def bytes_best_human_unit(byte_count: int, delimiter='') -> str:
@@ -506,15 +510,15 @@ def calculate_chunk_size(file_size):
         return int(total_memory * 0.001)
 
 
-def cuda_memory_constraints(expressions: collections.abc.Iterable[str],
+def gpu_memory_constraints(expressions: collections.abc.Iterable[str],
                             extra_vars: dict[str, int | float] | None = None,
                             mode=any,
                             device: str | torch.device = 'cuda:0') -> bool:
     """
-    Evaluate a user boolean expression involving the CUDA device's memory in bytes,
-    used memory percent, and available CUDA memory in bytes.
+    Evaluate a user boolean expression involving a GPU device's memory in bytes,
+    used memory percent, and available VRAM memory in bytes.
 
-    If you pass a non cuda device identifier to this method, it will always return ``False``
+   If you pass a non GPU device identifier to this method, it will always return ``False``
 
     Available functions are:
         * kb(bytes to kilobytes)
@@ -525,14 +529,14 @@ def cuda_memory_constraints(expressions: collections.abc.Iterable[str],
         * gib(bytes to gibibytes)
 
     Available values are:
-        * used / u (memory currently used by the CUDA device in bytes)
-        * used_total_percent / utp (memory used by the CUDA device, as percent of total CUDA memory, example: 25.4)
-        * available / a (available memory remaining on the CUDA device in bytes that can be used)
-        * total / t (total memory on the CUDA device in bytes)
+        * used / u (memory currently used by the GPU device in bytes)
+        * used_total_percent / utp (memory used by the GPU device, as percent of total VRAM memory, example: 25.4)
+        * available / a (available memory remaining on the GPU device in bytes that can be used)
+        * total / t (total memory on the GPU device in bytes)
 
     Example expressions:
         * ``used > gb(1)`` (when the device has used more than 1GB of memory)
-        * ``used_total_percent > 25`` (when the device has used more than 25 percent of CUDA memory)
+        * ``used_total_percent > 25`` (when the device has used more than 25 percent of VRAM memory)
         * ``available < gb(2)`` (when the available memory on the device is less than 2GB)
 
     Expressions may not be longer than 128 characters. However, multiple expressions may be provided.
@@ -549,7 +553,7 @@ def cuda_memory_constraints(expressions: collections.abc.Iterable[str],
     :param mode: the standard library function 'any' (equating to OR all expressions) or
         the standard library function 'all' (equating to AND all expressions). The default
         is 'any' which ORs all expressions.
-    :param device: CUDA device string or torch.device object, defaults to 'cuda:0'.
+    :param device: GPU device string or torch.device object, defaults to 'cuda:0'. Can be CUDA (e.g., 'cuda:0') or XPU (e.g., 'xpu:0') devices.
     :return: Boolean result of the expression
     """
 
@@ -559,27 +563,23 @@ def cuda_memory_constraints(expressions: collections.abc.Iterable[str],
     for expr in expressions:
         memory_constraint_syntax_check(expr)
 
-    if isinstance(device, str):
-        device = device.strip()
-        if not device.startswith('cuda'):
-            return False
-        if ':' in device:
-            device_index = int(device.split(':')[1].strip())
-        else:
-            device_index = 0  # default to device 0 if no index is specified
-    elif isinstance(device, torch.device):
-        if device.type != 'cuda':
-            return False
-        device_index = device.index if device.index is not None else 0
-    else:
-        raise ValueError('device must be a str or torch.device object.')
+    if not is_supported_gpu_device(device):
+        return False
+    
+    device_type, device_index = _parse_gpu_device(device)
 
-    total_memory = torch.cuda.get_device_properties(device_index).total_memory
-
-    with torch.cuda.device(device_index):
-        reserved_memory = torch.cuda.memory_reserved()
-        allocated_memory = torch.cuda.memory_allocated()
-        free_memory = total_memory - reserved_memory
+    if device_type == 'cuda':
+        total_memory = torch.cuda.get_device_properties(device_index).total_memory
+        with torch.cuda.device(device_index):
+            reserved_memory = torch.cuda.memory_reserved()
+            allocated_memory = torch.cuda.memory_allocated()
+            free_memory = total_memory - reserved_memory
+    elif device_type == 'xpu':
+        total_memory = torch.xpu.get_device_properties(device_index).total_memory
+        with torch.xpu.device(device_index):
+            reserved_memory = torch.xpu.memory_reserved()
+            allocated_memory = torch.xpu.memory_allocated()
+            free_memory = total_memory - reserved_memory
 
     used = allocated_memory
     used_total_percent = (used / total_memory) * 100.0
@@ -620,7 +620,7 @@ def cuda_memory_constraints(expressions: collections.abc.Iterable[str],
     interpreter.symtable.update(functions)
 
     _messages.debug_log(
-        f'GPU MEMORY CONSTRAINT TEST: {_types.fullname(cuda_memory_constraints)} constraint = '
+        f'GPU MEMORY CONSTRAINT TEST: {_types.fullname(gpu_memory_constraints)} constraint = '
         f'[{", ".join(_textprocessing.quote_spaces(expressions))}], '
         f'vars = {str(variables)}, mode={mode.__name__}')
 
@@ -704,7 +704,7 @@ class SizedConstrainedObjectCache(_memoize.ObjectCache):
             return True
         return False
 
-    def enforce_cuda_mem_constraints(
+    def enforce_gpu_mem_constraints(
             self,
             constraints: typing.Iterable[str],
             size_var: str,
@@ -715,7 +715,7 @@ class SizedConstrainedObjectCache(_memoize.ObjectCache):
         """
         Clear the cache if these GPU side memory constraints are met.
 
-        See: :py:func:`cuda_memory_constraints`
+        See: :py:func:`gpu_memory_constraints`
 
         The constraint variable ``cache_size`` equates to the current cache size.
 
@@ -729,7 +729,7 @@ class SizedConstrainedObjectCache(_memoize.ObjectCache):
         _messages.debug_log(
             f'Object Cache: "{self.name}", enforcing GPU side memory constraints: {constraints}, mode={mode.__name__}')
 
-        if cuda_memory_constraints(constraints,
+        if gpu_memory_constraints(constraints,
                                    {size_var: new_object_size, 'cache_size': self.size},
                                    mode=mode, device=device):
             _messages.debug_log(
@@ -750,8 +750,14 @@ class SizedConstrainedObjectCache(_memoize.ObjectCache):
 
 def torch_gc():
     """
-    Call ``torch.cuda.empty_cache()`` and ``torch.cuda.ipc_collect()``
+    Call ``torch.cuda.empty_cache()`` and ``torch.cuda.ipc_collect()`` for CUDA,
+    and ``torch.xpu.empty_cache()`` for XPU devices.
     """
 
-    torch.cuda.empty_cache()
-    torch.cuda.ipc_collect()
+    if _torchutil.is_cuda_available():
+        torch.cuda.empty_cache()
+        torch.cuda.ipc_collect()
+
+    if _torchutil.is_xpu_available():
+        torch.xpu.empty_cache()
+        # Note: torch.xpu does not have ipc_collect() equivalent

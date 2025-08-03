@@ -85,13 +85,9 @@ class PromptUpscaler(_plugin.Plugin, abc.ABC):
                          **kwargs)
 
         if device is not None:
-            try:
-                if not _torchutil.is_valid_device_string(device):
-                    raise _exceptions.PromptUpscalerArgumentError(
-                        f'Invalid device argument: "{device}" is not a valid device string.')
-            except _torchutil.InvalidDeviceOrdinalException as e:
+            if not _torchutil.is_valid_device_string(device):
                 raise _exceptions.PromptUpscalerArgumentError(
-                    f'Invalid device argument: {e}') from e
+                    f'Invalid device argument, {_torchutil.invalid_device_message(device, cap=False)}')
 
         self.__device = device if device else 'cpu'
         self.__local_files_only = local_files_only
@@ -101,9 +97,9 @@ class PromptUpscaler(_plugin.Plugin, abc.ABC):
         """
         Check a specific device against an amount of memory in bytes.
 
-        If the device is a cuda device and any of the memory constraints specified by
-        :py:attr:`dgenerate.promptupscalers.constants.PROMPT_UPSCALER_CUDA_MEMORY_CONSTRAINTS`
-        are met on that device, attempt to remove cached objects off the cuda device to free space.
+        If the device is a gpu device and any of the memory constraints specified by
+        :py:attr:`dgenerate.promptupscalers.constants.PROMPT_UPSCALER_GPU_MEMORY_CONSTRAINTS`
+        are met on that device, attempt to remove cached objects off a gpu device to free space.
 
         If the device is a cpu and any of the memory constraints specified by
         :py:attr:`dgenerate.promptupscalers.constants.PROMPT_UPSCALER_CACHE_GC_CONSTRAINTS`
@@ -118,9 +114,9 @@ class PromptUpscaler(_plugin.Plugin, abc.ABC):
         device = torch.device(device)
         cleared = False
 
-        if device.type == 'cuda':
-            if _memory.cuda_memory_constraints(
-                    _constants.PROMPT_UPSCALER_CUDA_MEMORY_CONSTRAINTS,
+        if _memory.is_supported_gpu_device(device):
+            if _memory.gpu_memory_constraints(
+                    _constants.PROMPT_UPSCALER_GPU_MEMORY_CONSTRAINTS,
                     extra_vars={'memory_required': memory_required},
                     device=device):
                 _messages.debug_log(

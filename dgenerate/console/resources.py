@@ -22,15 +22,14 @@ import bisect
 import importlib.resources
 import importlib.util
 import io
-import json
 import os
 import platform
 import shutil
 import subprocess
 import tkinter
 import tkinter as tk
-import typing
 import webbrowser
+import json
 
 import PIL.Image
 import PIL.ImageTk
@@ -225,6 +224,30 @@ def get_torch_devices() -> list[str]:
                 if gpu_count > 0:
                     devices = [str(i) for i in range(gpu_count)]
                     return ['cuda:' + device for device in devices] + ['cpu']
+
+            # Detect XPU devices using xpu-smi
+            elif shutil.which('xpu-smi') is not None:
+                result = subprocess.run(['xpu-smi', 'discovery', '-j'],
+                                        stdin=None,
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.STDOUT,
+                                        **extra_kwargs)
+
+                if result.returncode != 0:
+                    return ['cpu']
+
+                # Parse xpu-smi JSON output to get device IDs
+                try:
+                    data = json.loads(result.stdout.decode())
+                    device_list = data.get('device_list', [])
+                    device_ids = [str(device['device_id']) for device in device_list 
+                                  if 'device_id' in device]
+                    
+                    if device_ids:
+                        return ['xpu:' + device_id for device_id in device_ids] + ['cpu']
+                except (json.JSONDecodeError, KeyError, TypeError):
+                    # Fallback to CPU if JSON parsing fails
+                    return ['cpu']
 
             # No GPUs found, fallback to CPU
             return ['cpu']

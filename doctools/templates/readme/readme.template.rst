@@ -76,6 +76,7 @@ Manual Install
 * `Linux ROCm <https://dgenerate.readthedocs.io/en/@REVISION/manual.html#linux-with-rocm-amd-cards>`_
 * `MacOS <https://dgenerate.readthedocs.io/en/@REVISION/manual.html#macos-install-apple-silicon-only>`_
 * `Google Colab <https://dgenerate.readthedocs.io/en/@REVISION/manual.html#google-colab-install>`_
+* `XPU (Intel) <https://dgenerate.readthedocs.io/en/@REVISION/manual.html#install-with-xpu-support>`_
 * `Installing From Development Branches <https://dgenerate.readthedocs.io/en/@REVISION/manual.html#installing-from-development-branches>`_
 
 System Requirements

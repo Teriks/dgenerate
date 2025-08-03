@@ -35,13 +35,14 @@ import tqdm
 import dgenerate.batchprocess.batchprocessor as _batchprocessor
 import dgenerate.image as _image
 import dgenerate.memory
-import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
 import dgenerate.prompt as _prompt
 import dgenerate.renderloop as _renderloop
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.webcache as _webcache
+import dgenerate.torchutil as _torchutil
+import dgenerate.memory as _memory
 
 
 def _format_prompt_single(prompt):
@@ -508,8 +509,13 @@ def have_cuda() -> bool:
     """
     Check if CUDA is available.
     """
-    return torch.cuda.is_available()
+    return _torchutil.is_cuda_available()
 
+def have_xpu() -> bool:
+    """
+    Check if XPU is available.
+    """
+    return _torchutil.is_xpu_available()
 
 def total_memory(device: str | None = None, unit: str = 'b'):
     """
@@ -533,9 +539,9 @@ def total_memory(device: str | None = None, unit: str = 'b'):
     device = torch.device(device)
 
     if device.type == 'cpu':
-        return dgenerate.memory.get_total_memory(unit)
+        return _memory.get_total_memory(unit)
     else:
-        return dgenerate.memory.get_cuda_total_memory(device, unit)
+        return _memory.get_gpu_total_memory(device, unit)
 
 
 def import_module(module_name: str) -> typing.Any:

@@ -1558,9 +1558,14 @@ Help Output
             present, in that case this option has no effect.
             ------------------------------------------------
       -d, --device DEVICE
-            cuda / cpu, or other device supported by torch, for example mps on MacOS. (default: cuda, mps on
-            MacOS). Use: cuda:0, cuda:1, cuda:2, etc. to specify a specific cuda supporting GPU.
-            ------------------------------------------------------------------------------------
+            cuda / cpu, or other device supported by torch.  For example mps on MacOS, and xpu for intel GPUs.
+            
+            default: cuda [prioritize when available] then xpu. And only mps on MacOS.
+            
+            Use: cuda:0, cuda:1, cuda:2, etc. to specify a specific cuda supporting GPU.
+            
+            Device indices are also supported for xpu, but not for mps.
+            -----------------------------------------------------------
       -t, --dtype DTYPE
             Model precision: auto, bfloat16, float16, or float32. (default: auto)
             ---------------------------------------------------------------------
@@ -2731,6 +2736,20 @@ the virtual environment is not preserved between cells.  For brevity, and as an 
 .. code-block:: bash
 
     !source /content/venv/bin/activate; dgenerate --help
+
+Install with XPU support
+========================
+
+In order to install with XPU support (Intel), follow the install guide for
+your respective platform, but use the XPU-specific PyTorch wheel index:
+
+``--extra-index-url https://download.pytorch.org/whl/xpu``
+
+This will ensure you get XPU-optimized versions of PyTorch with built-in Intel XPU support. 
+No additional Intel Extension packages are required - XPU support is included directly 
+in the PyTorch XPU wheel.
+
+This is supported experimentally.
 
 Installing From Development Branches
 ====================================
@@ -7640,8 +7659,9 @@ The help output of ``image-process`` is as follows:
             alignment.
             ----------
       -d, --device DEVICE
-            Processing device, for example "cuda", "cuda:1". Or "mps" on MacOS. (default: cuda, mps on MacOS)
-            -------------------------------------------------------------------------------------------------
+            Processing device, for example "cuda", "cuda:1". Or "mps" on MacOS. "xpu" is available for intel
+            devices and also supports device indices. (default: cuda, mps on MacOS)
+            -----------------------------------------------------------------------
       -fs, --frame-start FRAME_NUMBER
             Starting frame slice point for animated files (zero-indexed), the specified frame will be included.
             (default: 0)
@@ -10022,7 +10042,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [56963813329029]
+            Value: [32107011656742]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
