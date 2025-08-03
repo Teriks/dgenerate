@@ -9175,6 +9175,205 @@ manual / interactive adetailer like editing.
     --prompts "a smiling mans face"
     --post-processors paste;image={{input_image}};position={{face_box}};feather=10;reverse=True
 
+
+YOLO + SAM Automated Segmentation
+=================================
+
+For automated object detection and segmentation, the ``yolo-sam`` image processor
+combines YOLO object detection with SAM segmentation in a single step. This processor
+first uses a YOLO model to detect objects and generate bounding boxes, then uses
+those bounding boxes as prompts for the SAM model to create precise segmentation masks.
+
+This is particularly useful for workflows where you want to automatically detect and
+segment all instances of specific object classes without manual intervention. The
+processor supports all YOLO filtering options (confidence thresholds, class filters,
+index filters) and can generate either annotated preview images or composite masks.
+
+The ``yolo-sam`` processor is especially valuable for:
+
+* Video processing workflows: Consistent automated segmentation across video frames
+* Adapting detection-only YOLO models: Adding segmentation capabilities to YOLO models that only provide bounding boxes
+* Creating masks for specific detected objects using class / index filtering
+
+.. code-block:: text
+
+    yolo-sam:
+        arguments:
+            yolo-model: str
+            yolo-weight-name: str | None = None
+            yolo-subfolder: str | None = None
+            yolo-revision: str | None = None
+            yolo-token: str | None = None
+            sam-asset: str = "sam_b.pt"
+            font-size: int | None = None
+            line-width: int | None = None
+            line-color: str | None = None
+            class-filter: int | str | list | tuple | set | None = None
+            index-filter: int | list | tuple | set | None = None
+            confidence: float = 0.3
+            masks: bool = False
+            outpaint: bool = False
+            detector-padding: int | str = 0
+            pre-resize: bool = False
+            device: str | None = None
+            output-file: Optional[str] = None
+            output-overwrite: bool = False
+            model-offload: bool = False
+    
+        Process the input image with YOLO object detection followed by SAM (Segment Anything Model) segmentation.
+    
+        This processor combines the object detection capabilities of YOLO with the precise segmentation of SAM. It
+        first runs YOLO to detect objects and get bounding boxes, then uses those boxes as prompts for SAM to
+        generate precise segmentation masks.
+    
+        This processor operates in two distinct modes:
+    
+        Preview Mode (default, masks=False):
+    
+        Returns the original image with generated masks outlined and labeled. The colors of the outlines and text
+        are automatically chosen to contrast with the background for optimal visibility. Labels show the detection
+        index, class information, and confidence score.
+    
+        Mask Mode (masks=True):
+    
+        Returns a single composite mask image containing all generated masks combined together. This is useful for
+        inpainting, outpainting, or other mask-based image processing operations.
+    
+        -----
+    
+        The "yolo-model" argument specifies the YOLO model to use for object detection. This can be a local path,
+        a URL, or a HuggingFace repository slug / blob link.
+    
+        The "yolo-weight-name" argument specifies the file name in a HuggingFace repository for the YOLO model
+        weights, if you have provided a HuggingFace repository slug to the yolo-model argument.
+    
+        The "yolo-subfolder" argument specifies the subfolder in a HuggingFace repository for the YOLO model
+        weights, if you have provided a HuggingFace repository slug to the yolo-model argument.
+    
+        The "yolo-revision" argument specifies the revision of a HuggingFace repository for the YOLO model
+        weights, if you have provided a HuggingFace repository slug to the yolo-model argument. For example:
+        "main"
+    
+        The "yolo-token" argument specifies your HuggingFace authentication token explicitly if needed for
+        accessing private repositories.
+    
+        The "sam-asset" argument specifies which SAM model asset to use. This should be the name of an Ultralytics
+        SAM model asset, loading arbitrary checkpoints is not supported. This argument may be one of:
+    
+            * sam_l.pt
+            * sam_b.pt
+            * mobile_sam.pt
+            * sam2_t.pt
+            * sam2_s.pt
+            * sam2_b.pt
+            * sam2_l.pt
+            * sam2.1_t.pt
+            * sam2.1_s.pt
+            * sam2.1_b.pt
+            * sam2.1_l.pt
+    
+        You may exclude the `.pt` suffix if desired.
+    
+        The "confidence" argument sets the confidence threshold for detections (0.0 to 1.0), defaults to: 0.3
+    
+        The "class-filter" argument can be used to detect only specific classes. This should be a comma-separated
+        list of class IDs or class names, or a single value, for example: "0,2,person,car". This filter is applied
+        before "index-filter".
+    
+        Example "class-filter" values:
+    
+            # Only keep detection class ID 0
+            class-filter=0
+    
+            # Only keep detection class "hand"
+            class-filter=hand
+    
+            # keep class ID 2,3
+            class-filter=2,3
+    
+            # keep class ID 0 & class Name "hand"
+            # if entry cannot be parsed as an integer
+            # it is interpreted as a name
+            class-filter=0,hand
+    
+            # "0" is interpreted as a name and not an ID,
+            # this is not likely to be useful
+            class-filter="0",hand
+    
+            # List syntax is supported, you must quote
+            # class names
+            class-filter=[0, "hand"]
+    
+        The "index-filter" argument is a list values or a single value that indicates what YOLO detection indices
+        to keep, the index values start at zero. Detections are sorted by their top left bounding box coordinate
+        from left to right, top to bottom, by (confidence descending). The order of detections in the image is
+        identical to the reading order of words on a page (english). Processing will only be performed on the
+        specified detection indices, if no indices are specified, then processing will be performed on all
+        detections.
+    
+        Example "index-filter" values:
+    
+            # keep the first, leftmost, topmost detection
+            index-filter=0
+    
+            # keep detections 1 and 3
+            index-filter=[1, 3]
+    
+            # CSV syntax is supported (tuple)
+            index-filter=1,3
+    
+        The "detector-padding" argument specifies the amount of padding that will be added to the YOLO detection
+        rectangles before they are used as SAM prompts. This can expand the detection areas to provide more
+        context for segmentation. The default is 0.
+    
+        Padding examples:
+    
+            32 (32px Uniform, all sides)
+    
+            10x20 (10px Horizontal, 20px Vertical)
+    
+            10x20x30x40 (10px Left, 20px Top, 30px Right, 40px Bottom)
+    
+        The "font-size" argument determines the size of the label text. If not specified, it will be automatically
+        calculated based on the image dimensions.
+    
+        The "line-width" argument controls the thickness of the mask outline lines. If not specified, it will be
+        automatically calculated based on the image dimensions.
+    
+        The "line-color" argument overrides the color for mask outlines and text label backgrounds. This should be
+        specified as a HEX color code, e.g. "#FFFFFF" or "#FFF". If not specified, colors are automatically chosen
+        to contrast with the background. The text color will always be automatically chosen to contrast with the
+        background for optimal readability.
+    
+        The "masks" argument enables mask generation mode. When True, the processor returns a composite mask image
+        instead of the annotated preview image. This defaults to False.
+    
+        The "outpaint" argument inverts the generated masks, creating inverted masks suitable for outpainting
+        operations. This only has an effect when "masks" is True. This defaults to False.
+    
+        The "pre-resize" argument determines if the processing occurs before or after dgenerate resizes the image.
+        This defaults to False, meaning the image is processed after dgenerate is done resizing it.
+    
+        The "device" argument can be used to set the device the processor will run on, for example: cpu, cuda,
+        cuda:1. If you are using this image processor as a preprocess or postprocess step for dgenerate, or with
+        the image-process subcommand, or \image_process directive, this argument will default to the value of
+        --device.
+    
+        The "output-file" argument can be used to set the output path for a processor debug image, this will save
+        the processed image to a path of your choosing.
+    
+        The "output-overwrite" argument can be used to enable overwrite for a processor debug image. If this is
+        not enabled, new images written by the processor while it is being used will be written with a numbered
+        suffix instead of being overwritten.
+    
+        The "model-offload" argument can be used to enable cpu model offloading for a processor. If this is
+        disabled, any torch tensors or modules placed on the GPU will remain there until the processor is done
+        being used, instead of them being moved back to the CPU after each image. Enabling this may help save VRAM
+        when using an image processor as a preprocessor or postprocessor for diffusion with dgenerate but will
+        impact rendering speed when generating many images.
+    
+    ==============================================================================================================
+
 Quantization
 ============
 
