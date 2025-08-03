@@ -29,6 +29,14 @@ from .imageprocessor import ImageProcessor
 from .imageprocessorchain import ImageProcessorChain
 from .imageprocessorloader import ImageProcessorLoader
 from .imageprocessormixin import ImageProcessorMixin
+
+from .exceptions import (
+    ImageProcessorNotFoundError,
+    ImageProcessorArgumentError,
+    ImageProcessorImageModeError,
+    ImageProcessorError,
+)
+
 # =====================
 
 
@@ -40,12 +48,6 @@ from .outpaint_mask import OutpaintMaskProcessor
 from .cv2imageops import (
     DilateProcessor,
     GaussianBlurProcessor
-)
-from .exceptions import (
-    ImageProcessorNotFoundError,
-    ImageProcessorArgumentError,
-    ImageProcessorImageModeError,
-    ImageProcessorError,
 )
 from .hed import HEDProcessor
 from .imageops import (
@@ -73,7 +75,8 @@ from .sam import SegmentAnythingProcessor
 from .u_sam import USAMProcessor
 from .teed import TEEDProcessor
 from .upscaler import UpscalerProcessor
-from .yolo import YOLODetectionProcessor
+from .yolo import YOLOProcessor
+from .yolo_sam import YOLOSAMProcessor
 from .zoe import ZoeDepthProcessor
 
 try:
