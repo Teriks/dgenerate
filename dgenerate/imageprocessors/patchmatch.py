@@ -36,16 +36,33 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
     Inpaint an image with the PatchMatch algorithm (content aware fill).
     
     The PatchMatch algorithm is used in this processor for pyramidical inpainting
-    (filling in missing or masked areas) in images. This processor requires a
-    mask image to be provided via the "mask" argument.  The mask should be a grayscale
-    image where white pixels (255) indicate areas to inpaint and black pixels
-    (0) indicate areas to preserve.
+    (filling in missing or masked areas) in images. This processor requires either
+    a mask or subject image to be provided via the "mask" or "image" arguments.
+    These arguments are mutually exclusive.
     
-    The "mask" argument should point to a file path on disk or a URL that can be downloaded.
-    Both local files and remote URLs are supported. The mask will be resized to the
-    dimension of the incoming image if they are not the same size.
+    When using the "mask" argument, the incoming image is considered the subject
+    image to be inpainted, and the "mask" argument provides a grayscale mask where
+    white pixels (255) indicate areas to inpaint and black pixels (0) indicate
+    areas to preserve.
+    
+    When using the "image" argument, the incoming image is considered the mask,
+    and the "image" argument provides the subject image to be inpainted. The
+    incoming mask image should be a grayscale image where white pixels (255)
+    indicate areas to inpaint and black pixels (0) indicate areas to preserve.
+    
+    The "mask" or "image" argument should point to a file path on disk or a URL
+    that can be downloaded. Both local files and remote URLs are supported. The
+    mask or image will be resized to match the dimensions of the corresponding
+    target image if they are not the same size.
 
     The "mask-processors" argument allows you to pre-process the "mask" argument with an
+    arbitrary image processor chain, for example: invert, gaussian-blur, etc. This
+    arguments value must be quoted (single or double string quotes) if you intend
+    to supply arguments to the processors in the chain. The pixel alignment of this
+    processor chain defaults to 1, meaning no forced alignment will occur, you
+    can force alignment using the "resize" image processor if desired.
+    
+    The "image-processors" argument allows you to pre-process the "image" argument with an
     arbitrary image processor chain, for example: invert, gaussian-blur, etc. This
     arguments value must be quoted (single or double string quotes) if you intend
     to supply arguments to the processors in the chain. The pixel alignment of this
@@ -66,7 +83,8 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
     NAMES = ['patchmatch']
 
     FILE_ARGS = {
-        'mask': {'mode': 'in', 'filetypes': [('Images', _imageprocessor.ImageProcessor.image_in_filetypes())]}
+        'mask': {'mode': 'in', 'filetypes': [('Images', _imageprocessor.ImageProcessor.image_in_filetypes())]},
+        'image': {'mode': 'in', 'filetypes': [('Images', _imageprocessor.ImageProcessor.image_in_filetypes())]}
     }
 
     @classmethod
@@ -74,22 +92,24 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
         help_messages = {
             'device': (
                 'The "device" argument can be used to set the device '
-                'the mask-processors will run on, for example: cpu, cuda, cuda:1.'
+                'the mask-processors and image-processors will run on, for example: cpu, cuda, cuda:1.'
             ),
             'model-offload': (
                 'The "model-offload" argument can be used to enable '
-                'cpu model offloading for the mask-processors. If this is disabled, '
+                'cpu model offloading for the mask-processors and image-processors. If this is disabled, '
                 'any torch tensors or modules placed on the GPU will remain there until '
-                'the mask-processor is done being used, instead of them being moved back to the CPU '
-                'after each invocation. Enabling this may help save VRAM when using multiple mask processors '
+                'the processor is done being used, instead of them being moved back to the CPU '
+                'after each invocation. Enabling this may help save VRAM when using multiple processors '
                 'that make use of the GPU.'
             )
         }
         return help_messages
 
     def __init__(self,
-                 mask: str,
+                 mask: str | None = None,
                  mask_processors: str | None = None,
+                 image: str | None = None,
+                 image_processors: str | None = None,
                  patch_size: int = 5,
                  seed: int | None = None,
                  pre_resize: bool = False,
@@ -97,6 +117,8 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
         """
         :param mask: Path to mask image file or URL. White pixels indicate areas to inpaint.
         :param mask_processors: Pre-process ``mask`` with an arbitrary image processor chain.
+        :param image: Path to subject image file or URL when incoming image is the mask.
+        :param image_processors: Pre-process ``image`` with an arbitrary image processor chain.
         :param patch_size: Patch size for PatchMatch algorithm. Default is 5.
         :param seed: Random number generator seed for reproducible results. If None, uses random seed.
         :param pre_resize: process the image before it is resized, or after? default is ``False`` (after).
@@ -104,14 +126,38 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
         """
         super().__init__(**kwargs)
 
-        if not mask:
-            raise self.argument_error('Argument "mask" is required and cannot be empty.')
+        # Validate mutually exclusive arguments
+        if mask and image:
+            raise self.argument_error(
+                'Arguments "mask" and "image" are mutually exclusive. '
+                'Use "mask" when the incoming image is the subject to be inpainted, '
+                'or "image" when the incoming image is the mask.'
+            )
+
+        if not mask and not image:
+            raise self.argument_error(
+                'Either "mask" or "image" argument is required. '
+                'Use "mask" when the incoming image is the subject to be inpainted, '
+                'or "image" when the incoming image is the mask.'
+            )
+
+        if mask_processors and not mask:
+            raise self.argument_error(
+                'Cannot use "mask-processors" without specifying "mask"'
+            )
+
+        if image_processors and not image:
+            raise self.argument_error(
+                'Cannot use "image-processors" without specifying "image"'
+            )
 
         if patch_size <= 0:
             raise self.argument_error('Argument "patch-size" must be a positive integer.')
 
         self._mask_path = mask
         self._mask_processors = mask_processors
+        self._image_path = image
+        self._image_processors = image_processors
         self._patch_size = patch_size
         self._seed = seed
         self._pre_resize = pre_resize
@@ -167,6 +213,57 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
         except Exception as e:
             raise self.argument_error(f'Failed to load mask from "{self._mask_path}": {e}')
 
+    def _load_subject_image(self, target_size: _types.Size = None) -> PIL.Image.Image:
+        """
+        Load the subject image from file path or URL.
+        
+        :param target_size: Optional size to resize image to match input
+        :return: Subject image as PIL Image
+        """
+        try:
+            # Handle URL downloads using webcache
+            if _webcache.is_downloadable_url(self._image_path):
+                # Download and cache the URL
+                _, image_file_path = _webcache.create_web_cache_file(
+                    self._image_path,
+                    mime_acceptable_desc='image files',
+                    mimetype_is_supported=lambda m: m.startswith('image/'),
+                    local_files_only=self.local_files_only
+                )
+                image_path = image_file_path
+            else:
+                # Use local file path directly
+                image_path = self._image_path
+
+            # Load subject image
+            subject_image = PIL.Image.open(image_path)
+
+            if self._image_processors is not None:
+                subject_image = self._run_image_processor(
+                    self._image_processors,
+                    subject_image,
+                    aspect_correct=False,
+                    resize_resolution=None,
+                    align=1
+                )
+
+            # Convert to RGB if needed
+            if subject_image.mode != 'RGB':
+                subject_image = subject_image.convert('RGB')
+
+            # Resize image to match target size if specified using optimal interpolation
+            if target_size is not None:
+                old_size = subject_image.size  # (width, height)
+                interpolation = _image.best_cv2_resampling(old_size, target_size)
+                subject_array = np.array(subject_image)
+                subject_array = cv2.resize(subject_array, target_size, interpolation=interpolation)
+                subject_image = PIL.Image.fromarray(subject_array)
+
+            return subject_image
+
+        except Exception as e:
+            raise self.argument_error(f'Failed to load subject image from "{self._image_path}": {e}')
+
     def _run_image_processor(
             self,
             uri_chain_string,
@@ -209,13 +306,29 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
         :param image: Input PIL image
         :return: Processed PIL image
         """
-        # Convert PIL image to numpy array
-        image_array = np.array(image)
+        if self._mask_path:
+            # Mask mode: incoming image is the subject, load mask from mask argument
+            subject_image = image
+            mask_array = self._load_mask(target_size=image.size)
+        else:
+            # Image mode: incoming image is the mask, load subject from image argument
+            subject_image = self._load_subject_image(target_size=image.size)
+            # Convert incoming image to grayscale mask
+            incoming_mask_image = image.convert('L') if image.mode != 'L' else image
+            # Resize incoming mask to match subject image size if necessary
+            if incoming_mask_image.size != subject_image.size:
+                old_size = incoming_mask_image.size
+                new_size = subject_image.size
+                interpolation = _image.best_cv2_resampling(old_size, new_size)
+                mask_array_temp = np.array(incoming_mask_image)
+                mask_array_temp = cv2.resize(mask_array_temp, new_size, interpolation=interpolation)
+                mask_array = mask_array_temp > 128
+            else:
+                mask_array = np.array(incoming_mask_image) > 128
 
-        # Load mask and ensure it matches the image size
-        # Note: image.size is (width, height) but numpy arrays are (height, width, channels)
-        mask_array = self._load_mask(target_size=image.size)
-        
+        # Convert subject image to numpy array
+        image_array = np.array(subject_image)
+
         # Ensure mask dimensions match the image array
         if mask_array.shape != image_array.shape[:2]:
             # Resize mask to match image array dimensions exactly using optimal interpolation
@@ -240,7 +353,7 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
             if result_array.shape != image_array.shape:
                 # Use optimal interpolation for resizing back to original size
                 old_size = (result_array.shape[1], result_array.shape[0])  # (width, height)
-                new_size = image.size  # (width, height)
+                new_size = subject_image.size  # (width, height)
                 interpolation = _image.best_cv2_resampling(old_size, new_size)
                 result_array = cv2.resize(result_array, new_size, interpolation=interpolation)
 
