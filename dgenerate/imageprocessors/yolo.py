@@ -44,7 +44,7 @@ import dgenerate.webcache as _webcache
 from dgenerate.imageprocessors import imageprocessor as _imageprocessor
 
 
-class YOLODetectionProcessor(_imageprocessor.ImageProcessor):
+class YOLOProcessor(_imageprocessor.ImageProcessor):
     """
     Process the input image with Ultralytics YOLO object detection.
     
