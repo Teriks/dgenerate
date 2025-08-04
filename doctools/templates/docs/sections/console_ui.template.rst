@@ -25,6 +25,15 @@ and a selection menu for inserting karras schedulers by name.
 Also supported is the ability to view the latest image as it is produced by ``dgenerate`` or
 ``\image_process`` via an image pane or standalone window.
 
+The image viewer features bounding box and coordinate selection which can be helpful for
+interactive use, as well as loading arbitrary images, and a few other helpful things such as the
+ability to show the current image file in the systems file explorer,
+all via the right click context menu.
+
+When the package extra ``console_ui_opengl`` is installed, zoom and pan operations
+will be hardware accelerated for smooth operation. (Mouse Wheel or Ctrl+/Ctrl-),
+(Alt+LeftClick or Middle Click), respectively.
+
 The console UI always starts in single line entry mode (terminal mode), multiline input mode
 is activated via the insert key and indicated by the presence of line numbers, you must deactivate this mode
 to submit commands via the enter key, however you can use the run button from the run menu (or ``Ctrl+Space``)
