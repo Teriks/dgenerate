@@ -12082,7 +12082,7 @@ Config argument injection
 
 You can inject arguments into every dgenerate invocation of a batch processing
 configuration by simply specifying them. The arguments will added to the end
-of the argument specification of every call.
+of the argument specification of every dgenerate invocation.
 
 .. code-block:: bash
 
@@ -12134,6 +12134,149 @@ which does not automatically recieve injected arguments, use the
     # plugin module paths injected with --plugin-modules
 
     \print {{ quote(injected_plugin_modules) if injected_plugin_modules else '' }}
+
+
+Setting template variables from the CLI
+----------------------------------------
+
+When using the ``--file`` option or file redirection to run configuration files, you can set template
+variables from the command line using the ``--set`` and ``--setp`` meta arguments.
+These mirror the functionality of the ``\set`` and ``\setp`` config directives
+respectively, but allow you to set variables before the configuration file is executed.
+
+Both meta arguments use the syntax ``variable=value`` and support two usage patterns:
+
+Multiple values per argument:
+
+.. code-block:: bash
+
+    #! /usr/bin/env bash
+
+    # Set multiple template variables with --set
+    dgenerate --set model=stabilityai/stable-diffusion-xl-base-1.0 prompt="a red sports car" \
+              --file my-config.dgen
+
+    # Set multiple variables using Python expressions with --setp  
+    dgenerate --setp "steps=20*2" "size=[512,512]" \
+              --file my-config.dgen
+
+Multiple argument invocations (enables templating):
+
+.. code-block:: bash
+
+    #! /usr/bin/env bash
+
+    # Use multiple --set calls for templating within variables
+    dgenerate --set base_prompt="a red sports car" \
+              --set full_prompt="{{ base_prompt }} in the rain" \
+              --file my-config.dgen
+
+    # Multiple --setp calls with sequential dependency
+    dgenerate --setp base_steps=20 \
+              --setp final_steps="base_steps * 2" \
+              --file my-config.dgen
+
+    # Natural mixing of --set and --setp in order
+    dgenerate --set base_value=10 \
+              --setp calculated="base_value * 2" \
+              --set final_prompt="The result is {{ calculated }}" \
+              --file my-config.dgen
+
+Mixed approaches:
+
+.. code-block:: bash
+
+    #! /usr/bin/env bash
+
+    # Combine both patterns
+    dgenerate --set model=stabilityai/stable-diffusion-xl-base-1.0 device=cuda \
+              --set base_prompt="a car" \
+              --set full_prompt="{{ base_prompt }} in the rain" \
+              --setp "steps=20*2" "size=[512,512]" \
+              --file my-config.dgen
+
+    # Works with file redirection too
+    dgenerate --set model=stabilityai/stable-diffusion-xl-base-1.0 \
+              --set prompt="a red sports car" \
+              < my-config.dgen
+
+    # Pipe with variables
+    cat my-config.dgen | dgenerate --setp "steps=20*2" --set device=cuda
+
+The ``--set`` meta argument works exactly like the ``\set`` directive - it performs
+template expansion and environmental variable expansion on both the variable name
+and value, then assigns the result as a literal string value.
+
+The ``--setp`` meta argument works exactly like the ``\setp`` directive - it performs
+template expansion and environmental variable expansion on the variable name and value,
+then evaluates the value as a Python expression and assigns the result to the variable.
+
+These meta arguments are processed before any configuration content is executed,
+allowing you to provide configuration-specific values from the command line.
+
+All ``--set`` and ``--setp`` arguments are processed in the exact order they appear
+on the command line, regardless of argument type. This means you can freely mix
+``--set`` and ``--setp`` arguments and each will be able to reference variables
+defined in earlier arguments.
+
+Each argument can accept multiple ``variable=value`` pairs in a single invocation,
+and arguments can be used multiple times for sequential variable definition and templating.
+
+Example configuration file using CLI-set variables:
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 5.0.0
+
+    # Set defaults for variables not provided via CLI
+
+    {% if model is not defined %}
+        \set model stabilityai/stable-diffusion-xl-base-1.0
+    {% endif %}
+
+    {% if prompt is not defined %}
+        \set prompt "a beautiful landscape"
+    {% endif %}
+
+    {% if steps is not defined %}
+        \setp steps 30
+    {% endif %}
+
+    {% if size is not defined %}
+        \setp size [1024, 1024]
+    {% endif %}
+
+    {% if model_type is not defined %}
+        \set model_type sdxl
+    {% endif %}
+
+    # Generate the image with our variables
+
+    {{ model }} \
+    --model-type {{ model_type }} \
+    --prompts "{{ prompt }}" \
+    --inference-steps {{ steps }} \
+    --output-size {{ size[0] }}x{{ size[1] }} \
+    --output-path output
+
+Example usage:
+
+.. code-block:: bash
+
+    # Use all defaults
+    dgenerate --file config.dgen
+
+    # Override specific variables
+    dgenerate --set prompt="a red sports car" --setp steps=50 --file config.dgen
+
+    # Provide a different model and model type
+    dgenerate --set model="black-forest-labs/FLUX.1-dev" model_type=flux --file config.dgen
+
+The ``--set`` and ``--setp`` meta arguments can only be used from the command line
+or during a popen invocation of dgenerate. They work with ``--file``, file redirection,
+and piped configuration input. They cannot be used within configuration scripts themselves,
+similar to other meta arguments like ``--file`` and ``--shell``.
 
 Console UI
 ==========

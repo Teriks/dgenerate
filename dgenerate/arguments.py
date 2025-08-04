@@ -802,6 +802,33 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '--set', dest=None, default=False, metavar='VARIABLE=VALUE',
+            help="""Set template variables that will be applied before config execution.
+                    Mirrors the functionality of the \\set config directive. Must use the syntax
+                    --set variable=value [variable2=value2 ...]. Can accept multiple variable=value 
+                    pairs and can be used multiple times. All --set and --setp arguments are processed 
+                    in the order they appear on the command line. This is a meta argument which can not 
+                    be used within a configuration script and is only valid from the command line or 
+                    during a popen invocation of dgenerate."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--setp', dest=None, default=False, metavar='VARIABLE=VALUE',
+            help="""Set template variables to the result of evaluating python expressions
+                    that will be applied before config execution. Mirrors the functionality of 
+                    the \\setp config directive. Must use the syntax --setp variable=expression 
+                    [variable2=expression2 ...]. Can accept multiple variable=expression pairs and 
+                    can be used multiple times. All --set and --setp arguments are processed in the 
+                    order they appear on the command line. This is a meta argument which can not be 
+                    used within a configuration script and is only valid from the command line or 
+                    during a popen invocation of dgenerate."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
             '--plugin-modules', action='store', default=[], nargs="+", dest='plugin_module_paths', metavar="PATH",
             help="""Specify one or more plugin module folder paths (folder containing __init__.py) or
                     Python .py file paths, or Python module names to load as plugins. Plugin modules can
