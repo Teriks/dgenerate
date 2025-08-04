@@ -4,7 +4,6 @@
 stabilityai/stable-diffusion-2
 --inference-steps 40
 --guidance-scales 8
---output-size 1024
 --gen-seeds 1
 --prompt-weighter compel
 --prompts "Photo+ of a horse+ standing near the (open door)+ of a (red barn)+, (high resolution)++; artwork"
@@ -15,7 +14,6 @@ stabilityai/stable-diffusion-2
 stabilityai/stable-diffusion-2
 --inference-steps 40
 --guidance-scales 8
---output-size 1024
 --gen-seeds 1
 --prompt-weighter compel;syntax=sdwui
 --prompts "(Photo) of a (horse) standing near the (open door) of a (red barn), (high resolution:1.2); artwork"
