@@ -1,0 +1,11 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 5.0.0
+
+
+# Detect the face with yolo, then create a mask by segmenting with sam
+
+\image_process "../media/rickroll-roll.gif"
+-o rickroll-yolo-sam.gif
+--processors yolo-sam;yolo-model=Bingsu/adetailer;yolo-weight-name=face_yolov8n.pt;sam-asset=sam2.1_l;masks=True
+--align 1
+--no-frames {{ device_switch }}
