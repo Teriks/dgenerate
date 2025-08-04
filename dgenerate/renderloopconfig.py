@@ -1837,6 +1837,15 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     def _check_inpaint_crop_compatibility(self, a_namer: typing.Callable[[str], str]):
         """Check compatibility of inpaint crop arguments."""
+        # Automatically enable inpaint crop if padding, feathering, or masking is specified
+        if not self.inpaint_crop and (self.inpaint_crop_paddings or self.inpaint_crop_feathers or self.inpaint_crop_masked):
+            self.inpaint_crop = True
+
+        if self.inpaint_crop and self.no_aspect:
+            raise RenderLoopConfigError(
+                f'{a_namer("inpaint_crop")} is not compatible with {a_namer("no_aspect")}'
+            )
+
         # Check if inpaint crop is used without mask inputs
         if self.inpaint_crop and not self.image_seeds:
             raise RenderLoopConfigError(
@@ -1848,10 +1857,6 @@ class RenderLoopConfig(_types.SetFromMixin):
             raise RenderLoopConfigError(
                 f'{a_namer("inpaint_crop_masked")} and {a_namer("inpaint_crop_feathers")} '
                 f'are mutually exclusive options.')
-
-        # Automatically enable inpaint crop if padding, feathering, or masking is specified
-        if not self.inpaint_crop and (self.inpaint_crop_paddings or self.inpaint_crop_feathers or self.inpaint_crop_masked):
-            self.inpaint_crop = True
 
         # Set default padding when inpaint crop is enabled but no padding/feathering specified
         if self.inpaint_crop and not self.inpaint_crop_paddings and not self.inpaint_crop_feathers:
