@@ -1,0 +1,28 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 5.0.0
+
+# This example uses --inpaint-crop
+# instead of image processors
+
+# This is the same operation, just built in
+
+\set image ../media/americangothic.jpg
+
+# create the face mask with u-sam
+
+stabilityai/stable-diffusion-xl-base-1.0
+--model-type sdxl
+--dtype float16
+--variant fp16
+--image-seeds "{{image}};{{image}}"
+--mask-image-processors u-sam;asset=sam2.1_l.pt;boxes=133x248x299x488;masks=True gaussian-blur;size=9
+--inpaint-crop
+--inference-steps 40
+--guidance-scales 7
+--output-path hi_res_auto_cropped_sam
+--vae-tiling
+--seeds 92051405511913
+--output-size 1024
+--image-seed-strengths 0.65
+--prompt-weighter sd-embed
+--prompts "a smiling woman"

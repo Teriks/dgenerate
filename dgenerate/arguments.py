@@ -472,6 +472,34 @@ def _type_adetailer_mask_dilation(val):
     return val
 
 
+def _type_inpaint_crop_padding(val):
+    try:
+        val = _textprocessing.parse_dimensions(val)
+
+        if len(val) not in {1, 2, 4}:
+            raise ValueError()
+
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            'Must be an integer value, WIDTHxHEIGHT, or LEFTxTOPxRIGHTxBOTTOM')
+
+    if len(val) == 1:
+        return val[0]
+
+    return val
+
+
+def _type_inpaint_crop_feather(val):
+    try:
+        val = int(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be an integer')
+
+    if val < 0:
+        raise argparse.ArgumentTypeError('Must be greater than or equal to 0')
+    return val
+
+
 def _type_ras_sample_ratio(val: str) -> float:
     try:
         val = float(val)
@@ -3687,6 +3715,74 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     (similar to --image-seed-strengths). (default: [20 for x4, 250 for
                     ifs/ifs-img2img, 0 for ifs inpainting mode])
                     """
+        )
+    )
+
+    # Inpaint crop arguments
+    actions.append(
+        parser.add_argument(
+            '-ic', '--inpaint-crop', action='store_true', default=False,
+            dest='inpaint_crop',
+            help="""Enable cropping to mask bounds for inpainting. When enabled, input images will be
+                    automatically cropped to the bounds of their masks (plus any padding) before processing, 
+                    then the generated result will be pasted back onto the original uncropped image. This 
+                    allows inpainting at higher effective resolutions for better quality results.
+                    
+                    Cannot be used with image seed batching (--image-seeds with multiple images/masks in the definition).
+                    
+                    Each image/mask pair must be processed individually as different masks may have different
+                    crop bounds. However, --batch-size > 1 is supported for generating multiple variations of
+                    a single crop."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-icp', '--inpaint-crop-paddings', action='store', nargs='+', default=None, metavar="PADDING",
+            type=_type_inpaint_crop_padding,
+            dest='inpaint_crop_paddings',
+            help="""One or more padding values to use around mask bounds for inpaint cropping. 
+                    Automatically enables --inpaint-crop. Each value will be tried in turn (combinatorial).
+                    
+                    Example:
+                    
+                    32 (32px Uniform, all sides)
+                    
+                    10x20 (10px Horizontal, 20px Vertical)
+                    
+                    10x20x30x40 (10px Left, 20px Top, 30px Right, 40px Bottom)
+                    
+                    Note: Inpaint crop cannot be used with multiple input images. See --inpaint-crop for details.
+                    
+                    (default: [50])"""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-icm', '--inpaint-crop-masked', action='store_true', default=False,
+            dest='inpaint_crop_masked',
+            help="""Use the mask when pasting the generated result back onto the original image for 
+                    inpaint cropping. Automatically enables --inpaint-crop. This means only the masked 
+                    areas will be replaced. Cannot be used together with --inpaint-crop-feathers.
+                    
+                    Note: Inpaint crop cannot be used with individual --image-seeds batching. See --inpaint-crop for details."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-icf', '--inpaint-crop-feathers', action='store', nargs='+', default=None, metavar="FEATHER",
+            type=_type_inpaint_crop_feather,
+            dest='inpaint_crop_feathers',
+            help="""One or more feather values to use when pasting the generated result back onto the 
+                    original image for inpaint cropping. Automatically enables --inpaint-crop. Each value 
+                    will be tried in turn (combinatorial). Feathering creates smooth transitions from opaque 
+                    to transparent. Cannot be used together with --inpaint-crop-masked.
+                    
+                    Note: Inpaint crop cannot be used with individual --image-seeds batching. See --inpaint-crop for details.
+                    
+                    (default: none - simple paste without feathering)"""
         )
     )
 

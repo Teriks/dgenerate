@@ -62,6 +62,41 @@ from dgenerate.pipelinewrapper.denoise_range import denoise_range as _denoise_ra
 from dgenerate.pipelinewrapper.denoise_range import supports_native_denoising_start as _supports_native_denoising_start
 
 
+class _InpaintCropInfo:
+    """
+    Contains state information for inpaint crop processing.
+    
+    This object stores all necessary information to apply inpaint crop pasting
+    after the diffusion process completes.
+    """
+    
+    def __init__(self,
+                 original_images: list[PIL.Image.Image],
+                 original_masks: list[PIL.Image.Image] | None,
+                 crop_bounds: tuple[int, int, int, int],
+                 use_masked: bool = False,
+                 feather: int | None = None):
+        """
+        Initialize inpaint crop information.
+        
+        :param original_images: List of original uncropped images to paste onto
+        :param original_masks: List of original uncropped masks (for masked pasting)
+        :param crop_bounds: Crop bounds as (left, top, right, bottom)
+        :param use_masked: Whether to use masked pasting
+        :param feather: Optional feather value for feathered pasting
+        """
+        self.original_images = original_images
+        self.original_masks = original_masks
+        self.crop_bounds = crop_bounds
+        self.use_masked = use_masked
+        self.feather = feather
+    
+    def __repr__(self) -> str:
+        return (f"_InpaintCropInfo(original_images={len(self.original_images)}, "
+                f"crop_bounds={self.crop_bounds}, use_masked={self.use_masked}, "
+                f"feather={self.feather})")
+
+
 class DiffusionArgumentsHelpException(Exception):
     """
     Thrown when a :py:class:`DiffusionArguments` attribute that supports
@@ -657,6 +692,9 @@ class DiffusionPipelineWrapper:
         self._parsed_adetailer_detector_uris = None
 
         self._adetailer_crop_control_image = adetailer_crop_control_image
+
+        # Initialize inpaint crop info (used internally for crop/paste operations)
+        self._inpaint_crop_info = None
 
         if adetailer_detector_uris:
             self._parsed_adetailer_detector_uris = []
@@ -1285,6 +1323,132 @@ class DiffusionPipelineWrapper:
 
         return image
 
+    def _apply_inpaint_crop(self, 
+                           images: list[PIL.Image.Image], 
+                           masks: list[PIL.Image.Image],
+                           control_images: list[PIL.Image.Image] | None,
+                           padding: int | tuple[int, int] | tuple[int, int, int, int],
+                           decoded_latents: bool,
+                           user_args: DiffusionArguments) \
+        -> tuple[
+            list[PIL.Image.Image],
+            list[PIL.Image.Image],
+            list[PIL.Image.Image] | None,
+            tuple[int, int, int, int]
+        ]:
+        """
+        Crop images, masks, and control images to mask bounds with padding.
+        
+        :param images: List of images to crop
+        :param masks: List of masks to crop
+        :param control_images: Optional list of control images to crop
+        :param padding: Padding around mask bounds (left, top, right, bottom)
+        :param decoded_latents: Were ``images`` decoded from latents?
+        :param user_args: diffusion arguments for reference
+        :return: Tuple of (cropped_images, cropped_masks, cropped_control_images, crop_bounds)
+        """
+        if not masks:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                "Cannot apply inpaint crop without masks."
+            )
+        
+        # Calculate bounds for the single mask
+        crop_bounds = _image.find_mask_bounds(masks[0], padding)
+        if crop_bounds is None:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                "No white pixels found in mask for inpaint crop."
+            )
+        
+        cropped_images = [images[0].crop(crop_bounds)]
+        cropped_masks = [masks[0].crop(crop_bounds)]
+        
+        cropped_control_images = None
+        if control_images:
+            cropped_control_images = [control_images[0].crop(crop_bounds)]
+
+        # Process decoded images if processors are configured
+        # and they were decoded from latents
+
+        # this is here so we can honor processors pre-resize settings
+        # the cropped image is what we want to process
+
+        if decoded_latents and user_args.decoded_latents_image_processor_uris:
+            cropped_images = self._process_decoded_latents_images(
+                cropped_images,
+                user_args.decoded_latents_image_processor_uris,
+                user_args,
+            )
+
+        # Since we only allow single images with inpaint_crop, 
+        # we'll always have exactly one set of bounds
+        
+        return cropped_images, cropped_masks, cropped_control_images, crop_bounds
+
+    def _paste_inpaint_result(self,
+                             original_images: list[PIL.Image.Image],
+                             generated_images: list[PIL.Image.Image],
+                             crop_bounds: tuple[int, int, int, int],
+                             masks: list[PIL.Image.Image] = None,
+                             feather: int = None) -> list[PIL.Image.Image]:
+        """
+        Paste generated images back onto original images at crop bounds.
+        
+        :param original_images: List of original uncropped images
+        :param generated_images: List of generated images to paste
+        :param crop_bounds: Bounds where to paste (left, top, right, bottom)
+        :param masks: Optional masks for masked pasting
+        :param feather: Optional feather value for feathered pasting
+        :return: List of images with generated content pasted back
+        """
+        result_images = []
+        
+        for i, generated in enumerate(generated_images):
+            # Since inpaint_crop doesn't support batching, map generated images to the single original
+            original = original_images[0]
+            background_image = original.copy()
+            
+            # Use the single crop bounds for all generated images
+            
+            # Resize generated image to fit the crop bounds
+            crop_size = (crop_bounds[2] - crop_bounds[0], crop_bounds[3] - crop_bounds[1])
+            
+            if generated.size != crop_size:
+                _messages.debug_log(f'Inpaint crop paste: Resizing generated image {i} from {generated.size} to {crop_size} for bounds {crop_bounds}')
+                resampling = _image.best_pil_resampling(generated.size, crop_size)
+                generated = generated.resize(crop_size, resampling)
+            
+            if feather is not None:
+                # Use feathered pasting
+                background_image = _image.paste_with_feather(
+                    background=background_image,
+                    foreground=generated,
+                    location=crop_bounds,
+                    feather=feather,
+                    shape='rectangle'
+                )
+            elif masks:
+                # Use masked pasting (single mask since we don't support batching)
+                mask = masks[0]
+                
+                # Crop and resize mask to match generated image size
+                cropped_mask = mask.crop(crop_bounds)
+                if cropped_mask.size != crop_size:
+                    mask_resampling = _image.best_pil_resampling(cropped_mask.size, crop_size)
+                    cropped_mask = cropped_mask.resize(crop_size, mask_resampling)
+                
+                # Convert to grayscale if needed
+                if cropped_mask.mode != 'L':
+                    cropped_mask = cropped_mask.convert('L')
+                
+                background_image.paste(generated, crop_bounds, cropped_mask)
+            else:
+                # Simple paste without transparency
+                background_image.paste(generated, crop_bounds)
+            
+            result_images.append(background_image)
+        
+        return result_images
+
     def _set_pipeline_strength(self, user_args: DiffusionArguments, pipeline_args: dict[str, typing.Any]):
         strength = float(_types.default(user_args.image_seed_strength, _constants.DEFAULT_IMAGE_SEED_STRENGTH))
         ifs = int(_types.default(user_args.inference_steps, _constants.DEFAULT_INFERENCE_STEPS))
@@ -1733,6 +1897,128 @@ class DiffusionPipelineWrapper:
             pipeline_args['height'] = _types.default(height, _constants.DEFAULT_OUTPUT_HEIGHT)
             pipeline_args['width'] = _types.default(width, _constants.DEFAULT_OUTPUT_WIDTH)
 
+    def _prepare_inpaint_crop(self, user_args: DiffusionArguments):
+        """
+        Handle inpaint crop preparation including validation and tensor decoding.
+        
+        :param user_args: user arguments to validate and potentially modify
+        """
+        # Automatically enable inpaint crop if padding, feathering, or masking is specified
+        if not user_args.inpaint_crop and (user_args.inpaint_crop_padding is not None or user_args.inpaint_crop_feather is not None or user_args.inpaint_crop_masked):
+            user_args.inpaint_crop = True
+            
+        if not user_args.inpaint_crop:
+            return
+            
+        # Validate that inpaint crop has required inputs
+        if user_args.images is None or len(user_args.images) == 0:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                "inpaint_crop requires images to be provided."
+            )
+            
+        if user_args.mask_images is None or len(user_args.mask_images) == 0:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                "inpaint_crop requires mask_images to be provided."
+            )
+                    
+        # Check that we're not outputting latents  
+        if user_args.output_latents:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                "inpaint_crop is not supported when outputting latents, only images are supported."
+            )
+        
+        # Disallow batching multiple different images with inpaint_crop
+        # (batch_size > 1 is OK for generating variations of a single crop)
+        if len(user_args.images) > 1 or len(user_args.mask_images) > 1:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                "inpaint_crop cannot be used with multiple input images. "
+                "Each image/mask pair should be processed individually for optimal cropping. "
+                "Consider processing one image at a time or disable inpaint_crop for batch processing. "
+                "Note: batch_size > 1 is supported for generating multiple variations of a single crop."
+            )
+
+        decoded_latents = False
+        # If images are tensors (latents), decode them with the VAE first
+        if not isinstance(user_args.images[0], PIL.Image.Image):
+            _messages.debug_log('Inpaint crop: decoding tensor inputs with VAE...')
+            
+            # Check that we have a VAE for decoding
+            if not hasattr(self._pipeline, 'vae') or self._pipeline.vae is None:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'Cannot decode tensor inputs for inpaint_crop as the pipeline does not have a VAE. '
+                    'Use images instead.'
+                )
+            
+            # Handle Flux-specific repacking if needed
+            latents = user_args.images
+            if _enums.model_type_is_flux(self._model_type):
+                latents = self._repack_flux_latents(self._stack_latents(latents))
+            
+            # Decode the latents to PIL Images
+            user_args.images = self.decode_latents(latents)
+
+            decoded_latents = True
+
+        # Apply the actual inpaint crop if we get here
+        _messages.debug_log('Applying inpaint crop...')
+        
+        # Store references to original images before cropping
+        original_images = list(user_args.images)
+        original_masks = list(user_args.mask_images)
+        original_control_images = list(user_args.control_images) if user_args.control_images else None
+        
+        # Get padding from user args or use default, normalize to (left, top, right, bottom)
+        if user_args.inpaint_crop_padding is not None:
+            raw_padding = user_args.inpaint_crop_padding
+            if isinstance(raw_padding, int):
+                # Same padding on all sides
+                padding = (raw_padding, raw_padding, raw_padding, raw_padding)
+            elif isinstance(raw_padding, tuple) and len(raw_padding) == 2:
+                # (horizontal, vertical) padding
+                padding = (raw_padding[0], raw_padding[1], raw_padding[0], raw_padding[1])
+            elif isinstance(raw_padding, tuple) and len(raw_padding) == 4:
+                # (left, top, right, bottom) padding
+                padding = raw_padding
+            else:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    f"Invalid inpaint_crop_padding format: {raw_padding}. "
+                    f"Expected int, tuple[int, int], or tuple[int, int, int, int]")
+        else:
+            # Default padding on all sides
+            padding = _constants.DEFAULT_INPAINT_CROP_PADDING
+
+        # Apply crop to get the cropped area
+        (cropped_images,
+         cropped_masks,
+         cropped_control_images,
+         crop_bounds) = self._apply_inpaint_crop(
+            images=original_images,
+            masks=original_masks,
+            control_images=original_control_images,
+            padding=padding,
+            decoded_latents=decoded_latents,
+            user_args=user_args
+        )
+
+        # Store crop info for later pasting
+        crop_info = _InpaintCropInfo(
+            original_images=original_images,
+            original_masks=original_masks,
+            crop_bounds=crop_bounds,
+            use_masked=user_args.inpaint_crop_masked,
+            feather=user_args.inpaint_crop_feather
+        )
+        self._inpaint_crop_info = crop_info
+
+        # Replace user_args with cropped images so all downstream logic handles them transparently
+        user_args.images = cropped_images
+        user_args.mask_images = cropped_masks
+        if cropped_control_images is not None:
+            user_args.control_images = cropped_control_images
+
+        _messages.debug_log(
+            f'Inpaint crop applied: {original_images[0].size if original_images else None} -> crop bounds {crop_bounds}')
+
     def _get_pipeline_defaults(self, user_args: DiffusionArguments):
         """
         Get a default arrangement of arguments to be passed to a huggingface
@@ -1741,6 +2027,10 @@ class DiffusionPipelineWrapper:
         :param user_args: user arguments to the pipeline wrapper
         :return: kwargs dictionary
         """
+
+        # Apply inpaint crop if enabled and we have the necessary inputs
+        # This must happen first so all downstream methods work with cropped images
+        self._prepare_inpaint_crop(user_args)
 
         pipeline_args: dict[str, typing.Any] = dict()
         pipeline_args['guidance_scale'] = float(
@@ -3599,6 +3889,25 @@ class DiffusionPipelineWrapper:
 
                     final_latents = processed_latents
 
+        # Apply inpaint crop pasting if we cropped earlier
+        if final_images is not None and self._inpaint_crop_info is not None:
+            
+            crop_info = self._inpaint_crop_info
+
+            # Paste generated images back onto originals
+            pasted_images = self._paste_inpaint_result(
+                original_images=crop_info.original_images,
+                generated_images=final_images,
+                crop_bounds=crop_info.crop_bounds,
+                masks=crop_info.original_masks if crop_info.use_masked else None,
+                feather=crop_info.feather
+            )
+
+            final_images = pasted_images
+
+            # Clean up temporary crop info
+            self._inpaint_crop_info = None
+
         # Create and return the result object at the end
         return PipelineWrapperResult(images=final_images, latents=final_latents)
 
@@ -4058,6 +4367,9 @@ class DiffusionPipelineWrapper:
 
         :return: :py:class:`.PipelineWrapperResult`
         """
+
+        # always reset inpaint crop state per call
+        self._inpaint_crop_info = None
 
         copy_args = DiffusionArguments()
 

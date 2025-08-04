@@ -1378,6 +1378,54 @@ class RenderLoopConfig(_types.SetFromMixin):
     This corresponds to the ``--adetailer-crop-control-image`` argument of the dgenerate command line tool.
     """
 
+    inpaint_crop: bool = False
+    """
+    Enable cropping to mask bounds for inpainting. When enabled, input images will be
+    automatically cropped to the bounds of their masks (plus any padding) before processing, 
+    then the generated result will be pasted back onto the original uncropped image. This 
+    allows inpainting at higher effective resolutions for better quality results.
+    
+    Note: Inpaint crop cannot be used with multiple input images. Each image/mask pair must 
+    be processed individually for optimal cropping, as different masks may have different bounds.
+    However, ``batch_size`` > 1 is supported for generating multiple variations of a single crop.
+    
+    This corresponds to the ``--inpaint-crop`` argument of the dgenerate command line tool.
+    """
+
+    inpaint_crop_paddings: _types.OptionalPaddings = None
+    """
+    One or more padding values to use around mask bounds for inpaint cropping. Each value will be 
+    tried in turn (combinatorial). Specifying this automatically enables :py:attr:`RenderLoopConfig.inpaint_crop`.
+    
+    Padding can be specified as:
+    - A single integer (e.g., 32) for uniform padding on all sides
+    - "WIDTHxHEIGHT" format (e.g., "10x20") for horizontal and vertical padding  
+    - "LEFTxTOPxRIGHTxBOTTOM" format (e.g., "5x10x5x15") for specific side padding
+    
+    This corresponds to the ``--inpaint-crop-paddings`` argument of the dgenerate command line tool.
+    """
+
+    inpaint_crop_masked: bool = False
+    """
+    Use the mask when pasting the generated result back onto the original image for inpaint 
+    cropping. Specifying this automatically enables :py:attr:`RenderLoopConfig.inpaint_crop`. 
+    This means only the masked areas will be replaced. Cannot be used together with 
+    :py:attr:`RenderLoopConfig.inpaint_crop_feathers`.
+    
+    This corresponds to the ``--inpaint-crop-masked`` argument of the dgenerate command line tool.
+    """
+
+    inpaint_crop_feathers: _types.OptionalIntegers = None
+    """
+    One or more feather values to use when pasting the generated result back onto the 
+    original image for inpaint cropping. Specifying this automatically enables 
+    :py:attr:`RenderLoopConfig.inpaint_crop`. Each value will be tried in turn (combinatorial). 
+    Feathering creates smooth transitions from opaque to transparent. Cannot be used together 
+    with :py:attr:`RenderLoopConfig.inpaint_crop_masked`.
+    
+    This corresponds to the ``--inpaint-crop-feathers`` argument of the dgenerate command line tool.
+    """
+
     latents: _types.OptionalTensors = None
     """
     Optional list of tensors containing noisy latents to use as starting points for diffusion.
@@ -1488,6 +1536,9 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         # Check adetailer compatibility
         self._check_adetailer_compatibility(a_namer)
+
+        # Check inpaint crop compatibility
+        self._check_inpaint_crop_compatibility(a_namer)
 
         # Check image seeds requirements for certain model types
         self._check_image_seeds_requirements(a_namer, help_mode)
@@ -1783,6 +1834,34 @@ class RenderLoopConfig(_types.SetFromMixin):
                 }:
                     raise RenderLoopConfigError(
                         f'Unknown {"adetailer_mask_shapes"} value: {shape}')
+
+    def _check_inpaint_crop_compatibility(self, a_namer: typing.Callable[[str], str]):
+        """Check compatibility of inpaint crop arguments."""
+        # Check if inpaint crop is used without mask inputs
+        if self.inpaint_crop and not self.image_seeds:
+            raise RenderLoopConfigError(
+                f'{a_namer("inpaint_crop")} requires {a_namer("image_seeds")} to be specified '
+                f'with mask images for inpainting.')
+
+        # Check mutual exclusivity of masked and feathered modes
+        if self.inpaint_crop_masked and self.inpaint_crop_feathers:
+            raise RenderLoopConfigError(
+                f'{a_namer("inpaint_crop_masked")} and {a_namer("inpaint_crop_feathers")} '
+                f'are mutually exclusive options.')
+
+        # Automatically enable inpaint crop if padding, feathering, or masking is specified
+        if not self.inpaint_crop and (self.inpaint_crop_paddings or self.inpaint_crop_feathers or self.inpaint_crop_masked):
+            self.inpaint_crop = True
+
+        # Set default padding when inpaint crop is enabled but no padding/feathering specified
+        if self.inpaint_crop and not self.inpaint_crop_paddings and not self.inpaint_crop_feathers:
+            self.inpaint_crop_paddings = [_pipelinewrapper.constants.DEFAULT_INPAINT_CROP_PADDING]
+
+        # Check compatibility with latent output
+        if self.inpaint_crop and self.is_output_latents():
+            raise RenderLoopConfigError(
+                f'Outputting latents with {a_namer("image_format")} {self.image_format} '
+                f'is not supported with {a_namer("inpaint_crop")}')
 
     def _check_image_seeds_requirements(self, a_namer: typing.Callable[[str], str], help_mode: bool):
         """Verify requirements for image seeds based on model type."""
@@ -2371,6 +2450,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         # Check deep floyd inpainting mode compatibility
         if all(p.mask_images is None for p in parsed_image_seeds):
+
             if self.model_type == _pipelinewrapper.ModelType.IFS:
                 self.image_seed_strengths = None
                 if user_provided_image_seed_strengths:
@@ -2379,6 +2459,12 @@ class RenderLoopConfig(_types.SetFromMixin):
                         f'cannot be used with {a_namer("model_type")} ifs '
                         f'when no inpainting is taking place in any image seed '
                         f'specification.')
+
+            if self.inpaint_crop:
+                raise RenderLoopConfigError(
+                    f'All image seeds must be inpainting '
+                    f'definitions when {a_namer("inpaint_crop")} or related arguments are used.'
+                )
 
     def _check_image_seed_uri(self,
                               uri: str,
@@ -3030,7 +3116,11 @@ class RenderLoopConfig(_types.SetFromMixin):
                 img2img_latents_processors=ov(
                     'img2img_latents_processors',
                     [self.img2img_latents_processors]
-                )
+                ),
+                inpaint_crop=ov('inpaint_crop', [self.inpaint_crop]),
+                inpaint_crop_padding=ov('inpaint_crop_padding', self.inpaint_crop_paddings),
+                inpaint_crop_masked=ov('inpaint_crop_masked', [self.inpaint_crop_masked]),
+                inpaint_crop_feather=ov('inpaint_crop_feather', self.inpaint_crop_feathers)
         ):
             if self.output_size is not None:
                 arg.width = self.output_size[0]

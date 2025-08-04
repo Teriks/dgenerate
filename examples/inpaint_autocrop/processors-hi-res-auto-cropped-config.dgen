@@ -19,7 +19,7 @@
 # softer
 
 \image_process ../media/horse1-mask.jpg
---output hi_res_auto_cropped/mask.png -ox
+--output processors_hi_res_auto_cropped/mask.png -ox
 --processors invert gaussian-blur;size=9
 
 # Set the mask variable to the image we just processed
@@ -45,7 +45,7 @@ stabilityai/stable-diffusion-xl-base-1.0
 --mask-image-processors crop-to-mask;padding=50;pre-resize=True
 --inference-steps 40
 --guidance-scales 7
---output-path hi_res_auto_cropped
+--output-path processors_hi_res_auto_cropped
 --vae-tiling
 --seeds 34037262714926
 --output-size 1024

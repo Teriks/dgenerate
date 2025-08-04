@@ -181,6 +181,20 @@ def reconstruct_dgenerate_opts(
     if wrapper.adetailer_crop_control_image:
         opts.append(('--adetailer-crop-control-image',))
 
+    # Inpaint crop arguments
+    if args.inpaint_crop:
+        opts.append(('--inpaint-crop',))
+
+    if args.inpaint_crop_padding is not None:
+        opts.append(('--inpaint-crop-paddings',
+                     _textprocessing.format_size(args.inpaint_crop_padding)))
+
+    if args.inpaint_crop_masked:
+        opts.append(('--inpaint-crop-masked',))
+
+    if args.inpaint_crop_feather is not None:
+        opts.append(('--inpaint-crop-feathers', args.inpaint_crop_feather))
+
     if wrapper.text_encoder_uris:
         opts.append(('--text-encoders', ['+' if x is None else x for x in wrapper.text_encoder_uris]))
 

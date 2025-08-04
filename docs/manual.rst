@@ -79,7 +79,8 @@ Help Output
                      [-sip PROCESSOR_URI [PROCESSOR_URI ...]] [-mip PROCESSOR_URI [PROCESSOR_URI ...]]
                      [-cip PROCESSOR_URI [PROCESSOR_URI ...]] [--image-processor-help [PROCESSOR_NAME ...]]
                      [-pp PROCESSOR_URI [PROCESSOR_URI ...]] [-iss FLOAT [FLOAT ...] |
-                     -uns INTEGER [INTEGER ...]] [-gs FLOAT [FLOAT ...]]
+                     -uns INTEGER [INTEGER ...]] [-ic] [-icp PADDING [PADDING ...]] [-icm]
+                     [-icf FEATHER [FEATHER ...]] [-gs FLOAT [FLOAT ...]]
                      [-si CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...]] [-igs FLOAT [FLOAT ...]]
                      [-gr FLOAT [FLOAT ...]] [-ifs INTEGER [INTEGER ...]] [-ifs2 INTEGER [INTEGER ...]]
                      [-gs2 FLOAT [FLOAT ...]] [-sir CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...]]
@@ -2025,6 +2026,53 @@ Help Output
             message. The higher this value the more noise is added to the image before upscaling (similar to
             --image-seed-strengths). (default: [20 for x4, 250 for ifs/ifs-img2img, 0 for ifs inpainting mode])
             ---------------------------------------------------------------------------------------------------
+      -ic, --inpaint-crop
+            Enable cropping to mask bounds for inpainting. When enabled, input images will be automatically
+            cropped to the bounds of their masks (plus any padding) before processing, then the generated result
+            will be pasted back onto the original uncropped image. This allows inpainting at higher effective
+            resolutions for better quality results.
+            
+            Cannot be used with image seed batching (--image-seeds with multiple images/masks in the
+            definition).
+            
+            Each image/mask pair must be processed individually as different masks may have different crop
+            bounds. However, --batch-size > 1 is supported for generating multiple variations of a single crop.
+            ---------------------------------------------------------------------------------------------------
+      -icp, --inpaint-crop-paddings PADDING [PADDING ...]
+            One or more padding values to use around mask bounds for inpaint cropping. Automatically enables
+            --inpaint-crop. Each value will be tried in turn (combinatorial).
+            
+            Example:
+            
+            32 (32px Uniform, all sides)
+            
+            10x20 (10px Horizontal, 20px Vertical)
+            
+            10x20x30x40 (10px Left, 20px Top, 30px Right, 40px Bottom)
+            
+            Note: Inpaint crop cannot be used with multiple input images. See --inpaint-crop for details.
+            
+            (default: [50])
+            ---------------
+      -icm, --inpaint-crop-masked
+            Use the mask when pasting the generated result back onto the original image for inpaint cropping.
+            Automatically enables --inpaint-crop. This means only the masked areas will be replaced. Cannot be
+            used together with --inpaint-crop-feathers.
+            
+            Note: Inpaint crop cannot be used with individual --image-seeds batching. See --inpaint-crop for
+            details.
+            --------
+      -icf, --inpaint-crop-feathers FEATHER [FEATHER ...]
+            One or more feather values to use when pasting the generated result back onto the original image for
+            inpaint cropping. Automatically enables --inpaint-crop. Each value will be tried in turn
+            (combinatorial). Feathering creates smooth transitions from opaque to transparent. Cannot be used
+            together with --inpaint-crop-masked.
+            
+            Note: Inpaint crop cannot be used with individual --image-seeds batching. See --inpaint-crop for
+            details.
+            
+            (default: none - simple paste without feathering)
+            -------------------------------------------------
       -gs, --guidance-scales FLOAT [FLOAT ...]
             One or more guidance scale values to try. Guidance scale effects how much your text prompt is
             considered. Low values draw more data from images unrelated to text prompt.
@@ -9975,6 +10023,18 @@ The ``\templates_help`` output from the above example is:
         Name: "last_inference_steps"
             Type: collections.abc.Sequence[int]
             Value: [30]
+        Name: "last_inpaint_crop"
+            Type: <class 'bool'>
+            Value: False
+        Name: "last_inpaint_crop_feathers"
+            Type: typing.Optional[collections.abc.Sequence[int]]
+            Value: []
+        Name: "last_inpaint_crop_masked"
+            Type: <class 'bool'>
+            Value: False
+        Name: "last_inpaint_crop_paddings"
+            Type: typing.Optional[collections.abc.Sequence[int | tuple[int, int] | tuple[int, int, int, int]]]
+            Value: []
         Name: "last_ip_adapter_uris"
             Type: typing.Optional[collections.abc.Sequence[str]]
             Value: []
@@ -10268,7 +10328,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [76013069595871]
+            Value: [58882000361231]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
