@@ -434,7 +434,7 @@ class BatchProcessor:
                 f'Cannot define template variable "{name}" on line {self.current_line}, '
                 f'as that name is the name of a builtin function.')
 
-    def user_define(self, name: str, value):
+    def user_define(self, name: str, value: typing.Any):
         """
         Define a template variable as if you were the user.
 
@@ -503,6 +503,42 @@ class BatchProcessor:
         """
         self.user_undefine_check(name)
         self.template_variables.pop(name)
+
+    def user_set(self, name: str, value: str):
+        """
+        Set a template variable as if you were using the \\set directive.
+        
+        This applies template expansion and environmental variable expansion to both
+        the name and value, then sets the template variable.
+
+        :raises BatchProcessError: if the specified variable name cannot be defined
+            by the user due to validation errors.
+
+        :param name: Variable name (can contain template expressions)
+        :param value: Variable value (can contain template expressions and env vars)
+        """
+        processed_name = self.expand_vars(self.render_template(name))
+        processed_value = self.expand_vars(self.render_template(value))
+        self.user_define(processed_name, processed_value)
+
+    def user_setp(self, name: str, expression: str):
+        """
+        Set a template variable to the result of evaluating a Python expression
+        as if you were using the \\setp directive.
+        
+        This applies template expansion and environmental variable expansion to the name,
+        then evaluates the expression as Python and sets the template variable to the result.
+
+        :raises BatchProcessError: if the specified variable name cannot be defined
+            by the user due to validation errors, or if the expression cannot be evaluated.
+
+        :param name: Variable name (can contain template expressions)
+        :param expression: Python expression to evaluate (can contain template expressions and env vars)
+        """
+        processed_name = self.expand_vars(self.render_template(name))
+        processed_expression = self.expand_vars(self.render_template(expression))
+        interpreted_value = self._intepret_setp_value(processed_expression)
+        self.user_define(processed_name, interpreted_value)
 
     def _intepret_setp_value(self, value):
         interpreter = _eval.standard_interpreter(

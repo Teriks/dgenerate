@@ -279,6 +279,44 @@ def offline_mode_context(enabled=True):
         else:
             disable_offline_mode()
 
+def _parse_set_args(set_args):
+    """Parse --set or --setp meta arguments into (variable, value) pairs."""
+    if not set_args:
+        return []
+
+    pairs = []
+    for arg in set_args:
+        if '=' not in arg:
+            raise ValueError(f'Invalid argument: "{arg}". Must use variable=value syntax.')
+        
+        # Handle variable=value syntax (allow spaces around =)
+        var, value = arg.split('=', 1)
+        var = var.strip()
+        value = value.strip()
+
+        # Validate variable name (basic check)
+        if not var:
+            raise ValueError(f'Invalid argument: empty variable name in "{arg}"')
+
+        pairs.append((var, value))
+
+    return pairs
+
+
+# Custom action to preserve order of --set and --setp meta arguments
+class _OrderedSetAction(argparse.Action):
+    def __init__(self, option_strings, dest, nargs='+', **kwargs):
+        # Use nargs='+' to ensure at least one argument is consumed
+        super().__init__(option_strings, dest, nargs=nargs, **kwargs)
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        if not hasattr(namespace, 'ordered_sets'):
+            namespace.ordered_sets = []
+
+        # Determine argument type from option_string
+        arg_type = 'set' if option_string == '--set' else 'setp'
+        namespace.ordered_sets.append((arg_type, values))
+
 
 def main(args: collections.abc.Sequence[str] | None = None):
     """
@@ -311,6 +349,7 @@ def main(args: collections.abc.Sequence[str] | None = None):
 
     # handle meta arguments
 
+    # Create a parser that knows about meta arguments to properly consume them
     meta_args_parser = argparse.ArgumentParser(prog='dgenerate', add_help=False)
 
     def _exit(status=0, message=None):
@@ -328,7 +367,24 @@ def main(args: collections.abc.Sequence[str] | None = None):
 
     meta_args_parser.add_argument('--no-stdin', action='store_true')
 
+    meta_args_parser.add_argument('--set', action=_OrderedSetAction, metavar='VARIABLE=VALUE')
+    meta_args_parser.add_argument('--setp', action=_OrderedSetAction, metavar='VARIABLE=VALUE')
+
+    # Parse meta arguments first, ensuring they're completely consumed
     meta_args, args = meta_args_parser.parse_known_args(args)
+
+    # Parse meta set/setp arguments in the order they appeared
+    ordered_variable_ops = []
+    try:
+        if hasattr(meta_args, 'ordered_sets') and meta_args.ordered_sets:
+            for arg_type, values in meta_args.ordered_sets:
+                pairs = _parse_set_args(values)
+                for var, value in pairs:
+                    ordered_variable_ops.append((arg_type, var, value))
+    except ValueError as e:
+        dgenerate.messages.log(f'dgenerate: error: {str(e).strip()}',
+                               level=dgenerate.messages.ERROR)
+        sys.exit(1)
 
     if '-ofm' in args or '--offline-mode' in args:
         enable_offline_mode()
@@ -343,6 +399,18 @@ def main(args: collections.abc.Sequence[str] | None = None):
             runner = ConfigRunner(render_loop=render_loop,
                                   version=__version__,
                                   injected_args=args)
+
+            # Apply --set and --setp meta arguments directly to the runner in order
+            try:
+                for arg_type, var, value in ordered_variable_ops:
+                    if arg_type == 'set':
+                        runner.user_set(var, value)
+                    else:  # setp
+                        runner.user_setp(var, value)
+            except Exception as e:
+                dgenerate.messages.log(f'dgenerate: error: {str(e).strip()}',
+                                       level=dgenerate.messages.ERROR)
+                sys.exit(1)
 
             input_files = itertools.chain.from_iterable(
                 [glob.glob(input_file) if '*' in input_file else [input_file] for input_file in meta_args.file])
@@ -367,6 +435,19 @@ def main(args: collections.abc.Sequence[str] | None = None):
             runner = ConfigRunner(render_loop=render_loop,
                                   version=__version__,
                                   injected_args=args)
+
+            # Apply --set and --setp meta arguments directly to the runner in order
+            try:
+                for arg_type, var, value in ordered_variable_ops:
+                    if arg_type == 'set':
+                        runner.user_set(var, value)
+                    else:  # setp
+                        runner.user_setp(var, value)
+            except Exception as e:
+                dgenerate.messages.log(f'dgenerate: error: {str(e).strip()}',
+                                       level=dgenerate.messages.ERROR)
+                sys.exit(1)
+
             while True:
                 try:
                     runner.run_file(sys.stdin)
