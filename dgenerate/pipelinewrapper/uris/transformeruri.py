@@ -159,6 +159,7 @@ class TransformerUri:
              use_auth_token: _types.OptionalString = None,
              local_files_only: bool = False,
              no_cache: bool = False,
+             device_map: str | None = None,
              transformer_class:
              type[diffusers.SD3Transformer2DModel] |
              type[
@@ -175,6 +176,7 @@ class TransformerUri:
         :param local_files_only: avoid downloading files and only look for cached files
             when the model path is a huggingface slug or blob link
         :param no_cache: If True, force the returned object not to be cached by the memoize decorator.
+        :param device_map: device placement strategy for quantized models, defaults to ``None``
 
         :param transformer_class: Transformer class type.
 
@@ -211,6 +213,7 @@ class TransformerUri:
               use_auth_token: _types.OptionalString = None,
               local_files_only: bool = False,
               no_cache: bool = False,
+              device_map: str | None = None,
               transformer_class:
               type[diffusers.SD3Transformer2DModel] |
               type[
@@ -264,7 +267,8 @@ class TransformerUri:
                 torch_dtype=torch_dtype,
                 original_config=original_config,
                 local_files_only=local_files_only,
-                quantization_config=quant_config
+                quantization_config=quant_config,
+                device_map=device_map
             )
 
         else:
@@ -293,7 +297,8 @@ class TransformerUri:
                 subfolder=self.subfolder if self.subfolder else "",
                 token=use_auth_token,
                 local_files_only=local_files_only,
-                quantization_config=quant_config
+                quantization_config=quant_config,
+                device_map=device_map
             )
 
         _messages.debug_log('Estimated Torch Transformer Memory Use:',

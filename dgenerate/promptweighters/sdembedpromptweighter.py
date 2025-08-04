@@ -107,7 +107,6 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
     @torch.inference_mode()
     def translate_to_embeds(self,
                             pipeline: diffusers.DiffusionPipeline,
-                            device: str,
                             args: dict[str, typing.Any]):
 
         # we are responsible for generating these arguments
@@ -188,7 +187,7 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
         pos_pooled = None
         neg_pooled = None
 
-        self.move_text_encoders(pipeline, device)
+        self.move_text_encoders(pipeline, self.device)
 
         if pipeline.__class__.__name__.startswith('StableDiffusion3'):
             clip_skip = output.get('clip_skip', None)
@@ -209,7 +208,7 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
                 pad_last_block=True,
                 use_t5_encoder=pipeline.tokenizer_3 is not None,
                 clip_skip=clip_skip,
-                device=device)
+                device=self.device)
 
         elif pipeline.__class__.__name__.startswith('StableCascade'):
             # needs to be consumed as the pipeline
@@ -227,7 +226,7 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
                 prompt=positive,
                 neg_prompt=negative,
                 clip_skip=clip_skip,
-                device=device)
+                device=self.device)
 
         elif pipeline.__class__.__name__.startswith('StableDiffusionXL'):
             clip_skip = output.get('clip_skip', None)
@@ -245,7 +244,7 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
                         neg_prompt=negative,
                         neg_prompt_2=negative_2 if negative_2 else None,
                         clip_skip=clip_skip,
-                        device=device)
+                        device=self.device)
                 else:
                     pos_conditioning, \
                         neg_conditioning, \
@@ -255,7 +254,7 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
                         prompt=positive,
                         neg_prompt=negative,
                         clip_skip=clip_skip,
-                        device=device)
+                        device=self.device)
 
             else:
                 if positive_2 or negative_2:
@@ -272,7 +271,7 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
                     prompt=positive,
                     neg_prompt=negative,
                     clip_skip=clip_skip,
-                    device=device)
+                    device=self.device)
 
         elif pipeline.__class__.__name__.startswith('StableDiffusion'):
             clip_skip = output.get('clip_skip', 0)
@@ -284,7 +283,7 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
                 neg_prompt=negative,
                 pad_last_block=False,
                 clip_skip=clip_skip,
-                device=device)
+                device=self.device)
 
         elif pipeline.__class__.__name__.startswith('Flux'):
             pos_conditioning, \
@@ -292,7 +291,7 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
                 pipe=pipeline,
                 prompt=positive,
                 prompt2=positive_2 if positive_2 else None,
-                device=device)
+                device=self.device)
 
         if pos_conditioning is not None:
             self._tensors.append(pos_conditioning)

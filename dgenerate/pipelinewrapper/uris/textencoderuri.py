@@ -92,7 +92,8 @@ def _load_clip_l_from_single_file(
         model_path: str,
         dtype: torch.dtype,
         local_files_only: bool = False,
-        quantization_config=None
+        quantization_config=None,
+        device_map: str | None = None
 ):
     try:
         with _suppress_accelerate_warnings():
@@ -114,14 +115,14 @@ def _load_clip_l_from_single_file(
 
         if quantization_config:
             hf_quantizer = diffusers.quantizers.auto.DiffusersAutoQuantizer().from_config(quantization_config)
-            hf_quantizer.preprocess_model(text_encoder, device_map='auto')
+            hf_quantizer.preprocess_model(text_encoder, device_map=device_map)
 
         with _suppress_accelerate_warnings():
             # Load state dict and update weights
             text_encoder = accelerate.load_checkpoint_and_dispatch(
                 text_encoder,
                 checkpoint=model_path,
-                device_map="auto",
+                device_map=device_map,
                 dtype=dtype,
                 no_split_module_classes=["CLIPEncoderLayer"]
             )
@@ -142,7 +143,8 @@ def _load_clip_l_sd3_from_single_file(
         model_path: str,
         dtype: torch.dtype,
         local_files_only: bool = False,
-        quantization_config=None
+        quantization_config=None,
+        device_map: str | None = None
 ):
     """
     Load a CLIP-L text encoder from a monolithic checkpoint for SD3/SD3.5 models.
@@ -168,14 +170,14 @@ def _load_clip_l_sd3_from_single_file(
 
         if quantization_config:
             hf_quantizer = diffusers.quantizers.auto.DiffusersAutoQuantizer().from_config(quantization_config)
-            hf_quantizer.preprocess_model(text_encoder, device_map='auto')
+            hf_quantizer.preprocess_model(text_encoder, device_map=device_map)
 
         with _suppress_accelerate_warnings():
             # Load state dict and update weights
             text_encoder = accelerate.load_checkpoint_and_dispatch(
                 text_encoder,
                 checkpoint=model_path,
-                device_map="auto",
+                device_map=device_map,
                 dtype=dtype,
                 no_split_module_classes=["CLIPEncoderLayer"]
             )
@@ -196,7 +198,8 @@ def _load_clip_g_sd3_from_single_file(
         model_path: str,
         dtype: torch.dtype,
         local_files_only: bool = False,
-        quantization_config=None
+        quantization_config=None,
+        device_map: str | None = None
 ):
     """
     Load a CLIP-G text encoder from a monolithic checkpoint for SD3/SD3.5 models.
@@ -222,14 +225,14 @@ def _load_clip_g_sd3_from_single_file(
 
         if quantization_config:
             hf_quantizer = diffusers.quantizers.auto.DiffusersAutoQuantizer().from_config(quantization_config)
-            hf_quantizer.preprocess_model(text_encoder, device_map='auto')
+            hf_quantizer.preprocess_model(text_encoder, device_map=device_map)
 
         with _suppress_accelerate_warnings():
             # Load state dict and update weights
             text_encoder = accelerate.load_checkpoint_and_dispatch(
                 text_encoder,
                 checkpoint=model_path,
-                device_map="auto",
+                device_map=device_map,
                 dtype=dtype,
                 no_split_module_classes=["CLIPEncoderLayer"]
             )
@@ -250,7 +253,8 @@ def _load_t5_xxl_sd3_from_single_file(
         model_path: str,
         dtype: torch.dtype,
         local_files_only: bool = False,
-        quantization_config=None
+        quantization_config=None,
+        device_map: str | None = None
 ):
     """
     Load a T5-XXL text encoder from a monolithic checkpoint specifically for SD3/SD3.5 models.
@@ -276,13 +280,13 @@ def _load_t5_xxl_sd3_from_single_file(
 
         if quantization_config:
             hf_quantizer = diffusers.quantizers.auto.DiffusersAutoQuantizer().from_config(quantization_config)
-            hf_quantizer.preprocess_model(text_encoder, device_map='auto')
+            hf_quantizer.preprocess_model(text_encoder, device_map=device_map)
 
         with _suppress_accelerate_warnings():
             text_encoder = accelerate.load_checkpoint_and_dispatch(
                 text_encoder,
                 checkpoint=model_path,
-                device_map="auto",
+                device_map=device_map,
                 dtype=dtype,
                 no_split_module_classes=["T5Block"]
             )
@@ -303,7 +307,8 @@ def _load_t5_xxl_from_single_file(
         model_path: str,
         dtype: torch.dtype,
         local_files_only: bool = False,
-        quantization_config=None
+        quantization_config=None,
+        device_map: str | None = None
 ):
     try:
 
@@ -328,13 +333,13 @@ def _load_t5_xxl_from_single_file(
 
         if quantization_config:
             hf_quantizer = diffusers.quantizers.auto.DiffusersAutoQuantizer().from_config(quantization_config)
-            hf_quantizer.preprocess_model(text_encoder, device_map='auto')
+            hf_quantizer.preprocess_model(text_encoder, device_map=device_map)
 
         with _suppress_accelerate_warnings():
             text_encoder = accelerate.load_checkpoint_and_dispatch(
                 text_encoder,
                 checkpoint=model_path,
-                device_map="auto",
+                device_map=device_map,
                 dtype=dtype,
                 no_split_module_classes=["T5Block"]
             )
@@ -355,7 +360,8 @@ def _load_clip_l_sd35_large_from_single_file(
         model_path: str,
         dtype: torch.dtype,
         local_files_only: bool = False,
-        quantization_config=None
+        quantization_config=None,
+        device_map: str | None = None
 ):
     try:
         with _suppress_accelerate_warnings():
@@ -376,14 +382,14 @@ def _load_clip_l_sd35_large_from_single_file(
 
         if quantization_config:
             hf_quantizer = diffusers.quantizers.auto.DiffusersAutoQuantizer().from_config(quantization_config)
-            hf_quantizer.preprocess_model(text_encoder, device_map='auto')
+            hf_quantizer.preprocess_model(text_encoder, device_map=device_map)
 
         with _suppress_accelerate_warnings():
             # Load state dict and update weights
             text_encoder = accelerate.load_checkpoint_and_dispatch(
                 text_encoder,
                 checkpoint=model_path,
-                device_map="auto",
+                device_map=device_map,
                 dtype=dtype,
                 no_split_module_classes=["CLIPEncoderLayer"]
             )
@@ -404,7 +410,8 @@ def _load_clip_g_sd35_large_from_single_file(
         model_path: str,
         dtype: torch.dtype,
         local_files_only: bool = False,
-        quantization_config=None
+        quantization_config=None,
+        device_map: str | None = None
 ):
     try:
         with _suppress_accelerate_warnings():
@@ -425,14 +432,14 @@ def _load_clip_g_sd35_large_from_single_file(
 
         if quantization_config:
             hf_quantizer = diffusers.quantizers.auto.DiffusersAutoQuantizer().from_config(quantization_config)
-            hf_quantizer.preprocess_model(text_encoder, device_map='auto')
+            hf_quantizer.preprocess_model(text_encoder, device_map=device_map)
 
         with _suppress_accelerate_warnings():
             # Load state dict and update weights
             text_encoder = accelerate.load_checkpoint_and_dispatch(
                 text_encoder,
                 checkpoint=model_path,
-                device_map="auto",
+                device_map=device_map,
                 dtype=dtype,
                 no_split_module_classes=["CLIPEncoderLayer"]
             )
@@ -639,7 +646,8 @@ class TextEncoderUri:
              use_auth_token: _types.OptionalString = None,
              local_files_only: bool = False,
              no_cache: bool = False,
-             missing_ok: bool = False
+             missing_ok: bool = False,
+             device_map: str | None = None
              ) -> \
             typing.Union[
                 transformers.models.clip.CLIPTextModel,
@@ -662,6 +670,7 @@ class TextEncoderUri:
         :param no_cache: If ``True``, force the returned object not to be cached by the memoize decorator.
         :param missing_ok: If ``True``, when a VAE is not found inside a single file checkpoint as a sub model,
             just return ``None`` instead of throwing an error.
+        :param device_map: device placement strategy for quantized models, defaults to ``None``
 
         :raises ModelNotFoundError: If the model could not be found.
 
@@ -687,6 +696,7 @@ class TextEncoderUri:
             size_var='text_encoder_size',
             new_object_size=new_text_encoder_size)
 
+    # noinspection PyTypeChecker
     @_memoize(_text_encoder_cache,
               exceptions={'local_files_only', 'missing_ok'},
               hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _d_memoize.struct_hasher}),
@@ -699,7 +709,8 @@ class TextEncoderUri:
               use_auth_token: _types.OptionalString = None,
               local_files_only: bool = False,
               no_cache: bool = False,
-              missing_ok: bool = False
+              missing_ok: bool = False,
+              device_map: str | None = None
               ) -> \
             typing.Union[
                 transformers.models.clip.CLIPTextModel,
@@ -775,7 +786,8 @@ class TextEncoderUri:
                     model_path=model_path,
                     dtype=torch_dtype,
                     local_files_only=local_files_only,
-                    quantization_config=quant_config
+                    quantization_config=quant_config,
+                    device_map=device_map
                 )
 
                 estimated_memory_use = _torchutil.estimate_module_memory_usage(text_encoder)
@@ -796,7 +808,8 @@ class TextEncoderUri:
                     model_path=model_path,
                     dtype=torch_dtype,
                     local_files_only=local_files_only,
-                    quantization_config=quant_config
+                    quantization_config=quant_config,
+                    device_map=device_map
                 )
 
                 estimated_memory_use = _torchutil.estimate_module_memory_usage(text_encoder)
@@ -818,7 +831,8 @@ class TextEncoderUri:
                     model_path=model_path,
                     dtype=torch_dtype,
                     local_files_only=local_files_only,
-                    quantization_config=quant_config
+                    quantization_config=quant_config,
+                    device_map=device_map
                 )
 
                 estimated_memory_use = _torchutil.estimate_module_memory_usage(text_encoder)
@@ -839,7 +853,8 @@ class TextEncoderUri:
                     model_path=model_path,
                     dtype=torch_dtype,
                     local_files_only=local_files_only,
-                    quantization_config=quant_config
+                    quantization_config=quant_config,
+                    device_map=device_map
                 )
 
                 estimated_memory_use = _torchutil.estimate_module_memory_usage(text_encoder)
@@ -860,7 +875,8 @@ class TextEncoderUri:
                     model_path=model_path,
                     dtype=torch_dtype,
                     local_files_only=local_files_only,
-                    quantization_config=quant_config
+                    quantization_config=quant_config,
+                    device_map=device_map
                 )
 
                 estimated_memory_use = _torchutil.estimate_module_memory_usage(text_encoder)
@@ -882,7 +898,8 @@ class TextEncoderUri:
                     model_path=model_path,
                     dtype=torch_dtype,
                     local_files_only=local_files_only,
-                    quantization_config=quant_config
+                    quantization_config=quant_config,
+                    device_map=device_map
                 )
 
                 estimated_memory_use = _torchutil.estimate_module_memory_usage(text_encoder)
@@ -904,7 +921,8 @@ class TextEncoderUri:
                     model_path=model_path,
                     dtype=torch_dtype,
                     local_files_only=local_files_only,
-                    quantization_config=quant_config
+                    quantization_config=quant_config,
+                    device_map=device_map
                 )
 
                 estimated_memory_use = _torchutil.estimate_module_memory_usage(text_encoder)
@@ -979,7 +997,8 @@ class TextEncoderUri:
                 subfolder=self.subfolder if self.subfolder else "",
                 token=use_auth_token,
                 local_files_only=local_files_only,
-                quantization_config=quant_config
+                quantization_config=quant_config,
+                device_map=device_map
             )
 
         _messages.debug_log('Estimated Torch TextEncoder Memory Use:',

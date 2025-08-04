@@ -53,13 +53,11 @@ class MyPromptWeighter(_promptweighter.PromptWeighter):
 
     def translate_to_embeds(self,
                             pipeline,
-                            device: str,
                             args: dict[str, typing.Any]):
         """
         Translate the pipeline prompt arguments to ``prompt_embeds`` and ``pooled_prompt_embeds`` as needed.
 
         :param pipeline: The pipeline object
-        :param device: The device the pipeline modules are on
         :param args: Call arguments to the pipeline
         :return: ``args``, supplemented with prompt embedding arguments
         """
@@ -77,6 +75,9 @@ class MyPromptWeighter(_promptweighter.PromptWeighter):
         # you can convert this to its torch equivalent
         # dgenerate.pipelinewrapper.get_torch_dtype()
         print(self.dtype)
+
+        # The device to work on
+        print(self.device)
 
         # print the arguments that will be passed to the pipeline
         print(args)

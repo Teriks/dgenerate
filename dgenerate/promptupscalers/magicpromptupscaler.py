@@ -234,10 +234,6 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
         if quantizer:
             try:
                 quantizer_class = _get_quantizer_uri_class(quantizer)
-                if (quantizer_class is _BNBQuantizerUri and 
-                    self.device.startswith('cpu')):
-                    raise self.argument_error(
-                        'bitsandbytes quantization is not supported with CPU device.')
                 quantization_config = quantizer_class.parse(quantizer).to_config(dtype)
             except Exception as e:
                 raise self.argument_error(f'Error loading "quantizer" argument "{quantizer}": {e}') from e
@@ -350,6 +346,7 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
                 trust_remote_code=True,
                 torch_dtype=dtype,
                 quantization_config=quantization_config,
+                device_map=self.device if quantization_config else None,
                 local_files_only=self.local_files_only
             )
         except Exception as e:

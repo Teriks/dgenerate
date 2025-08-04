@@ -163,6 +163,7 @@ class UNetUri:
              use_auth_token: _types.OptionalString = None,
              local_files_only: bool = False,
              no_cache: bool = False,
+             device_map: str | None = None,
              unet_class=diffusers.UNet2DConditionModel):
         """
         Load a UNet of type :py:class:`diffusers.UNet2DConditionModel`
@@ -174,6 +175,7 @@ class UNetUri:
         :param local_files_only: avoid downloading files and only look for cached files
             when the model path is a huggingface slug or blob link
         :param no_cache: If True, force the returned object not to be cached by the memoize decorator.
+        :param device_map: device placement strategy for quantized models, defaults to ``None``
 
         :param unet_class: UNet class
 
@@ -210,6 +212,7 @@ class UNetUri:
               use_auth_token: _types.OptionalString = None,
               local_files_only: bool = False,
               no_cache: bool = False,
+              device_map: str | None = None,
               unet_class=diffusers.UNet2DConditionModel) -> diffusers.UNet2DConditionModel:
 
         if self.dtype is None:
@@ -299,7 +302,8 @@ class UNetUri:
                 token=use_auth_token,
                 original_config=original_config,
                 local_files_only=local_files_only,
-                quantization_config=quant_config
+                quantization_config=quant_config,
+                device_map=device_map
             )
 
         _messages.debug_log('Estimated Torch UNet Memory Use:',

@@ -33,6 +33,7 @@ import dgenerate.promptweighters.constants as _constants
 import dgenerate.messages as _messages
 import dgenerate.devicecache as _devicecache
 import dgenerate.pipelinewrapper as _pipelinewrapper
+import dgenerate.torchutil as _torchutil
 
 _prompt_weighter_cache = _memoize.create_object_cache(
     'prompt_weighter',
@@ -54,7 +55,7 @@ class PromptWeighter(_plugin.Plugin, abc.ABC):
     """
 
     # you cannot specify these via a URI
-    HIDE_ARGS = ['model-type', 'dtype', 'local-files-only']
+    HIDE_ARGS = ['model-type', 'dtype', 'local-files-only', 'device']
 
     @classmethod
     def inheritable_help(cls, loaded_by_name):
@@ -64,12 +65,14 @@ class PromptWeighter(_plugin.Plugin, abc.ABC):
                  loaded_by_name: str,
                  model_type: _enums.ModelType,
                  dtype: _enums.DataType,
+                 device: str | None = None,
                  local_files_only: bool = False,
                  **kwargs):
         """
         :param loaded_by_name: The name the prompt weighter was loaded by
         :param model_type: Model type enum :py:class:`dgenerate.ModelType`
         :param dtype: Data type enum :py:class:`dgenerate.DataType`
+        :param device: The device the prompt weighter should operate on
         :param local_files_only: if ``True``, the plugin should never try to download
             models from the internet automatically, and instead only look
             for them in cache / on disk.
@@ -79,8 +82,14 @@ class PromptWeighter(_plugin.Plugin, abc.ABC):
                          argument_error_type=_exceptions.PromptWeighterArgumentError,
                          **kwargs)
 
+        if device is not None:
+            if not _torchutil.is_valid_device_string(device):
+                raise _exceptions.PromptWeighterArgumentError(
+                    f'Invalid device argument, {_torchutil.invalid_device_message(device, cap=False)}')
+
         self.__model_type = model_type
         self.__dtype = dtype
+        self.__device = device if device else 'cpu'
         self.__local_files_only = local_files_only
         self.__size_estimate = 0
 
@@ -97,6 +106,13 @@ class PromptWeighter(_plugin.Plugin, abc.ABC):
         Model type that will use the embeddings.
         """
         return self.__model_type
+
+    @property
+    def device(self) -> str:
+        """
+        The device the prompt weighter operates on.
+        """
+        return self.__device
 
     @property
     def local_files_only(self) -> bool:
@@ -264,7 +280,6 @@ class PromptWeighter(_plugin.Plugin, abc.ABC):
     @abc.abstractmethod
     def translate_to_embeds(self,
                             pipeline: diffusers.DiffusionPipeline,
-                            device: str,
                             args: dict[str, typing.Any]):
         """
         Override me to implement.
@@ -272,7 +287,6 @@ class PromptWeighter(_plugin.Plugin, abc.ABC):
         Translate the pipeline prompt arguments to ``prompt_embeds`` and ``pooled_prompt_embeds`` as needed.
 
         :param pipeline: The pipeline object
-        :param device: The device the pipeline modules are on
         :param args: Call arguments to the pipeline
         :return: ``args``, supplemented with prompt embedding arguments
         """
