@@ -795,6 +795,13 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline,
 
     global _LAST_CALLED_PIPELINE
 
+    if prompt_weighter is not None:
+        if not _torchutil.devices_equal(device, prompt_weighter.device):
+            raise UnsupportedPipelineConfigError(
+                'dgenerate.pipelinewrapper.call_pipeline: prompt_weighter '
+                'must specify the same compute device that pipeline is to be called on. '
+                f'Got prompt_weighter={prompt_weighter.device}, and pipeline={device}')
+
     _messages.debug_log(
         f'Calling Pipeline: "{pipeline.__class__.__name__}",',
         f'Device: "{device}",',
