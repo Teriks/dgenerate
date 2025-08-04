@@ -14,11 +14,11 @@ python run.py
 To run a command in a fresh environment use for example:
 
 ```bash
-python run.py -e CIVIT_AI_TOKEN=tokenhere -e HF_TOKEN=tokenhere "python3 examples/run.py --short-animations --subprocess-only --skip-ncnn &> examples/examples-docker.log"
+python run.py -e CIVIT_AI_TOKEN=tokenhere -e HF_TOKEN=tokenhere "python3 examples/run.py --short-animations --subprocess-only --skip ncnn &> examples/examples-docker.log"
 
-python run.py -e CIVIT_AI_TOKEN=tokenhere -e HF_TOKEN=tokenhere "python3 run_tests.py --clean --examples --skip-ncnn"
+python run.py -e CIVIT_AI_TOKEN=tokenhere -e HF_TOKEN=tokenhere "python3 run_tests.py --clean --examples --skip ncnn"
 
-python run.py -e CIVIT_AI_TOKEN=tokenhere -e HF_TOKEN=tokenhere "python3 run_tests.py --clean --examples --subprocess-only --skip-ncnn"
+python run.py -e CIVIT_AI_TOKEN=tokenhere -e HF_TOKEN=tokenhere "python3 run_tests.py --clean --examples --subprocess-only --skip ncnn"
 ```
 
 ## Options
