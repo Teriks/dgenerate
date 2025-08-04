@@ -9,8 +9,25 @@
 stable-diffusion-v1-5/stable-diffusion-v1-5
 --inference-steps 40
 --guidance-scales 8
---output-size 1024
 --gen-seeds 1
 --prompt-weighter llm4gen;weighter=sd-embed
---prompts "(Photo) of a (horse) standing near the (open door) of a (red barn), (high resolution:1.2); artwork"
+--prompts " A (green) apple on a table"
+--output-path llm4gen_sd_embed
+
+stable-diffusion-v1-5/stable-diffusion-v1-5
+--inference-steps 40
+--guidance-scales 8
+--gen-seeds 1
+--prompt-weighter llm4gen;weighter=compel
+--prompts " A green++ apple on a table"
+--output-path llm4gen_compel
+
+stable-diffusion-v1-5/stable-diffusion-v1-5
+--inference-steps 50
+--guidance-scales 7
+--gen-seeds 1
+--output-path output
+--prompt-weighter llm4gen
+--output-size 768
 --output-path llm4gen
+--prompts "Ground view of the Great Pyramids and Sphinx on the moon's surface. The back of an astronaut is in the foreground. The planet Earth looms in the sky"
