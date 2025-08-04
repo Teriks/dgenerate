@@ -2988,6 +2988,9 @@ def iterate_image_seed(uri: str | ImageSeedParseResult,
                     # noinspection PyTypeChecker
                     image_seed_args[key] = _reshape_ip_adapter_image_seed(
                         parse_result.adapter_images, frame[start:end])
+                elif key == 'floyd_image':
+                    # floyd_image should be a single image, not a list
+                    image_seed_args[key] = frame[start:end][0]
                 else:
                     image_seed_args[key] = frame[start:end]
 
