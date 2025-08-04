@@ -49,8 +49,6 @@ class BNBQuantizerUri:
         Bitsandbytes quantization backend configuration.
 
         This backend can be specified as "bnb" or "bitsandbytes" in the URI.
-        
-        This backend does not support CPU use.
 
         URI Format: bnb;argument1=value1;argument2=value2
         

@@ -30,7 +30,6 @@ import dgenerate.hfhub as _hfhub
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.enums as _enums
 from dgenerate.pipelinewrapper.uris import get_quantizer_uri_class as _get_quantizer_uri_class
-from dgenerate.pipelinewrapper.uris import BNBQuantizerUri as _BNBQuantizerUri
 import dgenerate.promptweighters.exceptions as _exceptions
 import dgenerate.promptweighters.promptweighter as _promptweighter
 import dgenerate.memory as _memory
@@ -61,13 +60,14 @@ class T5EncoderWithProjection(transformers.T5PreTrainedModel):
 
 class RankGenEncoder:
     def __init__(self,
-                 model_path,
-                 model_size=None,
-                 cache_dir=None,
-                 local_files_only=False,
-                 use_auth_token=None,
-                 torch_dtype=torch.float32,
-                 quantization_config=None):
+                 model_path: str,
+                 model_size: str | None = None,
+                 cache_dir: str | None = None,
+                 local_files_only: bool = False,
+                 use_auth_token: str | None = None,
+                 torch_dtype: torch.dtype = torch.float32,
+                 quantization_config = None,
+                 device_map: str | None ="auto"):
         assert model_path in [
             "kalpeshk2011/rankgen-t5-xl-all",
             "kalpeshk2011/rankgen-t5-xl-pg19",
@@ -90,7 +90,8 @@ class RankGenEncoder:
             cache_dir=cache_dir,
             local_files_only=local_files_only,
             use_auth_token=use_auth_token,
-            torch_dtype=torch_dtype
+            torch_dtype=torch_dtype,
+            device_map=device_map
 
         )
 
@@ -402,7 +403,8 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
                 local_files_only=self.local_files_only,
                 use_auth_token=token,
                 torch_dtype=self._llm_dtype,
-                quantization_config=self._llm_quantization_config
+                quantization_config=self._llm_quantization_config,
+                device_map=self.device if self._llm_quantization_config else None
             )
         )
 
@@ -457,7 +459,8 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
                 weighter,
                 model_type=_enums.ModelType.SD,
                 dtype=self.dtype,
-                local_files_only=self.local_files_only
+                local_files_only=self.local_files_only,
+                device=self.device
             )
         else:
             self._weighter = None
@@ -504,7 +507,7 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
         # errors occuring.
         return ['prompt_2', 'negative_prompt_2']
 
-    def _generate_clip_embeds(self, pipeline, positive: str, negative: str, device: str):
+    def _generate_clip_embeds(self, pipeline, positive: str, negative: str):
         if not self._weighter:
 
             if hasattr(pipeline, 'maybe_convert_prompt'):
@@ -514,8 +517,8 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
             input_ids = pipeline.tokenizer(
                 positive, return_tensors="pt", truncation=True, padding="max_length", max_length=77).input_ids
 
-            input_ids = input_ids.to(device)
-            pipeline.text_encoder.to(device)
+            input_ids = input_ids.to(self.device)
+            pipeline.text_encoder.to(self.device)
 
             positive_embeds = pipeline.text_encoder(input_ids, return_dict=False)[0]
             input_ids.to('cpu')
@@ -527,7 +530,7 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
             input_ids = pipeline.tokenizer(
                 negative, return_tensors="pt", truncation=True, padding="max_length", max_length=77).input_ids
 
-            input_ids = input_ids.to(device)
+            input_ids = input_ids.to(self.device)
             negative_embeds = pipeline.text_encoder(input_ids, return_dict=False)[0]
             input_ids.to('cpu')
 
@@ -535,7 +538,7 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
 
         else:
             result = self._weighter.translate_to_embeds(
-                pipeline, device, {'prompt': positive, 'negative_prompt': negative})
+                pipeline, {'prompt': positive, 'negative_prompt': negative})
             return result['prompt_embeds'], result['negative_prompt_embeds']
 
     @staticmethod
@@ -598,10 +601,9 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
         return result
 
     @torch.inference_mode()
-    def translate_to_embeds(self,
-                            pipeline: diffusers.DiffusionPipeline,
-                            device: str,
-                            args: dict[str, typing.Any]):
+    def _translate_to_embeds(self,
+                             pipeline: diffusers.DiffusionPipeline,
+                             args: dict[str, typing.Any]):
 
         # we are responsible for generating these arguments
         # if they exist already then we cannot do our job
@@ -664,33 +666,25 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
                 module.dim = dim
                 module.head_dim = head_dim
 
-            self.memory_guard_device(device, self.size_estimate)
+            self.memory_guard_device(self.device, self.size_estimate)
+            self.move_text_encoders(pipeline, self.device)
 
-            # Check for bitsandbytes with CPU device
-            if (self._llm_quantizer_class is _BNBQuantizerUri and 
-                device.startswith('cpu')):
-                raise _exceptions.PromptWeightingUnsupported(
-                    'bitsandbytes quantization is not supported with CPU device.')
-
-            self.move_text_encoders(pipeline, device)
-
-            self.llm_projector.to(device).eval()
-            self.t5_model.to(device).eval()
+            self.llm_projector.to(self.device).eval()
+            self.t5_model.to(self.device).eval()
 
             embeds_dtype = _enums.get_torch_dtype(self.dtype)
 
             clip_embed, neg_clip_embeds = self._generate_clip_embeds(
                 pipeline,
                 positive,
-                negative,
-                device
+                negative
             )
 
             filtered_rankgen_pos = self._filter_rankgen_prompt(positive, 'positive') if not positive_2 else positive_2
             filtered_rankgen_neg = self._filter_rankgen_prompt(negative, 'negative') if not negative_2 else negative_2
 
-            llm_embed = self.t5_model.encode(filtered_rankgen_pos).to(device)
-            neg_llm_embed = self.t5_model.encode(filtered_rankgen_neg, max_length=llm_embed.shape[1]).to(device)
+            llm_embed = self.t5_model.encode(filtered_rankgen_pos).to(self.device)
+            neg_llm_embed = self.t5_model.encode(filtered_rankgen_neg, max_length=llm_embed.shape[1]).to(self.device)
 
             pos_conditioning = self.llm_projector(
                 clip_embed.to(self._llm_dtype), llm_embed).to(embeds_dtype)
@@ -710,6 +704,18 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
         })
 
         return output
+
+    def translate_to_embeds(self,
+                            pipeline: diffusers.DiffusionPipeline,
+                            args: dict[str, typing.Any]):
+        try:
+            return self._translate_to_embeds(pipeline, args)
+        except RuntimeError as e:
+            # catch bitsandbytes misconfigured on CPU
+            if 'quant' in str(e):
+                raise self.argument_error(
+                    f'llm4gen prompt weighter argument "llm-quantizer": {e}') from e
+            raise
 
     def cleanup(self):
         if self._weighter is not None:

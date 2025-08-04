@@ -819,7 +819,7 @@ def call_pipeline(pipeline: diffusers.DiffusionPipeline,
         nonlocal enable_retry_pipe
 
         try:
-            translated = prompt_weighter.translate_to_embeds(pipeline, device, kwargs)
+            translated = prompt_weighter.translate_to_embeds(pipeline, kwargs)
         except _d_exceptions.TORCH_CUDA_OOM_EXCEPTIONS as e:
             _d_exceptions.raise_if_not_cuda_oom(e)
             _cleanup_prompt_weighter()
@@ -1985,9 +1985,6 @@ def _create_diffusion_pipeline(
         )
 
     if quantizer_uri and quantizer_uri.split(';')[0].strip() in {'bnb', 'bitsandbytes'}:
-        if device.startswith('cpu'):
-            raise UnsupportedPipelineConfigError(
-                'bitsandbytes quantization is not supported with CPU device.')
         if dtype is _enums.DataType.AUTO:
             # Default to all modules to float32 if no dtype is specified when using bitsandbytes
             dtype = _enums.DataType.FLOAT32
@@ -2161,6 +2158,10 @@ def _create_diffusion_pipeline(
             return True
         return module_name in quantizer_map
 
+    # Helper function to determine device_map - always use the selected device currently
+    def get_device_map_for_quantizer(quantizer_uri):
+        return device if quantizer_uri else None
+
     # we need to manually emulate bitsandbytes 'compute_dtype'
     # casting for sdnq as it has trouble dequanting to anything
     # but float16 on forward which messes with diffusers
@@ -2187,10 +2188,7 @@ def _create_diffusion_pipeline(
                 quantizer_class = _uris.get_quantizer_uri_class(parsed_uri.quantizer)
                 if quantizer_class is _uris.SDNQQuantizerUri:
                     sdnq_cast_hack = True
-                if (quantizer_class is _uris.BNBQuantizerUri and 
-                    device.startswith('cpu')):
-                    raise UnsupportedPipelineConfigError(
-                        'bitsandbytes quantization is not supported with CPU device.')
+
 
     # Check transformer URI
     if transformer_uri:
@@ -2201,10 +2199,6 @@ def _create_diffusion_pipeline(
             quantizer_class = _uris.get_quantizer_uri_class(parsed_uri.quantizer)
             if quantizer_class is _uris.SDNQQuantizerUri:
                 sdnq_cast_hack = True
-            if (quantizer_class is _uris.BNBQuantizerUri and 
-                device.startswith('cpu')):
-                raise UnsupportedPipelineConfigError(
-                    'bitsandbytes quantization is not supported with CPU device.')
 
     # Check unet URI
     if unet_uri:
@@ -2215,10 +2209,6 @@ def _create_diffusion_pipeline(
             quantizer_class = _uris.get_quantizer_uri_class(parsed_uri.quantizer)
             if quantizer_class is _uris.SDNQQuantizerUri:
                 sdnq_cast_hack = True
-            if (quantizer_class is _uris.BNBQuantizerUri and 
-                device.startswith('cpu')):
-                raise UnsupportedPipelineConfigError(
-                    'bitsandbytes quantization is not supported with CPU device.')
 
     if quantizer_uri or any(p.quantizer for p in uri_quant_check):
         # for now, just knock out anything cached on the gpu, such as the last pipeline
@@ -2335,7 +2325,8 @@ def _create_diffusion_pipeline(
             use_auth_token=auth_token,
             local_files_only=local_files_only,
             no_cache=bool(lora_uris) or model_cpu_offload or sequential_cpu_offload,
-            missing_ok=missing_submodules_ok
+            missing_ok=missing_submodules_ok,
+            device_map=get_device_map_for_quantizer(uri.quantizer)
         )
 
     def load_vae(uri: _uris.VAEUri):
@@ -2380,6 +2371,7 @@ def _create_diffusion_pipeline(
                      bool(ip_adapter_uris) or
                      model_cpu_offload or
                      sequential_cpu_offload,
+            device_map=get_device_map_for_quantizer(uri.quantizer),
             unet_class=unet_class
         )
 
@@ -2399,6 +2391,7 @@ def _create_diffusion_pipeline(
             use_auth_token=auth_token,
             local_files_only=local_files_only,
             no_cache=bool(lora_uris) or model_cpu_offload or sequential_cpu_offload,
+            device_map=get_device_map_for_quantizer(uri.quantizer),
             transformer_class=transformer_class
         )
         if sdnq_cast_hack:

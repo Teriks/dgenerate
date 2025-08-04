@@ -13,8 +13,8 @@ Help Output
 
 .. code-block:: text
 
-    usage: dgenerate [-h] [-v] [--version] [--file | --shell | --no-stdin | --console]
-                     [--plugin-modules PATH [PATH ...]] [--sub-command SUB_COMMAND]
+    usage: dgenerate [-h] [-v] [--version] [--file | --shell | --no-stdin | --console] [--set VARIABLE=VALUE]
+                     [--setp VARIABLE=VALUE] [--plugin-modules PATH [PATH ...]] [--sub-command SUB_COMMAND]
                      [--sub-command-help [SUB_COMMAND ...]] [-ofm] [--templates-help [VARIABLE_NAME ...]]
                      [--directives-help [DIRECTIVE_NAME ...]] [--functions-help [FUNCTION_NAME ...]] [-gc FILE]
                      [-mt MODEL_TYPE] [-rev BRANCH] [-var VARIANT] [-sbf SUBFOLDER] [-olc FILE] [-olc2 FILE]
@@ -133,6 +133,22 @@ Help Output
             shell / REPL. This is a meta argument which can not be used within a configuration script and is
             only valid from the command line or during a popen invocation of dgenerate.
             ---------------------------------------------------------------------------
+      --set VARIABLE=VALUE
+            Set template variables that will be applied before config execution. Mirrors the functionality of
+            the \set config directive. Must use the syntax --set variable=value [variable2=value2 ...]. Can
+            accept multiple variable=value pairs and can be used multiple times. All --set and --setp arguments
+            are processed in the order they appear on the command line. This is a meta argument which can not be
+            used within a configuration script and is only valid from the command line or during a popen
+            invocation of dgenerate.
+            ------------------------
+      --setp VARIABLE=VALUE
+            Set template variables to the result of evaluating python expressions that will be applied before
+            config execution. Mirrors the functionality of the \setp config directive. Must use the syntax
+            --setp variable=expression [variable2=expression2 ...]. Can accept multiple variable=expression
+            pairs and can be used multiple times. All --set and --setp arguments are processed in the order they
+            appear on the command line. This is a meta argument which can not be used within a configuration
+            script and is only valid from the command line or during a popen invocation of dgenerate.
+            -----------------------------------------------------------------------------------------
       --plugin-modules PATH [PATH ...]
             Specify one or more plugin module folder paths (folder containing __init__.py) or Python .py file
             paths, or Python module names to load as plugins. Plugin modules can currently implement image
@@ -9478,8 +9494,6 @@ The ``bitsandbytes`` backend documentation is as follows:
     
         This backend can be specified as "bnb" or "bitsandbytes" in the URI.
     
-        This backend does not support CPU use.
-    
         URI Format: bnb;argument1=value1;argument2=value2
     
         Example: bnb;bits=4;bits4-quant-type=nf4
@@ -9522,8 +9536,6 @@ And for ``sdnq``:
         SD.Next quantization backend configuration.
     
         This backend can be specified as "sdnq" in the URI.
-    
-        This backend supports CPU use.
     
         URI Format: sdnq;argument1=value1;argument2=value2
     
@@ -10256,7 +10268,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [29607154437374]
+            Value: [76013069595871]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

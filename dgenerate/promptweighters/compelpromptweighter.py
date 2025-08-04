@@ -193,7 +193,6 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
     @torch.inference_mode()
     def translate_to_embeds(self,
                             pipeline: diffusers.DiffusionPipeline,
-                            device: str,
                             args: dict[str, typing.Any]):
 
         # we are responsible for generating these arguments
@@ -281,7 +280,7 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
         pos_pooled = None
         neg_pooled = None
 
-        self.move_text_encoders(pipeline, device)
+        self.move_text_encoders(pipeline, self.device)
 
         if pipeline.__class__.__name__.startswith('StableDiffusionXL'):
             clip_skip = args.get('clip_skip', None)
@@ -296,7 +295,7 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
                         _compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
                         requires_pooled=False,
                         truncate_long_prompts=False,
-                        device=device,
+                        device=self.device,
                         clip_skip=clip_skip
                     )
 
@@ -309,7 +308,7 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
                         _compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
                         requires_pooled=True,
                         truncate_long_prompts=False,
-                        device=device,
+                        device=self.device,
                         clip_skip=clip_skip
                     )
 
@@ -331,7 +330,7 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
                         _compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
                         requires_pooled=[False, True],
                         truncate_long_prompts=False,
-                        device=device,
+                        device=self.device,
                         clip_skip=clip_skip
                     )
 
@@ -357,7 +356,7 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
                     _compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
                     requires_pooled=True,
                     truncate_long_prompts=False,
-                    device=device,
+                    device=self.device,
                     clip_skip=clip_skip
                 )
 
@@ -382,7 +381,7 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
                 requires_pooled=True,
                 returned_embeddings_type=_compel.ReturnedEmbeddingsType.STABLE_CASCADE,
                 truncate_long_prompts=False,
-                device=device,
+                device=self.device,
                 clip_skip=clip_skip
             )
 
@@ -411,7 +410,7 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
                 text_encoder=pipeline.text_encoder,
                 truncate_long_prompts=False,
                 returned_embeddings_type=embedding_type,
-                device=device,
+                device=self.device,
                 clip_skip=clip_skip)
 
             pos_conditioning = compel1(positive)

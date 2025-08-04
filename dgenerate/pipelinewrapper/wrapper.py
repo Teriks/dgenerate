@@ -3304,21 +3304,23 @@ class DiffusionPipelineWrapper:
             self,
             uri: str,
             model_type: _enums.ModelType,
-            dtype: _enums.DataType
+            dtype: _enums.DataType,
+            device: str | None = None
     ):
         return self._prompt_weighter_loader.load(
             uri,
             model_type=model_type,
             dtype=dtype,
+            device=device,
             local_files_only=self.local_files_only
         )
 
     def _default_prompt_weighter(self, *sources):
         for source in sources:
             if isinstance(source, str):  # Direct URI case
-                return self._load_prompt_weighter(source, model_type=self.model_type, dtype=self._dtype)
+                return self._load_prompt_weighter(source, model_type=self.model_type, dtype=self._dtype, device=self._device)
             elif source is not None and source.weighter:  # Object case with weighter
-                return self._load_prompt_weighter(source.weighter, model_type=self.model_type, dtype=self._dtype)
+                return self._load_prompt_weighter(source.weighter, model_type=self.model_type, dtype=self._dtype, device=self._device)
         return None
 
     def _get_prompt_weighter(self, args: DiffusionArguments):

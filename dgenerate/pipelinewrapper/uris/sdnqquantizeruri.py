@@ -59,8 +59,6 @@ class SDNQQuantizerUri:
         
         This backend can be specified as "sdnq" in the URI.
         
-        This backend supports CPU use.
-        
         URI Format: sdnq;argument1=value1;argument2=value2
         
         Example: sdnq;type=int4;group-size=8;quant-conv=true
