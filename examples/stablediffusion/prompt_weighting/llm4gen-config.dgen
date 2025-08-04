@@ -1,0 +1,16 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 5.0.0
+
+# The use llm4gen for enhanced semantic understanding
+# of the prompt, for example positioning
+
+# This only works for SD 1.5 models specifically
+
+stable-diffusion-v1-5/stable-diffusion-v1-5
+--inference-steps 40
+--guidance-scales 8
+--output-size 1024
+--gen-seeds 1
+--prompt-weighter llm4gen;weighter=sd-embed
+--prompts "(Photo) of a (horse) standing near the (open door) of a (red barn), (high resolution:1.2); artwork"
+--output-path llm4gen
