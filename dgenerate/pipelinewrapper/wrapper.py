@@ -1909,6 +1909,11 @@ class DiffusionPipelineWrapper:
             
         if not user_args.inpaint_crop:
             return
+
+        if not user_args.aspect_correct:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'aspect_correct=False is not compatible with inpaint_crop=True.'
+            )
             
         # Validate that inpaint crop has required inputs
         if user_args.images is None or len(user_args.images) == 0:

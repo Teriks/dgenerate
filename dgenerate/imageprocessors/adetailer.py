@@ -487,7 +487,9 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
                     self._prompt_weighter,
                     model_type=model_type,
                     dtype=encoder_dtype,
-                    local_files_only=self.local_files_only)
+                    local_files_only=self.local_files_only,
+                    device=self.device
+                )
             except Exception as e:
                 raise self.argument_error(str(e)) from e
 
