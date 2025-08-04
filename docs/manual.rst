@@ -7199,6 +7199,7 @@ Output:
         "upscaler"
         "upscaler-ncnn"
         "yolo"
+        "yolo-sam"
         "zoe"
 
 
@@ -8987,6 +8988,8 @@ provided in the image preview pane context menu.
             asset: str
             points: str | list | tuple | None = None
             boxes: str | list | tuple | None = None
+            boxes-mask: str | None = None
+            boxes-mask-processors: str | None = None
             font-size: int | None = None
             line-width: int | None = None
             line-color: str | None = None
@@ -9082,6 +9085,14 @@ provided in the image preview pane context menu.
             boxes="50,50,150,150","200,200,300,300"           # String format
             boxes="50x50x150x150","200x200x300x300"           # String format
             boxes=50x50x150x150,200x200x300x300               # Token format
+    
+        The "boxes-mask" argument specifies a black and white mask image where white areas will be automatically
+        converted to bounding box prompts. This is useful for integrating with YOLO detection results or other
+        object detection masks. The mask will be resized to match the input image dimensions before processing.
+    
+        The "boxes-mask-processors" argument allows you to pre-process the boxes mask with an image processor
+        chain before extracting bounding boxes. This is useful for applying filters, transforms, or other
+        modifications to the mask.
     
         Note: You may use python tuple syntax as well as list syntax, additionally something such as:
         (100,100),(100,100) will be interpreted as a tuple of of tuples, and: [100,100],[100,100] a tuple of
@@ -9467,6 +9478,8 @@ The ``bitsandbytes`` backend documentation is as follows:
     
         This backend can be specified as "bnb" or "bitsandbytes" in the URI.
     
+        This backend does not support CPU use.
+    
         URI Format: bnb;argument1=value1;argument2=value2
     
         Example: bnb;bits=4;bits4-quant-type=nf4
@@ -9509,6 +9522,8 @@ And for ``sdnq``:
         SD.Next quantization backend configuration.
     
         This backend can be specified as "sdnq" in the URI.
+    
+        This backend supports CPU use.
     
         URI Format: sdnq;argument1=value1;argument2=value2
     
@@ -10241,7 +10256,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [86110887747997]
+            Value: [29607154437374]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
