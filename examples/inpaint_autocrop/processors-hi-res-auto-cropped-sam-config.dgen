@@ -12,7 +12,7 @@
 # create the face mask with u-sam
 
 \image_process ../media/americangothic.jpg
---output hi_res_auto_cropped_sam/mask.png -ox
+--output processors_hi_res_auto_cropped_sam/mask.png -ox
 --processors u-sam;asset=sam2.1_l.pt;boxes=133x248x299x488;masks=True gaussian-blur;size=9
 
 \set mask {{ first(last_images) }}
@@ -26,7 +26,7 @@ stabilityai/stable-diffusion-xl-base-1.0
 --mask-image-processors crop-to-mask;padding=50;pre-resize=True
 --inference-steps 40
 --guidance-scales 7
---output-path hi_res_auto_cropped_sam
+--output-path processors_hi_res_auto_cropped_sam
 --vae-tiling
 --seeds 92051405511913
 --output-size 1024

@@ -14,7 +14,7 @@
 # give the detector a bit of padding to affect face coverage
 
 \image_process ../media/americangothic.jpg
---output hi_res_auto_cropped_yolo/mask.png -ox
+--output processors_hi_res_auto_cropped_yolo/mask.png -ox
 --processors yolo;model=Bingsu/adetailer;weight-name=face_yolov8n.pt;index-filter=0;masks=True;mask-shape=circle;detector-padding=5
 
 \set mask {{ first(last_images) }}
@@ -33,7 +33,7 @@ stabilityai/stable-diffusion-xl-base-1.0
 --mask-image-processors crop-to-mask;padding=50;pre-resize=True
 --inference-steps 40
 --guidance-scales 7
---output-path hi_res_auto_cropped_yolo
+--output-path processors_hi_res_auto_cropped_yolo
 --vae-tiling
 --seeds 92051405511913
 --output-size 1024

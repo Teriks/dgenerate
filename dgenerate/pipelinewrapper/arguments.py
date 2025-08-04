@@ -172,6 +172,65 @@ class DiffusionArguments(_types.SetFromMixin):
     higher than this, a warning will be issued to ``stdout`` via :py:mod:`dgenerate.messages`.
     """
 
+    inpaint_crop: bool = False
+    """
+    Enable cropping to mask bounds for inpainting. When enabled, input images will be
+    automatically cropped to the bounds of their masks (plus any padding) before processing, 
+    then the generated result will be pasted back onto the original uncropped image. This 
+    allows inpainting at higher effective resolutions for better quality results.
+    
+    Batching Behavior:
+    
+    - Cannot be used with multiple input images/masks in the same call
+    - Each image/mask pair must be processed individually as different masks may have different crop bounds
+    - However, ``batch_size`` > 1 is supported for generating multiple variations of a single crop
+    - Multiple images require separate pipeline calls, not batch processing
+    
+    Auto-enabling:
+    
+    This is automatically enabled when :py:attr:`DiffusionArguments.inpaint_crop_padding`, 
+    :py:attr:`DiffusionArguments.inpaint_crop_feather`, or :py:attr:`DiffusionArguments.inpaint_crop_masked` 
+    are specified.
+    """
+
+    inpaint_crop_padding: int | tuple[int, int] | tuple[int, int, int, int] | None = None
+    """
+    Padding values to use around mask bounds when inpaint_crop is enabled.
+    
+    Supported formats:
+    
+    - int: Same padding on all sides
+    - tuple[int, int]: (horizontal, vertical) padding  
+    - tuple[int, int, int, int]: (left, top, right, bottom) padding
+    
+    Specifying this value automatically enables :py:attr:`DiffusionArguments.inpaint_crop` if it is not already enabled.
+    Default value when :py:attr:`DiffusionArguments.inpaint_crop` is enabled but no padding is specified: 50 pixels.
+    
+    Note: Inpaint crop cannot be used with multiple input images. See :py:attr:`DiffusionArguments.inpaint_crop` for batching details.
+    """
+
+    inpaint_crop_masked: bool = False
+    """
+    When inpaint_crop is enabled, use the mask when pasting the generated result back 
+    onto the original image. This means only the masked areas will be replaced. 
+    Cannot be used together with :py:attr:`DiffusionArguments.inpaint_crop_feather`.
+    
+    Specifying this value automatically enables :py:attr:`DiffusionArguments.inpaint_crop` if it is not already enabled.
+    
+    Note: Inpaint crop cannot be used with multiple input images. See :py:attr:`DiffusionArguments.inpaint_crop` for batching details.
+    """
+
+    inpaint_crop_feather: int | None = None
+    """
+    Feather value to use when pasting the generated result back onto the original 
+    image when :py:attr:`DiffusionArguments.inpaint_crop` is enabled. Feathering creates smooth transitions from 
+    opaque to transparent. Cannot be used together with :py:attr:`DiffusionArguments.inpaint_crop_masked`.
+    
+    Specifying this value automatically enables :py:attr:`DiffusionArguments.inpaint_crop` if it is not already enabled.
+    
+    Note: Inpaint crop cannot be used with multiple input images. See :py:attr:`DiffusionArguments.inpaint_crop` for batching details.
+    """
+
     control_images: _types.OptionalImages = None
     """
     ControlNet guidance images to use if ``controlnet_uris`` were given to the 
@@ -1103,6 +1162,8 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.clip_skip, "Clip Skip:"),
             (self.sdxl_refiner_clip_skip, "SDXL Refiner Clip Skip:"),
             (self.image_seed_strength, "Image Seed Strength:"),
+            (self.inpaint_crop_padding, "Inpaint Crop Padding:"),
+            (self.inpaint_crop_feather, "Inpaint Crop Feather:"),
             (self.upscaler_noise_level, "Upscaler Noise Level:"),
             (self.second_model_inference_steps, 'Second Model Inference Steps:'),
             (self.second_model_guidance_scale, 'Second Model Guidance Scale:'),

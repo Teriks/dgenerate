@@ -118,6 +118,12 @@ DEFAULT_SEED: int = 0
 Default RNG seed.
 """
 
+DEFAULT_INPAINT_CROP_PADDING: int = 50
+"""
+Default padding in pixels for inpaint crop operations.
+Applied on all sides around the mask bounds.
+"""
+
 DEFAULT_S_CASCADE_DECODER_GUIDANCE_SCALE: float = 0
 """
 Default guidance scale for the Stable Cascade decoder.

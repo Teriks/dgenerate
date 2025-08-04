@@ -1302,8 +1302,12 @@ class RenderLoop:
 
             else:
                 def image_seed_iterator():
-                    resize_resolution = self._c_config.output_size \
-                        if not _pipelinewrapper.model_type_uses_image_encoder(self._c_config.model_type) else None
+                    # Skip automatic resizing when inpaint crop is enabled - let the pipeline wrapper handle it
+                    if self._c_config.inpaint_crop:
+                        resize_resolution = None
+                    else:
+                        resize_resolution = self._c_config.output_size \
+                            if not _pipelinewrapper.model_type_uses_image_encoder(self._c_config.model_type) else None
 
                     yield from _mediainput.iterate_image_seed(
                         uri=parsed_image_seed,

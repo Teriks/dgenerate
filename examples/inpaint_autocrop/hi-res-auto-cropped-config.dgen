@@ -1,0 +1,33 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 5.0.0
+
+# This example uses --inpaint-crop
+# instead of image processors
+
+# This is the same operation, just built in
+
+# The image we will be inpainting
+
+\set image ../media/horse1.jpg
+\set mask ../media/horse1-mask.jpg
+
+# invert the mask, making the horse the
+# inpainted area instead of the background
+# add some blur to the mask to make it a bit
+# softer
+
+stabilityai/stable-diffusion-xl-base-1.0
+--model-type sdxl
+--dtype float16
+--variant fp16
+--image-seeds "{{image}};{{mask}}"
+--mask-image-processors invert gaussian-blur;size=9
+--inpaint-crop
+--inference-steps 40
+--guidance-scales 7
+--output-path hi_res_auto_cropped
+--vae-tiling
+--seeds 34037262714926
+--output-size 1024
+--image-seed-strengths 0.70
+--prompts "a pink horse from a fantasy world, standing and looking towards the viewer"
