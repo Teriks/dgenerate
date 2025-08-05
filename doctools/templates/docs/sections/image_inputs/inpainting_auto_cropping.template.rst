@@ -43,7 +43,7 @@ Padding formats for ``--inpaint-crop-paddings``:
 
 @EXAMPLE[@PROJECT_DIR/examples/inpaint_autocrop/hi-res-auto-cropped-config.dgen]
 
-You can also use automatic mask detection with `SAM <Segment Anything Mask Generation>`_ or `YOLO <YOLO Detection Processor>`_ for dynamic masking scenarios:
+You can also use automatic mask detection with `SAM <Segment_Anything_Mask_Generation_>`_ or `YOLO <YOLO_Detection_Processor_>`_ for dynamic masking scenarios:
 
 @EXAMPLE[@PROJECT_DIR/examples/inpaint_autocrop/hi-res-auto-cropped-sam-config.dgen]
 
