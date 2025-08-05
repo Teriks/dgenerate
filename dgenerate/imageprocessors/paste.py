@@ -273,6 +273,9 @@ class PasteProcessor(_imageprocessor.ImageProcessor):
             self._position_mask_padding = position_mask_padding
         else:
             # Parse position argument normally if no position mask
+            self._position_mask_path = None
+            self._position_mask_processors = None
+            self._position_mask_padding = None
             self._position = self._parse_position(position)
 
 
