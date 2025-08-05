@@ -452,11 +452,17 @@ def module_all():
 
     :return: list of names
     """
+    import sys
+    
+    # Much faster approach: get the caller's frame directly without inspect.stack()
+    frame = sys._getframe(1)
+    caller_globals = frame.f_globals
+    
     all_names = []
-    local_stack = inspect.stack()[1][0]
-    for name, value in local_stack.f_globals.items():
+    for name, value in caller_globals.items():
         if not name.startswith('_') and not isinstance(value, types.ModuleType):
             all_names.append(name)
+    
     return all_names
 
 
