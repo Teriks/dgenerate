@@ -169,6 +169,23 @@ def get_public_attributes(obj) -> dict[str, typing.Any]:
             if not k.startswith("_") and not callable(getattr(obj, k))}
 
 
+def get_public_properties(obj) -> dict[str, typing.Any]:
+    """
+    Get the public property-decorated attributes and their values from an obj.
+
+    :param obj: the obj
+    :return: dict of property names to values
+    """
+    properties = {}
+    for name in dir(obj):
+        if not name.startswith("_"):
+            # Check if it's a property by looking at the class descriptor
+            class_attr = getattr(obj.__class__, name, None)
+            if isinstance(class_attr, property):
+                properties[name] = getattr(obj, name)
+    return properties
+
+
 def get_public_members(obj) -> dict[str, typing.Any]:
     """
     Get the public members (including functions) and their values from an obj.

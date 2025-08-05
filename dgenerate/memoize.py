@@ -579,20 +579,27 @@ def simple_cache_miss_debug(title: str, cache_key: str, new: typing.Any):
 
 def struct_hasher(obj: typing.Any,
                   custom_hashes: dict[str, typing.Callable[[typing.Any], str]] = None,
-                  exclude: set[str] | None = None) -> str:
+                  exclude: set[str] | None = None,
+                  properties_only: bool = False) -> str:
     """
     Create a hash string from a simple objects public attributes.
 
     :param obj: the object
     :param custom_hashes: Custom hash functions for specific attribute names if needed
     :param exclude: Exclude attributes by name
+    :param properties_only: Only include public properties, not methods or other attributes
     :return: string
     """
 
     if exclude is None:
         exclude = set()
 
+    reflect_method = \
+        _types.get_public_properties if \
+        properties_only else \
+        _types.get_public_attributes
+
     return '{' + args_cache_key(
-        args_dict={k: v for k, v in _types.get_public_attributes(obj).items()
+        args_dict={k: v for k, v in reflect_method(obj).items()
                    if k not in exclude},
         custom_hashes=custom_hashes) + '}'
