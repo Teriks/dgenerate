@@ -292,7 +292,7 @@ def main():
 
     if known_args.paths:
         configs = []
-        for path in [p for path in known_args.paths for p in glob.glob(path)]:
+        for path in [p for path in known_args.paths for p in glob.glob(path, recursive=True)]:
             path = os.path.abspath(path)
             _, ext = os.path.splitext(path)
             if ext:

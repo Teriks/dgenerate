@@ -818,7 +818,8 @@ def shell_parse(
         expand_vars: bool = True,
         expand_glob: bool = True,
         expand_vars_func: typing.Callable[[str], str] = shell_expandvars,
-        glob_include_hidden: bool = False
+        glob_hidden: bool = False,
+        glob_recursive: bool = False
 ) -> list[str]:
     """
     Shell command line parsing, implements basic home directory expansion, globbing, and
@@ -882,7 +883,8 @@ def shell_parse(
     :param expand_glob: Expand ``*`` glob expressions including recursive globs?
     :param expand_vars_func: This function is used to expand shell variables in a string,
         analogous to `os.path.expandvars`
-    :param glob_include_hidden: Should globs include hidden directories?
+    :param glob_hidden: Should globs include hidden directories?
+    :param glob_recursive: Should globs be recursive?
     :return: shell arguments
     """
 
@@ -911,8 +913,8 @@ def shell_parse(
             globs = [
                 pathlib.Path(p).as_posix() for p in glob.glob(
                     token,
-                    recursive=True,
-                    include_hidden=glob_include_hidden
+                    include_hidden=glob_hidden,
+                    recursive=glob_recursive
                 )
             ]
 
