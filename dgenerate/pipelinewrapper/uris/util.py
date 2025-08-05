@@ -64,8 +64,11 @@ def uri_hash_with_parser(parser, exclude: set[str] | None = None):
             # user returned string, override the hash value
             return parser_result
 
-        return _memoize.struct_hasher(parser_result,
-                                      exclude=exclude)
+        return _memoize.struct_hasher(
+            parser_result,
+            exclude=exclude,
+            properties_only=True
+        )
 
     return hasher
 
