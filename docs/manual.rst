@@ -3153,7 +3153,7 @@ Padding formats for ``--inpaint-crop-paddings``:
     --image-seed-strengths 0.70
     --prompts "a pink horse from a fantasy world, standing and looking towards the viewer"
 
-You can also use automatic mask detection with `SAM <Segment Anything Mask Generation>`_ or `YOLO <YOLO Detection Processor>`_ for dynamic masking scenarios:
+You can also use automatic mask detection with `SAM <Segment_Anything_Mask_Generation_>`_ or `YOLO <YOLO_Detection_Processor_>`_ for dynamic masking scenarios:
 
 .. code-block:: jinja
 
