@@ -4,8 +4,6 @@
 # This example uses --inpaint-crop
 # instead of image processors
 
-# This is the same operation, just built in
-
 \set image ../media/americangothic.jpg
 
 # Create the face mask with yolo

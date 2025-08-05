@@ -26,6 +26,8 @@ Help Output
 
 @INCLUDE[sections/image_inputs/inpainting.template.rst]
 
+@INCLUDE[sections/image_inputs/inpainting_auto_cropping.template.rst]
+
 @INCLUDE[sections/image_inputs/per_image_seed_resizing.template.rst]
 
 @INCLUDE[sections/image_inputs/animated_output.template.rst]

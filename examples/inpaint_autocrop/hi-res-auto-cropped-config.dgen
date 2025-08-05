@@ -4,8 +4,6 @@
 # This example uses --inpaint-crop
 # instead of image processors
 
-# This is the same operation, just built in
-
 # The image we will be inpainting
 
 \set image ../media/horse1.jpg

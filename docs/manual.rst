@@ -3073,6 +3073,233 @@ areas over the dog in the original image, causing the dog to be replaced with an
     --guidance-scales 10 \
     --inference-steps 100
 
+Inpainting With Auto Crop
+=========================
+
+The inpaint crop feature provides built-in functionality for automatically cropping to mask bounds during
+inpainting operations. This allows inpainting at higher effective resolutions for better quality results by
+processing only the relevant masked region at full resolution, then pasting the result back onto the original image.
+
+The simplest way to enable inpaint cropping is with the ``--inpaint-crop`` argument:
+
+.. code-block:: bash
+
+    #!/usr/bin/env bash
+    
+    dgenerate stabilityai/stable-diffusion-xl-base-1.0 \
+    --model-type sdxl \
+    --image-seeds "examples/media/horse1.jpg;examples/media/horse1-mask.jpg" \
+    --inpaint-crop \
+    --output-size 1024 \
+    --prompts "a pink horse from a fantasy world"
+
+This will automatically crop the input image and mask to the bounds of the mask area (with 50 pixels of padding by default),
+process the cropped region at the specified output resolution (aspect correct, fixed width), and paste the generated
+result back onto the original uncropped image.
+
+The inpaint crop arguments are:
+
+* ``--inpaint-crop`` / ``-ic`` - Enable cropping to mask bounds for inpainting
+* ``--inpaint-crop-paddings`` / ``-icp`` - (Combinatorial) Specify padding values around mask bounds (default: 50)
+* ``--inpaint-crop-feathers`` / ``-icf`` - (Combinatorial) Apply feathering for smooth blending when pasting back
+* ``--inpaint-crop-masked`` / ``-icm`` - Use mask when pasting to replace only masked areas
+
+Important limitations:
+
+* Cannot be used with image seed batching (``--image-seeds`` with multiple images/masks in the definition), see `Batching Input Images and Inpaint Masks`_ for details
+* However, ``--batch-size > 1`` is supported for generating multiple variations of a single crop
+* ``--inpaint-crop-feathers`` and ``--inpaint-crop-masked`` are mutually exclusive
+
+Padding formats for ``--inpaint-crop-paddings``:
+
+* ``32`` - 32px uniform padding on all sides  
+* ``10x20`` - 10px horizontal, 20px vertical padding
+* ``10x20x30x40`` - 10px left, 20px top, 30px right, 40px bottom padding
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 5.0.0
+    
+    # This example uses --inpaint-crop
+    # instead of image processors
+    
+    # The image we will be inpainting
+    
+    \set image ../media/horse1.jpg
+    \set mask ../media/horse1-mask.jpg
+    
+    # invert the mask, making the horse the
+    # inpainted area instead of the background
+    # add some blur to the mask to make it a bit
+    # softer
+    
+    # This crops to the mask area (50 padding by default), upscales that area to 1024 (aspect correct),
+    # preforms inpainting on it, and then pastes the generated content back over the original image
+    
+    stabilityai/stable-diffusion-xl-base-1.0
+    --model-type sdxl
+    --dtype float16
+    --variant fp16
+    --image-seeds "{{image}};{{mask}}"
+    --mask-image-processors invert gaussian-blur;size=9
+    --inpaint-crop
+    --inference-steps 40
+    --guidance-scales 7
+    --output-path hi_res_auto_cropped
+    --vae-tiling
+    --seeds 34037262714926
+    --output-size 1024
+    --image-seed-strengths 0.70
+    --prompts "a pink horse from a fantasy world, standing and looking towards the viewer"
+
+You can also use automatic mask detection with `SAM <Segment Anything Mask Generation>`_ or `YOLO <YOLO Detection Processor>`_ for dynamic masking scenarios:
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 5.0.0
+    
+    # This example uses --inpaint-crop
+    # instead of image processors
+    
+    \set image ../media/americangothic.jpg
+    
+    # create the face mask with u-sam
+    
+    # This crops to the mask area (50 padding by default), upscales that area to 1024 (aspect correct),
+    # preforms inpainting on it, and then pastes the generated content back over the original image
+    
+    stabilityai/stable-diffusion-xl-base-1.0
+    --model-type sdxl
+    --dtype float16
+    --variant fp16
+    --image-seeds "{{image}};{{image}}"
+    --mask-image-processors u-sam;asset=sam2.1_l.pt;boxes=133x248x299x488;masks=True gaussian-blur;size=9
+    --inpaint-crop
+    --inference-steps 40
+    --guidance-scales 7
+    --output-path hi_res_auto_cropped_sam
+    --vae-tiling
+    --seeds 92051405511913
+    --output-size 1024
+    --image-seed-strengths 0.65
+    --prompt-weighter sd-embed
+    --prompts "a smiling woman"
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 5.0.0
+    
+    # This example uses --inpaint-crop
+    # instead of image processors
+    
+    \set image ../media/americangothic.jpg
+    
+    # Create the face mask with yolo
+    
+    # This crops to the mask area (50 padding by default), upscales that area to 1024 (aspect correct),
+    # preforms inpainting on it, and then pastes the generated content back over the original image
+    
+    stabilityai/stable-diffusion-xl-base-1.0
+    --model-type sdxl
+    --dtype float16
+    --variant fp16
+    --image-seeds "{{image}};{{image}}"
+    --mask-image-processors yolo;model=Bingsu/adetailer;weight-name=face_yolov8n.pt;index-filter=0;masks=True;mask-shape=circle;detector-padding=5
+    --inpaint-crop
+    --inference-steps 40
+    --guidance-scales 7
+    --output-path hi_res_auto_cropped_yolo
+    --vae-tiling
+    --seeds 92051405511913
+    --output-size 1024
+    --image-seed-strengths 0.65
+    --prompt-weighter sd-embed
+    --prompts "a smiling woman"
+
+The inpaint crop functionality provides a built-in alternative to manually using image
+processors for the same effect. The manual approach using ``crop-to-mask`` and ``paste``
+processors offers more granular control but requires more complex configuration,
+while the built-in ``--inpaint-crop`` is simpler and more compatible with animated
+inputs and automatic feature detection.
+
+For example, this functionality can be duplicated for images with image processors,
+but not easily for animations:
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 5.0.0
+    
+    # You can use the crop-to-mask and paste processor
+    # To automatically crop your inpainting task to a bounding
+    # box around the mask with some padding, then process cropped
+    # image with diffusion at a higher resolution for a better result,
+    # and paste the result back over the original image to complete the
+    # image
+    
+    # The image we will be inpainting
+    
+    \set image ../media/horse1.jpg
+    
+    
+    # invert the mask, making the horse the
+    # inpainted area instead of the background
+    # add some blur to the mask to make it a bit
+    # softer
+    
+    \image_process ../media/horse1-mask.jpg
+    --output processors_hi_res_auto_cropped/mask.png -ox
+    --processors invert gaussian-blur;size=9
+    
+    # Set the mask variable to the image we just processed
+    
+    \set mask {{ first(last_images) }}
+    
+    # crop the input image and mask down to the bounding box of the mask
+    # itself, with an additional 50 pixels of padding
+    # these processors should run before the resize to 1024, hence pre-resize=True
+    # This is so the resulting image aligns well with the background
+    # we are going to paste on to
+    
+    # perform the diffusion inpainting at near native resolution
+    # scale up the cropped images with correct aspect, to 1024 width
+    # the default behavior is aspect correct, width determined by --output-size
+    
+    stabilityai/stable-diffusion-xl-base-1.0
+    --model-type sdxl
+    --dtype float16
+    --variant fp16
+    --image-seeds "{{image}};{{mask}}"
+    --seed-image-processors crop-to-mask;mask="{{mask}}";padding=50;pre-resize=True
+    --mask-image-processors crop-to-mask;padding=50;pre-resize=True
+    --inference-steps 40
+    --guidance-scales 7
+    --output-path processors_hi_res_auto_cropped
+    --vae-tiling
+    --seeds 34037262714926
+    --output-size 1024
+    --image-seed-strengths 0.70
+    --prompts "a pink horse from a fantasy world, standing and looking towards the viewer"
+    --post-processors paste;image="{{image}}";position-mask="{{mask}}";position-mask-padding=50;reverse=True
+    
+    # at the end, the generated image is pasted back on to our background with --post-processors
+    # the initial mask is used again to calculate the bounding box where the generated
+    # image will be pasted, reverse=True means we are taking the image that is
+    # being processed and pasting it onto "image", we add identical padding to the
+    # bounding box (50) where it will be pasted
+    
+    # The generated image will be scaled into this box, to fit where it needs to
+    # go to replace the original content
+    
+    # the result is that the inpainting has been performed at a higher resolution, leading
+    # to better results since most of the area being inpainted is close to SDXLs native output resolution
+    # of 1024, this resolution could be further increased with --hi-diffusion if desired
+    
+    # The result in this example is not spectacular, but it demonstrates the concept
+
 Per Image Seed Resizing
 =======================
 
