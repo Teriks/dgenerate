@@ -788,11 +788,11 @@ Example configuration file using CLI-set variables:
 
     # Generate the image with our variables
 
-    {{ model }} \
-    --model-type {{ model_type }} \
-    --prompts "{{ prompt }}" \
-    --inference-steps {{ steps }} \
-    --output-size {{ size[0] }}x{{ size[1] }} \
+    {{ model }}
+    --model-type {{ model_type }}
+    --prompts "{{ prompt }}"
+    --inference-steps {{ steps }}
+    --output-size {{ size[0] }}x{{ size[1] }}
     --output-path output
 
 Example usage:
