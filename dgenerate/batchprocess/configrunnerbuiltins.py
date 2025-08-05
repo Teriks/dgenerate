@@ -36,14 +36,14 @@ import tqdm
 import dgenerate.batchprocess.batchprocessor as _batchprocessor
 import dgenerate.image as _image
 import dgenerate.memory
+import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
 import dgenerate.prompt as _prompt
 import dgenerate.renderloop as _renderloop
 import dgenerate.textprocessing as _textprocessing
-import dgenerate.webcache as _webcache
 import dgenerate.torchutil as _torchutil
-import dgenerate.memory as _memory
+import dgenerate.webcache as _webcache
 
 
 def _format_prompt_single(prompt):
@@ -98,25 +98,42 @@ def quote(
     return ' '.join(_textprocessing.shell_quote(str(s)) for s in strings)
 
 
-def unquote(strings: str | collections.abc.Iterable[typing.Any], expand: bool = False) -> list:
+def unquote(
+        strings: str | collections.abc.Iterable[typing.Any],
+        expand: bool = False,
+        glob_hidden: bool = False,
+        glob_recursive: bool = False
+) -> list:
     """
     Un-Shell quote a string or iterable of strings (shell parse)
 
-    The expand argument can be used to indicate that you wish to expand
-    shell globs and the home directory operator
+    The "expand" argument can be used to indicate that you wish to expand
+    shell globs and the home directory operator.
+
+    The "glob_hidden" argument can be used to indicate that hidden files
+    should be included in globs when expand is True.
+
+    The "glob_recursive" argument can be used to indicate that globbing
+    should be recursive when expand is True.
     """
     if isinstance(strings, str):
-        return _textprocessing.shell_parse(strings,
-                                           expand_home=expand,
-                                           expand_glob=expand,
-                                           expand_vars=False)
+        return _textprocessing.shell_parse(
+            strings,
+            expand_home=expand,
+            expand_glob=expand,
+            expand_vars=False,
+            glob_hidden=glob_hidden,
+            glob_recursive=glob_recursive
+        )
     return list(
         itertools.chain.from_iterable(
             _textprocessing.shell_parse(
                 str(s),
                 expand_home=expand,
                 expand_glob=expand,
-                expand_vars=False) for s in strings))
+                expand_vars=False,
+                glob_hidden=glob_hidden,
+                glob_recursive=glob_recursive) for s in strings))
 
 
 def last(iterable: list | collections.abc.Iterable[typing.Any]) -> typing.Any:
@@ -512,11 +529,13 @@ def have_cuda() -> bool:
     """
     return _torchutil.is_cuda_available()
 
+
 def have_xpu() -> bool:
     """
     Check if XPU is available.
     """
     return _torchutil.is_xpu_available()
+
 
 def total_memory(device: str | None = None, unit: str = 'b'):
     """

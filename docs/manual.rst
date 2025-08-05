@@ -10328,7 +10328,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [58882000361231]
+            Value: [94241523819330]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -10415,14 +10415,20 @@ The dgenerate specific jinja2 functions/filters are:
         See also the directive: \import
     
     ================================================================
-    unquote(strings: str | collections.abc.Iterable[typing.Any], expand: bool = False) -> list:
+    unquote(strings: str | collections.abc.Iterable[typing.Any], expand: bool = False, glob_hidden: bool = False, glob_recursive: bool = False) -> list:
     
         Un-Shell quote a string or iterable of strings (shell parse)
     
-        The expand argument can be used to indicate that you wish to expand shell globs and the home directory
-        operator
+        The "expand" argument can be used to indicate that you wish to expand shell globs and the home directory
+        operator.
     
-    ==========================================================================================================
+        The "glob_hidden" argument can be used to indicate that hidden files should be included in globs when
+        expand is True.
+    
+        The "glob_recursive" argument can be used to indicate that globbing should be recursive when expand is
+        True.
+    
+    ============================================================================================================
     quote(strings: str | collections.abc.Iterable[typing.Any], double: bool = False, quotes: bool = True) -> str:
     
         Shell quote a string or iterable of strings.

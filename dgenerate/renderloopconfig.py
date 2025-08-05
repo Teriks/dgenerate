@@ -1858,15 +1858,15 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'{a_namer("inpaint_crop_masked")} and {a_namer("inpaint_crop_feathers")} '
                 f'are mutually exclusive options.')
 
-        # Set default padding when inpaint crop is enabled but no padding/feathering specified
-        if self.inpaint_crop and not self.inpaint_crop_paddings and not self.inpaint_crop_feathers:
-            self.inpaint_crop_paddings = [_pipelinewrapper.constants.DEFAULT_INPAINT_CROP_PADDING]
-
         # Check compatibility with latent output
         if self.inpaint_crop and self.is_output_latents():
             raise RenderLoopConfigError(
                 f'Outputting latents with {a_namer("image_format")} {self.image_format} '
                 f'is not supported with {a_namer("inpaint_crop")}')
+
+        # Set default padding when inpaint crop is enabled but no padding/feathering specified
+        if self.inpaint_crop and not self.inpaint_crop_paddings and not self.inpaint_crop_feathers:
+            self.inpaint_crop_paddings = [_pipelinewrapper.constants.DEFAULT_INPAINT_CROP_PADDING]
 
     def _check_image_seeds_requirements(self, a_namer: typing.Callable[[str], str], help_mode: bool):
         """Verify requirements for image seeds based on model type."""
@@ -2453,7 +2453,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'Only inpainting {a_namer("image_seeds")} '
                     f'definitions can be used with {a_namer("model_type")} flux-fill.')
 
-        # Check deep floyd inpainting mode compatibility
+        # Check non-inpainting mode compatibility
         if all(p.mask_images is None for p in parsed_image_seeds):
 
             if self.model_type == _pipelinewrapper.ModelType.IFS:
@@ -2470,6 +2470,17 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'All image seeds must be inpainting '
                     f'definitions when {a_namer("inpaint_crop")} or related arguments are used.'
                 )
+
+        # Check batching compatibility
+        if self.inpaint_crop:
+            for image_seed in parsed_image_seeds:
+                if ((image_seed.images is not None and len(list(image_seed.images)) > 1) or
+                    (image_seed.mask_images is not None and len(list(image_seed.mask_images)) > 1)):
+                    raise RenderLoopConfigError(
+                        f'Inpaint batching via {a_namer("image_seeds")} batching syntax is '
+                        f'not supported with {a_namer("inpaint_crop")}, but you may '
+                        f'use {a_namer("batch_size")}')
+
 
     def _check_image_seed_uri(self,
                               uri: str,

@@ -47,7 +47,6 @@ from dgenerate.pipelinewrapper.uris import util as _util
 import dgenerate.pipelinewrapper.models as _models
 
 
-
 _text_encoder_uri_parser = _textprocessing.ConceptUriParser(
     'TextEncoder', [
         'model',
@@ -87,11 +86,21 @@ def _get_text_encoder_config_json(name):
     )
 
 
+def _monolithic_auto_quant_device_map(
+        quantization_config, device_map: str | None
+):
+    if device_map is None:
+        return "auto"
+
+    if device_map == 'cpu':
+        return {"": device_map}
+
+    return "auto"
+
 def _load_clip_l_from_single_file(
         model_class: transformers.CLIPTextModel | transformers.CLIPTextModelWithProjection,
         model_path: str,
         dtype: torch.dtype,
-        local_files_only: bool = False,
         quantization_config=None,
         device_map: str | None = None
 ):
@@ -113,9 +122,14 @@ def _load_clip_l_from_single_file(
             level=_messages.WARNING
         )
 
+        device_map = _monolithic_auto_quant_device_map(quantization_config, device_map)
+
         if quantization_config:
             hf_quantizer = diffusers.quantizers.auto.DiffusersAutoQuantizer().from_config(quantization_config)
-            hf_quantizer.preprocess_model(text_encoder, device_map=device_map)
+            hf_quantizer.preprocess_model(
+                text_encoder,
+                device_map=device_map
+            )
 
         with _suppress_accelerate_warnings():
             # Load state dict and update weights
@@ -142,7 +156,6 @@ def _load_clip_l_sd3_from_single_file(
         model_class: transformers.CLIPTextModel | transformers.CLIPTextModelWithProjection,
         model_path: str,
         dtype: torch.dtype,
-        local_files_only: bool = False,
         quantization_config=None,
         device_map: str | None = None
 ):
@@ -168,9 +181,14 @@ def _load_clip_l_sd3_from_single_file(
             level=_messages.WARNING
         )
 
+        device_map = _monolithic_auto_quant_device_map(quantization_config, device_map)
+
         if quantization_config:
             hf_quantizer = diffusers.quantizers.auto.DiffusersAutoQuantizer().from_config(quantization_config)
-            hf_quantizer.preprocess_model(text_encoder, device_map=device_map)
+            hf_quantizer.preprocess_model(
+                text_encoder,
+                device_map=device_map
+            )
 
         with _suppress_accelerate_warnings():
             # Load state dict and update weights
@@ -197,7 +215,6 @@ def _load_clip_g_sd3_from_single_file(
         model_class: transformers.CLIPTextModel | transformers.CLIPTextModelWithProjection,
         model_path: str,
         dtype: torch.dtype,
-        local_files_only: bool = False,
         quantization_config=None,
         device_map: str | None = None
 ):
@@ -223,12 +240,16 @@ def _load_clip_g_sd3_from_single_file(
             level=_messages.WARNING
         )
 
+        device_map = _monolithic_auto_quant_device_map(quantization_config, device_map)
+
         if quantization_config:
             hf_quantizer = diffusers.quantizers.auto.DiffusersAutoQuantizer().from_config(quantization_config)
-            hf_quantizer.preprocess_model(text_encoder, device_map=device_map)
+            hf_quantizer.preprocess_model(
+                text_encoder,
+                device_map=device_map
+            )
 
         with _suppress_accelerate_warnings():
-            # Load state dict and update weights
             text_encoder = accelerate.load_checkpoint_and_dispatch(
                 text_encoder,
                 checkpoint=model_path,
@@ -252,7 +273,6 @@ def _load_t5_xxl_sd3_from_single_file(
         model_class: transformers.models.t5.T5EncoderModel | _models.DistillT5EncoderModel,
         model_path: str,
         dtype: torch.dtype,
-        local_files_only: bool = False,
         quantization_config=None,
         device_map: str | None = None
 ):
@@ -278,9 +298,14 @@ def _load_t5_xxl_sd3_from_single_file(
             level=_messages.WARNING
         )
 
+        device_map = _monolithic_auto_quant_device_map(quantization_config, device_map)
+
         if quantization_config:
             hf_quantizer = diffusers.quantizers.auto.DiffusersAutoQuantizer().from_config(quantization_config)
-            hf_quantizer.preprocess_model(text_encoder, device_map=device_map)
+            hf_quantizer.preprocess_model(
+                text_encoder,
+                device_map=device_map
+            )
 
         with _suppress_accelerate_warnings():
             text_encoder = accelerate.load_checkpoint_and_dispatch(
@@ -306,7 +331,6 @@ def _load_t5_xxl_from_single_file(
         model_class: transformers.models.t5.T5EncoderModel | _models.DistillT5EncoderModel,
         model_path: str,
         dtype: torch.dtype,
-        local_files_only: bool = False,
         quantization_config=None,
         device_map: str | None = None
 ):
@@ -331,9 +355,14 @@ def _load_t5_xxl_from_single_file(
             level=_messages.WARNING
         )
 
+        device_map = _monolithic_auto_quant_device_map(quantization_config, device_map)
+
         if quantization_config:
             hf_quantizer = diffusers.quantizers.auto.DiffusersAutoQuantizer().from_config(quantization_config)
-            hf_quantizer.preprocess_model(text_encoder, device_map=device_map)
+            hf_quantizer.preprocess_model(
+                text_encoder,
+                device_map=device_map
+            )
 
         with _suppress_accelerate_warnings():
             text_encoder = accelerate.load_checkpoint_and_dispatch(
@@ -359,7 +388,6 @@ def _load_clip_l_sd35_large_from_single_file(
         model_class: transformers.CLIPTextModel | transformers.CLIPTextModelWithProjection,
         model_path: str,
         dtype: torch.dtype,
-        local_files_only: bool = False,
         quantization_config=None,
         device_map: str | None = None
 ):
@@ -380,9 +408,14 @@ def _load_clip_l_sd35_large_from_single_file(
             level=_messages.WARNING
         )
 
+        device_map = _monolithic_auto_quant_device_map(quantization_config, device_map)
+
         if quantization_config:
             hf_quantizer = diffusers.quantizers.auto.DiffusersAutoQuantizer().from_config(quantization_config)
-            hf_quantizer.preprocess_model(text_encoder, device_map=device_map)
+            hf_quantizer.preprocess_model(
+                text_encoder,
+                device_map=device_map
+            )
 
         with _suppress_accelerate_warnings():
             # Load state dict and update weights
@@ -409,7 +442,6 @@ def _load_clip_g_sd35_large_from_single_file(
         model_class: transformers.CLIPTextModel | transformers.CLIPTextModelWithProjection,
         model_path: str,
         dtype: torch.dtype,
-        local_files_only: bool = False,
         quantization_config=None,
         device_map: str | None = None
 ):
@@ -430,9 +462,14 @@ def _load_clip_g_sd35_large_from_single_file(
             level=_messages.WARNING
         )
 
+        device_map = _monolithic_auto_quant_device_map(quantization_config, device_map)
+
         if quantization_config:
             hf_quantizer = diffusers.quantizers.auto.DiffusersAutoQuantizer().from_config(quantization_config)
-            hf_quantizer.preprocess_model(text_encoder, device_map=device_map)
+            hf_quantizer.preprocess_model(
+                text_encoder,
+                device_map=device_map
+            )
 
         with _suppress_accelerate_warnings():
             # Load state dict and update weights
@@ -785,7 +822,6 @@ class TextEncoderUri:
                     model_class=encoder,
                     model_path=model_path,
                     dtype=torch_dtype,
-                    local_files_only=local_files_only,
                     quantization_config=quant_config,
                     device_map=device_map
                 )
@@ -807,7 +843,6 @@ class TextEncoderUri:
                     model_class=encoder,
                     model_path=model_path,
                     dtype=torch_dtype,
-                    local_files_only=local_files_only,
                     quantization_config=quant_config,
                     device_map=device_map
                 )
@@ -830,7 +865,6 @@ class TextEncoderUri:
                     model_class=encoder,
                     model_path=model_path,
                     dtype=torch_dtype,
-                    local_files_only=local_files_only,
                     quantization_config=quant_config,
                     device_map=device_map
                 )
@@ -852,7 +886,6 @@ class TextEncoderUri:
                     model_class=encoder,
                     model_path=model_path,
                     dtype=torch_dtype,
-                    local_files_only=local_files_only,
                     quantization_config=quant_config,
                     device_map=device_map
                 )
@@ -874,7 +907,6 @@ class TextEncoderUri:
                     model_class=encoder,
                     model_path=model_path,
                     dtype=torch_dtype,
-                    local_files_only=local_files_only,
                     quantization_config=quant_config,
                     device_map=device_map
                 )
@@ -897,7 +929,6 @@ class TextEncoderUri:
                     model_class=encoder,
                     model_path=model_path,
                     dtype=torch_dtype,
-                    local_files_only=local_files_only,
                     quantization_config=quant_config,
                     device_map=device_map
                 )
@@ -920,7 +951,6 @@ class TextEncoderUri:
                     model_class=encoder,
                     model_path=model_path,
                     dtype=torch_dtype,
-                    local_files_only=local_files_only,
                     quantization_config=quant_config,
                     device_map=device_map
                 )
