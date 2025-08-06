@@ -56,8 +56,7 @@ Install dgenerate:
     # * ncnn
     # * gpt4all
     # * gpt4all_cuda
-    # * quant (bitsandbytes)
-    # * bitsandbytes (individual)
+    # * bitsandbytes
     # * triton_windows
     # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
@@ -107,8 +106,7 @@ a cloned repository like this:
     # * ncnn
     # * gpt4all
     # * gpt4all_cuda
-    # * quant (bitsandbytes)
-    # * bitsandbytes (individual)
+    # * bitsandbytes
     # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
     pip install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu128/
