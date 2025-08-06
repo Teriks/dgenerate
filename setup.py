@@ -275,15 +275,8 @@ if __name__ != 'setup_as_library':
             if name.startswith('nvidia-'):
                 requires.pop(name)
 
-    quant_extras = []
-
     if 'bitsandbytes' in requires:
-        bitsandbytes_requires = ['bitsandbytes' + requires.pop('bitsandbytes')]
-        quant_extras.extend(bitsandbytes_requires)
-        extras['bitsandbytes'] = bitsandbytes_requires
-
-    if quant_extras:
-        extras['quant'] = quant_extras
+        extras['bitsandbytes'] = ['bitsandbytes' + requires.pop('bitsandbytes')]
 
     if dgenerate_platform in {'linux', 'windows'}:
         extras['gpt4all_cuda'] = ['gpt4all[cuda]==2.8.2']
@@ -297,7 +290,7 @@ if __name__ != 'setup_as_library':
                 extras['gpt4all_cuda'] +
                 extras['triton_windows'] +
                 extras['console_ui_opengl'] +
-                quant_extras
+                extras['bitsandbytes']
         )
 
     setup(name='dgenerate',
