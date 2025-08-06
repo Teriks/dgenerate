@@ -118,7 +118,7 @@ DEFAULT_SEED: int = 0
 Default RNG seed.
 """
 
-DEFAULT_INPAINT_CROP_PADDING: int = 50
+DEFAULT_INPAINT_CROP_PADDING: int = 32
 """
 Default padding in pixels for inpaint crop operations.
 Applied on all sides around the mask bounds.

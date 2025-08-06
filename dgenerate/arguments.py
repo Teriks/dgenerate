@@ -3754,7 +3754,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                     Note: Inpaint crop cannot be used with multiple input images. See --inpaint-crop for details.
                     
-                    (default: [50])"""
+                    (default: [32])"""
         )
     )
 

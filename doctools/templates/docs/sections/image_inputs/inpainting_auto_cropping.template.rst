@@ -18,14 +18,14 @@ The simplest way to enable inpaint cropping is with the ``--inpaint-crop`` argum
     --output-size 1024 \
     --prompts "a pink horse from a fantasy world"
 
-This will automatically crop the input image and mask to the bounds of the mask area (with 50 pixels of padding by default),
+This will automatically crop the input image and mask to the bounds of the mask area (with 32 pixels of padding by default),
 process the cropped region at the specified output resolution (aspect correct, fixed width), and paste the generated
 result back onto the original uncropped image.
 
 The inpaint crop arguments are:
 
 * ``--inpaint-crop`` / ``-ic`` - Enable cropping to mask bounds for inpainting
-* ``--inpaint-crop-paddings`` / ``-icp`` - (Combinatorial) Specify padding values around mask bounds (default: 50)
+* ``--inpaint-crop-paddings`` / ``-icp`` - (Combinatorial) Specify padding values around mask bounds (default: 32)
 * ``--inpaint-crop-feathers`` / ``-icf`` - (Combinatorial) Apply feathering for smooth blending when pasting back
 * ``--inpaint-crop-masked`` / ``-icm`` - Use mask when pasting to replace only masked areas
 

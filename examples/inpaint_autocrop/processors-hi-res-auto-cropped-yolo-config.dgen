@@ -29,8 +29,8 @@ stabilityai/stable-diffusion-xl-base-1.0
 --dtype float16
 --variant fp16
 --image-seeds "{{image}};{{mask}}"
---seed-image-processors crop-to-mask;mask="{{mask}}";padding=50;pre-resize=True
---mask-image-processors crop-to-mask;padding=50;pre-resize=True
+--seed-image-processors crop-to-mask;mask="{{mask}}";padding=32;pre-resize=True
+--mask-image-processors crop-to-mask;padding=32;pre-resize=True
 --inference-steps 40
 --guidance-scales 7
 --output-path processors_hi_res_auto_cropped_yolo
@@ -40,4 +40,4 @@ stabilityai/stable-diffusion-xl-base-1.0
 --image-seed-strengths 0.65
 --prompt-weighter sd-embed
 --prompts "a smiling woman"
---post-processors paste;image="{{image}}";position-mask="{{mask}}";position-mask-padding=50;reverse=True
+--post-processors paste;image="{{image}}";position-mask="{{mask}}";position-mask-padding=32;reverse=True
