@@ -2052,7 +2052,7 @@ Help Output
             
             Note: Inpaint crop cannot be used with multiple input images. See --inpaint-crop for details.
             
-            (default: [50])
+            (default: [32])
             ---------------
       -icm, --inpaint-crop-masked
             Use the mask when pasting the generated result back onto the original image for inpaint cropping.
@@ -3093,14 +3093,14 @@ The simplest way to enable inpaint cropping is with the ``--inpaint-crop`` argum
     --output-size 1024 \
     --prompts "a pink horse from a fantasy world"
 
-This will automatically crop the input image and mask to the bounds of the mask area (with 50 pixels of padding by default),
+This will automatically crop the input image and mask to the bounds of the mask area (with 32 pixels of padding by default),
 process the cropped region at the specified output resolution (aspect correct, fixed width), and paste the generated
 result back onto the original uncropped image.
 
 The inpaint crop arguments are:
 
 * ``--inpaint-crop`` / ``-ic`` - Enable cropping to mask bounds for inpainting
-* ``--inpaint-crop-paddings`` / ``-icp`` - (Combinatorial) Specify padding values around mask bounds (default: 50)
+* ``--inpaint-crop-paddings`` / ``-icp`` - (Combinatorial) Specify padding values around mask bounds (default: 32)
 * ``--inpaint-crop-feathers`` / ``-icf`` - (Combinatorial) Apply feathering for smooth blending when pasting back
 * ``--inpaint-crop-masked`` / ``-icm`` - Use mask when pasting to replace only masked areas
 
@@ -3134,7 +3134,7 @@ Padding formats for ``--inpaint-crop-paddings``:
     # add some blur to the mask to make it a bit
     # softer
     
-    # This crops to the mask area (50 padding by default), upscales that area to 1024 (aspect correct),
+    # This crops to the mask area (32 padding by default), upscales that area to 1024 (aspect correct),
     # preforms inpainting on it, and then pastes the generated content back over the original image
     
     stabilityai/stable-diffusion-xl-base-1.0
@@ -3167,7 +3167,7 @@ You can also use automatic mask detection with `SAM <Segment Anything Mask Gener
     
     # create the face mask with u-sam
     
-    # This crops to the mask area (50 padding by default), upscales that area to 1024 (aspect correct),
+    # This crops to the mask area (32 padding by default), upscales that area to 1024 (aspect correct),
     # preforms inpainting on it, and then pastes the generated content back over the original image
     
     stabilityai/stable-diffusion-xl-base-1.0
@@ -3199,7 +3199,7 @@ You can also use automatic mask detection with `SAM <Segment Anything Mask Gener
     
     # Create the face mask with yolo
     
-    # This crops to the mask area (50 padding by default), upscales that area to 1024 (aspect correct),
+    # This crops to the mask area (32 padding by default), upscales that area to 1024 (aspect correct),
     # preforms inpainting on it, and then pastes the generated content back over the original image
     
     stabilityai/stable-diffusion-xl-base-1.0
@@ -3259,7 +3259,7 @@ but not easily for animations:
     \set mask {{ first(last_images) }}
     
     # crop the input image and mask down to the bounding box of the mask
-    # itself, with an additional 50 pixels of padding
+    # itself, with an additional 32 pixels of padding
     # these processors should run before the resize to 1024, hence pre-resize=True
     # This is so the resulting image aligns well with the background
     # we are going to paste on to
@@ -3273,8 +3273,8 @@ but not easily for animations:
     --dtype float16
     --variant fp16
     --image-seeds "{{image}};{{mask}}"
-    --seed-image-processors crop-to-mask;mask="{{mask}}";padding=50;pre-resize=True
-    --mask-image-processors crop-to-mask;padding=50;pre-resize=True
+    --seed-image-processors crop-to-mask;mask="{{mask}}";padding=32;pre-resize=True
+    --mask-image-processors crop-to-mask;padding=32;pre-resize=True
     --inference-steps 40
     --guidance-scales 7
     --output-path processors_hi_res_auto_cropped
@@ -3283,7 +3283,7 @@ but not easily for animations:
     --output-size 1024
     --image-seed-strengths 0.70
     --prompts "a pink horse from a fantasy world, standing and looking towards the viewer"
-    --post-processors paste;image="{{image}}";position-mask="{{mask}}";position-mask-padding=50;reverse=True
+    --post-processors paste;image="{{image}}";position-mask="{{mask}}";position-mask-padding=32;reverse=True
     
     # at the end, the generated image is pasted back on to our background with --post-processors
     # the initial mask is used again to calculate the bounding box where the generated
@@ -10555,7 +10555,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [94241523819330]
+            Value: [59460199418710]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

@@ -204,7 +204,7 @@ class DiffusionArguments(_types.SetFromMixin):
     - tuple[int, int, int, int]: (left, top, right, bottom) padding
     
     Specifying this value automatically enables :py:attr:`DiffusionArguments.inpaint_crop` if it is not already enabled.
-    Default value when :py:attr:`DiffusionArguments.inpaint_crop` is enabled but no padding is specified: 50 pixels.
+    Default value when :py:attr:`DiffusionArguments.inpaint_crop` is enabled but no padding is specified: 32 pixels.
     
     Note: Inpaint crop cannot be used with multiple input images. See :py:attr:`DiffusionArguments.inpaint_crop` for batching details.
     """

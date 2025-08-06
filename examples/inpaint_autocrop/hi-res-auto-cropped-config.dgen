@@ -14,7 +14,7 @@
 # add some blur to the mask to make it a bit
 # softer
 
-# This crops to the mask area (50 padding by default), upscales that area to 1024 (aspect correct),
+# This crops to the mask area (32 padding by default), upscales that area to 1024 (aspect correct),
 # preforms inpainting on it, and then pastes the generated content back over the original image
 
 stabilityai/stable-diffusion-xl-base-1.0
