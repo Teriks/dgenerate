@@ -34,7 +34,7 @@ import diffusers
 import diffusers.loaders
 import diffusers.loaders.single_file_utils
 import diffusers.quantizers.quantization_config
-import torch.nn
+import torch
 import torch.nn
 import transformers
 
@@ -1226,7 +1226,8 @@ def create_diffusion_pipeline(
     :param quantizer_uri: Optional ``--quantizer`` URI value
     :param quantizer_map: Collection of pipeline submodule names to which quantization should be applied when
         ``quantizer_uri`` is provided. Valid values include: ``unet``, ``transformer``, ``text_encoder``,
-        ``text_encoder_2``, ``text_encoder_3``. If ``None``, all supported modules will be quantized.
+        ``text_encoder_2``, ``text_encoder_3``, and ``controlnet``. If ``None``, all supported modules will be quantized,
+        except for ``controlnet``.
     :param pag: Use perturbed attention guidance?
     :param safety_checker: Safety checker enabled? default is ``False``
     :param original_config: Optional original training config .yaml file path when loading a single file checkpoint.
@@ -2217,6 +2218,17 @@ def _create_diffusion_pipeline(
             if quantizer_class is _uris.SDNQQuantizerUri:
                 sdnq_cast_hack = True
 
+    # Check controlnet URIs
+    if controlnet_uris:
+        for controlnet_uri in controlnet_uris:
+            parsed_uri = _uris.ControlNetUri.parse(controlnet_uri, model_type=model_type)
+            uri_quant_check.append(parsed_uri)
+            if parsed_uri.quantizer:
+                manual_quantizer_components.add('controlnet')
+                quantizer_class = _uris.get_quantizer_uri_class(parsed_uri.quantizer)
+                if quantizer_class is _uris.SDNQQuantizerUri:
+                    sdnq_cast_hack = True
+
     if quantizer_uri or any(p.quantizer for p in uri_quant_check):
         # for now, just knock out anything cached on the gpu, such as the last pipeline
         # the quantized pipeline modules are likely going to go straight onto the GPU
@@ -2363,6 +2375,20 @@ def _create_diffusion_pipeline(
             if isinstance(arg, torch.Tensor):
                 args[i] = arg.to(dtype=model.dtype)
         for k,v in kwargs.items():
+            if isinstance(v, torch.Tensor):
+                kwargs[k] = v.to(dtype=model.dtype)
+        return og_forward(*args, **kwargs)
+
+    def controlnet_quant_forward(og_forward, model, *args, **kwargs):
+        """
+        Forward function for quantized controlnets that casts inputs to the model's dtype.
+        This is needed because diffusers doesn't handle controlnet quantization state internally.
+        """
+        args = list(args)
+        for i, arg in enumerate(args):
+            if isinstance(arg, torch.Tensor):
+                args[i] = arg.to(dtype=model.dtype)
+        for k, v in kwargs.items():
             if isinstance(v, torch.Tensor):
                 kwargs[k] = v.to(dtype=model.dtype)
         return og_forward(*args, **kwargs)
@@ -2736,12 +2762,40 @@ def _create_diffusion_pipeline(
 
             parsed_controlnet_uris.append(parsed_controlnet_uri)
 
-            new_net = parsed_controlnet_uri.load(
+            # Apply global quantizer if controlnet doesn't have
+            # its own quantizer and should be quantized
+            controlnet_uri_to_load = parsed_controlnet_uri
+            if not parsed_controlnet_uri.quantizer and should_apply_quantizer('controlnet'):
+                # Create a new URI with the global quantizer
+                controlnet_uri_to_load = _uris.ControlNetUri(
+                    model=parsed_controlnet_uri.model,
+                    revision=parsed_controlnet_uri.revision,
+                    variant=parsed_controlnet_uri.variant,
+                    subfolder=parsed_controlnet_uri.subfolder,
+                    dtype=parsed_controlnet_uri.dtype,
+                    scale=parsed_controlnet_uri.scale,
+                    start=parsed_controlnet_uri.start,
+                    end=parsed_controlnet_uri.end,
+                    mode=parsed_controlnet_uri.mode,
+                    quantizer=quantizer_uri,
+                    model_type=parsed_controlnet_uri.model_type
+                )
+
+            new_net = controlnet_uri_to_load.load(
                 use_auth_token=auth_token,
                 dtype_fallback=dtype,
                 local_files_only=local_files_only,
-                no_cache=model_cpu_offload or sequential_cpu_offload
+                no_cache=model_cpu_offload or sequential_cpu_offload,
+                device_map=get_device_map_for_quantizer(controlnet_uri_to_load.quantizer)
             )
+
+            # Apply casting hack for quantized controlnets
+            if controlnet_uri_to_load.quantizer:
+                new_net.forward = functools.partial(
+                    controlnet_quant_forward,
+                    new_net.forward,
+                    new_net
+                )
 
             _messages.debug_log(lambda:
                                 f'Added Torch ControlNet: "{controlnet_uri}" '

@@ -36,7 +36,7 @@ from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
 from dgenerate.pipelinewrapper.uris import util as _util
 
 _controlnet_uri_parser = _textprocessing.ConceptUriParser(
-    'ControlNet', ['scale', 'start', 'end', 'mode', 'revision', 'variant', 'subfolder', 'dtype'])
+    'ControlNet', ['scale', 'start', 'end', 'mode', 'revision', 'variant', 'subfolder', 'dtype', 'quantizer'])
 
 _controlnet_cache = _d_memoize.create_object_cache(
     'controlnet', cache_type=_memory.SizedConstrainedObjectCache
@@ -172,6 +172,13 @@ class ControlNetUri:
         """
         return self._model_type
 
+    @property
+    def quantizer(self) -> _types.OptionalUri:
+        """
+        --quantizer URI override
+        """
+        return self._quantizer
+
     def __init__(self,
                  model: str,
                  revision: _types.OptionalString,
@@ -182,6 +189,7 @@ class ControlNetUri:
                  start: float = 0.0,
                  end: float = 1.0,
                  mode: int | str | FluxControlNetUnionUriModes | SDXLControlNetUnionUriModes | None = None,
+                 quantizer: _types.OptionalUri = None,
                  model_type: _enums.ModelType = _enums.ModelType.SD):
         """
         :param model: model path
@@ -193,15 +201,24 @@ class ControlNetUri:
         :param start: controlnet guidance start value
         :param end: controlnet guidance end value
         :param mode: Flux / SDXL Union controlnet mode.
+        :param quantizer: --quantizer URI override
         :param model_type: Model type this ControlNet will be attached to.
 
-        :raises InvalidControlNetUriError: If ``dtype`` is passed an invalid data type string.
+        :raises InvalidControlNetUriError: If ``dtype`` is passed an invalid data type string,
+            or if ``model`` points to a single file and ``quantizer`` is specified (not supported).
         """
+
+        if _hfhub.is_single_file_model_load(model):
+            if quantizer:
+                raise _exceptions.InvalidControlNetUriError(
+                    'specifying a ControlNet quantizer URI is only supported for Hugging Face '
+                    'repository loads from a repo slug or disk path, single file loads are not supported.')
 
         self._model = model
         self._revision = revision
         self._variant = variant
         self._subfolder = subfolder
+        self._quantizer = quantizer
         self._model_type = model_type
 
         if isinstance(mode, str):
@@ -232,6 +249,7 @@ class ControlNetUri:
              use_auth_token: _types.OptionalString = None,
              local_files_only: bool = False,
              no_cache: bool = False,
+             device_map: str | None = None,
              model_class:
              type[diffusers.ControlNetModel] |
              type[diffusers.ControlNetUnionModel] |
@@ -254,6 +272,8 @@ class ControlNetUri:
             only use cached models?
 
         :param no_cache: If True, force the returned object not to be cached by the memoize decorator.
+
+        :param device_map: device placement strategy for quantized models, defaults to ``None``
 
         :param model_class: What class of controlnet model should be loaded?
             if ``None`` is specified, load based off :py:attr:`ControlNetUri.model_type`
@@ -283,6 +303,7 @@ class ControlNetUri:
                               use_auth_token,
                               local_files_only,
                               no_cache,
+                              device_map,
                               model_class)
 
 
@@ -305,6 +326,7 @@ class ControlNetUri:
               use_auth_token: _types.OptionalString = None,
               local_files_only: bool = False,
               no_cache: bool = False,
+              device_map: str | None = None,
               model_class:
               type[diffusers.ControlNetModel] |
               type[diffusers.ControlNetUnionModel] |
@@ -328,6 +350,14 @@ class ControlNetUri:
 
         torch_dtype = _enums.get_torch_dtype(
             dtype_fallback if self.dtype is None else self.dtype)
+
+        if self.quantizer:
+            quant_config = _util.get_quantizer_uri_class(
+                self.quantizer,
+                _exceptions.InvalidControlNetUriError
+            ).parse(self.quantizer).to_config(torch_dtype)
+        else:
+            quant_config = None
 
         if single_file_load_path:
 
@@ -366,7 +396,9 @@ class ControlNetUri:
                 subfolder=self.subfolder,
                 torch_dtype=torch_dtype,
                 token=use_auth_token,
-                local_files_only=local_files_only)
+                local_files_only=local_files_only,
+                quantization_config=quant_config,
+                device_map=device_map)
 
         _messages.debug_log('Estimated Torch ControlNet Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_usage))
@@ -376,7 +408,7 @@ class ControlNetUri:
         # noinspection PyTypeChecker
         return new_net, _d_memoize.CachedObjectMetadata(
             size=estimated_memory_usage,
-            skip=no_cache
+            skip=self.quantizer or no_cache
         )
 
     @staticmethod
@@ -450,6 +482,7 @@ class ControlNetUri:
                 start=start,
                 end=end,
                 mode=mode,
+                quantizer=r.args.get('quantizer', None),
                 model_type=model_type
             )
 
