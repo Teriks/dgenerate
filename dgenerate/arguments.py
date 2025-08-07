@@ -1930,11 +1930,13 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             This URI specifies the quantization backend and its configuration.
             
             Quantization will be applied to all text encoders, and unet / transformer 
-            models with the provided settings when using this argument.
+            models with the provided settings when using this argument. ControlNet models
+            are NOT quantized by default and must be explicitly included via --quantizer-map.
             
-            If you wish to specify different quantization types per encoder or unet / transformer,
-            you should use the "quantizer" URI argument of --text-encoders and or --unet / --transformer
-            to specify the quantization settings on a per model basis.
+            If you wish to specify different quantization types per encoder, unet / transformer,
+            or controlnet, you should use the "quantizer" URI argument of --text-encoders, 
+            --unet / --transformer, or --control-nets to specify the quantization settings 
+            on a per model basis.
             
             Available backends are: (bnb / bitsandbytes, sdnq)
             
@@ -2008,12 +2010,12 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             performed on them.
             
             By default when a --quantizer URI is specified, the UNet / Transformer, and all Text Encoders
-            are processed.
+            are processed. ControlNet models are NOT processed by default.
             
             When using --quantizer, you can use this argument to specify exactly which sub-modules undergo
             quantization.
             
-            Accepted values are: "unet", "transformer", "text_encoder", "text_encoder_2", "text_encoder_3"
+            Accepted values are: "unet", "transformer", "text_encoder", "text_encoder_2", "text_encoder_3", "controlnet"
             """
         )
     )

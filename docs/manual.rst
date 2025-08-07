@@ -930,11 +930,12 @@ Help Output
             This URI specifies the quantization backend and its configuration.
             
             Quantization will be applied to all text encoders, and unet / transformer models with the provided
-            settings when using this argument.
+            settings when using this argument. ControlNet models are NOT quantized by default and must be
+            explicitly included via --quantizer-map.
             
-            If you wish to specify different quantization types per encoder or unet / transformer, you should
-            use the "quantizer" URI argument of --text-encoders and or --unet / --transformer to specify the
-            quantization settings on a per model basis.
+            If you wish to specify different quantization types per encoder, unet / transformer, or controlnet,
+            you should use the "quantizer" URI argument of --text-encoders, --unet / --transformer, or
+            --control-nets to specify the quantization settings on a per model basis.
             
             Available backends are: (bnb / bitsandbytes, sdnq)
             
@@ -989,13 +990,14 @@ Help Output
             on them.
             
             By default when a --quantizer URI is specified, the UNet / Transformer, and all Text Encoders are
-            processed.
+            processed. ControlNet models are NOT processed by default.
             
             When using --quantizer, you can use this argument to specify exactly which sub-modules undergo
             quantization.
             
-            Accepted values are: "unet", "transformer", "text_encoder", "text_encoder_2", "text_encoder_3"
-            ----------------------------------------------------------------------------------------------
+            Accepted values are: "unet", "transformer", "text_encoder", "text_encoder_2", "text_encoder_3",
+            "controlnet"
+            ------------
       -q2, --second-model-quantizer QUANTIZER_URI
             Global quantization configuration via URI for the secondary model, such as the SDXL Refiner or
             Stable Cascade decoder. See: --quantizer for syntax examples.
@@ -10612,7 +10614,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [59460199418710]
+            Value: [46306913169477]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
