@@ -9812,7 +9812,6 @@ covers the URI arguments and how they affect the quantization pre-process.
 
 The ``bitsandbytes`` backend documentation is as follows:
 
-
 .. code-block:: text
 
     bnb | bitsandbytes:
