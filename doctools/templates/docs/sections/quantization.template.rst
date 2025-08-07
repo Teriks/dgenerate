@@ -137,7 +137,6 @@ covers the URI arguments and how they affect the quantization pre-process.
 
 The ``bitsandbytes`` backend documentation is as follows:
 
-
 @COMMAND_OUTPUT[dgenerate --no-stdin --quantizer-help bnb]
 
 And for ``sdnq``:
