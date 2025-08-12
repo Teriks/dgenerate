@@ -19,9 +19,9 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import contextlib
-import importlib.resources
 import json
 import logging
+import pathlib
 import typing
 
 import accelerate
@@ -80,10 +80,15 @@ def _suppress_accelerate_warnings():
         logger.setLevel(original_level)
 
 
-def _get_text_encoder_config_json(name):
-    return json.loads(importlib.resources.read_text(
-        'dgenerate.pipelinewrapper.uris.text_encoder_configs', name)
-    )
+def _read_hub_config(repo_name, subfolder, filename='config.json'):
+    hub_configs_dir = pathlib.Path(__file__).parent.parent / 'hub_configs'
+    config_path = hub_configs_dir / repo_name / subfolder / filename
+    
+    if config_path.exists():
+        with open(config_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    else:
+        raise FileNotFoundError(f"Config not found: {config_path}")
 
 
 def _monolithic_auto_quant_device_map(
@@ -107,7 +112,7 @@ def _load_clip_l_from_single_file(
     try:
         with _suppress_accelerate_warnings():
             config = transformers.CLIPTextConfig.from_dict(
-                _get_text_encoder_config_json('clip_l.json')
+                _read_hub_config('models--stable-diffusion-v1-5--stable-diffusion-v1-5', 'text_encoder')
             )
 
             config.torch_dtype = dtype
@@ -168,7 +173,7 @@ def _load_clip_l_sd3_from_single_file(
             # Create a config manually for SD3/SD3.5 CLIP-L with exact parameters
 
             config = transformers.CLIPTextConfig.from_dict(
-                _get_text_encoder_config_json('clip_l_sd3.json')
+                _read_hub_config('models--stabilityai--stable-diffusion-3-medium-diffusers', 'text_encoder')
             )
 
             if quantization_config:
@@ -227,7 +232,7 @@ def _load_clip_g_sd3_from_single_file(
             # Create a config manually for SD3/SD3.5 CLIP-G with exact parameters
 
             config = transformers.CLIPTextConfig.from_dict(
-                _get_text_encoder_config_json('clip_g_sd3.json')
+                _read_hub_config('models--stabilityai--stable-diffusion-3-medium-diffusers', 'text_encoder_2')
             )
 
             if quantization_config:
@@ -283,7 +288,7 @@ def _load_t5_xxl_sd3_from_single_file(
         with _suppress_accelerate_warnings():
             # Create a config specifically for SD3/SD3.5 T5-XXL based on the exact SD3 configuration
             config = transformers.T5Config.from_dict(
-                _get_text_encoder_config_json('t5_xxl_sd3.json')
+                _read_hub_config('models--stabilityai--stable-diffusion-3-medium-diffusers', 'text_encoder_3')
             )
 
             if quantization_config:
@@ -338,7 +343,7 @@ def _load_t5_xxl_from_single_file(
 
         with _suppress_accelerate_warnings():
             config = transformers.T5Config.from_dict(
-                _get_text_encoder_config_json('t5_xxl.json')
+                _read_hub_config('models--black-forest-labs--FLUX.1-dev', 'text_encoder_2')
             )
 
             config.torch_dtype = dtype
@@ -395,7 +400,7 @@ def _load_clip_l_sd35_large_from_single_file(
         with _suppress_accelerate_warnings():
             # Create a config manually for SD3.5 Large CLIP-L
             config = transformers.CLIPTextConfig.from_dict(
-                _get_text_encoder_config_json('clip_l_sd35_large.json')
+                _read_hub_config('models--stabilityai--stable-diffusion-3.5-large', 'text_encoder')
             )
 
             if quantization_config:
@@ -449,7 +454,7 @@ def _load_clip_g_sd35_large_from_single_file(
         with _suppress_accelerate_warnings():
             # Create a config manually for SD3.5 Large CLIP-G
             config = transformers.CLIPTextConfig.from_dict(
-                _get_text_encoder_config_json('clip_g_sd35_large.json')
+                _read_hub_config('models--stabilityai--stable-diffusion-3.5-large', 'text_encoder_2')
             )
 
             if quantization_config:

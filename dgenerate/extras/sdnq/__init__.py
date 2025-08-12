@@ -276,6 +276,11 @@ class SDNQQuantizer(DiffusersQuantizer):
         """
         return self.check_if_quantized_param(*args, **kwargs)
 
+    # noinspection PyMethodMayBeStatic
+    def update_param_name(self, param_name: str):
+        # needed for transformers, use identity
+        return param_name
+
     def create_quantized_param(
         self,
         model,
