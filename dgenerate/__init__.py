@@ -95,6 +95,9 @@ try:
     import dgenerate._patches.transformers_dynamiccache_patch
     import dgenerate._patches.tqdm_huggingface_hub_patch
     import dgenerate._patches.hfhub_local_entry_missing_message_patch
+    import dgenerate._patches.diffusers_local_files_only_patch
+    import dgenerate._patches.diffusers_single_file_config_patch
+
 
     from dgenerate.hfhub import (
         NonHFDownloadError,
@@ -438,8 +441,8 @@ def main(args: collections.abc.Sequence[str] | None = None):
 
             # Apply --set and --setp meta arguments directly to the runner in order
             try:
-                for arg_type, var, value in ordered_variable_ops:
-                    if arg_type == 'set':
+                for argType, var, value in ordered_variable_ops:
+                    if argType == 'set':
                         runner.user_set(var, value)
                     else:  # setp
                         runner.user_setp(var, value)
