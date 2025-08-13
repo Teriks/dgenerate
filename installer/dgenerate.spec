@@ -113,11 +113,20 @@ for package_name in required_package_names:
                   '**/*.yaml',
                   '**/*.yml',
                   '**/*.exe',
+                  '**/*.model',
                   '**/LICENSE',
                   '**/NOTICE'] +
                  (['**/*.py', '**/*.pyi']
                   if include_source else []))
-    binaries += collect_dynamic_libs(package_name, search_patterns=['*.dll', '*.pyd', '*.lib', '*.bc'])
+
+
+    binaries += collect_dynamic_libs(
+        package_name,
+        search_patterns=[
+            '**/*.dll',
+            '**/*.pyd',
+            '**/*.bc']
+        )
 
 a = Analysis(
     ['../dgenerate/__winentry__.py'],

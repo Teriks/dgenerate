@@ -36,20 +36,37 @@ _original_thread_init = threading.Thread.__init__
 def _patched_thread_init(self, *args, **kwargs):
     self._dgenerate_no_tqdm_thread = False
     
-    import diffusers.loaders.single_file
-    import diffusers.pipelines.pipeline_utils
+    # Delay imports to avoid circular import issues during module initialization.
+    # Only import these modules when we actually need to check the stack frames.
+    diffusers_single_file = None
+    diffusers_pipeline_utils = None
+    
+    try:
+        # Only try to import if diffusers is already available in sys.modules
+        # This avoids triggering imports during the initial diffusers loading phase
+        import sys
+        if 'diffusers.loaders.single_file' in sys.modules:
+            import diffusers.loaders.single_file
+            diffusers_single_file = diffusers.loaders.single_file
+        if 'diffusers.pipelines.pipeline_utils' in sys.modules:
+            import diffusers.pipelines.pipeline_utils
+            diffusers_pipeline_utils = diffusers.pipelines.pipeline_utils
+    except ImportError:
+        # If imports fail, we'll just skip the tqdm suppression for now
+        pass
 
     # prevent these modules from creating a multithreaded tqdm progress bar
     # because the output in dgenerates case is generally not useful
-    for frame_info in inspect.stack():
-        module = inspect.getmodule(frame_info.frame)
-        if module:
-            if module is diffusers.loaders.single_file:
-                self._dgenerate_no_tqdm_thread = True
-                break
-            if module is diffusers.pipelines.pipeline_utils:
-                self._dgenerate_no_tqdm_thread = True
-                break
+    if diffusers_single_file is not None or diffusers_pipeline_utils is not None:
+        for frame_info in inspect.stack():
+            module = inspect.getmodule(frame_info.frame)
+            if module:
+                if diffusers_single_file is not None and module is diffusers_single_file:
+                    self._dgenerate_no_tqdm_thread = True
+                    break
+                if diffusers_pipeline_utils is not None and module is diffusers_pipeline_utils:
+                    self._dgenerate_no_tqdm_thread = True
+                    break
 
     _original_thread_init(self, *args, **kwargs)
 

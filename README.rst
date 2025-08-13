@@ -83,7 +83,7 @@ System Requirements
 -------------------
 
 * **GPU**: NVIDIA (CUDA 12.1+), AMD (ROCm on Linux), or Apple Silicon
-* **Python**: 3.10 to 3.13
+* **Python**: 3.11 to 3.13
 * **OS**: Windows, macOS, or Linux
 
 Note: CPU rendering is possible but extremely slow unless the given model is tailored for it.

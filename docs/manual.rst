@@ -1052,8 +1052,8 @@ Help Output
             
             See: https://github.com/megvii-research/HiDiffusion
             
-            This is supported for --model-type sd, sdxl, and --kolors.
-            ----------------------------------------------------------
+            This is supported for --model-type sd, sdxl, kolors, pix2pix, and sdxl-pix2pix.
+            -------------------------------------------------------------------------------
       --hi-diffusion-no-win-attn
             Disable window attention when using HiDiffusion for the primary model?
             
@@ -1835,16 +1835,16 @@ Help Output
             --------------------------------------------------------------------------------------------
       -af, --animation-format FORMAT
             Output format when generating an animation from an input video / gif / webp etc. Value must be one
-            of: mp4, png, apng, gif, or webp. You may also specify "frames" to indicate that only frames should
+            of: mp4, gif, png, apng, or webp. You may also specify "frames" to indicate that only frames should
             be output and no coalesced animation file should be rendered. (default: mp4)
             ----------------------------------------------------------------------------
       -if, --image-format FORMAT
             Output format when writing static images or tensors. For image formats, any selection other than
             "png", "jpg", or "jpeg" is not compatible with --output-metadata. For tensor formats (pt, pth,
-            safetensors), raw latent tensors will be saved instead of decoded images. Value must be one of: png,
-            apng, avif, avifs, blp, bmp, dib, bufr, pcx, dds, ps, eps, gif, grib, h5, hdf, jp2, j2k, jpc, jpf,
-            jpx, j2c, icns, ico, im, jfif, jpe, jpg, jpeg, tif, tiff, mpo, msp, palm, pdf, pbm, pgm, ppm, pnm,
-            pfm, qoi, bw, rgb, rgba, sgi, tga, icb, vda, vst, webp, wmf, emf, xbm, pt, pth, or safetensors.
+            safetensors), raw latent tensors will be saved instead of decoded images. Value must be one of:
+            avif, avifs, blp, bmp, dib, bufr, pcx, dds, ps, eps, gif, grib, h5, hdf, png, apng, jp2, j2k, jpc,
+            jpf, jpx, j2c, icns, ico, im, jfif, jpe, jpg, jpeg, tif, tiff, mpo, msp, palm, pdf, pbm, pgm, ppm,
+            pnm, pfm, qoi, bw, rgb, rgba, sgi, tga, icb, vda, vst, webp, wmf, emf, xbm, pt, pth, or safetensors.
             (default: png)
             --------------
       -nf, --no-frames
@@ -2383,7 +2383,7 @@ When done editing ``~/.bashrc`` do:
     source ~/.bashrc
 
 
-Install Python >=3.10,<3.13 (Debian / Ubuntu) and pipx
+Install Python >=3.11,<3.13 (Debian / Ubuntu) and pipx
 ------------------------------------------------------
 
 .. code-block:: bash
@@ -2493,9 +2493,9 @@ When specifying any ``--device`` value use ``cuda``, ``cuda:1``, etc. as you wou
 
 You need to first install ROCm support, follow: https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/quick-start.html
 
-Then use: ``--extra-index-url https://download.pytorch.org/whl/rocm6.3/`` when installing via ``pip`` or ``pipx``.
+Then use: ``--extra-index-url https://download.pytorch.org/whl/rocm6.4/`` when installing via ``pip`` or ``pipx``.
 
-Install Python >=3.10,<3.13 (Debian / Ubuntu) and pipx
+Install Python >=3.11,<3.13 (Debian / Ubuntu) and pipx
 ------------------------------------------------------
 
 .. code-block:: bash
@@ -2543,17 +2543,17 @@ Install dgenerate
     # install with just support for torch
 
     pipx install dgenerate \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm6.3/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm6.4/"
 
     # With NCNN upscaler support
 
     pipx install dgenerate[ncnn] \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm6.3/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm6.4/"
 
     # If you want a specific version
 
     pipx install dgenerate==5.0.0 \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm6.3/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm6.4/"
 
 
     # you can attempt to install the pre-release bitsandbytes
@@ -2566,11 +2566,11 @@ Install dgenerate
 
     # You can install without pipx into your own environment like so
 
-    pip3 install dgenerate==5.0.0 --extra-index-url https://download.pytorch.org/whl/rocm6.3/
+    pip3 install dgenerate==5.0.0 --extra-index-url https://download.pytorch.org/whl/rocm6.4/
 
     # Or with NCNN
 
-    pip3 install dgenerate[ncnn]==5.0.0 --extra-index-url https://download.pytorch.org/whl/rocm6.3/
+    pip3 install dgenerate[ncnn]==5.0.0 --extra-index-url https://download.pytorch.org/whl/rocm6.4/
 
 
     # you can attempt to install the pre-release bitsandbytes multiplatform version like so:
@@ -2601,7 +2601,7 @@ then reinstall ``opencv-python-headless``.
 
     pip uninstall opencv-python-headless opencv-python
 
-    pip install opencv-python-headless~=4.12.0.88
+    pip install opencv-python-headless~=Command failed: Command 'python ../../../../scripts/get_cur_headless_opencv_ver.py' returned non-zero exit status 1.
 
 
 This work around is needed because ``ncnn`` depends on ``opencv-python`` and pip
@@ -2618,7 +2618,7 @@ If you are using pipx, you can do this:
 
     pipx runpip dgenerate uninstall opencv-python-headless opencv-python
 
-    pipx inject dgenerate opencv-python-headless~=4.12.0.88
+    pipx inject dgenerate opencv-python-headless~=Command failed: Command 'python ../../../../scripts/get_cur_headless_opencv_ver.py' returned non-zero exit status 1.
 
 MacOS Install (Apple Silicon Only)
 ==================================
@@ -2630,7 +2630,7 @@ Rendering can be performed in CPU only mode, and with hardware acceleration usin
 The default device on MacOS is ``mps`` unless specified otherwise.
 
 You can install on MacOS by first installing python from the universal ``pkg`` installer
-located at: https://www.python.org/downloads/release/python-3126/
+located at: https://www.python.org/downloads/release/python-3136/
 
 It is also possible to install Python using `homebrew <https://brew.sh/>`_, though tkinter will
 not be available meaning that you cannot run the Console UI.
@@ -2831,7 +2831,7 @@ Note that the name of the ``pip`` executable may be named ``pip3`` on some syste
 
     # ROCm
 
-    pip install git+https://github.com/Teriks/dgenerate@BRANCH_NAME --extra-index-url https://download.pytorch.org/whl/rocm6.3/
+    pip install git+https://github.com/Teriks/dgenerate@BRANCH_NAME --extra-index-url https://download.pytorch.org/whl/rocm6.4/
 
     # With extras, for example "quant"
 
@@ -7191,77 +7191,7 @@ these are the arguments that are available for use:
 
 .. code-block:: text
 
-    scheduler-uri: str
-    second-model-scheduler-uri: str
-    latents-processors: [str, ...]
-    latents-post-processors: [str, ...]
-    img2img-latents-processors: [str, ...]
-    decoded-latents-image-processor-uris: [str, ...]
-    width: int
-    height: int
-    batch-size: int
-    max-sequence-length: int
-    sdxl-refiner-edit: bool
-    seed: int
-    image-seed-strength: float
-    sdxl-t2i-adapter-factor: float
-    upscaler-noise-level: int
-    sdxl-high-noise-fraction: float
-    second-model-inference-steps: int
-    second-model-guidance-scale: float
-    sdxl-refiner-guidance-rescale: float
-    sdxl-aesthetic-score: float
-    sdxl-original-size: Size: WxH
-    sdxl-target-size: Size: WxH
-    sdxl-crops-coords-top-left: Size: WxH
-    sdxl-negative-aesthetic-score: float
-    sdxl-negative-original-size: Size: WxH
-    sdxl-negative-target-size: Size: WxH
-    sdxl-negative-crops-coords-top-left: Size: WxH
-    sdxl-refiner-aesthetic-score: float
-    sdxl-refiner-original-size: Size: WxH
-    sdxl-refiner-target-size: Size: WxH
-    sdxl-refiner-crops-coords-top-left: Size: WxH
-    sdxl-refiner-negative-aesthetic-score: float
-    sdxl-refiner-negative-original-size: Size: WxH
-    sdxl-refiner-negative-target-size: Size: WxH
-    sdxl-refiner-negative-crops-coords-top-left: Size: WxH
-    guidance-scale: float
-    hi-diffusion-no-win-attn: bool
-    hi-diffusion-no-raunet: bool
-    tea-cache-rel-l1-threshold: float
-    ras-index-fusion: bool
-    ras-sample-ratio: float
-    ras-high-ratio: float
-    ras-starvation-scale: float
-    ras-error-reset-steps: [int, ...]
-    ras-start-step: int
-    ras-end-step: int
-    ras-metric: str
-    ras-skip-num-step: int
-    ras-skip-num-step-length: int
-    pag-scale: float
-    pag-adaptive-scale: float
-    sdxl-refiner-pag-scale: float
-    sdxl-refiner-pag-adaptive-scale: float
-    image-guidance-scale: float
-    guidance-rescale: float
-    inference-steps: int
-    clip-skip: int
-    sdxl-refiner-clip-skip: int
-    adetailer-model-masks: bool
-    adetailer-mask-shape: str
-    adetailer-detector-padding: Padding: P, WxH, LxTxRxB
-    adetailer-mask-padding: Padding: P, WxH, LxTxRxB
-    adetailer-mask-blur: int
-    adetailer-mask-dilation: int
-    deep-cache-interval: int
-    deep-cache-branch-id: int
-    sdxl-refiner-deep-cache: bool
-    sdxl-refiner-deep-cache-interval: int
-    sdxl-refiner-deep-cache-branch-id: int
-    denoising-start: float
-    denoising-end: float
+    Command failed: Command 'python ../../../scripts/prompt_embedded_args_list.py' returned non-zero exit status 1.
 
 Utilizing CivitAI links and Other Hosted Models
 ===============================================
@@ -7931,11 +7861,11 @@ The help output of ``image-process`` is as follows:
             equal to those listed under --frame-format.
             -------------------------------------------
       -ff, --frame-format FRAME_FORMAT
-            Image format for animation frames. Must be one of: png, apng, avif, avifs, blp, bmp, dib, bufr, pcx,
-            dds, ps, eps, gif, grib, h5, hdf, jp2, j2k, jpc, jpf, jpx, j2c, icns, ico, im, jfif, jpe, jpg, jpeg,
-            tif, tiff, mpo, msp, palm, pdf, pbm, pgm, ppm, pnm, pfm, qoi, bw, rgb, rgba, sgi, tga, icb, vda,
-            vst, webp, wmf, emf, or xbm.
-            ----------------------------
+            Image format for animation frames. Must be one of: avif, avifs, blp, bmp, dib, bufr, pcx, dds, ps,
+            eps, gif, grib, h5, hdf, png, apng, jp2, j2k, jpc, jpf, jpx, j2c, icns, ico, im, jfif, jpe, jpg,
+            jpeg, tif, tiff, mpo, msp, palm, pdf, pbm, pgm, ppm, pnm, pfm, qoi, bw, rgb, rgba, sgi, tga, icb,
+            vda, vst, webp, wmf, emf, or xbm.
+            ---------------------------------
       -ox, --output-overwrite
             Indicate that it is okay to overwrite files, instead of appending a duplicate suffix.
             -------------------------------------------------------------------------------------
@@ -10614,7 +10544,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [46306913169477]
+            Value: [33929195644234]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -10692,570 +10622,13 @@ The dgenerate specific jinja2 functions/filters are:
 
 .. code-block:: text
 
-    import_module(module_name: str) -> typing.Any:
-    
-        Import a Python module by name and return the module object.
-    
-        If the module cannot be imported, an error will be raised.
-    
-        See also the directive: \import
-    
-    ================================================================
-    unquote(strings: str | collections.abc.Iterable[typing.Any], expand: bool = False, glob_hidden: bool = False, glob_recursive: bool = False) -> list:
-    
-        Un-Shell quote a string or iterable of strings (shell parse)
-    
-        The "expand" argument can be used to indicate that you wish to expand shell globs and the home directory
-        operator.
-    
-        The "glob_hidden" argument can be used to indicate that hidden files should be included in globs when
-        expand is True.
-    
-        The "glob_recursive" argument can be used to indicate that globbing should be recursive when expand is
-        True.
-    
-    ============================================================================================================
-    quote(strings: str | collections.abc.Iterable[typing.Any], double: bool = False, quotes: bool = True) -> str:
-    
-        Shell quote a string or iterable of strings.
-    
-        The "double" argument allows you to change the outer quote character to double quotes.
-    
-        The "quotes" argument determines whether to ddd quotes. If ``False``, only add the proper escape sequences
-        and no surrounding quotes. This can be useful for templating extra string content into an existing string.
-    
-    ==============================================================================================================
-    format_prompt(prompts: dgenerate.prompt.Prompt | collections.abc.Iterable[dgenerate.prompt.Prompt]) -> str:
-    
-        Format a prompt object, or a list of prompt objects, into quoted string(s)
-    
-    ==============================================================================
-    format_size(size: collections.abc.Iterable[int]) -> str:
-    
-        Join an iterable of integers into a string seperated by the character 'x', for example (512, 512) ->
-        "512x512"
-    
-    ========================================================================================================
-    align_size(size: str | tuple, align: int, format_size: bool = True) -> str | tuple:
-    
-        Align a string dimension such as "700x700", or a tuple dimension such as (700, 700) to a specific
-        alignment value ("align") and format the result to a string dimension recognized by dgenerate.
-    
-        This function expects a string with the format WIDTHxHEIGHT, or just WIDTH, or a tuple of dimensions.
-    
-        It returns a string in the same format with the dimension aligned to the specified amount, unless
-        "format_size" is False, in which case it will return a tuple.
-    
-    =========================================================================================================
-    pow2_size(size: str | tuple, format_size: bool = True) -> str | tuple:
-    
-        Round a string dimension such as "700x700", or a tuple dimension such as (700, 700) to the nearest power
-        of 2 and format the result to a string dimension recognized by dgenerate.
-    
-        This function expects a string with the format WIDTHxHEIGHT, or just WIDTH, or a tuple of dimensions.
-    
-        It returns a string in the same format with the dimension rounded to the nearest power of 2, unless
-        "format_size" is False, in which case it will return a tuple.
-    
-    ============================================================================================================
-    image_size(file: str, format_size: bool = True) -> str | tuple[int, int]:
-    
-        Return the width and height of an image file on disk.
-    
-        If "format_size" is False, return a tuple instead of a WIDTHxHEIGHT string.
-    
-    ===============================================================================
-    size_is_aligned(size: str | tuple, align: int) -> bool:
-    
-        Check if a string dimension such as "700x700", or a tuple dimension such as (700, 700) is aligned to a
-        specific ("align") value. Returns True or False.
-    
-        This function expects a string with the format WIDTHxHEIGHT, or just WIDTH, or a tuple of dimensions.
-    
-    ==========================================================================================================
-    size_is_pow2(size: str | tuple) -> bool:
-    
-        Check if a string dimension such as "700x700", or a tuple dimension such as (700, 700) is a power of 2
-        dimension. Returns True or False.
-    
-        This function expects a string with the format WIDTHxHEIGHT, or just WIDTH, or a tuple of dimensions.
-    
-    ==========================================================================================================
-    format_model_type(model_type: <enum 'ModelType'>) -> str:
-    
-        Return the string representation of a ModelType enum. This can be used to get command line compatible
-        --model-type string from the last_model_type template variable.
-    
-    =========================================================================================================
-    format_dtype(dtype: <enum 'DataType'>) -> str:
-    
-        Return the string representation of a DataType enum. This can be used to get command line compatible
-        --dtype string from the last_dtype template variable.
-    
-    ========================================================================================================
-    last(iterable: list | collections.abc.Iterable[typing.Any]) -> typing.Any:
-    
-        Return the last element in an iterable collection.
-    
-    ======================================================
-    first(iterable: collections.abc.Iterable[typing.Any]) -> typing.Any:
-    
-        Return the first element in an iterable collection.
-    
-    =======================================================
-    gen_seeds(n: int) -> list[str]:
-    
-        Generate N random integer seeds (as strings) and return a list of them.
-    
-    ===========================================================================
-    cwd() -> str:
-    
-        Return the current working directory as a string.
-    
-    =====================================================
-    download(url: str, output: str | None = None, overwrite: bool = False, text: bool = False) -> str:
-    
-        Download a file from a URL to the web cache or a specified path, and return the file path to the
-        downloaded file.
-    
-        \set my_variable {{ download('https://modelhost.com/model.safetensors' }}
-    
-        \set my_variable {{ download('https://modelhost.com/model.safetensors', output='model.safetensors') }}
-    
-        \set my_variable {{ download('https://modelhost.com/model.safetensors', output='directory/' }}
-    
-        \setp my_variable download('https://modelhost.com/model.safetensors')
-    
-        When an "output" path is specified, if the file already exists it will be reused by default (simple
-        caching behavior), this can be disabled with the argument "overwrite=True" indicating that the file should
-        always be downloaded.
-    
-        "overwrite=True" can also be used to overwrite cached files in the dgenerate web cache.
-    
-        An error will be raised by default if a text mimetype is encountered, this can be overridden with
-        "text=True"
-    
-        Be weary that if you have a long-running loop in your config using a top level jinja template, which
-        refers to your template variable, cache expiry may invalidate the file stored in your variable.
-    
-        You can rectify this by using the template function inside your loop.
-    
-    ==============================================================================================================
-    have_feature(feature_name: str) -> bool:
-    
-        Return a boolean value indicating if dgenerate has a specific feature available.
-    
-        Currently accepted values are:
-    
-        "ncnn": Do we have ncnn installed?
-        "gpt4all": Do we have gpt4all installed?
-        "bitsandbytes": Do we have bitsandbytes installed?
-        "flash-attn": Do we have flash-attn installed?
-        "triton": Do we have triton installed?
-    
-    ====================================================================================
-    platform() -> str:
-    
-        Return platform.system()
-    
-        Returns the system/OS name, such as 'Linux', 'Darwin', 'Java', 'Windows'.
-    
-        An empty string is returned if the value cannot be determined.
-    
-    =============================================================================
-    frange(start, stop = None, step = 0.1):
-    
-        Like range, but for floating point numbers.
-    
-        The default step value is 0.1
-    
-    ===============================================
-    have_cuda() -> bool:
-    
-        Check if CUDA is available.
-    
-    ===============================
-    total_memory(device: str | None = None, unit: str = 'b'):
-    
-        Get the total ram that a specific device possesses.
-    
-        This will always return 0 for "mps".
-    
-        The "device" argument specifies the device, if none is specified, the systems default accelerator will be
-        used, if a GPU is installed, it will be the first GPU.
-    
-        The "unit" argument specifies the unit you want returned, must be one of (case insensitive): b (bytes), kb
-        (kilobytes), mb (megabytes), gb (gigabytes), kib (kibibytes), mib (mebibytes), gib (gibibytes)
-    
-    ==============================================================================================================
-    default_device() -> str:
-    
-        Return the name of the default accelerator device on the system.
-    
-    ====================================================================
-    csv(iterable: typing.Iterable):
-    
-        Convert an iterable into a CSV formatted string.
-    
-    ====================================================
+    Command failed: Command 'python ../../../scripts/get_dgenerate_shell_functions.py' returned non-zero exit status 1.
 
 In addition to the dgenerate specific jinja2 functions, some python builtins are available:
 
 .. code-block:: text
 
-    abs(args, kwargs):
-    
-        Return the absolute value of the argument.
-    
-    ==============================================
-    all(args, kwargs):
-    
-        Return True if bool(x) is True for all values x in the iterable.
-    
-        If the iterable is empty, return True.
-    
-    ====================================================================
-    any(args, kwargs):
-    
-        Return True if bool(x) is True for any x in the iterable.
-    
-        If the iterable is empty, return False.
-    
-    =============================================================
-    ascii(args, kwargs):
-    
-        Return an ASCII-only representation of an object.
-    
-        As repr(), return a string containing a printable representation of an object, but escape the non-ASCII
-        characters in the string returned by repr() using \\x, \\u or \\U escapes. This generates a string similar
-        to that returned by repr() in Python 2.
-    
-    ==============================================================================================================
-    bin(args, kwargs):
-    
-        Return the binary representation of an integer.
-    
-        >>> bin(2796202) '0b1010101010101010101010'
-    
-    ===================================================
-    bool(args, kwargs):
-    
-        Returns True when the argument is true, False otherwise. The builtins True and False are the only two
-        instances of the class bool. The class bool is a subclass of the class int, and cannot be subclassed.
-    
-    =========================================================================================================
-    bytearray(args, kwargs):
-    
-        bytearray(iterable_of_ints) -> bytearray bytearray(string, encoding[, errors]) -> bytearray
-        bytearray(bytes_or_buffer) -> mutable copy of bytes_or_buffer bytearray(int) -> bytes array of size given
-        by the parameter initialized with null bytes bytearray() -> empty bytes array
-    
-        Construct a mutable bytearray object from:   - an iterable yielding integers in range(256)   - a text
-        string encoded using the specified encoding   - a bytes or a buffer object   - any object implementing the
-        buffer API.   - an integer
-    
-    ==============================================================================================================
-    bytes(args, kwargs):
-    
-        bytes(iterable_of_ints) -> bytes bytes(string, encoding[, errors]) -> bytes bytes(bytes_or_buffer) ->
-        immutable copy of bytes_or_buffer bytes(int) -> bytes object of size given by the parameter initialized
-        with null bytes bytes() -> empty bytes object
-    
-        Construct an immutable array of bytes from:   - an iterable yielding integers in range(256)   - a text
-        string encoded using the specified encoding   - any object implementing the buffer API.   - an integer
-    
-    ===========================================================================================================
-    callable(args, kwargs):
-    
-        Return whether the object is callable (i.e., some kind of function).
-    
-        Note that classes are callable, as are instances of classes with a __call__() method.
-    
-    =========================================================================================
-    chr(args, kwargs):
-    
-        Return a Unicode string of one character with ordinal i; 0 <= i <= 0x10ffff.
-    
-    ================================================================================
-    complex(args, kwargs):
-    
-        Create a complex number from a string or numbers.
-    
-        If a string is given, parse it as a complex number. If a single number is given, convert it to a complex
-        number. If the 'real' or 'imag' arguments are given, create a complex number with the specified real and
-        imaginary components.
-    
-    ============================================================================================================
-    dict(args, kwargs):
-    
-        dict() -> new empty dictionary dict(mapping) -> new dictionary initialized from a mapping object's
-        (key, value) pairs dict(iterable) -> new dictionary initialized as if via:     d = {}     for k, v in
-        iterable:         d[k] = v dict(**kwargs) -> new dictionary initialized with the name=value pairs     in
-        the keyword argument list.  For example:  dict(one=1, two=2)
-    
-    ============================================================================================================
-    divmod(args, kwargs):
-    
-        Return the tuple (x//y, x%y).  Invariant: div*y + mod == x.
-    
-    ===============================================================
-    enumerate(args, kwargs):
-    
-        Return an enumerate object.
-    
-          iterable     an object supporting iteration
-    
-        The enumerate object yields pairs containing a count (from start, which defaults to zero) and a value
-        yielded by the iterable argument.
-    
-        enumerate is useful for obtaining an indexed list:     (0, seq[0]), (1, seq[1]), (2, seq[2]), ...
-    
-    =========================================================================================================
-    filter(args, kwargs):
-    
-        Return an iterator yielding those items of iterable for which function(item) is true. If function is None,
-        return the items that are true.
-    
-    ==============================================================================================================
-    float(args, kwargs):
-    
-        Convert a string or number to a floating-point number, if possible.
-    
-    =======================================================================
-    format(args, kwargs):
-    
-        Return type(value).__format__(value, format_spec)
-    
-        Many built-in types implement format_spec according to the Format Specification Mini-language. See
-        help('FORMATTING').
-    
-        If type(value) does not supply a method named __format__ and format_spec is empty, then str(value) is
-        returned. See also help('SPECIALMETHODS').
-    
-    =========================================================================================================
-    frozenset(args, kwargs):
-    
-        Build an immutable unordered collection of unique elements.
-    
-    ===============================================================
-    getattr(args, kwargs):
-    
-        getattr(object, name[, default]) -> value
-    
-        Get a named attribute from an object; getattr(x, 'y') is equivalent to x.y. When a default argument is
-        given, it is returned when the attribute doesn't exist; without it, an exception is raised in that case.
-    
-    ============================================================================================================
-    hasattr(args, kwargs):
-    
-        Return whether the object has an attribute with the given name.
-    
-        This is done by calling getattr(obj, name) and catching AttributeError.
-    
-    ===========================================================================
-    hash(args, kwargs):
-    
-        Return the hash value for the given object.
-    
-        Two objects that compare equal must also have the same hash value, but the reverse is not necessarily
-        true.
-    
-    =========================================================================================================
-    hex(args, kwargs):
-    
-        Return the hexadecimal representation of an integer.
-    
-        >>> hex(12648430) '0xc0ffee'
-    
-    ========================================================
-    int(args, kwargs):
-    
-        int([x]) -> integer int(x, base=10) -> integer
-    
-        Convert a number or string to an integer, or return 0 if no arguments are given.  If x is a number, return
-        x.__int__().  For floating-point numbers, this truncates towards zero.
-    
-        If x is not a number or if base is given, then x must be a string, bytes, or bytearray instance
-        representing an integer literal in the given base.  The literal can be preceded by '+' or '-' and be
-        surrounded by whitespace.  The base defaults to 10.  Valid bases are 0 and 2-36. Base 0 means to interpret
-        the base from the string as an integer literal. >>> int('0b100', base=0) 4
-    
-    ==============================================================================================================
-    iter(args, kwargs):
-    
-        iter(iterable) -> iterator iter(callable, sentinel) -> iterator
-    
-        Get an iterator from an object.  In the first form, the argument must supply its own iterator, or be a
-        sequence. In the second form, the callable is called until it returns the sentinel.
-    
-    ==========================================================================================================
-    len(args, kwargs):
-    
-        Return the number of items in a container.
-    
-    ==============================================
-    list(args, kwargs):
-    
-        Built-in mutable sequence.
-    
-        If no argument is given, the constructor creates a new empty list. The argument must be an iterable if
-        specified.
-    
-    ==========================================================================================================
-    map(args, kwargs):
-    
-        Make an iterator that computes the function using arguments from each of the iterables.  Stops when the
-        shortest iterable is exhausted.
-    
-    ===========================================================================================================
-    max(args, kwargs):
-    
-        max(iterable, *[, default=obj, key=func]) -> value max(arg1, arg2, *args, *[, key=func]) -> value
-    
-        With a single iterable argument, return its biggest item. The default keyword-only argument specifies an
-        object to return if the provided iterable is empty. With two or more positional arguments, return the
-        largest argument.
-    
-    ============================================================================================================
-    min(args, kwargs):
-    
-        min(iterable, *[, default=obj, key=func]) -> value min(arg1, arg2, *args, *[, key=func]) -> value
-    
-        With a single iterable argument, return its smallest item. The default keyword-only argument specifies an
-        object to return if the provided iterable is empty. With two or more positional arguments, return the
-        smallest argument.
-    
-    =============================================================================================================
-    next(args, kwargs):
-    
-        next(iterator[, default])
-    
-        Return the next item from the iterator. If default is given and the iterator is exhausted, it is returned
-        instead of raising StopIteration.
-    
-    =============================================================================================================
-    object(args, kwargs):
-    
-        The base class of the class hierarchy.
-    
-        When called, it accepts no arguments and returns a new featureless instance that has no instance
-        attributes and cannot be given any.
-    
-    ====================================================================================================
-    oct(args, kwargs):
-    
-        Return the octal representation of an integer.
-    
-        >>> oct(342391) '0o1234567'
-    
-    ==================================================
-    ord(args, kwargs):
-    
-        Return the Unicode code point for a one-character string.
-    
-    =============================================================
-    pow(args, kwargs):
-    
-        Equivalent to base**exp with 2 arguments or base**exp % mod with 3 arguments
-    
-        Some types, such as ints, are able to use a more efficient algorithm when invoked using the three argument
-        form.
-    
-    ==============================================================================================================
-    range(args, kwargs):
-    
-        range(stop) -> range object range(start, stop[, step]) -> range object
-    
-        Return an object that produces a sequence of integers from start (inclusive) to stop (exclusive) by step.
-        range(i, j) produces i, i+1, i+2, ..., j-1. start defaults to 0, and stop is omitted!  range(4) produces
-        0, 1, 2, 3. These are exactly the valid indices for a list of 4 elements. When step is given, it specifies
-        the increment (or decrement).
-    
-    ==============================================================================================================
-    repr(args, kwargs):
-    
-        Return the canonical string representation of the object.
-    
-        For many object types, including most builtins, eval(repr(obj)) == obj.
-    
-    ===========================================================================
-    reversed(args, kwargs):
-    
-        Return a reverse iterator over the values of the given sequence.
-    
-    ====================================================================
-    round(args, kwargs):
-    
-        Round a number to a given precision in decimal digits.
-    
-        The return value is an integer if ndigits is omitted or None.  Otherwise the return value has the same
-        type as the number.  ndigits may be negative.
-    
-    ==========================================================================================================
-    set(args, kwargs):
-    
-        Build an unordered collection of unique elements.
-    
-    =====================================================
-    slice(args, kwargs):
-    
-        slice(stop) slice(start, stop[, step])
-    
-        Create a slice object.  This is used for extended slicing (e.g. a[0:10:2]).
-    
-    ===============================================================================
-    sorted(args, kwargs):
-    
-        Return a new list containing all items from the iterable in ascending order.
-    
-        A custom key function can be supplied to customize the sort order, and the reverse flag can be set to
-        request the result in descending order.
-    
-    =========================================================================================================
-    str(args, kwargs):
-    
-        str(object='') -> str str(bytes_or_buffer[, encoding[, errors]]) -> str
-    
-        Create a new string object from the given object. If encoding or errors is specified, then the object must
-        expose a data buffer that will be decoded using the given encoding and error handler. Otherwise, returns
-        the result of object.__str__() (if defined) or repr(object). encoding defaults to 'utf-8'. errors defaults
-        to 'strict'.
-    
-    ==============================================================================================================
-    sum(args, kwargs):
-    
-        Return the sum of a 'start' value (default: 0) plus an iterable of numbers
-    
-        When the iterable is empty, return the start value. This function is intended specifically for use with
-        numeric values and may reject non-numeric types.
-    
-    ===========================================================================================================
-    tuple(args, kwargs):
-    
-        Built-in immutable sequence.
-    
-        If no argument is given, the constructor returns an empty tuple. If iterable is specified the tuple is
-        initialized from iterable's items.
-    
-        If the argument is a tuple, the return value is the same object.
-    
-    ==========================================================================================================
-    type(args, kwargs):
-    
-        type(object) -> the object's type type(name, bases, dict, **kwds) -> a new type
-    
-    ===================================================================================
-    zip(args, kwargs):
-    
-        The zip object yields n-length tuples, where n is the number of iterables passed as positional arguments
-        to zip().  The i-th element in every tuple comes from the i-th iterable argument to zip().  This continues
-        until the shortest argument is exhausted.
-    
-        If strict is true and one of the arguments is exhausted before the others, raise a ValueError.
-    
-           >>> list(zip('abcdefg', range(3), range(4)))    [('a', 0, 0), ('b', 1, 1), ('c', 2, 2)]
-    
-    ==============================================================================================================
+    Command failed: Command 'python ../../../scripts/get_builtin_shell_functions.py' returned non-zero exit status 1.
 
 
 Directives, and applying templating

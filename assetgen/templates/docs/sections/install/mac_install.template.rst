@@ -8,7 +8,7 @@ Rendering can be performed in CPU only mode, and with hardware acceleration usin
 The default device on MacOS is ``mps`` unless specified otherwise.
 
 You can install on MacOS by first installing python from the universal ``pkg`` installer
-located at: https://www.python.org/downloads/release/python-3126/
+located at: https://www.python.org/downloads/release/python-3136/
 
 It is also possible to install Python using `homebrew <https://brew.sh/>`_, though tkinter will
 not be available meaning that you cannot run the Console UI.

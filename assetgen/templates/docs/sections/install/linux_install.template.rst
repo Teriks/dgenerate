@@ -43,7 +43,7 @@ When done editing ``~/.bashrc`` do:
     source ~/.bashrc
 
 
-Install Python >=3.10,<3.13 (Debian / Ubuntu) and pipx
+Install Python >=3.11,<3.13 (Debian / Ubuntu) and pipx
 ------------------------------------------------------
 
 .. code-block:: bash
@@ -153,9 +153,9 @@ When specifying any ``--device`` value use ``cuda``, ``cuda:1``, etc. as you wou
 
 You need to first install ROCm support, follow: https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/quick-start.html
 
-Then use: ``--extra-index-url https://download.pytorch.org/whl/rocm6.3/`` when installing via ``pip`` or ``pipx``.
+Then use: ``--extra-index-url https://download.pytorch.org/whl/rocm6.4/`` when installing via ``pip`` or ``pipx``.
 
-Install Python >=3.10,<3.13 (Debian / Ubuntu) and pipx
+Install Python >=3.11,<3.13 (Debian / Ubuntu) and pipx
 ------------------------------------------------------
 
 .. code-block:: bash
@@ -203,17 +203,17 @@ Install dgenerate
     # install with just support for torch
 
     pipx install dgenerate \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm6.3/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm6.4/"
 
     # With NCNN upscaler support
 
     pipx install dgenerate[ncnn] \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm6.3/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm6.4/"
 
     # If you want a specific version
 
     pipx install dgenerate==@VERSION \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm6.3/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm6.4/"
 
 
     # you can attempt to install the pre-release bitsandbytes
@@ -226,11 +226,11 @@ Install dgenerate
 
     # You can install without pipx into your own environment like so
 
-    pip3 install dgenerate==@VERSION --extra-index-url https://download.pytorch.org/whl/rocm6.3/
+    pip3 install dgenerate==@VERSION --extra-index-url https://download.pytorch.org/whl/rocm6.4/
 
     # Or with NCNN
 
-    pip3 install dgenerate[ncnn]==@VERSION --extra-index-url https://download.pytorch.org/whl/rocm6.3/
+    pip3 install dgenerate[ncnn]==@VERSION --extra-index-url https://download.pytorch.org/whl/rocm6.4/
 
 
     # you can attempt to install the pre-release bitsandbytes multiplatform version like so:
