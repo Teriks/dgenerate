@@ -114,7 +114,18 @@ with importlib.resources.open_text(
     sdxl_module_key = f.read().splitlines()
 
 
-def make_diffusers_sdxl_contrtolnet_ppl(block_class):
+def _get_max_timesteps(info_dict: dict) -> int:
+    """
+    Helper function to get the maximum number of timesteps from a pipeline.
+    """
+    pipeline = info_dict['pipeline']
+    if hasattr(pipeline, '_num_timesteps'):
+        return pipeline._num_timesteps
+    else:
+        return len(pipeline.scheduler.timesteps)
+
+
+def make_diffusers_sdxl_controlnet_ppl(block_class):
 
     class sdxl_controlnet_ppl(block_class):
         # Save for unpatching later
@@ -1506,8 +1517,7 @@ def make_diffusers_cross_attn_down_block(block_class: Type[torch.nn.Module]) -> 
             additional_residuals: Optional[torch.FloatTensor] = None,
         ) -> Tuple[torch.FloatTensor, Tuple[torch.FloatTensor, ...]]:
 
-            self.max_timestep = self.info['pipeline']._num_timesteps
-            # self.max_timestep = len(self.info['scheduler'].timesteps)
+            self.max_timestep = _get_max_timesteps(self.info)
             ori_H, ori_W = self.info['size']
             if self.model == 'sd15':
                 if ori_H < 256 or ori_W < 256:
@@ -1639,8 +1649,7 @@ def make_diffusers_cross_attn_up_block(block_class: Type[torch.nn.Module]) -> Ty
             encoder_attention_mask: Optional[torch.FloatTensor] = None,
         ) -> torch.FloatTensor:
 
-            self.max_timestep = self.info['pipeline']._num_timesteps
-            # self.max_timestep = len(self.info['scheduler'].timesteps)
+            self.max_timestep = _get_max_timesteps(self.info)
             ori_H, ori_W = self.info['size']
             if self.model == 'sd15':
                 if ori_H < 256 or ori_W < 256:
@@ -1772,8 +1781,7 @@ def make_diffusers_downsampler_block(block_class: Type[torch.nn.Module]) -> Type
         max_timestep = 50
 
         def forward(self, hidden_states: torch.Tensor, scale = 1.0) -> torch.Tensor:
-            self.max_timestep = self.info['pipeline']._num_timesteps
-            # self.max_timestep = len(self.info['scheduler'].timesteps)
+            self.max_timestep = _get_max_timesteps(self.info)
             ori_H, ori_W = self.info['size']
             if self.model == 'sd15':
                 if ori_H < 256 or ori_W < 256:
@@ -1862,8 +1870,7 @@ def make_diffusers_upsampler_block(block_class: Type[torch.nn.Module]) -> Type[t
         info: dict = None
 
         def forward(self, hidden_states: torch.Tensor, scale = 1.0) -> torch.Tensor:
-            self.max_timestep = self.info['pipeline']._num_timesteps
-            # self.max_timestep = len(self.info['scheduler'].timesteps)
+            self.max_timestep = _get_max_timesteps(self.info)
             ori_H, ori_W = self.info['size']
             if self.model == 'sd15':
                 if ori_H < 256 or ori_W < 256:
@@ -1937,7 +1944,7 @@ def apply_hidiffusion(
         is_playground = False,
         generator: torch.Generator | None = None):
     """
-    model: diffusers model. We support SD 1.5, 2.1, XL, XL Turbo.
+    model: diffusers model. We support SD 1.5, 2.1, XL, XL Turbo, and InstructPix2Pix variants.
 
     apply_raunet: whether to apply RAU-Net
 
@@ -1955,9 +1962,13 @@ def apply_hidiffusion(
         # Check if the pipeline is a ControlNet pipeline
         is_sdxl_controlnet = hasattr(model, 'controlnet') and isinstance_str(model, "StableDiffusionXLControlNet")
         is_sd_controlnet = hasattr(model, 'controlnet') and isinstance_str(model, "StableDiffusionControlNet")
+        
+        # Check if the pipeline is a Pix2Pix pipeline
+        is_sdxl_pix2pix = isinstance_str(model, "StableDiffusionXLInstructPix2Pix")
+        is_sd_pix2pix = isinstance_str(model, "StableDiffusionInstructPix2Pix")
 
         if is_sdxl_controlnet:
-            make_ppl_fn = make_diffusers_sdxl_contrtolnet_ppl
+            make_ppl_fn = make_diffusers_sdxl_controlnet_ppl
             model.__class__ = make_ppl_fn(model.__class__)
 
             make_block_fn = make_diffusers_unet_2d_condition
@@ -1965,6 +1976,11 @@ def apply_hidiffusion(
         elif is_sd_controlnet:
             # For SD 1.5 ControlNet, we don't need to patch the pipeline class
             # Just patch the UNet for consistency
+            make_block_fn = make_diffusers_unet_2d_condition
+            model.unet.__class__ = make_block_fn(model.unet.__class__)
+        elif is_sdxl_pix2pix or is_sd_pix2pix:
+            # For Pix2Pix pipelines, patch the UNet (same as base SD pipelines)
+            # Pix2Pix pipelines use the same UNet architecture as their base models
             make_block_fn = make_diffusers_unet_2d_condition
             model.unet.__class__ = make_block_fn(model.unet.__class__)
 
@@ -1989,6 +2005,7 @@ def apply_hidiffusion(
         'hooks': [],
         'text_to_img_controlnet': hasattr(model, 'controlnet'),
         'is_inpainting_task': model.__class__ in auto_pipeline.AUTO_INPAINT_PIPELINES_MAPPING.values(),
+        'is_pix2pix_task': is_sdxl_pix2pix or is_sd_pix2pix,
         'is_playground': is_playground,
         'pipeline': model
     }
@@ -2069,7 +2086,7 @@ def apply_hidiffusion(
             module.model = 'sdxl_turbo'
             module.info = diffusion_model.info
     else:
-        raise Exception(f'{model.name_or_path} is not a supported model. HiDiffusion now only supports runwayml/stable-diffusion-v1-5, stabilityai/stable-diffusion-2-1-base, stabilityai/stable-diffusion-xl-base-1.0, stabilityai/sdxl-turbo, diffusers/stable-diffusion-xl-1.0-inpainting-0.1 and their derivative models/pipelines.')
+        raise Exception(f'{model.name_or_path} is not a supported model. HiDiffusion now only supports runwayml/stable-diffusion-v1-5, stabilityai/stable-diffusion-2-1-base, stabilityai/stable-diffusion-xl-base-1.0, stabilityai/sdxl-turbo, diffusers/stable-diffusion-xl-1.0-inpainting-0.1, InstructPix2Pix pipelines, and their derivative models/pipelines.')
     return model
 
 

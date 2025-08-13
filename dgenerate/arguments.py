@@ -2122,7 +2122,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                      NOWRAP!
                      See: https://github.com/megvii-research/HiDiffusion
                      
-                     This is supported for --model-type sd, sdxl, and --kolors.
+                     This is supported for --model-type sd, sdxl, kolors, pix2pix, and sdxl-pix2pix.
                      """
         )
     )

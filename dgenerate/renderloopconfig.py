@@ -1679,10 +1679,12 @@ class RenderLoopConfig(_types.SetFromMixin):
             if not (
                     self.model_type == _pipelinewrapper.ModelType.SDXL or
                     self.model_type == _pipelinewrapper.ModelType.KOLORS or
-                    self.model_type == _pipelinewrapper.ModelType.SD):
+                    self.model_type == _pipelinewrapper.ModelType.SD or
+                    self.model_type == _pipelinewrapper.ModelType.PIX2PIX or
+                    self.model_type == _pipelinewrapper.ModelType.SDXL_PIX2PIX):
                 raise RenderLoopConfigError(
                     f'{a_namer("hi_diffusion")} is only supported for '
-                    f'Stable Diffusion, Stable Diffusion XL, and Kolors'
+                    f'Stable Diffusion, Stable Diffusion XL, Kolors, and Pix2Pix models'
                 )
 
             if self.t2i_adapter_uris:

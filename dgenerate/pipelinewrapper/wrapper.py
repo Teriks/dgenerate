@@ -4153,10 +4153,12 @@ class DiffusionPipelineWrapper:
             if not (
                     self.model_type == _enums.ModelType.SDXL or
                     self.model_type == _enums.ModelType.KOLORS or
-                    self.model_type == _enums.ModelType.SD):
+                    self.model_type == _enums.ModelType.SD or
+                    self.model_type == _enums.ModelType.PIX2PIX or
+                    self.model_type == _enums.ModelType.SDXL_PIX2PIX):
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'HiDiffusion is only supported for '
-                    '--model-type sd, sdxl, and kolors'
+                    '--model-type sd, sdxl, kolors, pix2pix, and sdxl-pix2pix'
                 )
 
             if self.t2i_adapter_uris:

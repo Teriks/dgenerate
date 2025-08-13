@@ -356,7 +356,7 @@ Diffusion Model Feature Support Tables
    * - ``pix2pix``
      - ❌
      - ❌
-     - ❌
+     - ✅
      - ✅
      - ❌
      - ❌
@@ -404,7 +404,7 @@ Diffusion Model Feature Support Tables
    * - ``sdxl-pix2pix``
      - ❌
      - ❌
-     - ❌
+     - ✅
      - ✅
      - ❌
      - ❌
