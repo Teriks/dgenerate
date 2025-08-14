@@ -79,7 +79,10 @@ def sdxl_turbo_hidiffusion_key():
 supported_official_model = [
     'runwayml/stable-diffusion-v1-5', 'stabilityai/stable-diffusion-2-1-base',
     'stabilityai/stable-diffusion-xl-base-1.0', 'diffusers/stable-diffusion-xl-1.0-inpainting-0.1',
-    'stabilityai/sdxl-turbo'
+    'stabilityai/sdxl-turbo',
+    # InstructPix2Pix models
+    'timbrooks/instruct-pix2pix',
+    'diffusers/sdxl-instructpix2pix-768'
 ]
 
 
@@ -91,6 +94,12 @@ switching_threshold_ratio_dict = {
     'sdxl_2048': {'T1_ratio': 0.4, 'T2_ratio': 0.0},
     'sdxl_4096': {'T1_ratio': 0.7, 'T2_ratio': 0.3},
     'sdxl_turbo_1024': {'T1_ratio': 0.5, 'T2_ratio': 0.0},
+    # Pix2Pix specific ratios - more conservative to preserve image structure
+    'sd15_pix2pix_1024': {'T1_ratio': 0.3, 'T2_ratio': 0.0},
+    'sd15_pix2pix_2048': {'T1_ratio': 0.6, 'T2_ratio': 0.2},
+    'sdxl_pix2pix_1024': {'T1_ratio': 0.3, 'T2_ratio': 0.0},
+    'sdxl_pix2pix_2048': {'T1_ratio': 0.4, 'T2_ratio': 0.0},
+    'sdxl_pix2pix_4096': {'T1_ratio': 0.6, 'T2_ratio': 0.2},
 }
 
 text_to_img_controlnet_switching_threshold_ratio_dict = {
@@ -103,6 +112,7 @@ aggressive_step = 8
 
 inpainting_is_aggressive_raunet = False
 playground_is_aggressive_raunet = False
+pix2pix_is_aggressive_raunet = True
 
 
 with importlib.resources.open_text(
@@ -1535,14 +1545,30 @@ def make_diffusers_cross_attn_down_block(block_class: Type[torch.nn.Module]) -> 
                         self.aggressive_raunet = inpainting_is_aggressive_raunet
                     elif self.info['is_playground']:
                         self.aggressive_raunet = playground_is_aggressive_raunet
+                    elif self.info['is_pix2pix_task']:
+                        self.aggressive_raunet = pix2pix_is_aggressive_raunet
                     else:
                         self.aggressive_raunet = is_aggressive_raunet
                 else:
                     self.T1_ratio = switching_threshold_ratio_dict['sdxl_4096'][self.switching_threshold_ratio]
             elif self.model == 'sdxl_turbo':
                 self.T1_ratio = switching_threshold_ratio_dict['sdxl_turbo_1024'][self.switching_threshold_ratio]
+            elif self.model == 'sd15_pix2pix':
+                if ori_H < 512 or ori_W < 512:
+                    self.T1_ratio = switching_threshold_ratio_dict['sd15_pix2pix_1024'][self.switching_threshold_ratio]
+                else:
+                    self.T1_ratio = switching_threshold_ratio_dict['sd15_pix2pix_2048'][self.switching_threshold_ratio]
+                self.aggressive_raunet = pix2pix_is_aggressive_raunet
+            elif self.model == 'sdxl_pix2pix':
+                if ori_H < 512 or ori_W < 512:
+                    self.T1_ratio = switching_threshold_ratio_dict['sdxl_pix2pix_1024'][self.switching_threshold_ratio]
+                elif ori_H < 1024 or ori_W < 1024:
+                    self.T1_ratio = switching_threshold_ratio_dict['sdxl_pix2pix_2048'][self.switching_threshold_ratio]
+                else:
+                    self.T1_ratio = switching_threshold_ratio_dict['sdxl_pix2pix_4096'][self.switching_threshold_ratio]
+                self.aggressive_raunet = pix2pix_is_aggressive_raunet
             else:
-                raise Exception("Error model. HiDiffusion now only supports sd15, sd21, sdxl, sdxl-turbo.")
+                raise Exception("Error model. HiDiffusion now only supports sd15, sd21, sdxl, sdxl-turbo, sd15_pix2pix, sdxl_pix2pix.")
 
             if self.aggressive_raunet:
                 # self.T1_start = min(int(self.max_timestep * self.T1_ratio * 0.4), int(8/50 * self.max_timestep))
@@ -1674,8 +1700,22 @@ def make_diffusers_cross_attn_up_block(block_class: Type[torch.nn.Module]) -> Ty
                     self.T1_ratio = switching_threshold_ratio_dict['sdxl_4096'][self.switching_threshold_ratio]
             elif self.model == 'sdxl_turbo':
                 self.T1_ratio = switching_threshold_ratio_dict['sdxl_turbo_1024'][self.switching_threshold_ratio]
+            elif self.model == 'sd15_pix2pix':
+                if ori_H < 512 or ori_W < 512:
+                    self.T1_ratio = switching_threshold_ratio_dict['sd15_pix2pix_1024'][self.switching_threshold_ratio]
+                else:
+                    self.T1_ratio = switching_threshold_ratio_dict['sd15_pix2pix_2048'][self.switching_threshold_ratio]
+                self.aggressive_raunet = pix2pix_is_aggressive_raunet
+            elif self.model == 'sdxl_pix2pix':
+                if ori_H < 512 or ori_W < 512:
+                    self.T1_ratio = switching_threshold_ratio_dict['sdxl_pix2pix_1024'][self.switching_threshold_ratio]
+                elif ori_H < 1024 or ori_W < 1024:
+                    self.T1_ratio = switching_threshold_ratio_dict['sdxl_pix2pix_2048'][self.switching_threshold_ratio]
+                else:
+                    self.T1_ratio = switching_threshold_ratio_dict['sdxl_pix2pix_4096'][self.switching_threshold_ratio]
+                self.aggressive_raunet = pix2pix_is_aggressive_raunet
             else:
-                raise Exception("Error model. HiDiffusion now only supports sd15, sd21, sdxl, sdxl-turbo.")
+                raise Exception("Error model. HiDiffusion now only supports sd15, sd21, sdxl, sdxl-turbo, sd15_pix2pix, sdxl_pix2pix.")
 
             if self.aggressive_raunet:
                 # self.T1_start = min(int(self.max_timestep * self.T1_ratio * 0.4), int(8/50 * self.max_timestep))
@@ -1805,8 +1845,22 @@ def make_diffusers_downsampler_block(block_class: Type[torch.nn.Module]) -> Type
                     self.T1_ratio = switching_threshold_ratio_dict['sdxl_4096'][self.switching_threshold_ratio]
             elif self.model == 'sdxl_turbo':
                 self.T1_ratio = switching_threshold_ratio_dict['sdxl_turbo_1024'][self.switching_threshold_ratio]
+            elif self.model == 'sd15_pix2pix':
+                if ori_H < 512 or ori_W < 512:
+                    self.T1_ratio = switching_threshold_ratio_dict['sd15_pix2pix_1024'][self.switching_threshold_ratio]
+                else:
+                    self.T1_ratio = switching_threshold_ratio_dict['sd15_pix2pix_2048'][self.switching_threshold_ratio]
+                self.aggressive_raunet = pix2pix_is_aggressive_raunet
+            elif self.model == 'sdxl_pix2pix':
+                if ori_H < 512 or ori_W < 512:
+                    self.T1_ratio = switching_threshold_ratio_dict['sdxl_pix2pix_1024'][self.switching_threshold_ratio]
+                elif ori_H < 1024 or ori_W < 1024:
+                    self.T1_ratio = switching_threshold_ratio_dict['sdxl_pix2pix_2048'][self.switching_threshold_ratio]
+                else:
+                    self.T1_ratio = switching_threshold_ratio_dict['sdxl_pix2pix_4096'][self.switching_threshold_ratio]
+                self.aggressive_raunet = pix2pix_is_aggressive_raunet
             else:
-                raise Exception("Error model. HiDiffusion now only supports sd15, sd21, sdxl, sdxl-turbo.")
+                raise Exception("Error model. HiDiffusion now only supports sd15, sd21, sdxl, sdxl-turbo, sd15_pix2pix, sdxl_pix2pix.")
 
             if self.aggressive_raunet:
                 # self.T1 = min(int(self.max_timestep * self.T1_ratio), int(8/50 * self.max_timestep))
@@ -1894,8 +1948,22 @@ def make_diffusers_upsampler_block(block_class: Type[torch.nn.Module]) -> Type[t
                     self.T1_ratio = switching_threshold_ratio_dict['sdxl_4096'][self.switching_threshold_ratio]
             elif self.model == 'sdxl_turbo':
                 self.T1_ratio = switching_threshold_ratio_dict['sdxl_turbo_1024'][self.switching_threshold_ratio]
+            elif self.model == 'sd15_pix2pix':
+                if ori_H < 512 or ori_W < 512:
+                    self.T1_ratio = switching_threshold_ratio_dict['sd15_pix2pix_1024'][self.switching_threshold_ratio]
+                else:
+                    self.T1_ratio = switching_threshold_ratio_dict['sd15_pix2pix_2048'][self.switching_threshold_ratio]
+                self.aggressive_raunet = pix2pix_is_aggressive_raunet
+            elif self.model == 'sdxl_pix2pix':
+                if ori_H < 512 or ori_W < 512:
+                    self.T1_ratio = switching_threshold_ratio_dict['sdxl_pix2pix_1024'][self.switching_threshold_ratio]
+                elif ori_H < 1024 or ori_W < 1024:
+                    self.T1_ratio = switching_threshold_ratio_dict['sdxl_pix2pix_2048'][self.switching_threshold_ratio]
+                else:
+                    self.T1_ratio = switching_threshold_ratio_dict['sdxl_pix2pix_4096'][self.switching_threshold_ratio]
+                self.aggressive_raunet = pix2pix_is_aggressive_raunet
             else:
-                raise Exception("Error model. HiDiffusion now only supports sd15, sd21, sdxl, sdxl-turbo.")
+                raise Exception("Error model. HiDiffusion now only supports sd15, sd21, sdxl, sdxl-turbo, sd15_pix2pix, sdxl_pix2pix.")
 
 
             if self.aggressive_raunet:
@@ -1995,9 +2063,17 @@ def apply_hidiffusion(
         for key, module in diffusion_model.named_modules():
             diffusion_model_module_key.append(key)
         if set(sd15_module_key) < set(diffusion_model_module_key):
-            name_or_path = 'runwayml/stable-diffusion-v1-5'
+            # Check if it's a pix2pix model based on SD 1.5
+            if is_sd_pix2pix:
+                name_or_path = 'timbrooks/instruct-pix2pix'
+            else:
+                name_or_path = 'runwayml/stable-diffusion-v1-5'
         elif set(sdxl_module_key) < set(diffusion_model_module_key):
-            name_or_path = 'stabilityai/stable-diffusion-xl-base-1.0'
+            # Check if it's a pix2pix model based on SDXL
+            if is_sdxl_pix2pix:
+                name_or_path = 'diffusers/sdxl-instructpix2pix-768'
+            else:
+                name_or_path = 'stabilityai/stable-diffusion-xl-base-1.0'
 
     diffusion_model.info = {
         'size': None,
@@ -2012,81 +2088,87 @@ def apply_hidiffusion(
     model.info = diffusion_model.info
     hook_diffusion_model(diffusion_model)
 
+    # Helper function to apply hidiffusion patches to modules
+    def apply_hidiffusion_patches(diffusion_model, modified_key, model_type, apply_raunet, apply_window_attn, generator):
+        for key, module in diffusion_model.named_modules():
+            if model_type in ['sd15', 'sd15_pix2pix']:
+                # SD 1.5 style patching
+                if apply_raunet and key in modified_key['down_module_key']:
+                    make_block_fn = make_diffusers_downsampler_block
+                    module.__class__ = make_block_fn(module.__class__)
+                    module.switching_threshold_ratio = 'T1_ratio'
+                if apply_raunet and key in modified_key['down_module_key_extra']:
+                    make_block_fn = make_diffusers_cross_attn_down_block
+                    module.__class__ = make_block_fn(module.__class__)
+                    module.switching_threshold_ratio = 'T2_ratio'
+                if apply_raunet and key in modified_key['up_module_key']:
+                    make_block_fn = make_diffusers_upsampler_block
+                    module.__class__ = make_block_fn(module.__class__)
+                    module.switching_threshold_ratio = 'T1_ratio'
+                if apply_raunet and key in modified_key['up_module_key_extra']:
+                    make_block_fn = make_diffusers_cross_attn_up_block
+                    module.__class__ = make_block_fn(module.__class__)
+                    module.switching_threshold_ratio = 'T2_ratio'
+            elif model_type in ['sdxl', 'sdxl_pix2pix']:
+                # SDXL style patching
+                if apply_raunet and key in modified_key['down_module_key']:
+                    make_block_fn = make_diffusers_cross_attn_down_block
+                    module.__class__ = make_block_fn(module.__class__)
+                    module.switching_threshold_ratio = 'T1_ratio'
+                if apply_raunet and key in modified_key['down_module_key_extra']:
+                    make_block_fn = make_diffusers_downsampler_block
+                    module.__class__ = make_block_fn(module.__class__)
+                    module.switching_threshold_ratio = 'T2_ratio'
+                if apply_raunet and key in modified_key['up_module_key']:
+                    make_block_fn = make_diffusers_cross_attn_up_block
+                    module.__class__ = make_block_fn(module.__class__)
+                    module.switching_threshold_ratio = 'T1_ratio'
+                if apply_raunet and key in modified_key['up_module_key_extra']:
+                    make_block_fn = make_diffusers_upsampler_block
+                    module.__class__ = make_block_fn(module.__class__)
+                    module.switching_threshold_ratio = 'T2_ratio'
+            elif model_type == 'sdxl_turbo':
+                # SDXL Turbo style patching (simplified)
+                if apply_raunet and key in modified_key['down_module_key']:
+                    make_block_fn = make_diffusers_cross_attn_down_block
+                    module.__class__ = make_block_fn(module.__class__)
+                    module.switching_threshold_ratio = 'T1_ratio'
+                if apply_raunet and key in modified_key['up_module_key']:
+                    make_block_fn = make_diffusers_cross_attn_up_block
+                    module.__class__ = make_block_fn(module.__class__)
+                    module.switching_threshold_ratio = 'T1_ratio'
+            
+            # Apply window attention for all model types (if available in keys)
+            if apply_window_attn and 'windown_attn_module_key' in modified_key and key in modified_key['windown_attn_module_key']:
+                make_block_fn = make_diffusers_transformer_block
+                module.__class__ = make_block_fn(module.__class__, generator)
+            
+            module.model = model_type
+            module.info = diffusion_model.info
+
+    # Apply patches based on model type
     if name_or_path in ['runwayml/stable-diffusion-v1-5', 'stabilityai/stable-diffusion-2-1-base']:
-        modified_key = sd15_hidiffusion_key()
-        for key, module in diffusion_model.named_modules():
-            if apply_raunet and key in modified_key['down_module_key']:
-                make_block_fn = make_diffusers_downsampler_block
-                module.__class__ = make_block_fn(module.__class__)
-                module.switching_threshold_ratio = 'T1_ratio'
-            if apply_raunet and key in modified_key['down_module_key_extra']:
-                make_block_fn = make_diffusers_cross_attn_down_block
-                module.__class__ = make_block_fn(module.__class__)
-                module.switching_threshold_ratio = 'T2_ratio'
-            if apply_raunet and key in modified_key['up_module_key']:
-                make_block_fn = make_diffusers_upsampler_block
-                module.__class__ = make_block_fn(module.__class__)
-                module.switching_threshold_ratio = 'T1_ratio'
-            if apply_raunet and key in modified_key['up_module_key_extra']:
-                make_block_fn = make_diffusers_cross_attn_up_block
-                module.__class__ = make_block_fn(module.__class__)
-                module.switching_threshold_ratio = 'T2_ratio'
-            if apply_window_attn and key in modified_key['windown_attn_module_key']:
-                make_block_fn = make_diffusers_transformer_block
-                module.__class__ = make_block_fn(module.__class__, generator)
-            module.model = 'sd15'
-            module.info = diffusion_model.info
-
+        apply_hidiffusion_patches(diffusion_model, sd15_hidiffusion_key(), 'sd15', apply_raunet, apply_window_attn, generator)
+    elif name_or_path == 'timbrooks/instruct-pix2pix':
+        apply_hidiffusion_patches(diffusion_model, sd15_hidiffusion_key(), 'sd15_pix2pix', apply_raunet, apply_window_attn, generator)
     elif name_or_path in ['stabilityai/stable-diffusion-xl-base-1.0', 'diffusers/stable-diffusion-xl-1.0-inpainting-0.1']:
-        modified_key = sdxl_hidiffusion_key()
-        for key, module in diffusion_model.named_modules():
-            if apply_raunet and key in modified_key['down_module_key']:
-                make_block_fn = make_diffusers_cross_attn_down_block
-                module.__class__ = make_block_fn(module.__class__)
-                module.switching_threshold_ratio = 'T1_ratio'
-
-            if apply_raunet and key in modified_key['down_module_key_extra']:
-                make_block_fn = make_diffusers_downsampler_block
-                module.__class__ = make_block_fn(module.__class__)
-                module.switching_threshold_ratio = 'T2_ratio'
-
-            if apply_raunet and key in modified_key['up_module_key']:
-                make_block_fn = make_diffusers_cross_attn_up_block
-                module.__class__ = make_block_fn(module.__class__)
-                module.switching_threshold_ratio = 'T1_ratio'
-
-            if apply_raunet and key in modified_key['up_module_key_extra']:
-                make_block_fn = make_diffusers_upsampler_block
-                module.__class__ = make_block_fn(module.__class__)
-                module.switching_threshold_ratio = 'T2_ratio'
-
-            if apply_window_attn and key in modified_key['windown_attn_module_key']:
-                make_block_fn = make_diffusers_transformer_block
-                module.__class__ = make_block_fn(module.__class__, generator)
-            module.model = 'sdxl'
-            module.info = diffusion_model.info
-
+        apply_hidiffusion_patches(diffusion_model, sdxl_hidiffusion_key(), 'sdxl', apply_raunet, apply_window_attn, generator)
+    elif name_or_path == 'diffusers/sdxl-instructpix2pix-768':
+        apply_hidiffusion_patches(diffusion_model, sdxl_hidiffusion_key(), 'sdxl_pix2pix', apply_raunet, apply_window_attn, generator)
     elif name_or_path == 'stabilityai/sdxl-turbo':
-        modified_key = sdxl_turbo_hidiffusion_key()
-        for key, module in diffusion_model.named_modules():
-            if apply_raunet and key in modified_key['down_module_key']:
-                make_block_fn = make_diffusers_cross_attn_down_block
-                module.__class__ = make_block_fn(module.__class__)
-                module.switching_threshold_ratio = 'T1_ratio'
+        apply_hidiffusion_patches(diffusion_model, sdxl_turbo_hidiffusion_key(), 'sdxl_turbo', apply_raunet, apply_window_attn, generator)
 
-            if apply_raunet and key in modified_key['up_module_key']:
-                make_block_fn = make_diffusers_cross_attn_up_block
-                module.__class__ = make_block_fn(module.__class__)
-                module.switching_threshold_ratio = 'T1_ratio'
-
-            if apply_window_attn and key in modified_key['windown_attn_module_key']:
-                make_block_fn = make_diffusers_transformer_block
-                module.__class__ = make_block_fn(module.__class__, generator)
-
-            module.model = 'sdxl_turbo'
-            module.info = diffusion_model.info
     else:
-        raise Exception(f'{model.name_or_path} is not a supported model. HiDiffusion now only supports runwayml/stable-diffusion-v1-5, stabilityai/stable-diffusion-2-1-base, stabilityai/stable-diffusion-xl-base-1.0, stabilityai/sdxl-turbo, diffusers/stable-diffusion-xl-1.0-inpainting-0.1, InstructPix2Pix pipelines, and their derivative models/pipelines.')
+        raise Exception(
+            f'{model.name_or_path} is not a supported model. '
+            f'HiDiffusion now only supports runwayml/stable-diffusion-v1-5, '
+            f'stabilityai/stable-diffusion-2-1-base, '
+            f'stabilityai/stable-diffusion-xl-base-1.0, '
+            f'stabilityai/sdxl-turbo, diffusers/stable-diffusion-xl-1.0-inpainting-0.1, '
+            f'timbrooks/instruct-pix2pix, '
+            f'diffusers/sdxl-instructpix2pix-768, and their derivative models/pipelines.'
+        )
+
     return model
 
 
