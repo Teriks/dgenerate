@@ -1,15 +1,17 @@
 import torch
 
 
-def isinstance_str(x: object, cls_name: str):
+def isinstance_str(x: object, cls_name: str, prefix: bool = False):
     """
-    Checks whether x has any class *named* cls_name in its ancestry.
+    Checks whether x has any class equal to or prefixed with cls_name in its ancestry.
     Doesn't require access to the class's implementation.
     
     Useful for patching!
     """
 
     for _cls in x.__class__.__mro__:
+        if _cls.__name__.startswith(cls_name) and prefix:
+            return True
         if _cls.__name__ == cls_name:
             return True
     
