@@ -36,6 +36,7 @@ import torch
 import dgenerate.eval as _eval
 import dgenerate.extras.asdff.base as _asdff_base
 import dgenerate.extras.hidiffusion as _hidiffusion
+import dgenerate.extras.sada.patch as _sada
 import dgenerate.extras.teacache.teacache_flux as _teacache_flux
 import dgenerate.hfhub as _hfhub
 import dgenerate.image as _image
@@ -49,6 +50,7 @@ import dgenerate.pipelinewrapper.help as _help
 import dgenerate.pipelinewrapper.pipelines as _pipelines
 import dgenerate.pipelinewrapper.schedulers as _schedulers
 import dgenerate.pipelinewrapper.uris as _uris
+import dgenerate.pipelinewrapper.util as _util
 import dgenerate.prompt as _prompt
 import dgenerate.promptweighters as _promptweighters
 import dgenerate.textprocessing as _textprocessing
@@ -69,7 +71,7 @@ class _InpaintCropInfo:
     This object stores all necessary information to apply inpaint crop pasting
     after the diffusion process completes.
     """
-    
+
     def __init__(self,
                  original_images: list[PIL.Image.Image],
                  original_masks: list[PIL.Image.Image] | None,
@@ -90,7 +92,7 @@ class _InpaintCropInfo:
         self.crop_bounds = crop_bounds
         self.use_masked = use_masked
         self.feather = feather
-    
+
     def __repr__(self) -> str:
         return (f"_InpaintCropInfo(original_images={len(self.original_images)}, "
                 f"crop_bounds={self.crop_bounds}, use_masked={self.use_masked}, "
@@ -298,6 +300,66 @@ def _hi_diffusion(
             _messages.debug_log(
                 f'Disabling HiDiffusion on pipeline: {pipeline.__class__.__name__}')
             _hidiffusion.remove_hidiffusion(pipeline)
+
+
+@contextlib.contextmanager
+def _sada_context(
+        pipeline,
+        width: int,
+        height: int,
+        enabled: bool,
+        max_downsample: int = 1,
+        sx: int = 2,
+        sy: int = 2,
+        acc_range_start: int = 10,
+        acc_range_end: int = 47,
+        lagrange_term: int = 0,
+        lagrange_int: int | None = None,
+        lagrange_step: int | None = None,
+        max_fix: int = 5 * 1024,
+        max_interval: int = 4,
+
+):
+    """
+    Context manager for SADA (Stability-guided Adaptive Diffusion Acceleration).
+    """
+    try:
+        if enabled:
+            # Calculate latent size for transformer models (SD3, Flux)
+            latent_size = None
+            if hasattr(pipeline, 'transformer'):
+                # For Flux and other transformer models, calculate latent size based on width/height
+                # Based on sada-icml examples: latent_size = (height // 16, width // 16)
+                latent_size = (height // 16, width // 16)
+
+            def debug_message(args = locals()):
+                args.pop('pipeline')
+                return f'Enabling SADA on pipeline: {pipeline.__class__.__name__}, Args: {args}'
+
+            _messages.debug_log(debug_message)
+
+            _sada.apply_patch(
+                pipeline,
+                max_downsample=max_downsample,
+                sx=sx,
+                sy=sy,
+                latent_size=latent_size,
+                acc_range=(acc_range_start, acc_range_end),
+                lagrange_term=lagrange_term,
+                lagrange_int=lagrange_int,
+                lagrange_step=lagrange_step,
+                max_fix=max_fix,
+                max_interval=max_interval
+            )
+
+        yield
+    except _sada.exceptions.SADAUnsupportedError as e:
+        raise _pipelines.UnsupportedPipelineConfigError(str(e)) from e
+    finally:
+        if enabled:
+            _messages.debug_log(
+                f'Disabling SADA on pipeline: {pipeline.__class__.__name__}')
+            _sada.remove_patch(pipeline)
 
 
 @contextlib.contextmanager
@@ -589,7 +651,8 @@ class DiffusionPipelineWrapper:
             'transformer',
             'text_encoder',
             'text_encoder_2',
-            'text_encoder_3'
+            'text_encoder_3',
+            'controlnet'
         ]
 
         if quantizer_map is not None:
@@ -701,6 +764,11 @@ class DiffusionPipelineWrapper:
             for adetailer_detector_uri in adetailer_detector_uris:
                 self._parsed_adetailer_detector_uris.append(
                     _uris.AdetailerDetectorUri.parse(adetailer_detector_uri))
+
+        # storage for determination of render width/height
+
+        self._inference_width = None
+        self._inference_height = None
 
     @property
     def prompt_weighter_loader(self) -> _promptweighters.PromptWeighterLoader:
@@ -1323,19 +1391,19 @@ class DiffusionPipelineWrapper:
 
         return image
 
-    def _apply_inpaint_crop(self, 
-                           images: list[PIL.Image.Image], 
-                           masks: list[PIL.Image.Image],
-                           control_images: list[PIL.Image.Image] | None,
-                           padding: int | tuple[int, int] | tuple[int, int, int, int],
-                           decoded_latents: bool,
-                           user_args: DiffusionArguments) \
-        -> tuple[
-            list[PIL.Image.Image],
-            list[PIL.Image.Image],
-            list[PIL.Image.Image] | None,
-            tuple[int, int, int, int]
-        ]:
+    def _apply_inpaint_crop(self,
+                            images: list[PIL.Image.Image],
+                            masks: list[PIL.Image.Image],
+                            control_images: list[PIL.Image.Image] | None,
+                            padding: int | tuple[int, int] | tuple[int, int, int, int],
+                            decoded_latents: bool,
+                            user_args: DiffusionArguments) \
+            -> tuple[
+                list[PIL.Image.Image],
+                list[PIL.Image.Image],
+                list[PIL.Image.Image] | None,
+                tuple[int, int, int, int]
+            ]:
         """
         Crop images, masks, and control images to mask bounds with padding.
         
@@ -1351,17 +1419,17 @@ class DiffusionPipelineWrapper:
             raise _pipelines.UnsupportedPipelineConfigError(
                 "Cannot apply inpaint crop without masks."
             )
-        
+
         # Calculate bounds for the single mask
         crop_bounds = _image.find_mask_bounds(masks[0], padding)
         if crop_bounds is None:
             raise _pipelines.UnsupportedPipelineConfigError(
                 "No white pixels found in mask for inpaint crop."
             )
-        
+
         cropped_images = [images[0].crop(crop_bounds)]
         cropped_masks = [masks[0].crop(crop_bounds)]
-        
+
         cropped_control_images = None
         if control_images:
             cropped_control_images = [control_images[0].crop(crop_bounds)]
@@ -1381,15 +1449,15 @@ class DiffusionPipelineWrapper:
 
         # Since we only allow single images with inpaint_crop, 
         # we'll always have exactly one set of bounds
-        
+
         return cropped_images, cropped_masks, cropped_control_images, crop_bounds
 
     def _paste_inpaint_result(self,
-                             original_images: list[PIL.Image.Image],
-                             generated_images: list[PIL.Image.Image],
-                             crop_bounds: tuple[int, int, int, int],
-                             masks: list[PIL.Image.Image] = None,
-                             feather: int = None) -> list[PIL.Image.Image]:
+                              original_images: list[PIL.Image.Image],
+                              generated_images: list[PIL.Image.Image],
+                              crop_bounds: tuple[int, int, int, int],
+                              masks: list[PIL.Image.Image] = None,
+                              feather: int = None) -> list[PIL.Image.Image]:
         """
         Paste generated images back onto original images at crop bounds.
         
@@ -1401,22 +1469,23 @@ class DiffusionPipelineWrapper:
         :return: List of images with generated content pasted back
         """
         result_images = []
-        
+
         for i, generated in enumerate(generated_images):
             # Since inpaint_crop doesn't support batching, map generated images to the single original
             original = original_images[0]
             background_image = original.copy()
-            
+
             # Use the single crop bounds for all generated images
-            
+
             # Resize generated image to fit the crop bounds
             crop_size = (crop_bounds[2] - crop_bounds[0], crop_bounds[3] - crop_bounds[1])
-            
+
             if generated.size != crop_size:
-                _messages.debug_log(f'Inpaint crop paste: Resizing generated image {i} from {generated.size} to {crop_size} for bounds {crop_bounds}')
+                _messages.debug_log(
+                    f'Inpaint crop paste: Resizing generated image {i} from {generated.size} to {crop_size} for bounds {crop_bounds}')
                 resampling = _image.best_pil_resampling(generated.size, crop_size)
                 generated = generated.resize(crop_size, resampling)
-            
+
             if feather is not None:
                 # Use feathered pasting
                 background_image = _image.paste_with_feather(
@@ -1429,24 +1498,24 @@ class DiffusionPipelineWrapper:
             elif masks:
                 # Use masked pasting (single mask since we don't support batching)
                 mask = masks[0]
-                
+
                 # Crop and resize mask to match generated image size
                 cropped_mask = mask.crop(crop_bounds)
                 if cropped_mask.size != crop_size:
                     mask_resampling = _image.best_pil_resampling(cropped_mask.size, crop_size)
                     cropped_mask = cropped_mask.resize(crop_size, mask_resampling)
-                
+
                 # Convert to grayscale if needed
                 if cropped_mask.mode != 'L':
                     cropped_mask = cropped_mask.convert('L')
-                
+
                 background_image.paste(generated, crop_bounds, cropped_mask)
             else:
                 # Simple paste without transparency
                 background_image.paste(generated, crop_bounds)
-            
+
             result_images.append(background_image)
-        
+
         return result_images
 
     def _set_pipeline_strength(self, user_args: DiffusionArguments, pipeline_args: dict[str, typing.Any]):
@@ -1504,9 +1573,11 @@ class DiffusionPipelineWrapper:
                 f'only {controlnet_uris_cnt} ControlNet URIs. The amount of '
                 f'control guidance images must be equal to the amount of ControlNet URIs.')
 
-        # Set width and height based on control images
-        pipeline_args['width'] = control_images[0].width
-        pipeline_args['height'] = control_images[0].height
+        self._set_pipe_dimensions(
+            None, None,
+            control_images[0].width, control_images[0].height,
+            pipeline_args
+        )
 
         sdxl_cn_union = _enums.model_type_is_sdxl(self._model_type) and \
                         any(p.mode is not None for p in self._parsed_controlnet_uris)
@@ -1582,9 +1653,11 @@ class DiffusionPipelineWrapper:
         if _enums.model_type_is_sdxl(self.model_type) and user_args.sdxl_t2i_adapter_factor is not None:
             pipeline_args['adapter_conditioning_factor'] = user_args.sdxl_t2i_adapter_factor
 
-        # Set width and height based on control images
-        pipeline_args['width'] = adapter_control_images[0].width
-        pipeline_args['height'] = adapter_control_images[0].height
+        self._set_pipe_dimensions(
+            None, None,
+            adapter_control_images[0].width, adapter_control_images[0].height,
+            pipeline_args
+        )
 
         if self._pipeline_type == _enums.PipelineType.TXT2IMG:
             pipeline_args['image'] = adapter_control_images
@@ -1646,13 +1719,57 @@ class DiffusionPipelineWrapper:
 
         return inputs
 
+    # noinspection PyMethodMayBeStatic
+    def _aligned_8_user_dimensions(self, user_args: DiffusionArguments):
+        if user_args.height is not None:
+            if user_args.height % 8 != 0:
+                user_height = user_args.height - (user_args.height % 8)
+            else:
+                user_height = user_args.height
+        else:
+            user_height = None
+
+        if user_args.width is not None:
+            if user_args.width % 8 != 0:
+                user_width = user_args.width - (user_args.width % 8)
+            else:
+                user_width = user_args.width
+        else:
+            user_width = None
+
+        return user_width, user_height
+
+    def _set_pipe_dimensions(
+            self,
+            user_width: int | None,
+            user_height: int | None,
+            inference_width: int | None,
+            inference_height: int | None,
+            pipeline_args: dict | None = None
+    ):
+        width = user_width if user_width is not None else inference_width
+        height = user_height if user_height is not None else inference_height
+
+        self._inference_width = width
+        self._inference_height = height
+
+        if pipeline_args is not None:
+            pipeline_args['width'] = width
+            pipeline_args['height'] = height
+
     # noinspection PyUnresolvedReferences,PyTypeChecker
     def _set_pipeline_img2img_defaults(self, user_args: DiffusionArguments, pipeline_args: dict[str, typing.Any]):
-
+        user_width, user_height = self._aligned_8_user_dimensions(user_args)
         image_arg_inputs = self._get_pipeline_img2img_inputs(user_args)
-
         non_latent_input = not _torchutil.is_tensor(image_arg_inputs[0])
 
+        # Calculate dimensions once for reuse
+        if not non_latent_input:
+            inference_width, inference_height = self.get_decoded_latents_size(image_arg_inputs[0])
+        else:
+            inference_width, inference_height = image_arg_inputs[0].width, image_arg_inputs[0].height
+
+        # Handle special model type configurations
         floyd_og_image_needed = (self._pipeline_type == _enums.PipelineType.INPAINT and
                                  _enums.model_type_is_floyd_ifs(self._model_type)
                                  ) or (self._model_type == _enums.ModelType.IFS_IMG2IMG)
@@ -1664,11 +1781,27 @@ class DiffusionPipelineWrapper:
                     '"floyd_image" being the output of a previous floyd stage.')
             pipeline_args['original_image'] = image_arg_inputs
             pipeline_args['image'] = user_args.floyd_image
+            self._set_pipe_dimensions(
+                user_width, user_height,
+                inference_width, inference_height
+            )
+
         elif self._model_type == _enums.ModelType.S_CASCADE:
             pipeline_args['images'] = image_arg_inputs
+            # Stable cascade output dimension will not be based on the image input for img2img
+            self._set_pipe_dimensions(
+                user_width, user_height,
+                _constants.DEFAULT_S_CASCADE_OUTPUT_WIDTH, _constants.DEFAULT_S_CASCADE_OUTPUT_HEIGHT
+            )
         else:
             pipeline_args['image'] = image_arg_inputs
+            # Set dimensions for general img2img case - will be used unless overridden later
+            self._set_pipe_dimensions(
+                user_width, user_height,
+                inference_width, inference_height
+            )
 
+        # Handle model-specific settings
         def check_no_image_seed_strength():
             if user_args.image_seed_strength is not None:
                 _messages.warning(
@@ -1680,10 +1813,7 @@ class DiffusionPipelineWrapper:
         if _enums.model_type_is_upscaler(self._model_type):
             if self._model_type == _enums.ModelType.UPSCALER_X4:
                 pipeline_args['noise_level'] = int(
-                    _types.default(
-                        user_args.upscaler_noise_level,
-                        _constants.DEFAULT_X4_UPSCALER_NOISE_LEVEL
-                    )
+                    _types.default(user_args.upscaler_noise_level, _constants.DEFAULT_X4_UPSCALER_NOISE_LEVEL)
                 )
             check_no_image_seed_strength()
         elif self._model_type == _enums.ModelType.FLUX_FILL:
@@ -1691,46 +1821,33 @@ class DiffusionPipelineWrapper:
         elif self._model_type == _enums.ModelType.IFS:
             if self._pipeline_type != _enums.PipelineType.INPAINT:
                 pipeline_args['noise_level'] = int(
-                    _types.default(
-                        user_args.upscaler_noise_level,
-                        _constants.DEFAULT_FLOYD_SUPERRESOLUTION_NOISE_LEVEL
-                    )
+                    _types.default(user_args.upscaler_noise_level, _constants.DEFAULT_FLOYD_SUPERRESOLUTION_NOISE_LEVEL)
                 )
                 check_no_image_seed_strength()
             else:
                 pipeline_args['noise_level'] = int(
-                    _types.default(
-                        user_args.upscaler_noise_level,
-                        _constants.DEFAULT_FLOYD_SUPERRESOLUTION_INPAINT_NOISE_LEVEL
-                    )
+                    _types.default(user_args.upscaler_noise_level,
+                                   _constants.DEFAULT_FLOYD_SUPERRESOLUTION_INPAINT_NOISE_LEVEL)
                 )
                 self._set_pipeline_strength(user_args, pipeline_args)
         elif self._model_type == _enums.ModelType.IFS_IMG2IMG:
             pipeline_args['noise_level'] = int(
-                _types.default(
-                    user_args.upscaler_noise_level,
-                    _constants.DEFAULT_FLOYD_SUPERRESOLUTION_IMG2IMG_NOISE_LEVEL
-                )
+                _types.default(user_args.upscaler_noise_level,
+                               _constants.DEFAULT_FLOYD_SUPERRESOLUTION_IMG2IMG_NOISE_LEVEL)
             )
             self._set_pipeline_strength(user_args, pipeline_args)
-        elif not _enums.model_type_is_pix2pix(self._model_type) and \
-                self._model_type != _enums.ModelType.S_CASCADE:
+        elif not _enums.model_type_is_pix2pix(self._model_type) and self._model_type != _enums.ModelType.S_CASCADE:
             self._set_pipeline_strength(user_args, pipeline_args)
         else:
             check_no_image_seed_strength()
 
+        # Handle mask images
         mask_images = user_args.mask_images
-
         if mask_images is not None:
-            # Resize mask images to user-specified dimensions (includes RGB conversion)
             self._validate_images_all_same_size('inpaint mask images', mask_images)
             mask_images = self._resize_images_to_user_dimensions(mask_images, user_args)
 
-            if non_latent_input:
-                images_size = image_arg_inputs[0].size
-            else:
-                images_size = self.get_decoded_latents_size(image_arg_inputs[0])
-
+            images_size = (inference_width, inference_height)
             if mask_images[0].size != images_size:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     f'Image seed img2img images and inpaint masks must '
@@ -1740,52 +1857,30 @@ class DiffusionPipelineWrapper:
 
             pipeline_args['mask_image'] = mask_images
 
-            if not (_enums.model_type_is_floyd(self._model_type) or
-                    _enums.model_type_is_sd3(self._model_type)):
-                if non_latent_input:
-                    pipeline_args['width'] = image_arg_inputs[0].width
-                    pipeline_args['height'] = image_arg_inputs[0].height
-                else:
-                    # For tensors, dimensions are encoded in the tensor itself
-                    # Only set width/height if user explicitly provided them
-                    if user_args.width is not None:
-                        pipeline_args['width'] = user_args.width
-                    if user_args.height is not None:
-                        pipeline_args['height'] = user_args.height
+            if not (_enums.model_type_is_floyd(self._model_type) or _enums.model_type_is_sd3(self._model_type)):
+                # Override dimensions for masked models
+                self._set_pipe_dimensions(
+                    user_width, user_height,
+                    inference_width, inference_height,
+                    pipeline_args
+                )
 
+        # Handle adetailer (auto-generated masks)
         if self._parsed_adetailer_detector_uris:
-            # inpainting pipeline, just no mask
-            # because it is auto generated
             if not _enums.model_type_is_sd3(self._model_type):
-                if non_latent_input:
-                    pipeline_args['width'] = image_arg_inputs[0].width
-                    pipeline_args['height'] = image_arg_inputs[0].height
-                else:
-                    # For tensors, dimensions are encoded in the tensor itself
-                    # Only set width/height if user explicitly provided them
-                    if user_args.width is not None:
-                        pipeline_args['width'] = user_args.width
-                    if user_args.height is not None:
-                        pipeline_args['height'] = user_args.height
+                # Override dimensions for adetailer
+                self._set_pipe_dimensions(
+                    user_width, user_height,
+                    inference_width, inference_height,
+                    pipeline_args
+                )
 
-        if self._model_type == _enums.ModelType.SDXL_PIX2PIX:
-            if non_latent_input:
-                pipeline_args['width'] = image_arg_inputs[0].width
-                pipeline_args['height'] = image_arg_inputs[0].height
-            else:
-                # For tensors, dimensions are encoded in the tensor itself
-                # Only set width/height if user explicitly provided them
-                if user_args.width is not None:
-                    pipeline_args['width'] = user_args.width
-                if user_args.height is not None:
-                    pipeline_args['height'] = user_args.height
-
-        elif self._model_type == _enums.ModelType.UPSCALER_X2:
+        # Handle specific model types that need special dimension handling
+        if self._model_type == _enums.ModelType.UPSCALER_X2:
             image_arg_inputs = list(image_arg_inputs)
             pipeline_args['image'] = image_arg_inputs
 
             if non_latent_input:
-                # Only resize PIL Images, not tensors
                 for idx, image in enumerate(image_arg_inputs):
                     if not _image.is_aligned(image.size, 64):
                         size = _image.align_by(image.size, 64)
@@ -1795,29 +1890,34 @@ class DiffusionPipelineWrapper:
                         )
                         image_arg_inputs[idx] = _image.resize_image(image, size)
 
+            self._set_pipe_dimensions(
+                None, None,
+                image_arg_inputs[0].width, image_arg_inputs[0].height
+            )
+
         elif self._model_type == _enums.ModelType.S_CASCADE:
-            # stable cascade uses an image encoder, so the concept
-            # from the image is copied, it is not used as a noise seed
+            # Validate output dimensions for stable cascade
+            if user_width and user_width > 0 and not (user_width % 128) == 0:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'Stable Cascade requires an output dimension that is aligned by 128.')
+            if user_height and user_height > 0 and not (user_height % 128) == 0:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'Stable Cascade requires an output dimension that is aligned by 128.')
 
-            # Validate output dimensions for both PIL and tensor inputs
-            if user_args.width and user_args.width > 0:
-                if not (user_args.width % 128) == 0:
-                    raise _pipelines.UnsupportedPipelineConfigError(
-                        'Stable Cascade requires an output dimension that is aligned by 128.')
+            # Override with cascade defaults and set both pipeline and inference dimensions
+            cascade_width = _types.default(user_width, _constants.DEFAULT_S_CASCADE_OUTPUT_WIDTH)
+            cascade_height = _types.default(user_height, _constants.DEFAULT_S_CASCADE_OUTPUT_HEIGHT)
 
-            if user_args.height and user_args.height > 0:
-                if not (user_args.height % 128) == 0:
-                    raise _pipelines.UnsupportedPipelineConfigError(
-                        'Stable Cascade requires an output dimension that is aligned by 128.')
-
-            pipeline_args['width'] = _types.default(
-                user_args.width, _constants.DEFAULT_S_CASCADE_OUTPUT_WIDTH)
-            pipeline_args['height'] = _types.default(
-                user_args.height, _constants.DEFAULT_S_CASCADE_OUTPUT_HEIGHT)
+            self._set_pipe_dimensions(
+                None, None,
+                cascade_width, cascade_height,
+                pipeline_args
+            )
 
         elif self._model_type == _enums.ModelType.SD3:
             image_arg_inputs = list(image_arg_inputs)
             pipeline_args['image'] = image_arg_inputs
+
             if non_latent_input:
                 for idx, image in enumerate(image_arg_inputs):
                     if not _image.is_aligned(image.size, 16):
@@ -1828,8 +1928,12 @@ class DiffusionPipelineWrapper:
                         )
                         image_arg_inputs[idx] = _image.resize_image(image, size)
 
-                pipeline_args['width'] = image_arg_inputs[0].width
-                pipeline_args['height'] = image_arg_inputs[0].height
+                # Use image dimensions for SD3, already sized per user
+                self._set_pipe_dimensions(
+                    None, None,
+                    image_arg_inputs[0].width, image_arg_inputs[0].height,
+                    pipeline_args
+                )
 
             if mask_images:
                 mask_images = list(mask_images)
@@ -1844,58 +1948,58 @@ class DiffusionPipelineWrapper:
                         )
                         mask_images[idx] = _image.resize_image(image, size)
 
-                pipeline_args['width'] = mask_images[0].width
-                pipeline_args['height'] = mask_images[0].height
+                # Use mask dimensions for SD3 with masks, already sized per user
+                self._set_pipe_dimensions(
+                    None, None,
+                    mask_images[0].width, mask_images[0].height,
+                    pipeline_args
+                )
 
     def _set_pipeline_txt2img_defaults(self, user_args: DiffusionArguments, pipeline_args: dict[str, typing.Any]):
 
-        if user_args.height is not None:
-            if user_args.height % 8 != 0:
-                _messages.warning('Forcing alignment of txt2img generation argument "height" to 8.')
-                height = user_args.height - (user_args.height % 8)
-            else:
-                height = user_args.height
-        else:
-            height = None
+        width, height = self._aligned_8_user_dimensions(user_args)
 
-        if user_args.width is not None:
-            if user_args.height % 8 != 0:
-                _messages.warning('Forcing alignment of txt2img generation argument "width" to 8.')
-                width = user_args.width - (user_args.width % 8)
-            else:
-                width = user_args.width
-        else:
-            width = None
+        if width != user_args.width:
+            _messages.warning('Forcing alignment of txt2img generation argument "width" to 8.')
+
+        if height != user_args.height:
+            _messages.warning('Forcing alignment of txt2img generation argument "height" to 8.')
 
         if _enums.model_type_is_sdxl(self._model_type):
-            pipeline_args['height'] = _types.default(height, _constants.DEFAULT_SDXL_OUTPUT_HEIGHT)
-            pipeline_args['width'] = _types.default(width, _constants.DEFAULT_SDXL_OUTPUT_WIDTH)
+            self._inference_height = _types.default(height, _constants.DEFAULT_SDXL_OUTPUT_HEIGHT)
+            self._inference_width = _types.default(width, _constants.DEFAULT_SDXL_OUTPUT_WIDTH)
         elif _enums.model_type_is_kolors(self._model_type):
-            pipeline_args['height'] = _types.default(height, _constants.DEFAULT_KOLORS_OUTPUT_HEIGHT)
-            pipeline_args['width'] = _types.default(width, _constants.DEFAULT_KOLORS_OUTPUT_WIDTH)
+            self._inference_height = _types.default(height, _constants.DEFAULT_KOLORS_OUTPUT_HEIGHT)
+            self._inference_width = _types.default(width, _constants.DEFAULT_KOLORS_OUTPUT_WIDTH)
         elif _enums.model_type_is_floyd_if(self._model_type):
-            pipeline_args['height'] = _types.default(height, _constants.DEFAULT_FLOYD_IF_OUTPUT_HEIGHT)
-            pipeline_args['width'] = _types.default(width, _constants.DEFAULT_FLOYD_IF_OUTPUT_WIDTH)
+            self._inference_height = _types.default(height, _constants.DEFAULT_FLOYD_IF_OUTPUT_HEIGHT)
+            self._inference_width = _types.default(width, _constants.DEFAULT_FLOYD_IF_OUTPUT_WIDTH)
         elif self._model_type == _enums.ModelType.S_CASCADE:
-            pipeline_args['height'] = _types.default(height, _constants.DEFAULT_S_CASCADE_OUTPUT_HEIGHT)
-            pipeline_args['width'] = _types.default(width, _constants.DEFAULT_S_CASCADE_OUTPUT_WIDTH)
+            self._inference_height = _types.default(height, _constants.DEFAULT_S_CASCADE_OUTPUT_HEIGHT)
+            self._inference_width = _types.default(width, _constants.DEFAULT_S_CASCADE_OUTPUT_WIDTH)
 
-            if not _image.is_aligned((pipeline_args['width'], pipeline_args['height']), 128):
+            if not _image.is_aligned((self._inference_height, self._inference_width), 128):
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'Stable Cascade requires an output dimension that is aligned by 128.')
         elif self._model_type == _enums.ModelType.SD3:
-            pipeline_args['height'] = _types.default(height, _constants.DEFAULT_SD3_OUTPUT_HEIGHT)
-            pipeline_args['width'] = _types.default(width, _constants.DEFAULT_SD3_OUTPUT_WIDTH)
+            self._inference_height = _types.default(height, _constants.DEFAULT_SD3_OUTPUT_HEIGHT)
+            self._inference_width = _types.default(width, _constants.DEFAULT_SD3_OUTPUT_WIDTH)
 
-            if not _image.is_aligned((pipeline_args['height'], pipeline_args['width']), 16):
+            if not _image.is_aligned((self._inference_height, self._inference_width), 16):
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'Stable Diffusion 3 requires an output dimension that is aligned by 16.')
         elif self._model_type == _enums.ModelType.FLUX:
-            pipeline_args['height'] = _types.default(height, _constants.DEFAULT_FLUX_OUTPUT_HEIGHT)
-            pipeline_args['width'] = _types.default(width, _constants.DEFAULT_FLUX_OUTPUT_WIDTH)
+            self._inference_height = _types.default(height, _constants.DEFAULT_FLUX_OUTPUT_HEIGHT)
+            self._inference_width = _types.default(width, _constants.DEFAULT_FLUX_OUTPUT_WIDTH)
         else:
-            pipeline_args['height'] = _types.default(height, _constants.DEFAULT_OUTPUT_HEIGHT)
-            pipeline_args['width'] = _types.default(width, _constants.DEFAULT_OUTPUT_WIDTH)
+            self._inference_height = _types.default(height, _constants.DEFAULT_OUTPUT_HEIGHT)
+            self._inference_width = _types.default(width, _constants.DEFAULT_OUTPUT_WIDTH)
+
+        self._set_pipe_dimensions(
+            None, None,
+            self._inference_width, self._inference_height,
+            pipeline_args
+        )
 
     def _prepare_inpaint_crop(self, user_args: DiffusionArguments):
         """
@@ -1904,9 +2008,10 @@ class DiffusionPipelineWrapper:
         :param user_args: user arguments to validate and potentially modify
         """
         # Automatically enable inpaint crop if padding, feathering, or masking is specified
-        if not user_args.inpaint_crop and (user_args.inpaint_crop_padding is not None or user_args.inpaint_crop_feather is not None or user_args.inpaint_crop_masked):
+        if not user_args.inpaint_crop and (
+                user_args.inpaint_crop_padding is not None or user_args.inpaint_crop_feather is not None or user_args.inpaint_crop_masked):
             user_args.inpaint_crop = True
-            
+
         if not user_args.inpaint_crop:
             return
 
@@ -1914,24 +2019,24 @@ class DiffusionPipelineWrapper:
             raise _pipelines.UnsupportedPipelineConfigError(
                 'aspect_correct=False is not compatible with inpaint_crop=True.'
             )
-            
+
         # Validate that inpaint crop has required inputs
         if user_args.images is None or len(user_args.images) == 0:
             raise _pipelines.UnsupportedPipelineConfigError(
                 "inpaint_crop requires images to be provided."
             )
-            
+
         if user_args.mask_images is None or len(user_args.mask_images) == 0:
             raise _pipelines.UnsupportedPipelineConfigError(
                 "inpaint_crop requires mask_images to be provided."
             )
-                    
+
         # Check that we're not outputting latents  
         if user_args.output_latents:
             raise _pipelines.UnsupportedPipelineConfigError(
                 "inpaint_crop is not supported when outputting latents, only images are supported."
             )
-        
+
         # Disallow batching multiple different images with inpaint_crop
         # (batch_size > 1 is OK for generating variations of a single crop)
         if len(user_args.images) > 1 or len(user_args.mask_images) > 1:
@@ -1946,19 +2051,19 @@ class DiffusionPipelineWrapper:
         # If images are tensors (latents), decode them with the VAE first
         if not isinstance(user_args.images[0], PIL.Image.Image):
             _messages.debug_log('Inpaint crop: decoding tensor inputs with VAE...')
-            
+
             # Check that we have a VAE for decoding
             if not hasattr(self._pipeline, 'vae') or self._pipeline.vae is None:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'Cannot decode tensor inputs for inpaint_crop as the pipeline does not have a VAE. '
                     'Use images instead.'
                 )
-            
+
             # Handle Flux-specific repacking if needed
             latents = user_args.images
             if _enums.model_type_is_flux(self._model_type):
                 latents = self._repack_flux_latents(self._stack_latents(latents))
-            
+
             # Decode the latents to PIL Images
             user_args.images = self.decode_latents(latents)
 
@@ -1966,12 +2071,12 @@ class DiffusionPipelineWrapper:
 
         # Apply the actual inpaint crop if we get here
         _messages.debug_log('Applying inpaint crop...')
-        
+
         # Store references to original images before cropping
         original_images = list(user_args.images)
         original_masks = list(user_args.mask_images)
         original_control_images = list(user_args.control_images) if user_args.control_images else None
-        
+
         # Get padding from user args or use default, normalize to (left, top, right, bottom)
         if user_args.inpaint_crop_padding is not None:
             raw_padding = user_args.inpaint_crop_padding
@@ -2033,11 +2138,15 @@ class DiffusionPipelineWrapper:
         :return: kwargs dictionary
         """
 
+        self._inference_width = None
+        self._inference_height = None
+
         # Apply inpaint crop if enabled and we have the necessary inputs
         # This must happen first so all downstream methods work with cropped images
         self._prepare_inpaint_crop(user_args)
 
         pipeline_args: dict[str, typing.Any] = dict()
+
         pipeline_args['guidance_scale'] = float(
             _types.default(user_args.guidance_scale, _constants.DEFAULT_GUIDANCE_SCALE))
         pipeline_args['num_inference_steps'] = int(
@@ -2092,22 +2201,22 @@ class DiffusionPipelineWrapper:
                     align=8
                 )
             else:
-                # noinspection PyTypeChecker
-                expected_width, expected_height = self.get_decoded_latents_size(
-                    user_args.images[0]
-                )
+                expected_width, expected_height = self.get_decoded_latents_size(user_args.images[0])
 
-        if expected_width is not None and expected_height is not None:
-            output_size_expected = (expected_width, expected_height)
-            if output_size_expected != decoded_latents_size:
-                raise _pipelines.UnsupportedPipelineConfigError(
-                    f"Render width / height not compatible with "
-                    f"given raw latents, output size: {_textprocessing.format_size(output_size_expected)}, "
-                    f"latents decoded size: {_textprocessing.format_size(decoded_latents_size)}. This can "
-                    f"be caused by an explicitly set width / height that is incorrect for the incoming raw "
-                    f"latents, or a missmatch in the size of incoming img2img images / latents with the "
-                    f"raw latents."
-                )
+        output_size_expected = (expected_width, expected_height)
+        if output_size_expected != decoded_latents_size:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f"Render width / height not compatible with "
+                f"given raw latents, output size: {_textprocessing.format_size(output_size_expected)}, "
+                f"latents decoded size: {_textprocessing.format_size(decoded_latents_size)}. This can "
+                f"be caused by an explicitly set width / height that is incorrect for the incoming raw "
+                f"latents, or a missmatch in the size of incoming img2img images / latents with the "
+                f"raw latents."
+            )
+
+        # Store dimensions for optimizations
+        self._inference_width = expected_width
+        self._inference_height = expected_height
 
         if latents.dtype != self._pipeline.dtype:
             _messages.debug_log(
@@ -2525,6 +2634,12 @@ class DiffusionPipelineWrapper:
                     _constants.DEFAULT_TEA_CACHE_REL_L1_THRESHOLD
                 ),
                 enable=_types.default(user_args.tea_cache, False),
+        ), _sada_context(
+            self._pipeline,
+            width=self._inference_width,
+            height=self._inference_height,
+            enabled=user_args.sada,
+            **self._get_sada_args(user_args)
         ), _denoise_range(
             self._pipeline,
             user_args.denoising_start,
@@ -3036,6 +3151,11 @@ class DiffusionPipelineWrapper:
                                   enabled=user_args.hi_diffusion,
                                   no_raunet=user_args.hi_diffusion_no_raunet,
                                   no_window_attn=user_args.hi_diffusion_no_win_attn), \
+                    _sada_context(self._pipeline,
+                                  width=self._inference_width,
+                                  height=self._inference_height,
+                                  enabled=user_args.sada,
+                                  **self._get_sada_args(user_args)), \
                     _denoise_range(self._pipeline, user_args.denoising_start, user_args.denoising_end):
 
                 if self._parsed_adetailer_detector_uris:
@@ -3311,8 +3431,8 @@ class DiffusionPipelineWrapper:
                                                 _constants.DEFAULT_RAS_STARVATION_SCALE),
                 error_reset_steps=_types.default(user_args.ras_error_reset_steps,
                                                  _constants.DEFAULT_RAS_ERROR_RESET_STEPS),
-                width=_types.default(user_args.width, _constants.DEFAULT_SD3_OUTPUT_WIDTH),
-                height=_types.default(user_args.height, _constants.DEFAULT_SD3_OUTPUT_HEIGHT),
+                width=self._inference_width,
+                height=self._inference_height,
                 enable_index_fusion=user_args.ras_index_fusion,
                 metric=_types.default(user_args.ras_metric, _constants.DEFAULT_RAS_METRIC),
                 scheduler_start_step=_types.default(user_args.ras_start_step, _constants.DEFAULT_RAS_START_STEP),
@@ -3326,6 +3446,39 @@ class DiffusionPipelineWrapper:
         else:
             ras_args = None
         return ras_args
+
+    def _get_sada_args(self, user_args: DiffusionArguments) -> dict:
+        model_defaults = _util.get_sada_model_defaults(self.model_type)
+
+        return {
+            'max_downsample': _types.default(user_args.sada_max_downsample, model_defaults['max_downsample']),
+            'sx': _types.default(user_args.sada_sx, model_defaults['sx']),
+            'sy': _types.default(user_args.sada_sy, model_defaults['sy']),
+            'acc_range_start': _types.default(user_args.sada_acc_range_start, model_defaults['acc_range_start']),
+            'acc_range_end': _types.default(user_args.sada_acc_range_end, model_defaults['acc_range_end']),
+            'lagrange_term': _types.default(user_args.sada_lagrange_term, model_defaults['lagrange_term']),
+            'lagrange_int': user_args.sada_lagrange_int or model_defaults['lagrange_int'],
+            'lagrange_step': user_args.sada_lagrange_step or model_defaults['lagrange_step'],
+            'max_fix': _types.default(user_args.sada_max_fix, model_defaults['max_fix']),
+            'max_interval': _types.default(user_args.sada_max_interval, model_defaults['max_interval']),
+        }
+
+    def _get_default_width_height(self) -> tuple[int, int]:
+        if _enums.model_type_is_sdxl(self._model_type):
+            return _constants.DEFAULT_SDXL_OUTPUT_WIDTH, _constants.DEFAULT_SDXL_OUTPUT_HEIGHT
+        elif _enums.model_type_is_kolors(self._model_type):
+            return _constants.DEFAULT_KOLORS_OUTPUT_WIDTH, _constants.DEFAULT_KOLORS_OUTPUT_HEIGHT
+        elif _enums.model_type_is_floyd_if(self._model_type):
+            return _constants.DEFAULT_FLOYD_IF_OUTPUT_WIDTH, _constants.DEFAULT_FLOYD_IF_OUTPUT_HEIGHT
+        elif self._model_type == _enums.ModelType.S_CASCADE:
+            return _constants.DEFAULT_S_CASCADE_OUTPUT_WIDTH, _constants.DEFAULT_S_CASCADE_OUTPUT_HEIGHT
+        elif self._model_type == _enums.ModelType.SD3:
+            return _constants.DEFAULT_SD3_OUTPUT_WIDTH, _constants.DEFAULT_SD3_OUTPUT_HEIGHT
+        elif _enums.model_type_is_flux(self._model_type):
+            return _constants.DEFAULT_FLUX_OUTPUT_WIDTH, _constants.DEFAULT_FLUX_OUTPUT_HEIGHT
+        else:
+            # SD and other models
+            return _constants.DEFAULT_OUTPUT_WIDTH, _constants.DEFAULT_OUTPUT_HEIGHT
 
     def recall_main_pipeline(self) -> _pipelines.PipelineCreationResult:
         """
@@ -3613,9 +3766,19 @@ class DiffusionPipelineWrapper:
     def _default_prompt_weighter(self, *sources):
         for source in sources:
             if isinstance(source, str):  # Direct URI case
-                return self._load_prompt_weighter(source, model_type=self.model_type, dtype=self._dtype, device=self._device)
+                return self._load_prompt_weighter(
+                    source,
+                    model_type=self.model_type,
+                    dtype=self._dtype,
+                    device=self._device
+                )
             elif source is not None and source.weighter:  # Object case with weighter
-                return self._load_prompt_weighter(source.weighter, model_type=self.model_type, dtype=self._dtype, device=self._device)
+                return self._load_prompt_weighter(
+                    source.weighter,
+                    model_type=self.model_type,
+                    dtype=self._dtype,
+                    device=self._device
+                )
         return None
 
     def _get_prompt_weighter(self, args: DiffusionArguments):
@@ -3896,7 +4059,6 @@ class DiffusionPipelineWrapper:
 
         # Apply inpaint crop pasting if we cropped earlier
         if final_images is not None and self._inpaint_crop_info is not None:
-            
             crop_info = self._inpaint_crop_info
 
             # Paste generated images back onto originals
@@ -4173,6 +4335,51 @@ class DiffusionPipelineWrapper:
                     'HiDiffusion no-window-attention option is only supported when HiDiffusion is enabled.'
                 )
 
+    def _auto_sada_check(self, args: DiffusionArguments):
+        for prop in args.__dict__.keys():
+            if prop.startswith('sada_'):
+                value = getattr(args, prop)
+                if value is not None or (isinstance(value, bool) and value is True):
+                    args.sada = True
+                    break
+
+        if args.sada:
+            # SADA supports SD, SDXL/Kolors, and Flux
+            if not (
+                    self.model_type == _enums.ModelType.SD or
+                    self.model_type == _enums.ModelType.SDXL or
+                    self.model_type == _enums.ModelType.KOLORS or
+                    _enums.model_type_is_flux(self.model_type)):
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'SADA is only supported for '
+                    '--model-type sd, sdxl, kolors, and flux*'
+                )
+
+            # Check for conflicts with other acceleration methods
+            if args.deep_cache:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'SADA cannot be used simultaneously with DeepCache'
+                )
+
+            if args.hi_diffusion:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'SADA cannot be used simultaneously with HiDiffusion'
+                )
+
+            # Validate Lagrangian interpolation parameters
+            sada_args = self._get_sada_args(args)
+            if sada_args['lagrange_term'] != 0:
+                if (sada_args['lagrange_int'] is None or
+                        sada_args['lagrange_step'] is None):
+                    raise _pipelines.UnsupportedPipelineConfigError(
+                        'When using SADA Lagrangian interpolation (lagrange_term != 0), '
+                        'both lagrange_int and lagrange_step must be specified'
+                    )
+                if sada_args['lagrange_step'] % sada_args['lagrange_int'] != 0:
+                    raise _pipelines.UnsupportedPipelineConfigError(
+                        'SADA lagrange_step must be divisible by lagrange_int'
+                    )
+
     def _auto_tea_cache_check(self, args: DiffusionArguments):
         for prop in args.__dict__.keys():
             if prop.startswith('tea_cache_'):
@@ -4215,7 +4422,7 @@ class DiffusionPipelineWrapper:
                     'SDXL refiner is not in use, so cannot supply FreeU parameters to it.'
                 )
 
-    def get_decoded_latents_size(self, latents) -> _types.Size:
+    def get_decoded_latents_size(self, latents: torch.Tensor) -> _types.Size:
         """
         Given a latent tensor return the expected decoded image (width, height) in pixels.
 
@@ -4387,6 +4594,7 @@ class DiffusionPipelineWrapper:
         self._auto_tea_cache_check(copy_args)
         self._auto_deep_cache_check(copy_args)
         self._auto_hi_diffusion_check(copy_args)
+        self._auto_sada_check(copy_args)
         self._auto_latents_check(copy_args)
         self._auto_denoise_range_check(copy_args)
 

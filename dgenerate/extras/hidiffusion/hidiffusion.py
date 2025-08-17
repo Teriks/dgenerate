@@ -1959,10 +1959,20 @@ def apply_hidiffusion(
         raise RuntimeError("Provided model was not a diffusers model/pipeline, as expected.")
     else:
         # Check if the pipeline is a ControlNet pipeline
-        is_sdxl_controlnet = hasattr(model, 'controlnet') and isinstance_str(model, "StableDiffusionXLControlNet")
-        is_sd_controlnet = hasattr(model, 'controlnet') and isinstance_str(model, "StableDiffusionControlNet")
+        is_sdxl_controlnet = hasattr(model, 'controlnet') and isinstance_str(model, "StableDiffusionXLControlNet", prefix=True)
+        is_sd_controlnet = hasattr(model, 'controlnet') and isinstance_str(model, "StableDiffusionControlNet", prefix=True)
 
-        if is_sdxl_controlnet:
+        # Check for ControlNet Inpaint pipelines
+        is_sdxl_controlnet_inpaint = is_sdxl_controlnet and isinstance_str(model, 'Inpaint', contains=True)
+        is_sd_controlnet_inpaint = is_sd_controlnet and isinstance_str(model, 'Inpaint', contains=True)
+
+        if is_sdxl_controlnet_inpaint or is_sd_controlnet_inpaint:
+            # For ControlNet Inpaint pipelines, we don't patch the pipeline class
+            # because they already have all the necessary inpainting logic
+            # We only patch the UNet for HiDiffusion optimizations
+            make_block_fn = make_diffusers_unet_2d_condition
+            model.unet.__class__ = make_block_fn(model.unet.__class__)
+        elif is_sdxl_controlnet:
             make_ppl_fn = make_diffusers_sdxl_controlnet_ppl
             model.__class__ = make_ppl_fn(model.__class__)
 

@@ -1,26 +1,22 @@
 import torch
 
 
-def isinstance_str(x: object, cls_name: str, prefix: bool = False, contains: bool = False):
+def isinstance_str(x: object, cls_name: str):
     """
-    Checks whether x has any class equal to, prefixed with, or contains (cls_name) in its ancestry.
+    Checks whether x has any class *named* cls_name in its ancestry.
     Doesn't require access to the class's implementation.
-    
+
     Useful for patching!
     """
 
     for _cls in x.__class__.__mro__:
-        if _cls.__name__.startswith(cls_name) and prefix:
-            return True
-        if contains and cls_name in _cls.__name__:
-            return True
         if _cls.__name__ == cls_name:
             return True
-    
+
     return False
 
 
-def init_generator(device: torch.device, fallback: torch.Generator=None):
+def init_generator(device: torch.device, fallback: torch.Generator = None):
     """
     Forks the current default random generator given device.
     """
@@ -33,4 +29,3 @@ def init_generator(device: torch.device, fallback: torch.Generator=None):
             return init_generator(torch.device("cpu"))
         else:
             return fallback
-    

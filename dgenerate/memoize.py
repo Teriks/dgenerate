@@ -603,3 +603,16 @@ def struct_hasher(obj: typing.Any,
         args_dict={k: v for k, v in reflect_method(obj).items()
                    if k not in exclude},
         custom_hashes=custom_hashes) + '}'
+
+def property_hasher(obj: typing.Any,
+                    custom_hashes: dict[str, typing.Callable[[typing.Any], str]] = None,
+                    exclude: set[str] | None = None):
+    """
+    Create a hash string from an objects public decorated properties.
+
+    :param obj: the object
+    :param custom_hashes: Custom hash functions for specific property names if needed
+    :param exclude: Exclude property by name
+    :return: string
+    """
+    return struct_hasher(obj, custom_hashes, exclude, True)

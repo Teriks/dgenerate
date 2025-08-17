@@ -651,7 +651,8 @@ def _type_quantizer_map(val: str):
         'transformer',
         'text_encoder',
         'text_encoder_2',
-        'text_encoder_3'
+        'text_encoder_3',
+        'controlnet'
     ]
 
     if val not in vals:
@@ -2156,6 +2157,294 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                      
                      This is supported for: --model-type sd, sdxl, and --kolors.
                      """
+        )
+    )
+
+    # SADA (Stability-guided Adaptive Diffusion Acceleration) arguments
+    actions.append(
+        parser.add_argument(
+            '--sada',
+            action='store_true', default=False, dest='sada',
+            help="""Enable SADA (Stability-guided Adaptive Diffusion Acceleration) with model-specific default parameters for the primary model.
+            
+            
+            This is equivalent to setting all SADA parameters to their model-specific default values:
+            
+            NOWRAP!
+            - SD/SD2: 
+                * --sada-max-downsamples 1 
+                * --sada-sxs 3 
+                * --sada-sys 3 
+                * --sada-lagrange-terms 4 
+                * --sada-lagrange-ints 4 
+                * --sada-lagrange-steps 24 
+                * --sada-max-fixes 5120
+            - SDXL/Kolors: 
+                * --sada-max-downsamples 2 
+                * --sada-sxs 3 
+                * --sada-sys 3 
+                * --sada-lagrange-terms 4 
+                * --sada-lagrange-ints 4 
+                * --sada-lagrange-steps 24 
+                * --sada-max-fixes 10240
+            - Flux: 
+                * --sada-max-downsamples 0 
+                * --sada-lagrange-terms 3 
+                * --sada-lagrange-ints 4 
+                * --sada-lagrange-steps 20 
+                * --sada-max-fixes 0
+            
+            NOWRAP!
+            See: https://github.com/Ting-Justin-Jiang/sada-icml
+            
+            This is supported for: --model-type sd, sdxl, kolors, flux*.
+            """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--sada-max-downsamples',
+            metavar='INTEGER',
+            nargs='+', dest='sada_max_downsamples', type=int,
+            help="""SADA maximum downsample factors for the primary model.
+            
+            Controls the maximum downsample factor in the SADA algorithm. 
+            Lower values can improve quality but may reduce speedup.
+            
+            
+            Model-specific defaults:
+            
+            NOWRAP!
+            - SD/SD2: 1
+            - SDXL/Kolors: 2
+            - Flux: 0
+            
+            Supplying any SADA parameter implies that SADA is enabled.
+            
+            This is supported for: --model-type sd, sdxl, kolors, flux*.
+            
+            Each value supplied will be tried in turn.
+            """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--sada-sxs',
+            metavar='INTEGER',
+            nargs='+', dest='sada_sxs', type=int,
+            help="""SADA spatial downsample factors X for the primary model.
+            
+            Controls the spatial downsample factor in the X dimension.
+            Higher values can increase speedup but may affect quality.
+            
+            
+            Model-specific defaults:
+            
+            NOWRAP!
+            - SD/SD2: 3
+            - SDXL/Kolors: 3
+            - Flux: 0 (not used)
+            
+            Supplying any SADA parameter implies that SADA is enabled.
+            
+            This is supported for: --model-type sd, sdxl, kolors, flux*.
+            
+            Each value supplied will be tried in turn.
+            """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--sada-sys',
+            metavar='INTEGER',
+            nargs='+', dest='sada_sys', type=int,
+            help="""SADA spatial downsample factors Y for the primary model.
+            
+            Controls the spatial downsample factor in the Y dimension.
+            Higher values can increase speedup but may affect quality.
+            
+            
+            Model-specific defaults:
+            
+            NOWRAP!
+            - SD/SD2: 3
+            - SDXL/Kolors: 3
+            - Flux: 0 (not used)
+            
+            Supplying any SADA parameter implies that SADA is enabled.
+            
+            This is supported for: --model-type sd, sdxl, kolors, flux*.
+            
+            Each value supplied will be tried in turn.
+            """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--sada-acc-range-starts',
+            metavar='INTEGER',
+            nargs='+', dest='sada_acc_range_starts', type=int,
+            help="""SADA acceleration range start steps for the primary model.
+            
+            Defines the starting step for SADA acceleration. Must be at least 3 
+            as SADA leverages third-order dynamics.
+            
+            Defaults to 10.
+            
+            Supplying any SADA parameter implies that SADA is enabled.
+            
+            This is supported for: --model-type sd, sdxl, kolors, flux*.
+            
+            Each value supplied will be tried in turn.
+            """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--sada-acc-range-ends',
+            metavar='INTEGER',
+            nargs='+', dest='sada_acc_range_ends', type=int,
+            help="""SADA acceleration range end steps for the primary model.
+            
+            Defines the ending step for SADA acceleration.
+            
+            Defaults to 47.
+            
+            Supplying any SADA parameter implies that SADA is enabled.
+            
+            This is supported for: --model-type sd, sdxl, kolors, flux*.
+            
+            Each value supplied will be tried in turn.
+            """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--sada-lagrange-terms',
+            metavar='INTEGER',
+            nargs='+', dest='sada_lagrange_terms', type=int,
+            help="""SADA Lagrangian interpolation terms for the primary model.
+            
+            Number of terms to use in Lagrangian interpolation. 
+            Set to 0 to disable Lagrangian interpolation.
+            
+            Model-specific defaults:
+            
+            NOWRAP!
+            - SD/SD2: 4
+            - SDXL/Kolors: 4
+            - Flux: 3
+            
+            Supplying any SADA parameter implies that SADA is enabled.
+            
+            This is supported for: --model-type sd, sdxl, kolors, flux*.
+            
+            Each value supplied will be tried in turn.
+            """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--sada-lagrange-ints',
+            metavar='INTEGER',
+            nargs='+', dest='sada_lagrange_ints', type=int,
+            help="""SADA Lagrangian interpolation intervals for the primary model.
+            
+            Interval for Lagrangian interpolation. Must be compatible with 
+            sada-lagrange-steps (lagrange-step %% lagrange-int == 0).
+            
+            Model-specific defaults:
+            
+            NOWRAP!
+            - SD/SD2: 4
+            - SDXL/Kolors: 4
+            - Flux: 4
+            
+            Supplying any SADA parameter implies that SADA is enabled.
+            
+            This is supported for: --model-type sd, sdxl, kolors, flux*.
+            
+            Each value supplied will be tried in turn.
+            """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--sada-lagrange-steps',
+            metavar='INTEGER',
+            nargs='+', dest='sada_lagrange_steps', type=int,
+            help="""SADA Lagrangian interpolation steps for the primary model.
+            
+            Step value for Lagrangian interpolation. Must be compatible with 
+            sada-lagrange-ints (lagrange-step %% lagrange-int == 0).
+            
+            Model-specific defaults:
+            
+            NOWRAP!
+            - SD/SD2: 24
+            - SDXL/Kolors: 24
+            - Flux: 20
+            
+            Supplying any SADA parameter implies that SADA is enabled.
+            
+            This is supported for: --model-type sd, sdxl, kolors, flux*.
+            
+            Each value supplied will be tried in turn.
+            """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--sada-max-fixes',
+            metavar='INTEGER',
+            nargs='+', dest='sada_max_fixes', type=int,
+            help="""SADA maximum fixed memories for the primary model.
+            
+            Maximum amount of fixed memory to use in SADA optimization.
+            
+           
+            Model-specific defaults:
+            
+             NOWRAP!
+            - SD/SD2: 5120 (5 * 1024)
+            - SDXL/Kolors: 10240 (10 * 1024)
+            - Flux: 0
+            
+            Supplying any SADA parameter implies that SADA is enabled.
+            
+            This is supported for: --model-type sd, sdxl, kolors, flux*.
+            
+            Each value supplied will be tried in turn.
+            """
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--sada-max-intervals',
+            metavar='INTEGER',
+            nargs='+', dest='sada_max_intervals', type=int,
+            help="""SADA maximum intervals for optimization for the primary model.
+            
+            Maximum interval between optimizations in the SADA algorithm.
+            
+            Defaults to 4.
+            
+            Supplying any SADA parameter implies that SADA is enabled.
+            
+            This is supported for: --model-type sd, sdxl, kolors, flux*.
+            
+            Each value supplied will be tried in turn.
+            """
         )
     )
 

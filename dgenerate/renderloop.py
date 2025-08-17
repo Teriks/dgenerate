@@ -581,9 +581,6 @@ class RenderLoop:
         if self._c_config.seeds_to_images:
             render_loop_opts.append(('--seeds-to-images',))
 
-        if self._c_config.no_aspect:
-            render_loop_opts.append(('--no-aspect',))
-
         if self._c_config.output_prefix:
             render_loop_opts.append(('--output-prefix', self._c_config.output_prefix))
 

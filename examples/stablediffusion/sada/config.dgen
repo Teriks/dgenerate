@@ -1,0 +1,24 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 5.0.0
+
+# SADA: Stability-guided Adaptive Diffusion Acceleration
+
+# replicate: https://github.com/Ting-Justin-Jiang/sada-icml/blob/main/sd_demo.py
+
+# The use of just --sada procs optimized defaults for the SADA optimization
+
+# A high-ish amount of inference steps is recommended for quality.
+
+# We need to manually specify a SADA compatible scheduler.
+
+# i.e. DPMSolverMultistepScheduler or EulerDiscreteScheduler
+
+
+stabilityai/stable-diffusion-2-1
+--inference-steps 50
+--guidance-scales 7.5
+--scheduler DPMSolverMultistepScheduler
+--seeds 0
+--output-path output
+--output-size 768x768
+--prompts "A professional photograph of a red panda."

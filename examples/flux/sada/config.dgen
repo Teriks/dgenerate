@@ -1,0 +1,38 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 5.0.0
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+{% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 15 %}
+    \set optimization --quantizer bnb;bits=4
+{% else %}
+    \set optimization --model-sequential-offload
+{% endif %}
+
+
+# SADA: Stability-guided Adaptive Diffusion Acceleration
+
+# replicate: https://github.com/Ting-Justin-Jiang/sada-icml/blob/main/flux_demo.py
+
+# The use of just --sada procs optimized defaults for the SADA optimization
+
+# A high-ish amount of inference steps is recommended for quality.
+
+black-forest-labs/FLUX.1-dev
+--model-type flux {{ optimization }}
+--dtype bfloat16
+--inference-steps 50
+--max-sequence-length 512
+--guidance-scales 3.5
+--seeds 37
+--sada
+--output-size 768x1360
+--prompts "Ultra‑detailed National Geographic cover photo of a blue macaw perched on a moss‑covered branch, \
+          emerald rainforest canopy shimmering with dappled golden sunlight, soft bokeh background, \
+          clusters of lavender orchids in the foreground, vibrant saturated colors, \
+          shallow depth‑of‑field, shot on an 85mm lens at f/2.8, 8K resolution."

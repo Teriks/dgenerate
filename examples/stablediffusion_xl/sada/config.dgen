@@ -1,0 +1,25 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 5.0.0
+
+# SADA: Stability-guided Adaptive Diffusion Acceleration
+
+# replicate: https://github.com/Ting-Justin-Jiang/sada-icml/blob/main/xl_demo.py
+
+# The use of just --sada procs optimized defaults for the SADA optimization
+
+# A high-ish amount of inference steps is recommended for quality.
+
+stabilityai/stable-diffusion-xl-base-1.0
+--model-type sdxl
+--dtype float16
+--variant fp16
+--inference-steps 50
+--guidance-scales 5
+--sada
+--seeds 0
+--output-path output
+--output-size 1024x1024
+--prompts "Ultra‑detailed National Geographic cover photo of a blue macaw perched on a moss‑covered branch, \
+           emerald rainforest canopy shimmering with dappled golden sunlight, soft bokeh background, \
+           clusters of lavender orchids in the foreground, vibrant saturated colors, \
+           shallow depth‑of‑field, shot on an 85mm lens at f/2.8, 8K resolution."

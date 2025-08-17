@@ -1975,7 +1975,8 @@ def _create_diffusion_pipeline(
         'transformer',
         'text_encoder',
         'text_encoder_2',
-        'text_encoder_3'
+        'text_encoder_3',
+        'controlnet'
     ]
 
     if quantizer_map is not None:

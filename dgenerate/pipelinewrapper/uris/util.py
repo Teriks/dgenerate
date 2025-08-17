@@ -43,10 +43,10 @@ def uri_hash_with_parser(parser, exclude: set[str] | None = None):
     Create a hash function from a particular URI parser function that hashes a URI string.
 
     The URI is parsed and then the object that results from parsing is hashed with
-    :py:func:`dgenerate.memoize.struct_hasher`.
+    :py:func:`dgenerate.memoize.property_hasher`.
 
     If the parser returns a string, it is regarded as the hash value instead of being
-    passed to :py:func:`dgenerate.memoize.struct_hasher`.
+    passed to :py:func:`dgenerate.memoize.property_hasher`.
 
     :param parser: The URI parser function
     :param exclude: URI argument names to exclude from hashing
@@ -64,10 +64,9 @@ def uri_hash_with_parser(parser, exclude: set[str] | None = None):
             # user returned string, override the hash value
             return parser_result
 
-        return _memoize.struct_hasher(
+        return _memoize.property_hasher(
             parser_result,
-            exclude=exclude,
-            properties_only=True
+            exclude=exclude
         )
 
     return hasher

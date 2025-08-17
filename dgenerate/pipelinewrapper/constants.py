@@ -312,6 +312,161 @@ Default branch ID for DeepCache on SDXL Refiner.
 Controls which branches to apply DeepCache to in the UNet.
 """
 
+DEFAULT_SADA_SD_MAX_DOWNSAMPLE: int = 1
+"""
+Maximum downsample factor for SD models.
+Controls the maximum downsample factor in the SADA algorithm.
+Lower values can improve quality but may reduce speedup.
+"""
+
+DEFAULT_SADA_SD_SX: int = 3
+"""
+Spatial downsample factor X for SD models.
+Controls the spatial downsample factor in the X dimension.
+Higher values can increase speedup but may affect quality.
+"""
+
+DEFAULT_SADA_SD_SY: int = 3
+"""
+Spatial downsample factor Y for SD models.
+Controls the spatial downsample factor in the Y dimension.
+Higher values can increase speedup but may affect quality.
+"""
+
+DEFAULT_SADA_SD_LAGRANGE_TERM: int = 4
+"""
+Lagrangian interpolation terms for SD models.
+Number of terms to use in Lagrangian interpolation.
+Set to 0 to disable Lagrangian interpolation.
+"""
+
+DEFAULT_SADA_SD_LAGRANGE_INT: int = 4
+"""
+Lagrangian interpolation interval for SD models.
+Interval for Lagrangian interpolation. Must be compatible with lagrange_step.
+"""
+
+DEFAULT_SADA_SD_LAGRANGE_STEP: int = 24
+"""
+Lagrangian interpolation step for SD models.
+Step value for Lagrangian interpolation. Must be compatible with lagrange_int.
+"""
+
+DEFAULT_SADA_SD_MAX_FIX: int = 5 * 1024
+"""
+Maximum fixed memory for SD models.
+Maximum amount of fixed memory to use in SADA optimization.
+"""
+
+DEFAULT_SADA_SDXL_MAX_DOWNSAMPLE: int = 2
+"""
+Maximum downsample factor for SDXL/Kolors models.
+Controls the maximum downsample factor in the SADA algorithm.
+Higher than SD defaults for better speedup on larger models.
+"""
+
+DEFAULT_SADA_SDXL_SX: int = 3
+"""
+Spatial downsample factor X for SDXL/Kolors models.
+Controls the spatial downsample factor in the X dimension.
+"""
+
+DEFAULT_SADA_SDXL_SY: int = 3
+"""
+Spatial downsample factor Y for SDXL/Kolors models.
+Controls the spatial downsample factor in the Y dimension.
+"""
+
+DEFAULT_SADA_SDXL_LAGRANGE_TERM: int = 4
+"""
+Lagrangian interpolation terms for SDXL/Kolors models.
+Number of terms to use in Lagrangian interpolation.
+"""
+
+DEFAULT_SADA_SDXL_LAGRANGE_INT: int = 4
+"""
+Lagrangian interpolation interval for SDXL/Kolors models.
+Interval for Lagrangian interpolation. Must be compatible with lagrange_step.
+"""
+
+DEFAULT_SADA_SDXL_LAGRANGE_STEP: int = 24
+"""
+Lagrangian interpolation step for SDXL/Kolors models.
+Step value for Lagrangian interpolation. Must be compatible with lagrange_int.
+"""
+
+DEFAULT_SADA_SDXL_MAX_FIX: int = 10 * 1024
+"""
+Maximum fixed memory for SDXL/Kolors models.
+Maximum amount of fixed memory to use in SADA optimization.
+Higher than SD defaults due to larger model size.
+"""
+
+# Flux defaults (from flux_demo.py)
+DEFAULT_SADA_FLUX_MAX_DOWNSAMPLE: int = 0
+"""
+Maximum downsample factor for Flux models.
+Set to 0 as Flux uses a different architecture that doesn't use spatial downsampling.
+"""
+
+DEFAULT_SADA_FLUX_SX: int = 0
+"""
+Spatial downsample factor X for Flux models.
+Not used for Flux architecture, set to 0.
+"""
+
+DEFAULT_SADA_FLUX_SY: int = 0
+"""
+Spatial downsample factor Y for Flux models.
+Not used for Flux architecture, set to 0.
+"""
+
+DEFAULT_SADA_FLUX_LAGRANGE_TERM: int = 3
+"""
+Lagrangian interpolation terms for Flux models.
+Number of terms to use in Lagrangian interpolation.
+Lower than SD/SDXL defaults for Flux architecture.
+"""
+
+DEFAULT_SADA_FLUX_LAGRANGE_INT: int = 4
+"""
+Lagrangian interpolation interval for Flux models.
+Interval for Lagrangian interpolation. Must be compatible with lagrange_step.
+"""
+
+DEFAULT_SADA_FLUX_LAGRANGE_STEP: int = 20
+"""
+Lagrangian interpolation step for Flux models.
+Step value for Lagrangian interpolation. Must be compatible with lagrange_int.
+Lower than SD/SDXL defaults for Flux architecture.
+"""
+
+DEFAULT_SADA_FLUX_MAX_FIX: int = 0
+"""
+Maximum fixed memory for Flux models.
+Set to 0 as Flux uses a different optimization approach.
+"""
+
+# Common defaults for all models
+DEFAULT_SADA_ACC_RANGE_START: int = 10
+"""
+Acceleration range start step for all models.
+Defines the starting step for SADA acceleration. Must be at least 3 
+as SADA leverages third-order dynamics.
+"""
+
+DEFAULT_SADA_ACC_RANGE_END: int = 47
+"""
+Acceleration range end step for all models.
+Defines the ending step for SADA acceleration.
+"""
+
+DEFAULT_SADA_MAX_INTERVAL: int = 4
+"""
+Maximum interval for optimization for all models.
+Maximum interval between optimizations in the SADA algorithm.
+"""
+
 
 PIPELINE_CACHE_MEMORY_CONSTRAINTS: list[str] = ['pipeline_size > (available * 0.75)']
 """
