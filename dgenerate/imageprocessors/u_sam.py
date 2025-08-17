@@ -255,15 +255,19 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
                     x, y, label = map(float, coords)
                     points.append([x, y, int(label)])
                 else:
-                    coords = point.split(',')
-                    points = []
-                    for c in coords:
+                    # Try splitting by comma for multiple points
+                    comma_split = point.split(',')
+                    if len(comma_split) == 1:
+                        # No commas found, this is a malformed single point
+                        raise ValueError(f"Invalid point format: {point}")
+
+                    # Multiple points separated by commas
+                    for c in comma_split:
                         p = USAMProcessor._parse_points(c)
                         if p:
-                            points.append(p[0])
+                            points.extend(p)
                         else:
-                            raise ValueError(
-                                f'Missing point definition in: "{point}", stray comma?')
+                            raise ValueError(f'Missing point definition in: "{point}", stray comma?')
             else:
                 raise ValueError(f"Point must be a list/tuple or string, got: {type(point).__name__}")
         return points
@@ -291,18 +295,21 @@ class USAMProcessor(_imageprocessor.ImageProcessor):
                 # or: 0x0x0x0,0x0x0x0
                 coords = re.split(r'[x,]', box)
                 if len(coords) > 4:
-                    coords = box.split(',')
-                    boxes = []
-                    for c in coords:
+                    # Try splitting by comma for multiple boxes
+                    comma_split = box.split(',')
+                    if len(comma_split) == 1:
+                        # No commas found, this is a malformed single box
+                        raise ValueError(f"Invalid box format - too many coordinates: {box}")
+
+                    # Multiple boxes separated by commas
+                    for c in comma_split:
                         b = USAMProcessor._parse_boxes(c)
                         if b:
-                            boxes.append(b[0])
+                            boxes.extend(b)
                         else:
-                            raise ValueError(
-                                f'Missing box definition in: "{box}", stray comma?')
+                            raise ValueError(f'Missing box definition in: "{box}", stray comma?')
                 elif len(coords) < 4:
-                    raise ValueError(
-                        f'Box must have x1,y1,x2,y2 coordinates: {box}')
+                    raise ValueError(f'Box must have x1,y1,x2,y2 coordinates: {box}')
                 else:
                     x1, y1, x2, y2 = map(float, coords)
                     boxes.append([x1, y1, x2, y2])

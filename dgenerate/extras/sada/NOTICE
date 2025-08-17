@@ -1,0 +1,11 @@
+See: https://github.com/Ting-Justin-Jiang/sada-icml
+
+This is a vendored SADA implementation that has been slightly modified.
+
+Modifications:
+
+Improved exception handling, describe form of misuse instead of raw NotImplementedError with no text.
+
+Improved apply_patch and remove_patch state management, bugfixes for leaving pipeline in a bad state.
+
+Fix ability to handle non square image resolutions with SD, SD2, SDXL. i.e. images where width != height.

@@ -180,7 +180,7 @@ class ImageEncoderUri:
 
     @_memoize(_image_encoder_cache,
               exceptions={'local_files_only'},
-              hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _d_memoize.struct_hasher}),
+              hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _d_memoize.property_hasher}),
               on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("ImageEncoder", key, hit),
               on_create=lambda key, new: _d_memoize.simple_cache_miss_debug("ImageEncoder", key, new))
     def _load(self,

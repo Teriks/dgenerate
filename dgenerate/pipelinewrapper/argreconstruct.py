@@ -30,6 +30,8 @@ import collections.abc
 import typing
 
 import dgenerate.pipelinewrapper.constants as _constants
+import dgenerate.pipelinewrapper.util as _util
+import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.prompt as _prompt
 import dgenerate.textprocessing as _textprocessing
 from dgenerate.pipelinewrapper.arguments import DiffusionArguments
@@ -185,7 +187,8 @@ def reconstruct_dgenerate_opts(
     if args.inpaint_crop:
         opts.append(('--inpaint-crop',))
 
-    if args.inpaint_crop_padding is not None:
+    if (args.inpaint_crop_padding is not None and
+        args.inpaint_crop_padding != _constants.DEFAULT_INPAINT_CROP_PADDING):
         opts.append(('--inpaint-crop-paddings',
                      _textprocessing.format_size(args.inpaint_crop_padding)))
 
@@ -454,10 +457,102 @@ def reconstruct_dgenerate_opts(
         opts.append(
             ('--sdxl-refiner-negative-crops-coords-top-left', args.sdxl_refiner_negative_crops_coords_top_left))
 
+    # SADA arguments - only include if they differ from model-specific defaults
+    model_defaults = _util.get_sada_model_defaults(wrapper.model_type)
+    
+    # Check if all SADA parameters match their model defaults (treating None as default)
+    sada_params_match_defaults = (
+        (args.sada_max_downsample is None or args.sada_max_downsample == model_defaults['max_downsample']) and
+        (args.sada_sx is None or args.sada_sx == model_defaults['sx']) and
+        (args.sada_sy is None or args.sada_sy == model_defaults['sy']) and
+        (args.sada_acc_range_start is None or args.sada_acc_range_start == model_defaults['acc_range_start']) and
+        (args.sada_acc_range_end is None or args.sada_acc_range_end == model_defaults['acc_range_end']) and
+        (args.sada_lagrange_term is None or args.sada_lagrange_term == model_defaults['lagrange_term']) and
+        (args.sada_lagrange_int is None or args.sada_lagrange_int == model_defaults['lagrange_int']) and
+        (args.sada_lagrange_step is None or args.sada_lagrange_step == model_defaults['lagrange_step']) and
+        (args.sada_max_fix is None or args.sada_max_fix == model_defaults['max_fix']) and
+        (args.sada_max_interval is None or args.sada_max_interval == model_defaults['max_interval'])
+    )
+    
+    # Check if any SADA parameter is set (indicating SADA is enabled)
+    sada_enabled = (
+        args.sada or
+        args.sada_max_downsample is not None or
+        args.sada_sx is not None or
+        args.sada_sy is not None or
+        args.sada_acc_range_start is not None or
+        args.sada_acc_range_end is not None or
+        args.sada_lagrange_term is not None or
+        args.sada_lagrange_int is not None or
+        args.sada_lagrange_step is not None or
+        args.sada_max_fix is not None or
+        args.sada_max_interval is not None
+    )
+    
+    if sada_enabled:
+        if args.sada or sada_params_match_defaults:
+            # Use the simple --sada flag if all parameters match defaults
+            opts.append(('--sada',))
+        else:
+            # Include individual parameters that differ from defaults
+            if args.sada_max_downsample is not None and args.sada_max_downsample != model_defaults['max_downsample']:
+                opts.append(('--sada-max-downsamples', args.sada_max_downsample))
+            
+            if args.sada_sx is not None and args.sada_sx != model_defaults['sx']:
+                opts.append(('--sada-sxs', args.sada_sx))
+            
+            if args.sada_sy is not None and args.sada_sy != model_defaults['sy']:
+                opts.append(('--sada-sys', args.sada_sy))
+            
+            if args.sada_acc_range_start is not None and args.sada_acc_range_start != model_defaults['acc_range_start']:
+                opts.append(('--sada-acc-range-starts', args.sada_acc_range_start))
+            
+            if args.sada_acc_range_end is not None and args.sada_acc_range_end != model_defaults['acc_range_end']:
+                opts.append(('--sada-acc-range-ends', args.sada_acc_range_end))
+            
+            if args.sada_lagrange_term is not None and args.sada_lagrange_term != model_defaults['lagrange_term']:
+                opts.append(('--sada-lagrange-terms', args.sada_lagrange_term))
+            
+            if args.sada_lagrange_int is not None and args.sada_lagrange_int != model_defaults['lagrange_int']:
+                opts.append(('--sada-lagrange-ints', args.sada_lagrange_int))
+            
+            if args.sada_lagrange_step is not None and args.sada_lagrange_step != model_defaults['lagrange_step']:
+                opts.append(('--sada-lagrange-steps', args.sada_lagrange_step))
+            
+            if args.sada_max_fix is not None and args.sada_max_fix != model_defaults['max_fix']:
+                opts.append(('--sada-max-fixes', args.sada_max_fix))
+            
+            if args.sada_max_interval is not None and args.sada_max_interval != model_defaults['max_interval']:
+                opts.append(('--sada-max-intervals', args.sada_max_interval))
+
     if args.width is not None and args.height is not None:
         opts.append(('--output-size', f'{args.width}x{args.height}'))
     elif args.width is not None:
         opts.append(('--output-size', f'{args.width}'))
+    
+    # aspect_correct defaults to False, so only include --no-aspect when it's explicitly False
+    # Note: --no-aspect is the inverse of aspect_correct
+    if not args.aspect_correct:
+        opts.append(('--no-aspect',))
+
+    # Add image_seed_strength if it differs from default
+    if args.image_seed_strength is not None and args.image_seed_strength != _constants.DEFAULT_IMAGE_SEED_STRENGTH:
+        opts.append(('--image-seed-strengths', args.image_seed_strength))
+
+    # Add upscaler_noise_level if it differs from model-specific default
+    if args.upscaler_noise_level is not None:
+        # Determine the appropriate default based on model type
+        upscaler_default = None
+        if wrapper.model_type == _enums.ModelType.UPSCALER_X4:
+            upscaler_default = _constants.DEFAULT_X4_UPSCALER_NOISE_LEVEL
+        elif wrapper.model_type_string == _enums.ModelType.IFS:
+            upscaler_default = _constants.DEFAULT_FLOYD_SUPERRESOLUTION_NOISE_LEVEL
+        elif wrapper.model_type_string == _enums.ModelType.IFS_IMG2IMG:
+            upscaler_default = _constants.DEFAULT_FLOYD_SUPERRESOLUTION_IMG2IMG_NOISE_LEVEL
+        
+        # Only include if different from the model-specific default
+        if upscaler_default is not None and args.upscaler_noise_level != upscaler_default:
+            opts.append(('--upscaler-noise-levels', args.upscaler_noise_level))
 
     if args.denoising_start is not None:
         opts.append(('--denoising-start', args.denoising_start))

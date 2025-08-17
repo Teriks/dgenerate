@@ -27,6 +27,7 @@ import dgenerate.image as _image
 import dgenerate.mediainput as _mediainput
 import dgenerate.mediaoutput as _mediaoutput
 import dgenerate.pipelinewrapper as _pipelinewrapper
+import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 import dgenerate.prompt as _prompt
 import dgenerate.promptupscalers as _promptupscalers
 import dgenerate.promptweighters as _promptweighters
@@ -713,6 +714,223 @@ class RenderLoopConfig(_types.SetFromMixin):
     
     This is supported for: ``--model-type sd, sdxl, and kolors``.
     """
+
+    sada: bool = False
+    """
+    Enable SADA (Stability-guided Adaptive Diffusion Acceleration) with default parameters for the primary model.
+    
+    Specifying this alone is equivalent to setting all SADA parameters to their model-specific default values:
+
+    - SD/SD2: ``sada_max_downsamples=1``, ``sada_sxs=3``, ``sada_sys=3``, ``sada_lagrange_terms=4``, ``sada_lagrange_ints=4``, ``sada_lagrange_steps=24``, ``sada_max_fixes=5120``
+    - SDXL/Kolors: ``sada_max_downsamples=2``, ``sada_sxs=3``, ``sada_sys=3``, ``sada_lagrange_terms=4``, ``sada_lagrange_ints=4``, ``sada_lagrange_steps=24``, ``sada_max_fixes=10240``
+    - Flux: ``sada_max_downsamples=0``, ``sada_lagrange_terms=3``, ``sada_lagrange_ints=4``, ``sada_lagrange_steps=20``, ``sada_max_fixes=0``
+    """
+
+    sada_max_downsamples: _types.OptionalIntegers = None
+    """
+    SADA maximum downsample factor for the primary model.
+    
+    Controls the maximum downsample factor in the SADA algorithm. 
+    Lower values can improve quality but may reduce speedup.
+    
+    Model-specific defaults:
+    
+    - SD/SD2: 1
+    - SDXL/Kolors: 2
+    - Flux: 0
+    
+    See: https://github.com/Ting-Justin-Jiang/sada-icml
+    
+    Supplying any SADA parameter implies that SADA is enabled.
+    
+    This is supported for: ``--model-type sd, sdxl, kolors, flux*``.
+    
+    Each value supplied will be tried in turn.
+    """
+
+    sada_sxs: _types.OptionalIntegers = None
+    """
+    SADA spatial downsample factor X for the primary model.
+    
+    Controls the spatial downsample factor in the X dimension.
+    Higher values can increase speedup but may affect quality.
+    
+    Model-specific defaults:
+    
+    - SD/SD2: 3
+    - SDXL/Kolors: 3
+    - Flux: 0 (not used)
+    
+    See: https://github.com/Ting-Justin-Jiang/sada-icml
+    
+    Supplying any SADA parameter implies that SADA is enabled.
+    
+    This is supported for: ``--model-type sd, sdxl, kolors, flux*``.
+    
+    Each value supplied will be tried in turn.
+    """
+
+    sada_sys: _types.OptionalIntegers = None
+    """
+    SADA spatial downsample factor Y for the primary model.
+    
+    Controls the spatial downsample factor in the Y dimension.
+    Higher values can increase speedup but may affect quality.
+    
+    Model-specific defaults:
+    
+    - SD/SD2: 3
+    - SDXL/Kolors: 3
+    - Flux: 0 (not used)
+    
+    See: https://github.com/Ting-Justin-Jiang/sada-icml
+    
+    Supplying any SADA parameter implies that SADA is enabled.
+    
+    This is supported for: ``--model-type sd, sdxl, kolors, flux*``.
+    
+    Each value supplied will be tried in turn.
+    """
+
+    sada_acc_range_starts: _types.OptionalIntegers = None
+    """
+    SADA acceleration range start step for the primary model.
+    
+    Defines the starting step for SADA acceleration. Must be at least 3 
+    as SADA leverages third-order dynamics.
+    
+    Defaults to 10.
+    
+    See: https://github.com/Ting-Justin-Jiang/sada-icml
+    
+    Supplying any SADA parameter implies that SADA is enabled.
+    
+    This is supported for: ``--model-type sd, sdxl, kolors, flux*``.
+    
+    Each value supplied will be tried in turn.
+    """
+
+    sada_acc_range_ends: _types.OptionalIntegers = None
+    """
+    SADA acceleration range end step for the primary model.
+    
+    Defines the ending step for SADA acceleration.
+    
+    Defaults to 47.
+    
+    See: https://github.com/Ting-Justin-Jiang/sada-icml
+    
+    Supplying any SADA parameter implies that SADA is enabled.
+    
+    This is supported for: ``--model-type sd, sdxl, kolors, flux*``.
+    
+    Each value supplied will be tried in turn.
+    """
+
+    sada_lagrange_terms: _types.OptionalIntegers = None
+    """
+    SADA Lagrangian interpolation terms for the primary model.
+    
+    Number of terms to use in Lagrangian interpolation. 
+    Set to 0 to disable Lagrangian interpolation.
+    
+    Model-specific defaults:
+    
+    - SD/SD2: 4
+    - SDXL/Kolors: 4
+    - Flux: 3
+    
+    See: https://github.com/Ting-Justin-Jiang/sada-icml
+    
+    Supplying any SADA parameter implies that SADA is enabled.
+    
+    This is supported for: ``--model-type sd, sdxl, kolors, flux*``.
+    
+    Each value supplied will be tried in turn.
+    """
+
+    sada_lagrange_ints: _types.OptionalIntegers = None
+    """
+    SADA Lagrangian interpolation interval for the primary model.
+    
+    Interval for Lagrangian interpolation. Must be compatible with 
+    sada_lagrange_step (lagrange_step % lagrange_int == 0).
+    
+    Model-specific defaults:
+    
+    - SD/SD2: 4
+    - SDXL/Kolors: 4
+    - Flux: 4
+    
+    See: https://github.com/Ting-Justin-Jiang/sada-icml
+    
+    Supplying any SADA parameter implies that SADA is enabled.
+    
+    This is supported for: ``--model-type sd, sdxl, kolors, flux*``.
+    
+    Each value supplied will be tried in turn.
+    """
+
+    sada_lagrange_steps: _types.OptionalIntegers = None
+    """
+    SADA Lagrangian interpolation step for the primary model.
+    
+    Step value for Lagrangian interpolation. Must be compatible with 
+    sada_lagrange_int (lagrange_step % lagrange_int == 0).
+    
+    Model-specific defaults:
+    
+    - SD/SD2: 24
+    - SDXL/Kolors: 24
+    - Flux: 20
+    
+    See: https://github.com/Ting-Justin-Jiang/sada-icml
+    
+    Supplying any SADA parameter implies that SADA is enabled.
+    
+    This is supported for: ``--model-type sd, sdxl, kolors, flux*``.
+    
+    Each value supplied will be tried in turn.
+    """
+
+    sada_max_fixes: _types.OptionalIntegers = None
+    """
+    SADA maximum fixed memory for the primary model.
+    
+    Maximum amount of fixed memory to use in SADA optimization.
+    
+    Model-specific defaults:
+    
+    - SD/SD2: 5120 (5 * 1024)
+    - SDXL/Kolors: 10240 (10 * 1024)
+    - Flux: 0
+    
+    See: https://github.com/Ting-Justin-Jiang/sada-icml
+    
+    Supplying any SADA parameter implies that SADA is enabled.
+    
+    This is supported for: ``--model-type sd, sdxl, kolors, flux*``.
+    
+    Each value supplied will be tried in turn.
+    """
+
+    sada_max_intervals: _types.OptionalIntegers = None
+    """
+    SADA maximum interval for optimization for the primary model.
+    
+    Maximum interval between optimizations in the SADA algorithm.
+    
+    Defaults to 4.
+    
+    See: https://github.com/Ting-Justin-Jiang/sada-icml
+    
+    Supplying any SADA parameter implies that SADA is enabled.
+    
+    This is supported for: ``--model-type sd, sdxl, kolors, flux*``.
+    
+    Each value supplied will be tried in turn.
+    """
+
 
     tea_cache: bool = False
     """
@@ -1699,7 +1917,74 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'{a_namer("hi_diffusion_no_raunet")} is only supported when {a_namer("hi_diffusion")} is enabled.'
                 )
 
+        # Check DeepCache compatibility first (needed for SADA validation)
         deep_cache_enabled = (self.deep_cache or any(self._non_null_attr_that_start_with('deep_cache_')))
+
+        # Check SADA compatibility
+        sada_enabled = (self.sada or any(self._non_null_attr_that_start_with('sada_')))
+        if sada_enabled and not (
+                self.model_type == _pipelinewrapper.ModelType.SD or
+                self.model_type == _pipelinewrapper.ModelType.SDXL or
+                self.model_type == _pipelinewrapper.ModelType.KOLORS or
+                _pipelinewrapper.model_type_is_flux(self.model_type)):
+            raise RenderLoopConfigError(
+                f'SADA arguments are only supported for '
+                f'--model-type sd, sdxl, kolors, and flux*'
+            )
+
+        if sada_enabled and deep_cache_enabled:
+            raise RenderLoopConfigError(
+                f'SADA cannot be used simultaneously with {a_namer("deep_cache")}'
+            )
+
+        if sada_enabled and self.hi_diffusion:
+            raise RenderLoopConfigError(
+                f'SADA cannot be used simultaneously with {a_namer("hi_diffusion")}'
+            )
+
+        # Validate SADA Lagrangian interpolation parameters
+        if sada_enabled and self.sada_lagrange_terms and any(term != 0 for term in self.sada_lagrange_terms):
+            if not self.sada_lagrange_ints or not self.sada_lagrange_steps:
+                raise RenderLoopConfigError(
+                    f'When using SADA Lagrangian interpolation ({a_namer("sada_lagrange_terms")} != 0), '
+                    f'both {a_namer("sada_lagrange_ints")} and {a_namer("sada_lagrange_steps")} must be specified'
+                )
+
+            # Check compatibility for each combination
+            for lagrange_int in self.sada_lagrange_ints or []:
+                for lagrange_step in self.sada_lagrange_steps or []:
+                    if lagrange_step % lagrange_int != 0:
+                        raise RenderLoopConfigError(
+                            f'SADA {a_namer("sada_lagrange_steps")} ({lagrange_step}) must be '
+                            f'divisible by {a_namer("sada_lagrange_ints")} ({lagrange_int})'
+                        )
+
+        # Set up SADA defaults when any SADA argument is used
+        if sada_enabled:
+            # Get model-specific defaults
+            sada_defaults = _pipelinewrapper_util.get_sada_model_defaults(self.model_type)
+
+            if self.sada_max_downsamples is None:
+                self.sada_max_downsamples = [sada_defaults['max_downsample']]
+            if self.sada_sxs is None:
+                self.sada_sxs = [sada_defaults['sx']]
+            if self.sada_sys is None:
+                self.sada_sys = [sada_defaults['sy']]
+            if self.sada_acc_range_starts is None:
+                self.sada_acc_range_starts = [sada_defaults['acc_range_start']]
+            if self.sada_acc_range_ends is None:
+                self.sada_acc_range_ends = [sada_defaults['acc_range_end']]
+            if self.sada_lagrange_terms is None:
+                self.sada_lagrange_terms = [sada_defaults['lagrange_term']]
+            if self.sada_lagrange_ints is None:
+                self.sada_lagrange_ints = [sada_defaults['lagrange_int']]
+            if self.sada_lagrange_steps is None:
+                self.sada_lagrange_steps = [sada_defaults['lagrange_step']]
+            if self.sada_max_fixes is None:
+                self.sada_max_fixes = [sada_defaults['max_fix']]
+            if self.sada_max_intervals is None:
+                self.sada_max_intervals = [sada_defaults['max_interval']]
+
         if deep_cache_enabled and not (
                 self.model_type == _pipelinewrapper.ModelType.SDXL or
                 self.model_type == _pipelinewrapper.ModelType.SDXL_PIX2PIX or
@@ -1829,8 +2114,8 @@ class RenderLoopConfig(_types.SetFromMixin):
                     parsed_shape = None
 
                 if parsed_shape is None or parsed_shape not in {
-                        _textprocessing.BasicMaskShape.RECTANGLE,
-                        _textprocessing.BasicMaskShape.ELLIPSE
+                    _textprocessing.BasicMaskShape.RECTANGLE,
+                    _textprocessing.BasicMaskShape.ELLIPSE
                 }:
                     raise RenderLoopConfigError(
                         f'Unknown {"adetailer_mask_shapes"} value: {shape}')
@@ -1838,7 +2123,8 @@ class RenderLoopConfig(_types.SetFromMixin):
     def _check_inpaint_crop_compatibility(self, a_namer: typing.Callable[[str], str]):
         """Check compatibility of inpaint crop arguments."""
         # Automatically enable inpaint crop if padding, feathering, or masking is specified
-        if not self.inpaint_crop and (self.inpaint_crop_paddings or self.inpaint_crop_feathers or self.inpaint_crop_masked):
+        if not self.inpaint_crop and (
+                self.inpaint_crop_paddings or self.inpaint_crop_feathers or self.inpaint_crop_masked):
             self.inpaint_crop = True
 
         if self.inpaint_crop and self.no_aspect:
@@ -2475,12 +2761,11 @@ class RenderLoopConfig(_types.SetFromMixin):
         if self.inpaint_crop:
             for image_seed in parsed_image_seeds:
                 if ((image_seed.images is not None and len(list(image_seed.images)) > 1) or
-                    (image_seed.mask_images is not None and len(list(image_seed.mask_images)) > 1)):
+                        (image_seed.mask_images is not None and len(list(image_seed.mask_images)) > 1)):
                     raise RenderLoopConfigError(
                         f'Inpaint batching via {a_namer("image_seeds")} batching syntax is '
                         f'not supported with {a_namer("inpaint_crop")}, but you may '
                         f'use {a_namer("batch_size")}')
-
 
     def _check_image_seed_uri(self,
                               uri: str,
@@ -3054,6 +3339,17 @@ class RenderLoopConfig(_types.SetFromMixin):
                     'hi_diffusion_no_win_attn', [self.hi_diffusion_no_win_attn]),
                 hi_diffusion_no_raunet=ov(
                     'hi_diffusion_no_raunet', [self.hi_diffusion_no_raunet]),
+                sada=ov('sada', [self.sada]),
+                sada_max_downsample=ov('sada_max_downsample', self.sada_max_downsamples),
+                sada_sx=ov('sada_sx', self.sada_sxs),
+                sada_sy=ov('sada_sy', self.sada_sys),
+                sada_acc_range_start=ov('sada_acc_range_start', self.sada_acc_range_starts),
+                sada_acc_range_end=ov('sada_acc_range_end', self.sada_acc_range_ends),
+                sada_lagrange_term=ov('sada_lagrange_term', self.sada_lagrange_terms),
+                sada_lagrange_int=ov('sada_lagrange_int', self.sada_lagrange_ints),
+                sada_lagrange_step=ov('sada_lagrange_step', self.sada_lagrange_steps),
+                sada_max_fix=ov('sada_max_fix', self.sada_max_fixes),
+                sada_max_interval=ov('sada_max_interval', self.sada_max_intervals),
                 tea_cache=ov('tea_cache', [self.tea_cache]),
                 tea_cache_rel_l1_threshold=ov('tea_cache_rel_l1_threshold', self.tea_cache_rel_l1_thresholds),
                 ras=ov('ras', [self.ras]),

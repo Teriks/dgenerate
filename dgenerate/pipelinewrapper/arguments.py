@@ -590,6 +590,202 @@ class DiffusionArguments(_types.SetFromMixin):
     This is supported for: ``--model-type sd, sdxl, and kolors``.
     """
 
+    sada_max_downsample: _types.OptionalInteger = None
+    """
+    SADA maximum downsample factor for the primary model.
+    
+    Controls the maximum downsample factor in the SADA algorithm. 
+    Lower values can improve quality but may reduce speedup.
+    
+    Model-specific defaults:
+    
+    - SD/SD2: 1
+    - SDXL/Kolors: 2
+    - Flux: 0
+    
+    See: https://github.com/Ting-Justin-Jiang/sada-icml
+    
+    Supplying any SADA parameter implies that SADA is enabled.
+    
+    This is supported for: ``--model-type sd, sdxl, kolors, flux*``.
+    """
+
+    sada_sx: _types.OptionalInteger = None
+    """
+    SADA spatial downsample factor X for the primary model.
+    
+    Controls the spatial downsample factor in the X dimension.
+    Higher values can increase speedup but may affect quality.
+    
+    Model-specific defaults:
+    
+    - SD/SD2: 3
+    - SDXL/Kolors: 3
+    - Flux: 0 (not used)
+    
+    See: https://github.com/Ting-Justin-Jiang/sada-icml
+    
+    Supplying any SADA parameter implies that SADA is enabled.
+    
+    This is supported for: ``--model-type sd, sdxl, kolors, flux*``.
+    """
+
+    sada_sy: _types.OptionalInteger = None  
+    """
+    SADA spatial downsample factor Y for the primary model.
+    
+    Controls the spatial downsample factor in the Y dimension.
+    Higher values can increase speedup but may affect quality.
+    
+    Model-specific defaults:
+    
+    - SD/SD2: 3
+    - SDXL/Kolors: 3
+    - Flux: 0 (not used)
+    
+    See: https://github.com/Ting-Justin-Jiang/sada-icml
+    
+    Supplying any SADA parameter implies that SADA is enabled.
+    
+    This is supported for: ``--model-type sd, sdxl, kolors, flux*``.
+    """
+
+    sada_acc_range_start: _types.OptionalInteger = None
+    """
+    SADA acceleration range start step for the primary model.
+    
+    Defines the starting step for SADA acceleration. Must be at least 3 
+    as SADA leverages third-order dynamics.
+    
+    Defaults to 10.
+    
+    See: https://github.com/Ting-Justin-Jiang/sada-icml
+    
+    Supplying any SADA parameter implies that SADA is enabled.
+    
+    This is supported for: ``--model-type sd, sdxl, kolors, flux*``.
+    """
+
+    sada_acc_range_end: _types.OptionalInteger = None
+    """
+    SADA acceleration range end step for the primary model.
+    
+    Defines the ending step for SADA acceleration.
+    
+    Defaults to 47.
+    
+    See: https://github.com/Ting-Justin-Jiang/sada-icml
+    
+    Supplying any SADA parameter implies that SADA is enabled.
+    
+    This is supported for: ``--model-type sd, sdxl, kolors, flux*``.
+    """
+
+    sada_lagrange_term: _types.OptionalInteger = None
+    """
+    SADA Lagrangian interpolation terms for the primary model.
+    
+    Number of terms to use in Lagrangian interpolation. 
+    Set to 0 to disable Lagrangian interpolation.
+    
+    Model-specific defaults:
+    
+    - SD/SD2: 4
+    - SDXL/Kolors: 4
+    - Flux: 3
+    
+    See: https://github.com/Ting-Justin-Jiang/sada-icml
+    
+    Supplying any SADA parameter implies that SADA is enabled.
+    
+    This is supported for: ``--model-type sd, sdxl, kolors, flux*``.
+    """
+
+    sada_lagrange_int: _types.OptionalInteger = None
+    """
+    SADA Lagrangian interpolation interval for the primary model.
+    
+    Interval for Lagrangian interpolation. Must be compatible with 
+    sada_lagrange_step (lagrange_step % lagrange_int == 0).
+    
+    Model-specific defaults:
+    
+    - SD/SD2: 4
+    - SDXL/Kolors: 4
+    - Flux: 4
+    
+    See: https://github.com/Ting-Justin-Jiang/sada-icml
+    
+    Supplying any SADA parameter implies that SADA is enabled.
+    
+    This is supported for: ``--model-type sd, sdxl, kolors, flux*``.
+    """
+
+    sada_lagrange_step: _types.OptionalInteger = None
+    """
+    SADA Lagrangian interpolation step for the primary model.
+    
+    Step value for Lagrangian interpolation. Must be compatible with 
+    sada_lagrange_int (lagrange_step % lagrange_int == 0).
+    
+    Model-specific defaults:
+    
+    - SD/SD2: 24
+    - SDXL/Kolors: 24
+    - Flux: 20
+    
+    See: https://github.com/Ting-Justin-Jiang/sada-icml
+    
+    Supplying any SADA parameter implies that SADA is enabled.
+    
+    This is supported for: ``--model-type sd, sdxl, kolors, flux*``.
+    """
+
+    sada_max_fix: _types.OptionalInteger = None
+    """
+    SADA maximum fixed memory for the primary model.
+    
+    Maximum amount of fixed memory to use in SADA optimization.
+    
+    Model-specific defaults:
+    
+    - SD/SD2: 5120 (5 * 1024)
+    - SDXL/Kolors: 10240 (10 * 1024)
+    - Flux: 0
+    
+    See: https://github.com/Ting-Justin-Jiang/sada-icml
+    
+    Supplying any SADA parameter implies that SADA is enabled.
+    
+    This is supported for: ``--model-type sd, sdxl, kolors, flux*``.
+    """
+
+    sada_max_interval: _types.OptionalInteger = None
+    """
+    SADA maximum interval for optimization for the primary model.
+    
+    Maximum interval between optimizations in the SADA algorithm.
+    
+    Defaults to 4.
+    
+    See: https://github.com/Ting-Justin-Jiang/sada-icml
+    
+    Supplying any SADA parameter implies that SADA is enabled.
+    
+    This is supported for: ``--model-type sd, sdxl, kolors, flux*``.
+    """
+
+    sada: bool = False
+    """
+    Enable SADA (Stability-guided Adaptive Diffusion Acceleration) with default parameters for the primary model.
+    
+    This is equivalent to setting all SADA parameters to their default values.
+    
+    See: https://github.com/Ting-Justin-Jiang/sada-icml
+    
+    This is supported for: ``--model-type sd, sdxl, kolors, flux*``.
+    """
+
     tea_cache: bool = False
     """
     Activate TeaCache for the primary model?
@@ -1219,7 +1415,17 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.deep_cache_interval, "DeepCache Interval:"),
             (self.deep_cache_branch_id, "DeepCache Branch ID:"),
             (self.sdxl_refiner_deep_cache_interval, "SDXL Refiner DeepCache Interval:"),
-            (self.sdxl_refiner_deep_cache_branch_id, "SDXL Refiner DeepCache Branch ID:")
+            (self.sdxl_refiner_deep_cache_branch_id, "SDXL Refiner DeepCache Branch ID:"),
+            (self.sada_max_downsample, "SADA Max Downsample:"),
+            (self.sada_sx, "SADA SX:"),
+            (self.sada_sy, "SADA SY:"),
+            (self.sada_acc_range_start, "SADA Acc Range Start:"),
+            (self.sada_acc_range_end, "SADA Acc Range End:"),
+            (self.sada_lagrange_term, "SADA Lagrange Term:"),
+            (self.sada_lagrange_int, "SADA Lagrange Int:"),
+            (self.sada_lagrange_step, "SADA Lagrange Step:"),
+            (self.sada_max_fix, "SADA Max Fix:"),
+            (self.sada_max_interval, "SADA Max Interval:")
         ]
 
         if not self.prompt.weighter:

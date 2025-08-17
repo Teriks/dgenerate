@@ -203,7 +203,7 @@ class TransformerUri:
 
     @_memoize(_transformer_cache,
               exceptions={'local_files_only'},
-              hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _d_memoize.struct_hasher}),
+              hasher=lambda args: _d_memoize.args_cache_key(args, {'self': _d_memoize.property_hasher}),
               on_hit=lambda key, hit: _d_memoize.simple_cache_hit_debug("Torch Transformer", key, hit),
               on_create=lambda key, new: _d_memoize.simple_cache_miss_debug("Torch Transformer", key, new))
     def _load(self,

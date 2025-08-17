@@ -26,4 +26,45 @@ if not hasattr(transformers.DynamicCache, 'get_max_length'):
     # they changed this, get_max_length no longer exists
     # this breaks some LLMs with custom modeling code,
     # and who knows when those repositories will update.
-    transformers.DynamicCache.get_max_length = transformers.DynamicCache.get_max_cache_shape
+    def get_max_length(self):
+        """Returns the maximum sequence length of the cached states. DynamicCache does not have a maximum length."""
+        if hasattr(self, 'get_max_cache_shape'):
+            # Use the new API if available
+            max_shape = self.get_max_cache_shape()
+            # DynamicCache returns -1 from get_max_cache_shape but should return None for get_max_length
+            # to maintain backward compatibility (None = unlimited, -1 could be misinterpreted)
+            if max_shape == -1 and isinstance(self, transformers.DynamicCache):
+                return None
+            return max_shape
+        else:
+            # Fallback for very old versions
+            return None
+    
+    transformers.DynamicCache.get_max_length = get_max_length
+
+if not hasattr(transformers.DynamicCache, 'seen_tokens'):
+    # In newer versions of transformers, seen_tokens attribute was removed
+    # and replaced with get_seq_length() method. This breaks custom modeling
+    # code like Phi-3 that still expects the seen_tokens attribute.
+    @property
+    def seen_tokens(self):
+        return self.get_seq_length()
+    
+    transformers.DynamicCache.seen_tokens = seen_tokens
+
+if not hasattr(transformers.DynamicCache, 'get_usable_length'):
+    # In newer versions of transformers, get_usable_length method was removed
+    # from DynamicCache. This breaks custom modeling code like Phi-3 that
+    # still expects this method to be available.
+    def get_usable_length(self, new_seq_length: int, layer_idx: int = 0) -> int:
+        """Given the sequence length of the new inputs, returns the usable length of the cache."""
+        # Cache without size limit -> all cache is usable
+        # Cache with size limit -> if the length cache plus the length of the new inputs is larger the maximum cache
+        #   length, we will need to evict part of the cache (and thus not all cache is usable)
+        max_length = self.get_max_length() if hasattr(self, 'get_max_length') else None
+        previous_seq_length = self.get_seq_length(layer_idx)
+        if max_length is not None and previous_seq_length + new_seq_length > max_length:
+            return max_length - new_seq_length
+        return previous_seq_length
+    
+    transformers.DynamicCache.get_usable_length = get_usable_length

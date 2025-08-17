@@ -32,10 +32,12 @@ import huggingface_hub.errors
 import torch
 import transformers.utils.quantization_config
 
-import dgenerate.messages as _messages
-import dgenerate.types as _types
-import dgenerate.hfhub as _hfhub
 import dgenerate.exceptions as _d_exceptions
+import dgenerate.hfhub as _hfhub
+import dgenerate.messages as _messages
+import dgenerate.pipelinewrapper.constants as _constants
+import dgenerate.pipelinewrapper.enums as _enums
+import dgenerate.types as _types
 
 
 def fetch_model_index_dict(
@@ -147,7 +149,6 @@ def single_file_load_sub_module(
     else:
         default_pretrained_model_config_name = config
 
-
     with _hfhub.with_hf_errors_as_config_not_found():
         cached_model_config_path = huggingface_hub.hf_hub_download(
             default_pretrained_model_config_name,
@@ -157,7 +158,6 @@ def single_file_load_sub_module(
             subfolder=name,
             filename='config.json'
         )
-
 
     args = {
         "cached_model_config_path": cached_model_config_path,
@@ -706,6 +706,72 @@ def check_bnb_status(module) -> tuple[bool, bool, bool]:
             transformers.utils.quantization_config.QuantizationMethod.BITS_AND_BYTES
     )
     return bit4_bnb or bit8_bnb, bit4_bnb, bit8_bnb
+
+
+def get_sada_model_defaults(model_type: _enums.ModelType) -> dict:
+    """Get model-specific SADA defaults based on the model type.
+
+    This function returns the optimal SADA parameters for each model architecture
+    based on the examples provided in the sada-icml repository demos.
+
+    The returned dictionary contains the following keys:
+
+    * ``max_downsample`` (*int*) -- Maximum downsample factor
+    * ``sx`` (*int*) -- Spatial downsample factor X
+    * ``sy`` (*int*) -- Spatial downsample factor Y
+    * ``acc_range_start`` (*int*) -- Acceleration range start step
+    * ``acc_range_end`` (*int*) -- Acceleration range end step
+    * ``lagrange_term`` (*float*) -- Lagrangian interpolation terms
+    * ``lagrange_int`` (*int*) -- Lagrangian interpolation interval
+    * ``lagrange_step`` (*int*) -- Lagrangian interpolation step
+    * ``max_fix`` (*int*) -- Maximum fixed memory
+    * ``max_interval`` (*int*) -- Maximum optimization interval
+
+    :param model_type: The model type enum from :py:class:``dgenerate.pipelinewrapper.enums.ModelType``
+    :returns: A dictionary containing the model-specific SADA parameters
+    """
+
+    if _enums.model_type_is_flux(model_type):
+        return {
+            'max_downsample': _constants.DEFAULT_SADA_FLUX_MAX_DOWNSAMPLE,
+            'sx': _constants.DEFAULT_SADA_FLUX_SX,
+            'sy': _constants.DEFAULT_SADA_FLUX_SY,
+            'acc_range_start': _constants.DEFAULT_SADA_ACC_RANGE_START,
+            'acc_range_end': _constants.DEFAULT_SADA_ACC_RANGE_END,
+            'lagrange_term': _constants.DEFAULT_SADA_FLUX_LAGRANGE_TERM,
+            'lagrange_int': _constants.DEFAULT_SADA_FLUX_LAGRANGE_INT,
+            'lagrange_step': _constants.DEFAULT_SADA_FLUX_LAGRANGE_STEP,
+            'max_fix': _constants.DEFAULT_SADA_FLUX_MAX_FIX,
+            'max_interval': _constants.DEFAULT_SADA_MAX_INTERVAL,
+        }
+    elif (model_type == _enums.ModelType.SDXL or
+          model_type == _enums.ModelType.KOLORS):
+        return {
+            'max_downsample': _constants.DEFAULT_SADA_SDXL_MAX_DOWNSAMPLE,
+            'sx': _constants.DEFAULT_SADA_SDXL_SX,
+            'sy': _constants.DEFAULT_SADA_SDXL_SY,
+            'acc_range_start': _constants.DEFAULT_SADA_ACC_RANGE_START,
+            'acc_range_end': _constants.DEFAULT_SADA_ACC_RANGE_END,
+            'lagrange_term': _constants.DEFAULT_SADA_SDXL_LAGRANGE_TERM,
+            'lagrange_int': _constants.DEFAULT_SADA_SDXL_LAGRANGE_INT,
+            'lagrange_step': _constants.DEFAULT_SADA_SDXL_LAGRANGE_STEP,
+            'max_fix': _constants.DEFAULT_SADA_SDXL_MAX_FIX,
+            'max_interval': _constants.DEFAULT_SADA_MAX_INTERVAL,
+        }
+    else:
+        # SD, SD2 use SD defaults
+        return {
+            'max_downsample': _constants.DEFAULT_SADA_SD_MAX_DOWNSAMPLE,
+            'sx': _constants.DEFAULT_SADA_SD_SX,
+            'sy': _constants.DEFAULT_SADA_SD_SY,
+            'acc_range_start': _constants.DEFAULT_SADA_ACC_RANGE_START,
+            'acc_range_end': _constants.DEFAULT_SADA_ACC_RANGE_END,
+            'lagrange_term': _constants.DEFAULT_SADA_SD_LAGRANGE_TERM,
+            'lagrange_int': _constants.DEFAULT_SADA_SD_LAGRANGE_INT,
+            'lagrange_step': _constants.DEFAULT_SADA_SD_LAGRANGE_STEP,
+            'max_fix': _constants.DEFAULT_SADA_SD_MAX_FIX,
+            'max_interval': _constants.DEFAULT_SADA_MAX_INTERVAL,
+        }
 
 
 __all__ = _types.module_all()
