@@ -13,7 +13,7 @@
 
 # upscaler chaining is supported by this directive just as with dgenerate --prompt-upscaler
 
-# The first arguments are the prompts to be upscaled, you must specify an upscaler or upscaler chain with --upscaler
+# You specify prompts to upscale with --prompts, you must also specify an upscaler or upscaler chain with --upscaler
 
 # See: \directives_help prompt_upscale, and \prompt_upscale --help
 # From the command line, this is: dgenerate --sub-command-help prompt-upscale,
@@ -26,34 +26,34 @@
 # than just view it. You may also use --quote shell, which uses shlex.quote for posix
 # shell quoting (bash, etc.).
 
-\prompt_upscale "a cat sitting on a bench in a park" --upscaler magicprompt --quote dgenerate
+\prompt_upscale --prompts "a cat sitting on a bench in a park" --upscaler magicprompt --quote dgenerate
 
 
 # You can write your prompts to a structured file if desired, using -o/--output and -of/--output-format
 
 # write 5 magicprompt variations to a toml file:
 
-\prompt_upscale "a cat sitting on a bench in a park" --upscaler magicprompt;variations=5 -o prompts.toml -of toml
+\prompt_upscale --prompts "a cat sitting on a bench in a park" --upscaler magicprompt;variations=5 -o prompts.toml -of toml
 
 # write 5 magicprompt variations to a json file:
 
-\prompt_upscale "a cat sitting on a bench in a park" --upscaler magicprompt;variations=5 -o prompts.json -of json
+\prompt_upscale --prompts "a cat sitting on a bench in a park" --upscaler magicprompt;variations=5 -o prompts.json -of json
 
 # write 5 magicprompt variations to a yaml file:
 
-\prompt_upscale "a cat sitting on a bench in a park" --upscaler magicprompt;variations=5 -o prompts.yaml -of yaml
+\prompt_upscale --prompts "a cat sitting on a bench in a park" --upscaler magicprompt;variations=5 -o prompts.yaml -of yaml
 
 
 # You may also print structured output to stdout with -of/--output-format
 # This prints yaml to stdout, this works for json, and toml as well:
 
-\prompt_upscale "a cat sitting on a bench in a park" --upscaler magicprompt;variations=5 -of yaml
+\prompt_upscale --prompts "a cat sitting on a bench in a park" --upscaler magicprompt;variations=5 -of yaml
 
 
 # The --setp option allows you to set a template variable to a python list of generated prompts.
 # Set a template variable to a list of raw prompt strings:
 
-\prompt_upscale "a cat sitting on a bench in a park" --upscaler magicprompt;variations=5 --setp prompts_variable
+\prompt_upscale --prompts "a cat sitting on a bench in a park" --upscaler magicprompt;variations=5 --setp prompts_variable
 
 # print the python list
 
@@ -61,6 +61,6 @@
 
 # multiple prompts can be upscaled
 
-\prompt_upscale "a cat sitting on a bench in a park" "a dog sitting on a park bench" --upscaler magicprompt;variations=5 --setp prompts_variable
+\prompt_upscale --prompts "a cat sitting on a bench in a park" "a dog sitting on a park bench" --upscaler magicprompt;variations=5 --setp prompts_variable
 
 \print {{ prompts_variable }}
