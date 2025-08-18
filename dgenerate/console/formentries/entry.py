@@ -18,7 +18,7 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
+import tkinter
 import tkinter.ttk as ttk
 import dgenerate.textprocessing as _textprocessing
 import typing
@@ -52,13 +52,13 @@ def shell_quote_if(text, strict: bool = False):
 
 
 def valid_colors(widget):
-    if not isinstance(widget, ttk.Combobox):
+    if not isinstance(widget, ttk.Combobox) and not isinstance(widget, tkinter.Checkbutton):
         widget.config(
             highlightthickness=0)
 
 
 def invalid_colors(widget):
-    if not isinstance(widget, ttk.Combobox):
+    if not isinstance(widget, ttk.Combobox) and not isinstance(widget, tkinter.Checkbutton):
         widget.config(
             highlightbackground="red",
             highlightcolor="red",
