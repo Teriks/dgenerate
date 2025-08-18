@@ -30,5 +30,5 @@ when ``--batch-size`` is greater than 1.
     --inference-steps 30 \
     --guidance-scales 8 \
     --output-size 2048 \
-    --sdxl-target-size 2048 \
+    --sdxl-target-sizes 2048 \
     --prompts "Photo of a horse standing near the open door of a red barn, high resolution; artwork"

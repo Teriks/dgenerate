@@ -3102,11 +3102,11 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--sdxl-original-size', '--sdxl-original-sizes', dest='sdxl_original_sizes', metavar="SIZE", action='store',
+            '--sdxl-original-sizes', dest='sdxl_original_sizes', metavar="SIZE", action='store',
             nargs='+', default=[], type=_type_size,
             help="""One or more Stable Diffusion XL (sdxl) "original-size" micro-conditioning parameters in
-                    the format (WIDTH)x(HEIGHT). If not the same as --sdxl-target-size the image will appear to be
-                    down or up-sampled. --sdxl-original-size defaults to --output-size or the size of any input
+                    the format (WIDTH)x(HEIGHT). If not the same as --sdxl-target-sizes the image will appear to be
+                    down or up-sampled. --sdxl-original-sizes defaults to --output-size or the size of any input
                     images if not specified. Part of SDXL's micro-conditioning as explained in section 2.2 of
                     [https://huggingface.co/papers/2307.01952]"""
         )
@@ -3114,10 +3114,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--sdxl-target-size', '--sdxl-target-sizes', dest='sdxl_target_sizes', metavar="SIZE", action='store',
+            '--sdxl-target-sizes', dest='sdxl_target_sizes', metavar="SIZE", action='store',
             nargs='+', default=[], type=_type_size,
             help="""One or more Stable Diffusion XL (sdxl) "target-size" micro-conditioning parameters in
-                    the format (WIDTH)x(HEIGHT). For most cases, --sdxl-target-size should be set to the desired
+                    the format (WIDTH)x(HEIGHT). For most cases, --sdxl-target-sizes should be set to the desired
                     height and width of the generated image. If not specified it will default to --output-size or
                     the size of any input images. Part of SDXL\'s micro-conditioning as explained in section 2.2 of
                     [https://huggingface.co/papers/2307.01952]"""
@@ -3148,7 +3148,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '--sdxl-negative-target-sizes', metavar="SIZE", action='store', nargs='+', default=[], type=_type_size,
             help="""One or more Stable Diffusion XL (sdxl) "negative-original-sizes" micro-conditioning parameters.
                     To negatively condition the generation process based on a target image resolution. It should be as same
-                    as the "--sdxl-target-size" for most cases. Part of SDXL's micro-conditioning as explained in section 2.2 of
+                    as the "--sdxl-target-sizes" for most cases. Part of SDXL's micro-conditioning as explained in section 2.2 of
                     [https://huggingface.co/papers/2307.01952]. For more information, refer to this issue thread:
                     https://github.com/huggingface/diffusers/issues/4208."""
         )

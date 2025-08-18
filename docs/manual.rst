@@ -51,8 +51,8 @@ Help Output
                      [-rpag] [-rpags FLOAT [FLOAT ...]] [-rpagas FLOAT [FLOAT ...]] [-mqo | -mco] [-mqo2 |
                      -mco2] [--s-cascade-decoder MODEL_URI] [--sdxl-refiner MODEL_URI] [--sdxl-refiner-edit]
                      [--sdxl-t2i-adapter-factors FLOAT [FLOAT ...]] [--sdxl-aesthetic-scores FLOAT [FLOAT ...]]
-                     [--sdxl-crops-coords-top-left COORD [COORD ...]] [--sdxl-original-size SIZE [SIZE ...]]
-                     [--sdxl-target-size SIZE [SIZE ...]] [--sdxl-negative-aesthetic-scores FLOAT [FLOAT ...]]
+                     [--sdxl-crops-coords-top-left COORD [COORD ...]] [--sdxl-original-sizes SIZE [SIZE ...]]
+                     [--sdxl-target-sizes SIZE [SIZE ...]] [--sdxl-negative-aesthetic-scores FLOAT [FLOAT ...]]
                      [--sdxl-negative-original-sizes SIZE [SIZE ...]]
                      [--sdxl-negative-target-sizes SIZE [SIZE ...]]
                      [--sdxl-negative-crops-coords-top-left COORD [COORD ...]]
@@ -1697,16 +1697,16 @@ Help Output
             well-centered images are usually achieved by setting --sdxl-crops-coords-top-left to "0,0". Part of
             SDXL's micro-conditioning as explained in section 2.2 of [https://huggingface.co/papers/2307.01952].
             ----------------------------------------------------------------------------------------------------
-      --sdxl-original-size, --sdxl-original-sizes SIZE [SIZE ...]
+      --sdxl-original-sizes SIZE [SIZE ...]
             One or more Stable Diffusion XL (sdxl) "original-size" micro-conditioning parameters in the format
-            (WIDTH)x(HEIGHT). If not the same as --sdxl-target-size the image will appear to be down or
-            up-sampled. --sdxl-original-size defaults to --output-size or the size of any input images if not
+            (WIDTH)x(HEIGHT). If not the same as --sdxl-target-sizes the image will appear to be down or
+            up-sampled. --sdxl-original-sizes defaults to --output-size or the size of any input images if not
             specified. Part of SDXL's micro-conditioning as explained in section 2.2 of
             [https://huggingface.co/papers/2307.01952]
             ------------------------------------------
-      --sdxl-target-size, --sdxl-target-sizes SIZE [SIZE ...]
+      --sdxl-target-sizes SIZE [SIZE ...]
             One or more Stable Diffusion XL (sdxl) "target-size" micro-conditioning parameters in the format
-            (WIDTH)x(HEIGHT). For most cases, --sdxl-target-size should be set to the desired height and width
+            (WIDTH)x(HEIGHT). For most cases, --sdxl-target-sizes should be set to the desired height and width
             of the generated image. If not specified it will default to --output-size or the size of any input
             images. Part of SDXL's micro-conditioning as explained in section 2.2 of
             [https://huggingface.co/papers/2307.01952]
@@ -1726,7 +1726,7 @@ Help Output
       --sdxl-negative-target-sizes SIZE [SIZE ...]
             One or more Stable Diffusion XL (sdxl) "negative-original-sizes" micro-conditioning parameters. To
             negatively condition the generation process based on a target image resolution. It should be as same
-            as the "--sdxl-target-size" for most cases. Part of SDXL's micro-conditioning as explained in
+            as the "--sdxl-target-sizes" for most cases. Part of SDXL's micro-conditioning as explained in
             section 2.2 of [https://huggingface.co/papers/2307.01952]. For more information, refer to this issue
             thread: https://github.com/huggingface/diffusers/issues/4208.
             -------------------------------------------------------------
@@ -4836,7 +4836,7 @@ when ``--batch-size`` is greater than 1.
     --inference-steps 30 \
     --guidance-scales 8 \
     --output-size 2048 \
-    --sdxl-target-size 2048 \
+    --sdxl-target-sizes 2048 \
     --prompts "Photo of a horse standing near the open door of a red barn, high resolution; artwork"
 
 Specifying a UNet
