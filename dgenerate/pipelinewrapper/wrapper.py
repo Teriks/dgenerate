@@ -1876,7 +1876,13 @@ class DiffusionPipelineWrapper:
                 )
 
         # Handle specific model types that need special dimension handling
-        if self._model_type == _enums.ModelType.UPSCALER_X2:
+        if self._model_type == _enums.ModelType.SDXL_PIX2PIX:
+            self._set_pipe_dimensions(
+                user_width, user_height,
+                inference_width, inference_height,
+                pipeline_args
+            )
+        elif self._model_type == _enums.ModelType.UPSCALER_X2:
             image_arg_inputs = list(image_arg_inputs)
             pipeline_args['image'] = image_arg_inputs
 
@@ -2800,8 +2806,8 @@ class DiffusionPipelineWrapper:
 
         pipeline_args['num_inference_steps'] = user_args.second_model_inference_steps
         pipeline_args['guidance_scale'] = user_args.second_model_guidance_scale
-        pipeline_args.pop('height')
-        pipeline_args.pop('width')
+        pipeline_args.pop('height', None)
+        pipeline_args.pop('width', None)
         pipeline_args.pop('images', None)
 
         if self._parsed_s_cascade_decoder_uri.dtype is not None:
@@ -3074,8 +3080,8 @@ class DiffusionPipelineWrapper:
 
         if isinstance(self._pipeline, diffusers.StableDiffusionInpaintPipelineLegacy):
             # Not necessary, will cause an error
-            pipeline_args.pop('width')
-            pipeline_args.pop('height')
+            pipeline_args.pop('width', None)
+            pipeline_args.pop('height', None)
 
         has_controlnet = hasattr(self._pipeline, 'controlnet')
 
@@ -3234,8 +3240,8 @@ class DiffusionPipelineWrapper:
                                (diffusers.StableDiffusionXLImg2ImgPipeline,
                                 diffusers.StableDiffusionXLPAGImg2ImgPipeline))):
                 # Width / Height does not get passed to img2img
-                pipeline_args.pop('width')
-                pipeline_args.pop('height')
+                pipeline_args.pop('width', None)
+                pipeline_args.pop('height', None)
 
         # Or any of these
         self._pop_sdxl_conditioning_args(pipeline_args)

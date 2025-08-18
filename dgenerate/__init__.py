@@ -210,8 +210,12 @@ try:
     import dgenerate.files
     import dgenerate.translators
 
+    import logging
+    import dgenerate.extras.argostranslate.utils
+
     transformers.logging.set_verbosity(transformers.logging.CRITICAL)
     diffusers.logging.set_verbosity(diffusers.logging.CRITICAL)
+    dgenerate.extras.argostranslate.utils.logger.setLevel(logging.CRITICAL)
 except KeyboardInterrupt:
     if __am_dgenerate_app:
         print('Exiting dgenerate due to keyboard interrupt!', file=sys.stderr)

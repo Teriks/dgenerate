@@ -298,7 +298,8 @@ this sub-commands functionality is available in the `examples folder <https://gi
     # using the default accelerator for your system
     # and print them as structured yaml to stdout
 
-    dgenerate --sub-command prompt-upscale \
+    dgenerate --sub-command prompt-upscale
+    --prompts \
     "a cat sitting on a bench in a park" \
     "a dog sitting on a bench in a park" \
     --upscaler magicprompt;variations=10 -of yaml
