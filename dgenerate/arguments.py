@@ -3540,6 +3540,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '-pu',
             '--prompt-upscaler',
+            '--prompt-upscalers',
             metavar='PROMPT_UPSCALER_URI', dest='prompt_upscaler_uri', action='store', nargs='+',
             default=None, type=_type_prompt_upscaler,
             help="""Specify a prompt upscaler implementation by URI, for example: --prompt-weighter dynamicprompts.
@@ -3559,6 +3560,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '-pu2',
             '--second-model-prompt-upscaler',
+            '--second-model-prompt-upscalers',
             metavar='PROMPT_UPSCALER_URI', dest='second_model_prompt_upscaler_uri', action='store', nargs='+',
             default=None, type=_type_prompt_upscaler,
             help='Specify a --prompt-upscaler URI that will affect --second-model-prompts only, by default '
@@ -3569,6 +3571,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     actions.append(
         parser.add_argument(
             '--second-model-second-prompt-upscaler',
+            '--second-model-second-prompt-upscalers',
             metavar='PROMPT_UPSCALER_URI', dest='second_model_second_prompt_upscaler_uri', action='store', nargs='+',
             default=None, type=_type_prompt_upscaler,
             help='Specify a --prompt-upscaler URI that will affect --second-model-second-prompts only, by default '
@@ -3579,6 +3582,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     actions.append(
         parser.add_argument(
             '--second-prompt-upscaler',
+            '--second-prompt-upscalers',
             metavar='PROMPT_UPSCALER_URI', dest='second_prompt_upscaler_uri', action='store', nargs='+',
             default=None, type=_type_prompt_upscaler,
             help='Specify a --prompt-upscaler URI that will affect --second-prompts only, by default '
@@ -3589,6 +3593,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     actions.append(
         parser.add_argument(
             '--third-prompt-upscaler',
+            '--third-prompt-upscalers',
             metavar='PROMPT_UPSCALER_URI', dest='third_prompt_upscaler_uri', action='store', nargs='+',
             default=None, type=_type_prompt_upscaler,
             help='Specify a --prompt-upscaler URI that will affect --third-prompts only, by default '
