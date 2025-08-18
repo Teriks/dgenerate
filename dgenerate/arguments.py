@@ -2198,6 +2198,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             See: https://github.com/Ting-Justin-Jiang/sada-icml
             
             This is supported for: --model-type sd, sdxl, kolors, flux*.
+            
+            SADA is not compatible with HiDiffusion, DeepCache, or TeaCache.
             """
         )
     )

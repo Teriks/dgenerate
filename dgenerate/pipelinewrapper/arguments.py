@@ -608,6 +608,8 @@ class DiffusionArguments(_types.SetFromMixin):
     Supplying any SADA parameter implies that SADA is enabled.
     
     This is supported for: ``--model-type sd, sdxl, kolors, flux*``.
+    
+    SADA is not compatible with HiDiffusion, DeepCache, or TeaCache.
     """
 
     sada_sx: _types.OptionalInteger = None

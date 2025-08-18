@@ -724,6 +724,8 @@ class RenderLoopConfig(_types.SetFromMixin):
     - SD/SD2: ``sada_max_downsamples=1``, ``sada_sxs=3``, ``sada_sys=3``, ``sada_lagrange_terms=4``, ``sada_lagrange_ints=4``, ``sada_lagrange_steps=24``, ``sada_max_fixes=5120``
     - SDXL/Kolors: ``sada_max_downsamples=2``, ``sada_sxs=3``, ``sada_sys=3``, ``sada_lagrange_terms=4``, ``sada_lagrange_ints=4``, ``sada_lagrange_steps=24``, ``sada_max_fixes=10240``
     - Flux: ``sada_max_downsamples=0``, ``sada_lagrange_terms=3``, ``sada_lagrange_ints=4``, ``sada_lagrange_steps=20``, ``sada_max_fixes=0``
+    
+    SADA is not compatible with HiDiffusion, DeepCache, or TeaCache.
     """
 
     sada_max_downsamples: _types.OptionalIntegers = None
@@ -1932,9 +1934,14 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'--model-type sd, sdxl, kolors, and flux*'
             )
 
+        if sada_enabled and tea_cache_enabled:
+            raise RenderLoopConfigError(
+                f'SADA cannot be used simultaneously with {a_namer("tea_cache")} and related arguments.'
+            )
+
         if sada_enabled and deep_cache_enabled:
             raise RenderLoopConfigError(
-                f'SADA cannot be used simultaneously with {a_namer("deep_cache")}'
+                f'SADA cannot be used simultaneously with {a_namer("deep_cache")} and related arguments.'
             )
 
         if sada_enabled and self.hi_diffusion:

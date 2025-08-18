@@ -88,6 +88,46 @@ class _ArgSwitchConditionalCheckboxes(_entry._Entry):
         # Initialize the state
         master_changed()
 
+        if hasattr(self.form, 'get_entry_by_id'):
+            exclude: str | list | None = self.config.get('exclude', None)
+            if exclude is not None:
+                if isinstance(exclude, str):
+                    other_entry = self.form.get_entry_by_id(exclude)
+                    if hasattr(other_entry, 'exclude'):
+                        other_entry.exclude(self)
+                else:
+                    for other_id in exclude:
+                        other_entry = self.form.get_entry_by_id(other_id)
+                        if hasattr(other_entry, 'exclude'):
+                            other_entry.exclude(self)
+
+    def exclude(self, other_entry):
+        """Set up mutual exclusion with another checkbox entry.
+        When this master checkbox is checked, the other will be unchecked and vice versa."""
+        from dgenerate.console.formentries.argswitchcheckbox import _ArgSwitchCheckbox
+        from dgenerate.console.formentries.checkboxwithfloatargentry import _CheckboxWithFloatArgEntry
+        from dgenerate.console.formentries.checkboxwithtwointargsentry import _CheckboxWithTwoIntArgsEntry
+        
+        if isinstance(other_entry, _ArgSwitchCheckbox):
+            # Master checkbox excludes simple checkbox
+            self.bool_vars[0].trace('w', lambda *args: other_entry.bool_var.set(False) if self.bool_vars[0].get() else None)
+            other_entry.bool_var.trace('w', lambda *args: self.bool_vars[0].set(False) if other_entry.bool_var.get() else None)
+
+        elif isinstance(other_entry, _ArgSwitchConditionalCheckboxes):
+            # Both are conditional checkboxes - master checkboxes exclude each other
+            self.bool_vars[0].trace('w', lambda *args: other_entry.bool_vars[0].set(False) if self.bool_vars[0].get() else None)
+            other_entry.bool_vars[0].trace('w', lambda *args: self.bool_vars[0].set(False) if other_entry.bool_vars[0].get() else None)
+            
+        elif isinstance(other_entry, _CheckboxWithFloatArgEntry):
+            # Master checkbox excludes checkbox with float arg
+            self.bool_vars[0].trace('w', lambda *args: other_entry.bool_var.set(False) if self.bool_vars[0].get() else None)
+            other_entry.bool_var.trace('w', lambda *args: self.bool_vars[0].set(False) if other_entry.bool_var.get() else None)
+            
+        elif isinstance(other_entry, _CheckboxWithTwoIntArgsEntry):
+            # Master checkbox excludes checkbox with two int args
+            self.bool_vars[0].trace('w', lambda *args: other_entry.bool_var.set(False) if self.bool_vars[0].get() else None)
+            other_entry.bool_var.trace('w', lambda *args: self.bool_vars[0].set(False) if other_entry.bool_var.get() else None)
+
     def template(self, content):
         args = []
         
