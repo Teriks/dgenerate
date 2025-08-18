@@ -56,10 +56,10 @@ class ConsoleSchemaBuilder:
     def build(self):
         """Build all console schema files."""
         print("Building console schemas...")
-        
+
         # Ensure schemas directory exists
         self.schemas_dir.mkdir(parents=True, exist_ok=True)
-        
+
         try:
             self._build_imageprocessors_schema()
             self._build_latentsprocessors_schema()
@@ -72,7 +72,7 @@ class ConsoleSchemaBuilder:
             self._build_mediaformats_schema()
             self._build_arguments_schema()
             self._build_sub_models_schema()
-            
+
             print("✓ Console schemas built successfully")
         except Exception as e:
             print(f"✗ Error building console schemas: {e}")
@@ -150,7 +150,7 @@ class ConsoleSchemaBuilder:
             ['LCMScheduler', 'FlowMatchEulerDiscreteScheduler', 'DDPMWuerstchenScheduler'])
 
         schema = _pipelinewrapper.get_scheduler_uri_schema([getattr(diffusers, n) for n in scheduler_names])
-        
+
         with open(schema_file, 'w') as file:
             json.dump(schema, file)
 
@@ -160,7 +160,7 @@ class ConsoleSchemaBuilder:
 
         uris = [
             _pipelinewrapper.uris.BNBQuantizerUri,
-             _pipelinewrapper.uris.SDNQQuantizerUri
+            _pipelinewrapper.uris.SDNQQuantizerUri
         ]
 
         schema = dict()
@@ -251,10 +251,10 @@ class ConsoleSchemaBuilder:
         schema = dict()
 
         def _opt_name(a):
-            if len(a.option_strings) == 1:
-                return a.option_strings[0]
-            if len(a.option_strings) > 1:
-                return a.option_strings[1]
+            for opt in a.option_strings:
+                if opt.startswith('--'):
+                    return opt
+            return a.option_strings[0]
 
         for action in (a for a in _arguments._actions if a.option_strings):
             schema[_opt_name(action)] = _textprocessing.wrap_paragraphs(
@@ -265,4 +265,4 @@ class ConsoleSchemaBuilder:
 
     def get_output_directory(self) -> Path:
         """Get the path to the schemas output directory."""
-        return self.schemas_dir 
+        return self.schemas_dir
