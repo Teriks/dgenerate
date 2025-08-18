@@ -8542,7 +8542,8 @@ this sub-commands functionality is available in the `examples folder <https://gi
     # using the default accelerator for your system
     # and print them as structured yaml to stdout
 
-    dgenerate --sub-command prompt-upscale \
+    dgenerate --sub-command prompt-upscale
+    --prompts \
     "a cat sitting on a bench in a park" \
     "a dog sitting on a bench in a park" \
     --upscaler magicprompt;variations=10 -of yaml
@@ -8551,23 +8552,20 @@ The help output of ``prompt-upscale`` is as follows:
 
 .. code-block:: text
 
-    usage: prompt-upscale [-h] [-u PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]] [-d DEVICE]
-                          [-of OUTPUT_FORMAT] [-o OUTPUT] [-q QUOTE] [-ofm]
-                          prompts [prompts ...]
+    usage: prompt-upscale [-h] -p PROMPTS [PROMPTS ...] [-u PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]]
+                          [-d DEVICE] [-of OUTPUT_FORMAT] [-o OUTPUT] [-q QUOTE] [-ofm]
     
     Upscale prompts without performing image generation.
-    
-    positional arguments:
-      prompts
-            Prompts (positional), identical to the dgenerate --prompts argument. The embedded prompt argument
-            <upscaler: ...>, is understood. All other embedded prompt arguments are entirely ignored and left in
-            the prompt, be aware of this. Prompts should be the first argument passed, followed by --upscaler.
-            --------------------------------------------------------------------------------------------------
     
     options:
       -h, --help
             show this help message and exit
             -------------------------------
+      -p, --prompts PROMPTS [PROMPTS ...]
+            Prompts (required), identical to the dgenerate --prompts argument. The embedded prompt argument
+            <upscaler: ...>, is understood. All other embedded prompt arguments are entirely ignored and left in
+            the prompt, be aware of this.
+            -----------------------------
       -u, --upscaler PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]
             Global prompt upscaler(s) to use, identical to the dgenerate --prompt-upscaler argument. Providing
             multiple prompt upscaler plugin URIs indicates chaining.
