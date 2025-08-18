@@ -412,10 +412,10 @@ def reconstruct_dgenerate_opts(
         opts.append(('--sdxl-aesthetic-scores', args.sdxl_aesthetic_score))
 
     if args.sdxl_original_size is not None:
-        opts.append(('--sdxl-original-size', args.sdxl_original_size))
+        opts.append(('--sdxl-original-sizes', args.sdxl_original_size))
 
     if args.sdxl_target_size is not None:
-        opts.append(('--sdxl-target-size', args.sdxl_target_size))
+        opts.append(('--sdxl-target-sizes', args.sdxl_target_size))
 
     if args.sdxl_crops_coords_top_left is not None:
         opts.append(('--sdxl-crops-coords-top-left', args.sdxl_crops_coords_top_left))

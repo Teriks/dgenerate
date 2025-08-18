@@ -15,6 +15,6 @@ diffusers/sdxl-instructpix2pix-768 --model-type sdxl-pix2pix
 --prompts "Turn sky into a cloudy one"
 --sdxl-high-noise-fractions 0.9
 --second-model-prompts "Cloudy sky over a forested mountain range, high resolution, high quality, 4k; low quality, low resolution"
---sdxl-original-size 512
---sdxl-target-size 2048
+--sdxl-original-sizes 512
+--sdxl-target-sizes 2048
 --output-size 2048
