@@ -89,7 +89,7 @@ class PromptUpscaleSubCommand(_subcommand.SubCommand):
         )
 
         parser.add_argument(
-            '-u', '--upscaler',
+            '-u', '--upscaler', '--upscalers',
             metavar='PROMPT_UPSCALER_URI',
             help="""Global prompt upscaler(s) to use, identical to the
                     dgenerate --prompt-upscaler argument. Providing multiple

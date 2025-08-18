@@ -1948,7 +1948,7 @@ Help Output
             will cause usage documentation for the specified latents processors to be printed. When used with
             --plugin-modules, latents processors implemented by the specified plugins will also be listed.
             ----------------------------------------------------------------------------------------------
-      -pu, --prompt-upscaler PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]
+      -pu, --prompt-upscaler, --prompt-upscalers PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]
             Specify a prompt upscaler implementation by URI, for example: --prompt-weighter dynamicprompts.
             Prompt upscaler plugins can perform pure text processing and expansion on incoming prompt text,
             possibly resulting in more generation steps (variations) if the prompt upscaler returns multiple
@@ -1958,19 +1958,19 @@ Help Output
             
             You may specify multiple upscaler URIs and they will be chained together sequentially.
             --------------------------------------------------------------------------------------
-      -pu2, --second-model-prompt-upscaler PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]
+      -pu2, --second-model-prompt-upscaler, --second-model-prompt-upscalers PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]
             Specify a --prompt-upscaler URI that will affect --second-model-prompts only, by default the prompt
             upscaler specified by --prompt-upscaler will be used.
             -----------------------------------------------------
-      --second-model-second-prompt-upscaler PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]
+      --second-model-second-prompt-upscaler, --second-model-second-prompt-upscalers PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]
             Specify a --prompt-upscaler URI that will affect --second-model-second-prompts only, by default the
             prompt upscaler specified by --prompt-upscaler will be used.
             ------------------------------------------------------------
-      --second-prompt-upscaler PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]
+      --second-prompt-upscaler, --second-prompt-upscalers PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]
             Specify a --prompt-upscaler URI that will affect --second-prompts only, by default the prompt
             upscaler specified by --prompt-upscaler will be used.
             -----------------------------------------------------
-      --third-prompt-upscaler PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]
+      --third-prompt-upscaler, --third-prompt-upscalers PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]
             Specify a --prompt-upscaler URI that will affect --third-prompts only, by default the prompt
             upscaler specified by --prompt-upscaler will be used.
             -----------------------------------------------------
@@ -8566,7 +8566,7 @@ The help output of ``prompt-upscale`` is as follows:
             <upscaler: ...>, is understood. All other embedded prompt arguments are entirely ignored and left in
             the prompt, be aware of this.
             -----------------------------
-      -u, --upscaler PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]
+      -u, --upscaler, --upscalers PROMPT_UPSCALER_URI [PROMPT_UPSCALER_URI ...]
             Global prompt upscaler(s) to use, identical to the dgenerate --prompt-upscaler argument. Providing
             multiple prompt upscaler plugin URIs indicates chaining.
             --------------------------------------------------------
