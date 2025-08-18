@@ -12,7 +12,8 @@ order: 15
 --model-type flux {{ auth_token }}
 @dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"], "default":"bfloat16"}]
 @karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "filter": ["FlowMatchEulerDiscreteScheduler"]}]
-@checkboxwithfloatarg[{"label":"Use TeaCache", "default":false, "float-arg":"--tea-cache-rel-l1-thresholds", "float-label":"TeaCache L1 Threshold", "float": 0.6, "min":0.0, "max":1.0}]
+@checkboxwithfloatarg[{"id": "tc", "label":"Use TeaCache", "default":false, "float-arg":"--tea-cache-rel-l1-thresholds", "float-label":"TeaCache L1 Threshold", "float": 0.6, "min":0.0, "max":1.0}]
+@switch[{"label":"Use SADA", "arg":"--sada", "exclude": ["tc"]}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "default":1}]
 @quantizer[{"divider-after":true}]
 @submodelbuilder[{"label":"VAE", "arg":"--vae", "model": "VAE"}]

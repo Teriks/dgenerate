@@ -4362,6 +4362,12 @@ class DiffusionPipelineWrapper:
                 )
 
             # Check for conflicts with other acceleration methods
+
+            if args.tea_cache:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'SADA cannot be used simultaneously with TeaCache'
+                )
+
             if args.deep_cache:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'SADA cannot be used simultaneously with DeepCache'

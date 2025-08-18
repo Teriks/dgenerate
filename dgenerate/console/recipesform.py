@@ -119,6 +119,8 @@ class _RecipesForm(tk.Toplevel):
 
         self._insert = insert
 
+        self._id_map = dict()
+
         self.transient(master)
 
         self._create_scrollable_form()
@@ -225,6 +227,9 @@ class _RecipesForm(tk.Toplevel):
         canvas_width = self.winfo_width() - self.scrollbar.winfo_width() - 20
         self.canvas.itemconfig(self.canvas_window, width=canvas_width)
 
+    def get_entry_by_id(self, entry_id: str) -> typing.Optional[_formentries._Entry]:
+        return self._id_map.get(entry_id, None)
+
     def _update_form(self, selection: str) -> None:
         if self._last_known_selection == selection:
             return
@@ -236,6 +241,8 @@ class _RecipesForm(tk.Toplevel):
         for widget in self.scrollable_frame.winfo_children():
             if widget != self._dropdown:
                 widget.destroy()
+
+        self._id_map.clear()
 
         self._entries = []
         self._content = self._templates_dict[selection]
@@ -261,6 +268,11 @@ class _RecipesForm(tk.Toplevel):
                     config=config,
                     placeholder=template.placeholder
                 )
+
+                entry_id = config.get('id', None)
+                if entry_id is not None:
+                    self._id_map[entry_id] = entry
+
                 row_offset += entry.widget_rows
             else:
                 raise RuntimeError(f'Unknown template placeholder: {classname}')
