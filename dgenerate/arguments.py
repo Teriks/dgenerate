@@ -2396,8 +2396,9 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             nargs='+', dest='sada_acc_ranges', type=_type_sada_acc_ranges,
             help="""SADA acceleration range start / end steps for the primary model.
             
-            Defines the starting step for SADA acceleration. Must be at least 3 
-            as SADA leverages third-order dynamics.
+            Defines the start / end step for SADA acceleration. 
+            
+            Starting step must be at least 3 as SADA leverages third-order dynamics.
             
             Defaults to "10,47".
             

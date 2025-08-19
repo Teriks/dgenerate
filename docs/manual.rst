@@ -1169,8 +1169,9 @@ Help Output
       --sada-acc-ranges INTEGER [INTEGER ...]
             SADA acceleration range start / end steps for the primary model.
             
-            Defines the starting step for SADA acceleration. Must be at least 3 as SADA leverages third-order
-            dynamics.
+            Defines the start / end step for SADA acceleration.
+            
+            Starting step must be at least 3 as SADA leverages third-order dynamics.
             
             Defaults to "10,47".
             
@@ -2028,16 +2029,16 @@ Help Output
             --------------------------------------------------------------------------------------------
       -af, --animation-format FORMAT
             Output format when generating an animation from an input video / gif / webp etc. Value must be one
-            of: mp4, png, apng, gif, or webp. You may also specify "frames" to indicate that only frames should
+            of: mp4, gif, png, apng, or webp. You may also specify "frames" to indicate that only frames should
             be output and no coalesced animation file should be rendered. (default: mp4)
             ----------------------------------------------------------------------------
       -if, --image-format FORMAT
             Output format when writing static images or tensors. For image formats, any selection other than
             "png", "jpg", or "jpeg" is not compatible with --output-metadata. For tensor formats (pt, pth,
-            safetensors), raw latent tensors will be saved instead of decoded images. Value must be one of: png,
-            apng, avif, avifs, blp, bmp, dib, bufr, pcx, dds, ps, eps, gif, grib, h5, hdf, jp2, j2k, jpc, jpf,
-            jpx, j2c, icns, ico, im, jfif, jpe, jpg, jpeg, tif, tiff, mpo, msp, palm, pdf, pbm, pgm, ppm, pnm,
-            pfm, qoi, bw, rgb, rgba, sgi, tga, icb, vda, vst, webp, wmf, emf, xbm, pt, pth, or safetensors.
+            safetensors), raw latent tensors will be saved instead of decoded images. Value must be one of:
+            avif, avifs, blp, bmp, dib, bufr, pcx, dds, ps, eps, gif, grib, h5, hdf, png, apng, jp2, j2k, jpc,
+            jpf, jpx, j2c, icns, ico, im, jfif, jpe, jpg, jpeg, tif, tiff, mpo, msp, palm, pdf, pbm, pgm, ppm,
+            pnm, pfm, qoi, bw, rgb, rgba, sgi, tga, icb, vda, vst, webp, wmf, emf, xbm, pt, pth, or safetensors.
             (default: png)
             --------------
       -nf, --no-frames
