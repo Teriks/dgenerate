@@ -2006,6 +2006,13 @@ def _create_diffusion_pipeline(
 
     model_path = _hfhub.download_non_hf_slug_model(model_path)
 
+    if (_hfhub.is_single_file_model_load(model_path)
+        and _enums.model_type_is_kolors(model_type)
+    ):
+        raise UnsupportedPipelineConfigError(
+            'Kolors models cannot be loaded from a single file.'
+        )
+
     model_index = _util.fetch_model_index_dict(
         model_path,
         subfolder=subfolder,

@@ -465,8 +465,7 @@ def reconstruct_dgenerate_opts(
         (args.sada_max_downsample is None or args.sada_max_downsample == model_defaults['max_downsample']) and
         (args.sada_sx is None or args.sada_sx == model_defaults['sx']) and
         (args.sada_sy is None or args.sada_sy == model_defaults['sy']) and
-        (args.sada_acc_range_start is None or args.sada_acc_range_start == model_defaults['acc_range_start']) and
-        (args.sada_acc_range_end is None or args.sada_acc_range_end == model_defaults['acc_range_end']) and
+        (args.sada_acc_range is None or args.sada_acc_range == model_defaults['acc_range']) and
         (args.sada_lagrange_term is None or args.sada_lagrange_term == model_defaults['lagrange_term']) and
         (args.sada_lagrange_int is None or args.sada_lagrange_int == model_defaults['lagrange_int']) and
         (args.sada_lagrange_step is None or args.sada_lagrange_step == model_defaults['lagrange_step']) and
@@ -480,8 +479,7 @@ def reconstruct_dgenerate_opts(
         args.sada_max_downsample is not None or
         args.sada_sx is not None or
         args.sada_sy is not None or
-        args.sada_acc_range_start is not None or
-        args.sada_acc_range_end is not None or
+        args.sada_acc_range is not None or
         args.sada_lagrange_term is not None or
         args.sada_lagrange_int is not None or
         args.sada_lagrange_step is not None or
@@ -504,12 +502,9 @@ def reconstruct_dgenerate_opts(
             if args.sada_sy is not None and args.sada_sy != model_defaults['sy']:
                 opts.append(('--sada-sys', args.sada_sy))
             
-            if args.sada_acc_range_start is not None and args.sada_acc_range_start != model_defaults['acc_range_start']:
-                opts.append(('--sada-acc-range-starts', args.sada_acc_range_start))
-            
-            if args.sada_acc_range_end is not None and args.sada_acc_range_end != model_defaults['acc_range_end']:
-                opts.append(('--sada-acc-range-ends', args.sada_acc_range_end))
-            
+            if args.sada_acc_range is not None and args.sada_acc_range != model_defaults['acc_range']:
+                opts.append(('--sada-acc-ranges', ','.join(map(str, args.sada_acc_range))))
+
             if args.sada_lagrange_term is not None and args.sada_lagrange_term != model_defaults['lagrange_term']:
                 opts.append(('--sada-lagrange-terms', args.sada_lagrange_term))
             

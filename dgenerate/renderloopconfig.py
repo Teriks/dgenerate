@@ -794,31 +794,15 @@ class RenderLoopConfig(_types.SetFromMixin):
     Each value supplied will be tried in turn.
     """
 
-    sada_acc_range_starts: _types.OptionalIntegers = None
+    sada_acc_ranges: _types.OptionalRanges = None
     """
-    SADA acceleration range start step for the primary model.
+    SADA acceleration range start / end steps for the primary model.
     
-    Defines the starting step for SADA acceleration. Must be at least 3 
-    as SADA leverages third-order dynamics.
+    Defines the starting / ending step for SADA acceleration. 
     
-    Defaults to 10.
+    Starting step must be at least 3 as SADA leverages third-order dynamics.
     
-    See: https://github.com/Ting-Justin-Jiang/sada-icml
-    
-    Supplying any SADA parameter implies that SADA is enabled.
-    
-    This is supported for: ``--model-type sd, sdxl, kolors, flux*``.
-    
-    Each value supplied will be tried in turn.
-    """
-
-    sada_acc_range_ends: _types.OptionalIntegers = None
-    """
-    SADA acceleration range end step for the primary model.
-    
-    Defines the ending step for SADA acceleration.
-    
-    Defaults to 47.
+    Defaults to [[10,47]].
     
     See: https://github.com/Ting-Justin-Jiang/sada-icml
     
@@ -1977,10 +1961,8 @@ class RenderLoopConfig(_types.SetFromMixin):
                 self.sada_sxs = [sada_defaults['sx']]
             if self.sada_sys is None:
                 self.sada_sys = [sada_defaults['sy']]
-            if self.sada_acc_range_starts is None:
-                self.sada_acc_range_starts = [sada_defaults['acc_range_start']]
-            if self.sada_acc_range_ends is None:
-                self.sada_acc_range_ends = [sada_defaults['acc_range_end']]
+            if self.sada_acc_ranges is None:
+                self.sada_acc_ranges = [sada_defaults['acc_range']]
             if self.sada_lagrange_terms is None:
                 self.sada_lagrange_terms = [sada_defaults['lagrange_term']]
             if self.sada_lagrange_ints is None:
@@ -3195,7 +3177,16 @@ class RenderLoopConfig(_types.SetFromMixin):
             self.sdxl_refiner_deep_cache_intervals,
             self.sdxl_refiner_deep_cache_branch_ids,
             self.sigmas,
-            self.sdxl_refiner_sigmas
+            self.sdxl_refiner_sigmas,
+            self.sada_max_downsamples,
+            self.sada_sxs,
+            self.sada_sys,
+            self.sada_acc_ranges,
+            self.sada_lagrange_terms,
+            self.sada_lagrange_ints,
+            self.sada_lagrange_steps,
+            self.sada_max_fixes,
+            self.sada_max_intervals
         ]
 
         schedulers, second_model_schedulers = self._normalized_schedulers()
@@ -3350,8 +3341,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                 sada_max_downsample=ov('sada_max_downsample', self.sada_max_downsamples),
                 sada_sx=ov('sada_sx', self.sada_sxs),
                 sada_sy=ov('sada_sy', self.sada_sys),
-                sada_acc_range_start=ov('sada_acc_range_start', self.sada_acc_range_starts),
-                sada_acc_range_end=ov('sada_acc_range_end', self.sada_acc_range_ends),
+                sada_acc_range=ov('sada_acc_range', self.sada_acc_ranges),
                 sada_lagrange_term=ov('sada_lagrange_term', self.sada_lagrange_terms),
                 sada_lagrange_int=ov('sada_lagrange_int', self.sada_lagrange_ints),
                 sada_lagrange_step=ov('sada_lagrange_step', self.sada_lagrange_steps),

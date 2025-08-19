@@ -138,9 +138,9 @@ def _version_to_parts(string, cast=True) -> tuple[list[int], str]:
     if not match:
         # Fallback for edge cases
         return [0], string
-    
+
     base_version, suffix = match.groups()
-    
+
     if cast:
         try:
             version_parts = [int(i) for i in base_version.split('.')]
@@ -149,7 +149,7 @@ def _version_to_parts(string, cast=True) -> tuple[list[int], str]:
             version_parts = base_version.split('.')
     else:
         version_parts = base_version.split('.')
-    
+
     return version_parts, suffix
 
 
@@ -198,12 +198,12 @@ def poetry_star_to_pip(version) -> str:
     # Split on the first '*' to separate the base version from the wildcard
     if '*' not in version:
         return f"=={version}"
-    
+
     base_version = version.split('*')[0].rstrip('.')
-    
+
     if not base_version:
         return '>=0.0.0'
-    
+
     # Parse the base version parts
     v = [int(i) for i in base_version.split('.')]
     v2 = _bump_version_rest(v)
@@ -237,62 +237,77 @@ def get_poetry_pyproject_as_pip_requires(include_optional=False) -> dict[str, st
             in poetry_pyproject_deps(include_optional=include_optional)}
 
 
-if __name__ != 'setup_as_library':
-    requires = get_poetry_pyproject_as_pip_requires() \
-        if not force_lockfile_requires else get_poetry_lockfile_as_pip_requires()
+requires = get_poetry_pyproject_as_pip_requires() \
+    if not force_lockfile_requires else get_poetry_lockfile_as_pip_requires()
 
-    def exclude_requires(name):
-        if name in requires:
+
+def _exclude_requires(name):
+    if name in requires:
+        requires.pop(name)
+
+
+_pyinstaller_requires = 'pyinstaller' + requires.pop('pyinstaller')
+_sphinx_requires = 'sphinx_rtd_theme' + requires.pop('sphinx_rtd_theme')
+_poetry_requires = 'poetry' + requires.pop('poetry')
+_graphviz_requires = 'graphviz' + requires.pop('graphviz')
+_pyopengltk_requires = 'pyopengltk' + requires.pop('pyopengltk')
+_PyOpenGL_requires = 'PyOpenGL' + requires.pop('PyOpenGL')
+_PyOpenGL_accelerate_requires = 'PyOpenGL-accelerate' + requires.pop('PyOpenGL-accelerate')
+_ncnn_requires = 'ncnn' + requires.pop('ncnn')
+_gpt4all_requires_spec = requires.pop('gpt4all')
+
+extras: dict[str, list[str]] = {
+    'ncnn': [_ncnn_requires],
+    'console_ui_opengl': [
+        _pyopengltk_requires,
+        _PyOpenGL_requires,
+        _PyOpenGL_accelerate_requires
+    ],
+    'gpt4all': ['gpt4all' + _gpt4all_requires_spec],
+    'dev': [_pyinstaller_requires,
+            _sphinx_requires,
+            _poetry_requires,
+            _graphviz_requires],
+    'readthedocs': _sphinx_requires
+}
+
+python_requirement = requires.get('python')
+
+if python_requirement:
+    requires.pop('python')
+
+if dgenerate_platform != 'linux':
+    _exclude_requires('triton')
+
+if dgenerate_platform == 'darwin':
+    _exclude_requires('bitsandbytes')
+
+if dgenerate_platform == 'windows':
+    for name in list(requires.keys()):
+        if name.startswith('nvidia-'):
             requires.pop(name)
+else:
+    requires.pop('triton-windows')
 
-    pyinstaller_requires = ['pyinstaller==6.14.2']
-    sphinx_requires = ['sphinx_rtd_theme==3.0.2']
+if 'bitsandbytes' in requires:
+    extras['bitsandbytes'] = ['bitsandbytes' + requires.pop('bitsandbytes')]
 
-    extras: dict[str, list[str]] = {
-        'ncnn': ['ncnn==1.0.20241226'],
-        'console_ui_opengl': ['pyopengltk==0.0.4', 'PyOpenGL==3.1.9', 'PyOpenGL-accelerate==3.1.9'],
-        'gpt4all': ['gpt4all==2.8.2'],
-        'dev': [*pyinstaller_requires,
-                *sphinx_requires,
-                'poetry~=2.1.3',
-                'graphviz~=0.20.3'],
-        'readthedocs': sphinx_requires
-    }
+if dgenerate_platform in {'linux', 'windows'}:
+    extras['gpt4all_cuda'] = ['gpt4all[cuda]' + _gpt4all_requires_spec]
 
-    python_requirement = requires.get('python')
+if dgenerate_platform == 'windows':
+    extras['triton_windows'] = ['triton-windows' + requires.pop('triton-windows')]
 
-    if python_requirement:
-        requires.pop('python')
+    extras['win-installer'] = (
+            [_pyinstaller_requires] +
+            extras['ncnn'] +
+            extras['gpt4all_cuda'] +
+            extras['triton_windows'] +
+            extras['console_ui_opengl'] +
+            extras['bitsandbytes']
+    )
 
-    if dgenerate_platform != 'linux':
-        exclude_requires('triton')
-
-    if dgenerate_platform == 'darwin':
-        exclude_requires('bitsandbytes')
-
-    if dgenerate_platform == 'windows':
-        for name in list(requires.keys()):
-            if name.startswith('nvidia-'):
-                requires.pop(name)
-
-    if 'bitsandbytes' in requires:
-        extras['bitsandbytes'] = ['bitsandbytes' + requires.pop('bitsandbytes')]
-
-    if dgenerate_platform in {'linux', 'windows'}:
-        extras['gpt4all_cuda'] = ['gpt4all[cuda]==2.8.2']
-
-    if dgenerate_platform == 'windows':
-        extras['triton_windows'] = ['triton-windows==3.3.1.post19']
-        
-        extras['win-installer'] = (
-                pyinstaller_requires +
-                extras['ncnn'] +
-                extras['gpt4all_cuda'] +
-                extras['triton_windows'] +
-                extras['console_ui_opengl'] +
-                extras['bitsandbytes']
-        )
-
+if __name__ != 'setup_as_library':
     setup(name='dgenerate',
           python_requires=python_requirement,
           author='Teriks',

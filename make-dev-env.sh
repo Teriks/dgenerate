@@ -1,17 +1,23 @@
 #!/bin/bash
 
-rm -rf "$(dirname "$0")/venv"
+set -e
 
-python3 -m venv venv
+echo "Setting up dgenerate development environment..."
 
-source venv/bin/activate
+# Check if Python is available
+if ! command -v python3 &> /dev/null; then
+    echo "Error: python3 is not installed or not in PATH"
+    exit 1
+fi
 
-if which rocminfo &> /dev/null; then
-  pip3 install --editable "$(dirname "$0")[dev,ncnn,gpt4all,console_ui_opengl]" --extra-index-url https://download.pytorch.org/whl/rocm6.4/
-elif which nvidia-smi &> /dev/null; then
-  pip3 install --editable "$(dirname "$0")[dev,ncnn,gpt4all_cuda,bitsandbytes,console_ui_opengl]" --extra-index-url https://download.pytorch.org/whl/cu128/
-elif which xpu-smi &> /dev/null; then
-    pip3 install --editable "$(dirname "$0")[dev,ncnn,gpt4all,bitsandbytes,console_ui_opengl]" --extra-index-url https://download.pytorch.org/whl/xpu/
+# Run the Python setup script
+python3 make_dev_env.py
+
+if [ $? -eq 0 ]; then
+    echo ""
+    echo "Setup completed successfully!"
 else
-  pip3 install --editable "$(dirname "$0")[dev,ncnn,gpt4all,console_ui_opengl]"
+    echo ""
+    echo "Setup failed! Please check the error messages above."
+    exit 1
 fi

@@ -613,6 +613,110 @@ def _type_deep_cache_branch_id(val: str) -> int:
     return val
 
 
+def _type_sada_max_downsamples(val: str) -> int:
+    try:
+        val = int(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be an integer')
+    if val < 0:
+        raise argparse.ArgumentTypeError('Must be greater than or equal to 0')
+    return val
+
+
+def _type_sada_sxs(val: str) -> int:
+    try:
+        val = int(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be an integer')
+    if val < 0:
+        raise argparse.ArgumentTypeError('Must be greater than or equal to 0')
+    return val
+
+
+def _type_sada_sys(val: str) -> int:
+    try:
+        val = int(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be an integer')
+    if val < 0:
+        raise argparse.ArgumentTypeError('Must be greater than or equal to 0')
+    return val
+
+
+def _type_sada_acc_ranges(val: str) -> list[int]:
+    try:
+        if ',' in val:
+            ranges = [int(x.strip()) for x in val.split(',')]
+            if len(ranges) == 2:
+                start, end = ranges
+                if start > end:
+                    raise argparse.ArgumentTypeError(
+                        f'SADA acceleration range start value ({start}) must be less than or equal to end value ({end})'
+                    )
+        else:
+            ranges = [int(val.strip())]
+        if not all(x >= 3 for x in ranges):
+            raise argparse.ArgumentTypeError(
+                'All SADA acceleration range values must be at least 3'
+            )
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            'SADA acceleration ranges must be a comma-separated list of '
+            'integers >= 3, or a single integer >= 3'
+        )
+    return ranges
+
+
+def _type_sada_lagrange_terms(val: str) -> int:
+    try:
+        val = int(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be an integer')
+    if val < 0:
+        raise argparse.ArgumentTypeError('Must be greater than or equal to 0')
+    return val
+
+
+def _type_sada_lagrange_ints(val: str) -> int:
+    try:
+        val = int(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be an integer')
+    if val <= 0:
+        raise argparse.ArgumentTypeError('Must be greater than 0')
+    return val
+
+
+def _type_sada_lagrange_steps(val: str) -> int:
+    try:
+        val = int(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be an integer')
+    if val <= 0:
+        raise argparse.ArgumentTypeError('Must be greater than 0')
+    return val
+
+
+def _type_sada_max_fixes(val: str) -> int:
+    try:
+        val = int(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be an integer')
+    if val < 0:
+        raise argparse.ArgumentTypeError('Must be greater than or equal to 0')
+    return val
+
+
+def _type_sada_max_intervals(val: str) -> int:
+    try:
+        val = int(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be an integer')
+    if val <= 0:
+        raise argparse.ArgumentTypeError('Must be greater than 0')
+    return val
+
+
 def _type_sigmas(val: str) -> list[float] | str:
     try:
         if val.startswith('expr:'):
@@ -2208,7 +2312,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '--sada-max-downsamples',
             metavar='INTEGER',
-            nargs='+', dest='sada_max_downsamples', type=int,
+            nargs='+', dest='sada_max_downsamples', type=_type_sada_max_downsamples,
             help="""SADA maximum downsample factors for the primary model.
             
             Controls the maximum downsample factor in the SADA algorithm. 
@@ -2235,7 +2339,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '--sada-sxs',
             metavar='INTEGER',
-            nargs='+', dest='sada_sxs', type=int,
+            nargs='+', dest='sada_sxs', type=_type_sada_sxs,
             help="""SADA spatial downsample factors X for the primary model.
             
             Controls the spatial downsample factor in the X dimension.
@@ -2262,7 +2366,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '--sada-sys',
             metavar='INTEGER',
-            nargs='+', dest='sada_sys', type=int,
+            nargs='+', dest='sada_sys', type=_type_sada_sys,
             help="""SADA spatial downsample factors Y for the primary model.
             
             Controls the spatial downsample factor in the Y dimension.
@@ -2287,35 +2391,17 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--sada-acc-range-starts',
+            '--sada-acc-ranges',
             metavar='INTEGER',
-            nargs='+', dest='sada_acc_range_starts', type=int,
-            help="""SADA acceleration range start steps for the primary model.
+            nargs='+', dest='sada_acc_ranges', type=_type_sada_acc_ranges,
+            help="""SADA acceleration range start / end steps for the primary model.
             
             Defines the starting step for SADA acceleration. Must be at least 3 
             as SADA leverages third-order dynamics.
             
-            Defaults to 10.
+            Defaults to "10,47".
             
-            Supplying any SADA parameter implies that SADA is enabled.
-            
-            This is supported for: --model-type sd, sdxl, kolors, flux*.
-            
-            Each value supplied will be tried in turn.
-            """
-        )
-    )
-
-    actions.append(
-        parser.add_argument(
-            '--sada-acc-range-ends',
-            metavar='INTEGER',
-            nargs='+', dest='sada_acc_range_ends', type=int,
-            help="""SADA acceleration range end steps for the primary model.
-            
-            Defines the ending step for SADA acceleration.
-            
-            Defaults to 47.
+            Supply ranges as comma seperated values, for example: --sada-acc-ranges "10,47" "12,40"
             
             Supplying any SADA parameter implies that SADA is enabled.
             
@@ -2330,7 +2416,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '--sada-lagrange-terms',
             metavar='INTEGER',
-            nargs='+', dest='sada_lagrange_terms', type=int,
+            nargs='+', dest='sada_lagrange_terms', type=_type_sada_lagrange_terms,
             help="""SADA Lagrangian interpolation terms for the primary model.
             
             Number of terms to use in Lagrangian interpolation. 
@@ -2356,7 +2442,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '--sada-lagrange-ints',
             metavar='INTEGER',
-            nargs='+', dest='sada_lagrange_ints', type=int,
+            nargs='+', dest='sada_lagrange_ints', type=_type_sada_lagrange_ints,
             help="""SADA Lagrangian interpolation intervals for the primary model.
             
             Interval for Lagrangian interpolation. Must be compatible with 
@@ -2382,7 +2468,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '--sada-lagrange-steps',
             metavar='INTEGER',
-            nargs='+', dest='sada_lagrange_steps', type=int,
+            nargs='+', dest='sada_lagrange_steps', type=_type_sada_lagrange_steps,
             help="""SADA Lagrangian interpolation steps for the primary model.
             
             Step value for Lagrangian interpolation. Must be compatible with 
@@ -2408,7 +2494,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '--sada-max-fixes',
             metavar='INTEGER',
-            nargs='+', dest='sada_max_fixes', type=int,
+            nargs='+', dest='sada_max_fixes', type=_type_sada_max_fixes,
             help="""SADA maximum fixed memories for the primary model.
             
             Maximum amount of fixed memory to use in SADA optimization.
@@ -2434,7 +2520,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '--sada-max-intervals',
             metavar='INTEGER',
-            nargs='+', dest='sada_max_intervals', type=int,
+            nargs='+', dest='sada_max_intervals', type=_type_sada_max_intervals,
             help="""SADA maximum intervals for optimization for the primary model.
             
             Maximum interval between optimizations in the SADA algorithm.

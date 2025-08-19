@@ -652,29 +652,15 @@ class DiffusionArguments(_types.SetFromMixin):
     This is supported for: ``--model-type sd, sdxl, kolors, flux*``.
     """
 
-    sada_acc_range_start: _types.OptionalInteger = None
+    sada_acc_range: _types.OptionalRange = None
     """
-    SADA acceleration range start step for the primary model.
+    SADA acceleration range start / end step for the primary model.
     
-    Defines the starting step for SADA acceleration. Must be at least 3 
-    as SADA leverages third-order dynamics.
+    Defines the starting step for SADA acceleration. 
     
-    Defaults to 10.
+    Starting step must be at least 3 as SADA leverages third-order dynamics.
     
-    See: https://github.com/Ting-Justin-Jiang/sada-icml
-    
-    Supplying any SADA parameter implies that SADA is enabled.
-    
-    This is supported for: ``--model-type sd, sdxl, kolors, flux*``.
-    """
-
-    sada_acc_range_end: _types.OptionalInteger = None
-    """
-    SADA acceleration range end step for the primary model.
-    
-    Defines the ending step for SADA acceleration.
-    
-    Defaults to 47.
+    Defaults to [10,47].
     
     See: https://github.com/Ting-Justin-Jiang/sada-icml
     
@@ -1421,8 +1407,7 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.sada_max_downsample, "SADA Max Downsample:"),
             (self.sada_sx, "SADA SX:"),
             (self.sada_sy, "SADA SY:"),
-            (self.sada_acc_range_start, "SADA Acc Range Start:"),
-            (self.sada_acc_range_end, "SADA Acc Range End:"),
+            (self.sada_acc_range, "SADA Acc Range:"),
             (self.sada_lagrange_term, "SADA Lagrange Term:"),
             (self.sada_lagrange_int, "SADA Lagrange Int:"),
             (self.sada_lagrange_step, "SADA Lagrange Step:"),
