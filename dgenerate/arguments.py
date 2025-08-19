@@ -536,7 +536,7 @@ def _type_ras_error_reset_steps(val: str) -> list[int]:
             steps = [int(x.strip()) for x in val.split(',')]
         else:
             steps = [int(val.strip())]
-        if not all(x >=g 0 for x in steps):
+        if not all(x >= 0 for x in steps):
             raise argparse.ArgumentTypeError(
                 'All RAS step numbers must be positive'
             )
