@@ -71,23 +71,23 @@ class _ArgSwitchCheckbox(_entry._Entry):
         
         if isinstance(other_entry, _ArgSwitchCheckbox):
             # Both are simple checkboxes - mutual exclusion
-            self.bool_var.trace('w', lambda *args: other_entry.bool_var.set(False) if self.bool_var.get() else None)
-            other_entry.bool_var.trace('w', lambda *args: self.bool_var.set(False) if other_entry.bool_var.get() else None)
+            self.bool_var.trace_add('write', lambda *args: other_entry.bool_var.set(False) if self.bool_var.get() else None)
+            other_entry.bool_var.trace_add('write', lambda *args: self.bool_var.set(False) if other_entry.bool_var.get() else None)
             
         elif isinstance(other_entry, _ArgSwitchConditionalCheckboxes):
             # This checkbox excludes the master checkbox of conditional checkboxes
-            self.bool_var.trace('w', lambda *args: other_entry.bool_vars[0].set(False) if self.bool_var.get() else None)
-            other_entry.bool_vars[0].trace('w', lambda *args: self.bool_var.set(False) if other_entry.bool_vars[0].get() else None)
+            self.bool_var.trace_add('write', lambda *args: other_entry.bool_vars[0].set(False) if self.bool_var.get() else None)
+            other_entry.bool_vars[0].trace_add('write', lambda *args: self.bool_var.set(False) if other_entry.bool_vars[0].get() else None)
             
         elif isinstance(other_entry, _CheckboxWithFloatArgEntry):
             # This checkbox excludes the checkbox with float arg
-            self.bool_var.trace('w', lambda *args: other_entry.bool_var.set(False) if self.bool_var.get() else None)
-            other_entry.bool_var.trace('w', lambda *args: self.bool_var.set(False) if other_entry.bool_var.get() else None)
+            self.bool_var.trace_add('write', lambda *args: other_entry.bool_var.set(False) if self.bool_var.get() else None)
+            other_entry.bool_var.trace_add('write', lambda *args: self.bool_var.set(False) if other_entry.bool_var.get() else None)
             
         elif isinstance(other_entry, _CheckboxWithTwoIntArgsEntry):
             # This checkbox excludes the checkbox with two int args
-            self.bool_var.trace('w', lambda *args: other_entry.bool_var.set(False) if self.bool_var.get() else None)
-            other_entry.bool_var.trace('w', lambda *args: self.bool_var.set(False) if other_entry.bool_var.get() else None)
+            self.bool_var.trace_add('write', lambda *args: other_entry.bool_var.set(False) if self.bool_var.get() else None)
+            other_entry.bool_var.trace_add('write', lambda *args: self.bool_var.set(False) if other_entry.bool_var.get() else None)
 
     def _is_checked(self):
         return self.bool_var.get()

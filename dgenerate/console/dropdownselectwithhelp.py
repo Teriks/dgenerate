@@ -75,7 +75,7 @@ class _DropdownSelectWithHelp(tk.Toplevel):
         self._insert_button.config(state=tk.DISABLED)
         self._help_button.config(state=tk.DISABLED)
 
-        self._current_value.trace('w',
+        self._current_value.trace_add('write',
                                   lambda *a:
                                   (self._help_button.config(state=tk.ACTIVE),
                                    self._insert_button.config(state=tk.ACTIVE))
