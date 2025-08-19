@@ -25,6 +25,7 @@ import glob
 import itertools
 import os
 import sys
+import logging
 
 if os.environ.get('DGENERATE_PYINSTALLER', '0') == '1':
     import dgenerate._patches.pyinstaller_inpect_patch
@@ -80,6 +81,7 @@ if os.environ.get('DGENERATE_BACKEND_WARNINGS', '0') == '0':
     warnings.filterwarnings('ignore', module='torch')
     warnings.filterwarnings('ignore', module='controlnet_aux')
     warnings.filterwarnings('ignore', module='ctranslate2')
+    logging.getLogger("diffusers.modular_pipelines").setLevel(logging.CRITICAL)
 
 try:
     from dgenerate.resources import __version__
@@ -213,9 +215,10 @@ try:
     import logging
     import dgenerate.extras.argostranslate.utils
 
-    transformers.logging.set_verbosity(transformers.logging.CRITICAL)
-    diffusers.logging.set_verbosity(diffusers.logging.CRITICAL)
-    dgenerate.extras.argostranslate.utils.logger.setLevel(logging.CRITICAL)
+    if os.environ.get('DGENERATE_BACKEND_WARNINGS', '0') == '0':
+        transformers.logging.set_verbosity(transformers.logging.CRITICAL)
+        diffusers.logging.set_verbosity(diffusers.logging.CRITICAL)
+        dgenerate.extras.argostranslate.utils.logger.setLevel(logging.CRITICAL)
 except KeyboardInterrupt:
     if __am_dgenerate_app:
         print('Exiting dgenerate due to keyboard interrupt!', file=sys.stderr)

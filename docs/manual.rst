@@ -37,14 +37,13 @@ Help Output
                      [-sch2 SCHEDULER_URI [SCHEDULER_URI ...]] [-fu CSV_FLOAT [CSV_FLOAT ...]] [-hd]
                      [--hi-diffusion-no-win-attn] [--hi-diffusion-no-raunet] [--sada]
                      [--sada-max-downsamples INTEGER [INTEGER ...]] [--sada-sxs INTEGER [INTEGER ...]]
-                     [--sada-sys INTEGER [INTEGER ...]] [--sada-acc-range-starts INTEGER [INTEGER ...]]
-                     [--sada-acc-range-ends INTEGER [INTEGER ...]] [--sada-lagrange-terms INTEGER [INTEGER ...]]
-                     [--sada-lagrange-ints INTEGER [INTEGER ...]] [--sada-lagrange-steps INTEGER [INTEGER ...]]
-                     [--sada-max-fixes INTEGER [INTEGER ...]] [--sada-max-intervals INTEGER [INTEGER ...]]
-                     [-rfu CSV_FLOAT [CSV_FLOAT ...]] [-dc] [-dci INTEGER [INTEGER ...]]
-                     [-dcb INTEGER [INTEGER ...]] [-rdc] [-rdci INTEGER [INTEGER ...]]
-                     [-rdcb INTEGER [INTEGER ...]] [-tc] [-tcr [FLOAT ...]] [-ra] [-rif]
-                     [-rsr FLOAT [FLOAT ...]] [-rhr FLOAT [FLOAT ...]] [-rss FLOAT [FLOAT ...]]
+                     [--sada-sys INTEGER [INTEGER ...]] [--sada-acc-ranges INTEGER [INTEGER ...]]
+                     [--sada-lagrange-terms INTEGER [INTEGER ...]] [--sada-lagrange-ints INTEGER [INTEGER ...]]
+                     [--sada-lagrange-steps INTEGER [INTEGER ...]] [--sada-max-fixes INTEGER [INTEGER ...]]
+                     [--sada-max-intervals INTEGER [INTEGER ...]] [-rfu CSV_FLOAT [CSV_FLOAT ...]] [-dc]
+                     [-dci INTEGER [INTEGER ...]] [-dcb INTEGER [INTEGER ...]] [-rdc]
+                     [-rdci INTEGER [INTEGER ...]] [-rdcb INTEGER [INTEGER ...]] [-tc] [-tcr [FLOAT ...]] [-ra]
+                     [-rif] [-rsr FLOAT [FLOAT ...]] [-rhr FLOAT [FLOAT ...]] [-rss FLOAT [FLOAT ...]]
                      [-rer CSV_INT [CSV_INT ...]] [-rme RAS_METRIC [RAS_METRIC ...]]
                      [-rst INTEGER [INTEGER ...]] [-res INTEGER [INTEGER ...]] [-rsn INTEGER [INTEGER ...]]
                      [-rsl INTEGER [INTEGER ...]] [-pag] [-pags FLOAT [FLOAT ...]] [-pagas FLOAT [FLOAT ...]]
@@ -1167,26 +1166,15 @@ Help Output
             
             Each value supplied will be tried in turn.
             ------------------------------------------
-      --sada-acc-range-starts INTEGER [INTEGER ...]
-            SADA acceleration range start steps for the primary model.
+      --sada-acc-ranges INTEGER [INTEGER ...]
+            SADA acceleration range start / end steps for the primary model.
             
             Defines the starting step for SADA acceleration. Must be at least 3 as SADA leverages third-order
             dynamics.
             
-            Defaults to 10.
+            Defaults to "10,47".
             
-            Supplying any SADA parameter implies that SADA is enabled.
-            
-            This is supported for: --model-type sd, sdxl, kolors, flux*.
-            
-            Each value supplied will be tried in turn.
-            ------------------------------------------
-      --sada-acc-range-ends INTEGER [INTEGER ...]
-            SADA acceleration range end steps for the primary model.
-            
-            Defines the ending step for SADA acceleration.
-            
-            Defaults to 47.
+            Supply ranges as comma seperated values, for example: --sada-acc-ranges "10,47" "12,40"
             
             Supplying any SADA parameter implies that SADA is enabled.
             
@@ -2040,16 +2028,16 @@ Help Output
             --------------------------------------------------------------------------------------------
       -af, --animation-format FORMAT
             Output format when generating an animation from an input video / gif / webp etc. Value must be one
-            of: mp4, gif, png, apng, or webp. You may also specify "frames" to indicate that only frames should
+            of: mp4, png, apng, gif, or webp. You may also specify "frames" to indicate that only frames should
             be output and no coalesced animation file should be rendered. (default: mp4)
             ----------------------------------------------------------------------------
       -if, --image-format FORMAT
             Output format when writing static images or tensors. For image formats, any selection other than
             "png", "jpg", or "jpeg" is not compatible with --output-metadata. For tensor formats (pt, pth,
-            safetensors), raw latent tensors will be saved instead of decoded images. Value must be one of:
-            avif, avifs, blp, bmp, dib, bufr, pcx, dds, ps, eps, gif, grib, h5, hdf, png, apng, jp2, j2k, jpc,
-            jpf, jpx, j2c, icns, ico, im, jfif, jpe, jpg, jpeg, tif, tiff, mpo, msp, palm, pdf, pbm, pgm, ppm,
-            pnm, pfm, qoi, bw, rgb, rgba, sgi, tga, icb, vda, vst, webp, wmf, emf, xbm, pt, pth, or safetensors.
+            safetensors), raw latent tensors will be saved instead of decoded images. Value must be one of: png,
+            apng, avif, avifs, blp, bmp, dib, bufr, pcx, dds, ps, eps, gif, grib, h5, hdf, jp2, j2k, jpc, jpf,
+            jpx, j2c, icns, ico, im, jfif, jpe, jpg, jpeg, tif, tiff, mpo, msp, palm, pdf, pbm, pgm, ppm, pnm,
+            pfm, qoi, bw, rgb, rgba, sgi, tga, icb, vda, vst, webp, wmf, emf, xbm, pt, pth, or safetensors.
             (default: png)
             --------------
       -nf, --no-frames
@@ -7437,8 +7425,7 @@ these are the arguments that are available for use:
     sada-max-downsample: int
     sada-sx: int
     sada-sy: int
-    sada-acc-range-start: int
-    sada-acc-range-end: int
+    sada-acc-range: Size: WxH
     sada-lagrange-term: int
     sada-lagrange-int: int
     sada-lagrange-step: int
@@ -8146,11 +8133,11 @@ The help output of ``image-process`` is as follows:
             equal to those listed under --frame-format.
             -------------------------------------------
       -ff, --frame-format FRAME_FORMAT
-            Image format for animation frames. Must be one of: avif, avifs, blp, bmp, dib, bufr, pcx, dds, ps,
-            eps, gif, grib, h5, hdf, png, apng, jp2, j2k, jpc, jpf, jpx, j2c, icns, ico, im, jfif, jpe, jpg,
-            jpeg, tif, tiff, mpo, msp, palm, pdf, pbm, pgm, ppm, pnm, pfm, qoi, bw, rgb, rgba, sgi, tga, icb,
-            vda, vst, webp, wmf, emf, or xbm.
-            ---------------------------------
+            Image format for animation frames. Must be one of: png, apng, avif, avifs, blp, bmp, dib, bufr, pcx,
+            dds, ps, eps, gif, grib, h5, hdf, jp2, j2k, jpc, jpf, jpx, j2c, icns, ico, im, jfif, jpe, jpg, jpeg,
+            tif, tiff, mpo, msp, palm, pdf, pbm, pgm, ppm, pnm, pfm, qoi, bw, rgb, rgba, sgi, tga, icb, vda,
+            vst, webp, wmf, emf, or xbm.
+            ----------------------------
       -ox, --output-overwrite
             Indicate that it is okay to overwrite files, instead of appending a duplicate suffix.
             -------------------------------------------------------------------------------------
@@ -10678,11 +10665,8 @@ The ``\templates_help`` output from the above example is:
         Name: "last_sada"
             Type: <class 'bool'>
             Value: False
-        Name: "last_sada_acc_range_ends"
-            Type: typing.Optional[collections.abc.Sequence[int]]
-            Value: []
-        Name: "last_sada_acc_range_starts"
-            Type: typing.Optional[collections.abc.Sequence[int]]
+        Name: "last_sada_acc_ranges"
+            Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
             Value: []
         Name: "last_sada_lagrange_ints"
             Type: typing.Optional[collections.abc.Sequence[int]]
@@ -10860,7 +10844,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [3084096421433]
+            Value: [39337416908497]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -11397,9 +11381,13 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
     ==================================================
     ord(args, kwargs):
     
-        Return the Unicode code point for a one-character string.
+        Return the ordinal value of a character.
     
-    =============================================================
+        If the argument is a one-character string, return the Unicode code point of that character.
+    
+        If the argument is a bytes or bytearray object of length 1, return its single byte value.
+    
+    ===============================================================================================
     pow(args, kwargs):
     
         Equivalent to base**exp with 2 arguments or base**exp % mod with 3 arguments

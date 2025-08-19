@@ -447,18 +447,13 @@ Maximum fixed memory for Flux models.
 Set to 0 as Flux uses a different optimization approach.
 """
 
-# Common defaults for all models
-DEFAULT_SADA_ACC_RANGE_START: int = 10
+DEFAULT_SADA_ACC_RANGE: tuple = (10, 47)
 """
-Acceleration range start step for all models.
-Defines the starting step for SADA acceleration. Must be at least 3 
-as SADA leverages third-order dynamics.
-"""
+Acceleration range start / end step for all models.
+Defines the starting step for SADA acceleration. 
 
-DEFAULT_SADA_ACC_RANGE_END: int = 47
-"""
-Acceleration range end step for all models.
-Defines the ending step for SADA acceleration.
+Start step must be at least 3 as SADA leverages third-order
+dynamics.
 """
 
 DEFAULT_SADA_MAX_INTERVAL: int = 4

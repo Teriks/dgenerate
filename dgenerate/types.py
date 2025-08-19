@@ -41,6 +41,9 @@ Name = str
 Size = tuple[int, int]
 Sizes = collections.abc.Sequence[Size]
 
+Range = tuple[int, int]
+Ranges = collections.abc.Sequence[Range]
+
 Padding = int | tuple[int, int] | tuple[int, int, int, int]
 Paddings = collections.abc.Sequence[Padding]
 OptionalPadding = typing.Optional[Padding]
@@ -48,6 +51,9 @@ OptionalPaddings = typing.Optional[Paddings]
 
 OptionalSize = typing.Optional[Size]
 OptionalSizes = typing.Optional[Sizes]
+
+OptionalRange = typing.Optional[Range]
+OptionalRanges = typing.Optional[Ranges]
 
 Coordinate = tuple[int, int]
 OptionalCoordinate = typing.Optional[Coordinate]
