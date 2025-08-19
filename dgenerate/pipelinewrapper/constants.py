@@ -253,7 +253,7 @@ Default starvation scale for RAS (Reinforcement Attention System) for Stable Dif
 Controls the starvation scale in RAS patch selection, typically between 0 and 1.
 """
 
-DEFAULT_RAS_ERROR_RESET_STEPS: str = "12,22"
+DEFAULT_RAS_ERROR_RESET_STEPS: list = [12,22]
 """
 Default error reset steps for RAS (Reinforcement Attention System) for Stable Diffusion 3.
 Comma-separated string of step numbers for dense sampling steps to reset accumulated error in RAS.
