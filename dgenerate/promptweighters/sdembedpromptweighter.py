@@ -290,6 +290,16 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
                 device=self.device)
 
         elif pipeline.__class__.__name__.startswith('Flux'):
+            # Check if this Flux pipeline supports negative prompting
+            pipeline_sig = inspect.signature(pipeline.__call__).parameters
+            supports_negative = 'negative_prompt_embeds' in pipeline_sig
+            
+            if not supports_negative and (negative or negative_2):
+                _messages.warning(
+                    'Flux is ignoring the provided negative prompt as it '
+                    'does not support negative prompting in the current configuration.'
+                )
+            
             pos_conditioning, \
                 pos_pooled, \
                 neg_conditioning, \
@@ -297,10 +307,15 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
                 pipe=pipeline,
                 prompt=positive,
                 prompt2=positive_2 if positive_2 else None,
-                neg_prompt=negative,
-                neg_prompt2=negative_2 if negative_2 else None,
+                neg_prompt=negative if supports_negative else "",
+                neg_prompt2=negative_2 if (supports_negative and negative_2) else None,
                 device=self.device
             )
+            
+            # If pipeline doesn't support negative prompting, clear the negative embeddings
+            if not supports_negative:
+                neg_conditioning = None
+                neg_pooled = None
 
         if pos_conditioning is not None:
             self._tensors.append(pos_conditioning)
