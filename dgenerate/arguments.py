@@ -81,7 +81,7 @@ def _type_dtype(dtype):
     dtype = dtype.lower()
     supported_dtypes = _pipelinewrapper.supported_data_type_strings()
     if dtype not in supported_dtypes:
-        raise argparse.ArgumentTypeError(f'Must be {_textprocessing.oxford_comma(supported_dtypes, "or")}.')
+        raise argparse.ArgumentTypeError(f'Must be {_textprocessing.oxford_comma(supported_dtypes, "or")}')
     else:
         return _pipelinewrapper.get_data_type_enum(dtype)
 
@@ -216,10 +216,10 @@ def _type_output_size(size):
     x, y = _type_size(size)
 
     if x % 8 != 0:
-        raise argparse.ArgumentTypeError('Output X dimension must be divisible by 8.')
+        raise argparse.ArgumentTypeError('Output X dimension must be divisible by 8')
 
     if y % 8 != 0:
-        raise argparse.ArgumentTypeError('Output Y dimension must be divisible by 8.')
+        raise argparse.ArgumentTypeError('Output Y dimension must be divisible by 8')
 
     return x, y
 
@@ -233,7 +233,7 @@ def _type_image_coordinate(coord):
     try:
         return int(r[0]), int(r[1])
     except ValueError:
-        raise argparse.ArgumentTypeError('Coordinates must be integer values.')
+        raise argparse.ArgumentTypeError('Coordinates must be integer values')
 
 
 def _type_sdxl_high_noise_fractions(val):
@@ -322,7 +322,7 @@ def _type_image_seed_strengths(val):
 
     if val < 0 or val > 1:
         raise argparse.ArgumentTypeError(
-            'Must be greater than or equal to zero, and less than or equal to one.')
+            'Must be greater than or equal to zero, and less than or equal to one')
     return val
 
 
@@ -334,7 +334,7 @@ def _type_tea_cache_rel_l1_thresh(val):
 
     if val < 0 or val > 1:
         raise argparse.ArgumentTypeError(
-            'Must be greater than or equal to zero, and less than or equal to one.')
+            'Must be greater than or equal to zero, and less than or equal to one')
     return val
 
 
@@ -390,12 +390,12 @@ def _type_adetailer_index_filter_value(val):
         val = int(val)
     except ValueError:
         raise argparse.ArgumentTypeError(
-            'Must be an integer value.'
+            'Must be an integer value'
         )
 
     if val < 0:
         raise argparse.ArgumentTypeError(
-            'Must be greater than or equal to zero.'
+            'Must be greater than or equal to zero'
         )
     return val
 
@@ -551,7 +551,7 @@ def _type_ras_error_reset_steps(val: str) -> list[int]:
 def _type_ras_metric(val: str) -> str:
     val = val.lower()
     if val not in {'std', 'l2norm'}:
-        raise argparse.ArgumentTypeError('Must be one of: std or l2norm.')
+        raise argparse.ArgumentTypeError('Must be one of: std or l2norm')
     return val
 
 
@@ -561,7 +561,7 @@ def _type_ras_start_steps(val: str) -> int:
     except ValueError:
         raise argparse.ArgumentTypeError('Must be an integer')
     if val < 1:
-        raise argparse.ArgumentTypeError('Must be greater than or equal to 1.')
+        raise argparse.ArgumentTypeError('Must be greater than or equal to 1')
     return val
 
 
@@ -571,7 +571,7 @@ def _type_ras_end_steps(val: str) -> int:
     except ValueError:
         raise argparse.ArgumentTypeError('Must be an integer')
     if val < 1:
-        raise argparse.ArgumentTypeError('Must be greater than or equal to 1.')
+        raise argparse.ArgumentTypeError('Must be greater than or equal to 1')
     return val
 
 
@@ -654,7 +654,9 @@ def _type_sada_acc_ranges(val: str) -> list[int]:
                         f'SADA acceleration range start value ({start}) must be less than or equal to end value ({end})'
                     )
         else:
-            ranges = [int(val.strip())]
+            raise argparse.ArgumentTypeError(
+                'SADA acceleration ranges must possess at least two values'
+            )
         if not all(x >= 3 for x in ranges):
             raise argparse.ArgumentTypeError(
                 'All SADA acceleration range values must be at least 3'
