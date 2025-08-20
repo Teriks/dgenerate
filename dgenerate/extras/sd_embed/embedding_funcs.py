@@ -1769,6 +1769,8 @@ def get_weighted_text_embeddings_flux1(
         pipe: FluxPipeline
         , prompt: str       = ""
         , prompt2: str      = None
+        , neg_prompt: str   = ""
+        , neg_prompt2: str  = None
         , device            = None
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """
@@ -1778,11 +1780,14 @@ def get_weighted_text_embeddings_flux1(
         pipe (['FluxPipeline']): The FluxPipeline
         prompt (['string']): the 1st prompt
         prompt2 (['string']): the 2nd prompt
+        neg_prompt (['string']): the 1st negative prompt
+        neg_prompt2 (['string']): the 2nd negative prompt
         device (['string']): target device
     Returns:
-        A tuple include two embedding tensors
+        A tuple include two embedding tensors (prompt_embeds, neg_prompt_embeds)
     """
     prompt2 = prompt if prompt2 is None else prompt2
+    neg_prompt2 = neg_prompt if neg_prompt2 is None else neg_prompt2
     if device is None:
         device = pipe.device
 
@@ -1790,11 +1795,69 @@ def get_weighted_text_embeddings_flux1(
     prompt_tokens, prompt_weights = get_prompts_tokens_with_weights(
         pipe.tokenizer, prompt
     )
+    neg_prompt_tokens, neg_prompt_weights = get_prompts_tokens_with_weights(
+        pipe.tokenizer, neg_prompt
+    )
 
     # tokenizer 2 - google/t5-v1_1-xxl
     prompt_tokens_2, prompt_weights_2 = get_prompts_tokens_with_weights_t5(
         pipe.tokenizer_2, prompt2
     )
+    neg_prompt_tokens_2, neg_prompt_weights_2 = get_prompts_tokens_with_weights_t5(
+        pipe.tokenizer_2, neg_prompt2
+    )
+
+    # Padding for tokenizer 1 (CLIP)
+    prompt_token_len = len(prompt_tokens)
+    neg_prompt_token_len = len(neg_prompt_tokens)
+    eos = pipe.tokenizer.eos_token_id
+    
+    if prompt_token_len > neg_prompt_token_len:
+        # padding the neg_prompt with eos token
+        neg_prompt_tokens = (
+                neg_prompt_tokens +
+                [eos] * abs(prompt_token_len - neg_prompt_token_len)
+        )
+        neg_prompt_weights = (
+                neg_prompt_weights +
+                [1.0] * abs(prompt_token_len - neg_prompt_token_len)
+        )
+    else:
+        # padding the prompt
+        prompt_tokens = (
+                prompt_tokens
+                + [eos] * abs(prompt_token_len - neg_prompt_token_len)
+        )
+        prompt_weights = (
+                prompt_weights
+                + [1.0] * abs(prompt_token_len - neg_prompt_token_len)
+        )
+
+    # Padding for tokenizer 2 (T5)
+    prompt_token_len_2 = len(prompt_tokens_2)
+    neg_prompt_token_len_2 = len(neg_prompt_tokens_2)
+    eos_2 = pipe.tokenizer_2.eos_token_id
+    
+    if prompt_token_len_2 > neg_prompt_token_len_2:
+        # padding the neg_prompt with eos token
+        neg_prompt_tokens_2 = (
+                neg_prompt_tokens_2 +
+                [eos_2] * abs(prompt_token_len_2 - neg_prompt_token_len_2)
+        )
+        neg_prompt_weights_2 = (
+                neg_prompt_weights_2 +
+                [1.0] * abs(prompt_token_len_2 - neg_prompt_token_len_2)
+        )
+    else:
+        # padding the prompt
+        prompt_tokens_2 = (
+                prompt_tokens_2
+                + [eos_2] * abs(prompt_token_len_2 - neg_prompt_token_len_2)
+        )
+        prompt_weights_2 = (
+                prompt_weights_2
+                + [1.0] * abs(prompt_token_len_2 - neg_prompt_token_len_2)
+        )
 
     prompt_token_groups, prompt_weight_groups = group_tokens_and_weights(
         prompt_tokens.copy()
@@ -1802,19 +1865,13 @@ def get_weighted_text_embeddings_flux1(
         , pad_last_block = True
     )
 
-    # # get positive prompt embeddings, flux1 use only text_encoder 1 pooled embeddings
-    # token_tensor = torch.tensor(
-    #     [prompt_token_groups[0]]
-    #     , dtype = torch.long, device = device
-    # )
-    # # use first text encoder
-    # prompt_embeds_1 = pipe.text_encoder(
-    #     token_tensor.to(device)
-    #     , output_hidden_states  = False
-    # )
-    # pooled_prompt_embeds_1  = prompt_embeds_1.pooler_output
-    # prompt_embeds           = pooled_prompt_embeds_1.to(dtype = pipe.text_encoder.dtype, device = device)
+    neg_prompt_token_groups, neg_prompt_weight_groups = group_tokens_and_weights(
+        neg_prompt_tokens.copy()
+        , neg_prompt_weights.copy()
+        , pad_last_block = True
+    )
 
+    # Generate positive prompt embeddings
     # use avg pooling embeddings
     pool_embeds_list = []
     for token_group in prompt_token_groups:
@@ -1834,14 +1891,13 @@ def get_weighted_text_embeddings_flux1(
 
     # get the avg pool
     prompt_embeds = prompt_embeds.mean(dim=0, keepdim=True)
-    # prompt_embeds = prompt_embeds.unsqueeze(0)
     prompt_embeds = prompt_embeds.to(dtype = pipe.text_encoder.dtype, device = device)
 
     # generate positive t5 embeddings
-    prompt_tokens_2 = torch.tensor([prompt_tokens_2],dtype=torch.long)
+    prompt_tokens_2_tensor = torch.tensor([prompt_tokens_2],dtype=torch.long)
 
-    t5_prompt_embeds    = pipe.text_encoder_2(prompt_tokens_2.to(device))[0].squeeze(0)
-    t5_prompt_embeds    = t5_prompt_embeds.to(device = device)
+    t5_prompt_embeds = pipe.text_encoder_2(prompt_tokens_2_tensor.to(device))[0].squeeze(0)
+    t5_prompt_embeds = t5_prompt_embeds.to(device = device)
 
     # add weight to t5 prompt
     for z in range(len(prompt_weights_2)):
@@ -1850,6 +1906,41 @@ def get_weighted_text_embeddings_flux1(
     t5_prompt_embeds = t5_prompt_embeds.unsqueeze(0)
     t5_prompt_embeds = t5_prompt_embeds.to(dtype = pipe.text_encoder_2.dtype, device = device)
 
+    # Generate negative prompt embeddings
+    # use avg pooling embeddings
+    neg_pool_embeds_list = []
+    for token_group in neg_prompt_token_groups:
+        token_tensor = torch.tensor(
+            [token_group]
+            , dtype = torch.long
+            , device = device
+        )
+        neg_prompt_embeds_1 = pipe.text_encoder(
+            token_tensor.to(device)
+            , output_hidden_states  = False
+        )
+        neg_pooled_prompt_embeds = neg_prompt_embeds_1.pooler_output.squeeze(0)
+        neg_pool_embeds_list.append(neg_pooled_prompt_embeds)
+
+    neg_prompt_embeds = torch.stack(neg_pool_embeds_list,dim=0)
+
+    # get the avg pool
+    neg_prompt_embeds = neg_prompt_embeds.mean(dim=0, keepdim=True)
+    neg_prompt_embeds = neg_prompt_embeds.to(dtype = pipe.text_encoder.dtype, device = device)
+
+    # generate negative t5 embeddings
+    neg_prompt_tokens_2_tensor = torch.tensor([neg_prompt_tokens_2],dtype=torch.long)
+
+    t5_neg_prompt_embeds = pipe.text_encoder_2(neg_prompt_tokens_2_tensor.to(device))[0].squeeze(0)
+    t5_neg_prompt_embeds = t5_neg_prompt_embeds.to(device = device)
+
+    # add weight to t5 negative prompt
+    for z in range(len(neg_prompt_weights_2)):
+        if neg_prompt_weights_2[z] != 1.0:
+            t5_neg_prompt_embeds[z] = t5_neg_prompt_embeds[z] * neg_prompt_weights_2[z]
+    t5_neg_prompt_embeds = t5_neg_prompt_embeds.unsqueeze(0)
+    t5_neg_prompt_embeds = t5_neg_prompt_embeds.to(dtype = pipe.text_encoder_2.dtype, device = device)
+
     # release text encoder from vram
     if pipe.device.type.startswith('cpu'):
         pipe.text_encoder.to('cpu')
@@ -1857,4 +1948,4 @@ def get_weighted_text_embeddings_flux1(
         gc.collect()
         _memory.torch_gc()
 
-    return t5_prompt_embeds,prompt_embeds
+    return t5_prompt_embeds, prompt_embeds, t5_neg_prompt_embeds, neg_prompt_embeds
