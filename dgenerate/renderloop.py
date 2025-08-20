@@ -1303,8 +1303,12 @@ class RenderLoop:
                     if self._c_config.inpaint_crop:
                         resize_resolution = None
                     else:
-                        resize_resolution = self._c_config.output_size \
-                            if not _pipelinewrapper.model_type_uses_image_encoder(self._c_config.model_type) else None
+                        if not _pipelinewrapper.model_type_uses_image_encoder(self._c_config.model_type) \
+                            and not _pipelinewrapper.model_type_is_flux(self._c_config.model_type) \
+                            and not _pipelinewrapper.model_type_is_sd3(self._c_config.model_type):
+                            resize_resolution = self._c_config.output_size
+                        else:
+                            resize_resolution = None
 
                     yield from _mediainput.iterate_image_seed(
                         uri=parsed_image_seed,

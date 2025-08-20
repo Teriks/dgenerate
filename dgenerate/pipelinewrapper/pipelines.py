@@ -1638,6 +1638,16 @@ def get_pipeline_class(
                         else diffusers.StableDiffusionInstructPix2PixPipeline
                     )
 
+            if model_type == _enums.ModelType.FLUX_KONTEXT:
+                raise UnsupportedPipelineConfigError(
+                    'Flux Kontext models only work in img2img / inpaint mode and cannot work without --image-seeds.'
+                )
+
+            if model_type == _enums.ModelType.FLUX_FILL:
+                raise UnsupportedPipelineConfigError(
+                    'Flux Fill models only work in inpaint mode and cannot work without --image-seeds.'
+                )
+
             if model_type == _enums.ModelType.IF:
                 pipeline_class = diffusers.IFPipeline
             elif model_type == _enums.ModelType.IFS:
@@ -1724,6 +1734,11 @@ def get_pipeline_class(
                     raise UnsupportedPipelineConfigError(
                         'Pix2Pix models are not compatible with --control-nets.')
 
+            if model_type == _enums.ModelType.FLUX_FILL:
+                raise UnsupportedPipelineConfigError(
+                    'Flux Fill models only work in inpaint mode.'
+                )
+
             if is_pix2pix:
                 pipeline_class = (
                     diffusers.StableDiffusionXLInstructPix2PixPipeline
@@ -1746,6 +1761,12 @@ def get_pipeline_class(
                     pipeline_class = diffusers.FluxControlNetImg2ImgPipeline
                 else:
                     pipeline_class = diffusers.FluxImg2ImgPipeline
+            elif model_type == _enums.ModelType.FLUX_KONTEXT:
+                if controlnet_uris:
+                    raise UnsupportedPipelineConfigError(
+                        '--model-type flux-kontext does not support ControlNet models.'
+                    )
+                pipeline_class = diffusers.FluxKontextPipeline
             elif model_type == _enums.ModelType.SD3:
                 if controlnet_uris:
                     raise UnsupportedPipelineConfigError(
@@ -1825,6 +1846,11 @@ def get_pipeline_class(
                     raise UnsupportedPipelineConfigError(
                         '--model-type flux-fill does not support ControlNet models.')
                 pipeline_class = diffusers.FluxFillPipeline
+            elif model_type == _enums.ModelType.FLUX_KONTEXT:
+                if controlnet_uris:
+                    raise UnsupportedPipelineConfigError(
+                        '--model-type flux-kontext does not support ControlNet models.')
+                pipeline_class = diffusers.FluxKontextInpaintPipeline
             elif model_type == _enums.ModelType.IF:
                 pipeline_class = diffusers.IFInpaintingPipeline
             elif model_type == _enums.ModelType.IFS:

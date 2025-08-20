@@ -63,6 +63,8 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
     --model-type s-cascade
     --model-type sd3
     --model-type flux
+    --model-type flux-fill
+    --model-type flux-kontext
 
     The secondary prompt option for SDXL --second-prompts is supported by this prompt weighter
     implementation. However, --second-model-second-prompts is not supported and will be ignored
@@ -89,7 +91,9 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
             _enums.ModelType.SDXL_PIX2PIX,
             _enums.ModelType.S_CASCADE,
             _enums.ModelType.SD3,
-            _enums.ModelType.FLUX
+            _enums.ModelType.FLUX,
+            _enums.ModelType.FLUX_FILL,
+            _enums.ModelType.FLUX_KONTEXT
         }
 
         if self.model_type not in supported:
@@ -291,6 +295,13 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
                 pipe=pipeline,
                 prompt=positive,
                 prompt2=positive_2 if positive_2 else None,
+                device=self.device)
+
+            neg_conditioning, \
+                neg_pooled = _sd_embed.get_weighted_text_embeddings_flux1(
+                pipe=pipeline,
+                prompt=negative,
+                prompt2=negative_2 if negative_2 else None,
                 device=self.device)
 
         if pos_conditioning is not None:

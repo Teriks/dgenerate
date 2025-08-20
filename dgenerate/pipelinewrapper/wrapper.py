@@ -1328,7 +1328,16 @@ class DiffusionPipelineWrapper:
         if not images:
             return []
 
-        target_size = self._calc_image_target_size(images[0], user_args)
+        if (_enums.model_type_is_flux(self._model_type)
+            or _enums.model_type_is_sd3(self._model_type)):
+            # Only fix alignment for Flux/SD3 models, their
+            # input image size and output image size
+            # can be independent of each other
+
+            # we supply height/width to the pipeline later
+            target_size = images[0].size
+        else:
+            target_size = self._calc_image_target_size(images[0], user_args)
 
         resized_images = []
 
@@ -1815,7 +1824,7 @@ class DiffusionPipelineWrapper:
                     _types.default(user_args.upscaler_noise_level, _constants.DEFAULT_X4_UPSCALER_NOISE_LEVEL)
                 )
             check_no_image_seed_strength()
-        elif self._model_type == _enums.ModelType.FLUX_FILL:
+        elif self._model_type in [_enums.ModelType.FLUX_FILL, _enums.ModelType.FLUX_KONTEXT]:
             check_no_image_seed_strength()
         elif self._model_type == _enums.ModelType.IFS:
             if self._pipeline_type != _enums.PipelineType.INPAINT:
@@ -1919,46 +1928,68 @@ class DiffusionPipelineWrapper:
                 pipeline_args
             )
 
-        elif self._model_type == _enums.ModelType.SD3:
-            image_arg_inputs = list(image_arg_inputs)
-            pipeline_args['image'] = image_arg_inputs
+        elif (_enums.model_type_is_flux(self._model_type) or
+              self._model_type == _enums.ModelType.SD3):
 
-            if non_latent_input:
-                for idx, image in enumerate(image_arg_inputs):
-                    if not _image.is_aligned(image.size, 16):
-                        size = _image.align_by(image.size, 16)
-                        _messages.warning(
-                            f'Input image size {image.size} is not aligned by 16. '
-                            f'Dimensions will be forcefully aligned to 16: {size}.'
-                        )
-                        image_arg_inputs[idx] = _image.resize_image(image, size)
+            if self._model_type == _enums.ModelType.SD3:
+                image_arg_inputs = list(image_arg_inputs)
+                pipeline_args['image'] = image_arg_inputs
 
-                # Use image dimensions for SD3, already sized per user
-                self._set_pipe_dimensions(
-                    None, None,
-                    image_arg_inputs[0].width, image_arg_inputs[0].height,
-                    pipeline_args
-                )
+                if non_latent_input:
+                    for idx, image in enumerate(image_arg_inputs):
+                        if not _image.is_aligned(image.size, 16):
+                            size = _image.align_by(image.size, 16)
+                            _messages.warning(
+                                f'Input image size {image.size} is not aligned by 16. '
+                                f'Dimensions will be forcefully aligned to 16: {size}.'
+                            )
+                            image_arg_inputs[idx] = _image.resize_image(image, size)
 
-            if mask_images:
-                mask_images = list(mask_images)
-                pipeline_args['mask_image'] = mask_images
+                    inference_width = image_arg_inputs[0].width
+                    inference_height = image_arg_inputs[0].height
 
-                for idx, image in enumerate(mask_images):
-                    if not _image.is_aligned(image.size, 16):
-                        size = _image.align_by(image.size, 16)
-                        _messages.warning(
-                            f'Input mask image size {image.size} is not aligned by 16. '
-                            f'Dimensions will be forcefully aligned to 16: {size}.'
-                        )
-                        mask_images[idx] = _image.resize_image(image, size)
+                if mask_images:
+                    mask_images = list(mask_images)
+                    pipeline_args['mask_image'] = mask_images
 
-                # Use mask dimensions for SD3 with masks, already sized per user
-                self._set_pipe_dimensions(
-                    None, None,
-                    mask_images[0].width, mask_images[0].height,
-                    pipeline_args
-                )
+                    for idx, image in enumerate(mask_images):
+                        if not _image.is_aligned(image.size, 16):
+                            size = _image.align_by(image.size, 16)
+                            _messages.warning(
+                                f'Input mask image size {image.size} is not aligned by 16. '
+                                f'Dimensions will be forcefully aligned to 16: {size}.'
+                            )
+                            mask_images[idx] = _image.resize_image(image, size)
+
+                    inference_width = mask_images[0].width
+                    inference_height = mask_images[0].height
+
+            # flux / sd3 output size is not based of image input size, but I want to
+            # emulate the behavior of the other diffusion pipelines
+
+            # we do not resize images going into flux by the user requested dimensions
+
+            # we set the output size on the pipeline, which may be different from the input size
+
+            user_width = _types.default(user_width, _constants.DEFAULT_FLUX_OUTPUT_WIDTH)
+            user_height = _types.default(user_height, _constants.DEFAULT_FLUX_OUTPUT_HEIGHT)
+
+            # maintain aspect correctness if requested based on the input image size
+            # even though the image going in was not pre-resized
+
+            output_size = _image.resize_image_calc(
+                (inference_width, inference_height),
+                (user_width, user_height), user_args.aspect_correct, align=8
+            )
+
+            # The pipeline output size should be based on the input size
+            # we can mix input and output size by specifying --no-aspect
+            # which is a feature that Flux can support but other pipelines
+            # cannot
+
+            pipeline_args['width'] = output_size[0]
+            pipeline_args['height'] = output_size[1]
+
 
     def _set_pipeline_txt2img_defaults(self, user_args: DiffusionArguments, pipeline_args: dict[str, typing.Any]):
 
@@ -2549,22 +2580,13 @@ class DiffusionPipelineWrapper:
         prompt_2: _prompt.Prompt = _types.default(user_args.second_prompt, _prompt.Prompt())
 
         pipeline_args['prompt'] = prompt.positive if prompt.positive else ''
-        pipeline_args['prompt_2'] = prompt_2.positive if prompt.positive else ''
+        pipeline_args['prompt_2'] = prompt_2.positive if prompt_2.positive else None
+
+        pipeline_args['negative_prompt'] = prompt.negative if prompt.negative else None
+        pipeline_args['negative_prompt_2'] = prompt_2.negative if prompt_2.negative else None
 
         if user_args.max_sequence_length is not None:
             pipeline_args['max_sequence_length'] = user_args.max_sequence_length
-
-        if prompt.negative:
-            _messages.warning(
-                'Flux is ignoring the provided negative prompt as it '
-                'does not support negative prompting.'
-            )
-
-        if prompt_2.negative:
-            _messages.warning(
-                'Flux is ignoring the provided second negative prompt as it '
-                'does not support negative prompting.'
-            )
 
         batch_size = _types.default(user_args.batch_size, 1)
 
