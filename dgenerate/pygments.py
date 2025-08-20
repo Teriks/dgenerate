@@ -144,6 +144,7 @@ _MODEL_TYPE_KEYWORDS = sorted((
     'sd3',
     'flux',
     'flux-fill',
+    'flux-kontext',
     'sdxl',
     'kolors',
     'if',
