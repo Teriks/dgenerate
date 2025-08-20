@@ -247,7 +247,7 @@ def _exclude_requires(name):
 
 
 _pyinstaller_requires = 'pyinstaller' + requires.pop('pyinstaller')
-_sphinx_requires = 'sphinx_rtd_theme' + requires.pop('sphinx_rtd_theme')
+_sphinx_requires = 'sphinx-rtd-theme' + requires.pop('sphinx-rtd-theme')
 _poetry_requires = 'poetry' + requires.pop('poetry')
 _graphviz_requires = 'graphviz' + requires.pop('graphviz')
 _pyopengltk_requires = 'pyopengltk' + requires.pop('pyopengltk')
