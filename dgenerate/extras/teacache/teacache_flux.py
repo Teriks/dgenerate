@@ -187,8 +187,9 @@ def _create_teacache_forward(num_inference_steps: int, rel_l1_thresh: float):
                         )
                     else:
                         hidden_states = hidden_states + controlnet_block_samples[index_block // interval_control]
-            hidden_states = torch.cat([encoder_hidden_states, hidden_states], dim=1)
-
+            # For single_transformer_blocks, we use the same image_rotary_emb as transformer_blocks
+            # The original FLUX implementation doesn't concatenate hidden_states for single_transformer_blocks
+            # Instead, it processes them separately with the same rotary embeddings
             for index_block, block in enumerate(self.single_transformer_blocks):
                 if torch.is_grad_enabled() and self.gradient_checkpointing:
 
@@ -202,17 +203,19 @@ def _create_teacache_forward(num_inference_steps: int, rel_l1_thresh: float):
                         return custom_forward
 
                     ckpt_kwargs: typing.Dict[str, typing.Any] = {"use_reentrant": False} if is_torch_version(">=", "1.11.0") else {}
-                    hidden_states = torch.utils.checkpoint.checkpoint(
+                    encoder_hidden_states, hidden_states = torch.utils.checkpoint.checkpoint(
                         create_custom_forward(block),
                         hidden_states,
+                        encoder_hidden_states,
                         temb,
                         image_rotary_emb,
                         **ckpt_kwargs,
                     )
 
                 else:
-                    hidden_states = block(
+                    encoder_hidden_states, hidden_states = block(
                         hidden_states=hidden_states,
+                        encoder_hidden_states=encoder_hidden_states,
                         temb=temb,
                         image_rotary_emb=image_rotary_emb,
                         joint_attention_kwargs=joint_attention_kwargs,
@@ -227,7 +230,6 @@ def _create_teacache_forward(num_inference_steps: int, rel_l1_thresh: float):
                             + controlnet_single_block_samples[index_block // interval_control]
                     )
 
-            hidden_states = hidden_states[:, encoder_hidden_states.shape[1] :, ...]
             previous_residual = hidden_states - ori_hidden_states
         
         hidden_states = self.norm_out(hidden_states, temb)
