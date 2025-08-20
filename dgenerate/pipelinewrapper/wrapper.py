@@ -2582,8 +2582,22 @@ class DiffusionPipelineWrapper:
         pipeline_args['prompt'] = prompt.positive if prompt.positive else ''
         pipeline_args['prompt_2'] = prompt_2.positive if prompt_2.positive else None
 
-        pipeline_args['negative_prompt'] = prompt.negative if prompt.negative else None
-        pipeline_args['negative_prompt_2'] = prompt_2.negative if prompt_2.negative else None
+
+        if inspect.signature(self._pipeline.__call__).parameters.get('negative_prompt') is None:
+            if prompt.negative:
+                _messages.warning(
+                    'Flux is ignoring the provided negative prompt as it '
+                    'does not support negative prompting in the current configuration.'
+                )
+
+            if prompt_2.negative:
+                _messages.warning(
+                    'Flux is ignoring the provided second negative prompt as it '
+                    'does not support negative prompting in the current configuration.'
+                )
+        else:
+            pipeline_args['negative_prompt'] = prompt.negative if prompt.negative else None
+            pipeline_args['negative_prompt_2'] = prompt_2.negative if prompt_2.negative else None
 
         if user_args.max_sequence_length is not None:
             pipeline_args['max_sequence_length'] = user_args.max_sequence_length
