@@ -1772,7 +1772,7 @@ def get_weighted_text_embeddings_flux1(
         , neg_prompt: str   = ""
         , neg_prompt2: str  = None
         , device            = None
-) -> Tuple[torch.Tensor, torch.Tensor]:
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """
     This function can process long prompt with weights for flux1 model
 
