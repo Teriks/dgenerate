@@ -1,5 +1,5 @@
 title: Upscaling (Stable Diffusion x2)
-order: 18
+order: 19
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "stabilityai/sd-x2-latent-upscaler", "optional":false, "file-types":["models"]}]
 @file[{"label": "Original Config (yaml)", "arg": "--original-config", "file-types": ["yaml"]}]

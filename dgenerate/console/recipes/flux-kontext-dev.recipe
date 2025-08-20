@@ -1,0 +1,51 @@
+title: Flux Kontext (Dev)
+order: 18
+
+# Flux requires a huggingface auth token to access
+# you must request access to the repository
+
+\setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false, "divider-after":true}]"
+
+\set auth_token {{ '--auth-token ' + quote(auth_token) if auth_token else '' }}
+
+\set image @file[{"label":"Input Image File", "optional":false, "mode":"input", "file-types":["images-in", "videos-in"]}]
+@file[{"label":"Input Mask File", "optional":true, "mode":"input", "file-types":["images-in", "videos-in"], "divider-after":true, "arg":"\\setp optional_mask"}]
+
+\set image_seeds {{ image + ';' + optional_mask if optional_mask else image }}
+
+@uri[{"label":"Model Path / HF Slug", "dir":true, "default": "black-forest-labs/FLUX.1-Kontext-dev", "optional":false, "file-types":["models"]}]
+--model-type flux-kontext {{ auth_token }}
+@dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"], "default":"bfloat16"}]
+@karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "filter": ["FlowMatchEulerDiscreteScheduler"]}]
+@checkboxwithfloatarg[{"id": "tc", "label":"Use TeaCache", "default":false, "float-arg":"--tea-cache-rel-l1-thresholds", "float-label":"TeaCache L1 Threshold", "float": 0.6, "min":0.0, "max":1.0}]
+@switch[{"label":"Use SADA", "arg":"--sada", "exclude": ["tc"]}]
+@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "default":1}]
+@quantizer[{"divider-after":true}]
+@submodelbuilder[{"label":"VAE", "arg":"--vae", "model": "VAE"}]
+@switch[{"label":"VAE Tiling", "arg":"--vae-tiling"}]
+@switch[{"label":"VAE Slicing", "arg":"--vae-slicing", "divider-after":true}]
+@submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA"}]
+@submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "divider-after":true}]
+--image-seeds {{ image_seeds}}
+@switch[{"label":"No Aspect Correction?", "arg":"--no-aspect"}]
+@imageprocessor[{"arg":"--seed-image-processors", "label":"Seed Image Processor"}]
+@imageprocessor[{"arg":"--mask-image-processors", "label":"Inpaint Mask Processor"}]
+@imageprocessor[{"arg":"--control-image-processors", "label":"Control Image Processor"}]
+@latentsprocessor[{"arg":"--img2img-latents-processors", "label":"Img2Img Latents Processor"}]
+@latentsprocessor[{"arg":"--latents-processors", "label":"Raw Latents Processor", "divider-after":true}]
+@int[{"label":"Inference Steps", "arg":"--inference-steps", "default":50, "min":1}]
+@float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":3.5, "min":0}]
+@seeds[{"label":"Seeds"}]
+@int[{"label":"Batch Size", "arg":"--batch-size", "default":"", "min":1}]
+@imagesize[{"label":"Batch Grid Size (CxR)", "arg":"--batch-grid-size", "default":"", "divider-after":true}]
+@dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
+@imageformat[{}]
+@switchradio[{"labels":["Output Dgenerate Image Metadata", "Output Automatic1111 Image Metadata"], "args":["--output-metadata", "--output-auto1111-metadata"]}]
+@switch[{"label":"Output Configs", "arg":"--output-configs"}]
+@imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"1024x1024", "divider-after":true}]
+@promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
+@promptweighter[{"label":"Prompt Weighter", "arg":"--prompt-weighter", "filter":["sd-embed"]}]
+@imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
+@latentsprocessor[{"arg":"--latents-post-processors", "label":"Latents Post Processor"}]
+@device[{}]
+--prompts "add your prompt here"

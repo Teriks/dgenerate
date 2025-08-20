@@ -1,5 +1,5 @@
 title: Upscaling (Stable Diffusion x4)
-order: 19
+order: 20
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "stabilityai/stable-diffusion-x4-upscaler", "optional":false, "file-types":["models"]}]
 @file[{"label": "Original Config (yaml)", "arg": "--original-config", "file-types": ["yaml"]}]

@@ -2605,7 +2605,8 @@ class RenderLoopConfig(_types.SetFromMixin):
         no_seed_strength = (_pipelinewrapper.model_type_is_upscaler(self.model_type) or
                             _pipelinewrapper.model_type_is_pix2pix(self.model_type) or
                             _pipelinewrapper.model_type_is_s_cascade(self.model_type) or
-                            self.model_type == _pipelinewrapper.ModelType.FLUX_FILL)
+                            self.model_type == _pipelinewrapper.ModelType.FLUX_FILL or
+                            self.model_type == _pipelinewrapper.ModelType.FLUX_KONTEXT)
 
         # Set default image seed strength if needed
         image_seed_strengths_default_set = False
@@ -2619,7 +2620,7 @@ class RenderLoopConfig(_types.SetFromMixin):
             if no_seed_strength:
                 raise RenderLoopConfigError(
                     f'{a_namer("image_seed_strengths")} '
-                    f'cannot be used with pix2pix, upscaler, or stablecascade models.')
+                    f'cannot be used with pix2pix, upscaler, stablecascade, flux-fill, or flux-kontext models.')
             user_provided_image_seed_strengths = True
 
         # Check upscaler noise level default setting

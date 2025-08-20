@@ -7215,6 +7215,8 @@ as the ``compel`` prompt weighter currently does not.
         --model-type s-cascade
         --model-type sd3
         --model-type flux
+        --model-type flux-fill
+        --model-type flux-kontext
     
         The secondary prompt option for SDXL --second-prompts is supported by this prompt weighter implementation.
         However, --second-model-second-prompts is not supported and will be ignored with a warning message.

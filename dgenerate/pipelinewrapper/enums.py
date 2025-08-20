@@ -213,7 +213,12 @@ class ModelType(enum.Enum):
     Flux infill / outfill pipeline
     """
 
-    KOLORS = 14
+    FLUX_KONTEXT = 14
+    """
+    Flux Kontext pipeline
+    """
+
+    KOLORS = 15
     """Kolors (SDXL + ChatGLM)"""
 
 
@@ -234,7 +239,8 @@ def supported_model_type_strings():
             's-cascade',
             'sd3',
             'flux',
-            'flux-fill']
+            'flux-fill',
+            'flux-kontext']
 
 
 def supported_model_type_enums() -> list[ModelType]:
@@ -272,7 +278,8 @@ def get_model_type_enum(id_str: ModelType | str) -> ModelType:
                 's-cascade': ModelType.S_CASCADE,
                 'sd3': ModelType.SD3,
                 'flux': ModelType.FLUX,
-                'flux-fill': ModelType.FLUX_FILL}[id_str.strip().lower()]
+                'flux-fill': ModelType.FLUX_FILL,
+                'flux-kontext': ModelType.FLUX_KONTEXT}[id_str.strip().lower()]
     except KeyError:
         raise ValueError('invalid ModelType string')
 
@@ -301,7 +308,8 @@ def get_model_type_string(model_type_enum: ModelType) -> str:
             ModelType.S_CASCADE_DECODER: 's-cascade-decoder',
             ModelType.SD3: 'sd3',
             ModelType.FLUX: 'flux',
-            ModelType.FLUX_FILL: 'flux-fill'}[model_type]
+            ModelType.FLUX_FILL: 'flux-fill',
+            ModelType.FLUX_KONTEXT: 'flux-kontext'}[model_type]
 
 
 def model_type_is_sd15(model_type: ModelType | str) -> bool:
