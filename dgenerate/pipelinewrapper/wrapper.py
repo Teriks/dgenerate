@@ -1971,15 +1971,19 @@ class DiffusionPipelineWrapper:
 
             # we set the output size on the pipeline, which may be different from the input size
 
-            user_width = _types.default(user_width, _constants.DEFAULT_FLUX_OUTPUT_WIDTH)
-            user_height = _types.default(user_height, _constants.DEFAULT_FLUX_OUTPUT_HEIGHT)
+            user_width = _types.default(user_width, _constants.DEFAULT_FLUX_OUTPUT_WIDTH if
+                _enums.model_type_is_flux(self._model_type) else _constants.DEFAULT_SD3_OUTPUT_WIDTH)
+            user_height = _types.default(user_height, _constants.DEFAULT_FLUX_OUTPUT_HEIGHT if
+                _enums.model_type_is_flux(self._model_type) else _constants.DEFAULT_SD3_OUTPUT_HEIGHT)
 
             # maintain aspect correctness if requested based on the input image size
             # even though the image going in was not pre-resized
 
+            align = 8 if _enums.model_type_is_flux(self._model_type) else 16
+
             output_size = _image.resize_image_calc(
                 (inference_width, inference_height),
-                (user_width, user_height), user_args.aspect_correct, align=8
+                (user_width, user_height), user_args.aspect_correct, align=align
             )
 
             # The pipeline output size should be based on the input size
