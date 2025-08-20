@@ -246,10 +246,11 @@ def _exclude_requires(name):
         requires.pop(name)
 
 
-_pyinstaller_requires = 'pyinstaller' + requires.pop('pyinstaller')
-_sphinx_requires = 'sphinx-rtd-theme' + requires.pop('sphinx-rtd-theme')
-_poetry_requires = 'poetry' + requires.pop('poetry')
-_graphviz_requires = 'graphviz' + requires.pop('graphviz')
+_pyinstaller_requires = 'pyinstaller==6.15.0'
+_sphinx_requires = 'sphinx-rtd-theme==3.0.2'
+_poetry_requires = 'poetry~=2.1.4'
+_graphviz_requires = 'graphviz~=0.21'
+
 _pyopengltk_requires = 'pyopengltk' + requires.pop('pyopengltk')
 _PyOpenGL_requires = 'pyopengl' + requires.pop('pyopengl')
 _PyOpenGL_accelerate_requires = 'pyopengl-accelerate' + requires.pop('pyopengl-accelerate')
