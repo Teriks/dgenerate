@@ -16,7 +16,7 @@ python run.py --paths stablediffusion
 # Run every stable diffusion example, do not
 # run examples that generate animations
 
-python run.py --paths stablediffusion --skip-animations
+python run.py --paths stablediffusion --skip animations
 
 
 # Run the stablediffusion/basic example
@@ -55,6 +55,22 @@ python run.py --paths library_usage/basic
 
 python run.py --skip flux deepfloyd animations
 
+```
+
+## Checkpoint System
+
+Use `--checkpoint <filename>` to save progress and resume interrupted runs.
+
+```bash
+# Start a run with checkpointing
+python run.py --checkpoint my_run.json
+
+# Resume the same run later
+python run.py --checkpoint my_run.json
+
+# Use with other options
+python run.py --paths stablediffusion --checkpoint sd_examples.json
+python run.py --paths stablediffusion --skip animations --checkpoint sd_no_anim.json -v
 ```
 
 

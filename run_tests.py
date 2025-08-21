@@ -35,6 +35,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-c', '--clean', default=False, action='store_true')
 parser.add_argument('-e', '--examples', default=False, action='store_true')
 parser.add_argument('--examples-log', default='examples/examples.log')
+parser.add_argument('--checkpoint', help='Checkpoint file to save/load progress. Use to resume after failures.')
 
 args, unknown_args = parser.parse_known_args()
 
@@ -58,8 +59,13 @@ if runner.run(unittest.defaultTestLoader.discover("tests", pattern='test_*.py'))
         subprocess.run('git clean -f -d -x', shell=True)
         os.chdir('..')
 
-    run_string = f'{sys.executable} examples/run.py {join_with_globs(unknown_args)} ' \
-                 f'--short-animations --output-configs --output-metadata -v > {args.examples_log} 2>&1'
+    # Determine if we should append to log file (when resuming from checkpoint)
+    append_mode = '>>' if args.checkpoint and os.path.exists(args.examples_log) else '>'
+    
+    checkpoint_arg = f' --checkpoint {shlex.quote(args.checkpoint)}' if args.checkpoint else ''
+    
+    run_string = f'{sys.executable} examples/run.py {join_with_globs(unknown_args)}{checkpoint_arg} ' \
+                 f'--short-animations --output-configs --output-metadata -v {append_mode} {args.examples_log} 2>&1'
 
     print('running:', run_string)
 

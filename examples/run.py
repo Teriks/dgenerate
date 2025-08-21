@@ -18,14 +18,13 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import argparse
-import gc
 import glob
-import inspect
+import json
 import multiprocessing as mp
 import os
 import subprocess
 import sys
-import traceback
+import time
 
 mp.set_start_method('spawn', force=True)
 
@@ -35,10 +34,7 @@ try:
 except ImportError:
     _batchprocess = None
 
-try:
-    import torch
-except ImportError:
-    torch = None
+
 
 cwd = os.path.dirname(os.path.abspath(__file__))
 
@@ -50,156 +46,89 @@ parser = argparse.ArgumentParser(prog='run')
 parser.add_argument('--paths', nargs='*', help='Example paths, relative to the working directory.')
 parser.add_argument('--subprocess-only', action='store_true', default=False,
                     help='Use a different subprocess for every example.')
-parser.add_argument('--skip', nargs='+', default=False, help='Skip paths containing these strings.')
+parser.add_argument('--skip', nargs='*', default=None, help='Skip paths containing these strings.')
 parser.add_argument('--short-animations', action='store_true', default=False,
                     help='Render only 3 frames for animations.')
-parser.add_argument('--torch-debug', action='store_true', default=False,
-                    help='Track torch objects for extensive CUDA OOM debug output.')
+parser.add_argument('--checkpoint',
+                    help='Checkpoint file to save/load progress. Use to resume after failures.')
 
 
 def log(*args):
     print(*args, flush=True)
 
 
-def add_creation_stack_trace(func):
-    def wrapper(*args, **kwargs):
-        obj = func(*args, **kwargs)
-        frame = inspect.currentframe().f_back
-        obj._DGENERATE_TORCH_OOM_DEBUG_INFO = f"{frame.f_code.co_filename}:{frame.f_lineno}"
-        obj._DGENERATE_TORCH_OOM_STACK_TRACE = ''.join(traceback.format_stack(frame))
-        return obj
-
-    return wrapper
-
-
-def patch_torch_functions():
-    tensor_creation_funcs = [
-        'empty', 'zeros', 'ones', 'rand', 'randn', 'randint', 'tensor',
-        'as_tensor', 'from_numpy', 'sparse_coo_tensor'
-    ]
-    for func_name in tensor_creation_funcs:
-        if hasattr(torch, func_name):
-            setattr(torch, func_name, add_creation_stack_trace(getattr(torch, func_name)))
-    if torch.cuda.is_available():
-        cuda_tensor_types = [
-            'FloatTensor', 'DoubleTensor', 'HalfTensor', 'ByteTensor',
-            'CharTensor', 'ShortTensor', 'IntTensor', 'LongTensor'
-        ]
-        for tensor_type in cuda_tensor_types:
-            if hasattr(torch.cuda, tensor_type):
-                setattr(torch.cuda, tensor_type, add_creation_stack_trace(getattr(torch.cuda, tensor_type)))
-        cuda_creation_funcs = [
-            'empty', 'zeros', 'ones', 'rand', 'randn', 'randint', 'tensor',
-        ]
-        for func_name in cuda_creation_funcs:
-            if hasattr(torch.cuda, func_name):
-                setattr(torch.cuda, func_name, add_creation_stack_trace(getattr(torch.cuda, func_name)))
-
-
-def patch_module_and_optimizers():
-    original_module_init = torch.nn.Module.__init__
-
-    def new_module_init(self, *args, **kwargs):
-        frame = inspect.currentframe().f_back.f_back
-        self._DGENERATE_TORCH_OOM_DEBUG_INFO = f"{frame.f_code.co_filename}:{frame.f_lineno}"
-        self._DGENERATE_TORCH_OOM_STACK_TRACE = ''.join(traceback.format_stack(frame))
-        original_module_init(self, *args, **kwargs)
-
-    torch.nn.Module.__init__ = new_module_init
-
-    original_optimizer_init = torch.optim.Optimizer.__init__
-
-    def new_optimizer_init(self, *args, **kwargs):
-        frame = inspect.currentframe().f_back.f_back
-        self._DGENERATE_TORCH_OOM_DEBUG_INFO = f"{frame.f_code.co_filename}:{frame.f_lineno}"
-        self._DGENERATE_TORCH_OOM_STACK_TRACE = ''.join(traceback.format_stack(frame))
-        original_optimizer_init(self, *args, **kwargs)
-
-    torch.optim.Optimizer.__init__ = new_optimizer_init
-
-    original_storage_init = torch.storage._StorageBase.__init__
-
-    def new_storage_init(self, *args, **kwargs):
-        frame = inspect.currentframe().f_back.f_back
-        self._DGENERATE_TORCH_OOM_DEBUG_INFO = f"{frame.f_code.co_filename}:{frame.f_lineno}"
-        self._DGENERATE_TORCH_OOM_STACK_TRACE = ''.join(traceback.format_stack(frame))
-        original_storage_init(self, *args, **kwargs)
-
-    torch.storage._StorageBase.__init__ = new_storage_init
-
-
-def find_gpu_tensors_in_gc():
+def load_checkpoint(checkpoint_file):
+    """Load checkpoint data from file."""
+    if not os.path.exists(checkpoint_file):
+        return None
+    
     try:
-        import graphviz
-    except ImportError:
-        print('pip install graphviz and graphviz native binaries to use --torch-debug')
+        with open(checkpoint_file, 'r') as f:
+            data = json.load(f)
+            
+        # Validate checkpoint data structure
+        if not isinstance(data, dict):
+            log(f"Warning: Invalid checkpoint file {checkpoint_file}: not a dictionary")
+            return None
+            
+        if 'completed_configs' not in data or 'total_configs' not in data:
+            log(f"Warning: Invalid checkpoint file {checkpoint_file}: missing required fields")
+            return None
+            
+        return data
+    except (json.JSONDecodeError, IOError) as e:
+        log(f"Warning: Could not load checkpoint file {checkpoint_file}: {e}")
+        return None
 
-    dot = graphviz.Digraph(comment='Torch GPU Object Reference Graph')
-    dot.graph_attr.update(size="100,100!", ratio="expand", layout="circo", splines="true", nodesep="1.5", ranksep="2.0")
-    dot.node_attr.update(style="filled", fillcolor="lightgrey", shape="box")
 
-    def is_on_gpu(obj):
-        if isinstance(obj, torch.Tensor):
-            return obj.is_cuda
-        elif isinstance(obj, torch.nn.Module):
-            return any(param.is_cuda for param in obj.parameters())
-        elif isinstance(obj, torch.optim.Optimizer):
-            return any(param.is_cuda for group in obj.param_groups for param in group['params'])
-        elif isinstance(obj, torch.storage._StorageBase):
-            return obj.device.type == 'cuda'
-        return False
-
-    total_memory = torch.cuda.get_device_properties(0).total_memory
-    allocated_memory = torch.cuda.memory_allocated(0)
-    reserved_memory = torch.cuda.memory_reserved(0)
-
-    log(f"Total CUDA memory: {total_memory} bytes")
-    log(f"Allocated CUDA memory: {allocated_memory} bytes")
-    log(f"Reserved CUDA memory: {reserved_memory} bytes")
-
-    for obj in gc.get_objects():
-        try:
-            if isinstance(obj, (torch.Tensor, torch.nn.Module, torch.optim.Optimizer, torch.storage._StorageBase)):
-                if hasattr(obj, '_DGENERATE_TORCH_OOM_DEBUG_INFO') and is_on_gpu(obj):
-                    debug_info = obj._DGENERATE_TORCH_OOM_DEBUG_INFO.replace('\\', '/')
-                    obj_id = id(obj)
-                    obj_info = f"{obj.__class__.__name__} created at {debug_info}\n"
-                    if isinstance(obj, torch.Tensor):
-                        obj_info += f"Allocated: {obj.numel() * obj.element_size()} bytes\n"
-                    obj_info += f"Device: {obj.device}\n"
-                    dot.node(str(obj_id), obj_info)
-
-                    log(f"Object: {obj.__class__.__name__} created at {debug_info}")
-                    for ref in gc.get_referents(obj):
-                        ref_id = id(ref)
-                        ref_info = f"{ref.__class__.__name__}"
-                        dot.node(str(ref_id), ref_info)
-                        dot.edge(str(obj_id), str(ref_id))
-                        log(f'Refers To: {ref}')
-                    log(f"Stack Trace:\n{obj._DGENERATE_TORCH_OOM_STACK_TRACE}")
-        except Exception:
-            pass
-
+def save_checkpoint(checkpoint_file, data):
+    """Save checkpoint data to file."""
     try:
-        dot.save(os.path.join(os.path.dirname(__file__), 'torch_object_graph.dot'))
-        dot.render('torch_object_graph', format='svg',
-                   outfile=os.path.join(os.path.dirname(__file__), 'torch_object_graph.svg'))
-    except subprocess.SubprocessError:
-        log('Cannot render torch object graph, graphviz binary not found.')
+        # Ensure the directory exists
+        checkpoint_dir = os.path.dirname(os.path.abspath(checkpoint_file))
+        if checkpoint_dir:  # Only create directory if there is one
+            os.makedirs(checkpoint_dir, exist_ok=True)
+        with open(checkpoint_file, 'w') as f:
+            json.dump(data, f, indent=2)
+    except IOError as e:
+        log(f"Warning: Could not save checkpoint file {checkpoint_file}: {e}")
 
+
+def update_checkpoint(checkpoint_file, completed_configs, total_configs, args_info):
+    """Update checkpoint with completed configurations."""
+    checkpoint_data = {
+        'completed_configs': completed_configs,
+        'total_configs': total_configs,
+        'args_info': args_info,
+        'timestamp': time.time()
+    }
+    save_checkpoint(checkpoint_file, checkpoint_data)
+
+
+def create_initial_checkpoint(checkpoint_file, configs, args_info):
+    """Create initial checkpoint file with planned work."""
+    checkpoint_data = {
+        'completed_configs': [],
+        'total_configs': configs,
+        'args_info': args_info,
+        'timestamp': None,
+        'status': 'initialized'
+    }
+    save_checkpoint(checkpoint_file, checkpoint_data)
+    log(f"Created initial checkpoint file: {checkpoint_file}")
+    log(f"Planned to run {len(configs)} configurations")
 
 def should_skip_config(config, known_args):
     c = os.path.relpath(config, cwd)
     skips = known_args.skip
 
-    if skips:
+    if skips is not None:
         for skip in skips:
             if skip in c:
                 log(f'SKIPPING "{skip}": {config}')
                 return True
 
     return False
-
 
 def check_return_code(configs, exitcode):
     # ncnn often exits with a segfault because
@@ -212,7 +141,7 @@ def check_return_code(configs, exitcode):
             sys.exit(exitcode)
 
 
-def run_config(config, injected_args, extra_args, debug_torch, use_subprocess=False):
+def run_config(config, injected_args, extra_args, use_subprocess=False):
     config = os.path.abspath(config)
 
     log(f'RUNNING{" IN SUBPROCESS" if use_subprocess else ""}: {config}')
@@ -220,64 +149,92 @@ def run_config(config, injected_args, extra_args, debug_torch, use_subprocess=Fa
     dirname = os.path.dirname(config)
     _, ext = os.path.splitext(config)
 
-    if debug_torch and not use_subprocess:
-        patch_torch_functions()
-        patch_module_and_optimizers()
-
-    if use_subprocess:
-        result = None
-        if ext == '.dgen':
-            result = subprocess.run(["dgenerate", '--file', config] + injected_args + extra_args, cwd=dirname)
-        elif ext == '.py':
-            result = subprocess.run([sys.executable] + [config] + injected_args, cwd=dirname)
-
-        if result is not None:
-            check_return_code([config], result.returncode)
-    else:
-        with open(config, mode='rt' if _batchprocess else 'rb') as f:
+    try:
+        if use_subprocess:
+            result = None
             if ext == '.dgen':
-                try:
-                    if _batchprocess is not None:
-                        log('ENTERING DIRECTORY:', dirname)
-                        os.chdir(dirname)
-                        content = f.read()
-                        try:
-                            _batchprocess.ConfigRunner(injected_args + extra_args, throw=debug_torch).run_string(
-                                content)
-                        except dgenerate.OutOfMemoryError as e:
-                            log(e)
-                            find_gpu_tensors_in_gc()
-                            sys.exit(1)
-                        except SystemExit as e:
-                            if e.code != 0:
-                                raise
-                        except _batchprocess.BatchProcessError as e:
-                            log(e)
-                            sys.exit(1)
-                    else:
-                        log(
-                            'Cannot run example in example runner process, '
-                            'dgenerate library installation not found, '
-                            'running in subprocess.')
-                        result = subprocess.run(
-                            ["dgenerate", '--file', config] + injected_args + extra_args, cwd=dirname)
-                        if result is not None:
-                            check_return_code([config], result.returncode)
-                except KeyboardInterrupt:
-                    sys.exit(1)
+                result = subprocess.run(["dgenerate", '--file', config] + injected_args + extra_args, cwd=dirname)
             elif ext == '.py':
-                try:
-                    result = subprocess.run([sys.executable] + [config] + injected_args, stdin=f, cwd=dirname)
-                    check_return_code([config], result.returncode)
-                except KeyboardInterrupt:
-                    sys.exit(1)
+                result = subprocess.run([sys.executable] + [config] + injected_args, cwd=dirname)
+
+            if result is not None:
+                check_return_code([config], result.returncode)
+                return True
+        else:
+            with open(config, mode='rt' if _batchprocess else 'rb') as f:
+                if ext == '.dgen':
+                    try:
+                        if _batchprocess is not None:
+                            log('ENTERING DIRECTORY:', dirname)
+                            original_dir = os.getcwd()
+                            try:
+                                os.chdir(dirname)
+                                content = f.read()
+                                try:
+                                    _batchprocess.ConfigRunner(injected_args + extra_args, throw=False).run_string(
+                                        content)
+                                    return True
+                                except dgenerate.OutOfMemoryError as e:
+                                    log(e)
+                                    sys.exit(1)
+                                except SystemExit as e:
+                                    if e.code != 0:
+                                        raise
+                                except _batchprocess.BatchProcessError as e:
+                                    log(e)
+                                    sys.exit(1)
+                            finally:
+                                # Always restore the original directory
+                                os.chdir(original_dir)
+                        else:
+                            log(
+                                'Cannot run example in example runner process, '
+                                'dgenerate library installation not found, '
+                                'running in subprocess.')
+                            result = subprocess.run(
+                                ["dgenerate", '--file', config] + injected_args + extra_args, cwd=dirname)
+                            if result is not None:
+                                check_return_code([config], result.returncode)
+                                return True
+                    except KeyboardInterrupt:
+                        sys.exit(1)
+                elif ext == '.py':
+                    try:
+                        result = subprocess.run([sys.executable] + [config] + injected_args, stdin=f, cwd=dirname)
+                        check_return_code([config], result.returncode)
+                        return True
+                    except KeyboardInterrupt:
+                        sys.exit(1)
+    except Exception as e:
+        log(f"Error running {config}: {e}")
+        return False
+    
+    return False
 
 
-def run_directory_subprocess(configs, injected_args, extra_args, debug_torch, known_args):
+def run_directory_subprocess(configs, injected_args, extra_args, known_args, checkpoint_file=None, completed_configs=None):
+    if completed_configs is None:
+        completed_configs = set()
+    
     for config in configs:
         if should_skip_config(config, known_args):
             continue
-        run_config(config, injected_args, extra_args, debug_torch)
+        
+        # Skip if already completed
+        if config in completed_configs:
+            log(f'SKIPPING (already completed): {config}')
+            continue
+            
+        success = run_config(config, injected_args, extra_args)
+        if success:
+            completed_configs.add(config)
+            if checkpoint_file:
+                log(f"Progress: {len(completed_configs)}/{len(configs)} configurations completed")
+                update_checkpoint(checkpoint_file, list(completed_configs), configs, {
+                    'injected_args': injected_args,
+                    'extra_args': extra_args,
+                    'known_args': {k: v for k, v in vars(known_args).items() if k != 'checkpoint'}
+                })
 
 
 def filter_to_directories_under_top_level(directories, top_level_directory):
@@ -288,7 +245,19 @@ def filter_to_directories_under_top_level(directories, top_level_directory):
 def main():
     known_args, injected_args = parser.parse_known_args()
     library_installed = _batchprocess is not None
-    debug_torch = not known_args.subprocess_only and torch is not None and known_args.torch_debug
+
+
+    # Handle checkpoint loading
+    completed_configs = set()
+    if known_args.checkpoint:
+        checkpoint_data = load_checkpoint(known_args.checkpoint)
+        if checkpoint_data:
+            log(f"Loaded checkpoint from {known_args.checkpoint}")
+            log(f"Resuming from {len(checkpoint_data.get('completed_configs', []))} completed configurations")
+            completed_configs = set(checkpoint_data.get('completed_configs', []))
+        else:
+            log(f"Starting fresh run with checkpoint file: {known_args.checkpoint}")
+            # Create initial checkpoint after configs are determined
 
     if known_args.paths:
         configs = []
@@ -319,6 +288,13 @@ def main():
         if missing_file:
             sys.exit(1)
 
+    # Create initial checkpoint if starting fresh
+    if known_args.checkpoint and not completed_configs:
+        create_initial_checkpoint(known_args.checkpoint, configs, {
+            'injected_args': injected_args,
+            'known_args': {k: v for k, v in vars(known_args).items() if k != 'checkpoint'}
+        })
+
     top_level_dirs = sorted(set(os.path.join(cwd, os.path.relpath(config, cwd).split(os.sep)[0]) for config in configs))
 
     if known_args.subprocess_only:
@@ -326,12 +302,38 @@ def main():
             if should_skip_config(config, known_args):
                 continue
 
+            # Skip if already completed
+            if config in completed_configs:
+                log(f'SKIPPING (already completed): {config}')
+                continue
+
             extra_args = []
             if known_args.short_animations and 'animation' in config:
                 log(f'SHORTENING ANIMATION TO 3 FRAMES MAX: {config}')
                 extra_args = ['--frame-end', '2']
 
-            run_config(config, injected_args, extra_args, debug_torch, use_subprocess=True)
+            success = run_config(config, injected_args, extra_args, use_subprocess=True)
+            if success:
+                completed_configs.add(config)
+                log(f"Progress: {len(completed_configs)}/{len(configs)} configurations completed")
+                if known_args.checkpoint:
+                    update_checkpoint(known_args.checkpoint, list(completed_configs), configs, {
+                        'injected_args': injected_args,
+                        'extra_args': extra_args,
+                        'known_args': {k: v for k, v in vars(known_args).items() if k != 'checkpoint'}
+                    })
+    
+    # Final summary for subprocess-only mode
+    if known_args.subprocess_only:
+        if known_args.checkpoint:
+            log(f"Run completed. Total configurations: {len(configs)}, Completed: {len(completed_configs)}")
+            if len(completed_configs) == len(configs):
+                log("All configurations completed successfully!")
+            else:
+                log(f"Remaining configurations: {len(configs) - len(completed_configs)}")
+                log("You can resume using the same checkpoint file.")
+        else:
+            log(f"Run completed. Total configurations: {len(configs)}")
     else:
         for top_dir in top_level_dirs:
             log(f'RUNNING CONFIGURATIONS IN DIRECTORY IN SUBPROCESS: {top_dir}')
@@ -342,11 +344,29 @@ def main():
 
             directory_configs = filter_to_directories_under_top_level(configs, top_dir)
 
+            # Create a copy of completed_configs to avoid race conditions
+            process_completed_configs = completed_configs.copy()
             p = mp.Process(target=run_directory_subprocess,
-                           args=(directory_configs, injected_args, extra_args, debug_torch, known_args))
+                           args=(directory_configs, injected_args, extra_args, known_args, 
+                                 known_args.checkpoint, process_completed_configs))
             p.start()
             p.join()
+            # Merge completed configs back into the main set
+            if known_args.checkpoint:
+                completed_configs.update(process_completed_configs)
             check_return_code(directory_configs, p.exitcode)
+    
+    # Final summary for non-subprocess-only mode
+    if not known_args.subprocess_only:
+        if known_args.checkpoint:
+            log(f"Run completed. Total configurations: {len(configs)}, Completed: {len(completed_configs)}")
+            if len(completed_configs) == len(configs):
+                log("All configurations completed successfully!")
+            else:
+                log(f"Remaining configurations: {len(configs) - len(completed_configs)}")
+                log("You can resume using the same checkpoint file.")
+        else:
+            log(f"Run completed. Total configurations: {len(configs)}")
 
 
 if __name__ == "__main__":

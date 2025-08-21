@@ -1581,11 +1581,29 @@ class DiffusionPipelineWrapper:
                 f'only {controlnet_uris_cnt} ControlNet URIs. The amount of '
                 f'control guidance images must be equal to the amount of ControlNet URIs.')
 
-        self._set_pipe_dimensions(
-            None, None,
-            control_images[0].width, control_images[0].height,
-            pipeline_args
-        )
+        if (_enums.model_type_uses_image_encoder(self._model_type)
+            or _enums.model_type_is_flux(self._model_type)
+            or _enums.model_type_is_sd3(self._model_type)):
+            # Handle models that use image encoders (like Stable Cascade) or Flux/SD3 models
+            user_width = _types.default(user_args.width, control_images[0].width)
+            user_height = _types.default(user_args.height, control_images[0].height)
+            
+            align = 8 if _enums.model_type_is_flux(self._model_type) else 16
+            output_size = _image.resize_image_calc(
+                (control_images[0].width, control_images[0].height),
+                (user_width, user_height), user_args.aspect_correct, align=align
+            )
+            
+            # Set output dimensions for the pipeline
+            pipeline_args['width'] = output_size[0]
+            pipeline_args['height'] = output_size[1]
+        else:
+            # For other model types, set dimensions to match the control image
+            self._set_pipe_dimensions(
+                None, None,
+                control_images[0].width, control_images[0].height,
+                pipeline_args
+            )
 
         sdxl_cn_union = _enums.model_type_is_sdxl(self._model_type) and \
                         any(p.mode is not None for p in self._parsed_controlnet_uris)
@@ -1971,10 +1989,8 @@ class DiffusionPipelineWrapper:
 
             # we set the output size on the pipeline, which may be different from the input size
 
-            user_width = _types.default(user_width, _constants.DEFAULT_FLUX_OUTPUT_WIDTH if
-                _enums.model_type_is_flux(self._model_type) else _constants.DEFAULT_SD3_OUTPUT_WIDTH)
-            user_height = _types.default(user_height, _constants.DEFAULT_FLUX_OUTPUT_HEIGHT if
-                _enums.model_type_is_flux(self._model_type) else _constants.DEFAULT_SD3_OUTPUT_HEIGHT)
+            user_width = _types.default(user_width, inference_width)
+            user_height = _types.default(user_height, inference_height)
 
             # maintain aspect correctness if requested based on the input image size
             # even though the image going in was not pre-resized

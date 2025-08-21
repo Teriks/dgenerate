@@ -1241,6 +1241,19 @@ class RenderLoop:
             _mediainput.fetch_media_data_stream,
             local_files_only=self._c_config.offline_mode)
 
+    def _should_skip_external_resize(self) -> bool:
+        """
+        Determines if we should skip external resizing and let the DiffusionPipelineWrapper handle it.
+        This is needed for:
+        - Models using image encoders (like Stable Cascade) where input size doesn't matter
+        - Flux/SD3 models which support different input/output dimensions
+        
+        :return: True if resizing should be skipped, False otherwise
+        """
+        return (_pipelinewrapper.model_type_uses_image_encoder(self._c_config.model_type) or
+                _pipelinewrapper.model_type_is_flux(self._c_config.model_type) or
+                _pipelinewrapper.model_type_is_sd3(self._c_config.model_type))
+
     def _render_with_image_seeds_unmanaged(
             self,
             seed_image_processor: _mediainput.ImageProcessorSpec,
@@ -1291,7 +1304,7 @@ class RenderLoop:
                         uri=parsed_image_seed,
                         frame_start=self._c_config.frame_start,
                         frame_end=self._c_config.frame_end,
-                        resize_resolution=self._c_config.output_size,
+                        resize_resolution=None if self._should_skip_external_resize() else self._c_config.output_size,
                         aspect_correct=not self._c_config.no_aspect,
                         image_processor=control_image_processor,
                         path_opener=self._get_media_reader_path_opener()
@@ -1304,8 +1317,7 @@ class RenderLoop:
                         resize_resolution = None
                     else:
                         if not _pipelinewrapper.model_type_uses_image_encoder(self._c_config.model_type) \
-                            and not _pipelinewrapper.model_type_is_flux(self._c_config.model_type) \
-                            and not _pipelinewrapper.model_type_is_sd3(self._c_config.model_type):
+                            and not self._should_skip_external_resize():
                             resize_resolution = self._c_config.output_size
                         else:
                             resize_resolution = None
