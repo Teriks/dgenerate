@@ -25,7 +25,9 @@ import platform
 import re
 from ast import literal_eval
 
-from setuptools import setup, find_packages
+# Only import setuptools when actually running setup, not when loading as library
+if __name__ != 'setup_as_library':
+    from setuptools import setup, find_packages
 
 setup_path = os.path.dirname(os.path.abspath(__file__))
 
@@ -270,10 +272,23 @@ extras: dict[str, list[str]] = {
     'readthedocs': _sphinx_requires
 }
 
-python_requirement = requires.get('python')
+# Get python requirement from pyproject.toml (not affected by lockfile/pyproject choice)
+python_requirement = None
+try:
+    python_deps = list(poetry_pyproject_deps())
+    for name, version in python_deps:
+        if name == 'python':
+            python_requirement = poetry_version_to_pip_requirement(version.get("version"))
+            break
+except Exception:
+    pass
+
+# Fallback: try to get from requires dict (in case it was included)
+if python_requirement is None:
+    python_requirement = requires.get('python')
 
 if python_requirement:
-    requires.pop('python')
+    requires.pop('python', None)  # Use None as default to avoid KeyError
 
 if dgenerate_platform != 'linux':
     _exclude_requires('triton')
