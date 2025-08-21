@@ -2417,13 +2417,29 @@ def _create_diffusion_pipeline(
         """
         Forward function for quantized controlnets that casts inputs to the model's dtype.
         This is needed because diffusers doesn't handle controlnet quantization state internally.
+        
+        Note: Preserves specific parameters that are used as indices in embedding layers.
+        Specifically, 'controlnet_mode' parameter in FLUX ControlNets is used as indices
+        in the controlnet_mode_embedder embedding layer and must remain as integer tensors.
         """
+        # Known parameters that should remain as integer types for embedding layer indices
+        # controlnet_mode: Used in FLUX ControlNet Union models with nn.Embedding layer
+        # Note: SDXL ControlNet Union uses control_type with Timesteps projection (no integer requirement)
+        embedding_index_params = {'controlnet_mode'}
+        
+        # Cast positional arguments to model dtype (no special handling needed)
         args = list(args)
         for i, arg in enumerate(args):
             if isinstance(arg, torch.Tensor):
                 args[i] = arg.to(dtype=model.dtype)
+        
+        # Handle keyword arguments with special cases for embedding indices
         for k, v in kwargs.items():
             if isinstance(v, torch.Tensor):
+                # Preserve specific embedding index parameters or any integer tensor
+                if (k in embedding_index_params or 
+                    v.dtype in (torch.int64, torch.long, torch.int32, torch.int)):
+                    continue  # Don't cast embedding index tensors
                 kwargs[k] = v.to(dtype=model.dtype)
         return og_forward(*args, **kwargs)
 
