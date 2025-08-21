@@ -1245,14 +1245,12 @@ class RenderLoop:
         """
         Determines if we should skip external resizing and let the DiffusionPipelineWrapper handle it.
         This is needed for:
+
         - Models using image encoders (like Stable Cascade) where input size doesn't matter
-        - Flux/SD3 models which support different input/output dimensions
         
         :return: True if resizing should be skipped, False otherwise
         """
-        return (_pipelinewrapper.model_type_is_s_cascade(self._c_config.model_type) or
-                _pipelinewrapper.model_type_is_flux(self._c_config.model_type) or
-                _pipelinewrapper.model_type_is_sd3(self._c_config.model_type))
+        return _pipelinewrapper.model_type_is_s_cascade(self._c_config.model_type)
 
     def _render_with_image_seeds_unmanaged(
             self,
