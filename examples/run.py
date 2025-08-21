@@ -215,6 +215,18 @@ def run_config(config, injected_args, extra_args, use_subprocess=False):
 def run_directory_subprocess(configs, injected_args, extra_args, known_args, checkpoint_file=None, completed_configs=None):
     if completed_configs is None:
         completed_configs = set()
+    else:
+        # Make a local copy to avoid modifying the original set directly
+        completed_configs = completed_configs.copy()
+    
+    # Load existing checkpoint to preserve total_configs
+    total_configs = configs  # fallback to directory configs
+    existing_args_info = None
+    if checkpoint_file and os.path.exists(checkpoint_file):
+        checkpoint_data = load_checkpoint(checkpoint_file)
+        if checkpoint_data:
+            total_configs = checkpoint_data.get('total_configs', configs)
+            existing_args_info = checkpoint_data.get('args_info')
     
     for config in configs:
         if should_skip_config(config, known_args):
@@ -224,17 +236,27 @@ def run_directory_subprocess(configs, injected_args, extra_args, known_args, che
         if config in completed_configs:
             log(f'SKIPPING (already completed): {config}')
             continue
+        
+        # Check if config is in the checkpoint file before running
+        if checkpoint_file and os.path.exists(checkpoint_file):
+            checkpoint_data = load_checkpoint(checkpoint_file)
+            if checkpoint_data and config in checkpoint_data.get('completed_configs', []):
+                log(f'SKIPPING (found in checkpoint): {config}')
+                completed_configs.add(config)
+                continue
             
         success = run_config(config, injected_args, extra_args)
         if success:
             completed_configs.add(config)
             if checkpoint_file:
-                log(f"Progress: {len(completed_configs)}/{len(configs)} configurations completed")
-                update_checkpoint(checkpoint_file, list(completed_configs), configs, {
+                # Use existing args_info if available, otherwise create new
+                args_info = existing_args_info or {
                     'injected_args': injected_args,
                     'extra_args': extra_args,
                     'known_args': {k: v for k, v in vars(known_args).items() if k != 'checkpoint'}
-                })
+                }
+                log(f"Progress: {len(completed_configs)}/{len(total_configs)} configurations completed")
+                update_checkpoint(checkpoint_file, list(completed_configs), total_configs, args_info)
 
 
 def filter_to_directories_under_top_level(directories, top_level_directory):
@@ -302,6 +324,12 @@ def main():
             if should_skip_config(config, known_args):
                 continue
 
+            # Reload checkpoint before checking if completed
+            if known_args.checkpoint and os.path.exists(known_args.checkpoint):
+                checkpoint_data = load_checkpoint(known_args.checkpoint)
+                if checkpoint_data:
+                    completed_configs = set(checkpoint_data.get('completed_configs', []))
+            
             # Skip if already completed
             if config in completed_configs:
                 log(f'SKIPPING (already completed): {config}')
@@ -344,16 +372,19 @@ def main():
 
             directory_configs = filter_to_directories_under_top_level(configs, top_dir)
 
-            # Create a copy of completed_configs to avoid race conditions
-            process_completed_configs = completed_configs.copy()
+            # Pass the current set of completed configs to the subprocess
             p = mp.Process(target=run_directory_subprocess,
                            args=(directory_configs, injected_args, extra_args, known_args, 
-                                 known_args.checkpoint, process_completed_configs))
+                                 known_args.checkpoint, completed_configs))
             p.start()
             p.join()
-            # Merge completed configs back into the main set
-            if known_args.checkpoint:
-                completed_configs.update(process_completed_configs)
+            
+            # Reload the checkpoint file to update our list of completed configs
+            if known_args.checkpoint and os.path.exists(known_args.checkpoint):
+                checkpoint_data = load_checkpoint(known_args.checkpoint)
+                if checkpoint_data:
+                    completed_configs = set(checkpoint_data.get('completed_configs', []))
+            
             check_return_code(directory_configs, p.exitcode)
     
     # Final summary for non-subprocess-only mode
