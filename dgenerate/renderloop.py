@@ -1250,7 +1250,7 @@ class RenderLoop:
         
         :return: True if resizing should be skipped, False otherwise
         """
-        return (_pipelinewrapper.model_type_uses_image_encoder(self._c_config.model_type) or
+        return (_pipelinewrapper.model_type_is_s_cascade(self._c_config.model_type) or
                 _pipelinewrapper.model_type_is_flux(self._c_config.model_type) or
                 _pipelinewrapper.model_type_is_sd3(self._c_config.model_type))
 
@@ -1316,8 +1316,7 @@ class RenderLoop:
                     if self._c_config.inpaint_crop:
                         resize_resolution = None
                     else:
-                        if not _pipelinewrapper.model_type_uses_image_encoder(self._c_config.model_type) \
-                            and not self._should_skip_external_resize():
+                        if not self._should_skip_external_resize():
                             resize_resolution = self._c_config.output_size
                         else:
                             resize_resolution = None
