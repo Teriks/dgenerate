@@ -1328,16 +1328,8 @@ class DiffusionPipelineWrapper:
         if not images:
             return []
 
-        if (_enums.model_type_is_flux(self._model_type)
-            or _enums.model_type_is_sd3(self._model_type)):
-            # Only fix alignment for Flux/SD3 models, their
-            # input image size and output image size
-            # can be independent of each other
 
-            # we supply height/width to the pipeline later
-            target_size = images[0].size
-        else:
-            target_size = self._calc_image_target_size(images[0], user_args)
+        target_size = self._calc_image_target_size(images[0], user_args)
 
         resized_images = []
 
@@ -1580,24 +1572,8 @@ class DiffusionPipelineWrapper:
                 f'You specified {control_images_cnt} control guidance images and '
                 f'only {controlnet_uris_cnt} ControlNet URIs. The amount of '
                 f'control guidance images must be equal to the amount of ControlNet URIs.')
-
-        if (_enums.model_type_is_flux(self._model_type) or
-            _enums.model_type_is_sd3(self._model_type)):
-            # Images are not pre-resized for these mode types.
-            user_width = _types.default(user_args.width, control_images[0].width)
-            user_height = _types.default(user_args.height, control_images[0].height)
-            
-            align = 8 if _enums.model_type_is_flux(self._model_type) else 16
-            output_size = _image.resize_image_calc(
-                (control_images[0].width, control_images[0].height),
-                (user_width, user_height), user_args.aspect_correct, align=align
-            )
-            
-            # Set output dimensions for the pipeline
-            pipeline_args['width'] = output_size[0]
-            pipeline_args['height'] = output_size[1]
         else:
-            # For other model types, set dimensions to match the control image
+            # set dimensions to match the control image
             self._set_pipe_dimensions(
                 None, None,
                 control_images[0].width, control_images[0].height,
@@ -1835,6 +1811,9 @@ class DiffusionPipelineWrapper:
                     f'mode "{self._pipeline_type.name}" and is being ignored.'
                 )
 
+        def is_sd3_or_flux():
+            return _enums.model_type_is_sd3(self._model_type) or _enums.model_type_is_flux(self._model_type)
+
         if _enums.model_type_is_upscaler(self._model_type):
             if self._model_type == _enums.ModelType.UPSCALER_X4:
                 pipeline_args['noise_level'] = int(
@@ -1882,7 +1861,7 @@ class DiffusionPipelineWrapper:
 
             pipeline_args['mask_image'] = mask_images
 
-            if not (_enums.model_type_is_floyd(self._model_type) or _enums.model_type_is_sd3(self._model_type)):
+            if not (_enums.model_type_is_floyd(self._model_type) or is_sd3_or_flux()):
                 # Override dimensions for masked models
                 self._set_pipe_dimensions(
                     user_width, user_height,
@@ -1892,7 +1871,7 @@ class DiffusionPipelineWrapper:
 
         # Handle adetailer (auto-generated masks)
         if self._parsed_adetailer_detector_uris:
-            if not _enums.model_type_is_sd3(self._model_type):
+            if not is_sd3_or_flux():
                 # Override dimensions for adetailer
                 self._set_pipe_dimensions(
                     user_width, user_height,
@@ -1945,10 +1924,8 @@ class DiffusionPipelineWrapper:
                 pipeline_args
             )
 
-        elif (_enums.model_type_is_flux(self._model_type) or
-              self._model_type == _enums.ModelType.SD3):
-
-            if self._model_type == _enums.ModelType.SD3:
+        elif is_sd3_or_flux():
+            if _enums.model_type_is_sd3(self._model_type):
                 image_arg_inputs = list(image_arg_inputs)
                 pipeline_args['image'] = image_arg_inputs
 
@@ -1981,33 +1958,11 @@ class DiffusionPipelineWrapper:
                     inference_width = mask_images[0].width
                     inference_height = mask_images[0].height
 
-            # flux / sd3 output size is not based of image input size, but I want to
-            # emulate the behavior of the other diffusion pipelines
-
-            # we do not resize images going into flux by the user requested dimensions
-
-            # we set the output size on the pipeline, which may be different from the input size
-
-            user_width = _types.default(user_width, inference_width)
-            user_height = _types.default(user_height, inference_height)
-
-            # maintain aspect correctness if requested based on the input image size
-            # even though the image going in was not pre-resized
-
-            align = 8 if _enums.model_type_is_flux(self._model_type) else 16
-
-            output_size = _image.resize_image_calc(
-                (inference_width, inference_height),
-                (user_width, user_height), user_args.aspect_correct, align=align
+            self._set_pipe_dimensions(
+                None, None,
+                inference_width, inference_height,
+                pipeline_args
             )
-
-            # The pipeline output size should be based on the input size
-            # we can mix input and output size by specifying --no-aspect
-            # which is a feature that Flux can support but other pipelines
-            # cannot
-
-            pipeline_args['width'] = output_size[0]
-            pipeline_args['height'] = output_size[1]
 
 
     def _set_pipeline_txt2img_defaults(self, user_args: DiffusionArguments, pipeline_args: dict[str, typing.Any]):
