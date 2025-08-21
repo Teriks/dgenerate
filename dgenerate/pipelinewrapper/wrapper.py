@@ -1581,10 +1581,9 @@ class DiffusionPipelineWrapper:
                 f'only {controlnet_uris_cnt} ControlNet URIs. The amount of '
                 f'control guidance images must be equal to the amount of ControlNet URIs.')
 
-        if (_enums.model_type_uses_image_encoder(self._model_type)
-            or _enums.model_type_is_flux(self._model_type)
-            or _enums.model_type_is_sd3(self._model_type)):
-            # Handle models that use image encoders (like Stable Cascade) or Flux/SD3 models
+        if (_enums.model_type_is_flux(self._model_type) or
+            _enums.model_type_is_sd3(self._model_type)):
+            # Images are not pre-resized for these mode types.
             user_width = _types.default(user_args.width, control_images[0].width)
             user_height = _types.default(user_args.height, control_images[0].height)
             
@@ -1711,7 +1710,7 @@ class DiffusionPipelineWrapper:
 
         # Resize input images to user-specified dimensions first thing
         if images:
-            if not _enums.model_type_uses_image_encoder(self._model_type):
+            if not _enums.model_type_is_s_cascade(self._model_type):
                 self._validate_images_all_same_size('img2img images', images)
                 images = self._resize_images_to_user_dimensions(images, user_args)
 
@@ -3976,7 +3975,7 @@ class DiffusionPipelineWrapper:
             processed_images = []
             for image in images:
 
-                if not _enums.model_type_uses_image_encoder(self._model_type):
+                if not _enums.model_type_is_s_cascade(self._model_type):
 
                     target_size = self._calc_image_target_size(image, user_args)
 
