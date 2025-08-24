@@ -65,7 +65,7 @@ gpt4all = "2.8.2"
 pyopengltk = "0.0.4"
 pyopengl = "3.1.10"
 pyopengl-accelerate = "3.1.10"
-triton-windows= "3.4.0.post20"
+triton-windows = "3.3.1.post19"
 
 [tool.poetry.scripts]
 dgenerate = 'dgenerate.__init__:main'
