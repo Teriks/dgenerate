@@ -4592,24 +4592,24 @@ tutorials = ["matplotlib", "pandas", "tabulate"]
 
 [[package]]
 name = "triton-windows"
-version = "3.4.0.post20"
+version = "3.3.1.post19"
 description = "A language and compiler for custom Deep Learning operations"
 optional = false
-python-versions = "<3.14,>=3.9"
+python-versions = "*"
 groups = ["main"]
 files = [
-    {file = "triton_windows-3.4.0.post20-cp310-cp310-win_amd64.whl", hash = "sha256:144888a70e76f575f6d241fecb5b8e30fe12fe73425206380f62bd6156564c52"},
-    {file = "triton_windows-3.4.0.post20-cp311-cp311-win_amd64.whl", hash = "sha256:3cbe772a726411356b26ea7f2e2892fa6811f72919297a3a2fd908b8a998562a"},
-    {file = "triton_windows-3.4.0.post20-cp312-cp312-win_amd64.whl", hash = "sha256:68b252e44c8e398c5510cde9cc80afcc2223adc31c458357be580898ed8a6d56"},
-    {file = "triton_windows-3.4.0.post20-cp313-cp313-win_amd64.whl", hash = "sha256:fa55697a8c5f6f92da7efa982efada10e34451557b2c7b38990ecbb2d07b1c91"},
-    {file = "triton_windows-3.4.0.post20-cp39-cp39-win_amd64.whl", hash = "sha256:388155d2fe31a17f78d86227a18a8af6885a1de2099ea1142c20d44a3f83a871"},
+    {file = "triton_windows-3.3.1.post19-cp310-cp310-win_amd64.whl", hash = "sha256:667566ff34d0fc4e09c1226f35524d074d3e125ea188c98caf107b8de8228c90"},
+    {file = "triton_windows-3.3.1.post19-cp311-cp311-win_amd64.whl", hash = "sha256:f9d80e12b55a842b2ec0c029cc3df4cc1301f839c6396ec93ded35fc80e11a28"},
+    {file = "triton_windows-3.3.1.post19-cp312-cp312-win_amd64.whl", hash = "sha256:ba04c251fb26f7a77ef18f7bed15221d14c24e60b66a023162a750517aedc216"},
+    {file = "triton_windows-3.3.1.post19-cp313-cp313-win_amd64.whl", hash = "sha256:743e538f989609e57f8f9ee6d1442e4d1035997366f81d6bc89e2debcdd37f9e"},
+    {file = "triton_windows-3.3.1.post19-cp39-cp39-win_amd64.whl", hash = "sha256:c75ac7f2a0af4193ce6a41dc068bafb3bda60382a471d8c10e763210d6f5e3b9"},
 ]
 
 [package.dependencies]
 setuptools = ">=40.8.0"
 
 [package.extras]
-build = ["cmake (>=3.20,<4.0)", "lit"]
+build = ["cmake (>=3.20)", "lit"]
 tests = ["autopep8", "isort", "llnl-hatchet", "numpy", "pytest", "pytest-forked", "pytest-xdist", "scipy (>=1.7.1)"]
 tutorials = ["matplotlib", "pandas", "tabulate"]
 
@@ -4950,4 +4950,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.14"
-content-hash = "51f94957c337634637e8dcf22c42212ab35f9be8ed7ee237259c245a02a5fb7b"
+content-hash = "a10737839fe07941af6f29ebe0c47c52a0efb599af1679c57fc3146868ed6b3f"
