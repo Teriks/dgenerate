@@ -5,7 +5,7 @@ import os
 import subprocess
 from importlib.machinery import SourceFileLoader
 import sys
-import dgenerate.resources as _resources
+import json
 
 project_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -41,15 +41,15 @@ def with_release_data(directory, pre_release: bool, git_commit_and_branch: tuple
         commit, branch = commit_and_branch()
     version = setup.VERSION
 
-    info = _resources.CurrentReleaseInfo(
-        version=version,
-        commit=commit,
-        branch=branch,
-        pre_release=pre_release
-    )
+    info = {
+        'version': version,
+        'commit': commit,
+        'branch': branch,
+        'pre_release': pre_release
+    }
 
     with open(dgenerate_release_data, 'w') as switch_file:
-        info.json_dump(switch_file)
+        json.dump(info, switch_file)
 
     yield
 
