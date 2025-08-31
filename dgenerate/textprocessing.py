@@ -1095,6 +1095,14 @@ class ConceptUriParser:
 
         parts = iter(parts)
         concept = parts.__next__()
+
+        if is_quoted(concept):
+            try:
+                concept = unquote(concept)
+            except UnquoteSyntaxError as e:
+                raise ConceptUriParseError(
+                    f'Error parsing {self.concept_name} concept name in URI "{uri}": {str(e).strip()}') from e
+
         for i in parts:
             vals = i.split('=', 1)
             if not vals or not vals[0]:
