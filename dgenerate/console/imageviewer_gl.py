@@ -145,14 +145,14 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
             if width > 0 and height > 0:
                 try:
                     gl.glViewport(0, 0, width, height)
-                    
+
                     # Apply pending view state now that we have proper dimensions
                     if self._pending_view_state is not None:
                         view_state_to_apply = self._pending_view_state
                         self._pending_view_state = None
                         self.set_view_state(view_state_to_apply)
                         return  # Let set_view_state trigger its own redraw
-                    
+
                     self.redraw()
                 except gl.GLError:
                     # OpenGL context might not be ready
@@ -224,23 +224,23 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
         gl.glEnableVertexAttribArray(0)
         gl.glVertexAttribPointer(1, 2, gl.GL_FLOAT, False, 4 * 4, gl.GLvoidp(2 * 4))
         gl.glEnableVertexAttribArray(1)
-        
+
         # Create overlay VAO/VBO for bounding box lines
         self._overlay_vao = gl.glGenVertexArrays(1)
         gl.glBindVertexArray(self._overlay_vao)
-        
+
         self._overlay_vbo = gl.glGenBuffers(1)
         gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self._overlay_vbo)
         # Pre-allocate buffer for 8 vertices (4 lines, 2 vertices each)
         gl.glBufferData(gl.GL_ARRAY_BUFFER, 8 * 2 * 4, None, gl.GL_DYNAMIC_DRAW)
-        
+
         # Set vertex attributes for overlay (just position)
         gl.glVertexAttribPointer(0, 2, gl.GL_FLOAT, False, 0, None)
         gl.glEnableVertexAttribArray(0)
-        
+
         # Unbind VAO
         gl.glBindVertexArray(0)
-        
+
         # Mark OpenGL as initialized
         self._gl_initialized = True
 
@@ -291,7 +291,7 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
             shader = gl.glCreateShader(shader_type)
             gl.glShaderSource(shader, source)
             gl.glCompileShader(shader)
-            
+
             if not gl.glGetShaderiv(shader, gl.GL_COMPILE_STATUS):
                 error = gl.glGetShaderInfoLog(shader).decode()
                 raise RuntimeError(f"Shader compilation failed: {error}")
@@ -362,7 +362,7 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
             shader = gl.glCreateShader(shader_type)
             gl.glShaderSource(shader, source)
             gl.glCompileShader(shader)
-            
+
             if not gl.glGetShaderiv(shader, gl.GL_COMPILE_STATUS):
                 error = gl.glGetShaderInfoLog(shader).decode()
                 raise RuntimeError(f"Shader compilation failed: {error}")
@@ -390,7 +390,7 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
         # Make sure OpenGL is initialized
         if not hasattr(self, '_gl_initialized') or not self._gl_initialized:
             return
-            
+
         # Update viewport to match widget size - force this every time for PanedWindow compatibility
         width = self.winfo_width()
         height = self.winfo_height()
@@ -398,7 +398,7 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
             try:
                 # Always force viewport update to handle PanedWindow sizing issues
                 gl.glViewport(0, 0, width, height)
-                
+
                 # Apply pending view state now that viewport is properly set up
                 if self._pending_view_state is not None:
                     view_state_to_apply = self._pending_view_state
@@ -406,22 +406,22 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
                     self.set_view_state(view_state_to_apply)
                     # Early return to let set_view_state trigger its own redraw
                     return
-                    
+
             except gl.GLError:
                 # OpenGL context might not be ready yet
                 return
         else:
             # Widget doesn't have proper dimensions yet
             return
-        
+
         if not self.has_image():
             gl.glClear(gl.GL_COLOR_BUFFER_BIT)
             self.tkSwapBuffers()
             return
 
         # Validate image data consistency before rendering
-        if (self._original_image_array is not None and 
-            self._original_image_size is not None and 
+        if (self._original_image_array is not None and
+            self._original_image_size is not None and
             len(self._original_image_array.shape) >= 2):
             array_height, array_width = self._original_image_array.shape[:2]
             size_width, size_height = self._original_image_size
@@ -431,14 +431,14 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
                 return
 
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
-        
+
         # Validate shader program before use
         if self._shader_program is None:
             if self.on_error:
                 self.on_error("Image viewer: Shader program is None, cannot render")
             self.tkSwapBuffers()
             return
-            
+
         gl.glUseProgram(self._shader_program)
 
         # Calculate and set scale and translate uniforms
@@ -458,7 +458,7 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
                 self.on_error("Image viewer: VAO is None, cannot render")
             self.tkSwapBuffers()
             return
-            
+
         # Draw quad
         gl.glBindVertexArray(self._vao)
         gl.glDrawElements(gl.GL_TRIANGLES, 6, gl.GL_UNSIGNED_INT, None)
@@ -479,7 +479,7 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
         # Get widget dimensions
         width = self.winfo_width()
         height = self.winfo_height()
-        
+
         if width <= 0 or height <= 0:
             return
 
@@ -497,53 +497,53 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
         # Create line vertices for the bounding box
         # Build dashed lines by creating segments
         vertices = []
-        
+
         # Parameters for dash pattern
         dash_pixels = self._bbox_dash_pattern[0]
         gap_pixels = self._bbox_dash_pattern[1]
-        
+
         # Helper function to add dashed line segments
         def add_dashed_line(x1, y1, x2, y2):
             # Calculate line length in pixels
             dx_pixels = abs(x2 - x1) * width / 2
             dy_pixels = abs(y2 - y1) * height / 2
             line_length = np.sqrt(dx_pixels**2 + dy_pixels**2)
-            
+
             if line_length == 0:
                 return
-                
+
             # Calculate dash pattern
             pattern_length = dash_pixels + gap_pixels
             num_patterns = int(line_length / pattern_length)
-            
+
             # Direction vector
             dx = x2 - x1
             dy = y2 - y1
-            
+
             # Add segments
             for i in range(num_patterns + 1):
                 start_t = i * pattern_length / line_length
                 end_t = min((i * pattern_length + dash_pixels) / line_length, 1.0)
-                
+
                 if start_t >= 1.0:
                     break
-                    
+
                 seg_x1 = x1 + dx * start_t
                 seg_y1 = y1 + dy * start_t
                 seg_x2 = x1 + dx * end_t
                 seg_y2 = y1 + dy * end_t
-                
+
                 vertices.extend([seg_x1, seg_y1, seg_x2, seg_y2])
-        
+
         # Add all four sides with dashed pattern
         add_dashed_line(ndc_x1, ndc_y1, ndc_x2, ndc_y1)  # Top
         add_dashed_line(ndc_x2, ndc_y1, ndc_x2, ndc_y2)  # Right
         add_dashed_line(ndc_x2, ndc_y2, ndc_x1, ndc_y2)  # Bottom
         add_dashed_line(ndc_x1, ndc_y2, ndc_x1, ndc_y1)  # Left
-        
+
         if not vertices:
             return
-            
+
         line_vertices = np.array(vertices, dtype=np.float32)
         num_vertices = len(vertices) // 2
 
@@ -575,18 +575,18 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
         solid_vertices.extend([ndc_x2, ndc_y1, ndc_x2, ndc_y2])  # Right
         solid_vertices.extend([ndc_x2, ndc_y2, ndc_x1, ndc_y2])  # Bottom
         solid_vertices.extend([ndc_x1, ndc_y2, ndc_x1, ndc_y1])  # Left
-        
+
         solid_line_vertices = np.array(solid_vertices, dtype=np.float32)
-        
+
         # Draw white solid background
         gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self._overlay_vbo)
         gl.glBufferSubData(gl.GL_ARRAY_BUFFER, 0, solid_line_vertices.nbytes, solid_line_vertices)
-        
+
         gl.glLineWidth(self._bbox_line_width)
         gl.glUniform4f(self._overlay_color_uniform, 1.0, 1.0, 1.0, 1.0)
         gl.glUniform2f(self._overlay_viewport_uniform, width, height)
         gl.glUniform1f(self._overlay_dash_size_uniform, 0)
-        gl.glUniform1f(self._overlay_gap_size_uniform, 0) 
+        gl.glUniform1f(self._overlay_gap_size_uniform, 0)
         gl.glUniform1i(self._overlay_is_dashed_uniform, 0)
         gl.glDrawArrays(gl.GL_LINES, 0, 8)
 
@@ -605,7 +605,7 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
 
         width = self.winfo_width()
         height = self.winfo_height()
-        
+
         if width <= 0 or height <= 0:
             return (1.0, 1.0), (0.0, 0.0)
 
@@ -613,20 +613,20 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
         if self._base_display_width is None or self._base_display_height is None:
             # Fallback: calculate base display size if not set
             self._calculate_base_display_size()
-        
+
         # Apply zoom to base display size
         display_width = self._base_display_width * self._zoom_factor
         display_height = self._base_display_height * self._zoom_factor
-        
+
         # Convert to normalized device coordinates (-1 to 1)
         scale_x = display_width / width
         scale_y = display_height / height
-        
+
         # Apply pan (convert from pixels to normalized coordinates)
         # Pan values are in pixels, convert to NDC
         translate_x = (self._pan_x * 2.0) / width
         translate_y = -(self._pan_y * 2.0) / height  # Flip Y for correct pan direction
-        
+
         return (scale_x, scale_y), (translate_x, translate_y)
 
     def _calculate_base_display_size(self):
@@ -636,24 +636,24 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
 
         width = self.winfo_width()
         height = self.winfo_height()
-        
+
         if width <= 0 or height <= 0:
             # Use a default size if widget dimensions aren't available yet
             width = 800
             height = 600
 
         img_width, img_height = self._original_image_size
-        
+
         # Calculate how much of the widget the image should occupy (maintaining aspect ratio)
         widget_aspect = width / height
         image_aspect = img_width / img_height
-        
+
         if image_aspect > widget_aspect:
             # Image is wider than widget - fit to width
             self._base_display_width = width
             self._base_display_height = width / image_aspect
         else:
-            # Image is taller than widget - fit to height  
+            # Image is taller than widget - fit to height
             self._base_display_width = height * image_aspect
             self._base_display_height = height
 
@@ -662,9 +662,9 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
         try:
             # Query maximum texture size supported by GPU
             max_texture_size = gl.glGetIntegerv(gl.GL_MAX_TEXTURE_SIZE)
-            
+
             height, width = img_array.shape[:2]
-            
+
             # Check if image dimensions exceed GPU limits
             if width > max_texture_size or height > max_texture_size:
                 error_msg = (f"Image viewer: Image size ({width}x{height}) exceeds GPU maximum texture size "
@@ -672,12 +672,12 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
                 if self.on_error:
                     self.on_error(error_msg)
                 return
-            
+
             # Clean up existing texture first and set to None immediately
             if self._gl_texture_id is not None:
                 gl.glDeleteTextures([self._gl_texture_id])
                 self._gl_texture_id = None
-            
+
             # Ensure image is in RGB format
             if len(img_array.shape) == 3 and img_array.shape[2] == 3:
                 texture_data = img_array
@@ -689,25 +689,25 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
                 # Convert grayscale to RGB
                 texture_data = np.stack([img_array] * 3, axis=-1)
                 format = gl.GL_RGB
-            
+
             # No need to flip - texture coordinates are properly set
-            
+
             # Generate new texture ID
             self._gl_texture_id = gl.glGenTextures(1)
             gl.glBindTexture(gl.GL_TEXTURE_2D, self._gl_texture_id)
-            
+
             # Fix texture alignment issues for images with widths not divisible by 4
             # Set unpack alignment to 1 to handle arbitrary row widths correctly
             gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 1)
-            
-            gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, format, width, height, 0, 
+
+            gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, format, width, height, 0,
                           format, gl.GL_UNSIGNED_BYTE, texture_data)
-            
+
             gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
             gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
             gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP_TO_EDGE)
             gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP_TO_EDGE)
-        
+
         except gl.GLError as e:
             # If texture creation failed, make sure ID is nullified
             if self._gl_texture_id is not None:
@@ -750,7 +750,7 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
             # Clear ALL pending operations to prevent conflicts and race conditions
             self._pending_view_state = None
             self._pending_load_operation = None
-            
+
             if self._bbox_selection_mode:
                 self._cancel_bbox_selection()
 
@@ -801,7 +801,7 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
             # Force widget to get proper dimensions, especially important for PanedWindows
             self.update_idletasks()
             self.update()  # Force immediate processing of pending events
-            
+
             # Ensure OpenGL viewport is properly set up with current widget dimensions
             width = self.winfo_width()
             height = self.winfo_height()
@@ -813,12 +813,12 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
 
             # Create OpenGL texture (we know OpenGL is initialized here)
             self._create_texture_from_array(self._original_image_array)
-            
+
             # If view state wasn't applied above due to widget sizing, store for later
             if view_state is not None and (width <= 1 or height <= 1):
                 # Widget not ready, store for later - will be applied when widget becomes visible
                 self._pending_view_state = view_state
-            
+
             # Trigger redraw
             self.redraw()
 
@@ -830,7 +830,7 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
         """Attempt to apply pending view state if the widget is ready"""
         if self._pending_view_state is None:
             return
-            
+
         # Check if widget has proper dimensions now
         width = self.winfo_width()
         height = self.winfo_height()
@@ -840,7 +840,7 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
                 gl.glViewport(0, 0, width, height)
             except gl.GLError:
                 pass
-            
+
             view_state = self._pending_view_state
             self._pending_view_state = None
             self.set_view_state(view_state)
@@ -859,41 +859,41 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
 
         width = self.winfo_width()
         height = self.winfo_height()
-        
+
         if width <= 0 or height <= 0:
             return None, None
 
         img_width, img_height = self._original_image_size
-        
+
         # Use base display size with zoom applied
         if self._base_display_width is None or self._base_display_height is None:
             self._calculate_base_display_size()
-        
+
         display_width = self._base_display_width * self._zoom_factor
         display_height = self._base_display_height * self._zoom_factor
-        
+
         # Calculate image position on screen (centered + pan offset)
         image_left = (width - display_width) / 2 + self._pan_x
         image_top = (height - display_height) / 2 + self._pan_y
         image_right = image_left + display_width
         image_bottom = image_top + display_height
-        
+
         # Check if click is within the displayed image bounds
         if (widget_x < image_left or widget_x > image_right or
             widget_y < image_top or widget_y > image_bottom):
             return None, None
-        
+
         # Convert to image coordinates
         relative_x = (widget_x - image_left) / display_width
         relative_y = (widget_y - image_top) / display_height
-        
+
         image_x = int(relative_x * img_width)
         image_y = int(relative_y * img_height)
-        
+
         # Clamp to image bounds
         image_x = max(0, min(image_x, img_width - 1))
         image_y = max(0, min(image_y, img_height - 1))
-        
+
         return image_x, image_y
 
     def _image_to_widget_coordinates(self, image_x: int, image_y: int) -> typing.Tuple[typing.Optional[int], typing.Optional[int]]:
@@ -903,31 +903,31 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
 
         width = self.winfo_width()
         height = self.winfo_height()
-        
+
         if width <= 0 or height <= 0:
             return None, None
 
         img_width, img_height = self._original_image_size
-        
+
         # Use base display size with zoom applied
         if self._base_display_width is None or self._base_display_height is None:
             self._calculate_base_display_size()
-        
+
         display_width = self._base_display_width * self._zoom_factor
         display_height = self._base_display_height * self._zoom_factor
-        
+
         # Calculate image position on screen (centered + pan offset)
         image_left = (width - display_width) / 2 + self._pan_x
         image_top = (height - display_height) / 2 + self._pan_y
-        
+
         # Convert image coordinates to relative coordinates (0.0 to 1.0)
         relative_x = image_x / img_width
         relative_y = image_y / img_height
-        
+
         # Convert to widget coordinates
         widget_x = int(image_left + relative_x * display_width)
         widget_y = int(image_top + relative_y * display_height)
-        
+
         return widget_x, widget_y
 
     def _zoom_by_factor(self, factor):
@@ -954,12 +954,36 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
         mouse_x = event.x
         mouse_y = event.y
 
-        # Determine zoom direction
+        # Determine zoom direction with improved cross-platform compatibility
         zoom_in = False
-        if hasattr(event, 'delta'):
+
+        # Use platform-specific handling for reliable mouse wheel detection
+        platform_name = _std_platform.system()
+
+        if platform_name == 'Linux' and hasattr(event, 'num'):
+            # Linux: Button-4 = scroll up = zoom in, Button-5 = scroll down = zoom out
+            if event.num == 4:
+                zoom_in = True
+            elif event.num == 5:
+                zoom_in = False
+            else:
+                # Unknown button number
+                return
+        elif hasattr(event, 'delta') and event.delta != 0:
+            # Windows and macOS: positive delta = scroll up = zoom in
+            # Also fallback for Linux systems that use delta
             zoom_in = event.delta > 0
         elif hasattr(event, 'num'):
-            zoom_in = event.num == 4
+            # Fallback for Linux if delta isn't available
+            if event.num == 4:
+                zoom_in = True
+            elif event.num == 5:
+                zoom_in = False
+            else:
+                return
+        else:
+            # Unhandled event type
+            return
 
         # Calculate new zoom
         old_zoom = self._zoom_factor
@@ -1215,13 +1239,13 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
         """Reset to show image at actual pixel size (1:1 zoom)"""
         if not self.has_image():
             return
-            
+
         # Recalculate base display size for current widget dimensions
         self._calculate_base_display_size()
-        
+
         # Calculate zoom factor to show image at actual pixel size
         img_width, img_height = self._original_image_size
-        
+
         # Set zoom to show actual image size relative to base display size
         if self._base_display_width > 0:
             # Calculate zoom needed to show image at actual pixel size
@@ -1229,7 +1253,7 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
             self._zoom_factor = img_width / self._base_display_width
         else:
             self._zoom_factor = 1.0
-            
+
         self._pan_x = 0
         self._pan_y = 0
         self.redraw()
@@ -1307,7 +1331,7 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
         """Clean up resources"""
         # Only attempt OpenGL cleanup if OpenGL was initialized
         gl_was_initialized = hasattr(self, '_gl_initialized') and self._gl_initialized
-        
+
         # Clean up OpenGL resources
         if self._gl_texture_id is not None:
             if gl_was_initialized:
@@ -1372,7 +1396,7 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
                 except:
                     pass  # Ignore errors during cleanup
             self._ebo = None
-            
+
         # Mark OpenGL as no longer initialized to prevent further operations
         self._gl_initialized = False
 
@@ -1381,7 +1405,7 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
         self._original_image_size = None
         self._base_display_width = None
         self._base_display_height = None
-        
+
         # Clear pending operations
         self._pending_load_operation = None
         self._pending_view_state = None

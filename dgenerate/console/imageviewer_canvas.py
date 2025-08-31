@@ -337,16 +337,35 @@ class ImageViewerCanvas(tk.Frame):
         mouse_x = event.x
         mouse_y = event.y
 
-        # Determine zoom direction using consistent approach
+        # Determine zoom direction with improved cross-platform compatibility
         zoom_in = False
-        if hasattr(event, 'delta'):
-            # Windows and macOS
+
+        # Use platform-specific handling for reliable mouse wheel detection
+        platform_name = _std_platform.system()
+
+        if platform_name == 'Linux' and hasattr(event, 'num'):
+            # Linux: Button-4 = scroll up = zoom in, Button-5 = scroll down = zoom out
+            if event.num == 4:
+                zoom_in = True
+            elif event.num == 5:
+                zoom_in = False
+            else:
+                # Unknown button number
+                return
+        elif hasattr(event, 'delta') and event.delta != 0:
+            # Windows and macOS: positive delta = scroll up = zoom in
+            # Also fallback for Linux systems that use delta
             zoom_in = event.delta > 0
         elif hasattr(event, 'num'):
-            # Linux
-            zoom_in = event.num == 4
+            # Fallback for Linux if delta isn't available
+            if event.num == 4:
+                zoom_in = True
+            elif event.num == 5:
+                zoom_in = False
+            else:
+                return
         else:
-            # Fallback - shouldn't happen with proper event binding
+            # Unhandled event type
             return
 
         # Calculate new zoom factor
