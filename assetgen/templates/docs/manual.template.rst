@@ -109,3 +109,5 @@ Help Output
 @INCLUDE[sections/environment/auth_tokens_environment.template.rst]
 
 @INCLUDE[sections/environment/file_cache_control.template.rst]
+
+@INCLUDE[sections/environment/torch_compile.template.rst]

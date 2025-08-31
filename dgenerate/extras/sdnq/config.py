@@ -15,7 +15,7 @@ class SDNQConfig:
 
     def __init__(self):
         # SDNQ specific options
-        if os.environ.get('DGENERATE_PYINSTALLER', '0') == '1':
+        if os.environ.get('DGENERATE_TORCH_COMPILE', '1') == '0':
             self.sdnq_dequantize_compile = False  # Disable torch.compile for dequantization
         else:
             self.sdnq_dequantize_compile = True   # Enable torch.compile for dequantization
