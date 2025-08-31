@@ -58,8 +58,9 @@ def _open_windows_explorer(file_path: str) -> bool:
     """Open Windows Explorer and select the file."""
     try:
         # Correct Windows explorer syntax: /select,filepath (no space after comma)
+        norm_path = os.path.normpath(file_path).replace('/', '\\')
         subprocess.Popen(
-            ['explorer', f'/select,{os.path.normpath(file_path).replace('/', '\\')}'],
+            ['explorer', f'/select,{norm_path}'],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL)
         return True
