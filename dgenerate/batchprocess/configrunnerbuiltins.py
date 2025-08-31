@@ -258,10 +258,12 @@ def download(url: str,
                             del web_cache[cache_key]
 
         try:
-            with requests.get(url, headers={
-                'User-Agent': fake_useragent.UserAgent().chrome},
-                              stream=True,
-                              timeout=5) as response:
+            with requests.get(
+                _webcache._append_tokens_to_url(url),
+                headers={'User-Agent': fake_useragent.UserAgent().chrome},
+                          stream=True,
+                          timeout=5
+            ) as response:
                 response.raise_for_status()
 
                 content_type = response.headers.get('content-type', 'unknown')
