@@ -6,7 +6,7 @@ python3 -m venv ~/dgenerate_venv
 source ~/dgenerate_venv/bin/activate
 
 if command -v nvidia-smi &> /dev/null; then
-    extras="[quant,ncnn,gpt4all_cuda]"
+    extras="[bitsandbytes,ncnn,gpt4all_cuda]"
 else
     extras="[ncnn,gpt4all]"
 fi
