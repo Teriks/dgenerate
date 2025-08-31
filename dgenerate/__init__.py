@@ -27,9 +27,6 @@ import os
 import sys
 import logging
 
-if os.environ.get('DGENERATE_PYINSTALLER', '0') == '1':
-    import dgenerate._patches.pyinstaller_inpect_patch
-
 # Set the maximum split size for the CUDA memory allocator
 # and GC threshold to handle large allocations efficiently
 os.environ['PYTORCH_CUDA_ALLOC_CONF'] = os.environ.get(
@@ -85,9 +82,6 @@ if os.environ.get('DGENERATE_BACKEND_WARNINGS', '0') == '0':
 
 try:
     from dgenerate.resources import __version__
-
-    if os.environ.get('DGENERATE_PYINSTALLER', '0') == '1':
-        import dgenerate._patches.pyinstaller_transformers_patch
 
     import diffusers
     import transformers
