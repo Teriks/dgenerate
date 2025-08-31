@@ -19,14 +19,14 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0
         ref: version_5.0.0
+        fetch-depth: 0
         
     - name: Check for new commits since last successful build
       id: check
       if: github.event_name == 'schedule'
       run: |
-        # Get the current commit hash
+        # Get the current commit hash from version_5.0.0 branch
         current_commit=$(git rev-parse --short HEAD)
         echo "Current commit: $current_commit"
         
@@ -68,7 +68,7 @@ jobs:
 
   build:
     needs: [check-commits]
-    if: github.ref == 'refs/heads/version_5.0.0' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && needs.check-commits.outputs.should_build == 'true'))
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && needs.check-commits.outputs.should_build == 'true')
     strategy:
       matrix:
         include:
@@ -91,6 +91,8 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        ref: version_5.0.0
       
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -198,6 +200,8 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        ref: version_5.0.0
       
     - name: Download all artifacts
       uses: actions/download-artifact@v4
