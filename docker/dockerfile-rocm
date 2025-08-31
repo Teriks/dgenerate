@@ -1,6 +1,6 @@
 FROM rocm/dev-ubuntu-24.04:6.2-complete
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt update && apt install -y python3 python3-pip python3-wheel python3-venv python3-tk libgl1 libglib2.0-0 sudo git
+RUN apt update && apt install -y python3 python3-pip python3-wheel python3-venv python3-tk gcc libgl1 libglib2.0-0 sudo git
 RUN useradd -ms /bin/bash dgenerate
 RUN echo 'dgenerate:dgenerate' | chpasswd
 RUN usermod -aG sudo dgenerate
