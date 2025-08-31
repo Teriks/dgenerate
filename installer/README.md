@@ -1,18 +1,27 @@
-In order to build the installer, there are a few tools that need to be installed on Windows.
+# dgenerate Network Installer
 
+A network-based installer for the dgenerate AI image generation tool.
 
-You need to install git for Windows: https://git-scm.com/downloads/win
+## Features
 
+- Automated installation of dgenerate using uv
+- Cross-platform support (Windows, Linux, macOS)
+- GUI-based installation interface
+- Automatic dependency management
 
-You need to install the .NET SDK:  https://dotnet.microsoft.com/en-us/download
+## Building
 
-You then need to install WiX v4
+To build the installer:
 
-From the command line: ``dotnet tool install --global wix --version 5.0.0``
+```bash
+python build.py
+```
 
+This will:
+1. Create a virtual environment
+2. Install dependencies
+3. Build the installer executable
 
-You must also install 7-Zip (for creating the multipart zip file): https://www.7-zip.org/
+This installer is created for the platform it is built on. 
 
-After which, to build the installer, run: ``python build.py``
-
-The finished installer files will reside in: ``bin/Release``
+To create installers for other platforms, use a corresponding build environment.

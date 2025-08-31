@@ -3,6 +3,10 @@ MacOS Install (Apple Silicon Only)
 
 MacOS on Apple Silicon (arm64) is experimentally supported.
 
+You can install using the MacOS installer provided with each release on the
+`Releases Page <https://github.com/Teriks/dgenerate/releases>`_, or you can manually
+install with pipx, (or pip if you want) as described below.
+
 Rendering can be performed in CPU only mode, and with hardware acceleration using ``--device mps`` (Metal Performance Shaders).
 
 The default device on MacOS is ``mps`` unless specified otherwise.

@@ -1,0 +1,414 @@
+name: Build Pre-Release
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 8 * * *'  # 3 AM Central Time (8 AM UTC)
+
+permissions:
+  contents: write
+  packages: write
+  actions: write
+
+jobs:
+  check-commits:
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.check.outputs.should_build }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Check for new commits since last successful build
+      id: check
+      if: github.event_name == 'schedule'
+      run: |
+        # Get the current commit hash
+        current_commit=$(git rev-parse --short HEAD)
+        echo "Current commit: $current_commit"
+        
+        # Fetch the last successful workflow run commit
+        # Note: Using the exact workflow name from the file
+        last_run_commit=$(gh run list --workflow "Build Pre-Release" --status success --limit 1 --json headSha -q '.[0].headSha' 2>/dev/null || echo "")
+        
+        if [ -z "$last_run_commit" ]; then
+          echo "No previous successful run found, proceeding with build."
+          echo "should_build=true" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+        
+        echo "Last successful run commit: $last_run_commit"
+        echo "Current HEAD commit: $(git rev-parse HEAD)"
+        
+        # Compare with current HEAD - count commits between last successful run and now
+        commit_count=$(git rev-list --count $last_run_commit..HEAD 2>/dev/null || echo "error")
+        
+        if [ "$commit_count" = "error" ]; then
+          echo "Error comparing commits (possibly due to force push or branch changes), proceeding with build."
+          echo "should_build=true" >> $GITHUB_OUTPUT
+        elif [ "$commit_count" -gt 0 ]; then
+          echo "Found $commit_count new commits since last successful run."
+          echo "should_build=true" >> $GITHUB_OUTPUT
+        else
+          echo "No new commits since last successful run."
+          echo "should_build=false" >> $GITHUB_OUTPUT
+        fi
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Set output for manual runs
+      id: manual
+      if: github.event_name == 'workflow_dispatch'
+      run: |
+        echo "Manual workflow trigger - always build"
+        echo "should_build=true" >> $GITHUB_OUTPUT
+
+  build:
+    needs: [check-commits]
+    if: github.ref == 'refs/heads/version_5.0.0' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && needs.check-commits.outputs.should_build == 'true'))
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+            artifact_name: dgenerate-installer-win.exe
+            exe_extension: .exe
+          - os: ubuntu-latest
+            platform: linux
+            artifact_name: dgenerate-installer-linux
+            exe_extension: ""
+          - os: macos-latest
+            platform: macos
+            artifact_name: dgenerate-installer-macos
+            exe_extension: ""
+            arch: arm64
+    
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.13'
+        architecture: ${{ matrix.platform == 'macos' && 'arm64' || 'x64' }}
+        
+    - name: Install system dependencies (Linux)
+      if: matrix.platform == 'linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential
+        
+    - name: Install system dependencies (macOS)
+      if: matrix.platform == 'macos'
+      run: |
+        # Ensure we're targeting Apple Silicon
+        echo "ARCHFLAGS=-arch arm64" >> $GITHUB_ENV
+        
+    - name: Cache Python dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/pip
+          build_venv
+        key: ${{ runner.os }}-${{ matrix.arch || 'x64' }}-python-3.13-${{ hashFiles('pyproject.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ matrix.arch || 'x64' }}-python-3.13-
+          
+    - name: Install build dependencies
+      if: matrix.platform == 'linux'
+      run: pip install build
+      
+    - name: Build Wheels
+      if: matrix.platform == 'linux'
+      run: python build_dist.py --pre-release
+      
+    - name: Build Installer
+      run: python installer/build.py
+      
+    - name: Verify build output
+      shell: bash
+      run: |
+        if [ "${{ matrix.platform }}" == "windows" ]; then
+          expected_file="installer/dist/dgenerate-network-installer.exe"
+        else
+          expected_file="installer/dist/dgenerate-network-installer"
+        fi
+        
+        if [ ! -f "$expected_file" ]; then
+          echo "ERROR: Expected build output not found: $expected_file"
+          echo "Contents of dist directory:"
+          ls -la installer/dist/ || echo "dist directory not found"
+          exit 1
+        else
+          echo "SUCCESS: Build output found: $expected_file"
+          ls -la "$expected_file"
+        fi
+        
+    - name: Rename artifact
+      shell: bash
+      run: |
+        if [ "${{ matrix.platform }}" == "windows" ]; then
+          source_file="installer/dist/dgenerate-network-installer.exe"
+        else
+          source_file="installer/dist/dgenerate-network-installer"
+        fi
+        
+        target_file="installer/dist/${{ matrix.artifact_name }}"
+        
+        echo "Renaming $source_file to $target_file"
+        mv "$source_file" "$target_file"
+        
+        # Verify the renamed file exists
+        if [ ! -f "$target_file" ]; then
+          echo "ERROR: Failed to rename artifact"
+          exit 1
+        else
+          echo "SUCCESS: Artifact renamed successfully"
+          ls -la "$target_file"
+        fi
+        
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.artifact_name }}
+        path: installer/dist/${{ matrix.artifact_name }}
+        if-no-files-found: error
+        retention-days: 1
+        
+    - name: Upload wheel artifacts
+      if: matrix.platform == 'linux'
+      uses: actions/upload-artifact@v4
+      with:
+        name: wheels
+        path: dist/
+        if-no-files-found: error
+        retention-days: 1
+        
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/version_5.0.0' && needs.build.result == 'success' && (github.event_name == 'workflow_dispatch' || github.event_name == 'schedule')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts/
+        
+    - name: List downloaded artifacts
+      run: |
+        echo "Downloaded artifacts:"
+        find artifacts/ -type f -exec ls -la {} \;
+        
+    - name: Check if 'pre-release' release exists
+      id: check_release
+      run: |
+        if gh release view pre-release >/dev/null 2>&1; then
+          echo "release_exists=true" >> $GITHUB_OUTPUT
+          echo "Release 'pre-release' already exists"
+        else
+          echo "release_exists=false" >> $GITHUB_OUTPUT
+          echo "Release 'pre-release' does not exist"
+        fi
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Create 'pre-release' release if it doesn't exist
+      if: steps.check_release.outputs.release_exists == 'false'
+      run: |
+        gh release create pre-release \
+          --title "Development Pre-release: $(git rev-parse --abbrev-ref HEAD) - $(date -u +%Y%m%d-%H%M%S)" \
+          --notes "Automatically generated release containing the latest build artifacts for all platforms." \
+          --target version_5.0.0
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Delete existing assets from release
+      run: |
+        # Get list of existing assets and delete them
+        existing_assets=$(gh release view pre-release --json assets --jq '.assets[].name' 2>/dev/null || echo "")
+        if [ -n "$existing_assets" ]; then
+          echo "Deleting existing assets:"
+          echo "$existing_assets" | while read -r asset; do
+            if [ -n "$asset" ]; then
+              echo "  - $asset"
+              gh release delete-asset pre-release "$asset" --yes 2>/dev/null || true
+            fi
+          done
+        else
+          echo "No existing assets to delete"
+        fi
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Upload artifacts to release
+      run: |
+        echo "Uploading artifacts to 'pre-release' release:"
+        
+        # Upload installer artifacts
+        for artifact_dir in artifacts/*/; do
+          if [ -d "$artifact_dir" ]; then
+            artifact_name=$(basename "$artifact_dir")
+            
+            # Skip wheels directory (handled separately)
+            if [ "$artifact_name" = "wheels" ]; then
+              continue
+            fi
+            
+            echo "Processing installer artifact: $artifact_name"
+            
+            # Find the file in the artifact directory
+            artifact_file=$(find "$artifact_dir" -type f | head -1)
+            if [ -n "$artifact_file" ]; then
+              echo "  - Uploading: $artifact_file"
+              gh release upload pre-release "$artifact_file" --clobber
+            else
+              echo "  - No files found in $artifact_dir"
+            fi
+          fi
+        done
+        
+        # Upload wheel artifacts if they exist
+        if [ -d "artifacts/wheels" ]; then
+          echo "Processing wheel artifacts:"
+          for wheel_file in artifacts/wheels/*.whl; do
+            if [ -f "$wheel_file" ]; then
+              echo "  - Uploading: $wheel_file"
+              gh release upload pre-release "$wheel_file" --clobber
+            fi
+          done
+          
+          # Upload source distributions
+          for sdist_file in artifacts/wheels/*.tar.gz; do
+            if [ -f "$sdist_file" ]; then
+              echo "  - Uploading: $sdist_file"
+              gh release upload pre-release "$sdist_file" --clobber
+            fi
+          done
+        fi
+        
+        echo "Upload complete!"
+        
+        # Update release title after successful upload
+        gh release edit pre-release \
+          --title "Development Pre-release: $(git rev-parse --abbrev-ref HEAD) - $(date -u +%Y%m%d-%H%M%S)"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Update release description
+      run: |
+        build_date=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+        commit_sha=$(git rev-parse --short HEAD)
+        
+        # Extract version from dgenerate/resources.py
+        version=$(grep -E "^__version__\s*=" dgenerate/resources.py | sed -E "s/^__version__\s*=\s*['\"]([^'\"]*)['\"].*/\1/")
+        
+        cat > release_notes.md << EOF
+        # Latest Build Artifacts
+        
+        Automatically generated release containing the latest build artifacts for all platforms.
+        
+        ## Build Information
+        - **Build Date**: $build_date
+        - **Commit**: $commit_sha
+        - **Workflow**: ${{ github.workflow }} #${{ github.run_number }}
+        
+        ## Available Downloads
+        
+        ### Installers
+        - **Windows**: \`dgenerate-installer-win.exe\`
+        - **Linux**: \`dgenerate-installer-linux\`
+        - **macOS** (Apple Silicon): \`dgenerate-installer-macos\`
+        
+        ### Python Wheels
+        - **Windows**: \`dgenerate-$version-$commit_sha-py3-none-win_amd64.whl\`
+        - **Linux/Universal**: \`dgenerate-$version-$commit_sha-py3-none-any.whl\`
+        - **macOS** (Apple Silicon): \`dgenerate-$version-$commit_sha-py3-none-macosx_11_0_arm64.whl\`
+        - **Source Distribution**: \`dgenerate-$version.tar.gz\`
+        
+        ## Installation
+        
+        ### Windows
+        1. Download \`dgenerate-installer-win.exe\`
+        2. Run the installer
+        
+        **Note for Windows users**: Windows Defender may flag the installer as potentially harmful since it's unsigned. If you see a warning, click "More info" and then "Run anyway" to proceed with the installation.
+        
+        If you previously installed dgenerate using the older MSI installer, please uninstall it before installing with the network installer.
+
+
+        ### Linux
+        1. Download \`dgenerate-installer-linux\`
+        2. Make the file executable: \`chmod +x dgenerate-installer-linux\`
+        3. Run the installer: \`./dgenerate-installer-linux\`
+        
+        ### macOS (Apple Silicon)
+        1. Download \`dgenerate-installer-macos\`
+        2. Remove quarantine attribute: \`xattr -d com.apple.quarantine dgenerate-installer-macos\`
+        3. Make the file executable: \`chmod +x dgenerate-installer-macos\`
+        4. Run the installer: \`./dgenerate-installer-macos\`
+        
+        **Note for macOS users**: The \`xattr\` command is required to prevent macOS from quarantining the binary, which would otherwise prevent execution.
+        
+        ## Important: Pre-release Installation
+        
+        **To install the pre-release version 5.0.0**, when running the installer, make sure to select **"Development Branch"** and choose **version_5.0.0** from the available options in the installer UI. This will install the latest pre-release build instead of the stable release.
+        
+        ---
+        *This release is automatically updated with each successful build.*
+        EOF
+        
+        gh release edit pre-release --notes-file release_notes.md
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Clean up old workflow artifacts
+      run: |
+        echo "Cleaning up old workflow artifacts..."
+        
+        # Get the current workflow run ID to avoid deleting artifacts from this run
+        current_run_id="${{ github.run_id }}"
+        echo "Current run ID: $current_run_id"
+        
+        # Get all workflow runs for this workflow (excluding the current one), limit to last 10
+        old_runs=$(gh run list --workflow "Build Pre-Release" --json databaseId,status,conclusion --limit 10 --jq ".[] | select(.databaseId != $current_run_id) | .databaseId" 2>/dev/null || echo "")
+        
+        if [ -n "$old_runs" ]; then
+          echo "Found old workflow runs to clean up:"
+          echo "$old_runs" | while IFS= read -r run_id; do
+            if [ -n "$run_id" ]; then
+              echo "  - Checking artifacts from run $run_id"
+              # Get artifacts for this run and try to delete them
+              artifacts=$(gh api "repos/${{ github.repository }}/actions/runs/$run_id/artifacts" --jq '.artifacts[].id' 2>/dev/null || echo "")
+              if [ -n "$artifacts" ]; then
+                echo "    Found artifacts to delete"
+                echo "$artifacts" | while IFS= read -r artifact_id; do
+                  if [ -n "$artifact_id" ]; then
+                    echo "    - Attempting to delete artifact $artifact_id"
+                    if gh api --method DELETE "repos/${{ github.repository }}/actions/artifacts/$artifact_id" >/dev/null 2>&1; then
+                      echo "      ✓ Deleted artifact $artifact_id"
+                    else
+                      echo "      ⚠ Failed to delete artifact $artifact_id (may lack permissions or artifact already deleted)"
+                    fi
+                  fi
+                done
+              else
+                echo "    No artifacts found for run $run_id"
+              fi
+            fi
+          done
+          echo "Artifact cleanup completed."
+        else
+          echo "No old workflow runs found to clean up."
+        fi
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

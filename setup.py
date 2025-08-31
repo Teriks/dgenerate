@@ -266,8 +266,7 @@ extras: dict[str, list[str]] = {
         _PyOpenGL_accelerate_requires
     ],
     'gpt4all': ['gpt4all' + _gpt4all_requires_spec],
-    'dev': [_pyinstaller_requires,
-            _sphinx_requires,
+    'dev': [_sphinx_requires,
             _poetry_requires],
     'readthedocs': _sphinx_requires
 }
@@ -311,15 +310,6 @@ if dgenerate_platform in {'linux', 'windows'}:
 
 if dgenerate_platform == 'windows':
     extras['triton_windows'] = ['triton-windows' + requires.pop('triton-windows')]
-
-    extras['win-installer'] = (
-            [_pyinstaller_requires] +
-            extras['ncnn'] +
-            extras['gpt4all_cuda'] +
-            extras['triton_windows'] +
-            extras['console_ui_opengl'] +
-            extras['bitsandbytes']
-    )
 
 if __name__ != 'setup_as_library':
     setup(name='dgenerate',

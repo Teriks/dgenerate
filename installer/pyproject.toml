@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dgenerate-network-installer"
+version = "0.1.0"
+description = "Network installer for dgenerate AI image generation tool"
+readme = "README.md"
+authors = [
+    {name = "dgenerate"}
+]
+license = "BSD-3-Clause"
+requires-python = ">=3.11"
+keywords = ["ai", "image generation", "installer", "gui", "tkinter"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: End Users/Desktop",
+    "Topic :: Multimedia :: Graphics",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13"
+]
+
+dependencies = [
+    "requests==2.32.5",
+    "packaging==25.0",
+    "PyInstaller==6.15.0",
+    "Pillow==11.3.0",
+    "certifi>=2024.0.0",
+]
+
+[project.scripts]
+dgenerate-network-installer = "network_installer.main:main"
+
+[project.urls]
+"Bug Reports" = "https://github.com/Teriks/dgenerate/issues"
+"Source" = "https://github.com/Teriks/dgenerate"
+"Documentation" = "https://dgenerate.readthedocs.io/"
+
+[tool.setuptools.packages.find]
+include = ["network_installer"]
+exclude = ["build_venv", "dist"]
+
+[tool.setuptools.package-data]
+"network_installer.resources" = ["*"]

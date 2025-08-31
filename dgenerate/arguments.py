@@ -21,6 +21,7 @@
 
 import argparse
 import collections.abc
+import inspect
 import sys
 import typing
 from argparse import Action
@@ -2131,10 +2132,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '-q2', '--second-model-quantizer',
             action='store', default=None, metavar="QUANTIZER_URI", dest='second_model_quantizer_uri',
-            help=f"""
-            Global quantization configuration via URI for the secondary model, 
-            such as the SDXL Refiner or Stable Cascade decoder. See: --quantizer for syntax examples.
-            """
+            help=inspect.cleandoc(f"""
+                Global quantization configuration via URI for the secondary model, 
+                such as the SDXL Refiner or Stable Cascade decoder. See: --quantizer for syntax examples.
+            """)
         )
     )
 
@@ -2142,10 +2143,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '-qm2', '--second-model-quantizer-map', type=_type_quantizer_map,
             nargs='+', action='store', default=None, metavar="SUBMODULE", dest='second_model_quantizer_map',
-            help=f"""
-            Global quantization map for the secondary model, used with --second-model-quantizer.
-            This affects the SDXL Refiner or Stable Cascade decoder, See: --quantizer-map for syntax examples.
-            """
+            help=inspect.cleandoc(f"""
+                Global quantization map for the secondary model, used with --second-model-quantizer.
+                This affects the SDXL Refiner or Stable Cascade decoder, See: --quantizer-map for syntax examples.
+            """)
         )
     )
 
@@ -2156,18 +2157,19 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '--schedulers',
             dest='scheduler_uri',
             action='store', nargs='+', default=None, metavar="SCHEDULER_URI",
-            help=f"""Specify a scheduler (sampler) by URI. 
-                    
-                    NOWRAP!
-                    Passing "help" to this argument will print the compatible schedulers for a model without generating any images. 
-                    
-                    NOWRAP!
-                    Passing "helpargs" will yield a help message with a list of overridable arguments for each scheduler and their typical defaults.
-                    
-                    Arguments listed by "helpargs" can be overridden using the URI syntax typical to other dgenerate URI arguments.
-                    
-                    You may pass multiple scheduler URIs to this argument, each URI will be tried in turn.
-                    """
+            help=inspect.cleandoc(f"""
+                Specify a scheduler (sampler) by URI. 
+                
+                NOWRAP!
+                Passing "help" to this argument will print the compatible schedulers for a model without generating any images. 
+                
+                NOWRAP!
+                Passing "helpargs" will yield a help message with a list of overridable arguments for each scheduler and their typical defaults.
+                
+                Arguments listed by "helpargs" can be overridden using the URI syntax typical to other dgenerate URI arguments.
+                
+                You may pass multiple scheduler URIs to this argument, each URI will be tried in turn.
+            """)
         )
     )
 
@@ -2178,13 +2180,14 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '--second-model-schedulers',
             dest='second_model_scheduler_uri',
             nargs='+', action='store', default=None, metavar="SCHEDULER_URI",
-            help="""Specify a scheduler (sampler) by URI for the SDXL Refiner or Stable Cascade Decoder pass. 
-                 Operates the exact same way as --scheduler including the "help" option. Passing 'helpargs' will 
-                 yield a help message with a list of overridable arguments for each scheduler and their 
-                 typical defaults. Defaults to the value of --scheduler.
-                 
-                 You may pass multiple scheduler URIs to this argument, each URI will be tried in turn.
-                 """
+            help=inspect.cleandoc("""
+                Specify a scheduler (sampler) by URI for the SDXL Refiner or Stable Cascade Decoder pass. 
+                Operates the exact same way as --scheduler including the "help" option. Passing 'helpargs' will 
+                yield a help message with a list of overridable arguments for each scheduler and their 
+                typical defaults. Defaults to the value of --scheduler.
+                
+                You may pass multiple scheduler URIs to this argument, each URI will be tried in turn.
+            """)
         )
     )
 
@@ -2196,23 +2199,24 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             dest='freeu_params',
             metavar='CSV_FLOAT',
             type=_type_freeu_params,
-            help=f"""FreeU is a technique for improving image quality by re-balancing the contributions from 
-                     the UNet's skip connections and backbone feature maps.
-                     
-                     This can be used with no cost to performance, to potentially improve image quality.
-                     
-                     This argument can be used to specify The FreeU parameters: s1, s2, b1, and b2 in that order.
-                     
-                     It accepts CSV, for example: --freeu-params "0.9,0.2,1.1,1.2"
-                     
-                     If you supply multiple CSV strings, they will be tried in turn.
-                     
-                     This argument only applies to models that utilize a UNet: SD1.5/2, SDXL, and Kolors
-                     
-                     See: https://huggingface.co/docs/diffusers/main/en/using-diffusers/freeu
-                     
-                     And: https://github.com/ChenyangSi/FreeU
-                     """
+            help=inspect.cleandoc(f"""
+                FreeU is a technique for improving image quality by re-balancing the contributions from 
+                the UNet's skip connections and backbone feature maps.
+                
+                This can be used with no cost to performance, to potentially improve image quality.
+                
+                This argument can be used to specify The FreeU parameters: s1, s2, b1, and b2 in that order.
+                
+                It accepts CSV, for example: --freeu-params "0.9,0.2,1.1,1.2"
+                
+                If you supply multiple CSV strings, they will be tried in turn.
+                
+                This argument only applies to models that utilize a UNet: SD1.5/2, SDXL, and Kolors
+                
+                See: https://huggingface.co/docs/diffusers/main/en/using-diffusers/freeu
+                
+                And: https://github.com/ChenyangSi/FreeU
+            """)
         )
     )
 

@@ -1,0 +1,3 @@
+include README.md
+recursive-include network_installer/resources *
+exclude network_installer/resources/*.py

@@ -1,3 +1,4 @@
+.. _Releases_Page: https://github.com/Teriks/dgenerate/releases
 .. _vermeer_canny_edged.png: https://raw.githubusercontent.com/Teriks/dgenerate/version_5.0.0/examples/media/vermeer_canny_edged.png
 .. _Phi-3_Mini_Abliterated_Q4_GGUF_by_failspy: https://huggingface.co/failspy/Phi-3-mini-128k-instruct-abliterated-v3-GGUF
 .. _Stable_Diffusion_Web_UI: https://github.com/AUTOMATIC1111/stable-diffusion-webui
@@ -2403,7 +2404,7 @@ Windows Install
 ===============
 
 You can install using the Windows installer provided with each release on the
-`Releases Page <https://github.com/Teriks/dgenerate/releases>`_, or you can manually
+`Releases Page <Releases_Page_>`_, or you can manually
 install with pipx, (or pip if you want) as described below.
 
 
@@ -2534,6 +2535,10 @@ Run ``dgenerate`` to generate images:
 
 Linux or WSL Install
 ====================
+
+You can install using the Linux installer provided with each release on the
+`Releases Page <Releases_Page_>`_, or you can manually
+install with pipx, (or pip if you want) as described below.
 
 First update your system and install build-essential
 
@@ -2818,6 +2823,10 @@ MacOS Install (Apple Silicon Only)
 ==================================
 
 MacOS on Apple Silicon (arm64) is experimentally supported.
+
+You can install using the MacOS installer provided with each release on the
+`Releases Page <Releases_Page_>`_, or you can manually
+install with pipx, (or pip if you want) as described below.
 
 Rendering can be performed in CPU only mode, and with hardware acceleration using ``--device mps`` (Metal Performance Shaders).
 

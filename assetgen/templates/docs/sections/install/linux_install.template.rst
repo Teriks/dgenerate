@@ -1,6 +1,10 @@
 Linux or WSL Install
 ====================
 
+You can install using the Linux installer provided with each release on the
+`Releases Page <https://github.com/Teriks/dgenerate/releases>`_, or you can manually
+install with pipx, (or pip if you want) as described below.
+
 First update your system and install build-essential
 
 .. code-block:: bash
