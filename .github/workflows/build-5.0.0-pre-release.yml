@@ -195,7 +195,7 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/version_5.0.0' && needs.build.result == 'success' && (github.event_name == 'workflow_dispatch' || github.event_name == 'schedule')
+    if: needs.build.result == 'success' && (github.event_name == 'workflow_dispatch' || github.event_name == 'schedule')
     
     steps:
     - name: Checkout code
