@@ -19,7 +19,9 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import tkinter as tk
+import tkinter.font as tkfont
 import dgenerate.console.themetext as _themetext
+import dgenerate.console.fonts as _fonts
 
 
 class ScrolledText(tk.Frame):
@@ -38,11 +40,14 @@ class ScrolledText(tk.Frame):
             **text_args
         )
 
-        kwargs.setdefault('font', ('Courier', 10))
+        # Use cross-platform font selection if no font is specified
+        if 'font' not in kwargs:
+            default_font_family, default_font_size = _fonts.get_default_monospace_font(10)
+            kwargs['font'] = (default_font_family, default_font_size)
 
         self.text.configure(
             font=kwargs['font'],
-            tabs=tk.font.Font(font=kwargs["font"]).measure(" " * 4),
+            tabs=tkfont.Font(font=kwargs["font"]).measure(" " * 4),
         )
 
         self.y_scrollbar = tk.Scrollbar(self, orient='vertical', command=self.text.yview)

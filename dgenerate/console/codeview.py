@@ -19,11 +19,13 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import tkinter as tk
+import tkinter.font as tkfont
 
 import tklinenums
 
 import dgenerate.console.resources as _resources
 import dgenerate.console.syntaxhighlighter as _syntaxhighlighter
+import dgenerate.console.fonts as _fonts
 import dgenerate.pygments
 import dgenerate.textprocessing
 
@@ -73,13 +75,16 @@ class DgenerateCodeView(tk.Frame):
         self._syntax_highlighter = _syntaxhighlighter.TkTextHighlighter(
             self.text, dgenerate.pygments.DgenerateLexer())
 
-        kwargs.setdefault('font', ('Courier', 10))
+        # Use cross-platform font selection if no font is specified
+        if 'font' not in kwargs:
+            default_font_family, default_font_size = _fonts.get_default_monospace_font(10)
+            kwargs['font'] = (default_font_family, default_font_size)
 
         self.text.configure(
             yscrollcommand=self._vertical_scroll,
             xscrollcommand=self._horizontal_scroll,
             font=kwargs['font'],
-            tabs=tk.font.Font(font=kwargs["font"]).measure(" " * 4),
+            tabs=tkfont.Font(font=kwargs["font"]).measure(" " * 4),
         )
 
         def key_release(event):
