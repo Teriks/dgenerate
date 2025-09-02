@@ -302,7 +302,9 @@ class BasePlatformHandler(ABC):
         """
         try:
             # Build the install command with uv pip targeting the virtual environment
-            cmd = [str(uv_exe), 'pip', 'install', '--python', str(self.get_venv_python()), '-e', source_dir]
+            # Use regular install (not editable) to avoid dependency on source directory
+            # uv will automatically copy the source to site-packages during installation
+            cmd = [str(uv_exe), 'pip', 'install', '--python', str(self.get_venv_python()), source_dir]
 
             # Add extras if specified
             if selected_extras:
