@@ -36,6 +36,7 @@ import dgenerate.console.argumentselect as _argumentselect
 import dgenerate.console.directiveselect as _directiveselect
 import dgenerate.console.filedialog as _filedialog
 import dgenerate.console.finddialog as _finddialog
+import dgenerate.console.fonts as _fonts
 import dgenerate.console.functionselect as _functionselect
 import dgenerate.console.imageprocessorselect as _imageprocessorselect
 import dgenerate.console.imageseedselect as _imageseedselect
@@ -64,6 +65,9 @@ class DgenerateConsole(tk.Tk):
 
     def __init__(self):
         super().__init__()
+
+        # Set up proper font defaults to prevent bitmap font fallbacks
+        _fonts.set_tkinter_font_defaults()
 
         self.title('Dgenerate Console')
 
