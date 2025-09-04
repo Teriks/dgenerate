@@ -76,7 +76,7 @@ jobs:
             platform: windows
             artifact_name: dgenerate-installer-win.exe
             exe_extension: .exe
-          - os: ubuntu-latest
+          - os: ubuntu-22.04
             platform: linux
             artifact_name: dgenerate-installer-linux
             exe_extension: ""

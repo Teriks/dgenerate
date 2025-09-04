@@ -2,10 +2,10 @@
 Platform-specific handlers for the dgenerate installer.
 """
 
-from .base_uv_installer import BasePlatformHandler
-from .linux_uv_installer import LinuxPlatformHandler
-from .macos_uv_installer import MacOSPlatformHandler
-from .windows_uv_installer import WindowsPlatformHandler
+from .base_uv_handler import BasePlatformHandler
+from .linux_uv_handler import LinuxPlatformHandler
+from .macos_uv_handler import MacOSPlatformHandler
+from .windows_uv_handler import WindowsPlatformHandler
 
 __all__ = [
     'BasePlatformHandler',

@@ -41,7 +41,7 @@ try:
 except ImportError:
     wintypes = None
 
-from .base_uv_installer import BasePlatformHandler
+from .base_uv_handler import BasePlatformHandler
 
 
 class WindowsPlatformHandler(BasePlatformHandler):

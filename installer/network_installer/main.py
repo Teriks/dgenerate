@@ -26,6 +26,7 @@ Main entry point for the dgenerate network installer.
 """
 
 import argparse
+import platform
 import sys
 import tempfile
 import traceback
@@ -67,7 +68,11 @@ def run_silent_install(version=None, branch=None, extras=None):
 
         # Import non-GUI components
         from network_installer.github_client import GitHubClient
+        
+        # Use UV installer for all platforms with enhanced Linux font support
+        print("Using UV installer with enhanced Linux font support")
         from network_installer.uv_installer import UvInstaller
+        installer_class = UvInstaller
 
         # Create temporary directory for source
         temp_dir = tempfile.mkdtemp(prefix="dgenerate_install_")
@@ -98,7 +103,7 @@ def run_silent_install(version=None, branch=None, extras=None):
         print(f"Source downloaded to: {source_dir}")
 
         # Create installer
-        installer = UvInstaller(log_callback=print, source_dir=source_dir)
+        installer = installer_class(log_callback=print, source_dir=source_dir)
 
         # Check for existing installation
         existing_install = installer.detect_existing_installation()
@@ -132,12 +137,14 @@ def run_silent_uninstall():
         print("dgenerate Network Installer - Silent Uninstall")
         print("=" * 50)
 
-        # Import non-GUI components
+        # Use UV installer for all platforms
+        print("Using UV uninstaller")
         from network_installer.uv_installer import UvInstaller
+        installer_class = UvInstaller
 
         # Create temporary installer to access uninstall functionality
         with tempfile.TemporaryDirectory() as temp_dir:
-            installer = UvInstaller(log_callback=print, source_dir=temp_dir)
+            installer = installer_class(log_callback=print, source_dir=temp_dir)
 
             # Check for existing installation
             existing_install = installer.detect_existing_installation()

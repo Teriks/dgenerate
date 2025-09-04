@@ -38,7 +38,7 @@ from importlib.resources import files
 from network_installer.github_client import GitHubClient
 from network_installer.platform_detection import get_platform_info, detect_gpu, get_torch_index_url
 from network_installer.setup_analyzer import SetupAnalyzer
-from network_installer.uv_installer import UvInstaller
+
 from tkinter import ttk, filedialog
 from typing import List, Optional, Tuple
 
@@ -47,6 +47,13 @@ class DGenerateInstallerGUI:
     """
     Main GUI application for the dgenerate network installer.
     """
+
+    def _create_installer(self, log_callback=None, source_dir=None):
+        """
+        Create the UV installer for all platforms with enhanced Linux font support.
+        """
+        from network_installer.uv_installer import UvInstaller
+        return UvInstaller(log_callback=log_callback, source_dir=source_dir)
 
     def __init__(self):
         """
@@ -863,7 +870,7 @@ class DGenerateInstallerGUI:
                 self._update_install_status("Installing...")
 
                 # Create installer with logging callback
-                installer = UvInstaller(log_callback=self._log, source_dir=self.source_dir)
+                installer = self._create_installer(log_callback=self._log, source_dir=self.source_dir)
 
                 # Load setup.py early to get torch version and python requirements
                 self._log("Analyzing dgenerate setup...")
@@ -1413,7 +1420,7 @@ class DGenerateInstallerGUI:
             # Create a temporary installer to check for existing installations
             # Use a dummy source dir since we're just checking for existing installations
             with tempfile.TemporaryDirectory() as temp_dir:
-                temp_installer = UvInstaller(log_callback=lambda msg: None, source_dir=temp_dir)
+                temp_installer = self._create_installer(log_callback=lambda msg: None, source_dir=temp_dir)
                 existing_install = temp_installer.detect_existing_installation()
 
                 if existing_install['exists']:
@@ -1442,7 +1449,7 @@ class DGenerateInstallerGUI:
             # Create a temporary installer to check for existing installations
             # Use a dummy source dir since we're just checking for existing installations
             with tempfile.TemporaryDirectory() as temp_dir:
-                temp_installer = UvInstaller(log_callback=lambda msg: None, source_dir=temp_dir)
+                temp_installer = self._create_installer(log_callback=lambda msg: None, source_dir=temp_dir)
                 existing_install = temp_installer.detect_existing_installation()
 
                 if existing_install['exists']:
@@ -1464,7 +1471,7 @@ class DGenerateInstallerGUI:
                 # Create a temporary installer to check for existing installations
                 # Use a dummy source dir since we're just checking for existing installations
                 with tempfile.TemporaryDirectory() as temp_dir:
-                    temp_installer = UvInstaller(log_callback=lambda msg: None, source_dir=temp_dir)
+                    temp_installer = self._create_installer(log_callback=lambda msg: None, source_dir=temp_dir)
                     existing_install = temp_installer.detect_existing_installation()
 
                     if existing_install['exists']:
@@ -1501,7 +1508,7 @@ class DGenerateInstallerGUI:
 
                 # Create a temporary installer to handle uninstallation
                 with tempfile.TemporaryDirectory() as temp_dir:
-                    temp_installer = UvInstaller(log_callback=self._log, source_dir=temp_dir)
+                    temp_installer = self._create_installer(log_callback=self._log, source_dir=temp_dir)
 
                     # Perform uninstallation with progress updates
                     self._log("Removing dgenerate components...")

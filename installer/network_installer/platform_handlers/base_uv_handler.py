@@ -365,7 +365,21 @@ class BasePlatformHandler(ABC):
             if self.system == 'windows':
                 site_packages = self.venv_dir / "Lib" / "site-packages"
             else:
-                site_packages = self.venv_dir / "lib" / f"python{sys.version_info.major}.{sys.version_info.minor}" / "site-packages"
+                # Dynamically detect the Python version in the venv instead of using installer's version
+                lib_dir = self.venv_dir / "lib"
+                if lib_dir.exists():
+                    # Find python* directories (e.g., python3.13, python3.12, etc.)
+                    python_dirs = list(lib_dir.glob('python*'))
+                    if python_dirs:
+                        # Use the first (and usually only) python directory found
+                        python_dir = python_dirs[0]
+                        site_packages = python_dir / "site-packages"
+                    else:
+                        # Fallback to sys.version_info if no python dirs found
+                        site_packages = lib_dir / f"python{sys.version_info.major}.{sys.version_info.minor}" / "site-packages"
+                else:
+                    # Fallback if lib directory doesn't exist
+                    site_packages = self.venv_dir / "lib" / f"python{sys.version_info.major}.{sys.version_info.minor}" / "site-packages"
 
             if not site_packages.exists():
                 self.log_callback(f"Warning: site-packages directory not found at {site_packages}")

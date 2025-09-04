@@ -34,7 +34,7 @@ import tempfile
 from pathlib import Path
 from typing import Optional
 
-from .base_uv_installer import BasePlatformHandler
+from .base_uv_handler import BasePlatformHandler
 
 
 class MacOSPlatformHandler(BasePlatformHandler):
