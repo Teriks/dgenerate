@@ -25,11 +25,10 @@ Linux-specific platform handler for the dgenerate installer.
 
 import inspect
 import os
-import subprocess
 import shutil
+import subprocess
 import tkinter as tk
 from pathlib import Path
-from typing import Optional, List, Tuple
 
 from .base_uv_handler import BasePlatformHandler
 
@@ -39,7 +38,7 @@ class LinuxPlatformHandler(BasePlatformHandler):
     Linux-specific implementation of platform operations.
     """
 
-    def _detect_package_manager(self) -> Tuple[str, str]:
+    def _detect_package_manager(self) -> tuple[str, str]:
         """
         Detect the package manager and return install command template.
         
@@ -56,17 +55,17 @@ class LinuxPlatformHandler(BasePlatformHandler):
             ('emerge', 'sudo emerge {packages}', ['emerge']),
             ('pkg', 'sudo pkg install {packages}', ['pkg']),
         ]
-        
+
         for pm_name, cmd_template, executables in package_managers:
             for executable in executables:
                 try:
-                    result = subprocess.run(['which', executable], 
-                                          capture_output=True, text=True, timeout=5)
+                    result = subprocess.run(['which', executable],
+                                            capture_output=True, text=True, timeout=5)
                     if result.returncode == 0:
                         return (pm_name, cmd_template)
                 except (subprocess.TimeoutExpired, FileNotFoundError):
                     continue
-        
+
         return ('unknown', 'sudo <package-manager> install tcl tk')
 
     def _get_tcl_tk_packages_for_distro(self, package_manager: str) -> str:
@@ -78,15 +77,15 @@ class LinuxPlatformHandler(BasePlatformHandler):
         """
         package_map = {
             'apt': 'libtcl8.6 libtk8.6',  # Debian/Ubuntu
-            'dnf': 'tcl tk',               # Fedora/RHEL/CentOS/Rocky/Alma
-            'yum': 'tcl tk',               # Older RHEL/CentOS
-            'zypper': 'tcl tk',            # openSUSE/SLES
-            'pacman': 'tcl tk',            # Arch/Manjaro
-            'apk': 'tcl tk',               # Alpine Linux
+            'dnf': 'tcl tk',  # Fedora/RHEL/CentOS/Rocky/Alma
+            'yum': 'tcl tk',  # Older RHEL/CentOS
+            'zypper': 'tcl tk',  # openSUSE/SLES
+            'pacman': 'tcl tk',  # Arch/Manjaro
+            'apk': 'tcl tk',  # Alpine Linux
             'emerge': 'dev-lang/tcl dev-lang/tk',  # Gentoo
-            'pkg': 'tcl86 tk86',           # FreeBSD/OpenBSD/NetBSD
+            'pkg': 'tcl86 tk86',  # FreeBSD/OpenBSD/NetBSD
         }
-        
+
         return package_map.get(package_manager, 'tcl tk')
 
     def _check_tcl_tk_installed(self) -> bool:
@@ -98,22 +97,22 @@ class LinuxPlatformHandler(BasePlatformHandler):
         system_lib_paths = [
             Path('/usr/lib/x86_64-linux-gnu'),  # Debian/Ubuntu x86_64
             Path('/usr/lib/aarch64-linux-gnu'),  # Debian/Ubuntu ARM64
-            Path('/usr/lib64'),                  # RedHat/CentOS/Fedora
-            Path('/usr/lib'),                    # Generic fallback
+            Path('/usr/lib64'),  # RedHat/CentOS/Fedora
+            Path('/usr/lib'),  # Generic fallback
         ]
-        
+
         # Look for any Tcl/Tk libraries
         for system_lib_path in system_lib_paths:
             if not system_lib_path.exists():
                 continue
-                
+
             tcl_libs = list(system_lib_path.rglob('libtcl*.so*'))
             tk_libs = list(system_lib_path.rglob('libtk*.so*'))
-            
+
             if tcl_libs and tk_libs:
                 self.log_callback(f"Found Tcl/Tk libraries in {system_lib_path}")
                 return True
-        
+
         return False
 
     def _prompt_for_tcl_tk_installation(self, is_gui: bool = False) -> bool:
@@ -127,7 +126,7 @@ class LinuxPlatformHandler(BasePlatformHandler):
             package_manager, cmd_template = self._detect_package_manager()
             packages = self._get_tcl_tk_packages_for_distro(package_manager)
             install_cmd = cmd_template.format(packages=packages)
-            
+
             if package_manager == 'unknown':
                 message = inspect.cleandoc(f"""
                     Tcl/Tk Runtime Libraries Not Found
@@ -178,10 +177,10 @@ class LinuxPlatformHandler(BasePlatformHandler):
                 return self._show_tcl_tk_dialog(message)
             else:
                 # Show CLI prompt
-                print("\n" + "="*60)
+                print("\n" + "=" * 60)
                 print(message)
-                print("="*60)
-                
+                print("=" * 60)
+
                 while True:
                     response = input("\nContinue installation anyway? (y/N): ").strip().lower()
                     if response in ['y', 'yes']:
@@ -190,7 +189,7 @@ class LinuxPlatformHandler(BasePlatformHandler):
                         return False
                     else:
                         print("Please enter 'y' for yes or 'n' for no.")
-                        
+
         except Exception as e:
             self.log_callback(f"Error prompting for Tcl/Tk installation: {e}")
             return True  # Continue on error
@@ -208,44 +207,44 @@ class LinuxPlatformHandler(BasePlatformHandler):
             dialog.title("Tcl/Tk Runtime Libraries Required")
             dialog.resizable(False, False)
             dialog.grab_set()  # Make it modal
-            
+
             # Center the dialog
             dialog.geometry("600x500")
-            
+
             # Add the message
-            text_widget = tk.Text(dialog, wrap=tk.WORD, padx=10, pady=10, 
-                                 height=25, width=70, state=tk.DISABLED)
+            text_widget = tk.Text(dialog, wrap=tk.WORD, padx=10, pady=10,
+                                  height=25, width=70, state=tk.DISABLED)
             text_widget.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-            
+
             # Enable text widget to insert content
             text_widget.config(state=tk.NORMAL)
             text_widget.insert(tk.END, message)
             text_widget.config(state=tk.DISABLED)
-            
+
             # Add buttons
             button_frame = tk.Frame(dialog)
             button_frame.pack(pady=10)
-            
+
             result = {'continue': False}
-            
+
             def on_continue():
                 result['continue'] = True
                 dialog.destroy()
-                
+
             def on_cancel():
                 result['continue'] = False
                 dialog.destroy()
-            
-            tk.Button(button_frame, text="Continue Anyway", 
-                     command=on_continue, width=15).pack(side=tk.LEFT, padx=5)
-            tk.Button(button_frame, text="Cancel Installation", 
-                     command=on_cancel, width=15).pack(side=tk.LEFT, padx=5)
-            
+
+            tk.Button(button_frame, text="Continue Anyway",
+                      command=on_continue, width=15).pack(side=tk.LEFT, padx=5)
+            tk.Button(button_frame, text="Cancel Installation",
+                      command=on_cancel, width=15).pack(side=tk.LEFT, padx=5)
+
             # Wait for user response
             dialog.wait_window()
-            
+
             return result['continue']
-            
+
         except Exception as e:
             self.log_callback(f"Error showing Tcl/Tk dialog: {e}")
             return True  # Continue on error
@@ -261,22 +260,22 @@ class LinuxPlatformHandler(BasePlatformHandler):
             # UV installs Python in ~/.local/share/uv/python/cpython-VERSION-linux-ARCH-gnu/lib/
             # We need to find the actual UV Python installation directory
             uv_python_base = Path.home() / '.local' / 'share' / 'uv' / 'python'
-            
+
             if not uv_python_base.exists():
                 self.log_callback("UV Python base directory not found, skipping Tcl/Tk symlinking")
                 return True
-            
+
             # Find the cpython directory (e.g., cpython-3.13.7-linux-x86_64-gnu)
             cpython_dirs = list(uv_python_base.rglob('cpython-*-linux-*-gnu'))
-            
+
             if not cpython_dirs:
                 self.log_callback("No UV Python installations found, skipping Tcl/Tk symlinking")
                 return True
-            
+
             # Use the most recent cpython installation
             cpython_dir = max(cpython_dirs, key=lambda p: p.stat().st_mtime)
             uv_lib_dir = cpython_dir / 'lib'
-            
+
             self.log_callback(f"Found UV Python installation: {cpython_dir}")
             self.log_callback(f"UV library directory: {uv_lib_dir}")
 
@@ -287,48 +286,48 @@ class LinuxPlatformHandler(BasePlatformHandler):
             # Common system library locations to check
             system_lib_paths = [
                 Path('/usr/lib/x86_64-linux-gnu'),  # Debian/Ubuntu x86_64
-                Path('/usr/lib/aarch64-linux-gnu'), # Debian/Ubuntu ARM64
-                Path('/usr/lib64'),                 # RedHat/CentOS/Fedora
-                Path('/usr/lib'),                   # Generic fallback
+                Path('/usr/lib/aarch64-linux-gnu'),  # Debian/Ubuntu ARM64
+                Path('/usr/lib64'),  # RedHat/CentOS/Fedora
+                Path('/usr/lib'),  # Generic fallback
             ]
 
             symlinks_created = False
 
             # Find all Tcl/Tk libraries using pattern matching
             self.log_callback("Searching for Tcl/Tk libraries to symlink...")
-            
+
             # Find all UV Tcl/Tk libraries using recursive glob patterns
             uv_tcl_libs = list(uv_lib_dir.rglob('libtcl*.so*'))
             uv_tk_libs = list(uv_lib_dir.rglob('libtk*.so*'))
             uv_libs = uv_tcl_libs + uv_tk_libs
-            
+
             if not uv_libs:
                 self.log_callback("No Tcl/Tk libraries found in UV Python installation")
                 return True
-                
+
             self.log_callback(f"Found {len(uv_libs)} UV Tcl/Tk libraries to potentially replace")
-            
+
             for uv_lib_file in uv_libs:
                 lib_name = uv_lib_file.name
-                
+
                 # Skip backup files from previous runs
                 if '.uv_backup' in lib_name:
                     continue
-                    
+
                 self.log_callback(f"Processing UV library: {lib_name}")
-                
+
                 # Find corresponding system library
                 system_lib_found = None
                 for system_lib_path in system_lib_paths:
                     if not system_lib_path.exists():
                         continue
-                        
+
                     # Try exact name match first
                     system_lib_file = system_lib_path / lib_name
                     if system_lib_file.exists():
                         system_lib_found = system_lib_file
                         break
-                    
+
                     # Try pattern matching for different versions
                     # Extract base name (e.g., libtcl8.6.so -> libtcl, libtk8.7.so.1 -> libtk)
                     if lib_name.startswith('libtcl'):
@@ -337,7 +336,7 @@ class LinuxPlatformHandler(BasePlatformHandler):
                         pattern = 'libtk*.so*'
                     else:
                         continue
-                        
+
                     # Find any matching system library recursively
                     matching_system_libs = list(system_lib_path.rglob(pattern))
                     if matching_system_libs:
@@ -345,7 +344,7 @@ class LinuxPlatformHandler(BasePlatformHandler):
                         system_lib_found = matching_system_libs[0]
                         self.log_callback(f"  Found compatible system library: {system_lib_found}")
                         break
-                
+
                 if system_lib_found:
                     try:
                         # Backup the original UV library
@@ -358,11 +357,11 @@ class LinuxPlatformHandler(BasePlatformHandler):
                         if uv_lib_file.exists() or uv_lib_file.is_symlink():
                             # Remove existing file/symlink first
                             uv_lib_file.unlink()
-                        
+
                         uv_lib_file.symlink_to(system_lib_found)
                         self.log_callback(f"✓ Symlinked {lib_name} -> {system_lib_found}")
                         symlinks_created = True
-                        
+
                     except OSError as e:
                         self.log_callback(f"Warning: Could not symlink {lib_name}: {e}")
                 else:
@@ -379,7 +378,7 @@ class LinuxPlatformHandler(BasePlatformHandler):
             self.log_callback(f"Error symlinking Tcl/Tk libraries: {e}")
             return False
 
-    def _find_system_tcl_tk_libraries(self) -> List[tuple[Path, Path]]:
+    def _find_system_tcl_tk_libraries(self) -> list[tuple[Path, Path]]:
         """
         Find system Tcl/Tk libraries that can be symlinked.
         
@@ -388,8 +387,8 @@ class LinuxPlatformHandler(BasePlatformHandler):
         system_lib_paths = [
             Path('/usr/lib/x86_64-linux-gnu'),  # Debian/Ubuntu x86_64
             Path('/usr/lib/aarch64-linux-gnu'),  # Debian/Ubuntu ARM64  
-            Path('/usr/lib64'),                  # RedHat/CentOS/Fedora
-            Path('/usr/lib'),                    # Generic fallback
+            Path('/usr/lib64'),  # RedHat/CentOS/Fedora
+            Path('/usr/lib'),  # Generic fallback
         ]
 
         library_pairs = []
@@ -402,7 +401,7 @@ class LinuxPlatformHandler(BasePlatformHandler):
             # Check for Tcl/Tk libraries
             tcl_tk_files = [
                 'libtcl8.6.so', 'libtk8.6.so',
-                'libtcl8.7.so', 'libtk8.7.so', 
+                'libtcl8.7.so', 'libtk8.7.so',
                 'libtcl8.8.so', 'libtk8.8.so',
             ]
 
@@ -427,30 +426,30 @@ class LinuxPlatformHandler(BasePlatformHandler):
             self.log_callback("Checking for system Tcl/Tk runtime libraries...")
             if not self._check_tcl_tk_installed():
                 self.log_callback("Tcl/Tk runtime libraries not found on system")
-                
+
                 # Determine if this is a GUI installation by checking if we have a tkinter root
                 is_gui = False
                 try:
                     is_gui = tk._default_root is not None
                 except:
                     pass
-                
+
                 # Prompt user to install Tcl/Tk libraries
                 if not self._prompt_for_tcl_tk_installation(is_gui=is_gui):
                     self.log_callback("User cancelled installation due to missing Tcl/Tk libraries")
                     return False
-                    
+
                 self.log_callback("Continuing installation without Tcl/Tk symlinking...")
                 return True
-            
+
             # Apply Tcl/Tk library symlinking for better font support
             self.log_callback("Setting up system Tcl/Tk integration for better font support...")
             if not self._symlink_system_tcl_tk_libraries():
                 self.log_callback("Warning: Failed to symlink system Tcl/Tk libraries")
                 # Don't fail the installation for this - it's an enhancement
-            
+
             return True
-            
+
         except Exception as e:
             self.log_callback(f"Error applying Linux patches: {e}")
             return False
@@ -526,7 +525,7 @@ class LinuxPlatformHandler(BasePlatformHandler):
         try:
             # Get desktop path
             desktop = Path.home() / 'Desktop'
-            
+
             # Check if Desktop directory exists (may not exist in Docker containers)
             if not desktop.exists():
                 self.log_callback("Desktop directory not found, skipping desktop shortcut creation")
@@ -780,7 +779,7 @@ class LinuxPlatformHandler(BasePlatformHandler):
         except Exception as e:
             self.log_callback(f"Error removing Linux file associations: {e}")
 
-    def _get_shell_profile(self) -> Optional[Path]:
+    def _get_shell_profile(self) -> Path | None:
         """Get the appropriate shell profile file for Linux."""
         home = Path.home()
 

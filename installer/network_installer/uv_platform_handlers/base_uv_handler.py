@@ -24,7 +24,6 @@ Base platform handler for the dgenerate installer.
 Contains common functionality shared across all platforms.
 """
 
-import certifi
 import importlib.resources as resources
 import inspect
 import os
@@ -40,9 +39,10 @@ import time
 import urllib.request
 import zipfile
 from abc import ABC, abstractmethod
-from network_installer.subprocess_utils import run_silent, popen_silent
 from pathlib import Path
-from typing import Optional, List
+
+import certifi
+from network_installer.subprocess_utils import run_silent, popen_silent
 
 
 class BasePlatformHandler(ABC):
@@ -119,7 +119,7 @@ class BasePlatformHandler(ABC):
         else:
             raise ValueError(f"Unsupported platform: {self.system}")
 
-    def find_or_install_uv(self) -> Optional[Path]:
+    def find_or_install_uv(self) -> Path | None:
         """
         Download and install uv for the current platform.
         Always downloads a fresh uv, never reuses existing installations.
@@ -130,7 +130,7 @@ class BasePlatformHandler(ABC):
         self.log_callback("Downloading fresh uv installation...")
         return self.download_and_extract_uv()
 
-    def download_and_extract_uv(self) -> Optional[Path]:
+    def download_and_extract_uv(self) -> Path | None:
         """
         Download and extract uv for the current platform.
         
@@ -289,8 +289,8 @@ class BasePlatformHandler(ABC):
             self.log_callback(f"Error clearing Python installations: {e}")
             return False
 
-    def install_dgenerate(self, uv_exe: Path, source_dir: str, selected_extras: List[str],
-                          torch_index_url: Optional[str] = None) -> bool:
+    def install_dgenerate(self, uv_exe: Path, source_dir: str, selected_extras: list[str],
+                          torch_index_url: str | None = None) -> bool:
         """
         Install dgenerate using uv pip (fast Rust-based pip implementation).
         
@@ -827,62 +827,67 @@ class BasePlatformHandler(ABC):
         """
         pass
 
-    def detect_existing_installation(self) -> dict:
+    def detect_existing_installation(self) -> 'ExistingInstallation':
         """
         Detect if dgenerate is already installed.
         
-        :return: Dictionary with detection results
+        :return: ExistingInstallation object with detection results
         """
+        from network_installer.common_types import ExistingInstallation, InstallationInfo
+        
         try:
             # Check if our installation directory exists
             if not self.install_base.exists():
-                return {'exists': False, 'reason': 'Installation directory not found'}
-
-            # If installation directory exists, consider it an existing installation
-            # even if it's incomplete/broken - user should have option to uninstall/overwrite
-            installation_status = {
-                'exists': True,
-                'install_dir': str(self.install_base)
-            }
+                return ExistingInstallation(exists=False, installer_type='uv')
 
             # Check if virtual environment exists
             if not self.venv_dir.exists():
-                installation_status.update({
-                    'version': 'Incomplete (no virtual environment)',
-                    'status': 'broken',
-                    'reason': 'Virtual environment not found'
-                })
-                return installation_status
+                return ExistingInstallation(
+                    exists=True,
+                    installer_type='uv',
+                    path=str(self.install_base),
+                    version='Incomplete (no virtual environment)'
+                )
 
             # Check if dgenerate executable exists
             dgenerate_exe = self.scripts_dir / ('dgenerate.exe' if self.system == 'windows' else 'dgenerate')
             if not dgenerate_exe.exists():
-                installation_status.update({
-                    'version': 'Incomplete (no dgenerate executable)',
-                    'status': 'broken',
-                    'reason': 'dgenerate executable not found'
-                })
-                return installation_status
+                return ExistingInstallation(
+                    exists=True,
+                    installer_type='uv',
+                    path=str(self.install_base),
+                    version='Incomplete (no dgenerate executable)'
+                )
 
             # Fast check - just verify the executable exists and is executable
             if not dgenerate_exe.is_file():
-                installation_status.update({
-                    'version': 'Broken (invalid executable)',
-                    'status': 'broken',
-                    'reason': 'dgenerate executable not a file'
-                })
-                return installation_status
+                return ExistingInstallation(
+                    exists=True,
+                    installer_type='uv',
+                    path=str(self.install_base),
+                    version='Broken (invalid executable)'
+                )
 
-            # Complete installation found
-            installation_status.update({
-                'version': 'Unknown (fast check)',
-                'status': 'complete',
-                'executable': str(dgenerate_exe)
-            })
-            return installation_status
+            # Complete installation found - create installation info
+            installation_info = InstallationInfo(
+                install_base=str(self.install_base),
+                venv_dir=str(self.venv_dir),
+                scripts_dir=str(self.scripts_dir),
+                dgenerate_exe=str(dgenerate_exe),
+                installer_type='uv'
+            )
+
+            return ExistingInstallation(
+                exists=True,
+                installer_type='uv',
+                path=str(self.install_base),
+                version='Unknown (fast check)',
+                installation_info=installation_info
+            )
 
         except Exception as e:
-            return {'exists': False, 'reason': f'Error during detection: {e}'}
+            self.log_callback(f"Error detecting existing installation: {e}")
+            return ExistingInstallation(exists=False, installer_type='uv')
 
     def cleanup_existing_installations(self) -> bool:
         """
@@ -922,7 +927,7 @@ class BasePlatformHandler(ABC):
         except Exception:
             return False
 
-    def uninstall_completely(self) -> bool:
+    def uninstall(self) -> bool:
         """
         Completely uninstall dgenerate.
         
@@ -1087,18 +1092,21 @@ class BasePlatformHandler(ABC):
             self.log_callback(f"Error cleaning up environment: {e}")
             return False
 
-    def get_installation_info(self) -> dict:
+    def get_installation_info(self) -> 'InstallationInfo':
         """
         Get information about the current installation.
         
-        :return: Dictionary containing installation information
+        :return: InstallationInfo object containing installation information
         """
-        return {
-            'install_base': str(self.install_base),
-            'venv_dir': str(self.venv_dir),
-            'scripts_dir': str(self.scripts_dir),
-            'dgenerate_exe': str(self.scripts_dir / ('dgenerate.exe' if self.system == 'windows' else 'dgenerate'))
-        }
+        from network_installer.common_types import InstallationInfo
+        
+        return InstallationInfo(
+            install_base=str(self.install_base),
+            venv_dir=str(self.venv_dir),
+            scripts_dir=str(self.scripts_dir),
+            dgenerate_exe=str(self.scripts_dir / ('dgenerate.exe' if self.system == 'windows' else 'dgenerate')),
+            installer_type='uv'
+        )
 
     # Abstract methods that must be implemented by platform-specific handlers
     @abstractmethod

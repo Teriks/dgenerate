@@ -28,9 +28,9 @@ import re
 import subprocess
 import sys
 from dataclasses import dataclass
+
 from network_installer.subprocess_utils import run_silent
 from packaging import version as pkg_version
-from typing import Optional
 
 
 def _get_system_python_version() -> str:
@@ -71,11 +71,11 @@ class GPUInfo:
     has_nvidia: bool = False
     has_amd: bool = False
     has_intel: bool = False
-    gpu_name: Optional[str] = None
-    cuda_version: Optional[str] = None
-    rocm_version: Optional[str] = None
-    xpu_version: Optional[str] = None
-    nvidia_compute_cap: Optional[float] = None
+    gpu_name: str | None = None
+    cuda_version: str | None = None
+    rocm_version: str | None = None
+    xpu_version: str | None = None
+    nvidia_compute_cap: float | None = None
     nvidia_is_mpv_legacy: bool = False
 
 
@@ -291,7 +291,7 @@ def detect_opengl_support() -> bool:
     return False
 
 
-def get_torch_index_url(torch_version: Optional[str] = None) -> Optional[str]:
+def get_torch_index_url(torch_version: str | None = None) -> str | None:
     """
     Get the appropriate PyTorch index URL based on platform and GPU detection.
     For dgenerate 5.0.0+, torch_version is clean (e.g., "2.7.1") without CUDA prefixes.
@@ -370,7 +370,7 @@ def get_torch_index_url(torch_version: Optional[str] = None) -> Optional[str]:
     return None
 
 
-def _get_torch_cuda_url(torch_major: Optional[int], torch_minor: Optional[int], torch_patch: Optional[int],
+def _get_torch_cuda_url(torch_major: int | None, torch_minor: int | None, torch_patch: int | None,
                         cuda_major: int, cuda_minor: int, nvidia_is_mpv_legacy: bool = False) -> str:
     """
     Get the appropriate PyTorch CUDA URL based on torch and CUDA versions.
@@ -524,7 +524,7 @@ def _get_torch_cuda_url(torch_major: Optional[int], torch_minor: Optional[int], 
             return "https://download.pytorch.org/whl/cu118"
 
 
-def _get_torch_rocm_url(torch_major: Optional[int], torch_minor: Optional[int], torch_patch: Optional[int],
+def _get_torch_rocm_url(torch_major: int | None, torch_minor: int | None, torch_patch: int | None,
                         rocm_version: str) -> str:
     """
     Get the appropriate PyTorch ROCm URL based on torch and ROCm versions.
@@ -653,8 +653,7 @@ def _get_torch_rocm_url(torch_major: Optional[int], torch_minor: Optional[int], 
             return "https://download.pytorch.org/whl/rocm5.7"
 
 
-def _get_torch_xpu_url(torch_major: Optional[int], torch_minor: Optional[int], torch_patch: Optional[int]) -> Optional[
-    str]:
+def _get_torch_xpu_url(torch_major: int | None, torch_minor: int | None, torch_patch: int | None) -> str | None:
     """
     Get the appropriate PyTorch XPU URL based on torch version.
 

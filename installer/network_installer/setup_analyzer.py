@@ -28,20 +28,19 @@ dependency information, version requirements, and extras from pyproject.toml.
 
 import os
 import sys
-import sys
 import tomllib
 import traceback
 import warnings
+from collections.abc import Callable
 from importlib.machinery import SourceFileLoader
+
 from packaging import specifiers
 from packaging import version as pkg_version
-from pathlib import Path
-from typing import Optional, Callable
 
 
 class SetupAnalyzer:
 
-    def __init__(self, setup_py_path: str, log_callback: Optional[Callable[[str], None]] = None):
+    def __init__(self, setup_py_path: str, log_callback: Callable[[str], None] | None = None):
         self.setup_py_path = setup_py_path
         self.source_dir = os.path.dirname(setup_py_path)
         self.log_callback = log_callback or print
@@ -190,7 +189,7 @@ class SetupAnalyzer:
             self._log(f"Error parsing pyproject.toml: {e}")
             self._log(f"Traceback: {traceback.format_exc()}")
 
-    def _get_hardcoded_python_requirement(self, pyproject_python_req: Optional[str] = None) -> Optional[str]:
+    def _get_hardcoded_python_requirement(self, pyproject_python_req: str | None = None) -> str | None:
         """Get hardcoded Python requirement for specific version ranges"""
         if not self.version:
             return None

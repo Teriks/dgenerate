@@ -28,30 +28,15 @@ import json
 import os
 import platform
 import re
-from network_installer.platform_handlers import (
+from pathlib import Path
+
+from network_installer.uv_platform_handlers import (
     WindowsPlatformHandler,
     MacOSPlatformHandler,
     LinuxPlatformHandler
 )
 from network_installer.setup_analyzer import SetupAnalyzer
-from pathlib import Path
-from typing import Optional, List, Dict
-
-
-class InstallationResult:
-    """Result object for installation operations."""
-
-    def __init__(
-            self,
-            success: bool,
-            desktop_shortcut_created: bool = False,
-            installation_info: Optional[Dict] = None,
-            error: Optional[str] = None
-    ):
-        self.success = success
-        self.desktop_shortcut_created = desktop_shortcut_created
-        self.installation_info = installation_info or {}
-        self.error = error
+from network_installer.common_types import InstallationResult, InstallationInfo, ExistingInstallation
 
 
 class UvInstaller:
@@ -117,8 +102,8 @@ class UvInstaller:
 
     def install(
             self,
-            selected_extras: List[str],
-            torch_index_url: Optional[str] = None,
+            selected_extras: list[str],
+            torch_index_url: str | None = None,
             commit_hash: str = None,
             branch: str = None,
             is_pre_release: bool = False,
@@ -140,13 +125,13 @@ class UvInstaller:
                 self.log_callback("Checking for existing dgenerate installations...")
                 existing_install = self.detect_existing_installation()
 
-                if existing_install['exists']:
+                if existing_install.exists:
                     # Clean up existing installation
                     self.log_callback("Cleaning up existing installation...")
                     if not self.cleanup_existing_installations():
                         self.log_callback(
                             "Failed to clean up existing installation. Please close any running dgenerate processes and try again.")
-                        return InstallationResult(success=False, error="Failed to clean up existing installation")
+                        return InstallationResult.failure_result("Failed to clean up existing installation")
                 else:
                     self.log_callback("No existing dgenerate network installation found")
             else:
@@ -157,7 +142,7 @@ class UvInstaller:
                 self.log_callback("Analyzing dgenerate setup...")
                 if not self.setup_analyzer.load_setup_as_library():
                     self.log_callback("Failed to load setup.py")
-                    return InstallationResult(success=False, error="Failed to load setup.py")
+                    return InstallationResult.failure_result("Failed to load setup.py")
                 self._setup_analyzed = True
 
             # Step 3: Skip Python version compatibility check since uv will handle Python installation
@@ -169,7 +154,7 @@ class UvInstaller:
             uv_exe = self.find_or_install_uv()
             if not uv_exe:
                 self.log_callback("Failed to set up uv")
-                return InstallationResult(success=False, error="Failed to set up uv")
+                return InstallationResult.failure_result("Failed to set up uv")
 
             # Step 5: Create virtual environment
             if self.setup_analyzer:
@@ -188,7 +173,7 @@ class UvInstaller:
             # Try to create venv with recommended version first, then fallbacks if needed
             if not self._create_venv_with_fallbacks(uv_exe, recommended_python):
                 self.log_callback("Failed to create virtual environment with any available Python version")
-                return InstallationResult(success=False, error="Failed to create virtual environment")
+                return InstallationResult.failure_result("Failed to create virtual environment")
 
             # Step 6: Generate release.json if commit and branch info provided
             if commit_hash and branch:
@@ -205,7 +190,7 @@ class UvInstaller:
             self.log_callback("Installing dgenerate...")
             if not self.install_dgenerate(uv_exe, self.source_dir, selected_extras, torch_index_url):
                 self.log_callback("Failed to install dgenerate")
-                return InstallationResult(success=False, error="Failed to install dgenerate")
+                return InstallationResult.failure_result("Failed to install dgenerate")
 
             # Step 8: Add dgenerate Scripts to PATH (without activating venv)
             self.log_callback("Adding dgenerate to system PATH...")
@@ -233,9 +218,9 @@ class UvInstaller:
             # Display installation info
             info = self.get_installation_info()
             self.log_callback("\nInstallation Details:")
-            self.log_callback(f"  Installation directory: {info['install_base']}")
-            self.log_callback(f"  Virtual environment: {info['venv_dir']}")
-            self.log_callback(f"  dgenerate executable: {info['dgenerate_exe']}")
+            self.log_callback(f"  Installation directory: {info.install_base}")
+            self.log_callback(f"  Virtual environment: {info.venv_dir}")
+            self.log_callback(f"  dgenerate executable: {info.dgenerate_exe}")
             self.log_callback(f"  dgenerate is now available globally - you can run 'dgenerate' from any terminal")
 
             # Clean up setup analysis modifications
@@ -247,10 +232,9 @@ class UvInstaller:
             self.cleanup_environment()
 
             # Return installation results
-            return InstallationResult(
-                success=True,
-                desktop_shortcut_created=desktop_shortcut_created,
-                installation_info=info
+            return InstallationResult.success_result(
+                installation_info=info,
+                desktop_shortcut_created=desktop_shortcut_created
             )
 
         except Exception as e:
@@ -260,11 +244,7 @@ class UvInstaller:
                 self.setup_analyzer.cleanup()
             # Clean up environment variables even on failure
             self.cleanup_environment()
-            return InstallationResult(
-                success=False,
-                desktop_shortcut_created=False,
-                error=str(e)
-            )
+            return InstallationResult.failure_result(str(e))
 
     def mark_setup_analyzed(self):
         """Mark that setup analysis has been completed."""
@@ -414,7 +394,7 @@ class UvInstaller:
         """Get the appropriate uv download URL for the current platform."""
         return self.platform_handler.get_uv_download_url()
 
-    def find_or_install_uv(self) -> Optional[Path]:
+    def find_or_install_uv(self) -> Path | None:
         """
         Find uv in PATH or download and install it.
         
@@ -422,7 +402,7 @@ class UvInstaller:
         """
         return self.platform_handler.find_or_install_uv()
 
-    def download_and_extract_uv(self) -> Optional[Path]:
+    def download_and_extract_uv(self) -> Path | None:
         """
         Download and extract uv for the current platform.
         
@@ -440,8 +420,8 @@ class UvInstaller:
         """
         return self.platform_handler.create_venv(uv_exe, python_version)
 
-    def install_dgenerate(self, uv_exe: Path, source_dir: str, selected_extras: List[str],
-                          torch_index_url: Optional[str] = None) -> bool:
+    def install_dgenerate(self, uv_exe: Path, source_dir: str, selected_extras: list[str],
+                          torch_index_url: str | None = None) -> bool:
         """
         Install dgenerate using uv.
         
@@ -453,11 +433,11 @@ class UvInstaller:
         """
         return self.platform_handler.install_dgenerate(uv_exe, source_dir, selected_extras, torch_index_url)
 
-    def detect_existing_installation(self) -> dict:
+    def detect_existing_installation(self) -> ExistingInstallation:
         """
         Detect if dgenerate is already installed.
         
-        :return: Dictionary with detection results
+        :return: ExistingInstallation object with detection results
         """
         return self.platform_handler.detect_existing_installation()
 
@@ -469,13 +449,13 @@ class UvInstaller:
         """
         return self.platform_handler.cleanup_existing_installations()
 
-    def uninstall_completely(self) -> bool:
+    def uninstall(self) -> bool:
         """
         Completely uninstall dgenerate.
         
         :return: True if successful, False otherwise
         """
-        return self.platform_handler.uninstall_completely()
+        return self.platform_handler.uninstall()
 
     def cleanup_environment(self) -> bool:
         """
@@ -485,11 +465,11 @@ class UvInstaller:
         """
         return self.platform_handler.cleanup_environment()
 
-    def get_installation_info(self) -> dict:
+    def get_installation_info(self) -> InstallationInfo:
         """
         Get information about the current installation.
         
-        :return: Dictionary containing installation information
+        :return: InstallationInfo object containing installation information
         """
         return self.platform_handler.get_installation_info()
 
