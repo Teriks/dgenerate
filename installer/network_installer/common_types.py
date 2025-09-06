@@ -82,3 +82,4 @@ class InstallationResult:
             success=False,
             error=error
         )
+
