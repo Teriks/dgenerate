@@ -1,4 +1,4 @@
-.. |Documentation| image:: https://readthedocs.org/projects/dgenerate/badge/?version=v5.0.0
+.. |Documentation| image:: https://readthedocs.org/projects/dgenerate/badge/?version=version_5.0.0
    :target: http://dgenerate.readthedocs.io/en/version_5.0.0/
 
 .. |Latest Release| image:: https://img.shields.io/github/v/release/Teriks/dgenerate
