@@ -63,10 +63,10 @@ Scripting
 Getting Started
 ===============
 
-Quick Install (Windows)
-------------------------
+Quick Install
+-------------
 
-Download the Windows Installer MSI (multipart zip) from the `releases page <https://github.com/Teriks/dgenerate/releases>`_ for a hassle-free setup into a frozen / isolated Python environment.
+Download an install wizard for your platform from the `releases page <https://github.com/Teriks/dgenerate/releases>`_ for a hassle-free setup into an isolated Python environment.
 
 Manual Install
 --------------
