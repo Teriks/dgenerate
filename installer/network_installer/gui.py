@@ -23,24 +23,22 @@
 Main GUI application for the dgenerate network installer.
 """
 
+import inspect
 import os
 import platform
 import shutil
 import sys
 import tempfile
-import tempfile
 import threading
-import inspect
 import tkinter as tk
 import traceback
 from datetime import datetime
 from importlib.resources import files
+from tkinter import ttk, filedialog
+
 from network_installer.github_client import GitHubClient
 from network_installer.platform_detection import get_platform_info, detect_gpu, get_torch_index_url
 from network_installer.setup_analyzer import SetupAnalyzer
-
-from tkinter import ttk, filedialog
-from typing import List, Optional, Tuple
 
 
 class DGenerateInstallerGUI:
@@ -233,7 +231,7 @@ class DGenerateInstallerGUI:
 
         return result[0] if msg_type == 'yesno' else None
 
-    def _load_icon(self) -> Tuple[Optional[str], Optional[str]]:
+    def _load_icon(self) -> tuple[str | None, str | None]:
         """
         Load icon file path from package resources.
         
@@ -547,7 +545,7 @@ class DGenerateInstallerGUI:
 
         threading.Thread(target=load_data, daemon=True).start()
 
-    def _update_source_lists(self, releases: List[str], branches: List[str]):
+    def _update_source_lists(self, releases: list[str], branches: list[str]):
         """
         Update the release and branch lists.
 
@@ -880,9 +878,6 @@ class DGenerateInstallerGUI:
                     return
                 installer.mark_setup_analyzed()
 
-                # Skip Python compatibility check since uv will handle Python installation
-                self._log("Skipping Python version compatibility check (uv will install required Python version)...")
-
                 # Get PyTorch index URL based on torch version (now available after setup analysis)
                 torch_version = installer.setup_analyzer.get_torch_version()
                 self._log(f"DEBUG: Extracted torch version from setup.py: {torch_version}")
@@ -903,7 +898,7 @@ class DGenerateInstallerGUI:
                         return
                     elif choice == 'uninstall':
                         self._log("Uninstalling existing installation...")
-                        if not installer.uninstall_completely():
+                        if not installer.uninstall():
                             self._log("Failed to uninstall existing installation")
                             self._update_install_status("Uninstall failed")
                             return
@@ -1423,7 +1418,7 @@ class DGenerateInstallerGUI:
                 temp_installer = self._create_installer(log_callback=lambda msg: None, source_dir=temp_dir)
                 existing_install = temp_installer.detect_existing_installation()
 
-                if existing_install['exists']:
+                if existing_install.exists:
                     # Store existing installation data in global state
                     self.existing_install_data = existing_install
 
@@ -1452,7 +1447,7 @@ class DGenerateInstallerGUI:
                 temp_installer = self._create_installer(log_callback=lambda msg: None, source_dir=temp_dir)
                 existing_install = temp_installer.detect_existing_installation()
 
-                if existing_install['exists']:
+                if existing_install.exists:
                     # Show existing installation screen
                     self._show_existing_installation_screen(existing_install)
                 else:
@@ -1474,7 +1469,7 @@ class DGenerateInstallerGUI:
                     temp_installer = self._create_installer(log_callback=lambda msg: None, source_dir=temp_dir)
                     existing_install = temp_installer.detect_existing_installation()
 
-                    if existing_install['exists']:
+                    if existing_install.exists:
                         # Show existing installation screen
                         self.root.after(0, lambda: self._show_existing_installation_screen(existing_install))
                     else:
@@ -1512,7 +1507,7 @@ class DGenerateInstallerGUI:
 
                     # Perform uninstallation with progress updates
                     self._log("Removing dgenerate components...")
-                    if temp_installer.uninstall_completely():
+                    if temp_installer.uninstall():
                         self._log("Uninstallation completed successfully!")
                         self.progress_var.set(100)
                         self._update_uninstall_status("Uninstallation completed successfully!")

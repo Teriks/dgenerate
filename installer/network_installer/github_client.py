@@ -23,7 +23,6 @@
 GitHub API client for downloading dgenerate source code.
 """
 
-import certifi
 import json
 import os
 import ssl
@@ -31,8 +30,9 @@ import tempfile
 import urllib.error
 import urllib.request
 import zipfile
+
+import certifi
 from packaging import version as pkg_version
-from typing import Dict, List, Optional
 
 
 class GitHubClient:
@@ -51,7 +51,7 @@ class GitHubClient:
         context.load_verify_locations(certifi.where())
         return context
 
-    def get_latest_release(self) -> Optional[Dict]:
+    def get_latest_release(self) -> dict | None:
         """Get information about the latest release."""
         try:
             url = f"{self.repo_url}/releases/latest"
@@ -63,7 +63,7 @@ class GitHubClient:
             print(f"Error getting latest release: {e}")
             return None
 
-    def get_tags(self, per_page: int = 500) -> List[Dict]:
+    def get_tags(self, per_page: int = 500) -> list[dict]:
         """
         Get list of Git tags.
 
@@ -80,7 +80,7 @@ class GitHubClient:
             print(f"Error getting tags: {e}")
             return []
 
-    def get_releases(self, per_page: int = 10, include_prereleases: bool = False) -> List[Dict]:
+    def get_releases(self, per_page: int = 10, include_prereleases: bool = False) -> list[dict]:
         """
         Get list of releases.
 
@@ -105,7 +105,7 @@ class GitHubClient:
             print(f"Error getting releases: {e}")
             return []
 
-    def get_releases_and_tags_combined(self, per_page: int = 500, include_prereleases: bool = False) -> List[Dict]:
+    def get_releases_and_tags_combined(self, per_page: int = 500, include_prereleases: bool = False) -> list[dict]:
         """
         Get combined list of releases and tags, with release descriptions where available.
         Only includes versions 0.18.1 and onward.
@@ -189,7 +189,7 @@ class GitHubClient:
             print(f"Error getting combined releases and tags: {e}")
             return []
 
-    def get_branches(self) -> List[Dict]:
+    def get_branches(self) -> list[dict]:
         """Get list of branches."""
         try:
             url = f"{self.repo_url}/branches"
@@ -201,8 +201,8 @@ class GitHubClient:
             print(f"Error getting branches: {e}")
             return []
 
-    def download_source_archive(self, ref: str = "master", extract_to: Optional[str] = None,
-                                progress_callback=None) -> Optional[str]:
+    def download_source_archive(self, ref: str = "master", extract_to: str | None = None,
+                                progress_callback=None) -> str | None:
         """
         Download source code archive from GitHub.
         
@@ -283,7 +283,7 @@ class GitHubClient:
             print(f"Error extracting source archive: {e}")
             return None
 
-    def get_commits(self, branch: str = "master", per_page: int = 10) -> List[Dict]:
+    def get_commits(self, branch: str = "master", per_page: int = 10) -> list[dict]:
         """Get list of commits from a branch."""
         try:
             url = f"{self.repo_url}/commits?sha={branch}&per_page={per_page}"
@@ -295,7 +295,7 @@ class GitHubClient:
             print(f"Error getting commits: {e}")
             return []
 
-    def get_commit_info(self, ref: str = "master") -> Optional[Dict]:
+    def get_commit_info(self, ref: str = "master") -> dict | None:
         """Get information about a specific commit."""
         try:
             url = f"{self.repo_url}/commits/{ref}"
@@ -307,7 +307,7 @@ class GitHubClient:
             print(f"Error getting commit info: {e}")
             return None
 
-    def search_releases(self, query: str) -> List[Dict]:
+    def search_releases(self, query: str) -> list[dict]:
         """Search releases by tag name or title."""
         releases = self.get_releases(per_page=100)
         query_lower = query.lower()

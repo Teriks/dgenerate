@@ -107,7 +107,7 @@ def run_silent_install(version=None, branch=None, extras=None):
 
         # Check for existing installation
         existing_install = installer.detect_existing_installation()
-        if existing_install['exists']:
+        if existing_install.exists:
             print("Existing installation detected. Overwriting...")
             # Uninstall existing installation
             if not installer.uninstall_completely():
@@ -118,8 +118,12 @@ def run_silent_install(version=None, branch=None, extras=None):
         # Install with default extras
         print("Installing dgenerate...")
         # Use default extras for silent installation
-        if not installer.install(extras):
-            print("ERROR: Installation failed")
+        result = installer.install(
+            selected_extras=extras or [],
+            skip_existing_check=True  # Already handled above
+        )
+        if not result.success:
+            print(f"ERROR: Installation failed: {result.error}")
             return False
 
         print("Installation completed successfully!")
@@ -148,14 +152,14 @@ def run_silent_uninstall():
 
             # Check for existing installation
             existing_install = installer.detect_existing_installation()
-            if not existing_install['exists']:
+            if not existing_install.exists:
                 print("No existing dgenerate installation found")
                 return True
 
             print("Existing installation detected. Uninstalling...")
 
             # Uninstall
-            if not installer.uninstall_completely():
+            if not installer.uninstall():
                 print("ERROR: Failed to uninstall")
                 return False
 

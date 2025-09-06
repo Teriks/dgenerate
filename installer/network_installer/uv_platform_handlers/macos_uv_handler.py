@@ -24,7 +24,6 @@ macOS-specific platform handler for the dgenerate installer.
 """
 
 import inspect
-import inspect
 import os
 import plistlib
 import shutil
@@ -32,7 +31,6 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Optional
 
 from .base_uv_handler import BasePlatformHandler
 
@@ -508,7 +506,7 @@ class MacOSPlatformHandler(BasePlatformHandler):
         except Exception as e:
             self.log_callback(f"Error removing macOS file associations: {e}")
 
-    def _get_shell_profile(self) -> Optional[Path]:
+    def _get_shell_profile(self) -> Path | None:
         """Get the appropriate shell profile file for macOS."""
         home = Path.home()
 
