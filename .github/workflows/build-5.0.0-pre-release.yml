@@ -324,7 +324,7 @@ jobs:
           ## Build Information
           - **Build Date**: $build_date
           - **Commit**: $commit_sha
-          - **Workflow**: ${{ github.workflow }} #${{ github.run_number }}
+          - **Workflow**: [${{ github.workflow }} #${{ github.run_number }}](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
           
           ## Available Downloads
           
