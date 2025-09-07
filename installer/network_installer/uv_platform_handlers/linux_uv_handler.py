@@ -25,6 +25,7 @@ Linux-specific platform handler for the dgenerate installer.
 
 import inspect
 import os
+import re
 import shutil
 import subprocess
 import tkinter as tk
@@ -378,6 +379,127 @@ class LinuxPlatformHandler(BasePlatformHandler):
             self.log_callback(f"Error symlinking Tcl/Tk libraries: {e}")
             return False
 
+    def _fix_init_tcl_file(self) -> bool:
+        """
+        Fix the init.tcl file in UV Python installation by commenting out
+        'package require -exact Tcl' lines that cause issues when symlinking
+        system Tcl binaries.
+        
+        :return: True if successful, False otherwise
+        """
+        try:
+            if not self.venv_dir.exists():
+                self.log_callback("Virtual environment directory not found, skipping init.tcl fix")
+                return True
+
+            # Find the Python installation directory used by this venv
+            python_install_dir = self._get_python_install_dir_from_venv()
+            
+            if not python_install_dir:
+                self.log_callback("Could not determine Python installation directory from venv, skipping init.tcl fix")
+                return True
+
+            self.log_callback(f"Found Python installation directory: {python_install_dir}")
+
+            # Look for init.tcl in the tcl directory structure
+            # Pattern: {python_install_dir}/lib/tcl8.6/init.tcl
+            lib_dir = python_install_dir / 'lib'
+            if not lib_dir.exists():
+                self.log_callback(f"Python lib directory not found: {lib_dir}")
+                return True
+
+            tcl_dirs = list(lib_dir.glob('tcl*'))
+            init_tcl_files_fixed = 0
+            
+            for tcl_dir in tcl_dirs:
+                init_tcl_path = tcl_dir / 'init.tcl'
+                
+                if init_tcl_path.exists():
+                    self.log_callback(f"Found init.tcl: {init_tcl_path}")
+                    
+                    try:
+                        # Read the current content
+                        with open(init_tcl_path, 'r', encoding='utf-8') as f:
+                            content = f.read()
+                        
+                        # Pattern to match 'package require -exact Tcl X.Y.Z' lines
+                        # This will match any version number
+                        pattern = r'^(\s*)(package\s+require\s+-exact\s+Tcl\s+[\d\.]+)(.*)$'
+                        lines = content.split('\n')
+                        modified = False
+                        
+                        for i, line in enumerate(lines):
+                            match = re.match(pattern, line)
+                            if match:
+                                # Comment out the line
+                                indent, package_line, rest = match.groups()
+                                lines[i] = f"{indent}# {package_line}{rest} # Commented out by dgenerate installer"
+                                modified = True
+                                self.log_callback(f"  Commented out line: {package_line.strip()}")
+                        
+                        if modified:
+                            # Create backup before modifying
+                            backup_path = init_tcl_path.with_suffix('.tcl.dgenerate_backup')
+                            if not backup_path.exists():
+                                shutil.copy2(init_tcl_path, backup_path)
+                                self.log_callback(f"  Created backup: {backup_path}")
+                            
+                            # Write the modified content back
+                            with open(init_tcl_path, 'w', encoding='utf-8') as f:
+                                f.write('\n'.join(lines))
+                            
+                            self.log_callback(f"✓ Fixed init.tcl: {init_tcl_path}")
+                            init_tcl_files_fixed += 1
+                        else:
+                            self.log_callback(f"  No 'package require -exact Tcl' lines found in {init_tcl_path}")
+                    
+                    except Exception as e:
+                        self.log_callback(f"Warning: Could not modify {init_tcl_path}: {e}")
+                
+                else:
+                    self.log_callback(f"init.tcl not found in {tcl_dir}")
+
+            if init_tcl_files_fixed > 0:
+                self.log_callback(f"✓ Fixed {init_tcl_files_fixed} init.tcl file(s) for better Tcl/Tk compatibility")
+            else:
+                self.log_callback("No init.tcl files found that needed fixing")
+
+            return True
+
+        except Exception as e:
+            self.log_callback(f"Error fixing init.tcl files: {e}")
+            return False
+
+    def _get_python_install_dir_from_venv(self) -> Path | None:
+        """
+        Get the Python installation directory used by the current venv.
+        
+        :return: Path to the Python installation directory or None if not found
+        """
+        try:
+            # Read pyvenv.cfg to get the home directory
+            pyvenv_cfg = self.venv_dir / 'pyvenv.cfg'
+            if not pyvenv_cfg.exists():
+                self.log_callback(f"pyvenv.cfg not found: {pyvenv_cfg}")
+                return None
+                
+            with open(pyvenv_cfg, 'r', encoding='utf-8') as f:
+                for line in f:
+                    if line.startswith('home = '):
+                        home_path = line.strip().split(' = ', 1)[1]
+                        # The home path points to the bin directory, we need the parent
+                        # Example: /home/user/.local/share/uv/python/cpython-3.13.7-linux-x86_64-gnu/bin
+                        python_install_dir = Path(home_path).parent
+                        self.log_callback(f"Found Python installation from pyvenv.cfg: {python_install_dir}")
+                        return python_install_dir
+            
+            self.log_callback("No 'home = ' line found in pyvenv.cfg")
+            return None
+            
+        except Exception as e:
+            self.log_callback(f"Error reading pyvenv.cfg: {e}")
+            return None
+
     def _find_system_tcl_tk_libraries(self) -> list[tuple[Path, Path]]:
         """
         Find system Tcl/Tk libraries that can be symlinked.
@@ -446,6 +568,12 @@ class LinuxPlatformHandler(BasePlatformHandler):
             self.log_callback("Setting up system Tcl/Tk integration for better font support...")
             if not self._symlink_system_tcl_tk_libraries():
                 self.log_callback("Warning: Failed to symlink system Tcl/Tk libraries")
+                # Don't fail the installation for this - it's an enhancement
+
+            # Fix init.tcl files to avoid version conflicts with system Tcl binaries
+            self.log_callback("Fixing init.tcl files for Tcl/Tk compatibility...")
+            if not self._fix_init_tcl_file():
+                self.log_callback("Warning: Failed to fix init.tcl files")
                 # Don't fail the installation for this - it's an enhancement
 
             return True
