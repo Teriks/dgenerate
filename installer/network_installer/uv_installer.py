@@ -145,9 +145,17 @@ class UvInstaller:
                     return InstallationResult.failure_result("Failed to load setup.py")
                 self._setup_analyzed = True
 
-            # Step 3: Skip Python version compatibility check since uv will handle Python installation
-            self.log_callback(
-                "Skipping Python version compatibility check (uv will install required Python version)...")
+            # Step 3: Check and enable Windows long paths if needed
+            if self.system == 'windows':
+                self.log_callback("Checking Windows long path support...")
+                if hasattr(self.platform_handler, 'check_and_enable_long_paths'):
+                    if not self.platform_handler.check_and_enable_long_paths():
+                        self.log_callback("Long path support is required for installation")
+                        return InstallationResult.failure_result("Windows long path support could not be enabled")
+                else:
+                    self.log_callback("Warning: Windows long path check not available in platform handler")
+            else:
+                self.log_callback("Skipping long path check (not Windows)")
 
             # Step 4: Find or install uv
             self.log_callback("Setting up uv...")

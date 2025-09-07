@@ -25,7 +25,9 @@ Windows-specific platform handler for the dgenerate installer.
 
 import inspect
 import os
+import sys
 import tempfile
+import time
 from network_installer.subprocess_utils import run_silent
 from pathlib import Path
 
@@ -48,6 +50,311 @@ class WindowsPlatformHandler(BasePlatformHandler):
     """
     Windows-specific implementation of platform operations.
     """
+    
+    def check_and_enable_long_paths(self) -> bool:
+        """
+        Check if Windows long paths are enabled and enable them if necessary.
+        Automatically detects GUI mode by checking if a tkinter root exists.
+        
+        :return: True if long paths are enabled or successfully enabled, False otherwise
+        """
+        try:
+            # Check if long paths are already enabled
+            if self.is_long_path_enabled():
+                self.log_callback("✓ Windows long paths are already enabled")
+                return True
+            
+            self.log_callback("Windows long paths are currently disabled")
+            self.log_callback("Some Python packages require paths longer than 260 characters")
+            
+            # Detect if we're in GUI mode by checking for tkinter root
+            gui_mode = self._is_gui_mode()
+            self.log_callback(f"Detected mode: {'GUI' if gui_mode else 'Silent'}")
+            
+            # If in GUI mode, ask for user consent first
+            if gui_mode:
+                if not self.prompt_for_long_path_consent():
+                    self.log_callback("User declined to enable Windows long path support")
+                    self.log_callback("Installation cannot proceed without long path support")
+                    return False
+            
+            # Try to enable long paths with elevation
+            if self.enable_long_paths_with_elevation():
+                self.log_callback("✓ Windows long paths have been enabled successfully")
+                return True
+            else:
+                self.log_callback("ERROR: Failed to enable Windows long paths")
+                self.log_callback("Installation cannot proceed without long path support")
+                return False
+                
+        except Exception as e:
+            self.log_callback(f"ERROR: Failed to check/enable long paths: {e}")
+            return False
+    
+    def _is_gui_mode(self) -> bool:
+        """
+        Detect if we're running in GUI mode by checking if a tkinter root exists.
+        
+        :return: True if GUI mode, False if silent mode
+        """
+        try:
+            import tkinter as tk
+            
+            # Check if there's an active tkinter root window
+            root = tk._default_root
+            if root is not None and root.winfo_exists():
+                return True
+                
+            # Alternative check: try to get all tkinter windows
+            try:
+                if tk._default_root or len(tk.Tk._instances) > 0:
+                    return True
+            except (AttributeError, TypeError):
+                pass
+                
+            return False
+            
+        except ImportError:
+            # tkinter not available, assume silent mode
+            return False
+        except Exception:
+            # Any other error, assume silent mode for safety
+            return False
+    
+    def is_long_path_enabled(self) -> bool:
+        """
+        Check if Windows long path support is enabled.
+        
+        :return: True if enabled, False otherwise
+        """
+        try:
+            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, 
+                               r'SYSTEM\CurrentControlSet\Control\FileSystem',
+                               0, winreg.KEY_READ) as key:
+                try:
+                    value, _ = winreg.QueryValueEx(key, 'LongPathsEnabled')
+                    return bool(value)
+                except FileNotFoundError:
+                    # Registry key doesn't exist, long paths are disabled
+                    return False
+        except Exception as e:
+            self.log_callback(f"Warning: Could not check long path status: {e}")
+            return False
+    
+    def is_admin(self) -> bool:
+        """
+        Check if the current process is running with administrator privileges.
+        
+        :return: True if admin, False otherwise
+        """
+        try:
+            return ctypes.windll.shell32.IsUserAnAdmin()
+        except Exception:
+            return False
+    
+    def enable_long_paths_with_elevation(self) -> bool:
+        """
+        Enable Windows long paths by requesting elevation if needed.
+        
+        :return: True if successful, False otherwise
+        """
+        try:
+            # If we're already admin, try to enable directly
+            if self.is_admin():
+                return self._enable_long_paths_registry()
+            
+            # Otherwise, request elevation
+            return self._request_elevation_for_long_paths()
+            
+        except Exception as e:
+            self.log_callback(f"Error enabling long paths with elevation: {e}")
+            return False
+    
+    def _enable_long_paths_registry(self) -> bool:
+        """
+        Enable long paths by modifying the registry (requires admin privileges).
+        
+        :return: True if successful, False otherwise
+        """
+        try:
+            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,
+                               r'SYSTEM\CurrentControlSet\Control\FileSystem',
+                               0, winreg.KEY_WRITE) as key:
+                winreg.SetValueEx(key, 'LongPathsEnabled', 0, winreg.REG_DWORD, 1)
+            
+            self.log_callback("Long paths enabled in registry")
+            return True
+            
+        except PermissionError:
+            self.log_callback("Permission denied - administrator privileges required")
+            return False
+        except Exception as e:
+            self.log_callback(f"Error modifying registry: {e}")
+            return False
+    
+    def _request_elevation_for_long_paths(self) -> bool:
+        """
+        Request UAC elevation to enable long paths using VBScript with proper async handling.
+        
+        :return: True if successful, False otherwise
+        """
+        try:
+            # Create a simple VBScript that enables long paths
+            vbs_script = inspect.cleandoc('''
+                On Error Resume Next
+                
+                ' Create WScript.Shell object for registry access
+                Set objWScript = CreateObject("WScript.Shell")
+                
+                ' Registry path and value
+                regPath = "HKLM\\SYSTEM\\CurrentControlSet\\Control\\FileSystem\\LongPathsEnabled"
+                
+                ' Try to write to registry
+                objWScript.RegWrite regPath, 1, "REG_DWORD"
+                
+                ' Check if write was successful
+                If Err.Number = 0 Then
+                    WScript.Echo "SUCCESS: Long paths enabled"
+                    WScript.Quit 0
+                Else
+                    WScript.Echo "FAILED: " & Err.Description & " (Error: " & Err.Number & ")"
+                    WScript.Quit 1
+                End If
+            ''')
+            
+            # Write VBScript to temporary file
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.vbs', delete=False, encoding='utf-8') as f:
+                f.write(vbs_script)
+                vbs_file = f.name
+            
+            try:
+                self.log_callback("Requesting administrator privileges to enable long paths...")
+                self.log_callback("Please click 'Yes' in the UAC dialog that appears")
+                
+                # Build the command to run cscript with the VBScript
+                cscript_path = os.path.join(os.environ.get('WINDIR', 'C:\\Windows'), 'System32', 'cscript.exe')
+                vbs_args = f'//NoLogo "{vbs_file}"'
+                
+                # Use ShellExecute to run VBScript with elevation
+                result_code = ctypes.windll.shell32.ShellExecuteW(
+                    None,                    # hwnd
+                    "runas",                 # lpVerb (elevation)
+                    cscript_path,            # lpFile
+                    vbs_args,                # lpParameters
+                    None,                    # lpDirectory
+                    0                        # nShowCmd (SW_HIDE - hidden window)
+                )
+                
+                # ShellExecute returns > 32 for success, <= 32 for error
+                if result_code <= 32:
+                    self.log_callback(f"ShellExecute failed with code: {result_code}")
+                    
+                    # Map common ShellExecute error codes
+                    error_messages = {
+                        0: "Out of memory or resources",
+                        2: "File not found", 
+                        3: "Path not found",
+                        5: "Access denied",
+                        8: "Out of memory",
+                        26: "Cannot share an open file",
+                        27: "File association incomplete or invalid",
+                        28: "DDE timeout",
+                        29: "DDE transaction failed",
+                        30: "DDE busy",
+                        31: "No association for file extension",
+                        32: "DLL not found"
+                    }
+                    
+                    error_msg = error_messages.get(result_code, f"Unknown error code {result_code}")
+                    self.log_callback(f"ShellExecute error: {error_msg}")
+                    return False
+                
+                self.log_callback(f"Elevation request launched successfully (code: {result_code})")
+                
+                # Wait for the elevated VBScript process to complete
+                # Since ShellExecute is asynchronous, we poll the registry to detect completion
+                self.log_callback("Waiting for elevation process to complete...")
+                
+                max_wait = 60  # Maximum 60 seconds (UAC can take time)
+                poll_interval = 0.5  # Check every 500ms for faster response
+                
+                for i in range(int(max_wait / poll_interval)):
+                    time.sleep(poll_interval)
+                    current_status = self.is_long_path_enabled()
+                    
+                    if current_status:
+                        elapsed = (i + 1) * poll_interval
+                        self.log_callback(f"✓ Long paths enabled successfully (took {elapsed:.1f} seconds)")
+                        return True
+                    
+                    # Show progress every 5 seconds to avoid spam
+                    elapsed = (i + 1) * poll_interval
+                    if elapsed % 5.0 == 0:
+                        self.log_callback(f"Still waiting... ({elapsed:.0f}/{max_wait} seconds)")
+                
+                # If we get here, either the user cancelled or it failed
+                self.log_callback("Timeout waiting for long paths to be enabled")
+                self.log_callback("This usually means:")
+                self.log_callback("  1. The UAC dialog was cancelled by the user")
+                self.log_callback("  2. The elevated VBScript process failed") 
+                self.log_callback("  3. Insufficient permissions even with elevation")
+                self.log_callback("  4. VBScript execution is disabled on this system")
+                
+                return False
+                    
+            finally:
+                # Clean up temporary file
+                try:
+                    os.unlink(vbs_file)
+                except:
+                    pass
+                    
+        except Exception as e:
+            self.log_callback(f"Error requesting elevation: {e}")
+            return False
+    
+    def prompt_for_long_path_consent(self) -> bool:
+        """
+        Show a GUI dialog asking for user consent to enable long paths.
+        
+        :return: True if user consents, False otherwise
+        """
+        try:
+            import tkinter as tk
+            from tkinter import messagebox
+            
+            # Create a hidden root window
+            root = tk.Tk()
+            root.withdraw()
+            
+            # Show the consent dialog
+            title = "Windows Long Path Support Required"
+            message = inspect.cleandoc('''
+                dgenerate requires Windows long path support to be enabled.
+                
+                Some Python packages install files with paths longer than 260 characters,
+                which Windows blocks by default.
+                
+                The installer needs to:
+                • Request administrator privileges
+                • Enable long path support in the Windows registry
+                
+                This is a one-time system change that will benefit other applications too.
+                
+                Do you want to enable Windows long path support now?
+            ''')
+            
+            result = messagebox.askyesno(title, message, icon='question')
+            
+            # Clean up
+            root.destroy()
+            
+            return result
+            
+        except Exception as e:
+            self.log_callback(f"Error showing long path consent dialog: {e}")
+            # If GUI fails, assume consent (will fail later if elevation is denied)
+            return True
 
     def add_scripts_to_path(self) -> bool:
         """
