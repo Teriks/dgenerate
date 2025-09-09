@@ -7,6 +7,12 @@
 
 \exec dgenerate < subprocess.dgen &> log.txt
 
+# use python to access dgenerate's Python environment and libraries
+
+\exec python -c "import sys; print('Python version:', sys.version)" > python_info.txt
+
+\exec python -c "import torch; print('PyTorch version:', torch.__version__)" > pytorch_info.txt
+
 
 {% if platform() == 'Windows' %}
 

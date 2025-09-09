@@ -21,6 +21,7 @@
 import collections.abc
 import gc
 import glob
+import importlib
 import inspect
 import os
 import pathlib
@@ -34,24 +35,24 @@ import threading
 import time
 import types
 import typing
-import importlib
+
 import dgenerate
 import dgenerate.arguments as _arguments
 import dgenerate.batchprocess.batchprocessor as _batchprocessor
 import dgenerate.batchprocess.configrunnerbuiltins as _configrunnerbuiltins
 import dgenerate.batchprocess.configrunnerpluginloader as _configrunnerpluginloader
 import dgenerate.batchprocess.util as _util
+import dgenerate.devicecache as _devicecache
 import dgenerate.files as _files
 import dgenerate.invoker as _invoker
+import dgenerate.memoize as _memoize
+import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.plugin as _plugin
 import dgenerate.renderloop as _renderloop
 import dgenerate.textprocessing as _textprocessing
-import dgenerate.types as _types
-import dgenerate.memoize as _memoize
-import dgenerate.devicecache as _devicecache
-import dgenerate.memory as _memory
 import dgenerate.torchutil as _torchutil
+import dgenerate.types as _types
 
 
 class ConfigRunner(_batchprocessor.BatchProcessor):
@@ -643,6 +644,11 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
 
         The pipe | operator is supported for piping to standard input, as well as bash file redirection syntax.
 
+        The scripts / bin directory of dgenerate's python environment is prioritized in the PATH
+        for processes launched by this directive only, so ``python`` can be used to run python scripts
+        using the environment dgenerate is installed into. You can also use tools such as
+        ``accelerate``. This PATH modification only applies to \\exec commands, not globally.
+
         The following redirection operators are supported:
 
             NOWRAP!
@@ -664,6 +670,12 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             \\exec dgenerate < my_config.dgen &> log.txt
             \\exec dgenerate < my_config.dgen > log.txt 2>&1
             \\exec dgenerate < my_config.dgen > stdout.txt 2> stderr.txt
+
+        Using python to access dgenerate's Python environment:
+
+            \\exec python -c "import torch; print(torch.__version__)"
+            \\exec python my_script.py
+            \\exec accelerate launch my_training_script.py
 
         Windows cat pipe:
 
@@ -723,6 +735,50 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                 _messages.get_error_file().buffer.write(line)
                 _messages.get_error_file().flush()
 
+            # Set up environment with prioritized PATH before processing any commands
+            env = os.environ.copy()
+            env['PYTHONUNBUFFERED'] = '1'
+            env['PYTHONIOENCODING'] = 'utf-8'
+
+            # Prioritize dgenerate's Python environment Scripts directory in PATH
+            # This allows users to use 'python' and other tools from dgenerate's environment
+            scripts_dirs = []
+
+            # First, check if we're in a virtual environment
+            venv_path = os.environ.get('VIRTUAL_ENV')
+            if venv_path:
+                # We're in a virtual environment, use its Scripts/bin directory
+                venv_scripts = os.path.join(venv_path, 'Scripts')  # Windows
+                venv_bin = os.path.join(venv_path, 'bin')  # Unix
+
+                if os.path.isdir(venv_scripts):
+                    scripts_dirs.append(venv_scripts)
+                if os.path.isdir(venv_bin):
+                    scripts_dirs.append(venv_bin)
+
+            # Also check the directory containing sys.executable
+            python_dir = os.path.dirname(sys.executable)
+
+            # Check for Scripts directory (Windows)
+            scripts_path = os.path.join(python_dir, 'Scripts')
+            if os.path.isdir(scripts_path) and scripts_path not in scripts_dirs:
+                scripts_dirs.append(scripts_path)
+
+            # Check for bin directory (Unix)
+            bin_path = os.path.join(python_dir, 'bin')
+            if os.path.isdir(bin_path) and bin_path not in scripts_dirs:
+                scripts_dirs.append(bin_path)
+
+            # Always include the directory containing the Python executable
+            if python_dir not in scripts_dirs:
+                scripts_dirs.append(python_dir)
+
+            # Prepend all relevant directories to PATH in subprocess environment
+            if 'PATH' in env:
+                env['PATH'] = os.pathsep.join(scripts_dirs) + os.pathsep + env['PATH']
+            else:
+                env['PATH'] = os.pathsep.join(scripts_dirs)
+
             for command in commands:
                 if not command:
                     raise _batchprocessor.BatchProcessError(
@@ -763,9 +819,12 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                 if command[0] == 'dgenerate' and stdin is None and '--shell' not in command:
                     command = list(command) + ['--no-stdin']
 
-                env = os.environ.copy()
-                env['PYTHONUNBUFFERED'] = '1'
-                env['PYTHONIOENCODING'] = 'utf-8'
+                # Resolve the executable path using the modified PATH
+                resolved_command = command.copy()
+                resolved_executable = shutil.which(command[0], path=env['PATH'])
+                if resolved_executable:
+                    resolved_command[0] = resolved_executable
+
                 try:
                     executable = \
                         os.path.splitext(
@@ -782,7 +841,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
                     else:
                         extra_kwargs = dict()
 
-                    process = subprocess.Popen(command,
+                    process = subprocess.Popen(resolved_command,
                                                stdin=sys.stdin if stdin is None else stdin,
                                                stdout=subprocess.PIPE,
                                                stderr=subprocess.PIPE,

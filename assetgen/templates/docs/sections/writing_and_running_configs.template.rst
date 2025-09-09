@@ -409,6 +409,14 @@ redirection operators supported by bash are supported. This can be useful
 for running other image processing utilities as subprocesses from within a
 config script.
 
+The scripts / bin directory of dgenerate's python environment is prioritized in the PATH
+for processes launched by the ``\exec`` directive only, so ``python`` can be used to run python scripts
+using the environment dgenerate is installed into. You can also use tools such as
+``accelerate``. This PATH modification only applies to ``\exec`` commands, not globally.
+
+This can be used to leverage dgenerate's python environment for tasks such as LoRA training
+as described in the section `Utilizing the Python Environment for Training`_
+
 
 .. code-block:: jinja
 
@@ -419,6 +427,14 @@ config script.
     # and send stdout and stderr to a file
 
     \exec dgenerate < my_config.dgen &> log.txt
+
+    # use python to access dgenerate's Python environment and libraries
+
+    \exec python -c "import torch; print(torch.__version__)"
+
+    \exec python my_script.py
+
+    \exec accelerate launch my_training_script.py
 
     # chaining processes together with pipes is supported
     # this example emulates 'cat' on Windows using cmd
