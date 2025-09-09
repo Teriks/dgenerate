@@ -26,7 +26,7 @@ Main entry point for the dgenerate network installer.
 """
 
 import argparse
-import platform
+import os
 import sys
 import tempfile
 import traceback
@@ -175,6 +175,9 @@ def run_silent_uninstall():
 def main():
     """Main entry point."""
     args = parse_arguments()
+
+    # Force setup.py to use lockfile requires for exact dependency versions
+    os.environ['DGENERATE_FORCE_LOCKFILE_REQUIRES'] = '1'
 
     # Handle command line arguments first
     if args.uninstall:

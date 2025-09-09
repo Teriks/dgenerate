@@ -825,14 +825,14 @@ typing = ["pandas-stubs", "scipy-stubs", "types-pillow", "types-psutil", "types-
 
 [[package]]
 name = "diffusers"
-version = "0.35.0"
+version = "0.35.1"
 description = "State-of-the-art diffusion in PyTorch and JAX."
 optional = false
 python-versions = ">=3.8.0"
 groups = ["main"]
 files = [
-    {file = "diffusers-0.35.0-py3-none-any.whl", hash = "sha256:5283349ffcd9c6465cf41c2277d4e02e817ad87e08522b50623fb0075849817e"},
-    {file = "diffusers-0.35.0.tar.gz", hash = "sha256:7b1d77a8e01ab866e13088e56691608e0fbde551758459a286caa7a36cadb488"},
+    {file = "diffusers-0.35.1-py3-none-any.whl", hash = "sha256:fe29ff10200970c7c5934c6488c213e2a77a03dad5e6fa00bbd8e1d04234cb0e"},
+    {file = "diffusers-0.35.1.tar.gz", hash = "sha256:6f4dc0c9d309a4c4914a2179646f2bc801b5e395a43295fff3b5f9dbd3e28fd3"},
 ]
 
 [package.dependencies]
@@ -5236,4 +5236,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.14"
-content-hash = "6371581b286c3726f229d515872868696f98f4a0f897e0f8f99ac6d44c3cceaa"
+content-hash = "2bac8f052d691b33e9e3dcd4f622e87f2d552de6a3b8d2a1aba18cdad3bedc58"

@@ -398,7 +398,10 @@ def _get_torch_cuda_url(torch_major: int | None, torch_minor: int | None, torch_
     if torch_major == 2 and torch_minor >= 8:
         if nvidia_is_mpv_legacy:
             return "https://download.pytorch.org/whl/cu126"
-        if cuda_major == 12:
+        if cuda_major >= 13:
+            # CUDA 13+ should use cu129 for PyTorch 2.8+ (latest available)
+            return "https://download.pytorch.org/whl/cu129"
+        elif cuda_major == 12:
             if cuda_minor >= 9:
                 return "https://download.pytorch.org/whl/cu129"
             elif cuda_minor >= 8:
@@ -414,7 +417,10 @@ def _get_torch_cuda_url(torch_major: int | None, torch_minor: int | None, torch_
 
     # PyTorch 2.7.x
     if torch_major == 2 and torch_minor == 7:
-        if cuda_major == 12:
+        if cuda_major >= 13:
+            # CUDA 13+ should use cu128 for PyTorch 2.7.x
+            return "https://download.pytorch.org/whl/cu128"
+        elif cuda_major == 12:
             if cuda_minor >= 8:
                 return "https://download.pytorch.org/whl/cu128"
             elif cuda_minor >= 6:

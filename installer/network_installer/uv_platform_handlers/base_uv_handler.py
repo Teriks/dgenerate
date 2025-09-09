@@ -337,13 +337,6 @@ class BasePlatformHandler(ABC):
                 else:
                     self.log_callback("✓ dgenerate executable copied to bin directory")
 
-                # Precompile Python bytecode for faster startup
-                self.log_callback("Precompiling Python bytecode for faster startup...")
-                if not self._compile_bytecode(uv_exe):
-                    self.log_callback("Warning: Bytecode compilation failed, but installation is still functional")
-                else:
-                    self.log_callback("✓ Python bytecode compilation completed")
-
                 return True
             else:
                 self.log_callback(f"Failed to install dgenerate: {result.stderr}")
@@ -412,6 +405,17 @@ class BasePlatformHandler(ABC):
         except Exception as e:
             self.log_callback(f"Error during bytecode compilation: {e}")
             return False
+
+    def compile_bytecode_external(self, uv_exe: Path) -> bool:
+        """
+        External interface for bytecode compilation.
+        This is called after post-installation cleanup to ensure we only compile
+        the final set of packages.
+        
+        :param uv_exe: Path to uv executable
+        :return: True if successful, False otherwise
+        """
+        return self._compile_bytecode(uv_exe)
 
     def get_venv_python(self) -> Path:
         """Get the path to the Python executable in the virtual environment."""

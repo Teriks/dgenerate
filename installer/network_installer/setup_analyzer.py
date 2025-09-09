@@ -48,6 +48,7 @@ class SetupAnalyzer:
         self.python_requirement = None
         self.torch_version = None
         self.extras = {}
+        self.requires = {}  # Store the requires dictionary from setup.py
 
     def _log(self, message: str):
         """Log message using callback or print"""
@@ -91,6 +92,14 @@ class SetupAnalyzer:
                     else:
                         self.extras = {}
                         self._log("No extras found in setup.py or captured from setup() call")
+
+                # Extract requires dictionary from setup.py
+                if hasattr(setup_module, 'requires'):
+                    self.requires = setup_module.requires
+                    self._log(f"Found requires in setup.py: {len(self.requires)} dependencies")
+                else:
+                    self.requires = {}
+                    self._log("No requires dictionary found in setup.py")
 
                 # Parse pyproject.toml for Python and torch requirements
                 self._parse_pyproject_toml()
@@ -413,3 +422,23 @@ class SetupAnalyzer:
     def get_torch_version(self):
         """Get torch version requirement."""
         return self.torch_version
+
+    def get_dependency_version(self, package_name: str) -> str | None:
+        """
+        Get the version requirement for a specific dependency from the requires dictionary.
+        
+        :param package_name: Name of the package (e.g., 'opencv-python-headless')
+        :return: Version requirement string (e.g., '>=4.12.0.88,<4.13.0') or None if not found
+        """
+        try:
+            if package_name in self.requires:
+                version_spec = self.requires[package_name]
+                self._log(f"Found dependency {package_name}: {version_spec}")
+                return version_spec
+            else:
+                self._log(f"Dependency '{package_name}' not found in requires dictionary")
+                return None
+
+        except Exception as e:
+            self._log(f"Error getting dependency version for {package_name}: {e}")
+            return None
