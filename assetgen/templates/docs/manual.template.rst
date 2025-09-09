@@ -106,6 +106,8 @@ Help Output
 
 @INCLUDE[sections/writing_plugins.template.rst]
 
+@INCLUDE[sections/utilizing_the_environment_for_training.template.rst]
+
 @INCLUDE[sections/environment/auth_tokens_environment.template.rst]
 
 @INCLUDE[sections/environment/file_cache_control.template.rst]
