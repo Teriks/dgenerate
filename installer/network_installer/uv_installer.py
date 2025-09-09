@@ -200,6 +200,19 @@ class UvInstaller:
                 self.log_callback("Failed to install dgenerate")
                 return InstallationResult.failure_result("Failed to install dgenerate")
 
+            # Step 7.5: Post-installation cleanup
+            self.log_callback("Running post-installation cleanup...")
+            if not self.run_post_installation_cleanup(uv_exe, torch_index_url):
+                self.log_callback("Failed to complete post-installation cleanup")
+                return InstallationResult.failure_result("Post-installation cleanup failed")
+
+            # Step 7.6: Compile Python bytecode for faster startup
+            self.log_callback("Precompiling Python bytecode for faster startup...")
+            if not self.compile_bytecode(uv_exe):
+                self.log_callback("Warning: Bytecode compilation failed, but installation is still functional")
+            else:
+                self.log_callback("✓ Python bytecode compilation completed")
+
             # Step 8: Add dgenerate Scripts to PATH (without activating venv)
             self.log_callback("Adding dgenerate to system PATH...")
             if not self.add_scripts_to_path():
@@ -235,10 +248,6 @@ class UvInstaller:
             if self.setup_analyzer:
                 self.setup_analyzer.cleanup()
 
-            # Clean up environment variables to prevent global contamination
-            self.log_callback("Cleaning up environment variables...")
-            self.cleanup_environment()
-
             # Return installation results
             return InstallationResult.success_result(
                 installation_info=info,
@@ -250,8 +259,6 @@ class UvInstaller:
             # Clean up setup analysis modifications even on failure
             if self.setup_analyzer:
                 self.setup_analyzer.cleanup()
-            # Clean up environment variables even on failure
-            self.cleanup_environment()
             return InstallationResult.failure_result(str(e))
 
     def mark_setup_analyzed(self):
@@ -508,3 +515,153 @@ class UvInstaller:
     def get_venv_python(self) -> Path:
         """Get the path to the Python executable in the virtual environment."""
         return self.platform_handler.get_venv_python()
+
+    def run_post_installation_cleanup(self, uv_exe: Path, torch_index_url: str | None = None) -> bool:
+        """
+        Run post-installation cleanup to fix common compatibility issues.
+        
+        This includes:
+        1. Removing xFormers for cu118 installations to avoid compatibility issues (non-critical)
+        2. Reinstalling the correct OpenCV version to avoid conflicts (CRITICAL - failure stops installation)
+        
+        :param uv_exe: Path to uv executable
+        :param torch_index_url: PyTorch index URL used for installation
+        :return: True if cleanup was successful, False if critical errors occurred
+        """
+        try:
+            # Step 1: Handle xFormers removal for cu118 installations (non-critical)
+            if torch_index_url and 'cu118' in torch_index_url:
+                self.log_callback("Detected cu118 PyTorch installation - removing xFormers to avoid compatibility issues")
+                if not self._remove_xformers(uv_exe):
+                    self.log_callback("Warning: Failed to remove xFormers (non-critical, continuing installation)")
+                else:
+                    self.log_callback("✓ Successfully removed xFormers for cu118 compatibility")
+            else:
+                self.log_callback("Skipping xFormers removal (not a cu118 installation)")
+            
+            # Step 2: Handle OpenCV cleanup and reinstallation (CRITICAL)
+            self.log_callback("Cleaning up OpenCV packages to avoid conflicts...")
+            if not self._cleanup_opencv_packages(uv_exe):
+                self.log_callback("ERROR: Failed to clean up OpenCV packages - this is a critical failure")
+                return False  # Critical failure - stop installation
+            else:
+                self.log_callback("✓ Successfully cleaned up OpenCV packages")
+            
+            return True  # All critical operations succeeded
+            
+        except Exception as e:
+            self.log_callback(f"Error during post-installation cleanup: {e}")
+            return False
+
+    def _remove_xformers(self, uv_exe: Path) -> bool:
+        """
+        Remove xFormers package to avoid compatibility issues with cu118.
+        
+        :param uv_exe: Path to uv executable
+        :return: True if successful, False otherwise
+        """
+        try:
+            from network_installer.subprocess_utils import run_silent
+            
+            # Use uv pip to uninstall xformers
+            # Note: uv pip uninstall doesn't support -y flag, it's non-interactive by default
+            cmd = [str(uv_exe), 'pip', 'uninstall', '--python', str(self.get_venv_python()), 'xformers']
+            
+            self.log_callback(f"Removing xFormers: {' '.join(cmd)}")
+            
+            result = run_silent(cmd, capture_output=True, text=True, timeout=300)
+            
+            if result.returncode == 0:
+                self.log_callback("xFormers removed successfully")
+                return True
+            else:
+                self.log_callback(f"Failed to remove xFormers: {result.stderr}")
+                return False
+                
+        except Exception as e:
+            self.log_callback(f"Error removing xFormers: {e}")
+            return False
+
+    def _cleanup_opencv_packages(self, uv_exe: Path) -> bool:
+        """
+        Clean up OpenCV packages and reinstall the correct version.
+        
+        This removes both opencv-python and opencv-python-headless, then reinstalls
+        opencv-python-headless with the correct version from setup.py requirements.
+        
+        :param uv_exe: Path to uv executable
+        :return: True if successful, False otherwise
+        """
+        try:
+            from network_installer.subprocess_utils import run_silent
+            
+            # Step 1: Get the correct OpenCV version from setup analyzer
+            opencv_version = None
+            if self.setup_analyzer:
+                opencv_version = self.setup_analyzer.get_dependency_version('opencv-python-headless')
+                if opencv_version:
+                    self.log_callback(f"Found OpenCV version requirement: {opencv_version}")
+                else:
+                    self.log_callback("Warning: Could not determine OpenCV version from setup.py")
+            
+            # Step 2: Uninstall both opencv packages
+            # Note: uv pip uninstall doesn't support -y flag, it's non-interactive by default
+            uninstall_cmd = [
+                str(uv_exe), 'pip', 'uninstall', '--python', str(self.get_venv_python()), 
+                'opencv-python-headless', 'opencv-python'
+            ]
+            
+            self.log_callback(f"Removing OpenCV packages: {' '.join(uninstall_cmd)}")
+            
+            result = run_silent(uninstall_cmd, capture_output=True, text=True, timeout=300)
+            
+            if result.returncode != 0:
+                self.log_callback(f"Warning: Failed to uninstall OpenCV packages: {result.stderr}")
+                # Continue anyway - packages might not have been installed
+            
+            # Step 3: Reinstall opencv-python-headless with correct version
+            if opencv_version:
+                install_package = f"opencv-python-headless{opencv_version}"
+                self.log_callback(f"Using OpenCV version from setup.py: {opencv_version}")
+            else:
+                # This should not happen if setup.py is properly parsed, so it's an error
+                self.log_callback("CRITICAL ERROR: Could not determine OpenCV version from setup.py")
+                self.log_callback("Cannot proceed with installation without proper OpenCV version")
+                return False
+            
+            install_cmd = [
+                str(uv_exe), 'pip', 'install', '--python', str(self.get_venv_python()),
+                install_package
+            ]
+            
+            self.log_callback(f"Installing correct OpenCV version: {' '.join(install_cmd)}")
+            
+            result = run_silent(install_cmd, capture_output=True, text=True, timeout=600)
+            
+            if result.returncode == 0:
+                self.log_callback("✓ OpenCV cleanup and reinstallation successful")
+                return True
+            else:
+                self.log_callback(f"CRITICAL ERROR: Failed to reinstall OpenCV")
+                self.log_callback(f"Command failed with exit code {result.returncode}")
+                if result.stderr:
+                    self.log_callback(f"Error output: {result.stderr}")
+                if result.stdout:
+                    self.log_callback(f"Standard output: {result.stdout}")
+                self.log_callback("Installation cannot continue without proper OpenCV installation")
+                return False
+                
+        except Exception as e:
+            self.log_callback(f"Error during OpenCV cleanup: {e}")
+            return False
+
+    def compile_bytecode(self, uv_exe: Path) -> bool:
+        """
+        Precompile Python bytecode for faster startup.
+        This happens after post-installation cleanup to ensure we only compile
+        the final set of packages.
+        
+        :param uv_exe: Path to uv executable
+        :return: True if successful, False otherwise
+        """
+        return self.platform_handler.compile_bytecode_external(uv_exe)

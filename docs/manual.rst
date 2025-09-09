@@ -13067,7 +13067,7 @@ For example, you can setup a training configuration entirely inside of a dgenera
     #! dgenerate 5.0.0
 
     # you can download the dreambooth LoRA training script from
-    # https://github.com/huggingface/diffusers/blob/v0.35.1/examples/dreambooth/train_dreambooth_lora_sdxl.py
+    # https://github.com/huggingface/diffusers/blob/v0.35.0/examples/dreambooth/train_dreambooth_lora_sdxl.py
 
     # This would be appropriate for a single character fine-tuning task with about 30 curated images
 
