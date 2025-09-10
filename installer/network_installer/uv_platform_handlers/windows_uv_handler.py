@@ -849,13 +849,19 @@ class WindowsPlatformHandler(BasePlatformHandler):
         except Exception as e:
             self.log_callback(f"Warning: Could not verify PATH update: {e}")
 
-    def apply_source_patches(self, source_dir: str) -> bool:
+    def apply_source_patches(self, source_dir: str, version: str | None = None) -> bool:
         """
         Apply Windows-specific patches to the source code before installation.
         
         :param source_dir: Path to the dgenerate source directory
+        :param version: Optional version string from SetupAnalyzer
         :return: True if successful or no patches needed, False if failed
         """
+        # Apply base patches first (including CUDA specifier patching)
+        if not super().apply_source_patches(source_dir, version):
+            return False
+            
+        # Apply Windows-specific patches
         return self._patch_dgenerate_console(source_dir)
 
     def _patch_dgenerate_console(self, source_dir: str) -> bool:

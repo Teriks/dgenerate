@@ -235,6 +235,7 @@ class SetupAnalyzer:
 
             self._log(f"Parsing poetry.lock for torch version: {lock_path}")
 
+
             with open(lock_path, 'rb') as f:
                 lock_data = tomllib.load(f)
 
@@ -255,6 +256,7 @@ class SetupAnalyzer:
         except Exception as e:
             self._log(f"Error parsing poetry.lock: {e}")
             self._log(f"Traceback: {traceback.format_exc()}")
+
 
     def _convert_poetry_to_setup_format(self, poetry_requirement: str) -> str:
         """Convert Poetry version requirement format to setup.py format"""

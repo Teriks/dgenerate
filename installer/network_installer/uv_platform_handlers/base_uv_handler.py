@@ -1143,12 +1143,91 @@ class BasePlatformHandler(ABC):
         """Remove file associations."""
         pass
 
-    def apply_source_patches(self, source_dir: str) -> bool:
+    def apply_source_patches(self, source_dir: str, version: str | None = None) -> bool:
         """
         Apply platform-specific patches to the source code before installation.
         
         :param source_dir: Path to the dgenerate source directory
+        :param version: Optional version string from SetupAnalyzer
         :return: True if successful or no patches needed, False if failed
         """
-        # Default implementation: no patches needed
+        # Apply CUDA specifier patching for older versions (affects all platforms)
+        if not self._patch_cuda_specifiers_if_needed(source_dir, version):
+            return False
+            
+        # Default implementation: no additional patches needed
         return True
+    
+    def _patch_cuda_specifiers_if_needed(self, source_dir: str, version: str | None = None) -> bool:
+        """
+        Patch CUDA specifiers in poetry.lock for older dgenerate versions (< 5.0.0).
+        This fixes installation issues on non-NVIDIA platforms where torch entries
+        might have +cu specifiers like "torch+cu124".
+        
+        :param source_dir: Path to the dgenerate source directory
+        :param version: Version string from SetupAnalyzer
+        :return: True if successful or no patching needed, False if failed
+        """
+        try:
+            if not version:
+                self.log_callback("No version available, skipping CUDA specifier patching")
+                return True
+                
+            from packaging import version as pkg_version
+            parsed_version = pkg_version.parse(version)
+            if parsed_version >= pkg_version.parse("5.0.0"):
+                self.log_callback(f"Version {version} >= 5.0.0, skipping CUDA specifier patching")
+                return True
+            
+            self.log_callback(f"Version {version} < 5.0.0, checking for CUDA specifiers in poetry.lock")
+            
+            # Check if poetry.lock exists
+            lock_path = os.path.join(source_dir, 'poetry', 'poetry.lock')
+            if not os.path.exists(lock_path):
+                self.log_callback(f"poetry/poetry.lock not found at: {lock_path}")
+                return True  # Not an error, just no lockfile to patch
+            
+            # Read the lockfile content
+            with open(lock_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            # Check if there are any +cu specifiers in the content
+            import re
+            # Pattern to match version strings with CUDA specifiers like "2.5.1+cu124"
+            cuda_version_pattern = r'version = "([^"]+)\+cu\d+"'
+            # Pattern to match filenames with CUDA specifiers like "torch-2.5.1+cu124-cp310-cp310-linux_x86_64.whl"
+            cuda_filename_pattern = r'(torch-[^+]+)\+cu\d+(-[^"]*\.whl")'
+            
+            if not (re.search(cuda_version_pattern, content) or re.search(cuda_filename_pattern, content)):
+                self.log_callback("No CUDA specifiers found in poetry.lock")
+                return True
+            
+            self.log_callback("Found CUDA specifiers in poetry.lock, patching...")
+            
+            # Create a backup of the original file
+            backup_path = lock_path + '.cuda_backup'
+            if not os.path.exists(backup_path):
+                import shutil
+                shutil.copy2(lock_path, backup_path)
+                self.log_callback(f"Created backup at: {backup_path}")
+            
+            # Remove CUDA specifiers from version strings and filenames
+            patched_content = content
+            # Fix version strings: "2.5.1+cu124" -> "2.5.1"
+            patched_content = re.sub(cuda_version_pattern, r'version = "\1"', patched_content)
+            # Fix filenames: "torch-2.5.1+cu124-cp310..." -> "torch-2.5.1-cp310..."
+            patched_content = re.sub(cuda_filename_pattern, r'\1\2', patched_content)
+            
+            # Write the patched content back
+            with open(lock_path, 'w', encoding='utf-8') as f:
+                f.write(patched_content)
+            
+            self.log_callback("✓ Successfully patched CUDA specifiers from poetry.lock")
+            return True
+            
+        except Exception as e:
+            self.log_callback(f"Error patching CUDA specifiers: {e}")
+            import traceback
+            self.log_callback(f"Traceback: {traceback.format_exc()}")
+            return False
+    

@@ -191,7 +191,9 @@ class UvInstaller:
 
             # Step 6.5: Apply platform-specific patches
             self.log_callback("Applying platform-specific patches...")
-            if not self.platform_handler.apply_source_patches(self.source_dir):
+            # Pass version info from SetupAnalyzer if available
+            version = self.setup_analyzer.version if self.setup_analyzer else None
+            if not self.platform_handler.apply_source_patches(self.source_dir, version):
                 self.log_callback("Warning: Failed to apply some platform-specific patches")
 
             # Step 7: Install dgenerate
