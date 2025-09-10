@@ -536,13 +536,17 @@ class LinuxPlatformHandler(BasePlatformHandler):
 
         return library_pairs
 
-    def apply_source_patches(self, source_dir: str) -> bool:
+    def apply_source_patches(self, source_dir: str, version: str | None = None) -> bool:
         """
         Apply Linux-specific patches including Tcl/Tk library symlinking for better font support.
         
         :param source_dir: Path to the dgenerate source directory
+        :param version: Optional version string from SetupAnalyzer
         :return: True if successful, False if failed
         """
+        # Apply base patches first (including CUDA specifier patching)
+        if not super().apply_source_patches(source_dir, version):
+            return False
         try:
             # Check if Tcl/Tk runtime libraries are installed
             self.log_callback("Checking for system Tcl/Tk runtime libraries...")
