@@ -207,9 +207,9 @@ Help Output
             -----------------------------------------------------------------------------------------------
       -mt, --model-type MODEL_TYPE
             Use when loading different model types. Currently supported: sd, pix2pix, sdxl, sdxl-pix2pix,
-            kolors, upscaler-x2, upscaler-x4, if, ifs, ifs-img2img, s-cascade, sd3, flux, or flux-fill.
-            (default: sd)
-            -------------
+            kolors, upscaler-x2, upscaler-x4, if, ifs, ifs-img2img, s-cascade, sd3, flux, flux-fill, or
+            flux-kontext. (default: sd)
+            ---------------------------
       -rev, --revision BRANCH
             The model revision to use when loading from a Hugging Face repository, (The Git branch / tag,
             default is "main")
@@ -2030,16 +2030,16 @@ Help Output
             --------------------------------------------------------------------------------------------
       -af, --animation-format FORMAT
             Output format when generating an animation from an input video / gif / webp etc. Value must be one
-            of: mp4, gif, png, apng, or webp. You may also specify "frames" to indicate that only frames should
+            of: mp4, png, apng, gif, or webp. You may also specify "frames" to indicate that only frames should
             be output and no coalesced animation file should be rendered. (default: mp4)
             ----------------------------------------------------------------------------
       -if, --image-format FORMAT
             Output format when writing static images or tensors. For image formats, any selection other than
             "png", "jpg", or "jpeg" is not compatible with --output-metadata. For tensor formats (pt, pth,
-            safetensors), raw latent tensors will be saved instead of decoded images. Value must be one of:
-            avif, avifs, blp, bmp, dib, bufr, pcx, dds, ps, eps, gif, grib, h5, hdf, png, apng, jp2, j2k, jpc,
-            jpf, jpx, j2c, icns, ico, im, jfif, jpe, jpg, jpeg, tif, tiff, mpo, msp, palm, pdf, pbm, pgm, ppm,
-            pnm, pfm, qoi, bw, rgb, rgba, sgi, tga, icb, vda, vst, webp, wmf, emf, xbm, pt, pth, or safetensors.
+            safetensors), raw latent tensors will be saved instead of decoded images. Value must be one of: png,
+            apng, avif, avifs, blp, bmp, dib, bufr, pcx, dds, ps, eps, gif, grib, h5, hdf, jp2, j2k, jpc, jpf,
+            jpx, j2c, icns, ico, im, jfif, jpe, jpg, jpeg, tif, tiff, mpo, msp, palm, pdf, pbm, pgm, ppm, pnm,
+            pfm, qoi, bw, rgb, rgba, sgi, tga, icb, vda, vst, webp, wmf, emf, xbm, pt, pth, or safetensors.
             (default: png)
             --------------
       -nf, --no-frames
@@ -10869,7 +10869,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [39337416908497]
+            Value: [52380241106639]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -10924,9 +10924,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_verbose"
             Type: <class 'bool'>
             Value: False
-        Name: "path"
+        Name: "os"
             Type: <class 'module'>
-            Value: <module 'ntpath' (frozen)>
+            Value: <module 'os' (frozen)>
         Name: "saved_modules"
             Type: dict[str, dict[str, typing.Any]]
             Value: {}
@@ -11106,6 +11106,7 @@ The dgenerate specific jinja2 functions/filters are:
         "gpt4all": Do we have gpt4all installed?
         "bitsandbytes": Do we have bitsandbytes installed?
         "flash-attn": Do we have flash-attn installed?
+        "xformers": Do we have xformers installed?
         "triton": Do we have triton installed?
     
     ====================================================================================
@@ -11130,6 +11131,16 @@ The dgenerate specific jinja2 functions/filters are:
         Check if CUDA is available.
     
     ===============================
+    have_xpu() -> bool:
+    
+        Check if XPU is available.
+    
+    ==============================
+    have_mps() -> bool:
+    
+        Check if MPS is available.
+    
+    ==============================
     total_memory(device: str | None = None, unit: str = 'b'):
     
         Get the total ram that a specific device possesses.
@@ -12043,7 +12054,8 @@ The entirety of pythons builtin ``glob`` and ``os.path`` module are also accessi
 can glob directories using functions from the glob module, you can also glob directory's using shell
 globbing.
 
-The glob modules is set to the ``glob`` template variable, and the ``os.path`` module is set to the ``path`` template variable.
+The glob modules is set to the ``glob`` template variable, and the ``os`` module is set to the
+``os`` template variable, giving you access to ``os.path`` among other things.
 
 .. code-block:: jinja
 
@@ -12087,9 +12099,9 @@ The glob modules is set to the ``glob`` template variable, and the ``os.path`` m
         \print {{ quote(file) }}
     {% endfor %}
     
-    # usage of os.path via path
+    # usage of os.path via os module
     
-    \print {{ path.abspath('.') }}
+    \print {{ os.path.abspath('.') }}
     
     # Simple inline usage
     
@@ -12098,7 +12110,7 @@ The glob modules is set to the ``glob`` template variable, and the ``os.path`` m
     --dtype float16
     --prompts "In the style of picaso"
     --image-seeds {{ quote(glob.glob('../media/*.png')) }}
-    --output-path {{ quote(path.join(path.abspath('.'), 'output')) }}
+    --output-path {{ quote(os.path.join(os.path.abspath('.'), 'output')) }}
     
     # equivalent
     

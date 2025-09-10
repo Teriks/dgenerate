@@ -38,9 +38,9 @@
     \print {{ quote(file) }}
 {% endfor %}
 
-# usage of os.path via path
+# usage of os.path via os module
 
-\print {{ path.abspath('.') }}
+\print {{ os.path.abspath('.') }}
 
 # Simple inline usage
 
@@ -49,7 +49,7 @@ stabilityai/stable-diffusion-2-1
 --dtype float16
 --prompts "In the style of picaso"
 --image-seeds {{ quote(glob.glob('../media/*.png')) }}
---output-path {{ quote(path.join(path.abspath('.'), 'output')) }}
+--output-path {{ quote(os.path.join(os.path.abspath('.'), 'output')) }}
 
 # equivalent
 

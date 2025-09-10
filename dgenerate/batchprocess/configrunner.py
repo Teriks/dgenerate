@@ -165,7 +165,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'injected_plugin_modules': injected_plugin_modules,
             'saved_modules': dict(),
             'glob': glob,
-            'path': os.path,
+            'os': os,
         }
 
         self.template_variables = self._generate_template_variables()
@@ -194,6 +194,8 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'platform': _configrunnerbuiltins.platform,
             'frange': _configrunnerbuiltins.frange,
             'have_cuda': _configrunnerbuiltins.have_cuda,
+            'have_xpu': _configrunnerbuiltins.have_xpu,
+            'have_mps': _configrunnerbuiltins.have_mps,
             'total_memory': _configrunnerbuiltins.total_memory,
             'default_device': _configrunnerbuiltins.default_device,
             'csv': _configrunnerbuiltins.csv
@@ -1151,7 +1153,7 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             'injected_plugin_modules': (_types.OptionalPaths, self.template_variables.get('injected_plugin_modules')),
             'saved_modules': (dict[str, dict[str, typing.Any]], self.template_variables.get('saved_modules')),
             'glob': (types.ModuleType, self.template_variables.get('glob')),
-            'path': (types.ModuleType, self.template_variables.get('path'))
+            'os': (types.ModuleType, self.template_variables.get('os'))
         })
 
         return template_variables
@@ -1505,7 +1507,10 @@ class ConfigRunner(_batchprocessor.BatchProcessor):
             # The base module name is the first part
             base_module_name = parts[0]
 
-            self.user_define_check(base_module_name)
+            if base_module_name != 'os':
+                # harmless to allow, even though we
+                # already import os as a builtin module
+                self.user_define_check(base_module_name)
 
             try:
                 # First import the base module
