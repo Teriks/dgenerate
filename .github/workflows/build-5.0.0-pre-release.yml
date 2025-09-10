@@ -94,6 +94,13 @@ jobs:
         with:
           ref: version_5.0.0
 
+      - name: Get commit hash
+        id: commit
+        run: |
+          commit_hash=$(git rev-parse --short HEAD)
+          echo "hash=$commit_hash" >> $GITHUB_OUTPUT
+        shell: bash
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -157,11 +164,11 @@ jobs:
         run: |
           if [ "${{ matrix.platform }}" == "windows" ]; then
             source_file="installer/dist/dgenerate-network-installer.exe"
+            target_file="installer/dist/${{ matrix.artifact_name }}-${{ steps.commit.outputs.hash }}.exe"
           else
             source_file="installer/dist/dgenerate-network-installer"
+            target_file="installer/dist/${{ matrix.artifact_name }}-${{ steps.commit.outputs.hash }}"
           fi
-          
-          target_file="installer/dist/${{ matrix.artifact_name }}"
           
           echo "Renaming $source_file to $target_file"
           mv "$source_file" "$target_file"
@@ -178,8 +185,8 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact_name }}
-          path: installer/dist/${{ matrix.artifact_name }}
+          name: ${{ matrix.artifact_name }}-${{ steps.commit.outputs.hash }}
+          path: installer/dist/${{ matrix.artifact_name }}-${{ steps.commit.outputs.hash }}${{ matrix.exe_extension }}
           if-no-files-found: error
           retention-days: 1
 
@@ -329,9 +336,9 @@ jobs:
           ## Available Downloads
           
           ### Installers
-          - **Windows**: \`dgenerate-installer-win.exe\`
-          - **Linux**: \`dgenerate-installer-linux\`
-          - **macOS** (Apple Silicon): \`dgenerate-installer-macos\`
+          - **Windows**: \`dgenerate-installer-win-$commit_sha.exe\`
+          - **Linux**: \`dgenerate-installer-linux-$commit_sha\`
+          - **macOS** (Apple Silicon): \`dgenerate-installer-macos-$commit_sha\`
           
           ### Python Wheels
           - **Windows**: \`dgenerate-$version-$commit_sha-py3-none-win_amd64.whl\`
@@ -342,7 +349,7 @@ jobs:
           ## Installation
           
           ### Windows
-          1. Download \`dgenerate-installer-win.exe\`
+          1. Download \`dgenerate-installer-win-$commit_sha.exe\`
           2. Run the installer
           
           **Note for Windows users**: Windows Defender may flag the installer as potentially harmful since it's unsigned. If you see a warning, click "More info" and then "Run anyway" to proceed with the installation.
@@ -351,15 +358,15 @@ jobs:
           
           
           ### Linux
-          1. Download \`dgenerate-installer-linux\`
-          2. Make the file executable: \`chmod +x dgenerate-installer-linux\`
-          3. Run the installer: \`./dgenerate-installer-linux\`
+          1. Download \`dgenerate-installer-linux-$commit_sha\`
+          2. Make the file executable: \`chmod +x dgenerate-installer-linux-$commit_sha\`
+          3. Run the installer: \`./dgenerate-installer-linux-$commit_sha\`
           
           ### macOS (Apple Silicon)
-          1. Download \`dgenerate-installer-macos\`
-          2. Remove quarantine attribute: \`xattr -d com.apple.quarantine dgenerate-installer-macos\`
-          3. Make the file executable: \`chmod +x dgenerate-installer-macos\`
-          4. Run the installer: \`./dgenerate-installer-macos\`
+          1. Download \`dgenerate-installer-macos-$commit_sha\`
+          2. Remove quarantine attribute: \`xattr -d com.apple.quarantine dgenerate-installer-macos-$commit_sha\`
+          3. Make the file executable: \`chmod +x dgenerate-installer-macos-$commit_sha\`
+          4. Run the installer: \`./dgenerate-installer-macos-$commit_sha\`
           
           **Note for macOS users**: The \`xattr\` command is required to prevent macOS from quarantining the binary, which would otherwise prevent execution.
           
