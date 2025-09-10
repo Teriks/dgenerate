@@ -2459,6 +2459,7 @@ Install dgenerate:
     # * gpt4all
     # * gpt4all_cuda
     # * bitsandbytes
+    # * xformers (NVIDIA CUDA only - memory-efficient attention)
     # * triton_windows
     # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
@@ -2480,6 +2481,11 @@ Install dgenerate:
     pipx install dgenerate[ncnn]==5.0.0 ^
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu128/"
 
+    # with memory-efficient attention (NVIDIA CUDA only)
+
+    pipx install dgenerate[xformers]==5.0.0 ^
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu128/"
+
     # You can install without pipx into your own environment like so
 
     pip install dgenerate==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu128/
@@ -2487,6 +2493,10 @@ Install dgenerate:
     # Or with NCNN
 
     pip install dgenerate[ncnn]==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu128/
+
+    # Or with xFormers (NVIDIA CUDA only)
+
+    pip install dgenerate[xformers]==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu128/
 
 
 It is recommended to install dgenerate with pipx if you are just intending
@@ -2509,13 +2519,19 @@ a cloned repository like this:
     # * gpt4all
     # * gpt4all_cuda
     # * bitsandbytes
+    # * xformers (NVIDIA CUDA only - memory-efficient attention)
+    # * triton_windows
     # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
     pip install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu128/
 
     # Install with pip into the environment, include NCNN
 
-    pip install --editable .[dev, ncnn] --extra-index-url https://download.pytorch.org/whl/cu128/
+    pip install --editable .[dev,ncnn] --extra-index-url https://download.pytorch.org/whl/cu128/
+
+    # Install with pip into the environment, include xFormers (NVIDIA CUDA only)
+
+    pip install --editable .[dev,xformers] --extra-index-url https://download.pytorch.org/whl/cu128/
 
 
 Run ``dgenerate`` to generate images:
@@ -2612,6 +2628,7 @@ Install dgenerate
     # * gpt4all
     # * gpt4all_cuda
     # * bitsandbytes
+    # * xformers (NVIDIA CUDA only - memory-efficient attention)
     # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
     # install with just support for torch
@@ -2622,6 +2639,11 @@ Install dgenerate
     # With NCNN upscaler support (extra)
 
     pipx install dgenerate[ncnn] \
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu128/"
+
+    # With memory-efficient attention (NVIDIA CUDA only)
+
+    pipx install dgenerate[xformers] \
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu128/"
 
     # If you want a specific version
@@ -2636,6 +2658,10 @@ Install dgenerate
     # Or with NCNN
 
     pip3 install dgenerate[ncnn]==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu128/
+
+    # Or with xFormers (NVIDIA CUDA only)
+
+    pip3 install dgenerate[xformers]==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu128/
 
 
 It is recommended to install dgenerate with pipx if you are just intending
@@ -2655,6 +2681,10 @@ virtual environment you can do so like this:
     # Install with pip into the environment (editable, for development)
 
     pip3 install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu128/
+
+    # Install with pip into the environment (editable, with xFormers for NVIDIA CUDA)
+
+    pip3 install --editable .[dev,xformers] --extra-index-url https://download.pytorch.org/whl/cu128/
 
     # Install with pip into the environment (non-editable)
 
@@ -2878,15 +2908,6 @@ global python site packages.
 
     pipx install dgenerate[ncnn,gpt4all,console_ui_opengl]==5.0.0
 
-
-    # you can attempt to install the pre-release bitsandbytes
-    # multiplatform version for MacOS, though, I am not sure if it will
-    # function correctly, this will allow use of the --quantizer option
-    # and quantizer URI arguments with bitsandbytes.
-
-    pipx inject dgenerate https://github.com/bitsandbytes-foundation/bitsandbytes/releases/download/continuous-release_multi-backend-refactor/bitsandbytes-0.45.1.dev0-py3-none-macosx_13_1_x86_64.whl
-
-
     # open a new terminal or logout & login
 
     # launch the Console UI to test the install.
@@ -2946,14 +2967,6 @@ of your own creation.
     # or with extras
 
     pip3 install dgenerate[ncnn,gpt4all,console_ui_opengl]==5.0.0
-
-    # you can attempt to install the pre-release bitsandbytes
-    # multiplatform version for MacOS, though, I am not sure if it will
-    # function correctly, this will allow use of the --quantizer option
-    # and quantizer URI arguments with bitsandbytes.
-
-    pip3 install https://github.com/bitsandbytes-foundation/bitsandbytes/releases/download/continuous-release_multi-backend-refactor/bitsandbytes-0.45.1.dev0-py3-none-macosx_13_1_x86_64.whl
-
 
     # launch the Console UI to test the install.
     # tkinter will be available when you install

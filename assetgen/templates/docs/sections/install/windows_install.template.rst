@@ -57,6 +57,7 @@ Install dgenerate:
     # * gpt4all
     # * gpt4all_cuda
     # * bitsandbytes
+    # * xformers (NVIDIA CUDA only - memory-efficient attention)
     # * triton_windows
     # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
@@ -78,6 +79,11 @@ Install dgenerate:
     pipx install dgenerate[ncnn]==@VERSION ^
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu128/"
 
+    # with memory-efficient attention (NVIDIA CUDA only)
+
+    pipx install dgenerate[xformers]==@VERSION ^
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu128/"
+
     # You can install without pipx into your own environment like so
 
     pip install dgenerate==@VERSION --extra-index-url https://download.pytorch.org/whl/cu128/
@@ -85,6 +91,10 @@ Install dgenerate:
     # Or with NCNN
 
     pip install dgenerate[ncnn]==@VERSION --extra-index-url https://download.pytorch.org/whl/cu128/
+
+    # Or with xFormers (NVIDIA CUDA only)
+
+    pip install dgenerate[xformers]==@VERSION --extra-index-url https://download.pytorch.org/whl/cu128/
 
 
 It is recommended to install dgenerate with pipx if you are just intending
@@ -107,13 +117,19 @@ a cloned repository like this:
     # * gpt4all
     # * gpt4all_cuda
     # * bitsandbytes
+    # * xformers (NVIDIA CUDA only - memory-efficient attention)
+    # * triton_windows
     # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
     pip install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu128/
 
     # Install with pip into the environment, include NCNN
 
-    pip install --editable .[dev, ncnn] --extra-index-url https://download.pytorch.org/whl/cu128/
+    pip install --editable .[dev,ncnn] --extra-index-url https://download.pytorch.org/whl/cu128/
+
+    # Install with pip into the environment, include xFormers (NVIDIA CUDA only)
+
+    pip install --editable .[dev,xformers] --extra-index-url https://download.pytorch.org/whl/cu128/
 
 
 Run ``dgenerate`` to generate images:

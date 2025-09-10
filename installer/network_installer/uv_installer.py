@@ -202,7 +202,7 @@ class UvInstaller:
 
             # Step 7.5: Post-installation cleanup
             self.log_callback("Running post-installation cleanup...")
-            if not self.run_post_installation_cleanup(uv_exe, torch_index_url):
+            if not self.run_post_installation_cleanup(uv_exe):
                 self.log_callback("Failed to complete post-installation cleanup")
                 return InstallationResult.failure_result("Post-installation cleanup failed")
 
@@ -516,30 +516,18 @@ class UvInstaller:
         """Get the path to the Python executable in the virtual environment."""
         return self.platform_handler.get_venv_python()
 
-    def run_post_installation_cleanup(self, uv_exe: Path, torch_index_url: str | None = None) -> bool:
+    def run_post_installation_cleanup(self, uv_exe: Path) -> bool:
         """
         Run post-installation cleanup to fix common compatibility issues.
         
-        This includes:
-        1. Removing xFormers for cu118 installations to avoid compatibility issues (non-critical)
-        2. Reinstalling the correct OpenCV version to avoid conflicts (CRITICAL - failure stops installation)
+        Currently handles:
+        - OpenCV package cleanup and reinstallation (CRITICAL - failure stops installation)
         
         :param uv_exe: Path to uv executable
-        :param torch_index_url: PyTorch index URL used for installation
         :return: True if cleanup was successful, False if critical errors occurred
         """
         try:
-            # Step 1: Handle xFormers removal for cu118 installations (non-critical)
-            if torch_index_url and 'cu118' in torch_index_url:
-                self.log_callback("Detected cu118 PyTorch installation - removing xFormers to avoid compatibility issues")
-                if not self._remove_xformers(uv_exe):
-                    self.log_callback("Warning: Failed to remove xFormers (non-critical, continuing installation)")
-                else:
-                    self.log_callback("✓ Successfully removed xFormers for cu118 compatibility")
-            else:
-                self.log_callback("Skipping xFormers removal (not a cu118 installation)")
-            
-            # Step 2: Handle OpenCV cleanup and reinstallation (CRITICAL)
+            # OpenCV cleanup and reinstallation (CRITICAL)
             self.log_callback("Cleaning up OpenCV packages to avoid conflicts...")
             if not self._cleanup_opencv_packages(uv_exe):
                 self.log_callback("ERROR: Failed to clean up OpenCV packages - this is a critical failure")
@@ -547,40 +535,12 @@ class UvInstaller:
             else:
                 self.log_callback("✓ Successfully cleaned up OpenCV packages")
             
-            return True  # All critical operations succeeded
+            return True
             
         except Exception as e:
             self.log_callback(f"Error during post-installation cleanup: {e}")
             return False
 
-    def _remove_xformers(self, uv_exe: Path) -> bool:
-        """
-        Remove xFormers package to avoid compatibility issues with cu118.
-        
-        :param uv_exe: Path to uv executable
-        :return: True if successful, False otherwise
-        """
-        try:
-            from network_installer.subprocess_utils import run_silent
-            
-            # Use uv pip to uninstall xformers
-            # Note: uv pip uninstall doesn't support -y flag, it's non-interactive by default
-            cmd = [str(uv_exe), 'pip', 'uninstall', '--python', str(self.get_venv_python()), 'xformers']
-            
-            self.log_callback(f"Removing xFormers: {' '.join(cmd)}")
-            
-            result = run_silent(cmd, capture_output=True, text=True, timeout=300)
-            
-            if result.returncode == 0:
-                self.log_callback("xFormers removed successfully")
-                return True
-            else:
-                self.log_callback(f"Failed to remove xFormers: {result.stderr}")
-                return False
-                
-        except Exception as e:
-            self.log_callback(f"Error removing xFormers: {e}")
-            return False
 
     def _cleanup_opencv_packages(self, uv_exe: Path) -> bool:
         """

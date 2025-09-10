@@ -294,6 +294,7 @@ if dgenerate_platform != 'linux':
 
 if dgenerate_platform == 'darwin':
     _exclude_requires('bitsandbytes')
+    _exclude_requires('xformers')  # xFormers doesn't support macOS
 
 if dgenerate_platform == 'windows':
     for name in list(requires.keys()):
@@ -304,6 +305,12 @@ else:
 
 if 'bitsandbytes' in requires:
     extras['bitsandbytes'] = ['bitsandbytes' + requires.pop('bitsandbytes')]
+
+# xFormers support - only for NVIDIA CUDA on Linux/Windows
+if 'xformers' in requires:
+    _xformers_requires_spec = requires.pop('xformers')
+    if dgenerate_platform in {'linux', 'windows'}:
+        extras['xformers'] = ['xformers' + _xformers_requires_spec]
 
 if dgenerate_platform in {'linux', 'windows'}:
     extras['gpt4all_cuda'] = ['gpt4all[cuda]' + _gpt4all_requires_spec]
