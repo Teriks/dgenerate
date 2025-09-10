@@ -730,7 +730,7 @@ class DGenerateInstallerGUI:
             # Detect GPU information for intelligent extra recommendations
             gpu_info = detect_gpu()
 
-            self.available_extras = setup_analyzer.get_available_extras()
+            self.available_extras = setup_analyzer.get_available_extras(gpu_info)
             self.recommended_extras = setup_analyzer.get_recommended_extras(gpu_info)
             extra_descriptions = setup_analyzer.get_extra_descriptions()
 

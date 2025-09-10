@@ -79,6 +79,14 @@ def setup_argument_parser():
     )
 
     parser.add_argument(
+        '--skip',
+        choices=['readme', 'docs', 'console-schemas', 'helsinki-nlp-translation-map', 'hf-configs'],
+        nargs='*',
+        metavar='TARGET',
+        help='Skip specific targets when building (can specify multiple targets)'
+    )
+
+    parser.add_argument(
         '--no-command-cache', nargs='*', metavar='COMMAND_PATTERN',
         help='Disable command cache (RST Templating). If patterns are provided, '
              'remove matching commands from cache'
@@ -91,6 +99,27 @@ def setup_argument_parser():
     )
 
     return parser
+
+
+def should_build_target(target_name, args):
+    """
+    Check if a target should be built based on the --target and --skip arguments.
+    
+    :param target_name: Name of the target to check
+    :type target_name: str
+    :param args: Parsed command line arguments
+    :type args: argparse.Namespace
+    :return: True if the target should be built, False otherwise
+    :rtype: bool
+    """
+    # Check if target is selected by --target argument
+    target_selected = args.target == 'all' or args.target == target_name
+    
+    # Check if target is explicitly skipped
+    target_skipped = args.skip and target_name in args.skip
+    
+    return target_selected and not target_skipped
+
 
 def main():
     """Main entry point for the build script."""
@@ -144,25 +173,40 @@ def main():
     os.environ['COLUMNS'] = '110'
 
     # Build targets
-    if args.target in ['readme', 'all']:
+    if should_build_target('readme', args):
+        print("Building README...")
         readme_builder = ReadmeBuilder(preprocessor, project_dir)
         readme_builder.build()
+    else:
+        print("Skipping README build")
         
-    if args.target in ['docs', 'all']:
+    if should_build_target('docs', args):
+        print("Building docs...")
         docs_builder = DocsBuilder(preprocessor, project_dir)
         docs_builder.build()
+    else:
+        print("Skipping docs build")
     
-    if args.target in ['console-schemas', 'all']:
+    if should_build_target('console-schemas', args):
+        print("Building console schemas...")
         schema_builder = ConsoleSchemaBuilder(project_dir)
         schema_builder.build()
+    else:
+        print("Skipping console schemas build")
     
-    if args.target in ['helsinki-nlp-translation-map', 'all']:
+    if should_build_target('helsinki-nlp-translation-map', args):
+        print("Building Helsinki NLP translation map...")
         translation_map_builder = HelsinkiNLPTranslationMapBuilder(project_dir)
         translation_map_builder.build()
+    else:
+        print("Skipping Helsinki NLP translation map build")
     
-    if args.target in ['hf-configs', 'all']:
+    if should_build_target('hf-configs', args):
+        print("Building HF configs...")
         hf_configs_builder = HfConfigsBuilder(project_dir)
         hf_configs_builder.build()
+    else:
+        print("Skipping HF configs build")
 
     print("Build completed successfully!")
 

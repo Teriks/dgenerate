@@ -317,53 +317,130 @@ class SetupAnalyzer:
             self._log(f"Error during cleanup: {e}")
             self._log(f"Traceback: {traceback.format_exc()}")
 
-    def get_available_extras(self):
-        """Get available extras for the current platform."""
-        # Only return extras that have descriptions
+    def get_available_extras(self, gpu_info=None):
+        """
+        Get available extras for the current platform and hardware.
+        Filters out incompatible extras to prevent users from selecting them.
+        
+        :param gpu_info: Optional GPU information for hardware-based filtering
+        :return: Dict of available extras with descriptions
+        """
         descriptions = self.get_extra_descriptions()
-        return {k: v for k, v in self.extras.items() if k in descriptions}
+        
+        # Start with extras that have descriptions
+        available = {}
+        
+        for extra_name, extra_deps in self.extras.items():
+            if extra_name not in descriptions:
+                continue  # Skip extras without descriptions
+            
+            # Check if this extra is compatible with the current system
+            if self._is_extra_compatible(extra_name, gpu_info):
+                available[extra_name] = descriptions[extra_name]
+            else:
+                self._log(f"Filtering out incompatible extra: {extra_name}")
+        
+        return available
+
+    def _is_extra_compatible(self, extra_name: str, gpu_info=None) -> bool:
+        """
+        Check if an extra is compatible with the current system.
+        
+        :param extra_name: Name of the extra to check
+        :param gpu_info: Optional GPU information
+        :return: True if compatible, False otherwise
+        """
+        # If no GPU info provided, assume everything is compatible (for backward compatibility)
+        if gpu_info is None:
+            return True
+        
+        # Platform and GPU-specific compatibility checks
+        if extra_name == 'xformers':
+            # xFormers requires NVIDIA CUDA and compatible PyTorch index
+            if not (gpu_info.has_nvidia and gpu_info.cuda_version):
+                return False
+            
+            # Check if this would result in cu118 PyTorch (incompatible with xformers)
+            torch_version = self.get_torch_version()
+            if torch_version:
+                try:
+                    from network_installer.platform_detection import _get_torch_cuda_url
+                    from packaging import version as pkg_version
+                    
+                    # Parse versions
+                    parsed_version = pkg_version.parse(torch_version)
+                    torch_major = parsed_version.release[0]
+                    torch_minor = parsed_version.release[1] if len(parsed_version.release) > 1 else 0
+                    torch_patch = parsed_version.release[2] if len(parsed_version.release) > 2 else 0
+                    
+                    cuda_parts = gpu_info.cuda_version.split('.')
+                    cuda_major = int(cuda_parts[0])
+                    cuda_minor = int(cuda_parts[1]) if len(cuda_parts) > 1 else 0
+                    
+                    # Get torch index URL for this GPU
+                    torch_index_url = _get_torch_cuda_url(torch_major, torch_minor, torch_patch,
+                                                         cuda_major, cuda_minor,
+                                                         gpu_info.nvidia_is_mpv_legacy)
+                    
+                    # Don't show xformers if it would use cu118 (compatibility issues)
+                    if torch_index_url and 'cu118' in torch_index_url:
+                        return False
+                    
+                except Exception:
+                    # If version parsing fails, err on the side of caution
+                    return False
+            
+            return True
+        
+        elif extra_name == 'gpt4all_cuda':
+            # GPT4All CUDA requires NVIDIA GPU
+            return gpu_info.has_nvidia and gpu_info.cuda_version
+        
+        elif extra_name == 'triton_windows':
+            # Triton Windows requires NVIDIA GPU
+            return gpu_info.has_nvidia
+        
+        # All other extras are compatible by default
+        return True
 
     def get_recommended_extras(self, gpu_info=None):
         """
         Get list of recommended extras for the current platform.
+        Only considers extras that are already available (compatible).
         
-        :pa
-        ram gpu_info: Optional GPU information from platform detection
+        :param gpu_info: Optional GPU information from platform detection
         :return: List of recommended extra names
         """
-        descriptions = self.get_extra_descriptions()
-        available_extras = [k for k in self.extras.keys() if k in descriptions]
-
-        # If no GPU info provided, return all available extras
+        # Get only compatible extras
+        available_extras = self.get_available_extras(gpu_info)
+        
+        # If no GPU info provided, recommend all available extras
         if gpu_info is None:
-            return available_extras
+            return list(available_extras.keys())
 
         # Make intelligent recommendations based on GPU capabilities
         recommended = []
 
-        for extra in available_extras:
+        for extra in available_extras.keys():
             if extra == 'gpt4all' and 'gpt4all_cuda' in available_extras:
                 # Only recommend gpt4all if CUDA is not available
                 if not (gpu_info.has_nvidia and gpu_info.cuda_version):
                     recommended.append(extra)
                     self._log(f"Recommending gpt4all (CPU-only) - no CUDA available")
                 else:
-                    self._log(
-                        f"Not recommending gpt4all (CPU-only) - CUDA available, will recommend gpt4all_cuda instead")
+                    self._log(f"Not recommending gpt4all (CPU-only) - CUDA available, will recommend gpt4all_cuda instead")
             elif extra == 'gpt4all_cuda':
-                # Recommend gpt4all_cuda if CUDA is available
-                if gpu_info.has_nvidia and gpu_info.cuda_version:
-                    recommended.append(extra)
-                    self._log(f"Recommending gpt4all_cuda - CUDA {gpu_info.cuda_version} detected")
-                else:
-                    self._log(f"Not recommending gpt4all_cuda - no CUDA available")
+                # Always recommend if available (compatibility already checked)
+                recommended.append(extra)
+                self._log(f"Recommending gpt4all_cuda - CUDA {gpu_info.cuda_version} detected")
+            elif extra == 'xformers':
+                # Always recommend if available (compatibility already checked)
+                recommended.append(extra)
+                self._log(f"Recommending xformers - NVIDIA CUDA {gpu_info.cuda_version} detected")
             elif extra == 'triton_windows':
-                # Only recommend triton_windows if NVIDIA GPU is available
-                if gpu_info.has_nvidia:
-                    recommended.append(extra)
-                    self._log(f"Recommending triton_windows - NVIDIA GPU detected")
-                else:
-                    self._log(f"Not recommending triton_windows - no NVIDIA GPU available")
+                # Always recommend if available (compatibility already checked)
+                recommended.append(extra)
+                self._log(f"Recommending triton_windows - NVIDIA GPU detected")
             else:
                 # For all other extras, recommend them
                 recommended.append(extra)
@@ -374,6 +451,7 @@ class SetupAnalyzer:
         """Get human-readable descriptions for extras."""
         return {
             'bitsandbytes': 'Quantization library for faster inference with reduced memory usage',
+            'xformers': 'Memory-efficient attention for NVIDIA CUDA GPUs (Linux/Windows)',
             'ncnn': 'High-performance neural network inference framework (Used for ncnn-upscaler image processor)',
             'gpt4all': 'Local large language model support (CPU-only)',
             'gpt4all_cuda': 'CUDA-accelerated GPT4All for NVIDIA GPUs (Linux/Windows)',

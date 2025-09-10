@@ -57,15 +57,6 @@ global python site packages.
 
     pipx install dgenerate[ncnn,gpt4all,console_ui_opengl]==@VERSION
 
-
-    # you can attempt to install the pre-release bitsandbytes
-    # multiplatform version for MacOS, though, I am not sure if it will
-    # function correctly, this will allow use of the --quantizer option
-    # and quantizer URI arguments with bitsandbytes.
-
-    pipx inject dgenerate https://github.com/bitsandbytes-foundation/bitsandbytes/releases/download/continuous-release_multi-backend-refactor/bitsandbytes-0.45.1.dev0-py3-none-macosx_13_1_x86_64.whl
-
-
     # open a new terminal or logout & login
 
     # launch the Console UI to test the install.
@@ -125,14 +116,6 @@ of your own creation.
     # or with extras
 
     pip3 install dgenerate[ncnn,gpt4all,console_ui_opengl]==@VERSION
-
-    # you can attempt to install the pre-release bitsandbytes
-    # multiplatform version for MacOS, though, I am not sure if it will
-    # function correctly, this will allow use of the --quantizer option
-    # and quantizer URI arguments with bitsandbytes.
-
-    pip3 install https://github.com/bitsandbytes-foundation/bitsandbytes/releases/download/continuous-release_multi-backend-refactor/bitsandbytes-0.45.1.dev0-py3-none-macosx_13_1_x86_64.whl
-
 
     # launch the Console UI to test the install.
     # tkinter will be available when you install

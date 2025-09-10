@@ -32,6 +32,18 @@ python -m assetgen.build --target helsinki-nlp-translation-map
 python -m assetgen.build --target hf-configs
 ```
 
+### Skip specific targets:
+```bash
+# Skip downloading HF configs (useful when working offline)
+python -m assetgen.build --skip hf-configs
+
+# Skip multiple targets
+python -m assetgen.build --skip readme docs hf-configs
+
+# Build everything except HF configs and docs
+python -m assetgen.build --target all --skip hf-configs docs
+```
+
 ### Cache management:
 ```bash
 # Disable command cache completely (RST templating)

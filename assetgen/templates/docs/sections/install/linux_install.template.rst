@@ -77,6 +77,7 @@ Install dgenerate
     # * gpt4all
     # * gpt4all_cuda
     # * bitsandbytes
+    # * xformers (NVIDIA CUDA only - memory-efficient attention)
     # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
     # install with just support for torch
@@ -87,6 +88,11 @@ Install dgenerate
     # With NCNN upscaler support (extra)
 
     pipx install dgenerate[ncnn] \
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu128/"
+
+    # With memory-efficient attention (NVIDIA CUDA only)
+
+    pipx install dgenerate[xformers] \
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu128/"
 
     # If you want a specific version
@@ -101,6 +107,10 @@ Install dgenerate
     # Or with NCNN
 
     pip3 install dgenerate[ncnn]==@VERSION --extra-index-url https://download.pytorch.org/whl/cu128/
+
+    # Or with xFormers (NVIDIA CUDA only)
+
+    pip3 install dgenerate[xformers]==@VERSION --extra-index-url https://download.pytorch.org/whl/cu128/
 
 
 It is recommended to install dgenerate with pipx if you are just intending
@@ -120,6 +130,10 @@ virtual environment you can do so like this:
     # Install with pip into the environment (editable, for development)
 
     pip3 install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu128/
+
+    # Install with pip into the environment (editable, with xFormers for NVIDIA CUDA)
+
+    pip3 install --editable .[dev,xformers] --extra-index-url https://download.pytorch.org/whl/cu128/
 
     # Install with pip into the environment (non-editable)
 
