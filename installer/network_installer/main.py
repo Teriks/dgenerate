@@ -110,7 +110,7 @@ def run_silent_install(version=None, branch=None, extras=None):
         if existing_install.exists:
             print("Existing installation detected. Overwriting...")
             # Uninstall existing installation
-            if not installer.uninstall_completely():
+            if not installer.uninstall():
                 print("ERROR: Failed to uninstall existing installation")
                 return False
             print("Existing installation removed successfully")
