@@ -471,6 +471,7 @@ def have_feature(feature_name: str) -> bool:
     "gpt4all": Do we have gpt4all installed?
     "bitsandbytes": Do we have bitsandbytes installed?
     "flash-attn": Do we have flash-attn installed?
+    "xformers": Do we have xformers installed?
     "triton": Do we have triton installed?
     """
 
@@ -479,6 +480,7 @@ def have_feature(feature_name: str) -> bool:
         'gpt4all',
         'bitsandbytes',
         'flash-attn',
+        'xformers',
         'triton',
     ]
 
@@ -527,16 +529,23 @@ def default_device() -> str:
 
 def have_cuda() -> bool:
     """
-    Check if CUDA is available.
+    Check if CUDA backend is available.
     """
     return _torchutil.is_cuda_available()
 
 
 def have_xpu() -> bool:
     """
-    Check if XPU is available.
+    Check if XPU backend is available.
     """
     return _torchutil.is_xpu_available()
+
+
+def have_mps() -> bool:
+    """
+    Check if MPS backend is available.
+    """
+    return _torchutil.is_mps_available()
 
 
 def total_memory(device: str | None = None, unit: str = 'b'):

@@ -250,7 +250,8 @@ The entirety of pythons builtin ``glob`` and ``os.path`` module are also accessi
 can glob directories using functions from the glob module, you can also glob directory's using shell
 globbing.
 
-The glob modules is set to the ``glob`` template variable, and the ``os.path`` module is set to the ``path`` template variable.
+The glob modules is set to the ``glob`` template variable, and the ``os`` module is set to the
+``os`` template variable, giving you access to ``os.path`` among other things.
 
 @EXAMPLE[@PROJECT_DIR/examples/config_syntax/globbing-config.dgen]
 
