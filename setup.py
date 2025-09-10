@@ -23,7 +23,9 @@
 import os
 import platform
 import re
+import sys
 from ast import literal_eval
+import tomllib
 
 # Only import setuptools when actually running setup, not when loading as library
 if __name__ != 'setup_as_library':
@@ -68,60 +70,89 @@ if not README:
 
 
 def poetry_lockfile_deps():
-    poetry_lock_packages = re.compile(r"\[\[package\]\].*?optional = .*?python-versions.*?\n", re.MULTILINE | re.DOTALL)
-    with open(poetry_lockfile_path) as f:
-        for match in poetry_lock_packages.findall(f.read()):
-            vals = match.strip().split('\n')[1:]
-            d = dict()
-            for val in vals:
-                left, right = val.split('=', 1)
-                right = right.strip()
-                if right == 'true':
-                    right = True
-                elif right == 'false':
-                    right = False
-                else:
-                    right = literal_eval(right)
-                d[left.strip()] = right
-            yield d
+    with open(poetry_lockfile_path, 'rb') as f:
+        lockfile_data = tomllib.load(f)
+    
+    packages = lockfile_data.get('package', [])
+    for package in packages:
+        yield package
+
+
+def _should_include_dependency(marker_expression: str) -> bool:
+    """Check if dependency should be included based on marker expression."""
+    if not marker_expression or marker_expression == "sys_platform == \"not_darwin\"":
+        return True
+    
+    # Define the environment variables that markers can use
+    marker_env = {
+        'platform_system': platform.system(),  # 'Windows', 'Linux', 'Darwin'
+        'platform_machine': platform.machine(),  # 'x86_64', 'amd64', 'arm64', etc.
+        'platform_python_implementation': platform.python_implementation(),  # 'CPython', 'PyPy'
+        'sys_platform': {
+            'Windows': 'win32',
+            'Linux': 'linux', 
+            'Darwin': 'darwin'
+        }.get(platform.system(), platform.system().lower()),
+        'extra': None,  # This would be set during extras processing
+    }
+    
+    try:
+        # Replace double quotes with single quotes to avoid issues
+        safe_expression = marker_expression.replace('"', "'")
+        
+        # Replace python_version comparisons with True since we can't properly eval them
+        # This assumes that if the dependency is in the lockfile, python_version requirements are satisfied
+        safe_expression = re.sub(r'python_version\s*[><=!]+\s*[\'"][^\'\"]*[\'"]', 'True', safe_expression)
+        
+        return eval(safe_expression, {"__builtins__": {}}, marker_env)
+    except Exception:
+        # If evaluation fails, include the dependency by default
+        return True
 
 
 def get_poetry_lockfile_as_pip_requires(optionals=False) -> dict[str, str]:
-    return {dep["name"]: '==' + dep["version"] for dep in poetry_lockfile_deps()
-            if dep['optional'] == optionals and dep['name']}
+    requirements = {}
+    
+    for dep in poetry_lockfile_deps():
+        if dep['optional'] != optionals or not dep.get('name'):
+            continue
+            
+        # Handle markers from lockfile
+        markers = dep.get('markers')
+        if markers and not _should_include_dependency(markers):
+            continue
+            
+        requirements[dep["name"]] = '==' + dep["version"]
+    
+    return requirements
 
 
 def poetry_pyproject_deps(include_optional=False):
-    start = False
-    with open(poetry_pyproject_path) as f:
-        for line in f:
-            line = line.strip()
-
-            if line == '[tool.poetry.dependencies]':
-                start = True
-            elif start and line.startswith('['):
-                break
-            elif start and line and not line.startswith('#'):
-                name, spec = (i.strip() for i in line.split('=', 1))
-                if spec.startswith('{'):
-                    spec = \
-                        spec.replace('=', ':'). \
-                            replace('true', 'True'). \
-                            replace('false', 'False'). \
-                            replace('version', '"version"'). \
-                            replace('optional', '"optional"'). \
-                            replace('extras', '"extras"'). \
-                            replace('source', '"source"'). \
-                            replace('platform', '"platform"')
-
-                    version = literal_eval(spec)
-                    is_optional = version.get('optional')
-                    if not include_optional and is_optional:
-                        continue
-                else:
-                    version = {'version': spec.strip('"\'')}
-
-                yield name, version
+    with open(poetry_pyproject_path, 'rb') as f:
+        pyproject_data = tomllib.load(f)
+    
+    dependencies = pyproject_data.get('tool', {}).get('poetry', {}).get('dependencies', {})
+    
+    for name, spec in dependencies.items():
+        if name == 'python':
+            # Handle python version separately
+            yield name, {'version': spec}
+            continue
+            
+        if isinstance(spec, str):
+            # Simple version specification
+            version = {'version': spec}
+        elif isinstance(spec, dict):
+            # Complex specification with version, optional, platform, etc.
+            version = spec.copy()
+            is_optional = version.get('optional', False)
+            if not include_optional and is_optional:
+                continue
+        else:
+            # Skip invalid specifications
+            continue
+            
+        yield name, version
 
 
 def _pad_version(parts):
@@ -235,8 +266,23 @@ def poetry_version_to_pip_requirement(version) -> str:
 
 
 def get_poetry_pyproject_as_pip_requires(include_optional=False) -> dict[str, str]:
-    return {name: poetry_version_to_pip_requirement(version.get("version")) for name, version
-            in poetry_pyproject_deps(include_optional=include_optional)}
+    requirements = {}
+    
+    for name, version_info in poetry_pyproject_deps(include_optional=include_optional):
+        if name == 'python':
+            continue  # Handle python separately
+            
+        version_spec = poetry_version_to_pip_requirement(version_info.get("version", ""))
+        
+        # Handle platform markers from pyproject.toml (uses "platform" field)
+        platform_field = version_info.get("platform")
+        if platform_field:
+            if not _should_include_dependency(platform_field):
+                continue
+        
+        requirements[name] = version_spec
+    
+    return requirements
 
 
 requires = get_poetry_pyproject_as_pip_requires() \
@@ -296,11 +342,7 @@ if dgenerate_platform == 'darwin':
     _exclude_requires('bitsandbytes')
     _exclude_requires('xformers')  # xFormers doesn't support macOS
 
-if dgenerate_platform == 'windows':
-    for name in list(requires.keys()):
-        if name.startswith('nvidia-'):
-            requires.pop(name)
-else:
+if dgenerate_platform != 'windows':
     requires.pop('triton-windows')
 
 if 'bitsandbytes' in requires:
