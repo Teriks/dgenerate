@@ -22,17 +22,20 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-Windows-only PyInstaller launcher for dgenerate.
-Prevents console windows from appearing when launching dgenerate from desktop shortcuts.
+PyInstaller launcher for dgenerate.
+Creates a hidden Tkinter window to ensure the taskbar uses the EXE icon.
 """
 
 import sys
+import os
 import subprocess
+import platform
 from pathlib import Path
+import tkinter as tk
 from tkinter import messagebox
 
 def find_venv_from_exe():
-    """Auto-detect Windows virtual environment from the executable's location."""
+    """Auto-detect virtual environment from the executable's location."""
     if getattr(sys, 'frozen', False):
         exe_dir = Path(sys.executable).parent
     else:
@@ -42,13 +45,13 @@ def find_venv_from_exe():
     if exe_dir.name == 'bin':
         # Look for venv as a sibling directory
         potential_venv = exe_dir.parent / 'venv'
-        if (potential_venv / "Scripts" / "python.exe").exists():
+        if (potential_venv / "Scripts" / "python.exe").exists() or (potential_venv / "bin" / "python").exists():
             return potential_venv
     
     # Fallback: original behavior - walk up from executable location
     current_dir = exe_dir
     while current_dir.parent != current_dir:
-        if (current_dir / "Scripts" / "python.exe").exists():
+        if (current_dir / "Scripts" / "python.exe").exists() or (current_dir / "bin" / "python").exists():
             return current_dir
         current_dir = current_dir.parent
     return None
@@ -64,9 +67,13 @@ def main():
         )
         sys.exit(1)
 
-    # Windows-only: Scripts directory and executable
-    scripts_dir = venv_dir / "Scripts"
-    dgenerate_exe = scripts_dir / "dgenerate.exe"
+    # Determine scripts directory and executable
+    if platform.system().lower() == 'windows':
+        scripts_dir = venv_dir / "Scripts"
+        dgenerate_exe = scripts_dir / "dgenerate.exe"
+    else:
+        scripts_dir = venv_dir / "bin"
+        dgenerate_exe = scripts_dir / "dgenerate"
 
     if not dgenerate_exe.exists():
         messagebox.showerror(
@@ -80,10 +87,42 @@ def main():
     args = sys.argv[1:]
     cmd = [str(dgenerate_exe)] + args
 
-    # Windows-specific: Hide console window while allowing GUI windows to display
-    startupinfo = subprocess.STARTUPINFO()
-    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-    startupinfo.wShowWindow = subprocess.SW_HIDE
+    # On Windows, use the proper combination for GUI applications
+    # This prevents console window while allowing GUI windows to display
+    if platform.system().lower() == 'windows':
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        startupinfo.wShowWindow = subprocess.SW_HIDE
+        # Use 0 for creationflags to allow normal GUI window creation
+        creationflags = 0
+    else:
+        startupinfo = None
+        creationflags = 0
+
+    # Set up clean environment for the subprocess
+    env = os.environ.copy()
+    
+    # Add venv Scripts/bin directory to PATH
+    # This ensures all dependencies can be found when running dgenerate
+    if str(scripts_dir) not in env.get('PATH', ''):
+        if platform.system().lower() == 'windows':
+            env['PATH'] = f"{scripts_dir};{env.get('PATH', '')}"
+        else:
+            env['PATH'] = f"{scripts_dir}:{env.get('PATH', '')}"
+    
+    # Remove PyInstaller-specific environment variables that can interfere with Tcl/Tk
+    # These variables point to PyInstaller's bundled Tcl/Tk which conflicts with the system's
+    pyinstaller_vars = [
+        '_MEIPASS',
+        '_MEIPASS2', 
+        'TCL_LIBRARY',
+        'TK_LIBRARY',
+        'TKPATH',
+        'TCLPATH'
+    ]
+    
+    for var in pyinstaller_vars:
+        env.pop(var, None)
 
     # Set working directory to user home for a sane default
     user_home = Path.home()
@@ -91,7 +130,9 @@ def main():
     process = subprocess.Popen(
         cmd,
         cwd=str(user_home),
-        startupinfo=startupinfo
+        startupinfo=startupinfo,
+        creationflags=creationflags,
+        env=env
     )
 
     try:
