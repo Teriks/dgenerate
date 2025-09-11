@@ -470,6 +470,37 @@ class LinuxPlatformHandler(BasePlatformHandler):
             self.log_callback(f"Error fixing init.tcl files: {e}")
             return False
 
+    def _is_using_system_python(self) -> bool:
+        """
+        Check if the virtual environment is using system Python instead of UV-managed Python.
+        
+        :return: True if using system Python, False if using UV-managed Python
+        """
+        try:
+            # Read pyvenv.cfg to get the home directory
+            pyvenv_cfg = self.venv_dir / 'pyvenv.cfg'
+            if not pyvenv_cfg.exists():
+                self.log_callback(f"pyvenv.cfg not found: {pyvenv_cfg}")
+                return False
+                
+            with open(pyvenv_cfg, 'r', encoding='utf-8') as f:
+                for line in f:
+                    if line.startswith('home = '):
+                        home_path = line.strip().split(' = ', 1)[1]
+                        # System Python typically lives in /usr/bin, /usr/local/bin, etc.
+                        # UV-managed Python lives in ~/.local/share/uv/python/...
+                        system_paths = ['/usr/bin', '/usr/local/bin', '/bin']
+                        is_system = any(home_path.startswith(sys_path) for sys_path in system_paths)
+                        self.log_callback(f"Python home path: {home_path}, using system Python: {is_system}")
+                        return is_system
+            
+            self.log_callback("No 'home = ' line found in pyvenv.cfg")
+            return False
+            
+        except Exception as e:
+            self.log_callback(f"Error checking Python type: {e}")
+            return False
+
     def _get_python_install_dir_from_venv(self) -> Path | None:
         """
         Get the Python installation directory used by the current venv.
@@ -548,6 +579,11 @@ class LinuxPlatformHandler(BasePlatformHandler):
         if not super().apply_source_patches(source_dir, version):
             return False
         try:
+            # Check if we're using system Python
+            if self._is_using_system_python():
+                self.log_callback("Using system Python - skipping Tcl/Tk patches to avoid modifying system files")
+                return True
+
             # Check if Tcl/Tk runtime libraries are installed
             self.log_callback("Checking for system Tcl/Tk runtime libraries...")
             if not self._check_tcl_tk_installed():
