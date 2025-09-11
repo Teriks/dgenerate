@@ -74,7 +74,7 @@ jobs:
         include:
           - os: windows-latest
             platform: windows
-            artifact_name: dgenerate-installer-win.exe
+            artifact_name: dgenerate-installer-win
             exe_extension: .exe
           - os: ubuntu-22.04
             platform: linux
@@ -423,3 +423,4 @@ jobs:
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
