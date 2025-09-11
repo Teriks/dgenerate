@@ -28,6 +28,7 @@ import importlib.resources as resources
 import inspect
 import os
 import platform
+import re
 import shutil
 import ssl
 import stat
@@ -36,12 +37,15 @@ import sys
 import tarfile
 import tempfile
 import time
+import traceback
 import urllib.request
 import zipfile
 from abc import ABC, abstractmethod
 from pathlib import Path
 
 import certifi
+from packaging import version as pkg_version
+from network_installer.platform_detection import detect_gpu
 from network_installer.subprocess_utils import run_silent, popen_silent
 
 
@@ -1155,6 +1159,10 @@ class BasePlatformHandler(ABC):
         if not self._patch_cuda_specifiers_if_needed(source_dir, version):
             return False
             
+        # Apply nvidia- package patching for older versions on non-NVIDIA systems
+        if not self._patch_nvidia_packages_if_needed(source_dir, version):
+            return False
+            
         # Default implementation: no additional patches needed
         return True
     
@@ -1173,7 +1181,6 @@ class BasePlatformHandler(ABC):
                 self.log_callback("No version available, skipping CUDA specifier patching")
                 return True
                 
-            from packaging import version as pkg_version
             parsed_version = pkg_version.parse(version)
             if parsed_version >= pkg_version.parse("5.0.0"):
                 self.log_callback(f"Version {version} >= 5.0.0, skipping CUDA specifier patching")
@@ -1192,7 +1199,6 @@ class BasePlatformHandler(ABC):
                 content = f.read()
             
             # Check if there are any +cu specifiers in the content
-            import re
             # Pattern to match version strings with CUDA specifiers like "2.5.1+cu124"
             cuda_version_pattern = r'version = "([^"]+)\+cu\d+"'
             # Pattern to match filenames with CUDA specifiers like "torch-2.5.1+cu124-cp310-cp310-linux_x86_64.whl"
@@ -1207,7 +1213,6 @@ class BasePlatformHandler(ABC):
             # Create a backup of the original file
             backup_path = lock_path + '.cuda_backup'
             if not os.path.exists(backup_path):
-                import shutil
                 shutil.copy2(lock_path, backup_path)
                 self.log_callback(f"Created backup at: {backup_path}")
             
@@ -1227,7 +1232,100 @@ class BasePlatformHandler(ABC):
             
         except Exception as e:
             self.log_callback(f"Error patching CUDA specifiers: {e}")
-            import traceback
+            self.log_callback(f"Traceback: {traceback.format_exc()}")
+            return False
+    
+    def _patch_nvidia_packages_if_needed(self, source_dir: str, version: str | None = None) -> bool:
+        """
+        Patch nvidia- packages from poetry.lock for older dgenerate versions (< 5.0.0) 
+        on non-NVIDIA systems. This fixes installation issues on platforms like macOS 
+        where nvidia- packages cannot be installed and don't have platform markers yet.
+        
+        :param source_dir: Path to the dgenerate source directory
+        :param version: Version string from SetupAnalyzer
+        :return: True if successful or no patching needed, False if failed
+        """
+        try:
+            if not version:
+                self.log_callback("No version available, skipping nvidia- package patching")
+                return True
+                
+            parsed_version = pkg_version.parse(version)
+            if parsed_version >= pkg_version.parse("5.0.0"):
+                self.log_callback(f"Version {version} >= 5.0.0, skipping nvidia- package patching")
+                return True
+            
+            # Detect GPU to determine if we need to patch nvidia- packages
+            gpu_info = detect_gpu()
+            
+            if gpu_info.has_nvidia:
+                self.log_callback(f"NVIDIA GPU detected, keeping nvidia- packages in poetry.lock")
+                return True
+            
+            self.log_callback(f"Version {version} < 5.0.0 and no NVIDIA GPU detected, checking for nvidia- packages in poetry.lock")
+            
+            # Check if poetry.lock exists
+            lock_path = os.path.join(source_dir, 'poetry', 'poetry.lock')
+            if not os.path.exists(lock_path):
+                self.log_callback(f"poetry/poetry.lock not found at: {lock_path}")
+                return True  # Not an error, just no lockfile to patch
+            
+            # Read the lockfile content
+            with open(lock_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            # Find nvidia- packages using regex patterns
+            nvidia_packages = []
+            
+            # Pattern to match package entries that start with nvidia-
+            # TOML format: [[package]]
+            #              name = "nvidia-something"
+            #              version = "..."
+            #              ... (more fields until next [[package]] or end)
+            
+            # First, find all nvidia- package names
+            nvidia_name_pattern = r'name\s*=\s*"(nvidia-[^"]*)"'
+            nvidia_matches = re.findall(nvidia_name_pattern, content)
+            
+            if not nvidia_matches:
+                self.log_callback("No nvidia- packages found in poetry.lock")
+                return True
+            
+            nvidia_packages = nvidia_matches
+            self.log_callback(f"Found nvidia- packages to remove: {', '.join(nvidia_packages)}")
+            
+            # Create a backup of the original file
+            backup_path = lock_path + '.nvidia_backup'
+            if not os.path.exists(backup_path):
+                shutil.copy2(lock_path, backup_path)
+                self.log_callback(f"Created backup at: {backup_path}")
+            
+            # Remove nvidia- package entries from the content
+            patched_content = content
+            
+            # For each nvidia- package, remove the entire [[package]] entry
+            for nvidia_pkg in nvidia_packages:
+                # Pattern to match the entire package entry for this nvidia- package
+                # This matches from [[package]] through the package with the nvidia- name
+                # until the next [[package]] or end of file
+                package_pattern = rf'\[\[package\]\]\s*\n(?:[^[]*\n)*?name\s*=\s*"{re.escape(nvidia_pkg)}"[^[]*?(?=\[\[package\]\]|\Z)'
+                
+                # Remove this package entry
+                patched_content = re.sub(package_pattern, '', patched_content, flags=re.MULTILINE | re.DOTALL)
+                self.log_callback(f"Removed package entry for: {nvidia_pkg}")
+            
+            # Clean up any extra blank lines that might have been left
+            patched_content = re.sub(r'\n\n\n+', '\n\n', patched_content)
+            
+            # Write the patched content back
+            with open(lock_path, 'w', encoding='utf-8') as f:
+                f.write(patched_content)
+            
+            self.log_callback(f"✓ Successfully removed {len(nvidia_packages)} nvidia- packages from poetry.lock")
+            return True
+            
+        except Exception as e:
+            self.log_callback(f"Error patching nvidia- packages: {e}")
             self.log_callback(f"Traceback: {traceback.format_exc()}")
             return False
     
