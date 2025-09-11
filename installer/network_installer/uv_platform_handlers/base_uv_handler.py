@@ -1306,13 +1306,19 @@ class BasePlatformHandler(ABC):
             # For each nvidia- package, remove the entire [[package]] entry
             for nvidia_pkg in nvidia_packages:
                 # Pattern to match the entire package entry for this nvidia- package
-                # This matches from [[package]] through the package with the nvidia- name
-                # until the next [[package]] or end of file
-                package_pattern = rf'\[\[package\]\]\s*\n(?:[^[]*\n)*?name\s*=\s*"{re.escape(nvidia_pkg)}"[^[]*?(?=\[\[package\]\]|\Z)'
+                # This matches from [[package]] to the next [[package]] that contains our nvidia package name
+                # Uses negative lookahead to avoid matching nested brackets in files = [...] sections
+                package_pattern = rf'\[\[package\]\]\s*\n(?:(?!\[\[package\]\]).)*?name\s*=\s*"{re.escape(nvidia_pkg)}"(?:(?!\[\[package\]\]).)*?(?=\[\[package\]\]|\Z)'
                 
                 # Remove this package entry
+                old_len = len(patched_content)
                 patched_content = re.sub(package_pattern, '', patched_content, flags=re.MULTILINE | re.DOTALL)
-                self.log_callback(f"Removed package entry for: {nvidia_pkg}")
+                new_len = len(patched_content)
+                
+                if old_len != new_len:
+                    self.log_callback(f"✓ Removed package entry for: {nvidia_pkg} ({old_len - new_len} characters)")
+                else:
+                    self.log_callback(f"✗ Failed to remove package entry for: {nvidia_pkg}")
             
             # Clean up any extra blank lines that might have been left
             patched_content = re.sub(r'\n\n\n+', '\n\n', patched_content)
