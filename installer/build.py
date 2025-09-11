@@ -62,7 +62,7 @@ def run_command(cmd, description, cwd=None):
 
 
 def build_windowed_stubs(network_installer_dir, venv_python):
-    """Build windowed stubs for all platforms."""
+    """Build windowed stubs for platforms that need them."""
     print("\n=== Building Windowed Stubs ===")
     
     # Get the current platform
@@ -73,7 +73,12 @@ def build_windowed_stubs(network_installer_dir, venv_python):
         print("SUCCESS: Skipping windowed stub build on macOS (AppleScript approach used instead)")
         return True
     
-    # Build for current platform using PyInstaller directly
+    # Skip windowed stub building on Linux - Terminal=false in .desktop files is used instead
+    if current_platform == "linux":
+        print("SUCCESS: Skipping windowed stub build on Linux (Terminal=false in .desktop files used instead)")
+        return True
+    
+    # Build for current platform using PyInstaller directly (Windows only)
     spec_file = network_installer_dir / "dgenerate_windowed.spec"
     if not spec_file.exists():
         print("ERROR: PyInstaller spec file not found")
@@ -91,7 +96,7 @@ def build_windowed_stubs(network_installer_dir, venv_python):
     # For now, we'll build for the current platform only
     print(f"SUCCESS: Built windowed stub for {current_platform}")
 
-    # Look for the built executable
+    # Look for the built executable (Windows only at this point)
     if current_platform == "windows":
         stub_name = "dgenerate_windowed.exe"
     else:

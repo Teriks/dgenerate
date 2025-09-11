@@ -669,14 +669,14 @@ class LinuxPlatformHandler(BasePlatformHandler):
     def create_stub_scripts(self) -> bool:
         """
         Create Linux-specific stub scripts.
-        Note: dgenerate and dgenerate_windowed are copied directly, not stubbed.
+        Note: Only dgenerate is copied directly, not stubbed.
         """
         try:
             # Create bin directory
             self.bin_dir.mkdir(parents=True, exist_ok=True)
 
-            # No stub scripts needed - dgenerate and dgenerate_windowed 
-            # are copied directly and modified to handle environment setup
+            # No stub scripts needed - dgenerate is copied directly 
+            # and modified to handle environment setup
             self.log_callback("✓ Linux bin directory created (no stub scripts needed)")
             return True
 
@@ -684,9 +684,29 @@ class LinuxPlatformHandler(BasePlatformHandler):
             self.log_callback(f"Error creating Linux bin directory: {e}")
             return False
 
+    def _copy_windowed_stub(self) -> bool:
+        """
+        Skip copying windowed stub on Linux.
+        Linux uses Terminal=false in .desktop files instead of a windowed stub.
+        
+        :return: True (always succeeds since no action is needed)
+        """
+        self.log_callback("✓ Skipping windowed stub copy on Linux (not needed - using Terminal=false in .desktop files)")
+        
+        # Still copy icon files for desktop shortcuts
+        if not self._copy_icons():
+            self.log_callback("Warning: Failed to copy desktop shortcut icons")
+
+        # Copy icon files for file associations
+        if not self._copy_file_association_icon():
+            self.log_callback("Warning: Failed to copy file association icons")
+
+        return True
+
     def create_desktop_shortcut(self) -> bool:
         """
-        Create desktop shortcut for dgenerate using the windowed stub.
+        Create desktop shortcut for dgenerate using the regular dgenerate executable.
+        Linux supports Terminal=false in .desktop files, so no windowed stub is needed.
         
         :return: True if successful, False otherwise
         """
@@ -699,10 +719,10 @@ class LinuxPlatformHandler(BasePlatformHandler):
                 self.log_callback("Desktop directory not found, skipping desktop shortcut creation")
                 return True
 
-            # Get windowed executable path from bin directory
-            windowed_exe = self.bin_dir / "dgenerate_windowed"
-            if not windowed_exe.exists():
-                self.log_callback("dgenerate_windowed executable not found in bin directory, cannot create shortcut")
+            # Get regular dgenerate executable path from bin directory
+            dgenerate_exe = self.bin_dir / "dgenerate"
+            if not dgenerate_exe.exists():
+                self.log_callback("dgenerate executable not found in bin directory, cannot create shortcut")
                 return False
 
             # Get icon path
@@ -716,17 +736,16 @@ class LinuxPlatformHandler(BasePlatformHandler):
             # Create .desktop file
             shortcut_path = desktop / "Dgenerate Console.desktop"
 
-            # Use the stub script from bin directory instead of the venv executable
-            windowed_stub = windowed_exe
-
-            # Create the desktop entry content
+            # Create the desktop entry content using regular dgenerate executable
+            # Use bash -i -c to load .bashrc for environment variables (tokens, etc.)
+            # Terminal=false prevents terminal window from appearing
             desktop_entry = inspect.cleandoc(f"""
                 [Desktop Entry]
                 Version=1.0
                 Type=Application
                 Name=Dgenerate Console
                 Comment=Launch Dgenerate Console
-                Exec={windowed_stub} --console
+                Exec=bash -i -c '{dgenerate_exe} --console'
                 Path={Path.home()}
                 Terminal=false
                 Categories=Development;
@@ -754,11 +773,11 @@ class LinuxPlatformHandler(BasePlatformHandler):
         :return: True if successful, False otherwise
         """
         try:
-            # Get windowed executable path for console UI
-            windowed_exe = self.bin_dir / "dgenerate_windowed"
-            if not windowed_exe.exists():
+            # Get dgenerate executable path for console UI
+            dgenerate_exe = self.bin_dir / "dgenerate"
+            if not dgenerate_exe.exists():
                 self.log_callback(
-                    "dgenerate_windowed executable not found in bin directory, cannot create file associations")
+                    "dgenerate executable not found in bin directory, cannot create file associations")
                 return False
 
             self.log_callback("Creating Linux file associations for .dgen files...")
@@ -797,8 +816,8 @@ class LinuxPlatformHandler(BasePlatformHandler):
                 Version=1.0
                 Type=Application
                 Name=dgenerate
-                Comment=dgenerate Configuration Editor
-                Exec={windowed_exe} --console %f
+                Comment=dgenerate Script Editor
+                Exec=bash -i -c '{dgenerate_exe} --console %f'
                 {icon_line}Terminal=false
                 Categories=Development;
                 MimeType=application/x-dgenerate-config;
@@ -896,15 +915,6 @@ class LinuxPlatformHandler(BasePlatformHandler):
             if old_shortcut_path.exists():
                 old_shortcut_path.unlink()
                 self.log_callback(f"Removed old Linux desktop shortcut: {old_shortcut_path}")
-
-            # Remove windowed executable on Unix systems
-            windowed_exe = self.scripts_dir / "dgenerate_windowed"
-            if windowed_exe.exists():
-                try:
-                    windowed_exe.unlink()
-                    self.log_callback(f"Removed windowed executable: {windowed_exe}")
-                except Exception as e:
-                    self.log_callback(f"Could not remove windowed executable {windowed_exe}: {e}")
 
         except Exception as e:
             self.log_callback(f"Error removing Linux desktop shortcuts: {e}")
