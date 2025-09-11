@@ -1237,32 +1237,24 @@ class BasePlatformHandler(ABC):
     
     def _patch_nvidia_packages_if_needed(self, source_dir: str, version: str | None = None) -> bool:
         """
-        Patch nvidia- packages from poetry.lock for older dgenerate versions (< 5.0.0) 
-        on non-NVIDIA systems. This fixes installation issues on platforms like macOS 
-        where nvidia- packages cannot be installed and don't have platform markers yet.
+        Patch nvidia- packages from poetry.lock on non-NVIDIA systems. This fixes 
+        installation issues on platforms like macOS where nvidia- packages cannot 
+        be installed. Since nvidia- packages are only useful with NVIDIA GPUs, 
+        they can be safely removed when no NVIDIA GPU is detected.
         
         :param source_dir: Path to the dgenerate source directory
-        :param version: Version string from SetupAnalyzer
+        :param version: Version string from SetupAnalyzer (unused but kept for compatibility)
         :return: True if successful or no patching needed, False if failed
         """
         try:
-            if not version:
-                self.log_callback("No version available, skipping nvidia- package patching")
-                return True
-                
-            parsed_version = pkg_version.parse(version)
-            if parsed_version >= pkg_version.parse("5.0.0"):
-                self.log_callback(f"Version {version} >= 5.0.0, skipping nvidia- package patching")
-                return True
-            
             # Detect GPU to determine if we need to patch nvidia- packages
             gpu_info = detect_gpu()
             
             if gpu_info.has_nvidia:
-                self.log_callback(f"NVIDIA GPU detected, keeping nvidia- packages in poetry.lock")
+                self.log_callback("NVIDIA GPU detected, keeping nvidia- packages in poetry.lock")
                 return True
             
-            self.log_callback(f"Version {version} < 5.0.0 and no NVIDIA GPU detected, checking for nvidia- packages in poetry.lock")
+            self.log_callback("No NVIDIA GPU detected, checking for nvidia- packages in poetry.lock")
             
             # Check if poetry.lock exists
             lock_path = os.path.join(source_dir, 'poetry', 'poetry.lock')
