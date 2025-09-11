@@ -336,22 +336,22 @@ def main():
         print("\nERROR: Dependency installation failed. Aborting installer build.")
         return 1
     
-    # Step 3: Build shortcut stubs
-    if not build_shortcut_stubs(network_installer_dir):
-        print("\nERROR: Shortcut stub build failed. Aborting installer build.")
-        return 1
-    
-    # Step 4: Build windowed stubs
-    if not build_windowed_stubs(network_installer_dir, venv_python):
-        print("\nERROR: Windowed stub build failed. Aborting installer build.")
-        return 1
-    
-    # Step 6: Copy resources to installer
+    # Step 3: Copy resources to installer (must be done before windowed stub build)
     if not copy_resources_to_installer(network_installer_dir, venv_python):
         print("\nERROR: Failed to copy resources to installer. Aborting installer build.")
         return 1
     
-    # Step 8: Build the installer
+    # Step 4: Build shortcut stubs
+    if not build_shortcut_stubs(network_installer_dir):
+        print("\nERROR: Shortcut stub build failed. Aborting installer build.")
+        return 1
+    
+    # Step 5: Build windowed stubs
+    if not build_windowed_stubs(network_installer_dir, venv_python):
+        print("\nERROR: Windowed stub build failed. Aborting installer build.")
+        return 1
+    
+    # Step 6: Build the installer
     if not build_installer(network_installer_dir, venv_python):
         print("\nERROR: Installer build failed.")
         return 1
