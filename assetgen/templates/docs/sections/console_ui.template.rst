@@ -58,11 +58,16 @@ file via file redirection if desired when launching the console from the termina
 This can be configured by setting the environmental variable ``DGENERATE_CONSOLE_MAX_SCROLLBACK=10000``
 
 Command history is currently limited to 500 commands, multiline commands are also
-saved to command history.  The command history file is stored at ``-/.dgenerate_console_history``,
-on Windows this equates to ``%USERPROFILE%\.dgenerate_console_history``
+saved to command history.  The command history file is stored at ``~/.dgenerate/console_history.json``,
+on Windows this equates to ``%USERPROFILE%\.dgenerate\console_history.json``
 
 This can be configured by setting the environmental variable ``DGENERATE_CONSOLE_MAX_HISTORY=500``
 
-Any UI settings that persist on startup are stored in ``-/.dgenerate_console_settings`` or
-on Windows ``%USERPROFILE%\.dgenerate_console_settings``
+Any UI settings that persist on startup are stored in ``~/.dgenerate/console_settings.json`` or
+on Windows ``%USERPROFILE%\.dgenerate\console_settings.json``
+
+If you have existing console settings or history files in the old locations
+(``~/.dgenerate_console_settings`` and ``~/.dgenerate_console_history``), they will be
+automatically migrated to the new locations when the console UI starts. The old files
+will be removed after successful migration.
 

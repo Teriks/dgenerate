@@ -932,20 +932,49 @@ class DgenerateConsole(tk.Tk):
         return 'break'
 
     def _load_settings(self):
-        settings_path = pathlib.Path(pathlib.Path.home(), '.dgenerate_console_settings')
+        # Create ~/.dgenerate directory if it doesn't exist
+        dgenerate_dir = pathlib.Path(pathlib.Path.home(), '.dgenerate')
+        dgenerate_dir.mkdir(exist_ok=True)
+        
+        settings_path = dgenerate_dir / 'console_settings.json'
+        old_settings_path = pathlib.Path(pathlib.Path.home(), '.dgenerate_console_settings')
+        
+        config = None
+        
+        # Check if new settings file exists
         if settings_path.exists():
             with settings_path.open('r', encoding='utf-8') as file:
                 config = json.load(file)
-                self._theme_menu_var.set(config.get('theme', 'dgenerate'))
-                self._auto_scroll_on_run_check_var.set(config.get('auto_scroll_on_run', True))
-                self._auto_scroll_on_output_check_var.set(config.get('auto_scroll_on_output', False))
-                self._word_wrap_input_check_var.set(config.get('word_wrap_input', True))
-                self._word_wrap_output_check_var.set(config.get('word_wrap_output', True))
+        # Check if old settings file exists and migrate it
+        elif old_settings_path.exists():
+            try:
+                with old_settings_path.open('r', encoding='utf-8') as file:
+                    config = json.load(file)
+                # Save to new location
+                with settings_path.open('w', encoding='utf-8') as file:
+                    json.dump(config, file)
+                # Remove old file after successful migration
+                old_settings_path.unlink()
+                print(f'Migrated console settings from {old_settings_path} to {settings_path}', file=sys.stderr)
+            except Exception as e:
+                print(f'Warning: Failed to migrate old console settings: {e}', file=sys.stderr)
+                config = None
+        
+        if config:
+            self._theme_menu_var.set(config.get('theme', 'dgenerate'))
+            self._auto_scroll_on_run_check_var.set(config.get('auto_scroll_on_run', True))
+            self._auto_scroll_on_output_check_var.set(config.get('auto_scroll_on_output', False))
+            self._word_wrap_input_check_var.set(config.get('word_wrap_input', True))
+            self._word_wrap_output_check_var.set(config.get('word_wrap_output', True))
         else:
             self._theme_menu_var.set('dgenerate')
 
     def save_settings(self):
-        settings_path = pathlib.Path(pathlib.Path.home(), '.dgenerate_console_settings')
+        # Create ~/.dgenerate directory if it doesn't exist
+        dgenerate_dir = pathlib.Path(pathlib.Path.home(), '.dgenerate')
+        dgenerate_dir.mkdir(exist_ok=True)
+        
+        settings_path = dgenerate_dir / 'console_settings.json'
         with settings_path.open('w', encoding='utf-8') as file:
             config = {
                 'theme': self._theme_menu_var.get(),
@@ -960,17 +989,44 @@ class DgenerateConsole(tk.Tk):
         if self._max_command_history == 0:
             return
 
-        history_path = pathlib.Path(pathlib.Path.home(), '.dgenerate_console_history')
+        # Create ~/.dgenerate directory if it doesn't exist
+        dgenerate_dir = pathlib.Path(pathlib.Path.home(), '.dgenerate')
+        dgenerate_dir.mkdir(exist_ok=True)
+        
+        history_path = dgenerate_dir / 'console_history.json'
+        old_history_path = pathlib.Path(pathlib.Path.home(), '.dgenerate_console_history')
+        
+        # Check if new history file exists
         if history_path.exists():
             with history_path.open('r', encoding='utf-8') as file:
                 self._command_history = json.load(file)[-self._max_command_history:]
                 self._current_command_index = len(self._command_history)
+        # Check if old history file exists and migrate it
+        elif old_history_path.exists():
+            try:
+                with old_history_path.open('r', encoding='utf-8') as file:
+                    self._command_history = json.load(file)[-self._max_command_history:]
+                    self._current_command_index = len(self._command_history)
+                # Save to new location
+                with history_path.open('w', encoding='utf-8') as file:
+                    json.dump(self._command_history, file)
+                # Remove old file after successful migration
+                old_history_path.unlink()
+                print(f'Migrated console history from {old_history_path} to {history_path}', file=sys.stderr)
+            except Exception as e:
+                print(f'Warning: Failed to migrate old console history: {e}', file=sys.stderr)
+                self._command_history = []
+                self._current_command_index = 0
 
     def _save_command_history(self):
         if self._max_command_history == 0:
             return
 
-        history_path = pathlib.Path(pathlib.Path.home(), '.dgenerate_console_history')
+        # Create ~/.dgenerate directory if it doesn't exist
+        dgenerate_dir = pathlib.Path(pathlib.Path.home(), '.dgenerate')
+        dgenerate_dir.mkdir(exist_ok=True)
+        
+        history_path = dgenerate_dir / 'console_history.json'
         with history_path.open('w', encoding='utf-8') as file:
             json.dump(self._command_history[-self._max_command_history:], file)
 
