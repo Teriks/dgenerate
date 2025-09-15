@@ -22,8 +22,10 @@
 import argparse
 import contextlib
 import glob
+import inspect
 import itertools
 import os
+import pathlib
 import sys
 import logging
 
@@ -320,6 +322,74 @@ class _OrderedSetAction(argparse.Action):
         namespace.ordered_sets.append((arg_type, values))
 
 
+# Default content for init.dgen file
+_DEFAULT_INIT_DGEN_CONTENT = inspect.cleandoc("""
+    # dgenerate startup configuration
+    # This file is executed automatically when dgenerate starts
+    # Use it to set environment variables and other initialization
+
+    # Example environment variable settings:
+
+    # Cache directories
+    # \\env DGENERATE_CACHE=/path/to/my/cache
+    # \\env HF_HOME=/path/to/hf/cache
+
+    # Authentication tokens
+    # \\env HF_TOKEN=your_huggingface_token_here
+    # \\env CIVITAI_TOKEN=your_civitai_token_here
+
+    # Performance and behavior
+    # \\env DGENERATE_TORCH_COMPILE=0
+    # \\env DGENERATE_OFFLINE_MODE=1
+
+    # Cache expiry (e.g. "days=7;hours=12" or "forever")
+    # \\env DGENERATE_WEB_CACHE_EXPIRY_DELTA=days=7
+
+    # Add your initialization commands below:
+
+""") + '\n'
+
+
+def _run_init_dgen(runner):
+    """
+    Execute init.dgen config file from ~/.dgenerate/ if it exists.
+    Creates a default init.dgen file if it doesn't exist.
+    
+    :param runner: ConfigRunner instance to execute the init config with
+    """
+    try:
+        # Create ~/.dgenerate directory if it doesn't exist
+        dgenerate_dir = pathlib.Path(pathlib.Path.home(), '.dgenerate')
+        dgenerate_dir.mkdir(exist_ok=True)
+        
+        init_dgen_path = dgenerate_dir / 'init.dgen'
+        
+        # Create default init.dgen if it doesn't exist
+        if not init_dgen_path.exists():
+            try:
+                with open(init_dgen_path, 'w', encoding='utf-8') as file:
+                    file.write(_DEFAULT_INIT_DGEN_CONTENT)
+                dgenerate.messages.log(f'Created default init config: {init_dgen_path}', 
+                                     level=dgenerate.messages.DEBUG)
+            except Exception as e:
+                dgenerate.messages.log(f'Error creating default init config: {str(e).strip()}',
+                                     level=dgenerate.messages.DEBUG)
+        
+        if init_dgen_path.exists():
+            try:
+                with open(init_dgen_path, 'rt', encoding='utf-8') as file:
+                    runner.run_file(file)
+                    dgenerate.messages.log(f'Executed init config: {init_dgen_path}', 
+                                         level=dgenerate.messages.DEBUG)
+            except Exception as e:
+                dgenerate.messages.log(f'Error executing init config {init_dgen_path}: {str(e).strip()}',
+                                     level=dgenerate.messages.WARNING)
+    except Exception as e:
+        # Don't fail startup if init.dgen processing fails
+        dgenerate.messages.log(f'Error processing init config: {str(e).strip()}',
+                             level=dgenerate.messages.DEBUG)
+
+
 def main(args: collections.abc.Sequence[str] | None = None):
     """
     Entry point for the dgenerate command line tool.
@@ -402,6 +472,9 @@ def main(args: collections.abc.Sequence[str] | None = None):
                                   version=__version__,
                                   injected_args=args)
 
+            # Execute init.dgen if it exists
+            _run_init_dgen(runner)
+
             # Apply --set and --setp meta arguments directly to the runner in order
             try:
                 for arg_type, var, value in ordered_variable_ops:
@@ -438,6 +511,9 @@ def main(args: collections.abc.Sequence[str] | None = None):
                                   version=__version__,
                                   injected_args=args)
 
+            # Execute init.dgen if it exists
+            _run_init_dgen(runner)
+
             # Apply --set and --setp meta arguments directly to the runner in order
             try:
                 for argType, var, value in ordered_variable_ops:
@@ -468,6 +544,16 @@ def main(args: collections.abc.Sequence[str] | None = None):
                     if not meta_args.shell:
                         sys.exit(1)
         else:
+            # CLI usage - create a temporary ConfigRunner just to execute init.dgen
+            init_runner = ConfigRunner(
+                render_loop=render_loop,
+                version=__version__,
+                injected_args=args
+            )
+            
+            # Execute init.dgen if it exists
+            _run_init_dgen(init_runner)
+            
             sys.exit(invoke_dgenerate(args, render_loop=render_loop))
     except KeyboardInterrupt:
         print('Exiting dgenerate due to keyboard interrupt!', file=sys.stderr)

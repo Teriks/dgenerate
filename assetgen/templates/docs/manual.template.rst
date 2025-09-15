@@ -113,3 +113,5 @@ Help Output
 @INCLUDE[sections/environment/file_cache_control.template.rst]
 
 @INCLUDE[sections/environment/torch_compile.template.rst]
+
+@INCLUDE[sections/environment/startup_configuration.template.rst]

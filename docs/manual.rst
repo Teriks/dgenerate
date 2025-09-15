@@ -12989,13 +12989,18 @@ file via file redirection if desired when launching the console from the termina
 This can be configured by setting the environmental variable ``DGENERATE_CONSOLE_MAX_SCROLLBACK=10000``
 
 Command history is currently limited to 500 commands, multiline commands are also
-saved to command history.  The command history file is stored at ``-/.dgenerate_console_history``,
-on Windows this equates to ``%USERPROFILE%\.dgenerate_console_history``
+saved to command history.  The command history file is stored at ``~/.dgenerate/console_history.json``,
+on Windows this equates to ``%USERPROFILE%\.dgenerate\console_history.json``
 
 This can be configured by setting the environmental variable ``DGENERATE_CONSOLE_MAX_HISTORY=500``
 
-Any UI settings that persist on startup are stored in ``-/.dgenerate_console_settings`` or
-on Windows ``%USERPROFILE%\.dgenerate_console_settings``
+Any UI settings that persist on startup are stored in ``~/.dgenerate/console_settings.json`` or
+on Windows ``%USERPROFILE%\.dgenerate\console_settings.json``
+
+If you have existing console settings or history files in the old locations
+(``~/.dgenerate_console_settings`` and ``~/.dgenerate_console_history``), they will be
+automatically migrated to the new locations when the console UI starts. The old files
+will be removed after successful migration.
 
 Writing Plugins
 ===============
@@ -13254,3 +13259,40 @@ Enable / Disable Torch Compile
 Torch compile is enabled by default in dgenerate to improve performance in certain scenarios.
 
 If it is causing issues you can disable it by setting the environment variable ``DGENERATE_TORCH_COMPILE=0``
+
+Startup Configuration
+=====================
+
+dgenerate supports automatic execution of a startup configuration file located at ``~/.dgenerate/init.dgen``
+(on Windows: ``%USERPROFILE%\.dgenerate\init.dgen``).
+
+This file is executed every time dgenerate starts up, before processing any user commands. It can be used to:
+
+* Set environment variables using the ``\env`` directive 
+* Import plugins with ``\import_plugins``
+* Set up any other initialization logic
+
+Example ``~/.dgenerate/init.dgen`` for setting environment variables:
+
+.. code-block:: jinja
+
+    # Cache directories
+    \env DGENERATE_CACHE=/path/to/my/cache
+    \env HF_HOME=/path/to/hf/cache
+    
+    # Authentication tokens
+    \env HF_TOKEN=your_huggingface_token_here
+    \env CIVITAI_TOKEN=your_civitai_token_here
+    
+    # Performance and behavior
+    \env DGENERATE_TORCH_COMPILE=0
+    \env DGENERATE_OFFLINE_MODE=1
+    
+    # Cache expiry control
+    \env DGENERATE_WEB_CACHE_EXPIRY_DELTA=days=7
+
+The ``~/.dgenerate/`` directory and a default ``init.dgen`` file are created automatically when 
+dgenerate runs for the first time. The default file contains helpful comments and examples.
+
+If there are any errors executing the ``init.dgen`` file, warnings will be logged but dgenerate
+will continue to start normally.
