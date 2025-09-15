@@ -7,13 +7,13 @@ the ``--plugin-modules`` option and ``\import_plugins`` config directive.
 You simply specify one or more module directories on disk, paths to python files, or references
 to modules installed in the python environment using the argument or import directive.
 
-dgenerate supports implementing image processors, config directives, config template functions,
-prompt weighters, and sub-commands through plugins.
+dgenerate supports implementing image processors, latents processors, config directives, config template functions,
+prompt weighters, prompt upscalers, and sub-commands through plugins.
 
 ~~~~
 
-Image processor plugins
------------------------
+Image Processors / Latents Processors
+----------------------------------------------
 
 A code example as well as a usage example for image processor plugins can be found
 in the `writing_plugins/image_processor <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/writing_plugins/image_processor>`_
@@ -26,7 +26,22 @@ be of reference as they are written as internal image processor plugins.
 
 ~~~~
 
+Latents processors operate on the latent-space representation used by diffusion models. They can run on
+raw/partially denoised latents, on latents used for ``img2img``, or on fully denoised latents being
+written to disk. For user-facing usage details, see the "Latents Processors" section of the manual.
 
+Reference implementations can be found in the internal latents processors:
+`scale <https://github.com/Teriks/dgenerate/blob/@REVISION/dgenerate/latentsprocessors/scale.py>`_,
+`noise <https://github.com/Teriks/dgenerate/blob/@REVISION/dgenerate/latentsprocessors/noise.py>`_, and
+`interposer <https://github.com/Teriks/dgenerate/blob/@REVISION/dgenerate/latentsprocessors/interposer.py>`_.
+
+The base interface is implemented in
+`LatentsProcessor <https://github.com/Teriks/dgenerate/blob/@REVISION/dgenerate/latentsprocessors/latentsprocessor.py>`_.
+
+An example skeleton for a latents processor plugin can be found in
+`writing_plugins/latents_processor <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/writing_plugins/latents_processor>`_.
+
+~~~~
 Config directive and template function plugins
 ----------------------------------------------
 
@@ -55,8 +70,8 @@ sub-command implementation, and a plugin skeleton file for sub-commands can be f
 ~~~~
 
 
-Prompt weighter plugins
------------------------
+Prompt Weighters / Prompt Upscalers
+----------------------------------------
 
 Reference for writing prompt weighters can be found in the `CompelPromptWeighter <https://github.com/Teriks/dgenerate/blob/@REVISION/dgenerate/promptweighters/compelpromptweighter.py>`_
 and `SdEmbedPromptWeighter <https://github.com/Teriks/dgenerate/blob/@REVISION/dgenerate/promptweighters/sdembedpromptweighter.py>`_ internal prompt weighter implementations.
@@ -65,6 +80,19 @@ A plugin skeleton file for prompt weighters can be found in the
 `writing_plugins/prompt_weighter <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/writing_plugins/prompt_weighter>`_
 example folder.
 
-~~~~
+In addition to prompt weighters, dgenerate also supports prompt upscaler plugins that can preprocess or
+expand prompt text before it is fed to the pipeline. They can be enabled globally with
+``--prompt-upscaler`` or inline using the embedded prompt argument ``<upscaler: (uri here)>``. Multiple
+upscalers can be chained by repeating the embedded argument.
 
+Reference implementations can be found in the internal prompt upscalers:
+`DynamicPrompts <https://github.com/Teriks/dgenerate/blob/@REVISION/dgenerate/promptupscalers/dynamicpromptsupscaler.py>`_,
+`MagicPrompt <https://github.com/Teriks/dgenerate/blob/@REVISION/dgenerate/promptupscalers/magicpromptupscaler.py>`_,
+`Attention <https://github.com/Teriks/dgenerate/blob/@REVISION/dgenerate/promptupscalers/attentionpromptupscaler.py>`_,
+`Translate <https://github.com/Teriks/dgenerate/blob/@REVISION/dgenerate/promptupscalers/translatepromptupscaler.py>`_, and
+`GPT4All <https://github.com/Teriks/dgenerate/blob/@REVISION/dgenerate/promptupscalers/gpt4allpromptupscaler.py>`_.
 
+An example skeleton for writing a prompt upscaler plugin can be found in
+`writing_plugins/prompt_upscaler <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/writing_plugins/prompt_upscaler>`_.
+
+For usage details, see the "Prompt upscaling" section of the user manual.
