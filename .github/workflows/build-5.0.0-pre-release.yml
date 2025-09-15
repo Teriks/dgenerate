@@ -27,34 +27,64 @@ jobs:
         if: github.event_name == 'schedule'
         run: |
           # Get the current commit hash from version_5.0.0 branch
-          current_commit=$(git rev-parse --short HEAD)
-          echo "Current commit: $current_commit"
+          current_commit=$(git rev-parse HEAD)
+          current_commit_short=$(git rev-parse --short HEAD)
+          echo "Current version_5.0.0 commit: $current_commit_short"
           
-          # Fetch the last successful workflow run commit
-          # Note: Using the exact workflow name from the file
-          last_run_commit=$(gh run list --workflow "Build Pre-Release" --status success --limit 1 --json headSha -q '.[0].headSha' 2>/dev/null || echo "")
+          # Determine last built commit from the pre-release description first
+          # Our description contains a line like: "- **Commit**: <short_sha>"
+          last_built_commit=""
+          if gh release view pre-release >/dev/null 2>&1; then
+            release_body=$(gh release view pre-release --json body -q '.body' 2>/dev/null || echo "")
+            if [ -n "$release_body" ]; then
+              last_built_short=$(printf "%s" "$release_body" | sed -n -E 's/^\s*- \*\*Commit\*\*:\s*([a-f0-9]{7,})\s*$/\1/p' | head -1)
+              if [ -n "$last_built_short" ]; then
+                # Resolve to full sha if possible
+                resolved=$(git rev-parse "$last_built_short" 2>/dev/null || echo "")
+                last_built_commit=${resolved:-$last_built_short}
+                echo "Found last built commit from release notes: $last_built_commit"
+              fi
+            fi
+          fi
+
+          # Fallback: extract from first asset name which embeds the short sha
+          if [ -z "$last_built_commit" ]; then
+            asset_name=$(gh release view pre-release --json assets -q '.assets[0].name' 2>/dev/null || echo "")
+            if [ -n "$asset_name" ]; then
+              short_from_asset=$(echo "$asset_name" | sed -E 's/.*-([a-f0-9]{7,})(\.[^.]+)?$/\1/')
+              if [ -n "$short_from_asset" ]; then
+                resolved=$(git rev-parse "$short_from_asset" 2>/dev/null || echo "")
+                last_built_commit=${resolved:-$short_from_asset}
+                echo "Found last built commit from asset name: $last_built_commit"
+              fi
+            fi
+          fi
           
-          if [ -z "$last_run_commit" ]; then
-            echo "No previous successful run found, proceeding with build."
+          # If we still couldn't determine it, build to refresh state
+          if [ -z "$last_built_commit" ]; then
+            echo "Could not determine last built commit from release"
+            echo "Unable to determine last built commit, proceeding with build."
             echo "should_build=true" >> $GITHUB_OUTPUT
             exit 0
           fi
           
-          echo "Last successful run commit: $last_run_commit"
-          echo "Current HEAD commit: $(git rev-parse HEAD)"
-          
-          # Compare with current HEAD - count commits between last successful run and now
-          commit_count=$(git rev-list --count $last_run_commit..HEAD 2>/dev/null || echo "error")
-          
-          if [ "$commit_count" = "error" ]; then
-            echo "Error comparing commits (possibly due to force push or branch changes), proceeding with build."
-            echo "should_build=true" >> $GITHUB_OUTPUT
-          elif [ "$commit_count" -gt 0 ]; then
-            echo "Found $commit_count new commits since last successful run."
-            echo "should_build=true" >> $GITHUB_OUTPUT
-          else
-            echo "No new commits since last successful run."
+          # Compare commits
+          if [ "$last_built_commit" = "$current_commit" ]; then
+            echo "No new commits on version_5.0.0 branch since last build"
+            echo "Last built: $last_built_commit"
+            echo "Current: $current_commit"
             echo "should_build=false" >> $GITHUB_OUTPUT
+          else
+            # Count the number of new commits
+            commit_count=$(git rev-list --count "$last_built_commit..$current_commit" 2>/dev/null || echo "unknown")
+            if [ "$commit_count" = "unknown" ]; then
+              echo "New commits detected on version_5.0.0 branch (count unknown)"
+            else
+              echo "Found $commit_count new commits on version_5.0.0 branch since last build"
+            fi
+            echo "Last built: $last_built_commit"
+            echo "Current: $current_commit"
+            echo "should_build=true" >> $GITHUB_OUTPUT
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -423,4 +453,3 @@ jobs:
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
