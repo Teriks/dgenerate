@@ -2386,6 +2386,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                     self.model_type != _pipelinewrapper.ModelType.SD and
                     self.model_type != _pipelinewrapper.ModelType.SDXL and
                     self.model_type != _pipelinewrapper.ModelType.SD3 and
+                    self.model_type != _pipelinewrapper.ModelType.SD3_PIX2PIX and
                     self.prompt_weighter_uri is None
             ):
                 # prompt weighter may be able to handle clip skips

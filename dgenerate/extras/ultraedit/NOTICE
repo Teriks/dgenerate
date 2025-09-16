@@ -1,0 +1,9 @@
+These pipelines are vendored from UltraEdit: https://github.com/HaozheZhao/UltraEdit
+
+Each pipeline has a slightly different attribution under the Apache-2.0 license.
+
+These pipelines support inpainting unlike the pipelines that exist in the main diffusers library.
+
+SD3 Support does not exist in the main diffusers library but exists here.
+
+The pipeline interface is slightly modernized to match the main diffusers library interface, mainly: mask_img -> mask_image

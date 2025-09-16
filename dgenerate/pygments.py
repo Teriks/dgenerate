@@ -142,6 +142,7 @@ _MODEL_TYPE_KEYWORDS = sorted((
     'sd',
     'pix2pix',
     'sd3',
+    'sd3-pix2pix',
     'flux',
     'flux-fill',
     'flux-kontext',

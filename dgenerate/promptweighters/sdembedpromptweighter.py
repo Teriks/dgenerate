@@ -91,6 +91,7 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
             _enums.ModelType.SDXL_PIX2PIX,
             _enums.ModelType.S_CASCADE,
             _enums.ModelType.SD3,
+            _enums.ModelType.SD3_PIX2PIX,
             _enums.ModelType.FLUX,
             _enums.ModelType.FLUX_FILL,
             _enums.ModelType.FLUX_KONTEXT
