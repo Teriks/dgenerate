@@ -22,20 +22,17 @@ import os
 
 import PIL.Image
 import spandrel
-import spandrel_extra_arches
 import torch
 import torchvision
 import tqdm.auto
 
 import dgenerate.exceptions as _d_exceptions
+import dgenerate.hfhub as _hfhub
 import dgenerate.imageprocessors.imageprocessor as _imageprocessor
 import dgenerate.imageprocessors.upscale_tiler as _upscale_tiler
 import dgenerate.messages as _messages
 import dgenerate.types as _types
 import dgenerate.webcache as _webcache
-import dgenerate.hfhub as _hfhub
-
-spandrel.MAIN_REGISTRY.add(*spandrel_extra_arches.EXTRA_REGISTRY)
 
 
 class UpscalerProcessor(_imageprocessor.ImageProcessor):
@@ -144,7 +141,7 @@ class UpscalerProcessor(_imageprocessor.ImageProcessor):
 
         if overlap < 0:
             raise self.argument_error('Argument "overlap" must be greater than or equal to 0.')
-        
+
         if scale is not None and scale < 1:
             raise self.argument_error('Argument "scale" must be greater than or equal to 1.')
 
