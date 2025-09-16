@@ -20,7 +20,6 @@
 BleachNick/SD3_UltraEdit_w_mask
 --model-type sd3-pix2pix {{ optimization }}
 --dtype float16
---model-sequential-offload
 --image-seeds "{{ image }};{{ mask }}"
 --seed-image-processors resize;size=512
 --mask-image-processors resize;size=512
