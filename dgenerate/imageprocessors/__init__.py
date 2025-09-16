@@ -24,6 +24,12 @@ import dgenerate.imageprocessors.constants
 import dgenerate.plugin as _plugin
 import dgenerate.types as _types
 
+
+import spandrel_extra_arches
+
+# Enable extra architectures (only if not already installed)
+spandrel_extra_arches.install(ignore_duplicates=True)
+
 # these need to be up here to prevent circular import problems
 from .imageprocessor import ImageProcessor
 from .imageprocessorchain import ImageProcessorChain
@@ -68,6 +74,7 @@ from .midas import MidasDepthProcessor
 from .mlsd import MLSDProcessor
 from .normal_bae import NormalBaeProcessor
 from .openpose import OpenPoseProcessor
+from .inpaint import InpaintProcessor
 from .paste import PasteProcessor
 from .patchmatch import PatchMatchProcessor
 from .pidi import PidiNetProcessor

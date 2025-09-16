@@ -1,0 +1,15 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 5.0.0
+
+# Inpaint using spandrel + LaMa
+
+\image_process ../media/dog-on-bench.png
+--output dog-bench-lama-inpaint.png
+--processors inpaint;model=https://github.com/Sanster/models/releases/download/add_big_lama/big-lama.pt;mask=../media/dog-on-bench-mask.png
+
+
+# Inpaint using spandrel + MAT
+
+\image_process ../media/dog-on-bench.png
+--output dog-bench-mat-inpaint.png
+--processors inpaint;model=https://github.com/Sanster/models/releases/download/add_mat/Places_512_FullData_G.pth;mask=../media/dog-on-bench-mask.png
