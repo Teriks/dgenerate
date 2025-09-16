@@ -20,7 +20,7 @@ Example ``~/.dgenerate/init.dgen`` for setting environment variables:
     
     # Authentication tokens
     \env HF_TOKEN=your_huggingface_token_here
-    \env CIVITAI_TOKEN=your_civitai_token_here
+    \env CIVIT_AI_TOKEN=your_civitai_token_here
     
     # Performance and behavior
     \env DGENERATE_TORCH_COMPILE=0
