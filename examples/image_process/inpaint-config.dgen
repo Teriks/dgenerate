@@ -13,3 +13,15 @@
 \image_process ../media/dog-on-bench.png
 --output dog-bench-mat-inpaint.png
 --processors inpaint;model=https://github.com/Sanster/models/releases/download/add_mat/Places_512_FullData_G.pth;mask=../media/dog-on-bench-mask.png
+
+
+# Test reverse order of image and mask
+
+\image_process ../media/dog-on-bench-mask.png
+--output dog-bench-lama-inpaint-r.png
+--processors inpaint;model=https://github.com/Sanster/models/releases/download/add_big_lama/big-lama.pt;image=../media/dog-on-bench.png
+
+
+\image_process ../media/dog-on-bench-mask.png
+--output dog-bench-mat-inpaint-r.png
+--processors inpaint;model=https://github.com/Sanster/models/releases/download/add_mat/Places_512_FullData_G.pth;image=../media/dog-on-bench.png
