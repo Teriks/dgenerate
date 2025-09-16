@@ -508,6 +508,9 @@ class RenderLoop:
         if diffusion_args.adetailer_mask_dilation is not None:
             args += ['add', diffusion_args.adetailer_mask_dilation]
 
+        if diffusion_args.adetailer_size is not None:
+            args += ['adsz', diffusion_args.adetailer_size]
+
         if diffusion_args.sdxl_refiner_clip_skip is not None:
             args += ['rcs', diffusion_args.sdxl_refiner_clip_skip]
 

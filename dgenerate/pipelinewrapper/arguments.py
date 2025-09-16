@@ -1105,6 +1105,18 @@ class DiffusionArguments(_types.SetFromMixin):
     see: cv2.dilate. Defaults to 4.
     """
 
+    adetailer_size: _types.OptionalInteger = None
+    """
+    Target size for processing detected areas.
+    When specified, detected areas will always be scaled to this target size (with aspect ratio preserved)
+    for processing, then scaled back to the original size for compositing.
+    This can significantly improve detail quality for small detected features like faces or hands,
+    or reduce processing time for overly large detected areas.
+    The scaling is based on the larger dimension (width or height) of the detected area.
+    The optimal resampling method is automatically selected for both upscaling and downscaling.
+    Must be an integer greater than 1. Defaults to none (process at native resolution).
+    """
+
     deep_cache: bool = False
     """
     Enable DeepCache acceleration for the main model? DeepCache caches the intermediate 
@@ -1391,6 +1403,7 @@ class DiffusionArguments(_types.SetFromMixin):
             (format_size(self.adetailer_mask_padding), "Adetailer Mask Padding:"),
             (self.adetailer_mask_blur, "Adetailer Mask Blur:"),
             (self.adetailer_mask_dilation, "Adetailer Mask Dilation:"),
+            (self.adetailer_size, "Adetailer Processing Size:"),
             (self.ras_sample_ratio, "RAS Sample Ratio:"),
             (self.ras_high_ratio, "RAS High Ratio:"),
             (self.ras_starvation_scale, "RAS Starvation Scale:"),
