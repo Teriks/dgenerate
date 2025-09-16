@@ -3477,23 +3477,6 @@ class DiffusionPipelineWrapper:
             'max_interval': _types.default(user_args.sada_max_interval, model_defaults['max_interval']),
         }
 
-    def _get_default_width_height(self) -> tuple[int, int]:
-        if _enums.model_type_is_sdxl(self._model_type):
-            return _constants.DEFAULT_SDXL_OUTPUT_WIDTH, _constants.DEFAULT_SDXL_OUTPUT_HEIGHT
-        elif _enums.model_type_is_kolors(self._model_type):
-            return _constants.DEFAULT_KOLORS_OUTPUT_WIDTH, _constants.DEFAULT_KOLORS_OUTPUT_HEIGHT
-        elif _enums.model_type_is_floyd_if(self._model_type):
-            return _constants.DEFAULT_FLOYD_IF_OUTPUT_WIDTH, _constants.DEFAULT_FLOYD_IF_OUTPUT_HEIGHT
-        elif self._model_type == _enums.ModelType.S_CASCADE:
-            return _constants.DEFAULT_S_CASCADE_OUTPUT_WIDTH, _constants.DEFAULT_S_CASCADE_OUTPUT_HEIGHT
-        elif self._model_type == _enums.ModelType.SD3:
-            return _constants.DEFAULT_SD3_OUTPUT_WIDTH, _constants.DEFAULT_SD3_OUTPUT_HEIGHT
-        elif _enums.model_type_is_flux(self._model_type):
-            return _constants.DEFAULT_FLUX_OUTPUT_WIDTH, _constants.DEFAULT_FLUX_OUTPUT_HEIGHT
-        else:
-            # SD and other models
-            return _constants.DEFAULT_OUTPUT_WIDTH, _constants.DEFAULT_OUTPUT_HEIGHT
-
     def recall_main_pipeline(self) -> _pipelines.PipelineCreationResult:
         """
         Fetch the last used main pipeline creation result, possibly the pipeline

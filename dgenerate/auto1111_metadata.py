@@ -100,6 +100,7 @@ _DEFAULT_MODEL_TYPE_TO_SCHEDULER_MAP = {
 
     # Stable Diffusion 3
     _enums.ModelType.SD3: "FlowMatchEulerDiscreteScheduler",
+    _enums.ModelType.SD3_PIX2PIX: "FlowMatchEulerDiscreteScheduler",
 
     # Stable Cascade models
     _enums.ModelType.S_CASCADE: "DDPMWuerstchenScheduler",

@@ -203,22 +203,27 @@ class ModelType(enum.Enum):
     Stable Diffusion 3
     """
 
-    FLUX = 12
+    SD3_PIX2PIX = 12
+    """
+    Stable Diffusion 3 pix2pix prompt guided editing.
+    """
+
+    FLUX = 13
     """
     Flux pipeline
     """
 
-    FLUX_FILL = 13
+    FLUX_FILL = 14
     """
     Flux infill / outfill pipeline
     """
 
-    FLUX_KONTEXT = 14
+    FLUX_KONTEXT = 15
     """
     Flux Kontext pipeline
     """
 
-    KOLORS = 15
+    KOLORS = 16
     """Kolors (SDXL + ChatGLM)"""
 
 
@@ -238,6 +243,7 @@ def supported_model_type_strings():
             'ifs-img2img',
             's-cascade',
             'sd3',
+            'sd3-pix2pix',
             'flux',
             'flux-fill',
             'flux-kontext']
@@ -277,6 +283,7 @@ def get_model_type_enum(id_str: ModelType | str) -> ModelType:
                 'upscaler-x4': ModelType.UPSCALER_X4,
                 's-cascade': ModelType.S_CASCADE,
                 'sd3': ModelType.SD3,
+                'sd3-pix2pix': ModelType.SD3_PIX2PIX,
                 'flux': ModelType.FLUX,
                 'flux-fill': ModelType.FLUX_FILL,
                 'flux-kontext': ModelType.FLUX_KONTEXT}[id_str.strip().lower()]
@@ -307,6 +314,7 @@ def get_model_type_string(model_type_enum: ModelType) -> str:
             ModelType.S_CASCADE: 's-cascade',
             ModelType.S_CASCADE_DECODER: 's-cascade-decoder',
             ModelType.SD3: 'sd3',
+            ModelType.SD3_PIX2PIX: 'sd3-pix2pix',
             ModelType.FLUX: 'flux',
             ModelType.FLUX_FILL: 'flux-fill',
             ModelType.FLUX_KONTEXT: 'flux-kontext'}[model_type]

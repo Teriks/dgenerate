@@ -41,6 +41,7 @@ import transformers
 import dgenerate.devicecache as _devicecache
 import dgenerate.exceptions as _d_exceptions
 import dgenerate.extras.kolors as _kolors
+import dgenerate.extras.ultraedit
 import dgenerate.filecache as _filecache
 import dgenerate.hfhub as _hfhub
 import dgenerate.memoize as _d_memoize
@@ -1572,6 +1573,7 @@ def get_pipeline_class(
                 'with --image-encoder. Pix2Pix SDXL is not supported.')
 
     is_sdxl = _enums.model_type_is_sdxl(model_type)
+    is_sd3 = _enums.model_type_is_sd3(model_type)
 
     sdxl_controlnet_union = False
     parsed_control_net_uris = None
@@ -1629,14 +1631,17 @@ def get_pipeline_class(
             if is_pix2pix:
                 if not help_mode:
                     raise UnsupportedPipelineConfigError(
-                        'Pix2Pix models only work in img2img mode and cannot work without --image-seeds.')
+                        'Pix2Pix models only work in img2img / inpaint mode and cannot work without --image-seeds.')
                 else:
-                    # noinspection PyUnusedLocal
-                    pipeline_class = (
-                        diffusers.StableDiffusionXLInstructPix2PixPipeline
-                        if is_sdxl
-                        else diffusers.StableDiffusionInstructPix2PixPipeline
-                    )
+                    if is_sdxl:
+                        # noinspection PyUnusedLocal
+                        pipeline_class = diffusers.StableDiffusionXLInstructPix2PixPipeline
+                    elif is_sd3:
+                        # noinspection PyUnusedLocal
+                        pipeline_class = dgenerate.extras.ultraedit.StableDiffusion3InstructPix2PixPipeline
+                    else:
+                        # noinspection PyUnusedLocal
+                        pipeline_class = diffusers.StableDiffusionInstructPix2PixPipeline
 
             if model_type == _enums.ModelType.FLUX_KONTEXT:
                 raise UnsupportedPipelineConfigError(
@@ -1740,11 +1745,15 @@ def get_pipeline_class(
                 )
 
             if is_pix2pix:
-                pipeline_class = (
-                    diffusers.StableDiffusionXLInstructPix2PixPipeline
-                    if is_sdxl
-                    else diffusers.StableDiffusionInstructPix2PixPipeline
-                )
+                if is_sdxl:
+                    # noinspection PyUnusedLocal
+                    pipeline_class = diffusers.StableDiffusionXLInstructPix2PixPipeline
+                elif is_sd3:
+                    # noinspection PyUnusedLocal
+                    pipeline_class = dgenerate.extras.ultraedit.StableDiffusion3InstructPix2PixPipeline
+                else:
+                    # noinspection PyUnusedLocal
+                    pipeline_class = diffusers.StableDiffusionInstructPix2PixPipeline
             elif model_type == _enums.ModelType.IF:
                 pipeline_class = diffusers.IFImg2ImgPipeline
             elif model_type == _enums.ModelType.IFS:
@@ -1827,16 +1836,25 @@ def get_pipeline_class(
                         pipeline_class = diffusers.StableDiffusionImg2ImgPipeline
 
         elif pipeline_type == _enums.PipelineType.INPAINT:
-            if is_pix2pix:
-                raise UnsupportedPipelineConfigError(
-                    'Pix2Pix models only work in img2img mode and cannot work in inpaint mode (with a mask).')
+
             if _enums.model_type_is_s_cascade(model_type):
                 raise UnsupportedPipelineConfigError(
                     'Stable Cascade model types do not support inpainting.')
             if _enums.model_type_is_upscaler(model_type):
                 raise UnsupportedPipelineConfigError(
                     'Stable Diffusion upscaler model types do not support inpainting.')
-            if model_type == _enums.ModelType.FLUX:
+
+            if is_pix2pix:
+                if is_sdxl:
+                    # noinspection PyUnusedLocal
+                    pipeline_class = dgenerate.extras.ultraedit.StableDiffusionXLInstructPix2PixPipeline
+                elif is_sd3:
+                    # noinspection PyUnusedLocal
+                    pipeline_class = dgenerate.extras.ultraedit.StableDiffusion3InstructPix2PixPipeline
+                else:
+                    # noinspection PyUnusedLocal
+                    pipeline_class = dgenerate.extras.ultraedit.StableDiffusionInstructPix2PixPipeline
+            elif model_type == _enums.ModelType.FLUX:
                 if controlnet_uris:
                     pipeline_class = diffusers.FluxControlNetInpaintPipeline
                 else:
