@@ -852,7 +852,7 @@ class StableDiffusionXLInstructPix2PixPipeline(
                 num_images_per_prompt,
                 prompt_embeds.dtype,
                 device,
-                self.do_classifier_free_guidance,
+                do_classifier_free_guidance,
             )
 
             num_channels_image += mask_image_latents.shape[1]

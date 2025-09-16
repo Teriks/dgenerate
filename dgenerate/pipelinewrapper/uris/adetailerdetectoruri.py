@@ -48,7 +48,8 @@ _lora_uri_parser = _textprocessing.ConceptUriParser(
         'mask-dilation',
         'prompt',
         'negative-prompt',
-        'device'
+        'device',
+        'size'
     ], args_raw=['class-filter', 'index-filter'])
 
 
@@ -196,6 +197,13 @@ class AdetailerDetectorUri:
         """
         return self._negative_prompt
 
+    @property
+    def size(self) -> _types.OptionalInteger:
+        """
+        Target size for processing detected areas.
+        """
+        return self._size
+
     def __init__(self,
                  model: str,
                  revision: _types.OptionalString = None,
@@ -212,7 +220,8 @@ class AdetailerDetectorUri:
                  class_filter: _types.OptionalIntegersAndStringsBag = None,
                  prompt: _types.OptionalString = None,
                  negative_prompt: _types.OptionalString = None,
-                 device: _types.OptionalName = None):
+                 device: _types.OptionalName = None,
+                 size: _types.OptionalInteger = None):
 
         self._model = model
         self._revision = revision
@@ -228,6 +237,13 @@ class AdetailerDetectorUri:
         self._negative_prompt = negative_prompt
         self._class_filter = class_filter
         self._index_filter = index_filter
+
+        if size is not None and size <= 1:
+            raise _exceptions.InvalidAdetailerDetectorUriError(
+                'adetailer detector size must be an integer greater than 1.'
+            )
+
+        self._size = size
 
         if mask_shape is not None:
             mask_shape = mask_shape.lower()
@@ -375,6 +391,15 @@ class AdetailerDetectorUri:
                     raise _exceptions.InvalidAdetailerDetectorUriError(
                         f'adetailer detector mask-dilation must be an integer value, received: {mask_dilation}')
 
+            size = r.args.get('size', None)
+            
+            if size:
+                try:
+                    size = int(size)
+                except ValueError:
+                    raise _exceptions.InvalidAdetailerDetectorUriError(
+                        f'adetailer detector size must be an integer value, received: {size}')
+
             # Process class_filter and index_filter using shared utility function
             class_filter_raw = r.args.get('class-filter', None)
             index_filter_raw = r.args.get('index-filter', None)
@@ -453,7 +478,8 @@ class AdetailerDetectorUri:
                 prompt=r.args.get('prompt', None),
                 negative_prompt=r.args.get('negative-prompt', None),
                 mask_shape=r.args.get('mask-shape', None),
-                device=r.args.get('device', None))
+                device=r.args.get('device', None),
+                size=size)
 
             return result
         except _textprocessing.ConceptUriParseError as e:

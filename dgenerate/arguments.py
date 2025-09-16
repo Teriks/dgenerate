@@ -461,6 +461,17 @@ def _type_adetailer_mask_blur(val):
     return val
 
 
+def _type_adetailer_size(val):
+    try:
+        val = int(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be an integer')
+
+    if val <= 1:
+        raise argparse.ArgumentTypeError('Must be greater than 1')
+    return val
+
+
 def _type_adetailer_mask_dilation(val):
     try:
         val = int(val)
@@ -1430,6 +1441,25 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             metavar='ADETAILER_MASK_DILATION',
             dest='adetailer_mask_dilations',
             help="The amount of dilation applied to the adetailer inpaint mask, see: cv2.dilate. (default: 4)")
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-adsz', '--adetailer-sizes',
+            nargs='+',
+            action='store',
+            type=_type_adetailer_size,
+            default=None,
+            metavar='ADETAILER_SIZE',
+            dest='adetailer_sizes',
+            help="""One or more target sizes for processing detected areas.
+                    When specified, detected areas will always be scaled to this target size (with aspect ratio preserved)
+                    for processing, then scaled back to the original size for compositing.
+                    This can significantly improve detail quality for small detected features like faces or hands,
+                    or reduce processing time for overly large detected areas.
+                    The scaling is based on the larger dimension (width or height) of the detected area.
+                    The optimal resampling method is automatically selected for both upscaling and downscaling.
+                    Each value must be an integer greater than 1. (default: none - process at native resolution)""")
     )
 
     actions.append(

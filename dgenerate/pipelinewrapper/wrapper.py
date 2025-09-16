@@ -2758,6 +2758,13 @@ class DiffusionPipelineWrapper:
                 _messages.log(f'Overriding global negative prompt '
                               f'value with adetailer detector URI value: "{detector_uri.negative_prompt}"')
 
+            processing_size = user_args.adetailer_size
+            
+            if detector_uri.size is not None:
+                processing_size = detector_uri.size
+                _messages.log(f'Overriding global adetailer size '
+                              f'value with adetailer detector URI value: {detector_uri.size}')
+
             asdff_output = asdff_pipe(
                 pipeline_args=pipeline_args,
                 model_path=detector_uri.get_model_path(
@@ -2774,7 +2781,8 @@ class DiffusionPipelineWrapper:
                 detector_padding=detector_padding,
                 mask_padding=mask_padding,
                 mask_dilation=mask_dilation,
-                model_masks=model_masks
+                model_masks=model_masks,
+                processing_size=processing_size
             )
 
         return self._create_pipeline_result(asdff_output, user_args=user_args, pipeline_kwargs=pipeline_args)

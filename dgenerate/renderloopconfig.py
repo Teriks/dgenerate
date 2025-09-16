@@ -1566,6 +1566,18 @@ class RenderLoopConfig(_types.SetFromMixin):
     see: cv2.dilate. Defaults to [4].
     """
 
+    adetailer_sizes: _types.OptionalIntegers = None
+    """
+    One or more target sizes for processing detected areas.
+    When specified, detected areas will always be scaled to this target size (with aspect ratio preserved)
+    for processing, then scaled back to the original size for compositing.
+    This can significantly improve detail quality for small detected features like faces or hands,
+    or reduce processing time for overly large detected areas.
+    The scaling is based on the larger dimension (width or height) of the detected area.
+    The optimal resampling method is automatically selected for both upscaling and downscaling.
+    Each value must be an integer greater than 1. Defaults to none (process at native resolution).
+    """
+
     adetailer_crop_control_image: _types.OptionalBoolean = None
     """
     Should adetailer crop any control image the same way that it crops the mask?
@@ -3164,6 +3176,7 @@ class RenderLoopConfig(_types.SetFromMixin):
             self.adetailer_mask_paddings,
             self.adetailer_mask_blurs,
             self.adetailer_mask_dilations,
+            self.adetailer_sizes,
             self.tea_cache_rel_l1_thresholds,
             self.ras_error_reset_steps,
             self.ras_high_ratios,
@@ -3417,6 +3430,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                 adetailer_mask_padding=ov('adetailer_mask_padding', self.adetailer_mask_paddings),
                 adetailer_mask_blur=ov('adetailer_mask_blur', self.adetailer_mask_blurs),
                 adetailer_mask_dilation=ov('adetailer_mask_dilation', self.adetailer_mask_dilations),
+                adetailer_size=ov('adetailer_size', self.adetailer_sizes),
                 adetailer_model_masks=ov('adetailer_model_masks', [self.adetailer_model_masks]),
                 output_latents=ov('output_latents', [self.is_output_latents()]),
                 denoising_start=ov('denoising_start', [self.denoising_start]),

@@ -180,6 +180,9 @@ def reconstruct_dgenerate_opts(
     if args.adetailer_mask_dilation is not None:
         opts.append(('--adetailer-mask-dilations', args.adetailer_mask_dilation))
 
+    if args.adetailer_size is not None:
+        opts.append(('--adetailer-sizes', args.adetailer_size))
+
     if wrapper.adetailer_crop_control_image:
         opts.append(('--adetailer-crop-control-image',))
 

@@ -26,7 +26,8 @@ Help Output
                      [-addp ADETAILER_DETECTOR_PADDING [ADETAILER_DETECTOR_PADDING ...]]
                      [-admp ADETAILER_MASK_PADDING [ADETAILER_MASK_PADDING ...]]
                      [-adb ADETAILER_MASK_BLUR [ADETAILER_MASK_BLUR ...]]
-                     [-add ADETAILER_MASK_DILATION [ADETAILER_MASK_DILATION ...]] [-adc]
+                     [-add ADETAILER_MASK_DILATION [ADETAILER_MASK_DILATION ...]]
+                     [-adsz ADETAILER_SIZE [ADETAILER_SIZE ...]] [-adc]
                      [-te TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]]
                      [-te2 TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]] [-un UNET_URI] [-un2 UNET_URI]
                      [-tf TRANSFORMER_URI] [-vae VAE_URI] [-vt] [-vs] [-lra LORA_URI [LORA_URI ...]]
@@ -207,9 +208,9 @@ Help Output
             -----------------------------------------------------------------------------------------------
       -mt, --model-type MODEL_TYPE
             Use when loading different model types. Currently supported: sd, pix2pix, sdxl, sdxl-pix2pix,
-            kolors, upscaler-x2, upscaler-x4, if, ifs, ifs-img2img, s-cascade, sd3, flux, flux-fill, or
-            flux-kontext. (default: sd)
-            ---------------------------
+            kolors, upscaler-x2, upscaler-x4, if, ifs, ifs-img2img, s-cascade, sd3, sd3-pix2pix, flux,
+            flux-fill, or flux-kontext. (default: sd)
+            -----------------------------------------
       -rev, --revision BRANCH
             The model revision to use when loading from a Hugging Face repository, (The Git branch / tag,
             default is "main")
@@ -445,6 +446,15 @@ Help Output
       -add, --adetailer-mask-dilations ADETAILER_MASK_DILATION [ADETAILER_MASK_DILATION ...]
             The amount of dilation applied to the adetailer inpaint mask, see: cv2.dilate. (default: 4)
             -------------------------------------------------------------------------------------------
+      -adsz, --adetailer-sizes ADETAILER_SIZE [ADETAILER_SIZE ...]
+            One or more target sizes for processing detected areas. When specified, detected areas will always
+            be scaled to this target size (with aspect ratio preserved) for processing, then scaled back to the
+            original size for compositing. This can significantly improve detail quality for small detected
+            features like faces or hands, or reduce processing time for overly large detected areas. The scaling
+            is based on the larger dimension (width or height) of the detected area. The optimal resampling
+            method is automatically selected for both upscaling and downscaling. Each value must be an integer
+            greater than 1. (default: none - process at native resolution)
+            --------------------------------------------------------------
       -adc, --adetailer-crop-control-image
             Should adetailer crop ControlNet control images to the feature detection area? Your input image and
             control image should be the the same dimension, otherwise this argument is ignored with a warning.
@@ -7482,6 +7492,7 @@ these are the arguments that are available for use:
     adetailer-mask-padding: Padding: P, WxH, LxTxRxB
     adetailer-mask-blur: int
     adetailer-mask-dilation: int
+    adetailer-size: int
     deep-cache-interval: int
     deep-cache-branch-id: int
     sdxl-refiner-deep-cache: bool
@@ -7692,6 +7703,7 @@ Output:
         "gaussian-blur"
         "grayscale"
         "hed"
+        "inpaint"
         "invert"
         "leres"
         "letterbox"
@@ -8998,6 +9010,7 @@ adetailer processor help output below.
             model-masks: bool = False
             confidence: float = 0.3
             detector-device: Optional[str] = None
+            size: int | None = None
             pre-resize: bool = False
             device: str | None = None
             output-file: Optional[str] = None
@@ -9158,6 +9171,21 @@ adetailer processor help output below.
     
         The "detector-device" argument can be used to specify a device override for the YOLO detector, i.e. the
         GPU / Accelerate device the model will run on. Example: cuda:0, cuda:1, cpu
+    
+        The "size" argument specifies the target size for processing detected areas. When specified, detected
+        areas will always be scaled to this target size (with aspect ratio preserved) for processing, then scaled
+        back to the original size for compositing. This can significantly improve detail quality for small
+        detected features like faces or hands, or reduce processing time for overly large detected areas.
+    
+        The scaling is based on the larger dimension (width or height) of the detected area. If the detected
+        area's larger dimension is smaller than the target size, it will be upscaled. If the detected area's
+        larger dimension is larger than the target size, it will be downscaled. Scaling is always performed when
+        this argument is specified.
+    
+        The value must be an integer greater than 1. The optimal resampling method is automatically selected based
+        on whether upscaling or downscaling is needed.
+    
+        Example: size=1024 (always process detected areas at 1024px for the larger dimension)
     
         The "pre-resize" argument determines if the processing occurs before or after dgenerate resizes the image.
         This defaults to False, meaning the image is processed after dgenerate is done resizing it.
@@ -10438,6 +10466,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_adetailer_model_masks"
             Type: typing.Optional[bool]
             Value: None
+        Name: "last_adetailer_sizes"
+            Type: typing.Optional[collections.abc.Sequence[int]]
+            Value: []
         Name: "last_animation_format"
             Type: <class 'str'>
             Value: 'mp4'
@@ -10869,7 +10900,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [52380241106639]
+            Value: [15479983952945]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -11128,19 +11159,19 @@ The dgenerate specific jinja2 functions/filters are:
     ===============================================
     have_cuda() -> bool:
     
-        Check if CUDA is available.
+        Check if CUDA backend is available.
     
-    ===============================
+    =======================================
     have_xpu() -> bool:
     
-        Check if XPU is available.
+        Check if XPU backend is available.
     
-    ==============================
+    ======================================
     have_mps() -> bool:
     
-        Check if MPS is available.
+        Check if MPS backend is available.
     
-    ==============================
+    ======================================
     total_memory(device: str | None = None, unit: str = 'b'):
     
         Get the total ram that a specific device possesses.

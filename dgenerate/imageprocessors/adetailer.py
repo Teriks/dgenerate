@@ -231,6 +231,22 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
     override for the YOLO detector, i.e. the GPU / Accelerate device
     the model will run on. Example: cuda:0, cuda:1, cpu
 
+    The "size" argument specifies the target size for processing detected areas.
+    When specified, detected areas will always be scaled to this target size (with aspect ratio preserved)
+    for processing, then scaled back to the original size for compositing.
+    This can significantly improve detail quality for small detected features like faces or hands,
+    or reduce processing time for overly large detected areas.
+    
+    The scaling is based on the larger dimension (width or height) of the detected area.
+    If the detected area's larger dimension is smaller than the target size, it will be upscaled.
+    If the detected area's larger dimension is larger than the target size, it will be downscaled.
+    Scaling is always performed when this argument is specified.
+    
+    The value must be an integer greater than 1. The optimal resampling method is automatically
+    selected based on whether upscaling or downscaling is needed.
+
+    Example: size=1024 (always process detected areas at 1024px for the larger dimension)
+
     The "pre-resize" argument determines if the processing occurs before or after dgenerate resizes the image.
     This defaults to False, meaning the image is processed after dgenerate is done resizing it.
     """
@@ -272,6 +288,7 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
                  model_masks: bool = False,
                  confidence: float = _constants.DEFAULT_ADETAILER_DETECTOR_CONFIDENCE,
                  detector_device: _types.OptionalName = None,
+                 size: int | None = None,
                  pipe: diffusers.DiffusionPipeline = None,
                  pre_resize: bool = False,
                  **kwargs):
@@ -347,6 +364,9 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
         if confidence < 0.0:
             raise self.argument_error('confidence may not be less than 0.')
 
+        if size is not None and size <= 1:
+            raise self.argument_error('size must be an integer greater than 1.')
+
         self._prompt = prompt
         self._negative_prompt = negative_prompt
         self._detector_padding = detector_padding
@@ -364,6 +384,7 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
         self._prompt_weighter = prompt_weighter
         self._detector_device = detector_device
         self._confidence = confidence
+        self._size = size
 
         self._pre_resize = pre_resize
         self._pipe = pipe
@@ -515,7 +536,8 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
             confidence=self._confidence,
             prompt_weighter=prompt_weighter,
             class_filter=self._class_filter,
-            index_filter=self._index_filter
+            index_filter=self._index_filter,
+            processing_size=self._size
         )
 
         if len(result.images) > 0:

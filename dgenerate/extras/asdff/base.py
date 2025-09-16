@@ -9,6 +9,7 @@ from functools import cached_property
 import diffusers
 
 import dgenerate.extras.kolors
+import dgenerate.image as _image
 from dgenerate.extras.asdff.utils import (
     ADOutput,
     bbox_padding,
@@ -130,7 +131,8 @@ class AdPipelineBase:
             model_masks: bool = False,
             class_filter: set[int|str] | list[int|str] | None = None,
             index_filter: set[int] | list[int] | None = None,
-            prompt_weighter: dgenerate.promptweighters.PromptWeighter | None = None
+            prompt_weighter: dgenerate.promptweighters.PromptWeighter | None = None,
+            processing_size: int | None = None
     ):
         if pipeline_args is None:
             pipeline_args = {}
@@ -187,16 +189,16 @@ class AdPipelineBase:
                     continue
                 mask = mask_gaussian_blur(mask, mask_blur)
                 bbox_padded = bbox_padding(bbox, init_image.size, mask_padding)
-                inpaint_output = self.process_inpainting(
+                inpaint_image = self.process_inpainting(
                     pipeline_args,
                     init_image,
                     control_image,
                     mask,
                     bbox_padded,
                     device,
-                    prompt_weighter
+                    prompt_weighter,
+                    processing_size
                 )
-                inpaint_image = inpaint_output[0][0]
                 final_image = composite(
                     init_image,
                     mask,
@@ -239,10 +241,84 @@ class AdPipelineBase:
             mask: Image.Image,
             bbox_padded: tuple[int, int, int, int],
             device: str,
-            prompt_weighter: dgenerate.promptweighters.PromptWeighter | None = None
+            prompt_weighter: dgenerate.promptweighters.PromptWeighter | None = None,
+            processing_size: int | None = None
     ):
         crop_image = init_image.crop(bbox_padded)
         crop_mask = mask.crop(bbox_padded)
+        original_crop_size = crop_image.size
+        
+        # Apply size-based processing if specified
+        if processing_size is not None:
+            # Scale based on the larger dimension to handle any aspect ratio consistently
+            current_max_dim = max(crop_image.width, crop_image.height)
+            size_ratio = processing_size / current_max_dim
+            
+            # Calculate aspect-correct target size based on the larger dimension
+            if crop_image.width >= crop_image.height:
+                # Width is larger or equal - scale based on width
+                target_width = processing_size
+                w_percent = (target_width / float(crop_image.width))
+                target_height = int((float(crop_image.height) * float(w_percent)))
+            else:
+                # Height is larger - scale based on height
+                target_height = processing_size
+                h_percent = (target_height / float(crop_image.height))
+                target_width = int((float(crop_image.width) * float(h_percent)))
+            
+            target_size = (target_width, target_height)
+            
+            # Use optimal resampling method for both upscaling and downscaling
+            resampling = _image.best_pil_resampling(crop_image.size, target_size)
+            
+            scale_type = "upscaling" if size_ratio > 1.0 else "downscaling"
+            _messages.debug_log(
+                f'ADetailer {scale_type} detection area from {crop_image.size} to {target_size} using {resampling}'
+            )
+            
+            crop_image = crop_image.resize(target_size, resampling)
+            crop_mask = crop_mask.resize(target_size, resampling)
+            
+            # Process at scaled resolution
+            inpaint_args = self._get_inpaint_args(pipeline_args)
+            inpaint_args["image"] = crop_image
+            inpaint_args["mask_image"] = crop_mask
+
+            if control_image is not None:
+                if self.crop_control_image and init_image.size == control_image.size:
+                    control_crop = control_image.crop(bbox_padded)
+                    control_resampling = _image.best_pil_resampling(control_crop.size, target_size)
+                    inpaint_args["control_image"] = control_crop.resize(target_size, control_resampling)
+                else:
+                    if init_image.size != control_image.size:
+                        _messages.log(
+                            'adetailer could not crop the control image correctly as it is a different '
+                            'size from your input image, they need to be the same dimension, '
+                            'reverting to resize only mode.')
+                    
+                    control_resampling = _image.best_pil_resampling(control_image.size, target_size)
+                    inpaint_args["control_image"] = control_image.resize(target_size, control_resampling)
+            
+            # Call pipeline with scaled images
+            result = _pipelinewrapper.call_pipeline(
+                pipeline=self.inpaint_pipeline,
+                device=device,
+                prompt_weighter=prompt_weighter,
+                **inpaint_args)
+            
+            # Scale result back to original crop size for compositing
+            processed_image = result[0][0]
+            final_resampling = _image.best_pil_resampling(processed_image.size, original_crop_size)
+            
+            _messages.debug_log(
+                f'ADetailer scaling result from {processed_image.size} to {original_crop_size} '
+                f'for compositing using {final_resampling}'
+            )
+            
+            processed_image = processed_image.resize(original_crop_size, final_resampling)
+            return processed_image
+        
+        # Standard processing at original resolution (no scaling needed or no processing_size specified)
         inpaint_args = self._get_inpaint_args(pipeline_args)
         inpaint_args["image"] = crop_image
         inpaint_args["mask_image"] = crop_mask
@@ -260,8 +336,12 @@ class AdPipelineBase:
                 inpaint_args["control_image"] = control_image.resize(
                     crop_image.size
                 )
-        return _pipelinewrapper.call_pipeline(
+        
+        # Call pipeline and return just the image
+        result = _pipelinewrapper.call_pipeline(
             pipeline=self.inpaint_pipeline,
             device=device,
             prompt_weighter=prompt_weighter,
             **inpaint_args)
+        
+        return result[0][0]
