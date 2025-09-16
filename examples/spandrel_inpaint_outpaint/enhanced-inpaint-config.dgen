@@ -1,0 +1,27 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 5.0.0
+
+# Remove the dog from the image, use LaMa first
+
+\set image ../media/dog-on-bench.png
+\set mask ../media/dog-on-bench-mask.png
+
+# This is a 512 image, but better results are
+# achieved when output is set to SDXLs preferred
+# resolution
+
+\set spandrel_inpaint_model https://github.com/Sanster/models/releases/download/add_big_lama/big-lama.pt
+
+diffusers/stable-diffusion-xl-1.0-inpainting-0.1
+--model-type sdxl
+--dtype float16
+--variant fp16
+--inference-steps 30
+--guidance-scales 5
+--seed-image-processors inpaint;model={{ spandrel_inpaint_model }};mask={{ mask }}
+--image-seeds {{image}};{{mask}}
+--image-seed-strengths 0.9
+--seeds 140746915330530
+--output-path enhanced_inpaint
+--output-size 1024
+--prompts "a bench, woven back chair"

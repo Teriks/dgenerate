@@ -1,0 +1,29 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 5.0.0
+
+# Enhanced outpaint similar to patchmatch, using the LaMa inpaint model architecture
+# via spandrel to generate reference content for SDXL
+
+# This is similar to using patchmatch to generate reference content
+
+\set outpaint_box 256
+
+\set input_image C:/Users/Eric/IdeaProjects/dgenerate/examples/media/mountain.png
+
+\set spandrel_inpaint_model https://github.com/Sanster/models/releases/download/add_big_lama/big-lama.pt
+
+diffusers/stable-diffusion-xl-1.0-inpainting-0.1
+--model-type sdxl
+--dtype float16
+--variant fp16
+--inference-steps 30
+--guidance-scales 5
+--image-seed-strengths 0.85
+--image-seeds {{ input_image }};{{ input_image }}
+--seed-image-processors \
+    letterbox;box-size={{ outpaint_box }};box-is-padding=True \
+    inpaint;model={{ spandrel_inpaint_model }};mask={{ input_image }};mask-processors="outpaint-mask;box={{ outpaint_box }}"
+--mask-image-processors outpaint-mask;box={{ outpaint_box }}
+--seeds 11137629041966
+--output-path enhanced_outpaint_one_liner
+--prompts "photo of forested mountains under a blue sky"
