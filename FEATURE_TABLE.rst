@@ -13,7 +13,7 @@ Diffusion Model Feature Support Tables
    * ``--model-type upscaler-x4`` (Stable Diffusion x4 Upscaler)
    * ``--model-type s-cascade`` (Stable Cascade)
    * ``--model-type sd3`` (Stable Diffusion 3 and 3.5)
-   * ``--model-type sd3-pix2pix`` (Stable Diffusion 3 - Pix2Pix [UltraEdit])
+   * ``--model-type sd3-pix2pix`` (Stable Diffusion 3 - Pix2Pix [`UltraEdit <https://github.com/HaozheZhao/UltraEdit>`_])
    * ``--model-type flux`` (Flux.1)
    * ``--model-type flux-fill`` (Flux.1 - Infill / Outfill)
    * ``--model-type flux-kontext`` (Flux.1 - Pix2Pix like editing)
