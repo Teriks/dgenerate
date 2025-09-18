@@ -13,8 +13,10 @@ Diffusion Model Feature Support Tables
    * ``--model-type upscaler-x4`` (Stable Diffusion x4 Upscaler)
    * ``--model-type s-cascade`` (Stable Cascade)
    * ``--model-type sd3`` (Stable Diffusion 3 and 3.5)
+   * ``--model-type sd3-pix2pix`` (Stable Diffusion 3 - Pix2Pix [UltraEdit])
    * ``--model-type flux`` (Flux.1)
    * ``--model-type flux-fill`` (Flux.1 - Infill / Outfill)
+   * ``--model-type flux-kontext`` (Flux.1 - Pix2Pix like editing)
 
 
 .. list-table:: Generation modes by ``--model-type``
@@ -34,7 +36,7 @@ Diffusion Model Feature Support Tables
    * - ``pix2pix``
      - ❌
      - ✅
-     - ❌
+     - 🚧
 
    * - ``sdxl``
      - ✅
@@ -64,7 +66,7 @@ Diffusion Model Feature Support Tables
    * - ``sdxl-pix2pix``
      - ❌
      - ✅
-     - ❌
+     - 🚧
 
    * - ``upscaler-x2``
      - ❌
@@ -86,6 +88,11 @@ Diffusion Model Feature Support Tables
      - ✅
      - ✅
 
+   * - ``sd3-pix2pix``
+     - ❌
+     - ✅
+     - ✅
+
    * - ``flux``
      - ✅
      - ✅
@@ -94,6 +101,11 @@ Diffusion Model Feature Support Tables
    * - ``flux-fill``
      - ❌
      - ❌
+     - ✅
+
+   * - ``flux-kontext``
+     - ❌
+     - ✅
      - ✅
 
 .. list-table:: Guidance by ``--model-type``
@@ -178,6 +190,12 @@ Diffusion Model Feature Support Tables
      - ✅
      - ✅
 
+   * - ``sd3-pix2pix``
+     - ✅
+     - ❌
+     - ❌
+     - ❌
+
    * - ``flux``
      - ✅
      - ✅
@@ -185,6 +203,12 @@ Diffusion Model Feature Support Tables
      - ❌
 
    * - ``flux-fill``
+     - ✅
+     - ✅
+     - ❌
+     - ❌
+
+   * - ``flux-kontext``
      - ✅
      - ✅
      - ❌
@@ -246,6 +270,10 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
 
+   * - ``sd3-pix2pix``
+     - ❌
+     - ❌
+
    * - ``flux``
      - ❌
      - ✅
@@ -253,6 +281,10 @@ Diffusion Model Feature Support Tables
    * - ``flux-fill``
      - ❌
      - ❌
+
+   * - ``flux-kontext``
+     - ❌
+     - ✅
 
 .. list-table:: Prompt enhancement by ``--model-type``
    :widths: 40 10 10 10
@@ -323,12 +355,22 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
 
+   * - ``sd3-pix2pix``
+     - ✅
+     - ❌
+     - ❌
+
    * - ``flux``
      - ✅
      - ❌
      - ❌
 
    * - ``flux-fill``
+     - ✅
+     - ❌
+     - ❌
+
+   * - ``flux-kontext``
      - ✅
      - ❌
      - ❌
@@ -441,6 +483,14 @@ Diffusion Model Feature Support Tables
      - ✅
      - ❌
 
+   * - ``sd3-pix2pix``
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ✅
+     - ❌
+
    * - ``flux``
      - ✅
      - ❌
@@ -450,6 +500,14 @@ Diffusion Model Feature Support Tables
      - ✅
 
    * - ``flux-fill``
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ✅
+
+   * - ``flux-kontext``
      - ❌
      - ❌
      - ❌
