@@ -416,7 +416,7 @@ def enable_model_cpu_offload(pipeline: diffusers.DiffusionPipeline,
     if pipeline.device.type != "cpu":
         pipeline.to("cpu", silence_dtype_warnings=True)
         device_mod = getattr(torch, pipeline.device.type, None)
-        if hasattr(device_mod, "empty_cache") and device_mod.is_available():
+        if device_mod is not None and hasattr(device_mod, "empty_cache") and hasattr(device_mod, "is_available") and device_mod.is_available():
             device_mod.empty_cache()
 
     _set_cpu_offload_flag(pipeline, True)
