@@ -1308,7 +1308,9 @@ def make_diffusers_transformer_block(block_class: Type[torch.nn.Module], generat
                 x = x.view(B,H,W,C)
                 if H % 2 != 0 or W % 2 != 0:
                     warnings.warn(
-                        f"HiDiffusion Warning: The feature size is {(H,W)} and cannot be directly partitioned into windows. We interpolate the size to {(window_size[0]*2, window_size[1]*2)} to enable the window partition. Even though the generation is OK, the image quality would be largely decreased. We sugget removing window attention by setting apply_hidiffusion(pipe, apply_window_attn=False) for better image quality."
+                        f"HiDiffusion Warning: The feature size is {(H,W)} and cannot be directly partitioned into windows. We interpolate the size to {(window_size[0]*2, window_size[1]*2)} "
+                        f"to enable the window partition. Even though the generation is OK, the image quality would be largely decreased. "
+                        f"We suggest removing window attention by setting apply_hidiffusion(pipe, apply_window_attn=False) for better image quality."
                     )
                     x = F.interpolate(x.permute(0,3,1,2).contiguous(), size=(window_size[0]*2, window_size[1]*2), mode='bicubic').permute(0,2,3,1).contiguous()
                 if type(shift_size) is list or type(shift_size) is tuple:
