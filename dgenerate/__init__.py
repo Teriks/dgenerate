@@ -85,6 +85,9 @@ if os.environ.get('DGENERATE_BACKEND_WARNINGS', '0') == '0':
 try:
     from dgenerate.resources import __version__
 
+    # Import accelerate patch BEFORE any ML libraries that might use accelerate
+    import dgenerate._patches.accelerate_device_fallback_patch
+
     import diffusers
     import transformers
 
