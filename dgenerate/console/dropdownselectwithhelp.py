@@ -112,8 +112,7 @@ class _DropdownSelectWithHelp(tk.Toplevel):
 
         title = f'{self._item_name} Help: {self._current_value.get()}'
         help_text = self._values_dict[self._current_value.get()]
-        parent = self.master if self.master else self
-        _helpdialog.show_help_dialog(parent, title, help_text, position_widget=self)
+        _helpdialog.show_help_dialog(tk._default_root, title, help_text, position_widget=self)
 
     def _insert_action(self):
         value = self._current_value.get()
