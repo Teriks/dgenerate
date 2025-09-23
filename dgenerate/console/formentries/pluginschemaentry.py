@@ -526,8 +526,7 @@ class _PluginSchemaEntry(_entry._Entry):
 
     def _show_help(self):
         title = f'{self._label} Help: {self.plugin_name_var.get()}'
-        parent = self.form.master if self.form.master else self.form
-        _helpdialog.show_help_dialog(parent, title, self.current_help_text, position_widget=self.form.winfo_toplevel())
+        _helpdialog.show_help_dialog(tk._default_root, title, self.current_help_text, position_widget=self.form.winfo_toplevel())
 
     def _show_help_button(self):
         if self.plugin_help_button is not None:
