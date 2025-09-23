@@ -1323,8 +1323,9 @@ class KolorsControlNetPipeline(
         if hasattr(self, "final_offload_hook") and self.final_offload_hook is not None:
             self.unet.to("cpu")
             self.controlnet.to("cpu")
-            torch.cuda.empty_cache()
-            torch.cuda.ipc_collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                torch.cuda.ipc_collect()
 
         if not output_type == "latent":
             # make sure the VAE is in float32 mode, as it overflows in float16

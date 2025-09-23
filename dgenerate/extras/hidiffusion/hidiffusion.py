@@ -839,7 +839,8 @@ def make_diffusers_sdxl_controlnet_ppl(block_class):
             if hasattr(self, "final_offload_hook") and self.final_offload_hook is not None:
                 self.unet.to("cpu")
                 self.controlnet.to("cpu")
-                torch.cuda.empty_cache()
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
 
             if not output_type == "latent":
                 # make sure the VAE is in float32 mode, as it overflows in float16
