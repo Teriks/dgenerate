@@ -79,15 +79,15 @@ def _get_fallback_device(requested_device: Union[int, str, torch.device]) -> tor
     # Check if the requested device type is actually available
     if device_type == 'cuda' and not _is_cuda_available():
         fallback = _default_device()
-        print(f"Warning: CUDA requested but not available, falling back to {fallback}")
+        # print(f"Warning: CUDA requested but not available, falling back to {fallback}")
         return torch.device(fallback)
     elif device_type == 'mps' and not _is_mps_available():
         fallback = _default_device()
-        print(f"Warning: MPS requested but not available, falling back to {fallback}")
+        # print(f"Warning: MPS requested but not available, falling back to {fallback}")
         return torch.device(fallback)
     elif device_type == 'xpu' and not _is_xpu_available():
         fallback = _default_device()
-        print(f"Warning: XPU requested but not available, falling back to {fallback}")
+        # print(f"Warning: XPU requested but not available, falling back to {fallback}")
         return torch.device(fallback)
     
     # Device is available, return as-is
