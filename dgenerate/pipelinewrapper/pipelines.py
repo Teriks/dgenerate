@@ -364,7 +364,7 @@ def _disable_to(module, vae=False):
 
 
 def enable_sequential_cpu_offload(pipeline: diffusers.DiffusionPipeline,
-                                  device: torch.device | str = "cuda"):
+                                  device: torch.device | str = _torchutil.default_device()):
     """
     Enable sequential offloading on a torch pipeline, in a way dgenerate can keep track of.
 
@@ -372,6 +372,25 @@ def enable_sequential_cpu_offload(pipeline: diffusers.DiffusionPipeline,
     :param device: the device
     """
     torch_device = torch.device(device)
+    
+    # Check if the requested device type is actually available
+    # If not, fall back to the system's default device
+    if torch_device.type == 'cuda' and not _torchutil.is_cuda_available():
+        fallback_device = _torchutil.default_device()
+        _messages.debug_log(
+            f'enable_sequential_cpu_offload: CUDA requested but not available, using {fallback_device} for execution device')
+        torch_device = torch.device(fallback_device)
+    elif torch_device.type == 'mps' and not _torchutil.is_mps_available():
+        fallback_device = _torchutil.default_device()
+        _messages.debug_log(
+            f'enable_sequential_cpu_offload: MPS requested but not available, using {fallback_device} for execution device')
+        torch_device = torch.device(fallback_device)
+    elif torch_device.type == 'xpu' and not _torchutil.is_xpu_available():
+        fallback_device = _torchutil.default_device()
+        _messages.debug_log(
+            f'enable_sequential_cpu_offload: XPU requested but not available, using {fallback_device} for execution device')
+        torch_device = torch.device(fallback_device)
+    
     pipeline.remove_all_hooks()
 
     _set_sequential_cpu_offload_flag(pipeline, True)
@@ -391,7 +410,7 @@ def enable_sequential_cpu_offload(pipeline: diffusers.DiffusionPipeline,
 
 
 def enable_model_cpu_offload(pipeline: diffusers.DiffusionPipeline,
-                             device: torch.device | str = "cuda"):
+                             device: torch.device | str = _torchutil.default_device()):
     """
     Enable sequential model cpu offload on a torch pipeline, in a way dgenerate can keep track of.
 
@@ -411,7 +430,26 @@ def enable_model_cpu_offload(pipeline: diffusers.DiffusionPipeline,
     pipeline._offload_gpu_id = torch_device.index or getattr(pipeline, "_offload_gpu_id", 0)
 
     device_type = torch_device.type
-    device = torch.device(f"{device_type}:{pipeline._offload_gpu_id}")
+    
+    # Check if the requested device type is actually available
+    # If not, fall back to the system's default device
+    if device_type == 'cuda' and not _torchutil.is_cuda_available():
+        fallback_device = _torchutil.default_device()
+        _messages.debug_log(
+            f'enable_model_cpu_offload: CUDA requested but not available, using {fallback_device} for execution device')
+        device = torch.device(fallback_device)
+    elif device_type == 'mps' and not _torchutil.is_mps_available():
+        fallback_device = _torchutil.default_device()
+        _messages.debug_log(
+            f'enable_model_cpu_offload: MPS requested but not available, using {fallback_device} for execution device')
+        device = torch.device(fallback_device)
+    elif device_type == 'xpu' and not _torchutil.is_xpu_available():
+        fallback_device = _torchutil.default_device()
+        _messages.debug_log(
+            f'enable_model_cpu_offload: XPU requested but not available, using {fallback_device} for execution device')
+        device = torch.device(fallback_device)
+    else:
+        device = torch.device(f"{device_type}:{pipeline._offload_gpu_id}")
 
     if pipeline.device.type != "cpu":
         pipeline.to("cpu", silence_dtype_warnings=True)
