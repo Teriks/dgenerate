@@ -377,6 +377,41 @@ class _PluginSchemaEntry(_entry._Entry):
             widgets_delete=entry.destroy_dynamic_widgets
         )
 
+
+    def _create_prompt_weighter_entry(self, row):
+        # prevent circular import
+        import dgenerate.console.formentries.promptweighterentry as _promptweighterentry
+
+        entry = _promptweighterentry._PromptWeighterEntry(
+            master=self.master,
+            row=row,
+            form=self.master,
+            placeholder='URI',
+            config={'optional': True, 'default': ''}
+        )
+
+        entry.arg = None
+
+        class _Var(tk.Variable):
+            def get(self) -> str:
+                uri_value = entry.template('URI')
+                if uri_value:
+                    # always quote the URI value in this context
+                    return f"'{uri_value}'"
+                else:
+                    return ''
+
+            def set(self, value) -> None:
+                entry.plugin_name_var.set(value)
+
+        return _PluginArgEntry(
+            raw=False,
+            widgets=entry.primary_widgets(),
+            variable=_Var(),
+            widget_rows=entry.widget_rows,
+            widgets_delete=entry.destroy_dynamic_widgets
+        )
+
     def _create_raw_type_entry(self,
                                param_type: str,
                                default_value: typing.Any,

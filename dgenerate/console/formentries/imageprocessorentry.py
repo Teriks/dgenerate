@@ -71,6 +71,8 @@ class _ImageProcessorEntry(_schemaentry._PluginSchemaEntry):
                 optional,
                 row
             )
+        elif 'prompt-weighter' in param_name:
+            return self._create_prompt_weighter_entry(row)
         elif re.match(r'.*(image|mask)-processors', param_name):
             raw = self._create_raw_type_entry(param_type, default_value, optional, options, row)
 
