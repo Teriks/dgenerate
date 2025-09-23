@@ -44,16 +44,53 @@ class HfConfigsBuilder:
         self.output_dir = self.project_dir / 'dgenerate' / 'pipelinewrapper' / 'hub_configs'
         
         # List of repositories to download from
+        # These are the repositories that diffusers actually uses for single file loading
         self.repositories = [
+            ### Model type: SD1x/2x
+            # sd1.5
             "stable-diffusion-v1-5/stable-diffusion-v1-5",
-            "stabilityai/stable-diffusion-2-1", 
+            "stable-diffusion-v1-5/stable-diffusion-inpainting",
+            # sd2.1
+            "stabilityai/stable-diffusion-2-1",
+            "stabilityai/stable-diffusion-2-inpainting",
+            # sd1.5 controlnets
+            "lllyasviel/control_v11p_sd15_canny",
+            #
+            ### Model type: SDXL
+            # SDXL
             "stabilityai/stable-diffusion-xl-base-1.0",
-            "black-forest-labs/FLUX.1-dev",
-            "black-forest-labs/FLUX.1-Fill-dev", 
+            "stabilityai/stable-diffusion-xl-refiner-1.0",
+            "diffusers/stable-diffusion-xl-1.0-inpainting-0.1",
+            # SDXL Controlnets (Covers all SDXL controlnet types)
+            "diffusers/controlnet-canny-sdxl-1.0",
+            "diffusers/controlnet-canny-sdxl-1.0-mid",
+            "diffusers/controlnet-canny-sdxl-1.0-small",
+            #
+            ### Model type: Flux
+            # Flux
             "black-forest-labs/FLUX.1-schnell",
+            "black-forest-labs/FLUX.1-dev",
+            "black-forest-labs/FLUX.1-Fill-dev",
+            "black-forest-labs/FLUX.1-Depth-dev",
+            #
+            ### Model type: SD3x
+            # SD3m
             "stabilityai/stable-diffusion-3-medium-diffusers",
+            # SD3.5
             "stabilityai/stable-diffusion-3.5-large",
-            "stabilityai/stable-diffusion-3.5-medium"
+            "stabilityai/stable-diffusion-3.5-medium",
+            #
+            ### Model type: Pix2Pix
+            # Pix2Pix
+            "timbrooks/instruct-pix2pix",
+            #
+            ### Model type: Upscaler
+            "stabilityai/stable-diffusion-x4-upscaler",
+            #
+            ### Model type: Stable Cascade
+            # Stable Cascade
+            "stabilityai/stable-cascade",
+            "stabilityai/stable-cascade-prior",
         ]
 
     def build(self):
@@ -83,6 +120,7 @@ class HfConfigsBuilder:
                 # Download only essential .json config files
                 essential_patterns = [
                     "model_index.json",           # Main model configuration
+                    "config.json",                # Top-level config (for ControlNets and other models)
                     "*/config.json",              # Component configs (unet, vae, text_encoder, etc.)
                     "*/scheduler_config.json",    # Scheduler configuration
                     "*/tokenizer_config.json",    # Tokenizer configuration
