@@ -353,37 +353,148 @@ _DEFAULT_INIT_DGEN_CONTENT = inspect.cleandoc("""
 """) + '\n'
 
 
+def _reset_hf_constants():
+    """
+    Reset HF_HOME-dependent constants in huggingface_hub, transformers, and diffusers
+    after HF_HOME environment variable changes during init.dgen processing.
+
+    This ensures that all libraries use the updated cache paths.
+    """
+    try:
+        import sys
+
+        # Reset huggingface_hub constants
+        if 'huggingface_hub.constants' in sys.modules:
+            import huggingface_hub.constants as hf_constants
+
+            # Recalculate HF_HOME-dependent paths
+            default_home = os.path.join(os.path.expanduser("~"), ".cache")
+            hf_constants.HF_HOME = os.path.expandvars(
+                os.path.expanduser(
+                    os.getenv(
+                        "HF_HOME",
+                        os.path.join(os.getenv("XDG_CACHE_HOME", default_home), "huggingface"),
+                    )
+                )
+            )
+            hf_constants.hf_cache_home = hf_constants.HF_HOME  # for backward compatibility
+
+            default_cache_path = os.path.join(hf_constants.HF_HOME, "hub")
+            default_assets_cache_path = os.path.join(hf_constants.HF_HOME, "assets")
+
+            # Legacy env variables
+            hf_constants.HUGGINGFACE_HUB_CACHE = os.getenv("HUGGINGFACE_HUB_CACHE", default_cache_path)
+            hf_constants.HUGGINGFACE_ASSETS_CACHE = os.getenv("HUGGINGFACE_ASSETS_CACHE", default_assets_cache_path)
+
+            # New env variables
+            hf_constants.HF_HUB_CACHE = os.path.expandvars(
+                os.path.expanduser(
+                    os.getenv(
+                        "HF_HUB_CACHE",
+                        hf_constants.HUGGINGFACE_HUB_CACHE,
+                    )
+                )
+            )
+            hf_constants.HF_ASSETS_CACHE = os.path.expandvars(
+                os.path.expanduser(
+                    os.getenv(
+                        "HF_ASSETS_CACHE",
+                        hf_constants.HUGGINGFACE_ASSETS_CACHE,
+                    )
+                )
+            )
+
+            hf_constants.HF_TOKEN_PATH = os.path.expandvars(
+                os.path.expanduser(
+                    os.getenv(
+                        "HF_TOKEN_PATH",
+                        os.path.join(hf_constants.HF_HOME, "token"),
+                    )
+                )
+            )
+            hf_constants.HF_STORED_TOKENS_PATH = os.path.join(os.path.dirname(hf_constants.HF_TOKEN_PATH), "stored_tokens")
+
+            # Reset XET cache path
+            default_xet_cache_path = os.path.join(hf_constants.HF_HOME, "xet")
+            hf_constants.HF_XET_CACHE = os.getenv("HF_XET_CACHE", default_xet_cache_path)
+
+            dgenerate.messages.log(
+                'Reset huggingface_hub constants after HF_HOME change',
+                level=dgenerate.messages.DEBUG
+            )
+
+        # Reset transformers constants
+        if 'transformers.utils.hub' in sys.modules:
+            import transformers.utils.hub as tf_hub
+
+            # Update transformers cache path
+            tf_hub.default_cache_path = os.path.join(
+                os.getenv("HF_HOME", os.path.join(os.path.expanduser("~"), ".cache", "huggingface")),
+                "hub"
+            )
+            tf_hub.TRANSFORMERS_CACHE = os.getenv("TRANSFORMERS_CACHE", tf_hub.default_cache_path)
+
+            dgenerate.messages.log(
+                'Reset transformers constants after HF_HOME change',
+                level=dgenerate.messages.DEBUG
+            )
+
+        # Reset diffusers constants
+        if 'diffusers.utils.constants' in sys.modules:
+            import diffusers.utils.constants as df_constants
+
+            # Re-import HF_HOME from huggingface_hub to get updated value
+            from huggingface_hub.constants import HF_HOME
+            df_constants.HF_MODULES_CACHE = os.getenv("HF_MODULES_CACHE", os.path.join(HF_HOME, "modules"))
+
+            dgenerate.messages.log(
+                'Reset diffusers constants after HF_HOME change',
+                level=dgenerate.messages.DEBUG
+            )
+
+    except Exception as e:
+        # Don't fail if constant reset fails, just log a warning
+        dgenerate.messages.log(
+            f'Warning: Failed to reset HF constants: {str(e).strip()}',
+            level=dgenerate.messages.WARNING
+        )
+
+
 def _run_init_dgen(runner):
     """
     Execute init.dgen config file from ~/.dgenerate/ if it exists.
     Creates a default init.dgen file if it doesn't exist.
-    
+
     :param runner: ConfigRunner instance to execute the init config with
     """
     try:
         # Create ~/.dgenerate directory if it doesn't exist
         dgenerate_dir = pathlib.Path(pathlib.Path.home(), '.dgenerate')
         dgenerate_dir.mkdir(exist_ok=True)
-        
+
         init_dgen_path = dgenerate_dir / 'init.dgen'
-        
+
         # Create default init.dgen if it doesn't exist
         if not init_dgen_path.exists():
             try:
                 with open(init_dgen_path, 'w', encoding='utf-8') as file:
                     file.write(_DEFAULT_INIT_DGEN_CONTENT)
-                dgenerate.messages.log(f'Created default init config: {init_dgen_path}', 
+                dgenerate.messages.log(f'Created default init config: {init_dgen_path}',
                                      level=dgenerate.messages.DEBUG)
             except Exception as e:
                 dgenerate.messages.log(f'Error creating default init config: {str(e).strip()}',
                                      level=dgenerate.messages.DEBUG)
-        
+
         if init_dgen_path.exists():
             try:
                 with open(init_dgen_path, 'rt', encoding='utf-8') as file:
                     runner.run_file(file)
-                    dgenerate.messages.log(f'Executed init config: {init_dgen_path}', 
+                    dgenerate.messages.log(f'Executed init config: {init_dgen_path}',
                                          level=dgenerate.messages.DEBUG)
+
+                # Reset HF constants after processing init.dgen in case HF_HOME was changed
+                _reset_hf_constants()
+
             except Exception as e:
                 dgenerate.messages.log(f'Error executing init config {init_dgen_path}: {str(e).strip()}',
                                      level=dgenerate.messages.WARNING)
