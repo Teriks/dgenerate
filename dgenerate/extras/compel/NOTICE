@@ -1,3 +1,5 @@
 Vendored from: https://github.com/damian0815/compel
 
 Added support for stable cascade
+
+Add back support for clip_skip
