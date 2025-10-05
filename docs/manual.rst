@@ -7114,9 +7114,16 @@ features not mentioned in this documentation, that are worth reading about in th
         --model-type sdxl
         --model-type sdxl-pix2pix
         --model-type s-cascade
+        --model-type flux
+        --model-type flux-fill
+        --model-type flux-kontext
     
-        The secondary prompt option for SDXL --second-prompts is supported by this prompt weighter implementation.
-        However, --second-model-second-prompts is not supported and will be ignored with a warning message.
+        The secondary prompt option for SDXL and Flux --second-prompts is supported by this prompt weighter
+        implementation. However, --second-model-second-prompts is not supported and will be ignored with a warning
+        message.
+    
+        For Flux models, the main prompt is processed by the T5 text encoder, while the secondary prompt (style
+        prompt) is processed by the CLIP text encoder to generate pooled embeddings.
     
     ==============================================================================================================
 
@@ -10900,7 +10907,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [15479983952945]
+            Value: [63077969702768]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False

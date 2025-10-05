@@ -27,7 +27,9 @@ import typing
 import diffusers
 
 from dgenerate.extras import compel as _compel
+import dgenerate.extras.compel.convenience_wrappers as _compel_c
 import torch
+from dgenerate.pipelinewrapper import pipelines as _pipelines
 
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.enums as _enums
@@ -148,10 +150,16 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
     --model-type sdxl
     --model-type sdxl-pix2pix
     --model-type s-cascade
+    --model-type flux
+    --model-type flux-fill
+    --model-type flux-kontext
 
-    The secondary prompt option for SDXL --second-prompts is supported by this prompt weighter
+    The secondary prompt option for SDXL and Flux --second-prompts is supported by this prompt weighter
     implementation. However, --second-model-second-prompts is not supported and will be ignored
     with a warning message.
+    
+    For Flux models, the main prompt is processed by the T5 text encoder, while the secondary prompt
+    (style prompt) is processed by the CLIP text encoder to generate pooled embeddings.
     """
 
     NAMES = ['compel']
@@ -169,7 +177,10 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
             _enums.ModelType.UPSCALER_X4,
             _enums.ModelType.SDXL,
             _enums.ModelType.SDXL_PIX2PIX,
-            _enums.ModelType.S_CASCADE
+            _enums.ModelType.S_CASCADE,
+            _enums.ModelType.FLUX,
+            _enums.ModelType.FLUX_FILL,
+            _enums.ModelType.FLUX_KONTEXT
         }
 
         if self.model_type not in supported:
@@ -221,7 +232,8 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
 
         if not (pipeline.__class__.__name__.startswith('StableDiffusionXL')
                 or pipeline.__class__.__name__.startswith('StableDiffusion')
-                or pipeline.__class__.__name__.startswith('StableCascade')) or \
+                or pipeline.__class__.__name__.startswith('StableCascade')
+                or pipeline.__class__.__name__.startswith('Flux')) or \
                 _enums.model_type_is_sd3(self.model_type):
             raise _exceptions.PromptWeightingUnsupported(
                 f'Prompt weighting not supported for --model-type: {_enums.get_model_type_string(self.model_type)}')
@@ -280,65 +292,34 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
         pos_pooled = None
         neg_pooled = None
 
+        # Check if sequential offload is enabled - compel requires text encoders to be loaded
+        # which is incompatible with sequential offload where models are loaded on-demand
+        if _pipelines.is_sequential_cpu_offload_enabled(pipeline):
+            raise _exceptions.PromptWeightingUnsupported(
+                f'The compel prompt weighter is not compatible with --model-sequential-offload '
+                f'because it requires text encoders to be fully loaded before pipeline execution. '
+                f'Use --model-cpu-offload instead.')
+
         self.move_text_encoders(pipeline, self.device)
 
         if pipeline.__class__.__name__.startswith('StableDiffusionXL'):
             clip_skip = args.get('clip_skip', None)
 
             if pipeline.tokenizer is not None:
+                compel_sdxl = _compel_c.CompelForSDXL(pipeline, clip_skip=clip_skip)
 
-                if positive_2 or negative_2:
-                    compel1 = _compel.Compel(
-                        tokenizer=pipeline.tokenizer,
-                        text_encoder=pipeline.text_encoder,
-                        returned_embeddings_type=
-                        _compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
-                        requires_pooled=False,
-                        truncate_long_prompts=False,
-                        device=self.device,
-                        clip_skip=clip_skip
-                    )
-
-                    _memory.torch_gc()
-
-                    compel2 = _compel.Compel(
-                        tokenizer=pipeline.tokenizer_2,
-                        text_encoder=pipeline.text_encoder_2,
-                        returned_embeddings_type=
-                        _compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
-                        requires_pooled=True,
-                        truncate_long_prompts=False,
-                        device=self.device,
-                        clip_skip=clip_skip
-                    )
-
-                    conditioning1 = compel1(positive)
-                    conditioning2, pos_pooled = compel2(positive_2)
-                    pos_conditioning = torch.cat((conditioning1, conditioning2), dim=-1)
-
-                    conditioning1 = compel1(negative)
-                    conditioning2, neg_pooled = compel2(negative_2)
-                    neg_conditioning = torch.cat((conditioning1, conditioning2), dim=-1)
-
-                    pos_conditioning, neg_conditioning = compel1.pad_conditioning_tensors_to_same_length(
-                        [pos_conditioning, neg_conditioning])
-                else:
-                    compel1 = _compel.Compel(
-                        tokenizer=[pipeline.tokenizer, pipeline.tokenizer_2],
-                        text_encoder=[pipeline.text_encoder, pipeline.text_encoder_2],
-                        returned_embeddings_type=
-                        _compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
-                        requires_pooled=[False, True],
-                        truncate_long_prompts=False,
-                        device=self.device,
-                        clip_skip=clip_skip
-                    )
-
-                    pos_conditioning, pos_pooled = compel1(positive)
-                    neg_conditioning, neg_pooled = compel1(negative)
-
-                    pos_conditioning, neg_conditioning = compel1.pad_conditioning_tensors_to_same_length(
-                        [pos_conditioning, neg_conditioning])
+                # Handle secondary prompts (positive_2/negative_2) as style prompts
+                result_pos = compel_sdxl(
+                    main_prompt=positive,
+                    style_prompt=positive_2 if positive_2 else None,
+                    negative_prompt=negative,
+                    negative_style_prompt=negative_2 if negative_2 else None
+                )
+                
+                pos_conditioning = result_pos.embeds
+                pos_pooled = result_pos.pooled_embeds
+                neg_conditioning = result_pos.negative_embeds
+                neg_pooled = result_pos.negative_pooled_embeds
 
                 _memory.torch_gc()
 
@@ -375,54 +356,70 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
             else:
                 clip_skip = None
 
-            compel1 = _compel.Compel(
-                tokenizer=pipeline.tokenizer,
-                text_encoder=pipeline.text_encoder,
-                requires_pooled=True,
-                returned_embeddings_type=_compel.ReturnedEmbeddingsType.STABLE_CASCADE,
-                truncate_long_prompts=False,
-                device=self.device,
-                clip_skip=clip_skip
+            compel_cascade = _compel_c.CompelForStableCascade(pipeline, clip_skip=clip_skip)
+
+            result = compel_cascade(
+                prompt=positive,
+                negative_prompt=negative
             )
-
-            pos_conditioning, pos_pooled = compel1(positive)
-            neg_conditioning, neg_pooled = compel1(negative)
-
-            pos_conditioning, neg_conditioning = compel1.pad_conditioning_tensors_to_same_length(
-                [pos_conditioning, neg_conditioning])
+            
+            pos_conditioning = result.embeds
+            pos_pooled = result.pooled_embeds
+            neg_conditioning = result.negative_embeds
+            neg_pooled = result.negative_pooled_embeds
 
             _memory.torch_gc()
 
         elif pipeline.__class__.__name__.startswith('StableDiffusion'):
-            clip_skip = args.get('clip_skip', 0)
+            clip_skip = args.get('clip_skip', None)
 
-            embedding_type = \
-                _compel.ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NORMALIZED \
-                    if clip_skip > 0 and pipeline.text_encoder.config.hidden_act == 'quick_gelu' \
-                    else _compel.ReturnedEmbeddingsType.LAST_HIDDEN_STATES_NORMALIZED
+            compel_sd = _compel_c.CompelForSD(pipeline, clip_skip=clip_skip)
 
-            _messages.debug_log('Compel Clip Skip:', args.get('clip_skip', 0))
-            _messages.debug_log('Compel text_encoder.config.hidden_act:', pipeline.text_encoder.config.hidden_act)
-            _messages.debug_log('Compel Embedding Type:', embedding_type)
-
-            compel1 = _compel.Compel(
-                tokenizer=pipeline.tokenizer,
-                text_encoder=pipeline.text_encoder,
-                truncate_long_prompts=False,
-                returned_embeddings_type=embedding_type,
-                device=self.device,
-                clip_skip=clip_skip)
-
-            pos_conditioning = compel1(positive)
-            neg_conditioning = compel1(negative)
-
-            pos_conditioning, neg_conditioning = compel1.pad_conditioning_tensors_to_same_length(
-                [pos_conditioning, neg_conditioning])
+            result = compel_sd(
+                prompt=positive,
+                negative_prompt=negative
+            )
+            
+            pos_conditioning = result.embeds
+            neg_conditioning = result.negative_embeds
 
             _memory.torch_gc()
 
-        self._tensors.append(pos_conditioning)
-        self._tensors.append(neg_conditioning)
+        elif pipeline.__class__.__name__.startswith('Flux'):
+            # Check if this Flux pipeline supports negative prompting
+            pipeline_sig = inspect.signature(pipeline.__call__).parameters
+            supports_negative = 'negative_prompt_embeds' in pipeline_sig
+            clip_skip = args.get('clip_skip', None)
+            
+            if not supports_negative and (negative or negative_2):
+                _messages.warning(
+                    'Flux is ignoring the provided negative prompt as it '
+                    'does not support negative prompting in the current configuration.'
+                )
+            
+            # Use the modern CompelForFlux wrapper
+            compel_flux = _compel_c.CompelForFlux(pipeline, clip_skip=clip_skip)
+            
+            # Generate embeddings using the convenience wrapper
+            # Handle secondary prompts (positive_2/negative_2) as style prompts
+            result = compel_flux(
+                main_prompt=positive,
+                style_prompt=positive_2 if positive_2 else None,
+                negative_prompt=negative if supports_negative else None,
+                negative_style_prompt=negative_2 if (supports_negative and negative_2) else None
+            )
+            
+            pos_conditioning = result.embeds
+            pos_pooled = result.pooled_embeds
+            neg_conditioning = result.negative_embeds if supports_negative else None
+            neg_pooled = result.negative_pooled_embeds if supports_negative else None
+            
+            _memory.torch_gc()
+
+        if pos_conditioning is not None:
+            self._tensors.append(pos_conditioning)
+        if neg_conditioning is not None:
+            self._tensors.append(neg_conditioning)
 
         if pos_pooled is not None:
             self._tensors.append(pos_pooled)
@@ -432,11 +429,14 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
 
         output.update({
             'prompt_embeds': pos_conditioning,
-            'negative_prompt_embeds': neg_conditioning,
         })
+        
+        if neg_conditioning is not None:
+            output.update({
+                'negative_prompt_embeds': neg_conditioning,
+            })
 
         if pos_pooled is not None:
-            self._tensors.append(pos_pooled)
 
             if self.model_type == _enums.ModelType.S_CASCADE:
                 output.update({
@@ -448,8 +448,6 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
                 })
 
         if neg_pooled is not None:
-            self._tensors.append(neg_pooled)
-
             if self.model_type == _enums.ModelType.S_CASCADE:
                 output.update({
                     'negative_prompt_embeds_pooled': neg_pooled,

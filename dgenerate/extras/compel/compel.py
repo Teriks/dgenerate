@@ -2,13 +2,12 @@ from dataclasses import dataclass
 from typing import Union, Optional, Callable, List, Tuple
 
 import torch
-from torch import Tensor
-from transformers import CLIPTokenizer, CLIPTextModel
 
-from . import cross_attention_control
-from .conditioning_scheduler import ConditioningScheduler, StaticConditioningScheduler
-from .embeddings_provider import EmbeddingsProvider, BaseTextualInversionManager, DownweightMode, ReturnedEmbeddingsType, EmbeddingsProviderMulti
-from .prompt_parser import Blend, FlattenedPrompt, PromptParser, CrossAttentionControlSubstitute, Conjunction
+from dgenerate.extras.compel import cross_attention_control
+from dgenerate.extras.compel.conditioning_scheduler import ConditioningScheduler, StaticConditioningScheduler
+from dgenerate.extras.compel.embeddings_provider import EmbeddingsProvider, BaseTextualInversionManager, DownweightMode, \
+    ReturnedEmbeddingsType, EmbeddingsProviderMulti, SplitLongTextMode, CompatibleTokenizer, CompatibleTextEncoder
+from dgenerate.extras.compel.prompt_parser import Blend, FlattenedPrompt, PromptParser, CrossAttentionControlSubstitute, Conjunction
 
 __all__ = ["Compel", "DownweightMode"]
 
@@ -16,13 +15,10 @@ __all__ = ["Compel", "DownweightMode"]
 class ExtraConditioningInfo:
     pass
 
-
 class Compel:
-
-
     def __init__(self,
-                 tokenizer: Union[CLIPTokenizer, List[CLIPTokenizer]],
-                 text_encoder: Union[CLIPTextModel, List[CLIPTextModel]],
+                 tokenizer: Union[CompatibleTokenizer, List[CompatibleTokenizer]],
+                 text_encoder: Union[CompatibleTextEncoder, List[CompatibleTextEncoder]],
                  textual_inversion_manager: Optional[BaseTextualInversionManager] = None,
                  dtype_for_device_getter: Callable[[torch.device], torch.dtype] = lambda device: torch.float32,
                  truncate_long_prompts: bool = True,
@@ -30,14 +26,15 @@ class Compel:
                  downweight_mode: DownweightMode = DownweightMode.MASK,
                  returned_embeddings_type: ReturnedEmbeddingsType = ReturnedEmbeddingsType.LAST_HIDDEN_STATES_NORMALIZED,
                  requires_pooled: Union[bool, List[bool]] = False,
+                 split_long_text_mode: SplitLongTextMode = SplitLongTextMode.SENTENCES,
                  device: Optional[str] = None,
-                 clip_skip: Optional[int] = None
+                 clip_skip: Optional[int] = None,
                  ):
         """
-        Initialize Compel. The tokenizer and text_encoder can be lifted directly from any DiffusionPipeline. For SDXL,
-        you'll be using multiple Tokenizers and multiple Text Encoders - see `https://github.com/damian0815/compel/pull/41`
-        for details.
+        Initialize Compel.
 
+        `tokenizer`: The tokenizer, typically `pipeline.tokenizer`.
+        `text_encoder`: The text encoder, typically `pipeline.text_encoder`.
         `textual_inversion_manager`: Optional instance to handle expanding multi-vector textual inversion tokens.
         `dtype_for_device_getter`: A Callable that returns a torch dtype for a given device. You probably don't need to
             use this.
@@ -56,8 +53,6 @@ class Compel:
         `requires_pooled`: for SDXL, append the pooled embeddings when returning conditioning tensors
         `device`: The torch device on which the tensors should be created. If a device is not specified, the device will
             be the same as that of the `text_encoder` at the moment when `build_conditioning_tensor()` is called.
-        `clip_skip`: Number of layers to skip in the text encoder (overrides the behavior of returned_embeddings_type).
-            A value of 1 would skip the final layer, 2 would skip the last two layers, and so on.
         """
 
         if isinstance(tokenizer, (tuple, list)) and not isinstance(text_encoder, (tuple, list)):
@@ -65,6 +60,7 @@ class Compel:
         elif not isinstance(tokenizer, (tuple, list)) and isinstance(text_encoder, (tuple, list)):
             raise ValueError("Cannot provide list of text encoders, but not of tokenizers.")
         elif isinstance(tokenizer, (tuple, list)) and isinstance(text_encoder, (tuple, list)):
+            print("Deprecation warning: passing multiple tokenizers/text encoders to Compel is deprecated and will be removed in v3.0. Use one of the CompelFor* classes in multi_model_wrappers instead")
             self.conditioning_provider = EmbeddingsProviderMulti(tokenizers=tokenizer,
                                                             text_encoders=text_encoder,
                                                             textual_inversion_manager=textual_inversion_manager,
@@ -74,6 +70,8 @@ class Compel:
                                                             downweight_mode=downweight_mode,
                                                             returned_embeddings_type=returned_embeddings_type,
                                                             requires_pooled_mask = requires_pooled,
+                                                            split_long_text_mode = split_long_text_mode,
+                                                            device=device,
                                                             clip_skip=clip_skip
             )
         else:
@@ -86,6 +84,7 @@ class Compel:
                                                             downweight_mode=downweight_mode,
                                                             returned_embeddings_type=returned_embeddings_type,
                                                             device=device,
+                                                            split_long_text_mode=split_long_text_mode,
                                                             clip_skip=clip_skip
                                                             )
         self._device = device
@@ -108,19 +107,23 @@ class Compel:
         return StaticConditioningScheduler(positive_conditioning=positive_conditioning,
                                            negative_conditioning=negative_conditioning)
 
-    def build_conditioning_tensor(self, text: str) -> torch.Tensor:
+    def build_conditioning_tensor(self, text: str) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
         """
         Build a conditioning tensor by parsing the text for Compel syntax, constructing a Conjunction, and then
         building a conditioning tensor from that Conjunction.
         """
         conjunction = self.parse_prompt_string(text)
-        conditioning, _ = self.build_conditioning_tensor_for_conjunction(conjunction)
+        output = self.build_conditioning_tensor_for_conjunction(conjunction)
 
+        # drop options dict
         if self.requires_pooled:
             pooled = self.conditioning_provider.get_pooled_embeddings([text], device=self.device)
-            return conditioning, pooled
+            return output[0], pooled
         else:
-            return conditioning
+            return output[0]
+
+    def disable_no_weights_bypass(self):
+        self.conditioning_provider.disable_no_weights_bypass()
 
     @torch.no_grad()
     def __call__(self, text: Union[str, List[str]]) -> torch.FloatTensor:
@@ -175,11 +178,12 @@ class Compel:
         return self.conditioning_provider.tokenizer.tokenize(text)
 
 
-    def build_conditioning_tensor_for_conjunction(self, conjunction: Conjunction) -> Tuple[torch.Tensor, dict]:
+    def build_conditioning_tensor_for_conjunction(self, conjunction: Conjunction) -> Union[Tuple[torch.Tensor, torch.Tensor, dict], Tuple[torch.Tensor, dict]]:
         """
         Build a conditioning tensor for the given Conjunction object.
-        :return: A tuple of (conditioning tensor, options dict). The contents of the options dict depends on the prompt,
-        at the moment it is only used for returning cross-attention control conditioning data (`.swap()`).
+        :return: A tuple of (conditioning tensor, options dict) (or (conditining, conditining, options) if multiple
+        EmbeddingProviders are in use). The contents of the options dict depends on the prompt, at the moment it is only
+        used for returning cross-attention control conditioning data (`.swap()`).
         """
         if len(conjunction.prompts) > 1 and conjunction.type != 'AND':
             raise ValueError("Only AND conjunctions are supported by build_conditioning_tensor()")
@@ -235,10 +239,13 @@ class Compel:
         c0_shape = conditionings[0].shape
 
         if not all([c.shape[0] == c0_shape[0] and c.shape[2] == c0_shape[2] for c in conditionings]):
-            raise ValueError(f"All conditioning tensors must have the same batch size ({c0_shape[0]}) and number of embeddings per token ({c0_shape[1]}")
-        
+            raise ValueError(f"All conditioning tensors must have the same batch size ({c0_shape[0]}) and number of embeddings per token ({c0_shape[2]}")
+
         if len(emptystring_conditioning.shape) == 2:
             emptystring_conditioning = emptystring_conditioning.unsqueeze(0)
+        if not all([c.shape[1] % emptystring_conditioning.shape[1] == 0 for c in conditionings]):
+            raise ValueError(f"All conditioning tensors must have a token count that is a multiple of the emptystring conditioning token count {emptystring_conditioning.shape[1]}")
+
         empty_z = torch.cat([emptystring_conditioning] * c0_shape[0])
         max_token_count = max([c.shape[1] for c in conditionings])
         # if necessary, pad shorter tensors out with an emptystring tensor
@@ -264,6 +271,13 @@ class Compel:
             [embeds, negative_embeds] = compel.pad_conditioning_tensors_to_same_length([embeds, negative_embeds])
             ```
         """
+        if len(conditionings) < 2:
+            # nothing to do
+            return conditionings
+        if all(c.shape == conditionings[0].shape for c in conditionings):
+            # nothing to do
+            return conditionings
+
         emptystring_conditioning = self.build_conditioning_tensor("")
         if type(emptystring_conditioning) is tuple:
             # discard pooled
