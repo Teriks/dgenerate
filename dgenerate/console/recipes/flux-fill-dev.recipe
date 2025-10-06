@@ -39,7 +39,7 @@ order: 17
 @switch[{"label":"Output Configs", "arg":"--output-configs"}]
 @imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"1024x1024", "divider-after":true}]
 @promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
-@promptweighter[{"label":"Prompt Weighter", "arg":"--prompt-weighter"}]
+@promptweighter[{"label":"Prompt Weighter", "arg":"--prompt-weighter", "filter":["sd-embed", "compel"]}]
 @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
 @latentsprocessor[{"arg":"--latents-post-processors", "label":"Latents Post Processor"}]
 @device[{}]
