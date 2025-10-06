@@ -91,7 +91,7 @@ if amd_mode:
     gpu_opts = ['--device', '/dev/kfd', '--device', '/dev/dri', '--security-opt', 'seccomp=unconfined'] \
         if platform.system() != 'Windows' else []
 else:
-    extra_index = "https://download.pytorch.org/whl/cu128/"
+    extra_index = "https://download.pytorch.org/whl/cu129/"
     docker_file = 'dockerfile-cuda'
     image = 'dgenerate-cuda'
     gpu_opts = ['--gpus', 'all']

@@ -61,40 +61,43 @@ Install dgenerate:
     # * triton_windows
     # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
+    # Note that if you have a Maxwell (5.x), Pascal (6.x), Volta (7.0) GPU use
+    # --extra-index-url https://download.pytorch.org/whl/cu126/
+
     pipx install dgenerate ^
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu128/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu129/"
 
     # with NCNN upscaler support
 
     pipx install dgenerate[ncnn] ^
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu128/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu129/"
 
     # If you want a specific version
 
     pipx install dgenerate==@VERSION ^
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu128/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu129/"
 
     # with NCNN upscaler support and a specific version
 
     pipx install dgenerate[ncnn]==@VERSION ^
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu128/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu129/"
 
     # with memory-efficient attention (NVIDIA CUDA only)
 
     pipx install dgenerate[xformers]==@VERSION ^
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu128/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu129/"
 
     # You can install without pipx into your own environment like so
 
-    pip install dgenerate==@VERSION --extra-index-url https://download.pytorch.org/whl/cu128/
+    pip install dgenerate==@VERSION --extra-index-url https://download.pytorch.org/whl/cu129/
 
     # Or with NCNN
 
-    pip install dgenerate[ncnn]==@VERSION --extra-index-url https://download.pytorch.org/whl/cu128/
+    pip install dgenerate[ncnn]==@VERSION --extra-index-url https://download.pytorch.org/whl/cu129/
 
     # Or with xFormers (NVIDIA CUDA only)
 
-    pip install dgenerate[xformers]==@VERSION --extra-index-url https://download.pytorch.org/whl/cu128/
+    pip install dgenerate[xformers]==@VERSION --extra-index-url https://download.pytorch.org/whl/cu129/
 
 
 It is recommended to install dgenerate with pipx if you are just intending
@@ -121,15 +124,18 @@ a cloned repository like this:
     # * triton_windows
     # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
-    pip install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu128/
+    # Note that if you have a Maxwell (5.x), Pascal (6.x), Volta (7.0) GPU use
+    # --extra-index-url https://download.pytorch.org/whl/cu126/
+
+    pip install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu129/
 
     # Install with pip into the environment, include NCNN
 
-    pip install --editable .[dev,ncnn] --extra-index-url https://download.pytorch.org/whl/cu128/
+    pip install --editable .[dev,ncnn] --extra-index-url https://download.pytorch.org/whl/cu129/
 
     # Install with pip into the environment, include xFormers (NVIDIA CUDA only)
 
-    pip install --editable .[dev,xformers] --extra-index-url https://download.pytorch.org/whl/cu128/
+    pip install --editable .[dev,xformers] --extra-index-url https://download.pytorch.org/whl/cu129/
 
 
 Run ``dgenerate`` to generate images:

@@ -33,7 +33,7 @@ def detect_gpu():
     
     # Check for NVIDIA
     if shutil.which("nvidia-smi"):
-        return "https://download.pytorch.org/whl/cu128/"
+        return "https://download.pytorch.org/whl/cu129/"
     
     # Check for Intel XPU
     if shutil.which("xpu-smi"):
@@ -48,7 +48,7 @@ def get_install_extras():
     
     base_extras = ["dev", "ncnn", "gpt4all", "console_ui_opengl"]
     
-    if gpu_url == "https://download.pytorch.org/whl/cu128/":
+    if gpu_url == "https://download.pytorch.org/whl/cu129/":
         # NVIDIA GPU
         base_extras.extend(["gpt4all_cuda", "bitsandbytes"])
         if platform.system() == "Windows":
