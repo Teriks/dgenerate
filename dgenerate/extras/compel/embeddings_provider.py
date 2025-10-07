@@ -1,15 +1,11 @@
 import math
 from abc import ABC
-from enum import Enum
+from enum import Enum, Flag, auto
 from typing import Callable, Union, Optional, Any
 
 import torch
 from transformers import CLIPTokenizer, CLIPTextModel, CLIPTextModelWithProjection, T5TokenizerFast, T5EncoderModel
-from transformers.modeling_outputs import BaseModelOutputWithPooling
 from typing import List, Tuple
-
-# Type alias for text encoder output
-TextEncoderOutput = BaseModelOutputWithPooling
 
 __all__ = ["EmbeddingsProvider", "DownweightMode", "ReturnedEmbeddingsType", "SplitLongTextMode"]
 
@@ -21,11 +17,14 @@ class DownweightMode(Enum):
     REMOVE = 0  # Remove downweighted tokens from the token sequence (shifts all subsequent tokens)
     MASK = 1   # Default: Leave tokens in-place but mask them out using attention masking
 
-class SplitLongTextMode(Enum):
-    BRUTAL = 0 # brutally split at context-size boundaries, likely slicing words and phrases in half
-    WORDS = 1  # split at word boundaries
-    PHRASES = 2 # try to split at phrase boundaries, denoted by ',' '.' ':' or ';' . fallback to WORDS on failure
-    SENTENCES = 3 # try to split at sentence boundaries, denoted by '.' . fallback to PHRASES on failure
+class SplitLongTextMode(Flag):
+    BRUTAL = auto() # brutally split at context-size boundaries, likely slicing words and phrases in half
+    WORDS = auto()  # split at word boundaries
+    PHRASES = auto() # try to split at phrase boundaries, denoted by ',' '.' ':' or ';' . fallback to WORDS on failure
+    SENTENCES = auto() # try to split at sentence boundaries, denoted by '.' . fallback to PHRASES on failure
+
+    COPY_FIRST_CLS_TOKEN = auto() # Combined (|) with one of the above - if set, copies the CLS token (EOS) from the first chunk to all other chunks
+    MERGE_CLS_TOKENS = auto() # Combined (|) with one of the above - if set, merges all CLS tokens by lerping them together and writing the result to all CLS token positions
 
 class BaseTextualInversionManager(ABC):
     def expand_textual_inversion_token_ids_if_necessary(self, token_ids: List[int]) -> List[int]:
@@ -51,7 +50,7 @@ class EmbeddingsProvider:
                  downweight_mode: DownweightMode = DownweightMode.MASK,
                  returned_embeddings_type: ReturnedEmbeddingsType = ReturnedEmbeddingsType.LAST_HIDDEN_STATES_NORMALIZED,
                  device: Optional[str] = None,
-                 split_long_text_mode: SplitLongTextMode = SplitLongTextMode.SENTENCES,
+                 split_long_text_mode: SplitLongTextMode = SplitLongTextMode.SENTENCES | SplitLongTextMode.COPY_FIRST_CLS_TOKEN,
                  clip_skip: Optional[int] = None,
                  ):
         """
@@ -229,7 +228,28 @@ class EmbeddingsProvider:
 
             lerped_embeddings = self.apply_embedding_weights(embeddings, per_embedding_weights, normalize=True).squeeze(0)
 
-            #print(f"assembled tokens for '{fragments}' into tensor of shape {lerped_embeddings.shape}")
+            # copy CLS token from chunk 0 to all other chunks if requested
+            long_prompt_chunk_count = tokens.shape[0] // self.tokenizer.model_max_length
+            if long_prompt_chunk_count > 1 and SplitLongTextMode.COPY_FIRST_CLS_TOKEN in self.split_long_text_mode or SplitLongTextMode.MERGE_CLS_TOKENS in self.split_long_text_mode:
+                cls_token_indices = []
+                for chunk_index in range(long_prompt_chunk_count):
+                    offset = chunk_index * self.tokenizer.model_max_length
+                    # first EOS token == CLS embedding (other EOS tokens, if any, are padding)
+                    cls_token_idx = offset + torch.where(tokens[offset:offset+self.tokenizer.model_max_length] == self.tokenizer.eos_token_id)[0][0]
+                    cls_token_indices.append(cls_token_idx)
+                if SplitLongTextMode.COPY_FIRST_CLS_TOKEN in self.split_long_text_mode:
+                    #print(f"split_long_text_mode is SplitLongTextMode.COPY_FIRST_CLS_TOKEN -> copying CLS embedding from prompt chunk 0 to subsequent {long_prompt_chunk_count-1} chunks")
+                    # copy the CLS embedding from chunk 0 to subsequent chunks
+                    cls_token_idx_0 = cls_token_indices[0]
+                    for idx in cls_token_indices[1:]:
+                        lerped_embeddings[idx] = lerped_embeddings[cls_token_idx_0]
+                elif SplitLongTextMode.MERGE_CLS_TOKENS in self.split_long_text_mode:
+                    #print(f"split_long_text_mode is SplitLongTextMode.MERGE_CLS_TOKENS -> merging CLS embeddings from all {long_prompt_chunk_count} chunks")
+                    # lerp the CLS embeddings from all chunks and write the result to all CLS token positions
+                    cls_embeddings = torch.stack([lerped_embeddings[idx] for idx in cls_token_indices], dim=0)
+                    merged_cls_embedding = torch.mean(cls_embeddings, dim=0)
+                    for idx in cls_token_indices:
+                        lerped_embeddings[idx] = merged_cls_embedding
 
             # append to batch
             batch_z = lerped_embeddings.unsqueeze(0) if batch_z is None else torch.cat([batch_z, lerped_embeddings.unsqueeze(0)], dim=1)
@@ -277,8 +297,13 @@ class EmbeddingsProvider:
             # trim eos/bos + any trailing padding
             if token_ids[0] == self.tokenizer.bos_token_id:
                 token_ids = token_ids[1:]
-            while token_ids and token_ids[-1] in [self.tokenizer.pad_token_id, self.tokenizer.eos_token_id]:
-                token_ids = token_ids[:-1]
+            if padding == 'max_length':
+                # Remove EOS and padding tokens from the end
+                while token_ids and token_ids[-1] in [self.tokenizer.pad_token_id, self.tokenizer.eos_token_id]:
+                    token_ids = token_ids[:-1]
+            else:
+                while token_ids and token_ids[-1] in [self.tokenizer.pad_token_id, self.tokenizer.eos_token_id]:
+                    token_ids = token_ids[:-1]
             # pad for textual inversions with vector length >1
             if self.textual_inversion_manager is not None:
                 token_ids = self.textual_inversion_manager.expand_textual_inversion_token_ids_if_necessary(token_ids)
@@ -286,6 +311,17 @@ class EmbeddingsProvider:
             # add back eos/bos if requested
             if include_start_and_end_markers:
                 token_ids = self.bos_sequence + token_ids + self.eos_sequence
+                
+            # Ensure we don't exceed max length (safety check)
+            if len(token_ids) > self.tokenizer.model_max_length:
+                # Truncate from the middle, keeping BOS and EOS tokens
+                if include_start_and_end_markers:
+                    bos_len = len(self.bos_sequence)
+                    eos_len = len(self.eos_sequence)
+                    max_content_len = self.tokenizer.model_max_length - bos_len - eos_len
+                    token_ids = self.bos_sequence + token_ids[bos_len:bos_len + max_content_len] + self.eos_sequence
+                else:
+                    token_ids = token_ids[:self.tokenizer.model_max_length]
 
             result.append(token_ids)
 
@@ -345,7 +381,7 @@ class EmbeddingsProvider:
 
     def _find_next_best_split_point(self, token_ids: List[int], max_length, phrase_separating_punctuation = None, sentence_separating_punctuation = None) -> int:
         if (self.truncate_to_model_max_length
-                or self.split_long_text_mode == SplitLongTextMode.BRUTAL
+                or SplitLongTextMode.BRUTAL in self.split_long_text_mode
                 or len(token_ids) <= max_length):
             return max_length
         if phrase_separating_punctuation is None:
@@ -366,21 +402,23 @@ class EmbeddingsProvider:
                     #print('found sentence end at', index, ':', tokens_text[max(0, index-5):index])
                     return index
             return None
+
+        # Try to split with the requested mode, falling back to the next less-desirable mode if necessary
         word_end_token_index = find_split_point(tokens_text, self.split_long_text_mode)
         split_mode = self.split_long_text_mode
         # if SENTENCES fails, fall back to PHRASES
-        if word_end_token_index is None and split_mode == SplitLongTextMode.SENTENCES:
+        if word_end_token_index is None and SplitLongTextMode.SENTENCES in split_mode:
             word_end_token_index = find_split_point(tokens_text, SplitLongTextMode.PHRASES)
             split_mode = SplitLongTextMode.PHRASES
         # if PHRASES fails, fall back to WORDS
-        if word_end_token_index is None and split_mode == SplitLongTextMode.PHRASES:
+        if word_end_token_index is None and SplitLongTextMode.PHRASES in split_mode:
             word_end_token_index = find_split_point(tokens_text, SplitLongTextMode.WORDS)
             split_mode = SplitLongTextMode.WORDS
-        if word_end_token_index is not None:
-            return word_end_token_index + 1
+        if word_end_token_index is None:
+            # we failed to split nicely -> just use BRUTAL
+            return max_length
 
-        # if we failed to split nicely -> just use BRUTAL
-        return max_length
+        return word_end_token_index + 1
 
 
     def _chunk_and_pad_token_ids(self, token_ids: List[int], token_weights: List[float], device: str
@@ -613,39 +651,26 @@ class EmbeddingsProvider:
 
 class EmbeddingsProviderMulti:
     def __init__(self,
-                tokenizers: List[CompatibleTokenizer],
-                text_encoders: List[CompatibleTextEncoder],
-                textual_inversion_manager: BaseTextualInversionManager = None,
-                dtype_for_device_getter: Callable[[torch.device], torch.dtype] = lambda device: torch.float32,
-                truncate: bool = True,
-                padding_attention_mask_value: int = 1,
-                downweight_mode: DownweightMode = DownweightMode.MASK,
-                returned_embeddings_type: Union[List[ReturnedEmbeddingsType], ReturnedEmbeddingsType] = ReturnedEmbeddingsType.LAST_HIDDEN_STATES_NORMALIZED,
-                requires_pooled_mask: List[bool] = None,
-                split_long_text_mode = SplitLongTextMode.SENTENCES,
-                concat_along_embedding_dim: bool = True,
-                device: Optional[str] = None,
-                clip_skip: Optional[int] = None,
-                ):
+                 tokenizers: List[CompatibleTokenizer],
+                 text_encoders: List[CompatibleTextEncoder],
+                 textual_inversion_manager: BaseTextualInversionManager = None,
+                 dtype_for_device_getter: Callable[[torch.device], torch.dtype] = lambda device: torch.float32,
+                 truncate: bool = True,
+                 padding_attention_mask_value: int = 1,
+                 downweight_mode: DownweightMode = DownweightMode.MASK,
+                 returned_embeddings_type: Union[List[ReturnedEmbeddingsType], ReturnedEmbeddingsType] = ReturnedEmbeddingsType.LAST_HIDDEN_STATES_NORMALIZED,
+                 requires_pooled_mask: List[bool] = None,
+                 split_long_text_mode: SplitLongTextMode = SplitLongTextMode.SENTENCES | SplitLongTextMode.COPY_FIRST_CLS_TOKEN,
+                 concat_along_embedding_dim: bool = True,
+                 clip_skip: Optional[int] = None,
+                 ):
 
         if requires_pooled_mask is None:
             requires_pooled_mask = []
         returned_embeddings_type = len(text_encoders) * [returned_embeddings_type] if not isinstance(returned_embeddings_type, (list,tuple)) else returned_embeddings_type
 
         self.embedding_providers = [
-            EmbeddingsProvider(
-                tokenizer=tokenizer, 
-                text_encoder=text_encoder, 
-                textual_inversion_manager=textual_inversion_manager, 
-                dtype_for_device_getter=dtype_for_device_getter, 
-                truncate=truncate, 
-                padding_attention_mask_value=padding_attention_mask_value, 
-                downweight_mode=downweight_mode, 
-                returned_embeddings_type=returned_embeddings_type, 
-                device=device,
-                split_long_text_mode=split_long_text_mode, 
-                clip_skip=clip_skip
-            )
+            EmbeddingsProvider(tokenizer, text_encoder, textual_inversion_manager, dtype_for_device_getter, truncate, padding_attention_mask_value, downweight_mode, returned_embeddings_type, device=None, split_long_text_mode=split_long_text_mode, clip_skip=clip_skip)
             for tokenizer, text_encoder, returned_embeddings_type in zip(tokenizers, text_encoders, returned_embeddings_type)
         ]
         self.requires_pooled_mask = requires_pooled_mask
