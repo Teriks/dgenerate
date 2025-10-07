@@ -8,7 +8,7 @@
 
 \set outpaint_box 256
 
-\set input_image C:/Users/Eric/IdeaProjects/dgenerate/examples/media/mountain.png
+\set input_image ../media/mountain.png
 
 \set spandrel_inpaint_model https://github.com/Sanster/models/releases/download/add_big_lama/big-lama.pt
 
