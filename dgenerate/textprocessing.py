@@ -100,6 +100,8 @@ def expand_escape_code(code: str) -> str:
     :param code: The escape character code.
     :return: Expanded character.
     """
+    if code == '\\':
+        return '\\'
     return fr'\{code}'.encode('utf-8').decode('unicode_escape')
 
 
@@ -1098,7 +1100,7 @@ class ConceptUriParser:
 
         if is_quoted(concept):
             try:
-                concept = unquote(concept)
+                concept = unquote(concept, escapes_in_quoted=True)
             except UnquoteSyntaxError as e:
                 raise ConceptUriParseError(
                     f'Error parsing {self.concept_name} concept name in URI "{uri}": {str(e).strip()}') from e
