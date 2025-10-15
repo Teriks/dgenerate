@@ -1,5 +1,5 @@
-.. |Documentation| image:: https://readthedocs.org/projects/dgenerate/badge/?version=@REVISION
-   :target: http://dgenerate.readthedocs.io/en/@REVISION/
+.. |Documentation| image:: https://readthedocs.org/projects/dgenerate/badge/?version=@VERSION
+   :target: http://dgenerate.readthedocs.io/en/@VERSION/
 
 .. |Latest Release| image:: https://img.shields.io/github/v/release/Teriks/dgenerate
    :target: https://github.com/Teriks/dgenerate/releases/latest

@@ -1,9 +1,9 @@
 .. _Releases_Page: https://github.com/Teriks/dgenerate/releases
-.. _vermeer_canny_edged.png: https://raw.githubusercontent.com/Teriks/dgenerate/version_5.0.0/examples/media/vermeer_canny_edged.png
+.. _vermeer_canny_edged.png: https://raw.githubusercontent.com/Teriks/dgenerate/master/examples/media/vermeer_canny_edged.png
 .. _Phi-3_Mini_Abliterated_Q4_GGUF_by_failspy: https://huggingface.co/failspy/Phi-3-mini-128k-instruct-abliterated-v3-GGUF
 .. _Stable_Diffusion_Web_UI: https://github.com/AUTOMATIC1111/stable-diffusion-webui
 .. _CivitAI: https://civitai.com/
-.. _DiffusionArguments: https://dgenerate.readthedocs.io/en/version_5.0.0/dgenerate_submodules.html#dgenerate.pipelinewrapper.DiffusionArguments
+.. _DiffusionArguments: https://dgenerate.readthedocs.io/en/master/dgenerate_submodules.html#dgenerate.pipelinewrapper.DiffusionArguments
 .. _spandrel: https://github.com/chaiNNer-org/spandrel
 .. _ncnn: https://github.com/Tencent/ncnn
 .. _chaiNNer: https://github.com/chaiNNer-org/chaiNNer
@@ -3293,8 +3293,8 @@ however for this example files on disk are used for brevity.
 
 You can download them here:
 
- * `my-image-seed.png <https://raw.githubusercontent.com/Teriks/dgenerate/version_5.0.0/examples/media/dog-on-bench.png>`_
- * `my-mask-image.png <https://raw.githubusercontent.com/Teriks/dgenerate/version_5.0.0/examples/media/dog-on-bench-mask.png>`_
+ * `my-image-seed.png <https://raw.githubusercontent.com/Teriks/dgenerate/master/examples/media/dog-on-bench.png>`_
+ * `my-mask-image.png <https://raw.githubusercontent.com/Teriks/dgenerate/master/examples/media/dog-on-bench-mask.png>`_
 
 The command below generates a cat sitting on a bench with the images from the links above, the mask image masks out
 areas over the dog in the original image, causing the dog to be replaced with an AI generated cat.
@@ -7682,7 +7682,7 @@ And an ``inpainting`` example:
 In the case of Stable Cascade, this syntax results in multiple images being passed to Stable Cascade
 as an image/style prompt, and does not result in multiple outputs or batching behavior.
 
-This Stable Cascade functionality is demonstrated in the example config: `examples/stablecascade/img2img/multiple-inputs-config.dgen <https://github.com/Teriks/dgenerate/blob/version_5.0.0/examples/stablecascade/img2img/multiple-inputs-config.dgen>`_
+This Stable Cascade functionality is demonstrated in the example config: `examples/stablecascade/img2img/multiple-inputs-config.dgen <https://github.com/Teriks/dgenerate/blob/master/examples/stablecascade/img2img/multiple-inputs-config.dgen>`_
 
 Image Processors
 ================
@@ -7799,7 +7799,7 @@ CPU immediately when it is done with an image, clearing up VRAM space before the
 For an example, images can be processed with the canny edge detection algorithm or OpenPose (rigging generation)
 before being used for generation with a model + a ControlNet.
 
-This image of a `horse <https://raw.githubusercontent.com/Teriks/dgenerate/version_5.0.0/examples/media/horse2.jpeg>`_
+This image of a `horse <https://raw.githubusercontent.com/Teriks/dgenerate/master/examples/media/horse2.jpeg>`_
 is used in the example below with a ControlNet that is trained to generate images from canny edge detected input.
 
 .. code-block:: bash
@@ -8577,7 +8577,7 @@ Prompts can be written to a file or printed to stdout, and in the case of the co
 they can also be written to a config template variable as a python list.
 
 A comprehensive example of the ``\prompt_upscale`` config directive which might be helpful for understanding
-this sub-commands functionality is available in the `examples folder <https://github.com/Teriks/dgenerate/blob/version_5.0.0/examples/config_directives/prompt_upscale/prompt-upscale-directive-config.dgen>`_.
+this sub-commands functionality is available in the `examples folder <https://github.com/Teriks/dgenerate/blob/master/examples/config_directives/prompt_upscale/prompt-upscale-directive-config.dgen>`_.
 
 .. code-block:: text
 
@@ -8660,7 +8660,7 @@ Stable diffusion image upscaling models can be used via the model types:
     * ``--model-type upscaler-x2``
     * ``--model-type upscaler-x4``
 
-The image used in the example below is this `low resolution cat <https://raw.githubusercontent.com/Teriks/dgenerate/version_5.0.0/examples/media/low_res_cat.png>`_
+The image used in the example below is this `low resolution cat <https://raw.githubusercontent.com/Teriks/dgenerate/master/examples/media/low_res_cat.png>`_
 
 .. code-block:: bash
 
@@ -8896,7 +8896,7 @@ has taken place prior with a supported ``--model-type`` value involved.
 
 The adetailer image processor has many options and it is recommended to take a look at the output of
 ``dgenerate --image-processor-help adetailer`` and view the examples located at
-`examples/adetailer/post_processor <https://github.com/Teriks/dgenerate/tree/version_5.0.0/examples/adetailer/post_processor>`_
+`examples/adetailer/post_processor <https://github.com/Teriks/dgenerate/tree/master/examples/adetailer/post_processor>`_
 for usage information.
 
 
@@ -13070,12 +13070,12 @@ Image Processors / Latents Processors
 ----------------------------------------------
 
 A code example as well as a usage example for image processor plugins can be found
-in the `writing_plugins/image_processor <https://github.com/Teriks/dgenerate/tree/version_5.0.0/examples/writing_plugins/image_processor>`_
+in the `writing_plugins/image_processor <https://github.com/Teriks/dgenerate/tree/master/examples/writing_plugins/image_processor>`_
 folder of the examples folder.
 
-The source code for the built in `canny <https://github.com/Teriks/dgenerate/blob/version_5.0.0/dgenerate/imageprocessors/canny.py>`_ processor,
-the `openpose <https://github.com/Teriks/dgenerate/blob/version_5.0.0/dgenerate/imageprocessors/openpose.py>`_ processor, and the simple
-`pillow image operations <https://github.com/Teriks/dgenerate/blob/version_5.0.0/dgenerate/imageprocessors/imageops.py>`_ processors can also
+The source code for the built in `canny <https://github.com/Teriks/dgenerate/blob/master/dgenerate/imageprocessors/canny.py>`_ processor,
+the `openpose <https://github.com/Teriks/dgenerate/blob/master/dgenerate/imageprocessors/openpose.py>`_ processor, and the simple
+`pillow image operations <https://github.com/Teriks/dgenerate/blob/master/dgenerate/imageprocessors/imageops.py>`_ processors can also
 be of reference as they are written as internal image processor plugins.
 
 ~~~~
@@ -13085,31 +13085,31 @@ raw/partially denoised latents, on latents used for ``img2img``, or on fully den
 written to disk. For user-facing usage details, see the "Latents Processors" section of the manual.
 
 Reference implementations can be found in the internal latents processors:
-`scale <https://github.com/Teriks/dgenerate/blob/version_5.0.0/dgenerate/latentsprocessors/scale.py>`_,
-`noise <https://github.com/Teriks/dgenerate/blob/version_5.0.0/dgenerate/latentsprocessors/noise.py>`_, and
-`interposer <https://github.com/Teriks/dgenerate/blob/version_5.0.0/dgenerate/latentsprocessors/interposer.py>`_.
+`scale <https://github.com/Teriks/dgenerate/blob/master/dgenerate/latentsprocessors/scale.py>`_,
+`noise <https://github.com/Teriks/dgenerate/blob/master/dgenerate/latentsprocessors/noise.py>`_, and
+`interposer <https://github.com/Teriks/dgenerate/blob/master/dgenerate/latentsprocessors/interposer.py>`_.
 
 The base interface is implemented in
-`LatentsProcessor <https://github.com/Teriks/dgenerate/blob/version_5.0.0/dgenerate/latentsprocessors/latentsprocessor.py>`_.
+`LatentsProcessor <https://github.com/Teriks/dgenerate/blob/master/dgenerate/latentsprocessors/latentsprocessor.py>`_.
 
 An example skeleton for a latents processor plugin can be found in
-`writing_plugins/latents_processor <https://github.com/Teriks/dgenerate/tree/version_5.0.0/examples/writing_plugins/latents_processor>`_.
+`writing_plugins/latents_processor <https://github.com/Teriks/dgenerate/tree/master/examples/writing_plugins/latents_processor>`_.
 
 ~~~~
 Config directive and template function plugins
 ----------------------------------------------
 
-An example for writing config directives can be found in the `writing_plugins/config_directive <https://github.com/Teriks/dgenerate/tree/version_5.0.0/examples/writing_plugins/config_directive>`_  example folder.
+An example for writing config directives can be found in the `writing_plugins/config_directive <https://github.com/Teriks/dgenerate/tree/master/examples/writing_plugins/config_directive>`_  example folder.
 
-Config template functions can also be implemented by plugins, see: `writing_plugins/template_function <https://github.com/Teriks/dgenerate/tree/version_5.0.0/examples/writing_plugins/template_function>`_
+Config template functions can also be implemented by plugins, see: `writing_plugins/template_function <https://github.com/Teriks/dgenerate/tree/master/examples/writing_plugins/template_function>`_
 
 Currently the only internal directive that is implemented as a plugin is the ``\image_process`` directive, who's source file
-`can be located here <https://github.com/Teriks/dgenerate/blob/version_5.0.0/dgenerate/batchprocess/image_process_directive.py>`_.
+`can be located here <https://github.com/Teriks/dgenerate/blob/master/dgenerate/batchprocess/image_process_directive.py>`_.
 
 The source file for the ``\image_process`` directive is terse as most of it is implemented as reusable code.
 
 The behavior of ``\image_process`` which is also used for ``--sub-command image-process`` is
-`is implemented here <https://github.com/Teriks/dgenerate/blob/version_5.0.0/dgenerate/image_process>`_.
+`is implemented here <https://github.com/Teriks/dgenerate/blob/master/dgenerate/image_process>`_.
 
 ~~~~
 
@@ -13117,9 +13117,9 @@ The behavior of ``\image_process`` which is also used for ``--sub-command image-
 Sub-command plugins
 -------------------
 
-Reference for writing sub-commands can be found in the `image-process <https://github.com/Teriks/dgenerate/blob/version_5.0.0/dgenerate/subcommands/image_process.py>`_
+Reference for writing sub-commands can be found in the `image-process <https://github.com/Teriks/dgenerate/blob/master/dgenerate/subcommands/image_process.py>`_
 sub-command implementation, and a plugin skeleton file for sub-commands can be found in the
-`writing_plugins/sub_command <https://github.com/Teriks/dgenerate/tree/version_5.0.0/examples/writing_plugins/sub_command>`_ example folder.
+`writing_plugins/sub_command <https://github.com/Teriks/dgenerate/tree/master/examples/writing_plugins/sub_command>`_ example folder.
 
 ~~~~
 
@@ -13127,11 +13127,11 @@ sub-command implementation, and a plugin skeleton file for sub-commands can be f
 Prompt Weighters / Prompt Upscalers
 ----------------------------------------
 
-Reference for writing prompt weighters can be found in the `CompelPromptWeighter <https://github.com/Teriks/dgenerate/blob/version_5.0.0/dgenerate/promptweighters/compelpromptweighter.py>`_
-and `SdEmbedPromptWeighter <https://github.com/Teriks/dgenerate/blob/version_5.0.0/dgenerate/promptweighters/sdembedpromptweighter.py>`_ internal prompt weighter implementations.
+Reference for writing prompt weighters can be found in the `CompelPromptWeighter <https://github.com/Teriks/dgenerate/blob/master/dgenerate/promptweighters/compelpromptweighter.py>`_
+and `SdEmbedPromptWeighter <https://github.com/Teriks/dgenerate/blob/master/dgenerate/promptweighters/sdembedpromptweighter.py>`_ internal prompt weighter implementations.
 
 A plugin skeleton file for prompt weighters can be found in the
-`writing_plugins/prompt_weighter <https://github.com/Teriks/dgenerate/tree/version_5.0.0/examples/writing_plugins/prompt_weighter>`_
+`writing_plugins/prompt_weighter <https://github.com/Teriks/dgenerate/tree/master/examples/writing_plugins/prompt_weighter>`_
 example folder.
 
 In addition to prompt weighters, dgenerate also supports prompt upscaler plugins that can preprocess or
@@ -13140,14 +13140,14 @@ expand prompt text before it is fed to the pipeline. They can be enabled globall
 upscalers can be chained by repeating the embedded argument.
 
 Reference implementations can be found in the internal prompt upscalers:
-`DynamicPrompts <https://github.com/Teriks/dgenerate/blob/version_5.0.0/dgenerate/promptupscalers/dynamicpromptsupscaler.py>`_,
-`MagicPrompt <https://github.com/Teriks/dgenerate/blob/version_5.0.0/dgenerate/promptupscalers/magicpromptupscaler.py>`_,
-`Attention <https://github.com/Teriks/dgenerate/blob/version_5.0.0/dgenerate/promptupscalers/attentionpromptupscaler.py>`_,
-`Translate <https://github.com/Teriks/dgenerate/blob/version_5.0.0/dgenerate/promptupscalers/translatepromptupscaler.py>`_, and
-`GPT4All <https://github.com/Teriks/dgenerate/blob/version_5.0.0/dgenerate/promptupscalers/gpt4allpromptupscaler.py>`_.
+`DynamicPrompts <https://github.com/Teriks/dgenerate/blob/master/dgenerate/promptupscalers/dynamicpromptsupscaler.py>`_,
+`MagicPrompt <https://github.com/Teriks/dgenerate/blob/master/dgenerate/promptupscalers/magicpromptupscaler.py>`_,
+`Attention <https://github.com/Teriks/dgenerate/blob/master/dgenerate/promptupscalers/attentionpromptupscaler.py>`_,
+`Translate <https://github.com/Teriks/dgenerate/blob/master/dgenerate/promptupscalers/translatepromptupscaler.py>`_, and
+`GPT4All <https://github.com/Teriks/dgenerate/blob/master/dgenerate/promptupscalers/gpt4allpromptupscaler.py>`_.
 
 An example skeleton for writing a prompt upscaler plugin can be found in
-`writing_plugins/prompt_upscaler <https://github.com/Teriks/dgenerate/tree/version_5.0.0/examples/writing_plugins/prompt_upscaler>`_.
+`writing_plugins/prompt_upscaler <https://github.com/Teriks/dgenerate/tree/master/examples/writing_plugins/prompt_upscaler>`_.
 
 For usage details, see the "Prompt upscaling" section of the user manual.
 
