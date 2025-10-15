@@ -20,7 +20,7 @@ dgenerate
 Whether you're generating or editing single images, batch processing hundreds of variations, or transforming entire videos frame-by-frame,
 dgenerate provides a flexible, scriptable interface for a multitude of image generation and editing tasks.
 
-For the extensive usage manual, manual installation guide, and API documentation, visit `readthedocs <http://dgenerate.readthedocs.io/en/@REVISION/>`_.
+For the extensive usage manual, manual installation guide, and API documentation, visit `readthedocs <http://dgenerate.readthedocs.io/en/@VERSION/>`_.
 
 What You Can Do
 ===============
@@ -71,13 +71,13 @@ Download an install wizard for your platform from the `releases page <https://gi
 Manual Install
 --------------
 
-* `Windows <https://dgenerate.readthedocs.io/en/@REVISION/manual.html#windows-install>`_
-* `Linux / WSL <https://dgenerate.readthedocs.io/en/@REVISION/manual.html#linux-or-wsl-install>`_
-* `Linux ROCm <https://dgenerate.readthedocs.io/en/@REVISION/manual.html#linux-with-rocm-amd-cards>`_
-* `MacOS <https://dgenerate.readthedocs.io/en/@REVISION/manual.html#macos-install-apple-silicon-only>`_
-* `Google Colab <https://dgenerate.readthedocs.io/en/@REVISION/manual.html#google-colab-install>`_
-* `XPU (Intel) <https://dgenerate.readthedocs.io/en/@REVISION/manual.html#install-with-xpu-support>`_
-* `Installing From Development Branches <https://dgenerate.readthedocs.io/en/@REVISION/manual.html#installing-from-development-branches>`_
+* `Windows <https://dgenerate.readthedocs.io/en/@VERSION/manual.html#windows-install>`_
+* `Linux / WSL <https://dgenerate.readthedocs.io/en/@VERSION/manual.html#linux-or-wsl-install>`_
+* `Linux ROCm <https://dgenerate.readthedocs.io/en/@VERSION/manual.html#linux-with-rocm-amd-cards>`_
+* `MacOS <https://dgenerate.readthedocs.io/en/@VERSION/manual.html#macos-install-apple-silicon-only>`_
+* `Google Colab <https://dgenerate.readthedocs.io/en/@VERSION/manual.html#google-colab-install>`_
+* `XPU (Intel) <https://dgenerate.readthedocs.io/en/@VERSION/manual.html#install-with-xpu-support>`_
+* `Installing From Development Branches <https://dgenerate.readthedocs.io/en/@VERSION/manual.html#installing-from-development-branches>`_
 
 System Requirements
 -------------------
