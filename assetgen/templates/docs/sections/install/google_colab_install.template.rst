@@ -22,7 +22,7 @@ Make sure you select a GPU runtime for your notebook, such as the T4 runtime.
 
 .. code-block:: bash
 
-    !source /content/venv/bin/activate; pip install dgenerate==@VERSION --extra-index-url https://download.pytorch.org/whl/cu121
+    !source /content/venv/bin/activate; pip install dgenerate==@VERSION --extra-index-url https://download.pytorch.org/whl/cu128
 
 4.) Finally you can run dgenerate, you must prefix all calls to dgenerate with an activation of the virtual environment, as
 the virtual environment is not preserved between cells.  For brevity, and as an example, just print the help text here.
