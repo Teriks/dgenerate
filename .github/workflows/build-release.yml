@@ -1,0 +1,282 @@
+name: Build and Publish Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+            artifact_name: dgenerate-installer-win
+            exe_extension: .exe
+          - os: ubuntu-22.04
+            platform: linux
+            artifact_name: dgenerate-installer-linux
+            exe_extension: ""
+          - os: macos-latest
+            platform: macos
+            artifact_name: dgenerate-installer-macos
+            exe_extension: ""
+            arch: arm64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Get release version
+        id: version
+        run: |
+          # Extract version from tag (e.g., v1.2.3 -> 1.2.3)
+          version="${{ github.event.release.tag_name }}"
+          version="${version#v}"
+          echo "version=$version" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.13'
+          architecture: ${{ matrix.platform == 'macos' && 'arm64' || 'x64' }}
+
+      - name: Install system dependencies (Linux)
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential
+
+      - name: Install system dependencies (macOS)
+        if: matrix.platform == 'macos'
+        run: |
+          # Ensure we're targeting Apple Silicon
+          echo "ARCHFLAGS=-arch arm64" >> $GITHUB_ENV
+
+      - name: Cache Python dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            build_venv
+          key: ${{ runner.os }}-${{ matrix.arch || 'x64' }}-python-3.13-${{ hashFiles('poetry/pyproject.toml', 'installer/pyproject.toml', 'setup.py') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.arch || 'x64' }}-python-3.13-
+
+      - name: Install build dependencies
+        if: matrix.platform == 'linux'
+        run: pip install build twine
+
+      - name: Build Wheels
+        if: matrix.platform == 'linux'
+        run: python build_dist.py
+
+      - name: Build Installer
+        run: python installer/build.py
+
+      - name: Verify build output
+        shell: bash
+        run: |
+          if [ "${{ matrix.platform }}" == "windows" ]; then
+            expected_file="installer/dist/dgenerate-network-installer.exe"
+          else
+            expected_file="installer/dist/dgenerate-network-installer"
+          fi
+          
+          if [ ! -f "$expected_file" ]; then
+            echo "ERROR: Expected build output not found: $expected_file"
+            echo "Contents of dist directory:"
+            ls -la installer/dist/ || echo "dist directory not found"
+            exit 1
+          else
+            echo "SUCCESS: Build output found: $expected_file"
+            ls -la "$expected_file"
+          fi
+
+      - name: Rename artifact
+        shell: bash
+        run: |
+          version="${{ steps.version.outputs.version }}"
+          if [ "${{ matrix.platform }}" == "windows" ]; then
+            source_file="installer/dist/dgenerate-network-installer.exe"
+            target_file="installer/dist/${{ matrix.artifact_name }}-${version}.exe"
+          else
+            source_file="installer/dist/dgenerate-network-installer"
+            target_file="installer/dist/${{ matrix.artifact_name }}-${version}"
+          fi
+          
+          echo "Renaming $source_file to $target_file"
+          mv "$source_file" "$target_file"
+          
+          # Verify the renamed file exists
+          if [ ! -f "$target_file" ]; then
+            echo "ERROR: Failed to rename artifact"
+            exit 1
+          else
+            echo "SUCCESS: Artifact renamed successfully"
+            ls -la "$target_file"
+          fi
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}-${{ steps.version.outputs.version }}
+          path: installer/dist/${{ matrix.artifact_name }}-${{ steps.version.outputs.version }}${{ matrix.exe_extension }}
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Upload wheel artifacts
+        if: matrix.platform == 'linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels
+          path: dist/
+          if-no-files-found: error
+          retention-days: 90
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    if: needs.build.result == 'success'
+    environment:
+      name: pypi
+      url: https://pypi.org/project/dgenerate/
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Download wheel artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: wheels
+          path: dist/
+
+      - name: Download installer artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: List downloaded artifacts
+        run: |
+          echo "Downloaded wheels:"
+          ls -la dist/
+          echo ""
+          echo "Downloaded installers:"
+          find artifacts/ -type f -exec ls -la {} \;
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.13'
+
+      - name: Install twine
+        run: pip install twine
+
+      - name: Publish to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          echo "Publishing wheels to PyPI..."
+          twine upload dist/*.whl dist/*.tar.gz
+
+      - name: Upload installers to GitHub Release
+        run: |
+          echo "Uploading installer artifacts to release:"
+          
+          # Upload installer artifacts
+          for artifact_dir in artifacts/*/; do
+            if [ -d "$artifact_dir" ]; then
+              artifact_name=$(basename "$artifact_dir")
+          
+              # Skip wheels directory (already published to PyPI)
+              if [ "$artifact_name" = "wheels" ]; then
+                continue
+              fi
+          
+              echo "Processing installer artifact: $artifact_name"
+          
+              # Find the file in the artifact directory
+              artifact_file=$(find "$artifact_dir" -type f | head -1)
+              if [ -n "$artifact_file" ]; then
+                echo "  - Uploading: $artifact_file"
+                gh release upload "${{ github.event.release.tag_name }}" "$artifact_file" --clobber
+              else
+                echo "  - No files found in $artifact_dir"
+              fi
+            fi
+          done
+          
+          echo "Upload complete!"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update release notes
+        run: |
+          version="${{ github.event.release.tag_name }}"
+          version="${version#v}"
+          build_date=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          
+          # Get the existing release notes (user's manual notes)
+          existing_notes=$(gh release view "${{ github.event.release.tag_name }}" --json body -q '.body')
+          
+          cat > installation_notes.md << EOF
+          ## Installation
+          
+          ### PyPI
+          \`\`\`bash
+          pip install dgenerate==$version
+          \`\`\`
+          
+          ### Installers
+          
+          #### Windows
+          1. Download \`dgenerate-installer-win-$version.exe\`
+          2. Run the installer
+          
+          **Note for Windows users**: Windows Defender may flag the installer as potentially harmful since it's unsigned. If you see a warning, click "More info" and then "Run anyway" to proceed with the installation.
+          
+          #### Linux
+          1. Download \`dgenerate-installer-linux-$version\`
+          2. Make the file executable: \`chmod +x dgenerate-installer-linux-$version\`
+          3. Run the installer: \`./dgenerate-installer-linux-$version\`
+          
+          #### macOS (Apple Silicon)
+          1. Download \`dgenerate-installer-macos-$version\`
+          2. Open Terminal and navigate to Downloads: \`cd ~/Downloads\`
+          3. Remove quarantine attribute: \`xattr -d com.apple.quarantine dgenerate-installer-macos-$version\`
+          4. Make the file executable: \`chmod +x dgenerate-installer-macos-$version\`
+          5. Run the installer: \`./dgenerate-installer-macos-$version\`
+          
+          **Note for macOS users**: The \`xattr\` command is required to prevent macOS from quarantining the binary, which would otherwise prevent execution.
+          
+          ---
+          
+          **Build Date**: $build_date  
+          **Workflow**: [${{ github.workflow }} #${{ github.run_number }}](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          
+          ---
+          
+          EOF
+          
+          # Prepend installation notes to user's manual release notes
+          cat installation_notes.md > full_notes.md
+          echo "" >> full_notes.md
+          echo "$existing_notes" >> full_notes.md
+          
+          gh release edit "${{ github.event.release.tag_name }}" --notes-file full_notes.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
