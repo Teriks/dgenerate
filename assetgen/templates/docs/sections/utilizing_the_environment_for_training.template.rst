@@ -44,13 +44,13 @@ For example, you can setup a training configuration entirely inside of a dgenera
     --lora_dropout 0.1
     --train_text_encoder
     --mixed_precision "fp16"
-    --enable_xformers_memory_efficient_attention
     --gradient_checkpointing
     --checkpointing_steps 100
     --seed 42
 
-``xformers`` and ``datasets`` are included in the dgenerate environment, allowing for memory efficient training
-and also the use of Hugging Face datasets, or folders in Hugging Face dataset format with advanced captioning.
+``datasets`` is included in the dgenerate environment, so these scripts can use Hugging Face
+datasets or folders in Hugging Face dataset format with advanced captioning. Attention uses
+PyTorch scaled-dot-product attention.
 
 The nice thing about this is that you can use dgenerates scripting features to automate training variations,
 for instance different learning rates, etc. if you just want to run a series of training jobs with different parameters.
@@ -84,7 +84,6 @@ for instance different learning rates, etc. if you just want to run a series of 
             --lora_dropout 0.1
             --train_text_encoder
             --mixed_precision "fp16"
-            --enable_xformers_memory_efficient_attention
             --gradient_checkpointing
             --checkpointing_steps 100
             --seed 42

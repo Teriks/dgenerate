@@ -341,20 +341,11 @@ if python_requirement:
 if dgenerate_platform != 'linux':
     _exclude_requires('triton')
 
-if dgenerate_platform == 'darwin':
-    _exclude_requires('xformers')  # xFormers doesn't support macOS
-
 if dgenerate_platform != 'windows':
     requires.pop('triton-windows')
 
 if 'bitsandbytes' in requires:
     extras['bitsandbytes'] = ['bitsandbytes' + requires.pop('bitsandbytes')]
-
-# xFormers support - only for NVIDIA CUDA on Linux/Windows
-if 'xformers' in requires:
-    _xformers_requires_spec = requires.pop('xformers')
-    if dgenerate_platform in {'linux', 'windows'}:
-        extras['xformers'] = ['xformers' + _xformers_requires_spec]
 
 if dgenerate_platform == 'windows':
     extras['triton_windows'] = ['triton-windows' + requires.pop('triton-windows')]

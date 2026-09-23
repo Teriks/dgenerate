@@ -45,7 +45,12 @@ from pathlib import Path
 
 import certifi
 from packaging import version as pkg_version
-from network_installer.platform_detection import detect_gpu, is_amd_windows_multiarch_index
+from network_installer.platform_detection import (
+    detect_gpu,
+    get_torch_index_url,
+    is_amd_windows_multiarch_index,
+    xformers_version_overrides,
+)
 from network_installer.xllamacppinstall import XLLAMACPP_EXTRAS, install_xllamacpp_wheel
 from network_installer.subprocess_utils import run_silent, popen_silent
 
@@ -337,6 +342,45 @@ class BasePlatformHandler(ABC):
         self.log_callback("AMD Windows torch[device-all] installed")
         return True
 
+    def _xformers_torch_pin(self, torch_index_url: str | None) -> tuple[str | None, str | None]:
+        """Cap torch at 2.10 when xformers is selected and the release pin is newer."""
+        analyzer = getattr(self.installer, 'setup_analyzer', None)
+        locked = analyzer.get_torch_version() if analyzer else None
+        requires = getattr(analyzer, 'requires', None) if analyzer else None
+        if not isinstance(requires, dict):
+            requires = {}
+        overrides = xformers_version_overrides(
+            locked,
+            requires.get('torchvision'),
+            requires.get('torchaudio'),
+        )
+        if not overrides:
+            return torch_index_url, None
+
+        capped = overrides['torch']
+        self.log_callback(f"xformers is selected, so torch {locked} is capped at {capped}")
+        if analyzer is not None:
+            analyzer.torch_version = capped
+            analyzer_requires = getattr(analyzer, 'requires', None)
+            if isinstance(analyzer_requires, dict):
+                for name, version in overrides.items():
+                    if name in analyzer_requires:
+                        analyzer_requires[name] = '==' + version
+
+        index = get_torch_index_url(capped)
+        if index:
+            self.log_callback(f"Using PyTorch index for torch {capped}: {index}")
+            torch_index_url = index
+
+        handle = tempfile.NamedTemporaryFile(
+            'w', delete=False, suffix='-xformers-torch.txt', encoding='utf-8'
+        )
+        try:
+            handle.write(''.join(f'{name}=={version}\n' for name, version in overrides.items()))
+        finally:
+            handle.close()
+        return torch_index_url, handle.name
+
     def install_dgenerate(self, uv_exe: Path, source_dir: str, selected_extras: list[str],
                           torch_index_url: str | None = None) -> bool:
         """
@@ -348,11 +392,18 @@ class BasePlatformHandler(ABC):
         :param torch_index_url: Optional PyTorch index URL
         :return: True if successful, False otherwise
         """
+        override_path = None
         try:
             # Build the install command with uv pip targeting the virtual environment
             # Use regular install (not editable) to avoid dependency on source directory
             # uv will automatically copy the source to site-packages during installation
             cmd = [str(uv_exe), 'pip', 'install', '--python', str(self.get_venv_python()), source_dir]
+
+            # Older releases can still select xformers. Its wheels load on torch 2.10
+            # and older, so a newer pin is overridden and the CUDA index is chosen
+            # for that older torch.
+            if selected_extras and 'xformers' in selected_extras:
+                torch_index_url, override_path = self._xformers_torch_pin(torch_index_url)
 
             # Add extras if specified
             if selected_extras:
@@ -368,6 +419,9 @@ class BasePlatformHandler(ABC):
             # Add torch index URL if specified
             if torch_index_url:
                 cmd.extend(['--extra-index-url', torch_index_url, '--index-strategy', 'unsafe-best-match'])
+
+            if override_path:
+                cmd.extend(['--overrides', override_path])
 
             self.log_callback(f"Installing dgenerate: {' '.join(cmd)}")
 
@@ -407,6 +461,12 @@ class BasePlatformHandler(ABC):
         except Exception as e:
             self.log_callback(f"Error installing dgenerate: {e}")
             return False
+        finally:
+            if override_path:
+                try:
+                    os.unlink(override_path)
+                except OSError:
+                    pass
 
     def _install_xllamacpp_backend(self) -> bool:
         """Replace the PyPI xllamacpp wheel with CUDA, ROCm, or Vulkan when one applies."""

@@ -2474,7 +2474,6 @@ Install dgenerate:
     #   CUDA 13.0 through 13.1: the same command with /cu128 and the cu130 torch index.
     #   Older NVIDIA, AMD, or Intel Arc: /vulkan instead of /cu132.
     # * bitsandbytes
-    # * xformers (NVIDIA CUDA only - memory-efficient attention)
     # * triton_windows
     # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
@@ -2500,11 +2499,6 @@ Install dgenerate:
     pipx install dgenerate[ncnn]==5.0.0 ^
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu130/"
 
-    # with memory-efficient attention (NVIDIA CUDA only)
-
-    pipx install dgenerate[xformers]==5.0.0 ^
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu130/"
-
     # You can install without pipx into your own environment like so
 
     pip install dgenerate==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu130/
@@ -2512,10 +2506,6 @@ Install dgenerate:
     # Or with NCNN
 
     pip install dgenerate[ncnn]==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu130/
-
-    # Or with xFormers (NVIDIA CUDA only)
-
-    pip install dgenerate[xformers]==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu130/
 
 
 It is recommended to install dgenerate with pipx if you are just intending
@@ -2543,7 +2533,6 @@ a cloned repository like this:
     #   CUDA 13.0 through 13.1: the same command with /cu128 and the cu130 torch index.
     #   Older NVIDIA, AMD, or Intel Arc: /vulkan instead of /cu132.
     # * bitsandbytes
-    # * xformers (NVIDIA CUDA only - memory-efficient attention)
     # * triton_windows
     # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
@@ -2556,10 +2545,6 @@ a cloned repository like this:
     # Install with pip into the environment, include NCNN
 
     pip install --editable .[dev,ncnn] --extra-index-url https://download.pytorch.org/whl/cu130/
-
-    # Install with pip into the environment, include xFormers (NVIDIA CUDA only)
-
-    pip install --editable .[dev,xformers] --extra-index-url https://download.pytorch.org/whl/cu130/
 
 
 Run ``dgenerate`` to generate images:
@@ -2662,7 +2647,6 @@ Install dgenerate
     #   ROCm 7.2: --index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-7.2.4 --extra-index-url https://download.pytorch.org/whl/rocm7.2/ --extra-index-url https://pypi.org/simple
     #   Older NVIDIA or Intel: /vulkan instead of /cu132.
     # * bitsandbytes
-    # * xformers (NVIDIA CUDA only - memory-efficient attention)
     # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
     # The commands below use the CUDA 13.0 torch index.
@@ -2679,11 +2663,6 @@ Install dgenerate
     pipx install dgenerate[ncnn] \
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu130/"
 
-    # With memory-efficient attention (NVIDIA CUDA only)
-
-    pipx install dgenerate[xformers] \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu130/"
-
     # If you want a specific version
 
     pipx install dgenerate==5.0.0 \
@@ -2696,10 +2675,6 @@ Install dgenerate
     # Or with NCNN
 
     pip3 install dgenerate[ncnn]==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu130/
-
-    # Or with xFormers (NVIDIA CUDA only)
-
-    pip3 install dgenerate[xformers]==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu130/
 
 
 It is recommended to install dgenerate with pipx if you are just intending
@@ -2723,10 +2698,6 @@ virtual environment you can do so like this:
     # --extra-index-url https://download.pytorch.org/whl/cu126/
 
     pip3 install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu130/
-
-    # Install with pip into the environment (editable, with xFormers for NVIDIA CUDA)
-
-    pip3 install --editable .[dev,xformers] --extra-index-url https://download.pytorch.org/whl/cu130/
 
     # Install with pip into the environment (non-editable)
 
@@ -11194,7 +11165,6 @@ The dgenerate specific jinja2 functions/filters are:
         "xllamacpp": Do we have xllamacpp installed?
         "bitsandbytes": Do we have bitsandbytes installed?
         "flash-attn": Do we have flash-attn installed?
-        "xformers": Do we have xformers installed?
         "triton": Do we have triton installed?
     
     ====================================================================================
@@ -13242,13 +13212,13 @@ For example, you can setup a training configuration entirely inside of a dgenera
     --lora_dropout 0.1
     --train_text_encoder
     --mixed_precision "fp16"
-    --enable_xformers_memory_efficient_attention
     --gradient_checkpointing
     --checkpointing_steps 100
     --seed 42
 
-``xformers`` and ``datasets`` are included in the dgenerate environment, allowing for memory efficient training
-and also the use of Hugging Face datasets, or folders in Hugging Face dataset format with advanced captioning.
+``datasets`` is included in the dgenerate environment, so these scripts can use Hugging Face
+datasets or folders in Hugging Face dataset format with advanced captioning. Attention uses
+PyTorch scaled-dot-product attention.
 
 The nice thing about this is that you can use dgenerates scripting features to automate training variations,
 for instance different learning rates, etc. if you just want to run a series of training jobs with different parameters.
@@ -13282,7 +13252,6 @@ for instance different learning rates, etc. if you just want to run a series of 
             --lora_dropout 0.1
             --train_text_encoder
             --mixed_precision "fp16"
-            --enable_xformers_memory_efficient_attention
             --gradient_checkpointing
             --checkpointing_steps 100
             --seed 42
