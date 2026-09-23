@@ -397,6 +397,10 @@ class SetupAnalyzer:
         elif extra_name == 'triton_windows':
             # Triton Windows requires NVIDIA GPU
             return gpu_info.has_nvidia
+
+        elif extra_name == 'gpt4all_cuda':
+            # Older releases: CUDA GPT4All requires an NVIDIA GPU
+            return gpu_info.has_nvidia and bool(gpu_info.cuda_version)
         
         # All other extras are compatible by default
         return True
@@ -423,6 +427,16 @@ class SetupAnalyzer:
             if extra == 'xllamacpp':
                 recommended.append(extra)
                 self._log("Recommending xllamacpp - wheel backend is selected after install")
+            elif extra == 'gpt4all' and 'gpt4all_cuda' in available_extras:
+                # Older releases ship a CPU extra and a CUDA extra. Prefer CUDA when it applies.
+                if not (gpu_info.has_nvidia and gpu_info.cuda_version):
+                    recommended.append(extra)
+                    self._log("Recommending gpt4all (CPU-only) - no CUDA available")
+                else:
+                    self._log("Not recommending gpt4all (CPU-only) - CUDA available, will recommend gpt4all_cuda instead")
+            elif extra == 'gpt4all_cuda':
+                recommended.append(extra)
+                self._log(f"Recommending gpt4all_cuda - CUDA {gpu_info.cuda_version} detected")
             elif extra == 'xformers':
                 # Always recommend if available (compatibility already checked)
                 recommended.append(extra)
@@ -452,6 +466,8 @@ class SetupAnalyzer:
             'xformers': 'Memory-efficient attention for NVIDIA CUDA GPUs (Linux/Windows)',
             'ncnn': 'High-performance neural network inference framework (Used for ncnn-upscaler image processor)',
             'xllamacpp': 'Local GGUF models. The installer replaces the PyPI wheel with CUDA, ROCm, or Vulkan when this machine can use one',
+            'gpt4all': 'Local large language model support (CPU-only)',
+            'gpt4all_cuda': 'CUDA-accelerated GPT4All for NVIDIA GPUs (Linux/Windows)',
             'console_ui_opengl': 'OpenGL accelerated Console UI image viewer.',
             'triton_windows': 'Triton support for Windows (NVIDIA)'
         }
