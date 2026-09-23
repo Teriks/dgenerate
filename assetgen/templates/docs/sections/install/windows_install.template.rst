@@ -58,50 +58,52 @@ Install dgenerate:
     #   The GPU and CPU wheels share one version, so the GPU index must be --index-url.
     #   CUDA 13.2+ (this uses the cu130 torch index):
     #   pip install "dgenerate[xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu132 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple
-    #   CUDA 12.8 through 13.1: the same command with /cu128 and the cu128 torch index.
+    #   CUDA 12.8 through 12.9: the same command with /cu128 and the cu126 torch index.
+    #   CUDA 13.0 through 13.1: the same command with /cu128 and the cu130 torch index.
     #   Older NVIDIA, AMD, or Intel Arc: /vulkan instead of /cu132.
     # * bitsandbytes
     # * xformers (NVIDIA CUDA only - memory-efficient attention)
     # * triton_windows
     # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
-    # Note that if you have a Maxwell (5.x), Pascal (6.x), Volta (7.0) GPU use
+    # The commands below use the CUDA 13.0 torch index.
+    # CUDA 12.6 through 12.9, and Maxwell (5.x), Pascal (6.x), or Volta (7.0), use
     # --extra-index-url https://download.pytorch.org/whl/cu126/
 
     pipx install dgenerate ^
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu129/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu130/"
 
     # with NCNN upscaler support
 
     pipx install dgenerate[ncnn] ^
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu129/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu130/"
 
     # If you want a specific version
 
     pipx install dgenerate==@VERSION ^
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu129/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu130/"
 
     # with NCNN upscaler support and a specific version
 
     pipx install dgenerate[ncnn]==@VERSION ^
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu129/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu130/"
 
     # with memory-efficient attention (NVIDIA CUDA only)
 
     pipx install dgenerate[xformers]==@VERSION ^
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu129/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu130/"
 
     # You can install without pipx into your own environment like so
 
-    pip install dgenerate==@VERSION --extra-index-url https://download.pytorch.org/whl/cu129/
+    pip install dgenerate==@VERSION --extra-index-url https://download.pytorch.org/whl/cu130/
 
     # Or with NCNN
 
-    pip install dgenerate[ncnn]==@VERSION --extra-index-url https://download.pytorch.org/whl/cu129/
+    pip install dgenerate[ncnn]==@VERSION --extra-index-url https://download.pytorch.org/whl/cu130/
 
     # Or with xFormers (NVIDIA CUDA only)
 
-    pip install dgenerate[xformers]==@VERSION --extra-index-url https://download.pytorch.org/whl/cu129/
+    pip install dgenerate[xformers]==@VERSION --extra-index-url https://download.pytorch.org/whl/cu130/
 
 
 It is recommended to install dgenerate with pipx if you are just intending
@@ -125,25 +127,27 @@ a cloned repository like this:
     #   The GPU and CPU wheels share one version, so the GPU index must be --index-url.
     #   CUDA 13.2+ (this uses the cu130 torch index):
     #   pip install "dgenerate[xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu132 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple
-    #   CUDA 12.8 through 13.1: the same command with /cu128 and the cu128 torch index.
+    #   CUDA 12.8 through 12.9: the same command with /cu128 and the cu126 torch index.
+    #   CUDA 13.0 through 13.1: the same command with /cu128 and the cu130 torch index.
     #   Older NVIDIA, AMD, or Intel Arc: /vulkan instead of /cu132.
     # * bitsandbytes
     # * xformers (NVIDIA CUDA only - memory-efficient attention)
     # * triton_windows
     # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
-    # Note that if you have a Maxwell (5.x), Pascal (6.x), Volta (7.0) GPU use
+    # The commands below use the CUDA 13.0 torch index.
+    # CUDA 12.6 through 12.9, and Maxwell (5.x), Pascal (6.x), or Volta (7.0), use
     # --extra-index-url https://download.pytorch.org/whl/cu126/
 
-    pip install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu129/
+    pip install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu130/
 
     # Install with pip into the environment, include NCNN
 
-    pip install --editable .[dev,ncnn] --extra-index-url https://download.pytorch.org/whl/cu129/
+    pip install --editable .[dev,ncnn] --extra-index-url https://download.pytorch.org/whl/cu130/
 
     # Install with pip into the environment, include xFormers (NVIDIA CUDA only)
 
-    pip install --editable .[dev,xformers] --extra-index-url https://download.pytorch.org/whl/cu129/
+    pip install --editable .[dev,xformers] --extra-index-url https://download.pytorch.org/whl/cu130/
 
 
 Run ``dgenerate`` to generate images:

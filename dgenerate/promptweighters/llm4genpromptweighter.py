@@ -92,6 +92,7 @@ class RankGenEncoder:
             token=use_auth_token
         )
 
+        self._quantized = quantization_config is not None
         self.model = T5EncoderWithProjection.from_pretrained(
             model_path,
             trust_remote_code=True,
@@ -103,8 +104,12 @@ class RankGenEncoder:
         )
 
     def to(self, device, **kwargs):
-        # A quantized load is already placed by device_map and cannot be moved.
-        if getattr(self.model, "is_loaded_in_8bit", False) or getattr(self.model, "is_loaded_in_4bit", False):
+        # A quantized load is already placed by device_map. BitsAndBytes sets
+        # is_loaded_in_4bit / is_loaded_in_8bit. SDNQ does not, so the config
+        # passed at construction is what keeps those models from being moved.
+        quantized = self._quantized or getattr(self.model, "is_loaded_in_8bit", False)
+        quantized = quantized or getattr(self.model, "is_loaded_in_4bit", False)
+        if quantized:
             return self.model
         return self.model.to(device, **kwargs)
 

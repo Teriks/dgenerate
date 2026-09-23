@@ -115,7 +115,7 @@ def _parse_nvidia_smi_cuda_version(text: str) -> str | None:
 
     Current drivers print ``CUDA UMD Version:``; older ones print ``CUDA Version:``.
     """
-    match = re.search(r'CUDA(?:\s+UMD)?\s+Version:\s*(\d+\.\d+)', text, re.IGNORECASE)
+    match = re.search(r'CUDA(?:\s+UMD)?\s+Version\s*:\s*(\d+\.\d+)', text, re.IGNORECASE)
     return match.group(1) if match else None
 
 
@@ -449,7 +449,14 @@ def _select_index_suffix(
         installed_minor: int,
         variants: list[tuple[int, int, str]],
         prefer_suffix: str | None = None,
-) -> str:
+) -> str | None:
+    """
+    Return the newest published suffix this toolkit can run.
+
+    ``None`` means every published build needs a newer CUDA or ROCm than
+    the one installed. Callers use the CPU index in that case. A newer
+    wheel does not load on an older toolkit.
+    """
     if prefer_suffix:
         for _maj, _min, suffix in variants:
             if suffix == prefer_suffix:
@@ -457,7 +464,7 @@ def _select_index_suffix(
     for maj, mino, suffix in variants:
         if (installed_major, installed_minor) >= (maj, mino):
             return suffix
-    return variants[-1][2]
+    return None
 
 
 def get_torch_index_url(torch_version: str | None = None) -> str | None:
@@ -565,6 +572,8 @@ def _get_torch_cuda_url(torch_major: int | None, torch_minor: int | None, torch_
 
     prefer = "cu126" if nvidia_is_mpv_legacy else None
     suffix = _select_index_suffix(cuda_major, cuda_minor, variants, prefer_suffix=prefer)
+    if suffix is None:
+        return "https://download.pytorch.org/whl/cpu"
     return f"https://download.pytorch.org/whl/{suffix}"
 
 
@@ -592,6 +601,8 @@ def _get_torch_rocm_url(torch_major: int | None, torch_minor: int | None, torch_
 
     if variants:
         suffix = _select_index_suffix(rocm_major, rocm_minor, variants)
+        if suffix is None:
+            return "https://download.pytorch.org/whl/cpu"
         return f"https://download.pytorch.org/whl/{suffix}"
 
     # Older torch versions that are no longer in the table keep their last known mapping
