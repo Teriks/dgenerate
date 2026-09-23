@@ -104,6 +104,7 @@ try:
     import dgenerate._patches.hfhub_local_entry_missing_message_patch
     import dgenerate._patches.diffusers_local_files_only_patch
     import dgenerate._patches.diffusers_single_file_config_patch
+    import dgenerate._patches.diffusers_wuerstchen_pipeline_patch
 
 
     from dgenerate.hfhub import (
