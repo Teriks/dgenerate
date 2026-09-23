@@ -1,7 +1,7 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 5.0.0
 
-stabilityai/stable-diffusion-2
+sd2-community/stable-diffusion-2
 --inference-steps 30
 --guidance-scales 8
 --image-seeds "../../media/beach.jpg"

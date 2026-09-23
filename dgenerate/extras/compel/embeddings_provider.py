@@ -4,8 +4,14 @@ from enum import Enum, Flag, auto
 from typing import Callable, Union, Optional, Any
 
 import torch
-from transformers import CLIPTokenizer, CLIPTextModel, CLIPTextModelWithProjection, T5TokenizerFast, T5EncoderModel
+from transformers import CLIPTokenizer, CLIPTextModel, CLIPTextModelWithProjection, T5EncoderModel
 from typing import List, Tuple
+
+try:
+    from transformers import T5TokenizerFast
+except ImportError:
+    # transformers >= 5 no longer has separate fast tokenizer classes
+    from transformers import T5Tokenizer as T5TokenizerFast
 
 __all__ = ["EmbeddingsProvider", "DownweightMode", "ReturnedEmbeddingsType", "SplitLongTextMode"]
 

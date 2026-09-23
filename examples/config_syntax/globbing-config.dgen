@@ -44,7 +44,7 @@
 
 # Simple inline usage
 
-stabilityai/stable-diffusion-2-1
+sd2-community/stable-diffusion-2-1
 --variant fp16
 --dtype float16
 --prompts "In the style of picaso"
@@ -53,7 +53,7 @@ stabilityai/stable-diffusion-2-1
 
 # equivalent
 
-stabilityai/stable-diffusion-2-1
+sd2-community/stable-diffusion-2-1
 --variant fp16
 --dtype float16
 --prompts "In the style of picaso"

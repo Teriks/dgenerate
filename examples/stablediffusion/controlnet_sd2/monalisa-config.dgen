@@ -5,7 +5,7 @@
 # the image for you before using it for generation. This mirrors
 # the image horizontally and then runs canny edge detection on it
 
-stabilityai/stable-diffusion-2-1
+sd2-community/stable-diffusion-2-1
 --inference-steps 40
 --guidance-scales 8
 --gen-seeds 2

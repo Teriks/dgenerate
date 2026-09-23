@@ -33,8 +33,13 @@ from transformers import (
     CLIPTextModelWithProjection,
     CLIPTokenizer,
     T5EncoderModel,
-    T5TokenizerFast,
 )
+
+try:
+    from transformers import T5TokenizerFast
+except ImportError:
+    # transformers >= 5 no longer has separate fast tokenizer classes
+    from transformers import T5Tokenizer as T5TokenizerFast
 
 if is_torch_xla_available():
     import torch_xla.core.xla_model as xm

@@ -48,14 +48,14 @@ global python site packages.
     # possible dgenerate package extras:
 
     # * ncnn
-    # * gpt4all
+    # * xllamacpp (the PyPI wheel is the Metal build on macOS)
     # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
     pipx install dgenerate==@VERSION
 
     # or with extras
 
-    pipx install dgenerate[ncnn,gpt4all,console_ui_opengl]==@VERSION
+    pipx install dgenerate[ncnn,xllamacpp,console_ui_opengl]==@VERSION
 
     # open a new terminal or logout & login
 
@@ -68,7 +68,7 @@ global python site packages.
 
     # or generate images
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --prompts "an astronaut riding a horse" \
     --output-path output \
     --inference-steps 40 \
@@ -108,14 +108,14 @@ of your own creation.
     # possible dgenerate package extras:
 
     # * ncnn
-    # * gpt4all
+    # * xllamacpp (the PyPI wheel is the Metal build on macOS)
     # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
     pip3 install dgenerate==@VERSION
 
     # or with extras
 
-    pip3 install dgenerate[ncnn,gpt4all,console_ui_opengl]==@VERSION
+    pip3 install dgenerate[ncnn,xllamacpp,console_ui_opengl]==@VERSION
 
     # launch the Console UI to test the install.
     # tkinter will be available when you install
@@ -126,7 +126,7 @@ of your own creation.
 
     # or generate images
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --prompts "an astronaut riding a horse" \
     --output-path output \
     --inference-steps 40 \

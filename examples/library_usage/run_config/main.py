@@ -8,7 +8,7 @@ import dgenerate.batchprocess
 config = r"""
 #! dgenerate 5.0.0
 
-stabilityai/stable-diffusion-2 --prompts "a man walking on the moon without a space suit"
+sd2-community/stable-diffusion-2 --prompts "a man walking on the moon without a space suit"
 
 # Print all set template variables
 

@@ -468,7 +468,7 @@ def have_feature(feature_name: str) -> bool:
 
     NOWRAP!
     "ncnn": Do we have ncnn installed?
-    "gpt4all": Do we have gpt4all installed?
+    "xllamacpp": Do we have xllamacpp installed?
     "bitsandbytes": Do we have bitsandbytes installed?
     "flash-attn": Do we have flash-attn installed?
     "xformers": Do we have xformers installed?
@@ -477,7 +477,7 @@ def have_feature(feature_name: str) -> bool:
 
     known_flags = [
         'ncnn',
-        'gpt4all',
+        'xllamacpp',
         'bitsandbytes',
         'flash-attn',
         'xformers',

@@ -68,7 +68,7 @@ class SiglipImageEncoder:
             revision=revision,
             variant=variant,
             subfolder=subfolder if subfolder else '',
-            torch_dtype=torch_dtype,
+            dtype=torch_dtype,
             token=token,
             local_files_only=local_files_only)
 

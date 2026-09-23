@@ -67,7 +67,7 @@ class RankGenEncoder:
                  use_auth_token: str | None = None,
                  torch_dtype: torch.dtype = torch.float32,
                  quantization_config = None,
-                 device_map: str | None ="auto"):
+                 device_map: str | None = None):
         assert model_path in [
             "kalpeshk2011/rankgen-t5-xl-all",
             "kalpeshk2011/rankgen-t5-xl-pg19",
@@ -89,25 +89,24 @@ class RankGenEncoder:
             f"google/t5-v1_1-{self.model_size}",
             cache_dir=cache_dir,
             local_files_only=local_files_only,
-            use_auth_token=use_auth_token,
-            torch_dtype=torch_dtype,
-            device_map=device_map
-
+            token=use_auth_token
         )
 
         self.model = T5EncoderWithProjection.from_pretrained(
             model_path,
             trust_remote_code=True,
             local_files_only=local_files_only,
-            use_auth_token=use_auth_token,
-            torch_dtype=torch_dtype,
-            quantization_config=quantization_config
+            token=use_auth_token,
+            dtype=torch_dtype,
+            quantization_config=quantization_config,
+            device_map=device_map
         )
 
     def to(self, device, **kwargs):
-        if not getattr(self.model, "is_loaded_in_8bit", False):
-            return self.model.to(device, **kwargs)
-        return self.model
+        # A quantized load is already placed by device_map and cannot be moved.
+        if getattr(self.model, "is_loaded_in_8bit", False) or getattr(self.model, "is_loaded_in_4bit", False):
+            return self.model
+        return self.model.to(device, **kwargs)
 
     def eval(self):
         return self.model.eval()
@@ -342,7 +341,7 @@ class LLM4GENPromptWeighter(_promptweighter.PromptWeighter):
             try:
                 self._llm_quantizer_class = _get_quantizer_uri_class(llm_quantizer)
                 self._llm_quantization_config = \
-                    self._llm_quantizer_class.parse(llm_quantizer).to_config(llm_dtype)
+                    self._llm_quantizer_class.parse(llm_quantizer).to_transformers_config(llm_dtype)
             except Exception as e:
                 raise self.argument_error(f'Error loading "llm-quantizer" argument "{llm_quantizer}": {e}') from e
         else:

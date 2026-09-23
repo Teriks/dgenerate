@@ -62,3 +62,6 @@ docs/_build/
 
 # intellij
 *.iml
+
+# local Hugging Face token
+hf_token

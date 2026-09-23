@@ -53,7 +53,7 @@ Examples:
     parser.add_argument('-b', '--branch', type=str,
                         help='Install specific branch (e.g., master)')
     parser.add_argument('-e', '--extras', type=str, nargs='+',
-                        help='Specify extras to install (e.g. --extras bitsandbytes gpt4all')
+                        help='Specify extras to install (e.g. --extras bitsandbytes xllamacpp')
     parser.add_argument('-u', '--uninstall', action='store_true',
                         help='Uninstall dgenerate (no GUI)')
 

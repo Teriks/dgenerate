@@ -18,7 +18,7 @@
 
 # If we wanted we could use --batch-grid-size to put these images into a grid
 
-stabilityai/stable-diffusion-2-inpainting
+sd2-community/stable-diffusion-2-inpainting
 --inference-steps 30
 --guidance-scales 8
 --image-seeds "images: ../../media/dog-on-bench.png, ../../media/beach.jpg;mask=../../media/dog-on-bench-mask.png;resize=1024;aspect=False"

@@ -32,7 +32,7 @@ seed individually.
 
     # 135 uniquely named images will be generated (5x3x3x3)
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --prompts "an astronaut walking on mars" \
     --image-seeds https://upload.wikimedia.org/wikipedia/commons/9/98/Aldrin_Apollo_11_original.jpg \
     --image-seed-strengths 0.2 0.5 0.8 \

@@ -93,6 +93,14 @@ class HfConfigsBuilder:
             "stabilityai/stable-cascade-prior",
         ]
 
+        # Repositories that diffusers still refers to by their original id, but which
+        # have moved on the hub. They are saved under the original id so that diffusers
+        # single file loading finds them, and downloaded from where they live now.
+        self.moved_repositories = {
+            "stabilityai/stable-diffusion-2-1": "sd2-community/stable-diffusion-2-1",
+            "stabilityai/stable-diffusion-2-inpainting": "sd2-community/stable-diffusion-2-inpainting",
+        }
+
     def build(self):
         """Download essential JSON configuration files from Hugging Face repositories."""
         print("Downloading Hugging Face model configuration files...")
@@ -140,10 +148,9 @@ class HfConfigsBuilder:
                 ]
                 
                 snapshot_download(
-                    repo_id=repo,
+                    repo_id=self.moved_repositories.get(repo, repo),
                     allow_patterns=essential_patterns,
-                    local_dir=repo_path,
-                    local_dir_use_symlinks=False  # Use actual files instead of symlinks
+                    local_dir=repo_path
                 )
                 
                 # Remove any .cache directories that might have been created

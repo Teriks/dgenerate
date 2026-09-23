@@ -21,6 +21,7 @@
 
 import diffusers
 import torch
+import transformers
 
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
@@ -120,11 +121,10 @@ class BNBQuantizerUri:
                 f'{_textprocessing.oxford_comma(BNBQuantizerUri._valid_dtypes, "or")}.')
         return s
 
-    def to_config(self, compute_dtype: str | torch.dtype | None = None) -> diffusers.BitsAndBytesConfig:
-
+    def _config_args(self, compute_dtype: str | torch.dtype | None) -> dict:
         compute_dtype = _get_torch_dtype(compute_dtype)
 
-        return diffusers.BitsAndBytesConfig(
+        return dict(
             load_in_4bit=self.bits == 4,
             load_in_8bit=self.bits == 8,
             bnb_4bit_use_double_quant=self.bits4_use_double_quant,
@@ -132,6 +132,26 @@ class BNBQuantizerUri:
             bnb_4bit_quant_storage=self.bits4_quant_storage,
             bnb_4bit_compute_dtype=_types.default(self.bits4_compute_dtype, compute_dtype)
         )
+
+    def to_config(self, compute_dtype: str | torch.dtype | None = None) -> diffusers.BitsAndBytesConfig:
+        """
+        Create a quantization config for diffusers models.
+
+        :param compute_dtype: default 4 bit compute dtype when ``bits4-compute-dtype`` is not specified.
+        :return: ``diffusers.BitsAndBytesConfig``
+        """
+        return diffusers.BitsAndBytesConfig(**self._config_args(compute_dtype))
+
+    def to_transformers_config(self, compute_dtype: str | torch.dtype | None = None) -> transformers.BitsAndBytesConfig:
+        """
+        Create a quantization config for transformers models.
+
+        transformers rejects ``diffusers.BitsAndBytesConfig`` in ``from_pretrained``.
+
+        :param compute_dtype: default 4 bit compute dtype when ``bits4-compute-dtype`` is not specified.
+        :return: ``transformers.BitsAndBytesConfig``
+        """
+        return transformers.BitsAndBytesConfig(**self._config_args(compute_dtype))
 
     @staticmethod
     def parse(uri: _types.Uri) -> 'BNBQuantizerUri':

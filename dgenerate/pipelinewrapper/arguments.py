@@ -1250,7 +1250,7 @@ class DiffusionArguments(_types.SetFromMixin):
         :return: dictionary of argument names with values
         """
         pipeline_args = {}
-        for attr, hint in typing.get_type_hints(self).items():
+        for attr, hint in _types.get_type_hints(self).items():
             val = getattr(self, attr)
             if not attr.startswith('_') and not (callable(val) or val is None):
                 pipeline_args[attr] = val

@@ -376,6 +376,20 @@ def _freeu(pipeline, params: tuple[float, float, float, float] | None):
             pipeline.disable_freeu()
 
 
+_s_cascade_deprecation_warned = False
+
+
+def _warn_s_cascade_deprecated():
+    global _s_cascade_deprecation_warned
+    if _s_cascade_deprecation_warned:
+        return
+    _s_cascade_deprecation_warned = True
+    _messages.warning(
+        'Stable Cascade (--model-type s-cascade) is deprecated and will '
+        'be removed in the next major version of dgenerate.'
+    )
+
+
 class DiffusionPipelineWrapper:
     """
     Monolithic diffusion pipelines wrapper.
@@ -615,6 +629,9 @@ class DiffusionPipelineWrapper:
                     'Only Stable Cascade models support decoders, '
                     'please use model_type "s-cascade" if you are trying to load an Stable Cascade model.'
                 )
+
+        if _enums.model_type_is_s_cascade(model_type):
+            _warn_s_cascade_deprecated()
 
         if transformer_uri:
             if not _enums.model_type_is_sd3(model_type) and not _enums.model_type_is_flux(model_type):

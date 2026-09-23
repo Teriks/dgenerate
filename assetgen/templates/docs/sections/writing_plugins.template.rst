@@ -90,7 +90,7 @@ Reference implementations can be found in the internal prompt upscalers:
 `MagicPrompt <https://github.com/Teriks/dgenerate/blob/@REVISION/dgenerate/promptupscalers/magicpromptupscaler.py>`_,
 `Attention <https://github.com/Teriks/dgenerate/blob/@REVISION/dgenerate/promptupscalers/attentionpromptupscaler.py>`_,
 `Translate <https://github.com/Teriks/dgenerate/blob/@REVISION/dgenerate/promptupscalers/translatepromptupscaler.py>`_, and
-`GPT4All <https://github.com/Teriks/dgenerate/blob/@REVISION/dgenerate/promptupscalers/gpt4allpromptupscaler.py>`_.
+`XllamaCpp <https://github.com/Teriks/dgenerate/blob/@REVISION/dgenerate/promptupscalers/xllamacpppromptupscaler.py>`_.
 
 An example skeleton for writing a prompt upscaler plugin can be found in
 `writing_plugins/prompt_upscaler <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/writing_plugins/prompt_upscaler>`_.

@@ -795,14 +795,17 @@ class TextEncoderUri:
         model_path = _hfhub.download_non_hf_slug_model(self.model)
 
         if self.quantizer:
-            quant_config = _util.get_quantizer_uri_class(
+            quant_uri = _util.get_quantizer_uri_class(
                 self.quantizer,
                 _exceptions.InvalidTextEncoderUriError
-            ).parse(self.quantizer).to_config(torch_dtype)
+            ).parse(self.quantizer)
         else:
-            quant_config = None
+            quant_uri = None
 
         if _hfhub.is_single_file_model_load(model_path):
+            # single file loads quantize with the diffusers auto quantizer
+            quant_config = quant_uri.to_config(torch_dtype) if quant_uri else None
+
             # Ensure these modes are only used with safetensors files
 
             if self.mode in TextEncoderUri._valid_modes():
@@ -1024,11 +1027,13 @@ class TextEncoderUri:
 
             self._enforce_cache_size(estimated_memory_use)
 
+            quant_config = quant_uri.to_transformers_config(torch_dtype) if quant_uri else None
+
             text_encoder = encoder.from_pretrained(
                 model_path,
                 revision=self.revision,
                 variant=variant,
-                torch_dtype=torch_dtype,
+                dtype=torch_dtype,
                 subfolder=self.subfolder if self.subfolder else "",
                 token=use_auth_token,
                 local_files_only=local_files_only,

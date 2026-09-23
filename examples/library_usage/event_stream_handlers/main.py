@@ -8,7 +8,7 @@ dgenerate.messages.errors_to_null()
 # configure a dgenerate render loop
 rl = dgenerate.RenderLoop()
 
-rl.config.model_path = 'stabilityai/stable-diffusion-2'
+rl.config.model_path = 'sd2-community/stable-diffusion-2'
 rl.config.model_type = dgenerate.ModelType.SD
 rl.config.inference_steps = [30]
 rl.config.guidance_scales = [5, 8]

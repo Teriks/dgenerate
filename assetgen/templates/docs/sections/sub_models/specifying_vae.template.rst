@@ -45,7 +45,7 @@ configuration and model file(s).
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --vae "AutoencoderKL;model=stabilityai/sd-vae-ft-mse" \
     --prompts "an astronaut riding a horse" \
     --output-path astronaut \
@@ -62,10 +62,10 @@ of the specified huggingface repository.
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --revision fp16 \
     --dtype float16 \
-    --vae "AutoencoderKL;model=stabilityai/stable-diffusion-2-1;revision=fp16;subfolder=vae" \
+    --vae "AutoencoderKL;model=sd2-community/stable-diffusion-2-1;revision=fp16;subfolder=vae" \
     --prompts "an astronaut riding a horse" \
     --output-path astronaut \
     --inference-steps 50 \
@@ -81,9 +81,9 @@ repository that has variants of the same model, use the named argument ``variant
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --variant fp16 \
-    --vae "AutoencoderKL;model=stabilityai/stable-diffusion-2-1;subfolder=vae;variant=fp16" \
+    --vae "AutoencoderKL;model=sd2-community/stable-diffusion-2-1;subfolder=vae;variant=fp16" \
     --prompts "an astronaut riding a horse" \
     --output-path astronaut \
     --inference-steps 50 \
@@ -97,8 +97,8 @@ If your weights file exists in a subfolder of the repository, use the named argu
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
-    --vae "AutoencoderKL;model=stabilityai/stable-diffusion-2-1;subfolder=vae" \
+    dgenerate sd2-community/stable-diffusion-2-1 \
+    --vae "AutoencoderKL;model=sd2-community/stable-diffusion-2-1;subfolder=vae" \
     --prompts "an astronaut riding a horse" \
     --output-path astronaut \
     --inference-steps 50 \
@@ -113,10 +113,10 @@ accepted values are the same as ``--dtype``, IE: ``float32``, ``float16``, ``aut
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --revision fp16 \
     --dtype float16 \
-    --vae "AutoencoderKL;model=stabilityai/stable-diffusion-2-1;revision=fp16;subfolder=vae;dtype=float16" \
+    --vae "AutoencoderKL;model=sd2-community/stable-diffusion-2-1;revision=fp16;subfolder=vae;dtype=float16" \
     --prompts "an astronaut riding a horse" \
     --output-path astronaut \
     --inference-steps 50 \

@@ -45,7 +45,8 @@ from pathlib import Path
 
 import certifi
 from packaging import version as pkg_version
-from network_installer.platform_detection import detect_gpu
+from network_installer.platform_detection import detect_gpu, is_amd_windows_multiarch_index
+from network_installer.xllamacppinstall import XLLAMACPP_EXTRAS, install_xllamacpp_wheel
 from network_installer.subprocess_utils import run_silent, popen_silent
 
 
@@ -293,6 +294,49 @@ class BasePlatformHandler(ABC):
             self.log_callback(f"Error clearing Python installations: {e}")
             return False
 
+    @staticmethod
+    def _pep440_base_version(spec: str | None) -> str | None:
+        if not spec:
+            return None
+        spec = spec.strip()
+        for prefix in ('==', '>=', '~=', '^'):
+            if spec.startswith(prefix):
+                spec = spec[len(prefix):]
+                break
+        spec = spec.split(',')[0].split(';')[0].strip()
+        return spec or None
+
+    def _preinstall_amd_windows_torch(self, uv_exe: Path, torch_index_url: str) -> bool:
+        """Install AMD multi-arch torch/torchvision before dgenerate (#86)."""
+        analyzer = getattr(self.installer, 'setup_analyzer', None)
+        torch_ver = self._pep440_base_version(analyzer.get_torch_version() if analyzer else None)
+        tv_ver = self._pep440_base_version(
+            analyzer.get_dependency_version('torchvision') if analyzer else None)
+
+        packages = []
+        if torch_ver:
+            packages.append(f'torch[device-all]=={torch_ver}')
+        else:
+            packages.append('torch[device-all]')
+        if tv_ver:
+            packages.append(f'torchvision[device-all]=={tv_ver}')
+        else:
+            packages.append('torchvision[device-all]')
+
+        cmd = [
+            str(uv_exe), 'pip', 'install', '--python', str(self.get_venv_python()),
+            *packages, '--index-url', torch_index_url, '--index-strategy', 'unsafe-best-match'
+        ]
+        self.log_callback(f"Pre-installing AMD Windows torch: {' '.join(cmd)}")
+        result = run_silent(cmd, capture_output=True, text=True, timeout=1800)
+        if result.returncode != 0:
+            self.log_callback("Failed to pre-install AMD Windows torch from the multi-arch index")
+            if result.stderr:
+                self.log_callback(result.stderr)
+            return False
+        self.log_callback("AMD Windows torch[device-all] installed")
+        return True
+
     def install_dgenerate(self, uv_exe: Path, source_dir: str, selected_extras: list[str],
                           torch_index_url: str | None = None) -> bool:
         """
@@ -315,6 +359,12 @@ class BasePlatformHandler(ABC):
                 extras_str = '[' + ','.join(selected_extras) + ']'
                 cmd[cmd.index(source_dir)] = f"{source_dir}{extras_str}"
 
+            # Windows AMD: install torch[device-all] from AMD's multi-arch index first
+            # so the later dgenerate resolve sees torch as already satisfied (#86).
+            if is_amd_windows_multiarch_index(torch_index_url):
+                if not self._preinstall_amd_windows_torch(uv_exe, torch_index_url):
+                    return False
+
             # Add torch index URL if specified
             if torch_index_url:
                 cmd.extend(['--extra-index-url', torch_index_url, '--index-strategy', 'unsafe-best-match'])
@@ -326,6 +376,14 @@ class BasePlatformHandler(ABC):
 
             if result.returncode == 0:
                 self.log_callback("dgenerate installed successfully")
+
+                if any(extra in XLLAMACPP_EXTRAS for extra in selected_extras):
+                    backend = self._install_xllamacpp_backend()
+                    if not backend:
+                        self.log_callback(
+                            "Warning: could not install a GPU xllamacpp wheel. "
+                            "The PyPI build from the extra is still installed."
+                        )
 
                 # Copy windowed stub to bin directory
                 self.log_callback("Copying windowed stub to bin directory...")
@@ -349,6 +407,11 @@ class BasePlatformHandler(ABC):
         except Exception as e:
             self.log_callback(f"Error installing dgenerate: {e}")
             return False
+
+    def _install_xllamacpp_backend(self) -> bool:
+        """Replace the PyPI xllamacpp wheel with CUDA, ROCm, or Vulkan when one applies."""
+        self.log_callback("Selecting the xllamacpp wheel for this machine")
+        return install_xllamacpp_wheel(python=str(self.get_venv_python())) == 0
 
     def _compile_bytecode(self, uv_exe: Path) -> bool:
         """

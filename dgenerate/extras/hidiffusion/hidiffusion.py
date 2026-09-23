@@ -14,10 +14,11 @@ from diffusers.pipelines import auto_pipeline
 from diffusers.pipelines.controlnet.multicontrolnet import MultiControlNetModel
 from diffusers.models import ControlNetModel
 from diffusers.models.attention import _chunked_feed_forward
+import packaging.version
 import warnings
 
 diffusers_version = diffusers.__version__
-if diffusers_version < "0.27.0":
+if packaging.version.parse(diffusers_version) < packaging.version.parse("0.27.0"):
     from diffusers.models.unet_2d_condition import UNet2DConditionOutput
     old_diffusers = True
 else:
@@ -75,8 +76,13 @@ def sdxl_turbo_hidiffusion_key():
     return modified_key
 
 # supported official model. If you use non-official model based on the following models/pipelines, hidiffusion will automatically select the best strategy to fit it.
-supported_official_model = [
-    'runwayml/stable-diffusion-v1-5', 'stabilityai/stable-diffusion-2-1-base',
+_sd15_strategy_models = [
+    'stable-diffusion-v1-5/stable-diffusion-v1-5', 'sd2-community/stable-diffusion-2-1-base',
+    # original repository ids, which may still exist in local caches
+    'runwayml/stable-diffusion-v1-5', 'stabilityai/stable-diffusion-2-1-base'
+]
+
+supported_official_model = _sd15_strategy_models + [
     'stabilityai/stable-diffusion-xl-base-1.0', 'diffusers/stable-diffusion-xl-1.0-inpainting-0.1',
     'stabilityai/sdxl-turbo'
 ]
@@ -1998,7 +2004,7 @@ def apply_hidiffusion(
         for key, module in diffusion_model.named_modules():
             diffusion_model_module_key.append(key)
         if set(sd15_module_key) < set(diffusion_model_module_key):
-            name_or_path = 'runwayml/stable-diffusion-v1-5'
+            name_or_path = 'stable-diffusion-v1-5/stable-diffusion-v1-5'
         elif set(sdxl_module_key) < set(diffusion_model_module_key):
             name_or_path = 'stabilityai/stable-diffusion-xl-base-1.0'
 
@@ -2014,7 +2020,7 @@ def apply_hidiffusion(
     model.info = diffusion_model.info
     hook_diffusion_model(diffusion_model)
 
-    if name_or_path in ['runwayml/stable-diffusion-v1-5', 'stabilityai/stable-diffusion-2-1-base']:
+    if name_or_path in _sd15_strategy_models:
         modified_key = sd15_hidiffusion_key()
         for key, module in diffusion_model.named_modules():
             if apply_raunet and key in modified_key['down_module_key']:
@@ -2088,7 +2094,7 @@ def apply_hidiffusion(
             module.model = 'sdxl_turbo'
             module.info = diffusion_model.info
     else:
-        raise Exception(f'{model.name_or_path} is not a supported model. HiDiffusion now only supports runwayml/stable-diffusion-v1-5, stabilityai/stable-diffusion-2-1-base, stabilityai/stable-diffusion-xl-base-1.0, stabilityai/sdxl-turbo, diffusers/stable-diffusion-xl-1.0-inpainting-0.1 and their derivative models/pipelines.')
+        raise Exception(f'{model.name_or_path} is not a supported model. HiDiffusion now only supports stable-diffusion-v1-5/stable-diffusion-v1-5, sd2-community/stable-diffusion-2-1-base, stabilityai/stable-diffusion-xl-base-1.0, stabilityai/sdxl-turbo, diffusers/stable-diffusion-xl-1.0-inpainting-0.1 and their derivative models/pipelines.')
     return model
 
 

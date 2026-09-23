@@ -28,7 +28,7 @@ If you do not set an output size, the size of the input animation will be used.
 
     # Use a GIF of a man riding a horse to create an animation of an astronaut riding a horse.
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --prompts "an astronaut riding a horse" \
     --image-seeds https://upload.wikimedia.org/wikipedia/commons/7/7b/Muybridge_race_horse_~_big_transp.gif \
     --image-seed-strengths 0.5 \

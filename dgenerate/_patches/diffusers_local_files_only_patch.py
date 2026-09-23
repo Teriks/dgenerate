@@ -8,9 +8,17 @@ from typing import Optional, Dict, Any
 import diffusers.utils.hub_utils as hub_utils
 import diffusers.models.modeling_utils as modeling_utils
 from huggingface_hub import model_info, snapshot_download
+from huggingface_hub.errors import HfHubHTTPError
 
+try:
+    from httpx import HTTPError as _HttpxHTTPError
+except ImportError:
+    _HttpxHTTPError = HfHubHTTPError
 
-from requests import HTTPError
+from requests import HTTPError as _RequestsHTTPError
+
+# huggingface_hub < 1.0 raises requests errors, >= 1.0 raises httpx errors
+_HTTP_ERRORS = (HfHubHTTPError, _HttpxHTTPError, _RequestsHTTPError)
 
 
 _ORIG_GET_CHECKPOINT_SHARD_FILES = hub_utils._get_checkpoint_shard_files
@@ -46,6 +54,13 @@ def _patched_get_checkpoint_shard_files(
             index = json.loads(f.read())
 
     original_shard_filenames = sorted(set(index["weight_map"].values()))
+    for shard_filename in original_shard_filenames:
+        if os.path.basename(shard_filename) != shard_filename:
+            raise ValueError(
+                f"The shard filename {shard_filename!r} in the checkpoint index contains a path separator or a "
+                "parent-directory reference, which is not allowed. Shard filenames must be plain filenames located "
+                "in the model directory."
+            )
     sharded_metadata = index["metadata"]
     sharded_metadata["all_checkpoint_keys"] = list(index["weight_map"].keys())
     sharded_metadata["weight_map"] = index["weight_map"].copy()
@@ -105,7 +120,7 @@ def _patched_get_checkpoint_shard_files(
 
     # We have already dealt with RepositoryNotFoundError and RevisionNotFoundError when getting the index, so
     # we don't have to catch them here. We have also dealt with EntryNotFoundError.
-    except HTTPError as e:
+    except _HTTP_ERRORS as e:
         raise EnvironmentError(
             f"We couldn't connect to '{hub_utils.HUGGINGFACE_CO_RESOLVE_ENDPOINT}' to load {pretrained_model_name_or_path}. You should try"
             " again after checking your internet connection."

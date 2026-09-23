@@ -19,12 +19,16 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import typing
+
 import torch
 
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
-from dgenerate.extras.sdnq import SDNQConfig
 from dgenerate.pipelinewrapper.uris import exceptions as _exceptions
+
+if typing.TYPE_CHECKING:
+    from sdnq import SDNQConfig
 
 _sdnq_quantizer_uri_parser = _textprocessing.ConceptUriParser(
     'SDNQ Quantizer',
@@ -138,7 +142,17 @@ class SDNQQuantizerUri:
         self.quantized_matmul = quantized_matmul
         self.quantized_matmul_conv = quantized_matmul_conv
 
-    def to_config(self, compute_dtype: str | torch.dtype | None = None) -> SDNQConfig:
+    def to_config(self, compute_dtype: str | torch.dtype | None = None) -> 'SDNQConfig':
+        """
+        Create a quantization config for diffusers models.
+
+        :param compute_dtype: unused by SDNQ, accepted for interface compatibility.
+        :return: ``sdnq.SDNQConfig``
+        """
+        # importing sdnq registers it with the diffusers and transformers auto quantizer mappings,
+        # it is imported lazily because it logs warnings about optional kernels at import time
+        from sdnq import SDNQConfig
+
         return SDNQConfig(
             weights_dtype=self.type,
             group_size=self.group_size,
@@ -146,6 +160,15 @@ class SDNQQuantizerUri:
             use_quantized_matmul=self.quantized_matmul,
             use_quantized_matmul_conv=self.quantized_matmul_conv
         )
+
+    def to_transformers_config(self, compute_dtype: str | torch.dtype | None = None) -> 'SDNQConfig':
+        """
+        Create a quantization config for transformers models.
+
+        :param compute_dtype: unused by SDNQ, accepted for interface compatibility.
+        :return: ``sdnq.SDNQConfig``, which is accepted by both diffusers and transformers.
+        """
+        return self.to_config(compute_dtype)
 
     @staticmethod
     def parse(uri: _types.Uri) -> 'SDNQQuantizerUri':

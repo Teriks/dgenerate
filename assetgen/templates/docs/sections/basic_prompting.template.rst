@@ -15,7 +15,7 @@ or ``horse wearing a saddle`` etc.
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --prompts "an astronaut riding a horse; horse wearing a saddle" \
     --gen-seeds 5 \
     --output-path astronaut \
@@ -42,7 +42,7 @@ All using 50 inference steps, and 10 for guidance scale value.
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --prompts "an astronaut riding a horse" "an astronaut riding a donkey" \
     --gen-seeds 5 \
     --output-path astronaut \

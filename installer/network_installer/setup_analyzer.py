@@ -394,10 +394,6 @@ class SetupAnalyzer:
             
             return True
         
-        elif extra_name == 'gpt4all_cuda':
-            # GPT4All CUDA requires NVIDIA GPU
-            return gpu_info.has_nvidia and gpu_info.cuda_version
-        
         elif extra_name == 'triton_windows':
             # Triton Windows requires NVIDIA GPU
             return gpu_info.has_nvidia
@@ -424,17 +420,9 @@ class SetupAnalyzer:
         recommended = []
 
         for extra in available_extras.keys():
-            if extra == 'gpt4all' and 'gpt4all_cuda' in available_extras:
-                # Only recommend gpt4all if CUDA is not available
-                if not (gpu_info.has_nvidia and gpu_info.cuda_version):
-                    recommended.append(extra)
-                    self._log(f"Recommending gpt4all (CPU-only) - no CUDA available")
-                else:
-                    self._log(f"Not recommending gpt4all (CPU-only) - CUDA available, will recommend gpt4all_cuda instead")
-            elif extra == 'gpt4all_cuda':
-                # Always recommend if available (compatibility already checked)
+            if extra == 'xllamacpp':
                 recommended.append(extra)
-                self._log(f"Recommending gpt4all_cuda - CUDA {gpu_info.cuda_version} detected")
+                self._log("Recommending xllamacpp - wheel backend is selected after install")
             elif extra == 'xformers':
                 # Always recommend if available (compatibility already checked)
                 recommended.append(extra)
@@ -443,6 +431,14 @@ class SetupAnalyzer:
                 # Always recommend if available (compatibility already checked)
                 recommended.append(extra)
                 self._log(f"Recommending triton_windows - NVIDIA GPU detected")
+            elif extra == 'bitsandbytes':
+                recommended.append(extra)
+                if getattr(gpu_info, 'has_intel', False) and gpu_info.xpu_version:
+                    self._log("Recommending bitsandbytes - Intel XPU detected")
+                elif gpu_info.has_nvidia and gpu_info.cuda_version:
+                    self._log(f"Recommending bitsandbytes - NVIDIA CUDA {gpu_info.cuda_version} detected")
+                else:
+                    self._log("Recommending bitsandbytes")
             else:
                 # For all other extras, recommend them
                 recommended.append(extra)
@@ -455,8 +451,7 @@ class SetupAnalyzer:
             'bitsandbytes': 'Quantization library for faster inference with reduced memory usage',
             'xformers': 'Memory-efficient attention for NVIDIA CUDA GPUs (Linux/Windows)',
             'ncnn': 'High-performance neural network inference framework (Used for ncnn-upscaler image processor)',
-            'gpt4all': 'Local large language model support (CPU-only)',
-            'gpt4all_cuda': 'CUDA-accelerated GPT4All for NVIDIA GPUs (Linux/Windows)',
+            'xllamacpp': 'Local GGUF models. The installer replaces the PyPI wheel with CUDA, ROCm, or Vulkan when this machine can use one',
             'console_ui_opengl': 'OpenGL accelerated Console UI image viewer.',
             'triton_windows': 'Triton support for Windows (NVIDIA)'
         }

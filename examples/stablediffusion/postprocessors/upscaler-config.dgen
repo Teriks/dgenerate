@@ -3,7 +3,7 @@
 
 \set upscaler_model https://github.com/JingyunLiang/SwinIR/releases/download/v0.0/001_classicalSR_DIV2K_s48w8_SwinIR-M_x4.pth
 
-stabilityai/stable-diffusion-2
+sd2-community/stable-diffusion-2
 --inference-steps 40
 --guidance-scales 8
 --gen-seeds 2

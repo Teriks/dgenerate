@@ -294,15 +294,15 @@ def _exclude_requires(name):
         requires.pop(name)
 
 
-_pyinstaller_requires = 'pyinstaller==6.15.0'
-_sphinx_requires = 'sphinx-rtd-theme==3.0.2'
-_poetry_requires = 'poetry~=2.1.4'
+_pyinstaller_requires = 'pyinstaller==6.22.3'
+_sphinx_requires = 'sphinx-rtd-theme==3.1.0'
+_poetry_requires = 'poetry~=2.5.1'
 
 _pyopengltk_requires = 'pyopengltk' + requires.pop('pyopengltk')
 _PyOpenGL_requires = 'pyopengl' + requires.pop('pyopengl')
 _PyOpenGL_accelerate_requires = 'pyopengl-accelerate' + requires.pop('pyopengl-accelerate')
 _ncnn_requires = 'ncnn' + requires.pop('ncnn')
-_gpt4all_requires_spec = requires.pop('gpt4all')
+_xllamacpp_requires_spec = requires.pop('xllamacpp')
 
 extras: dict[str, list[str]] = {
     'ncnn': [_ncnn_requires],
@@ -311,7 +311,10 @@ extras: dict[str, list[str]] = {
         _PyOpenGL_requires,
         _PyOpenGL_accelerate_requires
     ],
-    'gpt4all': ['gpt4all' + _gpt4all_requires_spec],
+    # PyPI wheel: CPU on Linux/Windows, Metal on macOS.
+    # CUDA, ROCm, and Vulkan wheels are the same package name on other indexes.
+    # installer/network_installer/xllamacppinstall.py replaces this wheel when a GPU build applies.
+    'xllamacpp': ['xllamacpp' + _xllamacpp_requires_spec],
     'dev': [_sphinx_requires,
             _poetry_requires],
     'readthedocs': _sphinx_requires
@@ -339,7 +342,6 @@ if dgenerate_platform != 'linux':
     _exclude_requires('triton')
 
 if dgenerate_platform == 'darwin':
-    _exclude_requires('bitsandbytes')
     _exclude_requires('xformers')  # xFormers doesn't support macOS
 
 if dgenerate_platform != 'windows':
@@ -353,9 +355,6 @@ if 'xformers' in requires:
     _xformers_requires_spec = requires.pop('xformers')
     if dgenerate_platform in {'linux', 'windows'}:
         extras['xformers'] = ['xformers' + _xformers_requires_spec]
-
-if dgenerate_platform in {'linux', 'windows'}:
-    extras['gpt4all_cuda'] = ['gpt4all[cuda]' + _gpt4all_requires_spec]
 
 if dgenerate_platform == 'windows':
     extras['triton_windows'] = ['triton-windows' + requires.pop('triton-windows')]

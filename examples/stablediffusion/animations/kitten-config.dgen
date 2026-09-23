@@ -4,7 +4,7 @@
 
 # Strange but interesting upscaling effect on a gif
 
-stabilityai/stable-diffusion-2
+sd2-community/stable-diffusion-2
 --inference-steps 50
 --prompts "A small orange kitten looking up at the camera, 4k, high resolution, real; fake"
 --image-seed-strengths 0.3

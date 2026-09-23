@@ -4,14 +4,17 @@ from .prune import *
 
 # Try to import _chunked_feed_forward from diffusers
 try:
-    from diffusers.models.activations import _chunked_feed_forward
+    from diffusers.models.attention import _chunked_feed_forward
 except ImportError:
     try:
-        from diffusers.models.attention_processor import _chunked_feed_forward
+        from diffusers.models.activations import _chunked_feed_forward
     except ImportError:
-        # Define a fallback if not available
-        def _chunked_feed_forward(ff, norm_hidden_states, chunk_dim, chunk_size):
-            return ff(norm_hidden_states)
+        try:
+            from diffusers.models.attention_processor import _chunked_feed_forward
+        except ImportError:
+            # Define a fallback if not available
+            def _chunked_feed_forward(ff, norm_hidden_states, chunk_dim, chunk_size):
+                return ff(norm_hidden_states)
 
 def patch_unet_transformer_block(block_class: Type[torch.nn.Module], mode: str = 'cache_merge') -> Type[torch.nn.Module]:
     class ToMeBlock(block_class):

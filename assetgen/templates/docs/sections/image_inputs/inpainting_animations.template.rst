@@ -24,7 +24,7 @@ them together.
 
     # A video with a static inpaint mask over the entire video
 
-    dgenerate stabilityai/stable-diffusion-2-inpainting \
+    dgenerate sd2-community/stable-diffusion-2-inpainting \
     --prompts "an astronaut riding a horse" \
     --image-seeds "my-animation.mp4;my-static-mask.png" \
     --output-path inpaint \
@@ -34,37 +34,37 @@ them together.
     # from the right video. The two animated inputs do not have to be the same file format
     # you can mask videos with gif/webp and vice versa
 
-    dgenerate stabilityai/stable-diffusion-2-inpainting \
+    dgenerate sd2-community/stable-diffusion-2-inpainting \
     --prompts "an astronaut riding a horse" \
     --image-seeds "my-animation.mp4;my-animation-mask.mp4" \
     --output-path inpaint \
     --animation-format mp4
 
-    dgenerate stabilityai/stable-diffusion-2-inpainting \
+    dgenerate sd2-community/stable-diffusion-2-inpainting \
     --prompts "an astronaut riding a horse" \
     --image-seeds "my-animation.mp4;my-animation-mask.gif" \
     --output-path inpaint \
     --animation-format mp4
 
-    dgenerate stabilityai/stable-diffusion-2-inpainting \
+    dgenerate sd2-community/stable-diffusion-2-inpainting \
     --prompts "an astronaut riding a horse" \
     --image-seeds "my-animation.gif;my-animation-mask.gif" \
     --output-path inpaint \
     --animation-format mp4
 
-    dgenerate stabilityai/stable-diffusion-2-inpainting \
+    dgenerate sd2-community/stable-diffusion-2-inpainting \
     --prompts "an astronaut riding a horse" \
     --image-seeds "my-animation.gif;my-animation-mask.webp" \
     --output-path inpaint \
     --animation-format mp4
 
-    dgenerate stabilityai/stable-diffusion-2-inpainting \
+    dgenerate sd2-community/stable-diffusion-2-inpainting \
     --prompts "an astronaut riding a horse" \
     --image-seeds "my-animation.webp;my-animation-mask.gif" \
     --output-path inpaint \
     --animation-format mp4
 
-    dgenerate stabilityai/stable-diffusion-2-inpainting \
+    dgenerate sd2-community/stable-diffusion-2-inpainting \
     --prompts "an astronaut riding a horse" \
     --image-seeds "my-animation.gif;my-animation-mask.mp4" \
     --output-path inpaint \
@@ -75,19 +75,19 @@ them together.
     # Use a static image seed and mask it with every frame from an
     # Animated mask file
 
-    dgenerate stabilityai/stable-diffusion-2-inpainting \
+    dgenerate sd2-community/stable-diffusion-2-inpainting \
     --prompts "an astronaut riding a horse" \
     --image-seeds "my-static-image-seed.png;my-animation-mask.mp4" \
     --output-path inpaint \
     --animation-format mp4
 
-    dgenerate stabilityai/stable-diffusion-2-inpainting \
+    dgenerate sd2-community/stable-diffusion-2-inpainting \
     --prompts "an astronaut riding a horse" \
     --image-seeds "my-static-image-seed.png;my-animation-mask.gif" \
     --output-path inpaint \
     --animation-format mp4
 
-    dgenerate stabilityai/stable-diffusion-2-inpainting \
+    dgenerate sd2-community/stable-diffusion-2-inpainting \
     --prompts "an astronaut riding a horse" \
     --image-seeds "my-static-image-seed.png;my-animation-mask.webp" \
     --output-path inpaint \

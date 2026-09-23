@@ -164,7 +164,7 @@ syntax described in: `Batching Input Images and Inpaint Masks`_
     # mirror the second image horizontally, the + indicates that
     # we are skipping processing the first image
 
-    dgenerate stabilityai/stable-diffusion-2 \
+    dgenerate sd2-community/stable-diffusion-2 \
     --inference-steps 30 \
     --guidance-scales 8 \
     --image-seeds "images: examples/media/horse2.jpeg, examples/media/horse2.jpeg" \
@@ -177,7 +177,7 @@ syntax described in: `Batching Input Images and Inpaint Masks`_
 
     # Now with inpainting
 
-    dgenerate stabilityai/stable-diffusion-2 \
+    dgenerate sd2-community/stable-diffusion-2 \
     --inference-steps 30 \
     --guidance-scales 8 \
     --image-seeds "images: examples/media/horse1.jpg, examples/media/horse1.jpg;mask=examples/media/horse1-mask.jpg, examples/media/horse1-mask.jpg" \

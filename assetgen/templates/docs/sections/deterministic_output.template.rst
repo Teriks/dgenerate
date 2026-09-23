@@ -49,7 +49,7 @@ The following command demonstrates manually specifying two different seeds to tr
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --prompts "an astronaut riding a horse" \
     --seeds 1234567890 9876543210 \
     --output-path astronaut \
