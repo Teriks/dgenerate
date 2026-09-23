@@ -29,7 +29,6 @@ import diffusers
 from dgenerate.extras import compel as _compel
 import dgenerate.extras.compel.convenience_wrappers as _compel_c
 import torch
-from dgenerate.pipelinewrapper import pipelines as _pipelines
 
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.enums as _enums
@@ -291,14 +290,6 @@ class CompelPromptWeighter(_promptweighter.PromptWeighter):
         neg_conditioning = None
         pos_pooled = None
         neg_pooled = None
-
-        # Check if sequential offload is enabled - compel requires text encoders to be loaded
-        # which is incompatible with sequential offload where models are loaded on-demand
-        if _pipelines.is_sequential_cpu_offload_enabled(pipeline):
-            raise _exceptions.PromptWeightingUnsupported(
-                f'The compel prompt weighter is not compatible with --model-sequential-offload '
-                f'because it requires text encoders to be fully loaded before pipeline execution. '
-                f'Use --model-cpu-offload instead.')
 
         self.move_text_encoders(pipeline, self.device)
 

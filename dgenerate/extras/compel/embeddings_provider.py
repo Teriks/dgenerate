@@ -19,6 +19,39 @@ CompatibleTokenizer = Union[CLIPTokenizer, T5TokenizerFast]
 CompatibleTextEncoder = Union[CLIPTextModel, CLIPTextModelWithProjection, T5EncoderModel]
 
 
+def text_encoder_device(module: torch.nn.Module) -> torch.device:
+    """
+    Device prompt tensors should live on.
+
+    Sequential offload leaves parameters on the ``meta`` device and only
+    materializes them for a forward pass. Placing embeddings on that device
+    drops their data, so use the offload hook's execution device instead.
+    """
+    seen = set()
+    pending = [module]
+    while pending:
+        current = pending.pop()
+        ident = id(current)
+        if ident in seen:
+            continue
+        seen.add(ident)
+        hook = getattr(current, '_hf_hook', None)
+        execution_device = getattr(hook, 'execution_device', None) if hook is not None else None
+        if execution_device is not None and getattr(execution_device, 'type', None) != 'meta':
+            return torch.device(execution_device)
+        pending.extend(current.children())
+
+    try:
+        device = module.device
+    except Exception:
+        device = None
+    if isinstance(device, str):
+        device = torch.device(device)
+    if device is None or getattr(device, 'type', None) == 'meta':
+        return torch.device('cpu')
+    return device
+
+
 class DownweightMode(Enum):
     REMOVE = 0  # Remove downweighted tokens from the token sequence (shifts all subsequent tokens)
     MASK = 1   # Default: Leave tokens in-place but mask them out using attention masking
@@ -81,7 +114,9 @@ class EmbeddingsProvider:
         self.padding_attention_mask_value = padding_attention_mask_value
         self.downweight_mode = downweight_mode
         self.returned_embeddings_type = returned_embeddings_type
-        self.device = device if device else self.text_encoder.device
+        if device is None or getattr(torch.device(device), 'type', None) == 'meta':
+            device = text_encoder_device(self.text_encoder)
+        self.device = device
         self.split_long_text_mode = split_long_text_mode
         self.clip_skip = clip_skip
 
@@ -268,10 +303,11 @@ class EmbeddingsProvider:
         )
         #print(f"assembled all tokens into tensor of shape {batch_z.shape}")
 
+        placed = batch_z.to(text_encoder_device(self.text_encoder), dtype=self.text_encoder.dtype)
         if should_return_tokens:
-            return batch_z.to(self.text_encoder.device, dtype=self.text_encoder.dtype), batch_tokens
+            return placed, batch_tokens
         else:
-            return batch_z.to(self.text_encoder.device, dtype=self.text_encoder.dtype)
+            return placed
 
     def get_token_ids(self, texts: List[str], include_start_and_end_markers: bool = True, padding: str = 'do_not_pad',
                       truncation_override: Optional[bool] = None) -> List[List[int]]:
@@ -290,44 +326,39 @@ class EmbeddingsProvider:
         """
         # for args documentation of self.tokenizer() see ENCODE_KWARGS_DOCSTRING in tokenization_utils_base.py
         # (part of `transformers` lib)
+        if padding not in ['do_not_pad', 'max_length']:
+            raise ValueError(f"unsupported padding mode: {padding}")
+
         truncation = self.truncate_to_model_max_length if truncation_override is None else truncation_override
+        # Never ask the tokenizer to pad. padding='max_length' can return 78 tokens
+        # for a 77-token CLIP window, which SDXL then rejects.
         token_ids_list = self.tokenizer(
             texts,
             truncation=truncation,
-            padding=padding,
+            padding='do_not_pad',
             return_tensors=None,  # just give me lists of ints
         )['input_ids']
 
         result = []
         for token_ids in token_ids_list:
-            # trim eos/bos + any trailing padding
-            if token_ids[0] == self.tokenizer.bos_token_id:
+            # trim one eos/bos. Padding is applied below, after markers are restored.
+            if token_ids and token_ids[0] == self.tokenizer.bos_token_id:
                 token_ids = token_ids[1:]
-            if padding == 'max_length':
-                # Remove EOS and padding tokens from the end
-                while token_ids and token_ids[-1] in [self.tokenizer.pad_token_id, self.tokenizer.eos_token_id]:
-                    token_ids = token_ids[:-1]
-            else:
-                while token_ids and token_ids[-1] in [self.tokenizer.pad_token_id, self.tokenizer.eos_token_id]:
-                    token_ids = token_ids[:-1]
+            if token_ids and token_ids[-1] == self.tokenizer.eos_token_id:
+                token_ids = token_ids[:-1]
             # pad for textual inversions with vector length >1
             if self.textual_inversion_manager is not None:
                 token_ids = self.textual_inversion_manager.expand_textual_inversion_token_ids_if_necessary(token_ids)
+                if truncation:
+                    token_ids = token_ids[:self.max_token_count - len(self.bos_sequence) - len(self.eos_sequence)]
 
             # add back eos/bos if requested
             if include_start_and_end_markers:
                 token_ids = self.bos_sequence + token_ids + self.eos_sequence
-                
-            # Ensure we don't exceed max length (safety check)
-            if len(token_ids) > self.tokenizer.model_max_length:
-                # Truncate from the middle, keeping BOS and EOS tokens
-                if include_start_and_end_markers:
-                    bos_len = len(self.bos_sequence)
-                    eos_len = len(self.eos_sequence)
-                    max_content_len = self.tokenizer.model_max_length - bos_len - eos_len
-                    token_ids = self.bos_sequence + token_ids[bos_len:bos_len + max_content_len] + self.eos_sequence
-                else:
-                    token_ids = token_ids[:self.tokenizer.model_max_length]
+
+            if padding == 'max_length' and len(token_ids) % self.max_token_count != 0:
+                padding_token_count = self.max_token_count - (len(token_ids) % self.max_token_count)
+                token_ids = token_ids + [self.tokenizer.pad_token_id] * padding_token_count
 
             result.append(token_ids)
 
@@ -398,13 +429,13 @@ class EmbeddingsProvider:
 
         def find_split_point(tokens_text: List[str], mode: SplitLongTextMode) -> Optional[int]:
             for index, token in reversed(list(enumerate(tokens_text[:max_length]))):
-                if mode == SplitLongTextMode.WORDS and token.endswith('</w>'):
+                if SplitLongTextMode.WORDS in mode and token.endswith('</w>'):
                     #print('found word end at', index, ':', tokens_text[max(0, index-5):index])
                     return index
-                elif mode == SplitLongTextMode.PHRASES and token in phrase_separating_punctuation:
+                elif SplitLongTextMode.PHRASES in mode and token in phrase_separating_punctuation:
                     #print('found phrase end at', index, ':', tokens_text[max(0, index-5):index])
                     return index
-                elif mode == SplitLongTextMode.SENTENCES and token in sentence_separating_punctuation:
+                elif SplitLongTextMode.SENTENCES in mode and token in sentence_separating_punctuation:
                     #print('found sentence end at', index, ':', tokens_text[max(0, index-5):index])
                     return index
             return None
