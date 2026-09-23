@@ -48,7 +48,7 @@ global python site packages.
     # possible dgenerate package extras:
 
     # * ncnn
-    # * xllamacpp (the PyPI wheel is the Metal build on macOS)
+    # * xllamacpp (used for the llama prompt upscaler plugin; the PyPI wheel is the Metal build on macOS)
     # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
     pipx install dgenerate==@VERSION
@@ -108,7 +108,7 @@ of your own creation.
     # possible dgenerate package extras:
 
     # * ncnn
-    # * xllamacpp (the PyPI wheel is the Metal build on macOS)
+    # * xllamacpp (used for the llama prompt upscaler plugin; the PyPI wheel is the Metal build on macOS)
     # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
     pip3 install dgenerate==@VERSION

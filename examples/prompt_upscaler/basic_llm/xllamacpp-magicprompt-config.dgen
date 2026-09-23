@@ -4,10 +4,10 @@
 # show plugin help
 
 
-\prompt_upscaler_help xllamacpp
+\prompt_upscaler_help llama
 
 
-# Use The original MagicPrompt model with xllamacpp
+# Use The original MagicPrompt model with the llama plugin
 
 
 \set llm_model https://huggingface.co/QuantFactory/MagicPrompt-Stable-Diffusion-GGUF/resolve/main/MagicPrompt-Stable-Diffusion.Q4_0.gguf
@@ -24,5 +24,5 @@ stabilityai/stable-diffusion-xl-base-1.0
 --output-path xllamacpp-magicprompt
 --output-size 1024x1024
 --prompt-weighter sd-embed
---prompt-upscaler dynamicprompts xllamacpp;model={{ llm_model }};context-tokens=1024;prepend-prompt=True
+--prompt-upscaler dynamicprompts llama;model={{ llm_model }};context-tokens=1024;prepend-prompt=True
 --prompts "a {horse|cow|dog} in a field on a cloudy day in the mountains"

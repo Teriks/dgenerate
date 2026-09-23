@@ -64,7 +64,7 @@ def _free_localhost_port() -> int:
 
 class XllamaCppPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupscaler.PromptUpscaler):
     """
-    Upscale prompts with a GGUF model through ``xllamacpp``.
+    Upscale prompts with a GGUF model through llama.cpp.
 
     The "part" argument indicates which parts of the prompt to act on,
     possible values are: "both", "positive", and "negative".
@@ -112,7 +112,7 @@ class XllamaCppPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptu
     file of extra substitutions applied to the model output.
     """
 
-    NAMES = ['xllamacpp']
+    NAMES = ['llama', 'xllamacpp']
 
     HIDE_ARGS = ['device']
 
@@ -156,7 +156,7 @@ class XllamaCppPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptu
 
         if xllamacpp is None:
             raise _exceptions.PromptUpscalerError(
-                'Cannot use the xllamacpp prompt upscaler without xllamacpp being installed. '
+                'Cannot use the llama prompt upscaler without xllamacpp being installed. '
                 'Install it with: pip install dgenerate[xllamacpp]'
             )
 
