@@ -121,6 +121,7 @@ def _schema_filter_imageprocessors(schema: dict):
 
 def _schema_filter_promptupscalers(schema: dict):
     if importlib.util.find_spec('xllamacpp') is None:
+        schema.pop('llama', None)
         schema.pop('xllamacpp', None)
     return schema
 

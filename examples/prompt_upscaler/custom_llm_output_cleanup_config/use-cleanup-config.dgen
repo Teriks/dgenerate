@@ -30,7 +30,7 @@
     --output-path output
     --output-size 1024x1024
     --prompt-weighter sd-embed
-    --prompt-upscaler xllamacpp;model={{ llm_model }};cleanup-config={{ cleanup_config }};smart-truncate=True;remove-prompt=True
+    --prompt-upscaler llama;model={{ llm_model }};cleanup-config={{ cleanup_config }};smart-truncate=True;remove-prompt=True
     --prompts "Write a terse description of a random cat, in the form of an image generation prompt. Only give me the prompt text with no quotes around it."
 
 {% endfor %}

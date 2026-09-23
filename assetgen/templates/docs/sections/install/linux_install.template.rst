@@ -74,43 +74,75 @@ Install dgenerate
     # possible dgenerate package extras:
 
     # * ncnn
-    # * xllamacpp
-    #   The GPU and CPU wheels share one version, so the GPU index must be --index-url.
-    #   CUDA 13.2+:
-    #   pip install "dgenerate[xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu132 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple
-    #   CUDA 12.8 through 12.9: /cu128 and the cu126 torch index.
-    #   CUDA 13.0 through 13.1: /cu128 and the cu130 torch index.
-    #   ROCm 7.2: --index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-7.2.4 --extra-index-url https://download.pytorch.org/whl/rocm7.2/ --extra-index-url https://pypi.org/simple
-    #   Older NVIDIA or Intel: /vulkan instead of /cu132.
+    # * xllamacpp (used for the llama prompt upscaler plugin)
     # * bitsandbytes
     # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
-    # The commands below use the CUDA 13.0 torch index.
+    # The commands below use the CUDA 13.2 torch index.
+    # CUDA 13.0 through 13.1 use --extra-index-url https://download.pytorch.org/whl/cu130/
     # CUDA 12.6 through 12.9, and Maxwell (5.x), Pascal (6.x), or Volta (7.0), use
     # --extra-index-url https://download.pytorch.org/whl/cu126/
 
     # install with just support for torch
 
     pipx install dgenerate \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu130/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu132/"
 
     # With NCNN upscaler support (extra)
 
     pipx install dgenerate[ncnn] \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu130/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu132/"
+
+    # The GPU and CPU wheels share one version, so the GPU index is --index-url.
+
+    # CUDA 13.2+
+
+    pipx install "dgenerate[xllamacpp]" \
+    --pip-args "--index-url https://xorbitsai.github.io/xllamacpp/whl/cu132 --extra-index-url https://download.pytorch.org/whl/cu132/ --extra-index-url https://pypi.org/simple"
+
+    # CUDA 12.8 through 12.9
+
+    pipx install "dgenerate[xllamacpp]" \
+    --pip-args "--index-url https://xorbitsai.github.io/xllamacpp/whl/cu128 --extra-index-url https://download.pytorch.org/whl/cu126/ --extra-index-url https://pypi.org/simple"
+
+    # CUDA 13.0 through 13.1
+
+    pipx install "dgenerate[xllamacpp]" \
+    --pip-args "--index-url https://xorbitsai.github.io/xllamacpp/whl/cu128 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple"
+
+    # Older NVIDIA or Intel
+
+    pipx install "dgenerate[xllamacpp]" \
+    --pip-args "--index-url https://xorbitsai.github.io/xllamacpp/whl/vulkan --extra-index-url https://download.pytorch.org/whl/cu126/ --extra-index-url https://pypi.org/simple"
 
     # If you want a specific version
 
     pipx install dgenerate==@VERSION \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu130/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu132/"
 
     # You can install without pipx into your own environment like so
 
-    pip3 install dgenerate==@VERSION --extra-index-url https://download.pytorch.org/whl/cu130/
+    pip3 install dgenerate==@VERSION --extra-index-url https://download.pytorch.org/whl/cu132/
 
     # Or with NCNN
 
-    pip3 install dgenerate[ncnn]==@VERSION --extra-index-url https://download.pytorch.org/whl/cu130/
+    pip3 install dgenerate[ncnn]==@VERSION --extra-index-url https://download.pytorch.org/whl/cu132/
+
+    # CUDA 13.2+
+
+    pip3 install "dgenerate[xllamacpp]==@VERSION" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu132 --extra-index-url https://download.pytorch.org/whl/cu132/ --extra-index-url https://pypi.org/simple
+
+    # CUDA 12.8 through 12.9
+
+    pip3 install "dgenerate[xllamacpp]==@VERSION" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu128 --extra-index-url https://download.pytorch.org/whl/cu126/ --extra-index-url https://pypi.org/simple
+
+    # CUDA 13.0 through 13.1
+
+    pip3 install "dgenerate[xllamacpp]==@VERSION" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu128 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple
+
+    # Older NVIDIA or Intel
+
+    pip3 install "dgenerate[xllamacpp]==@VERSION" --index-url https://xorbitsai.github.io/xllamacpp/whl/vulkan --extra-index-url https://download.pytorch.org/whl/cu126/ --extra-index-url https://pypi.org/simple
 
 
 It is recommended to install dgenerate with pipx if you are just intending
@@ -129,15 +161,32 @@ virtual environment you can do so like this:
 
     # Install with pip into the environment (editable, for development)
 
-    # The commands below use the CUDA 13.0 torch index.
+    # The commands below use the CUDA 13.2 torch index.
+    # CUDA 13.0 through 13.1 use --extra-index-url https://download.pytorch.org/whl/cu130/
     # CUDA 12.6 through 12.9, and Maxwell (5.x), Pascal (6.x), or Volta (7.0), use
     # --extra-index-url https://download.pytorch.org/whl/cu126/
 
-    pip3 install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu130/
+    pip3 install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu132/
 
     # Install with pip into the environment (non-editable)
 
-    pip3 install . --extra-index-url https://download.pytorch.org/whl/cu130/
+    pip3 install . --extra-index-url https://download.pytorch.org/whl/cu132/
+
+    # CUDA 13.2+
+
+    pip3 install --editable ".[dev,xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu132 --extra-index-url https://download.pytorch.org/whl/cu132/ --extra-index-url https://pypi.org/simple
+
+    # CUDA 12.8 through 12.9
+
+    pip3 install --editable ".[dev,xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu128 --extra-index-url https://download.pytorch.org/whl/cu126/ --extra-index-url https://pypi.org/simple
+
+    # CUDA 13.0 through 13.1
+
+    pip3 install --editable ".[dev,xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu128 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple
+
+    # Older NVIDIA or Intel
+
+    pip3 install --editable ".[dev,xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/vulkan --extra-index-url https://download.pytorch.org/whl/cu126/ --extra-index-url https://pypi.org/simple
 
 
 Run ``dgenerate`` to generate images:
@@ -217,8 +266,7 @@ Install dgenerate
     #!/usr/bin/env bash
 
     # possible dgenerate package extras: ncnn, xllamacpp
-    # ROCm 7.2 xllamacpp, one command:
-    # pip install "dgenerate[xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-7.2.4 --extra-index-url https://download.pytorch.org/whl/rocm7.2/ --extra-index-url https://pypi.org/simple
+    # xllamacpp is used for the llama prompt upscaler plugin
 
     # install with just support for torch
 
@@ -229,6 +277,11 @@ Install dgenerate
 
     pipx install dgenerate[ncnn] \
     --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm7.2/"
+
+    # ROCm 7.2
+
+    pipx install "dgenerate[xllamacpp]" \
+    --pip-args "--index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-7.2.4 --extra-index-url https://download.pytorch.org/whl/rocm7.2/ --extra-index-url https://pypi.org/simple"
 
     # If you want a specific version
 
@@ -251,6 +304,10 @@ Install dgenerate
     # Or with NCNN
 
     pip3 install dgenerate[ncnn]==@VERSION --extra-index-url https://download.pytorch.org/whl/rocm7.2/
+
+    # ROCm 7.2
+
+    pip3 install "dgenerate[xllamacpp]==@VERSION" --index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-7.2.4 --extra-index-url https://download.pytorch.org/whl/rocm7.2/ --extra-index-url https://pypi.org/simple
 
 
     # you can attempt to install the pre-release bitsandbytes multiplatform version like so:
