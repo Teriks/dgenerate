@@ -62,7 +62,6 @@ Install dgenerate:
     #   CUDA 13.0 through 13.1: the same command with /cu128 and the cu130 torch index.
     #   Older NVIDIA, AMD, or Intel Arc: /vulkan instead of /cu132.
     # * bitsandbytes
-    # * xformers (NVIDIA CUDA only - memory-efficient attention)
     # * triton_windows
     # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
@@ -88,11 +87,6 @@ Install dgenerate:
     pipx install dgenerate[ncnn]==@VERSION ^
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu130/"
 
-    # with memory-efficient attention (NVIDIA CUDA only)
-
-    pipx install dgenerate[xformers]==@VERSION ^
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu130/"
-
     # You can install without pipx into your own environment like so
 
     pip install dgenerate==@VERSION --extra-index-url https://download.pytorch.org/whl/cu130/
@@ -100,10 +94,6 @@ Install dgenerate:
     # Or with NCNN
 
     pip install dgenerate[ncnn]==@VERSION --extra-index-url https://download.pytorch.org/whl/cu130/
-
-    # Or with xFormers (NVIDIA CUDA only)
-
-    pip install dgenerate[xformers]==@VERSION --extra-index-url https://download.pytorch.org/whl/cu130/
 
 
 It is recommended to install dgenerate with pipx if you are just intending
@@ -131,7 +121,6 @@ a cloned repository like this:
     #   CUDA 13.0 through 13.1: the same command with /cu128 and the cu130 torch index.
     #   Older NVIDIA, AMD, or Intel Arc: /vulkan instead of /cu132.
     # * bitsandbytes
-    # * xformers (NVIDIA CUDA only - memory-efficient attention)
     # * triton_windows
     # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
@@ -144,10 +133,6 @@ a cloned repository like this:
     # Install with pip into the environment, include NCNN
 
     pip install --editable .[dev,ncnn] --extra-index-url https://download.pytorch.org/whl/cu130/
-
-    # Install with pip into the environment, include xFormers (NVIDIA CUDA only)
-
-    pip install --editable .[dev,xformers] --extra-index-url https://download.pytorch.org/whl/cu130/
 
 
 Run ``dgenerate`` to generate images:

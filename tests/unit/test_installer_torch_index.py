@@ -8,12 +8,16 @@ if str(_INSTALLER_DIR) not in sys.path:
 
 from network_installer.platform_detection import (  # noqa: E402
     AMD_WINDOWS_MULTIARCH_INDEX,
+    GPUInfo,
     _get_torch_cuda_url,
     _get_torch_rocm_url,
     _get_torch_xpu_url,
     _parse_nvidia_smi_cuda_version,
+    cap_torch_version_for_xformers,
     is_amd_windows_multiarch_index,
+    xformers_version_overrides,
 )
+from network_installer.setup_analyzer import SetupAnalyzer  # noqa: E402
 
 
 class TestInstallerTorchIndex(unittest.TestCase):
@@ -74,6 +78,42 @@ class TestInstallerTorchIndex(unittest.TestCase):
         self.assertTrue(is_amd_windows_multiarch_index(AMD_WINDOWS_MULTIARCH_INDEX))
         self.assertFalse(is_amd_windows_multiarch_index('https://download.pytorch.org/whl/rocm7.2'))
         self.assertFalse(is_amd_windows_multiarch_index(None))
+
+    def test_xformers_caps_torch_newer_than_210(self):
+        self.assertEqual(cap_torch_version_for_xformers('2.14.0'), '2.10.0')
+        self.assertEqual(cap_torch_version_for_xformers('2.11.0'), '2.10.0')
+        self.assertEqual(cap_torch_version_for_xformers('==2.14.0'), '2.10.0')
+        self.assertEqual(cap_torch_version_for_xformers('2.10.0'), '2.10.0')
+        self.assertEqual(cap_torch_version_for_xformers('2.10.1'), '2.10.1')
+        self.assertEqual(cap_torch_version_for_xformers('2.8.0'), '2.8.0')
+        self.assertIsNone(cap_torch_version_for_xformers(None))
+
+    def test_xformers_overrides_only_when_torch_is_newer(self):
+        self.assertIsNone(xformers_version_overrides('2.8.0', '==0.23.0'))
+        self.assertIsNone(xformers_version_overrides('2.10.0', '==0.25.0'))
+        self.assertEqual(
+            xformers_version_overrides('2.14.0', '==0.29.0'),
+            {'torch': '2.10.0', 'torchvision': '0.25.0'},
+        )
+        self.assertEqual(
+            xformers_version_overrides('2.14.0', '==0.29.0', '==2.14.0'),
+            {'torch': '2.10.0', 'torchvision': '0.25.0', 'torchaudio': '2.10.0'},
+        )
+
+    def test_xformers_uses_capped_torch_index(self):
+        analyzer = SetupAnalyzer.__new__(SetupAnalyzer)
+        analyzer.torch_version = '2.14.0'
+        analyzer.log_callback = lambda message: None
+        # torch 2.14 would select cu132 here; xformers caps that pin at 2.10,
+        # which publishes a wheel on cu130.
+        cuda_133 = GPUInfo(has_nvidia=True, cuda_version='13.3')
+        cuda_130 = GPUInfo(has_nvidia=True, cuda_version='13.0')
+        self.assertTrue(analyzer._is_extra_compatible('xformers', cuda_133))
+        self.assertTrue(analyzer._is_extra_compatible('xformers', cuda_130))
+
+        analyzer.torch_version = '2.7.1'
+        cuda_118 = GPUInfo(has_nvidia=True, cuda_version='11.8')
+        self.assertFalse(analyzer._is_extra_compatible('xformers', cuda_118))
 
 
 if __name__ == '__main__':

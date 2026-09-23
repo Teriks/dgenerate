@@ -37,7 +37,12 @@ from importlib.resources import files
 from tkinter import ttk, filedialog
 
 from network_installer.github_client import GitHubClient
-from network_installer.platform_detection import get_platform_info, detect_gpu, get_torch_index_url
+from network_installer.platform_detection import (
+    cap_torch_version_for_xformers,
+    detect_gpu,
+    get_platform_info,
+    get_torch_index_url,
+)
 from network_installer.setup_analyzer import SetupAnalyzer
 
 
@@ -881,6 +886,13 @@ class DGenerateInstallerGUI:
                 # Get PyTorch index URL based on torch version (now available after setup analysis)
                 torch_version = installer.setup_analyzer.get_torch_version()
                 self._log(f"DEBUG: Extracted torch version from setup.py: {torch_version}")
+                if 'xformers' in self.selected_extras:
+                    capped_torch = cap_torch_version_for_xformers(torch_version)
+                    if capped_torch and capped_torch != torch_version:
+                        self._log(
+                            f"xformers is selected, so torch {torch_version} is capped at {capped_torch}"
+                        )
+                        torch_version = capped_torch
                 torch_index_url = get_torch_index_url(torch_version)
                 if torch_index_url:
                     self._log(f"Using PyTorch index: {torch_index_url}")

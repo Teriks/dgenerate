@@ -348,6 +348,93 @@ _ROCM_INDEX_TABLE: dict[tuple, list[tuple[int, int, str]]] = {
 }
 
 
+# xFormers 0.0.35 is built for torch 2.10. Newer torch wheels do not load it.
+# torchvision 0.25.0 is the build published with torch 2.10.0.
+XFORMERS_MAX_TORCH = (2, 10)
+XFORMERS_TORCH_VERSION = "2.10.0"
+XFORMERS_TORCHVISION_VERSION = "0.25.0"
+XFORMERS_TORCHAUDIO_VERSION = "2.10.0"
+
+
+def _torch_release(torch_version: str | None) -> tuple[int, ...] | None:
+    if not torch_version:
+        return None
+    spec = torch_version.strip()
+    for prefix in ('==', '>=', '~=', '^'):
+        if spec.startswith(prefix):
+            spec = spec[len(prefix):]
+            break
+    spec = spec.split(',')[0].split(';')[0].strip()
+    if not spec:
+        return None
+    try:
+        return pkg_version.parse(spec).release
+    except Exception:
+        return None
+
+
+def cap_torch_version_for_xformers(torch_version: str | None) -> str | None:
+    """
+    Torch version to install when the xformers extra is selected.
+
+    Pins newer than 2.10 are capped at 2.10.0. Older pins are left unchanged,
+    because those releases ship an xformers build for that torch.
+    """
+    release = _torch_release(torch_version)
+    if release is None:
+        return None
+    major = release[0]
+    minor = release[1] if len(release) > 1 else 0
+    if (major, minor) > XFORMERS_MAX_TORCH:
+        return XFORMERS_TORCH_VERSION
+    spec = torch_version.strip()
+    for prefix in ('==', '>=', '~=', '^'):
+        if spec.startswith(prefix):
+            spec = spec[len(prefix):]
+            break
+    return spec.split(',')[0].split(';')[0].strip() or None
+
+
+def xformers_version_overrides(
+        torch_version: str | None,
+        torchvision_version: str | None = None,
+        torchaudio_version: str | None = None,
+) -> dict[str, str] | None:
+    """
+    Exact pins to pass to ``uv pip install --overrides`` when xformers is selected.
+
+    ``None`` means the release's torch pin is already 2.10 or older.
+    """
+    capped = cap_torch_version_for_xformers(torch_version)
+    if not capped or capped == _bare_version(torch_version):
+        return None
+    overrides = {'torch': capped}
+    if torchvision_version is None or _version_newer_than(torchvision_version, XFORMERS_TORCHVISION_VERSION):
+        overrides['torchvision'] = XFORMERS_TORCHVISION_VERSION
+    if torchaudio_version and _version_newer_than(torchaudio_version, XFORMERS_TORCHAUDIO_VERSION):
+        overrides['torchaudio'] = XFORMERS_TORCHAUDIO_VERSION
+    return overrides
+
+
+def _bare_version(spec: str | None) -> str | None:
+    if not spec:
+        return None
+    text = spec.strip()
+    for prefix in ('==', '>=', '~=', '^'):
+        if text.startswith(prefix):
+            text = text[len(prefix):]
+            break
+    return text.split(',')[0].split(';')[0].strip() or None
+
+
+def _version_newer_than(left: str | None, right: str) -> bool:
+    left_release = _torch_release(left)
+    right_release = _torch_release(right)
+    if left_release is None or right_release is None:
+        return False
+    return left_release > right_release
+
+
 def is_amd_windows_multiarch_index(url: str | None) -> bool:
     """Return True if url is AMD's Windows multi-arch torch index."""
     return bool(url) and "repo.amd.com/rocm/whl-multi-arch" in url

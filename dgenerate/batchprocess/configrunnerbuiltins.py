@@ -471,7 +471,6 @@ def have_feature(feature_name: str) -> bool:
     "xllamacpp": Do we have xllamacpp installed?
     "bitsandbytes": Do we have bitsandbytes installed?
     "flash-attn": Do we have flash-attn installed?
-    "xformers": Do we have xformers installed?
     "triton": Do we have triton installed?
     """
 
@@ -480,7 +479,6 @@ def have_feature(feature_name: str) -> bool:
         'xllamacpp',
         'bitsandbytes',
         'flash-attn',
-        'xformers',
         'triton',
     ]
 

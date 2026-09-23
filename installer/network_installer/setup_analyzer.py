@@ -358,12 +358,15 @@ class SetupAnalyzer:
         
         # Platform and GPU-specific compatibility checks
         if extra_name == 'xformers':
-            # xFormers requires NVIDIA CUDA and compatible PyTorch index
+            # Current releases do not ship this extra. Older releases still do.
+            # Selecting it caps torch at 2.10, so judge the index from that pin
+            # when the release itself wants something newer.
             if not (gpu_info.has_nvidia and gpu_info.cuda_version):
                 return False
             
             # Check if this would result in cu118 PyTorch (incompatible with xformers)
-            torch_version = self.get_torch_version()
+            from network_installer.platform_detection import cap_torch_version_for_xformers
+            torch_version = cap_torch_version_for_xformers(self.get_torch_version())
             if torch_version:
                 try:
                     from network_installer.platform_detection import _get_torch_cuda_url
@@ -384,8 +387,13 @@ class SetupAnalyzer:
                                                          cuda_major, cuda_minor,
                                                          gpu_info.nvidia_is_mpv_legacy)
                     
-                    # Don't show xformers if it would use cu118 (compatibility issues)
-                    if torch_index_url and 'cu118' in torch_index_url:
+                    # Those indexes do not publish an xformers wheel for this torch pin.
+                    if (
+                        not torch_index_url
+                        or torch_index_url.rstrip('/').endswith('/cpu')
+                        or 'cu118' in torch_index_url
+                        or 'cu132' in torch_index_url
+                    ):
                         return False
                     
                 except Exception:

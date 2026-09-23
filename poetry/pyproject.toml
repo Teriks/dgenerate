@@ -69,7 +69,6 @@ pyopengltk = "0.0.4"
 pyopengl = "3.1.10"
 pyopengl-accelerate = "3.1.10"
 triton-windows = "3.8.0.post28"
-xformers = "0.0.35"
 
 [tool.poetry.scripts]
 dgenerate = 'dgenerate.__init__:main'

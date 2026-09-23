@@ -83,7 +83,6 @@ Install dgenerate
     #   ROCm 7.2: --index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-7.2.4 --extra-index-url https://download.pytorch.org/whl/rocm7.2/ --extra-index-url https://pypi.org/simple
     #   Older NVIDIA or Intel: /vulkan instead of /cu132.
     # * bitsandbytes
-    # * xformers (NVIDIA CUDA only - memory-efficient attention)
     # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
     # The commands below use the CUDA 13.0 torch index.
@@ -100,11 +99,6 @@ Install dgenerate
     pipx install dgenerate[ncnn] \
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu130/"
 
-    # With memory-efficient attention (NVIDIA CUDA only)
-
-    pipx install dgenerate[xformers] \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu130/"
-
     # If you want a specific version
 
     pipx install dgenerate==@VERSION \
@@ -117,10 +111,6 @@ Install dgenerate
     # Or with NCNN
 
     pip3 install dgenerate[ncnn]==@VERSION --extra-index-url https://download.pytorch.org/whl/cu130/
-
-    # Or with xFormers (NVIDIA CUDA only)
-
-    pip3 install dgenerate[xformers]==@VERSION --extra-index-url https://download.pytorch.org/whl/cu130/
 
 
 It is recommended to install dgenerate with pipx if you are just intending
@@ -144,10 +134,6 @@ virtual environment you can do so like this:
     # --extra-index-url https://download.pytorch.org/whl/cu126/
 
     pip3 install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu130/
-
-    # Install with pip into the environment (editable, with xFormers for NVIDIA CUDA)
-
-    pip3 install --editable .[dev,xformers] --extra-index-url https://download.pytorch.org/whl/cu130/
 
     # Install with pip into the environment (non-editable)
 

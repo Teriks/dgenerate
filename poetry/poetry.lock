@@ -5852,23 +5852,6 @@ files = [
 ]
 
 [[package]]
-name = "xformers"
-version = "0.0.35"
-description = "XFormers: A collection of composable Transformer building blocks."
-optional = false
-python-versions = ">=3.9"
-groups = ["main"]
-files = [
-    {file = "xformers-0.0.35-py39-none-manylinux_2_28_x86_64.whl", hash = "sha256:ccc73c7db9890224ab05f5fb60e2034f9e6c8672a10be0cf00e95cbbae3eda7c"},
-    {file = "xformers-0.0.35-py39-none-win_amd64.whl", hash = "sha256:57381ce3cbb79b593e6b62cb20a937885345fad2796de2aa6fbb66c033601179"},
-    {file = "xformers-0.0.35.tar.gz", hash = "sha256:f7fc183a58e4bf0e2ae339a18fb1b1d4a37854c0f2545b4f360fef001646ab76"},
-]
-
-[package.dependencies]
-numpy = "*"
-torch = ">=2.10"
-
-[[package]]
 name = "xllamacpp"
 version = "2026.9.11063"
 description = "Python bindings for llama.cpp with native server APIs and prebuilt CPU and GPU wheels"
@@ -6211,4 +6194,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,!=3.14.1,<3.15"
-content-hash = "374a8a238027cf71318944b316ab42ee312de2e4e73b11d93fcdd16e422dd739"
+content-hash = "1489b78675355bd15922ccb6742e155bd7801c5b40b01d19739732a9745e31ae"
