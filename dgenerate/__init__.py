@@ -82,6 +82,14 @@ if os.environ.get('DGENERATE_BACKEND_WARNINGS', '0') == '0':
     warnings.filterwarnings('ignore', module='ctranslate2')
     logging.getLogger("diffusers.modular_pipelines").setLevel(logging.CRITICAL)
 
+    class _SuppressImageProcessorFastDeprecation(logging.Filter):
+        def filter(self, record: logging.LogRecord) -> bool:
+            # Diffusers still imports removed *ImageProcessorFast aliases.
+            return "suffix for image processors has been removed" not in record.getMessage()
+
+    logging.getLogger("transformers.utils.import_utils").addFilter(
+        _SuppressImageProcessorFastDeprecation())
+
 try:
     from dgenerate.resources import __version__
 
@@ -377,8 +385,6 @@ def _reset_hf_constants():
                     )
                 )
             )
-            hf_constants.hf_cache_home = hf_constants.HF_HOME  # for backward compatibility
-
             default_cache_path = os.path.join(hf_constants.HF_HOME, "hub")
             default_assets_cache_path = os.path.join(hf_constants.HF_HOME, "assets")
 
@@ -426,13 +432,22 @@ def _reset_hf_constants():
         # Reset transformers constants
         if 'transformers.utils.hub' in sys.modules:
             import transformers.utils.hub as tf_hub
+            from huggingface_hub.constants import HF_HOME
 
-            # Update transformers cache path
-            tf_hub.default_cache_path = os.path.join(
-                os.getenv("HF_HOME", os.path.join(os.path.expanduser("~"), ".cache", "huggingface")),
-                "hub"
-            )
-            tf_hub.TRANSFORMERS_CACHE = os.getenv("TRANSFORMERS_CACHE", tf_hub.default_cache_path)
+            # transformers < 5 keeps its own copy of the hub cache path,
+            # transformers >= 5 reads huggingface_hub.constants at call time
+            if hasattr(tf_hub, 'default_cache_path'):
+                tf_hub.default_cache_path = os.path.join(HF_HOME, "hub")
+            if hasattr(tf_hub, 'TRANSFORMERS_CACHE'):
+                tf_hub.TRANSFORMERS_CACHE = os.getenv("TRANSFORMERS_CACHE", os.path.join(HF_HOME, "hub"))
+
+            modules_cache = os.getenv("HF_MODULES_CACHE", os.path.join(HF_HOME, "modules"))
+            if hasattr(tf_hub, 'HF_MODULES_CACHE'):
+                tf_hub.HF_MODULES_CACHE = modules_cache
+            if 'transformers.dynamic_module_utils' in sys.modules:
+                import transformers.dynamic_module_utils as tf_dynamic_modules
+                if hasattr(tf_dynamic_modules, 'HF_MODULES_CACHE'):
+                    tf_dynamic_modules.HF_MODULES_CACHE = modules_cache
 
             dgenerate.messages.log(
                 'Reset transformers constants after HF_HOME change',

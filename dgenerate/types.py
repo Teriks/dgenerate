@@ -492,6 +492,19 @@ def partial_deep_copy_container(container: list | tuple | dict | set):
         return container
 
 
+def get_type_hints(obj: typing.Any) -> dict[str, typing.Any]:
+    """
+    Return evaluated type hints for a class or a struct-like instance.
+
+    Python 3.14 ``typing.get_type_hints`` accepts modules, classes, and callables.
+    Passing an instance raises ``TypeError``. Hints for an instance are taken from
+    its class.
+    """
+    if not isinstance(obj, type):
+        obj = type(obj)
+    return typing.get_type_hints(obj)
+
+
 def type_check_struct(obj,
                       attribute_namer: typing.Callable[[str], str] | None = None):
     """
@@ -566,7 +579,7 @@ def type_check_struct(obj,
                 f'{a_namer(name)} must be type {fullname(value_type)}, value was: {value}')
 
     # Detect some incorrect types
-    for attr, hint in typing.get_type_hints(obj).items():
+    for attr, hint in get_type_hints(obj).items():
         v = getattr(obj, attr)
         if is_optional(hint):
             if is_type_or_optional(hint, tuple):

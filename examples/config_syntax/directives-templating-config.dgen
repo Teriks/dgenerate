@@ -56,7 +56,7 @@
 # An invocation sets various template variables related to its
 # execution once it is finished running
 
-stabilityai/stable-diffusion-2-1 --prompts {{ my_prompt }} --gen-seeds 5
+sd2-community/stable-diffusion-2-1 --prompts {{ my_prompt }} --gen-seeds 5
 
 
 # Print a quoted filename of the last image produced by the last invocation
@@ -106,7 +106,7 @@ stabilityai/stable-diffusion-2-1 --prompts {{ my_prompt }} --gen-seeds 5
 # via "last_prompt", which can be formatted properly for reuse
 # by using the function "format_prompt"
 
-stabilityai/stable-diffusion-2-1 --prompts {{ format_prompt(last(last_prompts)) }}
+sd2-community/stable-diffusion-2-1 --prompts {{ format_prompt(last(last_prompts)) }}
 
 # You can get only the positive or negative part if you want via the "positive"
 # and "negative" properties on a prompt object, these attributes are not
@@ -114,14 +114,14 @@ stabilityai/stable-diffusion-2-1 --prompts {{ format_prompt(last(last_prompts)) 
 # dgenerate template function "quote" which will shell quote any special
 # characters that the argument parser is not going to understand
 
-stabilityai/stable-diffusion-2-1 --prompts {{ quote(last(last_prompts).positive) }}
+sd2-community/stable-diffusion-2-1 --prompts {{ quote(last(last_prompts).positive) }}
 
 # "last_prompts" returns all the prompts used in the last invocation as a list
 # the "format_prompt" function can also work on a list
 
-stabilityai/stable-diffusion-2-1 --prompts "prompt 1" "prompt 2" "prompt 3"
+sd2-community/stable-diffusion-2-1 --prompts "prompt 1" "prompt 2" "prompt 3"
 
-stabilityai/stable-diffusion-2-1 --prompts {{ format_prompt(last_prompts) }}
+sd2-community/stable-diffusion-2-1 --prompts {{ format_prompt(last_prompts) }}
 
 
 # Execute additional config with full templating.
@@ -130,7 +130,7 @@ stabilityai/stable-diffusion-2-1 --prompts {{ format_prompt(last_prompts) }}
 # that all whitespace within is preserved including newlines
 
 {% for image in last_images %}
-    stabilityai/stable-diffusion-2-1 --image-seeds {{ quote(image) }} --prompts {{ my_prompt }}
+    sd2-community/stable-diffusion-2-1 --image-seeds {{ quote(image) }} --prompts {{ my_prompt }}
 {% endfor %}
 
 
@@ -141,7 +141,7 @@ stabilityai/stable-diffusion-2-1 --prompts {{ format_prompt(last_prompts) }}
 # a config file.
 
 {% for image in last_images %}
-    stabilityai/stable-diffusion-2-1
+    sd2-community/stable-diffusion-2-1
     --image-seeds {{ quote(image) }}
     --prompts {{ my_prompt }}
 {% endfor %}
@@ -149,7 +149,7 @@ stabilityai/stable-diffusion-2-1 --prompts {{ format_prompt(last_prompts) }}
 
 # The above are both basically equivalent to this
 
-stabilityai/stable-diffusion-2-1 --image-seeds {{ quote(last_images) }} --prompts {{ my_prompt }}
+sd2-community/stable-diffusion-2-1 --image-seeds {{ quote(last_images) }} --prompts {{ my_prompt }}
 
 
 # You can save modules from the main pipeline used in the last invocation
@@ -158,7 +158,7 @@ stabilityai/stable-diffusion-2-1 --image-seeds {{ quote(last_images) }} --prompt
 # module names to save to the variable name, this is an advanced usage
 # and requires some understanding of the diffusers library to utilize correctly
 
-stabilityai/stable-diffusion-2-1
+sd2-community/stable-diffusion-2-1
 --variant fp16
 --dtype float16
 --prompts "an astronaut walking on the moon"

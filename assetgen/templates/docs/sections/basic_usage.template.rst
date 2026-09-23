@@ -4,7 +4,7 @@ Basic Usage
 The example below attempts to generate an astronaut riding a horse using 5 different
 random seeds, 3 different inference steps values, and 3 different guidance scale values.
 
-It utilizes the ``stabilityai/stable-diffusion-2-1`` model repo on `Hugging Face <https://huggingface.co/stabilityai/stable-diffusion-2-1>`_.
+It utilizes the ``sd2-community/stable-diffusion-2-1`` model repo on `Hugging Face <https://huggingface.co/sd2-community/stable-diffusion-2-1>`_.
 
 45 uniquely named images will be generated ``(5 x 3 x 3)``
 
@@ -17,7 +17,7 @@ in the current working directory, if the path that is specified does not exist t
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --prompts "an astronaut riding a horse" \
     --gen-seeds 5 \
     --output-path astronaut \
@@ -32,7 +32,7 @@ Loading models from huggingface blob links is also supported:
 
     #!/usr/bin/env bash
 
-    dgenerate https://huggingface.co/stabilityai/stable-diffusion-2-1/blob/main/v2-1_768-ema-pruned.safetensors \
+    dgenerate https://huggingface.co/sd2-community/stable-diffusion-2-1/blob/main/v2-1_768-ema-pruned.safetensors \
     --prompts "an astronaut riding a horse" \
     --gen-seeds 5 \
     --output-path astronaut \

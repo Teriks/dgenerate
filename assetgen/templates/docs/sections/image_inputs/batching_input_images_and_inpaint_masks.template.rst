@@ -16,7 +16,7 @@ Here is an example of ``img2img`` usage:
     # each of the images are resized to 1024 so they match
     # in dimension, which is a requirement for batching
 
-    dgenerate stabilityai/stable-diffusion-2 \
+    dgenerate sd2-community/stable-diffusion-2 \
     --inference-steps 30 \
     --guidance-scales 8 \
     --image-seeds "images: examples/media/earth.jpg, examples/media/mountain.png;1024" \
@@ -30,7 +30,7 @@ Here is an example of ``img2img`` usage:
     # The --batch-size must be divisible by the number of provided images
     # this results in 4 images being produced, 2 variations of each input image
 
-    dgenerate stabilityai/stable-diffusion-2 \
+    dgenerate sd2-community/stable-diffusion-2 \
     --inference-steps 30 \
     --guidance-scales 8 \
     --image-seeds "images: examples/media/earth.jpg, examples/media/mountain.png;1024" \
@@ -61,7 +61,7 @@ And an ``inpainting`` example:
     # The same logic for --batch-size still applies as mentioned
     # in the img2img example
 
-    dgenerate stabilityai/stable-diffusion-2-inpainting \
+    dgenerate sd2-community/stable-diffusion-2-inpainting \
     --inference-steps 30 \
     --guidance-scales 8 \
     --image-seeds "images: ../../media/dog-on-bench.png, ../../media/beach.jpg;mask=../../media/dog-on-bench-mask.png;resize=1024;aspect=False" \

@@ -1,25 +1,26 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 5.0.0
 
-# Use Phi-3 abliterated as a prompt text enhancer with gpt4all
+# Use Phi-3 abliterated as a prompt text enhancer with xllamacpp
 
-# Any LLM that gpt4all can run, can be used.
+# Any GGUF model that xllamacpp can load can be used.
 
 # The "preamble" text is inserted at the beginning of your prompt, and then removed from the LLMs output
 
-# This is less sophisticated than using the "system" argument of the gpt4all plugin to add a
+# This is less sophisticated than using the "system" argument of the xllamacpp plugin to add a
 # system instruction to the prompt, but seems to work well for this model (sometimes)
 # You can try tweaking "preamble" or "system" to achieve better results, though a "system"
 # prompt has a high chance of generating rejection responses
 
-# Use dynamicprompts before the gpt4all plugin to generate combinatorial variations using dynamicprompts syntax
+# Use dynamicprompts before the xllamacpp plugin to generate combinatorial variations using dynamicprompts syntax
 
-# the "compute" argument already defaults to "cpu" and not that of --device, specifying it here for clarity
+# "gpu-layers" defaults to "auto" (as many layers as fit in VRAM).
+# "all" offloads every layer. 0 keeps the model on the CPU.
 
 # the default model is also already Phi-3 abliterated for now
 
 
-\prompt_upscaler_help gpt4all
+\prompt_upscaler_help xllamacpp
 
 
 \set llm_model 'https://huggingface.co/failspy/Phi-3-mini-128k-instruct-abliterated-v3-GGUF/resolve/main/Phi-3-mini-128k-instruct-abliterated-v3_q4.gguf'
@@ -34,8 +35,8 @@ stabilityai/stable-diffusion-xl-base-1.0
 --guidance-scales 5
 --clip-skips 0
 --gen-seeds 1
---output-path gpt4all-phi3
+--output-path xllamacpp-phi3
 --output-size 1024x1024
 --prompt-weighter sd-embed
---prompt-upscaler dynamicprompts gpt4all;model={{ llm_model }};preamble={{ llm_preamble }};compute='cpu'
+--prompt-upscaler dynamicprompts xllamacpp;model={{ llm_model }};preamble={{ llm_preamble }}
 --prompts "a {horse|cow|dog} in a field on a cloudy day in the mountains"

@@ -215,7 +215,7 @@ class Prompt:
         if forbidden_checker and not callable(forbidden_checker):
             raise ValueError('forbidden_checker must be a callable function')
 
-        hints = typing.get_type_hints(on_object)
+        hints = _types.get_type_hints(on_object)
 
         def is_forbidden(name, value):
             return forbidden_checker(name, value) if forbidden_checker else False

@@ -3,7 +3,7 @@
 
 # Write the variations as separate files to the output directory with the suffix _image_N
 
-stabilityai/stable-diffusion-2
+sd2-community/stable-diffusion-2
 --inference-steps 40
 --guidance-scales 8
 --output-size 512

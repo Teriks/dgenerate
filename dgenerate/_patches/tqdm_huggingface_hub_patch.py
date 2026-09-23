@@ -300,6 +300,9 @@ class ThreadSafeTqdm(tqdm.tqdm):
         super().close()
 
 
+_original_get_progress_bar_context = huggingface_hub.file_download._get_progress_bar_context
+
+
 def _get_progress_bar_context(
         *,
         desc: str,
@@ -309,9 +312,31 @@ def _get_progress_bar_context(
         unit: str = "B",
         unit_scale: bool = True,
         name: typing.Optional[str] = None,
+        tqdm_class: typing.Optional[type] = None,
         _tqdm_bar: typing.Optional[tqdm.tqdm] = None,
+        **kwargs
 ) -> typing.ContextManager[tqdm.tqdm]:
     global _main_thread_id
+
+    if tqdm_class is not None or kwargs:
+        # huggingface_hub >= 1.0 passes its own progress bar class for
+        # aggregated multi-file downloads, defer to it unless this thread
+        # has been marked as one that should not display progress
+        if threading.get_ident() != _main_thread_id and \
+                getattr(threading.current_thread(), '_dgenerate_no_tqdm_thread', False):
+            return tqdm.tqdm(disable=True)
+        return _original_get_progress_bar_context(
+            desc=desc,
+            log_level=log_level,
+            total=total,
+            initial=initial,
+            unit=unit,
+            unit_scale=unit_scale,
+            name=name,
+            tqdm_class=tqdm_class,
+            _tqdm_bar=_tqdm_bar,
+            **kwargs
+        )
 
     if _tqdm_bar is not None:
         # If on main thread, register and track the provided bar
@@ -332,7 +357,7 @@ def _get_progress_bar_context(
         )
     else:
 
-        if threading.current_thread()._dgenerate_no_tqdm_thread:
+        if getattr(threading.current_thread(), '_dgenerate_no_tqdm_thread', False):
             return tqdm.tqdm(disable=True)
 
         # Worker thread: create thread-safe progress bar

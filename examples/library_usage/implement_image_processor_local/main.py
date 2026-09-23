@@ -47,7 +47,7 @@ class MyProcessor(ImageProcessor):
 
 config = RenderLoopConfig()
 
-config.model_path = 'stabilityai/stable-diffusion-2'
+config.model_path = 'sd2-community/stable-diffusion-2'
 config.inference_steps = [40]
 config.guidance_scales = [5]
 config.prompts = [Prompt.parse('a strange alien planet, view from orbit')]

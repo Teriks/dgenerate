@@ -74,8 +74,13 @@ Install dgenerate
     # possible dgenerate package extras:
 
     # * ncnn
-    # * gpt4all
-    # * gpt4all_cuda
+    # * xllamacpp
+    #   The GPU and CPU wheels share one version, so the GPU index must be --index-url.
+    #   CUDA 13.2+:
+    #   pip install "dgenerate[xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu132 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple
+    #   CUDA 12.8 through 13.1: /cu128 and the cu128 torch index.
+    #   ROCm 6.4: --index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-6.4.1 --extra-index-url https://download.pytorch.org/whl/rocm6.4/ --extra-index-url https://pypi.org/simple
+    #   Older NVIDIA or Intel: /vulkan instead of /cu132.
     # * bitsandbytes
     # * xformers (NVIDIA CUDA only - memory-efficient attention)
     # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
@@ -157,7 +162,7 @@ Run ``dgenerate`` to generate images:
 
     dgenerate --help
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --prompts "an astronaut riding a horse" \
     --output-path output \
     --inference-steps 40 \
@@ -222,7 +227,9 @@ Install dgenerate
 
     #!/usr/bin/env bash
 
-    # possible dgenerate package extras: ncnn, gpt4all
+    # possible dgenerate package extras: ncnn, xllamacpp
+    # ROCm 6.4 xllamacpp, one command:
+    # pip install "dgenerate[xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-6.4.1 --extra-index-url https://download.pytorch.org/whl/rocm6.4/ --extra-index-url https://pypi.org/simple
 
     # install with just support for torch
 

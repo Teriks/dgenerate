@@ -1,9 +1,9 @@
 .. _Releases_Page: https://github.com/Teriks/dgenerate/releases
-.. _vermeer_canny_edged.png: https://raw.githubusercontent.com/Teriks/dgenerate/master/examples/media/vermeer_canny_edged.png
+.. _vermeer_canny_edged.png: https://raw.githubusercontent.com/Teriks/dgenerate/v5.0.0/examples/media/vermeer_canny_edged.png
 .. _Phi-3_Mini_Abliterated_Q4_GGUF_by_failspy: https://huggingface.co/failspy/Phi-3-mini-128k-instruct-abliterated-v3-GGUF
 .. _Stable_Diffusion_Web_UI: https://github.com/AUTOMATIC1111/stable-diffusion-webui
 .. _CivitAI: https://civitai.com/
-.. _DiffusionArguments: https://dgenerate.readthedocs.io/en/master/dgenerate_submodules.html#dgenerate.pipelinewrapper.DiffusionArguments
+.. _DiffusionArguments: https://dgenerate.readthedocs.io/en/v5.0.0/dgenerate_submodules.html#dgenerate.pipelinewrapper.DiffusionArguments
 .. _spandrel: https://github.com/chaiNNer-org/spandrel
 .. _ncnn: https://github.com/Tencent/ncnn
 .. _chaiNNer: https://github.com/chaiNNer-org/chaiNNer
@@ -81,7 +81,7 @@ Help Output
                      [--second-prompts PROMPT [PROMPT ...]] [--third-prompts PROMPT [PROMPT ...]]
                      [--second-model-prompts PROMPT [PROMPT ...]]
                      [--second-model-second-prompts PROMPT [PROMPT ...]] [--max-sequence-length INTEGER]
-                     [-cs INTEGER [INTEGER ...]] [-se SEED [SEED ...]] [-sei] [-gse COUNT] [-af FORMAT]
+                     [-cs INTEGER [INTEGER ...]] [-se SEED [SEED ...] | -gse COUNT] [-sei] [-af FORMAT]
                      [-if FORMAT] [-nf] [-fs FRAME_NUMBER] [-fe FRAME_NUMBER] [-is SEED [SEED ...]]
                      [-sip PROCESSOR_URI [PROCESSOR_URI ...]] [-mip PROCESSOR_URI [PROCESSOR_URI ...]]
                      [-cip PROCESSOR_URI [PROCESSOR_URI ...]] [--image-processor-help [PROCESSOR_NAME ...]]
@@ -2040,16 +2040,16 @@ Help Output
             --------------------------------------------------------------------------------------------
       -af, --animation-format FORMAT
             Output format when generating an animation from an input video / gif / webp etc. Value must be one
-            of: mp4, png, apng, gif, or webp. You may also specify "frames" to indicate that only frames should
+            of: mp4, gif, png, apng, or webp. You may also specify "frames" to indicate that only frames should
             be output and no coalesced animation file should be rendered. (default: mp4)
             ----------------------------------------------------------------------------
       -if, --image-format FORMAT
             Output format when writing static images or tensors. For image formats, any selection other than
             "png", "jpg", or "jpeg" is not compatible with --output-metadata. For tensor formats (pt, pth,
-            safetensors), raw latent tensors will be saved instead of decoded images. Value must be one of: png,
-            apng, avif, avifs, blp, bmp, dib, bufr, pcx, dds, ps, eps, gif, grib, h5, hdf, jp2, j2k, jpc, jpf,
-            jpx, j2c, icns, ico, im, jfif, jpe, jpg, jpeg, tif, tiff, mpo, msp, palm, pdf, pbm, pgm, ppm, pnm,
-            pfm, qoi, bw, rgb, rgba, sgi, tga, icb, vda, vst, webp, wmf, emf, xbm, pt, pth, or safetensors.
+            safetensors), raw latent tensors will be saved instead of decoded images. Value must be one of:
+            avif, avifs, blp, bmp, dib, bufr, pcx, dds, ps, eps, gif, grib, h5, hdf, png, apng, jp2, j2k, jpc,
+            jpf, jpx, j2c, icns, ico, im, jfif, jpe, jpg, jpeg, tif, tiff, mpo, msp, palm, pdf, pbm, pgm, ppm,
+            pnm, pfm, qoi, bw, rgb, rgba, sgi, tga, icb, vda, vst, webp, wmf, emf, xbm, pt, pth, or safetensors.
             (default: png)
             --------------
       -nf, --no-frames
@@ -2466,8 +2466,12 @@ Install dgenerate:
     # possible dgenerate package extras:
 
     # * ncnn
-    # * gpt4all
-    # * gpt4all_cuda
+    # * xllamacpp
+    #   The GPU and CPU wheels share one version, so the GPU index must be --index-url.
+    #   CUDA 13.2+ (this uses the cu130 torch index):
+    #   pip install "dgenerate[xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu132 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple
+    #   CUDA 12.8 through 13.1: the same command with /cu128 and the cu128 torch index.
+    #   Older NVIDIA, AMD, or Intel Arc: /vulkan instead of /cu132.
     # * bitsandbytes
     # * xformers (NVIDIA CUDA only - memory-efficient attention)
     # * triton_windows
@@ -2529,8 +2533,12 @@ a cloned repository like this:
     # possible dgenerate package extras:
 
     # * ncnn
-    # * gpt4all
-    # * gpt4all_cuda
+    # * xllamacpp
+    #   The GPU and CPU wheels share one version, so the GPU index must be --index-url.
+    #   CUDA 13.2+ (this uses the cu130 torch index):
+    #   pip install "dgenerate[xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu132 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple
+    #   CUDA 12.8 through 13.1: the same command with /cu128 and the cu128 torch index.
+    #   Older NVIDIA, AMD, or Intel Arc: /vulkan instead of /cu132.
     # * bitsandbytes
     # * xformers (NVIDIA CUDA only - memory-efficient attention)
     # * triton_windows
@@ -2559,7 +2567,7 @@ Run ``dgenerate`` to generate images:
 
     dgenerate --help
 
-    dgenerate stabilityai/stable-diffusion-2-1 ^
+    dgenerate sd2-community/stable-diffusion-2-1 ^
     --prompts "an astronaut riding a horse" ^
     --output-path output ^
     --inference-steps 40 ^
@@ -2641,8 +2649,13 @@ Install dgenerate
     # possible dgenerate package extras:
 
     # * ncnn
-    # * gpt4all
-    # * gpt4all_cuda
+    # * xllamacpp
+    #   The GPU and CPU wheels share one version, so the GPU index must be --index-url.
+    #   CUDA 13.2+:
+    #   pip install "dgenerate[xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu132 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple
+    #   CUDA 12.8 through 13.1: /cu128 and the cu128 torch index.
+    #   ROCm 6.4: --index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-6.4.1 --extra-index-url https://download.pytorch.org/whl/rocm6.4/ --extra-index-url https://pypi.org/simple
+    #   Older NVIDIA or Intel: /vulkan instead of /cu132.
     # * bitsandbytes
     # * xformers (NVIDIA CUDA only - memory-efficient attention)
     # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
@@ -2724,7 +2737,7 @@ Run ``dgenerate`` to generate images:
 
     dgenerate --help
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --prompts "an astronaut riding a horse" \
     --output-path output \
     --inference-steps 40 \
@@ -2789,7 +2802,9 @@ Install dgenerate
 
     #!/usr/bin/env bash
 
-    # possible dgenerate package extras: ncnn, gpt4all
+    # possible dgenerate package extras: ncnn, xllamacpp
+    # ROCm 6.4 xllamacpp, one command:
+    # pip install "dgenerate[xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-6.4.1 --extra-index-url https://download.pytorch.org/whl/rocm6.4/ --extra-index-url https://pypi.org/simple
 
     # install with just support for torch
 
@@ -2852,7 +2867,7 @@ then reinstall ``opencv-python-headless``.
 
     pip uninstall opencv-python-headless opencv-python
 
-    pip install opencv-python-headless~=4.12.0.88
+    pip install opencv-python-headless~=5.0.0.93
 
 
 This work around is needed because ``ncnn`` depends on ``opencv-python`` and pip
@@ -2869,7 +2884,7 @@ If you are using pipx, you can do this:
 
     pipx runpip dgenerate uninstall opencv-python-headless opencv-python
 
-    pipx inject dgenerate opencv-python-headless~=4.12.0.88
+    pipx inject dgenerate opencv-python-headless~=5.0.0.93
 
 MacOS Install (Apple Silicon Only)
 ==================================
@@ -2921,14 +2936,14 @@ global python site packages.
     # possible dgenerate package extras:
 
     # * ncnn
-    # * gpt4all
+    # * xllamacpp (the PyPI wheel is the Metal build on macOS)
     # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
     pipx install dgenerate==5.0.0
 
     # or with extras
 
-    pipx install dgenerate[ncnn,gpt4all,console_ui_opengl]==5.0.0
+    pipx install dgenerate[ncnn,xllamacpp,console_ui_opengl]==5.0.0
 
     # open a new terminal or logout & login
 
@@ -2941,7 +2956,7 @@ global python site packages.
 
     # or generate images
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --prompts "an astronaut riding a horse" \
     --output-path output \
     --inference-steps 40 \
@@ -2981,14 +2996,14 @@ of your own creation.
     # possible dgenerate package extras:
 
     # * ncnn
-    # * gpt4all
+    # * xllamacpp (the PyPI wheel is the Metal build on macOS)
     # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
     pip3 install dgenerate==5.0.0
 
     # or with extras
 
-    pip3 install dgenerate[ncnn,gpt4all,console_ui_opengl]==5.0.0
+    pip3 install dgenerate[ncnn,xllamacpp,console_ui_opengl]==5.0.0
 
     # launch the Console UI to test the install.
     # tkinter will be available when you install
@@ -2999,7 +3014,7 @@ of your own creation.
 
     # or generate images
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --prompts "an astronaut riding a horse" \
     --output-path output \
     --inference-steps 40 \
@@ -3084,7 +3099,7 @@ Basic Usage
 The example below attempts to generate an astronaut riding a horse using 5 different
 random seeds, 3 different inference steps values, and 3 different guidance scale values.
 
-It utilizes the ``stabilityai/stable-diffusion-2-1`` model repo on `Hugging Face <https://huggingface.co/stabilityai/stable-diffusion-2-1>`_.
+It utilizes the ``sd2-community/stable-diffusion-2-1`` model repo on `Hugging Face <https://huggingface.co/sd2-community/stable-diffusion-2-1>`_.
 
 45 uniquely named images will be generated ``(5 x 3 x 3)``
 
@@ -3097,7 +3112,7 @@ in the current working directory, if the path that is specified does not exist t
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --prompts "an astronaut riding a horse" \
     --gen-seeds 5 \
     --output-path astronaut \
@@ -3112,7 +3127,7 @@ Loading models from huggingface blob links is also supported:
 
     #!/usr/bin/env bash
 
-    dgenerate https://huggingface.co/stabilityai/stable-diffusion-2-1/blob/main/v2-1_768-ema-pruned.safetensors \
+    dgenerate https://huggingface.co/sd2-community/stable-diffusion-2-1/blob/main/v2-1_768-ema-pruned.safetensors \
     --prompts "an astronaut riding a horse" \
     --gen-seeds 5 \
     --output-path astronaut \
@@ -3159,7 +3174,7 @@ or ``horse wearing a saddle`` etc.
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --prompts "an astronaut riding a horse; horse wearing a saddle" \
     --gen-seeds 5 \
     --output-path astronaut \
@@ -3186,7 +3201,7 @@ All using 50 inference steps, and 10 for guidance scale value.
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --prompts "an astronaut riding a horse" "an astronaut riding a donkey" \
     --gen-seeds 5 \
     --output-path astronaut \
@@ -3228,7 +3243,7 @@ seed individually.
 
     # 135 uniquely named images will be generated (5x3x3x3)
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --prompts "an astronaut walking on mars" \
     --image-seeds https://upload.wikimedia.org/wikipedia/commons/9/98/Aldrin_Apollo_11_original.jpg \
     --image-seed-strengths 0.2 0.5 0.8 \
@@ -3293,8 +3308,8 @@ however for this example files on disk are used for brevity.
 
 You can download them here:
 
- * `my-image-seed.png <https://raw.githubusercontent.com/Teriks/dgenerate/master/examples/media/dog-on-bench.png>`_
- * `my-mask-image.png <https://raw.githubusercontent.com/Teriks/dgenerate/master/examples/media/dog-on-bench-mask.png>`_
+ * `my-image-seed.png <https://raw.githubusercontent.com/Teriks/dgenerate/v5.0.0/examples/media/dog-on-bench.png>`_
+ * `my-mask-image.png <https://raw.githubusercontent.com/Teriks/dgenerate/v5.0.0/examples/media/dog-on-bench-mask.png>`_
 
 The command below generates a cat sitting on a bench with the images from the links above, the mask image masks out
 areas over the dog in the original image, causing the dog to be replaced with an AI generated cat.
@@ -3303,7 +3318,7 @@ areas over the dog in the original image, causing the dog to be replaced with an
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-2-inpainting \
+    dgenerate sd2-community/stable-diffusion-2-inpainting \
     --image-seeds "my-image-seed.png;my-mask-image.png" \
     --prompts "Face of a yellow cat, high resolution, sitting on a park bench" \
     --image-seed-strengths 0.8 \
@@ -3602,7 +3617,7 @@ The involved images are resized using the basic syntax with no keyword arguments
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --image-seeds "my-image-seed.png;1024" "my-image-seed.png;my-mask-image.png;512x512" \
     --prompts "Face of a yellow cat, high resolution, sitting on a park bench" \
     --image-seed-strengths 0.8 \
@@ -3639,7 +3654,7 @@ If you do not set an output size, the size of the input animation will be used.
 
     # Use a GIF of a man riding a horse to create an animation of an astronaut riding a horse.
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --prompts "an astronaut riding a horse" \
     --image-seeds https://upload.wikimedia.org/wikipedia/commons/7/7b/Muybridge_race_horse_~_big_transp.gif \
     --image-seed-strengths 0.5 \
@@ -3718,7 +3733,7 @@ generation step.
 
     # Generate using only the first frame
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --prompts "an astronaut riding a horse" \
     --image-seeds https://upload.wikimedia.org/wikipedia/commons/7/7b/Muybridge_race_horse_~_big_transp.gif \
     --image-seed-strengths 0.5 \
@@ -3756,7 +3771,7 @@ them together.
 
     # A video with a static inpaint mask over the entire video
 
-    dgenerate stabilityai/stable-diffusion-2-inpainting \
+    dgenerate sd2-community/stable-diffusion-2-inpainting \
     --prompts "an astronaut riding a horse" \
     --image-seeds "my-animation.mp4;my-static-mask.png" \
     --output-path inpaint \
@@ -3766,37 +3781,37 @@ them together.
     # from the right video. The two animated inputs do not have to be the same file format
     # you can mask videos with gif/webp and vice versa
 
-    dgenerate stabilityai/stable-diffusion-2-inpainting \
+    dgenerate sd2-community/stable-diffusion-2-inpainting \
     --prompts "an astronaut riding a horse" \
     --image-seeds "my-animation.mp4;my-animation-mask.mp4" \
     --output-path inpaint \
     --animation-format mp4
 
-    dgenerate stabilityai/stable-diffusion-2-inpainting \
+    dgenerate sd2-community/stable-diffusion-2-inpainting \
     --prompts "an astronaut riding a horse" \
     --image-seeds "my-animation.mp4;my-animation-mask.gif" \
     --output-path inpaint \
     --animation-format mp4
 
-    dgenerate stabilityai/stable-diffusion-2-inpainting \
+    dgenerate sd2-community/stable-diffusion-2-inpainting \
     --prompts "an astronaut riding a horse" \
     --image-seeds "my-animation.gif;my-animation-mask.gif" \
     --output-path inpaint \
     --animation-format mp4
 
-    dgenerate stabilityai/stable-diffusion-2-inpainting \
+    dgenerate sd2-community/stable-diffusion-2-inpainting \
     --prompts "an astronaut riding a horse" \
     --image-seeds "my-animation.gif;my-animation-mask.webp" \
     --output-path inpaint \
     --animation-format mp4
 
-    dgenerate stabilityai/stable-diffusion-2-inpainting \
+    dgenerate sd2-community/stable-diffusion-2-inpainting \
     --prompts "an astronaut riding a horse" \
     --image-seeds "my-animation.webp;my-animation-mask.gif" \
     --output-path inpaint \
     --animation-format mp4
 
-    dgenerate stabilityai/stable-diffusion-2-inpainting \
+    dgenerate sd2-community/stable-diffusion-2-inpainting \
     --prompts "an astronaut riding a horse" \
     --image-seeds "my-animation.gif;my-animation-mask.mp4" \
     --output-path inpaint \
@@ -3807,19 +3822,19 @@ them together.
     # Use a static image seed and mask it with every frame from an
     # Animated mask file
 
-    dgenerate stabilityai/stable-diffusion-2-inpainting \
+    dgenerate sd2-community/stable-diffusion-2-inpainting \
     --prompts "an astronaut riding a horse" \
     --image-seeds "my-static-image-seed.png;my-animation-mask.mp4" \
     --output-path inpaint \
     --animation-format mp4
 
-    dgenerate stabilityai/stable-diffusion-2-inpainting \
+    dgenerate sd2-community/stable-diffusion-2-inpainting \
     --prompts "an astronaut riding a horse" \
     --image-seeds "my-static-image-seed.png;my-animation-mask.gif" \
     --output-path inpaint \
     --animation-format mp4
 
-    dgenerate stabilityai/stable-diffusion-2-inpainting \
+    dgenerate sd2-community/stable-diffusion-2-inpainting \
     --prompts "an astronaut riding a horse" \
     --image-seeds "my-static-image-seed.png;my-animation-mask.webp" \
     --output-path inpaint \
@@ -3893,14 +3908,14 @@ argument with one of the supported tensor formats:
 
     # Generate latents in PyTorch format
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --prompts "a beautiful landscape" \
     --image-format pt \
     --output-path latents_output
 
     # Generate latents in SafeTensors format
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --prompts "a beautiful landscape" \
     --image-format safetensors \
     --output-path latents_output
@@ -4222,7 +4237,7 @@ this works for SD1.5/2.x, SD3, and Flux models using the ``latents= ...`` syntax
     #!/usr/bin/env bash
     
     # First stage: Process an input image with partial denoising
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --image-seeds "input.png" \
     --prompts "enhanced version of the input" \
     --image-seed-strengths 0.7 \
@@ -4339,7 +4354,7 @@ The following command demonstrates manually specifying two different seeds to tr
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --prompts "an astronaut riding a horse" \
     --seeds 1234567890 9876543210 \
     --output-path astronaut \
@@ -4359,7 +4374,7 @@ the device number of the GPU as reported by ``nvidia-smi``.
 
     # Console 1, run on GPU 0
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --prompts "an astronaut riding a horse" \
     --output-path astronaut_1 \
     --inference-steps 50 \
@@ -4369,7 +4384,7 @@ the device number of the GPU as reported by ``nvidia-smi``.
 
     # Console 2, run on GPU 1 in parallel
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --prompts "an astronaut riding a cow" \
     --output-path astronaut_2 \
     --inference-steps 50 \
@@ -4421,7 +4436,7 @@ Typically however, there will be many compatible schedulers:
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-2 \
+    dgenerate sd2-community/stable-diffusion-2 \
     --inference-steps 40 \
     --guidance-scales 8 \
     --output-size 1024 \
@@ -4431,7 +4446,7 @@ Typically however, there will be many compatible schedulers:
 
     # Outputs:
     #
-    # Compatible schedulers for "stabilityai/stable-diffusion-2" are:
+    # Compatible schedulers for "sd2-community/stable-diffusion-2" are:
     #
     #     "DDIMScheduler"
     #     "DDPMScheduler"
@@ -4458,7 +4473,7 @@ can be overridden via a URI syntax, for every possible scheduler.
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-2 \
+    dgenerate sd2-community/stable-diffusion-2 \
     --inference-steps 40 \
     --guidance-scales 8 \
     --output-size 1024 \
@@ -4469,7 +4484,7 @@ can be overridden via a URI syntax, for every possible scheduler.
 
     # Outputs (shortened for brevity...):
     #
-    # Compatible schedulers for "stabilityai/stable-diffusion-2" are:
+    # Compatible schedulers for "sd2-community/stable-diffusion-2" are:
     #    ...
     #
     #    PNDMScheduler:
@@ -4497,7 +4512,7 @@ As an example, you may override the mentioned arguments for any scheduler in thi
     # for some models this may be necessary, not for this model
     # this is just a syntax example
 
-    dgenerate stabilityai/stable-diffusion-2 \
+    dgenerate sd2-community/stable-diffusion-2 \
     --inference-steps 40 \
     --guidance-scales 8 \
     --output-size 1024 \
@@ -4549,7 +4564,7 @@ output file name, in the order: ``(scheduler)_(refiner / decoder scheduler)``
 
     # Try these two schedulers one after another
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --inference-steps 30 \
     --guidance-scales 5 \
     --schedulers EulerAncestralDiscreteScheduler KDPM2AncestralDiscreteScheduler \
@@ -4743,7 +4758,7 @@ configuration and model file(s).
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --vae "AutoencoderKL;model=stabilityai/sd-vae-ft-mse" \
     --prompts "an astronaut riding a horse" \
     --output-path astronaut \
@@ -4760,10 +4775,10 @@ of the specified huggingface repository.
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --revision fp16 \
     --dtype float16 \
-    --vae "AutoencoderKL;model=stabilityai/stable-diffusion-2-1;revision=fp16;subfolder=vae" \
+    --vae "AutoencoderKL;model=sd2-community/stable-diffusion-2-1;revision=fp16;subfolder=vae" \
     --prompts "an astronaut riding a horse" \
     --output-path astronaut \
     --inference-steps 50 \
@@ -4779,9 +4794,9 @@ repository that has variants of the same model, use the named argument ``variant
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --variant fp16 \
-    --vae "AutoencoderKL;model=stabilityai/stable-diffusion-2-1;subfolder=vae;variant=fp16" \
+    --vae "AutoencoderKL;model=sd2-community/stable-diffusion-2-1;subfolder=vae;variant=fp16" \
     --prompts "an astronaut riding a horse" \
     --output-path astronaut \
     --inference-steps 50 \
@@ -4795,8 +4810,8 @@ If your weights file exists in a subfolder of the repository, use the named argu
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
-    --vae "AutoencoderKL;model=stabilityai/stable-diffusion-2-1;subfolder=vae" \
+    dgenerate sd2-community/stable-diffusion-2-1 \
+    --vae "AutoencoderKL;model=sd2-community/stable-diffusion-2-1;subfolder=vae" \
     --prompts "an astronaut riding a horse" \
     --output-path astronaut \
     --inference-steps 50 \
@@ -4811,10 +4826,10 @@ accepted values are the same as ``--dtype``, IE: ``float32``, ``float16``, ``aut
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --revision fp16 \
     --dtype float16 \
-    --vae "AutoencoderKL;model=stabilityai/stable-diffusion-2-1;revision=fp16;subfolder=vae;dtype=float16" \
+    --vae "AutoencoderKL;model=sd2-community/stable-diffusion-2-1;revision=fp16;subfolder=vae;dtype=float16" \
     --prompts "an astronaut riding a horse" \
     --output-path astronaut \
     --inference-steps 50 \
@@ -6513,36 +6528,38 @@ Which is a GPT2 finetune focused specifically on prompt generation.
     ==============================================================================================================
 
 
-The gpt4all prompt upscaler
----------------------------
+The xllamacpp prompt upscaler
+-----------------------------
 
-The ``gpt4all`` upscaler can make use of LLMs via ``gpt4all`` to enhance your prompt text.
+The ``xllamacpp`` upscaler runs GGUF models through ``xllamacpp`` (llama.cpp).
 
 The default model used is: `Phi-3 Mini Abliterated Q4 GGUF by failspy <Phi-3_Mini_Abliterated_Q4_GGUF_by_failspy_>`_
 
-This prompt upscaler can support any LLM model supported by ``gpt4all==2.8.2``.
+The GPU and CPU wheels share one version, so the GPU index has to be ``--index-url``
+or pip keeps the PyPI build (CPU on Linux and Windows, Metal on macOS).
+PyPI and the torch index stay on ``--extra-index-url``. CUDA 13.2+:
 
-Note that this does not currently include ``DeepSeek`` as the native binaries provided by the python packaged
-are a bit out of date with mainline ``GPT4ALL`` binaries.
+.. code-block:: bash
 
-You must have chosen the ``gpt4all`` or ``gpt4all_cuda`` install extra to use this prompt upscaler,
-e.g. ``pip install dgenerate[gpt4all]`` or ``pip install dgenerate[gpt4all_cuda]``.
+    pip install "dgenerate[xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu132 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple
 
-This prompt upscaler use the ``gpt4all`` python binding to perform inference on the cpu or gpu using the native backend provided by ``gpt4all``.
+CUDA 12.8 through 13.1 uses ``/cu128`` and the cu128 torch index. Linux ROCm 6.4 uses
+``/rocm-6.4.1`` with the rocm6.4 torch index. Older NVIDIA, Windows AMD, and Intel Arc
+use ``/vulkan``. The network installer selects the index for you.
 
 
 .. code-block:: bash
 
     #!/usr/bin/env bash
 
-    # print out the documentation for the gpt4all prompt upscaler
+    # print out the documentation for the xllamacpp prompt upscaler
 
-    dgenerate --prompt-upscaler-help gpt4all
+    dgenerate --prompt-upscaler-help xllamacpp
 
 
 .. code-block:: text
 
-    gpt4all:
+    xllamacpp:
         arguments:
             part: str = "both"
             model: str = "https://huggingface.co/failspy/Phi-3-mini-128k-instruct-abliterated-v3-GGUF/resolve/main/Phi-3-mini-128k-instruct-abliterated-v3_q4.gguf"
@@ -6556,77 +6573,53 @@ This prompt upscaler use the ``gpt4all`` python binding to perform inference on 
             preamble: str | None = None
             remove-prompt: bool = False
             prepend-prompt: bool = False
-            compute: str | None = "cpu"
+            gpu-layers: int | str = "auto"
             block-regex: str | None = None
             max-attempts: int = 10
             context-tokens: int = 2048
             smart-truncate: bool = False
             cleanup-config: str | None = None
     
-        Upscale prompts using LLMs loadable by GPT4ALL.
+        Upscale prompts with a GGUF model through ``xllamacpp``.
     
         The "part" argument indicates which parts of the prompt to act on, possible values are: "both",
-        "positive", and "negative"
+        "positive", and "negative".
     
-        The "model" specifies the model path for gpt4all, the default value is:
-        "https://huggingface.co/failspy/Phi-3-mini-128k-instruct-abliterated-v3-GGUF/resolve/main/Phi-3-mini-128k-instruct-abliterated-v3_q4.gguf".
-        This can be a path to a GGUF file or a URL pointing to one.
+        The "model" argument is a path or URL to a GGUF file. The default is a Phi-3 Mini abliterated Q4 GGUF.
     
         The "variations" argument specifies how many variations should be produced.
     
-        The "max-length" argument is the max prompt length for a generated prompt, this value defaults to 100.
+        The "max-length" argument is the max number of new tokens. It defaults to 100.
     
-        The "temperature" argument sets the sampling temperature to use when generating prompts. Larger values
-        increase creativity but decrease factuality.
+        The "temperature", "top-k", "top-p", and "min-p" arguments are the sampling settings passed to the model.
     
-        The "top_k" argument sets the "top_k" generation value, i.e. randomly sample from the "top_k" most likely
-        tokens at each generation step. Set this to 1 for greedy decoding.
+        The "system" argument is the chat system message.
     
-        The "top_p" argument sets the "top_p" generation value, i.e. randomly sample at each generation step from
-        the top most likely tokens whose probabilities add up to "top_p".
-    
-        The "min_p" argument sets the "min_p" generation value, i.e. randomly sample at each generation step from
-        the top most likely tokens whose probabilities are at least "min_p".
-    
-        The "system" argument sets the system instruction for the LLM.
-    
-        The "preamble" argument sets a text input preamble for the LLM, this preamble will be removed from the
-        output generated by the LLM.
+        The "preamble" argument is text placed in front of the user prompt. It is removed from the generated text
+        when it is echoed back.
     
         The "remove-prompt" argument specifies whether to remove the original prompt from the generated text.
     
-        The "prepend-prompt" argument specifies whether to forcefully prepend the original prompt to the generated
-        prompt, this might be necessary if you want a continuation with some models, the original prompt will be
-        prepended with a space at the end.
+        The "prepend-prompt" argument specifies whether to prepend the original prompt to the generated prompt.
     
-        The "compute" argument lets you specify the GPT4ALL device string, this is distinct from torch device
-        names, hence it is called "compute" here.
+        The "gpu-layers" argument controls GPU offload. It accepts "auto", "all", or an integer, and defaults to
+        "auto".
     
-        This may be one of:
+        * "auto": offload as many layers as fit in VRAM.
+        * "all": offload every layer onto the backend compiled into the installed
+          wheel (Metal, CUDA, ROCm, or Vulkan).
+        * 0: keep the model on the CPU.
+        * A positive integer: offload that many layers.
     
-        * "cpu": Model will run on the central processing unit.
-        * "gpu": Use Metal on ARM64 macOS, otherwise the same as "kompute".
-        * "kompute": Use the best GPU provided by the Kompute backend.
-        * "cuda": Use the best GPU provided by the CUDA backend.
-        * "amd", "nvidia": Use the best GPU provided by the Kompute backend from this vendor.
+        The "block-regex" argument is a case-insensitive regular expression. Matching prompts are regenerated up
+        to "max-attempts" times.
     
-        The "block-regex" argument is a python syntax regex that will block prompts that match the regex, the
-        prompt will be regenerated until the regex does not match, up to "max-attempts". This regex is
-        case-insensitive.
+        The "context-tokens" argument is the context window (``n_ctx``).
     
-        The "max-attempts" argument specifies how many times to reattempt to generate a prompt if it is blocked by
-        "block-regex"
+        The "smart-truncate" argument removes an incomplete trailing sentence using spaCy.
     
-        The "context-tokens" argument specifies the amount of context tokens the model was trained on, you may
-        need to adjust this if GPT4ALL warns about the number of specified context tokens.
-    
-        The "smart-truncate" argument enables intelligent truncation of the prompt generated by the LLM, i.e. it
-        will remove incomplete sentences from the end of the prompt utilizing spaCy NLP.
-    
-        The "cleanup-config" argument allows you to specify a custom LLM output cleanup configuration file in
-        .json, .toml, or .yaml format. This file can be used to run custom pattern substitutions or python
-        functions over the LLMs raw output, and overrides the built-in cleanup excluding "smart-truncate" which
-        occurs before your configuration.
+        The "cleanup-config" argument is a ``.json``, ``.toml``, or ``.yaml`` file of extra substitutions applied
+        to the model output.
     
     ==============================================================================================================
 
@@ -6872,13 +6865,14 @@ Quantization backend packages will be installed by dgenerate's packaging on plat
     --prompts "a {horse|cow|dog} in a field on a cloudy day in the mountains"
 
 
-Prompt upscaling with LLMs (gpt4all)
-------------------------------------
+Prompt upscaling with LLMs (xllamacpp)
+--------------------------------------
 
-Any LLM that is supported by ``gpt4all==2.8.2`` can be used to upscale prompts via the ``gpt4all`` prompt upscaler plugin.
+Any GGUF model that ``xllamacpp`` can load can be used via the ``xllamacpp`` prompt upscaler.
 
-This plugin supports loading LLM models in ``gguf`` format and uses a native inference backend provided by ``gpt4all``
-for memory efficient inference on the cpu or gpu.
+The plugin uses the chat template stored in the GGUF file. ``gpu-layers`` accepts
+``auto``, ``all``, or an integer, and defaults to ``auto``, which offloads as many
+layers as fit in VRAM. ``all`` offloads every layer. ``0`` keeps the model on the CPU.
 
 Here is an example using `Phi-3 Mini Abliterated Q4 GGUF by failspy <Phi-3_Mini_Abliterated_Q4_GGUF_by_failspy_>`_
 
@@ -6887,25 +6881,26 @@ Here is an example using `Phi-3 Mini Abliterated Q4 GGUF by failspy <Phi-3_Mini_
     #! /usr/bin/env dgenerate --file
     #! dgenerate 5.0.0
     
-    # Use Phi-3 abliterated as a prompt text enhancer with gpt4all
+    # Use Phi-3 abliterated as a prompt text enhancer with xllamacpp
     
-    # Any LLM that gpt4all can run, can be used.
+    # Any GGUF model that xllamacpp can load can be used.
     
     # The "preamble" text is inserted at the beginning of your prompt, and then removed from the LLMs output
     
-    # This is less sophisticated than using the "system" argument of the gpt4all plugin to add a
+    # This is less sophisticated than using the "system" argument of the xllamacpp plugin to add a
     # system instruction to the prompt, but seems to work well for this model (sometimes)
     # You can try tweaking "preamble" or "system" to achieve better results, though a "system"
     # prompt has a high chance of generating rejection responses
     
-    # Use dynamicprompts before the gpt4all plugin to generate combinatorial variations using dynamicprompts syntax
+    # Use dynamicprompts before the xllamacpp plugin to generate combinatorial variations using dynamicprompts syntax
     
-    # the "compute" argument already defaults to "cpu" and not that of --device, specifying it here for clarity
+    # "gpu-layers" defaults to "auto" (as many layers as fit in VRAM).
+    # "all" offloads every layer. 0 keeps the model on the CPU.
     
     # the default model is also already Phi-3 abliterated for now
     
     
-    \prompt_upscaler_help gpt4all
+    \prompt_upscaler_help xllamacpp
     
     
     \set llm_model 'https://huggingface.co/failspy/Phi-3-mini-128k-instruct-abliterated-v3-GGUF/resolve/main/Phi-3-mini-128k-instruct-abliterated-v3_q4.gguf'
@@ -6920,10 +6915,45 @@ Here is an example using `Phi-3 Mini Abliterated Q4 GGUF by failspy <Phi-3_Mini_
     --guidance-scales 5
     --clip-skips 0
     --gen-seeds 1
-    --output-path gpt4all-phi3
+    --output-path xllamacpp-phi3
     --output-size 1024x1024
     --prompt-weighter sd-embed
-    --prompt-upscaler dynamicprompts gpt4all;model={{ llm_model }};preamble={{ llm_preamble }};compute='cpu'
+    --prompt-upscaler dynamicprompts xllamacpp;model={{ llm_model }};preamble={{ llm_preamble }}
+    --prompts "a {horse|cow|dog} in a field on a cloudy day in the mountains"
+
+Models that are not chat models can be used the same way. This example loads a GGUF
+conversion of the original MagicPrompt weights, prepends the prompt, and uses a
+1024 token context:
+
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 5.0.0
+    
+    # show plugin help
+    
+    
+    \prompt_upscaler_help xllamacpp
+    
+    
+    # Use The original MagicPrompt model with xllamacpp
+    
+    
+    \set llm_model https://huggingface.co/QuantFactory/MagicPrompt-Stable-Diffusion-GGUF/resolve/main/MagicPrompt-Stable-Diffusion.Q4_0.gguf
+    
+    
+    stabilityai/stable-diffusion-xl-base-1.0
+    --model-type sdxl
+    --dtype float16
+    --variant fp16
+    --inference-steps 30
+    --guidance-scales 5
+    --clip-skips 0
+    --gen-seeds 1
+    --output-path xllamacpp-magicprompt
+    --output-size 1024x1024
+    --prompt-weighter sd-embed
+    --prompt-upscaler dynamicprompts xllamacpp;model={{ llm_model }};context-tokens=1024;prepend-prompt=True
     --prompts "a {horse|cow|dog} in a field on a cloudy day in the mountains"
 
 
@@ -6931,7 +6961,7 @@ Customizing LLM output cleanup
 ------------------------------
 
 You may want to implement custom regex based substitutions or python text processing
-on the output generated by the ``magicprompt`` or ``gpt4all`` prompt upscaler plugins.
+on the output generated by the ``magicprompt`` or ``xllamacpp`` prompt upscaler plugins.
 
 This can be accomplished using the URI argument ``cleanup-config``, which is a path to a ``.json``, ``.toml``, or ``.yaml`` file.
 
@@ -7150,7 +7180,7 @@ You can enable the ``compel`` prompt weighter by specifying it with the ``--prom
 
     # Increase the weight of (picking apricots)
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --inference-steps 30 \
     --guidance-scales 5.00 \
     --clip-skips 0 \
@@ -7162,7 +7192,7 @@ You can enable the ``compel`` prompt weighter by specifying it with the ``--prom
 
     # Specify a weight
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --inference-steps 30 \
     --guidance-scales 5.00 \
     --clip-skips 0 \
@@ -7186,7 +7216,7 @@ compel / InvokeAI syntax for you.
 
     # Increase the weight of (picking apricots)
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --inference-steps 30 \
     --guidance-scales 5.00 \
     --clip-skips 0 \
@@ -7198,7 +7228,7 @@ compel / InvokeAI syntax for you.
 
     # Specify a weight
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --inference-steps 30 \
     --guidance-scales 5.00 \
     --clip-skips 0 \
@@ -7423,7 +7453,7 @@ All other arguments are fair game, for example ``inference_steps``
     # override inference steps for the
     # second prompt variation in particular
 
-    stabilityai/stable-diffusion-2-1
+    sd2-community/stable-diffusion-2-1
     --inference-steps 30
     --guidance-scales 5
     --clip-skips 0
@@ -7622,7 +7652,7 @@ Here is an example of ``img2img`` usage:
     # each of the images are resized to 1024 so they match
     # in dimension, which is a requirement for batching
 
-    dgenerate stabilityai/stable-diffusion-2 \
+    dgenerate sd2-community/stable-diffusion-2 \
     --inference-steps 30 \
     --guidance-scales 8 \
     --image-seeds "images: examples/media/earth.jpg, examples/media/mountain.png;1024" \
@@ -7636,7 +7666,7 @@ Here is an example of ``img2img`` usage:
     # The --batch-size must be divisible by the number of provided images
     # this results in 4 images being produced, 2 variations of each input image
 
-    dgenerate stabilityai/stable-diffusion-2 \
+    dgenerate sd2-community/stable-diffusion-2 \
     --inference-steps 30 \
     --guidance-scales 8 \
     --image-seeds "images: examples/media/earth.jpg, examples/media/mountain.png;1024" \
@@ -7667,7 +7697,7 @@ And an ``inpainting`` example:
     # The same logic for --batch-size still applies as mentioned
     # in the img2img example
 
-    dgenerate stabilityai/stable-diffusion-2-inpainting \
+    dgenerate sd2-community/stable-diffusion-2-inpainting \
     --inference-steps 30 \
     --guidance-scales 8 \
     --image-seeds "images: ../../media/dog-on-bench.png, ../../media/beach.jpg;mask=../../media/dog-on-bench-mask.png;resize=1024;aspect=False" \
@@ -7682,7 +7712,7 @@ And an ``inpainting`` example:
 In the case of Stable Cascade, this syntax results in multiple images being passed to Stable Cascade
 as an image/style prompt, and does not result in multiple outputs or batching behavior.
 
-This Stable Cascade functionality is demonstrated in the example config: `examples/stablecascade/img2img/multiple-inputs-config.dgen <https://github.com/Teriks/dgenerate/blob/master/examples/stablecascade/img2img/multiple-inputs-config.dgen>`_
+This Stable Cascade functionality is demonstrated in the example config: `examples/stablecascade/img2img/multiple-inputs-config.dgen <https://github.com/Teriks/dgenerate/blob/v5.0.0/examples/stablecascade/img2img/multiple-inputs-config.dgen>`_
 
 Image Processors
 ================
@@ -7799,7 +7829,7 @@ CPU immediately when it is done with an image, clearing up VRAM space before the
 For an example, images can be processed with the canny edge detection algorithm or OpenPose (rigging generation)
 before being used for generation with a model + a ControlNet.
 
-This image of a `horse <https://raw.githubusercontent.com/Teriks/dgenerate/master/examples/media/horse2.jpeg>`_
+This image of a `horse <https://raw.githubusercontent.com/Teriks/dgenerate/v5.0.0/examples/media/horse2.jpeg>`_
 is used in the example below with a ControlNet that is trained to generate images from canny edge detected input.
 
 .. code-block:: bash
@@ -7890,7 +7920,7 @@ syntax described in: `Batching Input Images and Inpaint Masks`_
     # mirror the second image horizontally, the + indicates that
     # we are skipping processing the first image
 
-    dgenerate stabilityai/stable-diffusion-2 \
+    dgenerate sd2-community/stable-diffusion-2 \
     --inference-steps 30 \
     --guidance-scales 8 \
     --image-seeds "images: examples/media/horse2.jpeg, examples/media/horse2.jpeg" \
@@ -7903,7 +7933,7 @@ syntax described in: `Batching Input Images and Inpaint Masks`_
 
     # Now with inpainting
 
-    dgenerate stabilityai/stable-diffusion-2 \
+    dgenerate sd2-community/stable-diffusion-2 \
     --inference-steps 30 \
     --guidance-scales 8 \
     --image-seeds "images: examples/media/horse1.jpg, examples/media/horse1.jpg;mask=examples/media/horse1-mask.jpg, examples/media/horse1-mask.jpg" \
@@ -7961,7 +7991,7 @@ raw / noisy latents, you can use ``--latents-processors`` to run a process on th
 
 .. code-block:: bash
 
-    dgenerate stabilityai/stable-diffusion-2 \
+    dgenerate sd2-community/stable-diffusion-2 \
     --image-seeds "latents: partially_denoised.pt" \
     --latents-processors "scale;factor=1.5" \
     --denoising-start 0.8
@@ -7977,7 +8007,7 @@ as raw latents input simultaneously if desired.
 
 .. code-block:: bash
 
-    dgenerate stabilityai/stable-diffusion-2 \
+    dgenerate sd2-community/stable-diffusion-2 \
     --image-seeds "fully_denoised_img2img.pt" \
     --img2img-latents-processors "noise;timestep=50;seed=42"
 
@@ -7988,7 +8018,7 @@ decoding as a starting point for inference.
 
 .. code-block:: bash
 
-    dgenerate stabilityai/stable-diffusion-2 \
+    dgenerate sd2-community/stable-diffusion-2 \
     --image-seeds "fully_denoised_img2img.pt;latents=partially_denoised.pt" \
     --img2img-latents-processors "noise;timestep=50;seed=42"
     --latents-processors "scale;factor=1.5" \
@@ -8001,7 +8031,7 @@ Like image processors, multiple latents processors can be chained together:
 
 .. code-block:: bash
 
-    dgenerate stabilityai/stable-diffusion-2 \
+    dgenerate sd2-community/stable-diffusion-2 \
     --image-seeds "latents: noisy_input.pt" \
     --latents-processors "scale;factor=1.2" "noise;timestep=20"
 
@@ -8010,7 +8040,7 @@ the + delimiter, just like image processors:
 
 .. code-block:: bash
 
-     dgenerate stabilityai/stable-diffusion-2 \
+     dgenerate sd2-community/stable-diffusion-2 \
     --image-seeds "latents: latents1.pt, latents: latents2.pt" \
     --latents-processors "scale;factor=1.5" + "noise;timestep=30"
 
@@ -8019,7 +8049,7 @@ With ``img2img`` input batching:
 
 .. code-block:: bash
 
-     dgenerate stabilityai/stable-diffusion-2 \
+     dgenerate sd2-community/stable-diffusion-2 \
     --image-seeds "images: img2img.png, img2img.png;latents=latents1.pt, latents2.pt" \
     --latents-processors "scale;factor=1.5" + "noise;timestep=30"
 
@@ -8189,11 +8219,11 @@ The help output of ``image-process`` is as follows:
             equal to those listed under --frame-format.
             -------------------------------------------
       -ff, --frame-format FRAME_FORMAT
-            Image format for animation frames. Must be one of: png, apng, avif, avifs, blp, bmp, dib, bufr, pcx,
-            dds, ps, eps, gif, grib, h5, hdf, jp2, j2k, jpc, jpf, jpx, j2c, icns, ico, im, jfif, jpe, jpg, jpeg,
-            tif, tiff, mpo, msp, palm, pdf, pbm, pgm, ppm, pnm, pfm, qoi, bw, rgb, rgba, sgi, tga, icb, vda,
-            vst, webp, wmf, emf, or xbm.
-            ----------------------------
+            Image format for animation frames. Must be one of: avif, avifs, blp, bmp, dib, bufr, pcx, dds, ps,
+            eps, gif, grib, h5, hdf, png, apng, jp2, j2k, jpc, jpf, jpx, j2c, icns, ico, im, jfif, jpe, jpg,
+            jpeg, tif, tiff, mpo, msp, palm, pdf, pbm, pgm, ppm, pnm, pfm, qoi, bw, rgb, rgba, sgi, tga, icb,
+            vda, vst, webp, wmf, emf, or xbm.
+            ---------------------------------
       -ox, --output-overwrite
             Indicate that it is okay to overwrite files, instead of appending a duplicate suffix.
             -------------------------------------------------------------------------------------
@@ -8577,7 +8607,7 @@ Prompts can be written to a file or printed to stdout, and in the case of the co
 they can also be written to a config template variable as a python list.
 
 A comprehensive example of the ``\prompt_upscale`` config directive which might be helpful for understanding
-this sub-commands functionality is available in the `examples folder <https://github.com/Teriks/dgenerate/blob/master/examples/config_directives/prompt_upscale/prompt-upscale-directive-config.dgen>`_.
+this sub-commands functionality is available in the `examples folder <https://github.com/Teriks/dgenerate/blob/v5.0.0/examples/config_directives/prompt_upscale/prompt-upscale-directive-config.dgen>`_.
 
 .. code-block:: text
 
@@ -8660,7 +8690,7 @@ Stable diffusion image upscaling models can be used via the model types:
     * ``--model-type upscaler-x2``
     * ``--model-type upscaler-x4``
 
-The image used in the example below is this `low resolution cat <https://raw.githubusercontent.com/Teriks/dgenerate/master/examples/media/low_res_cat.png>`_
+The image used in the example below is this `low resolution cat <https://raw.githubusercontent.com/Teriks/dgenerate/v5.0.0/examples/media/low_res_cat.png>`_
 
 .. code-block:: bash
 
@@ -8896,7 +8926,7 @@ has taken place prior with a supported ``--model-type`` value involved.
 
 The adetailer image processor has many options and it is recommended to take a look at the output of
 ``dgenerate --image-processor-help adetailer`` and view the examples located at
-`examples/adetailer/post_processor <https://github.com/Teriks/dgenerate/tree/master/examples/adetailer/post_processor>`_
+`examples/adetailer/post_processor <https://github.com/Teriks/dgenerate/tree/v5.0.0/examples/adetailer/post_processor>`_
 for usage information.
 
 
@@ -9028,11 +9058,11 @@ adetailer processor help output below.
             mask-dilation: int = 4
             model-masks: bool = False
             confidence: float = 0.3
-            detector-device: Optional[str] = None
+            detector-device: str | None = None
             size: int | None = None
             pre-resize: bool = False
             device: str | None = None
-            output-file: Optional[str] = None
+            output-file: str | None = None
             output-overwrite: bool = False
     
         adetailer, diffusion based post processor for SD1.5, SDXL, Kolors, SD3, and Flux
@@ -9373,7 +9403,7 @@ processor chaining if desired.
             mask-shape: str = "rectangle"
             pre-resize: bool = False
             device: str | None = None
-            output-file: Optional[str] = None
+            output-file: str | None = None
             output-overwrite: bool = False
             model-offload: bool = False
     
@@ -9559,7 +9589,7 @@ provided in the image preview pane context menu.
             outpaint: bool = False
             pre-resize: bool = False
             device: str | None = None
-            output-file: Optional[str] = None
+            output-file: str | None = None
             output-overwrite: bool = False
             model-offload: bool = False
     
@@ -9789,7 +9819,7 @@ The ``yolo-sam`` processor is especially valuable for:
             detector-padding: int | str = 0
             pre-resize: bool = False
             device: str | None = None
-            output-file: Optional[str] = None
+            output-file: str | None = None
             output-overwrite: bool = False
             model-offload: bool = False
     
@@ -10317,14 +10347,14 @@ The following is a config file example that covers the most basic syntax concept
     
     # Guarantee unique file names are generated under the output directory by specifying unique seeds
     
-    stabilityai/stable-diffusion-2-1 --prompts "an astronaut riding a horse" --seeds 41509644783027 --output-path output --inference-steps 30 --guidance-scales 10
-    stabilityai/stable-diffusion-2-1 --prompts "a cowboy riding a horse" --seeds 78553317097366 --output-path output --inference-steps 30 --guidance-scales 10
-    stabilityai/stable-diffusion-2-1 --prompts "a martian riding a horse" --seeds 22797399276707 --output-path output --inference-steps 30 --guidance-scales 10
+    sd2-community/stable-diffusion-2-1 --prompts "an astronaut riding a horse" --seeds 41509644783027 --output-path output --inference-steps 30 --guidance-scales 10
+    sd2-community/stable-diffusion-2-1 --prompts "a cowboy riding a horse" --seeds 78553317097366 --output-path output --inference-steps 30 --guidance-scales 10
+    sd2-community/stable-diffusion-2-1 --prompts "a martian riding a horse" --seeds 22797399276707 --output-path output --inference-steps 30 --guidance-scales 10
     
     # Guarantee that no file name collisions happen by specifying different output paths for each invocation
     
-    stabilityai/stable-diffusion-2-1 --prompts "an astronaut riding a horse" --output-path unique_output_1  --inference-steps 30 --guidance-scales 10
-    stabilityai/stable-diffusion-2-1 --prompts "a cowboy riding a horse" --output-path unique_output_2 --inference-steps 30 --guidance-scales 10
+    sd2-community/stable-diffusion-2-1 --prompts "an astronaut riding a horse" --output-path unique_output_1  --inference-steps 30 --guidance-scales 10
+    sd2-community/stable-diffusion-2-1 --prompts "a cowboy riding a horse" --output-path unique_output_2 --inference-steps 30 --guidance-scales 10
     
     # Multiline continuations are possible implicitly for argument
     # switches IE lines starting with '-', space is automatically
@@ -10336,7 +10366,7 @@ The following is a config file example that covers the most basic syntax concept
     # there is a space before the slash if you want the space
     # to persist (posix behavior)
     
-    stabilityai/stable-diffusion-2-1 --prompts "a martian riding a horse"
+    sd2-community/stable-diffusion-2-1 --prompts "a martian riding a horse"
     --output-path unique_output_3  # there can be comments at the end of lines
     --inference-steps 30 \         # this comment is also ignored
     
@@ -10389,7 +10419,7 @@ The following is a config file example that covers the most basic syntax concept
     # This model was used before but will have to be fully instantiated from scratch again
     # after a cache flush which may take some time
     
-    stabilityai/stable-diffusion-2-1 --prompts "a martian riding a horse"
+    sd2-community/stable-diffusion-2-1 --prompts "a martian riding a horse"
     --output-path unique_output_4
 
 
@@ -10428,7 +10458,7 @@ also be mentioned in this output.
     
     # Invocation will proceed as normal
     
-    stabilityai/stable-diffusion-2-1 --prompts "a man walking on the moon without a space suit"
+    sd2-community/stable-diffusion-2-1 --prompts "a man walking on the moon without a space suit"
     
     # Print all set template variables
     
@@ -10447,46 +10477,46 @@ The ``\templates_help`` output from the above example is:
             Type: collections.abc.Sequence[str]
             Value: []
         Name: "injected_device"
-            Type: typing.Optional[str]
+            Type: str | None
             Value: None
         Name: "injected_plugin_modules"
-            Type: typing.Optional[collections.abc.Sequence[str]]
+            Type: collections.abc.Sequence[str] | None
             Value: []
         Name: "injected_verbose"
-            Type: typing.Optional[bool]
+            Type: bool | None
             Value: False
         Name: "last_adetailer_class_filter"
-            Type: typing.Optional[collections.abc.Collection[int | str]]
+            Type: collections.abc.Collection[int | str] | None
             Value: None
         Name: "last_adetailer_crop_control_image"
-            Type: typing.Optional[bool]
+            Type: bool | None
             Value: None
         Name: "last_adetailer_detector_paddings"
-            Type: typing.Optional[collections.abc.Sequence[int | tuple[int, int] | tuple[int, int, int, int]]]
+            Type: collections.abc.Sequence[int | tuple[int, int] | tuple[int, int, int, int]] | None
             Value: []
         Name: "last_adetailer_detector_uris"
-            Type: typing.Optional[collections.abc.Sequence[str]]
+            Type: collections.abc.Sequence[str] | None
             Value: []
         Name: "last_adetailer_index_filter"
-            Type: typing.Optional[collections.abc.Collection[int]]
+            Type: collections.abc.Collection[int] | None
             Value: None
         Name: "last_adetailer_mask_blurs"
-            Type: typing.Optional[collections.abc.Sequence[int]]
+            Type: collections.abc.Sequence[int] | None
             Value: []
         Name: "last_adetailer_mask_dilations"
-            Type: typing.Optional[collections.abc.Sequence[int]]
+            Type: collections.abc.Sequence[int] | None
             Value: []
         Name: "last_adetailer_mask_paddings"
-            Type: typing.Optional[collections.abc.Sequence[int | tuple[int, int] | tuple[int, int, int, int]]]
+            Type: collections.abc.Sequence[int | tuple[int, int] | tuple[int, int, int, int]] | None
             Value: []
         Name: "last_adetailer_mask_shapes"
-            Type: typing.Optional[collections.abc.Sequence[str]]
+            Type: collections.abc.Sequence[str] | None
             Value: []
         Name: "last_adetailer_model_masks"
-            Type: typing.Optional[bool]
+            Type: bool | None
             Value: None
         Name: "last_adetailer_sizes"
-            Type: typing.Optional[collections.abc.Sequence[int]]
+            Type: collections.abc.Sequence[int] | None
             Value: []
         Name: "last_animation_format"
             Type: <class 'str'>
@@ -10495,37 +10525,37 @@ The ``\templates_help`` output from the above example is:
             Type: collections.abc.Iterable[str]
             Value: <dgenerate.renderloop.RenderLoop.written_animations.<locals>.Iterable object>
         Name: "last_auth_token"
-            Type: typing.Optional[str]
+            Type: str | None
             Value: None
         Name: "last_batch_grid_size"
-            Type: typing.Optional[tuple[int, int]]
+            Type: tuple[int, int] | None
             Value: None
         Name: "last_batch_size"
-            Type: typing.Optional[int]
+            Type: int | None
             Value: None
         Name: "last_clip_skips"
-            Type: typing.Optional[collections.abc.Sequence[int]]
+            Type: collections.abc.Sequence[int] | None
             Value: []
         Name: "last_control_image_processors"
-            Type: typing.Optional[collections.abc.Sequence[str]]
+            Type: collections.abc.Sequence[str] | None
             Value: []
         Name: "last_controlnet_uris"
-            Type: typing.Optional[collections.abc.Sequence[str]]
+            Type: collections.abc.Sequence[str] | None
             Value: []
         Name: "last_deep_cache"
             Type: <class 'bool'>
             Value: False
         Name: "last_deep_cache_branch_ids"
-            Type: typing.Optional[collections.abc.Sequence[int]]
+            Type: collections.abc.Sequence[int] | None
             Value: []
         Name: "last_deep_cache_intervals"
-            Type: typing.Optional[collections.abc.Sequence[int]]
+            Type: collections.abc.Sequence[int] | None
             Value: []
         Name: "last_denoising_end"
-            Type: typing.Optional[float]
+            Type: float | None
             Value: None
         Name: "last_denoising_start"
-            Type: typing.Optional[float]
+            Type: float | None
             Value: None
         Name: "last_device"
             Type: <class 'str'>
@@ -10534,19 +10564,19 @@ The ``\templates_help`` output from the above example is:
             Type: <enum 'DataType'>
             Value: <DataType.AUTO: 0>
         Name: "last_frame_end"
-            Type: typing.Optional[int]
+            Type: int | None
             Value: None
         Name: "last_frame_start"
             Type: <class 'int'>
             Value: 0
         Name: "last_freeu_params"
-            Type: typing.Optional[collections.abc.Sequence[tuple[float, float, float, float]]]
+            Type: collections.abc.Sequence[tuple[float, float, float, float]] | None
             Value: []
         Name: "last_global_config"
-            Type: typing.Optional[str]
+            Type: str | None
             Value: None
         Name: "last_guidance_rescales"
-            Type: typing.Optional[collections.abc.Sequence[float]]
+            Type: collections.abc.Sequence[float] | None
             Value: []
         Name: "last_guidance_scales"
             Type: collections.abc.Sequence[float]
@@ -10555,31 +10585,31 @@ The ``\templates_help`` output from the above example is:
             Type: <class 'bool'>
             Value: False
         Name: "last_hi_diffusion_no_raunet"
-            Type: typing.Optional[bool]
+            Type: bool | None
             Value: None
         Name: "last_hi_diffusion_no_win_attn"
-            Type: typing.Optional[bool]
+            Type: bool | None
             Value: None
         Name: "last_image_encoder_uri"
-            Type: typing.Optional[str]
+            Type: str | None
             Value: None
         Name: "last_image_format"
             Type: <class 'str'>
             Value: 'png'
         Name: "last_image_guidance_scales"
-            Type: typing.Optional[collections.abc.Sequence[float]]
+            Type: collections.abc.Sequence[float] | None
             Value: []
         Name: "last_image_seed_strengths"
-            Type: typing.Optional[collections.abc.Sequence[float]]
+            Type: collections.abc.Sequence[float] | None
             Value: []
         Name: "last_image_seeds"
-            Type: typing.Optional[collections.abc.Sequence[str]]
+            Type: collections.abc.Sequence[str] | None
             Value: []
         Name: "last_images"
             Type: collections.abc.Iterable[str]
             Value: <dgenerate.renderloop.RenderLoop.written_images.<locals>.Iterable object>
         Name: "last_img2img_latents_processors"
-            Type: typing.Optional[collections.abc.Sequence[str]]
+            Type: collections.abc.Sequence[str] | None
             Value: []
         Name: "last_inference_steps"
             Type: collections.abc.Sequence[int]
@@ -10588,44 +10618,44 @@ The ``\templates_help`` output from the above example is:
             Type: <class 'bool'>
             Value: False
         Name: "last_inpaint_crop_feathers"
-            Type: typing.Optional[collections.abc.Sequence[int]]
+            Type: collections.abc.Sequence[int] | None
             Value: []
         Name: "last_inpaint_crop_masked"
             Type: <class 'bool'>
             Value: False
         Name: "last_inpaint_crop_paddings"
-            Type: typing.Optional[collections.abc.Sequence[int | tuple[int, int] | tuple[int, int, int, int]]]
+            Type: collections.abc.Sequence[int | tuple[int, int] | tuple[int, int, int, int]] | None
             Value: []
         Name: "last_ip_adapter_uris"
-            Type: typing.Optional[collections.abc.Sequence[str]]
+            Type: collections.abc.Sequence[str] | None
             Value: []
         Name: "last_latents"
-            Type: typing.Optional[collections.abc.Sequence[torch.Tensor]]
+            Type: collections.abc.Sequence[torch.Tensor] | None
             Value: []
         Name: "last_latents_post_processors"
-            Type: typing.Optional[collections.abc.Sequence[str]]
+            Type: collections.abc.Sequence[str] | None
             Value: []
         Name: "last_latents_processors"
-            Type: typing.Optional[collections.abc.Sequence[str]]
+            Type: collections.abc.Sequence[str] | None
             Value: []
         Name: "last_lora_fuse_scale"
-            Type: typing.Optional[float]
+            Type: float | None
             Value: None
         Name: "last_lora_uris"
-            Type: typing.Optional[collections.abc.Sequence[str]]
+            Type: collections.abc.Sequence[str] | None
             Value: []
         Name: "last_mask_image_processors"
-            Type: typing.Optional[collections.abc.Sequence[str]]
+            Type: collections.abc.Sequence[str] | None
             Value: []
         Name: "last_max_sequence_length"
-            Type: typing.Optional[int]
+            Type: int | None
             Value: None
         Name: "last_model_cpu_offload"
             Type: <class 'bool'>
             Value: False
         Name: "last_model_path"
-            Type: typing.Optional[str]
-            Value: 'stabilityai/stable-diffusion-2-1'
+            Type: str | None
+            Value: 'sd2-community/stable-diffusion-2-1'
         Name: "last_model_sequential_offload"
             Type: <class 'bool'>
             Value: False
@@ -10642,7 +10672,7 @@ The ``\templates_help`` output from the above example is:
             Type: <class 'bool'>
             Value: False
         Name: "last_original_config"
-            Type: typing.Optional[str]
+            Type: str | None
             Value: None
         Name: "last_output_auto1111_metadata"
             Type: <class 'bool'>
@@ -10660,304 +10690,304 @@ The ``\templates_help`` output from the above example is:
             Type: <class 'str'>
             Value: 'output'
         Name: "last_output_prefix"
-            Type: typing.Optional[str]
+            Type: str | None
             Value: None
         Name: "last_output_size"
-            Type: typing.Optional[tuple[int, int]]
+            Type: tuple[int, int] | None
             Value: None
         Name: "last_pag"
             Type: <class 'bool'>
             Value: False
         Name: "last_pag_adaptive_scales"
-            Type: typing.Optional[collections.abc.Sequence[float]]
+            Type: collections.abc.Sequence[float] | None
             Value: []
         Name: "last_pag_scales"
-            Type: typing.Optional[collections.abc.Sequence[float]]
+            Type: collections.abc.Sequence[float] | None
             Value: []
         Name: "last_parsed_image_seeds"
-            Type: typing.Optional[collections.abc.Sequence[dgenerate.mediainput.ImageSeedParseResult]]
+            Type: collections.abc.Sequence[dgenerate.mediainput.ImageSeedParseResult] | None
             Value: []
         Name: "last_plugin_module_paths"
             Type: collections.abc.Sequence[str]
             Value: []
         Name: "last_post_processors"
-            Type: typing.Optional[collections.abc.Sequence[str]]
+            Type: collections.abc.Sequence[str] | None
             Value: []
         Name: "last_prompt_upscaler_uri"
-            Type: typing.Union[str, collections.abc.Sequence[str], NoneType]
+            Type: str | collections.abc.Sequence[str] | None
             Value: None
         Name: "last_prompt_weighter_uri"
-            Type: typing.Optional[str]
+            Type: str | None
             Value: None
         Name: "last_prompts"
             Type: collections.abc.Sequence[dgenerate.prompt.Prompt]
             Value: ['a man walking on the moon without a space suit']
         Name: "last_quantizer_map"
-            Type: typing.Optional[collections.abc.Sequence[str]]
+            Type: collections.abc.Sequence[str] | None
             Value: []
         Name: "last_quantizer_uri"
-            Type: typing.Optional[str]
+            Type: str | None
             Value: None
         Name: "last_ras"
             Type: <class 'bool'>
             Value: False
         Name: "last_ras_end_steps"
-            Type: typing.Optional[collections.abc.Sequence[int]]
+            Type: collections.abc.Sequence[int] | None
             Value: []
         Name: "last_ras_error_reset_steps"
-            Type: typing.Optional[collections.abc.Sequence[collections.abc.Sequence[int]]]
+            Type: collections.abc.Sequence[collections.abc.Sequence[int]] | None
             Value: []
         Name: "last_ras_high_ratios"
-            Type: typing.Optional[collections.abc.Sequence[float]]
+            Type: collections.abc.Sequence[float] | None
             Value: []
         Name: "last_ras_index_fusion"
-            Type: typing.Optional[bool]
+            Type: bool | None
             Value: None
         Name: "last_ras_metrics"
-            Type: typing.Optional[collections.abc.Sequence[str]]
+            Type: collections.abc.Sequence[str] | None
             Value: []
         Name: "last_ras_sample_ratios"
-            Type: typing.Optional[collections.abc.Sequence[float]]
+            Type: collections.abc.Sequence[float] | None
             Value: []
         Name: "last_ras_skip_num_step_lengths"
-            Type: typing.Optional[collections.abc.Sequence[int]]
+            Type: collections.abc.Sequence[int] | None
             Value: []
         Name: "last_ras_skip_num_steps"
-            Type: typing.Optional[collections.abc.Sequence[int]]
+            Type: collections.abc.Sequence[int] | None
             Value: []
         Name: "last_ras_start_steps"
-            Type: typing.Optional[collections.abc.Sequence[int]]
+            Type: collections.abc.Sequence[int] | None
             Value: []
         Name: "last_ras_starvation_scales"
-            Type: typing.Optional[collections.abc.Sequence[float]]
+            Type: collections.abc.Sequence[float] | None
             Value: []
         Name: "last_revision"
             Type: <class 'str'>
             Value: 'main'
         Name: "last_s_cascade_decoder_uri"
-            Type: typing.Optional[str]
+            Type: str | None
             Value: None
         Name: "last_sada"
             Type: <class 'bool'>
             Value: False
         Name: "last_sada_acc_ranges"
-            Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
+            Type: collections.abc.Sequence[tuple[int, int]] | None
             Value: []
         Name: "last_sada_lagrange_ints"
-            Type: typing.Optional[collections.abc.Sequence[int]]
+            Type: collections.abc.Sequence[int] | None
             Value: []
         Name: "last_sada_lagrange_steps"
-            Type: typing.Optional[collections.abc.Sequence[int]]
+            Type: collections.abc.Sequence[int] | None
             Value: []
         Name: "last_sada_lagrange_terms"
-            Type: typing.Optional[collections.abc.Sequence[int]]
+            Type: collections.abc.Sequence[int] | None
             Value: []
         Name: "last_sada_max_downsamples"
-            Type: typing.Optional[collections.abc.Sequence[int]]
+            Type: collections.abc.Sequence[int] | None
             Value: []
         Name: "last_sada_max_fixes"
-            Type: typing.Optional[collections.abc.Sequence[int]]
+            Type: collections.abc.Sequence[int] | None
             Value: []
         Name: "last_sada_max_intervals"
-            Type: typing.Optional[collections.abc.Sequence[int]]
+            Type: collections.abc.Sequence[int] | None
             Value: []
         Name: "last_sada_sxs"
-            Type: typing.Optional[collections.abc.Sequence[int]]
+            Type: collections.abc.Sequence[int] | None
             Value: []
         Name: "last_sada_sys"
-            Type: typing.Optional[collections.abc.Sequence[int]]
+            Type: collections.abc.Sequence[int] | None
             Value: []
         Name: "last_safety_checker"
             Type: <class 'bool'>
             Value: False
         Name: "last_scheduler_uri"
-            Type: typing.Union[str, collections.abc.Sequence[str], NoneType]
+            Type: str | collections.abc.Sequence[str] | None
             Value: None
         Name: "last_sdxl_aesthetic_scores"
-            Type: typing.Optional[collections.abc.Sequence[float]]
+            Type: collections.abc.Sequence[float] | None
             Value: []
         Name: "last_sdxl_crops_coords_top_left"
-            Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
+            Type: collections.abc.Sequence[tuple[int, int]] | None
             Value: []
         Name: "last_sdxl_high_noise_fractions"
-            Type: typing.Optional[collections.abc.Sequence[float]]
+            Type: collections.abc.Sequence[float] | None
             Value: []
         Name: "last_sdxl_negative_aesthetic_scores"
-            Type: typing.Optional[collections.abc.Sequence[float]]
+            Type: collections.abc.Sequence[float] | None
             Value: []
         Name: "last_sdxl_negative_crops_coords_top_left"
-            Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
+            Type: collections.abc.Sequence[tuple[int, int]] | None
             Value: []
         Name: "last_sdxl_negative_original_sizes"
-            Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
+            Type: collections.abc.Sequence[tuple[int, int]] | None
             Value: []
         Name: "last_sdxl_negative_target_sizes"
-            Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
+            Type: collections.abc.Sequence[tuple[int, int]] | None
             Value: []
         Name: "last_sdxl_original_sizes"
-            Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
+            Type: collections.abc.Sequence[tuple[int, int]] | None
             Value: []
         Name: "last_sdxl_refiner_aesthetic_scores"
-            Type: typing.Optional[collections.abc.Sequence[float]]
+            Type: collections.abc.Sequence[float] | None
             Value: []
         Name: "last_sdxl_refiner_clip_skips"
-            Type: typing.Optional[collections.abc.Sequence[int]]
+            Type: collections.abc.Sequence[int] | None
             Value: []
         Name: "last_sdxl_refiner_crops_coords_top_left"
-            Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
+            Type: collections.abc.Sequence[tuple[int, int]] | None
             Value: []
         Name: "last_sdxl_refiner_deep_cache"
-            Type: typing.Optional[bool]
+            Type: bool | None
             Value: None
         Name: "last_sdxl_refiner_deep_cache_branch_ids"
-            Type: typing.Optional[collections.abc.Sequence[int]]
+            Type: collections.abc.Sequence[int] | None
             Value: []
         Name: "last_sdxl_refiner_deep_cache_intervals"
-            Type: typing.Optional[collections.abc.Sequence[int]]
+            Type: collections.abc.Sequence[int] | None
             Value: []
         Name: "last_sdxl_refiner_edit"
-            Type: typing.Optional[bool]
+            Type: bool | None
             Value: None
         Name: "last_sdxl_refiner_freeu_params"
-            Type: typing.Optional[collections.abc.Sequence[tuple[float, float, float, float]]]
+            Type: collections.abc.Sequence[tuple[float, float, float, float]] | None
             Value: []
         Name: "last_sdxl_refiner_guidance_rescales"
-            Type: typing.Optional[collections.abc.Sequence[float]]
+            Type: collections.abc.Sequence[float] | None
             Value: []
         Name: "last_sdxl_refiner_negative_aesthetic_scores"
-            Type: typing.Optional[collections.abc.Sequence[float]]
+            Type: collections.abc.Sequence[float] | None
             Value: []
         Name: "last_sdxl_refiner_negative_crops_coords_top_left"
-            Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
+            Type: collections.abc.Sequence[tuple[int, int]] | None
             Value: []
         Name: "last_sdxl_refiner_negative_original_sizes"
-            Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
+            Type: collections.abc.Sequence[tuple[int, int]] | None
             Value: []
         Name: "last_sdxl_refiner_negative_target_sizes"
-            Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
+            Type: collections.abc.Sequence[tuple[int, int]] | None
             Value: []
         Name: "last_sdxl_refiner_original_sizes"
-            Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
+            Type: collections.abc.Sequence[tuple[int, int]] | None
             Value: []
         Name: "last_sdxl_refiner_pag"
-            Type: typing.Optional[bool]
+            Type: bool | None
             Value: None
         Name: "last_sdxl_refiner_pag_adaptive_scales"
-            Type: typing.Optional[collections.abc.Sequence[float]]
+            Type: collections.abc.Sequence[float] | None
             Value: []
         Name: "last_sdxl_refiner_pag_scales"
-            Type: typing.Optional[collections.abc.Sequence[float]]
+            Type: collections.abc.Sequence[float] | None
             Value: []
         Name: "last_sdxl_refiner_sigmas"
-            Type: typing.Optional[collections.abc.Sequence[collections.abc.Sequence[float] | str]]
+            Type: collections.abc.Sequence[collections.abc.Sequence[float] | str] | None
             Value: []
         Name: "last_sdxl_refiner_target_sizes"
-            Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
+            Type: collections.abc.Sequence[tuple[int, int]] | None
             Value: []
         Name: "last_sdxl_refiner_uri"
-            Type: typing.Optional[str]
+            Type: str | None
             Value: None
         Name: "last_sdxl_t2i_adapter_factors"
-            Type: typing.Optional[collections.abc.Sequence[float]]
+            Type: collections.abc.Sequence[float] | None
             Value: []
         Name: "last_sdxl_target_sizes"
-            Type: typing.Optional[collections.abc.Sequence[tuple[int, int]]]
+            Type: collections.abc.Sequence[tuple[int, int]] | None
             Value: []
         Name: "last_second_model_cpu_offload"
-            Type: typing.Optional[bool]
+            Type: bool | None
             Value: None
         Name: "last_second_model_guidance_scales"
-            Type: typing.Optional[collections.abc.Sequence[float]]
+            Type: collections.abc.Sequence[float] | None
             Value: []
         Name: "last_second_model_inference_steps"
-            Type: typing.Optional[collections.abc.Sequence[int]]
+            Type: collections.abc.Sequence[int] | None
             Value: []
         Name: "last_second_model_original_config"
-            Type: typing.Optional[str]
+            Type: str | None
             Value: None
         Name: "last_second_model_prompt_upscaler_uri"
-            Type: typing.Union[str, collections.abc.Sequence[str], NoneType]
+            Type: str | collections.abc.Sequence[str] | None
             Value: None
         Name: "last_second_model_prompt_weighter_uri"
-            Type: typing.Optional[str]
+            Type: str | None
             Value: None
         Name: "last_second_model_prompts"
-            Type: typing.Optional[collections.abc.Sequence[dgenerate.prompt.Prompt]]
+            Type: collections.abc.Sequence[dgenerate.prompt.Prompt] | None
             Value: []
         Name: "last_second_model_quantizer_map"
-            Type: typing.Optional[collections.abc.Sequence[str]]
+            Type: collections.abc.Sequence[str] | None
             Value: []
         Name: "last_second_model_quantizer_uri"
-            Type: typing.Optional[str]
+            Type: str | None
             Value: None
         Name: "last_second_model_scheduler_uri"
-            Type: typing.Union[str, collections.abc.Sequence[str], NoneType]
+            Type: str | collections.abc.Sequence[str] | None
             Value: None
         Name: "last_second_model_second_prompt_upscaler_uri"
-            Type: typing.Union[str, collections.abc.Sequence[str], NoneType]
+            Type: str | collections.abc.Sequence[str] | None
             Value: None
         Name: "last_second_model_second_prompts"
-            Type: typing.Optional[collections.abc.Sequence[dgenerate.prompt.Prompt]]
+            Type: collections.abc.Sequence[dgenerate.prompt.Prompt] | None
             Value: []
         Name: "last_second_model_sequential_offload"
-            Type: typing.Optional[bool]
+            Type: bool | None
             Value: None
         Name: "last_second_model_text_encoder_uris"
-            Type: typing.Optional[collections.abc.Sequence[str]]
+            Type: collections.abc.Sequence[str] | None
             Value: []
         Name: "last_second_model_unet_uri"
-            Type: typing.Optional[str]
+            Type: str | None
             Value: None
         Name: "last_second_prompt_upscaler_uri"
-            Type: typing.Union[str, collections.abc.Sequence[str], NoneType]
+            Type: str | collections.abc.Sequence[str] | None
             Value: None
         Name: "last_second_prompts"
-            Type: typing.Optional[collections.abc.Sequence[dgenerate.prompt.Prompt]]
+            Type: collections.abc.Sequence[dgenerate.prompt.Prompt] | None
             Value: []
         Name: "last_seed_image_processors"
-            Type: typing.Optional[collections.abc.Sequence[str]]
+            Type: collections.abc.Sequence[str] | None
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [63077969702768]
+            Value: [76172412096065]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
         Name: "last_sigmas"
-            Type: typing.Optional[collections.abc.Sequence[collections.abc.Sequence[float] | str]]
+            Type: collections.abc.Sequence[collections.abc.Sequence[float] | str] | None
             Value: []
         Name: "last_subfolder"
-            Type: typing.Optional[str]
+            Type: str | None
             Value: None
         Name: "last_t2i_adapter_uris"
-            Type: typing.Optional[collections.abc.Sequence[str]]
+            Type: collections.abc.Sequence[str] | None
             Value: []
         Name: "last_tea_cache"
             Type: <class 'bool'>
             Value: False
         Name: "last_tea_cache_rel_l1_thresholds"
-            Type: typing.Optional[collections.abc.Sequence[float]]
+            Type: collections.abc.Sequence[float] | None
             Value: []
         Name: "last_text_encoder_uris"
-            Type: typing.Optional[collections.abc.Sequence[str]]
+            Type: collections.abc.Sequence[str] | None
             Value: []
         Name: "last_textual_inversion_uris"
-            Type: typing.Optional[collections.abc.Sequence[str]]
+            Type: collections.abc.Sequence[str] | None
             Value: []
         Name: "last_third_prompt_upscaler_uri"
-            Type: typing.Union[str, collections.abc.Sequence[str], NoneType]
+            Type: str | collections.abc.Sequence[str] | None
             Value: None
         Name: "last_third_prompts"
-            Type: typing.Optional[collections.abc.Sequence[dgenerate.prompt.Prompt]]
+            Type: collections.abc.Sequence[dgenerate.prompt.Prompt] | None
             Value: []
         Name: "last_transformer_uri"
-            Type: typing.Optional[str]
+            Type: str | None
             Value: None
         Name: "last_unet_uri"
-            Type: typing.Optional[str]
+            Type: str | None
             Value: None
         Name: "last_upscaler_noise_levels"
-            Type: typing.Optional[collections.abc.Sequence[int]]
+            Type: collections.abc.Sequence[int] | None
             Value: []
         Name: "last_vae_slicing"
             Type: <class 'bool'>
@@ -10966,10 +10996,10 @@ The ``\templates_help`` output from the above example is:
             Type: <class 'bool'>
             Value: False
         Name: "last_vae_uri"
-            Type: typing.Optional[str]
+            Type: str | None
             Value: None
         Name: "last_variant"
-            Type: typing.Optional[str]
+            Type: str | None
             Value: None
         Name: "last_verbose"
             Type: <class 'bool'>
@@ -11153,7 +11183,7 @@ The dgenerate specific jinja2 functions/filters are:
         Currently accepted values are:
     
         "ncnn": Do we have ncnn installed?
-        "gpt4all": Do we have gpt4all installed?
+        "xllamacpp": Do we have xllamacpp installed?
         "bitsandbytes": Do we have bitsandbytes installed?
         "flash-attn": Do we have flash-attn installed?
         "xformers": Do we have xformers installed?
@@ -11329,10 +11359,10 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
     =========================================================================================================
     filter(args, kwargs):
     
-        Return an iterator yielding those items of iterable for which function(item) is true. If function is None,
-        return the items that are true.
+        Return an iterator yielding those items of iterable for which function(item) is true.  If function is
+        None, return the items that are true.
     
-    ==============================================================================================================
+    =========================================================================================================
     float(args, kwargs):
     
         Convert a string or number to a floating-point number, if possible.
@@ -11358,10 +11388,12 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
     
         getattr(object, name[, default]) -> value
     
-        Get a named attribute from an object; getattr(x, 'y') is equivalent to x.y. When a default argument is
-        given, it is returned when the attribute doesn't exist; without it, an exception is raised in that case.
+        Get a named attribute from an object.
     
-    ============================================================================================================
+        getattr(x, 'y') is equivalent to x.y. When a default argument is given, it is returned when the attribute
+        doesn't exist; without it, an exception is raised in that case.
+    
+    =============================================================================================================
     hasattr(args, kwargs):
     
         Return whether the object has an attribute with the given name.
@@ -11371,12 +11403,13 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
     ===========================================================================
     hash(args, kwargs):
     
-        Return the hash value for the given object.
+        Return the integer hash value for the given object.
     
         Two objects that compare equal must also have the same hash value, but the reverse is not necessarily
-        true.
+        true.  Hash values may differ between Python processes.  Not all objects are hashable; calling hash() on
+        an unhashable object raises TypeError.
     
-    =========================================================================================================
+    ============================================================================================================
     hex(args, kwargs):
     
         Return the hexadecimal representation of an integer.
@@ -11394,7 +11427,7 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
         If x is not a number or if base is given, then x must be a string, bytes, or bytearray instance
         representing an integer literal in the given base.  The literal can be preceded by '+' or '-' and be
         surrounded by whitespace.  The base defaults to 10.  Valid bases are 0 and 2-36. Base 0 means to interpret
-        the base from the string as an integer literal. >>> int('0b100', base=0) 4
+        the base from the string as an integer iteral. >>> int('0b100', base=0) 4
     
     ==============================================================================================================
     iter(args, kwargs):
@@ -11423,6 +11456,8 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
         Make an iterator that computes the function using arguments from each of the iterables.  Stops when the
         shortest iterable is exhausted.
     
+        If strict is true and one of the arguments is exhausted before the others, raise a ValueError.
+    
     ===========================================================================================================
     max(args, kwargs):
     
@@ -11446,10 +11481,10 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
     
         next(iterator[, default])
     
-        Return the next item from the iterator. If default is given and the iterator is exhausted, it is returned
+        Return the next item from the iterator.  If default is given and the iterator is exhausted, it is returned
         instead of raising StopIteration.
     
-    =============================================================================================================
+    ==============================================================================================================
     object(args, kwargs):
     
         The base class of the class hierarchy.
@@ -11508,10 +11543,10 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
     
         Round a number to a given precision in decimal digits.
     
-        The return value is an integer if ndigits is omitted or None.  Otherwise the return value has the same
-        type as the number.  ndigits may be negative.
+        The return value is an integer if ndigits is omitted or None. Otherwise the return value has the same type
+        as the number.  ndigits may be negative.
     
-    ==========================================================================================================
+    ==============================================================================================================
     set(args, kwargs):
     
         Build an unordered collection of unique elements.
@@ -11521,9 +11556,11 @@ In addition to the dgenerate specific jinja2 functions, some python builtins are
     
         slice(stop) slice(start, stop[, step])
     
-        Create a slice object.  This is used for extended slicing (e.g. a[0:10:2]).
+        Create a slice object.
     
-    ===============================================================================
+        This is used for extended slicing (e.g. a[0:10:2]).
+    
+    =======================================================
     sorted(args, kwargs):
     
         Return a new list containing all items from the iterable in ascending order.
@@ -11704,7 +11741,7 @@ such as VAEs etc. outside of relying on the caching system.
     # An invocation sets various template variables related to its
     # execution once it is finished running
     
-    stabilityai/stable-diffusion-2-1 --prompts {{ my_prompt }} --gen-seeds 5
+    sd2-community/stable-diffusion-2-1 --prompts {{ my_prompt }} --gen-seeds 5
     
     
     # Print a quoted filename of the last image produced by the last invocation
@@ -11754,7 +11791,7 @@ such as VAEs etc. outside of relying on the caching system.
     # via "last_prompt", which can be formatted properly for reuse
     # by using the function "format_prompt"
     
-    stabilityai/stable-diffusion-2-1 --prompts {{ format_prompt(last(last_prompts)) }}
+    sd2-community/stable-diffusion-2-1 --prompts {{ format_prompt(last(last_prompts)) }}
     
     # You can get only the positive or negative part if you want via the "positive"
     # and "negative" properties on a prompt object, these attributes are not
@@ -11762,14 +11799,14 @@ such as VAEs etc. outside of relying on the caching system.
     # dgenerate template function "quote" which will shell quote any special
     # characters that the argument parser is not going to understand
     
-    stabilityai/stable-diffusion-2-1 --prompts {{ quote(last(last_prompts).positive) }}
+    sd2-community/stable-diffusion-2-1 --prompts {{ quote(last(last_prompts).positive) }}
     
     # "last_prompts" returns all the prompts used in the last invocation as a list
     # the "format_prompt" function can also work on a list
     
-    stabilityai/stable-diffusion-2-1 --prompts "prompt 1" "prompt 2" "prompt 3"
+    sd2-community/stable-diffusion-2-1 --prompts "prompt 1" "prompt 2" "prompt 3"
     
-    stabilityai/stable-diffusion-2-1 --prompts {{ format_prompt(last_prompts) }}
+    sd2-community/stable-diffusion-2-1 --prompts {{ format_prompt(last_prompts) }}
     
     
     # Execute additional config with full templating.
@@ -11778,7 +11815,7 @@ such as VAEs etc. outside of relying on the caching system.
     # that all whitespace within is preserved including newlines
     
     {% for image in last_images %}
-        stabilityai/stable-diffusion-2-1 --image-seeds {{ quote(image) }} --prompts {{ my_prompt }}
+        sd2-community/stable-diffusion-2-1 --image-seeds {{ quote(image) }} --prompts {{ my_prompt }}
     {% endfor %}
     
     
@@ -11789,7 +11826,7 @@ such as VAEs etc. outside of relying on the caching system.
     # a config file.
     
     {% for image in last_images %}
-        stabilityai/stable-diffusion-2-1
+        sd2-community/stable-diffusion-2-1
         --image-seeds {{ quote(image) }}
         --prompts {{ my_prompt }}
     {% endfor %}
@@ -11797,7 +11834,7 @@ such as VAEs etc. outside of relying on the caching system.
     
     # The above are both basically equivalent to this
     
-    stabilityai/stable-diffusion-2-1 --image-seeds {{ quote(last_images) }} --prompts {{ my_prompt }}
+    sd2-community/stable-diffusion-2-1 --image-seeds {{ quote(last_images) }} --prompts {{ my_prompt }}
     
     
     # You can save modules from the main pipeline used in the last invocation
@@ -11806,7 +11843,7 @@ such as VAEs etc. outside of relying on the caching system.
     # module names to save to the variable name, this is an advanced usage
     # and requires some understanding of the diffusers library to utilize correctly
     
-    stabilityai/stable-diffusion-2-1
+    sd2-community/stable-diffusion-2-1
     --variant fp16
     --dtype float16
     --prompts "an astronaut walking on the moon"
@@ -12155,7 +12192,7 @@ The glob modules is set to the ``glob`` template variable, and the ``os`` module
     
     # Simple inline usage
     
-    stabilityai/stable-diffusion-2-1
+    sd2-community/stable-diffusion-2-1
     --variant fp16
     --dtype float16
     --prompts "In the style of picaso"
@@ -12164,7 +12201,7 @@ The glob modules is set to the ``glob`` template variable, and the ``os`` module
     
     # equivalent
     
-    stabilityai/stable-diffusion-2-1
+    sd2-community/stable-diffusion-2-1
     --variant fp16
     --dtype float16
     --prompts "In the style of picaso"
@@ -13070,12 +13107,12 @@ Image Processors / Latents Processors
 ----------------------------------------------
 
 A code example as well as a usage example for image processor plugins can be found
-in the `writing_plugins/image_processor <https://github.com/Teriks/dgenerate/tree/master/examples/writing_plugins/image_processor>`_
+in the `writing_plugins/image_processor <https://github.com/Teriks/dgenerate/tree/v5.0.0/examples/writing_plugins/image_processor>`_
 folder of the examples folder.
 
-The source code for the built in `canny <https://github.com/Teriks/dgenerate/blob/master/dgenerate/imageprocessors/canny.py>`_ processor,
-the `openpose <https://github.com/Teriks/dgenerate/blob/master/dgenerate/imageprocessors/openpose.py>`_ processor, and the simple
-`pillow image operations <https://github.com/Teriks/dgenerate/blob/master/dgenerate/imageprocessors/imageops.py>`_ processors can also
+The source code for the built in `canny <https://github.com/Teriks/dgenerate/blob/v5.0.0/dgenerate/imageprocessors/canny.py>`_ processor,
+the `openpose <https://github.com/Teriks/dgenerate/blob/v5.0.0/dgenerate/imageprocessors/openpose.py>`_ processor, and the simple
+`pillow image operations <https://github.com/Teriks/dgenerate/blob/v5.0.0/dgenerate/imageprocessors/imageops.py>`_ processors can also
 be of reference as they are written as internal image processor plugins.
 
 ~~~~
@@ -13085,31 +13122,31 @@ raw/partially denoised latents, on latents used for ``img2img``, or on fully den
 written to disk. For user-facing usage details, see the "Latents Processors" section of the manual.
 
 Reference implementations can be found in the internal latents processors:
-`scale <https://github.com/Teriks/dgenerate/blob/master/dgenerate/latentsprocessors/scale.py>`_,
-`noise <https://github.com/Teriks/dgenerate/blob/master/dgenerate/latentsprocessors/noise.py>`_, and
-`interposer <https://github.com/Teriks/dgenerate/blob/master/dgenerate/latentsprocessors/interposer.py>`_.
+`scale <https://github.com/Teriks/dgenerate/blob/v5.0.0/dgenerate/latentsprocessors/scale.py>`_,
+`noise <https://github.com/Teriks/dgenerate/blob/v5.0.0/dgenerate/latentsprocessors/noise.py>`_, and
+`interposer <https://github.com/Teriks/dgenerate/blob/v5.0.0/dgenerate/latentsprocessors/interposer.py>`_.
 
 The base interface is implemented in
-`LatentsProcessor <https://github.com/Teriks/dgenerate/blob/master/dgenerate/latentsprocessors/latentsprocessor.py>`_.
+`LatentsProcessor <https://github.com/Teriks/dgenerate/blob/v5.0.0/dgenerate/latentsprocessors/latentsprocessor.py>`_.
 
 An example skeleton for a latents processor plugin can be found in
-`writing_plugins/latents_processor <https://github.com/Teriks/dgenerate/tree/master/examples/writing_plugins/latents_processor>`_.
+`writing_plugins/latents_processor <https://github.com/Teriks/dgenerate/tree/v5.0.0/examples/writing_plugins/latents_processor>`_.
 
 ~~~~
 Config directive and template function plugins
 ----------------------------------------------
 
-An example for writing config directives can be found in the `writing_plugins/config_directive <https://github.com/Teriks/dgenerate/tree/master/examples/writing_plugins/config_directive>`_  example folder.
+An example for writing config directives can be found in the `writing_plugins/config_directive <https://github.com/Teriks/dgenerate/tree/v5.0.0/examples/writing_plugins/config_directive>`_  example folder.
 
-Config template functions can also be implemented by plugins, see: `writing_plugins/template_function <https://github.com/Teriks/dgenerate/tree/master/examples/writing_plugins/template_function>`_
+Config template functions can also be implemented by plugins, see: `writing_plugins/template_function <https://github.com/Teriks/dgenerate/tree/v5.0.0/examples/writing_plugins/template_function>`_
 
 Currently the only internal directive that is implemented as a plugin is the ``\image_process`` directive, who's source file
-`can be located here <https://github.com/Teriks/dgenerate/blob/master/dgenerate/batchprocess/image_process_directive.py>`_.
+`can be located here <https://github.com/Teriks/dgenerate/blob/v5.0.0/dgenerate/batchprocess/image_process_directive.py>`_.
 
 The source file for the ``\image_process`` directive is terse as most of it is implemented as reusable code.
 
 The behavior of ``\image_process`` which is also used for ``--sub-command image-process`` is
-`is implemented here <https://github.com/Teriks/dgenerate/blob/master/dgenerate/image_process>`_.
+`is implemented here <https://github.com/Teriks/dgenerate/blob/v5.0.0/dgenerate/image_process>`_.
 
 ~~~~
 
@@ -13117,9 +13154,9 @@ The behavior of ``\image_process`` which is also used for ``--sub-command image-
 Sub-command plugins
 -------------------
 
-Reference for writing sub-commands can be found in the `image-process <https://github.com/Teriks/dgenerate/blob/master/dgenerate/subcommands/image_process.py>`_
+Reference for writing sub-commands can be found in the `image-process <https://github.com/Teriks/dgenerate/blob/v5.0.0/dgenerate/subcommands/image_process.py>`_
 sub-command implementation, and a plugin skeleton file for sub-commands can be found in the
-`writing_plugins/sub_command <https://github.com/Teriks/dgenerate/tree/master/examples/writing_plugins/sub_command>`_ example folder.
+`writing_plugins/sub_command <https://github.com/Teriks/dgenerate/tree/v5.0.0/examples/writing_plugins/sub_command>`_ example folder.
 
 ~~~~
 
@@ -13127,11 +13164,11 @@ sub-command implementation, and a plugin skeleton file for sub-commands can be f
 Prompt Weighters / Prompt Upscalers
 ----------------------------------------
 
-Reference for writing prompt weighters can be found in the `CompelPromptWeighter <https://github.com/Teriks/dgenerate/blob/master/dgenerate/promptweighters/compelpromptweighter.py>`_
-and `SdEmbedPromptWeighter <https://github.com/Teriks/dgenerate/blob/master/dgenerate/promptweighters/sdembedpromptweighter.py>`_ internal prompt weighter implementations.
+Reference for writing prompt weighters can be found in the `CompelPromptWeighter <https://github.com/Teriks/dgenerate/blob/v5.0.0/dgenerate/promptweighters/compelpromptweighter.py>`_
+and `SdEmbedPromptWeighter <https://github.com/Teriks/dgenerate/blob/v5.0.0/dgenerate/promptweighters/sdembedpromptweighter.py>`_ internal prompt weighter implementations.
 
 A plugin skeleton file for prompt weighters can be found in the
-`writing_plugins/prompt_weighter <https://github.com/Teriks/dgenerate/tree/master/examples/writing_plugins/prompt_weighter>`_
+`writing_plugins/prompt_weighter <https://github.com/Teriks/dgenerate/tree/v5.0.0/examples/writing_plugins/prompt_weighter>`_
 example folder.
 
 In addition to prompt weighters, dgenerate also supports prompt upscaler plugins that can preprocess or
@@ -13140,14 +13177,14 @@ expand prompt text before it is fed to the pipeline. They can be enabled globall
 upscalers can be chained by repeating the embedded argument.
 
 Reference implementations can be found in the internal prompt upscalers:
-`DynamicPrompts <https://github.com/Teriks/dgenerate/blob/master/dgenerate/promptupscalers/dynamicpromptsupscaler.py>`_,
-`MagicPrompt <https://github.com/Teriks/dgenerate/blob/master/dgenerate/promptupscalers/magicpromptupscaler.py>`_,
-`Attention <https://github.com/Teriks/dgenerate/blob/master/dgenerate/promptupscalers/attentionpromptupscaler.py>`_,
-`Translate <https://github.com/Teriks/dgenerate/blob/master/dgenerate/promptupscalers/translatepromptupscaler.py>`_, and
-`GPT4All <https://github.com/Teriks/dgenerate/blob/master/dgenerate/promptupscalers/gpt4allpromptupscaler.py>`_.
+`DynamicPrompts <https://github.com/Teriks/dgenerate/blob/v5.0.0/dgenerate/promptupscalers/dynamicpromptsupscaler.py>`_,
+`MagicPrompt <https://github.com/Teriks/dgenerate/blob/v5.0.0/dgenerate/promptupscalers/magicpromptupscaler.py>`_,
+`Attention <https://github.com/Teriks/dgenerate/blob/v5.0.0/dgenerate/promptupscalers/attentionpromptupscaler.py>`_,
+`Translate <https://github.com/Teriks/dgenerate/blob/v5.0.0/dgenerate/promptupscalers/translatepromptupscaler.py>`_, and
+`XllamaCpp <https://github.com/Teriks/dgenerate/blob/v5.0.0/dgenerate/promptupscalers/xllamacpppromptupscaler.py>`_.
 
 An example skeleton for writing a prompt upscaler plugin can be found in
-`writing_plugins/prompt_upscaler <https://github.com/Teriks/dgenerate/tree/master/examples/writing_plugins/prompt_upscaler>`_.
+`writing_plugins/prompt_upscaler <https://github.com/Teriks/dgenerate/tree/v5.0.0/examples/writing_plugins/prompt_upscaler>`_.
 
 For usage details, see the "Prompt upscaling" section of the user manual.
 

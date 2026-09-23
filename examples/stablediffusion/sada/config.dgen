@@ -14,7 +14,7 @@
 # i.e. DPMSolverMultistepScheduler or EulerDiscreteScheduler
 
 
-stabilityai/stable-diffusion-2-1
+sd2-community/stable-diffusion-2-1
 --inference-steps 50
 --guidance-scales 7.5
 --scheduler DPMSolverMultistepScheduler

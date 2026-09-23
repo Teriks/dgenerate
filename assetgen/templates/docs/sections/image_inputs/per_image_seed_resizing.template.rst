@@ -63,7 +63,7 @@ The involved images are resized using the basic syntax with no keyword arguments
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --image-seeds "my-image-seed.png;1024" "my-image-seed.png;my-mask-image.png;512x512" \
     --prompts "Face of a yellow cat, high resolution, sitting on a park bench" \
     --image-seed-strengths 0.8 \

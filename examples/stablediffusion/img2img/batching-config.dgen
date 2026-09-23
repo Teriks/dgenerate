@@ -14,7 +14,7 @@
 
 # If we wanted we could use --batch-grid-size to put these images into a grid
 
-stabilityai/stable-diffusion-2
+sd2-community/stable-diffusion-2
 --inference-steps 30
 --guidance-scales 8
 --image-seeds "images: ../../media/earth.jpg, ../../media/mountain.png;1024"

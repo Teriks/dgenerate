@@ -3,7 +3,7 @@
 
 # Use an already processed image with the canny controlnet
 
-stabilityai/stable-diffusion-2-1
+sd2-community/stable-diffusion-2-1
 --inference-steps 40
 --guidance-scales 8
 --gen-seeds 2

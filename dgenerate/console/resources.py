@@ -120,8 +120,8 @@ def _schema_filter_imageprocessors(schema: dict):
 
 
 def _schema_filter_promptupscalers(schema: dict):
-    if importlib.util.find_spec('gpt4all') is None:
-        schema.pop('gpt4all', None)
+    if importlib.util.find_spec('xllamacpp') is None:
+        schema.pop('xllamacpp', None)
     return schema
 
 
@@ -159,26 +159,6 @@ def get_torch_vae_types() -> list[str]:
             "AsymmetricAutoencoderKL",
             "AutoencoderTiny",
             "ConsistencyDecoderVAE"]
-
-
-def get_gpt4all_compute_devices() -> list[str]:
-    """
-    - "cpu": Model will run on the central processing unit.
-    - "gpu": Use Metal on ARM64 macOS, otherwise the same as "kompute".
-    - "kompute": Use the best GPU provided by the Kompute backend.
-    - "cuda": Use the best GPU provided by the CUDA backend.
-    - "amd", "nvidia": Use the best GPU provided by the Kompute backend from this vendor.
-    """
-
-    opts = ['cpu', 'gpu', 'kompute']
-
-    if shutil.which('nvidia-smi'):
-        opts.append('cuda')
-
-    if shutil.which('rocm-smi'):
-        opts.append('amd')
-
-    return opts
 
 
 def get_torch_devices() -> list[str]:

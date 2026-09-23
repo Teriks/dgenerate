@@ -1457,7 +1457,7 @@ def pipeline_class_supports_lora(cls: typing.Type[diffusers.DiffusionPipeline]):
     :param cls: ``diffusers`` pipeline class
     :return: ``True`` or ``False``
     """
-    return any('LoraLoaderMixin' in x.__name__ for x in cls.__bases__)
+    return any('LoraLoaderMixin' in x.__name__ for x in cls.__mro__)
 
 
 def pipeline_class_supports_ip_adapter(cls: typing.Type[diffusers.DiffusionPipeline]):

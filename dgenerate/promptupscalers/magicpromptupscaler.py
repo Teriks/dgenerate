@@ -22,7 +22,6 @@ import contextlib
 import gc
 import typing
 
-import diffusers
 import torch
 import transformers
 
@@ -234,7 +233,7 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
         if quantizer:
             try:
                 quantizer_class = _get_quantizer_uri_class(quantizer)
-                quantization_config = quantizer_class.parse(quantizer).to_config(dtype)
+                quantization_config = quantizer_class.parse(quantizer).to_transformers_config(dtype)
             except Exception as e:
                 raise self.argument_error(f'Error loading "quantizer" argument "{quantizer}": {e}') from e
         else:
@@ -303,7 +302,7 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
                            'bfloat16': torch.bfloat16
                            }[dtype]
 
-            if isinstance(quantization_config, diffusers.BitsAndBytesConfig):
+            if isinstance(quantization_config, transformers.BitsAndBytesConfig):
                 if quantization_config.load_in_4bit and quantization_config.bnb_4bit_compute_dtype is None:
                     quantization_config.bnb_4bit_compute_dtype = torch_dtype
 
@@ -344,7 +343,7 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
             model = transformers.AutoModelForCausalLM.from_pretrained(
                 model_name,
                 trust_remote_code=True,
-                torch_dtype=dtype,
+                dtype=dtype,
                 quantization_config=quantization_config,
                 device_map=self.device if quantization_config else None,
                 local_files_only=self.local_files_only

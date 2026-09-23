@@ -42,7 +42,7 @@ Typically however, there will be many compatible schedulers:
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-2 \
+    dgenerate sd2-community/stable-diffusion-2 \
     --inference-steps 40 \
     --guidance-scales 8 \
     --output-size 1024 \
@@ -52,7 +52,7 @@ Typically however, there will be many compatible schedulers:
 
     # Outputs:
     #
-    # Compatible schedulers for "stabilityai/stable-diffusion-2" are:
+    # Compatible schedulers for "sd2-community/stable-diffusion-2" are:
     #
     #     "DDIMScheduler"
     #     "DDPMScheduler"
@@ -79,7 +79,7 @@ can be overridden via a URI syntax, for every possible scheduler.
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-2 \
+    dgenerate sd2-community/stable-diffusion-2 \
     --inference-steps 40 \
     --guidance-scales 8 \
     --output-size 1024 \
@@ -90,7 +90,7 @@ can be overridden via a URI syntax, for every possible scheduler.
 
     # Outputs (shortened for brevity...):
     #
-    # Compatible schedulers for "stabilityai/stable-diffusion-2" are:
+    # Compatible schedulers for "sd2-community/stable-diffusion-2" are:
     #    ...
     #
     #    PNDMScheduler:
@@ -118,7 +118,7 @@ As an example, you may override the mentioned arguments for any scheduler in thi
     # for some models this may be necessary, not for this model
     # this is just a syntax example
 
-    dgenerate stabilityai/stable-diffusion-2 \
+    dgenerate sd2-community/stable-diffusion-2 \
     --inference-steps 40 \
     --guidance-scales 8 \
     --output-size 1024 \
@@ -170,7 +170,7 @@ output file name, in the order: ``(scheduler)_(refiner / decoder scheduler)``
 
     # Try these two schedulers one after another
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --inference-steps 30 \
     --guidance-scales 5 \
     --schedulers EulerAncestralDiscreteScheduler KDPM2AncestralDiscreteScheduler \

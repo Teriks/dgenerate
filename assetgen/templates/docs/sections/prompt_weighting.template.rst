@@ -68,7 +68,7 @@ You can enable the ``compel`` prompt weighter by specifying it with the ``--prom
 
     # Increase the weight of (picking apricots)
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --inference-steps 30 \
     --guidance-scales 5.00 \
     --clip-skips 0 \
@@ -80,7 +80,7 @@ You can enable the ``compel`` prompt weighter by specifying it with the ``--prom
 
     # Specify a weight
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --inference-steps 30 \
     --guidance-scales 5.00 \
     --clip-skips 0 \
@@ -104,7 +104,7 @@ compel / InvokeAI syntax for you.
 
     # Increase the weight of (picking apricots)
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --inference-steps 30 \
     --guidance-scales 5.00 \
     --clip-skips 0 \
@@ -116,7 +116,7 @@ compel / InvokeAI syntax for you.
 
     # Specify a weight
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --inference-steps 30 \
     --guidance-scales 5.00 \
     --clip-skips 0 \

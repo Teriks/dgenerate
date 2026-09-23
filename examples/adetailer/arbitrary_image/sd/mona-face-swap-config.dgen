@@ -4,7 +4,7 @@
 # try some variations on parameters with SD1.5 since
 # it is fairly quick to run
 
-stabilityai/stable-diffusion-2-1
+sd2-community/stable-diffusion-2-1
 --inference-steps 30
 --guidance-scales 5
 --clip-skips 0

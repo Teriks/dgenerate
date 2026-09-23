@@ -32,8 +32,8 @@ from .translatepromptupscaler import TranslatePromptUpscaler
 import collections.abc
 
 try:
-    import gpt4all
-    from .gpt4allpromptupscaler import GPT4ALLPromptUpscaler
+    import xllamacpp
+    from .xllamacpppromptupscaler import XllamaCppPromptUpscaler
 except ImportError:
     pass
 

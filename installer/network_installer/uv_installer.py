@@ -386,8 +386,8 @@ class UvInstaller:
         # If primary failed, try fallback versions
         self.log_callback(f"Primary Python version {primary_version} failed, trying fallback versions...")
 
-        # For dgenerate 5.0.0+, try 3.13, 3.12, 3.11
-        fallback_versions = ["3.13", "3.12", "3.11"]
+        # For dgenerate 5.0.0+, try 3.14, 3.13, 3.12, 3.11
+        fallback_versions = ["3.14", "3.13", "3.12", "3.11"]
 
         # Remove the primary version that already failed
         fallback_versions = [v for v in fallback_versions if v != primary_version]

@@ -26,18 +26,23 @@ def run_command(cmd, check=True, capture_output=False):
         return e
 
 
+ROCM_INDEX = "https://download.pytorch.org/whl/rocm7.2/"
+CUDA_INDEX = "https://download.pytorch.org/whl/cu130/"
+XPU_INDEX = "https://download.pytorch.org/whl/xpu/"
+
+
 def detect_gpu():
     # Check for ROCm
     if shutil.which("rocminfo"):
-        return "https://download.pytorch.org/whl/rocm6.4/"
+        return ROCM_INDEX
     
     # Check for NVIDIA
     if shutil.which("nvidia-smi"):
-        return "https://download.pytorch.org/whl/cu129/"
+        return CUDA_INDEX
     
     # Check for Intel XPU
     if shutil.which("xpu-smi"):
-        return "https://download.pytorch.org/whl/xpu/"
+        return XPU_INDEX
     
     # No GPU detected, use CPU-only
     return None
@@ -46,17 +51,17 @@ def detect_gpu():
 def get_install_extras():
     gpu_url = detect_gpu()
     
-    base_extras = ["dev", "ncnn", "gpt4all", "console_ui_opengl"]
+    base_extras = ["dev", "ncnn", "xllamacpp", "console_ui_opengl"]
     
-    if gpu_url == "https://download.pytorch.org/whl/cu129/":
+    if gpu_url == CUDA_INDEX:
         # NVIDIA GPU
-        base_extras.extend(["gpt4all_cuda", "bitsandbytes"])
+        base_extras.extend(["bitsandbytes"])
         if platform.system() == "Windows":
             base_extras.append("triton_windows")
-    elif gpu_url == "https://download.pytorch.org/whl/xpu/":
+    elif gpu_url == XPU_INDEX:
         # Intel XPU
         base_extras.extend(["bitsandbytes"])
-    elif gpu_url == "https://download.pytorch.org/whl/rocm6.4/":
+    elif gpu_url == ROCM_INDEX:
         # AMD ROCm - no additional extras needed
         pass
     
@@ -120,6 +125,12 @@ def main():
     result = run_command(install_cmd, check=False)
     
     if result.returncode == 0:
+        print("Selecting the xllamacpp wheel for this machine...")
+        selector = script_dir / 'installer' / 'network_installer' / 'xllamacppinstall.py'
+        wheel = run_command(f'"{python_exe}" "{selector}"', check=False)
+        if wheel.returncode != 0:
+            print("\nGPU xllamacpp wheel was not installed.")
+            sys.exit(wheel.returncode)
         print("\nDevelopment environment setup completed successfully!")
         print(f"\nTo activate the virtual environment:")
         if platform.system() == "Windows":

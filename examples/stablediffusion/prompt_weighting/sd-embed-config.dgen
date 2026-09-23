@@ -3,7 +3,7 @@
 
 # The sd-embed prompt weighter natively supports Stable Diffusion Web UI syntax
 
-stabilityai/stable-diffusion-2
+sd2-community/stable-diffusion-2
 --inference-steps 40
 --guidance-scales 8
 --gen-seeds 1

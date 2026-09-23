@@ -222,7 +222,7 @@ class ImageEncoderUri:
             path,
             revision=self.revision,
             variant=self.variant,
-            torch_dtype=torch_dtype,
+            dtype=torch_dtype,
             token=use_auth_token,
             local_files_only=local_files_only,
             **extra_args)

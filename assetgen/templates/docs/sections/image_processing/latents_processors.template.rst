@@ -38,7 +38,7 @@ raw / noisy latents, you can use ``--latents-processors`` to run a process on th
 
 .. code-block:: bash
 
-    dgenerate stabilityai/stable-diffusion-2 \
+    dgenerate sd2-community/stable-diffusion-2 \
     --image-seeds "latents: partially_denoised.pt" \
     --latents-processors "scale;factor=1.5" \
     --denoising-start 0.8
@@ -54,7 +54,7 @@ as raw latents input simultaneously if desired.
 
 .. code-block:: bash
 
-    dgenerate stabilityai/stable-diffusion-2 \
+    dgenerate sd2-community/stable-diffusion-2 \
     --image-seeds "fully_denoised_img2img.pt" \
     --img2img-latents-processors "noise;timestep=50;seed=42"
 
@@ -65,7 +65,7 @@ decoding as a starting point for inference.
 
 .. code-block:: bash
 
-    dgenerate stabilityai/stable-diffusion-2 \
+    dgenerate sd2-community/stable-diffusion-2 \
     --image-seeds "fully_denoised_img2img.pt;latents=partially_denoised.pt" \
     --img2img-latents-processors "noise;timestep=50;seed=42"
     --latents-processors "scale;factor=1.5" \
@@ -78,7 +78,7 @@ Like image processors, multiple latents processors can be chained together:
 
 .. code-block:: bash
 
-    dgenerate stabilityai/stable-diffusion-2 \
+    dgenerate sd2-community/stable-diffusion-2 \
     --image-seeds "latents: noisy_input.pt" \
     --latents-processors "scale;factor=1.2" "noise;timestep=20"
 
@@ -87,7 +87,7 @@ the + delimiter, just like image processors:
 
 .. code-block:: bash
 
-     dgenerate stabilityai/stable-diffusion-2 \
+     dgenerate sd2-community/stable-diffusion-2 \
     --image-seeds "latents: latents1.pt, latents: latents2.pt" \
     --latents-processors "scale;factor=1.5" + "noise;timestep=30"
 
@@ -96,7 +96,7 @@ With ``img2img`` input batching:
 
 .. code-block:: bash
 
-     dgenerate stabilityai/stable-diffusion-2 \
+     dgenerate sd2-community/stable-diffusion-2 \
     --image-seeds "images: img2img.png, img2img.png;latents=latents1.pt, latents2.pt" \
     --latents-processors "scale;factor=1.5" + "noise;timestep=30"
 

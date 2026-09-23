@@ -25,7 +25,7 @@ All other arguments are fair game, for example ``inference_steps``
     # override inference steps for the
     # second prompt variation in particular
 
-    stabilityai/stable-diffusion-2-1
+    sd2-community/stable-diffusion-2-1
     --inference-steps 30
     --guidance-scales 5
     --clip-skips 0

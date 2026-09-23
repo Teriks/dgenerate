@@ -154,6 +154,16 @@ class TestBNBQuantizerUri(unittest.TestCase):
         self.assertEqual(config.bnb_4bit_quant_type, "fp4")
         self.assertEqual(config.bnb_4bit_use_double_quant, False)
 
+    def test_to_transformers_config(self):
+        import transformers
+
+        uri = "bnb;bits=4;bits4-compute-dtype=float16"
+        result = _bnbquantizeruri.BNBQuantizerUri.parse(uri)
+        config = result.to_transformers_config()
+        self.assertIsInstance(config, transformers.BitsAndBytesConfig)
+        self.assertEqual(config.load_in_4bit, True)
+        self.assertEqual(config.load_in_8bit, False)
+
 
 if __name__ == '__main__':
     unittest.main() 

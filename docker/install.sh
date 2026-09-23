@@ -6,9 +6,9 @@ python3 -m venv ~/dgenerate_venv
 source ~/dgenerate_venv/bin/activate
 
 if command -v nvidia-smi &> /dev/null; then
-    extras="[bitsandbytes,ncnn,gpt4all_cuda]"
+    extras="[bitsandbytes,ncnn,xllamacpp]"
 else
-    extras="[ncnn,gpt4all]"
+    extras="[ncnn,xllamacpp]"
 fi
 
 if [ "$DGENERATE_INSTALL_DEV" = "1" ]; then
@@ -27,3 +27,5 @@ else
         exit 1
     fi
 fi
+
+python3 installer/network_installer/xllamacppinstall.py

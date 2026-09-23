@@ -32,7 +32,7 @@ areas over the dog in the original image, causing the dog to be replaced with an
 
     #!/usr/bin/env bash
 
-    dgenerate stabilityai/stable-diffusion-2-inpainting \
+    dgenerate sd2-community/stable-diffusion-2-inpainting \
     --image-seeds "my-image-seed.png;my-mask-image.png" \
     --prompts "Face of a yellow cat, high resolution, sitting on a park bench" \
     --image-seed-strengths 0.8 \

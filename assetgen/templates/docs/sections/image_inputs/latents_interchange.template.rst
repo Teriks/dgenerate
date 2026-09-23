@@ -64,14 +64,14 @@ argument with one of the supported tensor formats:
 
     # Generate latents in PyTorch format
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --prompts "a beautiful landscape" \
     --image-format pt \
     --output-path latents_output
 
     # Generate latents in SafeTensors format
 
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --prompts "a beautiful landscape" \
     --image-format safetensors \
     --output-path latents_output
@@ -146,7 +146,7 @@ this works for SD1.5/2.x, SD3, and Flux models using the ``latents= ...`` syntax
     #!/usr/bin/env bash
     
     # First stage: Process an input image with partial denoising
-    dgenerate stabilityai/stable-diffusion-2-1 \
+    dgenerate sd2-community/stable-diffusion-2-1 \
     --image-seeds "input.png" \
     --prompts "enhanced version of the input" \
     --image-seed-strengths 0.7 \
