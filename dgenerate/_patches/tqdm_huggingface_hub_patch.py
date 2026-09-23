@@ -318,13 +318,17 @@ def _get_progress_bar_context(
 ) -> typing.ContextManager[tqdm.tqdm]:
     global _main_thread_id
 
-    if tqdm_class is not None or kwargs:
-        # huggingface_hub >= 1.0 passes its own progress bar class for
-        # aggregated multi-file downloads, defer to it unless this thread
-        # has been marked as one that should not display progress
-        if threading.get_ident() != _main_thread_id and \
-                getattr(threading.current_thread(), '_dgenerate_no_tqdm_thread', False):
-            return tqdm.tqdm(disable=True)
+    if threading.get_ident() != _main_thread_id and \
+            getattr(threading.current_thread(), '_dgenerate_no_tqdm_thread', False):
+        return tqdm.tqdm(disable=True)
+
+    # snapshot_download passes _AggregatedTqdm, which combines per-file
+    # updates itself. Every other bar, including a tqdm_class passed for a
+    # single file, stays on the thread-safe wrappers below. huggingface_hub
+    # 1.x always supplies the tqdm_class argument, so treating any class as
+    # a reason to defer would skip those wrappers.
+    aggregated = tqdm_class is not None and getattr(tqdm_class, '__name__', '') == '_AggregatedTqdm'
+    if aggregated or kwargs:
         return _original_get_progress_bar_context(
             desc=desc,
             log_level=log_level,

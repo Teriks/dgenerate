@@ -71,8 +71,9 @@ PyPI and the torch index stay on ``--extra-index-url``. CUDA 13.2+:
 
     pip install "dgenerate[xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu132 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple
 
-CUDA 12.8 through 13.1 uses ``/cu128`` and the cu128 torch index. Linux ROCm 6.4 uses
-``/rocm-6.4.1`` with the rocm6.4 torch index. Older NVIDIA, Windows AMD, and Intel Arc
+CUDA 12.8 through 12.9 uses ``/cu128`` and the cu126 torch index. CUDA 13.0 through 13.1
+uses ``/cu128`` and the cu130 torch index. Linux ROCm 7.2 uses ``/rocm-7.2.4`` with the
+rocm7.2 torch index. Older NVIDIA, Windows AMD, and Intel Arc
 use ``/vulkan``. The network installer selects the index for you.
 
 

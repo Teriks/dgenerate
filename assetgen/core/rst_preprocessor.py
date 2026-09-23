@@ -58,7 +58,7 @@ class RSTPreprocessor:
     def _load_cache(self):
         """Load command cache from file."""
         try:
-            with open(self._command_cache_path, 'r') as cache:
+            with open(self._command_cache_path, 'r', encoding='utf-8') as cache:
                 self._command_cache = json.load(cache)
         except json.JSONDecodeError:
             if self.verbose:
@@ -71,7 +71,7 @@ class RSTPreprocessor:
         """Save command cache to file."""
         if self._command_cache_path:
             try:
-                with open(self._command_cache_path, 'w') as cache:
+                with open(self._command_cache_path, 'w', encoding='utf-8') as cache:
                     json.dump(self._command_cache, cache)
             except Exception as e:
                 if self.verbose:
@@ -160,13 +160,18 @@ class RSTPreprocessor:
             if columns is not None:
                 env['COLUMNS'] = str(columns)
 
+            # dgenerate reconfigures its own stdio to UTF-8. text=True
+            # would decode with the Windows locale encoding (cp1252) and
+            # raise UnicodeDecodeError in the pipe reader thread.
+            env.setdefault('PYTHONIOENCODING', 'utf-8')
             result = subprocess.run(
                 command,
                 cwd=base_dir,
                 shell=True,
                 check=True,
-                text=True,
                 capture_output=True,
+                encoding='utf-8',
+                errors='replace',
                 env=env
             )
 
@@ -544,7 +549,7 @@ class RSTPreprocessor:
                 elif self.verbose:
                     print(f'including: {file_path}')
                 
-                with open(file_path, 'r') as f:
+                with open(file_path, 'r', encoding='utf-8') as f:
                     content = f.read().strip()
                 
                 # Process the included content recursively
@@ -585,7 +590,7 @@ class RSTPreprocessor:
                 elif self.verbose:
                     print(f'including example: {file_path}')
                 
-                with open(file_path, 'r') as f:
+                with open(file_path, 'r', encoding='utf-8') as f:
                     content = f.read().strip()
                 
                 # Determine code type from extension (default to jinja like original)
@@ -667,7 +672,7 @@ class RSTPreprocessor:
         :param output_file: Path to the output file
         :type output_file: Path
         """
-        with open(input_file, 'r') as file:
+        with open(input_file, 'r', encoding='utf-8') as file:
             content = file.read()
 
         if self.verbose:
@@ -683,7 +688,7 @@ class RSTPreprocessor:
         # Create output directory if it doesn't exist
         output_file.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(output_file, 'w') as file:
+        with open(output_file, 'w', encoding='utf-8') as file:
             file.write(updated_content)
 
         self._save_cache() 

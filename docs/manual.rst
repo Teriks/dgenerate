@@ -1,9 +1,9 @@
 .. _Releases_Page: https://github.com/Teriks/dgenerate/releases
-.. _vermeer_canny_edged.png: https://raw.githubusercontent.com/Teriks/dgenerate/v5.0.0/examples/media/vermeer_canny_edged.png
+.. _vermeer_canny_edged.png: https://raw.githubusercontent.com/Teriks/dgenerate/modernization/examples/media/vermeer_canny_edged.png
 .. _Phi-3_Mini_Abliterated_Q4_GGUF_by_failspy: https://huggingface.co/failspy/Phi-3-mini-128k-instruct-abliterated-v3-GGUF
 .. _Stable_Diffusion_Web_UI: https://github.com/AUTOMATIC1111/stable-diffusion-webui
 .. _CivitAI: https://civitai.com/
-.. _DiffusionArguments: https://dgenerate.readthedocs.io/en/v5.0.0/dgenerate_submodules.html#dgenerate.pipelinewrapper.DiffusionArguments
+.. _DiffusionArguments: https://dgenerate.readthedocs.io/en/modernization/dgenerate_submodules.html#dgenerate.pipelinewrapper.DiffusionArguments
 .. _spandrel: https://github.com/chaiNNer-org/spandrel
 .. _ncnn: https://github.com/Tencent/ncnn
 .. _chaiNNer: https://github.com/chaiNNer-org/chaiNNer
@@ -2470,50 +2470,52 @@ Install dgenerate:
     #   The GPU and CPU wheels share one version, so the GPU index must be --index-url.
     #   CUDA 13.2+ (this uses the cu130 torch index):
     #   pip install "dgenerate[xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu132 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple
-    #   CUDA 12.8 through 13.1: the same command with /cu128 and the cu128 torch index.
+    #   CUDA 12.8 through 12.9: the same command with /cu128 and the cu126 torch index.
+    #   CUDA 13.0 through 13.1: the same command with /cu128 and the cu130 torch index.
     #   Older NVIDIA, AMD, or Intel Arc: /vulkan instead of /cu132.
     # * bitsandbytes
     # * xformers (NVIDIA CUDA only - memory-efficient attention)
     # * triton_windows
     # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
-    # Note that if you have a Maxwell (5.x), Pascal (6.x), Volta (7.0) GPU use
+    # The commands below use the CUDA 13.0 torch index.
+    # CUDA 12.6 through 12.9, and Maxwell (5.x), Pascal (6.x), or Volta (7.0), use
     # --extra-index-url https://download.pytorch.org/whl/cu126/
 
     pipx install dgenerate ^
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu129/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu130/"
 
     # with NCNN upscaler support
 
     pipx install dgenerate[ncnn] ^
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu129/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu130/"
 
     # If you want a specific version
 
     pipx install dgenerate==5.0.0 ^
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu129/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu130/"
 
     # with NCNN upscaler support and a specific version
 
     pipx install dgenerate[ncnn]==5.0.0 ^
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu129/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu130/"
 
     # with memory-efficient attention (NVIDIA CUDA only)
 
     pipx install dgenerate[xformers]==5.0.0 ^
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu129/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu130/"
 
     # You can install without pipx into your own environment like so
 
-    pip install dgenerate==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu129/
+    pip install dgenerate==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu130/
 
     # Or with NCNN
 
-    pip install dgenerate[ncnn]==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu129/
+    pip install dgenerate[ncnn]==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu130/
 
     # Or with xFormers (NVIDIA CUDA only)
 
-    pip install dgenerate[xformers]==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu129/
+    pip install dgenerate[xformers]==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu130/
 
 
 It is recommended to install dgenerate with pipx if you are just intending
@@ -2537,25 +2539,27 @@ a cloned repository like this:
     #   The GPU and CPU wheels share one version, so the GPU index must be --index-url.
     #   CUDA 13.2+ (this uses the cu130 torch index):
     #   pip install "dgenerate[xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu132 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple
-    #   CUDA 12.8 through 13.1: the same command with /cu128 and the cu128 torch index.
+    #   CUDA 12.8 through 12.9: the same command with /cu128 and the cu126 torch index.
+    #   CUDA 13.0 through 13.1: the same command with /cu128 and the cu130 torch index.
     #   Older NVIDIA, AMD, or Intel Arc: /vulkan instead of /cu132.
     # * bitsandbytes
     # * xformers (NVIDIA CUDA only - memory-efficient attention)
     # * triton_windows
     # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
-    # Note that if you have a Maxwell (5.x), Pascal (6.x), Volta (7.0) GPU use
+    # The commands below use the CUDA 13.0 torch index.
+    # CUDA 12.6 through 12.9, and Maxwell (5.x), Pascal (6.x), or Volta (7.0), use
     # --extra-index-url https://download.pytorch.org/whl/cu126/
 
-    pip install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu129/
+    pip install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu130/
 
     # Install with pip into the environment, include NCNN
 
-    pip install --editable .[dev,ncnn] --extra-index-url https://download.pytorch.org/whl/cu129/
+    pip install --editable .[dev,ncnn] --extra-index-url https://download.pytorch.org/whl/cu130/
 
     # Install with pip into the environment, include xFormers (NVIDIA CUDA only)
 
-    pip install --editable .[dev,xformers] --extra-index-url https://download.pytorch.org/whl/cu129/
+    pip install --editable .[dev,xformers] --extra-index-url https://download.pytorch.org/whl/cu130/
 
 
 Run ``dgenerate`` to generate images:
@@ -2653,47 +2657,49 @@ Install dgenerate
     #   The GPU and CPU wheels share one version, so the GPU index must be --index-url.
     #   CUDA 13.2+:
     #   pip install "dgenerate[xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu132 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple
-    #   CUDA 12.8 through 13.1: /cu128 and the cu128 torch index.
-    #   ROCm 6.4: --index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-6.4.1 --extra-index-url https://download.pytorch.org/whl/rocm6.4/ --extra-index-url https://pypi.org/simple
+    #   CUDA 12.8 through 12.9: /cu128 and the cu126 torch index.
+    #   CUDA 13.0 through 13.1: /cu128 and the cu130 torch index.
+    #   ROCm 7.2: --index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-7.2.4 --extra-index-url https://download.pytorch.org/whl/rocm7.2/ --extra-index-url https://pypi.org/simple
     #   Older NVIDIA or Intel: /vulkan instead of /cu132.
     # * bitsandbytes
     # * xformers (NVIDIA CUDA only - memory-efficient attention)
     # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
-    # Note that if you have a Maxwell (5.x), Pascal (6.x), Volta (7.0) GPU use
+    # The commands below use the CUDA 13.0 torch index.
+    # CUDA 12.6 through 12.9, and Maxwell (5.x), Pascal (6.x), or Volta (7.0), use
     # --extra-index-url https://download.pytorch.org/whl/cu126/
 
     # install with just support for torch
 
     pipx install dgenerate \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu129/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu130/"
 
     # With NCNN upscaler support (extra)
 
     pipx install dgenerate[ncnn] \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu129/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu130/"
 
     # With memory-efficient attention (NVIDIA CUDA only)
 
     pipx install dgenerate[xformers] \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu129/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu130/"
 
     # If you want a specific version
 
     pipx install dgenerate==5.0.0 \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu129/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu130/"
 
     # You can install without pipx into your own environment like so
 
-    pip3 install dgenerate==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu129/
+    pip3 install dgenerate==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu130/
 
     # Or with NCNN
 
-    pip3 install dgenerate[ncnn]==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu129/
+    pip3 install dgenerate[ncnn]==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu130/
 
     # Or with xFormers (NVIDIA CUDA only)
 
-    pip3 install dgenerate[xformers]==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu129/
+    pip3 install dgenerate[xformers]==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu130/
 
 
 It is recommended to install dgenerate with pipx if you are just intending
@@ -2712,18 +2718,19 @@ virtual environment you can do so like this:
 
     # Install with pip into the environment (editable, for development)
 
-    # Note that if you have a Maxwell (5.x), Pascal (6.x), Volta (7.0) GPU use
+    # The commands below use the CUDA 13.0 torch index.
+    # CUDA 12.6 through 12.9, and Maxwell (5.x), Pascal (6.x), or Volta (7.0), use
     # --extra-index-url https://download.pytorch.org/whl/cu126/
 
-    pip3 install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu129/
+    pip3 install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu130/
 
     # Install with pip into the environment (editable, with xFormers for NVIDIA CUDA)
 
-    pip3 install --editable .[dev,xformers] --extra-index-url https://download.pytorch.org/whl/cu129/
+    pip3 install --editable .[dev,xformers] --extra-index-url https://download.pytorch.org/whl/cu130/
 
     # Install with pip into the environment (non-editable)
 
-    pip3 install . --extra-index-url https://download.pytorch.org/whl/cu129/
+    pip3 install . --extra-index-url https://download.pytorch.org/whl/cu130/
 
 
 Run ``dgenerate`` to generate images:
@@ -2757,7 +2764,7 @@ When specifying any ``--device`` value use ``cuda``, ``cuda:1``, etc. as you wou
 
 You need to first install ROCm support, follow: https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/quick-start.html
 
-Then use: ``--extra-index-url https://download.pytorch.org/whl/rocm6.4/`` when installing via ``pip`` or ``pipx``.
+Then use: ``--extra-index-url https://download.pytorch.org/whl/rocm7.2/`` when installing via ``pip`` or ``pipx``.
 
 Install Python >=3.11,<3.13 (Debian / Ubuntu) and pipx
 ------------------------------------------------------
@@ -2803,23 +2810,23 @@ Install dgenerate
     #!/usr/bin/env bash
 
     # possible dgenerate package extras: ncnn, xllamacpp
-    # ROCm 6.4 xllamacpp, one command:
-    # pip install "dgenerate[xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-6.4.1 --extra-index-url https://download.pytorch.org/whl/rocm6.4/ --extra-index-url https://pypi.org/simple
+    # ROCm 7.2 xllamacpp, one command:
+    # pip install "dgenerate[xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-7.2.4 --extra-index-url https://download.pytorch.org/whl/rocm7.2/ --extra-index-url https://pypi.org/simple
 
     # install with just support for torch
 
     pipx install dgenerate \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm6.4/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm7.2/"
 
     # With NCNN upscaler support
 
     pipx install dgenerate[ncnn] \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm6.4/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm7.2/"
 
     # If you want a specific version
 
     pipx install dgenerate==5.0.0 \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm6.4/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm7.2/"
 
 
     # you can attempt to install the pre-release bitsandbytes
@@ -2832,11 +2839,11 @@ Install dgenerate
 
     # You can install without pipx into your own environment like so
 
-    pip3 install dgenerate==5.0.0 --extra-index-url https://download.pytorch.org/whl/rocm6.4/
+    pip3 install dgenerate==5.0.0 --extra-index-url https://download.pytorch.org/whl/rocm7.2/
 
     # Or with NCNN
 
-    pip3 install dgenerate[ncnn]==5.0.0 --extra-index-url https://download.pytorch.org/whl/rocm6.4/
+    pip3 install dgenerate[ncnn]==5.0.0 --extra-index-url https://download.pytorch.org/whl/rocm7.2/
 
 
     # you can attempt to install the pre-release bitsandbytes multiplatform version like so:
@@ -3044,7 +3051,7 @@ Make sure you select a GPU runtime for your notebook, such as the T4 runtime.
 
 .. code-block:: bash
 
-    !source /content/venv/bin/activate; pip install dgenerate==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu128
+    !source /content/venv/bin/activate; pip install dgenerate==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu130
 
 4.) Finally you can run dgenerate, you must prefix all calls to dgenerate with an activation of the virtual environment, as
 the virtual environment is not preserved between cells.  For brevity, and as an example, just print the help text here.
@@ -3080,15 +3087,15 @@ Note that the name of the ``pip`` executable may be named ``pip3`` on some syste
 
     # cuda
 
-    pip install git+https://github.com/Teriks/dgenerate@BRANCH_NAME --extra-index-url https://download.pytorch.org/whl/cu128
+    pip install git+https://github.com/Teriks/dgenerate@BRANCH_NAME --extra-index-url https://download.pytorch.org/whl/cu130
 
     # ROCm
 
-    pip install git+https://github.com/Teriks/dgenerate@BRANCH_NAME --extra-index-url https://download.pytorch.org/whl/rocm6.4/
+    pip install git+https://github.com/Teriks/dgenerate@BRANCH_NAME --extra-index-url https://download.pytorch.org/whl/rocm7.2/
 
     # With extras, for example "quant"
 
-    pip install "dgenerate[quant] @ git+https://github.com/Teriks/dgenerate@BRANCH_NAME" --extra-index-url https://download.pytorch.org/whl/cu128
+    pip install "dgenerate[quant] @ git+https://github.com/Teriks/dgenerate@BRANCH_NAME" --extra-index-url https://download.pytorch.org/whl/cu130
 
 
 This same syntax should work with ``pipx`` as well, as long as you have ``git`` installed.
@@ -3308,8 +3315,8 @@ however for this example files on disk are used for brevity.
 
 You can download them here:
 
- * `my-image-seed.png <https://raw.githubusercontent.com/Teriks/dgenerate/v5.0.0/examples/media/dog-on-bench.png>`_
- * `my-mask-image.png <https://raw.githubusercontent.com/Teriks/dgenerate/v5.0.0/examples/media/dog-on-bench-mask.png>`_
+ * `my-image-seed.png <https://raw.githubusercontent.com/Teriks/dgenerate/modernization/examples/media/dog-on-bench.png>`_
+ * `my-mask-image.png <https://raw.githubusercontent.com/Teriks/dgenerate/modernization/examples/media/dog-on-bench-mask.png>`_
 
 The command below generates a cat sitting on a bench with the images from the links above, the mask image masks out
 areas over the dog in the original image, causing the dog to be replaced with an AI generated cat.
@@ -6543,8 +6550,9 @@ PyPI and the torch index stay on ``--extra-index-url``. CUDA 13.2+:
 
     pip install "dgenerate[xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu132 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple
 
-CUDA 12.8 through 13.1 uses ``/cu128`` and the cu128 torch index. Linux ROCm 6.4 uses
-``/rocm-6.4.1`` with the rocm6.4 torch index. Older NVIDIA, Windows AMD, and Intel Arc
+CUDA 12.8 through 12.9 uses ``/cu128`` and the cu126 torch index. CUDA 13.0 through 13.1
+uses ``/cu128`` and the cu130 torch index. Linux ROCm 7.2 uses ``/rocm-7.2.4`` with the
+rocm7.2 torch index. Older NVIDIA, Windows AMD, and Intel Arc
 use ``/vulkan``. The network installer selects the index for you.
 
 
@@ -7712,7 +7720,7 @@ And an ``inpainting`` example:
 In the case of Stable Cascade, this syntax results in multiple images being passed to Stable Cascade
 as an image/style prompt, and does not result in multiple outputs or batching behavior.
 
-This Stable Cascade functionality is demonstrated in the example config: `examples/stablecascade/img2img/multiple-inputs-config.dgen <https://github.com/Teriks/dgenerate/blob/v5.0.0/examples/stablecascade/img2img/multiple-inputs-config.dgen>`_
+This Stable Cascade functionality is demonstrated in the example config: `examples/stablecascade/img2img/multiple-inputs-config.dgen <https://github.com/Teriks/dgenerate/blob/modernization/examples/stablecascade/img2img/multiple-inputs-config.dgen>`_
 
 Image Processors
 ================
@@ -7829,7 +7837,7 @@ CPU immediately when it is done with an image, clearing up VRAM space before the
 For an example, images can be processed with the canny edge detection algorithm or OpenPose (rigging generation)
 before being used for generation with a model + a ControlNet.
 
-This image of a `horse <https://raw.githubusercontent.com/Teriks/dgenerate/v5.0.0/examples/media/horse2.jpeg>`_
+This image of a `horse <https://raw.githubusercontent.com/Teriks/dgenerate/modernization/examples/media/horse2.jpeg>`_
 is used in the example below with a ControlNet that is trained to generate images from canny edge detected input.
 
 .. code-block:: bash
@@ -8607,7 +8615,7 @@ Prompts can be written to a file or printed to stdout, and in the case of the co
 they can also be written to a config template variable as a python list.
 
 A comprehensive example of the ``\prompt_upscale`` config directive which might be helpful for understanding
-this sub-commands functionality is available in the `examples folder <https://github.com/Teriks/dgenerate/blob/v5.0.0/examples/config_directives/prompt_upscale/prompt-upscale-directive-config.dgen>`_.
+this sub-commands functionality is available in the `examples folder <https://github.com/Teriks/dgenerate/blob/modernization/examples/config_directives/prompt_upscale/prompt-upscale-directive-config.dgen>`_.
 
 .. code-block:: text
 
@@ -8690,7 +8698,7 @@ Stable diffusion image upscaling models can be used via the model types:
     * ``--model-type upscaler-x2``
     * ``--model-type upscaler-x4``
 
-The image used in the example below is this `low resolution cat <https://raw.githubusercontent.com/Teriks/dgenerate/v5.0.0/examples/media/low_res_cat.png>`_
+The image used in the example below is this `low resolution cat <https://raw.githubusercontent.com/Teriks/dgenerate/modernization/examples/media/low_res_cat.png>`_
 
 .. code-block:: bash
 
@@ -8926,7 +8934,7 @@ has taken place prior with a supported ``--model-type`` value involved.
 
 The adetailer image processor has many options and it is recommended to take a look at the output of
 ``dgenerate --image-processor-help adetailer`` and view the examples located at
-`examples/adetailer/post_processor <https://github.com/Teriks/dgenerate/tree/v5.0.0/examples/adetailer/post_processor>`_
+`examples/adetailer/post_processor <https://github.com/Teriks/dgenerate/tree/modernization/examples/adetailer/post_processor>`_
 for usage information.
 
 
@@ -10949,7 +10957,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [76172412096065]
+            Value: [28537327929066]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -13107,12 +13115,12 @@ Image Processors / Latents Processors
 ----------------------------------------------
 
 A code example as well as a usage example for image processor plugins can be found
-in the `writing_plugins/image_processor <https://github.com/Teriks/dgenerate/tree/v5.0.0/examples/writing_plugins/image_processor>`_
+in the `writing_plugins/image_processor <https://github.com/Teriks/dgenerate/tree/modernization/examples/writing_plugins/image_processor>`_
 folder of the examples folder.
 
-The source code for the built in `canny <https://github.com/Teriks/dgenerate/blob/v5.0.0/dgenerate/imageprocessors/canny.py>`_ processor,
-the `openpose <https://github.com/Teriks/dgenerate/blob/v5.0.0/dgenerate/imageprocessors/openpose.py>`_ processor, and the simple
-`pillow image operations <https://github.com/Teriks/dgenerate/blob/v5.0.0/dgenerate/imageprocessors/imageops.py>`_ processors can also
+The source code for the built in `canny <https://github.com/Teriks/dgenerate/blob/modernization/dgenerate/imageprocessors/canny.py>`_ processor,
+the `openpose <https://github.com/Teriks/dgenerate/blob/modernization/dgenerate/imageprocessors/openpose.py>`_ processor, and the simple
+`pillow image operations <https://github.com/Teriks/dgenerate/blob/modernization/dgenerate/imageprocessors/imageops.py>`_ processors can also
 be of reference as they are written as internal image processor plugins.
 
 ~~~~
@@ -13122,31 +13130,31 @@ raw/partially denoised latents, on latents used for ``img2img``, or on fully den
 written to disk. For user-facing usage details, see the "Latents Processors" section of the manual.
 
 Reference implementations can be found in the internal latents processors:
-`scale <https://github.com/Teriks/dgenerate/blob/v5.0.0/dgenerate/latentsprocessors/scale.py>`_,
-`noise <https://github.com/Teriks/dgenerate/blob/v5.0.0/dgenerate/latentsprocessors/noise.py>`_, and
-`interposer <https://github.com/Teriks/dgenerate/blob/v5.0.0/dgenerate/latentsprocessors/interposer.py>`_.
+`scale <https://github.com/Teriks/dgenerate/blob/modernization/dgenerate/latentsprocessors/scale.py>`_,
+`noise <https://github.com/Teriks/dgenerate/blob/modernization/dgenerate/latentsprocessors/noise.py>`_, and
+`interposer <https://github.com/Teriks/dgenerate/blob/modernization/dgenerate/latentsprocessors/interposer.py>`_.
 
 The base interface is implemented in
-`LatentsProcessor <https://github.com/Teriks/dgenerate/blob/v5.0.0/dgenerate/latentsprocessors/latentsprocessor.py>`_.
+`LatentsProcessor <https://github.com/Teriks/dgenerate/blob/modernization/dgenerate/latentsprocessors/latentsprocessor.py>`_.
 
 An example skeleton for a latents processor plugin can be found in
-`writing_plugins/latents_processor <https://github.com/Teriks/dgenerate/tree/v5.0.0/examples/writing_plugins/latents_processor>`_.
+`writing_plugins/latents_processor <https://github.com/Teriks/dgenerate/tree/modernization/examples/writing_plugins/latents_processor>`_.
 
 ~~~~
 Config directive and template function plugins
 ----------------------------------------------
 
-An example for writing config directives can be found in the `writing_plugins/config_directive <https://github.com/Teriks/dgenerate/tree/v5.0.0/examples/writing_plugins/config_directive>`_  example folder.
+An example for writing config directives can be found in the `writing_plugins/config_directive <https://github.com/Teriks/dgenerate/tree/modernization/examples/writing_plugins/config_directive>`_  example folder.
 
-Config template functions can also be implemented by plugins, see: `writing_plugins/template_function <https://github.com/Teriks/dgenerate/tree/v5.0.0/examples/writing_plugins/template_function>`_
+Config template functions can also be implemented by plugins, see: `writing_plugins/template_function <https://github.com/Teriks/dgenerate/tree/modernization/examples/writing_plugins/template_function>`_
 
 Currently the only internal directive that is implemented as a plugin is the ``\image_process`` directive, who's source file
-`can be located here <https://github.com/Teriks/dgenerate/blob/v5.0.0/dgenerate/batchprocess/image_process_directive.py>`_.
+`can be located here <https://github.com/Teriks/dgenerate/blob/modernization/dgenerate/batchprocess/image_process_directive.py>`_.
 
 The source file for the ``\image_process`` directive is terse as most of it is implemented as reusable code.
 
 The behavior of ``\image_process`` which is also used for ``--sub-command image-process`` is
-`is implemented here <https://github.com/Teriks/dgenerate/blob/v5.0.0/dgenerate/image_process>`_.
+`is implemented here <https://github.com/Teriks/dgenerate/blob/modernization/dgenerate/image_process>`_.
 
 ~~~~
 
@@ -13154,9 +13162,9 @@ The behavior of ``\image_process`` which is also used for ``--sub-command image-
 Sub-command plugins
 -------------------
 
-Reference for writing sub-commands can be found in the `image-process <https://github.com/Teriks/dgenerate/blob/v5.0.0/dgenerate/subcommands/image_process.py>`_
+Reference for writing sub-commands can be found in the `image-process <https://github.com/Teriks/dgenerate/blob/modernization/dgenerate/subcommands/image_process.py>`_
 sub-command implementation, and a plugin skeleton file for sub-commands can be found in the
-`writing_plugins/sub_command <https://github.com/Teriks/dgenerate/tree/v5.0.0/examples/writing_plugins/sub_command>`_ example folder.
+`writing_plugins/sub_command <https://github.com/Teriks/dgenerate/tree/modernization/examples/writing_plugins/sub_command>`_ example folder.
 
 ~~~~
 
@@ -13164,11 +13172,11 @@ sub-command implementation, and a plugin skeleton file for sub-commands can be f
 Prompt Weighters / Prompt Upscalers
 ----------------------------------------
 
-Reference for writing prompt weighters can be found in the `CompelPromptWeighter <https://github.com/Teriks/dgenerate/blob/v5.0.0/dgenerate/promptweighters/compelpromptweighter.py>`_
-and `SdEmbedPromptWeighter <https://github.com/Teriks/dgenerate/blob/v5.0.0/dgenerate/promptweighters/sdembedpromptweighter.py>`_ internal prompt weighter implementations.
+Reference for writing prompt weighters can be found in the `CompelPromptWeighter <https://github.com/Teriks/dgenerate/blob/modernization/dgenerate/promptweighters/compelpromptweighter.py>`_
+and `SdEmbedPromptWeighter <https://github.com/Teriks/dgenerate/blob/modernization/dgenerate/promptweighters/sdembedpromptweighter.py>`_ internal prompt weighter implementations.
 
 A plugin skeleton file for prompt weighters can be found in the
-`writing_plugins/prompt_weighter <https://github.com/Teriks/dgenerate/tree/v5.0.0/examples/writing_plugins/prompt_weighter>`_
+`writing_plugins/prompt_weighter <https://github.com/Teriks/dgenerate/tree/modernization/examples/writing_plugins/prompt_weighter>`_
 example folder.
 
 In addition to prompt weighters, dgenerate also supports prompt upscaler plugins that can preprocess or
@@ -13177,14 +13185,14 @@ expand prompt text before it is fed to the pipeline. They can be enabled globall
 upscalers can be chained by repeating the embedded argument.
 
 Reference implementations can be found in the internal prompt upscalers:
-`DynamicPrompts <https://github.com/Teriks/dgenerate/blob/v5.0.0/dgenerate/promptupscalers/dynamicpromptsupscaler.py>`_,
-`MagicPrompt <https://github.com/Teriks/dgenerate/blob/v5.0.0/dgenerate/promptupscalers/magicpromptupscaler.py>`_,
-`Attention <https://github.com/Teriks/dgenerate/blob/v5.0.0/dgenerate/promptupscalers/attentionpromptupscaler.py>`_,
-`Translate <https://github.com/Teriks/dgenerate/blob/v5.0.0/dgenerate/promptupscalers/translatepromptupscaler.py>`_, and
-`XllamaCpp <https://github.com/Teriks/dgenerate/blob/v5.0.0/dgenerate/promptupscalers/xllamacpppromptupscaler.py>`_.
+`DynamicPrompts <https://github.com/Teriks/dgenerate/blob/modernization/dgenerate/promptupscalers/dynamicpromptsupscaler.py>`_,
+`MagicPrompt <https://github.com/Teriks/dgenerate/blob/modernization/dgenerate/promptupscalers/magicpromptupscaler.py>`_,
+`Attention <https://github.com/Teriks/dgenerate/blob/modernization/dgenerate/promptupscalers/attentionpromptupscaler.py>`_,
+`Translate <https://github.com/Teriks/dgenerate/blob/modernization/dgenerate/promptupscalers/translatepromptupscaler.py>`_, and
+`XllamaCpp <https://github.com/Teriks/dgenerate/blob/modernization/dgenerate/promptupscalers/xllamacpppromptupscaler.py>`_.
 
 An example skeleton for writing a prompt upscaler plugin can be found in
-`writing_plugins/prompt_upscaler <https://github.com/Teriks/dgenerate/tree/v5.0.0/examples/writing_plugins/prompt_upscaler>`_.
+`writing_plugins/prompt_upscaler <https://github.com/Teriks/dgenerate/tree/modernization/examples/writing_plugins/prompt_upscaler>`_.
 
 For usage details, see the "Prompt upscaling" section of the user manual.
 

@@ -78,47 +78,49 @@ Install dgenerate
     #   The GPU and CPU wheels share one version, so the GPU index must be --index-url.
     #   CUDA 13.2+:
     #   pip install "dgenerate[xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu132 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple
-    #   CUDA 12.8 through 13.1: /cu128 and the cu128 torch index.
-    #   ROCm 6.4: --index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-6.4.1 --extra-index-url https://download.pytorch.org/whl/rocm6.4/ --extra-index-url https://pypi.org/simple
+    #   CUDA 12.8 through 12.9: /cu128 and the cu126 torch index.
+    #   CUDA 13.0 through 13.1: /cu128 and the cu130 torch index.
+    #   ROCm 7.2: --index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-7.2.4 --extra-index-url https://download.pytorch.org/whl/rocm7.2/ --extra-index-url https://pypi.org/simple
     #   Older NVIDIA or Intel: /vulkan instead of /cu132.
     # * bitsandbytes
     # * xformers (NVIDIA CUDA only - memory-efficient attention)
     # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
-    # Note that if you have a Maxwell (5.x), Pascal (6.x), Volta (7.0) GPU use
+    # The commands below use the CUDA 13.0 torch index.
+    # CUDA 12.6 through 12.9, and Maxwell (5.x), Pascal (6.x), or Volta (7.0), use
     # --extra-index-url https://download.pytorch.org/whl/cu126/
 
     # install with just support for torch
 
     pipx install dgenerate \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu129/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu130/"
 
     # With NCNN upscaler support (extra)
 
     pipx install dgenerate[ncnn] \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu129/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu130/"
 
     # With memory-efficient attention (NVIDIA CUDA only)
 
     pipx install dgenerate[xformers] \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu129/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu130/"
 
     # If you want a specific version
 
     pipx install dgenerate==@VERSION \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu129/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/cu130/"
 
     # You can install without pipx into your own environment like so
 
-    pip3 install dgenerate==@VERSION --extra-index-url https://download.pytorch.org/whl/cu129/
+    pip3 install dgenerate==@VERSION --extra-index-url https://download.pytorch.org/whl/cu130/
 
     # Or with NCNN
 
-    pip3 install dgenerate[ncnn]==@VERSION --extra-index-url https://download.pytorch.org/whl/cu129/
+    pip3 install dgenerate[ncnn]==@VERSION --extra-index-url https://download.pytorch.org/whl/cu130/
 
     # Or with xFormers (NVIDIA CUDA only)
 
-    pip3 install dgenerate[xformers]==@VERSION --extra-index-url https://download.pytorch.org/whl/cu129/
+    pip3 install dgenerate[xformers]==@VERSION --extra-index-url https://download.pytorch.org/whl/cu130/
 
 
 It is recommended to install dgenerate with pipx if you are just intending
@@ -137,18 +139,19 @@ virtual environment you can do so like this:
 
     # Install with pip into the environment (editable, for development)
 
-    # Note that if you have a Maxwell (5.x), Pascal (6.x), Volta (7.0) GPU use
+    # The commands below use the CUDA 13.0 torch index.
+    # CUDA 12.6 through 12.9, and Maxwell (5.x), Pascal (6.x), or Volta (7.0), use
     # --extra-index-url https://download.pytorch.org/whl/cu126/
 
-    pip3 install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu129/
+    pip3 install --editable .[dev] --extra-index-url https://download.pytorch.org/whl/cu130/
 
     # Install with pip into the environment (editable, with xFormers for NVIDIA CUDA)
 
-    pip3 install --editable .[dev,xformers] --extra-index-url https://download.pytorch.org/whl/cu129/
+    pip3 install --editable .[dev,xformers] --extra-index-url https://download.pytorch.org/whl/cu130/
 
     # Install with pip into the environment (non-editable)
 
-    pip3 install . --extra-index-url https://download.pytorch.org/whl/cu129/
+    pip3 install . --extra-index-url https://download.pytorch.org/whl/cu130/
 
 
 Run ``dgenerate`` to generate images:
@@ -182,7 +185,7 @@ When specifying any ``--device`` value use ``cuda``, ``cuda:1``, etc. as you wou
 
 You need to first install ROCm support, follow: https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/quick-start.html
 
-Then use: ``--extra-index-url https://download.pytorch.org/whl/rocm6.4/`` when installing via ``pip`` or ``pipx``.
+Then use: ``--extra-index-url https://download.pytorch.org/whl/rocm7.2/`` when installing via ``pip`` or ``pipx``.
 
 Install Python >=3.11,<3.13 (Debian / Ubuntu) and pipx
 ------------------------------------------------------
@@ -228,23 +231,23 @@ Install dgenerate
     #!/usr/bin/env bash
 
     # possible dgenerate package extras: ncnn, xllamacpp
-    # ROCm 6.4 xllamacpp, one command:
-    # pip install "dgenerate[xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-6.4.1 --extra-index-url https://download.pytorch.org/whl/rocm6.4/ --extra-index-url https://pypi.org/simple
+    # ROCm 7.2 xllamacpp, one command:
+    # pip install "dgenerate[xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-7.2.4 --extra-index-url https://download.pytorch.org/whl/rocm7.2/ --extra-index-url https://pypi.org/simple
 
     # install with just support for torch
 
     pipx install dgenerate \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm6.4/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm7.2/"
 
     # With NCNN upscaler support
 
     pipx install dgenerate[ncnn] \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm6.4/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm7.2/"
 
     # If you want a specific version
 
     pipx install dgenerate==@VERSION \
-    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm6.4/"
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm7.2/"
 
 
     # you can attempt to install the pre-release bitsandbytes
@@ -257,11 +260,11 @@ Install dgenerate
 
     # You can install without pipx into your own environment like so
 
-    pip3 install dgenerate==@VERSION --extra-index-url https://download.pytorch.org/whl/rocm6.4/
+    pip3 install dgenerate==@VERSION --extra-index-url https://download.pytorch.org/whl/rocm7.2/
 
     # Or with NCNN
 
-    pip3 install dgenerate[ncnn]==@VERSION --extra-index-url https://download.pytorch.org/whl/rocm6.4/
+    pip3 install dgenerate[ncnn]==@VERSION --extra-index-url https://download.pytorch.org/whl/rocm7.2/
 
 
     # you can attempt to install the pre-release bitsandbytes multiplatform version like so:

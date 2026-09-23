@@ -37,7 +37,7 @@ class TestInstallerTorchIndex(unittest.TestCase):
             (13, 0, False, 'cu130'),
             (12, 9, False, 'cu126'),
             (12, 6, False, 'cu126'),
-            (12, 4, False, 'cu126'),
+            (12, 4, False, 'cpu'),
             (13, 2, True, 'cu126'),
         ]
         for cuda_major, cuda_minor, legacy, suffix in cases:
@@ -57,7 +57,7 @@ class TestInstallerTorchIndex(unittest.TestCase):
     def test_torch_214_rocm_mapping(self):
         self.assertTrue(_get_torch_rocm_url(2, 14, 0, '7.14').endswith('rocm7.14'))
         self.assertTrue(_get_torch_rocm_url(2, 14, 0, '7.2').endswith('rocm7.2'))
-        self.assertTrue(_get_torch_rocm_url(2, 14, 0, '6.3').endswith('rocm7.2'))
+        self.assertTrue(_get_torch_rocm_url(2, 14, 0, '6.3').endswith('/cpu'))
 
     def test_older_torch_rocm_mappings(self):
         self.assertTrue(_get_torch_rocm_url(2, 8, 0, '6.4').endswith('rocm6.4'))

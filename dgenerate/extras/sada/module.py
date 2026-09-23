@@ -31,6 +31,7 @@ def patch_unet_transformer_block(block_class: Type[torch.nn.Module], mode: str =
                 timestep=None,
                 cross_attention_kwargs=None,
                 class_labels=None,
+                added_cond_kwargs=None,
         ) -> torch.Tensor:
             m_a, u_a = compute_prune(hidden_states, self._mode, self._tome_info, self._cache)
             hidden_states = m_a(hidden_states)
