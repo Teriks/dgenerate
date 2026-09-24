@@ -1,7 +1,7 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 6.0.0
 
-# LTX-Video (2B) text to video. No audio.
+# LTX-Video (2B) text to video. No audio. --scheduler accepts FlowMatchEulerDiscreteScheduler and its URI arguments.
 
 \set token %HF_TOKEN%
 

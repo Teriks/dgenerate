@@ -72,6 +72,27 @@ class TestVideoModels(unittest.TestCase):
             _pipelinewrapper.get_model_type_enum('wan-animate')
         self.assertFalse(_pipelinewrapper.model_type_is_video(_pipelinewrapper.ModelType.FLUX))
 
+    def test_ltx_scheduler_uri(self):
+        rejected = _config(
+            model_path='org/ltx',
+            model_type=_pipelinewrapper.ModelType.LTX,
+            scheduler_uri='EulerDiscreteScheduler')
+        with self.assertRaises(_renderloopconfig.RenderLoopConfigError) as raised:
+            rejected.check()
+        self.assertIn('FlowMatchEulerDiscreteScheduler', str(raised.exception))
+
+        for uri in (
+            'FlowMatchEulerDiscreteScheduler',
+            'FlowMatchEulerDiscreteScheduler;use-dynamic-shifting=false;shift=1.0',
+            'help',
+            'helpargs',
+        ):
+            allowed = _config(
+                model_path='org/ltx',
+                model_type=_pipelinewrapper.ModelType.LTX,
+                scheduler_uri=uri)
+            allowed.check()
+
     def test_ltx_rejects_control(self):
         config = _config(
             model_path='org/ltx',

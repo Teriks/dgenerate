@@ -2227,6 +2227,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                     Arguments listed by "helpargs" can be overridden using the URI syntax typical to other dgenerate URI arguments.
                     
+                    For --model-type ltx the only accepted scheduler is FlowMatchEulerDiscreteScheduler.
+                    URI arguments overlay the checkpoint scheduler config. Other scheduler names are rejected.
+                    Omitting this option keeps the checkpoint scheduler.
+                    
                     You may pass multiple scheduler URIs to this argument, each URI will be tried in turn.
                     """
         )

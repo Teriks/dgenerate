@@ -1041,6 +1041,10 @@ Help Output
             Arguments listed by "helpargs" can be overridden using the URI syntax typical to other dgenerate URI
             arguments.
             
+            For --model-type ltx the only accepted scheduler is FlowMatchEulerDiscreteScheduler.
+            URI arguments overlay the checkpoint scheduler config. Other scheduler names are rejected.
+            Omitting this option keeps the checkpoint scheduler.
+            
             You may pass multiple scheduler URIs to this argument, each URI will be tried in turn.
             --------------------------------------------------------------------------------------
       -sch2, --second-model-scheduler, --second-model-schedulers SCHEDULER_URI [SCHEDULER_URI ...]
@@ -3876,7 +3880,11 @@ Guidance, steps, and sigmas
 
 The loaded scheduler decides which path runs. dgenerate does not pick a path from
 the repository name or a ``--transformer`` subfolder. ``--transformer`` replaces
-weights only.
+weights only. ``--scheduler`` accepts ``FlowMatchEulerDiscreteScheduler`` and URI
+arguments on that class, such as ``shift`` and ``use-dynamic-shifting``. Those
+arguments overlay the checkpoint scheduler config. Other scheduler names are
+rejected. Omitting ``--scheduler`` keeps the checkpoint scheduler.
+``--scheduler help`` and ``--scheduler helpargs`` still print help.
 
 The image-model defaults still apply if you omit the options: ``--guidance-scales``
 is ``5`` and ``--inference-steps`` is ``30``. LTX then rewrites those defaults when
@@ -3991,7 +3999,7 @@ What LTX rejects
 
 ControlNets, T2I adapters, IP adapters, textual inversions, a replacement UNet, VAE, or text encoder,
 an image encoder, the SDXL refiner, Stable Cascade, Adetailer, PAG and PAG scales,
-a custom scheduler, prompt weighters, second or third prompts,
+any scheduler other than ``FlowMatchEulerDiscreteScheduler``, prompt weighters, second or third prompts,
 clip skip, inpaint crop, HiDiffusion, TeaCache, DeepCache, SADA, RAS,
 mask or control processors, raw latents and latents processors, ``--denoising-start`` /
 ``--denoising-end``, ``--batch-size`` greater than 1, ``--batch-grid-size``, latent output

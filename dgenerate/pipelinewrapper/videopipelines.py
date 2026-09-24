@@ -55,6 +55,8 @@ from dgenerate.memoize import memoize as _memoize
 
 _LTX_DEFAULT_FPS = 24.0
 
+LTX_SCHEDULER_NAMES = frozenset({'FlowMatchEulerDiscreteScheduler'})
+
 _LTX_FALLBACK_EXTRA_DIRS = ('audio_vae', 'vocoder')
 
 _LTX_CORE_INDEX_NAMES = frozenset({

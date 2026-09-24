@@ -3,6 +3,7 @@ order: 19
 
 # LTX-2.5. Leave Video Length empty to let the duration head choose.
 # First frame and last frame (end=) are optional.
+# --scheduler accepts FlowMatchEulerDiscreteScheduler and its URI arguments.
 
 \setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"
 
