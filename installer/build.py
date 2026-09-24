@@ -37,24 +37,7 @@ import tempfile
 import zipfile
 from pathlib import Path
 
-def tcl_environ():
-    """Point PyInstaller at the base interpreter's Tcl/Tk libraries."""
-    script_dir = Path(__file__).resolve().parent
-    if str(script_dir) not in sys.path:
-        sys.path.insert(0, str(script_dir))
-    from tcl_tk_datas import tcl_tk_environ
-
-    env = tcl_tk_environ()
-    if env.get('TCL_LIBRARY'):
-        print(f"TCL_LIBRARY={env['TCL_LIBRARY']}")
-    if env.get('TK_LIBRARY'):
-        print(f"TK_LIBRARY={env['TK_LIBRARY']}")
-    if platform.system().lower() == 'windows' and not env.get('TCL_LIBRARY'):
-        print("ERROR: Tcl library directory was not found next to the base Python install")
-    return env
-
-
-def run_command(cmd, description, cwd=None, env=None):
+def run_command(cmd, description, cwd=None):
     """Run a command and handle errors."""
 
     cmd = [str(i) for i in cmd]
@@ -63,7 +46,7 @@ def run_command(cmd, description, cwd=None, env=None):
     print(f"Running: {' '.join(cmd)}")
     
     try:
-        result = subprocess.run(cmd, cwd=cwd, check=True, capture_output=True, text=True, env=env)
+        result = subprocess.run(cmd, cwd=cwd, check=True, capture_output=True, text=True)
         print(f"SUCCESS: {description} completed successfully")
         if result.stdout:
             print(result.stdout)
@@ -105,8 +88,7 @@ def build_windowed_stubs(network_installer_dir, venv_python):
         [venv_python, "-m", "PyInstaller", str(spec_file), 
          '--distpath', network_installer_dir / 'network_installer' / 'resources'], 
          f"Building windowed stub for {current_platform}",
-         cwd=network_installer_dir,
-         env=tcl_environ()
+         cwd=network_installer_dir
     ):
         return False
     
@@ -225,8 +207,7 @@ def build_installer(network_installer_dir, venv_python):
     spec_file = network_installer_dir / "network_installer.spec"
     if not run_command([venv_python, "-m", "PyInstaller", str(spec_file)], 
                       "Building network installer executable",
-                      cwd=network_installer_dir,
-                      env=tcl_environ()):
+                      cwd=network_installer_dir):
         return False
     
     # Check if the installer was built

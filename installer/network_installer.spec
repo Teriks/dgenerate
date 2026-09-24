@@ -60,10 +60,7 @@ project_root = Path(SPECPATH).resolve()
 
 # Set up resources data
 resources_dir = project_root / 'network_installer' / 'resources'
-sys.path.insert(0, str(project_root))
-from tcl_tk_datas import tcl_tk_datas
-
-datas = list(tcl_tk_datas())
+datas = []
 
 # Add resources directory if it exists
 if resources_dir.exists():

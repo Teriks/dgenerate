@@ -134,7 +134,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.14'
+          python-version: '3.13'
           architecture: ${{ matrix.platform == 'macos' && 'arm64' || 'x64' }}
 
       - name: Install system dependencies (Linux)
@@ -155,9 +155,9 @@ jobs:
           path: |
             ~/.cache/pip
             build_venv
-          key: ${{ runner.os }}-${{ matrix.arch || 'x64' }}-python-3.14-${{ hashFiles('poetry/pyproject.toml', 'poetry/poetry.lock', 'installer/pyproject.toml', 'setup.py') }}
+          key: ${{ runner.os }}-${{ matrix.arch || 'x64' }}-python-3.13-${{ hashFiles('poetry/pyproject.toml', 'poetry/poetry.lock', 'installer/pyproject.toml', 'setup.py') }}
           restore-keys: |
-            ${{ runner.os }}-${{ matrix.arch || 'x64' }}-python-3.14-
+            ${{ runner.os }}-${{ matrix.arch || 'x64' }}-python-3.13-
 
       - name: Install build dependencies
         if: matrix.platform == 'linux'
