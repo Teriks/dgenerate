@@ -3865,7 +3865,7 @@ Repository: ``Lightricks/LTX-2.5-Diffusers``.
 Width and height must be divisible by 32.
 
 ``--model-sequential-offload`` and ``--model-cpu-offload`` work the same way they
-do for image models. The examples under ``examples/video/ltx`` use the published
+do for image models. The examples under ``examples/ltx/basic_ltx2`` use the published
 repository as-is. The two-stage sampler is not wired up. ``--transformer`` is
 described under `Submodels`_. ``model_index.json`` selects the pipeline: ``LTX2Pipeline``
 is LTX-2.5, and ``LTXPipeline`` is the earlier LTX-Video model. The earlier model
@@ -3919,7 +3919,7 @@ This path wins over both of the above.
 ``--sigmas`` is combinatorial with ``--guidance-scales``, ``--inference-steps``,
 ``--guidance-rescales``, ``--audio-guidance-scales``,
 ``--audio-guidance-rescales``, ``--video-lengths``, and ``--video-fps``. See
-:ref:`specifying-sigmas` and ``examples/video/ltx/sigmas-config.dgen``.
+:ref:`specifying-sigmas` and ``examples/ltx/basic_ltx2/sigmas-config.dgen``.
 
 **``--guidance-rescales``**
 
@@ -3956,7 +3956,7 @@ Omit it and audio copies ``--guidance-rescales`` when that is set, otherwise
 the pipeline default ``0.7`` is left in place.
 
 Diffusers suggests keeping audio guidance higher than video guidance when
-you set them yourself. See ``examples/video/ltx/audio-guidance-config.dgen``.
+you set them yourself. See ``examples/ltx/basic_ltx2/audio-guidance-config.dgen``.
 
 Chaining
 --------
@@ -5040,7 +5040,32 @@ When the scheduler uses dynamic shifting, ``sigmas`` comes from
 step count to the length of the result and uses your ``--guidance-scales``
 value as written. See :ref:`video-generation`.
 
-.. WARNING: Missing example file: C:/Users/Eric/Desktop/dgenerate/dgenerate/examples/video/ltx/sigmas-config.dgen ..
+.. code-block:: jinja
+
+    #! /usr/bin/env dgenerate --file
+    #! dgenerate 6.0.0
+    
+    # --sigmas replaces the automatic schedule. expr: scales that schedule.
+    
+    \set token %HF_TOKEN%
+    
+    {% if not token.strip() and not '--auth-token' in injected_args %}
+        \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+        \exit
+    {% endif %}
+    
+    Lightricks/LTX-2.5-Diffusers
+    --model-type ltx
+    --dtype bfloat16
+    --model-sequential-offload
+    --guidance-scales 1
+    --gen-seeds 1
+    --output-size 640x384
+    --video-lengths 2
+    --sigmas "expr: sigmas * 0.95"
+    --animation-format mp4
+    --output-path ltx-sigmas
+    --prompts "A woman in a red coat walks along a dirt path through a green field, then stops and looks back at the camera. The camera stays fixed."
 
 Specifying a VAE
 ================
