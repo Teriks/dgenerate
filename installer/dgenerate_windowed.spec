@@ -39,12 +39,15 @@ def get_icon_path():
 # Get the icon path
 icon_path = get_icon_path()
 
+sys.path.insert(0, str(project_root))
+from tcl_tk_datas import tcl_tk_datas
+
 # Analysis
 a = Analysis(
     ['dgenerate_windowed/dgenerate_windowed.py'],
     pathex=[str(project_root / 'network_installer')],
     binaries=[],
-    datas=[],
+    datas=tcl_tk_datas(),
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
