@@ -31,7 +31,7 @@ Repository: ``Lightricks/LTX-2.5-Diffusers``.
 Width and height must be divisible by 32.
 
 ``--model-sequential-offload`` and ``--model-cpu-offload`` work the same way they
-do for image models. The examples under ``examples/video/ltx`` use the published
+do for image models. The examples under ``examples/ltx/basic_ltx2`` use the published
 repository as-is. The two-stage sampler is not wired up. ``--transformer`` is
 described under `Submodels`_. ``model_index.json`` selects the pipeline: ``LTX2Pipeline``
 is LTX-2.5, and ``LTXPipeline`` is the earlier LTX-Video model. The earlier model
@@ -85,7 +85,7 @@ This path wins over both of the above.
 ``--sigmas`` is combinatorial with ``--guidance-scales``, ``--inference-steps``,
 ``--guidance-rescales``, ``--audio-guidance-scales``,
 ``--audio-guidance-rescales``, ``--video-lengths``, and ``--video-fps``. See
-:ref:`specifying-sigmas` and ``examples/video/ltx/sigmas-config.dgen``.
+:ref:`specifying-sigmas` and ``examples/ltx/basic_ltx2/sigmas-config.dgen``.
 
 **``--guidance-rescales``**
 
@@ -122,7 +122,7 @@ Omit it and audio copies ``--guidance-rescales`` when that is set, otherwise
 the pipeline default ``0.7`` is left in place.
 
 Diffusers suggests keeping audio guidance higher than video guidance when
-you set them yourself. See ``examples/video/ltx/audio-guidance-config.dgen``.
+you set them yourself. See ``examples/ltx/basic_ltx2/audio-guidance-config.dgen``.
 
 Chaining
 --------
