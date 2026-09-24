@@ -69,7 +69,8 @@ they are still unused. A value you set yourself is kept, except as noted below.
   is set. Any other guidance value is used for video, and for audio unless
   ``--audio-guidance-scales`` is set.
 
-**``--sigmas`` (CSV list or ``expr:``)**
+``--sigmas`` (CSV list or ``expr:``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This path wins over both of the above.
 
@@ -87,19 +88,22 @@ This path wins over both of the above.
 ``--audio-guidance-rescales``, ``--video-lengths``, and ``--video-fps``. See
 :ref:`specifying-sigmas` and ``examples/ltx/basic_ltx2/sigmas-config.dgen``.
 
-**``--guidance-rescales``**
+``--guidance-rescales``
+~~~~~~~~~~~~~~~~~~~~~~~
 
 LTX accepts this. A value you set is sent as video guidance rescale, and as
 audio rescale unless ``--audio-guidance-rescales`` is set. If you omit it,
 the pipeline keeps its own default (``0.7``). The rescale only applies while
 classifier-free guidance is on (guidance greater than 1).
 
-**``--max-sequence-length``**
+``--max-sequence-length``
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 LTX accepts this as Gemma's prompt token budget, from 1 to 1024. If you omit
 it, the pipeline keeps 1024.
 
-**``--vae-slicing``**
+``--vae-slicing``
+~~~~~~~~~~~~~~~~~
 
 LTX accepts this on the video VAE and the audio VAE. ``--vae-tiling`` is
 rejected: the video VAE is always tiled.
