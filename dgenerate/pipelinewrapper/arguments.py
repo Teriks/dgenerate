@@ -307,11 +307,13 @@ class DiffusionArguments(_types.SetFromMixin):
 
     max_sequence_length: _types.OptionalInteger = None
     """
-    Max number of prompt tokens that the T5EncoderModel (text encoder 3) of Stable Diffusion 3 or Flux can handle.
+    Max number of prompt tokens sent to the text encoder.
     
-    This defaults to 256 for SD3 when not specified, and 512 for Flux.
+    For Stable Diffusion 3 and Flux this is the T5 encoder. Those models default
+    to 256 and 512 respectively, and the allowed range is 1 to 512.
     
-    The maximum value is 512 and the minimum value is 1.
+    For LTX this is Gemma. Omitting it leaves the pipeline default of 1024.
+    The allowed range is 1 to 1024.
     
     High values result in more resource usage and processing time.
     """
@@ -510,8 +512,12 @@ class DiffusionArguments(_types.SetFromMixin):
     guidance_scale: _types.OptionalFloat = None
     """
     A higher guidance scale value encourages the model to generate images closely linked to the text
-    :py:attr:`.DiffusionArguments.prompt` at the expense of lower image quality. Guidance scale is enabled 
+    :py:attr:`.DiffusionArguments.prompt` at the expense of lower image quality. Guidance scale is enabled
     when :py:attr:`.DiffusionArguments.guidance_scale`  > 1
+
+    For LTX, a value you set is used as written. The unused image default ``5`` is rewritten
+    to ``1`` when the scheduler has no dynamic shifting, or to video ``3`` and audio ``7``
+    when it does. Setting :py:attr:`.DiffusionArguments.sigmas` skips that rewrite.
     """
 
     sigmas: collections.abc.Sequence[float] | str | None = None
@@ -528,8 +534,12 @@ class DiffusionArguments(_types.SetFromMixin):
     from higher values (more noise) to lower values (less noise).
     
     Or: a string expression involving sigmas from the selected scheduler such as ``sigmas * 0.95``,
-    sigmas will be represented as a numpy array, numpy is available through the namespace ``np``, 
+    sigmas will be represented as a numpy array, numpy is available through the namespace ``np``,
     this uses asteval.
+
+    For LTX this replaces the automatic schedule. The step count becomes the length of the
+    result. In expression form, ``sigmas`` is the distilled 8-value table when the scheduler
+    has no dynamic shifting, or the ``set_timesteps`` schedule otherwise.
     """
 
     freeu_params: typing.Optional[tuple[float, float, float, float]] = None
@@ -1001,10 +1011,48 @@ class DiffusionArguments(_types.SetFromMixin):
     Guidance rescale factor should fix overexposure when using zero terminal SNR.
     """
 
+    video_length: _types.OptionalFloat = None
+    """
+    Requested clip length in seconds for ``--model-type ltx``.
+
+    ``None`` leaves the length to LTX-2.5's duration head.
+    """
+
+    video_fps: _types.OptionalFloat = None
+    """
+    Frame rate of a generated LTX clip.
+    """
+
+    audio_guidance_scale: _types.OptionalFloat = None
+    """
+    Audio CFG scale for ``--model-type ltx``.
+
+    ``None`` copies :py:attr:`.DiffusionArguments.guidance_scale` after LTX
+    rewrites the unused default ``5``, except a full scheduler which uses
+    audio ``7`` in that unused-``5`` case.
+    """
+
+    audio_guidance_rescale: _types.OptionalFloat = None
+    """
+    Audio guidance rescale for ``--model-type ltx``.
+
+    ``None`` copies :py:attr:`.DiffusionArguments.guidance_rescale` when that
+    is set, otherwise the pipeline default ``0.7`` is left in place.
+    """
+
+    end_images: _types.OptionalImages = None
+    """
+    Last-frame conditioning image for LTX, from the image seed ``end`` argument.
+    """
+
     inference_steps: _types.OptionalInteger = None
     """
-    The number of denoising steps. More denoising steps usually lead to a higher quality image 
+    The number of denoising steps. More denoising steps usually lead to a higher quality image
     at the expense of slower inference.
+
+    For LTX this is used only when the scheduler has dynamic shifting and
+    :py:attr:`.DiffusionArguments.sigmas` is not set. Without dynamic shifting, the
+    distilled 8-value table is used and this value is ignored.
     """
 
     clip_skip: _types.OptionalInteger = None
@@ -1396,6 +1444,10 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.image_guidance_scale, "Image Guidance Scale:"),
             (self.guidance_rescale, "Guidance Rescale:"),
             (self.inference_steps, "Inference Steps:"),
+            (self.video_length, "Video Length (seconds):"),
+            (self.video_fps, "Video FPS:"),
+            (self.audio_guidance_scale, "Audio Guidance Scale:"),
+            (self.audio_guidance_rescale, "Audio Guidance Rescale:"),
             (self.adetailer_class_filter, "Adetailer Class Filter:"),
             (self.adetailer_index_filter, "Adetailer Index Filter:"),
             (self.adetailer_mask_shape, "Adetailer Mask Shape:"),

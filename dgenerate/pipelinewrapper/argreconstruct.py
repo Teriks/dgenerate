@@ -100,6 +100,16 @@ def reconstruct_dgenerate_opts(
     opts.append(('--inference-steps', args.inference_steps))
     opts.append(('--guidance-scales', args.guidance_scale))
 
+    if _enums.model_type_is_video(wrapper.model_type):
+        if args.video_length is not None:
+            opts.append(('--video-lengths', args.video_length))
+        if args.video_fps is not None:
+            opts.append(('--video-fps', args.video_fps))
+        if args.audio_guidance_scale is not None:
+            opts.append(('--audio-guidance-scales', args.audio_guidance_scale))
+        if args.audio_guidance_rescale is not None:
+            opts.append(('--audio-guidance-rescales', args.audio_guidance_rescale))
+
     if args.sigmas is not None:
         if isinstance(args.sigmas, str):
             opts.append(('--sigmas', f'expr: {args.sigmas}'))

@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 5.0.0
+#! dgenerate 6.0.0
 
 # prompt upscaler plugins can preprocess and expand prompts, allowing
 # for LLM based txt2txt enhancement or prompt expansion resulting

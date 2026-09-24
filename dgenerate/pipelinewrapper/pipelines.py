@@ -133,7 +133,8 @@ def estimate_pipeline_cache_footprint(
         safety_checker: bool = False,
         auth_token: str | None = None,
         extra_args: dict[str, typing.Any] | None = None,
-        local_files_only: bool = False) -> int:
+        local_files_only: bool = False,
+        include_directories: collections.abc.Sequence[str] | None = None) -> int:
     """
     Estimate the CPU side cache memory use of a pipeline.
 
@@ -164,6 +165,8 @@ def estimate_pipeline_cache_footprint(
     :param extra_args: ``extra_args`` as to be passed to :py:func:`.create_diffusion_pipeline`
     :param local_files_only: Only ever attempt to look in the local huggingface cache? if ``False`` the huggingface
         API will be contacted when necessary.
+    :param include_directories: extra repo folder names to count with the main estimate,
+        for example LTX ``audio_vae`` and ``vocoder``.
     :return: size estimate in bytes.
     """
 
@@ -181,6 +184,7 @@ def estimate_pipeline_cache_footprint(
         include_text_encoder=include_text_encoders,
         include_text_encoder_2=include_text_encoders,
         include_text_encoder_3=include_text_encoders,
+        include_directories=include_directories,
         use_auth_token=auth_token,
         local_files_only=local_files_only,
         sentencepiece=_enums.model_type_is_floyd(model_type)
@@ -1582,9 +1586,11 @@ def get_pipeline_class(
                 '--model-type kolors is not compatible with --t2i-adapters.')
 
     if transformer_uri:
-        if not _enums.model_type_is_sd3(model_type) and not _enums.model_type_is_flux(model_type):
+        if not _enums.model_type_is_sd3(model_type) \
+                and not _enums.model_type_is_flux(model_type) \
+                and not _enums.model_type_is_video(model_type):
             raise UnsupportedPipelineConfigError(
-                '--transformer is only supported for --model-type sd3 and flux.')
+                '--transformer is only supported for --model-type sd3, flux, and ltx.')
 
     # Incompatible combinations
     if controlnet_uris and t2i_adapter_uris:
@@ -2058,7 +2064,8 @@ def _create_diffusion_pipeline(
         'text_encoder',
         'text_encoder_2',
         'text_encoder_3',
-        'controlnet'
+        'controlnet',
+        'connectors'
     ]
 
     if quantizer_map is not None:

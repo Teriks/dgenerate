@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 5.0.0
+#! dgenerate 6.0.0
 
 
 \set token %HF_TOKEN%
@@ -20,8 +20,18 @@
 # to load the pipeline correctly when using safetensors checkpoints.
 
 
-# bitsandbytes 4 bit nf4
-\set quantizer bnb;bits=4;bits4-quant-type=nf4
+\setp gpu_memory_gib total_memory(unit='gib')
+
+{% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 15 %}
+    \set quantizer bnb;bits=4;bits4-quant-type=nf4
+    \set optimization --quantizer bnb;bits=4;bits4-quant-type=nf4
+{% elif have_cuda() and have_feature('sdnq') and gpu_memory_gib > 15 %}
+    \set quantizer sdnq;type=int4
+    \set optimization --quantizer sdnq;type=int4
+{% else %}
+    \set quantizer
+    \set optimization --model-sequential-offload
+{% endif %}
 
 
 # PixelWave: https://civitai.com/models/141592/pixelwave?modelVersionId=992642
@@ -32,11 +42,10 @@
 # this is the only style of checkpoint diffusers can load from CivitAI
 
 https://civitai.com/api/download/models/992642?type=Model&format=SafeTensor&size=full&fp=bf16
---model-type flux
+--model-type flux {{ optimization }}
 --dtype bfloat16
---quantizer {{ quantizer }}
---text-encoders CLIPTextModel;model=stabilityai/stable-diffusion-3-medium-diffusers;subfolder=text_encoder;quantizer="{{ quantizer }}" \
-                T5EncoderModel;model=black-forest-labs/FLUX.1-dev;subfolder=text_encoder_2;quantizer="{{ quantizer }}"
+--text-encoders CLIPTextModel;model=stabilityai/stable-diffusion-3-medium-diffusers;subfolder=text_encoder{{ ';quantizer="' + quantizer + '"' if quantizer else '' }} \
+                T5EncoderModel;model=black-forest-labs/FLUX.1-dev;subfolder=text_encoder_2{{ ';quantizer="' + quantizer + '"' if quantizer else '' }}
 --vae AutoencoderKL;model=black-forest-labs/FLUX.1-dev;subfolder=vae
 --inference-steps 50
 --guidance-scales 3.5

@@ -1,0 +1,35 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Replace the Flux DiT with a pre-quantized city96 GGUF file. The Hugging
+# Face repo still supplies the VAE and text encoders. T5 is quantized
+# separately with bitsandbytes, or sdnq if bitsandbytes is not available.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+\setp gpu_memory_gib total_memory(unit='gib')
+
+{% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 15 %}
+    \set te_quant --quantizer bnb;bits=4 --quantizer-map text_encoder
+{% elif have_cuda() and have_feature('sdnq') and gpu_memory_gib > 15 %}
+    \set te_quant --quantizer sdnq;type=int4 --quantizer-map text_encoder
+{% else %}
+    \set te_quant
+{% endif %}
+
+black-forest-labs/FLUX.1-dev
+--model-type flux {{ te_quant }}
+--dtype bfloat16
+--model-cpu-offload
+--transformer https://huggingface.co/city96/FLUX.1-dev-gguf/blob/main/flux1-dev-Q4_K_S.gguf
+--inference-steps 20
+--guidance-scales 3.5
+--gen-seeds 1
+--output-path flux-gguf-dev
+--output-size 1024
+--prompts "Photo of a horse standing near the open door of a red barn, high resolution"

@@ -470,6 +470,7 @@ def have_feature(feature_name: str) -> bool:
     "ncnn": Do we have ncnn installed?
     "xllamacpp": Do we have xllamacpp installed?
     "bitsandbytes": Do we have bitsandbytes installed?
+    "sdnq": Do we have sdnq installed?
     "flash-attn": Do we have flash-attn installed?
     "triton": Do we have triton installed?
     """
@@ -478,6 +479,7 @@ def have_feature(feature_name: str) -> bool:
         'ncnn',
         'xllamacpp',
         'bitsandbytes',
+        'sdnq',
         'flash-attn',
         'triton',
     ]

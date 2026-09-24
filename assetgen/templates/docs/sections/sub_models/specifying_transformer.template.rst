@@ -1,3 +1,5 @@
+.. _specifying-a-transformer:
+
 Specifying a Transformer (SD3 and Flux)
 =======================================
 
@@ -52,3 +54,12 @@ Flux Example:
     --gen-seeds 1 \
     --output-path output \
     --prompts "Photo of a horse standing near the open door of a red barn, high resolution"
+
+An SD3 or Flux transformer can also be a pre-quantized ``.gguf`` file. The repository
+still supplies the VAE and text encoders. Do not set ``quantizer=`` on that URI and do
+not use ``--quantizer gguf``. Diffusers dequantizes the file when it loads. Quantize
+the text encoders with ``bnb`` or ``sdnq`` and ``--quantizer-map`` if needed. See the
+configs under ``examples/sd3/gguf`` and ``examples/flux/gguf``.
+
+``--model-type ltx`` also accepts ``--transformer``.
+That argument replaces the diffusion transformer only. See :ref:`video-generation`.

@@ -152,8 +152,8 @@ def _max_sequence_length(val):
     if val < 1:
         raise argparse.ArgumentTypeError('Must be greater than or equal to 1')
 
-    if val > 512:
-        raise argparse.ArgumentTypeError('Must be less than or equal to 512')
+    if val > 1024:
+        raise argparse.ArgumentTypeError('Must be less than or equal to 1024')
 
     return val
 
@@ -186,6 +186,28 @@ def _type_inference_steps(val):
         val = int(val)
     except ValueError:
         raise argparse.ArgumentTypeError('Must be an integer')
+
+    if val <= 0:
+        raise argparse.ArgumentTypeError('Must be greater than 0')
+    return val
+
+
+def _type_video_length(val):
+    try:
+        val = float(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be a floating point number of seconds')
+
+    if val <= 0:
+        raise argparse.ArgumentTypeError('Must be greater than 0')
+    return val
+
+
+def _type_video_fps(val):
+    try:
+        val = float(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be a floating point number')
 
     if val <= 0:
         raise argparse.ArgumentTypeError('Must be greater than 0')
@@ -769,7 +791,8 @@ def _type_quantizer_map(val: str):
         'text_encoder',
         'text_encoder_2',
         'text_encoder_3',
-        'controlnet'
+        'controlnet',
+        'connectors'
     ]
 
     if val not in vals:
@@ -1619,7 +1642,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     actions.append(
         parser.add_argument(
             '-tf', '--transformer', action='store', default=None, metavar="TRANSFORMER_URI", dest='transformer_uri',
-            help=f"""Specify a Stable Diffusion 3 or Flux Transformer model using a URI.
+            help=f"""Specify a Stable Diffusion 3, Flux, or LTX Transformer model using a URI.
+                    ``--model-type ltx`` accepts one replacement diffusion transformer.
                     
                     Examples: 
                     
@@ -1655,6 +1679,12 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     way is: --transformer "transformer.safetensors", or with a dtype "transformer.safetensors;dtype=float16".
                     All loading arguments except "dtype" and "quantizer" are unused in this case and may produce an
                     error message if used.
+                    
+                    A pre-quantized .gguf transformer can be loaded the same way:
+                    --transformer "model.gguf", or a Hugging Face blob link ending in .gguf.
+                    That file is already quantized. Do not set the quantizer URI argument
+                    on it, and do not use --quantizer gguf. Keep the parent Hugging Face
+                    repository as --model so the VAE and text encoders still load.
                     
                     If you wish to load a specific weight file from a Hugging Face repository, use the blob link
                     loading syntax: --transformer
@@ -1754,6 +1784,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             help="""Specify one or more LoRA models using URIs. These should be a
                     Hugging Face repository slug / blob link, path to model file on disk (for example, a .pt, .pth, .bin,
                     .ckpt, or .safetensors file), or model folder containing model files.
+                    ``ltx`` accepts LoRAs in diffusers format and fuses them into the transformer.
                     
                     If a LoRA model file exists at a URL which serves the file as
                     a raw download, you may provide an http/https link to it and it will be
@@ -2152,7 +2183,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             When using --quantizer, you can use this argument to specify exactly which sub-modules undergo
             quantization.
             
-            Accepted values are: "unet", "transformer", "text_encoder", "text_encoder_2", "text_encoder_3", "controlnet"
+            Accepted values are: "unet", "transformer", "text_encoder", "text_encoder_2", "text_encoder_3", "controlnet", "connectors"
             """
         )
     )
@@ -3800,11 +3831,12 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     actions.append(
         parser.add_argument(
             '--max-sequence-length', action='store', metavar='INTEGER', default=None, type=_max_sequence_length,
-            help="""The maximum amount of prompt tokens that the T5EncoderModel
-                    (third text encoder) of Stable Diffusion 3 or Flux can handle. This should be
-                    an integer value between 1 and 512 inclusive. The higher the value
-                    the more resources and time are required for processing. 
-                    (default: 256 for SD3, 512 for Flux)"""
+            help="""The maximum amount of prompt tokens sent to the text encoder.
+                    For Stable Diffusion 3 and Flux this is the T5 encoder, an integer
+                    between 1 and 512 inclusive (default: 256 for SD3, 512 for Flux).
+                    For --model-type ltx this is Gemma, an integer between 1 and 1024
+                    inclusive. Omitting it on LTX leaves the pipeline default of 1024.
+                    Higher values use more resources and time."""
         )
     )
 
@@ -4210,7 +4242,14 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             metavar="FLOAT", type=_type_guidance_scale,
             help="""One or more guidance scale values to try. Guidance scale effects how much your
                     text prompt is considered. Low values draw more data from images unrelated
-                    to text prompt. 
+                    to text prompt.
+                    
+                    For --model-type ltx, a value you set is used as written. The unused
+                    image default 5 is rewritten: to 1 when the scheduler has no dynamic
+                    shifting, or to video 3 and audio 7 when it does. --sigmas skips that
+                    rewrite and uses the value you passed, including leftover 5.
+                    Video and audio guidance are the same number except for that 3 / 7 case.
+                    Use --audio-guidance-scales to set audio CFG separately.
                     
                     NOWRAP!
                     (default: [5])"""
@@ -4249,6 +4288,12 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     Expressions and CSV lists can be intermixed: --sigmas "1.0,..." "expr: sigmas * 0.95"
                     
                     Each provided value (each quoted string in the example above) will be tried in turn.
+                    
+                    For --model-type ltx, --sigmas replaces the automatic schedule. The
+                    step count becomes the length of the list. In expr: form, sigmas is
+                    the distilled 8-value table when the scheduler has no dynamic shifting,
+                    or the scheduler set_timesteps schedule otherwise. Guidance is used
+                    as written; see --guidance-scales.
                     """
         )
     )
@@ -4286,6 +4331,9 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     When using --model-type "sdxl" it is supported for basic generation, inpainting,
                     and img2img, unless --control-nets is specified in which case only inpainting is supported.
                     It is supported for --model-type "sdxl-pix2pix" but not --model-type "pix2pix".
+                    For --model-type ltx it is sent as video guidance rescale, and as audio
+                    rescale unless --audio-guidance-rescales is set. Omitting it on LTX
+                    leaves the pipeline default of 0.7.
                     
                     NOWRAP!
                     (default: [0.0])"""
@@ -4301,10 +4349,84 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     effects image clarity to a degree, higher values bring the image closer to what
                     the AI is targeting for the content of the image. Values between 30-40
                     produce good results, higher values may improve image quality and or
-                    change image content. 
+                    change image content.
+                    
+                    For --model-type ltx, this value is used only when the scheduler has
+                    dynamic shifting and --sigmas is not set. Without dynamic shifting,
+                    the distilled 8-value sigma table is used and this option is ignored.
+                    A warning names the ignored value, including the default 30.
+                    --sigmas
+                    overwrites the step count to the length of the sigma list.
                     
                     NOWRAP!
                     (default: [30])"""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--video-lengths', action='store', nargs='+', default=None,
+            dest='video_lengths', type=_type_video_length, metavar="SECONDS",
+            help="""One or more clip lengths in seconds, for --model-type ltx.
+                    Each value is crossed with the other combinatorial arguments,
+                    and each combination writes one clip.
+
+                    LTX snaps the length to a frame count of 8k+1 at --video-fps.
+                    Omit this option and LTX-2.5 predicts the length from the prompt.
+
+                    NOWRAP!
+                    (default: model chooses)"""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--video-fps', action='store', nargs='+', default=None,
+            dest='video_fps', type=_type_video_fps, metavar="FPS",
+            help="""One or more frame rates for --model-type ltx. Each value is
+                    crossed with the other combinatorial arguments. The default
+                    is 24.
+
+                    NOWRAP!
+                    (default: [24] for video model types)"""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--audio-guidance-scales', action='store', nargs='+', default=None,
+            dest='audio_guidance_scales', metavar="FLOAT", type=_type_guidance_scale,
+            help="""One or more audio CFG scales to try, for --model-type ltx.
+                    Each value is crossed with the other combinatorial arguments.
+
+                    LTX encodes one prompt for both picture and soundtrack, then
+                    applies a separate audio guidance scale. The authors suggest
+                    keeping this higher than --guidance-scales (for example video
+                    3 and audio 7 on a full scheduler).
+
+                    Omit this option and audio copies the video guidance that will
+                    be sent, except the unused default 5 on a full scheduler, which
+                    uses audio 7.
+
+                    NOWRAP!
+                    (default: copy video guidance)"""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--audio-guidance-rescales', action='store', nargs='+', default=None,
+            dest='audio_guidance_rescales', metavar="FLOAT", type=_type_guidance_scale,
+            help="""One or more audio guidance rescale factors to try, for
+                    --model-type ltx. Each value is crossed with the other
+                    combinatorial arguments.
+
+                    Omit this option and audio copies --guidance-rescales when
+                    that is set, otherwise the pipeline default of 0.7 is left
+                    in place.
+
+                    NOWRAP!
+                    (default: copy --guidance-rescales)"""
         )
     )
 

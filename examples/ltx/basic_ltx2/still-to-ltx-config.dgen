@@ -1,0 +1,32 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# A still from Stable Diffusion becomes the first frame of an LTX clip.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+sd2-community/stable-diffusion-2
+--inference-steps 20
+--guidance-scales 7
+--gen-seeds 1
+--output-size 640x384
+--output-path still-to-ltx
+--prompts "A brown horse stands in a green field, photorealistic, sharp"
+
+Lightricks/LTX-2.5-Diffusers
+--model-type ltx
+--dtype bfloat16
+--model-sequential-offload
+--guidance-scales 1
+--gen-seeds 1
+--output-size 640x384
+--video-lengths 2
+--animation-format mp4
+--output-path still-to-ltx
+--image-seeds {{ quote(last_images) }}
+--prompts "The brown horse walks a few paces across the field, then pauses. The camera stays fixed. Daylight, natural motion."

@@ -53,6 +53,7 @@ from .enums import (
     supported_model_type_strings,
     model_type_is_flux,
     model_type_is_kolors,
+    model_type_is_video,
     model_type_is_sd2,
     model_type_is_sd15
 )

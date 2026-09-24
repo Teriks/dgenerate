@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 5.0.0
+#! dgenerate 6.0.0
 
 # the refiner step happens before adetailer
 # due to adetailer being an image post-processor

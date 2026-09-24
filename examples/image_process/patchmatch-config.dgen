@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 5.0.0
+#! dgenerate 6.0.0
 
 # Remove the horse from the image using patchmatch
 # The mask is the opposite of what we want for this

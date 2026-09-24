@@ -1113,6 +1113,17 @@ class ImageSeedParseResult:
     Raw latents are loaded as-is without any image processing, resizing, or alignment operations.
     """
 
+    end_image: _types.OptionalPath = None
+    """
+    Optional last-frame image for video models.
+
+    In parses such as:
+
+        * ``--image-seeds "first.png;end=last.png"``
+
+    Image pipelines do not accept this argument.
+    """
+
     floyd_image: _types.OptionalPath = None
     """
     Optional path to a result from a Deep Floyd IF stage, used only for img2img and inpainting mode
@@ -1209,7 +1220,7 @@ class ImageSeedParseResult:
         For instance could it be a img2img definition / sequence of img2img images using
         the ``images: ...`` syntax, or a sequence of controlnet guidance images?
 
-        This requires that ``mask_images``, ``control_images``, ``floyd_image``, ``adapter_images``, and ``latents`` are all undefined.
+        This requires that ``mask_images``, ``control_images``, ``floyd_image``, ``end_image``, ``adapter_images``, and ``latents`` are all undefined.
 
         Possible parses which trigger this condition are:
 
@@ -1227,6 +1238,7 @@ class ImageSeedParseResult:
         return self.mask_images is None \
             and self.control_images is None \
             and self.floyd_image is None \
+            and self.end_image is None \
             and self.adapter_images is None \
             and self.latents is None
 
@@ -1504,6 +1516,7 @@ def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResul
                     'adapter',
                     'latents',
                     'floyd',
+                    'end',
                     'resize',
                     'align',
                     'aspect',
@@ -1708,6 +1721,17 @@ def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResul
             raise ImageSeedArgumentError(
                 'The image seed "control" argument cannot be used with the "floyd" argument.')
         result.floyd_image = floyd_image
+
+    end_image = parse_result.args.get('end', None)
+
+    if end_image is not None:
+        if isinstance(end_image, (list, tuple)):
+            if len(end_image) != 1:
+                raise ImageSeedArgumentError(
+                    'The image seed "end" argument accepts one image.')
+            end_image = end_image[0]
+        _ensure_exists(end_image, 'End image')
+        result.end_image = end_image
 
     resize = parse_result.args.get('resize', None)
 

@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 5.0.0
+#! dgenerate 6.0.0
 
 # The use llm4gen for enhanced semantic understanding
 # of the prompt, for example positioning

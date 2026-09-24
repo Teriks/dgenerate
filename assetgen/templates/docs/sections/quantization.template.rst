@@ -143,7 +143,6 @@ And for ``sdnq``:
 
 @COMMAND_OUTPUT[dgenerate --no-stdin --quantizer-help sdnq]
 
-
-
-
+A pre-quantized ``.gguf`` transformer is a file format, not a ``--quantizer`` backend.
+Point ``--transformer`` at the ``.gguf`` file or blob link. See :ref:`specifying-a-transformer`.
 

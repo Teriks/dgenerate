@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 5.0.0
+#! dgenerate 6.0.0
 
 # This example shows how to reduce the "enhanced-outpaint-config.dgen"
 # workflow into a "one-liner" dgenerate invocation.

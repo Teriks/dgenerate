@@ -205,11 +205,13 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     max_sequence_length: _types.OptionalInteger = None
     """
-    Max number of prompt tokens that the T5EncoderModel (text encoder 3) of Stable Diffusion 3 or Flux can handle.
+    Max number of prompt tokens sent to the text encoder.
     
-    This defaults to 256 for SD3 when not specified, and 512 for Flux.
+    For Stable Diffusion 3 and Flux this is the T5 encoder. Those models default
+    to 256 and 512 respectively, and the allowed range is 1 to 512.
     
-    The maximum value is 512 and the minimum value is 1.
+    For ``--model-type ltx`` this is Gemma. Omitting it leaves the pipeline
+    default of 1024. The allowed range is 1 to 1024.
     
     High values result in more resource usage and processing time.
     """
@@ -295,6 +297,44 @@ class RenderLoopConfig(_types.SetFromMixin):
     inference_steps: _types.Integers
     """
     List of inference steps values, this corresponds to the ``--inference-steps`` argument of the
+    dgenerate command line tool.
+    """
+
+    video_lengths: _types.OptionalFloats = None
+    """
+    Clip lengths in seconds for ``--model-type ltx``. Each value is a factor in the
+    generation step product. ``None`` lets LTX-2.5 choose the length from its
+    duration head.
+
+    This corresponds to the ``--video-lengths`` argument of the dgenerate command line tool.
+    """
+
+    video_fps: _types.OptionalFloats = None
+    """
+    Frame rates for ``--model-type ltx``. Each value is a factor in the generation
+    step product. When omitted this defaults to ``[24]``.
+
+    This corresponds to the ``--video-fps`` argument of the dgenerate command line tool.
+    """
+
+    audio_guidance_scales: _types.OptionalFloats = None
+    """
+    Audio CFG scales for ``--model-type ltx``. Each value is a factor in the
+    generation step product. ``None`` copies the video guidance that will be
+    sent, except the unused default ``5`` on a full scheduler, which uses
+    audio ``7``.
+
+    This corresponds to the ``--audio-guidance-scales`` argument of the
+    dgenerate command line tool.
+    """
+
+    audio_guidance_rescales: _types.OptionalFloats = None
+    """
+    Audio guidance rescale factors for ``--model-type ltx``. Each value is a
+    factor in the generation step product. ``None`` copies ``--guidance-rescales``
+    when that is set, otherwise the pipeline default ``0.7`` is left in place.
+
+    This corresponds to the ``--audio-guidance-rescales`` argument of the
     dgenerate command line tool.
     """
 
@@ -2046,6 +2086,10 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     def _check_configuration_files_compatibility(self, a_namer: typing.Callable[[str], str]):
         """Check compatibility of configuration files with model types."""
+        if self.model_path is None:
+            raise RenderLoopConfigError(
+                f'{a_namer("model_path")} must be specified')
+
         # Check original config compatibility
         if not _hfhub.is_single_file_model_load(self.model_path):
             if self.original_config:
@@ -2160,6 +2204,13 @@ class RenderLoopConfig(_types.SetFromMixin):
         if not self.image_seeds:
             args_help = help_mode
 
+            if _pipelinewrapper.model_type_is_video(self.model_type) and not args_help:
+                import dgenerate.pipelinewrapper.videopipelines as _videopipelines
+                try:
+                    _videopipelines.classify_video_seed(self.model_type, None)
+                except _pipelinewrapper.UnsupportedPipelineConfigError as e:
+                    raise RenderLoopConfigError(str(e)) from e
+
             # Check if model type requires image seeds
             if _pipelinewrapper.model_type_is_floyd_ifs(self.model_type) and not args_help:
                 raise RenderLoopConfigError(
@@ -2233,25 +2284,26 @@ class RenderLoopConfig(_types.SetFromMixin):
             if invalid_self:
                 raise RenderLoopConfigError('\n'.join(invalid_self))
 
-            # Check pipeline class compatibility
-            try:
-                _pipelinewrapper.get_pipeline_class(
-                    model_type=self.model_type,
-                    pipeline_type=_pipelinewrapper.PipelineType.TXT2IMG,
-                    unet_uri=self.unet_uri,
-                    transformer_uri=self.transformer_uri,
-                    vae_uri=self.vae_uri,
-                    lora_uris=self.lora_uris,
-                    image_encoder_uri=self.image_encoder_uri,
-                    ip_adapter_uris=self.ip_adapter_uris,
-                    textual_inversion_uris=self.textual_inversion_uris,
-                    controlnet_uris=self.controlnet_uris,
-                    t2i_adapter_uris=self.t2i_adapter_uris,
-                    pag=self.pag,
-                    help_mode=help_mode
-                )
-            except _pipelinewrapper.UnsupportedPipelineConfigError as e:
-                raise RenderLoopConfigError(str(e)) from e
+            if not _pipelinewrapper.model_type_is_video(self.model_type):
+                # Check pipeline class compatibility
+                try:
+                    _pipelinewrapper.get_pipeline_class(
+                        model_type=self.model_type,
+                        pipeline_type=_pipelinewrapper.PipelineType.TXT2IMG,
+                        unet_uri=self.unet_uri,
+                        transformer_uri=self.transformer_uri,
+                        vae_uri=self.vae_uri,
+                        lora_uris=self.lora_uris,
+                        image_encoder_uri=self.image_encoder_uri,
+                        ip_adapter_uris=self.ip_adapter_uris,
+                        textual_inversion_uris=self.textual_inversion_uris,
+                        controlnet_uris=self.controlnet_uris,
+                        t2i_adapter_uris=self.t2i_adapter_uris,
+                        pag=self.pag,
+                        help_mode=help_mode
+                    )
+                except _pipelinewrapper.UnsupportedPipelineConfigError as e:
+                    raise RenderLoopConfigError(str(e)) from e
 
     def _check_output_arguments(self, a_namer: typing.Callable[[str], str]):
         """Check output-related arguments for compatibility."""
@@ -2418,6 +2470,7 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     def _check_model_specific_requirements(self, a_namer: typing.Callable[[str], str]):
         """Check specific requirements for different model types."""
+        self._check_video_model_requirements(a_namer)
         self._check_stable_cascade_requirements(a_namer)
         self._check_upscaler_requirements(a_namer)
         self._check_pix2pix_requirements(a_namer)
@@ -2426,6 +2479,144 @@ class RenderLoopConfig(_types.SetFromMixin):
         self._check_sd3_model_requirements(a_namer)
         self._check_sdxl_model_requirements(a_namer)
         self._check_floyd_requirements(a_namer)
+
+    def _check_video_model_requirements(self, a_namer: typing.Callable[[str], str]):
+        """Check video model types and set their length, fps, and step defaults."""
+        if not _pipelinewrapper.model_type_is_video(self.model_type):
+            if self.audio_guidance_scales:
+                raise RenderLoopConfigError(
+                    f'{a_namer("audio_guidance_scales")} is only supported for the ltx video model type.')
+            if self.audio_guidance_rescales:
+                raise RenderLoopConfigError(
+                    f'{a_namer("audio_guidance_rescales")} is only supported for the ltx video model type.')
+            if self.video_lengths:
+                raise RenderLoopConfigError(
+                    f'{a_namer("video_lengths")} is only supported for the ltx video model type.')
+            if self.video_fps:
+                raise RenderLoopConfigError(
+                    f'{a_namer("video_fps")} is only supported for the ltx video model type.')
+            return
+
+        if self.video_fps is None:
+            self.video_fps = [24.0]
+
+        if self.model_type == _pipelinewrapper.ModelType.LTX:
+            if self.sigmas:
+                first = self.sigmas[0]
+                if (self.inference_steps == [_pipelinewrapper.constants.DEFAULT_INFERENCE_STEPS]
+                        and isinstance(first, (list, tuple))):
+                    self.inference_steps = [len(first)]
+
+            if self.max_sequence_length is not None:
+                if self.max_sequence_length < 1 or self.max_sequence_length > 1024:
+                    raise RenderLoopConfigError(
+                        f'{a_namer("max_sequence_length")} must be greater than or equal '
+                        f'to 1 and less than or equal to 1024 for ltx.')
+
+        if self.output_size is not None and self.model_type == _pipelinewrapper.ModelType.LTX:
+            width, height = self.output_size
+            if width % 32 or height % 32:
+                raise RenderLoopConfigError(
+                    f'{a_namer("output_size")} must be divisible by 32 for '
+                    f'{_pipelinewrapper.get_model_type_string(self.model_type)}. '
+                    f'Got {width}x{height}.')
+
+        if self.batch_size is not None and self.batch_size > 1:
+            raise RenderLoopConfigError(
+                f'{a_namer("batch_size")} is not supported for video model types. '
+                f'One argument combination writes one clip.')
+
+        if self.is_output_latents():
+            raise RenderLoopConfigError(
+                f'Video model types write a clip, not latents. Change {a_namer("image_format")}.')
+
+        if self.quantizer_map:
+            video_quant_names = {
+                'transformer', 'text_encoder', 'connectors'
+            }
+            unknown = [name for name in self.quantizer_map if name not in video_quant_names]
+            if unknown:
+                raise RenderLoopConfigError(
+                    f'{a_namer("quantizer_map")} value {unknown[0]!r} cannot be used with '
+                    f'video model types. Use transformer, text_encoder, or connectors.')
+
+        if self.model_type != _pipelinewrapper.ModelType.LTX and self.sigmas:
+            raise RenderLoopConfigError(
+                f'{a_namer("sigmas")} is only supported for the ltx video model type.')
+
+        blocked = (
+            ('controlnet_uris', self.controlnet_uris),
+            ('t2i_adapter_uris', self.t2i_adapter_uris),
+            ('ip_adapter_uris', self.ip_adapter_uris),
+            ('textual_inversion_uris', self.textual_inversion_uris),
+            ('unet_uri', self.unet_uri),
+            ('vae_uri', self.vae_uri),
+            ('text_encoder_uris', self.text_encoder_uris),
+            ('image_encoder_uri', self.image_encoder_uri),
+            ('sdxl_refiner_uri', self.sdxl_refiner_uri),
+            ('s_cascade_decoder_uri', self.s_cascade_decoder_uri),
+            ('adetailer_detector_uris', self.adetailer_detector_uris),
+            ('prompt_weighter_uri', self.prompt_weighter_uri),
+            ('second_prompts', self.second_prompts),
+            ('third_prompts', self.third_prompts),
+            ('second_prompt_upscaler_uri', self.second_prompt_upscaler_uri),
+            ('third_prompt_upscaler_uri', self.third_prompt_upscaler_uri),
+            ('clip_skips', self.clip_skips),
+            ('pag', self.pag),
+            ('pag_scales', self.pag_scales),
+            ('pag_adaptive_scales', self.pag_adaptive_scales),
+            ('hi_diffusion', self.hi_diffusion),
+            ('tea_cache', self.tea_cache),
+            ('deep_cache', self.deep_cache),
+            ('sada', self.sada),
+            ('ras', self.ras),
+            ('inpaint_crop', self.inpaint_crop),
+            ('inpaint_crop_paddings', self.inpaint_crop_paddings),
+            ('inpaint_crop_masked', self.inpaint_crop_masked),
+            ('inpaint_crop_feathers', self.inpaint_crop_feathers),
+            ('mask_image_processors', self.mask_image_processors),
+            ('control_image_processors', self.control_image_processors),
+            ('latents', self.latents),
+            ('latents_processors', self.latents_processors),
+            ('latents_post_processors', self.latents_post_processors),
+            ('img2img_latents_processors', self.img2img_latents_processors),
+            ('denoising_start', self.denoising_start),
+            ('denoising_end', self.denoising_end),
+            ('batch_grid_size', self.batch_grid_size),
+            ('safety_checker', self.safety_checker),
+            ('original_config', self.original_config),
+            ('freeu_params', self.freeu_params),
+        )
+        for name, value in blocked:
+            if value:
+                raise RenderLoopConfigError(
+                    f'{a_namer(name)} cannot be used with video model types.')
+
+        if self.vae_tiling:
+            raise RenderLoopConfigError(
+                f'{a_namer("vae_tiling")} cannot be used with video model types. '
+                f'LTX always tiles the video VAE; that flag is ignored.')
+
+        if self.frame_start:
+            raise RenderLoopConfigError(
+                f'{a_namer("frame_start")} cannot be used with video model types. '
+                f'LTX accepts still images, not sliced animations.')
+
+        if self.frame_end is not None:
+            raise RenderLoopConfigError(
+                f'{a_namer("frame_end")} cannot be used with video model types. '
+                f'LTX accepts still images, not sliced animations.')
+
+        schedulers = self.scheduler_uri
+        if isinstance(schedulers, str) or schedulers is None:
+            schedulers = [schedulers]
+        if any(item and not _pipelinewrapper.scheduler_is_help(str(item)) for item in schedulers):
+            raise RenderLoopConfigError(
+                f'{a_namer("scheduler_uri")} cannot be used with video model types.')
+
+        if self.seed_image_processors and IMAGE_PROCESSOR_SEP in self.seed_image_processors:
+            raise RenderLoopConfigError(
+                f'Video models accept one {a_namer("seed_image_processors")} chain.')
 
     def _check_floyd_requirements(self, a_namer: typing.Callable[[str], str]):
         """Check Floyd model specific requirements."""
@@ -2505,10 +2696,11 @@ class RenderLoopConfig(_types.SetFromMixin):
         """Check transformer compatibility with the model type."""
         if self.transformer_uri:
             if not _pipelinewrapper.model_type_is_sd3(self.model_type) \
-                    and not _pipelinewrapper.model_type_is_flux(self.model_type):
+                    and not _pipelinewrapper.model_type_is_flux(self.model_type) \
+                    and not _pipelinewrapper.model_type_is_video(self.model_type):
                 raise _pipelinewrapper.UnsupportedPipelineConfigError(
                     f'{a_namer("transformer_uri")} is only supported for '
-                    f'{a_namer("model_type")} sd3 and flux.')
+                    f'{a_namer("model_type")} sd3, flux, and ltx.')
 
     def _check_flux_model_requirements(self, a_namer: typing.Callable[[str], str]):
         """Check Flux model specific requirements."""
@@ -2618,6 +2810,7 @@ class RenderLoopConfig(_types.SetFromMixin):
         no_seed_strength = (_pipelinewrapper.model_type_is_upscaler(self.model_type) or
                             _pipelinewrapper.model_type_is_pix2pix(self.model_type) or
                             _pipelinewrapper.model_type_is_s_cascade(self.model_type) or
+                            _pipelinewrapper.model_type_is_video(self.model_type) or
                             self.model_type == _pipelinewrapper.ModelType.FLUX_FILL or
                             self.model_type == _pipelinewrapper.ModelType.FLUX_KONTEXT)
 
@@ -2633,7 +2826,7 @@ class RenderLoopConfig(_types.SetFromMixin):
             if no_seed_strength:
                 raise RenderLoopConfigError(
                     f'{a_namer("image_seed_strengths")} '
-                    f'cannot be used with pix2pix, upscaler, stablecascade, flux-fill, or flux-kontext models.')
+                    f'cannot be used with pix2pix, upscaler, stablecascade, flux-fill, flux-kontext, or video models.')
             user_provided_image_seed_strengths = True
 
         # Check upscaler noise level default setting
@@ -2677,6 +2870,8 @@ class RenderLoopConfig(_types.SetFromMixin):
                                        help_mode: bool,
                                        a_namer: typing.Callable[[str], str]):
         """Verify that a pipeline can be built for the given configuration."""
+        if _pipelinewrapper.model_type_is_video(self.model_type):
+            return
         try:
             for image_seed in parsed_image_seeds:
                 is_control_guidance_spec = \
@@ -2853,6 +3048,17 @@ class RenderLoopConfig(_types.SetFromMixin):
                                                       uri: str,
                                                       a_namer: typing.Callable[[str], str]):
         """Check model-specific requirements for image seeds."""
+        if parsed.end_image is not None and not _pipelinewrapper.model_type_is_video(self.model_type):
+            raise RenderLoopConfigError(
+                'The image seed argument "end" is only supported for --model-type ltx.')
+
+        if _pipelinewrapper.model_type_is_video(self.model_type):
+            import dgenerate.pipelinewrapper.videopipelines as _videopipelines
+            try:
+                _videopipelines.classify_video_seed(self.model_type, parsed)
+            except _pipelinewrapper.UnsupportedPipelineConfigError as e:
+                raise RenderLoopConfigError(str(e)) from e
+
         if _pipelinewrapper.model_type_is_s_cascade(self.model_type):
             if not parsed.is_single_spec:
                 raise RenderLoopConfigError(
@@ -2947,7 +3153,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                                              uri: str,
                                              a_namer: typing.Callable[[str], str]):
         """Check compatibility of image processors with available images."""
-        if self.seed_image_processors:
+        if self.seed_image_processors and not _pipelinewrapper.model_type_is_video(self.model_type):
             num_img2img_images = len(parsed.images) if parsed.images is not None else 0
 
             seed_processor_chain_count = \
@@ -3044,7 +3250,8 @@ class RenderLoopConfig(_types.SetFromMixin):
         is_control_guidance_spec = (self.controlnet_uris or self.t2i_adapter_uris) and parsed.is_single_spec
         has_additional_control = parsed.control_images and not parsed.is_single_spec
 
-        if has_additional_control and not self.controlnet_uris:
+        if has_additional_control and not self.controlnet_uris \
+                and not _pipelinewrapper.model_type_is_video(self.model_type):
             raise RenderLoopConfigError(
                 f'Cannot use the "control" argument in an image seed without '
                 f'specifying {a_namer("controlnet_uris")}.'
@@ -3193,6 +3400,10 @@ class RenderLoopConfig(_types.SetFromMixin):
             self.sdxl_refiner_deep_cache_branch_ids,
             self.sigmas,
             self.sdxl_refiner_sigmas,
+            self.video_lengths,
+            self.video_fps,
+            self.audio_guidance_scales,
+            self.audio_guidance_rescales,
             self.sada_max_downsamples,
             self.sada_sxs,
             self.sada_sys,
@@ -3389,6 +3600,10 @@ class RenderLoopConfig(_types.SetFromMixin):
                 guidance_rescale=ov('guidance_rescale', self.guidance_rescales),
                 sigmas=ov('sigmas', self.sigmas),
                 inference_steps=ov('inference_steps', self.inference_steps),
+                video_length=ov('video_length', self.video_lengths),
+                video_fps=ov('video_fps', self.video_fps),
+                audio_guidance_scale=ov('audio_guidance_scale', self.audio_guidance_scales),
+                audio_guidance_rescale=ov('audio_guidance_rescale', self.audio_guidance_rescales),
                 sdxl_high_noise_fraction=ov('sdxl_high_noise_fraction', self.sdxl_high_noise_fractions),
                 second_model_inference_steps=ov('second_model_inference_steps', self.second_model_inference_steps),
                 second_model_guidance_scale=ov('second_model_guidance_scale', self.second_model_guidance_scales),

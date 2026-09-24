@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 5.0.0
+#! dgenerate 6.0.0
 
 # Use the built in mirror and canny processor action to process
 # the image for you before using it for generation. This mirrors
@@ -12,8 +12,12 @@
     \exit
 {% endif %}
 
-{% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 24 %}
+\setp gpu_memory_gib total_memory(unit='gib')
+
+{% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 24 %}
     \set optimization --quantizer bnb;bits=4
+{% elif have_cuda() and have_feature('sdnq') and gpu_memory_gib > 24 %}
+    \set optimization --quantizer sdnq;type=int4
 {% else %}
     \set optimization --model-sequential-offload
 {% endif %}

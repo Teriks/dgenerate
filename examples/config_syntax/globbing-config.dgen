@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 5.0.0
+#! dgenerate 6.0.0
 
 # globbing can be performed via shell expansion or using
 # the glob module inside jinja templates

@@ -1,0 +1,26 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# LTX-Video (2B) with a city96 GGUF transformer.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+Lightricks/LTX-Video
+--model-type ltx
+--dtype bfloat16
+--model-cpu-offload
+--transformer https://huggingface.co/city96/LTX-Video-gguf/blob/main/ltx-video-2b-v0.9-Q3_K_S.gguf
+--inference-steps 50
+--guidance-scales 3
+--video-fps 25
+--gen-seeds 1
+--output-size 768x512
+--video-lengths 4.84
+--animation-format mp4
+--output-path ltx-video-gguf
+--prompts "A woman in a red coat walks along a dirt path through a green field, then stops and looks back at the camera. The camera stays fixed.; worst quality, inconsistent motion, blurry, jittery, distorted"

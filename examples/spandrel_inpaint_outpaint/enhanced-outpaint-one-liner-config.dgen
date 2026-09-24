@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 5.0.0
+#! dgenerate 6.0.0
 
 # Enhanced outpaint similar to patchmatch, using the LaMa inpaint model architecture
 # via spandrel to generate reference content for SDXL

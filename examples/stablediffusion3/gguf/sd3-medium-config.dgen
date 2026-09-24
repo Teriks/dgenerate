@@ -1,0 +1,37 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Replace the SD3 Medium DiT with a pre-quantized city96 GGUF file. The
+# Hugging Face repo still supplies the VAE and text encoders. T5
+# (text_encoder_3) is quantized with bitsandbytes, or sdnq if
+# bitsandbytes is not available.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+\setp gpu_memory_gib total_memory(unit='gib')
+
+{% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 15 %}
+    \set te_quant --quantizer bnb;bits=4 --quantizer-map text_encoder_3
+{% elif have_cuda() and have_feature('sdnq') and gpu_memory_gib > 15 %}
+    \set te_quant --quantizer sdnq;type=int4 --quantizer-map text_encoder_3
+{% else %}
+    \set te_quant
+{% endif %}
+
+stabilityai/stable-diffusion-3-medium-diffusers
+--model-type sd3 {{ te_quant }}
+--variant fp16
+--dtype float16
+--model-cpu-offload
+--transformer https://huggingface.co/city96/stable-diffusion-3-medium-gguf/blob/main/sd3_medium-Q4_K_S.gguf
+--inference-steps 28
+--guidance-scales 5
+--gen-seeds 1
+--output-path sd3-gguf-medium
+--output-size 1024
+--prompts "Photo of a horse standing near the open door of a red barn, high resolution"

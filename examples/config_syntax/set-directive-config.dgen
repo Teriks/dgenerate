@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 5.0.0
+#! dgenerate 6.0.0
 
 # The \set directive behaves like a macro, and does not perform any shell parsing.
 # It performs template expansion and then environmental variable expansion in that

@@ -1,0 +1,40 @@
+title: LTX-2.5
+order: 19
+
+# LTX-2.5. Leave Video Length empty to let the duration head choose.
+# First frame and last frame (end=) are optional.
+
+\setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"
+
+\set auth_token {{ '--auth-token ' + quote(auth_token) if auth_token else '' }}
+
+\setp first_frame "@file[{"label":"First Frame", "optional":true, "mode":"input", "file-types":["images-in"]}]"
+\setp last_frame "@file[{"label":"Last Frame", "optional":true, "mode":"input", "file-types":["images-in"], "divider-after":true}]"
+
+\set image_seeds {{ (first_frame + (';end=' + last_frame if last_frame else '')) if first_frame else (('end=' + last_frame) if last_frame else '') }}
+
+@uri[{"label":"Model Path / HF Slug", "dir":true, "default": "Lightricks/LTX-2.5-Diffusers", "optional":false, "file-types":["models"]}]
+--model-type ltx {{ auth_token }}
+@dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"], "default":"bfloat16"}]
+@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "default":1}]
+@quantizer[{"divider-after":true}]
+@submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA"}]
+@submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "divider-after":true}]
+@switch[{"label":"No Aspect Correction?", "arg":"--no-aspect"}]
+@imageprocessor[{"arg":"--seed-image-processors", "label":"Seed Image Processor", "divider-after":true}]
+@int[{"label":"Inference Steps", "arg":"--inference-steps", "default":8, "min":1}]
+@float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":1, "min":0}]
+@float[{"label":"Audio Guidance Scale", "arg":"--audio-guidance-scales", "default":1, "min":0, "optional":true}]
+@float[{"label":"Audio Guidance Rescale", "arg":"--audio-guidance-rescales", "min":0, "optional":true}]
+@float[{"label":"Video Length (seconds)", "arg":"--video-lengths", "default":"2", "min":0.1}]
+@float[{"label":"Video FPS", "arg":"--video-fps", "default":"24", "min":1}]
+@dropdown[{"label":"Animation Format", "arg":"--animation-format", "options":["mp4", "gif", "webp", "apng", "frames"], "default":"mp4", "optional":false}]
+@seeds[{"label":"Seeds"}]
+@dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
+@switchradio[{"labels":["Output Dgenerate Image Metadata", "Output Automatic1111 Image Metadata"], "args":["--output-metadata", "--output-auto1111-metadata"]}]
+@switch[{"label":"Output Configs", "arg":"--output-configs"}]
+@imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"640x384", "divider-after":true}]
+@promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
+@imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
+@device[{}]
+--prompts "add your prompt here" {{ '--image-seeds ' + quote(image_seeds) if image_seeds else '' }}

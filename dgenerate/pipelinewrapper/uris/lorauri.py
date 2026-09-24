@@ -113,7 +113,8 @@ class LoRAUri:
                          uris: typing.Iterable[typing.Union["LoRAUri", str]],
                          fuse_scale: float = 1.0,
                          use_auth_token: _types.OptionalString = None,
-                         local_files_only: bool = False):
+                         local_files_only: bool = False,
+                         fuse: bool = True):
         """
         Load LoRA weights on to a pipeline using this URI
 
@@ -125,6 +126,8 @@ class LoRAUri:
         :param use_auth_token: optional huggingface auth token.
         :param local_files_only: avoid downloading files and only look for cached files
             when the model path is a huggingface slug
+        :param fuse: Merge the loaded adapters into the pipeline weights.
+            When false, the adapters stay active through ``set_adapters``.
 
         :raises dgenerate.ModelNotFoundError: If the model could not be found.
         :raises dgenerate.pipelinewrapper.uris.exceptions.InvalidLoRAUriError: On URI parsing errors.
@@ -142,14 +145,16 @@ class LoRAUri:
                                       uris=uris,
                                       fuse_scale=fuse_scale,
                                       use_auth_token=use_auth_token,
-                                      local_files_only=local_files_only)
+                                      local_files_only=local_files_only,
+                                      fuse=fuse)
 
     @staticmethod
     def _load_on_pipeline(pipeline: diffusers.DiffusionPipeline,
                           uris: typing.Iterable[typing.Union["LoRAUri", str]],
                           fuse_scale: float = 1.0,
                           use_auth_token: _types.OptionalString = None,
-                          local_files_only: bool = False):
+                          local_files_only: bool = False,
+                          fuse: bool = True):
 
         if hasattr(pipeline, 'load_lora_weights'):
             adapter_names = []
@@ -222,9 +227,12 @@ class LoRAUri:
 
                 _messages.debug_log(f'Added LoRA: "{lora_uri}" to pipeline: "{pipeline.__class__.__name__}"')
 
-            _messages.debug_log(f'Fusing all LoRAs into pipeline with global scale: {fuse_scale}')
             pipeline.set_adapters(adapter_names, adapter_weights=adapter_weights)
-            pipeline.fuse_lora(adapter_names=adapter_names, lora_scale=fuse_scale)
+            if fuse:
+                _messages.debug_log(f'Fusing all LoRAs into pipeline with global scale: {fuse_scale}')
+                pipeline.fuse_lora(adapter_names=adapter_names, lora_scale=fuse_scale)
+            else:
+                _messages.debug_log('Leaving LoRA adapters active without fusing them into the weights.')
         else:
             raise RuntimeError(f'Pipeline: {pipeline.__class__.__name__} '
                                f'does not support loading LoRAs.')
