@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 5.0.0
+#! dgenerate 6.0.0
 
 # We can repeat the concept described in hi-res-auto-cropped.dgen
 # with the yolo processor for automatic mask generation based on

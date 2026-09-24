@@ -120,10 +120,20 @@ def is_single_file_model_load(path):
     if not ext:
         return False
 
-    if ext in {'.pt', '.pth', '.bin', '.ckpt', '.safetensors'}:
+    if ext in {'.pt', '.pth', '.bin', '.ckpt', '.safetensors', '.gguf'}:
         return True
 
     return False
+
+
+def is_gguf_model(path) -> bool:
+    """
+    Return whether ``path`` is a GGUF checkpoint (file, URL, or blob link).
+    """
+    if not path:
+        return False
+    cleaned = str(path).split(';', 1)[0].split('?', 1)[0].strip().lower()
+    return cleaned.endswith('.gguf')
 
 
 def webcache_or_hf_blob_download(url: str,

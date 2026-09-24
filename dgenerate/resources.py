@@ -34,7 +34,7 @@ Package resources, version, pre-release and latest release information, icon, et
 This module can be imported without incurring a large import overhead.
 """
 
-__version__ = '5.0.0'
+__version__ = '6.0.0'
 
 
 def get_icon_path() -> str:

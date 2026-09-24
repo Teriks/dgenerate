@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 5.0.0
+#! dgenerate 6.0.0
 
 # example of a manual adetailer like usage using segment anything
 # and a bounding box prompt to create a mask for a specific image feature

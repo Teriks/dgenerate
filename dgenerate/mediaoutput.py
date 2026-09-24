@@ -23,6 +23,7 @@ import os
 import shutil
 import tempfile
 import typing
+from fractions import Fraction
 
 import PIL.Image
 import av
@@ -65,17 +66,36 @@ class VideoWriter(AnimationWriter):
     Animation writer for MP4 h264 format video
     """
 
-    def __init__(self, filename, fps: float):
+    def __init__(self,
+                 filename,
+                 fps: float,
+                 audio: numpy.ndarray | None = None,
+                 audio_sample_rate: int | None = None):
         """
         :param filename: Filename to write to.
         :param fps: Frame rate, in frames per second.
+        :param audio: Optional float32 audio of shape ``(channels, samples)``, 1 or 2 channels.
+            Muxed as AAC when the container is mp4.
+        :param audio_sample_rate: Sample rate of ``audio``.
         """
 
         super().__init__()
         self.filename = filename
         self.fps = fps
+        self._audio = None
+        self._audio_sample_rate = None if audio_sample_rate is None else int(audio_sample_rate)
+        if audio is not None:
+            audio = numpy.ascontiguousarray(audio, dtype=numpy.float32)
+            if audio.ndim == 1:
+                audio = audio.reshape(1, -1)
+            if audio.ndim == 2 and audio.shape[0] > 2 and audio.shape[1] <= 2:
+                audio = numpy.transpose(audio, (1, 0))
+            if audio.ndim == 2 and audio.shape[0] > 2:
+                audio = audio[:2]
+            self._audio = numpy.ascontiguousarray(audio, dtype=numpy.float32)
         self._container = None
         self._stream = None
+        self._audio_stream = None
 
     def end(self, new_file=None):
         self._cleanup()
@@ -87,9 +107,39 @@ class VideoWriter(AnimationWriter):
         if self._container is not None:
             for packet in self._stream.encode():
                 self._container.mux(packet)
+            if self._audio_stream is not None and self._audio is not None:
+                self._encode_audio()
             self._container.close()
             self._container = None
             self._stream = None
+            self._audio_stream = None
+
+    def _encode_audio(self):
+        audio = self._audio
+        if audio.ndim == 1:
+            audio = audio.reshape(1, -1)
+        channels = 1 if audio.shape[0] == 1 else 2
+        if audio.shape[0] > 2:
+            audio = audio[:2]
+            channels = 2
+        layout = 'mono' if channels == 1 else 'stereo'
+        sample_rate = self._audio_sample_rate
+        frame_size = self._audio_stream.codec_context.frame_size or 1024
+        remainder = audio.shape[1] % frame_size
+        if remainder:
+            audio = numpy.pad(audio, ((0, 0), (0, frame_size - remainder)))
+
+        for start in range(0, audio.shape[1], frame_size):
+            chunk = numpy.ascontiguousarray(audio[:, start:start + frame_size])
+            frame = av.AudioFrame.from_ndarray(chunk, format='fltp', layout=layout)
+            frame.sample_rate = sample_rate
+            frame.time_base = Fraction(1, sample_rate)
+            frame.pts = start
+            for packet in self._audio_stream.encode(frame):
+                self._container.mux(packet)
+
+        for packet in self._audio_stream.encode(None):
+            self._container.mux(packet)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._cleanup()
@@ -97,11 +147,16 @@ class VideoWriter(AnimationWriter):
     def write(self, img: PIL.Image.Image):
         if self._container is None:
             self._container = av.open(self.filename, 'w')
-            self._stream = self._container.add_stream("h264", rate=round(self.fps))
+            self._stream = self._container.add_stream(
+                "h264", rate=Fraction(self.fps).limit_denominator(1001))
             self._stream.codec_context.bit_rate = 8000000
             self._stream.width = img.width
             self._stream.height = img.height
             self._stream.pix_fmt = "yuv420p"
+            if self._audio is not None and self._audio_sample_rate:
+                layout = 'mono' if self._audio.shape[0] == 1 else 'stereo'
+                self._audio_stream = self._container.add_stream('aac', rate=self._audio_sample_rate)
+                self._audio_stream.layout = layout
 
         for packet in self._stream.encode(av.VideoFrame.from_image(img)):
             self._container.mux(packet)

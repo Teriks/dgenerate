@@ -69,7 +69,7 @@ class TransformerUri:
     }
 
     FILE_ARGS = {
-        'model': {'mode': ['in', 'dir'], 'filetypes': [('Models', ['*.safetensors', '*.pt', '*.pth', '*.cpkt', '*.bin'])]}
+        'model': {'mode': ['in', 'dir'], 'filetypes': [('Models', ['*.safetensors', '*.gguf', '*.pt', '*.pth', '*.cpkt', '*.bin'])]}
     }
 
     # ===
@@ -116,6 +116,10 @@ class TransformerUri:
         """
         return self._quantizer
 
+    @quantizer.setter
+    def quantizer(self, value: _types.OptionalUri):
+        self._quantizer = value
+
     def __init__(self,
                  model: str,
                  revision: _types.OptionalString = None,
@@ -135,9 +139,13 @@ class TransformerUri:
 
         if _hfhub.is_single_file_model_load(model):
             if quantizer:
-                raise _exceptions.InvalidTextEncoderUriError(
+                if _hfhub.is_gguf_model(model):
+                    raise _exceptions.InvalidTransformerUriError(
+                        'A GGUF --transformer file is already quantized. '
+                        'Do not set quantizer on the transformer URI.')
+                raise _exceptions.InvalidTransformerUriError(
                     'specifying a Transformer quantizer URI is only supported for Hugging Face '
-                    'repository loads from a repo slug or disk path, single file loads are not supported.')
+                    'repository loads.')
 
         self._model = model
         self._revision = revision
@@ -160,6 +168,8 @@ class TransformerUri:
              local_files_only: bool = False,
              no_cache: bool = False,
              device_map: str | None = None,
+             config: _types.OptionalString = None,
+             config_subfolder: _types.OptionalString = None,
              transformer_class:
              type[diffusers.SD3Transformer2DModel] |
              type[
@@ -214,6 +224,8 @@ class TransformerUri:
               local_files_only: bool = False,
               no_cache: bool = False,
               device_map: str | None = None,
+              config: _types.OptionalString = None,
+              config_subfolder: _types.OptionalString = None,
               transformer_class:
               type[diffusers.SD3Transformer2DModel] |
               type[
@@ -234,7 +246,17 @@ class TransformerUri:
 
         model_path = _hfhub.download_non_hf_slug_model(self.model)
 
-        if self.quantizer:
+        gguf_file = _hfhub.is_gguf_model(model_path) or _hfhub.is_gguf_model(self.model)
+        if gguf_file:
+            if self.quantizer:
+                raise _exceptions.InvalidTransformerUriError(
+                    'A GGUF --transformer file is already quantized. '
+                    'Do not set quantizer on the transformer URI.')
+            if not getattr(diffusers.utils, 'is_gguf_available', lambda: True)():
+                raise _exceptions.TransformerUriLoadError(
+                    'Loading a GGUF transformer requires the gguf package.')
+            quant_config = diffusers.GGUFQuantizationConfig(compute_dtype=torch_dtype)
+        elif self.quantizer:
             quant_config = _util.get_quantizer_uri_class(
                 self.quantizer,
                 _exceptions.InvalidTransformerUriError
@@ -260,16 +282,24 @@ class TransformerUri:
 
             self._enforce_cache_size(estimated_memory_use)
 
-            transformer = transformer_class.from_single_file(
-                model_path,
+            single_file_kwargs = dict(
                 token=use_auth_token,
                 revision=self.revision,
                 torch_dtype=torch_dtype,
                 original_config=original_config,
                 local_files_only=local_files_only,
                 quantization_config=quant_config,
-                device_map=device_map
-            )
+                device_map=device_map)
+            if gguf_file and config:
+                single_file_kwargs['config'] = config
+                if config_subfolder:
+                    single_file_kwargs['subfolder'] = config_subfolder
+            from_single_file = getattr(transformer_class, 'from_single_file', None)
+            if from_single_file is None:
+                from diffusers.loaders.single_file_model import FromOriginalModelMixin
+                from_single_file = FromOriginalModelMixin.from_single_file.__get__(
+                    transformer_class, transformer_class)
+            transformer = from_single_file(model_path, **single_file_kwargs)
 
         else:
             if original_config:

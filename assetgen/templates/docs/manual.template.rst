@@ -32,6 +32,8 @@ Help Output
 
 @INCLUDE[sections/image_inputs/animated_output.template.rst]
 
+@INCLUDE[sections/image_inputs/video_generation.template.rst]
+
 @INCLUDE[sections/image_inputs/animation_slicing.template.rst]
 
 @INCLUDE[sections/image_inputs/inpainting_animations.template.rst]

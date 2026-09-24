@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 5.0.0
+#! dgenerate 6.0.0
 
 # You can use any Kolors model you want in combination with the adetailer inpainting algorithm
 # this can be performed on any image of your choosing in this manner

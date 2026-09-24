@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 5.0.0
+#! dgenerate 6.0.0
 
 wavymulder/collage-diffusion
 --loras latent-consistency/lcm-lora-sdv1-5

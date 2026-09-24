@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 5.0.0
+#! dgenerate 6.0.0
 
 # see what sort of clothing we can outline on the monalisa
 # this model classifies clothes, and can produce its own masks, model-masks=True

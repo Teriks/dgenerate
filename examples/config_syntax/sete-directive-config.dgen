@@ -1,5 +1,5 @@
 #! /usr/bin/env dgenerate --file
-#! dgenerate 5.0.0
+#! dgenerate 6.0.0
 
 # The \sete directive performs full shell parsing just like \echo, the difference
 # is that instead of just printing the parsed tokens back, it assigns

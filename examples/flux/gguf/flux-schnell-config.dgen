@@ -1,0 +1,34 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Same GGUF swap on Flux Schnell. Four steps, no guidance.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+\setp gpu_memory_gib total_memory(unit='gib')
+
+{% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 15 %}
+    \set te_quant --quantizer bnb;bits=4 --quantizer-map text_encoder
+{% elif have_cuda() and have_feature('sdnq') and gpu_memory_gib > 15 %}
+    \set te_quant --quantizer sdnq;type=int4 --quantizer-map text_encoder
+{% else %}
+    \set te_quant
+{% endif %}
+
+black-forest-labs/FLUX.1-schnell
+--model-type flux {{ te_quant }}
+--dtype bfloat16
+--model-cpu-offload
+--max-sequence-length 256
+--transformer https://huggingface.co/city96/FLUX.1-schnell-gguf/blob/main/flux1-schnell-Q4_K_S.gguf
+--inference-steps 4
+--guidance-scales 0
+--gen-seeds 1
+--output-path flux-gguf-schnell
+--output-size 1024
+--prompts "Photo of a horse standing near the open door of a red barn, high resolution"

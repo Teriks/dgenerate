@@ -1,3 +1,5 @@
+.. _specifying-sigmas:
+
 Specifying Sigmas (denoising schedule)
 ======================================
 
@@ -46,5 +48,13 @@ set of sigmas may not be so trivial.
 
 @EXAMPLE[@PROJECT_DIR/examples/flux/sigmas/sigmas-expression-config.dgen]
 
+``--model-type ltx`` accepts the same CSV lists and ``expr:`` forms.
+When the loaded scheduler has no dynamic shifting, ``sigmas`` in the expression
+is the distilled 8-value table, not a schedule from ``set_timesteps``.
+When the scheduler uses dynamic shifting, ``sigmas`` comes from
+``set_timesteps`` using ``--inference-steps``. Passing ``--sigmas`` sets the
+step count to the length of the result and uses your ``--guidance-scales``
+value as written. See :ref:`video-generation`.
 
+@EXAMPLE[@PROJECT_DIR/examples/video/ltx/sigmas-config.dgen]
 

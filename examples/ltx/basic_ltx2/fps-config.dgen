@@ -1,0 +1,22 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+Lightricks/LTX-2.5-Diffusers
+--model-type ltx
+--dtype bfloat16
+--model-sequential-offload
+--guidance-scales 1
+--gen-seeds 1
+--output-size 640x384
+--video-lengths 2
+--video-fps 16
+--animation-format mp4
+--output-path ltx-fps
+--prompts "A tabby cat walks from left to right across a sunlit oak floor. Side view, camera locked off, one continuous step cycle."

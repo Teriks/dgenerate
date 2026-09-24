@@ -116,6 +116,14 @@ class PipelineWrapperResult:
     """
     images: _types.MutableImages | None
     latents: _types.MutableTensors | None
+    audio: numpy.ndarray | None
+    """Optional soundtrack, float32, shape ``(channels, samples)``."""
+
+    audio_sample_rate: int | None
+    """Sample rate of :py:attr:`audio` in Hz."""
+
+    fps: float | None
+    """Frame rate of a generated video clip."""
 
     @property
     def image_count(self) -> int:
@@ -219,7 +227,12 @@ class PipelineWrapperResult:
             grid.paste(img, box=(i % cols * w, i // cols * h))
         return grid
 
-    def __init__(self, images: _types.Images | None = None, latents: _types.MutableTensors | None = None):
+    def __init__(self,
+                 images: _types.Images | None = None,
+                 latents: _types.MutableTensors | None = None,
+                 audio: numpy.ndarray | None = None,
+                 audio_sample_rate: int | None = None,
+                 fps: float | None = None):
         if images is None and latents is None:
             raise ValueError("PipelineWrapperResult must have either images or latents, both cannot be None")
         if images is not None and latents is not None:
@@ -227,6 +240,9 @@ class PipelineWrapperResult:
 
         self.images = images
         self.latents = latents
+        self.audio = audio
+        self.audio_sample_rate = audio_sample_rate
+        self.fps = fps
         self.dgenerate_opts = list()
 
     def __enter__(self):
@@ -634,9 +650,11 @@ class DiffusionPipelineWrapper:
             _warn_s_cascade_deprecated()
 
         if transformer_uri:
-            if not _enums.model_type_is_sd3(model_type) and not _enums.model_type_is_flux(model_type):
+            if not _enums.model_type_is_sd3(model_type) \
+                    and not _enums.model_type_is_flux(model_type) \
+                    and not _enums.model_type_is_video(model_type):
                 raise _pipelines.UnsupportedPipelineConfigError(
-                    '--transformer is only supported for --model-type sd3 and flux.')
+                    '--transformer is only supported for --model-type sd3, flux, and ltx.')
 
         if adetailer_detector_uris and model_type not in {
             _enums.ModelType.SD,
@@ -668,7 +686,8 @@ class DiffusionPipelineWrapper:
             'text_encoder',
             'text_encoder_2',
             'text_encoder_3',
-            'controlnet'
+            'controlnet',
+            'connectors'
         ]
 
         if quantizer_map is not None:
@@ -4617,6 +4636,18 @@ class DiffusionPipelineWrapper:
             copy_args.set_from(args)
 
         copy_args.set_from(kwargs, missing_value_throws=False)
+
+        if _enums.model_type_is_video(self._model_type):
+            import dgenerate.pipelinewrapper.videopipelines as _videopipelines
+
+            frames, audio, sample_rate, fps = _videopipelines.generate(self, copy_args)
+            if args is not None:
+                _videopipelines.apply_video_arg_rewrites(copy_args, args)
+            return PipelineWrapperResult(
+                images=frames,
+                audio=audio,
+                audio_sample_rate=sample_rate,
+                fps=fps)
 
         self._auto_freeu_check(copy_args)
         self._auto_tea_cache_check(copy_args)

@@ -1,0 +1,24 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# --audio-guidance-scales is separate from --guidance-scales. Two scales write two clips.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+Lightricks/LTX-2.5-Diffusers
+--model-type ltx
+--dtype bfloat16
+--model-sequential-offload
+--guidance-scales 1
+--audio-guidance-scales 1 3
+--gen-seeds 1
+--output-size 640x384
+--video-lengths 2
+--animation-format mp4
+--output-path ltx-audio-guidance
+--prompts "A woman in a red coat walks toward the camera on gravel. Her boots crunch, she stops, and she laughs once. The camera stays fixed."

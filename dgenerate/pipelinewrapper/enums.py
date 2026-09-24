@@ -226,6 +226,9 @@ class ModelType(enum.Enum):
     KOLORS = 16
     """Kolors (SDXL + ChatGLM)"""
 
+    LTX = 17
+    """LTX-2 / LTX-2.5 text, image, and keyframe to video."""
+
 
 def supported_model_type_strings():
     """
@@ -246,7 +249,8 @@ def supported_model_type_strings():
             'sd3-pix2pix',
             'flux',
             'flux-fill',
-            'flux-kontext']
+            'flux-kontext',
+            'ltx']
 
 
 def supported_model_type_enums() -> list[ModelType]:
@@ -286,7 +290,8 @@ def get_model_type_enum(id_str: ModelType | str) -> ModelType:
                 'sd3-pix2pix': ModelType.SD3_PIX2PIX,
                 'flux': ModelType.FLUX,
                 'flux-fill': ModelType.FLUX_FILL,
-                'flux-kontext': ModelType.FLUX_KONTEXT}[id_str.strip().lower()]
+                'flux-kontext': ModelType.FLUX_KONTEXT,
+                'ltx': ModelType.LTX}[id_str.strip().lower()]
     except KeyError:
         raise ValueError('invalid ModelType string')
 
@@ -317,7 +322,8 @@ def get_model_type_string(model_type_enum: ModelType) -> str:
             ModelType.SD3_PIX2PIX: 'sd3-pix2pix',
             ModelType.FLUX: 'flux',
             ModelType.FLUX_FILL: 'flux-fill',
-            ModelType.FLUX_KONTEXT: 'flux-kontext'}[model_type]
+            ModelType.FLUX_KONTEXT: 'flux-kontext',
+            ModelType.LTX: 'ltx'}[model_type]
 
 
 def model_type_is_sd15(model_type: ModelType | str) -> bool:
@@ -413,6 +419,19 @@ def model_type_is_flux(model_type: ModelType | str) -> bool:
     model_type = get_model_type_string(model_type)
 
     return 'flux' in model_type
+
+
+def model_type_is_video(model_type: ModelType | str) -> bool:
+    """
+    Does a ``--model-type`` string or :py:class:`.ModelType` enum value generate a video clip
+    in one pipeline call?
+
+    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
+    :return: bool
+    """
+    model_type = get_model_type_enum(model_type)
+
+    return model_type == ModelType.LTX
 
 
 def model_type_is_s_cascade(model_type: ModelType | str) -> bool:

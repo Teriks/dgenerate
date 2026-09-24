@@ -359,8 +359,8 @@ def args_cache_key(args_dict: dict[str, typing.Any],
     def value_hash(obj):
         if isinstance(obj, dict):
             return '{' + args_cache_key(obj) + '}'
-        elif isinstance(obj, list):
-            return f'[{",".join(args_cache_key(o) if o is isinstance(o, (dict, list)) else value_hash(o) for o in obj)}]'
+        elif isinstance(obj, (list, tuple)):
+            return f'[{",".join(args_cache_key(o) if isinstance(o, (dict, list, tuple)) else value_hash(o) for o in obj)}]'
         elif obj is None or isinstance(obj, (str, numbers.Number, enum.Enum)):
             return str(obj)
         else:

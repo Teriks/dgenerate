@@ -14,11 +14,12 @@ LoRAs are supported for these model types:
     * ``--model-type sd3``
     * ``--model-type flux``
     * ``--model-type flux-fill``
+    * ``--model-type ltx``
 
 When multiple specifications are given, all mentioned models will be fused together
 into one set of weights at their individual scale, and then those weights will be
 fused into the main model at the scale value of ``--lora-fuse-scale``, which
-defaults to 1.0.
+defaults to 1.0. See :ref:`video-generation` for LTX adapters.
 
 You can provide a huggingface repository slug, .pt, .pth, .bin, .ckpt, or .safetensors files.
 Blob links are not accepted, for that use ``subfolder`` and ``weight-name`` described below.

@@ -501,6 +501,7 @@ def estimate_model_memory_use(repo_id: str,
                               include_text_encoder: bool = True,
                               include_text_encoder_2: bool = True,
                               include_text_encoder_3: bool = True,
+                              include_directories: collections.abc.Sequence[str] | None = None,
                               safetensors: bool = True,
                               sentencepiece: bool = False,
                               watermarker: bool = False,
@@ -525,6 +526,9 @@ def estimate_model_memory_use(repo_id: str,
     :param include_text_encoder: include the text encoder model if it exists?
     :param include_text_encoder_2: include the second text encoder model if it exists?
     :param include_text_encoder_3: include the third text encoder model if it exists?
+    :param include_directories: extra repo folder names to count, for example
+        ``audio_vae`` or ``vocoder`` on LTX. Names already covered by the
+        include_* flags do not need to be repeated.
     :param safetensors: Use safetensors if available?
     :param sentencepiece: Forcibly include tokenizer/spiece.model for models with a unet?
     :param watermarker: Forcibly include watermarker/diffusion_pytorch_model.bin for models with a unet?
@@ -605,6 +609,9 @@ def estimate_model_memory_use(repo_id: str,
 
             if not forced_only and include_text_encoder_3:
                 important_directories.add('text_encoder_3')
+
+            if not forced_only and include_directories:
+                important_directories.update(include_directories)
 
             if forced_only and sentencepiece:
                 important_directories.add('tokenizer')

@@ -89,9 +89,11 @@ Help Output
                      -uns INTEGER [INTEGER ...]] [-ic] [-icp PADDING [PADDING ...]] [-icm]
                      [-icf FEATHER [FEATHER ...]] [-gs FLOAT [FLOAT ...]]
                      [-si CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...]] [-igs FLOAT [FLOAT ...]]
-                     [-gr FLOAT [FLOAT ...]] [-ifs INTEGER [INTEGER ...]] [-ifs2 INTEGER [INTEGER ...]]
-                     [-gs2 FLOAT [FLOAT ...]] [-sir CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...]]
-                     [-ds FLOAT] [-de FLOAT]
+                     [-gr FLOAT [FLOAT ...]] [-ifs INTEGER [INTEGER ...]]
+                     [--video-lengths SECONDS [SECONDS ...]] [--video-fps FPS [FPS ...]]
+                     [--audio-guidance-scales FLOAT [FLOAT ...]] [--audio-guidance-rescales FLOAT [FLOAT ...]]
+                     [-ifs2 INTEGER [INTEGER ...]] [-gs2 FLOAT [FLOAT ...]]
+                     [-sir CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...]] [-ds FLOAT] [-de FLOAT]
                      model_path
     
     Batch image generation and manipulation tool supporting Stable Diffusion and related techniques /
@@ -209,8 +211,8 @@ Help Output
       -mt, --model-type MODEL_TYPE
             Use when loading different model types. Currently supported: sd, pix2pix, sdxl, sdxl-pix2pix,
             kolors, upscaler-x2, upscaler-x4, if, ifs, ifs-img2img, s-cascade, sd3, sd3-pix2pix, flux,
-            flux-fill, or flux-kontext. (default: sd)
-            -----------------------------------------
+            flux-fill, flux-kontext, or ltx. (default: sd)
+            ----------------------------------------------
       -rev, --revision BRANCH
             The model revision to use when loading from a Hugging Face repository, (The Git branch / tag,
             default is "main")
@@ -574,7 +576,8 @@ Help Output
             will be used for the SDXL refiner, or Stable Cascade decoder model.
             -------------------------------------------------------------------
       -tf, --transformer TRANSFORMER_URI
-            Specify a Stable Diffusion 3 or Flux Transformer model using a URI.
+            Specify a Stable Diffusion 3, Flux, or LTX Transformer model using a URI. ``--model-type ltx``
+            accepts one replacement diffusion transformer.
             
             Examples:
             
@@ -608,6 +611,11 @@ Help Output
             "transformer.safetensors", or with a dtype "transformer.safetensors;dtype=float16". All loading
             arguments except "dtype" and "quantizer" are unused in this case and may produce an error message if
             used.
+            
+            A pre-quantized .gguf transformer can be loaded the same way: --transformer "model.gguf", or a
+            Hugging Face blob link ending in .gguf. That file is already quantized. Do not set the quantizer URI
+            argument on it, and do not use --quantizer gguf. Keep the parent Hugging Face repository as --model
+            so the VAE and text encoders still load.
             
             If you wish to load a specific weight file from a Hugging Face repository, use the blob link loading
             syntax: --transformer
@@ -686,7 +694,8 @@ Help Output
       -lra, --loras LORA_URI [LORA_URI ...]
             Specify one or more LoRA models using URIs. These should be a Hugging Face repository slug / blob
             link, path to model file on disk (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or
-            model folder containing model files.
+            model folder containing model files. ``ltx`` accepts LoRAs in diffusers format and fuses them into
+            the transformer.
             
             If a LoRA model file exists at a URL which serves the file as a raw download, you may provide an
             http/https link to it and it will be downloaded to dgenerate's web cache.
@@ -1012,8 +1021,8 @@ Help Output
             quantization.
             
             Accepted values are: "unet", "transformer", "text_encoder", "text_encoder_2", "text_encoder_3",
-            "controlnet"
-            ------------
+            "controlnet", "connectors"
+            --------------------------
       -q2, --second-model-quantizer QUANTIZER_URI
             Global quantization configuration via URI for the secondary model, such as the SDXL Refiner or
             Stable Cascade decoder. See: --quantizer for syntax examples.
@@ -2015,10 +2024,11 @@ Help Output
             prompt component can be specified with the same syntax as --prompts
             -------------------------------------------------------------------
       --max-sequence-length INTEGER
-            The maximum amount of prompt tokens that the T5EncoderModel (third text encoder) of Stable Diffusion
-            3 or Flux can handle. This should be an integer value between 1 and 512 inclusive. The higher the
-            value the more resources and time are required for processing. (default: 256 for SD3, 512 for Flux)
-            ---------------------------------------------------------------------------------------------------
+            The maximum amount of prompt tokens sent to the text encoder. For Stable Diffusion 3 and Flux this
+            is the T5 encoder, an integer between 1 and 512 inclusive (default: 256 for SD3, 512 for Flux). For
+            --model-type ltx this is Gemma, an integer between 1 and 1024 inclusive. Omitting it on LTX leaves
+            the pipeline default of 1024. Higher values use more resources and time.
+            ------------------------------------------------------------------------
       -cs, --clip-skips INTEGER [INTEGER ...]
             One or more clip skip values to try. Clip skip is the number of layers to be skipped from CLIP while
             computing the prompt embeddings, it must be a value greater than or equal to zero. A value of 1
@@ -2284,6 +2294,11 @@ Help Output
             One or more guidance scale values to try. Guidance scale effects how much your text prompt is
             considered. Low values draw more data from images unrelated to text prompt.
             
+            For --model-type ltx, a value you set is used as written. The unused image default 5 is rewritten:
+            to 1 when the scheduler has no dynamic shifting, or to video 3 and audio 7 when it does. --sigmas
+            skips that rewrite and uses the value you passed, including leftover 5. Video and audio guidance are
+            the same number except for that 3 / 7 case. Use --audio-guidance-scales to set audio CFG separately.
+            
             (default: [5])
             --------------
       -si, --sigmas CSV_FLOAT_OR_EXPRESSION [CSV_FLOAT_OR_EXPRESSION ...]
@@ -2308,7 +2323,12 @@ Help Output
             Expressions and CSV lists can be intermixed: --sigmas "1.0,..." "expr: sigmas * 0.95"
             
             Each provided value (each quoted string in the example above) will be tried in turn.
-            ------------------------------------------------------------------------------------
+            
+            For --model-type ltx, --sigmas replaces the automatic schedule. The step count becomes the length of
+            the list. In expr: form, sigmas is the distilled 8-value table when the scheduler has no dynamic
+            shifting, or the scheduler set_timesteps schedule otherwise. Guidance is used as written; see
+            --guidance-scales.
+            ------------------
       -igs, --image-guidance-scales FLOAT [FLOAT ...]
             One or more image guidance scale values to try. This can push the generated image towards the
             initial image when using --model-type *-pix2pix models, it is unsupported for other model types. Use
@@ -2330,7 +2350,9 @@ Help Output
             basic text to image generation when using --model-type "sd" but not inpainting, img2img, or
             --control-nets. When using --model-type "sdxl" it is supported for basic generation, inpainting, and
             img2img, unless --control-nets is specified in which case only inpainting is supported. It is
-            supported for --model-type "sdxl-pix2pix" but not --model-type "pix2pix".
+            supported for --model-type "sdxl-pix2pix" but not --model-type "pix2pix". For --model-type ltx it is
+            sent as video guidance rescale, and as audio rescale unless --audio-guidance-rescales is set.
+            Omitting it on LTX leaves the pipeline default of 0.7.
             
             (default: [0.0])
             ----------------
@@ -2340,8 +2362,50 @@ Help Output
             content of the image. Values between 30-40 produce good results, higher values may improve image
             quality and or change image content.
             
+            For --model-type ltx, this value is used only when the scheduler has dynamic shifting and --sigmas
+            is not set. Without dynamic shifting, the distilled 8-value sigma table is used and this option is
+            ignored. A warning names the ignored value, including the default 30. --sigmas overwrites the step
+            count to the length of the sigma list.
+            
             (default: [30])
             ---------------
+      --video-lengths SECONDS [SECONDS ...]
+            One or more clip lengths in seconds, for --model-type ltx. Each value is crossed with the other
+            combinatorial arguments, and each combination writes one clip.
+            
+            LTX snaps the length to a frame count of 8k+1 at --video-fps. Omit this option and LTX-2.5 predicts
+            the length from the prompt.
+            
+            (default: model chooses)
+            ------------------------
+      --video-fps FPS [FPS ...]
+            One or more frame rates for --model-type ltx. Each value is crossed with the other combinatorial
+            arguments. The default is 24.
+            
+            (default: [24] for video model types)
+            -------------------------------------
+      --audio-guidance-scales FLOAT [FLOAT ...]
+            One or more audio CFG scales to try, for --model-type ltx. Each value is crossed with the other
+            combinatorial arguments.
+            
+            LTX encodes one prompt for both picture and soundtrack, then applies a separate audio guidance
+            scale. The authors suggest keeping this higher than --guidance-scales (for example video 3 and audio
+            7 on a full scheduler).
+            
+            Omit this option and audio copies the video guidance that will be sent, except the unused default 5
+            on a full scheduler, which uses audio 7.
+            
+            (default: copy video guidance)
+            ------------------------------
+      --audio-guidance-rescales FLOAT [FLOAT ...]
+            One or more audio guidance rescale factors to try, for --model-type ltx. Each value is crossed with
+            the other combinatorial arguments.
+            
+            Omit this option and audio copies --guidance-rescales when that is set, otherwise the pipeline
+            default of 0.7 is left in place.
+            
+            (default: copy --guidance-rescales)
+            -----------------------------------
       -ifs2, --second-model-inference-steps INTEGER [INTEGER ...]
             One or more inference steps values for the SDXL refiner or Stable Cascade decoder when in use.
             Override the number of inference steps used by the second model, which defaults to the value taken
@@ -2508,37 +2572,37 @@ Install dgenerate:
 
     # If you want a specific version
 
-    pipx install dgenerate==5.0.0 ^
+    pipx install dgenerate==6.0.0 ^
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu132/"
 
     # with NCNN upscaler support and a specific version
 
-    pipx install dgenerate[ncnn]==5.0.0 ^
+    pipx install dgenerate[ncnn]==6.0.0 ^
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu132/"
 
     # You can install without pipx into your own environment like so
 
-    pip install dgenerate==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu132/
+    pip install dgenerate==6.0.0 --extra-index-url https://download.pytorch.org/whl/cu132/
 
     # Or with NCNN
 
-    pip install dgenerate[ncnn]==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu132/
+    pip install dgenerate[ncnn]==6.0.0 --extra-index-url https://download.pytorch.org/whl/cu132/
 
     # CUDA 13.2+
 
-    pip install "dgenerate[xllamacpp]==5.0.0" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu132 --extra-index-url https://download.pytorch.org/whl/cu132/ --extra-index-url https://pypi.org/simple
+    pip install "dgenerate[xllamacpp]==6.0.0" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu132 --extra-index-url https://download.pytorch.org/whl/cu132/ --extra-index-url https://pypi.org/simple
 
     # CUDA 12.8 through 12.9
 
-    pip install "dgenerate[xllamacpp]==5.0.0" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu128 --extra-index-url https://download.pytorch.org/whl/cu126/ --extra-index-url https://pypi.org/simple
+    pip install "dgenerate[xllamacpp]==6.0.0" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu128 --extra-index-url https://download.pytorch.org/whl/cu126/ --extra-index-url https://pypi.org/simple
 
     # CUDA 13.0 through 13.1
 
-    pip install "dgenerate[xllamacpp]==5.0.0" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu128 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple
+    pip install "dgenerate[xllamacpp]==6.0.0" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu128 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple
 
     # Older NVIDIA, AMD, or Intel Arc
 
-    pip install "dgenerate[xllamacpp]==5.0.0" --index-url https://xorbitsai.github.io/xllamacpp/whl/vulkan --extra-index-url https://download.pytorch.org/whl/cu126/ --extra-index-url https://pypi.org/simple
+    pip install "dgenerate[xllamacpp]==6.0.0" --index-url https://xorbitsai.github.io/xllamacpp/whl/vulkan --extra-index-url https://download.pytorch.org/whl/cu126/ --extra-index-url https://pypi.org/simple
 
 
 It is recommended to install dgenerate with pipx if you are just intending
@@ -2725,32 +2789,32 @@ Install dgenerate
 
     # If you want a specific version
 
-    pipx install dgenerate==5.0.0 \
+    pipx install dgenerate==6.0.0 \
     --pip-args "--extra-index-url https://download.pytorch.org/whl/cu132/"
 
     # You can install without pipx into your own environment like so
 
-    pip3 install dgenerate==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu132/
+    pip3 install dgenerate==6.0.0 --extra-index-url https://download.pytorch.org/whl/cu132/
 
     # Or with NCNN
 
-    pip3 install dgenerate[ncnn]==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu132/
+    pip3 install dgenerate[ncnn]==6.0.0 --extra-index-url https://download.pytorch.org/whl/cu132/
 
     # CUDA 13.2+
 
-    pip3 install "dgenerate[xllamacpp]==5.0.0" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu132 --extra-index-url https://download.pytorch.org/whl/cu132/ --extra-index-url https://pypi.org/simple
+    pip3 install "dgenerate[xllamacpp]==6.0.0" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu132 --extra-index-url https://download.pytorch.org/whl/cu132/ --extra-index-url https://pypi.org/simple
 
     # CUDA 12.8 through 12.9
 
-    pip3 install "dgenerate[xllamacpp]==5.0.0" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu128 --extra-index-url https://download.pytorch.org/whl/cu126/ --extra-index-url https://pypi.org/simple
+    pip3 install "dgenerate[xllamacpp]==6.0.0" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu128 --extra-index-url https://download.pytorch.org/whl/cu126/ --extra-index-url https://pypi.org/simple
 
     # CUDA 13.0 through 13.1
 
-    pip3 install "dgenerate[xllamacpp]==5.0.0" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu128 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple
+    pip3 install "dgenerate[xllamacpp]==6.0.0" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu128 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple
 
     # Older NVIDIA or Intel
 
-    pip3 install "dgenerate[xllamacpp]==5.0.0" --index-url https://xorbitsai.github.io/xllamacpp/whl/vulkan --extra-index-url https://download.pytorch.org/whl/cu126/ --extra-index-url https://pypi.org/simple
+    pip3 install "dgenerate[xllamacpp]==6.0.0" --index-url https://xorbitsai.github.io/xllamacpp/whl/vulkan --extra-index-url https://download.pytorch.org/whl/cu126/ --extra-index-url https://pypi.org/simple
 
 
 It is recommended to install dgenerate with pipx if you are just intending
@@ -2893,7 +2957,7 @@ Install dgenerate
 
     # If you want a specific version
 
-    pipx install dgenerate==5.0.0 \
+    pipx install dgenerate==6.0.0 \
     --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm7.2/"
 
 
@@ -2907,15 +2971,15 @@ Install dgenerate
 
     # You can install without pipx into your own environment like so
 
-    pip3 install dgenerate==5.0.0 --extra-index-url https://download.pytorch.org/whl/rocm7.2/
+    pip3 install dgenerate==6.0.0 --extra-index-url https://download.pytorch.org/whl/rocm7.2/
 
     # Or with NCNN
 
-    pip3 install dgenerate[ncnn]==5.0.0 --extra-index-url https://download.pytorch.org/whl/rocm7.2/
+    pip3 install dgenerate[ncnn]==6.0.0 --extra-index-url https://download.pytorch.org/whl/rocm7.2/
 
     # ROCm 7.2
 
-    pip3 install "dgenerate[xllamacpp]==5.0.0" --index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-7.2.4 --extra-index-url https://download.pytorch.org/whl/rocm7.2/ --extra-index-url https://pypi.org/simple
+    pip3 install "dgenerate[xllamacpp]==6.0.0" --index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-7.2.4 --extra-index-url https://download.pytorch.org/whl/rocm7.2/ --extra-index-url https://pypi.org/simple
 
 
     # you can attempt to install the pre-release bitsandbytes multiplatform version like so:
@@ -3018,11 +3082,11 @@ global python site packages.
     # * xllamacpp (used for the llama prompt upscaler plugin; the PyPI wheel is the Metal build on macOS)
     # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
-    pipx install dgenerate==5.0.0
+    pipx install dgenerate==6.0.0
 
     # or with extras
 
-    pipx install dgenerate[ncnn,xllamacpp,console_ui_opengl]==5.0.0
+    pipx install dgenerate[ncnn,xllamacpp,console_ui_opengl]==6.0.0
 
     # open a new terminal or logout & login
 
@@ -3047,7 +3111,7 @@ If you want to upgrade dgenerate, uninstall it first and then install the new ve
 .. code-block:: bash
 
     pipx uninstall dgenerate
-    pipx install dgenerate==5.0.0
+    pipx install dgenerate==6.0.0
 
 
 MacOS venv install
@@ -3078,11 +3142,11 @@ of your own creation.
     # * xllamacpp (used for the llama prompt upscaler plugin; the PyPI wheel is the Metal build on macOS)
     # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
 
-    pip3 install dgenerate==5.0.0
+    pip3 install dgenerate==6.0.0
 
     # or with extras
 
-    pip3 install dgenerate[ncnn,xllamacpp,console_ui_opengl]==5.0.0
+    pip3 install dgenerate[ncnn,xllamacpp,console_ui_opengl]==6.0.0
 
     # launch the Console UI to test the install.
     # tkinter will be available when you install
@@ -3123,7 +3187,7 @@ Make sure you select a GPU runtime for your notebook, such as the T4 runtime.
 
 .. code-block:: bash
 
-    !source /content/venv/bin/activate; pip install dgenerate==5.0.0 --extra-index-url https://download.pytorch.org/whl/cu132
+    !source /content/venv/bin/activate; pip install dgenerate==6.0.0 --extra-index-url https://download.pytorch.org/whl/cu132
 
 4.) Finally you can run dgenerate, you must prefix all calls to dgenerate with an activation of the virtual environment, as
 the virtual environment is not preserved between cells.  For brevity, and as an example, just print the help text here.
@@ -3450,7 +3514,7 @@ Padding formats for ``--inpaint-crop-paddings``:
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
     
     # This example uses --inpaint-crop
     # instead of image processors
@@ -3489,7 +3553,7 @@ You can also use automatic mask detection with `SAM <Segment Anything Mask Gener
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
     
     # This example uses --inpaint-crop
     # instead of image processors
@@ -3521,7 +3585,7 @@ You can also use automatic mask detection with `SAM <Segment Anything Mask Gener
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
     
     # This example uses --inpaint-crop
     # instead of image processors
@@ -3562,7 +3626,7 @@ but not easily for animations:
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
     
     # You can use the crop-to-mask and paste processor
     # To automatically crop your inpainting task to a bounding
@@ -3764,6 +3828,174 @@ In general, every image component of an ``--image-seeds`` specification may be a
 animated file, animated files may be mixed with static images. The animated input with the
 shortest length determines the number of output frames, and any static image components
 are duplicated over that amount of frames.
+
+``--model-type ltx`` writes a whole clip in one generation step.
+See :ref:`video-generation`.
+
+.. _video-generation:
+
+Video Generation
+================
+
+``--model-type ltx`` generates a clip in one pipeline call.
+One combination of prompt, seed, guidance, steps, image seed, ``--video-lengths``,
+``--video-fps``, ``--audio-guidance-scales``, and ``--audio-guidance-rescales``
+writes one animation file. LTX does not run once per input frame.
+
+``--video-lengths`` is a length in seconds. ``--video-fps`` is the frame rate.
+``--audio-guidance-scales`` and ``--audio-guidance-rescales`` are the audio CFG
+and audio rescale. All of those are combinatorial arguments, the same way
+``--prompts`` and ``--seeds`` are. The frame count inside a clip is not a
+separate product factor.
+
+Audio from LTX-2.5 is muxed into an mp4. GIF, WebP, and ``--animation-format frames`` drop that audio.
+
+Conditioning stays in ``--image-seeds``.
+
+LTX-2.5 (``ltx``)
+-----------------
+
+Repository: ``Lightricks/LTX-2.5-Diffusers``.
+
+* No image seed is text to video. Omitting ``--video-lengths`` lets the model's duration head choose the length.
+* One image is the first frame.
+* ``end=`` is the last frame. A first frame and ``end=`` can be used together.
+* ``control=`` and ``images:`` are rejected.
+
+Width and height must be divisible by 32.
+
+``--model-sequential-offload`` and ``--model-cpu-offload`` work the same way they
+do for image models. The examples under ``examples/video/ltx`` use the published
+repository as-is. The two-stage sampler is not wired up. ``--transformer`` is
+described under `Submodels`_. ``model_index.json`` selects the pipeline: ``LTX2Pipeline``
+is LTX-2.5, and ``LTXPipeline`` is the earlier LTX-Video model. The earlier model
+has no audio. Its transformer accepts a city96 ``.gguf`` file. See ``examples/ltx/basic_ltx``.
+
+Guidance, steps, and sigmas
+---------------------------
+
+The loaded scheduler decides which path runs. dgenerate does not pick a path from
+the repository name or a ``--transformer`` subfolder. ``--transformer`` replaces
+weights only.
+
+The image-model defaults still apply if you omit the options: ``--guidance-scales``
+is ``5`` and ``--inference-steps`` is ``30``. LTX then rewrites those defaults when
+they are still unused. A value you set yourself is kept, except as noted below.
+
+**Scheduler without dynamic shifting (the published LTX-2.5 scheduler)**
+
+* The clip uses Diffusers' distilled 8-value sigma table. ``--inference-steps`` is
+  not sent to the pipeline. dgenerate warns with the ignored value, including the
+  default 30, and still uses the table.
+* If ``--guidance-scales`` is still ``5``, it is replaced with ``1`` (unguided).
+  Any other guidance value is used as written.
+* Video guidance and audio guidance receive that same number unless
+  ``--audio-guidance-scales`` is set.
+* After the clip runs, the written config records 8 steps and the guidance that
+  was actually used.
+
+**Scheduler with dynamic shifting**
+
+* ``--inference-steps`` is sent as ``num_inference_steps``. The default ``30`` is
+  used if you omit it.
+* If ``--guidance-scales`` is still ``5``, video guidance becomes ``3`` and audio
+  guidance becomes ``7``, with a warning, unless ``--audio-guidance-scales``
+  is set. Any other guidance value is used for video, and for audio unless
+  ``--audio-guidance-scales`` is set.
+
+**``--sigmas`` (CSV list or ``expr:``)**
+
+This path wins over both of the above.
+
+* A CSV list is the schedule. An ``expr:`` expression is evaluated against the
+  distilled table when the scheduler has no dynamic shifting, or against
+  ``scheduler.set_timesteps(--inference-steps)`` when it does.
+* The step count becomes the length of the resulting list. ``--inference-steps``
+  is overwritten to match, including in the written config.
+* ``--guidance-scales`` is used as written, including leftover ``5``. Nothing is
+  rewritten to 1, 3, or 7 on this path. Video and audio guidance get the same
+  value unless ``--audio-guidance-scales`` is set.
+
+``--sigmas`` is combinatorial with ``--guidance-scales``, ``--inference-steps``,
+``--guidance-rescales``, ``--audio-guidance-scales``,
+``--audio-guidance-rescales``, ``--video-lengths``, and ``--video-fps``. See
+:ref:`specifying-sigmas` and ``examples/video/ltx/sigmas-config.dgen``.
+
+**``--guidance-rescales``**
+
+LTX accepts this. A value you set is sent as video guidance rescale, and as
+audio rescale unless ``--audio-guidance-rescales`` is set. If you omit it,
+the pipeline keeps its own default (``0.7``). The rescale only applies while
+classifier-free guidance is on (guidance greater than 1).
+
+**``--max-sequence-length``**
+
+LTX accepts this as Gemma's prompt token budget, from 1 to 1024. If you omit
+it, the pipeline keeps 1024.
+
+**``--vae-slicing``**
+
+LTX accepts this on the video VAE and the audio VAE. ``--vae-tiling`` is
+rejected: the video VAE is always tiled.
+
+Audio
+-----
+
+One prompt drives both the picture and the soundtrack. Gemma encodes that
+string once; the text connectors split the packed hidden states into video
+tokens and audio tokens. There is no audio-only prompt argument, so
+``--second-prompts`` cannot be a soundtrack prompt.
+
+Audio CFG is a separate pipeline scale. ``--audio-guidance-scales`` sets it
+and is combinatorial. Omit that option and audio copies the video guidance
+that will be sent, except the unused default ``5`` on a full scheduler, which
+uses audio ``7``. A distilled unused ``5`` becomes video and audio ``1``.
+
+``--audio-guidance-rescales`` is the matching combinatorial audio rescale.
+Omit it and audio copies ``--guidance-rescales`` when that is set, otherwise
+the pipeline default ``0.7`` is left in place.
+
+Diffusers suggests keeping audio guidance higher than video guidance when
+you set them yourself. See ``examples/video/ltx/audio-guidance-config.dgen``.
+
+Chaining
+--------
+
+``last_images`` and ``last_animations`` work the same way they do for image models. A still written by an
+earlier invocation can be the first frame of an LTX clip.
+The pipeline cache counts the video checkpoint and moves the previous pipeline back to CPU before the clip runs.
+
+Submodels
+---------
+
+``--vae``, ``--unet``, and ``--text-encoders`` are rejected. Those slots do not match this pipeline.
+``--transformer`` and ``--loras`` do.
+
+``--quantizer`` quantizes the diffusion transformer, the text encoder, and the text
+connectors. ``--quantizer-map`` can limit that to ``transformer``, ``text_encoder``, or
+``connectors``. The unused prompt-enhancer Gemma is not loaded. ``--transformer`` replaces
+the diffusion transformer and accepts the same URI as it does for Flux, including
+``subfolder``, ``dtype``, and ``quantizer``. A quantizer on that URI wins over ``--quantizer``.
+Replacing the transformer does not change the scheduler.
+
+``--loras`` loads diffusers-format adapters onto that transformer and fuses them, including
+``--lora-fuse-scale`` and each URI ``scale``. The LTX stage-2 distilled LoRA does not turn on
+two-stage sampling. IC-LoRAs expect their own pipeline and are not a separate mode here.
+
+What LTX rejects
+----------------
+
+ControlNets, T2I adapters, IP adapters, textual inversions, a replacement UNet, VAE, or text encoder,
+an image encoder, the SDXL refiner, Stable Cascade, Adetailer, PAG and PAG scales,
+a custom scheduler, prompt weighters, second or third prompts,
+clip skip, inpaint crop, HiDiffusion, TeaCache, DeepCache, SADA, RAS,
+mask or control processors, raw latents and latents processors, ``--denoising-start`` /
+``--denoising-end``, ``--batch-size`` greater than 1, ``--batch-grid-size``, latent output
+formats, the safety checker, ``--vae-tiling``, ``--frame-start`` / ``--frame-end``, and ``--original-config``.
+``--image-seed-strengths`` is not used. Seed processors are limited to one chain.
+``--quantizer-map`` may only name ``transformer``, ``text_encoder``, or ``connectors``.
+
+Examples live under ``examples/ltx/basic_ltx2`` and ``examples/ltx/basic_ltx``.
 
 Animation Slicing
 =================
@@ -4045,7 +4277,7 @@ Stable Diffusion 1.5/2.x Cooperative Denoising:
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
     
     {% if "--output-metadata" in injected_args %}
         \set _ {{ injected_args.remove("--output-metadata") }}
@@ -4108,7 +4340,7 @@ Stable Diffusion 3 Cooperative Denoising:
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
     
     {% if "--output-metadata" in injected_args %}
         \set _ {{ injected_args.remove("--output-metadata") }}
@@ -4191,7 +4423,7 @@ Flux Cooperative Denoising:
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
     
     {% if "--output-metadata" in injected_args %}
         \set _ {{ injected_args.remove("--output-metadata") }}
@@ -4252,7 +4484,7 @@ when ``--denoising-start`` has been specified with an SDXL or Kolors model:
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
     
     {% if "--output-metadata" in injected_args %}
         \set _ {{ injected_args.remove("--output-metadata") }}
@@ -4344,7 +4576,7 @@ For cases where you want to generate latents and then decode them through a diff
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
     
     {% if "--output-metadata" in injected_args %}
         \set _ {{ injected_args.remove("--output-metadata") }}
@@ -4666,6 +4898,8 @@ output file name, in the order: ``(scheduler)_(refiner / decoder scheduler)``
     --guidance-scales 5 \
     --prompts "a horse standing in a field"
 
+.. _specifying-sigmas:
+
 Specifying Sigmas (denoising schedule)
 ======================================
 
@@ -4708,7 +4942,7 @@ curve that Flux already uses and scaling it by a value.
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
     
     \set token %HF_TOKEN%
     
@@ -4717,8 +4951,12 @@ curve that Flux already uses and scaling it by a value.
         \exit
     {% endif %}
     
-    {% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 15 %}
+    \setp gpu_memory_gib total_memory(unit='gib')
+    
+    {% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 15 %}
         \set optimization --quantizer bnb;bits=4
+    {% elif have_cuda() and have_feature('sdnq') and gpu_memory_gib > 15 %}
+        \set optimization --quantizer sdnq;type=int4
     {% else %}
         \set optimization --model-sequential-offload
     {% endif %}
@@ -4753,7 +4991,7 @@ set of sigmas may not be so trivial.
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
     
     \set token %HF_TOKEN%
     
@@ -4762,8 +5000,12 @@ set of sigmas may not be so trivial.
         \exit
     {% endif %}
     
-    {% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 15 %}
+    \setp gpu_memory_gib total_memory(unit='gib')
+    
+    {% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 15 %}
         \set optimization --quantizer bnb;bits=4
+    {% elif have_cuda() and have_feature('sdnq') and gpu_memory_gib > 15 %}
+        \set optimization --quantizer sdnq;type=int4
     {% else %}
         \set optimization --model-sequential-offload
     {% endif %}
@@ -4789,6 +5031,16 @@ set of sigmas may not be so trivial.
     --output-path sigmas_expr
     --output-size 1024x1024
     --prompts "a horse standing inside a barn"
+
+``--model-type ltx`` accepts the same CSV lists and ``expr:`` forms.
+When the loaded scheduler has no dynamic shifting, ``sigmas`` in the expression
+is the distilled 8-value table, not a schedule from ``set_timesteps``.
+When the scheduler uses dynamic shifting, ``sigmas`` comes from
+``set_timesteps`` using ``--inference-steps``. Passing ``--sigmas`` sets the
+step count to the length of the result and uses your ``--guidance-scales``
+value as written. See :ref:`video-generation`.
+
+.. WARNING: Missing example file: C:/Users/Eric/Desktop/dgenerate/dgenerate/examples/video/ltx/sigmas-config.dgen ..
 
 Specifying a VAE
 ================
@@ -5046,6 +5298,8 @@ UNet models which have a smaller memory footprint using ``--unet`` and ``--secon
     --gen-seeds 2 \
     --prompts "an image of a shiba inu, donning a spacesuit and helmet"
 
+.. _specifying-a-transformer:
+
 Specifying a Transformer (SD3 and Flux)
 =======================================
 
@@ -5100,6 +5354,15 @@ Flux Example:
     --gen-seeds 1 \
     --output-path output \
     --prompts "Photo of a horse standing near the open door of a red barn, high resolution"
+
+An SD3 or Flux transformer can also be a pre-quantized ``.gguf`` file. The repository
+still supplies the VAE and text encoders. Do not set ``quantizer=`` on that URI and do
+not use ``--quantizer gguf``. Diffusers dequantizes the file when it loads. Quantize
+the text encoders with ``bnb`` or ``sdnq`` and ``--quantizer-map`` if needed. See the
+configs under ``examples/sd3/gguf`` and ``examples/flux/gguf``.
+
+``--model-type ltx`` also accepts ``--transformer``.
+That argument replaces the diffusion transformer only. See :ref:`video-generation`.
 
 Specifying an SDXL Refiner
 ==========================
@@ -5273,11 +5536,12 @@ LoRAs are supported for these model types:
     * ``--model-type sd3``
     * ``--model-type flux``
     * ``--model-type flux-fill``
+    * ``--model-type ltx``
 
 When multiple specifications are given, all mentioned models will be fused together
 into one set of weights at their individual scale, and then those weights will be
 fused into the main model at the scale value of ``--lora-fuse-scale``, which
-defaults to 1.0.
+defaults to 1.0. See :ref:`video-generation` for LTX adapters.
 
 You can provide a huggingface repository slug, .pt, .pth, .bin, .ckpt, or .safetensors files.
 Blob links are not accepted, for that use ``subfolder`` and ``weight-name`` described below.
@@ -5672,7 +5936,7 @@ Here is an example making use of ``depth`` and ``openpose``:
 .. code-block:: bash
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
 
     # You can utilize multiple SDXL ControlNet union models with different modes
 
@@ -6156,7 +6420,7 @@ repository on huggingface.
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
     
     \set token %HF_TOKEN%
     
@@ -6200,7 +6464,7 @@ For instance, you can prevent Stable Diffusion 3 from loading and using the T5 e
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
     
     \set token %HF_TOKEN%
     
@@ -6241,7 +6505,7 @@ and using ``null`` will override it.
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
     
     \set token %HF_TOKEN%
     
@@ -6309,7 +6573,7 @@ with additional fine-tuning.
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
     
     
     \set token %HF_TOKEN%
@@ -6330,8 +6594,18 @@ with additional fine-tuning.
     # to load the pipeline correctly when using safetensors checkpoints.
     
     
-    # bitsandbytes 4 bit nf4
-    \set quantizer bnb;bits=4;bits4-quant-type=nf4
+    \setp gpu_memory_gib total_memory(unit='gib')
+    
+    {% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 15 %}
+        \set quantizer bnb;bits=4;bits4-quant-type=nf4
+        \set optimization --quantizer bnb;bits=4;bits4-quant-type=nf4
+    {% elif have_cuda() and have_feature('sdnq') and gpu_memory_gib > 15 %}
+        \set quantizer sdnq;type=int4
+        \set optimization --quantizer sdnq;type=int4
+    {% else %}
+        \set quantizer
+        \set optimization --model-sequential-offload
+    {% endif %}
     
     
     # PixelWave: https://civitai.com/models/141592/pixelwave?modelVersionId=992642
@@ -6356,11 +6630,10 @@ with additional fine-tuning.
     \set t5_xxl https://huggingface.co/comfyanonymous/flux_text_encoders/blob/main/t5xxl_fp16.safetensors
     
     {{ model }}
-    --model-type flux
+    --model-type flux {{ optimization }}
     --dtype bfloat16
-    --quantizer {{ quantizer }}
-    --text-encoders CLIPTextModel;model={{ clip_l }};mode=clip-l;quantizer="{{ quantizer }}" \
-                    T5EncoderModel;model={{ t5_xxl }};mode=t5-xxl;quantizer="{{ quantizer }}"
+    --text-encoders CLIPTextModel;model={{ clip_l }};mode=clip-l{{ ';quantizer="' + quantizer + '"' if quantizer else '' }} \
+                    T5EncoderModel;model={{ t5_xxl }};mode=t5-xxl{{ ';quantizer="' + quantizer + '"' if quantizer else '' }}
     --vae AutoencoderKL;model=black-forest-labs/FLUX.1-dev;subfolder=vae
     --inference-steps 50
     --guidance-scales 3.5
@@ -6857,7 +7130,7 @@ The following is an example making use of the ``dynamicprompts``, ``magicprompt`
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
     
     # prompt upscaler plugins can preprocess and expand prompts, allowing
     # for LLM based txt2txt enhancement or prompt expansion resulting
@@ -6925,7 +7198,7 @@ Quantization backend packages will be installed by dgenerate's packaging on plat
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
     
     # Use Phi-3 abliterated as a prompt text enhancer
     
@@ -6982,7 +7255,7 @@ Here is an example using `Phi-3 Mini Abliterated Q4 GGUF by failspy <Phi-3_Mini_
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
     
     # Use Phi-3 abliterated as a prompt text enhancer with the llama plugin
     
@@ -7031,7 +7304,7 @@ conversion of the original MagicPrompt weights, prepends the prompt, and uses a
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
     
     # show plugin help
     
@@ -7635,6 +7908,10 @@ these are the arguments that are available for use:
     sdxl-refiner-pag-adaptive-scale: float
     image-guidance-scale: float
     guidance-rescale: float
+    video-length: float
+    video-fps: float
+    audio-guidance-scale: float
+    audio-guidance-rescale: float
     inference-steps: int
     clip-skip: int
     sdxl-refiner-clip-skip: int
@@ -8170,7 +8447,7 @@ This only works for fully denoised latents, and not for partially denoised laten
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
     
     {% if "--output-metadata" in injected_args %}
         \set _ {{ injected_args.remove("--output-metadata") }}
@@ -9036,7 +9313,7 @@ for usage information.
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
 
     # quick example showing the adetailer post processor
     # applying detailing to (hopefully) a single face
@@ -9084,7 +9361,7 @@ inpaint multiple types of objects in an image, or different detection indices se
 .. code-block::
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
 
     stabilityai/stable-diffusion-xl-base-1.0
     --model-type sdxl
@@ -9368,7 +9645,7 @@ original generation, or with  different model types all together.
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
 
     # first we should generate an image that we want to refine
     # with adetailer using some model, or operation that affects
@@ -9435,7 +9712,7 @@ when specifying detectors with ``--adetailer-detectors`` including ``class-filte
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
 
     # edit multiple adetailer YOLO detected features in one go on an arbitrary image
     # using detector URI arguments to override the prompt and selected detection
@@ -9839,7 +10116,7 @@ manual / interactive adetailer like editing.
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
     
     # example of a manual adetailer like usage using segment anything
     # and a bounding box prompt to create a mask for a specific image feature
@@ -10324,6 +10601,9 @@ And for ``sdnq``:
     
     ==============================================================================================================
 
+A pre-quantized ``.gguf`` transformer is a file format, not a ``--quantizer`` backend.
+Point ``--transformer`` at the ``.gguf`` file or blob link. See :ref:`specifying-a-transformer`.
+
 Writing and Running Configs
 ===========================
 
@@ -10387,7 +10667,7 @@ Environmental variables not inside of jinja templates will be expanded in config
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
 
     # these all expand from your system environment
     # if the variable is not set, they expand to nothing
@@ -10402,7 +10682,7 @@ To expand environmental variables inside of a jinja template construct, use the 
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
 
     # this expands from your system environment
     # if the variable is not set, it expands to
@@ -10433,7 +10713,7 @@ The following is a config file example that covers the most basic syntax concept
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
     
     # If a hash-bang version is provided in the format above
     # a warning will be produced if the version you are running
@@ -10557,7 +10837,7 @@ also be mentioned in this output.
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
     
     # Invocation will proceed as normal
     
@@ -10627,6 +10907,12 @@ The ``\templates_help`` output from the above example is:
         Name: "last_animations"
             Type: collections.abc.Iterable[str]
             Value: <dgenerate.renderloop.RenderLoop.written_animations.<locals>.Iterable object>
+        Name: "last_audio_guidance_rescales"
+            Type: collections.abc.Sequence[float] | None
+            Value: []
+        Name: "last_audio_guidance_scales"
+            Type: collections.abc.Sequence[float] | None
+            Value: []
         Name: "last_auth_token"
             Type: str | None
             Value: None
@@ -11052,7 +11338,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [29284282341699]
+            Value: [76895187334546]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -11107,6 +11393,12 @@ The ``\templates_help`` output from the above example is:
         Name: "last_verbose"
             Type: <class 'bool'>
             Value: False
+        Name: "last_video_fps"
+            Type: collections.abc.Sequence[float] | None
+            Value: []
+        Name: "last_video_lengths"
+            Type: collections.abc.Sequence[float] | None
+            Value: []
         Name: "os"
             Type: <class 'module'>
             Value: <module 'os' (frozen)>
@@ -11288,6 +11580,7 @@ The dgenerate specific jinja2 functions/filters are:
         "ncnn": Do we have ncnn installed?
         "xllamacpp": Do we have xllamacpp installed?
         "bitsandbytes": Do we have bitsandbytes installed?
+        "sdnq": Do we have sdnq installed?
         "flash-attn": Do we have flash-attn installed?
         "triton": Do we have triton installed?
     
@@ -11786,7 +12079,7 @@ such as VAEs etc. outside of relying on the caching system.
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
     
     # You can define your own template variables with the \set directive
     # the \set directive does not do any shell args parsing on its value
@@ -12020,7 +12313,7 @@ This is for assigning literal text values to a template variable.
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
     
     # The \set directive behaves like a macro, and does not perform any shell parsing.
     # It performs template expansion and then environmental variable expansion in that
@@ -12062,7 +12355,7 @@ feature to assign template variables.
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
     
     # The \sete directive performs full shell parsing just like \echo, the difference
     # is that instead of just printing the parsed tokens back, it assigns
@@ -12109,7 +12402,7 @@ implemented by dgenerate are available for use in the evaluated expressions.
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
     
     # The \setp directive can be used to assign python literals
     # and python expressions to a template variable. Template expansion
@@ -12192,7 +12485,7 @@ Indirect expansion is allowed just like with ``\set``, ``\sete``, and ``\setp``.
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
     
     \env MY_ENV_VAR=1 MY_ENV_VAR2=2
     
@@ -12249,7 +12542,7 @@ The glob modules is set to the ``glob`` template variable, and the ``os`` module
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
     
     # globbing can be performed via shell expansion or using
     # the glob module inside jinja templates
@@ -12337,7 +12630,7 @@ as well, and can also be directly used inside a template.
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
 
     # Python style import with alias
 
@@ -12367,7 +12660,7 @@ You can use this to calculate and scale linear Flux sigmas for instance.
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
     
     \set token %HF_TOKEN%
     
@@ -12376,8 +12669,12 @@ You can use this to calculate and scale linear Flux sigmas for instance.
         \exit
     {% endif %}
     
-    {% if have_cuda() and have_feature('bitsandbytes') and total_memory(unit='gib') > 15 %}
+    \setp gpu_memory_gib total_memory(unit='gib')
+    
+    {% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 15 %}
         \set optimization --quantizer bnb;bits=4
+    {% elif have_cuda() and have_feature('sdnq') and gpu_memory_gib > 15 %}
+        \set optimization --quantizer sdnq;type=int4
     {% else %}
         \set optimization --model-sequential-offload
     {% endif %}
@@ -12409,7 +12706,7 @@ Or try scaling exponential SDXL sigmas.
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
     
     # Use numpy to generate scaled exponential sigmas for Stable Diffusion XL
     
@@ -12457,7 +12754,7 @@ Most if not all behaviors are covered in the example below.
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
     
     # dgenerates string escaping rules are something between bash and python
     # for these examples, \echo will be used.
@@ -12620,7 +12917,7 @@ similar to the behavior of ``\set``
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
 
     # the text after \print(space) will be printed verbatim
 
@@ -12640,7 +12937,7 @@ This can be useful for debugging / displaying the results of a shell expansion.
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
 
     # lets pretend "directory" is full of files
 
@@ -12666,7 +12963,7 @@ The dgenerate sub-command ``image-process`` has a config directive implementatio
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
 
     # print the help message of --sub-command image-process, this does
     # not cause the config to exit
@@ -12710,7 +13007,7 @@ as described in the section `Utilizing the Python Environment for Training`_
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
 
     # run dgenerate as a subprocess, read a config
     # and send stdout and stderr to a file
@@ -12778,7 +13075,7 @@ as a template function. See: `The download() template function`_
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
 
     # download a model into the web cache,
     # assign its path to the variable "path"
@@ -12828,7 +13125,7 @@ control constructs.
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
 
     \set my_variable {{ download('https://modelhost.com/model.safetensors') }}
 
@@ -12852,7 +13149,7 @@ You can exit a config early if need be using the ``\exit`` directive
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
 
     # exit the process with return code 0, which indicates success
 
@@ -12866,7 +13163,7 @@ An explicit return code can be provided as well
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
 
     # exit the process with return code 1, which indicates an error
 
@@ -12957,7 +13254,7 @@ which does not automatically recieve injected arguments, use the
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
 
     # all injected args
 
@@ -13067,7 +13364,7 @@ Example configuration file using CLI-set variables:
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
 
     # Set defaults for variables not provided via CLI
 
@@ -13313,7 +13610,7 @@ For example, you can setup a training configuration entirely inside of a dgenera
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
 
     # you can download the dreambooth LoRA training script from
     # https://github.com/huggingface/diffusers/blob/v0.35.1/examples/dreambooth/train_dreambooth_lora_sdxl.py
@@ -13351,7 +13648,7 @@ for instance different learning rates, etc. if you just want to run a series of 
 .. code-block:: jinja
 
     #! /usr/bin/env dgenerate --file
-    #! dgenerate 5.0.0
+    #! dgenerate 6.0.0
 
     # UNet and Text Encoder learning rates to try
 

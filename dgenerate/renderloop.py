@@ -41,6 +41,7 @@ import dgenerate.mediainput as _mediainput
 import dgenerate.mediaoutput as _mediaoutput
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper as _pipelinewrapper
+import dgenerate.pipelinewrapper.videopipelines as _videopipelines
 import dgenerate.promptweighters as _promptweighters
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.torchutil as _torchutil
@@ -475,6 +476,12 @@ class RenderLoop:
 
         if diffusion_args.guidance_rescale is not None:
             args += ['gr', diffusion_args.guidance_rescale]
+
+        if diffusion_args.audio_guidance_scale is not None:
+            args += ['ag', diffusion_args.audio_guidance_scale]
+
+        if diffusion_args.audio_guidance_rescale is not None:
+            args += ['agr', diffusion_args.audio_guidance_rescale]
 
         if diffusion_args.image_guidance_scale is not None:
             args += ['igs', diffusion_args.image_guidance_scale]
@@ -1089,7 +1096,10 @@ class RenderLoop:
         try:
             self._init_post_processor()
 
-            if self._c_config.image_seeds:
+            if _pipelinewrapper.model_type_is_video(self._c_config.model_type):
+                pipeline_wrapper = self._create_pipeline_wrapper()
+                yield from self._render_video(pipeline_wrapper)
+            elif self._c_config.image_seeds:
                 yield from self._render_with_image_seeds()
             else:
                 pipeline_wrapper = self._create_pipeline_wrapper()
@@ -1415,6 +1425,243 @@ class RenderLoop:
 
         return self._join_output_filename(components, ext=ext)
 
+    def _render_video(self,
+                      pipeline_wrapper: _pipelinewrapper.DiffusionPipelineWrapper) -> RenderLoopEventStream:
+        seed_processor = self._video_image_processor(self._load_seed_image_processors())
+        try:
+            if self._c_config.image_seeds:
+                entries = []
+                for idx, (uri, parsed) in enumerate(
+                        zip(self._c_config.image_seeds, self._c_config.parsed_image_seeds)):
+                    entries.append((
+                        uri,
+                        parsed,
+                        self._c_config.seeds[idx % len(self._c_config.seeds)]))
+            else:
+                entries = [(None, None, None)]
+
+            for uri, parsed, seed_to_image in entries:
+                if uri is not None:
+                    _messages.log(f'Processing Image Seed: "{uri}"', underline=True)
+
+                mode = _videopipelines.classify_video_seed(self._c_config.model_type, parsed)
+                overrides = {}
+                if uri is not None and self._c_config.seeds_to_images:
+                    overrides['seed'] = [seed_to_image]
+
+                for diffusion_arguments in self._c_config.iterate_diffusion_args(**overrides):
+                    diffusion_arguments.batch_size = self._c_config.batch_size
+                    owned_images = []
+                    try:
+                        self._assign_video_conditioning(
+                            diffusion_arguments,
+                            parsed,
+                            mode,
+                            seed_processor,
+                            owned_images)
+                        yield from self._pre_generation_step(diffusion_arguments)
+                        with pipeline_wrapper(diffusion_arguments) as generation_result:
+                            self._run_postprocess(generation_result)
+                            yield from self._write_video_clip(
+                                diffusion_arguments,
+                                generation_result,
+                                uri)
+                    finally:
+                        self._close_owned_images(owned_images)
+        finally:
+            if seed_processor is not None and hasattr(seed_processor, 'to'):
+                seed_processor.to('cpu')
+
+    def _video_image_processor(self, loaded):
+        if loaded is None:
+            return None
+        if isinstance(loaded, list):
+            raise RenderLoopConfigError(
+                'Video models accept one image processor chain.')
+        return loaded
+
+    def _assign_video_conditioning(self,
+                                   diffusion_arguments: _pipelinewrapper.DiffusionArguments,
+                                   parsed: _mediainput.ImageSeedParseResult | None,
+                                   mode: str,
+                                   seed_processor,
+                                   owned_images: list):
+        if mode == 'ltx-image':
+            diffusion_arguments.images = [
+                self._load_video_still(parsed.images[0], parsed, seed_processor, owned_images)]
+        elif mode == 'ltx-condition':
+            if parsed.images:
+                diffusion_arguments.images = [
+                    self._load_video_still(parsed.images[0], parsed, seed_processor, owned_images)]
+            diffusion_arguments.end_images = [
+                self._load_video_still(parsed.end_image, parsed, seed_processor, owned_images)]
+
+    def _load_video_still(self, path, parsed, processor, owned_images: list) -> PIL.Image.Image:
+        resize, aspect, align = self._video_resize(parsed)
+        image = _videopipelines.load_rgb_image(
+            path,
+            local_files_only=self._c_config.offline_mode,
+            resize_resolution=resize,
+            aspect_correct=aspect,
+            align=align)
+        try:
+            image = self._apply_video_processor(processor, image)
+        except Exception:
+            image.close()
+            raise
+        owned_images.append(image)
+        return image
+
+    @staticmethod
+    def _apply_video_processor(processor, image: PIL.Image.Image) -> PIL.Image.Image:
+        if processor is None:
+            return image
+        processed = processor.process(image)
+        if processed is not image:
+            image.close()
+        return processed
+
+    @staticmethod
+    def _close_owned_images(images: list):
+        for image in images:
+            if image is not None:
+                image.close()
+
+    @staticmethod
+    def _video_resize(parsed: _mediainput.ImageSeedParseResult | None):
+        if parsed is None:
+            return None, True, 1
+        aspect = True if parsed.aspect_correct is None else bool(parsed.aspect_correct)
+        align = parsed.resize_align if parsed.resize_align else 1
+        return parsed.resize_resolution, aspect, align
+
+    def _write_video_clip(self,
+                          diffusion_args: _pipelinewrapper.DiffusionArguments,
+                          generation_result: _pipelinewrapper.PipelineWrapperResult,
+                          image_seed_uri: str | None) -> RenderLoopEventStream:
+        frames = list(generation_result.images or [])
+        if not frames:
+            raise RenderLoopConfigError('The video pipeline returned no frames.')
+
+        fps = float(generation_result.fps or 24.0)
+        frame_duration = 1000.0 / fps
+        audio = generation_result.audio
+        sample_rate = generation_result.audio_sample_rate
+        if audio is not None and not sample_rate:
+            _messages.warning(
+                'Audio is dropped because the clip has no sample rate.')
+            audio = None
+        animation_format = self._c_config.animation_format
+
+        starting_animation_event = StartingAnimationEvent(
+            origin=self,
+            total_frames=len(frames),
+            fps=fps,
+            frame_duration=frame_duration)
+        yield starting_animation_event
+
+        if not self.disable_writes:
+            self._ensure_output_path()
+            if animation_format == 'frames':
+                if audio is not None:
+                    _messages.warning(
+                        'Audio is dropped because --animation-format is frames. '
+                        'Use mp4 to keep the soundtrack.')
+                self._write_video_frame_files(diffusion_args, frames)
+            else:
+                if animation_format != 'mp4' and audio is not None:
+                    _messages.warning(
+                        f'Audio is dropped because --animation-format is {animation_format}. '
+                        f'Use mp4 to keep the soundtrack.')
+                    audio = None
+                    sample_rate = None
+                filename = self._reserve_video_filename(diffusion_args, animation_format)
+                _messages.log(f'Beginning Writes To Animation: "{filename}"', underline=True)
+                starting_file_event = StartingAnimationFileEvent(
+                    origin=self,
+                    path=filename,
+                    total_frames=len(frames),
+                    fps=fps,
+                    frame_duration=frame_duration)
+                yield starting_file_event
+
+                config_filename = None
+                if self._c_config.output_configs:
+                    config_filename = self._write_animation_config_file(
+                        filename=os.path.splitext(filename)[0] + '.dgen',
+                        image_seed_uri=image_seed_uri,
+                        batch_index=0,
+                        diffusion_args=diffusion_args,
+                        generation_result=generation_result)
+
+                self._write_video_container(
+                    filename,
+                    frames,
+                    fps,
+                    animation_format,
+                    audio,
+                    sample_rate)
+                self._written_animations.write(pathlib.Path(filename).absolute().as_posix() + '\n')
+                yield AnimationFileFinishedEvent(
+                    origin=self,
+                    path=filename,
+                    config_filename=config_filename,
+                    starting_event=starting_file_event)
+
+        yield AnimationFinishedEvent(
+            origin=self,
+            starting_event=starting_animation_event)
+
+    def _reserve_video_filename(self, diffusion_args, animation_format: str) -> str:
+        filename = self._gen_animation_filename(
+            diffusion_args,
+            self._generation_step,
+            ext=animation_format)
+        if self._c_config.output_overwrite:
+            return filename
+        return _filelock.touch_avoid_duplicate(
+            self._c_config.output_path,
+            path_maker=_filelock.suffix_path_maker(filename, suffix='_duplicate_'))
+
+    def _write_video_container(self,
+                               filename: str,
+                               frames: list[PIL.Image.Image],
+                               fps: float,
+                               animation_format: str,
+                               audio,
+                               sample_rate):
+        if animation_format == 'mp4':
+            writer = _mediaoutput.VideoWriter(
+                filename,
+                fps,
+                audio=audio,
+                audio_sample_rate=sample_rate)
+        else:
+            writer = _mediaoutput.create_animation_writer(animation_format, filename, fps)
+
+        try:
+            for frame in frames:
+                writer.write(frame if frame.mode == 'RGB' else frame.convert('RGB'))
+        finally:
+            writer.end()
+
+    def _write_video_frame_files(self,
+                                 diffusion_args: _pipelinewrapper.DiffusionArguments,
+                                 frames: list[PIL.Image.Image]):
+        for index, frame in enumerate(frames):
+            components = [*self._gen_filename_components_base(diffusion_args),
+                          'frame', index + 1,
+                          'step', self._generation_step + 1]
+            filename = self._join_output_filename(components, ext=self._c_config.image_format)
+            if not self._c_config.output_overwrite:
+                filename = _filelock.touch_avoid_duplicate(
+                    self._c_config.output_path,
+                    path_maker=_filelock.suffix_path_maker(filename, suffix='_duplicate_'))
+            rgb = frame if frame.mode == 'RGB' else frame.convert('RGB')
+            rgb.save(filename)
+            self._written_images.write(pathlib.Path(filename).absolute().as_posix() + '\n')
+            _messages.log(f'Wrote Frame: "{filename}"')
+
     def _render_animation(self,
                           pipeline_wrapper: _pipelinewrapper.DiffusionPipelineWrapper,
                           set_wrapper_args_per_image_seed:
@@ -1587,7 +1834,8 @@ class RenderLoop:
             extra_opts.append(('--animation-format',
                                self._c_config.animation_format))
 
-        extra_opts.append(('--image-seeds', image_seed_uri))
+        if image_seed_uri is not None:
+            extra_opts.append(('--image-seeds', image_seed_uri))
 
         extra_comments = []
 
