@@ -2610,9 +2610,19 @@ class RenderLoopConfig(_types.SetFromMixin):
         schedulers = self.scheduler_uri
         if isinstance(schedulers, str) or schedulers is None:
             schedulers = [schedulers]
-        if any(item and not _pipelinewrapper.scheduler_is_help(str(item)) for item in schedulers):
+        import dgenerate.pipelinewrapper.videopipelines as _videopipelines
+        allowed = _videopipelines.LTX_SCHEDULER_NAMES
+        for item in schedulers:
+            if not item or _pipelinewrapper.scheduler_is_help(str(item)):
+                continue
+            token = str(item).split(';', 1)[0].strip()
+            if any(name.startswith(token) for name in allowed):
+                continue
             raise RenderLoopConfigError(
-                f'{a_namer("scheduler_uri")} cannot be used with video model types.')
+                f'{a_namer("scheduler_uri")} value {token!r} cannot be used with video model types. '
+                f'LTX accepts {_textprocessing.oxford_comma(sorted(allowed), "or")}, '
+                f'including URI arguments such as shift and use-dynamic-shifting. '
+                f'Omitting --scheduler keeps the checkpoint scheduler.')
 
         if self.seed_image_processors and IMAGE_PROCESSOR_SEP in self.seed_image_processors:
             raise RenderLoopConfigError(

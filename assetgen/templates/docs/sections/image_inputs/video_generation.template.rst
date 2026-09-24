@@ -42,7 +42,11 @@ Guidance, steps, and sigmas
 
 The loaded scheduler decides which path runs. dgenerate does not pick a path from
 the repository name or a ``--transformer`` subfolder. ``--transformer`` replaces
-weights only.
+weights only. ``--scheduler`` accepts ``FlowMatchEulerDiscreteScheduler`` and URI
+arguments on that class, such as ``shift`` and ``use-dynamic-shifting``. Those
+arguments overlay the checkpoint scheduler config. Other scheduler names are
+rejected. Omitting ``--scheduler`` keeps the checkpoint scheduler.
+``--scheduler help`` and ``--scheduler helpargs`` still print help.
 
 The image-model defaults still apply if you omit the options: ``--guidance-scales``
 is ``5`` and ``--inference-steps`` is ``30``. LTX then rewrites those defaults when
@@ -157,7 +161,7 @@ What LTX rejects
 
 ControlNets, T2I adapters, IP adapters, textual inversions, a replacement UNet, VAE, or text encoder,
 an image encoder, the SDXL refiner, Stable Cascade, Adetailer, PAG and PAG scales,
-a custom scheduler, prompt weighters, second or third prompts,
+any scheduler other than ``FlowMatchEulerDiscreteScheduler``, prompt weighters, second or third prompts,
 clip skip, inpaint crop, HiDiffusion, TeaCache, DeepCache, SADA, RAS,
 mask or control processors, raw latents and latents processors, ``--denoising-start`` /
 ``--denoising-end``, ``--batch-size`` greater than 1, ``--batch-grid-size``, latent output
