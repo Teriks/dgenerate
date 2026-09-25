@@ -92,6 +92,7 @@ from .exceptions import (
 from .imageencoderuri import ImageEncoderUri
 from .ipadapteruri import IPAdapterUri
 from .lorauri import LoRAUri
+from .iclorauri import ICLoRAUri
 from .scascadedecoderuri import SCascadeDecoderUri
 from .sdxlrefineruri import SDXLRefinerUri
 from .t2iadapteruri import T2IAdapterUri

@@ -61,7 +61,8 @@ class _ImageSeedSelect(tk.Toplevel):
             "(Optional) Inpaint Mask Image",
             "(Optional) Control Image",
             "(Optional) IP Adapter Image",
-            "(Optional) Latents (.pt/.pth/.safetensors)"
+            "(Optional) Latents (.pt/.pth/.safetensors)",
+            "(Optional, Video Models) Last Frame / Closing Clip"
         ]
 
         for i, label in enumerate(labels):
@@ -85,48 +86,49 @@ class _ImageSeedSelect(tk.Toplevel):
         self.control_image_entry = self.entries[2]
         self.adapter_image_entry = self.entries[3]
         self.latents_entry = self.entries[4]
+        self.end_image_entry = self.entries[5]
 
         tk.Label(self, text='(Optional) Resize Dimension (WxH)').grid(
-            row=5, column=0, sticky=tk.E)
+            row=6, column=0, sticky=tk.E)
 
         self.resize_entry = _t_entry.TextEntry(self)
-        self.resize_entry.grid(row=5, column=1, padx=(2, 5), sticky=tk.EW)
+        self.resize_entry.grid(row=6, column=1, padx=(2, 5), sticky=tk.EW)
         self.resize_entry.bind("<Key>", self._valid)
         self.entries.append(self.resize_entry)
 
         tk.Label(self, text='Resize Preserves Aspect?').grid(
-            row=6, column=0, sticky=tk.E)
+            row=7, column=0, sticky=tk.E)
 
         self.aspect_entry_var = tk.BooleanVar(value=True)
 
         self.aspect_entry = tk.Checkbutton(self, variable=self.aspect_entry_var)
-        self.aspect_entry.grid(row=6, column=1, sticky=tk.W)
+        self.aspect_entry.grid(row=7, column=1, sticky=tk.W)
 
         tk.Label(self, text='(Optional) Frame Start').grid(
-            row=7, column=0, sticky=tk.E)
+            row=8, column=0, sticky=tk.E)
 
         self.frame_start_entry = _spinbox.IntSpinbox(self, from_=0, textvariable=tk.StringVar(value=''))
-        self.frame_start_entry.create_spin_buttons(self).grid(row=7, column=2, sticky=tk.W)
-        self.frame_start_entry.grid(row=7, column=1, padx=(2, 5), sticky=tk.EW)
+        self.frame_start_entry.create_spin_buttons(self).grid(row=8, column=2, sticky=tk.W)
+        self.frame_start_entry.grid(row=8, column=1, padx=(2, 5), sticky=tk.EW)
         self.frame_start_entry.bind("<Key>", self._valid)
         self.entries.append(self.frame_start_entry)
 
         tk.Label(self, text='(Optional) Frame End').grid(
-            row=8, column=0, sticky=tk.E)
+            row=9, column=0, sticky=tk.E)
 
         self.frame_end_entry = _spinbox.IntSpinbox(self, from_=0, textvariable=tk.StringVar(value=''))
-        self.frame_end_entry.create_spin_buttons(self).grid(row=8, column=2, sticky=tk.W)
-        self.frame_end_entry.grid(row=8, column=1, padx=(2, 5), sticky=tk.EW)
+        self.frame_end_entry.create_spin_buttons(self).grid(row=9, column=2, sticky=tk.W)
+        self.frame_end_entry.grid(row=9, column=1, padx=(2, 5), sticky=tk.EW)
         self.frame_end_entry.bind("<Key>", self._valid)
         self.entries.append(self.frame_end_entry)
 
         self.insert_button = tk.Button(self, text="Insert", command=self._insert_click)
-        self.insert_button.grid(row=9, column=0, columnspan=3, pady=5)
+        self.insert_button.grid(row=10, column=0, columnspan=3, pady=5)
 
     @staticmethod
     def _open_file(entry):
         file_path = _filedialog.open_file_dialog(
-            **_resources.get_file_dialog_args(['images-in']))
+            **_resources.get_file_dialog_args(['images-in', 'videos-in']))
         if file_path:
             entry.delete(0, tk.END)
             entry.insert(0, file_path)
@@ -161,12 +163,14 @@ class _ImageSeedSelect(tk.Toplevel):
         control_image = _entry.shell_quote_if(self.control_image_entry.get().strip(), strict=True)
         latents = _entry.shell_quote_if(self.latents_entry.get().strip(), strict=True)
         adapter_image = _entry.shell_quote_if(self.adapter_image_entry.get().strip(), strict=True)
+        end_image = _entry.shell_quote_if(self.end_image_entry.get().strip(), strict=True)
 
         # Convert empty strings to None
         image_seed = image_seed if image_seed else None
         mask_image = mask_image if mask_image else None
         control_image = control_image if control_image else None
         latents = latents if latents else None
+        end_image = end_image if end_image else None
 
         # Validate that image seed is specified if inpaint image is provided
         if mask_image and not image_seed:
@@ -182,7 +186,7 @@ class _ImageSeedSelect(tk.Toplevel):
         aspect_value = self.aspect_entry_var.get()
 
         # Check if only latents are specified (no images that can be resized)
-        if latents and not (image_seed or control_image or adapter_image):
+        if latents and not (image_seed or control_image or adapter_image or end_image):
             if resize_value:
                 _entry.invalid_colors(self.resize_entry)
                 return
@@ -208,32 +212,40 @@ class _ImageSeedSelect(tk.Toplevel):
         if (frame_start is not None or
             frame_end is not None or
             aspect_value is False or resize_value) and not (
-                image_seed or control_image or latents or adapter_image):
+                image_seed or control_image or latents or adapter_image or end_image):
             _entry.invalid_colors(self.entries[0])
             _entry.invalid_colors(self.entries[2])
             _entry.invalid_colors(self.entries[3])
             _entry.invalid_colors(self.entries[4])
+            _entry.invalid_colors(self.entries[5])
             return
 
         # validate that at least one input source is specified
-        if not (image_seed or control_image or latents or adapter_image):
+        if not (image_seed or control_image or latents or adapter_image or end_image):
             _entry.invalid_colors(self.entries[0])
             _entry.invalid_colors(self.entries[2])
             _entry.invalid_colors(self.entries[3])
             _entry.invalid_colors(self.entries[4])
+            _entry.invalid_colors(self.entries[5])
             return
 
-        value = _textprocessing.format_image_seed_uri(
-            seed_images=image_seed,
-            mask_images=mask_image,
-            control_images=control_image,
-            latents=latents,
-            adapter_images=adapter_image,
-            resize=resize_value,
-            aspect=aspect_value,
-            frame_start=frame_start,
-            frame_end=frame_end
-        )
+        try:
+            value = _textprocessing.format_image_seed_uri(
+                seed_images=image_seed,
+                mask_images=mask_image,
+                control_images=control_image,
+                latents=latents,
+                adapter_images=adapter_image,
+                resize=resize_value,
+                aspect=aspect_value,
+                frame_start=frame_start,
+                frame_end=frame_end,
+                end_image=end_image
+            )
+        except ValueError:
+            for entry in self.entries[:6]:
+                _entry.invalid_colors(entry)
+            return
 
         if value:
             self._insert(value)

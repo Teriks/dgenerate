@@ -1057,6 +1057,13 @@ class DiffusionArguments(_types.SetFromMixin):
     is a video or animated image. The generated clip leads into these frames.
     """
 
+    reference_video_frames: _types.OptionalImages = None
+    """
+    IC-LoRA reference clip for LTX-2, from the image seed ``control`` argument.
+    The frames are not placed in the output. An IC-LoRA loaded with ``--loras``
+    reads them as guidance, for example canny edges, depth, or pose.
+    """
+
     inference_steps: _types.OptionalInteger = None
     """
     The number of denoising steps. More denoising steps usually lead to a higher quality image

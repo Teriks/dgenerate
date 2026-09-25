@@ -31,21 +31,22 @@ Help Output
                      [-te TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]]
                      [-te2 TEXT_ENCODER_URIS [TEXT_ENCODER_URIS ...]] [-un UNET_URI] [-un2 UNET_URI]
                      [-tf TRANSFORMER_URI] [-vae VAE_URI] [-vt] [-vs] [-lra LORA_URI [LORA_URI ...]]
-                     [-lrfs LORA_FUSE_SCALE] [-ie IMAGE_ENCODER_URI] [-ipa IP_ADAPTER_URI [IP_ADAPTER_URI ...]]
-                     [-ti URI [URI ...]] [-cn CONTROLNET_URI [CONTROLNET_URI ...] |
-                     -t2i T2I_ADAPTER_URI [T2I_ADAPTER_URI ...]] [-q QUANTIZER_URI]
-                     [--quantizer-help [QUANTIZER_NAME ...]] [-qm SUBMODULE [SUBMODULE ...]] [-q2 QUANTIZER_URI]
-                     [-qm2 SUBMODULE [SUBMODULE ...]] [-sch SCHEDULER_URI [SCHEDULER_URI ...]]
-                     [-sch2 SCHEDULER_URI [SCHEDULER_URI ...]] [-fu CSV_FLOAT [CSV_FLOAT ...]] [-hd]
-                     [--hi-diffusion-no-win-attn] [--hi-diffusion-no-raunet] [--sada]
-                     [--sada-max-downsamples INTEGER [INTEGER ...]] [--sada-sxs INTEGER [INTEGER ...]]
-                     [--sada-sys INTEGER [INTEGER ...]] [--sada-acc-ranges INTEGER [INTEGER ...]]
-                     [--sada-lagrange-terms INTEGER [INTEGER ...]] [--sada-lagrange-ints INTEGER [INTEGER ...]]
-                     [--sada-lagrange-steps INTEGER [INTEGER ...]] [--sada-max-fixes INTEGER [INTEGER ...]]
-                     [--sada-max-intervals INTEGER [INTEGER ...]] [-rfu CSV_FLOAT [CSV_FLOAT ...]] [-dc]
-                     [-dci INTEGER [INTEGER ...]] [-dcb INTEGER [INTEGER ...]] [-rdc]
-                     [-rdci INTEGER [INTEGER ...]] [-rdcb INTEGER [INTEGER ...]] [-tc] [-tcr [FLOAT ...]] [-ra]
-                     [-rif] [-rsr FLOAT [FLOAT ...]] [-rhr FLOAT [FLOAT ...]] [-rss FLOAT [FLOAT ...]]
+                     [-lrfs LORA_FUSE_SCALE] [-icl IC_LORA_URI] [-ie IMAGE_ENCODER_URI]
+                     [-ipa IP_ADAPTER_URI [IP_ADAPTER_URI ...]] [-ti URI [URI ...]]
+                     [-cn CONTROLNET_URI [CONTROLNET_URI ...] | -t2i T2I_ADAPTER_URI [T2I_ADAPTER_URI ...]]
+                     [-q QUANTIZER_URI] [--quantizer-help [QUANTIZER_NAME ...]] [-qm SUBMODULE [SUBMODULE ...]]
+                     [-q2 QUANTIZER_URI] [-qm2 SUBMODULE [SUBMODULE ...]]
+                     [-sch SCHEDULER_URI [SCHEDULER_URI ...]] [-sch2 SCHEDULER_URI [SCHEDULER_URI ...]]
+                     [-fu CSV_FLOAT [CSV_FLOAT ...]] [-hd] [--hi-diffusion-no-win-attn]
+                     [--hi-diffusion-no-raunet] [--sada] [--sada-max-downsamples INTEGER [INTEGER ...]]
+                     [--sada-sxs INTEGER [INTEGER ...]] [--sada-sys INTEGER [INTEGER ...]]
+                     [--sada-acc-ranges INTEGER [INTEGER ...]] [--sada-lagrange-terms INTEGER [INTEGER ...]]
+                     [--sada-lagrange-ints INTEGER [INTEGER ...]] [--sada-lagrange-steps INTEGER [INTEGER ...]]
+                     [--sada-max-fixes INTEGER [INTEGER ...]] [--sada-max-intervals INTEGER [INTEGER ...]]
+                     [-rfu CSV_FLOAT [CSV_FLOAT ...]] [-dc] [-dci INTEGER [INTEGER ...]]
+                     [-dcb INTEGER [INTEGER ...]] [-rdc] [-rdci INTEGER [INTEGER ...]]
+                     [-rdcb INTEGER [INTEGER ...]] [-tc] [-tcr [FLOAT ...]] [-ra] [-rif]
+                     [-rsr FLOAT [FLOAT ...]] [-rhr FLOAT [FLOAT ...]] [-rss FLOAT [FLOAT ...]]
                      [-rer CSV_INT [CSV_INT ...]] [-rme RAS_METRIC [RAS_METRIC ...]]
                      [-rst INTEGER [INTEGER ...]] [-res INTEGER [INTEGER ...]] [-rsn INTEGER [INTEGER ...]]
                      [-rsl INTEGER [INTEGER ...]] [-pag] [-pags FLOAT [FLOAT ...]] [-pagas FLOAT [FLOAT ...]]
@@ -695,7 +696,7 @@ Help Output
             Specify one or more LoRA models using URIs. These should be a Hugging Face repository slug / blob
             link, path to model file on disk (for example, a .pt, .pth, .bin, .ckpt, or .safetensors file), or
             model folder containing model files. ``ltx`` accepts LoRAs in diffusers format and fuses them into
-            the transformer.
+            the transformer. IC-LoRAs for ``ltx`` are loaded with --ic-lora instead.
             
             If a LoRA model file exists at a URL which serves the file as a raw download, you may provide an
             http/https link to it and it will be downloaded to dgenerate's web cache.
@@ -727,6 +728,40 @@ Help Output
             they are fused together into one set of weights using their individual scale values, after which
             they are fused into the main model at this scale value. (default: 1.0).
             -----------------------------------------------------------------------
+      -icl, --ic-lora IC_LORA_URI
+            Specify an IC-LoRA (in-context LoRA) for --model-type ltx with an LTX-2 checkpoint, for example a
+            canny, depth, or pose control LoRA. It uses the same URI syntax as --loras, and is fused into the
+            transformer together with any --loras.
+            
+            The IC-LoRA reads a reference clip from --image-seeds. A plain path is the reference, the same way a
+            plain path is the control image when --control-nets is given:
+            
+            --image-seeds "control.mp4"
+            
+            To also condition on a first or last frame, use the "control" image seed argument:
+            
+            --image-seeds "first.png;control=control.mp4;end=last.png"
+            
+            Use --control-image-processors to turn the reference into the signal the IC-LoRA expects, for
+            example "canny".
+            
+            Optional arguments are "scale", "attention", "downscale", "revision", "subfolder", and
+            "weight-name":
+            
+            "Lightricks/LTX-2.3-22b-IC-LoRA-Union-Control;weight-name=ltx-2.3-22b-ic-lora-union-control-ref0.5.safetensors;attention=0.8"
+            
+            The "scale" argument is the LoRA weight scale, the default value is 1.0.
+            
+            The "attention" argument, from 0 to 1, is how strongly the generated video attends to the reference
+            clip, the default value is 1.0.
+            
+            The "downscale" argument is the factor the reference clip is shrunk by before encoding. IC-LoRAs
+            trained on reduced-size references store it in their file metadata as "reference_downscale_factor",
+            and that value is used when this argument is omitted. The output width and height must be divisible
+            by 32 times this factor.
+            
+            "revision", "subfolder", and "weight-name" work the same way they do for --loras.
+            ---------------------------------------------------------------------------------
       -ie, --image-encoder IMAGE_ENCODER_URI
             Specify an Image Encoder using a URI.
             
@@ -2158,9 +2193,15 @@ Help Output
             (--seed-image-processors affect-img-1 +)
             
             The amount of processors / processor chains must not exceed the amount of input images, or you will
-            receive a syntax error message. To obtain more information about what image processors are available
-            and how to use them, see: --image-processor-help.
-            -------------------------------------------------
+            receive a syntax error message.
+            
+            For --model-type ltx, one chain runs on every frame of both the opening media and the "end" image
+            seed argument. With two chains, the first runs on the opening media and the second on "end", for
+            example: (--seed-image-processors grayscale +) processes only the opening media.
+            
+            To obtain more information about what image processors are available and how to use them, see:
+            --image-processor-help.
+            -----------------------
       -mip, --mask-image-processors PROCESSOR_URI [PROCESSOR_URI ...]
             Specify one or more image processor actions to perform on the inpaint mask image(s) specified by
             --image-seeds.
@@ -2218,6 +2259,9 @@ Help Output
             (--control-image-processors + "process-second")
             
             would indicate that the first control guidance image is not to be processed, only the second.
+            
+            For --model-type ltx, one chain runs on every frame of the --ic-lora reference clip, for example:
+            --ic-lora ... --image-seeds "video.mp4" --control-image-processors canny.
             
             To obtain more information about what image processors are available and how to use them, see:
             --image-processor-help.
@@ -3867,16 +3911,17 @@ Repository: ``Lightricks/LTX-2.5-Diffusers``.
 * One image is the first frame.
 * ``end=`` is the last frame. A first frame and ``end=`` can be used together.
 * Either slot can be a video or animated image instead of a still. See `Video conditioning`_.
-* ``control=`` and ``images:`` are rejected.
+* With ``--ic-lora``, a plain path is instead the reference clip for an IC-LoRA, such as canny, depth, or pose control. See `IC-LoRA control`_.
+* ``images:`` is rejected.
 
 Width and height must be divisible by 32.
 
 ``--model-sequential-offload`` and ``--model-cpu-offload`` work the same way they
-do for image models. The examples under ``examples/ltx/basic_ltx2`` use the published
+do for image models. The examples under ``examples/ltx/ltx2`` use the published
 repository as-is. The two-stage sampler is not wired up. ``--transformer`` is
 described under `Submodels`_. ``model_index.json`` selects the pipeline: ``LTX2Pipeline``
 is LTX-2.5, and ``LTXPipeline`` is the earlier LTX-Video model. The earlier model
-has no audio. Its transformer accepts a city96 ``.gguf`` file. See ``examples/ltx/basic_ltx``.
+has no audio. Its transformer accepts a city96 ``.gguf`` file. See ``examples/ltx/ltx_video``.
 
 Video conditioning
 ------------------
@@ -3931,15 +3976,79 @@ Frames are used as they are and are not resampled. When the file's frame rate di
 from ``--video-fps`` dgenerate prints a warning, because motion will play faster or
 slower. Set ``--video-fps`` to the file's rate to keep the speed.
 
-``resize=``, ``aspect=``, and ``align=`` in the seed, and ``--seed-image-processors``,
-apply to every conditioning frame.
+``resize=``, ``aspect=``, and ``align=`` in the seed apply to every conditioning frame.
+
+``--seed-image-processors`` runs on every frame of the main path and of ``end=``. Give it two
+chains separated by ``+`` to process them differently. The first chain runs on the main path and
+the second on ``end=``. A leading or trailing ``+`` leaves one side unprocessed.
+
+.. code-block:: bash
+
+    # grayscale first frame, original last frame
+    dgenerate Lightricks/LTX-2.5-Diffusers --model-type ltx \
+    --video-lengths 3 --output-size 512x512 \
+    --image-seeds "painting.png;end=painting.png" \
+    --seed-image-processors grayscale + \
+    --prompts "A black and white painting slowly fills with warm color."
+
+    # process only end=
+    --seed-image-processors + "canny;lower=50;upper=100"
 
 Every condition is applied at full strength. The model keeps the conditioning frames
 and generates around them. It does not restyle the whole input video.
 
-See ``video-extension-config.dgen``, ``video-lead-in-config.dgen``, and
-``video-slice-to-image-config.dgen`` in ``examples/ltx/basic_ltx2``, and
-``video-extension-config.dgen`` in ``examples/ltx/basic_ltx``.
+See ``examples/ltx/ltx2/video_conditioning``, ``examples/ltx/ltx2/image_conditioning``, and
+``video-extension-config.dgen`` in ``examples/ltx/ltx_video``.
+
+IC-LoRA control
+---------------
+
+An IC-LoRA (in-context LoRA) guides LTX-2.5 with a reference video, for example canny
+edges, a depth map, or a pose skeleton. Load it with ``--ic-lora``. The reference clip
+comes from ``--image-seeds``, and ``--control-image-processors`` turns it into the signal
+the IC-LoRA expects. The reference frames guide the output and are not placed in it.
+
+With ``--ic-lora``, a plain seed path is the reference clip, the same way a plain path is the
+control image when ``--control-nets`` is given to an image model. To add a first or last
+frame, put the reference in ``control=``:
+
+.. code-block:: bash
+
+    # reference clip only
+    dgenerate Lightricks/LTX-2.5-Diffusers --model-type ltx \
+    --ic-lora "Lightricks/LTX-2.3-22b-IC-LoRA-Union-Control;weight-name=ltx-2.3-22b-ic-lora-union-control-ref0.5.safetensors" \
+    --video-fps 25 --video-lengths 4 --output-size 512x512 \
+    --image-seeds "input.gif" \
+    --control-image-processors "canny;lower=50;upper=100" \
+    --prompts "A man in a shiny silver suit sings at a vintage microphone."
+
+    # first frame plus reference clip
+    --image-seeds "first.png;control=input.gif"
+
+* ``--ic-lora`` takes the same URI as ``--loras``, plus ``attention`` and ``downscale``.
+  ``scale`` is the LoRA weight. ``attention``, from 0 to 1, is how strongly the generated
+  video attends to the reference, 1 by default.
+* ``--loras`` can be used at the same time, for example a style LoRA. All of them are fused
+  into the transformer together, and ``--lora-fuse-scale`` applies to all of them.
+* Lightricks publishes IC-LoRAs for the distilled checkpoint, which is what
+  ``Lightricks/LTX-2.5-Diffusers`` loads by default.
+* The reference is one video, animated image, or still. It uses the same frame slicing,
+  ``resize=``, and frame count rules as `Video conditioning`_.
+* Without ``--video-lengths`` the output is as long as the reference clip, cut to ``8k+1``
+  frames. With ``--video-lengths`` a longer reference is cut to the output length.
+* Some IC-LoRAs read the reference at a reduced size. dgenerate reads
+  ``reference_downscale_factor`` from the IC-LoRA's safetensors metadata, and ``downscale``
+  in the URI overrides it. The union control LoRA uses 2, so the output width and height
+  must be divisible by 64.
+* ``--ic-lora`` needs an LTX-2 checkpoint. The earlier LTX-Video pipeline rejects it.
+
+See the examples in ``examples/ltx/ltx2/ic_lora``. ``canny-anime-lora-config.dgen`` and
+``depth-realism-lora-config.dgen`` add a style LoRA from ``--loras`` to the IC-LoRA.
+
+In the Console UI, the LTX-2.5 recipes under ``Edit -> Insert Code -> Recipe`` have an IC-LoRA
+field, an IC-LoRA control clip, and a control clip processor. ``Edit -> Insert URI -> Sub Model URI``
+builds an ``--ic-lora`` URI, and ``Edit -> Insert URI -> Image Seed URI`` accepts a last frame or
+closing clip for ``end=``. The LTX recipes also take a separate processor for the first and last frame.
 
 Guidance, steps, and sigmas
 ---------------------------
@@ -3994,7 +4103,7 @@ This path wins over both of the above.
 ``--sigmas`` is combinatorial with ``--guidance-scales``, ``--inference-steps``,
 ``--guidance-rescales``, ``--audio-guidance-scales``,
 ``--audio-guidance-rescales``, ``--video-lengths``, and ``--video-fps``. See
-:ref:`specifying-sigmas` and ``examples/ltx/basic_ltx2/sigmas-config.dgen``.
+:ref:`specifying-sigmas` and ``examples/ltx/ltx2/sigmas/sigmas-config.dgen``.
 
 ``--guidance-rescales``
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -4034,7 +4143,7 @@ Omit it and audio copies ``--guidance-rescales`` when that is set, otherwise
 the pipeline default ``0.7`` is left in place.
 
 Diffusers suggests keeping audio guidance higher than video guidance when
-you set them yourself. See ``examples/ltx/basic_ltx2/audio-guidance-config.dgen``.
+you set them yourself. See ``examples/ltx/ltx2/audio/audio-guidance-config.dgen``.
 
 Chaining
 --------
@@ -4059,7 +4168,8 @@ Replacing the transformer does not change the scheduler.
 
 ``--loras`` loads diffusers-format adapters onto that transformer and fuses them, including
 ``--lora-fuse-scale`` and each URI ``scale``. The LTX stage-2 distilled LoRA does not turn on
-two-stage sampling. IC-LoRAs expect their own pipeline and are not a separate mode here.
+two-stage sampling. IC-LoRAs load with ``--ic-lora`` instead, see `IC-LoRA control`_.
+See ``examples/ltx/ltx2/lora/cinemagraph-config.dgen`` and ``examples/ltx/ltx_video/lora-config.dgen``.
 
 What LTX rejects
 ----------------
@@ -4068,13 +4178,14 @@ ControlNets, T2I adapters, IP adapters, textual inversions, a replacement UNet, 
 an image encoder, the SDXL refiner, Stable Cascade, Adetailer, PAG and PAG scales,
 any scheduler other than ``FlowMatchEulerDiscreteScheduler``, prompt weighters, second or third prompts,
 clip skip, inpaint crop, HiDiffusion, TeaCache, DeepCache, SADA, RAS,
-mask or control processors, raw latents and latents processors, ``--denoising-start`` /
+mask processors, raw latents and latents processors, ``--denoising-start`` /
 ``--denoising-end``, ``--batch-size`` greater than 1, ``--batch-grid-size``, latent output
 formats, the safety checker, ``--vae-tiling``, and ``--original-config``.
-``--image-seed-strengths`` is not used. Seed processors are limited to one chain.
+``--image-seed-strengths`` is not used. Seed processors are limited to two chains, and
+control processors to one.
 ``--quantizer-map`` may only name ``transformer``, ``text_encoder``, or ``connectors``.
 
-Examples live under ``examples/ltx/basic_ltx2`` and ``examples/ltx/basic_ltx``.
+LTX-2.5 examples live under ``examples/ltx/ltx2``, and LTX-Video examples under ``examples/ltx/ltx_video``.
 
 Animation Slicing
 =================

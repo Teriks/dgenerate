@@ -1,0 +1,35 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# An IC-LoRA and a normal LoRA together. The midas processor turns the
+# control clip into a depth map, the union control IC-LoRA follows that
+# depth, and the style LoRA from --loras gives it a live-action fantasy look.
+
+# Both are fused into the transformer. scale= on each URI is its weight.
+
+# The union control IC-LoRA reads the control clip at half the output size,
+# so the output width and height must be divisible by 64.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+Lightricks/LTX-2.5-Diffusers
+--model-type ltx
+--dtype bfloat16
+--model-sequential-offload
+--ic-lora "Lightricks/LTX-2.3-22b-IC-LoRA-Union-Control;weight-name=ltx-2.3-22b-ic-lora-union-control-ref0.5.safetensors"
+--loras "vrgamedevgirl84/LTX_2.3_Fantasy_Realism_Style_LoRa;scale=1.0;weight-name=Fantasy_Realism.safetensors"
+--guidance-scales 1
+--video-fps 25
+--gen-seeds 1
+--output-size 512x512
+--video-lengths 4
+--animation-format mp4
+--output-path ltx-ic-lora-depth-realism
+--image-seeds ../../../media/rickroll-roll.gif
+--control-image-processors midas
+--prompts "A cinematic live-action fantasy film scene. A knight in worn steel armor and a red cloak sings and sways at an old iron microphone in a torchlit stone hall. Stone arches and warm firelight glow behind him. Realistic materials, volumetric atmosphere. The camera does not move."

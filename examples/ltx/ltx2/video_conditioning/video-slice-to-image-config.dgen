@@ -22,5 +22,5 @@ Lightricks/LTX-2.5-Diffusers
 --video-lengths 4
 --animation-format mp4
 --output-path ltx-video-slice-to-image
---image-seeds "../../media/rickroll-roll.gif;frame-start=16;frame-end=40;end=https://raw.githubusercontent.com/CompVis/stable-diffusion/main/assets/stable-samples/img2img/sketch-mountains-input.jpg"
+--image-seeds "../../../media/rickroll-roll.gif;frame-start=16;frame-end=40;end=https://raw.githubusercontent.com/CompVis/stable-diffusion/main/assets/stable-samples/img2img/sketch-mountains-input.jpg"
 --prompts "A singer in a dark blazer sways at a vintage microphone as the scene fades into this pencil sketch of mountains. The camera does not move."

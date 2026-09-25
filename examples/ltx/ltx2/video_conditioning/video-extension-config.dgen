@@ -22,5 +22,5 @@ Lightricks/LTX-2.5-Diffusers
 --video-lengths 4
 --animation-format mp4
 --output-path ltx-video-extension
---image-seeds ../../media/rickroll-roll.gif
+--image-seeds ../../../media/rickroll-roll.gif
 --prompts "A singer in a dark blazer and striped shirt sways at a vintage microphone and sings, then points at the camera with a grin. Soft white light streams through the lattice window behind him. The camera does not move."

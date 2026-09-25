@@ -32,6 +32,7 @@ import collections.abc
 import gc
 import importlib
 import inspect
+import os
 import warnings
 
 import PIL.Image
@@ -135,6 +136,7 @@ class _VideoPipeline:
     def __init__(self, pipeline, family: str):
         self.pipeline = pipeline
         self.family = family
+        self.reference_downscale_factor = None
 
 
 def ltx_family_from_index(index: dict | None) -> str:
@@ -171,12 +173,14 @@ def ltx_num_frames(seconds: float, fps: float) -> int:
 
 
 def classify_video_seed(model_type: _enums.ModelType | str,
-                        parsed: _mediainput.ImageSeedParseResult | None) -> str:
+                        parsed: _mediainput.ImageSeedParseResult | None,
+                        ic_lora: bool = False) -> str:
     """
     Decide which video conditioning mode an image seed selects.
 
     :param model_type: video ``--model-type``
     :param parsed: parsed ``--image-seeds`` value, or ``None`` when there is no image seed
+    :param ic_lora: ``--ic-lora`` was given, which makes a plain seed path the control clip
     :raise UnsupportedPipelineConfigError: if the seed does not fit the model
     :return: a mode name used by the loader
     """
@@ -184,10 +188,31 @@ def classify_video_seed(model_type: _enums.ModelType | str,
     _reject_still_extras(parsed, _enums.get_model_type_string(model_type))
 
     if model_type == _enums.ModelType.LTX:
-        return _classify_ltx(parsed)
+        return _classify_ltx(parsed, ic_lora)
 
     raise _pipelines.UnsupportedPipelineConfigError(
         f'{_enums.get_model_type_string(model_type)} is not a video model type.')
+
+
+def video_seed_slots(parsed: _mediainput.ImageSeedParseResult | None,
+                     ic_lora: bool = False) -> tuple[str | None, str | None, str | None]:
+    """
+    Split an image seed into its opening, end, and control paths.
+
+    With ``--ic-lora``, a plain seed path is the control clip, the same way a
+    plain path is the control image when ``--control-nets`` is given.
+
+    :param parsed: parsed ``--image-seeds`` value, or ``None``
+    :param ic_lora: ``--ic-lora`` was given
+    :return: ``(opening, end, control)``, each a path or ``None``
+    """
+    if parsed is None:
+        return None, None, None
+    opening = parsed.images[0] if parsed.images else None
+    control = parsed.control_images[0] if parsed.control_images else None
+    if ic_lora and parsed.is_single_spec and not parsed.multi_image_mode:
+        opening, control = None, opening
+    return opening, parsed.end_image, control
 
 
 def load_rgb_frames(path: str,
@@ -394,15 +419,25 @@ def _has_end(parsed) -> bool:
     return bool(parsed is not None and parsed.end_image)
 
 
-def _classify_ltx(parsed) -> str:
-    if _control_count(parsed):
+def _classify_ltx(parsed, ic_lora: bool = False) -> str:
+    if _control_count(parsed) > 1:
         raise _pipelines.UnsupportedPipelineConfigError(
-            'LTX does not accept control images. Use one image as the first frame, '
-            'and end= as the last frame.')
+            'LTX accepts one control= clip, used as the IC-LoRA reference video.')
     if parsed is not None and (parsed.multi_image_mode or _image_count(parsed) > 1):
         raise _pipelines.UnsupportedPipelineConfigError(
             'LTX accepts one conditioning image. Use a single path for the first frame, '
             'or end= for the last frame.')
+    _, _, control = video_seed_slots(parsed, ic_lora)
+    if control is not None and not ic_lora:
+        raise _pipelines.UnsupportedPipelineConfigError(
+            'The image seed control= clip is the IC-LoRA reference video. '
+            'Load the IC-LoRA with --ic-lora.')
+    if ic_lora:
+        if control is None:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                '--ic-lora needs a control clip. Use --image-seeds "control.mp4", '
+                'or "first.png;control=control.mp4" to add a first frame.')
+        return 'ltx-control'
     if _has_end(parsed):
         return 'ltx-condition'
     if _image_count(parsed) == 1:
@@ -708,12 +743,21 @@ def _ltx_pipeline_class(mode: str, family: str = 'ltx2'):
             'ltx-image': LTXImageToVideoPipeline,
             'ltx-condition': LTXConditionPipeline,
         }
+        if mode == 'ltx-control':
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'The image seed control= argument needs an LTX-2 checkpoint. '
+                'The earlier LTX-Video pipeline has no IC-LoRA reference conditioning.')
     else:
-        from diffusers import LTX2ConditionPipeline, LTX2ImageToVideoPipeline, LTX2Pipeline
+        from diffusers import (
+            LTX2ConditionPipeline,
+            LTX2ImageToVideoPipeline,
+            LTX2InContextPipeline,
+            LTX2Pipeline)
         classes = {
             'ltx-txt': LTX2Pipeline,
             'ltx-image': LTX2ImageToVideoPipeline,
             'ltx-condition': LTX2ConditionPipeline,
+            'ltx-control': LTX2InContextPipeline,
         }
     return classes[mode]
 
@@ -726,7 +770,7 @@ def pipeline_for_mode(pipe, mode: str, family: str = 'ltx2'):
     quantized modules (SDNQ / bitsandbytes).
 
     :param pipe: cached :py:class:`diffusers.LTX2Pipeline`
-    :param mode: ``ltx-txt``, ``ltx-image``, or ``ltx-condition``
+    :param mode: ``ltx-txt``, ``ltx-image``, ``ltx-condition``, or ``ltx-control``
     :return: pipeline of the class for ``mode``
     """
     cls = _ltx_pipeline_class(mode, family)
@@ -799,7 +843,10 @@ def _create_cached_video_pipeline(model_path,
                                   lora_uris=None,
                                   lora_fuse_scale=None,
                                   quantizer_uri=None,
-                                  quantizer_map=None):
+                                  quantizer_map=None,
+                                  ic_lora_uri=None,
+                                  ic_lora_downscale=None):
+    all_lora_uris = list(lora_uris or ()) + ([ic_lora_uri] if ic_lora_uri else [])
     index = _util.fetch_model_index_dict(
         model_path,
         subfolder=subfolder,
@@ -817,7 +864,7 @@ def _create_cached_video_pipeline(model_path,
         include_unet_or_transformer=not transformer_uri,
         include_vae=True,
         include_text_encoders=True,
-        lora_uris=lora_uris,
+        lora_uris=all_lora_uris,
         include_directories=extra_dirs,
         auth_token=auth_token,
         local_files_only=local_files_only)
@@ -832,6 +879,9 @@ def _create_cached_video_pipeline(model_path,
     if model_type != _enums.ModelType.LTX:
         raise _pipelines.UnsupportedPipelineConfigError(
             f'{_enums.get_model_type_string(model_type)} is not a video model type.')
+
+    if ic_lora_uri:
+        _ltx_pipeline_class('ltx-control', family)
 
     pipeline_class = _ltx_pipeline_class('ltx-txt', family)
     offload = bool(model_cpu_offload or sequential_cpu_offload)
@@ -851,10 +901,13 @@ def _create_cached_video_pipeline(model_path,
     with _hfhub.with_hf_errors_as_model_not_found():
         pipe = pipeline_class.from_pretrained(model_path, **load_kwargs)
     _apply_video_loras(
-        pipe, model_type, lora_uris, lora_fuse_scale, auth_token, local_files_only)
+        pipe, model_type, all_lora_uris, lora_fuse_scale, auth_token, local_files_only)
     _offload_ltx(pipe, device, model_cpu_offload, sequential_cpu_offload)
     _enable_vae_tiling(pipe)
     held = _VideoPipeline(pipe, family)
+    if ic_lora_uri:
+        held.reference_downscale_factor = _ic_lora_downscale_factor(
+            ic_lora_uri, ic_lora_downscale, auth_token, local_files_only)
 
     return held, _d_memoize.CachedObjectMetadata(size=estimate)
 
@@ -864,11 +917,20 @@ def _video_pipeline(wrapper, mode: str, scheduler_uri=None):
     kwargs['transformer_uri'] = wrapper.transformer_uri
     kwargs['lora_uris'] = tuple(wrapper.lora_uris) if wrapper.lora_uris else None
     kwargs['lora_fuse_scale'] = wrapper.lora_fuse_scale
+    ic_lora = _parsed_ic_lora(wrapper)
+    if ic_lora is not None:
+        kwargs['ic_lora_uri'] = ic_lora.lora_uri()
+        kwargs['ic_lora_downscale'] = ic_lora.downscale
     held = _create_cached_video_pipeline(**kwargs)
     # Same as still pipelines: scheduler is not a cache key.
     # Overlay the URI on the cached object, then wrap for mode.
     _schedulers.load_scheduler(held.pipeline, scheduler_uri)
-    return pipeline_for_mode(held.pipeline, mode, held.family), held.family
+    return pipeline_for_mode(held.pipeline, mode, held.family), held
+
+
+def _parsed_ic_lora(wrapper) -> _uris.ICLoRAUri | None:
+    uri = getattr(wrapper, 'ic_lora_uri', None)
+    return _uris.ICLoRAUri.parse(uri) if uri else None
 
 
 def _invoke(wrapper, pipe, kwargs):
@@ -876,14 +938,20 @@ def _invoke(wrapper, pipe, kwargs):
 
 
 def _call_ltx(wrapper, user_args):
-    if user_args.end_images or user_args.video_frames or user_args.end_video_frames:
+    if user_args.reference_video_frames:
+        if not getattr(wrapper, 'ic_lora_uri', None):
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'An LTX control clip needs an IC-LoRA. Load one with --ic-lora.')
+        mode = 'ltx-control'
+    elif user_args.end_images or user_args.video_frames or user_args.end_video_frames:
         mode = 'ltx-condition'
     elif user_args.images:
         mode = 'ltx-image'
     else:
         mode = 'ltx-txt'
 
-    pipe, family = _video_pipeline(wrapper, mode, user_args.scheduler_uri)
+    pipe, held = _video_pipeline(wrapper, mode, user_args.scheduler_uri)
+    family = held.family
     positive, negative = _prompt_text(user_args)
     width, height = _size(user_args)
     if width is not None:
@@ -908,6 +976,11 @@ def _call_ltx(wrapper, user_args):
         _messages.debug_log(
             f'LTX clip length {user_args.video_length} seconds at {fps} fps '
             f'-> {num_frames} frames.')
+    elif mode == 'ltx-control':
+        num_frames = len(_trim_ltx_clip(
+            user_args.reference_video_frames, None, _ltx_temporal_compression(pipe)))
+        kwargs['num_frames'] = num_frames
+        _messages.debug_log(f'LTX clip length follows the control clip: {num_frames} frames.')
     elif family == 'ltx2':
         _messages.debug_log('LTX will choose the clip length from the prompt.')
     else:
@@ -1008,12 +1081,22 @@ def _call_ltx(wrapper, user_args):
         kwargs['image'] = user_args.images[0]
     elif mode == 'ltx-condition':
         kwargs['conditions'] = _ltx_conditions(pipe, family, user_args, kwargs.get('num_frames'))
+    elif mode == 'ltx-control':
+        kwargs.update(_ltx_reference_kwargs(
+            wrapper, pipe, held, user_args, kwargs['num_frames'], width, height))
+        if (user_args.images or user_args.end_images or
+                user_args.video_frames or user_args.end_video_frames):
+            kwargs['conditions'] = _ltx_conditions(pipe, family, user_args, kwargs['num_frames'])
 
     output = _invoke(wrapper, pipe, kwargs)
     frames = frames_from_output(output.frames)
     audio = audio_to_numpy(getattr(output, 'audio', None))
     sample_rate = audio_sample_rate_from_pipeline(pipe, audio)
     return frames, audio, sample_rate, fps
+
+
+def _ltx_temporal_compression(pipe) -> int:
+    return int(getattr(pipe, 'vae_temporal_compression_ratio', 8) or 8)
 
 
 def _trim_ltx_clip(frames: list, limit: int | None, temporal: int) -> list:
@@ -1034,7 +1117,7 @@ def _ltx_conditions(pipe, family: str, user_args, num_frames: int | None) -> lis
     Clips are cut to ``8k+1`` frames, and the leading clip is shortened so the
     two never overlap.
     """
-    temporal = int(getattr(pipe, 'vae_temporal_compression_ratio', 8) or 8)
+    temporal = _ltx_temporal_compression(pipe)
     start_image = user_args.images[0] if user_args.images else None
     end_image = user_args.end_images[0] if user_args.end_images else None
     start_video = user_args.video_frames or None
@@ -1100,6 +1183,110 @@ def _ltx_conditions(pipe, family: str, user_args, num_frames: int | None) -> lis
     elif end_image is not None:
         conditions.append(LTX2VideoCondition(frames=end_image, index=-1, strength=1.0))
     return conditions
+
+
+def _ltx_reference_kwargs(wrapper, pipe, held, user_args, num_frames: int,
+                          width: int | None, height: int | None) -> dict:
+    """
+    Build the IC-LoRA reference arguments for :py:class:`diffusers.LTX2InContextPipeline`.
+
+    The reference is the image seed control clip. Its downscale factor comes from
+    the ``--ic-lora`` URI, or else from the IC-LoRA file metadata.
+    """
+    from diffusers.pipelines.ltx2.pipeline_ltx2_ic_lora import LTX2ReferenceCondition
+
+    factor = held.reference_downscale_factor or 1
+    ic_lora = _parsed_ic_lora(wrapper)
+    attention = ic_lora.attention if ic_lora is not None else 1.0
+
+    if factor > 1:
+        spatial = int(getattr(pipe, 'vae_spatial_compression_ratio', 32) or 32)
+        check_width = width if width is not None else 768
+        check_height = height if height is not None else 512
+        if (check_width // factor) % spatial or (check_height // factor) % spatial:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'The IC-LoRA reads the control clip at 1/{factor} of the output size, '
+                f'so the output width and height must be divisible by {spatial * factor}. '
+                f'Got {check_width}x{check_height}.')
+
+    clip = _trim_ltx_clip(
+        user_args.reference_video_frames, num_frames, _ltx_temporal_compression(pipe))
+    _messages.debug_log(
+        f'LTX IC-LoRA reference clip: {len(clip)} frames, downscale factor {factor}, '
+        f'attention {attention}.')
+    return {
+        'reference_conditions': [LTX2ReferenceCondition(frames=clip, strength=1.0)],
+        'reference_downscale_factor': factor,
+        'conditioning_attention_strength': attention,
+    }
+
+
+def _ic_lora_downscale_factor(lora_uri: str, override: int | None,
+                              auth_token, local_files_only) -> int:
+    """
+    Return the ``--ic-lora`` ``downscale`` value, or else ``reference_downscale_factor``
+    from the IC-LoRA safetensors metadata. IC-LoRAs trained on reduced-size references
+    store it there.
+    """
+    if override is not None:
+        return override
+    try:
+        metadata = _lora_file_metadata(lora_uri, auth_token, local_files_only)
+    except Exception as e:
+        _messages.warning(
+            f'Could not read the metadata of IC-LoRA "{lora_uri}", assuming reference '
+            f'downscale factor 1. Set weight-name if the repository has several files, '
+            f'or set downscale in the --ic-lora URI. Error: {e}')
+        return 1
+    value = metadata.get('reference_downscale_factor') if metadata else None
+    if value is None:
+        return 1
+    try:
+        factor = max(1, int(float(value)))
+    except ValueError:
+        _messages.warning(
+            f'IC-LoRA "{lora_uri}" has an invalid reference_downscale_factor {value!r}, assuming 1.')
+        return 1
+    _messages.debug_log(f'IC-LoRA "{lora_uri}" sets reference downscale factor {factor}.')
+    return factor
+
+
+def _lora_file_metadata(uri, auth_token, local_files_only) -> dict | None:
+    """
+    Return the safetensors header metadata of a ``--loras`` URI, resolving the
+    weight file the same way ``load_lora_weights`` does. ``None`` for non-safetensors files.
+    """
+    import safetensors
+    from diffusers.loaders.lora_base import _best_guess_weight_name
+    from diffusers.utils import _get_model_file
+
+    lora = uri if isinstance(uri, _uris.LoRAUri) else _uris.LoRAUri.parse(uri)
+    path = _hfhub.download_non_hf_slug_model(lora.model)
+
+    if os.path.isfile(path):
+        model_file = path
+    else:
+        weight_name = lora.weight_name
+        if weight_name is None:
+            search = path
+            if os.path.isdir(path) and lora.subfolder:
+                search = os.path.join(path, lora.subfolder)
+            weight_name = _best_guess_weight_name(
+                search, file_extension='.safetensors', local_files_only=local_files_only)
+        if not weight_name:
+            return None
+        model_file = _get_model_file(
+            path,
+            weights_name=weight_name,
+            subfolder=lora.subfolder,
+            revision=lora.revision,
+            token=auth_token,
+            local_files_only=local_files_only)
+
+    if not str(model_file).endswith('.safetensors'):
+        return None
+    with safetensors.safe_open(model_file, framework='pt') as f:
+        return f.metadata()
 
 
 def _legacy_ltx_schedule_finite(scheduler, width, height, num_frames, steps,

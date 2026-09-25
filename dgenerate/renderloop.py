@@ -1032,6 +1032,7 @@ class RenderLoop:
             vae_uri=self._c_config.vae_uri,
             lora_uris=self._c_config.lora_uris,
             lora_fuse_scale=self._c_config.lora_fuse_scale,
+            ic_lora_uri=self._c_config.ic_lora_uri,
             image_encoder_uri=self._c_config.image_encoder_uri,
             ip_adapter_uris=self._c_config.ip_adapter_uris,
             textual_inversion_uris=self._c_config.textual_inversion_uris,
@@ -1427,7 +1428,7 @@ class RenderLoop:
 
     def _render_video(self,
                       pipeline_wrapper: _pipelinewrapper.DiffusionPipelineWrapper) -> RenderLoopEventStream:
-        seed_processor = self._video_image_processor(self._load_seed_image_processors())
+        processors = self._video_image_processors()
         try:
             if self._c_config.image_seeds:
                 entries = []
@@ -1444,7 +1445,8 @@ class RenderLoop:
                 if uri is not None:
                     _messages.log(f'Processing Image Seed: "{uri}"', underline=True)
 
-                _videopipelines.classify_video_seed(self._c_config.model_type, parsed)
+                _videopipelines.classify_video_seed(
+                    self._c_config.model_type, parsed, bool(self._c_config.ic_lora_uri))
                 overrides = {}
                 if uri is not None and self._c_config.seeds_to_images:
                     overrides['seed'] = [seed_to_image]
@@ -1456,7 +1458,7 @@ class RenderLoop:
                         self._assign_video_conditioning(
                             diffusion_arguments,
                             parsed,
-                            seed_processor,
+                            processors,
                             owned_images)
                         yield from self._pre_generation_step(diffusion_arguments)
                         with pipeline_wrapper(diffusion_arguments) as generation_result:
@@ -1468,21 +1470,39 @@ class RenderLoop:
                     finally:
                         self._close_owned_images(owned_images)
         finally:
-            if seed_processor is not None and hasattr(seed_processor, 'to'):
-                seed_processor.to('cpu')
+            for processor in {id(p): p for p in processors.values() if p is not None}.values():
+                if hasattr(processor, 'to'):
+                    processor.to('cpu')
 
-    def _video_image_processor(self, loaded):
-        if loaded is None:
-            return None
-        if isinstance(loaded, list):
+    def _video_image_processors(self) -> dict:
+        """
+        Load the processor chains for each video conditioning slot.
+
+        One ``--seed-image-processors`` chain runs on both the opening media and ``end=``.
+        With two chains separated by ``+``, the first runs on the opening media and
+        the second on ``end=``. ``--control-image-processors`` runs on ``control=``.
+        """
+        seed = self._load_seed_image_processors()
+        if isinstance(seed, list):
+            if len(seed) > 2:
+                raise RenderLoopConfigError(
+                    'Video models accept at most two seed image processor chains, '
+                    'one for the opening image seed media and one for end=.')
+            start, end = seed
+        else:
+            start = end = seed
+
+        control = self._load_control_image_processors()
+        if isinstance(control, list):
             raise RenderLoopConfigError(
-                'Video models accept one image processor chain.')
-        return loaded
+                'Video models accept one control image processor chain.')
+
+        return {'start': start, 'end': end, 'control': control}
 
     def _assign_video_conditioning(self,
                                    diffusion_arguments: _pipelinewrapper.DiffusionArguments,
                                    parsed: _mediainput.ImageSeedParseResult | None,
-                                   seed_processor,
+                                   processors: dict,
                                    owned_images: list):
         if parsed is None:
             return
@@ -1491,22 +1511,28 @@ class RenderLoop:
             max_frames = _videopipelines.ltx_num_frames(
                 diffusion_arguments.video_length,
                 diffusion_arguments.video_fps or 24.0)
-        if parsed.images:
+        opening, end, control = _videopipelines.video_seed_slots(
+            parsed, bool(self._c_config.ic_lora_uri))
+        if opening:
             frames = self._load_video_media(
-                parsed.images[0], parsed, seed_processor, owned_images,
+                opening, parsed, processors['start'], owned_images,
                 max_frames, diffusion_arguments.video_fps)
             if len(frames) == 1:
                 diffusion_arguments.images = frames
             else:
                 diffusion_arguments.video_frames = frames
-        if parsed.end_image:
+        if end:
             frames = self._load_video_media(
-                parsed.end_image, parsed, seed_processor, owned_images,
+                end, parsed, processors['end'], owned_images,
                 max_frames, diffusion_arguments.video_fps)
             if len(frames) == 1:
                 diffusion_arguments.end_images = frames
             else:
                 diffusion_arguments.end_video_frames = frames
+        if control:
+            diffusion_arguments.reference_video_frames = self._load_video_media(
+                control, parsed, processors['control'], owned_images,
+                max_frames, diffusion_arguments.video_fps)
 
     def _load_video_media(self, path, parsed, processor, owned_images: list,
                           max_frames: int | None, output_fps: float | None) -> list[PIL.Image.Image]:
@@ -1547,6 +1573,10 @@ class RenderLoop:
         processed = processor.process(image)
         if processed is not image:
             image.close()
+        if processed.mode != 'RGB':
+            converted = processed.convert('RGB')
+            processed.close()
+            processed = converted
         return processed
 
     @staticmethod

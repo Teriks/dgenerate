@@ -174,13 +174,231 @@ class TestVideoModels(unittest.TestCase):
         self.assertNotIn('sigmas', captured['kwargs'])
         self.assertFalse(_videopipelines._ltx_is_distilled(pipe))
 
-    def test_ltx_rejects_control(self):
+    def test_ltx_control_seed(self):
+        gif = 'examples/media/rickroll-roll.gif'
+        ltx = _pipelinewrapper.ModelType.LTX
+        with_first = _mediainput.parse_image_seed_uri(f'examples/media/earth.jpg;control={gif}')
+        plain = _mediainput.parse_image_seed_uri(gif)
+
+        self.assertEqual(_videopipelines.classify_video_seed(ltx, with_first, True), 'ltx-control')
+        self.assertEqual(_videopipelines.classify_video_seed(ltx, plain, True), 'ltx-control')
+        self.assertEqual(_videopipelines.classify_video_seed(ltx, plain), 'ltx-image')
+        with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError):
+            _videopipelines.classify_video_seed(ltx, with_first)
+
+        self.assertEqual(
+            _videopipelines.video_seed_slots(plain, True), (None, None, gif))
+        self.assertEqual(
+            _videopipelines.video_seed_slots(plain), (gif, None, None))
+        self.assertEqual(
+            _videopipelines.video_seed_slots(with_first, True),
+            ('examples/media/earth.jpg', None, gif))
+
+        ic = 'Lightricks/ic-lora;weight-name=ic.safetensors'
+        for seed in (gif, f'examples/media/earth.jpg;control={gif}'):
+            config = _config(
+                model_path='org/ltx', model_type=ltx, ic_lora_uri=ic,
+                image_seeds=[seed], control_image_processors=['canny'])
+            config.check()
+
+        for values in (
+                {'image_seeds': [f'examples/media/earth.jpg;control={gif}']},
+                {'ic_lora_uri': ic},
+                {'ic_lora_uri': ic, 'image_seeds': [';end=examples/media/earth.jpg']},
+                {'ic_lora_uri': f'{ic};attention=2', 'image_seeds': [gif]},
+                {'image_seeds': ['examples/media/earth.jpg'], 'control_image_processors': ['canny']},
+                {'ic_lora_uri': ic,
+                 'image_seeds': [f'examples/media/earth.jpg;control={gif}, examples/media/beach.jpg']}):
+            config = _config(model_path='org/ltx', model_type=ltx, **values)
+            with self.assertRaises(_renderloopconfig.RenderLoopConfigError, msg=str(values)):
+                config.check()
+
+        image_model = _config(model_path='org/sd', ic_lora_uri=ic)
+        with self.assertRaises(_renderloopconfig.RenderLoopConfigError):
+            image_model.check()
+
+    def test_ic_lora_uri(self):
+        uri = _pipelinewrapper.uris.ICLoRAUri.parse(
+            'org/ic;scale=0.5;attention=0.25;downscale=2;weight-name=w.safetensors;revision=dev')
+        self.assertEqual((uri.scale, uri.attention, uri.downscale), (0.5, 0.25, 2))
+        lora = _pipelinewrapper.uris.LoRAUri.parse(uri.lora_uri())
+        self.assertEqual(
+            (lora.model, lora.scale, lora.weight_name, lora.revision),
+            ('org/ic', 0.5, 'w.safetensors', 'dev'))
+        self.assertIsNone(_pipelinewrapper.uris.ICLoRAUri.parse('org/ic').downscale)
+        for bad in ('org/ic;downscale=0', 'org/ic;attention=-1', 'org/ic;scale=x', 'org/ic;mode=1'):
+            with self.assertRaises(_pipelinewrapper.uris.InvalidLoRAUriError, msg=bad):
+                _pipelinewrapper.uris.ICLoRAUri.parse(bad)
+
+    def test_ltx_seed_processor_chains(self):
+        for processors in (['flip', '+', 'mirror'], ['+', 'mirror'], ['flip', '+']):
+            config = _config(
+                model_path='org/ltx',
+                model_type=_pipelinewrapper.ModelType.LTX,
+                image_seeds=['examples/media/earth.jpg;end=examples/media/beach.jpg'],
+                seed_image_processors=processors)
+            config.check()
+
         config = _config(
             model_path='org/ltx',
             model_type=_pipelinewrapper.ModelType.LTX,
-            image_seeds=['examples/media/earth.jpg;control=examples/media/earth.jpg'])
+            image_seeds=['examples/media/earth.jpg;end=examples/media/beach.jpg'],
+            seed_image_processors=['flip', '+', 'mirror', '+', 'grayscale'])
         with self.assertRaises(_renderloopconfig.RenderLoopConfigError):
             config.check()
+
+    def test_render_loop_video_processor_slots(self):
+        import dgenerate.renderloop as _renderloop
+
+        loop = _renderloop.RenderLoop.__new__(_renderloop.RenderLoop)
+        start, end, control = object(), object(), object()
+
+        def slots(seed, control_chain=None):
+            with unittest.mock.patch.object(
+                    _renderloop.RenderLoop, '_load_seed_image_processors', return_value=seed), \
+                    unittest.mock.patch.object(
+                        _renderloop.RenderLoop, '_load_control_image_processors',
+                        return_value=control_chain):
+                return loop._video_image_processors()
+
+        self.assertEqual(slots(start), {'start': start, 'end': start, 'control': None})
+        self.assertEqual(slots([start, end], control),
+                         {'start': start, 'end': end, 'control': control})
+        self.assertEqual(slots([None, end]), {'start': None, 'end': end, 'control': None})
+        with self.assertRaises(_renderloop.RenderLoopConfigError):
+            slots([start, end, start])
+        with self.assertRaises(_renderloop.RenderLoopConfigError):
+            slots(None, [control, control])
+
+    def test_legacy_ltx_rejects_control_mode(self):
+        with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError):
+            _videopipelines._ltx_pipeline_class('ltx-control', 'ltx')
+        from diffusers import LTX2InContextPipeline
+        self.assertIs(
+            _videopipelines._ltx_pipeline_class('ltx-control', 'ltx2'), LTX2InContextPipeline)
+
+    def test_lora_reference_downscale_factor(self):
+        import safetensors.torch
+
+        directory = tempfile.mkdtemp()
+        ic_lora = os.path.join(directory, 'ic.safetensors')
+        safetensors.torch.save_file(
+            {'w': torch.zeros(1)}, ic_lora, metadata={'reference_downscale_factor': '2'})
+        plain = os.path.join(directory, 'plain.safetensors')
+        safetensors.torch.save_file({'w': torch.zeros(1)}, plain)
+
+        factor = _videopipelines._ic_lora_downscale_factor
+        self.assertEqual(factor(f'{ic_lora};scale=0.8', None, None, True), 2)
+        self.assertEqual(factor(ic_lora, 3, None, True), 3)
+        self.assertEqual(factor(plain, None, None, True), 1)
+        self.assertEqual(factor(f'{directory};weight-name=ic.safetensors', None, None, True), 2)
+
+    def test_ltx_reference_kwargs(self):
+        class Pipe:
+            vae_temporal_compression_ratio = 8
+            vae_spatial_compression_ratio = 32
+
+        class Held:
+            reference_downscale_factor = 2
+
+        class Wrapper:
+            ic_lora_uri = 'ic.safetensors;attention=0.5'
+
+        args = _pipelinewrapper.DiffusionArguments()
+        args.reference_video_frames = [PIL.Image.new('RGB', (8, 8)) for _ in range(30)]
+        kwargs = _videopipelines._ltx_reference_kwargs(Wrapper(), Pipe(), Held(), args, 49, 512, 512)
+        self.assertEqual(kwargs['reference_downscale_factor'], 2)
+        self.assertEqual(kwargs['conditioning_attention_strength'], 0.5)
+        self.assertEqual(len(kwargs['reference_conditions'][0].frames), 25)
+
+        with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError):
+            _videopipelines._ltx_reference_kwargs(Wrapper(), Pipe(), Held(), args, 49, 544, 512)
+
+    def test_call_ltx_control_mode(self):
+        class Scheduler:
+            config = {'use_dynamic_shifting': False}
+
+        class Pipe:
+            scheduler = Scheduler()
+            vae_temporal_compression_ratio = 8
+            vae_spatial_compression_ratio = 32
+            duration_head = None
+
+        class Held:
+            pipeline = Pipe()
+            family = 'ltx2'
+            reference_downscale_factor = 2
+
+        class Wrapper:
+            device = 'cpu'
+            model_type = _pipelinewrapper.ModelType.LTX
+            model_cpu_offload = False
+            model_sequential_offload = False
+            model_path = 'org/ltx'
+            _revision = None
+            _variant = None
+            _subfolder = None
+            _dtype = None
+            _local_files_only = True
+            _auth_token = None
+            quantizer_uri = None
+            quantizer_map = None
+            transformer_uri = None
+            lora_uris = ['org/style']
+            lora_fuse_scale = None
+            ic_lora_uri = 'org/ic;weight-name=ic.safetensors;attention=0.75;downscale=2'
+
+        captured = {}
+
+        def create(**kwargs):
+            captured['cache'] = kwargs
+            return Held()
+
+        def invoke(wrapper, pipeline, kwargs):
+            captured['kwargs'] = kwargs
+
+            class Output:
+                frames = [PIL.Image.new('RGB', (4, 4))]
+                audio = None
+
+            return Output()
+
+        args = _pipelinewrapper.DiffusionArguments()
+        args.prompt = _prompt.Prompt('fox')
+        args.video_fps = 24
+        args.reference_video_frames = [PIL.Image.new('RGB', (8, 8)) for _ in range(20)]
+        args.images = [PIL.Image.new('RGB', (8, 8))]
+
+        with unittest.mock.patch.object(
+                _videopipelines, '_create_cached_video_pipeline',
+                side_effect=create), \
+                unittest.mock.patch.object(
+                    _videopipelines, 'pipeline_for_mode',
+                    side_effect=lambda pipeline, mode, family: captured.setdefault('mode', mode) and pipeline), \
+                unittest.mock.patch.object(
+                    _videopipelines._schedulers, 'load_scheduler'), \
+                unittest.mock.patch.object(
+                    _videopipelines, '_invoke', side_effect=invoke):
+            _videopipelines._call_ltx(Wrapper(), args)
+
+            without = Wrapper()
+            without.ic_lora_uri = None
+            with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError):
+                _videopipelines._call_ltx(without, args)
+
+        cache = captured['cache']
+        self.assertEqual(cache['lora_uris'], ('org/style',))
+        self.assertEqual(cache['ic_lora_uri'], 'org/ic;scale=1.0;weight-name=ic.safetensors')
+        self.assertEqual(cache['ic_lora_downscale'], 2)
+
+        kwargs = captured['kwargs']
+        self.assertEqual(captured['mode'], 'ltx-control')
+        self.assertEqual(kwargs['num_frames'], 17)
+        self.assertEqual(len(kwargs['reference_conditions'][0].frames), 17)
+        self.assertEqual(kwargs['reference_downscale_factor'], 2)
+        self.assertEqual(kwargs['conditioning_attention_strength'], 0.75)
+        self.assertEqual([c.index for c in kwargs['conditions']], [0])
+        self.assertNotIn('image', kwargs)
 
     def test_end_is_video_only(self):
         config = _config(

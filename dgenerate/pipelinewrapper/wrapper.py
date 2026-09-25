@@ -441,6 +441,7 @@ class DiffusionPipelineWrapper:
                  vae_uri: _types.OptionalUri = None,
                  lora_uris: _types.OptionalUris = None,
                  lora_fuse_scale: _types.OptionalFloat = None,
+                 ic_lora_uri: _types.OptionalUri = None,
                  image_encoder_uri: _types.OptionalUri = None,
                  ip_adapter_uris: _types.OptionalUris = None,
                  textual_inversion_uris: _types.OptionalUris = None,
@@ -498,6 +499,8 @@ class DiffusionPipelineWrapper:
         :param lora_fuse_scale: Optional global LoRA fuse scale value. Once all LoRAs are merged with
             their individual scales, the merged weights will be fused into the pipeline at this scale.
             The default value is 1.0.
+        :param ic_lora_uri: Optional ``--ic-lora`` URI string, an LTX-2 in-context LoRA
+            that reads the image seed control clip as its reference video.
         :param image_encoder_uri: One or more Image Encoder URI strings,
             Image Encoders are used with IP Adapters and Stable Cascade
         :param ip_adapter_uris: One or more IP Adapter URI strings
@@ -656,6 +659,15 @@ class DiffusionPipelineWrapper:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     '--transformer is only supported for --model-type sd3, flux, and ltx.')
 
+        if ic_lora_uri:
+            if not _enums.model_type_is_video(model_type):
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    '--ic-lora is only supported for --model-type ltx.')
+            try:
+                _uris.ICLoRAUri.parse(ic_lora_uri)
+            except _uris.InvalidLoRAUriError as e:
+                raise _pipelines.UnsupportedPipelineConfigError(str(e)) from e
+
         if adetailer_detector_uris and model_type not in {
             _enums.ModelType.SD,
             _enums.ModelType.SDXL,
@@ -733,6 +745,7 @@ class DiffusionPipelineWrapper:
 
         self._lora_uris = lora_uris
         self._lora_fuse_scale = lora_fuse_scale
+        self._ic_lora_uri = ic_lora_uri
         self._ip_adapter_uris = ip_adapter_uris
         self._textual_inversion_uris = textual_inversion_uris
         self._text_encoder_uris = text_encoder_uris
@@ -1032,6 +1045,13 @@ class DiffusionPipelineWrapper:
         Supplied ``--lora-fuse-scale`` value.
         """
         return self._lora_fuse_scale
+
+    @property
+    def ic_lora_uri(self) -> _types.OptionalUri:
+        """
+        Supplied ``--ic-lora`` uri string or ``None``.
+        """
+        return self._ic_lora_uri
 
     @property
     def auth_token(self) -> _types.OptionalString:

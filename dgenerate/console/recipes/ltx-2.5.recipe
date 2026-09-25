@@ -5,16 +5,29 @@ order: 19
 # The published scheduler is still the 8-step distilled table; overlay
 # use-dynamic-shifting=true so --inference-steps is used.
 # Leave Video Length empty to let the duration head choose.
-# First frame and last frame (end=) are optional.
+# First frame and last frame (end=) are optional, each can be a still or a
+# video. A video first frame is an opening clip the output continues from,
+# a video last frame is a closing clip the output leads into.
+# The IC-LoRA control clip is used with an IC-LoRA such as
+# Lightricks/LTX-2.3-22b-IC-LoRA-Union-Control, the control clip processor
+# turns it into the signal the IC-LoRA expects, for example canny edges.
+# Lightricks IC-LoRAs are trained on the distilled transformer.
+# The union control IC-LoRA needs an output size divisible by 64.
 
 \setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"
 
 \set auth_token {{ '--auth-token ' + quote(auth_token) if auth_token else '' }}
 
-\setp first_frame "@file[{"label":"First Frame", "optional":true, "mode":"input", "file-types":["images-in"]}]"
-\setp last_frame "@file[{"label":"Last Frame", "optional":true, "mode":"input", "file-types":["images-in"], "divider-after":true}]"
+\setp first_frame "@file[{"label":"First Frame / Opening Clip", "optional":true, "mode":"input", "file-types":["images-in", "videos-in"]}]"
+\setp last_frame "@file[{"label":"Last Frame / Closing Clip", "optional":true, "mode":"input", "file-types":["images-in", "videos-in"]}]"
+\setp control_clip "@file[{"label":"IC-LoRA Control Clip", "optional":true, "mode":"input", "file-types":["images-in", "videos-in"], "divider-after":true}]"
 
-\set image_seeds {{ (first_frame + (';end=' + last_frame if last_frame else '')) if first_frame else (('end=' + last_frame) if last_frame else '') }}
+\set image_seeds {{ control_clip if (control_clip and not first_frame and not last_frame) else ((first_frame + ((';end=' + last_frame) if last_frame else '') + ((';control=' + control_clip) if control_clip else '')) if (first_frame or last_frame) else '') }}
+
+\setp first_processor "@imageprocessor[{"label":"First Frame Processor"}]"
+\setp last_processor "@imageprocessor[{"label":"Last Frame Processor"}]"
+
+\set seed_processors {{ (quote(first_processor) + ((' + ' + quote(last_processor)) if last_processor else (' +' if last_frame else ''))) if first_processor else (('+ ' + quote(last_processor)) if last_processor else '') }}
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "Lightricks/LTX-2.5-Diffusers", "optional":false, "file-types":["models"]}]
 --model-type ltx {{ auth_token }}
@@ -23,9 +36,10 @@ order: 19
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "default":1}]
 @quantizer[{"divider-after":true}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA"}]
+@submodelbuilder[{"label":"IC-LoRA", "arg":"--ic-lora", "model": "IC-LoRA"}]
+@imageprocessor[{"arg":"--control-image-processors", "label":"IC-LoRA Control Clip Processor"}]
 @submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "default":"Lightricks/LTX-2.5-Diffusers;subfolder=transformer_full", "divider-after":true}]
-@switch[{"label":"No Aspect Correction?", "arg":"--no-aspect"}]
-@imageprocessor[{"arg":"--seed-image-processors", "label":"Seed Image Processor", "divider-after":true}]
+@switch[{"label":"No Aspect Correction?", "arg":"--no-aspect", "divider-after":true}]
 @int[{"label":"Inference Steps", "arg":"--inference-steps", "default":30, "min":1}]
 @float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":3, "min":0}]
 @float[{"label":"Audio Guidance Scale", "arg":"--audio-guidance-scales", "default":7, "min":0, "optional":true}]
@@ -41,4 +55,4 @@ order: 19
 @promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
 @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
 @device[{}]
---prompts "add your prompt here" {{ '--image-seeds ' + quote(image_seeds) if image_seeds else '' }}
+--prompts "add your prompt here" {{ '--image-seeds ' + quote(image_seeds) if image_seeds else '' }} {{ '--seed-image-processors ' + seed_processors if seed_processors else '' }}
