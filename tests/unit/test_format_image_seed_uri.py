@@ -331,6 +331,35 @@ class TestFormatImageSeedURI(unittest.TestCase):
                 frame_start=0
             )
 
+    def test_seed_and_end_image(self):
+        result = format_image_seed_uri(seed_images="first.png", end_image="last.png")
+        self.assertEqual(result, "first.png;end=last.png")
+
+    def test_end_image_only(self):
+        result = format_image_seed_uri(end_image="last.gif")
+        self.assertEqual(result, ";end=last.gif")
+
+    def test_end_image_keeps_control_keyword(self):
+        result = format_image_seed_uri(end_image="last.png", control_images="control.gif")
+        self.assertEqual(result, ";end=last.png;control=control.gif")
+
+    def test_end_image_with_seed_control_and_frames(self):
+        result = format_image_seed_uri(
+            seed_images="clip.gif",
+            end_image="last.png",
+            control_images="control.gif",
+            resize="512x512",
+            frame_start=16,
+            frame_end=40
+        )
+        self.assertEqual(
+            result,
+            "clip.gif;end=last.png;control=control.gif;resize=512x512;frame-start=16;frame-end=40")
+
+    def test_end_image_with_floyd_error(self):
+        with self.assertRaises(ValueError):
+            format_image_seed_uri(seed_images="seed.png", floyd_image="floyd.png", end_image="last.png")
+
 
 if __name__ == '__main__':
     unittest.main()

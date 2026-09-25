@@ -1785,6 +1785,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     Hugging Face repository slug / blob link, path to model file on disk (for example, a .pt, .pth, .bin,
                     .ckpt, or .safetensors file), or model folder containing model files.
                     ``ltx`` accepts LoRAs in diffusers format and fuses them into the transformer.
+                    IC-LoRAs for ``ltx`` are loaded with --ic-lora instead.
                     
                     If a LoRA model file exists at a URL which serves the file as
                     a raw download, you may provide an http/https link to it and it will be
@@ -1821,6 +1822,48 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             help="""LoRA weights are merged into the main model at this scale. When specifying multiple
                     LoRA models, they are fused together into one set of weights using their individual scale values,
                     after which they are fused into the main model at this scale value. (default: 1.0)."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '-icl', '--ic-lora', action='store', default=None, metavar="IC_LORA_URI",
+            dest='ic_lora_uri',
+            help="""Specify an IC-LoRA (in-context LoRA) for --model-type ltx with an LTX-2 checkpoint,
+                    for example a canny, depth, or pose control LoRA. It uses the same URI syntax as --loras,
+                    and is fused into the transformer together with any --loras.
+
+                    The IC-LoRA reads a reference clip from --image-seeds. A plain path is the reference,
+                    the same way a plain path is the control image when --control-nets is given:
+
+                    NOWRAP!
+                    --image-seeds "control.mp4"
+
+                    To also condition on a first or last frame, use the "control" image seed argument:
+
+                    NOWRAP!
+                    --image-seeds "first.png;control=control.mp4;end=last.png"
+
+                    Use --control-image-processors to turn the reference into the signal the IC-LoRA expects,
+                    for example "canny".
+
+                    Optional arguments are "scale", "attention", "downscale", "revision", "subfolder", and
+                    "weight-name":
+
+                    NOWRAP!
+                    "Lightricks/LTX-2.3-22b-IC-LoRA-Union-Control;weight-name=ltx-2.3-22b-ic-lora-union-control-ref0.5.safetensors;attention=0.8"
+
+                    The "scale" argument is the LoRA weight scale, the default value is 1.0.
+
+                    The "attention" argument, from 0 to 1, is how strongly the generated video attends
+                    to the reference clip, the default value is 1.0.
+
+                    The "downscale" argument is the factor the reference clip is shrunk by before encoding.
+                    IC-LoRAs trained on reduced-size references store it in their file metadata as
+                    "reference_downscale_factor", and that value is used when this argument is omitted.
+                    The output width and height must be divisible by 32 times this factor.
+
+                    "revision", "subfolder", and "weight-name" work the same way they do for --loras."""
         )
     )
 
@@ -4033,7 +4076,14 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     (--seed-image-processors affect-img-1 +)
                     
                     The amount of processors / processor chains must not exceed the amount of input images,
-                    or you will receive a syntax error message. To obtain more information about what image
+                    or you will receive a syntax error message.
+
+                    For --model-type ltx, one chain runs on every frame of both the opening media and
+                    the "end" image seed argument. With two chains, the first runs on the opening media
+                    and the second on "end", for example: (--seed-image-processors grayscale +) processes
+                    only the opening media.
+
+                    To obtain more information about what image
                     processors are available and how to use them, see: --image-processor-help."""
         )
     )
@@ -4115,7 +4165,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     
                     would indicate that
                     the first control guidance image is not to be processed, only the second.
-                    
+
+                    For --model-type ltx, one chain runs on every frame of the --ic-lora reference clip,
+                    for example: --ic-lora ... --image-seeds "video.mp4" --control-image-processors canny.
+
                     To obtain more information about what image processors
                     are available and how to use them, see: --image-processor-help."""
         )

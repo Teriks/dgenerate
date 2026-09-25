@@ -541,6 +541,10 @@ Video Model Feature Support
      - ✅
      - ✅
 
+   * - IC-LoRA control
+     - ✅
+     - ❌
+
    * - Length predicted from prompt
      - ✅
      - ❌

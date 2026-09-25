@@ -603,6 +603,13 @@ class RenderLoopConfig(_types.SetFromMixin):
     The default value when ``None`` is specified is ``1.0``.
     """
 
+    ic_lora_uri: _types.OptionalUri = None
+    """
+    Optional IC-LoRA URI for LTX-2, this corresponds to the ``--ic-lora`` argument
+    of the dgenerate command line tool. The IC-LoRA reads the image seed control clip
+    as its reference video.
+    """
+
     image_encoder_uri: _types.OptionalUri = None
     """
     Optional user specified Image Encoder URI when using IP Adapter models or Stable Cascade.
@@ -2495,7 +2502,20 @@ class RenderLoopConfig(_types.SetFromMixin):
             if self.video_fps:
                 raise RenderLoopConfigError(
                     f'{a_namer("video_fps")} is only supported for the ltx video model type.')
+            if self.ic_lora_uri:
+                raise RenderLoopConfigError(
+                    f'{a_namer("ic_lora_uri")} is only supported for the ltx video model type.')
             return
+
+        if self.ic_lora_uri:
+            try:
+                _pipelinewrapper.uris.ICLoRAUri.parse(self.ic_lora_uri)
+            except _pipelinewrapper.uris.InvalidLoRAUriError as e:
+                raise RenderLoopConfigError(f'{a_namer("ic_lora_uri")}: {e}') from e
+            if not self.image_seeds:
+                raise RenderLoopConfigError(
+                    f'{a_namer("ic_lora_uri")} needs a control clip in {a_namer("image_seeds")}, '
+                    f'for example {a_namer("image_seeds")} "control.mp4".')
 
         if self.video_fps is None:
             self.video_fps = [24.0]
@@ -2575,7 +2595,6 @@ class RenderLoopConfig(_types.SetFromMixin):
             ('inpaint_crop_masked', self.inpaint_crop_masked),
             ('inpaint_crop_feathers', self.inpaint_crop_feathers),
             ('mask_image_processors', self.mask_image_processors),
-            ('control_image_processors', self.control_image_processors),
             ('latents', self.latents),
             ('latents_processors', self.latents_processors),
             ('latents_post_processors', self.latents_post_processors),
@@ -2614,9 +2633,11 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'including URI arguments such as shift and use-dynamic-shifting. '
                 f'Omitting --scheduler keeps the checkpoint scheduler.')
 
-        if self.seed_image_processors and IMAGE_PROCESSOR_SEP in self.seed_image_processors:
+        if self.seed_image_processors and \
+                self.seed_image_processors.count(IMAGE_PROCESSOR_SEP) > 1:
             raise RenderLoopConfigError(
-                f'Video models accept one {a_namer("seed_image_processors")} chain.')
+                f'Video models accept at most two {a_namer("seed_image_processors")} chains, '
+                f'one for the opening image seed media and one for end=.')
 
     def _check_floyd_requirements(self, a_namer: typing.Callable[[str], str]):
         """Check Floyd model specific requirements."""
@@ -3054,10 +3075,17 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         if _pipelinewrapper.model_type_is_video(self.model_type):
             import dgenerate.pipelinewrapper.videopipelines as _videopipelines
+            ic_lora = bool(self.ic_lora_uri)
             try:
-                _videopipelines.classify_video_seed(self.model_type, parsed)
+                _videopipelines.classify_video_seed(self.model_type, parsed, ic_lora)
             except _pipelinewrapper.UnsupportedPipelineConfigError as e:
                 raise RenderLoopConfigError(str(e)) from e
+            _, _, control = _videopipelines.video_seed_slots(parsed, ic_lora)
+            if self.control_image_processors and control is None:
+                raise RenderLoopConfigError(
+                    f'{a_namer("control_image_processors")} runs on the IC-LoRA control clip, '
+                    f'and {a_namer("image_seeds")} "{uri}" has none. '
+                    f'Load an IC-LoRA with {a_namer("ic_lora_uri")}.')
 
         if _pipelinewrapper.model_type_is_s_cascade(self.model_type):
             if not parsed.is_single_spec:

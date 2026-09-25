@@ -1,0 +1,33 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# A normal LoRA with --loras. The cinemagraph LoRA animates one part of a
+# still and keeps the rest frozen. Its trigger word is CINEMAGRAPH_MOTION.
+
+# The LoRA is fused into the transformer. scale= is its weight, the model
+# card suggests 1.0 to 1.2.
+
+# The Lightricks LoRA repositories are gated, accept the terms on the model
+# page before running this.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+Lightricks/LTX-2.5-Diffusers
+--model-type ltx
+--dtype bfloat16
+--model-sequential-offload
+--loras "Lightricks/LTX-2.5-22b-LoRA-Cinemagraph;scale=1.1;weight-name=ltx-2.5-22b-lora-cinemagraph-0.9.safetensors"
+--guidance-scales 1
+--video-fps 25
+--gen-seeds 1
+--output-size 768x512
+--video-lengths 4
+--animation-format mp4
+--output-path ltx-lora-cinemagraph
+--image-seeds ../../../media/beach.jpg
+--prompts "CINEMAGRAPH_MOTION, tripod locked-off static camera, zero camera movement, the white sand, footprints, trees, and sky remain completely frozen, only the clear turquoise water moves, gentle waves ripple and lap against the shore, sunlight shimmers on the shallow water, seamless natural loop"

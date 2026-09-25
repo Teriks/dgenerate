@@ -22,5 +22,5 @@ Lightricks/LTX-2.5-Diffusers
 --video-lengths 4
 --animation-format mp4
 --output-path ltx-video-lead-in
---image-seeds ";end=../../media/rickroll-roll.gif"
+--image-seeds ";end=../../../media/rickroll-roll.gif"
 --prompts "A singer in a dark blazer and striped shirt walks in from the left, takes the vintage microphone stand in one hand, and starts to sway and sing. Soft white light streams through the lattice window behind him. The camera does not move."

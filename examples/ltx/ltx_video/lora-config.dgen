@@ -1,0 +1,27 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# LTX-Video (2B) with a normal LoRA from --loras. This LoRA was trained on
+# hydraulic press clips, its trigger word is PIKA_CRUSH. scale= is its weight.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+Lightricks/LTX-Video
+--model-type ltx
+--dtype bfloat16
+--model-sequential-offload
+--loras "finetrainers/LTX-Video-0.9.0-crush-smol-v0;scale=0.9"
+--inference-steps 50
+--guidance-scales 3
+--video-fps 25
+--gen-seeds 1
+--output-size 768x512
+--video-lengths 4
+--animation-format mp4
+--output-path ltx-video-lora
+--prompts "PIKA_CRUSH A red toy car is being crushed by a large hydraulic press, which is flattening objects as if they were under a hydraulic press.; worst quality, inconsistent motion, blurry, jittery, distorted"

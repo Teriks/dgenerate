@@ -56,5 +56,5 @@ When the scheduler uses dynamic shifting, ``sigmas`` comes from
 step count to the length of the result and uses your ``--guidance-scales``
 value as written. See :ref:`video-generation`.
 
-@EXAMPLE[@PROJECT_DIR/examples/ltx/basic_ltx2/sigmas-config.dgen]
+@EXAMPLE[@PROJECT_DIR/examples/ltx/ltx2/sigmas/sigmas-config.dgen]
 

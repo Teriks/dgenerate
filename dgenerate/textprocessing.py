@@ -1727,7 +1727,8 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
                           resize: str | tuple[int | str, int | str] | None = None,
                           aspect: bool = True,
                           frame_start: int | None = None,
-                          frame_end: int | None = None) -> str:
+                          frame_end: int | None = None,
+                          end_image: str | None = None) -> str:
     """
     Formats a ``--image-seeds`` URI to its shortest possible string form.
 
@@ -1738,6 +1739,7 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
                        if ``adapter_images`` are used with ``floyd_image``.
                        if ``latents`` are used with ``floyd_image``.
                        if both ``control_images`` and ``floyd_image`` are specified.
+                       if both ``end_image`` and ``floyd_image`` are specified.
                        if ``resize`` is specified when only ``latents`` are provided.
                        if ``aspect=False`` is specified when only ``latents`` are provided.
                        if ``frame_start`` or ``frame_end`` is specified when only ``latents`` are provided.
@@ -1755,6 +1757,7 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
     :param aspect: Preserve aspect ratio?
     :param frame_start: Optional frame start index
     :param frame_end: Optional frame end index
+    :param end_image: Video model last frame or closing clip path (``end=``)
     :return: The generated ``--image-seeds`` URI string
     """
 
@@ -1808,6 +1811,9 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
     if control_images and floyd_image:
         raise ValueError('control_images cannot be specified with floyd_image.')
 
+    if end_image and floyd_image:
+        raise ValueError('end_image cannot be specified with floyd_image.')
+
     # Handle resize validation
     if resize is not None:
         if isinstance(resize, str):
@@ -1826,7 +1832,7 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
             raise ValueError('resize argument expects a string or a tuple.')
 
     # Check if only latents are specified (no images that can be resized)
-    if latents and not (seed_images or control_images or adapter_images):
+    if latents and not (seed_images or control_images or adapter_images or end_image):
         if resize:
             raise ValueError(
                 'resize cannot be specified when only latents are provided (latents are used as-is).')
@@ -1840,7 +1846,7 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
                 'provided (latents are used as-is and do not have animation frames).')
 
     # Special case: adapter images only
-    if adapter_images and not any([seed_images, mask_images, control_images, latents, floyd_image]):
+    if adapter_images and not any([seed_images, mask_images, control_images, latents, floyd_image, end_image]):
         components.append('adapter:' + adapter_images)
         return ";".join(components)
 
@@ -1851,7 +1857,10 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
         return ";".join(components)
 
     # Handle base image (seed, control, or latents)
-    if control_images and not seed_images and not mask_images and not latents:
+    if end_image:
+        # Control images stay in control= so they are not read as the opening clip
+        pass
+    elif control_images and not seed_images and not mask_images and not latents:
         # Control image alone becomes the seed
         seed_images = control_images
         control_images = None
@@ -1860,9 +1869,9 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
         seed_images = 'latents:' + latents
         latents = None
 
-    # Add base image
-    if seed_images:
-        components.append(seed_images)
+    # Add base image, an empty first component leaves the opening frame unset
+    if seed_images or end_image:
+        components.append(seed_images if seed_images else '')
 
     # Check if we can use legacy format (no keyword arguments)
     use_legacy = (
@@ -1870,6 +1879,7 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
         not adapter_images and
         not latents and
         not floyd_image and
+        not end_image and
         aspect is True and
         frame_start is None and
         frame_end is None and
@@ -1894,6 +1904,8 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
         # Modern format with keywords
         if mask_images:
             add_component_if_valid(mask_images, "mask")
+        if end_image:
+            add_component_if_valid(end_image, "end")
         if latents:
             add_component_if_valid(latents, "latents")
         if adapter_images:

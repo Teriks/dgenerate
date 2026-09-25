@@ -1,0 +1,31 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Separate processors for the first and last frame. With two
+# --seed-image-processors chains split by +, the first chain runs on the
+# opening image seed media and the second on end=.
+
+# Here the first frame is a grayscale copy of the painting and the last frame
+# is the original, so the clip fills in with color. "grayscale +" leaves
+# end= unprocessed, and "+ grayscale" would process only end=.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+Lightricks/LTX-2.5-Diffusers
+--model-type ltx
+--dtype bfloat16
+--model-sequential-offload
+--guidance-scales 1
+--gen-seeds 1
+--output-size 512x512
+--video-lengths 3
+--animation-format mp4
+--output-path ltx-end-processor
+--image-seeds "../../../media/monalisa.png;end=../../../media/monalisa.png"
+--seed-image-processors grayscale +
+--prompts "A black and white painting of a woman slowly fills with warm color. The camera does not move."

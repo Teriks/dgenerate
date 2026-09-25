@@ -272,6 +272,9 @@ def reconstruct_dgenerate_opts(
     if wrapper.lora_fuse_scale is not None:
         opts.append(('--lora-fuse-scale', wrapper.lora_fuse_scale))
 
+    if wrapper.ic_lora_uri:
+        opts.append(('--ic-lora', wrapper.ic_lora_uri))
+
     if wrapper.image_encoder_uri:
         opts.append(('--image-encoder', wrapper.image_encoder_uri))
 
