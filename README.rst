@@ -15,10 +15,11 @@ dgenerate
 
 |Documentation| |Latest Release| |Support Dgenerate|
 
-``dgenerate`` is a scriptable command-line tool (and library) for generating/editing images and processing animated inputs with AI.
+``dgenerate`` is a scriptable command-line tool (and library) for generating and editing images, generating whole video clips with LTX,
+and processing animated inputs with AI.
 
-Whether you're generating or editing single images, batch processing hundreds of variations, or transforming entire videos frame-by-frame,
-dgenerate provides a flexible, scriptable interface for a multitude of image generation and editing tasks.
+Whether you're generating or editing single images, batch processing hundreds of variations, generating a short mp4 from a prompt,
+or transforming entire videos frame-by-frame, dgenerate provides a flexible, scriptable interface for a multitude of generation and editing tasks.
 
 For the extensive usage manual, manual installation guide, and API documentation, visit `readthedocs <http://dgenerate.readthedocs.io/en/version_6.0.0/>`_.
 
@@ -37,6 +38,16 @@ Image Generation
 * Text to image, image to image, and inpainting
 * Diffusion-based image upscaling
 
+Video generation (LTX)
+----------------------
+
+* Generate a whole clip in one pipeline call with ``--model-type ltx`` (`Lightricks LTX-2.5 <https://huggingface.co/Lightricks/LTX-2.5-Diffusers>`_ and the earlier `LTX-Video <https://huggingface.co/Lightricks/LTX-Video>`_ checkpoints)
+* Text-to-video, or condition with ``--image-seeds``: a still or clip as the opening frames, ``end=`` as the closing frame, or both together
+* Use a video, GIF, or other animated file as conditioning to extend existing footage or generate a lead-in; slice with ``--frame-start`` / ``--frame-end``
+* Set clip length and frame rate with ``--video-lengths`` and ``--video-fps``; LTX-2.5 can predict duration from the prompt when length is omitted
+* LTX-2.5 muxes generated audio into mp4 output; the earlier LTX-Video model accepts a GGUF diffusion transformer
+* Example configs under ``examples/ltx/basic_ltx2`` and ``examples/ltx/basic_ltx``; see the `video generation manual <https://dgenerate.readthedocs.io/en/version_6.0.0/manual.html#video-generation>`_
+
 Image Processing
 ----------------
 
@@ -45,10 +56,10 @@ Image Processing
 * Run upscaling / image restoration models such as ESRGAN, SwinIR, etc... via `spandrel <https://github.com/chaiNNer-org/spandrel>`_
 * Run image processors generically on any image
 
-Animation & Video Processing
-----------------------------
+Animation & video processing (per frame)
+----------------------------------------
 
-* Transform videos into artistic non-temporally consistent animations
+* Run image diffusion once per frame to transform videos into artistic, non-temporally consistent animations (distinct from LTX whole-clip generation above)
 * Process GIF, WebP, APNG, MP4, and any other video format supported by `av <https://github.com/PyAV-Org/PyAV>`_ (ffmpeg)
 * Memory-efficient, streamed processing of video content from disk
 * Apply image processors to any animated input, for example upscaling / classification / mask generation
