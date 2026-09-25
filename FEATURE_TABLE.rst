@@ -17,7 +17,7 @@ Diffusion Model Feature Support Tables
    * ``--model-type flux`` (Flux.1)
    * ``--model-type flux-fill`` (Flux.1 - Infill / Outfill)
    * ``--model-type flux-kontext`` (Flux.1 - Pix2Pix like editing)
-
+   * ``--model-type ltx`` (LTX-2.5 and LTX-Video, see `Video Model Feature Support`_)
 
 .. list-table:: Generation modes by ``--model-type``
    :widths: 40 10 10 10
@@ -514,6 +514,60 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
      - ✅
+
+Video Model Feature Support
+---------------------------
+
+``--model-type ltx`` generates a whole clip in one pipeline call. The checkpoint's
+``model_index.json`` selects LTX-2.5 (``LTX2Pipeline``) or the earlier LTX-Video (``LTXPipeline``).
+
+.. list-table:: Features by LTX checkpoint
+   :widths: 40 10 10
+   :header-rows: 1
+
+   * - Feature
+     - LTX-2.5
+     - LTX-Video
+
+   * - Text to video
+     - ✅
+     - ✅
+
+   * - First / last frame images
+     - ✅
+     - ✅
+
+   * - Video conditioning
+     - ✅
+     - ✅
+
+   * - Length predicted from prompt
+     - ✅
+     - ❌
+
+   * - Audio
+     - ✅
+     - ❌
+
+   * - Sigmas and audio guidance
+     - ✅
+     - ❌
+
+   * - LoRA
+     - ✅
+     - ✅
+
+   * - Quantization
+     - ✅
+     - ✅
+
+   * - Replacement transformer
+     - ✅
+     - ✅
+
+LTX does not support ControlNets, adapters, textual inversions, prompt weighters, inpainting,
+or the acceleration features in the tables above. GGUF transformers are tested with LTX-Video.
+See :ref:`video-generation` for usage and ``examples/ltx`` for example configs.
 
 PAG Support Caveats
 -------------------
