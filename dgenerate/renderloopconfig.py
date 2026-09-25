@@ -2597,16 +2597,6 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'{a_namer("vae_tiling")} cannot be used with video model types. '
                 f'LTX always tiles the video VAE; that flag is ignored.')
 
-        if self.frame_start:
-            raise RenderLoopConfigError(
-                f'{a_namer("frame_start")} cannot be used with video model types. '
-                f'LTX accepts still images, not sliced animations.')
-
-        if self.frame_end is not None:
-            raise RenderLoopConfigError(
-                f'{a_namer("frame_end")} cannot be used with video model types. '
-                f'LTX accepts still images, not sliced animations.')
-
         schedulers = self.scheduler_uri
         if isinstance(schedulers, str) or schedulers is None:
             schedulers = [schedulers]

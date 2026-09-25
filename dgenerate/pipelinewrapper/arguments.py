@@ -1045,6 +1045,18 @@ class DiffusionArguments(_types.SetFromMixin):
     Last-frame conditioning image for LTX, from the image seed ``end`` argument.
     """
 
+    video_frames: _types.OptionalImages = None
+    """
+    Leading conditioning clip for LTX, used when the image seed path is a video
+    or animated image. The generated clip continues from these frames.
+    """
+
+    end_video_frames: _types.OptionalImages = None
+    """
+    Trailing conditioning clip for LTX, used when the image seed ``end`` argument
+    is a video or animated image. The generated clip leads into these frames.
+    """
+
     inference_steps: _types.OptionalInteger = None
     """
     The number of denoising steps. More denoising steps usually lead to a higher quality image

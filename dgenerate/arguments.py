@@ -3914,7 +3914,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '-fs', '--frame-start', default=0, type=_type_frame_start, metavar="FRAME_NUMBER",
             help="""Starting frame slice point for animated files (zero-indexed), the specified frame
-                    will be included. (default: 0)"""
+                    will be included. For --model-type ltx this slices a video or animated
+                    conditioning clip in --image-seeds. (default: 0)"""
         )
     )
 
@@ -3922,7 +3923,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
         parser.add_argument(
             '-fe', '--frame-end', default=None, type=_type_frame_end, metavar="FRAME_NUMBER",
             help="""Ending frame slice point for animated files (zero-indexed), the specified frame
-                    will be included."""
+                    will be included. For --model-type ltx this slices a video or animated
+                    conditioning clip in --image-seeds."""
         )
     )
 

@@ -21,58 +21,44 @@
 
 
 import contextlib
-import inspect
-import os
+import sys
 import threading
 import time
 import typing
+
 import huggingface_hub
 import tqdm
-import traceback
+from huggingface_hub.utils.tqdm import are_progress_bars_disabled, is_tqdm_disabled
 
 _original_thread_init = threading.Thread.__init__
+
+# Threads started from these modules get no download progress bar,
+# because the output in dgenerate's case is generally not useful.
+_NO_TQDM_THREAD_MODULES = frozenset({
+    'diffusers.loaders.single_file',
+    'diffusers.pipelines.pipeline_utils',
+})
 
 
 def _patched_thread_init(self, *args, **kwargs):
     self._dgenerate_no_tqdm_thread = False
-    
-    # Delay imports to avoid circular import issues during module initialization.
-    # Only import these modules when we actually need to check the stack frames.
-    diffusers_single_file = None
-    diffusers_pipeline_utils = None
-    
-    try:
-        # Only try to import if diffusers is already available in sys.modules
-        # This avoids triggering imports during the initial diffusers loading phase
-        import sys
-        if 'diffusers.loaders.single_file' in sys.modules:
-            import diffusers.loaders.single_file
-            diffusers_single_file = diffusers.loaders.single_file
-        if 'diffusers.pipelines.pipeline_utils' in sys.modules:
-            import diffusers.pipelines.pipeline_utils
-            diffusers_pipeline_utils = diffusers.pipelines.pipeline_utils
-    except ImportError:
-        # If imports fail, we'll just skip the tqdm suppression for now
-        pass
 
-    # prevent these modules from creating a multithreaded tqdm progress bar
-    # because the output in dgenerates case is generally not useful
-    if diffusers_single_file is not None or diffusers_pipeline_utils is not None:
-        for frame_info in inspect.stack():
-            module = inspect.getmodule(frame_info.frame)
-            if module:
-                if diffusers_single_file is not None and module is diffusers_single_file:
-                    self._dgenerate_no_tqdm_thread = True
-                    break
-                if diffusers_pipeline_utils is not None and module is diffusers_pipeline_utils:
-                    self._dgenerate_no_tqdm_thread = True
-                    break
+    # Walk raw frames by module name. inspect.stack() reads source lines for
+    # every frame and costs about a millisecond per Thread() at dgenerate's
+    # usual call depth.
+    frame = sys._getframe(1)
+    while frame is not None:
+        if frame.f_globals.get('__name__') in _NO_TQDM_THREAD_MODULES:
+            self._dgenerate_no_tqdm_thread = True
+            break
+        frame = frame.f_back
 
     _original_thread_init(self, *args, **kwargs)
 
+
 threading.Thread.__init__ = _patched_thread_init
 
-_main_thread_id = threading.get_ident()
+_main_thread_id = threading.main_thread().ident
 
 
 class ProgressAggregator:
@@ -316,11 +302,15 @@ def _get_progress_bar_context(
         _tqdm_bar: typing.Optional[tqdm.tqdm] = None,
         **kwargs
 ) -> typing.ContextManager[tqdm.tqdm]:
-    global _main_thread_id
-
     if threading.get_ident() != _main_thread_id and \
             getattr(threading.current_thread(), '_dgenerate_no_tqdm_thread', False):
         return tqdm.tqdm(disable=True)
+
+    # huggingface_hub switches bars off for HF_HUB_DISABLE_PROGRESS_BARS,
+    # disable_progress_bars(), and a NOTSET log level. The wrappers below are
+    # plain tqdm and would ignore that, so hand those calls back. The "only on
+    # a TTY" default is not followed, so downloads still show in the Console UI.
+    disabled = are_progress_bars_disabled(name) or is_tqdm_disabled(log_level) is True
 
     # snapshot_download passes _AggregatedTqdm, which combines per-file
     # updates itself. Every other bar, including a tqdm_class passed for a
@@ -328,7 +318,7 @@ def _get_progress_bar_context(
     # 1.x always supplies the tqdm_class argument, so treating any class as
     # a reason to defer would skip those wrappers.
     aggregated = tqdm_class is not None and getattr(tqdm_class, '__name__', '') == '_AggregatedTqdm'
-    if aggregated or kwargs:
+    if disabled or aggregated or kwargs:
         return _original_get_progress_bar_context(
             desc=desc,
             log_level=log_level,

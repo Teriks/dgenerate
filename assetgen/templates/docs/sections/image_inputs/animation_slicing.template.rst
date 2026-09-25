@@ -38,6 +38,9 @@ If your slice only results in the processing of a single frame, an animated file
 not be generated, only a single image output will be generated for that image seed during the
 generation step.
 
+For ``--model-type ltx`` the slice picks the frames of a conditioning clip instead,
+and the output is always one clip. See `Video conditioning`_.
+
 
 .. code-block:: bash
 

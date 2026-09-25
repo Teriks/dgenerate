@@ -55,6 +55,7 @@ from dgenerate.console.procmon import ProcessMonitor
 from dgenerate.console.scrolledtext import ScrolledText
 from dgenerate.console.stdinpipe import StdinPipeFullError
 from dgenerate.console.tearoffimagepane import TearOffImagePane
+from dgenerate.console.terminaltext import TerminalText
 
 DGENERATE_EXE = \
     os.path.splitext(
@@ -396,8 +397,8 @@ class DgenerateConsole(tk.Tk):
         # Initialize tearoff image pane
         self._tearoff_image_pane = TearOffImagePane(
             master=self._paned_window_horizontal,
-            on_error=lambda s: self._write_stderr_output(s),
-            on_info=lambda s: self._write_stdout_output(s),
+            on_error=lambda s: self._write_console_message(s, error=True),
+            on_info=lambda s: self._write_console_message(s),
             get_cwd=lambda: self._shell_procmon.cwd(),
             initial_window_geometry='512x512',
             window_title='Image Preview'
@@ -499,10 +500,9 @@ class DgenerateConsole(tk.Tk):
             "See: \\templates_help or \\templates_help (variable name) for help with template variables.\n"
             "============================================================\n\n")
 
-        self._output_text.text.config(state=tk.DISABLED)
+        self._output_terminal = TerminalText(self._output_text.text)
 
-        self._next_text_update_line_return = False
-        self._next_text_update_line_escape = False
+        self._output_text.text.config(state=tk.DISABLED)
 
         self._shell_procmon = ProcessMonitor(events_per_tick=self._output_lines_per_refresh)
         self._shell_procmon.stderr_callback = self._write_stderr_output
@@ -549,7 +549,7 @@ class DgenerateConsole(tk.Tk):
                 self._input_text.clear()
                 self._input_text.text.insert('1.0', formatted_text)
         except Exception as e:
-            self._write_stderr_output(str(e))
+            self._write_console_message(str(e), error=True)
 
     def _set_theme(self, name):
         self._input_text.set_theme(name)
@@ -695,18 +695,18 @@ class DgenerateConsole(tk.Tk):
             self._output_text.disable_word_wrap()
 
     def _shell_return_code_message(self, return_code):
-        self._write_stdout_output(
+        self._write_console_message(
             f'\nShell Process Terminated, Exit Code: {return_code}\n')
 
     def _shell_restarting_commence_message(self):
-        self._write_stdout_output('Restarting Shell Process...\n')
+        self._write_console_message('Restarting Shell Process...\n')
         return self._last_known_working_dir
 
     def _shell_restarting_finish_message(self):
         self._update_cwd_title(self._last_known_working_dir)
 
-        self._write_stdout_output('Shell Process Started.\n'
-                                  '======================\n')
+        self._write_console_message('Shell Process Started.\n'
+                                    '======================\n')
 
     def _load_input_entry_text(self):
         fn = _filedialog.open_file_dialog(
@@ -819,6 +819,7 @@ class DgenerateConsole(tk.Tk):
             'error', '1.0', 'end')
 
         self._output_text.text.delete('1.0', tk.END)
+        self._output_terminal.reset()
         self._output_text.text.config(state=tk.DISABLED)
 
     def _check_text_for_latest_image(self, text):
@@ -840,7 +841,7 @@ class DgenerateConsole(tk.Tk):
         self.title(f'Dgenerate Console: {directory}')
         self._last_known_working_dir = directory
 
-    def _add_output_line(self, text, tag=None):
+    def _add_output_line(self, text, tag=None, stream=None):
         if text.startswith('Working Directory Changed To: '):
             # update using shallow psutil query
             self._update_cwd_title()
@@ -859,26 +860,9 @@ class DgenerateConsole(tk.Tk):
             self._output_text.text.tag_remove('error', *remove_range)
             self._output_text.text.delete(*remove_range)
 
-        clean_text = _textprocessing.remove_terminal_escape_sequences(text).rstrip() + '\n'
-        replace_range = ('end-2c linestart', 'end-1c')
-
-        if self._next_text_update_line_return:
-            self._output_text.text.tag_remove('error', *replace_range)
-            self._output_text.text.replace(*replace_range, clean_text)
-        elif self._next_text_update_line_escape:
-            if text.strip():
-                self._output_text.text.tag_remove('error', *replace_range)
-                self._output_text.text.replace(*replace_range, clean_text)
-        else:
-            self._output_text.text.insert(tk.END, clean_text)
-
-        if tag is not None:
-            self._output_text.text.tag_add(tag, f'end - {len(clean_text) + 1} chars', 'end-1c')
+        self._output_terminal.write(text, tag=tag, stream=stream)
 
         self._output_text.text.config(state=tk.DISABLED)
-
-        self._next_text_update_line_escape = text.endswith('\u001B[A\r')
-        self._next_text_update_line_return = text.endswith('\r')
 
         if scroll:
             self._output_text.text.see(tk.END)
@@ -889,7 +873,7 @@ class DgenerateConsole(tk.Tk):
 
         sys.stdout.buffer.write(text)
         sys.stdout.flush()
-        self._add_output_line(text.decode('utf-8'))
+        self._add_output_line(text.decode('utf-8'), stream='stdout')
 
     def _write_stderr_output(self, text: bytes | str):
         if isinstance(text, str):
@@ -897,7 +881,16 @@ class DgenerateConsole(tk.Tk):
 
         sys.stderr.buffer.write(text)
         sys.stderr.flush()
-        self._add_output_line(text.decode('utf-8'), tag='error')
+        self._add_output_line(text.decode('utf-8'), tag='error', stream='stderr')
+
+    def _write_console_message(self, text: str, error: bool = False):
+        # Separate stream from the shell process, so a message never lands on a live progress bar line.
+        if not text.endswith('\n'):
+            text += '\n'
+        file = sys.stderr if error else sys.stdout
+        file.buffer.write(text.encode('utf-8'))
+        file.flush()
+        self._add_output_line(text, tag='error' if error else None, stream='console')
 
     def _show_previous_command(self, event):
         if event.state & 0x0004:
@@ -1044,10 +1037,11 @@ class DgenerateConsole(tk.Tk):
             self._shell_procmon.stdin_pipe.write(
                 (user_input + '\n\n' + '\\reset_lineno' + '\n\n').encode('utf-8'))
         except StdinPipeFullError:
-            self._write_stderr_output(
+            self._write_console_message(
                 'WARNING: The command queue is full, '
                 'please wait before submitting more commands, '
-                'or kill the interpreter.')
+                'or kill the interpreter.',
+                error=True)
 
         if self._command_history:
             if self._command_history[-1] != user_input:
@@ -1233,9 +1227,9 @@ class DgenerateConsole(tk.Tk):
 
         try:
             self._image_preview_load_image(path)
-            self._write_stdout_output(f"Manually loaded image: {path}\n")
+            self._write_console_message(f"Manually loaded image: {path}\n")
         except Exception as e:
-            self._write_stderr_output(f"Failed to load image: {e}\n")
+            self._write_console_message(f"Failed to load image: {e}\n", error=True)
 
     @staticmethod
     def _get_selected_text(text_widget: tk.Text):

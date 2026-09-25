@@ -190,33 +190,78 @@ def classify_video_seed(model_type: _enums.ModelType | str,
         f'{_enums.get_model_type_string(model_type)} is not a video model type.')
 
 
-def load_rgb_image(path: str,
-                   local_files_only: bool = False,
-                   resize_resolution: _types.OptionalSize = None,
-                   aspect_correct: bool = True,
-                   align: int = 1) -> PIL.Image.Image:
+def load_rgb_frames(path: str,
+                    local_files_only: bool = False,
+                    resize_resolution: _types.OptionalSize = None,
+                    aspect_correct: bool = True,
+                    align: int = 1,
+                    frame_start: int = 0,
+                    frame_end: _types.OptionalInteger = None,
+                    max_frames: _types.OptionalInteger = None) -> tuple[list[PIL.Image.Image], float | None]:
     """
-    Open a local path or URL as an RGB image.
+    Open a local path or URL as a list of RGB frames.
+
+    A still image gives one frame. Videos and animated images are sliced by
+    ``frame_start`` and ``frame_end`` (inclusive), then cut to ``max_frames``.
 
     :param path: file path or URL
     :param local_files_only: refuse to download
     :param resize_resolution: optional resize
     :param aspect_correct: preserve aspect ratio when resizing
     :param align: pixel alignment, ``1`` disables it
-    :return: RGB image
+    :param frame_start: first frame index to keep
+    :param frame_end: last frame index to keep, ``None`` for the end of the file
+    :param max_frames: stop after this many frames, ``None`` for no limit
+    :raise UnsupportedPipelineConfigError: if the slice selects no frames
+    :return: ``(frames, fps)``. ``fps`` is ``None`` for a still image.
     """
     mime_type, stream = _mediainput.fetch_media_data_stream(
         path, local_files_only=local_files_only)
     try:
-        if not _mediainput.mimetype_is_static_image(mime_type):
+        if _mediainput.mimetype_is_static_image(mime_type):
+            return [_mediainput.create_image(
+                stream,
+                file_source=path,
+                resize_resolution=resize_resolution,
+                aspect_correct=aspect_correct,
+                align=align)], None
+
+        if not (_mediainput.mimetype_is_video(mime_type) or
+                _mediainput.mimetype_is_animated_image(mime_type)):
             raise _mediainput.UnknownMimetypeError(
-                f'Expected an image for "{path}", got mimetype "{mime_type}".')
-        return _mediainput.create_image(
-            stream,
-            file_source=path,
-            resize_resolution=resize_resolution,
-            aspect_correct=aspect_correct,
-            align=align)
+                f'Expected an image, animated image, or video for "{path}", '
+                f'got mimetype "{mime_type}".')
+
+        frames = []
+        try:
+            with _mediainput.create_animation_reader(
+                    mime_type,
+                    file_source=path,
+                    file=stream,
+                    resize_resolution=resize_resolution,
+                    aspect_correct=aspect_correct,
+                    align=align) as reader:
+                fps = float(reader.fps)
+                for index, frame in enumerate(reader):
+                    if frame_end is not None and index > frame_end:
+                        frame.close()
+                        break
+                    if index < frame_start:
+                        frame.close()
+                        continue
+                    frames.append(_to_rgb_image(frame))
+                    if max_frames is not None and len(frames) >= max_frames:
+                        break
+        except Exception:
+            for frame in frames:
+                frame.close()
+            raise
+
+        if not frames:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'No frames were read from "{path}" between frame {frame_start} '
+                f'and frame {"end" if frame_end is None else frame_end}.')
+        return frames, fps
     finally:
         stream.close()
 
@@ -831,7 +876,7 @@ def _invoke(wrapper, pipe, kwargs):
 
 
 def _call_ltx(wrapper, user_args):
-    if user_args.end_images:
+    if user_args.end_images or user_args.video_frames or user_args.end_video_frames:
         mode = 'ltx-condition'
     elif user_args.images:
         mode = 'ltx-image'
@@ -879,12 +924,16 @@ def _call_ltx(wrapper, user_args):
             _types.default(user_args.inference_steps, _constants.DEFAULT_INFERENCE_STEPS))
         kwargs['guidance_scale'] = guidance
         _warn_legacy_ltx_canvas(width, height, kwargs.get('num_frames'), fps)
-        _require_legacy_ltx_schedule(
-            pipe,
+        schedule_size = (
             width if width is not None else 704,
             height if height is not None else 512,
             kwargs.get('num_frames', 161),
             kwargs['num_inference_steps'])
+        _require_legacy_ltx_schedule(pipe, *schedule_size)
+        if mode == 'ltx-condition':
+            timesteps = _fix_legacy_ltx_condition_schedule(pipe, *schedule_size)
+            if timesteps is not None:
+                kwargs['timesteps'] = timesteps
         if user_args.sigmas is not None:
             raise _pipelines.UnsupportedPipelineConfigError(
                 '--sigmas is only applied to LTX-2. This checkpoint uses the earlier LTX pipeline.')
@@ -957,24 +1006,8 @@ def _call_ltx(wrapper, user_args):
 
     if mode == 'ltx-image':
         kwargs['image'] = user_args.images[0]
-    elif mode == 'ltx-condition' and family == 'ltx':
-        from diffusers.pipelines.ltx.pipeline_ltx_condition import LTXVideoCondition
-
-        last_index = int(kwargs.get('num_frames', 161)) - 1
-        conditions = []
-        if user_args.images:
-            conditions.append(LTXVideoCondition(image=user_args.images[0], frame_index=0, strength=1.0))
-        conditions.append(LTXVideoCondition(
-            image=user_args.end_images[0], frame_index=last_index, strength=1.0))
-        kwargs['conditions'] = conditions
     elif mode == 'ltx-condition':
-        from diffusers.pipelines.ltx2.pipeline_ltx2_condition import LTX2VideoCondition
-
-        conditions = []
-        if user_args.images:
-            conditions.append(LTX2VideoCondition(frames=user_args.images[0], index=0, strength=1.0))
-        conditions.append(LTX2VideoCondition(frames=user_args.end_images[0], index=-1, strength=1.0))
-        kwargs['conditions'] = conditions
+        kwargs['conditions'] = _ltx_conditions(pipe, family, user_args, kwargs.get('num_frames'))
 
     output = _invoke(wrapper, pipe, kwargs)
     frames = frames_from_output(output.frames)
@@ -983,12 +1016,107 @@ def _call_ltx(wrapper, user_args):
     return frames, audio, sample_rate, fps
 
 
+def _trim_ltx_clip(frames: list, limit: int | None, temporal: int) -> list:
+    count = len(frames) if limit is None else min(len(frames), limit)
+    count = (count - 1) // temporal * temporal + 1
+    if count < 1:
+        raise _pipelines.UnsupportedPipelineConfigError(
+            'The LTX output is too short to hold the conditioning clips. '
+            'Use a longer --video-lengths.')
+    return frames[:count]
+
+
+def _ltx_conditions(pipe, family: str, user_args, num_frames: int | None) -> list:
+    """
+    Build the condition list for the LTX condition pipeline.
+
+    Leading media starts at frame 0 and trailing media ends on the last frame.
+    Clips are cut to ``8k+1`` frames, and the leading clip is shortened so the
+    two never overlap.
+    """
+    temporal = int(getattr(pipe, 'vae_temporal_compression_ratio', 8) or 8)
+    start_image = user_args.images[0] if user_args.images else None
+    end_image = user_args.end_images[0] if user_args.end_images else None
+    start_video = user_args.video_frames or None
+    end_video = user_args.end_video_frames or None
+    has_start = start_image is not None or start_video is not None
+
+    if num_frames is None:
+        if family == 'ltx':
+            num_frames = 161
+        elif getattr(pipe, 'duration_head', None) is None:
+            num_frames = 121
+        elif end_video is not None:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                'An LTX end clip needs a fixed output length. This checkpoint picks its '
+                'length from the prompt, so set --video-lengths.')
+
+    end_clip = None
+    end_count = 0
+    if end_video is not None:
+        end_clip = _trim_ltx_clip(
+            end_video, num_frames - (1 if has_start else 0), temporal)
+        end_count = len(end_clip)
+    elif end_image is not None:
+        end_count = 1
+
+    start_clip = None
+    if start_video is not None:
+        start_clip = _trim_ltx_clip(
+            start_video, None if num_frames is None else num_frames - end_count, temporal)
+
+    for name, clip in (('start', start_clip), ('end', end_clip)):
+        if clip is not None:
+            _messages.debug_log(f'LTX {name} conditioning clip: {len(clip)} frames.')
+
+    conditions = []
+    if family == 'ltx':
+        from diffusers.pipelines.ltx.pipeline_ltx_condition import LTXVideoCondition
+
+        if start_clip is not None:
+            conditions.append(LTXVideoCondition(video=start_clip, frame_index=0, strength=1.0))
+        elif start_image is not None:
+            conditions.append(LTXVideoCondition(image=start_image, frame_index=0, strength=1.0))
+        if end_clip is not None:
+            conditions.append(LTXVideoCondition(
+                video=end_clip, frame_index=num_frames - end_count, strength=1.0))
+        elif end_image is not None:
+            conditions.append(LTXVideoCondition(
+                image=end_image, frame_index=num_frames - 1, strength=1.0))
+        return conditions
+
+    from diffusers.pipelines.ltx2.pipeline_ltx2_condition import LTX2VideoCondition
+
+    if start_clip is not None:
+        conditions.append(LTX2VideoCondition(frames=start_clip, index=0, strength=1.0))
+    elif start_image is not None:
+        conditions.append(LTX2VideoCondition(frames=start_image, index=0, strength=1.0))
+    if end_clip is not None:
+        # LTX-2 indices are latent frames, and each latent after the first covers ``temporal`` pixels.
+        latent_frames = (num_frames - 1) // temporal + 1
+        clip_latents = (end_count - 1) // temporal + 1
+        conditions.append(LTX2VideoCondition(
+            frames=end_clip, index=latent_frames - clip_latents, strength=1.0))
+    elif end_image is not None:
+        conditions.append(LTX2VideoCondition(frames=end_image, index=-1, strength=1.0))
+    return conditions
+
+
 def _legacy_ltx_schedule_finite(scheduler, width, height, num_frames, steps,
                                 spatial=32, temporal=8) -> bool:
     """
     The earlier LTX pipeline shifts timesteps from the latent token count.
     Past a point that shift makes the terminal sigma 1 and the schedule NaN,
     which later crashes the sampler with an empty timestep index.
+    """
+    return bool(torch.isfinite(
+        _legacy_ltx_timesteps(scheduler, width, height, num_frames, steps, spatial, temporal)).all())
+
+
+def _legacy_ltx_timesteps(scheduler, width, height, num_frames, steps,
+                          spatial=32, temporal=8) -> torch.Tensor:
+    """
+    The timesteps the earlier LTX text and image pipelines build for this clip.
     """
     cfg = scheduler.config
     latent_frames = (int(num_frames) - 1) // int(temporal) + 1
@@ -1004,14 +1132,46 @@ def _legacy_ltx_schedule_finite(scheduler, width, height, num_frames, steps,
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', RuntimeWarning)
         probe.set_timesteps(int(steps), device='cpu', sigmas=sigmas, mu=float(mu))
-    return bool(torch.isfinite(probe.timesteps).all())
+    return probe.timesteps
+
+
+def _legacy_ltx_compression(pipe) -> tuple[int, int]:
+    spatial = int(getattr(pipe, 'vae_spatial_compression_ratio', 32) or 32)
+    temporal = int(getattr(pipe, 'vae_temporal_compression_ratio', 8) or 8)
+    return spatial, temporal
+
+
+def _fix_legacy_ltx_condition_schedule(pipe, width, height, num_frames, steps) -> list[float] | None:
+    """
+    ``LTXConditionPipeline`` sets its own timesteps and never passes ``mu``, so a
+    scheduler with dynamic shifting (the LTX-Video 0.9.0 / 0.9.1 checkpoints) raises.
+
+    Resolve the checkpoint's shifted schedule here, then give ``pipe`` a copy of the
+    scheduler that applies no further shift, so the timesteps are used as they are.
+    ``pipe`` must be the per-call condition pipeline, not the cached one.
+
+    :return: timesteps to pass, or ``None`` when the scheduler needs no change
+    """
+    scheduler = pipe.scheduler
+    if not scheduler.config.get('use_dynamic_shifting', False):
+        return None
+    timesteps = _legacy_ltx_timesteps(
+        scheduler, width, height, num_frames, steps, *_legacy_ltx_compression(pipe))
+    pipe.scheduler = scheduler.__class__.from_config({
+        **scheduler.config,
+        'use_dynamic_shifting': False,
+        'shift': 1.0,
+        'shift_terminal': None,
+        'use_karras_sigmas': False,
+        'use_exponential_sigmas': False,
+        'use_beta_sigmas': False,
+    })
+    return [float(value) for value in timesteps]
 
 
 def _require_legacy_ltx_schedule(pipe, width, height, num_frames, steps):
-    spatial = int(getattr(pipe, 'vae_spatial_compression_ratio', 32) or 32)
-    temporal = int(getattr(pipe, 'vae_temporal_compression_ratio', 8) or 8)
     if _legacy_ltx_schedule_finite(
-            pipe.scheduler, width, height, num_frames, steps, spatial, temporal):
+            pipe.scheduler, width, height, num_frames, steps, *_legacy_ltx_compression(pipe)):
         return
     raise _pipelines.UnsupportedPipelineConfigError(
         f'LTX-Video cannot build a noise schedule for {width}x{height} and {num_frames} frames. '
