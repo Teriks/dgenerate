@@ -1,26 +1,27 @@
-title: Stable Diffusion 3
-order: 2
+title: Stable Diffusion 3.5 (GGUF)
+order: 3
 
 # Stable Diffusion 3 requires a huggingface auth token to access
 # you must request access to the repository
+# Parent repo supplies the VAE and text encoders. The DiT is a city96 GGUF.
 
 \setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"
 
 \set auth_token {{ '--auth-token ' + quote(auth_token) if auth_token else '' }}
 
-@uri[{"label":"Model Path / HF Slug", "dir":true, "default": "stabilityai/stable-diffusion-3-medium-diffusers", "optional":false, "file-types":["models"]}]
+@uri[{"label":"Model Path / HF Slug", "dir":true, "default": "stabilityai/stable-diffusion-3.5-medium", "optional":false, "file-types":["models"]}]
 --model-type sd3 {{ auth_token }}
 @dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"], "default":"float16"}]
-@dropdown[{"label":"Model variant", "arg":"--variant", "options":["fp16", "bf16"], "default":"fp16"}]
+@dropdown[{"label":"Model variant", "arg":"--variant", "options":["fp16", "bf16"], "optional":true}]
 @karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "filter": ["FlowMatchEulerDiscreteScheduler"]}]
 @switch[{"label":"Use RAS", "arg":"--ras"}]
-@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "default":1}]
+@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "default":0}]
 @quantizer[{"divider-after":true}]
 @submodelbuilder[{"label":"VAE", "arg":"--vae", "model": "VAE"}]
 @switch[{"label":"VAE Slicing", "arg":"--vae-slicing", "divider-after":true}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA"}]
 @submodelbuilder[{"label":"Control Net", "arg":"--control-nets", "model": "Control Net"}]
-@submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "divider-after":true}]
+@submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "default":"https://huggingface.co/city96/stable-diffusion-3.5-medium-gguf/blob/main/sd3.5_medium-Q4_K_S.gguf", "divider-after":true}]
 @submodelbuilder[{"label":"IP Adapter", "arg":"--ip-adapters", "model": "IP Adapter"}]
 @submodelbuilder[{"label":"Image Encoder", "arg":"--image-encoder", "model": "Image Encoder", "divider-after":true}]
 @imageseed[{"label":"Image Seed", "arg":"--image-seeds", "file-types":["images-in", "videos-in"], "float-label":"Image Seed Strength", "float-arg":"--image-seed-strengths", "min":0.01, "max":1, "default":"", "float":""}]

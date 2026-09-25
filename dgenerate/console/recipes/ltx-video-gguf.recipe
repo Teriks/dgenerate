@@ -1,11 +1,10 @@
-title: LTX-2.5 (Non-distilled)
+title: LTX-Video (GGUF)
 order: 19
 
-# LTX-2.5 with the repo transformer_full weights (non-distilled).
-# The published scheduler is still the 8-step distilled table; overlay
-# use-dynamic-shifting=true so --inference-steps is used.
-# Leave Video Length empty to let the duration head choose.
+# Earlier LTX-Video (2B) with a city96 GGUF transformer. No audio.
+# Parent repo still supplies the VAE and text encoders.
 # First frame and last frame (end=) are optional.
+# --scheduler accepts FlowMatchEulerDiscreteScheduler and its URI arguments.
 
 \setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"
 
@@ -16,29 +15,27 @@ order: 19
 
 \set image_seeds {{ (first_frame + (';end=' + last_frame if last_frame else '')) if first_frame else (('end=' + last_frame) if last_frame else '') }}
 
-@uri[{"label":"Model Path / HF Slug", "dir":true, "default": "Lightricks/LTX-2.5-Diffusers", "optional":false, "file-types":["models"]}]
+@uri[{"label":"Model Path / HF Slug", "dir":true, "default": "Lightricks/LTX-Video", "optional":false, "file-types":["models"]}]
 --model-type ltx {{ auth_token }}
 @dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"], "default":"bfloat16"}]
-@karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "filter": ["FlowMatchEulerDiscreteScheduler"], "default":"FlowMatchEulerDiscreteScheduler;use-dynamic-shifting=true"}]
-@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "default":1}]
+@karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "filter": ["FlowMatchEulerDiscreteScheduler"]}]
+@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "default":0}]
 @quantizer[{"divider-after":true}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA"}]
-@submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "default":"Lightricks/LTX-2.5-Diffusers;subfolder=transformer_full", "divider-after":true}]
+@submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "default":"https://huggingface.co/city96/LTX-Video-gguf/blob/main/ltx-video-2b-v0.9-Q3_K_S.gguf", "divider-after":true}]
 @switch[{"label":"No Aspect Correction?", "arg":"--no-aspect"}]
 @imageprocessor[{"arg":"--seed-image-processors", "label":"Seed Image Processor", "divider-after":true}]
-@int[{"label":"Inference Steps", "arg":"--inference-steps", "default":30, "min":1}]
+@int[{"label":"Inference Steps", "arg":"--inference-steps", "default":50, "min":1}]
 @float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":3, "min":0}]
-@float[{"label":"Audio Guidance Scale", "arg":"--audio-guidance-scales", "default":7, "min":0, "optional":true}]
-@float[{"label":"Audio Guidance Rescale", "arg":"--audio-guidance-rescales", "min":0, "optional":true}]
-@float[{"label":"Video Length (seconds)", "arg":"--video-lengths", "default":"2", "min":0.1}]
-@float[{"label":"Video FPS", "arg":"--video-fps", "default":"24", "min":1}]
+@float[{"label":"Video Length (seconds)", "arg":"--video-lengths", "default":"4.84", "min":0.1}]
+@float[{"label":"Video FPS", "arg":"--video-fps", "default":"25", "min":1}]
 @dropdown[{"label":"Animation Format", "arg":"--animation-format", "options":["mp4", "gif", "webp", "apng", "frames"], "default":"mp4", "optional":false}]
 @seeds[{"label":"Seeds"}]
 @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
 @switchradio[{"labels":["Output Dgenerate Image Metadata", "Output Automatic1111 Image Metadata"], "args":["--output-metadata", "--output-auto1111-metadata"]}]
 @switch[{"label":"Output Configs", "arg":"--output-configs"}]
-@imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"640x384", "divider-after":true}]
+@imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"768x512", "divider-after":true}]
 @promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
 @imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
 @device[{}]
---prompts "add your prompt here" {{ '--image-seeds ' + quote(image_seeds) if image_seeds else '' }}
+--prompts "add your prompt here; worst quality, inconsistent motion, blurry, jittery, distorted" {{ '--image-seeds ' + quote(image_seeds) if image_seeds else '' }}
