@@ -579,8 +579,8 @@ Video Model Feature Support
 
 LTX does not support ControlNets, adapters, textual inversions, prompt weighters, inpainting,
 or the acceleration features in the tables above. GGUF transformers are tested with LTX-Video.
-See :ref:`video-generation` for usage, and ``examples/ltx/ltx2`` and ``examples/ltx/ltx_video``
-for example configs.
+See the video generation section in the manual for usage, and ``examples/ltx/ltx2`` and
+``examples/ltx/ltx_video`` for example configs.
 
 PAG Support Caveats
 -------------------
