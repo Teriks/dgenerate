@@ -2176,8 +2176,9 @@ def _create_diffusion_pipeline(
             try:
                 # Processors such as CLIPImageProcessor report device=None.
                 # They are not torch modules and cannot hold meta tensors.
-                device = get_torch_device(module[1])
-                if device is not None and device.type == 'meta':
+                # Do not assign to ``device``; that is the pipeline target.
+                module_device = get_torch_device(module[1])
+                if module_device is not None and module_device.type == 'meta':
                     _messages.debug_log(f'"{module[0]}" has meta tensors.')
                     _disable_to(
                         module[1],
