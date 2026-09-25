@@ -140,6 +140,8 @@ class _PluginSchemaEntry(_entry._Entry):
         if not self.declared_optional:
             self._on_plugin_change(self.plugin_name_var.get())
 
+        self._apply_config_default()
+
     def _create_dropdown(self, label: str, values: list[str]):
         self.dropdown_label = tk.Label(self._dropdown_parent, text=label)
 
@@ -192,6 +194,35 @@ class _PluginSchemaEntry(_entry._Entry):
         self._button_frame_map.clear()
         self.dynamic_widgets.clear()
         self.entries.clear()
+
+    def _apply_config_default(self):
+        default = self.config.get('default')
+        if not default:
+            return
+
+        parts = str(default).split(';')
+        plugin_name = parts[0].strip()
+        if not plugin_name or plugin_name not in self.schema:
+            return
+
+        self.plugin_name_var.set(plugin_name)
+        self._on_plugin_change(plugin_name)
+
+        extras = {}
+        for part in parts[1:]:
+            if '=' not in part:
+                continue
+            name, value = part.split('=', 1)
+            extras[name.strip()] = value.strip()
+
+        for param_name, (_, variable, _, _) in self.entries.items():
+            if param_name not in extras:
+                continue
+            value = extras[param_name]
+            if isinstance(variable, tk.BooleanVar):
+                variable.set(value.lower() in ('true', '1', 'yes'))
+            else:
+                variable.set(value)
 
     def _on_plugin_change(self, selected_value: str):
         if self._last_known_dropdown_value == selected_value:

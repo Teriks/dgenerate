@@ -356,6 +356,9 @@ def get_scheduler_uri_schema(scheduler: type[diffusers.SchedulerMixin] | list[ty
 
             if parameter.default is not inspect.Parameter.empty:
                 parameter_details['default'] = parameter.default
+                if parameter.default is None:
+                    # Diffusers often annotates these as `float = None`, not Optional[float]
+                    parameter_details['optional'] = True
 
             if parameter.name in option_args:
                 parameter_details['options'] = option_args[parameter.name]

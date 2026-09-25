@@ -4638,6 +4638,10 @@ class DiffusionPipelineWrapper:
         copy_args.set_from(kwargs, missing_value_throws=False)
 
         if _enums.model_type_is_video(self._model_type):
+            help_text = self._argument_help_check(copy_args)
+            if help_text:
+                raise DiffusionArgumentsHelpException(help_text)
+
             import dgenerate.pipelinewrapper.videopipelines as _videopipelines
 
             frames, audio, sample_rate, fps = _videopipelines.generate(self, copy_args)

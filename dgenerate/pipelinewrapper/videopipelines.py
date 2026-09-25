@@ -48,6 +48,7 @@ import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.constants as _constants
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.pipelines as _pipelines
+import dgenerate.pipelinewrapper.schedulers as _schedulers
 import dgenerate.pipelinewrapper.uris as _uris
 import dgenerate.pipelinewrapper.util as _util
 import dgenerate.types as _types
@@ -770,6 +771,7 @@ def _video_on_create(key, new):
 
 
 @_memoize(_pipelines._pipeline_cache,
+          exceptions={'local_files_only'},
           hasher=_d_memoize.args_cache_key,
           extra_identities=[lambda held: held.pipeline],
           on_hit=_video_on_hit,
@@ -850,12 +852,15 @@ def _create_cached_video_pipeline(model_path,
     return held, _d_memoize.CachedObjectMetadata(size=estimate)
 
 
-def _video_pipeline(wrapper, mode: str):
+def _video_pipeline(wrapper, mode: str, scheduler_uri=None):
     kwargs = _cache_kwargs(wrapper)
     kwargs['transformer_uri'] = wrapper.transformer_uri
     kwargs['lora_uris'] = tuple(wrapper.lora_uris) if wrapper.lora_uris else None
     kwargs['lora_fuse_scale'] = wrapper.lora_fuse_scale
     held = _create_cached_video_pipeline(**kwargs)
+    # Same as still pipelines: scheduler is not a cache key.
+    # Overlay the URI on the cached object, then wrap for mode.
+    _schedulers.load_scheduler(held.pipeline, scheduler_uri)
     return pipeline_for_mode(held.pipeline, mode, held.family), held.family
 
 
@@ -871,7 +876,7 @@ def _call_ltx(wrapper, user_args):
     else:
         mode = 'ltx-txt'
 
-    pipe, family = _video_pipeline(wrapper, mode)
+    pipe, family = _video_pipeline(wrapper, mode, user_args.scheduler_uri)
     positive, negative = _prompt_text(user_args)
     width, height = _size(user_args)
     if width is not None:
