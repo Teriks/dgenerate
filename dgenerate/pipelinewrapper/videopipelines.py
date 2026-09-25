@@ -580,43 +580,6 @@ def _resolve_index_class(library: str, class_name: str):
     return getattr(module, class_name)
 
 
-def _module_is_quantized(module) -> bool:
-    if module is None:
-        return False
-    if getattr(module, 'hf_quantizer', None) is not None:
-        return True
-    config = getattr(module, 'quantization_config', None)
-    if config is None:
-        config = getattr(getattr(module, 'config', None), 'quantization_config', None)
-    if config is not None:
-        return True
-    quantized, _, _ = _util.check_bnb_status(module)
-    if quantized:
-        return True
-    if not isinstance(module, torch.nn.Module):
-        return False
-    for child in module.modules():
-        name = type(child).__name__.lower()
-        if 'sdnq' in name or 'linear8bit' in name or 'linear4bit' in name:
-            return True
-    return False
-
-
-def _confirm_injected_modules(pipe, injected: dict):
-    for name, module in injected.items():
-        if module is None:
-            continue
-        current = getattr(pipe, name, None)
-        if current is not module:
-            _messages.warning(
-                f'Pipeline replaced the quantized {name} with a newly loaded copy; '
-                f'that module may still be full precision.')
-        elif not _module_is_quantized(module):
-            _messages.warning(
-                f'--quantizer did not quantize {name} ({type(module).__name__}); '
-                f'that module is still full precision.')
-
-
 def _load_quantized_module(component_class, model_path, subfolder, revision, variant,
                            dtype, quantizer_uri, auth_token, local_files_only, device_map,
                            offload=False):
@@ -842,7 +805,6 @@ def _create_cached_video_pipeline(model_path,
     _messages.debug_log(f'Loading {pipeline_class.__name__} from "{model_path}".')
     with _hfhub.with_hf_errors_as_model_not_found():
         pipe = pipeline_class.from_pretrained(model_path, **load_kwargs)
-    _confirm_injected_modules(pipe, injected)
     _apply_video_loras(
         pipe, model_type, lora_uris, lora_fuse_scale, auth_token, local_files_only)
     _offload_ltx(pipe, device, model_cpu_offload, sequential_cpu_offload)

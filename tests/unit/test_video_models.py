@@ -573,35 +573,6 @@ class TestVideoModels(unittest.TestCase):
         self.assertNotIn('prompt_enhancer', modules)
         self.assertIs(loaded['connectors'], LTX2TextConnectors)
 
-    def test_confirm_injected_modules(self):
-        class Quantized:
-            hf_quantizer = object()
-
-        class Full:
-            pass
-
-        kept = Quantized()
-        replaced = Quantized()
-        leftover = Full()
-
-        class Pipe:
-            transformer = kept
-            connectors = leftover
-            text_encoder = object()
-
-        with unittest.mock.patch.object(_videopipelines._messages, 'warning') as warn:
-            _videopipelines._confirm_injected_modules(
-                Pipe(),
-                {
-                    'transformer': kept,
-                    'connectors': leftover,
-                    'text_encoder': replaced,
-                })
-        warn_text = ' '.join(str(call.args[0]) for call in warn.call_args_list)
-        self.assertIn('connectors', warn_text)
-        self.assertIn('text_encoder', warn_text)
-        self.assertNotIn('transformer', warn_text)
-
     def test_cache_kwargs_omits_mode(self):
         class Wrapper:
             model_path = 'org/ltx'
