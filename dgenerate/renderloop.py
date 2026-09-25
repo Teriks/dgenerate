@@ -1444,7 +1444,7 @@ class RenderLoop:
                 if uri is not None:
                     _messages.log(f'Processing Image Seed: "{uri}"', underline=True)
 
-                mode = _videopipelines.classify_video_seed(self._c_config.model_type, parsed)
+                _videopipelines.classify_video_seed(self._c_config.model_type, parsed)
                 overrides = {}
                 if uri is not None and self._c_config.seeds_to_images:
                     overrides['seed'] = [seed_to_image]
@@ -1456,7 +1456,6 @@ class RenderLoop:
                         self._assign_video_conditioning(
                             diffusion_arguments,
                             parsed,
-                            mode,
                             seed_processor,
                             owned_images)
                         yield from self._pre_generation_step(diffusion_arguments)
@@ -1483,34 +1482,63 @@ class RenderLoop:
     def _assign_video_conditioning(self,
                                    diffusion_arguments: _pipelinewrapper.DiffusionArguments,
                                    parsed: _mediainput.ImageSeedParseResult | None,
-                                   mode: str,
                                    seed_processor,
                                    owned_images: list):
-        if mode == 'ltx-image':
-            diffusion_arguments.images = [
-                self._load_video_still(parsed.images[0], parsed, seed_processor, owned_images)]
-        elif mode == 'ltx-condition':
-            if parsed.images:
-                diffusion_arguments.images = [
-                    self._load_video_still(parsed.images[0], parsed, seed_processor, owned_images)]
-            diffusion_arguments.end_images = [
-                self._load_video_still(parsed.end_image, parsed, seed_processor, owned_images)]
+        if parsed is None:
+            return
+        max_frames = None
+        if diffusion_arguments.video_length is not None:
+            max_frames = _videopipelines.ltx_num_frames(
+                diffusion_arguments.video_length,
+                diffusion_arguments.video_fps or 24.0)
+        if parsed.images:
+            frames = self._load_video_media(
+                parsed.images[0], parsed, seed_processor, owned_images,
+                max_frames, diffusion_arguments.video_fps)
+            if len(frames) == 1:
+                diffusion_arguments.images = frames
+            else:
+                diffusion_arguments.video_frames = frames
+        if parsed.end_image:
+            frames = self._load_video_media(
+                parsed.end_image, parsed, seed_processor, owned_images,
+                max_frames, diffusion_arguments.video_fps)
+            if len(frames) == 1:
+                diffusion_arguments.end_images = frames
+            else:
+                diffusion_arguments.end_video_frames = frames
 
-    def _load_video_still(self, path, parsed, processor, owned_images: list) -> PIL.Image.Image:
+    def _load_video_media(self, path, parsed, processor, owned_images: list,
+                          max_frames: int | None, output_fps: float | None) -> list[PIL.Image.Image]:
         resize, aspect, align = self._video_resize(parsed)
-        image = _videopipelines.load_rgb_image(
+        frame_start = _types.default(parsed.frame_start, self._c_config.frame_start)
+        frame_end = _types.default(parsed.frame_end, self._c_config.frame_end)
+        frames, source_fps = _videopipelines.load_rgb_frames(
             path,
             local_files_only=self._c_config.offline_mode,
             resize_resolution=resize,
             aspect_correct=aspect,
-            align=align)
+            align=align,
+            frame_start=frame_start or 0,
+            frame_end=frame_end,
+            max_frames=max_frames)
         try:
-            image = self._apply_video_processor(processor, image)
+            for index, frame in enumerate(frames):
+                frames[index] = self._apply_video_processor(processor, frame)
         except Exception:
-            image.close()
+            self._close_owned_images(frames)
             raise
-        owned_images.append(image)
-        return image
+        owned_images.extend(frames)
+        if source_fps is not None and len(frames) > 1:
+            output_fps = float(output_fps or 24.0)
+            _messages.log(
+                f'Conditioning on {len(frames)} frames of "{path}" ({source_fps:g} fps).')
+            if abs(source_fps - output_fps) > 0.5:
+                _messages.warning(
+                    f'"{path}" plays at {source_fps:g} fps but the output is {output_fps:g} fps. '
+                    f'Frames are used as-is, so motion speed will change. '
+                    f'Set --video-fps {source_fps:g} to match.')
+        return frames
 
     @staticmethod
     def _apply_video_processor(processor, image: PIL.Image.Image) -> PIL.Image.Image:

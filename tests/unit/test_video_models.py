@@ -8,6 +8,7 @@ import unittest.mock
 import av
 import numpy
 import PIL.Image
+import torch
 
 import dgenerate.mediainput as _mediainput
 import dgenerate.mediaoutput as _mediaoutput
@@ -422,8 +423,6 @@ class TestVideoModels(unittest.TestCase):
             'denoising_end': 0.8,
             'latents_processors': ['normalize'],
             'original_config': 'model.yaml',
-            'frame_start': 3,
-            'frame_end': 10,
             'control_image_processors': ['canny'],
             'inpaint_crop': True,
             'vae_tiling': True,
@@ -678,6 +677,118 @@ class TestVideoModels(unittest.TestCase):
         self.assertEqual(pipe.scheduler.sigmas, [1.0, 0.0])
         self.assertEqual(pipe.scheduler.timesteps, [10])
         self.assertEqual(pipe.scheduler.num_inference_steps, 1)
+
+    def test_legacy_ltx_condition_schedule_without_mu(self):
+        from diffusers import FlowMatchEulerDiscreteScheduler
+
+        # scheduler_config.json from Lightricks/LTX-Video 0.9.0
+        config = {
+            'base_image_seq_len': 1024, 'base_shift': 0.95, 'invert_sigmas': False,
+            'max_image_seq_len': 4096, 'max_shift': 2.05, 'num_train_timesteps': 1000,
+            'shift': 1.0, 'shift_terminal': 0.1, 'use_beta_sigmas': False,
+            'use_dynamic_shifting': True, 'use_exponential_sigmas': False,
+            'use_karras_sigmas': False,
+        }
+
+        class Pipe:
+            vae_spatial_compression_ratio = 32
+            vae_temporal_compression_ratio = 8
+
+        pipe = Pipe()
+        original = FlowMatchEulerDiscreteScheduler.from_config(config)
+        pipe.scheduler = original
+        expected = _videopipelines._legacy_ltx_timesteps(original, 512, 512, 121, 50)
+
+        timesteps = _videopipelines._fix_legacy_ltx_condition_schedule(pipe, 512, 512, 121, 50)
+        self.assertIsNot(pipe.scheduler, original)
+        self.assertTrue(original.config.use_dynamic_shifting)
+        self.assertFalse(pipe.scheduler.config.use_dynamic_shifting)
+
+        # the condition pipeline calls set_timesteps(timesteps=...) with no mu
+        pipe.scheduler.set_timesteps(timesteps=timesteps, device='cpu')
+        self.assertTrue(torch.allclose(pipe.scheduler.timesteps, expected, atol=1e-3))
+
+        static = FlowMatchEulerDiscreteScheduler.from_config({**config, 'use_dynamic_shifting': False})
+        pipe.scheduler = static
+        self.assertIsNone(_videopipelines._fix_legacy_ltx_condition_schedule(pipe, 512, 512, 121, 50))
+        self.assertIs(pipe.scheduler, static)
+
+    def test_ltx_allows_frame_slice(self):
+        config = _config(
+            model_path='org/ltx',
+            model_type=_pipelinewrapper.ModelType.LTX,
+            frame_start=3,
+            frame_end=10)
+        config.check()
+
+    def test_load_rgb_frames_slices_video(self):
+        directory = tempfile.mkdtemp()
+        path = os.path.join(directory, 'clip.mp4')
+        with _mediaoutput.VideoWriter(path, 12) as writer:
+            for index in range(12):
+                writer.write(PIL.Image.new('RGB', (64, 64), (index * 20, 0, 0)))
+
+        frames, fps = _videopipelines.load_rgb_frames(path, frame_start=2, frame_end=9)
+        try:
+            self.assertEqual(len(frames), 8)
+            self.assertAlmostEqual(fps, 12.0)
+            self.assertTrue(all(frame.mode == 'RGB' for frame in frames))
+        finally:
+            for frame in frames:
+                frame.close()
+
+        frames, _ = _videopipelines.load_rgb_frames(path, max_frames=5)
+        self.assertEqual(len(frames), 5)
+        for frame in frames:
+            frame.close()
+
+        with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError):
+            _videopipelines.load_rgb_frames(path, frame_start=50)
+
+        frames, fps = _videopipelines.load_rgb_frames('examples/media/earth.jpg')
+        self.assertEqual(len(frames), 1)
+        self.assertIsNone(fps)
+        frames[0].close()
+
+    def test_ltx_conditions_place_clips(self):
+        class Pipe:
+            vae_temporal_compression_ratio = 8
+            duration_head = None
+
+        start = [PIL.Image.new('RGB', (8, 8)) for _ in range(30)]
+        end = [PIL.Image.new('RGB', (8, 8)) for _ in range(20)]
+        args = _pipelinewrapper.DiffusionArguments()
+        args.video_frames = start
+        args.end_video_frames = end
+
+        legacy = _videopipelines._ltx_conditions(Pipe(), 'ltx', args, 49)
+        self.assertEqual([len(c.video) for c in legacy], [25, 17])
+        self.assertEqual([c.frame_index for c in legacy], [0, 32])
+
+        ltx2 = _videopipelines._ltx_conditions(Pipe(), 'ltx2', args, 49)
+        self.assertEqual([len(c.frames) for c in ltx2], [25, 17])
+        self.assertEqual([c.index for c in ltx2], [0, 4])
+
+        args.end_video_frames = None
+        args.end_images = [PIL.Image.new('RGB', (8, 8))]
+        mixed = _videopipelines._ltx_conditions(Pipe(), 'ltx2', args, 49)
+        self.assertEqual(len(mixed[0].frames), 25)
+        self.assertEqual(mixed[1].index, -1)
+
+    def test_ltx_end_clip_needs_length_with_duration_head(self):
+        class Pipe:
+            vae_temporal_compression_ratio = 8
+            duration_head = object()
+
+        args = _pipelinewrapper.DiffusionArguments()
+        args.end_video_frames = [PIL.Image.new('RGB', (8, 8)) for _ in range(9)]
+        with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError):
+            _videopipelines._ltx_conditions(Pipe(), 'ltx2', args, None)
+
+        args.end_video_frames = None
+        args.video_frames = [PIL.Image.new('RGB', (8, 8)) for _ in range(12)]
+        conditions = _videopipelines._ltx_conditions(Pipe(), 'ltx2', args, None)
+        self.assertEqual(len(conditions[0].frames), 9)
 
 
 if __name__ == '__main__':

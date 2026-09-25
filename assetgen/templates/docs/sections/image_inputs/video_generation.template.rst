@@ -26,6 +26,7 @@ Repository: ``Lightricks/LTX-2.5-Diffusers``.
 * No image seed is text to video. Omitting ``--video-lengths`` lets the model's duration head choose the length.
 * One image is the first frame.
 * ``end=`` is the last frame. A first frame and ``end=`` can be used together.
+* Either slot can be a video or animated image instead of a still. See `Video conditioning`_.
 * ``control=`` and ``images:`` are rejected.
 
 Width and height must be divisible by 32.
@@ -36,6 +37,69 @@ repository as-is. The two-stage sampler is not wired up. ``--transformer`` is
 described under `Submodels`_. ``model_index.json`` selects the pipeline: ``LTX2Pipeline``
 is LTX-2.5, and ``LTXPipeline`` is the earlier LTX-Video model. The earlier model
 has no audio. Its transformer accepts a city96 ``.gguf`` file. See ``examples/ltx/basic_ltx``.
+
+Video conditioning
+------------------
+
+The main ``--image-seeds`` path and ``end=`` each accept a video or an animated image
+as well as a still. Both LTX-2.5 and the earlier LTX-Video accept this. A file with a
+single frame is treated as a still.
+
+* A video in the main path is the opening clip. The generated clip continues from it.
+* A video in ``end=`` is the closing clip. The generated clip leads into it.
+* A still and a video can be mixed, for example a video first and a still ``end=``.
+
+.. code-block:: bash
+
+    # continue an existing clip
+    dgenerate Lightricks/LTX-2.5-Diffusers --model-type ltx \
+    --video-fps 25 --video-lengths 4 --output-size 512x512 \
+    --image-seeds "input.gif" \
+    --prompts "The singer keeps swaying, then points at the camera."
+
+    # lead into an existing clip
+    dgenerate Lightricks/LTX-2.5-Diffusers --model-type ltx \
+    --video-fps 25 --video-lengths 4 --output-size 512x512 \
+    --image-seeds ";end=input.gif" \
+    --prompts "A singer walks in and starts to sway at the microphone."
+
+    # frames 16 through 40 of a clip, then a still last frame
+    dgenerate Lightricks/LTX-2.5-Diffusers --model-type ltx \
+    --video-fps 25 --video-lengths 4 --output-size 512x512 \
+    --image-seeds "input.gif;frame-start=16;frame-end=40;end=last.png" \
+    --prompts "The scene fades into a pencil sketch of mountains."
+
+``--frame-start`` and ``--frame-end``, or ``frame-start=`` and ``frame-end=`` in the seed,
+choose which frames of the video are used. The slice applies to both the main path and
+``end=``. A slice in the seed overrides the global options, as described under
+`Animation Slicing`_.
+
+Frame counts:
+
+* Each conditioning clip is cut to a frame count of ``8k+1``, the same rule as the
+  output length. A 54 frame gif gives 49 conditioning frames.
+* A clip longer than the output is cut to fit. With ``--video-lengths`` set, only the
+  frames that can be used are decoded. Without it the whole slice is decoded, so use
+  ``--frame-end`` on long files.
+* When there is an opening and a closing condition, the opening clip is shortened so
+  the two do not overlap.
+* A closing video needs a fixed output length. LTX-2.5 picks its own length when
+  ``--video-lengths`` is omitted, so set ``--video-lengths`` when ``end=`` is a video.
+  An opening video works either way.
+
+Frames are used as they are and are not resampled. When the file's frame rate differs
+from ``--video-fps`` dgenerate prints a warning, because motion will play faster or
+slower. Set ``--video-fps`` to the file's rate to keep the speed.
+
+``resize=``, ``aspect=``, and ``align=`` in the seed, and ``--seed-image-processors``,
+apply to every conditioning frame.
+
+Every condition is applied at full strength. The model keeps the conditioning frames
+and generates around them. It does not restyle the whole input video.
+
+See ``video-extension-config.dgen``, ``video-lead-in-config.dgen``, and
+``video-slice-to-image-config.dgen`` in ``examples/ltx/basic_ltx2``, and
+``video-extension-config.dgen`` in ``examples/ltx/basic_ltx``.
 
 Guidance, steps, and sigmas
 ---------------------------
@@ -136,7 +200,8 @@ Chaining
 --------
 
 ``last_images`` and ``last_animations`` work the same way they do for image models. A still written by an
-earlier invocation can be the first frame of an LTX clip.
+earlier invocation can be the first frame of an LTX clip, and an animation written by an earlier
+invocation can be its opening clip.
 The pipeline cache counts the video checkpoint and moves the previous pipeline back to CPU before the clip runs.
 
 Submodels
@@ -165,7 +230,7 @@ any scheduler other than ``FlowMatchEulerDiscreteScheduler``, prompt weighters, 
 clip skip, inpaint crop, HiDiffusion, TeaCache, DeepCache, SADA, RAS,
 mask or control processors, raw latents and latents processors, ``--denoising-start`` /
 ``--denoising-end``, ``--batch-size`` greater than 1, ``--batch-grid-size``, latent output
-formats, the safety checker, ``--vae-tiling``, ``--frame-start`` / ``--frame-end``, and ``--original-config``.
+formats, the safety checker, ``--vae-tiling``, and ``--original-config``.
 ``--image-seed-strengths`` is not used. Seed processors are limited to one chain.
 ``--quantizer-map`` may only name ``transformer``, ``text_encoder``, or ``connectors``.
 
