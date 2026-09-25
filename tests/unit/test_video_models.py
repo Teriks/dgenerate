@@ -1,3 +1,4 @@
+import inspect
 import math
 import os
 import tempfile
@@ -92,6 +93,85 @@ class TestVideoModels(unittest.TestCase):
                 model_type=_pipelinewrapper.ModelType.LTX,
                 scheduler_uri=uri)
             allowed.check()
+
+    def test_scheduler_uri_applied_before_distilled_check(self):
+        class Scheduler:
+            def __init__(self):
+                self.config = {'use_dynamic_shifting': False}
+
+        class Pipe:
+            def __init__(self):
+                self.scheduler = Scheduler()
+
+        pipe = Pipe()
+        captured = {}
+
+        def apply_scheduler(pipeline, scheduler_uri):
+            captured['uri'] = scheduler_uri
+            pipeline.scheduler.config['use_dynamic_shifting'] = True
+
+        def invoke(wrapper, pipeline, kwargs):
+            captured['kwargs'] = kwargs
+
+            class Output:
+                frames = [PIL.Image.new('RGB', (4, 4))]
+                audio = None
+
+            return Output()
+
+        args = _pipelinewrapper.DiffusionArguments()
+        args.prompt = _prompt.Prompt('fox')
+        args.inference_steps = 50
+        args.guidance_scale = 6
+        args.audio_guidance_scale = 7
+        args.video_fps = 24
+        args.video_length = 2
+        args.width = 640
+        args.height = 384
+        args.scheduler_uri = (
+            'FlowMatchEulerDiscreteScheduler;use-dynamic-shifting=true')
+
+        class Held:
+            pipeline = pipe
+            family = 'ltx2'
+
+        class Wrapper:
+            device = 'cpu'
+            model_type = _pipelinewrapper.ModelType.LTX
+            model_cpu_offload = False
+            model_sequential_offload = False
+            model_path = 'org/ltx'
+            _revision = None
+            _variant = None
+            _subfolder = None
+            _dtype = None
+            _local_files_only = False
+            _auth_token = None
+            quantizer_uri = None
+            quantizer_map = None
+            transformer_uri = None
+            lora_uris = None
+            lora_fuse_scale = None
+
+        with unittest.mock.patch.object(
+                _videopipelines, '_create_cached_video_pipeline',
+                return_value=Held()), \
+                unittest.mock.patch.object(
+                    _videopipelines, 'pipeline_for_mode',
+                    side_effect=lambda pipeline, mode, family: pipeline), \
+                unittest.mock.patch.object(
+                    _videopipelines._schedulers, 'load_scheduler',
+                    side_effect=apply_scheduler), \
+                unittest.mock.patch.object(
+                    _videopipelines, '_invoke', side_effect=invoke):
+            _videopipelines._call_ltx(Wrapper(), args)
+
+        self.assertEqual(
+            captured['uri'],
+            'FlowMatchEulerDiscreteScheduler;use-dynamic-shifting=true')
+        self.assertEqual(captured['kwargs']['num_inference_steps'], 50)
+        self.assertNotIn('sigmas', captured['kwargs'])
+        self.assertFalse(_videopipelines._ltx_is_distilled(pipe))
 
     def test_ltx_rejects_control(self):
         config = _config(
@@ -540,6 +620,19 @@ class TestVideoModels(unittest.TestCase):
 
         keys = _videopipelines._cache_kwargs(Wrapper())
         self.assertNotIn('mode', keys)
+        self.assertNotIn('scheduler_uri', keys)
+        self.assertNotIn(
+            'scheduler_uri',
+            inspect.signature(_videopipelines._create_cached_video_pipeline).parameters)
+        self.assertNotIn(
+            'scheduler_uri',
+            inspect.signature(_videopipelines._pipelines._create_diffusion_pipeline).parameters)
+        video_exceptions = inspect.getclosurevars(
+            _videopipelines._create_cached_video_pipeline).nonlocals['exceptions']
+        still_exceptions = inspect.getclosurevars(
+            _videopipelines._pipelines._create_diffusion_pipeline).nonlocals['exceptions']
+        self.assertIn('local_files_only', video_exceptions)
+        self.assertIn('local_files_only', still_exceptions)
 
     def test_audio_guidance_writeback(self):
         source = _pipelinewrapper.DiffusionArguments()
