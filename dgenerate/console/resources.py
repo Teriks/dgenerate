@@ -79,7 +79,7 @@ def get_recipes():
         title, order, rest = text.split('\n', 2)
         title = title.split(':', 1)[1].strip()
         order = int(order.split(':', 1)[1].strip())
-        bisect.insort(recipes, (order, title, rest), key=lambda x: x[0])
+        bisect.insort(recipes, (order, title, rest), key=lambda x: (x[0], x[1]))
 
     for recipe in recipes:
         _RECIPES[recipe[1]] = recipe[2]
