@@ -2174,7 +2174,10 @@ def _create_diffusion_pipeline(
                 continue
             _messages.debug_log(f'Checking extra module {module[0]} = {module[1].__class__}...')
             try:
-                if get_torch_device(module[1]).type == 'meta':
+                # Processors such as CLIPImageProcessor report device=None.
+                # They are not torch modules and cannot hold meta tensors.
+                device = get_torch_device(module[1])
+                if device is not None and device.type == 'meta':
                     _messages.debug_log(f'"{module[0]}" has meta tensors.')
                     _disable_to(
                         module[1],
