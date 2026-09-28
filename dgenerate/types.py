@@ -27,9 +27,6 @@ import traceback
 import types
 import typing
 
-import PIL.Image
-import torch
-
 __doc__ = """
 Commonly used static type definitions and utilities for introspecting on objects, functions, types, etc.
 """
@@ -99,26 +96,54 @@ OptionalStrings = typing.Optional[collections.abc.Sequence[str]]
 Boolean = str
 OptionalBoolean = typing.Optional[bool]
 
-OptionalImage = typing.Optional[PIL.Image.Image]
-Images = collections.abc.Sequence[PIL.Image.Image]
-MutableImages = collections.abc.MutableSequence[PIL.Image.Image]
-OptionalImages = typing.Optional[Images]
-OptionalImagesSequence = typing.Optional[collections.abc.Sequence[Images]]
 
-Tensor = torch.Tensor
-OptionalTensor = typing.Optional[torch.Tensor]
-Tensors = collections.abc.Sequence[torch.Tensor]
-OptionalTensors = typing.Optional[Tensors]
-TensorsOrTensor = Tensors | Tensor
-OptionalTensorsOrTensor = typing.Optional[TensorsOrTensor]
-MutableTensors = collections.abc.MutableSequence[Tensor]
+def _image_and_tensor_types() -> dict[str, typing.Any]:
+    import PIL.Image
+    import torch
 
-# Union types for image/tensor support (no mixing allowed within a sequence)
-ImageOrTensor = typing.Union[PIL.Image.Image, torch.Tensor]
-ImagesOrTensors = typing.Union[Images, Tensors]  # Either all images OR all tensors, no mixing
-OptionalImagesOrTensors = typing.Optional[ImagesOrTensors]
-OptionalImageOrTensor = typing.Optional[ImageOrTensor]
-OptionalImagesOrTensorsSequence = typing.Optional[collections.abc.Sequence[ImagesOrTensors]]
+    Images = collections.abc.Sequence[PIL.Image.Image]
+    Tensor = torch.Tensor
+    Tensors = collections.abc.Sequence[torch.Tensor]
+    TensorsOrTensor = Tensors | Tensor
+    ImageOrTensor = typing.Union[PIL.Image.Image, torch.Tensor]
+    # Either all images OR all tensors, no mixing
+    ImagesOrTensors = typing.Union[Images, Tensors]
+
+    return {
+        'OptionalImage': typing.Optional[PIL.Image.Image],
+        'Images': Images,
+        'MutableImages': collections.abc.MutableSequence[PIL.Image.Image],
+        'OptionalImages': typing.Optional[Images],
+        'OptionalImagesSequence': typing.Optional[collections.abc.Sequence[Images]],
+        'Tensor': Tensor,
+        'OptionalTensor': typing.Optional[torch.Tensor],
+        'Tensors': Tensors,
+        'OptionalTensors': typing.Optional[Tensors],
+        'TensorsOrTensor': TensorsOrTensor,
+        'OptionalTensorsOrTensor': typing.Optional[TensorsOrTensor],
+        'MutableTensors': collections.abc.MutableSequence[Tensor],
+        'ImageOrTensor': ImageOrTensor,
+        'ImagesOrTensors': ImagesOrTensors,
+        'OptionalImagesOrTensors': typing.Optional[ImagesOrTensors],
+        'OptionalImageOrTensor': typing.Optional[ImageOrTensor],
+        'OptionalImagesOrTensorsSequence': typing.Optional[collections.abc.Sequence[ImagesOrTensors]],
+    }
+
+
+# Built on first access, so importing this module does not import torch or PIL.
+_IMAGE_AND_TENSOR_TYPE_NAMES = (
+    'OptionalImage', 'Images', 'MutableImages', 'OptionalImages', 'OptionalImagesSequence',
+    'Tensor', 'OptionalTensor', 'Tensors', 'OptionalTensors', 'TensorsOrTensor', 'OptionalTensorsOrTensor',
+    'MutableTensors', 'ImageOrTensor', 'ImagesOrTensors', 'OptionalImagesOrTensors', 'OptionalImageOrTensor',
+    'OptionalImagesOrTensorsSequence',
+)
+
+
+def __getattr__(name: str):
+    if name in _IMAGE_AND_TENSOR_TYPE_NAMES:
+        globals().update(_image_and_tensor_types())
+        return globals()[name]
+    raise AttributeError(f'module {__name__!r} has no attribute {name!r}')
 
 
 def iterate_attribute_combinations(

@@ -29,6 +29,7 @@ from .subcommandloader import SubCommandLoader
 from .to_diffusers import ToDiffusersSubCommand
 from .prompt_upscale import PromptUpscaleSubCommand
 from .auto1111_metadata import Auto1111MetadataSubCommand
+from .assistant import AssistantSubCommand
 
 __doc__ = """
 Sub-Commands implemented by the dgenerate command line tool.

@@ -1138,7 +1138,32 @@ class PluginLoader:
 
         :return: plugin instance
         """
+        plugin_class, args_dict = self._parse_uri(uri, kwargs)
+        try:
+            return plugin_class(**args_dict)
+        except self.__argument_error_type as e:
+            raise self.__argument_error_type(
+                f'Invalid argument given to {self.__description} '
+                f'"{args_dict["loaded_by_name"]}": {str(e).strip()}')
 
+    def check_uri(self, uri: _types.Uri, **kwargs):
+        """
+        Validate a plugin URI the way :py:meth:`.load` does, without creating the plugin.
+
+        This checks that the plugin exists, that every argument is known and matches its
+        type, and that required arguments are present. Checks performed by the plugin
+        itself when it is created are not performed.
+
+        :param uri: The URI string
+        :param kwargs: default argument values, as passed to :py:meth:`.load`
+
+        :raises ValueError: If uri is ``None``
+        :raises dgenerate.plugin.PluginArgumentError: If there is an error in the arguments for the plugin.
+        :raises dgenerate.plugin.PluginNotFoundError: If the plugin name mentioned in the URI could not be found.
+        """
+        self._parse_uri(uri, kwargs)
+
+    def _parse_uri(self, uri: _types.Uri, kwargs: dict) -> tuple[type[Plugin], dict[str, typing.Any]]:
         if uri is None:
             raise ValueError('uri must not be None')
 
@@ -1256,12 +1281,7 @@ class PluginLoader:
                     raise self.__argument_error_type(
                         f'Missing required argument "{arg_name}" for {self.__description} "{loaded_by_name}".')
 
-        try:
-            return plugin_class(**args_dict)
-        except self.__argument_error_type as e:
-            raise self.__argument_error_type(
-                f'Invalid argument given to {self.__description} '
-                f'"{loaded_by_name}": {str(e).strip()}')
+        return plugin_class, args_dict
 
     def loader_help(self,
                     names: _types.Names,

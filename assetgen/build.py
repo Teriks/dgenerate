@@ -32,6 +32,7 @@ from assetgen.builders.docs_builder import DocsBuilder
 from assetgen.builders.console_schema_builder import ConsoleSchemaBuilder
 from assetgen.builders.helsinki_nlp_translation_map_builder import HelsinkiNLPTranslationMapBuilder
 from assetgen.builders.hf_configs_builder import HfConfigsBuilder
+from assetgen.builders.assistant_index_builder import AssistantIndexBuilder
 
 
 def get_git_revision():
@@ -73,17 +74,24 @@ def setup_argument_parser():
 
     parser.add_argument(
         '--target', 
-        choices=['readme', 'docs', 'console-schemas', 'helsinki-nlp-translation-map', 'hf-configs', 'all'],
+        choices=['readme', 'docs', 'console-schemas', 'helsinki-nlp-translation-map', 'hf-configs',
+                 'assistant-index', 'all'],
         default='all',
         help='What to build (default: all)'
     )
 
     parser.add_argument(
         '--skip',
-        choices=['readme', 'docs', 'console-schemas', 'helsinki-nlp-translation-map', 'hf-configs'],
+        choices=['readme', 'docs', 'console-schemas', 'helsinki-nlp-translation-map', 'hf-configs',
+                 'assistant-index'],
         nargs='*',
         metavar='TARGET',
         help='Skip specific targets when building (can specify multiple targets)'
+    )
+
+    parser.add_argument(
+        '--force-assistant-index', action='store_true',
+        help='Rebuild the assistant index even if it matches the current docs and examples'
     )
 
     parser.add_argument(
@@ -207,6 +215,14 @@ def main():
         hf_configs_builder.build()
     else:
         print("Skipping HF configs build")
+
+    # Must run after docs and console-schemas, it indexes their output.
+    if should_build_target('assistant-index', args):
+        print("Building assistant index...")
+        assistant_index_builder = AssistantIndexBuilder(project_dir, force=args.force_assistant_index)
+        assistant_index_builder.build()
+    else:
+        print("Skipping assistant index build")
 
     print("Build completed successfully!")
 

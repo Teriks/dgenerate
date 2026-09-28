@@ -30,10 +30,12 @@ from .readme_builder import ReadmeBuilder
 from .docs_builder import DocsBuilder
 from .console_schema_builder import ConsoleSchemaBuilder
 from .helsinki_nlp_translation_map_builder import HelsinkiNLPTranslationMapBuilder
+from .assistant_index_builder import AssistantIndexBuilder
 
 __all__ = [
     'ReadmeBuilder',
     'DocsBuilder', 
     'ConsoleSchemaBuilder',
-    'HelsinkiNLPTranslationMapBuilder'
+    'HelsinkiNLPTranslationMapBuilder',
+    'AssistantIndexBuilder'
 ] 
