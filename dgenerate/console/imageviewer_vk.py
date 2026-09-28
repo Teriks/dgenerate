@@ -1241,9 +1241,9 @@ def _picture_triangles(origin_x, origin_y, picture_w, picture_h, width, height):
 class ImageViewerVulkan(tk.Frame):
     '\nPreview pane drawn with Vulkan. This is the console preview when the\n``console_ui_vulkan`` extra is installed.\n\nStill images, and finished animations (GIF, WebP, APNG, and MP4, including\naudio) with a timeline. The speaker draws sound waves, or a red X when\nmuted, beside the volume slider. The picture stays above the\ncontrols. ``DGENERATE_CONSOLE_UI_VULKAN=0`` selects the OpenGL viewer instead.\n'
     def __init__(self, parent, **kwargs):
-        # An empty background stops Tk painting black over the swapchain image
-        # on every size change. The picture stays up while a sash is dragged.
-        kwargs['bg'] = ''
+        # Black until a picture is loaded. An empty background is only used
+        # once something is on screen, so a sash drag does not smear.
+        kwargs['bg'] = 'black'
         kwargs.setdefault('highlightthickness', 0)
         super().__init__(parent, **kwargs)
         self._is_macos = (platform.system() == 'Darwin')
@@ -1315,6 +1315,14 @@ class ImageViewerVulkan(tk.Frame):
         return self._image_path
     def has_image(self):
         return (self._original_image_array is not None)
+    def _sync_backdrop(self):
+        """Fill an empty preview. A loaded picture keeps the last presented frame."""
+        color = '' if self.has_image() else 'black'
+        try:
+            if self.cget('bg') != color:
+                self.configure(bg=color)
+        except tk.TclError:
+            return
     def get_coordinates_at_cursor(self, widget_x, widget_y):
         return self._widget_to_image_coordinates(widget_x, widget_y)
     def _ensure_gpu(self):
@@ -1360,6 +1368,7 @@ class ImageViewerVulkan(tk.Frame):
         # the last attempt or the picture stays gone.
         if self._resize_after is not None:
             return
+        self._sync_backdrop()
         if not self._can_present() or not self._ensure_gpu() or not self.has_image():
             return
         width = max(1, self.winfo_width())
@@ -1571,6 +1580,15 @@ class ImageViewerVulkan(tk.Frame):
             self._calculate_base_display_size()
         self.redraw()
     def _on_configure(self, _event):
+        if not self.has_image():
+            self._sync_backdrop()
+            if self._resize_after is not None:
+                try:
+                    self.after_cancel(self._resize_after)
+                except Exception:
+                    pass
+                self._resize_after = None
+            return
         if not self._can_present():
             return
         self._present_retries = 0
