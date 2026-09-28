@@ -20,6 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import collections.abc
+import importlib.util
 import json
 import os
 import pathlib
@@ -39,6 +40,7 @@ import dgenerate.console.finddialog as _finddialog
 import dgenerate.console.fonts as _fonts
 import dgenerate.console.functionselect as _functionselect
 import dgenerate.console.imageprocessorselect as _imageprocessorselect
+import dgenerate.console.assistantform as _assistantform
 import dgenerate.console.imageseedselect as _imageseedselect
 import dgenerate.console.karrasschedulerselect as _karrasschedulerselect
 import dgenerate.console.latentsprocessorselect as _latentsprocessorselect
@@ -590,6 +592,22 @@ class DgenerateConsole(tk.Tk):
         else:
             self._input_text.text.insert('insert', text)
 
+    def _replace_input_text(self, text):
+        self._input_text.text.edit_separator()
+        self._input_text.text.replace('1.0', tk.END, text)
+        self._input_text.text.edit_separator()
+        self._input_text.text.mark_set('insert', '1.0')
+        self.multiline_mode(True)
+
+    def _input_text_generate_with_assistant(self):
+        _assistantform.request_config(
+            master=self,
+            populate=self._replace_input_text,
+            dgenerate_exe=DGENERATE_EXE,
+            get_cwd=lambda: self._shell_procmon.cwd(deep=True),
+            get_offline=self._offline_mode_var.get
+        )
+
     def _input_text_insert_recipe(self):
         _recipesform.request_recipe(
             master=self, insert=self._insert_or_replace_input_text
@@ -968,14 +986,21 @@ class DgenerateConsole(tk.Tk):
         dgenerate_dir.mkdir(exist_ok=True)
         
         settings_path = dgenerate_dir / 'console_settings.json'
+        try:
+            with settings_path.open('r', encoding='utf-8') as existing:
+                config = json.load(existing)
+        except (OSError, json.JSONDecodeError):
+            config = {}
+        if not isinstance(config, dict):
+            config = {}
+        config.update({
+            'theme': self._theme_menu_var.get(),
+            'auto_scroll_on_run': self._auto_scroll_on_run_check_var.get(),
+            'auto_scroll_on_output': self._auto_scroll_on_output_check_var.get(),
+            'word_wrap_input': self._word_wrap_input_check_var.get(),
+            'word_wrap_output': self._word_wrap_output_check_var.get()
+        })
         with settings_path.open('w', encoding='utf-8') as file:
-            config = {
-                'theme': self._theme_menu_var.get(),
-                'auto_scroll_on_run': self._auto_scroll_on_run_check_var.get(),
-                'auto_scroll_on_output': self._auto_scroll_on_output_check_var.get(),
-                'word_wrap_input': self._word_wrap_input_check_var.get(),
-                'word_wrap_output': self._word_wrap_output_check_var.get()
-            }
             json.dump(config, file)
 
     def _load_command_history(self):
@@ -1110,6 +1135,9 @@ class DgenerateConsole(tk.Tk):
         menu.add_command(label='Format Code',
                          accelerator='Ctrl+Shift+F',
                          command=self._format_code)
+        if importlib.util.find_spec('xllamacpp') is not None:
+            menu.add_command(label='Generate Config',
+                             command=self._input_text_generate_with_assistant)
         menu.add_separator()
 
         # Code submenu

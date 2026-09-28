@@ -369,6 +369,7 @@ if __name__ != 'setup_as_library':
               'dgenerate.console.schemas': ['*.json'],
               'dgenerate.console.recipes': ['*.recipe'],
               'dgenerate.translators.data': ['*.json'],
+              'dgenerate.assistant': ['data/*.npz'],
               'dgenerate.pipelinewrapper.hub_configs': ['**/*.json', '**/*.txt', '**/*.model'],
               'dgenerate.extras.hidiffusion.sd_module_key': ['*.txt'],
               'dgenerate.extras': ['**/LICENSE', '**/NOTICE']

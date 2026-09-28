@@ -6,4 +6,5 @@ recursive-include dgenerate/console/schemas *.json
 recursive-include dgenerate/console/recipes *.recipe
 recursive-include dgenerate/extras/hidiffusion/sd_module_key *.txt
 recursive-include dgenerate/translators/data *.json
+recursive-include dgenerate/assistant/data *.npz *.rst
 recursive-include dgenerate/pipelinewrapper/hub_configs *.json *.txt *.model

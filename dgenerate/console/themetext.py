@@ -22,6 +22,7 @@
 import tkinter as tk
 
 _configure = set()
+_listeners = set()
 
 _cur_args = []
 _cur_kwargs = dict()
@@ -29,10 +30,27 @@ _cur_kwargs = dict()
 def configure(*args, **kwargs):
     global _cur_kwargs
     global _cur_args
-    for c in _configure:
-        c.configure(*args, **kwargs)
     _cur_args = args
     _cur_kwargs = kwargs
+    for c in list(_configure):
+        c.configure(*args, **kwargs)
+    for listener in list(_listeners):
+        listener()
+
+
+def listen(callback):
+    """
+    Call ``callback`` after the editor colors change.
+
+    The callback takes no arguments. Read the new colors from a
+    :class:`ThemeText` widget.
+    """
+    _listeners.add(callback)
+
+
+def unlisten(callback):
+    """Stop calling ``callback`` when the editor colors change."""
+    _listeners.discard(callback)
 
 
 class ThemeText(tk.Text):
