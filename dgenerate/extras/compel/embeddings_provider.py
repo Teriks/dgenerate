@@ -19,6 +19,19 @@ CompatibleTokenizer = Union[CLIPTokenizer, T5TokenizerFast]
 CompatibleTextEncoder = Union[CLIPTextModel, CLIPTextModelWithProjection, T5EncoderModel]
 
 
+def clip_final_layer_norm(text_encoder):
+    """
+    Layer norm applied to CLIP hidden states.
+
+    transformers 5 places it on ``CLIPTextModel``. Older transformers, and
+    ``CLIPTextModelWithProjection``, nest it under ``text_model``.
+    """
+    nested = getattr(text_encoder, 'text_model', None)
+    if nested is not None and hasattr(nested, 'final_layer_norm'):
+        return nested.final_layer_norm
+    return text_encoder.final_layer_norm
+
+
 def text_encoder_device(module: torch.nn.Module) -> torch.device:
     """
     Device prompt tensors should live on.
@@ -599,7 +612,7 @@ class EmbeddingsProvider:
                 if self.returned_embeddings_type in [ReturnedEmbeddingsType.LAST_HIDDEN_STATES_NORMALIZED, 
                                                    ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NORMALIZED]:
                     # For models that need normalization
-                    return self.text_encoder.text_model.final_layer_norm(text_encoder_output.hidden_states[layer_index])
+                    return clip_final_layer_norm(self.text_encoder)(text_encoder_output.hidden_states[layer_index])
                 else:
                     # For models that don't need normalization
                     return text_encoder_output.hidden_states[layer_index]
@@ -610,7 +623,7 @@ class EmbeddingsProvider:
             return penultimate_hidden_state
         elif self.returned_embeddings_type == ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NORMALIZED:
             penultimate_hidden_state = text_encoder_output.hidden_states[-2]
-            return self.text_encoder.text_model.final_layer_norm(penultimate_hidden_state)
+            return clip_final_layer_norm(self.text_encoder)(penultimate_hidden_state)
         elif self.returned_embeddings_type == ReturnedEmbeddingsType.LAST_HIDDEN_STATES_NORMALIZED:
             # already normalized
             return text_encoder_output.last_hidden_state
