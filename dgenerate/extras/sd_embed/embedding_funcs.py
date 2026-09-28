@@ -44,6 +44,21 @@ import dgenerate.memory as _memory
 
 logger = logging.getLogger(__name__)
 
+
+def clip_text_tower(text_encoder):
+    """
+    Return the module that owns ``encoder`` and ``final_layer_norm``.
+
+    transformers 5 places those attributes directly on ``CLIPTextModel``.
+    Older transformers, and ``CLIPTextModelWithProjection``, nest them under
+    ``text_model``.
+    """
+    nested = getattr(text_encoder, 'text_model', None)
+    if nested is not None and hasattr(nested, 'encoder'):
+        return nested
+    return text_encoder
+
+
 def get_prompts_tokens_with_weights(
         clip_tokenizer: CLIPTokenizer
         , prompt: str = None
@@ -263,9 +278,10 @@ def get_weighted_text_embeddings_sd15(
     """
     device = device if device else pipe.device
 
-    original_clip_layers = pipe.text_encoder.text_model.encoder.layers
+    clip_text = clip_text_tower(pipe.text_encoder)
+    original_clip_layers = clip_text.encoder.layers
     if clip_skip > 0:
-        pipe.text_encoder.text_model.encoder.layers = original_clip_layers[:-clip_skip]
+        clip_text.encoder.layers = original_clip_layers[:-clip_skip]
 
     eos = pipe.tokenizer.eos_token_id
     prompt_tokens, prompt_weights = get_prompts_tokens_with_weights(
@@ -368,7 +384,7 @@ def get_weighted_text_embeddings_sd15(
 
     # recover clip layers
     if clip_skip > 0:
-        pipe.text_encoder.text_model.encoder.layers = original_clip_layers
+        clip_text.encoder.layers = original_clip_layers
 
     return prompt_embeds, neg_prompt_embeds
 
