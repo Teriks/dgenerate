@@ -853,7 +853,7 @@ class DgenerateConsole(tk.Tk):
             self._paned_window_vertical.remove(output)
             self.update_idletasks()
             self.wm_manage(output)
-            output.tk.call('wm', 'title', output._w, 'Output')
+            output.tk.call('wm', 'title', output._w, 'Console Output')
             output.tk.call('wm', 'minsize', output._w, 320, 160)
             output.tk.call('wm', 'geometry', output._w, self._output_float_geometry)
             output.tk.call('wm', 'protocol', output._w, 'WM_DELETE_WINDOW',
