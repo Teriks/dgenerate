@@ -2583,7 +2583,10 @@ Install dgenerate:
     # * xllamacpp (used for the llama prompt upscaler plugin)
     # * bitsandbytes
     # * triton_windows
-    # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
+    # * console_ui_opengl (OpenGL Console UI preview; plays video and audio)
+    # * console_ui_vulkan (default Console UI preview on Windows, Linux, and macOS;
+    #   plays video and audio. The network installer selects this extra.
+    #   DGENERATE_CONSOLE_UI_VULKAN=0 keeps the OpenGL viewer)
 
     # The commands below use the CUDA 13.2 torch index.
     # CUDA 13.0 through 13.1 use --extra-index-url https://download.pytorch.org/whl/cu130/
@@ -2675,7 +2678,10 @@ a cloned repository like this:
     # * xllamacpp (used for the llama prompt upscaler plugin)
     # * bitsandbytes
     # * triton_windows
-    # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
+    # * console_ui_opengl (OpenGL Console UI preview; plays video and audio)
+    # * console_ui_vulkan (default Console UI preview on Windows, Linux, and macOS;
+    #   plays video and audio. The network installer selects this extra.
+    #   DGENERATE_CONSOLE_UI_VULKAN=0 keeps the OpenGL viewer)
 
     # The commands below use the CUDA 13.2 torch index.
     # CUDA 13.0 through 13.1 use --extra-index-url https://download.pytorch.org/whl/cu130/
@@ -2798,7 +2804,10 @@ Install dgenerate
     # * ncnn
     # * xllamacpp (used for the llama prompt upscaler plugin)
     # * bitsandbytes
-    # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
+    # * console_ui_opengl (OpenGL Console UI preview; plays video and audio)
+    # * console_ui_vulkan (default Console UI preview on Windows, Linux, and macOS;
+    #   plays video and audio. The network installer selects this extra.
+    #   DGENERATE_CONSOLE_UI_VULKAN=0 keeps the OpenGL viewer)
 
     # The commands below use the CUDA 13.2 torch index.
     # CUDA 13.0 through 13.1 use --extra-index-url https://download.pytorch.org/whl/cu130/
@@ -3130,13 +3139,16 @@ global python site packages.
 
     # * ncnn
     # * xllamacpp (used for the llama prompt upscaler plugin; the PyPI wheel is the Metal build on macOS)
-    # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
+    # * console_ui_opengl (OpenGL Console UI preview; plays video and audio)
+    # * console_ui_vulkan (default Console UI preview on Windows, Linux, and macOS;
+    #   plays video and audio. The network installer selects this extra.
+    #   DGENERATE_CONSOLE_UI_VULKAN=0 keeps the OpenGL viewer)
 
     pipx install dgenerate==6.0.0
 
     # or with extras
 
-    pipx install dgenerate[ncnn,xllamacpp,console_ui_opengl]==6.0.0
+    pipx install dgenerate[ncnn,xllamacpp,console_ui_vulkan]==6.0.0
 
     # open a new terminal or logout & login
 
@@ -3190,13 +3202,16 @@ of your own creation.
 
     # * ncnn
     # * xllamacpp (used for the llama prompt upscaler plugin; the PyPI wheel is the Metal build on macOS)
-    # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
+    # * console_ui_opengl (OpenGL Console UI preview; plays video and audio)
+    # * console_ui_vulkan (default Console UI preview on Windows, Linux, and macOS;
+    #   plays video and audio. The network installer selects this extra.
+    #   DGENERATE_CONSOLE_UI_VULKAN=0 keeps the OpenGL viewer)
 
     pip3 install dgenerate==6.0.0
 
     # or with extras
 
-    pip3 install dgenerate[ncnn,xllamacpp,console_ui_opengl]==6.0.0
+    pip3 install dgenerate[ncnn,xllamacpp,console_ui_vulkan]==6.0.0
 
     # launch the Console UI to test the install.
     # tkinter will be available when you install
@@ -9271,6 +9286,191 @@ The help output of ``prompt-upscale`` is as follows:
             Prevent downloads of resources that do not exist on disk already.
             -----------------------------------------------------------------
 
+Sub Command: assistant
+----------------------
+
+The ``assistant`` sub-command writes a dgenerate config from a plain language request.
+A local Qwen model, running through the ``xllamacpp`` extra, writes the config. It is
+guided by the closest example configs and documentation, retrieved from an index of
+the dgenerate examples and docs that ships with dgenerate. The config is then checked
+with dgenerate's config runner and argument parser, without loading any diffusion
+models, and the model is asked to fix anything dgenerate rejects.
+
+Install the extra with ``pip install dgenerate[xllamacpp]``. Without it the command
+exits with status 1.
+
+The request is the positional text after the options. When it is omitted, the request
+is read from stdin. On a terminal you are prompted to type it, then press Ctrl+Z and
+Enter on Windows, or Ctrl+D on Linux or macOS. An empty request exits with status 2.
+
+The finished config is printed to stdout. ``-o`` / ``--output`` writes it to a file
+instead. Paths named in the request are input files. Relative paths are relative to
+the current directory, and when ``--output`` is set they are rewritten relative to
+that file. A path that does not exist is reported on stderr and left in the config
+so you can see it.
+
+The chat and embedding models are downloaded from Hugging Face the first time they
+are used. ``--model`` and ``--embed-model`` accept only the supported Qwen GGUFs
+below. A path to some other file is rejected. Each embedding model has an index
+packaged with dgenerate, so an install does not need the examples directory to
+retrieve documentation.
+
+Supported ``--model`` values, smallest download first. The default is
+``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q4_K_M.gguf``.
+
+* ``unsloth/Qwen3.5-9B-GGUF/Qwen3.5-9B-Q4_K_M.gguf`` (5.7 GB, Qwen 3.5, 8 GB GPUs)
+* ``unsloth/Qwen3.5-27B-GGUF/Qwen3.5-27B-UD-IQ2_XXS.gguf`` (8.6 GB, Qwen 3.5, 12 GB GPUs)
+* ``unsloth/Qwen3.5-27B-GGUF/Qwen3.5-27B-IQ4_XS.gguf`` (15.0 GB, Qwen 3.5, 16 GB GPUs)
+* ``unsloth/Qwen3.5-27B-GGUF/Qwen3.5-27B-Q4_K_M.gguf`` (16.7 GB, Qwen 3.5, 24 GB GPUs)
+* ``unsloth/Qwen3.5-35B-A3B-GGUF/Qwen3.5-35B-A3B-UD-IQ4_XS.gguf`` (17.5 GB, Qwen 3.5 MoE, 16 GB GPUs)
+* ``unsloth/Qwen3.5-27B-GGUF/Qwen3.5-27B-Q6_K.gguf`` (22.5 GB, Qwen 3.5, 24 GB GPUs)
+* ``unsloth/Qwen3.5-27B-GGUF/Qwen3.5-27B-Q8_0.gguf`` (28.6 GB, Qwen 3.5, 32 GB GPUs)
+* ``unsloth/Qwen3.6-27B-GGUF/Qwen3.6-27B-UD-IQ2_XXS.gguf`` (9.4 GB, Qwen 3.6, 12 GB GPUs)
+* ``unsloth/Qwen3.6-27B-GGUF/Qwen3.6-27B-IQ4_XS.gguf`` (15.4 GB, Qwen 3.6, 16 GB GPUs)
+* ``unsloth/Qwen3.6-27B-GGUF/Qwen3.6-27B-Q4_K_M.gguf`` (16.8 GB, Qwen 3.6, 24 GB GPUs)
+* ``unsloth/Qwen3.6-35B-A3B-GGUF/Qwen3.6-35B-A3B-UD-IQ4_XS.gguf`` (17.7 GB, Qwen 3.6 MoE, 16 GB GPUs)
+* ``unsloth/Qwen3.6-27B-GGUF/Qwen3.6-27B-Q6_K.gguf`` (22.5 GB, Qwen 3.6, 24 GB GPUs)
+* ``unsloth/Qwen3.6-27B-GGUF/Qwen3.6-27B-Q8_0.gguf`` (28.6 GB, Qwen 3.6, 32 GB GPUs)
+* ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ2_XXS.gguf`` (9.0 GB, Qwen 3.8, 12 GB GPUs)
+* ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-IQ4_XS.gguf`` (15.7 GB, Qwen 3.8, 16 GB GPUs)
+* ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q4_K_M.gguf`` (16.5 GB, Qwen 3.8, 24 GB GPUs, default)
+* ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q6_K.gguf`` (22.0 GB, Qwen 3.8, 24 GB GPUs)
+* ``unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-Q8_0.gguf`` (29.0 GB, Qwen 3.8, 32 GB GPUs)
+
+Supported ``--embed-model`` values. The default is
+``Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf``.
+
+* ``Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf`` (0.6 GB, default)
+* ``Qwen/Qwen3-Embedding-4B-GGUF/Qwen3-Embedding-4B-Q8_0.gguf`` (4.3 GB, stronger retrieval)
+* ``Qwen/Qwen3-Embedding-8B-GGUF/Qwen3-Embedding-8B-Q8_0.gguf`` (8.1 GB, strongest retrieval)
+
+The Console UI Generate Code menu offers the same lists and does not accept a
+model file of your own.
+
+``--ctx`` is the chat context size in tokens, 32768 by default. ``--gpu-layers``
+is how many layers go on the GPU: ``-1`` lets the loader decide, and ``0`` is CPU
+only. ``--temperature`` defaults to 0.3. ``--max-tokens`` limits the reply. ``0``,
+the default, uses whatever room is left in the context window and does not allocate
+a larger cache.
+
+``--think`` lets the model reason before it writes the config, which is slower.
+``--reasoning-effort`` is ``low``, ``medium``, or ``xhigh``, and only applies with
+``--think``. The default is ``medium``. Qwen 3.8 uses extra high when the effort
+is left unset in its own template; this command always sends the effort you choose.
+
+``--no-check`` skips the dgenerate validation. Otherwise the config is checked, and
+``--max-repairs`` (default 2) is how many times the model is asked to fix a config
+that dgenerate rejects. Problems and notes are printed to stderr. A config that
+still has problems is written anyway, with a warning to review it before running.
+Status 0 means a config was written. A missing model or a failure while loading one
+exits with status 1.
+
+``--show-context`` prints the retrieved examples and documentation to stderr.
+``--offline`` uses only models already on disk or in the Hugging Face cache.
+``dgenerate --offline-mode --sub-command assistant`` does the same thing.
+``-v`` / ``--verbose`` shows llama.cpp output on stderr.
+
+The Console UI Generate Code menu runs this sub-command. Its model list is the
+same set of Qwen GGUFs.
+
+.. code-block:: bash
+
+    #!/usr/bin/env bash
+
+    # print a config to the terminal
+
+    dgenerate --sub-command assistant "use ltx 2 with the canny ic lora to turn clip.gif into a dancing fox"
+
+    # write it to a file; clip.gif is looked up in the current directory
+    # and the path in the config is relative to fox.dgen
+
+    dgenerate --sub-command assistant -o fox.dgen "use ltx 2 with the canny ic lora to turn clip.gif into a dancing fox"
+
+    # read the request from stdin
+
+    echo "generate a cute cat, 30 steps" | dgenerate --sub-command assistant -o cat.dgen
+
+    # stay offline, and let the model think before answering
+
+    dgenerate --offline-mode --sub-command assistant --think --reasoning-effort medium \
+    -o cat.dgen "generate a cute cat, 30 steps"
+
+The help output of ``assistant`` is as follows:
+
+.. code-block:: text
+
+    usage: assistant [-h] [-o OUTPUT] [--model MODEL] [--embed-model EMBED_MODEL]
+                     [--ctx CTX] [--gpu-layers GPU_LAYERS] [--think]
+                     [--reasoning-effort {low,medium,xhigh}]
+                     [--temperature TEMPERATURE] [--max-tokens MAX_TOKENS]
+                     [--no-check] [--max-repairs MAX_REPAIRS] [--show-context]
+                     [--offline] [-v]
+                     [request ...]
+
+    Write a dgenerate config from a plain language request, using a local Qwen
+    model with retrieval over the dgenerate examples and documentation.
+
+    positional arguments:
+      request
+            What the config should do. Read from stdin when omitted.
+            --------------------------------------------------------
+
+    options:
+      -h, --help
+            show this help message and exit
+            -------------------------------
+      -o, --output OUTPUT
+            Write the config to this file instead of stdout. File paths in the
+            request are relative to the current directory and are rewritten
+            relative to this file.
+            ----------------------
+      --model MODEL
+            Chat model. One of the supported Qwen GGUFs. Default:
+            unsloth/Qwen3.8-27B-GGUF/Qwen3.8-27B-UD-Q4_K_M.gguf
+            ---------------------------------------------------
+      --embed-model EMBED_MODEL
+            Embedding model. One of the supported Qwen3-Embedding GGUFs. Each one
+            has a packaged index. Default:
+            Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf
+            -------------------------------------------------------------
+      --ctx CTX
+            Chat context size in tokens. Default: 32768
+            -------------------------------------------
+      --gpu-layers GPU_LAYERS
+            Layers to put on the GPU, -1 for automatic, 0 for CPU only. Default:
+            -1
+            --
+      --think
+            Let the model reason before answering. Slower.
+            ----------------------------------------------
+      --reasoning-effort {low,medium,xhigh}
+            How long to think when --think is set. Qwen3.8 otherwise uses extra
+            high. Default: medium
+            ---------------------
+      --temperature TEMPERATURE
+            Default: 0.3
+            ------------
+      --max-tokens MAX_TOKENS
+            Maximum reply tokens. 0 uses the rest of the context window and does
+            not increase memory use. Default: 0
+            -----------------------------------
+      --no-check
+            Skip validating the config with dgenerate.
+            ------------------------------------------
+      --max-repairs MAX_REPAIRS
+            How many times to ask the model to fix a config dgenerate rejects.
+            Default: 2
+            ----------
+      --show-context
+            Print the retrieved context to stderr.
+            --------------------------------------
+      --offline
+            Only use models already in the Hugging Face cache.
+            --------------------------------------------------
+      -v, --verbose
+            Show llama.cpp output.
+            ----------------------
+
 Upscaling Images
 ================
 
@@ -13677,9 +13877,26 @@ interactive use, as well as loading arbitrary images, and a few other helpful th
 ability to show the current image file in the systems file explorer,
 all via the right click context menu.
 
-When the package extra ``console_ui_opengl`` is installed, zoom and pan operations
-will be hardware accelerated for smooth operation. (Mouse Wheel or Ctrl+/Ctrl-),
-(Alt+LeftClick or Middle Click), respectively.
+Vulkan is the default preview on Windows, Linux, and macOS. The network
+installer selects the ``console_ui_vulkan`` extra. When that extra is
+installed, the preview pane uses Vulkan. ``DGENERATE_CONSOLE_UI_VULKAN=0``
+selects the OpenGL viewer when ``console_ui_opengl`` is installed, or the
+plain Tk canvas when it is not. ``DGENERATE_CONSOLE_UI_OPENGL=0`` disables
+the OpenGL viewer on its own. The plain Tk canvas does not play video.
+Linux presents through X11, including a Wayland desktop that is running the
+window under XWayland. macOS presents through MoltenVK.
+
+The Vulkan and OpenGL previews play finished animations (GIF, WebP, APNG, and
+MP4, including audio). Move the pointer over the picture to show the timeline
+under it. The picture stays above that bar. The bar has a play button, a scrub
+track, elapsed time, duration, a speaker button, and a volume slider. The
+speaker draws sound waves while audio is on, and a red X while muted. Click it
+to mute or unmute. Drag the slider to set the loudness; raising it above zero
+turns mute off. Space pauses and resumes. Mute and volume are saved in
+``console_settings.json`` as ``preview_muted`` and ``preview_volume``.
+
+Zoom and pan in those previews are hardware accelerated. (Mouse Wheel or
+Ctrl+/Ctrl-), (Alt+LeftClick or Middle Click), respectively.
 
 The console UI always starts in single line entry mode (terminal mode), multiline input mode
 is activated via the insert key and indicated by the presence of line numbers, you must deactivate this mode

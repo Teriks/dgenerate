@@ -31,10 +31,31 @@ try:
 except ImportError:
     pass
 
-# Import the appropriate implementation based on OpenGL availability
-if HAS_OPENGL:
+def _use_vulkan() -> bool:
+    """Use the Vulkan preview when that extra is installed.
+
+    This is the default on Windows, Linux, and macOS.
+    ``DGENERATE_CONSOLE_UI_VULKAN=0`` keeps the OpenGL viewer, or the Tk canvas
+    when OpenGL is not installed.
+    """
+    if os.environ.get('DGENERATE_CONSOLE_UI_VULKAN') == '0':
+        return False
+    try:
+        import vulkan  # noqa: F401
+    except ImportError:
+        return False
+    return True
+
+
+# Vulkan when that extra is installed, otherwise OpenGL, otherwise the Tk canvas.
+if _use_vulkan():
+    from dgenerate.console.imageviewer_vk import ImageViewerVulkan as ImageViewer
+    HAS_VULKAN = True
+elif HAS_OPENGL:
     from dgenerate.console.imageviewer_gl import ImageViewerGL as ImageViewer
+    HAS_VULKAN = False
 else:
     from dgenerate.console.imageviewer_canvas import ImageViewerCanvas as ImageViewer
+    HAS_VULKAN = False
 
-__all__ = ['ImageViewer', 'HAS_OPENGL']
+__all__ = ['ImageViewer', 'HAS_OPENGL', 'HAS_VULKAN']

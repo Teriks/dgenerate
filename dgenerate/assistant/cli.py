@@ -1,3 +1,4 @@
+import argparse
 import json
 import os
 import re
@@ -116,6 +117,22 @@ def _chainable_placeholders(request: str, config: str, warnings: list[dict], rai
     return problems
 
 
+def _supported_model(value: str, specs: tuple[str, ...], kind: str) -> str:
+    if value in specs:
+        return value
+    choices = '\n'.join(f'  {spec}' for spec in specs)
+    raise argparse.ArgumentTypeError(
+        f'"{value}" is not a supported {kind} model. Choose one of:\n{choices}')
+
+
+def _supported_chat_model(value: str) -> str:
+    return _supported_model(value, _catalog.chat_model_specs(), 'chat')
+
+
+def _supported_embed_model(value: str) -> str:
+    return _supported_model(value, _catalog.embed_model_specs(), 'embedding')
+
+
 def create_parser(prog: str) -> _b_util.DirectiveArgumentParser:
     parser = _b_util.DirectiveArgumentParser(
         prog=prog,
@@ -126,13 +143,11 @@ def create_parser(prog: str) -> _b_util.DirectiveArgumentParser:
     parser.add_argument('-o', '--output', help='Write the config to this file instead of stdout. '
                                                'File paths in the request are relative to the current '
                                                'directory and are rewritten relative to this file.')
-    parser.add_argument('--model', default=_models.DEFAULT_CHAT_MODEL,
-                        help='Chat model, a .gguf path or org/repo/file.gguf. Default: %(default)s')
-    parser.add_argument('--embed-model', default=_models.DEFAULT_EMBED_MODEL,
-                        help='Embedding model, a .gguf path or org/repo/file.gguf. '
-                             'The models in the Generate Config menu have a packaged index. '
-                             'Any other Qwen3-Embedding model builds an index on first use. '
-                             'Default: %(default)s')
+    parser.add_argument('--model', default=_models.DEFAULT_CHAT_MODEL, type=_supported_chat_model,
+                        help='Chat model. One of the supported Qwen GGUFs. Default: %(default)s')
+    parser.add_argument('--embed-model', default=_models.DEFAULT_EMBED_MODEL, type=_supported_embed_model,
+                        help='Embedding model. One of the supported Qwen3-Embedding GGUFs. '
+                             'Each one has a packaged index. Default: %(default)s')
     parser.add_argument('--ctx', type=int, default=32768, help='Chat context size in tokens. Default: %(default)s')
     parser.add_argument('--gpu-layers', type=int, default=-1,
                         help='Layers to put on the GPU, -1 for automatic, 0 for CPU only. Default: %(default)s')

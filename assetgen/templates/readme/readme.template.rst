@@ -74,6 +74,17 @@ Scripting
 * Write scripted workflows with intelligent VRAM/RAM memory management, garbage collection, and caching
 * Write plugins such as image processors, prompt weighters, shell language features, etc. in Python if desired
 
+Config generation
+-----------------
+
+A local Qwen model writes a dgenerate config from a plain language request. It retrieves the closest example configs and documentation, then checks the result with dgenerate and asks the model to fix anything that is rejected.
+
+.. code-block:: bash
+
+    dgenerate --sub-command assistant -o cat.dgen "generate a cute cat, 30 steps"
+
+This needs the ``xllamacpp`` extra. The Console UI Generate Code menu runs the same command. See the `assistant sub-command <https://dgenerate.readthedocs.io/en/@REVISION/manual.html#sub-command-assistant>`_ in the manual.
+
 Getting Started
 ===============
 
@@ -130,7 +141,10 @@ Interactive GUI
 Features a syntax-highlighting console / editor:
 
 * REPL / code editor for the built in shell language to assist with building complex workflows
-* OpenGL accelerated image preview, featuring smooth zoom / pan, and bounding box / coordinate picker
+* Generate Code writes a config script from a plain language request with a local Qwen model
+* Preview plays finished GIF, WebP, APNG, and MP4 clips, including audio. The timeline under the picture has play, scrub, a speaker button (sound waves, or a red X when muted), and a volume slider
+* Vulkan is the default preview on Windows, Linux, and macOS with the ``console_ui_vulkan`` extra. The network installer selects that extra. ``DGENERATE_CONSOLE_UI_VULKAN=0`` keeps the OpenGL viewer from ``console_ui_opengl``
+* Smooth zoom / pan, and a bounding box / coordinate picker
 * Various templating utilities (recipes, and URI builders) for quickly creating scripts and working interactively
 * In editor documentation for all arguments, and built in image processors / plugins
 * Lightweight multiplatform Tkinter-based UI

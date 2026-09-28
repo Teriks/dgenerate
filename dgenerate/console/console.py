@@ -333,7 +333,9 @@ class DgenerateConsole(tk.Tk):
 
         # Create the output text pane
 
-        self._output_text = ScrolledText(self._paned_window_vertical)
+        # Parent the log to the console. wm manage can then turn it into a real
+        # window on Windows, Linux, and macOS; a pane child cannot be managed on Aqua.
+        self._output_text = ScrolledText(self)
 
         self._output_text.text.bind('<Button-3>',
                                     lambda e: self._output_text_context.tk_popup(
@@ -380,6 +382,9 @@ class DgenerateConsole(tk.Tk):
         self._output_text_context.add_separator()
         self._output_text_context.add_command(label='Preview Selected Image',
                                               command=lambda: self._preview_selected_image(self._output_text.text))
+        self._output_text_context.add_separator()
+        self._output_text_context.add_command(label='Make Window', command=self._toggle_output_float)
+        self._output_float_menu_index = self._output_text_context.index(tk.END)
 
         # Patch the output text context menu to enable/disable Preview Selected Image
         og_output_popup = self._output_text_context.tk_popup
@@ -390,11 +395,17 @@ class DgenerateConsole(tk.Tk):
                 self._output_text_context.entryconfigure('Preview Selected Image', state=tk.NORMAL)
             else:
                 self._output_text_context.entryconfigure('Preview Selected Image', state=tk.DISABLED)
+            self._sync_output_window_labels()
             og_output_popup(*args, **kwargs)
 
         self._output_text_context.tk_popup = patch_output_tk_popup
 
         self._paned_window_vertical.add(self._output_text)
+        self._output_floated = tk.BooleanVar(value=False)
+        self._output_is_floating = False
+        self._output_float_geometry = '700x420'
+        self._output_sash = None
+        self._dock_output_callback = self.register(self._dock_output_from_close)
 
         # Initialize tearoff image pane
         self._tearoff_image_pane = TearOffImagePane(
@@ -411,6 +422,9 @@ class DgenerateConsole(tk.Tk):
                                         variable=self._tearoff_image_pane.get_pane_visible_var())
         self._view_menu.add_checkbutton(label='Image Window',
                                         variable=self._tearoff_image_pane.get_window_visible_var())
+        self._view_menu.add_separator()
+        self._view_menu.add_command(label='Console Output Window', command=self._toggle_output_float)
+        self._output_view_menu_index = self._view_menu.index(tk.END)
 
         # Misc Config
 
@@ -797,6 +811,94 @@ class DgenerateConsole(tk.Tk):
     def _select_all_input_entry(self):
         self._input_text.gen_selectall_event()
 
+    def _sync_output_window_labels(self):
+        floated = self._output_is_floating
+        labels = (
+            (self._output_text_context, getattr(self, '_output_float_menu_index', None),
+             'Make Pane' if floated else 'Make Window'),
+            (self._view_menu, getattr(self, '_output_view_menu_index', None),
+             'Console Output Pane' if floated else 'Console Output Window'),
+        )
+        for menu, index, label in labels:
+            if index is None:
+                continue
+            try:
+                menu.entryconfigure(index, label=label)
+            except tk.TclError:
+                pass
+
+    def _apply_output_float(self):
+        if self._output_floated.get():
+            self._float_output()
+        else:
+            self._dock_output()
+
+    def _toggle_output_float(self):
+        self._output_floated.set(not self._output_is_floating)
+        self._apply_output_float()
+
+    def _dock_output_from_close(self):
+        self._output_floated.set(False)
+        self._dock_output()
+
+    def _float_output(self):
+        if self._output_is_floating:
+            return
+        output = self._output_text
+        try:
+            self._output_sash = self._paned_window_vertical.sash_coord(0)
+        except tk.TclError:
+            self._output_sash = None
+        try:
+            self._paned_window_vertical.remove(output)
+            self.update_idletasks()
+            self.wm_manage(output)
+            output.tk.call('wm', 'title', output._w, 'Output')
+            output.tk.call('wm', 'minsize', output._w, 320, 160)
+            output.tk.call('wm', 'geometry', output._w, self._output_float_geometry)
+            output.tk.call('wm', 'protocol', output._w, 'WM_DELETE_WINDOW',
+                           self._dock_output_callback)
+        except tk.TclError:
+            self._output_is_floating = False
+            self._output_floated.set(False)
+            try:
+                self.wm_forget(output)
+            except tk.TclError:
+                pass
+            try:
+                self._paned_window_vertical.add(output)
+            except tk.TclError:
+                pass
+            self._sync_output_window_labels()
+            return
+        self._output_is_floating = True
+        self._sync_output_window_labels()
+        output.text.focus_set()
+
+    def _dock_output(self):
+        if not self._output_is_floating:
+            return
+        output = self._output_text
+        try:
+            self._output_float_geometry = output.tk.call('wm', 'geometry', output._w)
+        except tk.TclError:
+            pass
+        self.wm_forget(output)
+        self._paned_window_vertical.add(output)
+        self._output_is_floating = False
+        self._sync_output_window_labels()
+        sash = self._output_sash
+        if sash is None:
+            return
+
+        def restore_sash(sash=sash):
+            try:
+                self._paned_window_vertical.sash_place(0, sash[0], sash[1])
+            except tk.TclError:
+                pass
+
+        self.after_idle(restore_sash)
+
     def _copy_output_text_selection(self):
         self._output_text.text.event_generate('<<Copy>>')
 
@@ -842,7 +944,14 @@ class DgenerateConsole(tk.Tk):
 
     def _check_text_for_latest_image(self, text):
         match = re.match(
-            r'Wrote Image File: "(.*?)"|\\image_process: Wrote Image "(.*?)"|\\image_process: Wrote Frame "(.*?)"',
+            r'Wrote Image File: "(.*?)"'
+            r'|Wrote Animation File: "(.*?)"'
+            r'|Wrote Frame: "(.*?)"'
+            r'|image-process: Wrote Image "(.*?)"'
+            r'|image-process: Wrote Frame "(.*?)"'
+            r'|image-process: Wrote File "(.*?)"'
+            r'|\\image_process: Wrote Image "(.*?)"'
+            r'|\\image_process: Wrote Frame "(.*?)"',
             text)
         if match is not None:
             mentioned_path = ''.join(filter(None, match.groups()))
@@ -1088,6 +1197,11 @@ class DgenerateConsole(tk.Tk):
         self.kill_shell_process()
 
         # Clean up tearoff image pane
+        if self._output_is_floating:
+            try:
+                self._dock_output()
+            except tk.TclError:
+                pass
         self._tearoff_image_pane.cleanup()
 
         super().destroy()
@@ -1136,7 +1250,7 @@ class DgenerateConsole(tk.Tk):
                          accelerator='Ctrl+Shift+F',
                          command=self._format_code)
         if importlib.util.find_spec('xllamacpp') is not None:
-            menu.add_command(label='Generate Config',
+            menu.add_command(label='Generate Code',
                              command=self._input_text_generate_with_assistant)
         menu.add_separator()
 
@@ -1230,7 +1344,10 @@ class DgenerateConsole(tk.Tk):
 
         try:
             schema = _resources.get_schema('mediaformats')
-            supported_extensions = schema['images-in']
+            supported_extensions = set(schema.get('images-in', []))
+            supported_extensions.update(schema.get('videos-in', []))
+            supported_extensions.update({
+                'gif', 'webp', 'apng', 'mp4', 'm4v', 'webm', 'mkv', 'mov', 'avi'})
             file_ext = os.path.splitext(path)[1].lower().lstrip('.')
             return file_ext in supported_extensions
         except Exception:

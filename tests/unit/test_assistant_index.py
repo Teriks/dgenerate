@@ -5,6 +5,26 @@ from dgenerate.assistant.catalog import DEFAULT_EMBED_MODEL
 from dgenerate.assistant.index import INDEX_VERSION, SHIPPED_INDEX, Index, choose_index, shipped_index_path
 
 
+class TestSupportedAssistantModels(unittest.TestCase):
+
+    def test_unknown_model_is_rejected(self):
+        from dgenerate.assistant.cli import create_parser
+        parser = create_parser('assistant')
+        parser.parse_args(['--model', 'some/other/model.gguf', 'a cat'])
+        self.assertEqual(parser.return_code, 2)
+        parser.parse_args(['--embed-model', 'custom.gguf', 'a cat'])
+        self.assertEqual(parser.return_code, 2)
+
+    def test_a_listed_model_is_accepted(self):
+        from dgenerate.assistant.catalog import DEFAULT_CHAT_MODEL, DEFAULT_EMBED_MODEL
+        from dgenerate.assistant.cli import create_parser
+        parser = create_parser('assistant')
+        args = parser.parse_args(['--model', DEFAULT_CHAT_MODEL, '--embed-model', DEFAULT_EMBED_MODEL, 'a cat'])
+        self.assertIsNone(parser.return_code)
+        self.assertEqual(args.model, DEFAULT_CHAT_MODEL)
+        self.assertEqual(args.embed_model, DEFAULT_EMBED_MODEL)
+
+
 class TestChooseIndex(unittest.TestCase):
 
     def test_shipped_index_matches_the_default_embedder(self):

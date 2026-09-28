@@ -49,13 +49,16 @@ global python site packages.
 
     # * ncnn
     # * xllamacpp (used for the llama prompt upscaler plugin; the PyPI wheel is the Metal build on macOS)
-    # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
+    # * console_ui_opengl (OpenGL Console UI preview; plays video and audio)
+    # * console_ui_vulkan (default Console UI preview on Windows, Linux, and macOS;
+    #   plays video and audio. The network installer selects this extra.
+    #   DGENERATE_CONSOLE_UI_VULKAN=0 keeps the OpenGL viewer)
 
     pipx install dgenerate==@VERSION
 
     # or with extras
 
-    pipx install dgenerate[ncnn,xllamacpp,console_ui_opengl]==@VERSION
+    pipx install dgenerate[ncnn,xllamacpp,console_ui_vulkan]==@VERSION
 
     # open a new terminal or logout & login
 
@@ -109,13 +112,16 @@ of your own creation.
 
     # * ncnn
     # * xllamacpp (used for the llama prompt upscaler plugin; the PyPI wheel is the Metal build on macOS)
-    # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
+    # * console_ui_opengl (OpenGL Console UI preview; plays video and audio)
+    # * console_ui_vulkan (default Console UI preview on Windows, Linux, and macOS;
+    #   plays video and audio. The network installer selects this extra.
+    #   DGENERATE_CONSOLE_UI_VULKAN=0 keeps the OpenGL viewer)
 
     pip3 install dgenerate==@VERSION
 
     # or with extras
 
-    pip3 install dgenerate[ncnn,xllamacpp,console_ui_opengl]==@VERSION
+    pip3 install dgenerate[ncnn,xllamacpp,console_ui_vulkan]==@VERSION
 
     # launch the Console UI to test the install.
     # tkinter will be available when you install
