@@ -57,7 +57,10 @@ Install dgenerate:
     # * xllamacpp (used for the llama prompt upscaler plugin)
     # * bitsandbytes
     # * triton_windows
-    # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
+    # * console_ui_opengl (OpenGL Console UI preview; plays video and audio)
+    # * console_ui_vulkan (default Console UI preview on Windows, Linux, and macOS;
+    #   plays video and audio. The network installer selects this extra.
+    #   DGENERATE_CONSOLE_UI_VULKAN=0 keeps the OpenGL viewer)
 
     # The commands below use the CUDA 13.2 torch index.
     # CUDA 13.0 through 13.1 use --extra-index-url https://download.pytorch.org/whl/cu130/
@@ -149,7 +152,10 @@ a cloned repository like this:
     # * xllamacpp (used for the llama prompt upscaler plugin)
     # * bitsandbytes
     # * triton_windows
-    # * console_ui_opengl (OpenGL accelerated Console UI image viewer)
+    # * console_ui_opengl (OpenGL Console UI preview; plays video and audio)
+    # * console_ui_vulkan (default Console UI preview on Windows, Linux, and macOS;
+    #   plays video and audio. The network installer selects this extra.
+    #   DGENERATE_CONSOLE_UI_VULKAN=0 keeps the OpenGL viewer)
 
     # The commands below use the CUDA 13.2 torch index.
     # CUDA 13.0 through 13.1 use --extra-index-url https://download.pytorch.org/whl/cu130/

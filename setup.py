@@ -309,7 +309,14 @@ extras: dict[str, list[str]] = {
     'console_ui_opengl': [
         _pyopengltk_requires,
         _PyOpenGL_requires,
-        _PyOpenGL_accelerate_requires
+        _PyOpenGL_accelerate_requires,
+        # WASAPI / CoreAudio / Pulse playback for the OpenGL preview timeline.
+        'miniaudio',
+    ],
+    # Default console preview on Windows, Linux, and macOS.
+    'console_ui_vulkan': [
+        'vulkan',
+        'miniaudio',
     ],
     # PyPI wheel: CPU on Linux/Windows, Metal on macOS.
     # CUDA, ROCm, and Vulkan wheels are the same package name on other indexes.

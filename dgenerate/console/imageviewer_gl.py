@@ -20,6 +20,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import platform as _std_platform
+import time
 import typing
 
 import PIL.Image
@@ -27,14 +28,19 @@ import numpy as np
 import pyopengltk
 import OpenGL.GL as gl
 
+import dgenerate.console.animationplayback as _animationplayback
 import dgenerate.console.mousewheelbind as _mousewheelbind
 import dgenerate.console.helpdialog as _helpdialog
 
 
 class ImageViewerGL(pyopengltk.OpenGLFrame):
     """
-    Hardware-accelerated image viewer using OpenGL with pyopengltk.
-    Provides smooth pan and zoom with GPU acceleration when available.
+    Hardware-accelerated preview using OpenGL with pyopengltk.
+
+    Still images, and finished animations (GIF, WebP, APNG, and MP4, including
+    audio) with a timeline kept below the picture. The speaker draws sound
+    waves, or a red X when muted, beside the volume slider. Used when
+    ``DGENERATE_CONSOLE_UI_VULKAN=0`` or the Vulkan extra is not installed.
     """
 
     def __init__(self, parent, **kwargs):
@@ -106,11 +112,29 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
         self.on_error = None
         self.on_info = None
 
+        # Playback state. Set only while this pane is showing an animated file.
+        # The picture is fitted above the timeline so the controls do not cover it.
+        self._animation = None
+        self._loop = True
+        self._resize_after = None
+        self._resize_drawn_at = 0.0
+        self._animation_after = None
+        self._uploaded_frame = None
+        self._pointer_inside = False
+        self._pointer_moved = 0.0
+        self._scrubbing = False
+        self._resume_after_scrub = False
+        self._volume_dragging = False
+        self._preview_volume, self._preview_muted = _animationplayback.load_preview_audio()
+
         # Bind events
         _mousewheelbind.bind_mousewheel(self.bind, self._on_mouse_wheel)
         self.bind('<Button-1>', self._on_left_click)
         self.bind('<B1-Motion>', self._on_left_drag)
         self.bind('<ButtonRelease-1>', self._on_left_release)
+        self.bind('<Motion>', self._on_pointer_motion)
+        self.bind('<Enter>', self._on_pointer_enter)
+        self.bind('<Leave>', self._on_pointer_leave)
         self.bind('<Button-2>', self._on_middle_click)
         self.bind('<B2-Motion>', self._on_middle_drag)
         self.bind('<ButtonRelease-2>', self._on_middle_release)
@@ -131,15 +155,46 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
 
     def _on_configure(self, event):
         """Handle window resize events"""
-        # Only handle resize if OpenGL is initialized
-        if hasattr(self, '_gl_initialized') and self._gl_initialized:
-            if self.winfo_width() > 1 and self.winfo_height() > 1:
-                # Update OpenGL viewport
-                self.update_idletasks()
-                self.redraw()
+        if not getattr(self, '_gl_initialized', False):
+            return
+        if self.winfo_width() <= 1 or self.winfo_height() <= 1:
+            return
+        if self._resize_after is not None:
+            try:
+                self.after_cancel(self._resize_after)
+            except Exception:
+                pass
+        self._resize_after = self.after(32, self._finish_resize)
+        now = time.monotonic()
+        if now - self._resize_drawn_at < 0.032:
+            return
+        self._resize_drawn_at = now
+        self._draw_for_resize()
+
+    def _draw_for_resize(self):
+        pending = self._resize_after
+        self._resize_after = None
+        try:
+            if self._animation is not None:
+                self._calculate_base_display_size()
+            self.redraw()
+        finally:
+            if pending is not None and self._resize_after is None:
+                self._resize_after = pending
+
+    def _finish_resize(self):
+        self._resize_after = None
+        self._resize_drawn_at = time.monotonic()
+        if self.winfo_width() <= 1 or self.winfo_height() <= 1:
+            return
+        if self._animation is not None:
+            self._calculate_base_display_size()
+        self.redraw()
 
     def tkResize(self, width, height):
         """Handle resize event from pyopengltk"""
+        if self._resize_after is not None:
+            return
         # Only update viewport if OpenGL is initialized
         if hasattr(self, '_gl_initialized') and self._gl_initialized:
             if width > 0 and height > 0:
@@ -167,8 +222,11 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
 
     def tkExpose(self, evt):
         """Called on <Expose>"""
-        super().tkExpose(evt)
-        # Try to apply pending view state when widget is exposed
+        if self._resize_after is not None:
+            return
+        # The base handler draws and then swaps again, which shows a cleared buffer.
+        if not getattr(self, '_gl_initialized', False):
+            return
         self._try_apply_pending_view_state()
         self.redraw()
 
@@ -387,9 +445,16 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
 
     def redraw(self):
         """Redraw the OpenGL scene"""
+        if self._resize_after is not None:
+            return
         # Make sure OpenGL is initialized
         if not hasattr(self, '_gl_initialized') or not self._gl_initialized:
             return
+        if self.winfo_ismapped():
+            try:
+                self.tkMakeCurrent()
+            except Exception:
+                return
 
         # Update viewport to match widget size - force this every time for PanedWindow compatibility
         width = self.winfo_width()
@@ -432,8 +497,17 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
 
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 
+        # Keep the picture out of the control strip and the gap above it.
+        reserve = self._control_reserve()
+        scissor = reserve > 0 and height > reserve and width > 0
+        if scissor:
+            gl.glEnable(gl.GL_SCISSOR_TEST)
+            gl.glScissor(0, reserve, width, height - reserve)
+
         # Validate shader program before use
         if self._shader_program is None:
+            if scissor:
+                gl.glDisable(gl.GL_SCISSOR_TEST)
             if self.on_error:
                 self.on_error("Image viewer: Shader program is None, cannot render")
             self.tkSwapBuffers()
@@ -454,6 +528,8 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
 
         # Validate VAO before use
         if self._vao is None:
+            if scissor:
+                gl.glDisable(gl.GL_SCISSOR_TEST)
             if self.on_error:
                 self.on_error("Image viewer: VAO is None, cannot render")
             self.tkSwapBuffers()
@@ -463,9 +539,14 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
         gl.glBindVertexArray(self._vao)
         gl.glDrawElements(gl.GL_TRIANGLES, 6, gl.GL_UNSIGNED_INT, None)
 
+        if scissor:
+            gl.glDisable(gl.GL_SCISSOR_TEST)
+
         # Draw bounding box overlay if in selection mode
         if self._bbox_selection_mode:
             self._draw_bbox_overlay()
+        elif self._timeline_visible():
+            self._draw_timeline()
 
         self.tkSwapBuffers()
 
@@ -618,16 +699,38 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
         display_width = self._base_display_width * self._zoom_factor
         display_height = self._base_display_height * self._zoom_factor
 
-        # Convert to normalized device coordinates (-1 to 1)
+        # Convert to normalized device coordinates (-1 to 1).
+        # The picture is centered in the area above the control bar, not the whole widget.
         scale_x = display_width / width
         scale_y = display_height / height
-
-        # Apply pan (convert from pixels to normalized coordinates)
-        # Pan values are in pixels, convert to NDC
-        translate_x = (self._pan_x * 2.0) / width
-        translate_y = -(self._pan_y * 2.0) / height  # Flip Y for correct pan direction
+        left, top = self._placed_image_origin(display_width, display_height)
+        center_x = left + display_width / 2
+        center_y = top + display_height / 2
+        translate_x = ((center_x - width / 2) * 2.0) / width
+        translate_y = -((center_y - height / 2) * 2.0) / height
 
         return (scale_x, scale_y), (translate_x, translate_y)
+
+    def _control_reserve(self) -> int:
+        """Pixels at the bottom kept clear of the picture while an animation is open."""
+        if self._animation is None:
+            return 0
+        return _animationplayback.BAR_HEIGHT + _animationplayback.CONTROL_GAP
+
+    def _content_box(self) -> tuple[float, float, float, float]:
+        """Widget rectangle the picture is fitted into. Y grows downward."""
+        width = self.winfo_width()
+        height = self.winfo_height()
+        if width <= 0 or height <= 0:
+            width, height = 800, 600
+        content_height = max(1, height - self._control_reserve())
+        return 0.0, 0.0, float(width), float(content_height)
+
+    def _placed_image_origin(self, display_width: float, display_height: float) -> tuple[float, float]:
+        x, y, content_width, content_height = self._content_box()
+        left = x + (content_width - display_width) / 2 + self._pan_x
+        top = y + (content_height - display_height) / 2 + self._pan_y
+        return left, top
 
     def _calculate_base_display_size(self):
         """Calculate and store the base display size for the image"""
@@ -643,19 +746,23 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
             height = 600
 
         img_width, img_height = self._original_image_size
+        _x, _y, content_width, content_height = self._content_box()
+        # Fall back to the widget size when it has not been mapped yet.
+        if self.winfo_width() <= 0 or self.winfo_height() <= 0:
+            content_width, content_height = float(width), float(height)
 
-        # Calculate how much of the widget the image should occupy (maintaining aspect ratio)
-        widget_aspect = width / height
+        # Fit inside the picture area, leaving the control strip and its gap clear.
+        widget_aspect = content_width / content_height
         image_aspect = img_width / img_height
 
         if image_aspect > widget_aspect:
-            # Image is wider than widget - fit to width
-            self._base_display_width = width
-            self._base_display_height = width / image_aspect
+            # Image is wider than the picture area - fit to width
+            self._base_display_width = content_width
+            self._base_display_height = content_width / image_aspect
         else:
-            # Image is taller than widget - fit to height
-            self._base_display_width = height * image_aspect
-            self._base_display_height = height
+            # Image is taller than the picture area - fit to height
+            self._base_display_width = content_height * image_aspect
+            self._base_display_height = content_height
 
     def _create_texture_from_array(self, img_array):
         """Create OpenGL texture from numpy array"""
@@ -678,16 +785,17 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
                 gl.glDeleteTextures([self._gl_texture_id])
                 self._gl_texture_id = None
 
-            # Ensure image is in RGB format
+            # Ensure image is in RGB format. Decoder frames can be row-padded
+            # views; OpenGL reads them as tightly packed and then rejects the upload.
             if len(img_array.shape) == 3 and img_array.shape[2] == 3:
-                texture_data = img_array
+                texture_data = np.ascontiguousarray(img_array)
                 format = gl.GL_RGB
             elif len(img_array.shape) == 3 and img_array.shape[2] == 4:
-                texture_data = img_array
+                texture_data = np.ascontiguousarray(img_array)
                 format = gl.GL_RGBA
             else:
                 # Convert grayscale to RGB
-                texture_data = np.stack([img_array] * 3, axis=-1)
+                texture_data = np.ascontiguousarray(np.stack([img_array] * 3, axis=-1))
                 format = gl.GL_RGB
 
             # No need to flip - texture coordinates are properly set
@@ -699,6 +807,7 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
             # Fix texture alignment issues for images with widths not divisible by 4
             # Set unpack alignment to 1 to handle arbitrary row widths correctly
             gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 1)
+            gl.glPixelStorei(gl.GL_UNPACK_ROW_LENGTH, 0)
 
             gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, format, width, height, 0,
                           format, gl.GL_UNSIGNED_BYTE, texture_data)
@@ -747,6 +856,7 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
     def _load_image_immediate(self, image_path: str, fit: bool = False, view_state: typing.Optional[typing.Dict] = None):
         """Internal method to load an image immediately (OpenGL must be ready)"""
         try:
+            self._stop_animation()
             # Clear ALL pending operations to prevent conflicts and race conditions
             self._pending_view_state = None
             self._pending_load_operation = None
@@ -763,15 +873,29 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
             self._base_display_width = None
             self._base_display_height = None
 
-            # Load image with PIL
-            pil_image = PIL.Image.open(image_path)
-            if pil_image.mode not in ['RGB', 'RGBA']:
-                pil_image = pil_image.convert('RGB')
+            clip = None
+            if _animationplayback.is_animation_path(image_path):
+                clip = _animationplayback.open_animation(image_path)
+            if clip is not None:
+                frame = clip.frame()
+                if frame is None:
+                    clip.close()
+                    raise RuntimeError(f'Could not read a frame from "{image_path}"')
+                self._animation = clip
+                clip.loop = self._loop
+                self._original_image_array = frame
+                self._original_image_size = (frame.shape[1], frame.shape[0])
+                self._uploaded_frame = frame
+            else:
+                # Load image with PIL
+                pil_image = PIL.Image.open(image_path)
+                if pil_image.mode not in ['RGB', 'RGBA']:
+                    pil_image = pil_image.convert('RGB')
 
-            # Convert to numpy array
-            self._original_image_array = np.array(pil_image)
-            self._original_image_size = (pil_image.width, pil_image.height)
-            pil_image.close()
+                # Convert to numpy array
+                self._original_image_array = np.array(pil_image)
+                self._original_image_size = (pil_image.width, pil_image.height)
+                pil_image.close()
 
             # Validate that image data and size are consistent
             if len(self._original_image_array.shape) >= 2:
@@ -822,7 +946,16 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
             # Trigger redraw
             self.redraw()
 
+            if self._animation is not None:
+                if self._animation.has_audio and not self._animation.audio_active and self.on_info:
+                    detail = self._animation.audio_error or 'no playback device is available'
+                    self.on_info(f'Image viewer: audio will not play ({detail}).')
+                self._animation.set_gain(self._preview_gain())
+                self._animation.start()
+                self._schedule_animation()
+
         except Exception as e:
+            self._stop_animation()
             if self.on_error:
                 self.on_error(f"Image viewer: Error loading image: {e}")
 
@@ -872,9 +1005,8 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
         display_width = self._base_display_width * self._zoom_factor
         display_height = self._base_display_height * self._zoom_factor
 
-        # Calculate image position on screen (centered + pan offset)
-        image_left = (width - display_width) / 2 + self._pan_x
-        image_top = (height - display_height) / 2 + self._pan_y
+        # Calculate image position on screen (centered in the picture area + pan offset)
+        image_left, image_top = self._placed_image_origin(display_width, display_height)
         image_right = image_left + display_width
         image_bottom = image_top + display_height
 
@@ -916,9 +1048,8 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
         display_width = self._base_display_width * self._zoom_factor
         display_height = self._base_display_height * self._zoom_factor
 
-        # Calculate image position on screen (centered + pan offset)
-        image_left = (width - display_width) / 2 + self._pan_x
-        image_top = (height - display_height) / 2 + self._pan_y
+        # Calculate image position on screen (centered in the picture area + pan offset)
+        image_left, image_top = self._placed_image_origin(display_width, display_height)
 
         # Convert image coordinates to relative coordinates (0.0 to 1.0)
         relative_x = image_x / img_width
@@ -1016,6 +1147,36 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
         if not self.has_image():
             return
 
+        if self._animation is not None and not self._bbox_selection_mode and self._timeline_visible():
+            hit = _animationplayback.control_hit(event.x, event.y, self.winfo_width(), self.winfo_height())
+            if hit == 'play':
+                self._animation.toggle()
+                self._schedule_animation()
+                self.redraw()
+                return "break"
+            if hit == 'loop':
+                self._loop = not self._loop
+                self._animation.loop = self._loop
+                self.redraw()
+                return "break"
+            if hit == 'mute':
+                self._preview_muted = not self._preview_muted
+                self._push_preview_gain()
+                _animationplayback.save_preview_audio(self._preview_volume, self._preview_muted)
+                self.redraw()
+                return "break"
+            if hit == 'volume':
+                self._volume_dragging = True
+                self._set_volume_from_x(event.x)
+                return "break"
+            if hit == 'track':
+                self._scrubbing = True
+                self._resume_after_scrub = self._animation.playing
+                if self._animation.playing:
+                    self._animation.pause()
+                self._scrub_to(event.x)
+                return "break"
+
         # Check for modifier+drag panning
         if ((self._is_macos and event.state & 0x8) or
                 (not self._is_macos and event.state & 0x4)):
@@ -1042,6 +1203,14 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
 
     def _on_left_drag(self, event):
         """Handle left mouse drag"""
+        if self._volume_dragging:
+            self._set_volume_from_x(event.x)
+            return "break"
+
+        if self._scrubbing:
+            self._scrub_to(event.x)
+            return "break"
+
         if not self.has_image():
             return
 
@@ -1070,6 +1239,23 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
 
     def _on_left_release(self, event):
         """Handle left mouse release"""
+        if self._volume_dragging:
+            self._set_volume_from_x(event.x)
+            self._volume_dragging = False
+            _animationplayback.save_preview_audio(self._preview_volume, self._preview_muted)
+            self.redraw()
+            return "break"
+
+        if self._scrubbing:
+            self._scrub_to(event.x)
+            self._scrubbing = False
+            if self._resume_after_scrub and self._animation is not None:
+                self._animation.toggle()
+            self._resume_after_scrub = False
+            self._schedule_animation()
+            self.redraw()
+            return "break"
+
         if not self.has_image():
             return
 
@@ -1124,6 +1310,11 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
         if event.keysym == 'Escape':
             if self._bbox_selection_mode:
                 self._cancel_bbox_selection()
+        elif event.keysym == 'space' and self._animation is not None:
+            self._animation.toggle()
+            self._schedule_animation()
+            self.redraw()
+            return "break"
 
     def bind_event(self, event: str, callback):
         """Bind an event to the image viewer widget"""
@@ -1306,7 +1497,11 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
                     "• Cmd+drag: Pan image in any direction",
                     "• Middle click+drag: Alternative panning",
                     "• Cmd+/Cmd-: Zoom in/out",
-                    "• Escape: Cancel bounding box selection"
+                    "• Escape: Cancel bounding box selection",
+                    "• Animations: move the pointer over the picture for the timeline",
+                    "• Space, or the play button: pause and resume",
+                    "• Loop arrow: replay the clip, or stop at the end when slashed",
+                    "• Speaker: mute (red X) or unmute; slider sets volume. Both are remembered"
                 ]
             else:
                 help_text = [
@@ -1315,20 +1510,294 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
                     "• Ctrl+drag: Pan image in any direction",
                     "• Middle click+drag: Alternative panning",
                     "• Ctrl+/Ctrl-: Zoom in/out",
-                    "• Escape: Cancel bounding box selection"
+                    "• Escape: Cancel bounding box selection",
+                    "• Animations: move the pointer over the picture for the timeline",
+                    "• Space, or the play button: pause and resume",
+                    "• Loop arrow: replay the clip, or stop at the end when slashed",
+                    "• Speaker: mute (red X) or unmute; slider sets volume. Both are remembered"
                 ]
 
             _helpdialog.show_help_dialog(
                 title='Image viewer help',
                 help_text='\n'.join(help_text),
                 parent=self.master,
-                size=(400, 300),
+                size=(460, 360),
                 position_widget=self.master,
                 dock_to_right=False
             )
 
+    def _timeline_visible(self) -> bool:
+        if self._animation is None or self._bbox_selection_mode:
+            return False
+        if self._scrubbing or self._volume_dragging:
+            return True
+        if not self._pointer_inside:
+            return False
+        if not self._animation.playing:
+            return True
+        return (time.perf_counter() - self._pointer_moved) < 2.5
+
+    def _on_pointer_enter(self, event):
+        self._pointer_inside = True
+        self._pointer_moved = time.perf_counter()
+        if self._animation is not None:
+            self._schedule_animation()
+            self.redraw()
+
+    def _on_pointer_leave(self, event):
+        self._pointer_inside = False
+        if not self._scrubbing:
+            self.redraw()
+
+    def _on_pointer_motion(self, event):
+        self._pointer_inside = True
+        self._pointer_moved = time.perf_counter()
+        if self._animation is not None and not self._animation.playing:
+            self._schedule_animation()
+        if self._timeline_visible():
+            self.redraw()
+
+    def _preview_gain(self) -> float:
+        if self._preview_muted:
+            return 0.0
+        return self._preview_volume
+
+    def _push_preview_gain(self):
+        if self._animation is not None:
+            self._animation.set_gain(self._preview_gain())
+
+    def _set_volume_from_x(self, widget_x: int):
+        self._preview_volume = _animationplayback.volume_on_slider(
+            widget_x, self.winfo_width(), self.winfo_height())
+        if self._preview_volume > 0:
+            self._preview_muted = False
+        self._push_preview_gain()
+        self.redraw()
+
+    def _scrub_to(self, widget_x: int):
+        clip = self._animation
+        if clip is None:
+            return
+        seconds = _animationplayback.time_on_track(
+            widget_x, self.winfo_width(), self.winfo_height(), clip.duration)
+        clip.seek(seconds)
+        frame = clip.frame()
+        if frame is not None:
+            self._replace_animation_frame(frame)
+        self.redraw()
+
+    def _schedule_animation(self):
+        if self._animation is None:
+            return
+        if self._animation_after is not None:
+            return
+        delay = _animationplayback.playback_tick_delay_ms(
+            self._animation,
+            self._timeline_visible() or self._scrubbing or self._volume_dragging,
+        )
+        self._animation_after = self.after(delay, self._animation_tick)
+
+    def _animation_tick(self):
+        self._animation_after = None
+        clip = self._animation
+        if clip is None:
+            return
+        try:
+            frame = clip.frame()
+            if frame is not None and frame is not self._uploaded_frame:
+                self._replace_animation_frame(frame)
+            self.redraw()
+        finally:
+            if clip.playing or self._pointer_inside or self._scrubbing or self._volume_dragging:
+                self._schedule_animation()
+
+    def _replace_animation_frame(self, frame: np.ndarray):
+        if not self._gl_initialized or self._gl_texture_id is None:
+            self._original_image_array = frame
+            self._uploaded_frame = frame
+            return
+        height, width = frame.shape[:2]
+        current_height, current_width = self._original_image_array.shape[:2]
+        if (width, height) != (current_width, current_height) or frame.shape[2] != self._original_image_array.shape[2]:
+            self._original_image_array = frame
+            self._original_image_size = (width, height)
+            self._create_texture_from_array(frame)
+        else:
+            packed = np.ascontiguousarray(frame)
+            gl.glBindTexture(gl.GL_TEXTURE_2D, self._gl_texture_id)
+            gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 1)
+            gl.glPixelStorei(gl.GL_UNPACK_ROW_LENGTH, 0)
+            pixel_format = gl.GL_RGBA if packed.shape[2] == 4 else gl.GL_RGB
+            gl.glTexSubImage2D(
+                gl.GL_TEXTURE_2D, 0, 0, 0, width, height,
+                pixel_format, gl.GL_UNSIGNED_BYTE, packed)
+            self._original_image_array = frame
+        self._uploaded_frame = frame
+
+    def _stop_animation(self):
+        if self._animation_after is not None:
+            try:
+                self.after_cancel(self._animation_after)
+            except Exception:
+                pass
+            self._animation_after = None
+        clip = self._animation
+        self._animation = None
+        self._uploaded_frame = None
+        self._scrubbing = False
+        self._resume_after_scrub = False
+        self._volume_dragging = False
+        if clip is not None:
+            clip.close()
+
+    def _draw_timeline(self):
+        clip = self._animation
+        layout = _animationplayback.control_layout(self.winfo_width(), self.winfo_height())
+        if clip is None or layout is None or self._overlay_shader_program is None:
+            return
+        width = self.winfo_width()
+        height = self.winfo_height()
+        bar = layout['bar']
+        self._fill_rect(bar[0], bar[1], bar[2], bar[3], width, height, (0.0, 0.0, 0.0, 0.72))
+        track = layout['track']
+        self._fill_rect(track[0], track[1], track[2], track[3], width, height, (1.0, 1.0, 1.0, 0.35))
+        duration = clip.duration if clip.duration > 0 else 1.0
+        fraction = min(1.0, max(0.0, clip.time() / duration))
+        played_right = track[0] + (track[2] - track[0]) * fraction
+        self._fill_rect(track[0], track[1], played_right, track[3], width, height, (0.9, 0.15, 0.15, 1.0))
+        knob = 7
+        self._fill_rect(
+            played_right - knob / 2, track[1] - 4, played_right + knob / 2, track[3] + 4,
+            width, height, (1.0, 1.0, 1.0, 1.0))
+        play = layout['play']
+        if clip.playing:
+            gap = 4
+            bar_w = 4
+            mid = (play[0] + play[2]) / 2
+            self._fill_rect(mid - gap - bar_w, play[1], mid - gap, play[3], width, height, (1, 1, 1, 1))
+            self._fill_rect(mid + gap, play[1], mid + gap + bar_w, play[3], width, height, (1, 1, 1, 1))
+        else:
+            self._fill_triangle(
+                [(play[0] + 2, play[1]), (play[0] + 2, play[3]), (play[2], (play[1] + play[3]) / 2)],
+                width, height, (1, 1, 1, 1))
+        self._draw_clock(
+            layout['elapsed'][0], layout['elapsed'][1],
+            _animationplayback.format_clock(clip.time()), width, height)
+        self._draw_clock(
+            layout['duration'][0], layout['duration'][1],
+            _animationplayback.format_clock(clip.duration), width, height)
+        self._draw_icon_shapes(
+            _animationplayback.loop_icon(layout['loop'], self._loop), width, height)
+        self._draw_mute(layout['mute'], width, height)
+        self._draw_volume(layout['volume'], width, height)
+
+    def _draw_mute(self, rect, width, height):
+        self._draw_icon_shapes(
+            _animationplayback.speaker_icon(rect, self._preview_muted, self._preview_volume),
+            width, height)
+
+    def _draw_icon_shapes(self, shapes, width, height):
+        for shape in shapes:
+            kind = shape[0]
+            if kind == 'rect':
+                _kind, x1, y1, x2, y2, color = shape
+                self._fill_rect(x1, y1, x2, y2, width, height, color)
+            elif kind == 'poly':
+                _kind, points, color = shape
+                self._draw_overlay_fan(
+                    [self._pixel_to_ndc(x, y, width, height) for x, y in points], color)
+            elif kind == 'stroke':
+                _kind, points, thickness, color = shape
+                for start, end in zip(points, points[1:]):
+                    self._fill_segment(*start, *end, thickness, width, height, color)
+
+    def _fill_segment(self, x1, y1, x2, y2, thickness, width, height, color):
+        dx = x2 - x1
+        dy = y2 - y1
+        length = (dx * dx + dy * dy) ** 0.5
+        if length < 1e-6:
+            return
+        offset_x = -dy / length * (thickness / 2)
+        offset_y = dx / length * (thickness / 2)
+        self._draw_overlay_fan([
+            self._pixel_to_ndc(x1 + offset_x, y1 + offset_y, width, height),
+            self._pixel_to_ndc(x2 + offset_x, y2 + offset_y, width, height),
+            self._pixel_to_ndc(x2 - offset_x, y2 - offset_y, width, height),
+            self._pixel_to_ndc(x1 - offset_x, y1 - offset_y, width, height),
+        ], color)
+
+    def _draw_volume(self, rect, width, height):
+        x1, y1, x2, y2 = rect
+        self._fill_rect(x1, y1, x2, y2, width, height, (1, 1, 1, 0.35))
+        shown = 0.0 if self._preview_muted else self._preview_volume
+        filled = x1 + (x2 - x1) * shown
+        self._fill_rect(x1, y1, filled, y2, width, height, (1, 1, 1, 1))
+        knob = 5
+        self._fill_rect(filled - knob / 2, y1 - 3, filled + knob / 2, y2 + 3, width, height, (1, 1, 1, 1))
+
+    def _pixel_to_ndc(self, x: float, y: float, width: int, height: int) -> tuple[float, float]:
+        return (x / width) * 2.0 - 1.0, -((y / height) * 2.0 - 1.0)
+
+    def _fill_rect(self, x1, y1, x2, y2, width, height, color):
+        corners = [
+            self._pixel_to_ndc(x1, y1, width, height),
+            self._pixel_to_ndc(x2, y1, width, height),
+            self._pixel_to_ndc(x2, y2, width, height),
+            self._pixel_to_ndc(x1, y2, width, height),
+        ]
+        self._draw_overlay_fan(corners, color)
+
+    def _fill_triangle(self, points, width, height, color):
+        self._draw_overlay_fan(
+            [self._pixel_to_ndc(x, y, width, height) for x, y in points], color)
+
+    def _draw_overlay_fan(self, ndc_points: list[tuple[float, float]], color):
+        if len(ndc_points) < 3 or self._overlay_vao is None or self._overlay_vbo is None:
+            return
+        vertices = np.array([coord for point in ndc_points for coord in point], dtype=np.float32)
+        gl.glUseProgram(self._overlay_shader_program)
+        gl.glBindVertexArray(self._overlay_vao)
+        gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self._overlay_vbo)
+        gl.glBufferData(gl.GL_ARRAY_BUFFER, vertices.nbytes, vertices, gl.GL_DYNAMIC_DRAW)
+        gl.glUniform4f(self._overlay_color_uniform, *color)
+        gl.glUniform2f(self._overlay_viewport_uniform, self.winfo_width(), self.winfo_height())
+        gl.glUniform1i(self._overlay_is_dashed_uniform, 0)
+        gl.glDrawArrays(gl.GL_TRIANGLE_FAN, 0, len(ndc_points))
+
+    _CLOCK_FONT = {
+        '0': ('111', '101', '101', '101', '111'),
+        '1': ('010', '110', '010', '010', '111'),
+        '2': ('111', '001', '111', '100', '111'),
+        '3': ('111', '001', '111', '001', '111'),
+        '4': ('101', '101', '111', '001', '001'),
+        '5': ('111', '100', '111', '001', '111'),
+        '6': ('111', '100', '111', '101', '111'),
+        '7': ('111', '001', '001', '001', '001'),
+        '8': ('111', '101', '111', '101', '111'),
+        '9': ('111', '101', '111', '001', '111'),
+        ':': ('0', '1', '0', '1', '0'),
+    }
+
+    def _draw_clock(self, x: float, y: float, text: str, width: int, height: int):
+        scale = 2
+        cursor = x
+        for character in text:
+            rows = self._CLOCK_FONT.get(character)
+            if rows is None:
+                continue
+            glyph_width = len(rows[0])
+            for row_index, row in enumerate(rows):
+                for col_index, bit in enumerate(row):
+                    if bit != '1':
+                        continue
+                    left = cursor + col_index * scale
+                    top = y + row_index * scale
+                    self._fill_rect(left, top, left + scale, top + scale, width, height, (1, 1, 1, 1))
+            cursor += (glyph_width + 1) * scale
+
     def cleanup(self):
         """Clean up resources"""
+        self._stop_animation()
         # Only attempt OpenGL cleanup if OpenGL was initialized
         gl_was_initialized = hasattr(self, '_gl_initialized') and self._gl_initialized
 

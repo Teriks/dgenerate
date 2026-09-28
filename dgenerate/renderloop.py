@@ -1660,6 +1660,7 @@ class RenderLoop:
                     audio,
                     sample_rate)
                 self._written_animations.write(pathlib.Path(filename).absolute().as_posix() + '\n')
+                _messages.log(f'Wrote Animation File: "{filename}"', underline=True)
                 yield AnimationFileFinishedEvent(
                     origin=self,
                     path=filename,
@@ -1863,6 +1864,7 @@ class RenderLoop:
                 anim_writer.end()
                 for idx, file in enumerate(written_filenames):
                     self._written_animations.write(pathlib.Path(file).absolute().as_posix() + '\n')
+                    _messages.log(f'Wrote Animation File: "{file}"', underline=True)
                     yield AnimationFileFinishedEvent(
                         origin=self,
                         path=file,

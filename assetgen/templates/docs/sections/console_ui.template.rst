@@ -30,9 +30,26 @@ interactive use, as well as loading arbitrary images, and a few other helpful th
 ability to show the current image file in the systems file explorer,
 all via the right click context menu.
 
-When the package extra ``console_ui_opengl`` is installed, zoom and pan operations
-will be hardware accelerated for smooth operation. (Mouse Wheel or Ctrl+/Ctrl-),
-(Alt+LeftClick or Middle Click), respectively.
+Vulkan is the default preview on Windows, Linux, and macOS. The network
+installer selects the ``console_ui_vulkan`` extra. When that extra is
+installed, the preview pane uses Vulkan. ``DGENERATE_CONSOLE_UI_VULKAN=0``
+selects the OpenGL viewer when ``console_ui_opengl`` is installed, or the
+plain Tk canvas when it is not. ``DGENERATE_CONSOLE_UI_OPENGL=0`` disables
+the OpenGL viewer on its own. The plain Tk canvas does not play video.
+Linux presents through X11, including a Wayland desktop that is running the
+window under XWayland. macOS presents through MoltenVK.
+
+The Vulkan and OpenGL previews play finished animations (GIF, WebP, APNG, and
+MP4, including audio). Move the pointer over the picture to show the timeline
+under it. The picture stays above that bar. The bar has a play button, a scrub
+track, elapsed time, duration, a speaker button, and a volume slider. The
+speaker draws sound waves while audio is on, and a red X while muted. Click it
+to mute or unmute. Drag the slider to set the loudness; raising it above zero
+turns mute off. Space pauses and resumes. Mute and volume are saved in
+``console_settings.json`` as ``preview_muted`` and ``preview_volume``.
+
+Zoom and pan in those previews are hardware accelerated. (Mouse Wheel or
+Ctrl+/Ctrl-), (Alt+LeftClick or Middle Click), respectively.
 
 The console UI always starts in single line entry mode (terminal mode), multiline input mode
 is activated via the insert key and indicated by the presence of line numbers, you must deactivate this mode

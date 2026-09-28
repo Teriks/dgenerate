@@ -33,7 +33,6 @@ import psutil
 
 import dgenerate.assistant.catalog as _catalog
 import dgenerate.console.combobox as _combobox
-import dgenerate.console.filedialog as _filedialog
 import dgenerate.console.scrolledtext as _scrolledtext
 import dgenerate.console.terminaltext as _terminaltext
 import dgenerate.console.themetext as _themetext
@@ -112,7 +111,7 @@ class _AssistantForm(tk.Toplevel):
                  position: tuple[int, int] = None,
                  size: tuple[int, int] = None):
         super().__init__(master)
-        self.title('Generate Config')
+        self.title('Generate Code')
         self.configure(padx=5, pady=5)
 
         self._populate = populate
@@ -141,7 +140,7 @@ class _AssistantForm(tk.Toplevel):
 
         self._intro = tk.Label(
             self, anchor=tk.W, justify=tk.LEFT,
-            text='Describe what the config should do.')
+            text='Describe what the config script should do.')
         self._intro.grid(row=0, column=0, sticky=tk.EW)
         self.bind('<Configure>', self._fit_intro, add='+')
 
@@ -155,9 +154,6 @@ class _AssistantForm(tk.Toplevel):
         options.grid_columnconfigure(1, weight=1)
 
         tk.Label(options, text='Chat model').grid(row=0, column=0, sticky=tk.E, padx=(0, 8), pady=2)
-        model_row = tk.Frame(options)
-        model_row.grid(row=0, column=1, sticky=tk.EW, pady=2)
-        model_row.grid_columnconfigure(0, weight=1)
 
         self._model_specs: list[str] = []
         self._model_labels: list[str] = []
@@ -165,22 +161,17 @@ class _AssistantForm(tk.Toplevel):
             self._add_model(spec, f'{_model_name(spec)}, {size:.1f} GB, {note}')
 
         self._model_var = tk.StringVar()
-        self._model_combo = _combobox.ComboBox(model_row, textvariable=self._model_var,
+        self._model_combo = _combobox.ComboBox(options, textvariable=self._model_var,
                                                values=self._model_labels)
-        self._model_combo.grid(row=0, column=0, sticky=tk.EW)
-        tk.Button(model_row, text='File', command=self._choose_model_file).grid(row=0, column=1, padx=(6, 0))
+        self._model_combo.grid(row=0, column=1, sticky=tk.EW, pady=2)
 
         chosen = _saved_model(_SETTINGS_CHAT, _catalog.DEFAULT_CHAT_MODEL)
         if chosen not in self._model_specs:
-            self._add_model(chosen, chosen)
-            self._model_combo.configure(values=self._model_labels)
+            chosen = _catalog.DEFAULT_CHAT_MODEL
         self._model_var.set(self._model_labels[self._model_specs.index(chosen)])
         self._model_var.trace_add('write', lambda *_: _remember(_SETTINGS_CHAT, self._selected_model()))
 
         tk.Label(options, text='Embedding model').grid(row=1, column=0, sticky=tk.E, padx=(0, 8), pady=2)
-        embed_row = tk.Frame(options)
-        embed_row.grid(row=1, column=1, sticky=tk.EW, pady=2)
-        embed_row.grid_columnconfigure(0, weight=1)
 
         self._embed_specs: list[str] = []
         self._embed_labels: list[str] = []
@@ -188,15 +179,13 @@ class _AssistantForm(tk.Toplevel):
             self._add_embed_model(spec, f'{_model_name(spec)}, {size:.1f} GB, {note}')
 
         self._embed_var = tk.StringVar()
-        self._embed_combo = _combobox.ComboBox(embed_row, textvariable=self._embed_var,
+        self._embed_combo = _combobox.ComboBox(options, textvariable=self._embed_var,
                                                values=self._embed_labels)
-        self._embed_combo.grid(row=0, column=0, sticky=tk.EW)
-        tk.Button(embed_row, text='File', command=self._choose_embed_file).grid(row=0, column=1, padx=(6, 0))
+        self._embed_combo.grid(row=1, column=1, sticky=tk.EW, pady=2)
 
         embed_chosen = _saved_model(_SETTINGS_EMBED, _catalog.DEFAULT_EMBED_MODEL)
         if embed_chosen not in self._embed_specs:
-            self._add_embed_model(embed_chosen, embed_chosen)
-            self._embed_combo.configure(values=self._embed_labels)
+            embed_chosen = _catalog.DEFAULT_EMBED_MODEL
         self._embed_var.set(self._embed_labels[self._embed_specs.index(embed_chosen)])
         self._embed_var.trace_add('write', lambda *_: _remember(_SETTINGS_EMBED, self._selected_embed_model()))
 
@@ -253,18 +242,6 @@ class _AssistantForm(tk.Toplevel):
         self._embed_specs.append(spec)
         self._embed_labels.append(label)
 
-    def _choose_embed_file(self):
-        path = _filedialog.open_file_dialog(
-            title='Select A GGUF Embedding Model',
-            filetypes=[('GGUF models', '*.gguf'), ('All files', '*.*')])
-        if not path:
-            return
-        path = os.path.abspath(path)
-        if path not in self._embed_specs:
-            self._add_embed_model(path, path)
-            self._embed_combo.configure(values=self._embed_labels)
-        self._embed_var.set(self._embed_labels[self._embed_specs.index(path)])
-
     def _selected_embed_model(self) -> str:
         label = self._embed_var.get()
         if label in self._embed_labels:
@@ -276,18 +253,6 @@ class _AssistantForm(tk.Toplevel):
             label += ' (downloaded)'
         self._model_specs.append(spec)
         self._model_labels.append(label)
-
-    def _choose_model_file(self):
-        path = _filedialog.open_file_dialog(
-            title='Select A GGUF Chat Model',
-            filetypes=[('GGUF models', '*.gguf'), ('All files', '*.*')])
-        if not path:
-            return
-        path = os.path.abspath(path)
-        if path not in self._model_specs:
-            self._add_model(path, path)
-            self._model_combo.configure(values=self._model_labels)
-        self._model_var.set(self._model_labels[self._model_specs.index(path)])
 
     def _selected_model(self) -> str:
         label = self._model_var.get()
@@ -425,7 +390,7 @@ class _AssistantForm(tk.Toplevel):
         config = b''.join(self._stdout_chunks).decode('utf-8', errors='replace').replace('\r\n', '\n')
         if return_code == 0 and config.strip():
             self._populate(config)
-            self._log('The config is in the input pane.')
+            self._log('The config script is in the input pane.')
         else:
             self._log(f'The assistant failed (return code {return_code}).')
 

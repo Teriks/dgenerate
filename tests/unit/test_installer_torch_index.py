@@ -115,6 +115,18 @@ class TestInstallerTorchIndex(unittest.TestCase):
         cuda_118 = GPUInfo(has_nvidia=True, cuda_version='11.8')
         self.assertFalse(analyzer._is_extra_compatible('xformers', cuda_118))
 
+    def test_vulkan_preview_is_recommended_on_every_platform(self):
+        analyzer = SetupAnalyzer.__new__(SetupAnalyzer)
+        analyzer.extras = {
+            'console_ui_vulkan': ['vulkan', 'miniaudio'],
+            'console_ui_opengl': ['pyopengltk'],
+        }
+        analyzer.log_callback = lambda message: None
+        analyzer._log = lambda message: None
+        recommended = analyzer.get_recommended_extras(GPUInfo())
+        self.assertIn('console_ui_vulkan', recommended)
+        self.assertIn('console_ui_opengl', recommended)
+
 
 if __name__ == '__main__':
     unittest.main()

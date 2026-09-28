@@ -117,9 +117,10 @@ def run_silent_install(version=None, branch=None, extras=None):
 
         # Install with default extras
         print("Installing dgenerate...")
-        # Use default extras for silent installation
+        if extras is None:
+            extras = _default_extras(source_dir)
         result = installer.install(
-            selected_extras=extras or [],
+            selected_extras=extras,
             skip_existing_check=True  # Already handled above
         )
         if not result.success:
@@ -133,6 +134,30 @@ def run_silent_install(version=None, branch=None, extras=None):
         print(f"ERROR: {e}")
         print(traceback.format_exc())
         return False
+
+
+def _default_extras(source_dir: str) -> list[str]:
+    """Extras selected when a silent install does not pass ``--extras``.
+
+    Vulkan is the preview on Windows, Linux, and macOS, so it is included
+    whenever the downloaded source still defines that extra.
+    """
+    setup_py = os.path.join(source_dir, 'setup.py')
+    try:
+        from network_installer.platform_detection import detect_gpu
+        from network_installer.setup_analyzer import SetupAnalyzer
+    except ImportError:
+        from platform_detection import detect_gpu
+        from setup_analyzer import SetupAnalyzer
+    analyzer = SetupAnalyzer(setup_py, log_callback=print)
+    if not analyzer.load_setup_as_library():
+        print('Could not read setup.py extras. Installing the Vulkan preview only.')
+        return ['console_ui_vulkan']
+    chosen = analyzer.get_recommended_extras(detect_gpu())
+    if 'console_ui_vulkan' in analyzer.extras and 'console_ui_vulkan' not in chosen:
+        chosen.append('console_ui_vulkan')
+    print('Default extras: ' + ', '.join(chosen))
+    return chosen
 
 
 def run_silent_uninstall():
@@ -193,7 +218,7 @@ def main():
         success = run_silent_install(
             version=args.version,
             branch=args.branch,
-            extras=args.extras or []
+            extras=args.extras
         )
 
         sys.exit(0 if success else 1)

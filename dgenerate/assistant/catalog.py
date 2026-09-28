@@ -47,6 +47,16 @@ EMBED_MODELS = [
 ]
 
 
+def chat_model_specs() -> tuple[str, ...]:
+    """Hugging Face paths of the chat models the assistant can load."""
+    return tuple(spec for spec, _size, _note in CHAT_MODELS)
+
+
+def embed_model_specs() -> tuple[str, ...]:
+    """Hugging Face paths of the embedding models that have a packaged index."""
+    return tuple(spec for spec, _size, _note in EMBED_MODELS)
+
+
 def xllamacpp_installed() -> bool:
     """Whether the xllamacpp extra is installed. Does not import it."""
     return importlib.util.find_spec('xllamacpp') is not None

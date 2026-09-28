@@ -461,6 +461,12 @@ class SetupAnalyzer:
                     self._log(f"Recommending bitsandbytes - NVIDIA CUDA {gpu_info.cuda_version} detected")
                 else:
                     self._log("Recommending bitsandbytes")
+            elif extra == 'console_ui_vulkan':
+                recommended.append(extra)
+                self._log("Recommending console_ui_vulkan - default preview on Windows, Linux, and macOS")
+            elif extra == 'console_ui_opengl':
+                recommended.append(extra)
+                self._log("Recommending console_ui_opengl - used when DGENERATE_CONSOLE_UI_VULKAN=0")
             else:
                 # For all other extras, recommend them
                 recommended.append(extra)
@@ -476,7 +482,8 @@ class SetupAnalyzer:
             'xllamacpp': 'Local GGUF models. The installer replaces the PyPI wheel with CUDA, ROCm, or Vulkan when this machine can use one',
             'gpt4all': 'Local large language model support (CPU-only)',
             'gpt4all_cuda': 'CUDA-accelerated GPT4All for NVIDIA GPUs (Linux/Windows)',
-            'console_ui_opengl': 'OpenGL accelerated Console UI image viewer.',
+            'console_ui_opengl': 'OpenGL Console UI preview. Plays video and audio. Used when the Vulkan preview is not installed or DGENERATE_CONSOLE_UI_VULKAN=0.',
+            'console_ui_vulkan': 'Default Console UI preview on Windows, Linux, and macOS. Plays video and audio. Set DGENERATE_CONSOLE_UI_VULKAN=0 to use OpenGL instead.',
             'triton_windows': 'Triton support for Windows (NVIDIA)'
         }
 

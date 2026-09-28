@@ -15,9 +15,8 @@ class AssistantSubCommand(_subcommand.SubCommand):
     Requires the xllamacpp extra (pip install dgenerate[xllamacpp]).
 
     The chat and embedding models are downloaded from Hugging Face on first use.
-    ``--embed-model`` selects the embedding model. The models offered in Generate
-    Config have an index packaged with dgenerate. Any other Qwen3-Embedding model
-    builds an index the first time it is used.
+    ``--model`` and ``--embed-model`` must be one of the supported Qwen GGUFs.
+    Each embedding model has an index packaged with dgenerate.
 
     File paths in the request are treated as input files, relative paths are
     relative to the current directory and are rewritten relative to --output.
