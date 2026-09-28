@@ -432,7 +432,7 @@ class BasePlatformHandler(ABC):
                 self.log_callback("dgenerate installed successfully")
 
                 if any(extra in XLLAMACPP_EXTRAS for extra in selected_extras):
-                    backend = self._install_xllamacpp_backend()
+                    backend = self._install_xllamacpp_backend(uv_exe)
                     if not backend:
                         self.log_callback(
                             "Warning: could not install a GPU xllamacpp wheel. "
@@ -468,10 +468,13 @@ class BasePlatformHandler(ABC):
                 except OSError:
                     pass
 
-    def _install_xllamacpp_backend(self) -> bool:
+    def _install_xllamacpp_backend(self, uv_exe: Path) -> bool:
         """Replace the PyPI xllamacpp wheel with CUDA, ROCm, or Vulkan when one applies."""
         self.log_callback("Selecting the xllamacpp wheel for this machine")
-        return install_xllamacpp_wheel(python=str(self.get_venv_python())) == 0
+        return install_xllamacpp_wheel(
+            python=str(self.get_venv_python()),
+            uv=str(uv_exe),
+        ) == 0
 
     def _compile_bytecode(self, uv_exe: Path) -> bool:
         """

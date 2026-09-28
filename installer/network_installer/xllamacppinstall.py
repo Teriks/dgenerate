@@ -25,13 +25,17 @@
 and Windows, Metal on macOS. CUDA, ROCm, and Vulkan builds use the same
 package name on separate indexes, so a setuptools extra cannot select them.
 
-After the extra is installed, run this with the same interpreter::
+Two callers run it after the extra is installed:
 
-    python installer/network_installer/xllamacppinstall.py
+* ``make_dev_env.py`` creates the environment with ``python -m venv`` and then
+  runs ``python installer/network_installer/xllamacppinstall.py``. That
+  environment includes pip, so the reinstall uses ``python -m pip``.
+* The network installer creates the environment with ``uv venv``, which does
+  not include pip on Windows, Linux, or macOS. It calls
+  :func:`install_xllamacpp_wheel` with its ``uv`` executable, and the
+  reinstall uses ``uv pip``.
 
-The network installer runs it after the extra is installed. It reinstalls the
-already-installed version from the matching index. When no GPU build applies,
-the PyPI wheel is left in place.
+When no GPU build applies, the PyPI wheel is left in place.
 """
 
 import argparse
@@ -137,17 +141,51 @@ def installed_version(python: str | None = None) -> str | None:
     return version or None
 
 
+def wheel_install_command(
+        python: str,
+        version: str,
+        index_url: str,
+        uv: str | None = None,
+) -> list[str]:
+    """
+    Build the command that replaces the installed xllamacpp wheel.
+
+    ``uv`` is required for environments created with ``uv venv``. Those
+    interpreters have no pip module on Windows, Linux, or macOS. When ``uv``
+    is omitted, the command uses ``python -m pip`` for a normal virtualenv.
+    """
+    package = f'xllamacpp=={version}'
+    if uv:
+        return [
+            uv, 'pip', 'install', '--python', python,
+            '--no-config',
+            package,
+            '--reinstall-package', 'xllamacpp',
+            '--no-deps',
+            '--index-url', index_url,
+        ]
+    return [
+        python, '-m', 'pip', 'install',
+        package,
+        '--force-reinstall',
+        '--no-deps',
+        '--index-url', index_url,
+    ]
+
+
 def install_xllamacpp_wheel(
         python: str | None = None,
         dry_run: bool = False,
         index_url: str | None = None,
+        uv: str | None = None,
 ) -> int:
     """
     Reinstall the installed xllamacpp version from the GPU index when one applies.
 
     ``python`` is the interpreter whose environment should be updated. The
-    network installer passes the venv interpreter because this module runs
-    in the installer process.
+    network installer passes the venv interpreter and its ``uv`` executable,
+    because this module runs in the installer process and ``uv venv`` does not
+    install pip.
 
     :return: process exit code
     """
@@ -170,25 +208,22 @@ def install_xllamacpp_wheel(
         )
         return 0
 
-    cmd = [
-        python or sys.executable, '-m', 'pip', 'install',
-        f'xllamacpp=={version}',
-        '--force-reinstall',
-        '--no-deps',
-        '--index-url', index_url,
-    ]
+    cmd = wheel_install_command(python or sys.executable, version, index_url, uv)
     print('Installing xllamacpp from', index_url)
     print(' ', ' '.join(cmd))
     if dry_run:
         return 0
 
-    completed = run_silent(cmd, check=False)
+    completed = run_silent(cmd, capture_output=True, text=True, check=False)
     if completed.returncode != 0:
         print(
             'The GPU xllamacpp wheel could not be installed. '
             'The PyPI build is still installed.',
             file=sys.stderr,
         )
+        detail = (completed.stderr or completed.stdout or '').strip()
+        if detail:
+            print(detail, file=sys.stderr)
     return completed.returncode
 
 

@@ -6,7 +6,7 @@ _INSTALLER_DIR = Path(__file__).resolve().parents[2] / 'installer'
 if str(_INSTALLER_DIR) not in sys.path:
     sys.path.insert(0, str(_INSTALLER_DIR))
 
-from network_installer.xllamacppinstall import xllamacpp_index_url  # noqa: E402
+from network_installer.xllamacppinstall import wheel_install_command, xllamacpp_index_url  # noqa: E402
 
 
 class TestXllamaCppIndex(unittest.TestCase):
@@ -57,6 +57,29 @@ class TestXllamaCppIndex(unittest.TestCase):
     def test_cpu_only_keeps_pypi_wheel(self):
         self.assertIsNone(xllamacpp_index_url('Linux'))
         self.assertIsNone(xllamacpp_index_url('Windows'))
+
+    def test_uv_venv_reinstall_does_not_use_pip_module(self):
+        command = wheel_install_command(
+            python=r'C:\app\venv\Scripts\python.exe',
+            version='2026.9.11063',
+            index_url='https://xorbitsai.github.io/xllamacpp/whl/cu132',
+            uv=r'C:\app\uv\uv.exe',
+        )
+        self.assertEqual(command[:4], [r'C:\app\uv\uv.exe', 'pip', 'install', '--python'])
+        self.assertNotIn('-m', command)
+        self.assertNotIn('pip.exe', command[0])
+        self.assertIn('--reinstall-package', command)
+        self.assertIn('xllamacpp==2026.9.11063', command)
+        self.assertIn('https://xorbitsai.github.io/xllamacpp/whl/cu132', command)
+
+    def test_plain_virtualenv_still_uses_pip_module(self):
+        command = wheel_install_command(
+            python='/opt/venv/bin/python',
+            version='1.0',
+            index_url='https://xorbitsai.github.io/xllamacpp/whl/vulkan',
+        )
+        self.assertEqual(command[:4], ['/opt/venv/bin/python', '-m', 'pip', 'install'])
+        self.assertIn('--force-reinstall', command)
 
 
 if __name__ == '__main__':
