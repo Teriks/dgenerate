@@ -855,6 +855,17 @@ def _create_cached_video_pipeline(model_path,
         local_files_only=local_files_only)
     extra_dirs = extra_weight_directories_from_index(index)
     family = ltx_family_from_index(index)
+    if dtype is _enums.DataType.AUTO:
+        detected_dtype = _util.auto_dtype(
+            model_path,
+            revision=revision,
+            subfolder=subfolder,
+            use_auth_token=auth_token,
+            local_files_only=local_files_only,
+            model_index=index)
+        if detected_dtype is not None:
+            _messages.debug_log(f'--dtype auto selected: {_enums.get_data_type_string(detected_dtype)}')
+            dtype = detected_dtype
     estimate = _pipelines.estimate_pipeline_cache_footprint(
         model_path=model_path,
         model_type=model_type,

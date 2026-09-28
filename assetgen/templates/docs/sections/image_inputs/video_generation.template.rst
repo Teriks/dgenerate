@@ -282,6 +282,15 @@ the diffusion transformer and accepts the same URI as it does for Flux, includin
 ``subfolder``, ``dtype``, and ``quantizer``. A quantizer on that URI wins over ``--quantizer``.
 Replacing the transformer does not change the scheduler.
 
+The repository's default transformer is distilled. The full (non-distilled) transformer is
+in its ``transformer_full`` subfolder. Load it with
+``--transformer "Lightricks/LTX-2.5-Diffusers;subfolder=transformer_full"`` and give it a
+normal schedule with ``--scheduler "FlowMatchEulerDiscreteScheduler;use-dynamic-shifting=true"``,
+otherwise it runs the distilled 8-value sigma table. Set ``--inference-steps`` and guidance for
+a guided model, for example 30 steps, ``--guidance-scales 3``, and ``--audio-guidance-scales 7``.
+Lightricks IC-LoRAs are trained on the distilled transformer.
+See ``examples/ltx/ltx2/full_transformer/text-to-video-config.dgen``.
+
 ``--loras`` loads diffusers-format adapters onto that transformer and fuses them, including
 ``--lora-fuse-scale`` and each URI ``scale``. The LTX stage-2 distilled LoRA does not turn on
 two-stage sampling. IC-LoRAs load with ``--ic-lora`` instead, see `IC-LoRA control`_.

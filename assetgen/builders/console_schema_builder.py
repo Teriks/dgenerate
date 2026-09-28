@@ -210,7 +210,7 @@ class ConsoleSchemaBuilder:
 
         schema = dict()
 
-        for directive in sorted(config_runner.directives.keys()):
+        for directive in sorted(set(config_runner.directives) | set(config_runner.directives_builtins_help)):
             schema['\\' + directive] = config_runner.generate_directives_help(
                 [directive], help_wrap_width=100
             )
