@@ -46,6 +46,10 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
     def __init__(self, parent, **kwargs):
         """Initialize OpenGL-accelerated ImageViewer"""
         super().__init__(parent, **kwargs)
+        # pyopengltk clears the background so a picture is not painted over.
+        # An empty preview has nothing to keep, and a sash drag smears unless
+        # Tk fills it.
+        self.configure(bg='black')
 
         # Platform detection for macOS-specific behavior
         self._is_macos = _std_platform.system() == 'Darwin'
@@ -153,8 +157,28 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
             self.bind('<Command-equal>', lambda e: self._zoom_by_factor(self._zoom_step))
             self.bind('<Command-minus>', lambda e: self._zoom_by_factor(1 / self._zoom_step))
 
+    def _sync_backdrop(self):
+        """Fill an empty preview. A loaded picture keeps the last presented frame."""
+        color = '' if self.has_image() else 'black'
+        try:
+            if self.cget('bg') != color:
+                self.configure(bg=color)
+        except tk.TclError:
+            return
+
     def _on_configure(self, event):
         """Handle window resize events"""
+        if not self.has_image():
+            self._sync_backdrop()
+            if self._resize_after is not None:
+                try:
+                    self.after_cancel(self._resize_after)
+                except Exception:
+                    pass
+                self._resize_after = None
+            if getattr(self, '_gl_initialized', False) and self.winfo_width() > 1 and self.winfo_height() > 1:
+                self.redraw()
+            return
         if not getattr(self, '_gl_initialized', False):
             return
         if self.winfo_width() <= 1 or self.winfo_height() <= 1:
@@ -447,6 +471,7 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
         """Redraw the OpenGL scene"""
         if self._resize_after is not None:
             return
+        self._sync_backdrop()
         # Make sure OpenGL is initialized
         if not hasattr(self, '_gl_initialized') or not self._gl_initialized:
             return
@@ -1871,6 +1896,7 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
 
         # Clear image data
         self._original_image_array = None
+        self._sync_backdrop()
         self._original_image_size = None
         self._base_display_width = None
         self._base_display_height = None
