@@ -2095,6 +2095,17 @@ def _create_diffusion_pipeline(
 
     model_path = _hfhub.download_non_hf_slug_model(model_path)
 
+    if dtype is _enums.DataType.AUTO:
+        detected_dtype = _util.auto_dtype(
+            model_path,
+            revision=revision,
+            subfolder=subfolder,
+            use_auth_token=auth_token,
+            local_files_only=local_files_only)
+        if detected_dtype is not None:
+            _messages.debug_log(f'--dtype auto selected: {_enums.get_data_type_string(detected_dtype)}')
+            dtype = detected_dtype
+
     if (_hfhub.is_single_file_model_load(model_path)
         and _enums.model_type_is_kolors(model_type)
     ):

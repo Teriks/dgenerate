@@ -18,12 +18,14 @@
 # LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import collections
 import collections.abc
 import glob
 import json
 import os
 import pathlib
 import re
+import struct
 
 import diffusers.loaders.single_file as _single_file
 import diffusers.pipelines
@@ -97,6 +99,178 @@ def fetch_model_index_dict(
 
     with open(cached_model_config_path) as config_file:
         return json.load(config_file)
+
+
+_AUTO_DTYPES = {
+    'float16': _enums.DataType.FLOAT16,
+    'bfloat16': _enums.DataType.BFLOAT16,
+    'float32': _enums.DataType.FLOAT32,
+}
+
+# Lowest to highest precision.
+_AUTO_DTYPE_ORDER = [_enums.DataType.FLOAT16, _enums.DataType.BFLOAT16, _enums.DataType.FLOAT32]
+
+_SAFETENSORS_DTYPES = {
+    'F16': _enums.DataType.FLOAT16,
+    'BF16': _enums.DataType.BFLOAT16,
+    'F32': _enums.DataType.FLOAT32,
+}
+
+# Key prefixes of text encoder weights in single file checkpoints.
+_SINGLE_FILE_TEXT_ENCODER_PREFIXES = ('cond_stage_model.', 'conditioner.embedders.', 'text_encoders.')
+
+
+class _HeaderTensor:
+    def __init__(self, shape):
+        self.shape = torch.Size(shape)
+
+
+def _single_file_dtype(path: str,
+                       revision=None,
+                       use_auth_token=None,
+                       local_files_only=False) -> _enums.DataType | None:
+    """
+    ``--dtype auto`` for a single file ``.safetensors`` checkpoint, only its header is read.
+
+    Checkpoints containing text encoders use the dtype most of the text encoder weights are
+    stored in. Otherwise, the text encoders are loaded from the Hugging Face repo diffusers
+    detects for the checkpoint, and the dtype comes from that repo's configs. If neither works,
+    the dtype most of the weights in the file are stored in is used.
+    """
+    if not path.lower().endswith('.safetensors'):
+        return None
+    try:
+        if not os.path.isfile(path):
+            path = _hfhub.webcache_or_hf_blob_download(path, local_files_only=local_files_only)
+        with open(path, 'rb') as file:
+            header_size = struct.unpack('<Q', file.read(8))[0]
+            header = json.loads(file.read(header_size))
+    except Exception as e:
+        _messages.debug_log(f'Could not read the safetensors header of "{path}": {e}')
+        return None
+
+    header.pop('__metadata__', None)
+
+    all_bytes = collections.Counter()
+    text_encoder_bytes = collections.Counter()
+    for key, info in header.items():
+        dtype = _SAFETENSORS_DTYPES.get(info.get('dtype'))
+        if dtype is None:
+            continue
+        start, end = info['data_offsets']
+        all_bytes[dtype] += end - start
+        if key.startswith(_SINGLE_FILE_TEXT_ENCODER_PREFIXES):
+            text_encoder_bytes[dtype] += end - start
+
+    if text_encoder_bytes:
+        return text_encoder_bytes.most_common(1)[0][0]
+
+    try:
+        config = _single_file.fetch_diffusers_config(
+            {key: _HeaderTensor(info['shape']) for key, info in header.items()})
+        config_dtype = auto_dtype(
+            config['pretrained_model_name_or_path'],
+            revision=revision,
+            subfolder=config.get('subfolder'),
+            use_auth_token=use_auth_token,
+            local_files_only=local_files_only)
+        if config_dtype is not None:
+            return config_dtype
+    except Exception as e:
+        _messages.debug_log(f'Could not detect the config repo of "{path}": {e}')
+
+    return all_bytes.most_common(1)[0][0] if all_bytes else None
+
+
+def _module_config_dtype(path: str,
+                         name: str,
+                         revision=None,
+                         subfolder=None,
+                         use_auth_token=None,
+                         local_files_only=False) -> _enums.DataType | None:
+    folder = f'{subfolder}/{name}' if subfolder else name
+    try:
+        if os.path.isdir(path):
+            config_path = os.path.join(path, folder, 'config.json')
+        else:
+            config_path = huggingface_hub.hf_hub_download(
+                path,
+                filename='config.json',
+                subfolder=folder,
+                revision=revision,
+                local_files_only=local_files_only,
+                token=use_auth_token
+            )
+        with open(config_path) as config_file:
+            config = json.load(config_file)
+    except (OSError, ValueError, huggingface_hub.errors.HfHubHTTPError):
+        return None
+
+    text_config = config.get('text_config') or {}
+    for value in (config.get('dtype'), config.get('torch_dtype'),
+                  text_config.get('dtype'), text_config.get('torch_dtype')):
+        if value in _AUTO_DTYPES:
+            return _AUTO_DTYPES[value]
+    return None
+
+
+def auto_dtype(path: str,
+               revision=None,
+               subfolder=None,
+               use_auth_token=None,
+               local_files_only=False,
+               model_index: dict | None = None) -> _enums.DataType | None:
+    """
+    Choose the dtype to load a whole pipeline in for ``--dtype auto``, before loading it.
+
+    transformers >= 5 loads its models in the dtype recorded in their config when no dtype
+    is given, while diffusers loads its models in float32, a mix most pipelines cannot run.
+    This reads the config of every transformers model in the pipeline and returns the highest
+    precision any of them records, or float32 if none record one, so every module can be
+    loaded in the dtype the text encoders were meant to run in.
+
+    For single file ``.safetensors`` checkpoints this is the dtype the text encoder weights are
+    stored in, or when the file has no text encoders, the dtype of the repo diffusers loads them
+    from. Other single file formats return ``None``.
+
+    :param path: Hugging Face repo, or directory, or file path
+    :param revision: repo revision
+    :param subfolder: repo subfolder
+    :param use_auth_token: Use this HF auth token?
+    :param local_files_only: Only look through the cache?
+    :param model_index: ``model_index.json`` dict if it was already fetched.
+
+    :return: :py:class:`dgenerate.pipelinewrapper.enums.DataType` or ``None``
+    """
+    if _hfhub.is_single_file_model_load(path):
+        return _single_file_dtype(path,
+                                  revision=revision,
+                                  use_auth_token=use_auth_token,
+                                  local_files_only=local_files_only)
+
+    if model_index is None:
+        try:
+            model_index = fetch_model_index_dict(
+                path,
+                revision=revision,
+                subfolder=subfolder,
+                use_auth_token=use_auth_token,
+                local_files_only=local_files_only)
+        except _d_exceptions.ConfigNotFoundError:
+            return None
+
+    found = []
+    for name, value in model_index.items():
+        if not (isinstance(value, list) and len(value) == 2 and value[0] == 'transformers'):
+            continue
+        module_class = getattr(transformers, value[1], None)
+        if not (isinstance(module_class, type) and issubclass(module_class, transformers.PreTrainedModel)):
+            continue
+        dtype = _module_config_dtype(path, name, revision, subfolder, use_auth_token, local_files_only)
+        if dtype is not None:
+            found.append(dtype)
+
+    return max(found, key=_AUTO_DTYPE_ORDER.index) if found else _enums.DataType.FLOAT32
 
 
 def single_file_load_sub_module(

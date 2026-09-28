@@ -501,6 +501,9 @@ def invoke_dgenerate_events(
                 yield DgenerateExitEvent(invoke_dgenerate_events, 1)
                 return
 
+        if render_loop is None:
+            render_loop = _renderloop.RenderLoop()
+
         try:
             render_loop.config = arguments
 

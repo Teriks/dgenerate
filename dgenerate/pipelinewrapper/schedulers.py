@@ -367,26 +367,16 @@ def get_scheduler_uri_schema(scheduler: type[diffusers.SchedulerMixin] | list[ty
     return schema
 
 
-def load_scheduler(pipeline: diffusers.DiffusionPipeline, scheduler_uri: _types.Uri | None):
+def parse_scheduler_uri(scheduler_type: type[diffusers.SchedulerMixin], scheduler_uri: _types.Uri) -> dict:
     """
-    Load a specific compatible scheduler class name onto a huggingface diffusers pipeline object.
+    Parse the arguments of a scheduler URI into scheduler constructor keyword arguments.
 
-    Passing ``None`` to the URI reloads the original scheduler that the pipeline was loaded
-    with, if no new scheduler has been set since then, this is a no-op.
-
-    :raises InvalidSchedulerNameError: If an invalid scheduler name is specified specifically.
     :raises SchedulerArgumentError: If invalid arguments are supplied to the scheduler via the URI.
 
-    :param pipeline: pipeline object
-    :param scheduler_uri: Compatible scheduler URI.
+    :param scheduler_type: The scheduler class the URI names.
+    :param scheduler_uri: Scheduler URI.
+    :return: Keyword arguments, including ``clone_config`` if it was given.
     """
-
-    if scheduler_uri is None:
-        if hasattr(pipeline, '_DGENERATE_ORIGINAL_SCHEDULER'):
-            pipeline.scheduler = pipeline._DGENERATE_ORIGINAL_SCHEDULER
-        return
-
-    compatibles = get_compatible_schedulers(pipeline.__class__)
 
     def _get_uri_arg_value(
             scheduler: str,
@@ -444,67 +434,114 @@ def load_scheduler(pipeline: diffusers.DiffusionPipeline, scheduler_uri: _types.
             # token (string)
             return value
 
-    for scheduler_type in compatibles:
-        if scheduler_type.__name__.startswith(scheduler_uri.split(';')[0].strip()):
-            schema = get_scheduler_uri_schema(scheduler_type)[scheduler_type.__name__]
+    schema = get_scheduler_uri_schema(scheduler_type)[scheduler_type.__name__]
 
-            parser = _textprocessing.ConceptUriParser(
-                'Scheduler',
-                known_args=list(schema.keys()),
-                args_raw=[k for k, v in schema.items()
-                          if any(t == 'list' for t in v['types'])])
+    parser = _textprocessing.ConceptUriParser(
+        'Scheduler',
+        known_args=list(schema.keys()),
+        args_raw=[k for k, v in schema.items()
+                  if any(t == 'list' for t in v['types'])])
 
-            try:
-                result = parser.parse(scheduler_uri)
-            except _textprocessing.ConceptUriParseError as e:
-                raise SchedulerArgumentError(e) from e
+    try:
+        result = parser.parse(scheduler_uri)
+    except _textprocessing.ConceptUriParseError as e:
+        raise SchedulerArgumentError(e) from e
 
-            args = {_textprocessing.dashdown(k): _get_uri_arg_value(
-                scheduler_type.__name__, v, k, schema[k]['optional'], schema[k]['types'])
-                for k, v in result.args.items()}
+    args = {_textprocessing.dashdown(k): _get_uri_arg_value(
+        scheduler_type.__name__, v, k, schema[k]['optional'], schema[k]['types'])
+        for k, v in result.args.items()}
 
-            option_args = _scheduler_option_args.get(scheduler_type, dict())
-            for arg, value in args.items():
-                if arg in option_args and value not in option_args[arg]:
-                    raise SchedulerArgumentError(
-                        f'Invalid value "{value}" for argument "{_textprocessing.dashup(arg)}" '
-                        f'of scheduler "{scheduler_type.__name__}", '
-                        f'valid options are: '
-                        f'{_textprocessing.oxford_comma(option_args[arg], "or")}')
+    option_args = _scheduler_option_args.get(scheduler_type, dict())
+    for arg, value in args.items():
+        if arg in option_args and value not in option_args[arg]:
+            raise SchedulerArgumentError(
+                f'Invalid value "{value}" for argument "{_textprocessing.dashup(arg)}" '
+                f'of scheduler "{scheduler_type.__name__}", '
+                f'valid options are: '
+                f'{_textprocessing.oxford_comma(option_args[arg], "or")}')
 
-            _messages.debug_log(
-                f'Constructing Scheduler: "{scheduler_type.__name__}", URI Args: {args}')
+    return args
 
-            try:
-                if not hasattr(pipeline, '_DGENERATE_ORIGINAL_SCHEDULER'):
-                    # first time
-                    pipeline._DGENERATE_ORIGINAL_SCHEDULER = pipeline.scheduler
 
-                clone_config = args.pop('clone_config', True)
+def _find_scheduler(scheduler_uri: _types.Uri, schedulers: list[type[diffusers.SchedulerMixin]]):
+    name = scheduler_uri.split(';')[0].strip()
+    return next((s for s in schedulers if s.__name__.startswith(name)), None)
 
-                if clone_config:
-                    # init from original scheduler config
-                    # apply any user overrides over top
-                    pipeline.scheduler = scheduler_type.from_config(
-                        pipeline._DGENERATE_ORIGINAL_SCHEDULER.config, **args
-                    )
-                else:
-                    # raw init with possible overrides to defaults
-                    pipeline.scheduler = scheduler_type(**args)
 
-            except Exception as e:
-                raise SchedulerArgumentError(
-                    f'Error constructing scheduler "{scheduler_type.__name__}" '
-                    f'with given URI argument values, encountered error: {e}') from e
+def check_scheduler_uri(scheduler_uri: _types.Uri):
+    """
+    Validate the scheduler name and URI arguments without a pipeline. Whether the
+    scheduler is compatible with a particular pipeline is not checked.
 
-            _messages.debug_log(
-                f'Scheduler: "{scheduler_type.__name__}", '
-                f'Successfully added to pipeline: {pipeline.__class__.__name__}')
+    :raises InvalidSchedulerNameError: If the scheduler name is unknown.
+    :raises SchedulerArgumentError: If invalid arguments are supplied to the scheduler via the URI.
 
-            # found a matching scheduler, return
-            return
+    :param scheduler_uri: Scheduler URI.
+    """
+    schedulers = list(_scheduler_option_args)
+    scheduler_type = _find_scheduler(scheduler_uri, schedulers)
+    if scheduler_type is None:
+        raise InvalidSchedulerNameError(
+            f'Scheduler named "{scheduler_uri}" is not a valid scheduler, options are:\n\n' +
+            '\n'.join(sorted(' ' * 4 + _textprocessing.quote(i.__name__) for i in schedulers)))
+    parse_scheduler_uri(scheduler_type, scheduler_uri)
 
-    raise InvalidSchedulerNameError(
-        f'Scheduler named "{scheduler_uri}" is not a valid compatible scheduler, '
-        'options are:\n\n' + '\n'.join(
-            sorted(' ' * 4 + _textprocessing.quote(i.__name__.split('.')[-1]) for i in compatibles)))
+
+def load_scheduler(pipeline: diffusers.DiffusionPipeline, scheduler_uri: _types.Uri | None):
+    """
+    Load a specific compatible scheduler class name onto a huggingface diffusers pipeline object.
+
+    Passing ``None`` to the URI reloads the original scheduler that the pipeline was loaded
+    with, if no new scheduler has been set since then, this is a no-op.
+
+    :raises InvalidSchedulerNameError: If an invalid scheduler name is specified specifically.
+    :raises SchedulerArgumentError: If invalid arguments are supplied to the scheduler via the URI.
+
+    :param pipeline: pipeline object
+    :param scheduler_uri: Compatible scheduler URI.
+    """
+
+    if scheduler_uri is None:
+        if hasattr(pipeline, '_DGENERATE_ORIGINAL_SCHEDULER'):
+            pipeline.scheduler = pipeline._DGENERATE_ORIGINAL_SCHEDULER
+        return
+
+    compatibles = get_compatible_schedulers(pipeline.__class__)
+
+    scheduler_type = _find_scheduler(scheduler_uri, compatibles)
+    if scheduler_type is None:
+        raise InvalidSchedulerNameError(
+            f'Scheduler named "{scheduler_uri}" is not a valid compatible scheduler, '
+            'options are:\n\n' + '\n'.join(
+                sorted(' ' * 4 + _textprocessing.quote(i.__name__.split('.')[-1]) for i in compatibles)))
+
+    args = parse_scheduler_uri(scheduler_type, scheduler_uri)
+
+    _messages.debug_log(
+        f'Constructing Scheduler: "{scheduler_type.__name__}", URI Args: {args}')
+
+    try:
+        if not hasattr(pipeline, '_DGENERATE_ORIGINAL_SCHEDULER'):
+            # first time
+            pipeline._DGENERATE_ORIGINAL_SCHEDULER = pipeline.scheduler
+
+        clone_config = args.pop('clone_config', True)
+
+        if clone_config:
+            # init from original scheduler config
+            # apply any user overrides over top
+            pipeline.scheduler = scheduler_type.from_config(
+                pipeline._DGENERATE_ORIGINAL_SCHEDULER.config, **args
+            )
+        else:
+            # raw init with possible overrides to defaults
+            pipeline.scheduler = scheduler_type(**args)
+
+    except Exception as e:
+        raise SchedulerArgumentError(
+            f'Error constructing scheduler "{scheduler_type.__name__}" '
+            f'with given URI argument values, encountered error: {e}') from e
+
+    _messages.debug_log(
+        f'Scheduler: "{scheduler_type.__name__}", '
+        f'Successfully added to pipeline: {pipeline.__class__.__name__}')
