@@ -184,7 +184,7 @@ class _ImageSeedSelect(tk.Toplevel):
             row=0, column=2, padx=(4, 0))
 
         self._ltx_index = self._labeled_spin('Latent frame index', -100000, 100000)
-        self._ltx_strength = self._labeled_float('Condition strength')
+        self._ltx_strength = self._labeled_float('Strength')
         self._extras = _ExtraRows(self)
 
     def _labeled_entry(self, label):

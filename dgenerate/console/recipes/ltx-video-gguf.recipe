@@ -5,7 +5,7 @@ order: 19
 # LTX-2.5 options such as latent upscale, STG, and audio guidance are not
 # accepted by this checkpoint.
 # Parent repo still supplies the VAE and text encoders.
-# First frame and last frame (ltx-end=) are optional, each can be a still or a
+# First frame and last frame (last-frame=) are optional, each can be a still or a
 # video. A video first frame is an opening clip the output continues from,
 # a video last frame is a closing clip the output leads into.
 # --scheduler accepts FlowMatchEulerDiscreteScheduler and its URI arguments.
@@ -17,7 +17,7 @@ order: 19
 \setp first_frame "@file[{"label":"First Frame / Opening Clip", "optional":true, "mode":"input", "file-types":["images-in", "videos-in"]}]"
 \setp last_frame "@file[{"label":"Last Frame / Closing Clip", "optional":true, "mode":"input", "file-types":["images-in", "videos-in"], "divider-after":true}]"
 
-\set image_seeds {{ (first_frame + ((';ltx-end=' + last_frame) if last_frame else '')) if (first_frame or last_frame) else '' }}
+\set image_seeds {{ (first_frame + ((';last-frame=' + last_frame) if last_frame else '')) if (first_frame or last_frame) else '' }}
 
 \setp first_processor "@imageprocessor[{"label":"First Frame Processor"}]"
 \setp last_processor "@imageprocessor[{"label":"Last Frame Processor"}]"
@@ -39,6 +39,8 @@ order: 19
 @float[{"label":"Video Length (seconds)", "arg":"--ltx-video-lengths", "default":"4.84", "min":0.1}]
 @float[{"label":"Video FPS", "arg":"--ltx-video-fps", "default":"25", "min":1}]
 @dropdown[{"label":"Animation Format", "arg":"--animation-format", "options":["mp4", "gif", "webp", "apng", "frames"], "default":"mp4", "optional":false}]
+# Fills image-seed groups that omit strength=. last-frame= stays at 1.
+@float[{"label":"Condition Strength", "arg":"--image-seed-strengths", "min":0, "max":1}]
 @seeds[{"label":"Seeds"}]
 @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
 @switchradio[{"labels":["Output Dgenerate Image Metadata", "Output Automatic1111 Image Metadata"], "args":["--output-metadata", "--output-auto1111-metadata"]}]

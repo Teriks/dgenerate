@@ -42,7 +42,7 @@ Video generation (LTX)
 ----------------------
 
 * Generate a whole clip in one pipeline call with ``--model-type ltx`` (`Lightricks LTX-2.5 <https://huggingface.co/Lightricks/LTX-2.5-Diffusers>`_ and the earlier `LTX-Video <https://huggingface.co/Lightricks/LTX-Video>`_ checkpoints)
-* Text-to-video, or condition with ``--image-seeds``: a still or clip as the opening frames, ``ltx-end=`` as the closing frame, or both together
+* Text-to-video, or condition with ``--image-seeds``: a still or clip as the opening frames, ``last-frame=`` as the closing frame, or both together
 * Use a video, GIF, or other animated file as conditioning to extend existing footage or generate a lead-in; slice with ``--frame-start`` / ``--frame-end``
 * Process the opening and closing conditioning separately, for example ``--seed-image-processors grayscale + canny``
 * Guide LTX-2.5 with an IC-LoRA from ``--ltx-ic-lora``, such as canny, depth, or pose control, from a reference clip processed by ``--control-image-processors``

@@ -221,6 +221,8 @@ with --s-cascade-decoder "stabilityai/stable-cascade;dtype=float16". Public, no 
 LTX-only options use the --ltx- prefix. --ltx-video-lengths is seconds and --ltx-video-fps is the frame rate. \
 When the user names a duration, use that many seconds, however long. When they do not, use 4. \
 --ltx-latent-upscale is the two-stage pass in that same generation; --output-size must be divisible by 64. \
+The last frame is last-frame= on --image-seeds, at strength 1. strength= is the condition weight. \
+--image-seed-strengths fills LTX groups that omit strength=. \
 Describe the sound in the prompt. Lightricks/LTX-Video is the older video-only model; use it only when the user names it.
 - 4x upscaling with diffusion: stabilityai/stable-diffusion-x4-upscaler, --model-type upscaler-x4 --variant fp16. Public, no HF_TOKEN.
 - 2x latent upscaling: stabilityai/sd-x2-latent-upscaler, --model-type upscaler-x2. Public, no HF_TOKEN.
@@ -359,6 +361,8 @@ def first_draft_recipes(request: str) -> str:
             'If the user names a duration, use that many seconds. '
             'If they do not, use 4. Do not turn a frame count such as 97 into the length unless they asked for 97 seconds. '
             'For a sharper clip, --ltx-latent-upscale in the same generation; --output-size must be divisible by 64.',
+            'The last frame is last-frame= on --image-seeds, at strength 1. strength= is the condition weight. '
+            '--image-seed-strengths fills LTX groups that omit strength=.',
             'Image-to-video uses --image-seeds {{ quote(first(last_images)) }} and describes the sound.',
         ]
     if _GATED_HF.search(request):

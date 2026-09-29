@@ -1865,7 +1865,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     To also condition on a first or last frame, use the "control" image seed argument:
 
                     NOWRAP!
-                    --image-seeds "first.png;control=control.mp4;ltx-end=last.png"
+                    --image-seeds "first.png;control=control.mp4;last-frame=last.png"
 
                     Use --control-image-processors to turn the reference into the signal the IC-LoRA expects,
                     for example "canny".
@@ -4102,8 +4102,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     or you will receive a syntax error message.
 
                     For --model-type ltx, one chain runs on every frame of both the opening media and
-                    the "ltx-end" image seed argument. With two chains, the first runs on the opening media
-                    and the second on "ltx-end", for example: (--seed-image-processors grayscale +) processes
+                    the "last-frame" image seed argument. With two chains, the first runs on the opening media
+                    and the second on "last-frame", for example: (--seed-image-processors grayscale +) processes
                     only the opening media.
 
                     To obtain more information about what image
@@ -4231,7 +4231,15 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     img2img or inpaint mode. Closer to 0 means high usage of the seed image (less noise convolution),
                     1 effectively means no usage (high noise convolution). Low values will produce something closer
                     or more relevant to the input image, high values will give the AI more creative freedom. This
-                    value must be greater than 0 and less than or equal to 1. (default: [0.8])"""
+                    value must be greater than 0 and less than or equal to 1. Each value is tried in turn.
+                    An image seed keyword strength= overrides this option for that seed.
+                    (default: [0.8])
+
+                    For --model-type ltx, these values are the condition strength of image-seed
+                    groups that omit strength=. 1 keeps the conditioning frame. A lower value
+                    lets the generated frames leave it. Several values are tried in turn.
+                    last-frame= stays at strength 1. LTX does not use the img2img default 0.8;
+                    omit this option and an omitted strength= stays at 1."""
         )
     )
 

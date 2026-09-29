@@ -589,8 +589,11 @@ def reconstruct_dgenerate_opts(
     if not args.aspect_correct:
         opts.append(('--no-aspect',))
 
-    # Add image_seed_strength if it differs from default
-    if args.image_seed_strength is not None and args.image_seed_strength != _constants.DEFAULT_IMAGE_SEED_STRENGTH:
+    # Img2img omits the default 0.8. LTX has no default here: an omitted
+    # strength stays at 1, so any set value, including 0.8, is written back.
+    if args.image_seed_strength is not None and (
+            _enums.model_type_is_video(wrapper.model_type) or
+            args.image_seed_strength != _constants.DEFAULT_IMAGE_SEED_STRENGTH):
         opts.append(('--image-seed-strengths', args.image_seed_strength))
 
     # Add upscaler_noise_level if it differs from model-specific default

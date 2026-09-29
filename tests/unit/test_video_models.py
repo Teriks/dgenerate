@@ -28,13 +28,13 @@ def _config(**values):
 class TestVideoModels(unittest.TestCase):
     def test_end_image_parse(self):
         parsed = _mediainput.parse_image_seed_uri(
-            'examples/media/earth.jpg;ltx-end=examples/media/beach.jpg')
+            'examples/media/earth.jpg;last-frame=examples/media/beach.jpg')
         self.assertEqual(parsed.end_image, 'examples/media/beach.jpg')
         self.assertFalse(parsed.is_single_spec)
 
         with self.assertRaises(_mediainput.ImageSeedFileNotFoundError):
             _mediainput.parse_image_seed_uri(
-                'examples/media/earth.jpg;ltx-end=examples/media/missing-end.jpg')
+                'examples/media/earth.jpg;last-frame=examples/media/missing-end.jpg')
 
     def test_ltx_check_defaults(self):
         config = _config(model_path='org/ltx', model_type=_pipelinewrapper.ModelType.LTX)
@@ -204,7 +204,7 @@ class TestVideoModels(unittest.TestCase):
         for values in (
                 {'image_seeds': [f'examples/media/earth.jpg;control={gif}']},
                 {'ltx_ic_lora_uri': ic},
-                {'ltx_ic_lora_uri': ic, 'image_seeds': [';ltx-end=examples/media/earth.jpg']},
+                {'ltx_ic_lora_uri': ic, 'image_seeds': [';last-frame=examples/media/earth.jpg']},
                 {'ltx_ic_lora_uri': f'{ic};attention=2', 'image_seeds': [gif]},
                 {'image_seeds': ['examples/media/earth.jpg'], 'control_image_processors': ['canny']},
                 {'ltx_ic_lora_uri': ic,
@@ -254,14 +254,14 @@ class TestVideoModels(unittest.TestCase):
             config = _config(
                 model_path='org/ltx',
                 model_type=_pipelinewrapper.ModelType.LTX,
-                image_seeds=['examples/media/earth.jpg;ltx-end=examples/media/beach.jpg'],
+                image_seeds=['examples/media/earth.jpg;last-frame=examples/media/beach.jpg'],
                 seed_image_processors=processors)
             config.check()
 
         config = _config(
             model_path='org/ltx',
             model_type=_pipelinewrapper.ModelType.LTX,
-            image_seeds=['examples/media/earth.jpg;ltx-end=examples/media/beach.jpg'],
+            image_seeds=['examples/media/earth.jpg;last-frame=examples/media/beach.jpg'],
             seed_image_processors=['flip', '+', 'mirror', '+', 'grayscale'])
         with self.assertRaises(_renderloopconfig.RenderLoopConfigError):
             config.check()
@@ -422,11 +422,11 @@ class TestVideoModels(unittest.TestCase):
     def test_end_is_video_only(self):
         config = _config(
             model_path='org/sd',
-            image_seeds=['examples/media/earth.jpg;ltx-end=examples/media/beach.jpg'])
+            image_seeds=['examples/media/earth.jpg;last-frame=examples/media/beach.jpg'])
         with self.assertRaises(_renderloopconfig.RenderLoopConfigError):
             config.check()
 
-    def test_video_rejects_batch_size_and_seed_strength(self):
+    def test_video_rejects_batch_size_and_accepts_seed_strength(self):
         config = _config(
             model_path='org/ltx',
             model_type=_pipelinewrapper.ModelType.LTX,
@@ -439,8 +439,8 @@ class TestVideoModels(unittest.TestCase):
             model_type=_pipelinewrapper.ModelType.LTX,
             image_seeds=['examples/media/earth.jpg'],
             image_seed_strengths=[0.4])
-        with self.assertRaises(_renderloopconfig.RenderLoopConfigError):
-            config.check()
+        config.check()
+        self.assertEqual(config.image_seed_strengths, [0.4])
 
     def test_model_path_is_required(self):
         config = _config(model_type=_pipelinewrapper.ModelType.LTX)
@@ -1031,7 +1031,7 @@ class TestVideoModels(unittest.TestCase):
         earth = 'examples/media/earth.jpg'
         beach = 'examples/media/beach.jpg'
         parsed = _mediainput.parse_image_seed_uri(
-            f'{earth};ltx-index=0;ltx-strength=0.5 ++ {beach};ltx-index=8;ltx-strength=1')
+            f'{earth};ltx-index=0;strength=0.5 ++ {beach};ltx-index=8;strength=1')
         self.assertEqual(parsed.ltx_condition_index, 0)
         self.assertEqual(parsed.ltx_condition_strength, 0.5)
         self.assertEqual(parsed.ltx_extra_conditions[0].images, [beach])
@@ -1044,6 +1044,13 @@ class TestVideoModels(unittest.TestCase):
         placed = _mediainput.parse_image_seed_uri(f'{earth};ltx-index=8')
         self.assertEqual(
             _videopipelines.classify_video_seed(ltx, placed), 'ltx-condition')
+
+        softened = _pipelinewrapper.DiffusionArguments()
+        softened.image_seed_strength = 0.7
+        softened.images = [PIL.Image.new('RGB', (8, 8))]
+        self.assertEqual(_videopipelines._ltx_resolved_strength(None, softened), 0.7)
+        self.assertEqual(_videopipelines._ltx_resolved_strength(0.4, softened), 0.4)
+        self.assertTrue(_videopipelines._ltx_image_needs_conditions(softened))
 
     def test_latent_upscale_size_check(self):
         missing = _config(

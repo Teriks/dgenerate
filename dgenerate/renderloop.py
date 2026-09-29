@@ -1292,6 +1292,8 @@ class RenderLoop:
             overrides = {}
             if self._c_config.seeds_to_images:
                 overrides['seed'] = [seed_to_image]
+            if parsed_image_seed.ltx_condition_strength is not None:
+                overrides['image_seed_strength'] = [parsed_image_seed.ltx_condition_strength]
 
             arg_iterator = self._c_config.iterate_diffusion_args(**overrides)
 
@@ -1450,6 +1452,12 @@ class RenderLoop:
                 overrides = {}
                 if uri is not None and self._c_config.seeds_to_images:
                     overrides['seed'] = [seed_to_image]
+                if parsed is not None and parsed.ltx_condition_strength is not None:
+                    extras_need_global = any(
+                        extra.ltx_condition_strength is None
+                        for extra in (parsed.ltx_extra_conditions or []))
+                    if not extras_need_global:
+                        overrides['image_seed_strength'] = [None]
 
                 for diffusion_arguments in self._c_config.iterate_diffusion_args(**overrides):
                     diffusion_arguments.batch_size = self._c_config.batch_size
@@ -1478,16 +1486,16 @@ class RenderLoop:
         """
         Load the processor chains for each video conditioning slot.
 
-        One ``--seed-image-processors`` chain runs on both the opening media and ``ltx-end=``.
+        One ``--seed-image-processors`` chain runs on both the opening media and ``last-frame=``.
         With two chains separated by ``+``, the first runs on the opening media and
-        the second on ``ltx-end=``. ``--control-image-processors`` runs on ``control=``.
+        the second on ``last-frame=``. ``--control-image-processors`` runs on ``control=``.
         """
         seed = self._load_seed_image_processors()
         if isinstance(seed, list):
             if len(seed) > 2:
                 raise RenderLoopConfigError(
                     'Video models accept at most two seed image processor chains, '
-                    'one for the opening image seed media and one for ltx-end=.')
+                    'one for the opening image seed media and one for last-frame=.')
             start, end = seed
         else:
             start = end = seed
@@ -1541,8 +1549,10 @@ class RenderLoop:
                 extra.images[0], extra, processors['start'], owned_images,
                 max_frames, diffusion_arguments.ltx_video_fps)
             payload = frames[0] if len(frames) == 1 else frames
-            strength = 1.0 if extra.ltx_condition_strength is None else float(extra.ltx_condition_strength)
-            extras.append((payload, int(extra.ltx_condition_index), strength))
+            extras.append((
+                payload,
+                int(extra.ltx_condition_index),
+                extra.ltx_condition_strength))
         if extras:
             diffusion_arguments.ltx_extra_conditions = extras
 

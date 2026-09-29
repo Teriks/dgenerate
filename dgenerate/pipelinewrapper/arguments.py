@@ -1163,10 +1163,10 @@ class DiffusionArguments(_types.SetFromMixin):
 
     ltx_condition_strength: _types.OptionalFloat = None
     """
-    Weight of the primary ``--image-seeds`` path, from ``ltx-strength``.
+    Weight of the primary ``--image-seeds`` path, from ``strength``.
 
-    ``None`` is full strength (``1``). This is not
-    :py:attr:`dgenerate.pipelinewrapper.DiffusionArguments.image_seed_strength`.
+    ``None`` means the keyword was omitted. LTX then uses
+    ``image_seed_strength`` when that was set, otherwise ``1``.
     """
 
     ltx_extra_conditions: list | None = None

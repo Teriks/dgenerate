@@ -436,7 +436,7 @@ def _classify_ltx(parsed, ic_lora: bool = False) -> str:
     if parsed is not None and (parsed.multi_image_mode or _image_count(parsed) > 1):
         raise _pipelines.UnsupportedPipelineConfigError(
             'LTX accepts one conditioning image. Use a single path for the first frame, '
-            'or ltx-end= for the last frame.')
+            'or last-frame= for the last frame.')
     _, _, control = video_seed_slots(parsed, ic_lora)
     if control is not None and not ic_lora:
         raise _pipelines.UnsupportedPipelineConfigError(
@@ -966,6 +966,8 @@ def _call_ltx(wrapper, user_args):
         mode = 'ltx-control'
     elif user_args.end_images or user_args.video_frames or user_args.end_video_frames:
         mode = 'ltx-condition'
+    elif user_args.images and _ltx_image_needs_conditions(user_args):
+        mode = 'ltx-condition'
     elif user_args.images:
         mode = 'ltx-image'
     else:
@@ -1476,7 +1478,7 @@ def _ltx_conditions(pipe, family: str, user_args, num_frames: int | None) -> lis
             _messages.debug_log(f'LTX {name} conditioning clip: {len(clip)} frames.')
 
     start_index = 0 if user_args.ltx_condition_index is None else int(user_args.ltx_condition_index)
-    start_strength = 1.0 if user_args.ltx_condition_strength is None else float(user_args.ltx_condition_strength)
+    start_strength = _ltx_resolved_strength(user_args.ltx_condition_strength, user_args)
 
     conditions = []
     if family == 'ltx':
@@ -1494,7 +1496,8 @@ def _ltx_conditions(pipe, family: str, user_args, num_frames: int | None) -> lis
         elif end_image is not None:
             conditions.append(LTXVideoCondition(
                 image=end_image, frame_index=num_frames - 1, strength=1.0))
-        _append_extra_ltx_conditions(conditions, family, user_args.ltx_extra_conditions, LTXVideoCondition)
+        _append_extra_ltx_conditions(
+            conditions, family, user_args.ltx_extra_conditions, LTXVideoCondition, user_args)
         return conditions
 
     from diffusers.pipelines.ltx2.pipeline_ltx2_condition import LTX2VideoCondition
@@ -1513,14 +1516,37 @@ def _ltx_conditions(pipe, family: str, user_args, num_frames: int | None) -> lis
             frames=end_clip, index=latent_frames - clip_latents, strength=1.0))
     elif end_image is not None:
         conditions.append(LTX2VideoCondition(frames=end_image, index=-1, strength=1.0))
-    _append_extra_ltx_conditions(conditions, family, user_args.ltx_extra_conditions, LTX2VideoCondition)
+    _append_extra_ltx_conditions(
+        conditions, family, user_args.ltx_extra_conditions, LTX2VideoCondition, user_args)
     return conditions
 
 
-def _append_extra_ltx_conditions(conditions, family, extras, condition_cls):
+def _ltx_image_needs_conditions(user_args) -> bool:
+    if user_args.ltx_condition_index not in (None, 0):
+        return True
+    if user_args.ltx_extra_conditions:
+        return True
+    return _ltx_resolved_strength(user_args.ltx_condition_strength, user_args) != 1.0
+
+
+def _ltx_resolved_strength(explicit, user_args) -> float:
+    """
+    Condition weight for one LTX image seed group.
+
+    The image-seed keyword wins. ``--image-seed-strengths`` fills a group
+    that omitted it. Otherwise the frame stays at full strength.
+    """
+    if explicit is not None:
+        return float(explicit)
+    if user_args.image_seed_strength is not None:
+        return float(user_args.image_seed_strength)
+    return 1.0
+
+
+def _append_extra_ltx_conditions(conditions, family, extras, condition_cls, user_args):
     for frames, index, strength in extras or []:
         index = int(index)
-        strength = float(strength)
+        strength = _ltx_resolved_strength(strength, user_args)
         if family == 'ltx':
             if isinstance(frames, list):
                 conditions.append(condition_cls(video=frames, frame_index=index, strength=strength))
