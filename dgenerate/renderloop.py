@@ -477,11 +477,11 @@ class RenderLoop:
         if diffusion_args.guidance_rescale is not None:
             args += ['gr', diffusion_args.guidance_rescale]
 
-        if diffusion_args.audio_guidance_scale is not None:
-            args += ['ag', diffusion_args.audio_guidance_scale]
+        if diffusion_args.ltx_audio_guidance_scale is not None:
+            args += ['ag', diffusion_args.ltx_audio_guidance_scale]
 
-        if diffusion_args.audio_guidance_rescale is not None:
-            args += ['agr', diffusion_args.audio_guidance_rescale]
+        if diffusion_args.ltx_audio_guidance_rescale is not None:
+            args += ['agr', diffusion_args.ltx_audio_guidance_rescale]
 
         if diffusion_args.image_guidance_scale is not None:
             args += ['igs', diffusion_args.image_guidance_scale]
@@ -1032,7 +1032,7 @@ class RenderLoop:
             vae_uri=self._c_config.vae_uri,
             lora_uris=self._c_config.lora_uris,
             lora_fuse_scale=self._c_config.lora_fuse_scale,
-            ic_lora_uri=self._c_config.ic_lora_uri,
+            ltx_ic_lora_uri=self._c_config.ltx_ic_lora_uri,
             image_encoder_uri=self._c_config.image_encoder_uri,
             ip_adapter_uris=self._c_config.ip_adapter_uris,
             textual_inversion_uris=self._c_config.textual_inversion_uris,
@@ -1446,7 +1446,7 @@ class RenderLoop:
                     _messages.log(f'Processing Image Seed: "{uri}"', underline=True)
 
                 _videopipelines.classify_video_seed(
-                    self._c_config.model_type, parsed, bool(self._c_config.ic_lora_uri))
+                    self._c_config.model_type, parsed, bool(self._c_config.ltx_ic_lora_uri))
                 overrides = {}
                 if uri is not None and self._c_config.seeds_to_images:
                     overrides['seed'] = [seed_to_image]
@@ -1478,16 +1478,16 @@ class RenderLoop:
         """
         Load the processor chains for each video conditioning slot.
 
-        One ``--seed-image-processors`` chain runs on both the opening media and ``end=``.
+        One ``--seed-image-processors`` chain runs on both the opening media and ``ltx-end=``.
         With two chains separated by ``+``, the first runs on the opening media and
-        the second on ``end=``. ``--control-image-processors`` runs on ``control=``.
+        the second on ``ltx-end=``. ``--control-image-processors`` runs on ``control=``.
         """
         seed = self._load_seed_image_processors()
         if isinstance(seed, list):
             if len(seed) > 2:
                 raise RenderLoopConfigError(
                     'Video models accept at most two seed image processor chains, '
-                    'one for the opening image seed media and one for end=.')
+                    'one for the opening image seed media and one for ltx-end=.')
             start, end = seed
         else:
             start = end = seed
@@ -1507,16 +1507,16 @@ class RenderLoop:
         if parsed is None:
             return
         max_frames = None
-        if diffusion_arguments.video_length is not None:
+        if diffusion_arguments.ltx_video_length is not None:
             max_frames = _videopipelines.ltx_num_frames(
-                diffusion_arguments.video_length,
-                diffusion_arguments.video_fps or 24.0)
+                diffusion_arguments.ltx_video_length,
+                diffusion_arguments.ltx_video_fps or 24.0)
         opening, end, control = _videopipelines.video_seed_slots(
-            parsed, bool(self._c_config.ic_lora_uri))
+            parsed, bool(self._c_config.ltx_ic_lora_uri))
         if opening:
             frames = self._load_video_media(
                 opening, parsed, processors['start'], owned_images,
-                max_frames, diffusion_arguments.video_fps)
+                max_frames, diffusion_arguments.ltx_video_fps)
             if len(frames) == 1:
                 diffusion_arguments.images = frames
             else:
@@ -1524,7 +1524,7 @@ class RenderLoop:
         if end:
             frames = self._load_video_media(
                 end, parsed, processors['end'], owned_images,
-                max_frames, diffusion_arguments.video_fps)
+                max_frames, diffusion_arguments.ltx_video_fps)
             if len(frames) == 1:
                 diffusion_arguments.end_images = frames
             else:
@@ -1532,7 +1532,19 @@ class RenderLoop:
         if control:
             diffusion_arguments.reference_video_frames = self._load_video_media(
                 control, parsed, processors['control'], owned_images,
-                max_frames, diffusion_arguments.video_fps)
+                max_frames, diffusion_arguments.ltx_video_fps)
+        diffusion_arguments.ltx_condition_index = parsed.ltx_condition_index
+        diffusion_arguments.ltx_condition_strength = parsed.ltx_condition_strength
+        extras = []
+        for extra in parsed.ltx_extra_conditions or []:
+            frames = self._load_video_media(
+                extra.images[0], extra, processors['start'], owned_images,
+                max_frames, diffusion_arguments.ltx_video_fps)
+            payload = frames[0] if len(frames) == 1 else frames
+            strength = 1.0 if extra.ltx_condition_strength is None else float(extra.ltx_condition_strength)
+            extras.append((payload, int(extra.ltx_condition_index), strength))
+        if extras:
+            diffusion_arguments.ltx_extra_conditions = extras
 
     def _load_video_media(self, path, parsed, processor, owned_images: list,
                           max_frames: int | None, output_fps: float | None) -> list[PIL.Image.Image]:
@@ -1563,7 +1575,7 @@ class RenderLoop:
                 _messages.warning(
                     f'"{path}" plays at {source_fps:g} fps but the output is {output_fps:g} fps. '
                     f'Frames are used as-is, so motion speed will change. '
-                    f'Set --video-fps {source_fps:g} to match.')
+                    f'Set --ltx-video-fps {source_fps:g} to match.')
         return frames
 
     @staticmethod

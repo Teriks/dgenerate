@@ -326,7 +326,7 @@ def _repo_problem(repo: str, cache: dict) -> str | None:
 # Options whose URIs name a model, either first ("repo;scale=0.5") or as model= ("AutoencoderKL;model=repo").
 _MODEL_URI_OPTIONS = (
     'sdxl_refiner_uri', 's_cascade_decoder_uri', 'unet_uri', 'second_model_unet_uri', 'transformer_uri',
-    'vae_uri', 'lora_uris', 'ic_lora_uri', 'image_encoder_uri', 'ip_adapter_uris', 'textual_inversion_uris',
+    'vae_uri', 'lora_uris', 'ltx_ic_lora_uri', 'image_encoder_uri', 'ip_adapter_uris', 'textual_inversion_uris',
     'text_encoder_uris', 'second_model_text_encoder_uris', 'controlnet_uris', 't2i_adapter_uris',
 )
 

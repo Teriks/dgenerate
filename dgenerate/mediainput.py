@@ -1119,7 +1119,7 @@ class ImageSeedParseResult:
 
     In parses such as:
 
-        * ``--image-seeds "first.png;end=last.png"``
+        * ``--image-seeds "first.png;ltx-end=last.png"``
 
     Image pipelines do not accept this argument.
     """
@@ -1189,6 +1189,50 @@ class ImageSeedParseResult:
     Optional end frame specification for per-image seed slicing.
     """
 
+    ltx_condition_index: _types.OptionalInteger = None
+    """
+    Latent frame selected by the image-seed keyword ``ltx-index``.
+
+    LTX stores time in the VAE at 8 output frames per latent frame after the
+    first. ``0`` is output frame 0. ``-1`` is the last latent frame, the same
+    slot as ``ltx-end=``. A still is held across the output frames that latent
+    frame covers. A video starts at that latent frame.
+
+    ``None`` means the keyword was omitted. The primary path then starts at
+    latent frame 0. An extra condition after `` ++ `` must set this.
+
+    Only ``--model-type ltx`` accepts the keyword.
+    """
+
+    ltx_condition_strength: _types.OptionalFloat = None
+    """
+    Condition weight selected by the image-seed keyword ``ltx-strength``.
+
+    From 0 to 1. ``1`` keeps the conditioning frames. A lower value lets the
+    generated frames leave them. ``None`` means the keyword was omitted, which
+    is full strength.
+
+    This is not ``--image-seed-strengths``. ``ltx-end=`` does not read this value.
+    ``ltx-end=`` is always the last frame at strength 1. Use ``ltx-index=-1`` when
+    the last frame needs another strength.
+
+    Only ``--model-type ltx`` accepts the keyword.
+    """
+
+    ltx_extra_conditions: list | None = None
+    """
+    Further LTX conditions from a `` ++ `` split of one ``--image-seeds`` value.
+
+    The separator is a space, two plus signs, and a space. Quote a path that
+    contains that text. Each entry is an
+    :py:class:`ImageSeedParseResult` for one file, with its own
+    ``ltx_condition_index`` and ``ltx_condition_strength``. Every extra group
+    must include ``ltx-index``. ``ltx-end=``, ``control=``, masks, and latents stay
+    on the primary group.
+
+    ``None`` when the seed has a single group.
+    """
+
     def get_control_image_paths(self) -> _types.Paths | None:
         """
         Return :py:attr:`.ImageSeedParseResult.seed_path` if :py:attr:`.ImageSeedParseResult.is_single_spec` is ``True``.
@@ -1240,7 +1284,10 @@ class ImageSeedParseResult:
             and self.floyd_image is None \
             and self.end_image is None \
             and self.adapter_images is None \
-            and self.latents is None
+            and self.latents is None \
+            and self.ltx_condition_index is None \
+            and self.ltx_condition_strength is None \
+            and not self.ltx_extra_conditions
 
 
 ParsedImageSeeds = collections.abc.Sequence[ImageSeedParseResult]
@@ -1264,11 +1311,13 @@ def _parse_ip_adapter_uri(uri: str) -> IPAdapterImageUri:
         result = _ip_adapter_image_parser.parse(uri)
         path = result.concept
 
-        try:
-            resize = _textprocessing.parse_image_size(result.args.get('resize', None))
-        except ValueError:
-            raise ImageSeedParseError(
-                f'Could not parse adapter image "resize" argument: {result.args["resize"]}')
+        resize_arg = result.args.get('resize', None)
+        if resize_arg is not None:
+            try:
+                resize = _textprocessing.parse_image_size(resize_arg)
+            except ValueError:
+                raise ImageSeedParseError(
+                    f'Could not parse adapter image "resize" argument: {resize_arg}')
 
         try:
             aspect = _types.parse_bool(result.args.get('aspect', True))
@@ -1485,6 +1534,20 @@ def _parse_image_seed_uri_legacy(uri: str, align: int = 8) -> ImageSeedParseResu
     return result
 
 
+def _split_ltx_condition_groups(uri: str) -> list[str]:
+    """
+    Split an image seed on `` ++ `` outside quotes.
+
+    A quoted path may contain that text, the same way a quoted path may
+    contain ``;``, ``,``, ``+``, or ``|``.
+    """
+    try:
+        return _textprocessing.tokenized_split(uri, ' ++ ')
+    except _textprocessing.TokenizedSplitSyntaxError as e:
+        raise ImageSeedParseError(
+            f'Image seed URI parsing error: {str(e).strip()}') from e
+
+
 def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResult:
     """
     Parse an ``--image-seeds`` uri into its constituents
@@ -1511,17 +1574,42 @@ def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResul
     elif align < 1:
         raise ValueError('align argument may not be less than one.')
 
+    groups = _split_ltx_condition_groups(uri)
+    if len(groups) > 1:
+        primary = parse_image_seed_uri(groups[0], align=align)
+        extras = []
+        for group in groups[1:]:
+            if not group:
+                raise ImageSeedParseError(
+                    'An image seed condition group is empty. Check the " ++ " separators.')
+            extra = parse_image_seed_uri(group, align=align)
+            if (extra.ltx_extra_conditions or extra.mask_images or extra.control_images
+                    or extra.end_image or extra.adapter_images or extra.floyd_image
+                    or extra.latents or extra.multi_image_mode
+                    or not extra.images or len(extra.images) != 1):
+                raise ImageSeedParseError(
+                    'An extra LTX condition accepts one path with ltx-index and ltx-strength. '
+                    f'Got "{group}".')
+            if extra.ltx_condition_index is None:
+                raise ImageSeedParseError(
+                    f'An extra LTX condition needs ltx-index=. Got "{group}".')
+            extras.append(extra)
+        primary.ltx_extra_conditions = extras
+        return primary
+
     keyword_args = ['mask',
                     'control',
                     'adapter',
                     'latents',
                     'floyd',
-                    'end',
+                    'ltx-end',
                     'resize',
                     'align',
                     'aspect',
                     'frame-start',
-                    'frame-end']
+                    'frame-end',
+                    'ltx-index',
+                    'ltx-strength']
 
     try:
         parts = _textprocessing.tokenized_split(uri, ';')
@@ -1722,13 +1810,13 @@ def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResul
                 'The image seed "control" argument cannot be used with the "floyd" argument.')
         result.floyd_image = floyd_image
 
-    end_image = parse_result.args.get('end', None)
+    end_image = parse_result.args.get('ltx-end', None)
 
     if end_image is not None:
         if isinstance(end_image, (list, tuple)):
             if len(end_image) != 1:
                 raise ImageSeedArgumentError(
-                    'The image seed "end" argument accepts one image.')
+                    'The image seed "ltx-end" argument accepts one image.')
             end_image = end_image[0]
         _ensure_exists(end_image, 'End image')
         result.end_image = end_image
@@ -1799,6 +1887,27 @@ def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResul
 
     result.frame_start = frame_start
     result.frame_end = frame_end
+
+    ltx_condition_index = parse_result.args.get('ltx-index', None)
+    if ltx_condition_index is not None:
+        try:
+            ltx_condition_index = int(ltx_condition_index)
+        except ValueError:
+            raise ImageSeedArgumentError(
+                'Image seed ltx-index must be an integer latent-frame index.')
+        result.ltx_condition_index = ltx_condition_index
+
+    ltx_condition_strength = parse_result.args.get('ltx-strength', None)
+    if ltx_condition_strength is not None:
+        try:
+            ltx_condition_strength = float(ltx_condition_strength)
+        except ValueError:
+            raise ImageSeedArgumentError(
+                'Image seed ltx-strength must be a number from 0 to 1.')
+        if ltx_condition_strength < 0 or ltx_condition_strength > 1:
+            raise ImageSeedArgumentError(
+                'Image seed ltx-strength must be from 0 to 1.')
+        result.ltx_condition_strength = ltx_condition_strength
 
     # Validate that images and latents have equal counts when both are provided
     if result.images is not None and result.latents is not None:

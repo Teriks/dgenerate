@@ -1,0 +1,25 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# No --ltx-video-lengths. The duration head chooses the length, clamped
+# to this pair. A second pair would write a second clip.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+Lightricks/LTX-2.5-Diffusers
+--model-type ltx
+--dtype bfloat16
+--model-sequential-offload
+--guidance-scales 1
+--ltx-video-min-seconds 2
+--ltx-video-max-seconds 6
+--gen-seeds 1
+--output-size 640x384
+--animation-format mp4
+--output-path ltx-duration-bounds
+--prompts "A brown horse walks a few paces across a green field and stops. The camera does not move. Grass under the hooves."

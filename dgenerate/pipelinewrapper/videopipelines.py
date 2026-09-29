@@ -23,7 +23,7 @@
 Video generation for model types that return a whole clip from one pipeline call.
 
 These models are not run once per input frame. One combination of prompt, seed,
-guidance, steps, ``--video-lengths`` and ``--video-fps`` produces one clip.
+guidance, steps, ``--ltx-video-lengths`` and ``--ltx-video-fps`` produces one clip.
 Conditioning still comes from ``--image-seeds``, and the meaning of each slot
 depends on ``--model-type``.
 """
@@ -105,8 +105,8 @@ def apply_video_arg_rewrites(source, dest) -> None:
     """
     dest.guidance_scale = source.guidance_scale
     dest.inference_steps = source.inference_steps
-    dest.audio_guidance_scale = source.audio_guidance_scale
-    dest.audio_guidance_rescale = source.audio_guidance_rescale
+    dest.ltx_audio_guidance_scale = source.ltx_audio_guidance_scale
+    dest.ltx_audio_guidance_rescale = source.ltx_audio_guidance_rescale
 
 
 def audio_sample_rate_from_pipeline(pipe, audio) -> int | None:
@@ -180,7 +180,7 @@ def classify_video_seed(model_type: _enums.ModelType | str,
 
     :param model_type: video ``--model-type``
     :param parsed: parsed ``--image-seeds`` value, or ``None`` when there is no image seed
-    :param ic_lora: ``--ic-lora`` was given, which makes a plain seed path the control clip
+    :param ic_lora: ``--ltx-ic-lora`` was given, which makes a plain seed path the control clip
     :raise UnsupportedPipelineConfigError: if the seed does not fit the model
     :return: a mode name used by the loader
     """
@@ -199,11 +199,11 @@ def video_seed_slots(parsed: _mediainput.ImageSeedParseResult | None,
     """
     Split an image seed into its opening, end, and control paths.
 
-    With ``--ic-lora``, a plain seed path is the control clip, the same way a
+    With ``--ltx-ic-lora``, a plain seed path is the control clip, the same way a
     plain path is the control image when ``--control-nets`` is given.
 
     :param parsed: parsed ``--image-seeds`` value, or ``None``
-    :param ic_lora: ``--ic-lora`` was given
+    :param ic_lora: ``--ltx-ic-lora`` was given
     :return: ``(opening, end, control)``, each a path or ``None``
     """
     if parsed is None:
@@ -419,6 +419,16 @@ def _has_end(parsed) -> bool:
     return bool(parsed is not None and parsed.end_image)
 
 
+def _custom_ltx_condition(parsed) -> bool:
+    if parsed is None:
+        return False
+    if parsed.ltx_extra_conditions:
+        return True
+    if parsed.ltx_condition_index not in (None, 0):
+        return True
+    return parsed.ltx_condition_strength not in (None, 1, 1.0)
+
+
 def _classify_ltx(parsed, ic_lora: bool = False) -> str:
     if _control_count(parsed) > 1:
         raise _pipelines.UnsupportedPipelineConfigError(
@@ -426,19 +436,19 @@ def _classify_ltx(parsed, ic_lora: bool = False) -> str:
     if parsed is not None and (parsed.multi_image_mode or _image_count(parsed) > 1):
         raise _pipelines.UnsupportedPipelineConfigError(
             'LTX accepts one conditioning image. Use a single path for the first frame, '
-            'or end= for the last frame.')
+            'or ltx-end= for the last frame.')
     _, _, control = video_seed_slots(parsed, ic_lora)
     if control is not None and not ic_lora:
         raise _pipelines.UnsupportedPipelineConfigError(
             'The image seed control= clip is the IC-LoRA reference video. '
-            'Load the IC-LoRA with --ic-lora.')
+            'Load the IC-LoRA with --ltx-ic-lora.')
     if ic_lora:
         if control is None:
             raise _pipelines.UnsupportedPipelineConfigError(
-                '--ic-lora needs a control clip. Use --image-seeds "control.mp4", '
+                '--ltx-ic-lora needs a control clip. Use --image-seeds "control.mp4", '
                 'or "first.png;control=control.mp4" to add a first frame.')
         return 'ltx-control'
-    if _has_end(parsed):
+    if _has_end(parsed) or _custom_ltx_condition(parsed):
         return 'ltx-condition'
     if _image_count(parsed) == 1:
         return 'ltx-image'
@@ -844,9 +854,9 @@ def _create_cached_video_pipeline(model_path,
                                   lora_fuse_scale=None,
                                   quantizer_uri=None,
                                   quantizer_map=None,
-                                  ic_lora_uri=None,
+                                  ltx_ic_lora_uri=None,
                                   ic_lora_downscale=None):
-    all_lora_uris = list(lora_uris or ()) + ([ic_lora_uri] if ic_lora_uri else [])
+    all_lora_uris = list(lora_uris or ()) + ([ltx_ic_lora_uri] if ltx_ic_lora_uri else [])
     index = _util.fetch_model_index_dict(
         model_path,
         subfolder=subfolder,
@@ -891,7 +901,7 @@ def _create_cached_video_pipeline(model_path,
         raise _pipelines.UnsupportedPipelineConfigError(
             f'{_enums.get_model_type_string(model_type)} is not a video model type.')
 
-    if ic_lora_uri:
+    if ltx_ic_lora_uri:
         _ltx_pipeline_class('ltx-control', family)
 
     pipeline_class = _ltx_pipeline_class('ltx-txt', family)
@@ -916,9 +926,9 @@ def _create_cached_video_pipeline(model_path,
     _offload_ltx(pipe, device, model_cpu_offload, sequential_cpu_offload)
     _enable_vae_tiling(pipe)
     held = _VideoPipeline(pipe, family)
-    if ic_lora_uri:
+    if ltx_ic_lora_uri:
         held.reference_downscale_factor = _ic_lora_downscale_factor(
-            ic_lora_uri, ic_lora_downscale, auth_token, local_files_only)
+            ltx_ic_lora_uri, ic_lora_downscale, auth_token, local_files_only)
 
     return held, _d_memoize.CachedObjectMetadata(size=estimate)
 
@@ -930,7 +940,7 @@ def _video_pipeline(wrapper, mode: str, scheduler_uri=None):
     kwargs['lora_fuse_scale'] = wrapper.lora_fuse_scale
     ic_lora = _parsed_ic_lora(wrapper)
     if ic_lora is not None:
-        kwargs['ic_lora_uri'] = ic_lora.lora_uri()
+        kwargs['ltx_ic_lora_uri'] = ic_lora.lora_uri()
         kwargs['ic_lora_downscale'] = ic_lora.downscale
     held = _create_cached_video_pipeline(**kwargs)
     # Same as still pipelines: scheduler is not a cache key.
@@ -940,7 +950,7 @@ def _video_pipeline(wrapper, mode: str, scheduler_uri=None):
 
 
 def _parsed_ic_lora(wrapper) -> _uris.ICLoRAUri | None:
-    uri = getattr(wrapper, 'ic_lora_uri', None)
+    uri = getattr(wrapper, 'ltx_ic_lora_uri', None)
     return _uris.ICLoRAUri.parse(uri) if uri else None
 
 
@@ -950,9 +960,9 @@ def _invoke(wrapper, pipe, kwargs):
 
 def _call_ltx(wrapper, user_args):
     if user_args.reference_video_frames:
-        if not getattr(wrapper, 'ic_lora_uri', None):
+        if not getattr(wrapper, 'ltx_ic_lora_uri', None):
             raise _pipelines.UnsupportedPipelineConfigError(
-                'An LTX control clip needs an IC-LoRA. Load one with --ic-lora.')
+                'An LTX control clip needs an IC-LoRA. Load one with --ltx-ic-lora.')
         mode = 'ltx-control'
     elif user_args.end_images or user_args.video_frames or user_args.end_video_frames:
         mode = 'ltx-condition'
@@ -968,7 +978,7 @@ def _call_ltx(wrapper, user_args):
     if width is not None:
         _require_multiple_of_32(width, height, 'LTX')
 
-    fps = float(user_args.video_fps or _LTX_DEFAULT_FPS)
+    fps = float(user_args.ltx_video_fps or _LTX_DEFAULT_FPS)
     kwargs = {
         'prompt': positive,
         'frame_rate': fps,
@@ -981,11 +991,11 @@ def _call_ltx(wrapper, user_args):
         kwargs['width'] = width
         kwargs['height'] = height
 
-    if user_args.video_length is not None:
-        num_frames = ltx_num_frames(user_args.video_length, fps)
+    if user_args.ltx_video_length is not None:
+        num_frames = ltx_num_frames(user_args.ltx_video_length, fps)
         kwargs['num_frames'] = num_frames
         _messages.debug_log(
-            f'LTX clip length {user_args.video_length} seconds at {fps} fps '
+            f'LTX clip length {user_args.ltx_video_length} seconds at {fps} fps '
             f'-> {num_frames} frames.')
     elif mode == 'ltx-control':
         num_frames = len(_trim_ltx_clip(
@@ -999,9 +1009,9 @@ def _call_ltx(wrapper, user_args):
 
     guidance = float(
         _types.default(user_args.guidance_scale, _constants.DEFAULT_GUIDANCE_SCALE))
-    user_audio = user_args.audio_guidance_scale
+    user_audio = user_args.ltx_audio_guidance_scale
     if family == 'ltx':
-        if user_audio is not None or user_args.audio_guidance_rescale is not None:
+        if user_audio is not None or user_args.ltx_audio_guidance_rescale is not None:
             raise _pipelines.UnsupportedPipelineConfigError(
                 'Audio guidance is only supported by LTX-2. This checkpoint uses the earlier LTX pipeline.')
         kwargs['num_inference_steps'] = int(
@@ -1062,7 +1072,7 @@ def _call_ltx(wrapper, user_args):
                 user_args.guidance_scale = 3.0
                 audio_guidance = 7.0 if user_audio is None else float(user_audio)
                 if user_audio is None:
-                    user_args.audio_guidance_scale = audio_guidance
+                    user_args.ltx_audio_guidance_scale = audio_guidance
                 _messages.warning(
                     f'LTX full checkpoint: guidance scale 5 was replaced with 3, '
                     f'and audio guidance is {audio_guidance}.')
@@ -1078,8 +1088,8 @@ def _call_ltx(wrapper, user_args):
     if user_args.guidance_rescale is not None:
         kwargs['guidance_rescale'] = float(user_args.guidance_rescale)
     if family == 'ltx2':
-        if user_args.audio_guidance_rescale is not None:
-            kwargs['audio_guidance_rescale'] = float(user_args.audio_guidance_rescale)
+        if user_args.ltx_audio_guidance_rescale is not None:
+            kwargs['audio_guidance_rescale'] = float(user_args.ltx_audio_guidance_rescale)
         elif user_args.guidance_rescale is not None:
             kwargs['audio_guidance_rescale'] = float(user_args.guidance_rescale)
 
@@ -1096,14 +1106,316 @@ def _call_ltx(wrapper, user_args):
         kwargs.update(_ltx_reference_kwargs(
             wrapper, pipe, held, user_args, kwargs['num_frames'], width, height))
         if (user_args.images or user_args.end_images or
-                user_args.video_frames or user_args.end_video_frames):
+                user_args.video_frames or user_args.end_video_frames
+                or user_args.ltx_extra_conditions or _custom_ltx_condition_args(user_args)):
             kwargs['conditions'] = _ltx_conditions(pipe, family, user_args, kwargs['num_frames'])
 
-    output = _invoke(wrapper, pipe, kwargs)
-    frames = frames_from_output(output.frames)
-    audio = audio_to_numpy(getattr(output, 'audio', None))
-    sample_rate = audio_sample_rate_from_pipeline(pipe, audio)
+    if family == 'ltx2':
+        _apply_ltx2_options(wrapper, pipe, user_args, kwargs)
+    else:
+        _reject_ltx2_only_options(user_args)
+
+    frames, audio, sample_rate = _complete_ltx_call(wrapper, pipe, held, user_args, kwargs, family)
     return frames, audio, sample_rate, fps
+
+
+def _custom_ltx_condition_args(user_args) -> bool:
+    if user_args.ltx_condition_index not in (None, 0):
+        return True
+    return user_args.ltx_condition_strength not in (None, 1, 1.0)
+
+
+def _reject_ltx2_only_options(user_args):
+    used = []
+    if user_args.ltx_stg_scale is not None or user_args.ltx_stg_blocks:
+        used.append('--ltx-stg-scales')
+    if user_args.ltx_modality_scale is not None:
+        used.append('--ltx-modality-scales')
+    if user_args.ltx_latent_upscale:
+        used.append('--ltx-latent-upscale')
+    if user_args.ltx_video_decoder == 'diffusion':
+        used.append('--ltx-video-decoder diffusion')
+    if user_args.ltx_prompt_enhancer:
+        used.append('--ltx-prompt-enhancer')
+    if user_args.ltx_image_crf is not None:
+        used.append('--ltx-image-crfs')
+    if user_args.ltx_use_cross_timestep is False:
+        used.append('--ltx-no-cross-timestep')
+    if user_args.ltx_video_min_seconds is not None or user_args.ltx_video_max_seconds is not None:
+        used.append('--ltx-video-min-seconds')
+    if used:
+        raise _pipelines.UnsupportedPipelineConfigError(
+            'The earlier LTX pipeline does not support ' + ', '.join(used) + '.')
+
+
+def _apply_ltx2_options(wrapper, pipe, user_args, kwargs):
+    accepted = None
+
+    def require(name, option):
+        nonlocal accepted
+        if accepted is None:
+            accepted = set(inspect.signature(pipe.__call__).parameters)
+        if name not in accepted:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'This LTX pipeline does not accept {option}.')
+
+    if user_args.ltx_prompt_enhancer:
+        _ensure_prompt_enhancer(wrapper, pipe, user_args.ltx_prompt_enhancer)
+        require('enable_prompt_enhancement', '--ltx-prompt-enhancer')
+        kwargs['enable_prompt_enhancement'] = True
+    if user_args.ltx_system_prompt:
+        require('system_prompt', '--ltx-system-prompt')
+        kwargs['system_prompt'] = user_args.ltx_system_prompt
+    if user_args.ltx_stg_scale is not None:
+        require('stg_scale', '--ltx-stg-scales')
+        kwargs['stg_scale'] = float(user_args.ltx_stg_scale)
+        audio_stg = user_args.ltx_stg_scale if user_args.ltx_audio_stg_scale is None else user_args.ltx_audio_stg_scale
+        kwargs['audio_stg_scale'] = float(audio_stg)
+        if float(user_args.ltx_stg_scale) > 0 or float(audio_stg) > 0:
+            blocks = list(user_args.ltx_stg_blocks or [28])
+            require('spatio_temporal_guidance_blocks', '--ltx-stg-blocks')
+            kwargs['spatio_temporal_guidance_blocks'] = [int(block) for block in blocks]
+            if user_args.ltx_stg_blocks is None:
+                _messages.debug_log('LTX spatio-temporal guidance is using transformer block 28.')
+    elif user_args.ltx_stg_blocks:
+        raise _pipelines.UnsupportedPipelineConfigError(
+            '--ltx-stg-blocks needs --ltx-stg-scales greater than 0.')
+    if user_args.ltx_modality_scale is not None:
+        require('modality_scale', '--ltx-modality-scales')
+        kwargs['modality_scale'] = float(user_args.ltx_modality_scale)
+        audio_modality = (user_args.ltx_modality_scale if user_args.ltx_audio_modality_scale is None
+                          else user_args.ltx_audio_modality_scale)
+        kwargs['audio_modality_scale'] = float(audio_modality)
+    if user_args.ltx_use_cross_timestep is False:
+        require('use_cross_timestep', '--ltx-no-cross-timestep')
+        kwargs['use_cross_timestep'] = False
+    if user_args.ltx_image_crf is not None:
+        require('image_crf', '--ltx-image-crfs')
+        kwargs['image_crf'] = int(user_args.ltx_image_crf)
+    if user_args.ltx_video_length is None:
+        if user_args.ltx_video_min_seconds is not None:
+            require('min_seconds', '--ltx-video-min-seconds')
+            kwargs['min_seconds'] = float(user_args.ltx_video_min_seconds)
+        if user_args.ltx_video_max_seconds is not None:
+            require('max_seconds', '--ltx-video-max-seconds')
+            kwargs['max_seconds'] = float(user_args.ltx_video_max_seconds)
+    if user_args.ltx_decode_timestep is not None:
+        require('decode_timestep', '--ltx-decode-timesteps')
+        kwargs['decode_timestep'] = float(user_args.ltx_decode_timestep)
+    if user_args.ltx_decode_noise_scale is not None:
+        require('decode_noise_scale', '--ltx-decode-noise-scales')
+        kwargs['decode_noise_scale'] = float(user_args.ltx_decode_noise_scale)
+
+
+def _ensure_prompt_enhancer(wrapper, pipe, repo):
+    if getattr(pipe, '_dgenerate_prompt_enhancer', None) == repo:
+        return
+    from transformers import AutoModelForImageTextToText, AutoProcessor
+
+    dtype = _enums.get_torch_dtype(wrapper._dtype) or torch.bfloat16
+    load = {
+        'token': wrapper._auth_token,
+        'local_files_only': bool(wrapper._local_files_only),
+    }
+    _messages.debug_log(f'Loading LTX prompt enhancer "{repo}".')
+    pipe.prompt_enhancer = AutoModelForImageTextToText.from_pretrained(
+        repo, torch_dtype=dtype, **load)
+    pipe.processor = AutoProcessor.from_pretrained(repo, **load)
+    offload = bool(wrapper.model_cpu_offload or wrapper.model_sequential_offload)
+    device = 'cpu' if offload else wrapper.device
+    pipe.prompt_enhancer.to(device)
+    pipe._dgenerate_prompt_enhancer = repo
+
+
+def _complete_ltx_call(wrapper, pipe, held, user_args, kwargs, family):
+    diffusion = family == 'ltx2' and user_args.ltx_video_decoder == 'diffusion'
+    if user_args.ltx_latent_upscale:
+        return _ltx_two_stage(wrapper, pipe, held, user_args, kwargs, diffusion)
+    if diffusion:
+        kwargs = dict(kwargs)
+        kwargs['output_type'] = 'latent'
+    output = _invoke(wrapper, pipe, kwargs)
+    return _ltx_pixels_from_output(wrapper, pipe, held, output, diffusion, kwargs.get('generator'))
+
+
+def _ltx_two_stage(wrapper, pipe, held, user_args, kwargs, diffusion):
+    width = kwargs.get('width')
+    height = kwargs.get('height')
+    if width is None or height is None or int(width) % 64 or int(height) % 64:
+        raise _pipelines.UnsupportedPipelineConfigError(
+            '--ltx-latent-upscale needs an --output-size divisible by 64. '
+            'That size is the finished clip.')
+    stage1 = dict(kwargs)
+    stage1['width'] = int(width) // 2
+    stage1['height'] = int(height) // 2
+    stage1['output_type'] = 'latent'
+    _messages.log(
+        f'LTX stage 1 at {stage1["width"]}x{stage1["height"]}, '
+        f'then a latent upscale to {width}x{height}.')
+    first = _invoke(wrapper, pipe, stage1)
+    video_latent = _video_latent_tensor(first.frames)
+    audio_latent = getattr(first, 'audio', None)
+
+    upscaled = _upsample_ltx_latents(wrapper, pipe, video_latent)
+    stage2 = {key: value for key, value in kwargs.items() if key not in ('image', 'conditions')}
+    stage2['width'] = int(width)
+    stage2['height'] = int(height)
+    stage2['latents'] = upscaled
+    stage2['audio_latents'] = audio_latent
+    if stage2.get('num_frames') is None:
+        temporal = _ltx_temporal_compression(pipe)
+        stage2['num_frames'] = (int(video_latent.shape[2]) - 1) * temporal + 1
+    sigmas = _stage_sigmas(user_args)
+    stage2['sigmas'] = sigmas
+    stage2.pop('num_inference_steps', None)
+    stage2['noise_scale'] = (
+        float(sigmas[0]) if user_args.ltx_noise_scale is None else float(user_args.ltx_noise_scale))
+    stage_guidance = 1.0 if user_args.ltx_stage_guidance_scale is None else float(user_args.ltx_stage_guidance_scale)
+    stage_audio = (stage_guidance if user_args.ltx_stage_audio_guidance_scale is None
+                   else float(user_args.ltx_stage_audio_guidance_scale))
+    stage2['guidance_scale'] = stage_guidance
+    stage2['audio_guidance_scale'] = stage_audio
+    for key in (
+            'ltx_stg_scale', 'ltx_audio_stg_scale', 'ltx_modality_scale', 'ltx_audio_modality_scale',
+            'spatio_temporal_guidance_blocks'):
+        stage2.pop(key, None)
+    stage2['output_type'] = 'latent' if diffusion else 'pil'
+
+    original = pipe.scheduler
+    pipe.scheduler = original.__class__.from_config(
+        dict(original.config), use_dynamic_shifting=False, shift_terminal=None)
+    loaded_stage_lora = False
+    try:
+        if user_args.ltx_stage_lora_uris:
+            _uris.LoRAUri.load_on_pipeline(
+                pipeline=pipe,
+                uris=user_args.ltx_stage_lora_uris,
+                fuse_scale=1.0 if wrapper.lora_fuse_scale is None else wrapper.lora_fuse_scale,
+                use_auth_token=wrapper._auth_token,
+                local_files_only=bool(wrapper._local_files_only),
+                fuse=False)
+            loaded_stage_lora = True
+        _messages.log('LTX stage 2 refine.')
+        second = _invoke(wrapper, pipe, stage2)
+    finally:
+        pipe.scheduler = original
+        if loaded_stage_lora and hasattr(pipe, 'unload_lora_weights'):
+            pipe.unload_lora_weights()
+    return _ltx_pixels_from_output(
+        wrapper, pipe, held, second, diffusion, kwargs.get('generator'))
+
+
+def _video_latent_tensor(frames):
+    if isinstance(frames, (list, tuple)):
+        frames = frames[0]
+    if not torch.is_tensor(frames):
+        raise _pipelines.UnsupportedPipelineConfigError(
+            'LTX stage 1 did not return video latents.')
+    return frames
+
+
+def _stage_sigmas(user_args):
+    from diffusers.pipelines.ltx2.utils import STAGE_2_DISTILLED_SIGMA_VALUES
+
+    base = [float(value) for value in STAGE_2_DISTILLED_SIGMA_VALUES]
+    if user_args.ltx_stage_sigmas is None:
+        return base
+    if isinstance(user_args.ltx_stage_sigmas, str):
+        return _eval_sigma_expression(user_args.ltx_stage_sigmas, base)
+    return [float(value) for value in user_args.ltx_stage_sigmas]
+
+
+def _upsample_ltx_latents(wrapper, pipe, video_latent):
+    from diffusers.pipelines.ltx2.latent_upsampler import LTX2LatentUpsamplerModel
+    from diffusers.pipelines.ltx2.pipeline_ltx2_latent_upsample import LTX2LatentUpsamplePipeline
+
+    dtype = _enums.get_torch_dtype(wrapper._dtype) or torch.bfloat16
+    upsampler = LTX2LatentUpsamplerModel.from_pretrained(
+        wrapper.model_path,
+        subfolder='latent_upsampler',
+        torch_dtype=dtype,
+        token=wrapper._auth_token,
+        local_files_only=bool(wrapper._local_files_only))
+    up_pipe = LTX2LatentUpsamplePipeline(vae=pipe.vae, latent_upsampler=upsampler)
+    # Sequential offload stores this model's weights as meta tensors. The
+    # upsample forward then cannot copy them onto the GPU. The upsampler is
+    # small next to the transformer, so it stays on the compute device for
+    # this call and is moved off again afterward. The shared VAE is left on
+    # the main pipeline's offload hooks; this call does not decode with it.
+    device = wrapper.device
+    upsampler.to(device=device, dtype=dtype)
+    if torch.is_tensor(video_latent):
+        video_latent = video_latent.to(device=device)
+    offload = bool(wrapper.model_cpu_offload or wrapper.model_sequential_offload)
+    try:
+        upscaled = up_pipe(
+            latents=video_latent,
+            latents_normalized=False,
+            output_type='latent',
+            return_dict=False)[0]
+    finally:
+        if offload:
+            upsampler.to('cpu')
+    return upscaled
+
+
+def _ltx_pixels_from_output(wrapper, pipe, held, output, diffusion, generator):
+    video = output.frames
+    audio_raw = getattr(output, 'audio', None)
+    if diffusion:
+        if isinstance(video, (list, tuple)):
+            video = video[0]
+        frames = _decode_ltx_diffusion(wrapper, pipe, held, video, generator)
+        audio = _waveform_from_audio_latents(pipe, audio_raw)
+    else:
+        frames = frames_from_output(video)
+        audio = audio_to_numpy(audio_raw)
+    return frames, audio, audio_sample_rate_from_pipeline(pipe, audio)
+
+
+def _waveform_from_audio_latents(pipe, audio_latents):
+    if audio_latents is None:
+        return None
+    if not torch.is_tensor(audio_latents):
+        return audio_to_numpy(audio_latents)
+    mel = pipe.audio_vae.decode(
+        audio_latents.to(dtype=pipe.audio_vae.dtype), return_dict=False)[0]
+    return audio_to_numpy(pipe.vocoder(mel))
+
+
+def _decode_ltx_diffusion(wrapper, pipe, held, latents, generator):
+    decode_pipe = getattr(held, 'diffusion_decoder_pipe', None)
+    if decode_pipe is None:
+        from diffusers import LTX2VideoDiffusionDecodePipeline, LTX2VideoDiffusionDecoderModel
+
+        dtype = _enums.get_torch_dtype(wrapper._dtype) or torch.bfloat16
+        decoder = LTX2VideoDiffusionDecoderModel.from_pretrained(
+            wrapper.model_path,
+            subfolder='diffusion_decoder',
+            torch_dtype=dtype,
+            token=wrapper._auth_token,
+            local_files_only=bool(wrapper._local_files_only))
+        try:
+            from diffusers.models.autoencoders.ltx2_diffusion_decoder import (
+                LTX2VideoVaeNeighborhoodNattenProcessor)
+            decoder.set_attn_processor(LTX2VideoVaeNeighborhoodNattenProcessor())
+        except Exception as error:
+            _messages.warning(
+                'The LTX diffusion decoder is using its default attention. '
+                f'{error}')
+        decode_pipe = LTX2VideoDiffusionDecodePipeline(
+            diffusion_decoder=decoder, scheduler=pipe.scheduler, vae=pipe.vae)
+        _offload_ltx(
+            decode_pipe, wrapper.device,
+            bool(wrapper.model_cpu_offload), bool(wrapper.model_sequential_offload))
+        held.diffusion_decoder_pipe = decode_pipe
+    frames = decode_pipe(
+        latents=latents,
+        denormalize=False,
+        generator=generator,
+        output_type='pil',
+        return_dict=False)[0]
+    return frames_from_output(frames)
 
 
 def _ltx_temporal_compression(pipe) -> int:
@@ -1116,7 +1428,7 @@ def _trim_ltx_clip(frames: list, limit: int | None, temporal: int) -> list:
     if count < 1:
         raise _pipelines.UnsupportedPipelineConfigError(
             'The LTX output is too short to hold the conditioning clips. '
-            'Use a longer --video-lengths.')
+            'Use a longer --ltx-video-lengths.')
     return frames[:count]
 
 
@@ -1143,7 +1455,7 @@ def _ltx_conditions(pipe, family: str, user_args, num_frames: int | None) -> lis
         elif end_video is not None:
             raise _pipelines.UnsupportedPipelineConfigError(
                 'An LTX end clip needs a fixed output length. This checkpoint picks its '
-                'length from the prompt, so set --video-lengths.')
+                'length from the prompt, so set --ltx-video-lengths.')
 
     end_clip = None
     end_count = 0
@@ -1163,28 +1475,36 @@ def _ltx_conditions(pipe, family: str, user_args, num_frames: int | None) -> lis
         if clip is not None:
             _messages.debug_log(f'LTX {name} conditioning clip: {len(clip)} frames.')
 
+    start_index = 0 if user_args.ltx_condition_index is None else int(user_args.ltx_condition_index)
+    start_strength = 1.0 if user_args.ltx_condition_strength is None else float(user_args.ltx_condition_strength)
+
     conditions = []
     if family == 'ltx':
         from diffusers.pipelines.ltx.pipeline_ltx_condition import LTXVideoCondition
 
         if start_clip is not None:
-            conditions.append(LTXVideoCondition(video=start_clip, frame_index=0, strength=1.0))
+            conditions.append(LTXVideoCondition(
+                video=start_clip, frame_index=start_index, strength=start_strength))
         elif start_image is not None:
-            conditions.append(LTXVideoCondition(image=start_image, frame_index=0, strength=1.0))
+            conditions.append(LTXVideoCondition(
+                image=start_image, frame_index=start_index, strength=start_strength))
         if end_clip is not None:
             conditions.append(LTXVideoCondition(
                 video=end_clip, frame_index=num_frames - end_count, strength=1.0))
         elif end_image is not None:
             conditions.append(LTXVideoCondition(
                 image=end_image, frame_index=num_frames - 1, strength=1.0))
+        _append_extra_ltx_conditions(conditions, family, user_args.ltx_extra_conditions, LTXVideoCondition)
         return conditions
 
     from diffusers.pipelines.ltx2.pipeline_ltx2_condition import LTX2VideoCondition
 
     if start_clip is not None:
-        conditions.append(LTX2VideoCondition(frames=start_clip, index=0, strength=1.0))
+        conditions.append(LTX2VideoCondition(
+            frames=start_clip, index=start_index, strength=start_strength))
     elif start_image is not None:
-        conditions.append(LTX2VideoCondition(frames=start_image, index=0, strength=1.0))
+        conditions.append(LTX2VideoCondition(
+            frames=start_image, index=start_index, strength=start_strength))
     if end_clip is not None:
         # LTX-2 indices are latent frames, and each latent after the first covers ``temporal`` pixels.
         latent_frames = (num_frames - 1) // temporal + 1
@@ -1193,7 +1513,21 @@ def _ltx_conditions(pipe, family: str, user_args, num_frames: int | None) -> lis
             frames=end_clip, index=latent_frames - clip_latents, strength=1.0))
     elif end_image is not None:
         conditions.append(LTX2VideoCondition(frames=end_image, index=-1, strength=1.0))
+    _append_extra_ltx_conditions(conditions, family, user_args.ltx_extra_conditions, LTX2VideoCondition)
     return conditions
+
+
+def _append_extra_ltx_conditions(conditions, family, extras, condition_cls):
+    for frames, index, strength in extras or []:
+        index = int(index)
+        strength = float(strength)
+        if family == 'ltx':
+            if isinstance(frames, list):
+                conditions.append(condition_cls(video=frames, frame_index=index, strength=strength))
+            else:
+                conditions.append(condition_cls(image=frames, frame_index=index, strength=strength))
+        else:
+            conditions.append(condition_cls(frames=frames, index=index, strength=strength))
 
 
 def _ltx_reference_kwargs(wrapper, pipe, held, user_args, num_frames: int,
@@ -1202,7 +1536,7 @@ def _ltx_reference_kwargs(wrapper, pipe, held, user_args, num_frames: int,
     Build the IC-LoRA reference arguments for :py:class:`diffusers.LTX2InContextPipeline`.
 
     The reference is the image seed control clip. Its downscale factor comes from
-    the ``--ic-lora`` URI, or else from the IC-LoRA file metadata.
+    the ``--ltx-ic-lora`` URI, or else from the IC-LoRA file metadata.
     """
     from diffusers.pipelines.ltx2.pipeline_ltx2_ic_lora import LTX2ReferenceCondition
 
@@ -1235,7 +1569,7 @@ def _ltx_reference_kwargs(wrapper, pipe, held, user_args, num_frames: int,
 def _ic_lora_downscale_factor(lora_uri: str, override: int | None,
                               auth_token, local_files_only) -> int:
     """
-    Return the ``--ic-lora`` ``downscale`` value, or else ``reference_downscale_factor``
+    Return the ``--ltx-ic-lora`` ``downscale`` value, or else ``reference_downscale_factor``
     from the IC-LoRA safetensors metadata. IC-LoRAs trained on reduced-size references
     store it there.
     """
@@ -1247,7 +1581,7 @@ def _ic_lora_downscale_factor(lora_uri: str, override: int | None,
         _messages.warning(
             f'Could not read the metadata of IC-LoRA "{lora_uri}", assuming reference '
             f'downscale factor 1. Set weight-name if the repository has several files, '
-            f'or set downscale in the --ic-lora URI. Error: {e}')
+            f'or set downscale in the --ltx-ic-lora URI. Error: {e}')
         return 1
     value = metadata.get('reference_downscale_factor') if metadata else None
     if value is None:

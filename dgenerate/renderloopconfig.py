@@ -52,6 +52,19 @@ def _iterate_diffusion_args(**kwargs) -> collections.abc.Iterator[_pipelinewrapp
         _pipelinewrapper.DiffusionArguments)
 
 
+def _ltx_arguments_in_use(config) -> list[str]:
+    """
+    ``ltx_`` config fields whose value is not the class default.
+
+    A default of ``False`` still counts as unused. ``--ltx-no-cross-timestep``
+    stores ``False`` over a default of ``None``, and that is in use.
+    """
+    return [
+        name for name, default in vars(config.__class__).items()
+        if name.startswith('ltx_') and getattr(config, name) != default
+    ]
+
+
 def gen_seeds(n: int) -> list[int]:
     """
     Generate a list of N random seed integers
@@ -300,42 +313,145 @@ class RenderLoopConfig(_types.SetFromMixin):
     dgenerate command line tool.
     """
 
-    video_lengths: _types.OptionalFloats = None
+    ltx_video_lengths: _types.OptionalFloats = None
     """
     Clip lengths in seconds for ``--model-type ltx``. Each value is a factor in the
     generation step product. ``None`` lets LTX-2.5 choose the length from its
     duration head.
 
-    This corresponds to the ``--video-lengths`` argument of the dgenerate command line tool.
+    This corresponds to the ``--ltx-video-lengths`` argument of the dgenerate command line tool.
     """
 
-    video_fps: _types.OptionalFloats = None
+    ltx_video_fps: _types.OptionalFloats = None
     """
     Frame rates for ``--model-type ltx``. Each value is a factor in the generation
     step product. When omitted this defaults to ``[24]``.
 
-    This corresponds to the ``--video-fps`` argument of the dgenerate command line tool.
+    This corresponds to the ``--ltx-video-fps`` argument of the dgenerate command line tool.
     """
 
-    audio_guidance_scales: _types.OptionalFloats = None
+    ltx_audio_guidance_scales: _types.OptionalFloats = None
     """
     Audio CFG scales for ``--model-type ltx``. Each value is a factor in the
     generation step product. ``None`` copies the video guidance that will be
     sent, except the unused default ``5`` on a full scheduler, which uses
     audio ``7``.
 
-    This corresponds to the ``--audio-guidance-scales`` argument of the
+    This corresponds to the ``--ltx-audio-guidance-scales`` argument of the
     dgenerate command line tool.
     """
 
-    audio_guidance_rescales: _types.OptionalFloats = None
+    ltx_audio_guidance_rescales: _types.OptionalFloats = None
     """
     Audio guidance rescale factors for ``--model-type ltx``. Each value is a
     factor in the generation step product. ``None`` copies ``--guidance-rescales``
     when that is set, otherwise the pipeline default ``0.7`` is left in place.
 
-    This corresponds to the ``--audio-guidance-rescales`` argument of the
+    This corresponds to the ``--ltx-audio-guidance-rescales`` argument of the
     dgenerate command line tool.
+    """
+
+    ltx_stg_scales: _types.OptionalFloats = None
+    """
+    Video spatio-temporal guidance scales for LTX-2. ``0`` disables STG.
+    """
+
+    ltx_audio_stg_scales: _types.OptionalFloats = None
+    """
+    Audio spatio-temporal guidance scales for LTX-2. ``None`` copies ``ltx_stg_scales``.
+    """
+
+    ltx_modality_scales: _types.OptionalFloats = None
+    """
+    Video modality-isolation guidance scales for LTX-2. ``1`` disables it.
+    """
+
+    ltx_audio_modality_scales: _types.OptionalFloats = None
+    """
+    Audio modality-isolation guidance scales for LTX-2. ``None`` copies ``ltx_modality_scales``.
+    """
+
+    ltx_stg_blocks: _types.OptionalIntegers = None
+    """
+    Transformer blocks where spatio-temporal guidance skips self-attention.
+    One list for the run. LTX-2.5 uses block ``28``.
+    """
+
+    ltx_use_cross_timestep: _types.OptionalBoolean = None
+    """
+    ``False`` selects the LTX-2.0 cross-modality timestep. ``None`` leaves it on.
+    """
+
+    ltx_latent_upscale: bool = False
+    """
+    Run the LTX-2 half-resolution pass, latent upscale, and refine inside one generation.
+    """
+
+    ltx_stage_sigmas: typing.Optional[collections.abc.Sequence[collections.abc.Sequence[float] | str]] = None
+    """
+    Refine-stage sigma schedules. ``None`` uses the published 3-value table.
+    """
+
+    ltx_noise_scales: _types.OptionalFloats = None
+    """
+    Noise mixed into the upscaled latents. ``None`` uses the first refine sigma.
+    """
+
+    ltx_stage_guidance_scales: _types.OptionalFloats = None
+    """
+    Video guidance for the refine stage. ``None`` is ``1``.
+    """
+
+    ltx_stage_audio_guidance_scales: _types.OptionalFloats = None
+    """
+    Audio guidance for the refine stage. ``None`` copies the stage video guidance.
+    """
+
+    ltx_stage_lora_uris: _types.OptionalUris = None
+    """
+    LoRAs applied only during the refine stage.
+    """
+
+    ltx_video_decoder: _types.OptionalName = None
+    """
+    ``diffusion`` uses the LTX-2 diffusion decoder. ``None`` uses the convolutional VAE.
+    """
+
+    ltx_decode_timesteps: _types.OptionalFloats = None
+    """
+    Decode timesteps for the LTX video decode.
+    """
+
+    ltx_decode_noise_scales: _types.OptionalFloats = None
+    """
+    Decode noise scales for the LTX video decode.
+    """
+
+    ltx_image_crfs: _types.OptionalIntegers = None
+    """
+    H.264 CRF values for recompressing an LTX conditioning still.
+    """
+
+    ltx_video_min_seconds: _types.OptionalFloats = None
+    """
+    Lower bounds for the LTX-2.5 duration head. Aligned by position with
+    ``ltx_video_max_seconds``: ``[2, 4]`` with ``[6, 8]`` is two clips.
+    """
+
+    ltx_video_max_seconds: _types.OptionalFloats = None
+    """
+    Upper bounds for the LTX-2.5 duration head. Aligned by position with
+    ``ltx_video_min_seconds``.
+    """
+
+    ltx_prompt_enhancer: _types.OptionalString = None
+    """
+    Prompt-enhancer model repo or path. Setting it turns enhancement on.
+    """
+
+    ltx_system_prompt: _types.OptionalString = None
+    """
+    System prompt used by the LTX prompt enhancer.
     """
 
     clip_skips: _types.OptionalIntegers = None
@@ -603,9 +719,9 @@ class RenderLoopConfig(_types.SetFromMixin):
     The default value when ``None`` is specified is ``1.0``.
     """
 
-    ic_lora_uri: _types.OptionalUri = None
+    ltx_ic_lora_uri: _types.OptionalUri = None
     """
-    Optional IC-LoRA URI for LTX-2, this corresponds to the ``--ic-lora`` argument
+    Optional IC-LoRA URI for LTX-2, this corresponds to the ``--ltx-ic-lora`` argument
     of the dgenerate command line tool. The IC-LoRA reads the image seed control clip
     as its reference video.
     """
@@ -2490,35 +2606,23 @@ class RenderLoopConfig(_types.SetFromMixin):
     def _check_video_model_requirements(self, a_namer: typing.Callable[[str], str]):
         """Check video model types and set their length, fps, and step defaults."""
         if not _pipelinewrapper.model_type_is_video(self.model_type):
-            if self.audio_guidance_scales:
+            for name in _ltx_arguments_in_use(self):
                 raise RenderLoopConfigError(
-                    f'{a_namer("audio_guidance_scales")} is only supported for the ltx video model type.')
-            if self.audio_guidance_rescales:
-                raise RenderLoopConfigError(
-                    f'{a_namer("audio_guidance_rescales")} is only supported for the ltx video model type.')
-            if self.video_lengths:
-                raise RenderLoopConfigError(
-                    f'{a_namer("video_lengths")} is only supported for the ltx video model type.')
-            if self.video_fps:
-                raise RenderLoopConfigError(
-                    f'{a_namer("video_fps")} is only supported for the ltx video model type.')
-            if self.ic_lora_uri:
-                raise RenderLoopConfigError(
-                    f'{a_namer("ic_lora_uri")} is only supported for the ltx video model type.')
+                    f'{a_namer(name)} is only supported for the ltx video model type.')
             return
 
-        if self.ic_lora_uri:
+        if self.ltx_ic_lora_uri:
             try:
-                _pipelinewrapper.uris.ICLoRAUri.parse(self.ic_lora_uri)
+                _pipelinewrapper.uris.ICLoRAUri.parse(self.ltx_ic_lora_uri)
             except _pipelinewrapper.uris.InvalidLoRAUriError as e:
-                raise RenderLoopConfigError(f'{a_namer("ic_lora_uri")}: {e}') from e
+                raise RenderLoopConfigError(f'{a_namer("ltx_ic_lora_uri")}: {e}') from e
             if not self.image_seeds:
                 raise RenderLoopConfigError(
-                    f'{a_namer("ic_lora_uri")} needs a control clip in {a_namer("image_seeds")}, '
+                    f'{a_namer("ltx_ic_lora_uri")} needs a control clip in {a_namer("image_seeds")}, '
                     f'for example {a_namer("image_seeds")} "control.mp4".')
 
-        if self.video_fps is None:
-            self.video_fps = [24.0]
+        if self.ltx_video_fps is None:
+            self.ltx_video_fps = [24.0]
 
         if self.model_type == _pipelinewrapper.ModelType.LTX:
             if self.sigmas:
@@ -2535,11 +2639,70 @@ class RenderLoopConfig(_types.SetFromMixin):
 
         if self.output_size is not None and self.model_type == _pipelinewrapper.ModelType.LTX:
             width, height = self.output_size
-            if width % 32 or height % 32:
+            align = 64 if self.ltx_latent_upscale else 32
+            if width % align or height % align:
                 raise RenderLoopConfigError(
-                    f'{a_namer("output_size")} must be divisible by 32 for '
+                    f'{a_namer("output_size")} must be divisible by {align} for '
                     f'{_pipelinewrapper.get_model_type_string(self.model_type)}. '
                     f'Got {width}x{height}.')
+
+        if self.ltx_latent_upscale and self.output_size is None:
+            raise RenderLoopConfigError(
+                f'{a_namer("ltx_latent_upscale")} needs {a_namer("output_size")}. '
+                f'That size is the finished clip. The first pass uses half of each side.')
+
+        refine_without_upscale = (
+            ('ltx_stage_sigmas', self.ltx_stage_sigmas),
+            ('ltx_noise_scales', self.ltx_noise_scales),
+            ('ltx_stage_guidance_scales', self.ltx_stage_guidance_scales),
+            ('ltx_stage_audio_guidance_scales', self.ltx_stage_audio_guidance_scales),
+            ('ltx_stage_lora_uris', self.ltx_stage_lora_uris),
+        )
+        if not self.ltx_latent_upscale:
+            for name, value in refine_without_upscale:
+                if value:
+                    raise RenderLoopConfigError(
+                        f'{a_namer(name)} is the refine stage of {a_namer("ltx_latent_upscale")}.')
+
+        if self.ltx_stage_lora_uris:
+            for uri in self.ltx_stage_lora_uris:
+                try:
+                    _pipelinewrapper.uris.LoRAUri.parse(uri)
+                except _pipelinewrapper.uris.InvalidLoRAUriError as e:
+                    raise RenderLoopConfigError(f'{a_namer("ltx_stage_lora_uris")}: {e}') from e
+
+        if self.ltx_video_decoder not in (None, 'conv', 'diffusion'):
+            raise RenderLoopConfigError(
+                f'{a_namer("ltx_video_decoder")} must be "conv" or "diffusion". '
+                f'Got {self.ltx_video_decoder!r}.')
+
+        if self.ltx_system_prompt and not self.ltx_prompt_enhancer:
+            raise RenderLoopConfigError(
+                f'{a_namer("ltx_system_prompt")} needs {a_namer("ltx_prompt_enhancer")}.')
+
+        if self.ltx_video_min_seconds or self.ltx_video_max_seconds:
+            if self.ltx_video_lengths:
+                raise RenderLoopConfigError(
+                    f'{a_namer("ltx_video_min_seconds")} and {a_namer("ltx_video_max_seconds")} '
+                    f'apply when {a_namer("ltx_video_lengths")} is omitted and the duration head '
+                    f'chooses the length.')
+            lows = list(self.ltx_video_min_seconds or [1.0])
+            highs = list(self.ltx_video_max_seconds or [20.0])
+            if len(lows) != len(highs):
+                raise RenderLoopConfigError(
+                    f'{a_namer("ltx_video_min_seconds")} and {a_namer("ltx_video_max_seconds")} '
+                    f'are paired. Got {len(lows)} lower bound(s) and {len(highs)} upper bound(s).')
+            for low, high in zip(lows, highs):
+                if float(low) >= float(high):
+                    raise RenderLoopConfigError(
+                        f'{a_namer("ltx_video_min_seconds")} must be less than '
+                        f'{a_namer("ltx_video_max_seconds")}. Got {low} and {high}.')
+
+        if self.ltx_image_crfs:
+            for value in self.ltx_image_crfs:
+                if int(value) < 0:
+                    raise RenderLoopConfigError(
+                        f'{a_namer("ltx_image_crfs")} must be greater than or equal to 0.')
 
         if self.batch_size is not None and self.batch_size > 1:
             raise RenderLoopConfigError(
@@ -2637,7 +2800,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                 self.seed_image_processors.count(IMAGE_PROCESSOR_SEP) > 1:
             raise RenderLoopConfigError(
                 f'Video models accept at most two {a_namer("seed_image_processors")} chains, '
-                f'one for the opening image seed media and one for end=.')
+                f'one for the opening image seed media and one for ltx-end=.')
 
     def _check_floyd_requirements(self, a_namer: typing.Callable[[str], str]):
         """Check Floyd model specific requirements."""
@@ -3071,11 +3234,18 @@ class RenderLoopConfig(_types.SetFromMixin):
         """Check model-specific requirements for image seeds."""
         if parsed.end_image is not None and not _pipelinewrapper.model_type_is_video(self.model_type):
             raise RenderLoopConfigError(
-                'The image seed argument "end" is only supported for --model-type ltx.')
+                'The image seed argument "ltx-end" is only supported for --model-type ltx.')
+
+        if not _pipelinewrapper.model_type_is_video(self.model_type) and (
+                parsed.ltx_condition_index is not None or parsed.ltx_condition_strength is not None
+                or parsed.ltx_extra_conditions):
+            raise RenderLoopConfigError(
+                'Image seed ltx-index, ltx-strength, and " ++ " conditions are only supported '
+                'for --model-type ltx.')
 
         if _pipelinewrapper.model_type_is_video(self.model_type):
             import dgenerate.pipelinewrapper.videopipelines as _videopipelines
-            ic_lora = bool(self.ic_lora_uri)
+            ic_lora = bool(self.ltx_ic_lora_uri)
             try:
                 _videopipelines.classify_video_seed(self.model_type, parsed, ic_lora)
             except _pipelinewrapper.UnsupportedPipelineConfigError as e:
@@ -3085,7 +3255,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise RenderLoopConfigError(
                     f'{a_namer("control_image_processors")} runs on the IC-LoRA control clip, '
                     f'and {a_namer("image_seeds")} "{uri}" has none. '
-                    f'Load an IC-LoRA with {a_namer("ic_lora_uri")}.')
+                    f'Load an IC-LoRA with {a_namer("ltx_ic_lora_uri")}.')
 
         if _pipelinewrapper.model_type_is_s_cascade(self.model_type):
             if not parsed.is_single_spec:
@@ -3428,10 +3598,22 @@ class RenderLoopConfig(_types.SetFromMixin):
             self.sdxl_refiner_deep_cache_branch_ids,
             self.sigmas,
             self.sdxl_refiner_sigmas,
-            self.video_lengths,
-            self.video_fps,
-            self.audio_guidance_scales,
-            self.audio_guidance_rescales,
+            self.ltx_video_lengths,
+            self.ltx_video_fps,
+            self.ltx_audio_guidance_scales,
+            self.ltx_audio_guidance_rescales,
+            self.ltx_stg_scales,
+            self.ltx_audio_stg_scales,
+            self.ltx_modality_scales,
+            self.ltx_audio_modality_scales,
+            self.ltx_stg_blocks,
+            self.ltx_stage_sigmas,
+            self.ltx_noise_scales,
+            self.ltx_stage_guidance_scales,
+            self.ltx_stage_audio_guidance_scales,
+            self.ltx_decode_timesteps,
+            self.ltx_decode_noise_scales,
+            self.ltx_image_crfs,
             self.sada_max_downsamples,
             self.sada_sxs,
             self.sada_sys,
@@ -3449,7 +3631,9 @@ class RenderLoopConfig(_types.SetFromMixin):
         for lst in optional_factors:
             product *= max(0 if lst is None else len(lst), 1)
 
+        bounds = self._duration_bound_pairs()
         return (product *
+                (len(bounds) if bounds else 1) *
                 len(self.prompts) *
                 (len(self.seeds) if not self.seeds_to_images else 1) *
                 len(self.guidance_scales) *
@@ -3548,6 +3732,10 @@ class RenderLoopConfig(_types.SetFromMixin):
                 if n.startswith('flux_'):
                     return None
 
+            if not _pipelinewrapper.model_type_is_video(self.model_type):
+                if n.startswith('ltx_'):
+                    return None
+
             if not self.adetailer_detector_uris:
                 if n.startswith('adetailer_'):
                     return None
@@ -3628,10 +3816,29 @@ class RenderLoopConfig(_types.SetFromMixin):
                 guidance_rescale=ov('guidance_rescale', self.guidance_rescales),
                 sigmas=ov('sigmas', self.sigmas),
                 inference_steps=ov('inference_steps', self.inference_steps),
-                video_length=ov('video_length', self.video_lengths),
-                video_fps=ov('video_fps', self.video_fps),
-                audio_guidance_scale=ov('audio_guidance_scale', self.audio_guidance_scales),
-                audio_guidance_rescale=ov('audio_guidance_rescale', self.audio_guidance_rescales),
+                ltx_video_length=ov('ltx_video_length', self.ltx_video_lengths),
+                ltx_video_fps=ov('ltx_video_fps', self.ltx_video_fps),
+                ltx_audio_guidance_scale=ov('ltx_audio_guidance_scale', self.ltx_audio_guidance_scales),
+                ltx_audio_guidance_rescale=ov('ltx_audio_guidance_rescale', self.ltx_audio_guidance_rescales),
+                ltx_stg_scale=ov('ltx_stg_scale', self.ltx_stg_scales),
+                ltx_audio_stg_scale=ov('ltx_audio_stg_scale', self.ltx_audio_stg_scales),
+                ltx_modality_scale=ov('ltx_modality_scale', self.ltx_modality_scales),
+                ltx_audio_modality_scale=ov('ltx_audio_modality_scale', self.ltx_audio_modality_scales),
+                ltx_stg_blocks=ov('ltx_stg_blocks', self.ltx_stg_blocks),
+                ltx_use_cross_timestep=ov('ltx_use_cross_timestep', [self.ltx_use_cross_timestep]),
+                ltx_latent_upscale=ov('ltx_latent_upscale', [self.ltx_latent_upscale]),
+                ltx_stage_sigmas=ov('ltx_stage_sigmas', self.ltx_stage_sigmas),
+                ltx_noise_scale=ov('ltx_noise_scale', self.ltx_noise_scales),
+                ltx_stage_guidance_scale=ov('ltx_stage_guidance_scale', self.ltx_stage_guidance_scales),
+                ltx_stage_audio_guidance_scale=ov(
+                    'ltx_stage_audio_guidance_scale', self.ltx_stage_audio_guidance_scales),
+                ltx_stage_lora_uris=ov('ltx_stage_lora_uris', [self.ltx_stage_lora_uris]),
+                ltx_video_decoder=ov('ltx_video_decoder', [self.ltx_video_decoder]),
+                ltx_decode_timestep=ov('ltx_decode_timestep', self.ltx_decode_timesteps),
+                ltx_decode_noise_scale=ov('ltx_decode_noise_scale', self.ltx_decode_noise_scales),
+                ltx_image_crf=ov('ltx_image_crf', self.ltx_image_crfs),
+                ltx_prompt_enhancer=ov('ltx_prompt_enhancer', [self.ltx_prompt_enhancer]),
+                ltx_system_prompt=ov('ltx_system_prompt', [self.ltx_system_prompt]),
                 sdxl_high_noise_fraction=ov('sdxl_high_noise_fraction', self.sdxl_high_noise_fractions),
                 second_model_inference_steps=ov('second_model_inference_steps', self.second_model_inference_steps),
                 second_model_guidance_scale=ov('second_model_guidance_scale', self.second_model_guidance_scales),
@@ -3699,7 +3906,23 @@ class RenderLoopConfig(_types.SetFromMixin):
                 on_object=arg,
                 forbidden_checker=_pipelinewrapper.DiffusionArguments.prompt_embedded_arg_checker)
 
-            yield arg
+            bounds = self._duration_bound_pairs()
+            if not bounds:
+                yield arg
+                continue
+            for low, high in bounds:
+                clone = _pipelinewrapper.DiffusionArguments()
+                clone.set_from(arg)
+                clone.ltx_video_min_seconds = low
+                clone.ltx_video_max_seconds = high
+                yield clone
+
+    def _duration_bound_pairs(self):
+        if not self.ltx_video_min_seconds and not self.ltx_video_max_seconds:
+            return None
+        lows = list(self.ltx_video_min_seconds or [1.0])
+        highs = list(self.ltx_video_max_seconds or [20.0])
+        return list(zip(lows, highs))
 
     def _non_null_attr_that_start_with(self, s: typing.Union[str, typing.List[str]]) -> typing.Iterator[str]:
         """

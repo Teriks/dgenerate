@@ -30,7 +30,7 @@ _ic_lora_uri_parser = _textprocessing.ConceptUriParser(
 
 class ICLoRAUri:
     """
-    Representation of an ``--ic-lora`` uri
+    Representation of an ``--ltx-ic-lora`` uri
     """
 
     # pipelinewrapper.uris.util.get_uri_accepted_args_schema metadata
@@ -40,7 +40,7 @@ class ICLoRAUri:
     @staticmethod
     def help():
         import dgenerate.arguments as _a
-        return _a.get_raw_help_text('--ic-lora')
+        return _a.get_raw_help_text('--ltx-ic-lora')
 
     FILE_ARGS = {
         'model': {'mode': ['in', 'dir'], 'filetypes': [('Models', ['*.safetensors'])]}
@@ -146,9 +146,9 @@ class ICLoRAUri:
     @staticmethod
     def parse(uri: _types.Uri) -> 'ICLoRAUri':
         """
-        Parse an ``--ic-lora`` uri and return an object representing its constituents
+        Parse an ``--ltx-ic-lora`` uri and return an object representing its constituents
 
-        :param uri: string with ``--ic-lora`` uri syntax
+        :param uri: string with ``--ltx-ic-lora`` uri syntax
 
         :raise InvalidLoRAUriError:
 

@@ -259,7 +259,7 @@ class TestAssistantCheck(unittest.TestCase):
             'Lightricks/LTX-2.5-Diffusers',
             '--model-type ltx --dtype bfloat16',
             '--image-seeds {{ quote(first(last_animations)) }}',
-            '--video-lengths 2',
+            '--ltx-video-lengths 2',
             '--prompts "the dog wags its tail"',
         ))
         self.assertFalse(report['ok'], report)
@@ -273,7 +273,7 @@ class TestAssistantCheck(unittest.TestCase):
             'Lightricks/LTX-2.5-Diffusers',
             '--model-type ltx --dtype bfloat16',
             '--image-seeds {{ quote(first(last_images)) }}',
-            '--video-lengths 2',
+            '--ltx-video-lengths 2',
             '--prompts "the dog wags its tail"',
         ))
         self.assertTrue(report['ok'], report['errors'])

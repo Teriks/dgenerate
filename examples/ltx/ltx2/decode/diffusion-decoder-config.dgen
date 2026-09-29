@@ -1,0 +1,25 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# --ltx-video-decoder diffusion uses the checkpoint diffusion decoder.
+# conv, the default, is the convolutional VAE. The decode is part of this generation.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+Lightricks/LTX-2.5-Diffusers
+--model-type ltx
+--dtype bfloat16
+--model-sequential-offload
+--ltx-video-decoder diffusion
+--guidance-scales 1
+--gen-seeds 1
+--output-size 640x384
+--ltx-video-lengths 2
+--animation-format mp4
+--output-path ltx-diffusion-decode
+--prompts "A tabby cat walks across a sunlit oak floor. The camera stays fixed. Claws on wood."

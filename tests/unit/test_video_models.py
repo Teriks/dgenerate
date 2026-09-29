@@ -28,18 +28,18 @@ def _config(**values):
 class TestVideoModels(unittest.TestCase):
     def test_end_image_parse(self):
         parsed = _mediainput.parse_image_seed_uri(
-            'examples/media/earth.jpg;end=examples/media/beach.jpg')
+            'examples/media/earth.jpg;ltx-end=examples/media/beach.jpg')
         self.assertEqual(parsed.end_image, 'examples/media/beach.jpg')
         self.assertFalse(parsed.is_single_spec)
 
         with self.assertRaises(_mediainput.ImageSeedFileNotFoundError):
             _mediainput.parse_image_seed_uri(
-                'examples/media/earth.jpg;end=examples/media/missing-end.jpg')
+                'examples/media/earth.jpg;ltx-end=examples/media/missing-end.jpg')
 
     def test_ltx_check_defaults(self):
         config = _config(model_path='org/ltx', model_type=_pipelinewrapper.ModelType.LTX)
         config.check()
-        self.assertEqual(config.video_fps, [24.0])
+        self.assertEqual(config.ltx_video_fps, [24.0])
         self.assertEqual(
             config.inference_steps,
             [_pipelinewrapper.constants.DEFAULT_INFERENCE_STEPS])
@@ -124,9 +124,9 @@ class TestVideoModels(unittest.TestCase):
         args.prompt = _prompt.Prompt('fox')
         args.inference_steps = 50
         args.guidance_scale = 6
-        args.audio_guidance_scale = 7
-        args.video_fps = 24
-        args.video_length = 2
+        args.ltx_audio_guidance_scale = 7
+        args.ltx_video_fps = 24
+        args.ltx_video_length = 2
         args.width = 640
         args.height = 384
         args.scheduler_uri = (
@@ -197,25 +197,44 @@ class TestVideoModels(unittest.TestCase):
         ic = 'Lightricks/ic-lora;weight-name=ic.safetensors'
         for seed in (gif, f'examples/media/earth.jpg;control={gif}'):
             config = _config(
-                model_path='org/ltx', model_type=ltx, ic_lora_uri=ic,
+                model_path='org/ltx', model_type=ltx, ltx_ic_lora_uri=ic,
                 image_seeds=[seed], control_image_processors=['canny'])
             config.check()
 
         for values in (
                 {'image_seeds': [f'examples/media/earth.jpg;control={gif}']},
-                {'ic_lora_uri': ic},
-                {'ic_lora_uri': ic, 'image_seeds': [';end=examples/media/earth.jpg']},
-                {'ic_lora_uri': f'{ic};attention=2', 'image_seeds': [gif]},
+                {'ltx_ic_lora_uri': ic},
+                {'ltx_ic_lora_uri': ic, 'image_seeds': [';ltx-end=examples/media/earth.jpg']},
+                {'ltx_ic_lora_uri': f'{ic};attention=2', 'image_seeds': [gif]},
                 {'image_seeds': ['examples/media/earth.jpg'], 'control_image_processors': ['canny']},
-                {'ic_lora_uri': ic,
+                {'ltx_ic_lora_uri': ic,
                  'image_seeds': [f'examples/media/earth.jpg;control={gif}, examples/media/beach.jpg']}):
             config = _config(model_path='org/ltx', model_type=ltx, **values)
             with self.assertRaises(_renderloopconfig.RenderLoopConfigError, msg=str(values)):
                 config.check()
 
-        image_model = _config(model_path='org/sd', ic_lora_uri=ic)
+        image_model = _config(model_path='org/sd', ltx_ic_lora_uri=ic)
         with self.assertRaises(_renderloopconfig.RenderLoopConfigError):
             image_model.check()
+
+        for values in (
+                {'ltx_stg_scales': [1.0]},
+                {'ltx_latent_upscale': True},
+                {'ltx_use_cross_timestep': False},
+                {'ltx_video_fps': [24.0]},
+        ):
+            blocked = _config(
+                model_path='org/sd',
+                model_type=_pipelinewrapper.ModelType.SD,
+                **values)
+            with self.assertRaises(_renderloopconfig.RenderLoopConfigError, msg=str(values)):
+                blocked.check()
+
+        unused = _config(
+            model_path='org/sd',
+            model_type=_pipelinewrapper.ModelType.SD,
+            ltx_latent_upscale=False)
+        unused.check()
 
     def test_ic_lora_uri(self):
         uri = _pipelinewrapper.uris.ICLoRAUri.parse(
@@ -235,14 +254,14 @@ class TestVideoModels(unittest.TestCase):
             config = _config(
                 model_path='org/ltx',
                 model_type=_pipelinewrapper.ModelType.LTX,
-                image_seeds=['examples/media/earth.jpg;end=examples/media/beach.jpg'],
+                image_seeds=['examples/media/earth.jpg;ltx-end=examples/media/beach.jpg'],
                 seed_image_processors=processors)
             config.check()
 
         config = _config(
             model_path='org/ltx',
             model_type=_pipelinewrapper.ModelType.LTX,
-            image_seeds=['examples/media/earth.jpg;end=examples/media/beach.jpg'],
+            image_seeds=['examples/media/earth.jpg;ltx-end=examples/media/beach.jpg'],
             seed_image_processors=['flip', '+', 'mirror', '+', 'grayscale'])
         with self.assertRaises(_renderloopconfig.RenderLoopConfigError):
             config.check()
@@ -302,7 +321,7 @@ class TestVideoModels(unittest.TestCase):
             reference_downscale_factor = 2
 
         class Wrapper:
-            ic_lora_uri = 'ic.safetensors;attention=0.5'
+            ltx_ic_lora_uri = 'ic.safetensors;attention=0.5'
 
         args = _pipelinewrapper.DiffusionArguments()
         args.reference_video_frames = [PIL.Image.new('RGB', (8, 8)) for _ in range(30)]
@@ -346,7 +365,7 @@ class TestVideoModels(unittest.TestCase):
             transformer_uri = None
             lora_uris = ['org/style']
             lora_fuse_scale = None
-            ic_lora_uri = 'org/ic;weight-name=ic.safetensors;attention=0.75;downscale=2'
+            ltx_ic_lora_uri = 'org/ic;weight-name=ic.safetensors;attention=0.75;downscale=2'
 
         captured = {}
 
@@ -365,7 +384,7 @@ class TestVideoModels(unittest.TestCase):
 
         args = _pipelinewrapper.DiffusionArguments()
         args.prompt = _prompt.Prompt('fox')
-        args.video_fps = 24
+        args.ltx_video_fps = 24
         args.reference_video_frames = [PIL.Image.new('RGB', (8, 8)) for _ in range(20)]
         args.images = [PIL.Image.new('RGB', (8, 8))]
 
@@ -382,13 +401,13 @@ class TestVideoModels(unittest.TestCase):
             _videopipelines._call_ltx(Wrapper(), args)
 
             without = Wrapper()
-            without.ic_lora_uri = None
+            without.ltx_ic_lora_uri = None
             with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError):
                 _videopipelines._call_ltx(without, args)
 
         cache = captured['cache']
         self.assertEqual(cache['lora_uris'], ('org/style',))
-        self.assertEqual(cache['ic_lora_uri'], 'org/ic;scale=1.0;weight-name=ic.safetensors')
+        self.assertEqual(cache['ltx_ic_lora_uri'], 'org/ic;scale=1.0;weight-name=ic.safetensors')
         self.assertEqual(cache['ic_lora_downscale'], 2)
 
         kwargs = captured['kwargs']
@@ -403,7 +422,7 @@ class TestVideoModels(unittest.TestCase):
     def test_end_is_video_only(self):
         config = _config(
             model_path='org/sd',
-            image_seeds=['examples/media/earth.jpg;end=examples/media/beach.jpg'])
+            image_seeds=['examples/media/earth.jpg;ltx-end=examples/media/beach.jpg'])
         with self.assertRaises(_renderloopconfig.RenderLoopConfigError):
             config.check()
 
@@ -433,24 +452,24 @@ class TestVideoModels(unittest.TestCase):
             model_path='org/ltx',
             model_type=_pipelinewrapper.ModelType.LTX,
             prompts=[_prompt.Prompt(), _prompt.Prompt()],
-            video_lengths=[5.0, 2.0])
+            ltx_video_lengths=[5.0, 2.0])
         self.assertEqual(config.calculate_generation_steps(), 4)
 
         audio = _config(
             model_path='org/ltx',
             model_type=_pipelinewrapper.ModelType.LTX,
             prompts=[_prompt.Prompt(), _prompt.Prompt()],
-            audio_guidance_scales=[1.0, 7.0],
-            audio_guidance_rescales=[0.5, 0.7])
+            ltx_audio_guidance_scales=[1.0, 7.0],
+            ltx_audio_guidance_rescales=[0.5, 0.7])
         self.assertEqual(audio.calculate_generation_steps(), 8)
 
     def test_ltx_fps_default(self):
         config = _config(
             model_path='org/ltx',
             model_type=_pipelinewrapper.ModelType.LTX,
-            video_fps=[12.0])
+            ltx_video_fps=[12.0])
         config.check()
-        self.assertEqual(config.video_fps, [12.0])
+        self.assertEqual(config.ltx_video_fps, [12.0])
 
     def test_canvas_alignment(self):
         aligned = _config(
@@ -566,38 +585,38 @@ class TestVideoModels(unittest.TestCase):
         audio = _config(
             model_path='org/ltx',
             model_type=_pipelinewrapper.ModelType.LTX,
-            audio_guidance_scales=[7.0],
-            audio_guidance_rescales=[0.5])
+            ltx_audio_guidance_scales=[7.0],
+            ltx_audio_guidance_rescales=[0.5])
         audio.check()
         steps = list(audio.iterate_diffusion_args())
         self.assertEqual(len(steps), 1)
-        self.assertEqual(steps[0].audio_guidance_scale, 7.0)
-        self.assertEqual(steps[0].audio_guidance_rescale, 0.5)
+        self.assertEqual(steps[0].ltx_audio_guidance_scale, 7.0)
+        self.assertEqual(steps[0].ltx_audio_guidance_rescale, 0.5)
 
         still = _config(
             model_path='org/sd',
-            audio_guidance_scales=[7.0])
+            ltx_audio_guidance_scales=[7.0])
         with self.assertRaises(_renderloopconfig.RenderLoopConfigError) as raised:
             still.check()
         self.assertIn('ltx', str(raised.exception).lower())
 
         still_rescale = _config(
             model_path='org/sd',
-            audio_guidance_rescales=[0.5])
+            ltx_audio_guidance_rescales=[0.5])
         with self.assertRaises(_renderloopconfig.RenderLoopConfigError) as raised:
             still_rescale.check()
         self.assertIn('ltx', str(raised.exception).lower())
 
         still_length = _config(
             model_path='org/sd',
-            video_lengths=[2.0])
+            ltx_video_lengths=[2.0])
         with self.assertRaises(_renderloopconfig.RenderLoopConfigError) as raised:
             still_length.check()
         self.assertIn('ltx', str(raised.exception).lower())
 
         still_fps = _config(
             model_path='org/sd',
-            video_fps=[24.0])
+            ltx_video_fps=[24.0])
         with self.assertRaises(_renderloopconfig.RenderLoopConfigError) as raised:
             still_fps.check()
         self.assertIn('ltx', str(raised.exception).lower())
@@ -731,7 +750,7 @@ class TestVideoModels(unittest.TestCase):
         self.assertFalse(
             _videopipelines._quantize_component('vae', 'sdnq', None))
         self.assertFalse(
-            _videopipelines._quantize_component('prompt_enhancer', 'sdnq', None))
+            _videopipelines._quantize_component('ltx_prompt_enhancer', 'sdnq', None))
         self.assertFalse(
             _videopipelines._quantize_component('connectors', None, None))
         self.assertTrue(
@@ -774,7 +793,7 @@ class TestVideoModels(unittest.TestCase):
             'transformer': ['diffusers', 'LTX2VideoTransformer3DModel'],
             'connectors': ['ltx2', 'LTX2TextConnectors'],
             'vae': ['diffusers', 'AutoencoderKLLTX2Video'],
-            'prompt_enhancer': ['transformers', 'Gemma4ForConditionalGeneration'],
+            'ltx_prompt_enhancer': ['transformers', 'Gemma4ForConditionalGeneration'],
         }
         with unittest.mock.patch.object(
                 _videopipelines._util, 'fetch_model_index_dict', return_value=index), \
@@ -787,7 +806,7 @@ class TestVideoModels(unittest.TestCase):
         self.assertIn('connectors', modules)
         self.assertIn('transformer', modules)
         self.assertNotIn('vae', modules)
-        self.assertNotIn('prompt_enhancer', modules)
+        self.assertNotIn('ltx_prompt_enhancer', modules)
         self.assertIs(loaded['connectors'], LTX2TextConnectors)
 
     def test_cache_kwargs_omits_mode(self):
@@ -826,14 +845,14 @@ class TestVideoModels(unittest.TestCase):
         source = _pipelinewrapper.DiffusionArguments()
         source.guidance_scale = 3.0
         source.inference_steps = 30
-        source.audio_guidance_scale = 7.0
-        source.audio_guidance_rescale = 0.5
+        source.ltx_audio_guidance_scale = 7.0
+        source.ltx_audio_guidance_rescale = 0.5
         dest = _pipelinewrapper.DiffusionArguments()
         _videopipelines.apply_video_arg_rewrites(source, dest)
         self.assertEqual(dest.guidance_scale, 3.0)
         self.assertEqual(dest.inference_steps, 30)
-        self.assertEqual(dest.audio_guidance_scale, 7.0)
-        self.assertEqual(dest.audio_guidance_rescale, 0.5)
+        self.assertEqual(dest.ltx_audio_guidance_scale, 7.0)
+        self.assertEqual(dest.ltx_audio_guidance_rescale, 0.5)
 
     def test_audio_sample_rate_warns_without_vocoder(self):
         audio = numpy.zeros((1, 8), dtype=numpy.float32)
@@ -1007,6 +1026,186 @@ class TestVideoModels(unittest.TestCase):
         args.video_frames = [PIL.Image.new('RGB', (8, 8)) for _ in range(12)]
         conditions = _videopipelines._ltx_conditions(Pipe(), 'ltx2', args, None)
         self.assertEqual(len(conditions[0].frames), 9)
+
+    def test_ltx_condition_index_and_extra_group(self):
+        earth = 'examples/media/earth.jpg'
+        beach = 'examples/media/beach.jpg'
+        parsed = _mediainput.parse_image_seed_uri(
+            f'{earth};ltx-index=0;ltx-strength=0.5 ++ {beach};ltx-index=8;ltx-strength=1')
+        self.assertEqual(parsed.ltx_condition_index, 0)
+        self.assertEqual(parsed.ltx_condition_strength, 0.5)
+        self.assertEqual(parsed.ltx_extra_conditions[0].images, [beach])
+        self.assertEqual(parsed.ltx_extra_conditions[0].ltx_condition_index, 8)
+        self.assertFalse(parsed.is_single_spec)
+        ltx = _pipelinewrapper.ModelType.LTX
+        self.assertEqual(
+            _videopipelines.classify_video_seed(ltx, parsed), 'ltx-condition')
+
+        placed = _mediainput.parse_image_seed_uri(f'{earth};ltx-index=8')
+        self.assertEqual(
+            _videopipelines.classify_video_seed(ltx, placed), 'ltx-condition')
+
+    def test_latent_upscale_size_check(self):
+        missing = _config(
+            model_path='org/ltx',
+            model_type=_pipelinewrapper.ModelType.LTX,
+            ltx_latent_upscale=True)
+        with self.assertRaises(_renderloopconfig.RenderLoopConfigError):
+            missing.check()
+
+        odd = _config(
+            model_path='org/ltx',
+            model_type=_pipelinewrapper.ModelType.LTX,
+            ltx_latent_upscale=True,
+            output_size=(640, 352))
+        with self.assertRaises(_renderloopconfig.RenderLoopConfigError):
+            odd.check()
+
+        aligned = _config(
+            model_path='org/ltx',
+            model_type=_pipelinewrapper.ModelType.LTX,
+            ltx_latent_upscale=True,
+            output_size=(768, 512))
+        aligned.check()
+
+        bounds = _config(
+            model_path='org/ltx',
+            model_type=_pipelinewrapper.ModelType.LTX,
+            prompts=[_prompt.Prompt('a')],
+            ltx_video_min_seconds=[2.0, 4.0],
+            ltx_video_max_seconds=[6.0, 8.0])
+        bounds.check()
+        self.assertEqual(bounds.calculate_generation_steps(), 2)
+        pairs = [
+            (arg.ltx_video_min_seconds, arg.ltx_video_max_seconds)
+            for arg in bounds.iterate_diffusion_args()]
+        self.assertEqual(pairs, [(2.0, 6.0), (4.0, 8.0)])
+
+    def test_ltx_two_stage_is_one_generation(self):
+        class Scheduler:
+            def __init__(self):
+                self.config = {'use_dynamic_shifting': True, 'shift_terminal': 0.1}
+
+            @classmethod
+            def from_config(cls, config, **overrides):
+                scheduler = cls()
+                scheduler.config = dict(config)
+                scheduler.config.update(overrides)
+                return scheduler
+
+        class Pipe:
+            def __init__(self):
+                self.scheduler = Scheduler()
+                self.vae = object()
+
+            def __call__(self, stg_scale=None, audio_stg_scale=None, modality_scale=None,
+                         audio_modality_scale=None, spatio_temporal_guidance_blocks=None,
+                         use_cross_timestep=True, image_crf=None, min_seconds=1.0,
+                         max_seconds=20.0, enable_prompt_enhancement=False, system_prompt=None,
+                         decode_timestep=0.0, decode_noise_scale=None, **kwargs):
+                raise AssertionError('call_pipeline should be used')
+
+        calls = []
+
+        def invoke(wrapper, pipeline, kwargs):
+            calls.append(dict(kwargs))
+
+            class Output:
+                pass
+
+            output = Output()
+            if kwargs.get('output_type') == 'latent' and 'latents' not in kwargs:
+                output.frames = torch.zeros(1, 4, 3, 2, 2)
+                output.audio = torch.zeros(1, 2, 4)
+            else:
+                output.frames = [PIL.Image.new('RGB', (4, 4))]
+                output.audio = None
+            return output
+
+        class UpPipe:
+            def __init__(self, vae, latent_upsampler):
+                self.vae = vae
+
+            def enable_sequential_cpu_offload(self, device=None):
+                return None
+
+            def enable_model_cpu_offload(self, device=None):
+                return None
+
+            def __call__(self, **kwargs):
+                calls.append({'upsample': tuple(kwargs['latents'].shape)})
+                return (torch.zeros(1, 4, 3, 4, 4),)
+
+        class Held:
+            pipeline = Pipe()
+            family = 'ltx2'
+
+        class Wrapper:
+            device = 'cpu'
+            model_type = _pipelinewrapper.ModelType.LTX
+            model_cpu_offload = False
+            model_sequential_offload = False
+            model_path = 'org/ltx'
+            _revision = None
+            _variant = None
+            _subfolder = None
+            _dtype = None
+            _local_files_only = True
+            _auth_token = None
+            quantizer_uri = None
+            quantizer_map = None
+            transformer_uri = None
+            lora_uris = None
+            lora_fuse_scale = None
+
+        args = _pipelinewrapper.DiffusionArguments()
+        args.prompt = _prompt.Prompt('fox')
+        args.inference_steps = 8
+        args.guidance_scale = 1
+        args.ltx_audio_guidance_scale = 1
+        args.ltx_video_fps = 24
+        args.ltx_video_length = 5
+        args.width = 768
+        args.height = 512
+        args.ltx_latent_upscale = True
+        args.ltx_stg_scale = 1
+        args.ltx_modality_scale = 3
+
+        with unittest.mock.patch.object(
+                _videopipelines, '_create_cached_video_pipeline', return_value=Held()), \
+                unittest.mock.patch.object(
+                    _videopipelines, 'pipeline_for_mode',
+                    side_effect=lambda pipeline, mode, family: pipeline), \
+                unittest.mock.patch.object(
+                    _videopipelines._schedulers, 'load_scheduler'), \
+                unittest.mock.patch.object(
+                    _videopipelines, '_invoke', side_effect=invoke), \
+                unittest.mock.patch(
+                    'diffusers.pipelines.ltx2.latent_upsampler.LTX2LatentUpsamplerModel.from_pretrained',
+                    return_value=type('Upsampler', (), {'to': lambda self, *args, **kwargs: self})()), \
+                unittest.mock.patch(
+                    'diffusers.pipelines.ltx2.pipeline_ltx2_latent_upsample.LTX2LatentUpsamplePipeline',
+                    UpPipe):
+            frames, audio, sample_rate, fps = _videopipelines._call_ltx(Wrapper(), args)
+
+        self.assertEqual(len(frames), 1)
+        self.assertEqual(fps, 24)
+        self.assertIsNone(audio)
+        self.assertIsNone(sample_rate)
+        self.assertEqual(calls[0]['width'], 384)
+        self.assertEqual(calls[0]['height'], 256)
+        self.assertEqual(calls[0]['output_type'], 'latent')
+        self.assertEqual(calls[0]['stg_scale'], 1)
+        self.assertEqual(calls[0]['spatio_temporal_guidance_blocks'], [28])
+        self.assertEqual(calls[0]['modality_scale'], 3)
+        self.assertEqual(calls[1]['upsample'], (1, 4, 3, 2, 2))
+        self.assertEqual(calls[2]['width'], 768)
+        self.assertEqual(calls[2]['height'], 512)
+        self.assertEqual(calls[2]['guidance_scale'], 1)
+        self.assertEqual(calls[2]['noise_scale'], calls[2]['sigmas'][0])
+        self.assertEqual(len(calls[2]['sigmas']), 3)
+        self.assertNotIn('ltx_stg_scale', calls[2])
+        self.assertIn('latents', calls[2])
 
 
 if __name__ == '__main__':

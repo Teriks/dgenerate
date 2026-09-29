@@ -1011,19 +1011,19 @@ class DiffusionArguments(_types.SetFromMixin):
     Guidance rescale factor should fix overexposure when using zero terminal SNR.
     """
 
-    video_length: _types.OptionalFloat = None
+    ltx_video_length: _types.OptionalFloat = None
     """
     Requested clip length in seconds for ``--model-type ltx``.
 
     ``None`` leaves the length to LTX-2.5's duration head.
     """
 
-    video_fps: _types.OptionalFloat = None
+    ltx_video_fps: _types.OptionalFloat = None
     """
     Frame rate of a generated LTX clip.
     """
 
-    audio_guidance_scale: _types.OptionalFloat = None
+    ltx_audio_guidance_scale: _types.OptionalFloat = None
     """
     Audio CFG scale for ``--model-type ltx``.
 
@@ -1032,12 +1032,150 @@ class DiffusionArguments(_types.SetFromMixin):
     audio ``7`` in that unused-``5`` case.
     """
 
-    audio_guidance_rescale: _types.OptionalFloat = None
+    ltx_audio_guidance_rescale: _types.OptionalFloat = None
     """
     Audio guidance rescale for ``--model-type ltx``.
 
     ``None`` copies :py:attr:`.DiffusionArguments.guidance_rescale` when that
     is set, otherwise the pipeline default ``0.7`` is left in place.
+    """
+
+    ltx_stg_scale: _types.OptionalFloat = None
+    """
+    Video spatio-temporal guidance scale for LTX-2. ``0`` disables it.
+    """
+
+    ltx_audio_stg_scale: _types.OptionalFloat = None
+    """
+    Audio spatio-temporal guidance scale for LTX-2. ``None`` copies
+    :py:attr:`.DiffusionArguments.ltx_stg_scale`.
+    """
+
+    ltx_modality_scale: _types.OptionalFloat = None
+    """
+    Video modality-isolation guidance scale for LTX-2. ``1`` disables it.
+    """
+
+    ltx_audio_modality_scale: _types.OptionalFloat = None
+    """
+    Audio modality-isolation guidance scale for LTX-2. ``None`` copies
+    :py:attr:`.DiffusionArguments.ltx_modality_scale`.
+    """
+
+    ltx_stg_blocks: _types.OptionalIntegers = None
+    """
+    Transformer block indices for spatio-temporal guidance. LTX-2.5 uses ``[28]``.
+    """
+
+    ltx_use_cross_timestep: _types.OptionalBoolean = None
+    """
+    LTX-2.3/2.5 cross-modality timestep. ``False`` is the LTX-2.0 behavior.
+    ``None`` leaves the pipeline default, which is on.
+    """
+
+    ltx_latent_upscale: _types.OptionalBoolean = None
+    """
+    Run the LTX-2 two-stage pass in this generation: half-resolution denoise,
+    latent upscale, then a short full-resolution refine.
+    """
+
+    ltx_stage_sigmas: collections.abc.Sequence[float] | str | None = None
+    """
+    Sigma schedule for the LTX-2 refine stage. ``None`` uses the published
+    3-value stage-2 table.
+    """
+
+    ltx_noise_scale: _types.OptionalFloat = None
+    """
+    Noise mixed back into the upscaled latents before the refine stage.
+    ``None`` uses the first stage-2 sigma.
+    """
+
+    ltx_stage_guidance_scale: _types.OptionalFloat = None
+    """
+    Video guidance for the LTX-2 refine stage. ``None`` is unguided (``1``).
+    """
+
+    ltx_stage_audio_guidance_scale: _types.OptionalFloat = None
+    """
+    Audio guidance for the LTX-2 refine stage. ``None`` copies the stage video
+    guidance, which defaults to ``1``.
+    """
+
+    ltx_stage_lora_uris: _types.OptionalUris = None
+    """
+    LoRAs loaded only for the LTX-2 refine stage, then removed.
+    """
+
+    ltx_video_decoder: _types.OptionalString = None
+    """
+    ``diffusion`` decodes the clip with the LTX-2 diffusion decoder.
+    ``None`` uses the convolutional VAE.
+    """
+
+    ltx_decode_timestep: _types.OptionalFloat = None
+    """
+    Timestep passed to the LTX video decode.
+    """
+
+    ltx_decode_noise_scale: _types.OptionalFloat = None
+    """
+    Noise scale passed to the LTX video decode.
+    """
+
+    ltx_image_crf: _types.OptionalInteger = None
+    """
+    H.264 CRF used to recompress an LTX conditioning still before the VAE encode.
+    ``None`` leaves the pipeline default. ``0`` skips recompression.
+    """
+
+    ltx_video_min_seconds: _types.OptionalFloat = None
+    """
+    Lower bound for the LTX-2.5 duration head on this generation. One entry
+    from ``--ltx-video-min-seconds``, aligned with ``ltx_video_max_seconds``.
+    Ignored when a length is set.
+    """
+
+    ltx_video_max_seconds: _types.OptionalFloat = None
+    """
+    Upper bound for the LTX-2.5 duration head on this generation. One entry
+    from ``--ltx-video-max-seconds``, aligned with ``ltx_video_min_seconds``.
+    Ignored when a length is set.
+    """
+
+    ltx_prompt_enhancer: _types.OptionalString = None
+    """
+    Hugging Face repo or local path of the LTX prompt-enhancer model.
+    """
+
+    ltx_system_prompt: _types.OptionalString = None
+    """
+    System prompt override for LTX prompt enhancement.
+    """
+
+    ltx_condition_index: _types.OptionalInteger = None
+    """
+    Latent frame of the primary ``--image-seeds`` path, from ``ltx-index``.
+
+    ``None`` starts that path at latent frame 0. ``-1`` is the last latent
+    frame. See :py:attr:`dgenerate.mediainput.ImageSeedParseResult.ltx_condition_index`.
+    """
+
+    ltx_condition_strength: _types.OptionalFloat = None
+    """
+    Weight of the primary ``--image-seeds`` path, from ``ltx-strength``.
+
+    ``None`` is full strength (``1``). This is not
+    :py:attr:`dgenerate.pipelinewrapper.DiffusionArguments.image_seed_strength`.
+    """
+
+    ltx_extra_conditions: list | None = None
+    """
+    Conditions after the primary path in one ``--image-seeds`` value.
+
+    Each item is ``(frames, ltx_index, ltx_strength)``. ``frames`` is one
+    image, or a list of frames when the file is a video. The groups were
+    separated by `` ++ `` and each one included ``ltx-index``.
     """
 
     end_images: _types.OptionalImages = None
@@ -1463,10 +1601,23 @@ class DiffusionArguments(_types.SetFromMixin):
             (self.image_guidance_scale, "Image Guidance Scale:"),
             (self.guidance_rescale, "Guidance Rescale:"),
             (self.inference_steps, "Inference Steps:"),
-            (self.video_length, "Video Length (seconds):"),
-            (self.video_fps, "Video FPS:"),
-            (self.audio_guidance_scale, "Audio Guidance Scale:"),
-            (self.audio_guidance_rescale, "Audio Guidance Rescale:"),
+            (self.ltx_video_length, "Video Length (seconds):"),
+            (self.ltx_video_fps, "Video FPS:"),
+            (self.ltx_audio_guidance_scale, "Audio Guidance Scale:"),
+            (self.ltx_audio_guidance_rescale, "Audio Guidance Rescale:"),
+            (self.ltx_stg_scale, "STG Scale:"),
+            (self.ltx_audio_stg_scale, "Audio STG Scale:"),
+            (self.ltx_modality_scale, "Modality Scale:"),
+            (self.ltx_audio_modality_scale, "Audio Modality Scale:"),
+            (self.ltx_stg_blocks, "STG Blocks:"),
+            (self.ltx_latent_upscale, "Latent Upscale:"),
+            (self.ltx_stage_sigmas, "Stage Sigmas:"),
+            (self.ltx_noise_scale, "Noise Scale:"),
+            (self.ltx_stage_guidance_scale, "Stage Guidance Scale:"),
+            (self.ltx_stage_audio_guidance_scale, "Stage Audio Guidance Scale:"),
+            (self.ltx_video_decoder, "Video Decoder:"),
+            (self.ltx_image_crf, "Image CRF:"),
+            (self.ltx_prompt_enhancer, "Prompt Enhancer:"),
             (self.adetailer_class_filter, "Adetailer Class Filter:"),
             (self.adetailer_index_filter, "Adetailer Index Filter:"),
             (self.adetailer_mask_shape, "Adetailer Mask Shape:"),

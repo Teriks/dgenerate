@@ -1,0 +1,26 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# ltx-index is a latent frame. ltx-strength is from 0 to 1.
+# Extra conditions in one clip are separated by " ++ " and each needs ltx-index.
+# ltx-end= is still the last frame at full strength.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+Lightricks/LTX-2.5-Diffusers
+--model-type ltx
+--dtype bfloat16
+--model-sequential-offload
+--guidance-scales 1
+--gen-seeds 1
+--output-size 640x384
+--ltx-video-lengths 2
+--animation-format mp4
+--output-path ltx-indexed
+--image-seeds "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/astronaut.jpg;ltx-index=0;ltx-strength=1 ++ https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/astronaut.jpg;ltx-index=-1;ltx-strength=1"
+--prompts "The astronaut raises one hand, then lowers it. The suit and background stay the same. A soft air hiss."
