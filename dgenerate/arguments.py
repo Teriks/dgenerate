@@ -214,6 +214,29 @@ def _type_video_fps(val):
     return val
 
 
+def _type_stg_blocks(val):
+    parts = [part.strip() for part in str(val).split(',') if part.strip()]
+    if not parts:
+        raise argparse.ArgumentTypeError('STG blocks cannot be empty')
+    try:
+        blocks = [int(part) for part in parts]
+    except ValueError:
+        raise argparse.ArgumentTypeError('STG blocks must be integers')
+    if any(block < 0 for block in blocks):
+        raise argparse.ArgumentTypeError('STG blocks must be greater than or equal to 0')
+    return blocks
+
+
+def _type_image_crf(val):
+    try:
+        crf = int(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be an integer')
+    if crf < 0:
+        raise argparse.ArgumentTypeError('Must be greater than or equal to 0')
+    return crf
+
+
 def _type_guidance_scale(val):
     try:
         val = float(val)
@@ -1785,7 +1808,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     Hugging Face repository slug / blob link, path to model file on disk (for example, a .pt, .pth, .bin,
                     .ckpt, or .safetensors file), or model folder containing model files.
                     ``ltx`` accepts LoRAs in diffusers format and fuses them into the transformer.
-                    IC-LoRAs for ``ltx`` are loaded with --ic-lora instead.
+                    IC-LoRAs for ``ltx`` are loaded with --ltx-ic-lora instead.
                     
                     If a LoRA model file exists at a URL which serves the file as
                     a raw download, you may provide an http/https link to it and it will be
@@ -1827,8 +1850,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '-icl', '--ic-lora', action='store', default=None, metavar="IC_LORA_URI",
-            dest='ic_lora_uri',
+            '-icl', '--ltx-ic-lora', action='store', default=None, metavar="IC_LORA_URI",
+            dest='ltx_ic_lora_uri',
             help="""Specify an IC-LoRA (in-context LoRA) for --model-type ltx with an LTX-2 checkpoint,
                     for example a canny, depth, or pose control LoRA. It uses the same URI syntax as --loras,
                     and is fused into the transformer together with any --loras.
@@ -1842,7 +1865,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     To also condition on a first or last frame, use the "control" image seed argument:
 
                     NOWRAP!
-                    --image-seeds "first.png;control=control.mp4;end=last.png"
+                    --image-seeds "first.png;control=control.mp4;ltx-end=last.png"
 
                     Use --control-image-processors to turn the reference into the signal the IC-LoRA expects,
                     for example "canny".
@@ -4079,8 +4102,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     or you will receive a syntax error message.
 
                     For --model-type ltx, one chain runs on every frame of both the opening media and
-                    the "end" image seed argument. With two chains, the first runs on the opening media
-                    and the second on "end", for example: (--seed-image-processors grayscale +) processes
+                    the "ltx-end" image seed argument. With two chains, the first runs on the opening media
+                    and the second on "ltx-end", for example: (--seed-image-processors grayscale +) processes
                     only the opening media.
 
                     To obtain more information about what image
@@ -4166,8 +4189,8 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     would indicate that
                     the first control guidance image is not to be processed, only the second.
 
-                    For --model-type ltx, one chain runs on every frame of the --ic-lora reference clip,
-                    for example: --ic-lora ... --image-seeds "video.mp4" --control-image-processors canny.
+                    For --model-type ltx, one chain runs on every frame of the --ltx-ic-lora reference clip,
+                    for example: --ltx-ic-lora ... --image-seeds "video.mp4" --control-image-processors canny.
 
                     To obtain more information about what image processors
                     are available and how to use them, see: --image-processor-help."""
@@ -4308,7 +4331,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     shifting, or to video 3 and audio 7 when it does. --sigmas skips that
                     rewrite and uses the value you passed, including leftover 5.
                     Video and audio guidance are the same number except for that 3 / 7 case.
-                    Use --audio-guidance-scales to set audio CFG separately.
+                    Use --ltx-audio-guidance-scales to set audio CFG separately.
                     
                     NOWRAP!
                     (default: [5])"""
@@ -4391,7 +4414,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     and img2img, unless --control-nets is specified in which case only inpainting is supported.
                     It is supported for --model-type "sdxl-pix2pix" but not --model-type "pix2pix".
                     For --model-type ltx it is sent as video guidance rescale, and as audio
-                    rescale unless --audio-guidance-rescales is set. Omitting it on LTX
+                    rescale unless --ltx-audio-guidance-rescales is set. Omitting it on LTX
                     leaves the pipeline default of 0.7.
                     
                     NOWRAP!
@@ -4424,13 +4447,13 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--video-lengths', action='store', nargs='+', default=None,
-            dest='video_lengths', type=_type_video_length, metavar="SECONDS",
+            '--ltx-video-lengths', action='store', nargs='+', default=None,
+            dest='ltx_video_lengths', type=_type_video_length, metavar="SECONDS",
             help="""One or more clip lengths in seconds, for --model-type ltx.
-                    Each value is crossed with the other combinatorial arguments,
-                    and each combination writes one clip.
+                    Each value will be tried in turn, and each combination
+                    writes one clip.
 
-                    LTX snaps the length to a frame count of 8k+1 at --video-fps.
+                    LTX snaps the length to a frame count of 8k+1 at --ltx-video-fps.
                     Omit this option and LTX-2.5 predicts the length from the prompt.
 
                     NOWRAP!
@@ -4440,11 +4463,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--video-fps', action='store', nargs='+', default=None,
-            dest='video_fps', type=_type_video_fps, metavar="FPS",
-            help="""One or more frame rates for --model-type ltx. Each value is
-                    crossed with the other combinatorial arguments. The default
-                    is 24.
+            '--ltx-video-fps', action='store', nargs='+', default=None,
+            dest='ltx_video_fps', type=_type_video_fps, metavar="FPS",
+            help="""One or more frame rates for --model-type ltx. Each value will
+                    be tried in turn. The default is 24.
 
                     NOWRAP!
                     (default: [24] for video model types)"""
@@ -4453,10 +4475,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--audio-guidance-scales', action='store', nargs='+', default=None,
-            dest='audio_guidance_scales', metavar="FLOAT", type=_type_guidance_scale,
+            '--ltx-audio-guidance-scales', action='store', nargs='+', default=None,
+            dest='ltx_audio_guidance_scales', metavar="FLOAT", type=_type_guidance_scale,
             help="""One or more audio CFG scales to try, for --model-type ltx.
-                    Each value is crossed with the other combinatorial arguments.
+                    Each value will be tried in turn.
 
                     LTX encodes one prompt for both picture and soundtrack, then
                     applies a separate audio guidance scale. The authors suggest
@@ -4474,11 +4496,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
-            '--audio-guidance-rescales', action='store', nargs='+', default=None,
-            dest='audio_guidance_rescales', metavar="FLOAT", type=_type_guidance_scale,
+            '--ltx-audio-guidance-rescales', action='store', nargs='+', default=None,
+            dest='ltx_audio_guidance_rescales', metavar="FLOAT", type=_type_guidance_scale,
             help="""One or more audio guidance rescale factors to try, for
-                    --model-type ltx. Each value is crossed with the other
-                    combinatorial arguments.
+                    --model-type ltx. Each value will be tried in turn.
 
                     Omit this option and audio copies --guidance-rescales when
                     that is set, otherwise the pipeline default of 0.7 is left
@@ -4486,6 +4507,261 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
                     NOWRAP!
                     (default: copy --guidance-rescales)"""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--ltx-stg-scales', action='store', nargs='+', default=None,
+            dest='ltx_stg_scales', metavar="FLOAT", type=_type_guidance_scale,
+            help="""One or more video spatio-temporal guidance scales for
+                    --model-type ltx. Each value will be tried in turn.
+                    0 disables STG. LTX-2.5 full-transformer runs use 1, on
+                    transformer block 28 (--ltx-stg-blocks).
+
+                    NOWRAP!
+                    (default: pipeline default, STG off)"""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--ltx-audio-stg-scales', action='store', nargs='+', default=None,
+            dest='ltx_audio_stg_scales', metavar="FLOAT", type=_type_guidance_scale,
+            help="""Audio spatio-temporal guidance scales for --model-type ltx.
+                    Each value will be tried in turn. Omit this option and
+                    audio copies --ltx-stg-scales.
+
+                    NOWRAP!
+                    (default: copy --ltx-stg-scales)"""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--ltx-modality-scales', action='store', nargs='+', default=None,
+            dest='ltx_modality_scales', metavar="FLOAT", type=_type_guidance_scale,
+            help="""Video modality-isolation guidance scales for --model-type ltx.
+                    Each value will be tried in turn. 1 disables it.
+                    LTX-2.5 full-transformer runs use 3.
+
+                    NOWRAP!
+                    (default: pipeline default, modality guidance off)"""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--ltx-audio-modality-scales', action='store', nargs='+', default=None,
+            dest='ltx_audio_modality_scales', metavar="FLOAT", type=_type_guidance_scale,
+            help="""Audio modality-isolation guidance scales for --model-type ltx.
+                    Each value will be tried in turn. Omit this option and
+                    audio copies --ltx-modality-scales.
+
+                    NOWRAP!
+                    (default: copy --ltx-modality-scales)"""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--ltx-stg-blocks', action='store', nargs='+', default=None,
+            dest='ltx_stg_blocks', metavar="BLOCKS", type=_type_stg_blocks,
+            help="""Transformer block indices for spatio-temporal guidance.
+                    One comma-separated list, for example 28. Several lists are
+                    tried in turn. When --ltx-stg-scales is greater than 0 and this
+                    is omitted, block 28 is used.
+
+                    NOWRAP!
+                    (default: 28 when STG is on)"""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--ltx-no-cross-timestep', action='store_false', default=None,
+            dest='ltx_use_cross_timestep',
+            help="""Use the LTX-2.0 cross-modality timestep. LTX-2.3 and LTX-2.5
+                    leave this on."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--ltx-latent-upscale', action='store_true', default=False,
+            dest='ltx_latent_upscale',
+            help="""Run LTX-2 as one two-stage generation, the way --sdxl-refiner
+                    runs after the base pass. --output-size is the finished clip
+                    and both sides must be divisible by 64. The first pass denoises
+                    at half of that size, the checkpoint latent upsampler doubles
+                    the video latents, and a short second pass refines them at the
+                    full size. The same prompt, seed, and image seed are used.
+                    Stage-2 sigmas default to the published 3-value table, and
+                    stage-2 guidance defaults to 1. See --ltx-stage-sigmas,
+                    --ltx-noise-scales, --ltx-stage-guidance-scales, and --ltx-stage-loras."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--ltx-stage-sigmas', action='store', nargs='+', default=None,
+            dest='ltx_stage_sigmas', metavar="CSV_FLOAT_OR_EXPRESSION", type=_type_sigmas,
+            help="""Sigma schedule for the --ltx-latent-upscale refine pass. Same
+                    syntax as --sigmas. Each schedule will be tried in turn.
+                    The default is the published 3-value stage-2 table."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--ltx-noise-scales', action='store', nargs='+', default=None,
+            dest='ltx_noise_scales', metavar="FLOAT", type=_type_guidance_scale,
+            help="""Noise mixed back into the upscaled latents before the refine
+                    pass. Each value will be tried in turn. The default is the
+                    first stage-2 sigma."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--ltx-stage-guidance-scales', action='store', nargs='+', default=None,
+            dest='ltx_stage_guidance_scales', metavar="FLOAT", type=_type_guidance_scale,
+            help="""Video guidance for the --ltx-latent-upscale refine pass.
+                    Each value will be tried in turn. The default is 1
+                    (unguided), which is what the distilled refine is trained
+                    for."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--ltx-stage-audio-guidance-scales', action='store', nargs='+', default=None,
+            dest='ltx_stage_audio_guidance_scales', metavar="FLOAT", type=_type_guidance_scale,
+            help="""Audio guidance for the --ltx-latent-upscale refine pass.
+                    Each value will be tried in turn. Omit this option and
+                    audio copies --ltx-stage-guidance-scales."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--ltx-stage-loras', nargs='+', action='store', default=None,
+            dest='ltx_stage_lora_uris', metavar="LORA_URI",
+            help="""LoRAs loaded for the --ltx-latent-upscale refine pass only, then
+                    removed. Several URIs are all loaded for that pass. Same URI
+                    as --loras. The LTX-2.5 full-transformer recipe uses
+                    Lightricks/LTX-2.5-Diffusers;weight-name=ltx-2.5-22b-distilled-lora-450-bf16.safetensors.
+                    The distilled two-stage recipe does not set this."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--ltx-video-decoder', action='store', default=None, metavar="DECODER",
+            dest='ltx_video_decoder', choices=['conv', 'diffusion'],
+            help="""How an LTX-2 clip is decoded. conv is the convolutional VAE.
+                    diffusion is the diffusion decoder in the checkpoint's
+                    diffusion_decoder folder. The decode is part of the same
+                    generation."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--ltx-decode-timesteps', action='store', nargs='+', default=None,
+            dest='ltx_decode_timesteps', metavar="FLOAT", type=_type_guidance_scale,
+            help="""Decode timestep for the LTX video decode. Several values are
+                    tried in turn."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--ltx-decode-noise-scales', action='store', nargs='+', default=None,
+            dest='ltx_decode_noise_scales', metavar="FLOAT", type=_type_guidance_scale,
+            help="""Decode noise scale for the LTX video decode. Several values
+                    are tried in turn."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--ltx-image-crfs', action='store', nargs='+', default=None,
+            dest='ltx_image_crfs', metavar="INTEGER", type=_type_image_crf,
+            help="""H.264 CRF used to recompress an LTX conditioning still before
+                    it is encoded. Each value will be tried in turn. Omit this
+                    option to keep the pipeline default (18 on LTX-2.5). 0 skips
+                    recompression."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--ltx-video-min-seconds', action='store', nargs='+', default=None,
+            dest='ltx_video_min_seconds', metavar="SECONDS", type=_type_video_fps,
+            help="""Lower bounds, in seconds, for the LTX-2.5 duration head.
+                    Give the same number of values as --ltx-video-max-seconds.
+                    The value in each position is used with the upper bound in
+                    that position:
+
+                    NOWRAP!
+                    --ltx-video-min-seconds 2 4 --ltx-video-max-seconds 6 8
+
+                    That writes two clips, one from 2 to 6 seconds and one from
+                    4 to 8. A single value with the other option omitted uses
+                    that option's pipeline default, 20 for the upper bound.
+                    Several values require the same number of upper bounds.
+                    Each bound pair is then tried in turn with the other
+                    arguments. Both options apply only when --ltx-video-lengths
+                    is omitted.
+
+                    NOWRAP!
+                    (default: None; 1 when only an upper bound is given)"""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--ltx-video-max-seconds', action='store', nargs='+', default=None,
+            dest='ltx_video_max_seconds', metavar="SECONDS", type=_type_video_fps,
+            help="""Upper bounds, in seconds, for the LTX-2.5 duration head.
+                    Give the same number of values as --ltx-video-min-seconds.
+                    The value in each position is used with the lower bound in
+                    that position:
+
+                    NOWRAP!
+                    --ltx-video-min-seconds 2 4 --ltx-video-max-seconds 6 8
+
+                    That writes two clips, one from 2 to 6 seconds and one from
+                    4 to 8. A single value with the other option omitted uses
+                    that option's pipeline default, 1 for the lower bound.
+                    Several values require the same number of lower bounds.
+                    Each bound pair is then tried in turn with the other
+                    arguments. Both options apply only when --ltx-video-lengths
+                    is omitted.
+
+                    NOWRAP!
+                    (default: None; 20 when only a lower bound is given)"""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--ltx-prompt-enhancer', action='store', default=None, metavar="MODEL",
+            dest='ltx_prompt_enhancer',
+            help="""Model used to rewrite the LTX prompt before denoising, for
+                    example google/gemma-4-E2B-it. Setting this turns enhancement
+                    on. LTX-2.5 uses its own system prompt unless --ltx-system-prompt
+                    is set."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--ltx-system-prompt', action='store', default=None, metavar="TEXT",
+            dest='ltx_system_prompt',
+            help="""System prompt for --ltx-prompt-enhancer. Omit it and LTX-2.5
+                    uses its text-to-video or image-to-video default."""
         )
     )
 

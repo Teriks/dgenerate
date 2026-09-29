@@ -1,7 +1,9 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 6.0.0
 
-# One --image-seeds image is the first frame.
+# Distilled LTX-2.5, two stages in one generation.
+# --ltx-latent-upscale uses --output-size as the finished clip.
+# Stage 1 runs at half of each side, then the latent upsampler and a 3-sigma refine.
 
 \set token %HF_TOKEN%
 
@@ -14,11 +16,14 @@ Lightricks/LTX-2.5-Diffusers
 --model-type ltx
 --dtype bfloat16
 --model-sequential-offload
+--ltx-latent-upscale
 --guidance-scales 1
+--ltx-audio-guidance-scales 1
 --gen-seeds 1
---output-size 640x384
---ltx-video-lengths 2
+--output-size 768x512
+--ltx-video-lengths 5
+--ltx-video-fps 24
 --animation-format mp4
---output-path ltx-image
+--output-path ltx-two-stage
 --image-seeds https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/astronaut.jpg
 --prompts "The astronaut turns the helmet toward the camera and lifts one gloved hand in a slow wave. The camera pushes in. The suit, visor, and background stay the same."

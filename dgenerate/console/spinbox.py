@@ -116,8 +116,10 @@ class IntSpinbox(_t_entry.TextEntry):
 
         if value_if_allowed == "":  # Allow empty string for deletion
             return True
+        if value_if_allowed == "-" and self.from_ < 0:
+            return True
         try:
-            value = int(value_if_allowed)  # Validate as float
+            value = int(value_if_allowed)  # Validate as int
 
             if value < self.from_ or value > self.to:
                 self.delete(0, tk.END)
@@ -136,6 +138,8 @@ class IntSpinbox(_t_entry.TextEntry):
         display_value = self.display_value.get()
         if display_value == '':
             return True
+        if display_value == '-':
+            return False
 
         try:
             value = int(display_value)  # Validate as int

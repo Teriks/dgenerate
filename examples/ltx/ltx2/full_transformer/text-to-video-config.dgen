@@ -8,13 +8,14 @@
 
 # Replacing the transformer does not change the scheduler. The published scheduler
 # has no dynamic shifting, so it would still run the distilled 8-value sigma table
-# and ignore --inference-steps. use-dynamic-shifting=true gives the full transformer
-# a normal schedule of --inference-steps steps.
+# and ignore --inference-steps. use-dynamic-shifting=true and shift-terminal=0.1
+# give the full transformer a normal schedule of --inference-steps steps.
 
-# The full transformer is guided. Diffusers suggests audio guidance higher than video guidance.
+# The full transformer is guided. Video guidance 3, audio guidance 7, STG 1 on
+# block 28, and modality guidance 3.
 
 # Lightricks IC-LoRAs are trained on the distilled transformer, use the
-# repository's default transformer with --ic-lora.
+# repository's default transformer with --ltx-ic-lora.
 
 \set token %HF_TOKEN%
 
@@ -28,13 +29,18 @@ Lightricks/LTX-2.5-Diffusers
 --dtype bfloat16
 --model-sequential-offload
 --transformer Lightricks/LTX-2.5-Diffusers;subfolder=transformer_full
---scheduler FlowMatchEulerDiscreteScheduler;use-dynamic-shifting=true
+--scheduler FlowMatchEulerDiscreteScheduler;use-dynamic-shifting=true;shift-terminal=0.1
 --inference-steps 30
 --guidance-scales 3
---audio-guidance-scales 7
+--ltx-audio-guidance-scales 7
+--ltx-stg-scales 1
+--ltx-modality-scales 3
+--ltx-stg-blocks 28
+--guidance-rescales 0.7
+--ltx-audio-guidance-rescales 0.7
 --gen-seeds 1
 --output-size 640x384
---video-lengths 2
+--ltx-video-lengths 2
 --animation-format mp4
 --output-path ltx-full
 --prompts "A woman in a red coat walks along a dirt path through a green field, then stops and looks back at the camera. The camera stays fixed."

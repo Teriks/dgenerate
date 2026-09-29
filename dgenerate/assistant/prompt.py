@@ -186,7 +186,7 @@ PROMPT_GUIDES = {
     'ltx': ('One paragraph of three to six plain sentences in the order things happen: the main action '
             'first, then specific movements and gestures, how the people and objects look, the setting, '
             'the camera angle and movement, and the lighting and color. Describe only what fits in the '
-            'clip\'s length. --video-lengths is that length in seconds. '
+            'clip\'s length. --ltx-video-lengths is that length in seconds. '
             'LTX-2.5 (Lightricks/LTX-2.5-Diffusers) also makes audio, so end with a sentence '
             'about what is heard, like the rain, footsteps, or music, and put spoken words in single quotes. '
             'A negative prompt is optional, like "worst quality, inconsistent motion, blurry, jittery, '
@@ -218,9 +218,10 @@ with --s-cascade-decoder "stabilityai/stable-cascade;dtype=float16". Public, no 
 - DeepFloyd IF: DeepFloyd/IF-I-M-v1.0, --model-type if --variant fp16. Gated, needs HF_TOKEN.
 - Animate a still or make a clip: Lightricks/LTX-2.5-Diffusers, --model-type ltx, \
 --guidance-scales 1, --model-sequential-offload, --animation-format mp4. Gated, needs HF_TOKEN. \
---video-lengths is seconds. When the user names a duration, use that many seconds, \
-however long. When they do not, use 4. Describe the sound in the prompt. \
-Lightricks/LTX-Video is the older video-only model; use it only when the user names it.
+LTX-only options use the --ltx- prefix. --ltx-video-lengths is seconds and --ltx-video-fps is the frame rate. \
+When the user names a duration, use that many seconds, however long. When they do not, use 4. \
+--ltx-latent-upscale is the two-stage pass in that same generation; --output-size must be divisible by 64. \
+Describe the sound in the prompt. Lightricks/LTX-Video is the older video-only model; use it only when the user names it.
 - 4x upscaling with diffusion: stabilityai/stable-diffusion-x4-upscaler, --model-type upscaler-x4 --variant fp16. Public, no HF_TOKEN.
 - 2x latent upscaling: stabilityai/sd-x2-latent-upscaler, --model-type upscaler-x2. Public, no HF_TOKEN.
 - Instruction editing: timbrooks/instruct-pix2pix (--model-type pix2pix), \
@@ -353,8 +354,11 @@ def first_draft_recipes(request: str) -> str:
         lines += [
             'Animate with Lightricks/LTX-2.5-Diffusers, not Lightricks/LTX-Video, unless the user names LTX-Video.',
             '--guidance-scales 1, --model-sequential-offload, --animation-format mp4.',
-            '--video-lengths is seconds. If the user names a duration, use that many seconds. '
-            'If they do not, use 4. Do not turn a frame count such as 97 into the length unless they asked for 97 seconds.',
+            'LTX-only options use the --ltx- prefix, including --ltx-video-lengths, --ltx-video-fps, '
+            '--ltx-audio-guidance-scales, and --ltx-ic-lora. --ltx-video-lengths is seconds. '
+            'If the user names a duration, use that many seconds. '
+            'If they do not, use 4. Do not turn a frame count such as 97 into the length unless they asked for 97 seconds. '
+            'For a sharper clip, --ltx-latent-upscale in the same generation; --output-size must be divisible by 64.',
             'Image-to-video uses --image-seeds {{ quote(first(last_images)) }} and describes the sound.',
         ]
     if _GATED_HF.search(request):

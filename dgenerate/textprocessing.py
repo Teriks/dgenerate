@@ -138,6 +138,16 @@ def has_unescaped_quotes(string, double: bool = True, single: bool = True) -> bo
     return bool(re.search(rf'(?<!\\)(?:\\\\)*[{quote_pattern}]', string))
 
 
+def _remainder_is_separators_only(rest: str, separator: str | None) -> bool:
+    if not separator:
+        return False
+    if len(separator) <= 1:
+        return not rest.strip(separator)
+    while rest.startswith(separator):
+        rest = rest[len(separator):]
+    return rest.strip() == ''
+
+
 def tokenized_split(string: str,
                     separator: str | None,
                     remove_quotes: bool = False,
@@ -161,6 +171,7 @@ def tokenized_split(string: str,
     """
     Split a string by a separator and discard whitespace around tokens, avoid
     splitting within single or double-quoted strings. Empty fields may be used.
+    ``separator`` may be more than one character.
 
     Quotes can be always be escaped with a backslash to avoid the creation of a
     string type token. The backslash will remain in the output if ``escapes_in_unquoted``
@@ -337,11 +348,28 @@ def tokenized_split(string: str,
         else:
             parts[-1] = post_process_token(parts[-1].rstrip())
 
-        if remove_stray_separators and not string[cur_idx:].strip(separator):
+        if remove_stray_separators and _remainder_is_separators_only(string[cur_idx:], separator):
             state_change(_States.EOL)
         else:
             parts.append('')
             state_change(_States.AWAIT_TEXT)
+
+    # A separator may be more than one character. Single-character
+    # separators keep the original one-character comparisons.
+    sep_len = len(separator) if separator else 0
+    separator_skip = 0
+
+    def at_separator(at):
+        if not separator or at < 0 or at >= len(string):
+            return False
+        if sep_len == 1:
+            return string[at] == separator
+        return string.startswith(separator, at)
+
+    def skip_separator_tail():
+        nonlocal separator_skip
+        if sep_len > 1:
+            separator_skip = sep_len - 1
 
     # returned to None upon encountering
     # a string termination condition during normal
@@ -395,10 +423,14 @@ def tokenized_split(string: str,
         if state == _States.EOL:
             break
 
+        if separator_skip:
+            separator_skip -= 1
+            continue
+
         if state == _States.STRING:
             # inside a quoted string
 
-            if c == separator and allow_unterminated_strings:
+            if allow_unterminated_strings and at_separator(idx):
                 # unescaped seperator, need to lookahead N to
                 # resolve this the result is memoized for the context
                 # of the current string token
@@ -409,6 +441,7 @@ def tokenized_split(string: str,
                     # the seperator is not quoted by a complete
                     # string and therefore separates
                     append_text(cur_string)
+                    skip_separator_tail()
                     separate_here(idx)
                 else:
                     cur_string += c
@@ -449,11 +482,17 @@ def tokenized_split(string: str,
         elif state == _States.TEXT_ESCAPE:
             # after encountering an escape sequence start inside of a text token
 
-            if c == separator:
+            if at_separator(idx):
                 if not escapable_separator:
                     if escapes_in_unquoted:
                         append_text('\\')
+                    skip_separator_tail()
                     separate_here(idx)
+                    continue
+                if sep_len > 1:
+                    state_change(_States.TEXT_TOKEN_STRICT if strict else _States.TEXT_TOKEN)
+                    append_text(separator)
+                    skip_separator_tail()
                     continue
 
             state_change(_States.TEXT_TOKEN_STRICT if strict else _States.TEXT_TOKEN)
@@ -520,13 +559,22 @@ def tokenized_split(string: str,
         elif state == _States.SEP_REQUIRED:
             # This state is only reached in strict mode
             # where separators are required after a string token
-            if c == separator:
+            if at_separator(idx):
+                skip_separator_tail()
                 state_change(_States.AWAIT_TEXT)
                 parts.append('')
             elif not c.isspace():
                 raise syntax_error('Missing separator after string', idx)
         elif state == _States.AWAIT_TEXT:
-            if c == '\\':
+            if sep_len > 1 and at_separator(idx):
+                # Checked before whitespace so a separator that starts
+                # with a space is not discarded.
+                skip_separator_tail()
+                if not parts:
+                    parts += ['', '']
+                else:
+                    parts.append('')
+            elif c == '\\':
                 # started an escape sequence
                 state_change(_States.TEXT_ESCAPE)
                 if not escapes_in_unquoted:
@@ -556,7 +604,7 @@ def tokenized_split(string: str,
 
                 state_change(_States.TEXT_ESCAPE)
 
-                next_char_sep = (len(string) > idx + 1 and string[idx + 1] == separator)
+                next_char_sep = at_separator(idx + 1)
 
                 if escapable_separator:
                     if not next_char_sep:
@@ -592,7 +640,7 @@ def tokenized_split(string: str,
                             parts[-1] = (expanded[0], process_back_expansion_string)
                             parts += ((e, process_back_expansion_string) for e in expanded[1:])
 
-            elif c == separator:
+            elif at_separator(idx):
                 # encountered a separator
                 # the last element needs to be right stripped
                 # because spaces are allowed inside a text token
@@ -600,6 +648,7 @@ def tokenized_split(string: str,
                 # 'outside' without lookahead, or until there occurs
                 # a separator
                 back_expand = 0
+                skip_separator_tail()
                 separate_here(idx)
             else:
                 # append text token character
@@ -610,7 +659,7 @@ def tokenized_split(string: str,
                 # encountered an escape sequence in a text token
                 state_change(_States.TEXT_ESCAPE)
 
-                next_char_sep = (len(string) > idx + 1 and string[idx + 1] == separator)
+                next_char_sep = at_separator(idx + 1)
 
                 if escapable_separator:
                     if not next_char_sep:
@@ -622,13 +671,14 @@ def tokenized_split(string: str,
             elif c in QUOTE_CHARS:
                 # cannot have a string intermixed with a text token in strict mode
                 raise syntax_error('Cannot intermix quoted strings and text tokens', idx)
-            elif c == separator:
+            elif at_separator(idx):
                 # encountered a separator
                 # the last element needs to be right stripped
                 # because spaces are allowed inside a text token
                 # and there is no way to differentiate 'inside' and
                 # 'outside' without lookahead, or until there occurs
                 # a separator
+                skip_separator_tail()
                 separate_here(idx)
             else:
                 # append text token character
@@ -1718,6 +1768,54 @@ def remove_tail_comments(string) -> tuple[bool, str]:
         return False, _remove_tail_comments_unlexable(string)
 
 
+def _quote_ltx_path(path: str) -> str:
+    stripped = path.strip()
+    if ' ++ ' not in stripped or is_quoted(stripped):
+        return path
+    if stripped.startswith(('images:', 'adapter:', 'latents:')):
+        return path
+    if ';' in stripped or ',' in stripped or '|' in stripped or ' + ' in stripped:
+        return path
+    return shell_quote(path, strict=True)
+
+
+def _format_ltx_strength(value) -> str:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError('ltx_strength must be a number from 0 to 1.')
+    number = float(value)
+    if number < 0 or number > 1:
+        raise ValueError('ltx_strength must be from 0 to 1.')
+    return format(number, '.6f').rstrip('0').rstrip('.')
+
+
+def _format_ltx_index(value) -> str:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError('ltx_index must be an integer latent-frame index.')
+    return str(value)
+
+
+def _format_ltx_extra_condition(condition) -> str:
+    try:
+        image, index, *rest = condition
+    except (TypeError, ValueError) as e:
+        raise ValueError(
+            'an extra LTX condition is (image, ltx_index) or (image, ltx_index, ltx_strength).'
+        ) from e
+    if len(rest) > 1:
+        raise ValueError(
+            'an extra LTX condition is (image, ltx_index) or (image, ltx_index, ltx_strength).')
+    if image is None or not str(image).strip():
+        raise ValueError('an extra LTX condition needs an image path.')
+    image = _quote_ltx_path(str(image))
+    if index is None:
+        raise ValueError('an extra LTX condition needs ltx_index.')
+    parts = [str(image), f'ltx-index={_format_ltx_index(index)}']
+    strength = rest[0] if rest else None
+    if strength is not None:
+        parts.append(f'ltx-strength={_format_ltx_strength(strength)}')
+    return ';'.join(parts)
+
+
 def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | None = None,
                           mask_images: str | collections.abc.Iterable[str] | None = None,
                           control_images: str | collections.abc.Iterable[str] | None = None,
@@ -1728,7 +1826,10 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
                           aspect: bool = True,
                           frame_start: int | None = None,
                           frame_end: int | None = None,
-                          end_image: str | None = None) -> str:
+                          end_image: str | None = None,
+                          ltx_index: int | None = None,
+                          ltx_strength: float | None = None,
+                          ltx_extra_conditions: collections.abc.Sequence | None = None) -> str:
     """
     Formats a ``--image-seeds`` URI to its shortest possible string form.
 
@@ -1743,6 +1844,11 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
                        if ``resize`` is specified when only ``latents`` are provided.
                        if ``aspect=False`` is specified when only ``latents`` are provided.
                        if ``frame_start`` or ``frame_end`` is specified when only ``latents`` are provided.
+                       if ``ltx_index``, ``ltx_strength``, or ``ltx_extra_conditions`` are used without ``seed_images``.
+                       if ``ltx_index`` is not an integer.
+                       if ``ltx_strength`` is outside 0 to 1.
+                       if an extra LTX condition is missing its image or ``ltx_index``.
+                       if LTX condition arguments are used with ``floyd_image``.
                        if too many mask images are provided.
                        if too few mask images are provided.
                        if no arguments are provided.
@@ -1757,9 +1863,17 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
     :param aspect: Preserve aspect ratio?
     :param frame_start: Optional frame start index
     :param frame_end: Optional frame end index
-    :param end_image: Video model last frame or closing clip path (``end=``)
+    :param end_image: LTX last frame or closing clip path (``ltx-end=``). Always strength 1.
+    :param ltx_index: Latent frame of the primary path (``ltx-index=``). ``-1`` is the last latent frame.
+    :param ltx_strength: Primary-path condition weight from 0 to 1 (``ltx-strength=``).
+        This is not ``--image-seed-strengths`` and does not apply to ``ltx-end=``.
+    :param ltx_extra_conditions: Further LTX conditions, each ``(image, ltx_index)`` or
+        ``(image, ltx_index, ltx_strength)``. Joined to the primary URI with `` ++ ``.
     :return: The generated ``--image-seeds`` URI string
     """
+
+    if ltx_extra_conditions is not None:
+        ltx_extra_conditions = list(ltx_extra_conditions) or None
 
     if all(v is None for v in locals().values() if not isinstance(v, bool)):
         raise ValueError('format_image_seed_uri, no arguments provided.')
@@ -1775,19 +1889,36 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
             if mask_image_cnt != 1 and mask_image_cnt < seed_image_cnt:
                 raise ValueError('too few mask images provided.')
 
-        seed_images = 'images:' + ', '.join(seed_images)
+        seed_images = 'images:' + ', '.join(_quote_ltx_path(path) for path in seed_images)
+
+    if isinstance(seed_images, str):
+        seed_images = _quote_ltx_path(seed_images)
 
     if mask_images is not None and not isinstance(mask_images, str):
-        mask_images = ', '.join(mask_images)
+        mask_images = ', '.join(_quote_ltx_path(path) for path in mask_images)
+    elif isinstance(mask_images, str):
+        mask_images = _quote_ltx_path(mask_images)
 
     if control_images is not None and not isinstance(control_images, str):
-        control_images = ', '.join(control_images)
+        control_images = ', '.join(_quote_ltx_path(path) for path in control_images)
+    elif isinstance(control_images, str):
+        control_images = _quote_ltx_path(control_images)
 
     if latents is not None and not isinstance(latents, str):
-        latents = ', '.join(latents)
+        latents = ', '.join(_quote_ltx_path(path) for path in latents)
+    elif isinstance(latents, str):
+        latents = _quote_ltx_path(latents)
 
     if adapter_images is not None and not isinstance(adapter_images, str):
-        adapter_images = ' + '.join(adapter_images)
+        adapter_images = ' + '.join(_quote_ltx_path(path) for path in adapter_images)
+    elif isinstance(adapter_images, str):
+        adapter_images = _quote_ltx_path(adapter_images)
+
+    if isinstance(floyd_image, str):
+        floyd_image = _quote_ltx_path(floyd_image)
+
+    if isinstance(end_image, str):
+        end_image = _quote_ltx_path(end_image)
 
     components = []
 
@@ -1813,6 +1944,20 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
 
     if end_image and floyd_image:
         raise ValueError('end_image cannot be specified with floyd_image.')
+
+    if floyd_image and (ltx_index is not None or ltx_strength is not None or ltx_extra_conditions):
+        raise ValueError(
+            'ltx_index, ltx_strength, and ltx_extra_conditions cannot be specified with floyd_image.')
+
+    if (ltx_index is not None or ltx_strength is not None or ltx_extra_conditions) and not seed_images:
+        raise ValueError(
+            'ltx_index, ltx_strength, and extra LTX conditions need a seed image.')
+
+    if ltx_index is not None:
+        ltx_index = _format_ltx_index(ltx_index)
+
+    if ltx_strength is not None:
+        ltx_strength = _format_ltx_strength(ltx_strength)
 
     # Handle resize validation
     if resize is not None:
@@ -1880,6 +2025,9 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
         not latents and
         not floyd_image and
         not end_image and
+        ltx_index is None and
+        ltx_strength is None and
+        not ltx_extra_conditions and
         aspect is True and
         frame_start is None and
         frame_end is None and
@@ -1905,7 +2053,11 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
         if mask_images:
             add_component_if_valid(mask_images, "mask")
         if end_image:
-            add_component_if_valid(end_image, "end")
+            add_component_if_valid(end_image, "ltx-end")
+        if ltx_index is not None:
+            add_component_if_valid(ltx_index, "ltx-index")
+        if ltx_strength is not None:
+            add_component_if_valid(ltx_strength, "ltx-strength")
         if latents:
             add_component_if_valid(latents, "latents")
         if adapter_images:
@@ -1921,7 +2073,11 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
         if frame_end is not None:
             add_component_if_valid(frame_end, "frame-end")
 
-    return ";".join(components)
+    uri = ";".join(components)
+    if ltx_extra_conditions:
+        extras = [_format_ltx_extra_condition(condition) for condition in ltx_extra_conditions]
+        uri = " ++ ".join([uri, *extras])
+    return uri
 
 
 def format_dgenerate_config(lines: typing.Iterator[str], indentation=' ' * 4) -> typing.Iterator[str]:

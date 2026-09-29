@@ -410,10 +410,28 @@ prompt is an instruction. LTX-2.5
 and audio. Animate a still with that repo, ``--guidance-scales 1``,
 ``--model-sequential-offload``, ``--animation-format mp4``, and
 ``--image-seeds {{ quote(first(last_images)) }}``.
-``--video-lengths`` is seconds. Use the duration the user asked for,
-including a long one. When they did not name a duration, use 4.
-Describe sound in the prompt. Use ``Lightricks/LTX-Video`` only when
-the user names that older video-only model.
+Every LTX-only option is prefixed ``--ltx-``. ``--ltx-video-lengths`` is
+seconds and ``--ltx-video-fps`` is the frame rate. Use the duration the
+user asked for, including a long one. When they did not name a duration,
+use 4, or omit ``--ltx-video-lengths`` so the duration head chooses it.
+``--ltx-video-min-seconds`` and ``--ltx-video-max-seconds`` clamp that
+head. ``2 4`` with ``6 8`` is two clips, 2 to 6 and 4 to 8. Other
+``--ltx-`` value lists are tried in turn. Describe sound in the prompt.
+``--ltx-latent-upscale`` is the two-stage pass in that same generation.
+``--output-size`` is the finished clip and must be divisible by 64.
+The distilled checkpoint needs no stage LoRA. The full transformer uses
+``--transformer`` with ``subfolder=transformer_full``,
+``shift-terminal=0.1``, ``--ltx-stg-scales 1``, ``--ltx-modality-scales 3``,
+``--ltx-stg-blocks 28``, video guidance 3, and ``--ltx-audio-guidance-scales 7``.
+Its refine LoRA is ``--ltx-stage-loras``, not a second config.
+``--ltx-prompt-enhancer google/gemma-4-E2B-it`` rewrites the prompt.
+``--ltx-video-decoder diffusion`` uses the diffusion decoder.
+``--ltx-image-crfs`` recompresses a conditioning still.
+``--ltx-ic-lora`` is the IC-LoRA. The last frame is ``ltx-end=``, not ``end=``.
+``ltx-index`` is the latent frame and ``ltx-strength`` is from 0 to 1.
+Extra conditions in one clip are separated by `` ++ ``.
+Use ``Lightricks/LTX-Video`` only when the user names that
+older video-only model.
 Do not put ``last_animations`` on ``--image-seeds`` for Kontext, Fill,
 or image-to-video.
 

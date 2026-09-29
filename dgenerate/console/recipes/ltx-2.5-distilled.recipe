@@ -1,16 +1,14 @@
 title: LTX-2.5 (Distilled)
 order: 19
 
-# LTX-2.5 with the published distilled scheduler (8 sigma steps).
-# Omitting --scheduler keeps use_dynamic_shifting=false from the checkpoint.
-# --inference-steps is ignored on this path; guidance defaults to 1.
-# Leave Video Length empty to let the duration head choose.
-# First frame and last frame (end=) are optional, each can be a still or a
-# video. A video first frame is an opening clip the output continues from,
-# a video last frame is a closing clip the output leads into.
-# The IC-LoRA control clip is used with an IC-LoRA such as
-# Lightricks/LTX-2.3-22b-IC-LoRA-Union-Control, the control clip processor
-# turns it into the signal the IC-LoRA expects, for example canny edges.
+# LTX-2.5 distilled checkpoint. Omitting Scheduler keeps the published
+# 8-value sigma table. Inference Steps is ignored on that path.
+# Latent Upscale runs stage 1 at half of Output Size, then the checkpoint
+# upsampler and a 3-sigma refine. Output Size must be divisible by 64 for that.
+# No stage LoRA: this transformer is already distilled.
+# Leave Video Length empty and the duration head chooses the length.
+# Min/Max Seconds apply only when Video Length is empty.
+# First frame, last frame (ltx-end=), and the IC-LoRA control clip are optional.
 # The union control IC-LoRA needs an output size divisible by 64.
 
 \setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"
@@ -21,7 +19,7 @@ order: 19
 \setp last_frame "@file[{"label":"Last Frame / Closing Clip", "optional":true, "mode":"input", "file-types":["images-in", "videos-in"]}]"
 \setp control_clip "@file[{"label":"IC-LoRA Control Clip", "optional":true, "mode":"input", "file-types":["images-in", "videos-in"], "divider-after":true}]"
 
-\set image_seeds {{ control_clip if (control_clip and not first_frame and not last_frame) else ((first_frame + ((';end=' + last_frame) if last_frame else '') + ((';control=' + control_clip) if control_clip else '')) if (first_frame or last_frame) else '') }}
+\set image_seeds {{ control_clip if (control_clip and not first_frame and not last_frame) else ((first_frame + ((';ltx-end=' + last_frame) if last_frame else '') + ((';control=' + control_clip) if control_clip else '')) if (first_frame or last_frame) else '') }}
 
 \setp first_processor "@imageprocessor[{"label":"First Frame Processor"}]"
 \setp last_processor "@imageprocessor[{"label":"Last Frame Processor"}]"
@@ -33,17 +31,28 @@ order: 19
 @dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"], "default":"bfloat16"}]
 @karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "filter": ["FlowMatchEulerDiscreteScheduler"]}]
 @switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "default":1}]
+@switch[{"label":"VAE Slicing", "arg":"--vae-slicing"}]
 @quantizer[{"divider-after":true}]
 @submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA"}]
-@submodelbuilder[{"label":"IC-LoRA", "arg":"--ic-lora", "model": "IC-LoRA"}]
+@submodelbuilder[{"label":"IC-LoRA", "arg":"--ltx-ic-lora", "model": "IC-LoRA"}]
 @imageprocessor[{"arg":"--control-image-processors", "label":"IC-LoRA Control Clip Processor", "divider-after":true}]
 @switch[{"label":"No Aspect Correction?", "arg":"--no-aspect", "divider-after":true}]
-@int[{"label":"Inference Steps", "arg":"--inference-steps", "default":8, "min":1}]
+@int[{"label":"Inference Steps", "arg":"--inference-steps", "min":1}]
 @float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":1, "min":0}]
-@float[{"label":"Audio Guidance Scale", "arg":"--audio-guidance-scales", "default":1, "min":0, "optional":true}]
-@float[{"label":"Audio Guidance Rescale", "arg":"--audio-guidance-rescales", "min":0, "optional":true}]
-@float[{"label":"Video Length (seconds)", "arg":"--video-lengths", "default":"2", "min":0.1}]
-@float[{"label":"Video FPS", "arg":"--video-fps", "default":"24", "min":1}]
+@float[{"label":"Audio Guidance Scale", "arg":"--ltx-audio-guidance-scales", "default":1, "min":0}]
+@switch[{"label":"Latent Upscale", "arg":"--ltx-latent-upscale"}]
+@string[{"label":"Stage Sigmas", "arg":"--ltx-stage-sigmas"}]
+@float[{"label":"Noise Scale", "arg":"--ltx-noise-scales", "min":0}]
+@float[{"label":"Stage Guidance Scale", "arg":"--ltx-stage-guidance-scales", "min":0}]
+@float[{"label":"Stage Audio Guidance Scale", "arg":"--ltx-stage-audio-guidance-scales", "min":0, "divider-after":true}]
+@float[{"label":"Video Length (seconds)", "arg":"--ltx-video-lengths", "min":0.1}]
+@float[{"label":"Min Seconds", "arg":"--ltx-video-min-seconds", "min":0.1}]
+@float[{"label":"Max Seconds", "arg":"--ltx-video-max-seconds", "min":0.1}]
+@float[{"label":"Video FPS", "arg":"--ltx-video-fps", "default":"24", "min":1}]
+@dropdown[{"label":"Video Decoder", "arg":"--ltx-video-decoder", "options":["conv", "diffusion"], "optional":true}]
+@int[{"label":"Image CRF", "arg":"--ltx-image-crfs", "min":0}]
+@string[{"label":"Prompt Enhancer", "arg":"--ltx-prompt-enhancer"}]
+@string[{"label":"System Prompt", "arg":"--ltx-system-prompt", "divider-after":true}]
 @dropdown[{"label":"Animation Format", "arg":"--animation-format", "options":["mp4", "gif", "webp", "apng", "frames"], "default":"mp4", "optional":false}]
 @seeds[{"label":"Seeds"}]
 @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]

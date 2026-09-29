@@ -101,14 +101,57 @@ def reconstruct_dgenerate_opts(
     opts.append(('--guidance-scales', args.guidance_scale))
 
     if _enums.model_type_is_video(wrapper.model_type):
-        if args.video_length is not None:
-            opts.append(('--video-lengths', args.video_length))
-        if args.video_fps is not None:
-            opts.append(('--video-fps', args.video_fps))
-        if args.audio_guidance_scale is not None:
-            opts.append(('--audio-guidance-scales', args.audio_guidance_scale))
-        if args.audio_guidance_rescale is not None:
-            opts.append(('--audio-guidance-rescales', args.audio_guidance_rescale))
+        if args.ltx_video_length is not None:
+            opts.append(('--ltx-video-lengths', args.ltx_video_length))
+        if args.ltx_video_fps is not None:
+            opts.append(('--ltx-video-fps', args.ltx_video_fps))
+        if args.ltx_audio_guidance_scale is not None:
+            opts.append(('--ltx-audio-guidance-scales', args.ltx_audio_guidance_scale))
+        if args.ltx_audio_guidance_rescale is not None:
+            opts.append(('--ltx-audio-guidance-rescales', args.ltx_audio_guidance_rescale))
+        if args.ltx_stg_scale is not None:
+            opts.append(('--ltx-stg-scales', args.ltx_stg_scale))
+        if args.ltx_audio_stg_scale is not None:
+            opts.append(('--ltx-audio-stg-scales', args.ltx_audio_stg_scale))
+        if args.ltx_modality_scale is not None:
+            opts.append(('--ltx-modality-scales', args.ltx_modality_scale))
+        if args.ltx_audio_modality_scale is not None:
+            opts.append(('--ltx-audio-modality-scales', args.ltx_audio_modality_scale))
+        if args.ltx_stg_blocks:
+            opts.append(('--ltx-stg-blocks', ','.join(str(block) for block in args.ltx_stg_blocks)))
+        if args.ltx_use_cross_timestep is False:
+            opts.append(('--ltx-no-cross-timestep',))
+        if args.ltx_latent_upscale:
+            opts.append(('--ltx-latent-upscale',))
+        if args.ltx_noise_scale is not None:
+            opts.append(('--ltx-noise-scales', args.ltx_noise_scale))
+        if args.ltx_stage_guidance_scale is not None:
+            opts.append(('--ltx-stage-guidance-scales', args.ltx_stage_guidance_scale))
+        if args.ltx_stage_audio_guidance_scale is not None:
+            opts.append(('--ltx-stage-audio-guidance-scales', args.ltx_stage_audio_guidance_scale))
+        if args.ltx_stage_lora_uris:
+            opts.append(('--ltx-stage-loras', args.ltx_stage_lora_uris))
+        if args.ltx_video_decoder == 'diffusion':
+            opts.append(('--ltx-video-decoder', 'diffusion'))
+        if args.ltx_decode_timestep is not None:
+            opts.append(('--ltx-decode-timesteps', args.ltx_decode_timestep))
+        if args.ltx_decode_noise_scale is not None:
+            opts.append(('--ltx-decode-noise-scales', args.ltx_decode_noise_scale))
+        if args.ltx_image_crf is not None:
+            opts.append(('--ltx-image-crfs', args.ltx_image_crf))
+        if args.ltx_video_min_seconds is not None:
+            opts.append(('--ltx-video-min-seconds', args.ltx_video_min_seconds))
+        if args.ltx_video_max_seconds is not None:
+            opts.append(('--ltx-video-max-seconds', args.ltx_video_max_seconds))
+        if args.ltx_prompt_enhancer:
+            opts.append(('--ltx-prompt-enhancer', args.ltx_prompt_enhancer))
+        if args.ltx_system_prompt:
+            opts.append(('--ltx-system-prompt', args.ltx_system_prompt))
+        if args.ltx_stage_sigmas is not None:
+            if isinstance(args.ltx_stage_sigmas, str):
+                opts.append(('--ltx-stage-sigmas', f'expr: {args.ltx_stage_sigmas}'))
+            else:
+                opts.append(('--ltx-stage-sigmas', ','.join(map(str, args.ltx_stage_sigmas))))
 
     if args.sigmas is not None:
         if isinstance(args.sigmas, str):
@@ -272,8 +315,8 @@ def reconstruct_dgenerate_opts(
     if wrapper.lora_fuse_scale is not None:
         opts.append(('--lora-fuse-scale', wrapper.lora_fuse_scale))
 
-    if wrapper.ic_lora_uri:
-        opts.append(('--ic-lora', wrapper.ic_lora_uri))
+    if wrapper.ltx_ic_lora_uri:
+        opts.append(('--ltx-ic-lora', wrapper.ltx_ic_lora_uri))
 
     if wrapper.image_encoder_uri:
         opts.append(('--image-encoder', wrapper.image_encoder_uri))

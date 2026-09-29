@@ -16,7 +16,7 @@ INDEX_VERSION = 18
 SHIPPED_INDEX = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'index.npz')
 """The index built by ``python -m assetgen.build --target assistant-index`` and packaged with dgenerate."""
 
-# Option names like --ic-lora stay whole so exact flag mentions score in BM25.
+# Option names like --ltx-ic-lora stay whole so exact flag mentions score in BM25.
 _TOKEN = re.compile(r'--?[a-z0-9][a-z0-9-]*|[a-z0-9]+(?:[._][a-z0-9]+)*')
 
 _RRF_K = 60
