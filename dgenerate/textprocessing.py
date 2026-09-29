@@ -1812,7 +1812,7 @@ def _format_ltx_extra_condition(condition) -> str:
     parts = [str(image), f'ltx-index={_format_ltx_index(index)}']
     strength = rest[0] if rest else None
     if strength is not None:
-        parts.append(f'ltx-strength={_format_ltx_strength(strength)}')
+        parts.append(f'strength={_format_ltx_strength(strength)}')
     return ';'.join(parts)
 
 
@@ -1863,10 +1863,11 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
     :param aspect: Preserve aspect ratio?
     :param frame_start: Optional frame start index
     :param frame_end: Optional frame end index
-    :param end_image: LTX last frame or closing clip path (``ltx-end=``). Always strength 1.
+    :param end_image: LTX last frame or closing clip path (``last-frame=``). Always strength 1.
     :param ltx_index: Latent frame of the primary path (``ltx-index=``). ``-1`` is the last latent frame.
-    :param ltx_strength: Primary-path condition weight from 0 to 1 (``ltx-strength=``).
-        This is not ``--image-seed-strengths`` and does not apply to ``ltx-end=``.
+    :param ltx_strength: Image-seed ``strength`` from 0 to 1. On LTX this is the
+        condition weight. On img2img it overrides ``--image-seed-strengths`` for
+        that seed. It does not apply to ``last-frame=``.
     :param ltx_extra_conditions: Further LTX conditions, each ``(image, ltx_index)`` or
         ``(image, ltx_index, ltx_strength)``. Joined to the primary URI with `` ++ ``.
     :return: The generated ``--image-seeds`` URI string
@@ -2053,11 +2054,11 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
         if mask_images:
             add_component_if_valid(mask_images, "mask")
         if end_image:
-            add_component_if_valid(end_image, "ltx-end")
+            add_component_if_valid(end_image, "last-frame")
         if ltx_index is not None:
             add_component_if_valid(ltx_index, "ltx-index")
         if ltx_strength is not None:
-            add_component_if_valid(ltx_strength, "ltx-strength")
+            add_component_if_valid(ltx_strength, "strength")
         if latents:
             add_component_if_valid(latents, "latents")
         if adapter_images:

@@ -2800,7 +2800,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                 self.seed_image_processors.count(IMAGE_PROCESSOR_SEP) > 1:
             raise RenderLoopConfigError(
                 f'Video models accept at most two {a_namer("seed_image_processors")} chains, '
-                f'one for the opening image seed media and one for ltx-end=.')
+                f'one for the opening image seed media and one for last-frame=.')
 
     def _check_floyd_requirements(self, a_namer: typing.Callable[[str], str]):
         """Check Floyd model specific requirements."""
@@ -2990,27 +2990,29 @@ class RenderLoopConfig(_types.SetFromMixin):
         if not self.image_seeds:
             return
 
-        # Check if model type supports image seed strength
+        # Check if model type supports image seed strength.
+        # Video models accept it as the LTX condition strength when an image
+        # seed omits strength=. They do not receive the img2img default of 0.8.
         no_seed_strength = (_pipelinewrapper.model_type_is_upscaler(self.model_type) or
                             _pipelinewrapper.model_type_is_pix2pix(self.model_type) or
                             _pipelinewrapper.model_type_is_s_cascade(self.model_type) or
-                            _pipelinewrapper.model_type_is_video(self.model_type) or
                             self.model_type == _pipelinewrapper.ModelType.FLUX_FILL or
                             self.model_type == _pipelinewrapper.ModelType.FLUX_KONTEXT)
+        video_model = _pipelinewrapper.model_type_is_video(self.model_type)
 
         # Set default image seed strength if needed
         image_seed_strengths_default_set = False
         user_provided_image_seed_strengths = False
 
         if self.image_seed_strengths is None:
-            if not no_seed_strength:
+            if not no_seed_strength and not video_model:
                 image_seed_strengths_default_set = True
                 self.image_seed_strengths = [_pipelinewrapper.constants.DEFAULT_IMAGE_SEED_STRENGTH]
         else:
             if no_seed_strength:
                 raise RenderLoopConfigError(
                     f'{a_namer("image_seed_strengths")} '
-                    f'cannot be used with pix2pix, upscaler, stablecascade, flux-fill, flux-kontext, or video models.')
+                    f'cannot be used with pix2pix, upscaler, stablecascade, flux-fill, or flux-kontext.')
             user_provided_image_seed_strengths = True
 
         # Check upscaler noise level default setting
@@ -3234,14 +3236,23 @@ class RenderLoopConfig(_types.SetFromMixin):
         """Check model-specific requirements for image seeds."""
         if parsed.end_image is not None and not _pipelinewrapper.model_type_is_video(self.model_type):
             raise RenderLoopConfigError(
-                'The image seed argument "ltx-end" is only supported for --model-type ltx.')
+                'The image seed argument "last-frame" is only supported for --model-type ltx.')
 
         if not _pipelinewrapper.model_type_is_video(self.model_type) and (
-                parsed.ltx_condition_index is not None or parsed.ltx_condition_strength is not None
-                or parsed.ltx_extra_conditions):
+                parsed.ltx_condition_index is not None or parsed.ltx_extra_conditions):
             raise RenderLoopConfigError(
-                'Image seed ltx-index, ltx-strength, and " ++ " conditions are only supported '
+                'Image seed ltx-index and " ++ " conditions are only supported '
                 'for --model-type ltx.')
+
+        if parsed.ltx_condition_strength is not None and (
+                _pipelinewrapper.model_type_is_upscaler(self.model_type) or
+                _pipelinewrapper.model_type_is_pix2pix(self.model_type) or
+                _pipelinewrapper.model_type_is_s_cascade(self.model_type) or
+                self.model_type == _pipelinewrapper.ModelType.FLUX_FILL or
+                self.model_type == _pipelinewrapper.ModelType.FLUX_KONTEXT):
+            raise RenderLoopConfigError(
+                'Image seed strength is not supported for pix2pix, upscaler, '
+                'stablecascade, flux-fill, or flux-kontext.')
 
         if _pipelinewrapper.model_type_is_video(self.model_type):
             import dgenerate.pipelinewrapper.videopipelines as _videopipelines
@@ -3454,6 +3465,12 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'Cannot use the "control" argument in an image seed without '
                 f'specifying {a_namer("controlnet_uris")}.'
             )
+
+        if is_control_guidance_spec and parsed.ltx_condition_strength is not None:
+            raise RenderLoopConfigError(
+                f'Cannot use image seed strength with a control guidance image '
+                f'specification "{uri}". Strength applies to img2img and inpaint, '
+                f'and to LTX conditions.')
 
         if is_control_guidance_spec and self.image_seed_strengths:
             if image_seed_strengths_default_set:

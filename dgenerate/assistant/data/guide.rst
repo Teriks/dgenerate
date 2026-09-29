@@ -427,8 +427,9 @@ Its refine LoRA is ``--ltx-stage-loras``, not a second config.
 ``--ltx-prompt-enhancer google/gemma-4-E2B-it`` rewrites the prompt.
 ``--ltx-video-decoder diffusion`` uses the diffusion decoder.
 ``--ltx-image-crfs`` recompresses a conditioning still.
-``--ltx-ic-lora`` is the IC-LoRA. The last frame is ``ltx-end=``, not ``end=``.
-``ltx-index`` is the latent frame and ``ltx-strength`` is from 0 to 1.
+``--ltx-ic-lora`` is the IC-LoRA. The last frame is ``last-frame=``, not ``end=``.
+``ltx-index`` is the latent frame and ``strength`` is from 0 to 1.
+``--image-seed-strengths`` fills LTX groups that omit ``strength``.
 Extra conditions in one clip are separated by `` ++ ``.
 Use ``Lightricks/LTX-Video`` only when the user names that
 older video-only model.

@@ -901,6 +901,12 @@ class TestImageSeedParser(unittest.TestCase):
         self.assertEqual(parsed.images, ['img1.png', 'img2.png'])
         self.assertEqual(parsed.latents, [latent1_parsed, latent2_parsed])
 
+    def test_strength_keyword(self):
+        parsed = _mi.parse_image_seed_uri('examples/media/earth.jpg;strength=0.4')
+        self.assertEqual(parsed.ltx_condition_strength, 0.4)
+        with self.assertRaises(_mi.ImageSeedError):
+            _mi.parse_image_seed_uri('examples/media/earth.jpg;ltx-strength=0.4')
+
     @unittest.mock.patch('os.path.exists')
     def test_ltx_separator_inside_quoted_filename(self, mock_exists):
         mock_exists.return_value = True

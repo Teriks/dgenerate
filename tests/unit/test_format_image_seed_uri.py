@@ -333,15 +333,15 @@ class TestFormatImageSeedURI(unittest.TestCase):
 
     def test_seed_and_end_image(self):
         result = format_image_seed_uri(seed_images="first.png", end_image="last.png")
-        self.assertEqual(result, "first.png;ltx-end=last.png")
+        self.assertEqual(result, "first.png;last-frame=last.png")
 
     def test_end_image_only(self):
         result = format_image_seed_uri(end_image="last.gif")
-        self.assertEqual(result, ";ltx-end=last.gif")
+        self.assertEqual(result, ";last-frame=last.gif")
 
     def test_end_image_keeps_control_keyword(self):
         result = format_image_seed_uri(end_image="last.png", control_images="control.gif")
-        self.assertEqual(result, ";ltx-end=last.png;control=control.gif")
+        self.assertEqual(result, ";last-frame=last.png;control=control.gif")
 
     def test_end_image_with_seed_control_and_frames(self):
         result = format_image_seed_uri(
@@ -354,7 +354,7 @@ class TestFormatImageSeedURI(unittest.TestCase):
         )
         self.assertEqual(
             result,
-            "clip.gif;ltx-end=last.png;control=control.gif;resize=512x512;frame-start=16;frame-end=40")
+            "clip.gif;last-frame=last.png;control=control.gif;resize=512x512;frame-start=16;frame-end=40")
 
     def test_end_image_with_floyd_error(self):
         with self.assertRaises(ValueError):
@@ -363,16 +363,16 @@ class TestFormatImageSeedURI(unittest.TestCase):
     def test_ltx_index_and_strength(self):
         result = format_image_seed_uri(
             seed_images="pose.png", ltx_index=4, ltx_strength=0.5)
-        self.assertEqual(result, "pose.png;ltx-index=4;ltx-strength=0.5")
+        self.assertEqual(result, "pose.png;ltx-index=4;strength=0.5")
 
     def test_ltx_index_zero_and_last_frame(self):
         result = format_image_seed_uri(
             seed_images="first.png", ltx_index=0, ltx_strength=0, end_image="last.png")
-        self.assertEqual(result, "first.png;ltx-end=last.png;ltx-index=0;ltx-strength=0")
+        self.assertEqual(result, "first.png;last-frame=last.png;ltx-index=0;strength=0")
 
     def test_ltx_negative_index(self):
         result = format_image_seed_uri(seed_images="last.png", ltx_index=-1, ltx_strength=1)
-        self.assertEqual(result, "last.png;ltx-index=-1;ltx-strength=1")
+        self.assertEqual(result, "last.png;ltx-index=-1;strength=1")
 
     def test_ltx_extra_conditions(self):
         result = format_image_seed_uri(
@@ -385,7 +385,7 @@ class TestFormatImageSeedURI(unittest.TestCase):
             ])
         self.assertEqual(
             result,
-            "a.png;ltx-index=0;ltx-strength=0.5 ++ b.png;ltx-index=8;ltx-strength=1 ++ c.png;ltx-index=-1")
+            "a.png;ltx-index=0;strength=0.5 ++ b.png;ltx-index=8;strength=1 ++ c.png;ltx-index=-1")
 
     def test_ltx_index_requires_seed(self):
         with self.assertRaises(ValueError):

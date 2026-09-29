@@ -1,7 +1,7 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 6.0.0
 
-# ltx-end= alone is the last frame. The leading semicolon omits the first frame.
+# last-frame= alone is the last frame. The leading semicolon omits the first frame.
 
 \set token %HF_TOKEN%
 
@@ -20,5 +20,5 @@ Lightricks/LTX-2.5-Diffusers
 --ltx-video-lengths 2
 --animation-format mp4
 --output-path ltx-last-frame
---image-seeds ";ltx-end=https://raw.githubusercontent.com/CompVis/stable-diffusion/main/assets/stable-samples/img2img/sketch-mountains-input.jpg"
+--image-seeds ";last-frame=https://raw.githubusercontent.com/CompVis/stable-diffusion/main/assets/stable-samples/img2img/sketch-mountains-input.jpg"
 --prompts "A hiker walks toward the ridge, then slows until the shot rests on this pencil sketch of mountains. The camera does not move."

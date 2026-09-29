@@ -52,6 +52,11 @@ via the use of a URI syntax involving keyword arguments.
 The syntax ``--image-seeds "my-image-seed.png;control=my-control-image.png"`` can be used with ``--control-nets`` to specify
 img2img mode with a ControlNet for example, see: `Specifying ControlNets`_ for more information.
 
+``strength`` on an image seed overrides ``--image-seed-strengths`` for that seed.
+``--image-seeds "photo.png;strength=0.4"`` is img2img at strength 0.4.
+On ``--model-type ltx`` the same keyword is the condition weight, and
+``--image-seed-strengths`` fills groups that omit it.
+
 IP Adapter images may be provided via a special ``adapters: ...`` syntax and
 via the ``adapters`` URI argument discussed in: `Specifying IP Adapters`_
 

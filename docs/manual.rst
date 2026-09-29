@@ -751,7 +751,7 @@ Help Output
             
             To also condition on a first or last frame, use the "control" image seed argument:
             
-            --image-seeds "first.png;control=control.mp4;ltx-end=last.png"
+            --image-seeds "first.png;control=control.mp4;last-frame=last.png"
             
             Use --control-image-processors to turn the reference into the signal the IC-LoRA expects, for
             example "canny".
@@ -2206,9 +2206,9 @@ Help Output
             The amount of processors / processor chains must not exceed the amount of input images, or you will
             receive a syntax error message.
             
-            For --model-type ltx, one chain runs on every frame of both the opening media and the "ltx-end"
+            For --model-type ltx, one chain runs on every frame of both the opening media and the "last-frame"
             image seed argument. With two chains, the first runs on the opening media and the second on
-            "ltx-end", for example: (--seed-image-processors grayscale +) processes only the opening media.
+            "last-frame", for example: (--seed-image-processors grayscale +) processes only the opening media.
             
             To obtain more information about what image processors are available and how to use them, see:
             --image-processor-help.
@@ -2296,8 +2296,14 @@ Help Output
             Closer to 0 means high usage of the seed image (less noise convolution), 1 effectively means no
             usage (high noise convolution). Low values will produce something closer or more relevant to the
             input image, high values will give the AI more creative freedom. This value must be greater than 0
-            and less than or equal to 1. (default: [0.8])
-            ---------------------------------------------
+            and less than or equal to 1. Each value is tried in turn. An image seed keyword strength= overrides
+            this option for that seed. (default: [0.8])
+            
+            For --model-type ltx, these values are the condition strength of image-seed groups that omit
+            strength=. 1 keeps the conditioning frame. A lower value lets the generated frames leave it. Several
+            values are tried in turn. last-frame= stays at strength 1. LTX does not use the img2img default 0.8;
+            omit this option and an omitted strength= stays at 1.
+            -----------------------------------------------------
       -uns, --upscaler-noise-levels INTEGER [INTEGER ...]
             One or more upscaler noise level values to try when using the super resolution upscaler --model-type
             upscaler-x4 or ifs. Specifying this option for --model-type upscaler-x2 will produce an error
@@ -3594,6 +3600,11 @@ via the use of a URI syntax involving keyword arguments.
 The syntax ``--image-seeds "my-image-seed.png;control=my-control-image.png"`` can be used with ``--control-nets`` to specify
 img2img mode with a ControlNet for example, see: `Specifying ControlNets`_ for more information.
 
+``strength`` on an image seed overrides ``--image-seed-strengths`` for that seed.
+``--image-seeds "photo.png;strength=0.4"`` is img2img at strength 0.4.
+On ``--model-type ltx`` the same keyword is the condition weight, and
+``--image-seed-strengths`` fills groups that omit it.
+
 IP Adapter images may be provided via a special ``adapters: ...`` syntax and
 via the ``adapters`` URI argument discussed in: `Specifying IP Adapters`_
 
@@ -4047,8 +4058,8 @@ Repository: ``Lightricks/LTX-2.5-Diffusers``.
 
 * No image seed is text to video. Omitting ``--ltx-video-lengths`` lets the model's duration head choose the length.
 * One image is the first frame.
-* ``ltx-end=`` is the last frame. A first frame and ``ltx-end=`` can be used together.
-* ``ltx-index`` and ``ltx-strength`` place a condition on a chosen latent frame.
+* ``last-frame=`` is the last frame. A first frame and ``last-frame=`` can be used together.
+* ``ltx-index`` and ``strength`` place a condition on a chosen latent frame.
   See `Condition placement`_.
 * Either slot can be a video or animated image instead of a still. See `Video conditioning`_.
 * With ``--ltx-ic-lora``, a plain path is instead the reference clip for an IC-LoRA, such as canny, depth, or pose control. See `IC-LoRA control`_.
@@ -4068,13 +4079,13 @@ has no audio. Its transformer accepts a city96 ``.gguf`` file. See ``examples/lt
 Video conditioning
 ------------------
 
-The main ``--image-seeds`` path and ``ltx-end=`` each accept a video or an animated image
+The main ``--image-seeds`` path and ``last-frame=`` each accept a video or an animated image
 as well as a still. Both LTX-2.5 and the earlier LTX-Video accept this. A file with a
 single frame is treated as a still.
 
 * A video in the main path is the opening clip. The generated clip continues from it.
-* A video in ``ltx-end=`` is the closing clip. The generated clip leads into it.
-* A still and a video can be mixed, for example a video first and a still ``ltx-end=``.
+* A video in ``last-frame=`` is the closing clip. The generated clip leads into it.
+* A still and a video can be mixed, for example a video first and a still ``last-frame=``.
 
 .. code-block:: bash
 
@@ -4087,18 +4098,18 @@ single frame is treated as a still.
     # lead into an existing clip
     dgenerate Lightricks/LTX-2.5-Diffusers --model-type ltx \
     --ltx-video-fps 25 --ltx-video-lengths 4 --output-size 512x512 \
-    --image-seeds ";ltx-end=input.gif" \
+    --image-seeds ";last-frame=input.gif" \
     --prompts "A singer walks in and starts to sway at the microphone."
 
     # frames 16 through 40 of a clip, then a still last frame
     dgenerate Lightricks/LTX-2.5-Diffusers --model-type ltx \
     --ltx-video-fps 25 --ltx-video-lengths 4 --output-size 512x512 \
-    --image-seeds "input.gif;frame-start=16;frame-end=40;ltx-end=last.png" \
+    --image-seeds "input.gif;frame-start=16;frame-end=40;last-frame=last.png" \
     --prompts "The scene fades into a pencil sketch of mountains."
 
 ``--frame-start`` and ``--frame-end``, or ``frame-start=`` and ``frame-end=`` in the seed,
 choose which frames of the video are used. The slice applies to both the main path and
-``ltx-end=``. A slice in the seed overrides the global options, as described under
+``last-frame=``. A slice in the seed overrides the global options, as described under
 `Animation Slicing`_.
 
 Frame counts:
@@ -4111,7 +4122,7 @@ Frame counts:
 * When there is an opening and a closing condition, the opening clip is shortened so
   the two do not overlap.
 * A closing video needs a fixed output length. LTX-2.5 picks its own length when
-  ``--ltx-video-lengths`` is omitted, so set ``--ltx-video-lengths`` when ``ltx-end=`` is a video.
+  ``--ltx-video-lengths`` is omitted, so set ``--ltx-video-lengths`` when ``last-frame=`` is a video.
   An opening video works either way.
 
 Frames are used as they are and are not resampled. When the file's frame rate differs
@@ -4120,20 +4131,20 @@ slower. Set ``--ltx-video-fps`` to the file's rate to keep the speed.
 
 ``resize=``, ``aspect=``, and ``align=`` in the seed apply to every conditioning frame.
 
-``--seed-image-processors`` runs on every frame of the main path and of ``ltx-end=``. Give it two
+``--seed-image-processors`` runs on every frame of the main path and of ``last-frame=``. Give it two
 chains separated by ``+`` to process them differently. The first chain runs on the main path and
-the second on ``ltx-end=``. A leading or trailing ``+`` leaves one side unprocessed.
+the second on ``last-frame=``. A leading or trailing ``+`` leaves one side unprocessed.
 
 .. code-block:: bash
 
     # grayscale first frame, original last frame
     dgenerate Lightricks/LTX-2.5-Diffusers --model-type ltx \
     --ltx-video-lengths 3 --output-size 512x512 \
-    --image-seeds "painting.png;ltx-end=painting.png" \
+    --image-seeds "painting.png;last-frame=painting.png" \
     --seed-image-processors grayscale + \
     --prompts "A black and white painting slowly fills with warm color."
 
-    # process only ltx-end=
+    # process only last-frame=
     --seed-image-processors + "canny;lower=50;upper=100"
 
 Every condition is applied at full strength. The model keeps the conditioning frames
@@ -4190,7 +4201,7 @@ See the examples in ``examples/ltx/ltx2/ic_lora``. ``canny-anime-lora-config.dge
 In the Console UI, the LTX-2.5 recipes under ``Edit -> Insert Code -> Recipe`` have an IC-LoRA
 field, an IC-LoRA control clip, and a control clip processor. ``Edit -> Insert URI -> Sub Model URI``
 builds an ``--ltx-ic-lora`` URI, and ``Edit -> Insert URI -> Image Seed URI`` accepts a last frame or
-closing clip for ``ltx-end=``. The LTX recipes also take a separate processor for the first and last frame.
+closing clip for ``last-frame=``. The LTX recipes also take a separate processor for the first and last frame.
 
 Guidance, steps, and sigmas
 ---------------------------
@@ -4389,10 +4400,12 @@ is then tried in turn with the other arguments. See
 Condition placement
 ~~~~~~~~~~~~~~~~~~~
 
-``ltx-index`` and ``ltx-strength`` are image-seed keywords. They exist only for
-``--model-type ltx``. Other models reject them. A path with neither keyword is
-still the first frame at full strength, which is the same as ``ltx-index=0`` and
-``ltx-strength=1``.
+``ltx-index`` is an LTX image-seed keyword. ``strength`` is the weight of that
+condition, from 0 to 1, and the same keyword sets img2img strength on image
+models that accept it. A path with neither keyword is still the first frame at
+full strength, which is the same as ``ltx-index=0`` and ``strength=1``.
+``--image-seed-strengths`` fills any LTX group that omits ``strength``. Several
+values are tried in turn. ``last-frame=`` stays at strength 1.
 
 ``ltx-index``
 ^^^^^^^^^^^^^
@@ -4408,7 +4421,7 @@ a third of a second.
 A still placed on a latent frame is held across the output frames that latent
 frame covers, so the picture stays still there instead of moving through it.
 ``ltx-index=0`` holds the opening. ``ltx-index=-1`` holds the last latent frame,
-the same slot ``ltx-end=`` uses. ``ltx-index=4`` on a long clip is the latent frame
+the same slot ``last-frame=`` uses. ``ltx-index=4`` on a long clip is the latent frame
 that begins at output frame 33 (``1 + 4*8``).
 
 A video or animated image placed at an index starts at that latent frame. Its
@@ -4416,30 +4429,29 @@ frame count is still cut to ``8k+1`` before it is placed, using the same rule as
 an opening clip. The clip is trimmed so it fits in the frames that remain after
 that index.
 
-``ltx-strength``
-^^^^^^^^^^^^^^^^
+``strength``
+^^^^^^^^^^^^
 
-``ltx-strength`` is how strongly that latent frame must match the file, from 0
+``strength`` is how strongly that latent frame must match the file, from 0
 to 1. ``1`` keeps the conditioning frames. A lower value lets the generated
-frames leave them. Omitting it is ``1``.
+frames leave them. Omitting it is ``1``, unless ``--image-seed-strengths``
+is set. On an img2img seed the same keyword overrides ``--image-seed-strengths``
+for that seed.
 
-This is the strength stored on the LTX condition. It is not
-``--image-seed-strengths``. LTX does not use ``--image-seed-strengths``.
+``last-frame=``
+^^^^^^^^^^^^^^^
 
-``ltx-end=``
-^^^^^^^^
-
-``ltx-end=`` is the last frame at strength 1. It does not take ``ltx-strength``.
-To hold the end more loosely, drop ``ltx-end=`` and place that file with
+``last-frame=`` is the last frame at strength 1. It does not take ``strength``.
+To hold the end more loosely, drop ``last-frame=`` and place that file with
 ``ltx-index=-1``:
 
 .. code-block:: bash
 
     # last frame, full strength
-    --image-seeds "start.jpg;ltx-end=end.jpg"
+    --image-seeds "start.jpg;last-frame=end.jpg"
 
     # last frame, partial strength
-    --image-seeds "start.jpg ++ end.jpg;ltx-index=-1;ltx-strength=0.4"
+    --image-seeds "start.jpg ++ end.jpg;ltx-index=-1;strength=0.4"
 
 Several conditions
 ^^^^^^^^^^^^^^^^^^
@@ -4447,12 +4459,12 @@ Several conditions
 One ``--image-seeds`` value can carry several conditions. Separate them with
 `` ++ `` (a space, two plus signs, and a space). The first group is the primary
 path and may omit ``ltx-index``. Each later group is one file and must include
-``ltx-index``. ``ltx-strength`` is optional on every group. ``ltx-end=``, ``control=``,
+``ltx-index``. ``strength`` is optional on every group. ``last-frame=``, ``control=``,
 masks, and latents belong on the primary group only.
 
 .. code-block:: bash
 
-    --image-seeds "open.mp4;ltx-index=0 ++ mid.jpg;ltx-index=4;ltx-strength=0.6 ++ close.jpg;ltx-index=-1"
+    --image-seeds "open.mp4;ltx-index=0 ++ mid.jpg;ltx-index=4;strength=0.6 ++ close.jpg;ltx-index=-1"
 
 ``open.mp4`` starts at the first latent frame. ``mid.jpg`` is held at latent
 frame 4, loosely. ``close.jpg`` is the last latent frame at full strength.
