@@ -64,6 +64,35 @@ DGENERATE_EXE = \
         os.path.basename(os.path.realpath(sys.argv[0])))[0]
 
 
+_PREVIEW_OUTPUT_FILE = re.compile(
+    r'(?:^|\n)'
+    r'(?:Wrote Image File: "(.*?)"'
+    r'|Wrote Animation File: "(.*?)"'
+    r'|Wrote Frame: "(.*?)"'
+    r'|image-process: Wrote Image "(.*?)"'
+    r'|image-process: Wrote Frame "(.*?)"'
+    r'|image-process: Wrote File "(.*?)"'
+    r'|\\image_process: Wrote Image "(.*?)"'
+    r'|\\image_process: Wrote Frame "(.*?)"'
+    r'|\\image_process: Wrote File "(.*?)")'
+)
+
+
+def _preview_path_from_output(text: str) -> str | None:
+    """
+    Last media path mentioned in a console output chunk.
+
+    ``\\image_process`` logs the finished animation as ``Wrote File``.
+    Frame lines in the same chunk are earlier, so the animation wins.
+    """
+    found = None
+    for match in _PREVIEW_OUTPUT_FILE.finditer(text):
+        path = ''.join(filter(None, match.groups()))
+        if path:
+            found = path
+    return found
+
+
 class DgenerateConsole(tk.Tk):
 
     def __init__(self):
@@ -943,18 +972,8 @@ class DgenerateConsole(tk.Tk):
         self._output_text.text.config(state=tk.DISABLED)
 
     def _check_text_for_latest_image(self, text):
-        match = re.match(
-            r'Wrote Image File: "(.*?)"'
-            r'|Wrote Animation File: "(.*?)"'
-            r'|Wrote Frame: "(.*?)"'
-            r'|image-process: Wrote Image "(.*?)"'
-            r'|image-process: Wrote Frame "(.*?)"'
-            r'|image-process: Wrote File "(.*?)"'
-            r'|\\image_process: Wrote Image "(.*?)"'
-            r'|\\image_process: Wrote Frame "(.*?)"',
-            text)
-        if match is not None:
-            mentioned_path = ''.join(filter(None, match.groups()))
+        mentioned_path = _preview_path_from_output(text)
+        if mentioned_path:
             if os.path.isabs(mentioned_path):
                 self._image_preview_load_image(mentioned_path)
             else:

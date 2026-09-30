@@ -3146,6 +3146,7 @@ def iterate_image_seed(uri: str | ImageSeedParseResult,
                 image_seed.frame_duration = reader.frame_duration
                 image_seed.frame_index = reader.frame_index
                 image_seed.total_frames = reader.total_frames if is_animation else None
+                image_seed.source_frame_start = reader.frame_start
 
             image_seed.uri = parse_result.uri
             yield image_seed
@@ -3302,6 +3303,7 @@ def iterate_control_image(uri: str | ImageSeedParseResult,
                 image_seed.frame_duration = reader.frame_duration
                 image_seed.frame_index = reader.frame_index
                 image_seed.total_frames = reader.total_frames if is_animation else None
+                image_seed.source_frame_start = reader.frame_start
 
             image_seed.uri = parse_result.uri
             yield image_seed
