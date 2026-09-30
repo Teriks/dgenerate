@@ -4,6 +4,8 @@ Help Output
 
 @COMMAND_OUTPUT[dgenerate --no-stdin --help]
 
+@INCLUDE[sections/install/network_installer.template.rst]
+
 @INCLUDE[sections/install/windows_install.template.rst]
 
 @INCLUDE[sections/install/linux_install.template.rst]

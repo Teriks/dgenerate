@@ -2,8 +2,10 @@ Linux or WSL Install
 ====================
 
 You can install using the Linux installer provided with each release on the
-`Releases Page <https://github.com/Teriks/dgenerate/releases>`_, or you can manually
-install with pipx, (or pip if you want) as described below.
+`Releases Page <https://github.com/Teriks/dgenerate/releases>`_. Running
+``dgenerate-network-installer`` with no arguments opens the window. The
+command line is described under :ref:`network-installer`. You can also install
+manually with pipx, (or pip if you want) as described below.
 
 First update your system and install build-essential
 
@@ -14,7 +16,7 @@ First update your system and install build-essential
     sudo apt update && sudo apt upgrade
     sudo apt install build-essential
 
-Install CUDA Toolkit 12.*: https://developer.nvidia.com/cuda-downloads
+Install CUDA Toolkit 12.6 or newer, or CUDA 13: https://developer.nvidia.com/cuda-downloads
 
 I recommend using the runfile option.
 
@@ -47,17 +49,17 @@ When done editing ``~/.bashrc`` do:
     source ~/.bashrc
 
 
-Install Python >=3.11,<3.13 (Debian / Ubuntu) and pipx
-------------------------------------------------------
+Install Python >=3.11, except 3.14.1, and older than 3.15 (Debian / Ubuntu) and pipx
+-------------------------------------------------------------------------------------
 
 .. code-block:: bash
 
     #!/usr/bin/env bash
 
-    sudo apt install python3 python3-pip python3-wheel python3-venv
+    sudo apt install python3 python3-pip python3-wheel python3-venv pipx
 
     # if you want to use the Tk based GUI, install Tk
-    sudo apt install python-tk
+    sudo apt install python3-tk
 
     pipx ensurepath
 
@@ -113,7 +115,8 @@ Install dgenerate
     pipx install "dgenerate[xllamacpp]" \
     --pip-args "--index-url https://xorbitsai.github.io/xllamacpp/whl/cu128 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple"
 
-    # Older NVIDIA or Intel
+    # Older NVIDIA (Maxwell, Pascal, Volta, or a driver before CUDA 12.8).
+    # Intel Arc uses the XPU index. AMD on Linux uses the ROCm section.
 
     pipx install "dgenerate[xllamacpp]" \
     --pip-args "--index-url https://xorbitsai.github.io/xllamacpp/whl/vulkan --extra-index-url https://download.pytorch.org/whl/cu126/ --extra-index-url https://pypi.org/simple"
@@ -143,7 +146,8 @@ Install dgenerate
 
     pip3 install "dgenerate[xllamacpp]==@VERSION" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu128 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple
 
-    # Older NVIDIA or Intel
+    # Older NVIDIA (Maxwell, Pascal, Volta, or a driver before CUDA 12.8).
+    # Intel Arc uses the XPU index. AMD on Linux uses the ROCm section.
 
     pip3 install "dgenerate[xllamacpp]==@VERSION" --index-url https://xorbitsai.github.io/xllamacpp/whl/vulkan --extra-index-url https://download.pytorch.org/whl/cu126/ --extra-index-url https://pypi.org/simple
 
@@ -187,7 +191,8 @@ virtual environment you can do so like this:
 
     pip3 install --editable ".[dev,xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu128 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple
 
-    # Older NVIDIA or Intel
+    # Older NVIDIA (Maxwell, Pascal, Volta, or a driver before CUDA 12.8).
+    # Intel Arc uses the XPU index. AMD on Linux uses the ROCm section.
 
     pip3 install --editable ".[dev,xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/vulkan --extra-index-url https://download.pytorch.org/whl/cu126/ --extra-index-url https://pypi.org/simple
 
@@ -213,8 +218,16 @@ Run ``dgenerate`` to generate images:
 Linux with ROCm (AMD Cards)
 ===========================
 
-On Linux you can use the ROCm torch backend with AMD cards. This is only supported on Linux, as
-torch does not distribute this backend for Windows.
+On Linux you can use the ROCm torch backend with AMD cards. pytorch.org publishes
+those wheels for Linux. ROCm 7.2 uses
+``--extra-index-url https://download.pytorch.org/whl/rocm7.2/``. ROCm 7.14 uses
+``--extra-index-url https://download.pytorch.org/whl/rocm7.14/``. The commands
+below use 7.2.
+
+Windows AMD does not use those indexes. Torch comes from
+``--extra-index-url https://repo.amd.com/rocm/whl-multi-arch/``.
+xllamacpp uses ``--index-url https://xorbitsai.github.io/xllamacpp/whl/vulkan``.
+The network installer selects those indexes on its own.
 
 ROCm has been minimally verified to work with dgenerate using a rented
 MI300X AMD GPU instance / space, and has not been tested extensively.
@@ -223,10 +236,10 @@ When specifying any ``--device`` value use ``cuda``, ``cuda:1``, etc. as you wou
 
 You need to first install ROCm support, follow: https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/quick-start.html
 
-Then use: ``--extra-index-url https://download.pytorch.org/whl/rocm7.2/`` when installing via ``pip`` or ``pipx``.
+Then use the ROCm index above when installing via ``pip`` or ``pipx``.
 
-Install Python >=3.11,<3.13 (Debian / Ubuntu) and pipx
-------------------------------------------------------
+Install Python >=3.11, except 3.14.1, and older than 3.15 (Debian / Ubuntu) and pipx
+-------------------------------------------------------------------------------------
 
 .. code-block:: bash
 
@@ -235,7 +248,7 @@ Install Python >=3.11,<3.13 (Debian / Ubuntu) and pipx
     sudo apt install python3 python3-pip pipx python3-venv python3-wheel
 
     # if you want to use the Tk based GUI, install Tk
-    sudo apt install python-tk
+    sudo apt install python3-tk
 
     pipx ensurepath
 
@@ -292,12 +305,12 @@ Install dgenerate
     --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm7.2/"
 
 
-    # you can attempt to install the pre-release bitsandbytes
-    # multiplatform version for Linux + ROCm, though, I am not sure if it will
-    # function correctly, this will allow use of the --quantizer option
-    # and quantizer URI arguments with bitsandbytes.
+    # bitsandbytes is the bitsandbytes extra. It installs the version dgenerate
+    # pins, which is what --quantizer bnb uses. sdnq is installed with
+    # dgenerate and does not need this extra.
 
-    pipx inject dgenerate https://github.com/bitsandbytes-foundation/bitsandbytes/releases/download/continuous-release_multi-backend-refactor/bitsandbytes-0.45.3.dev272-py3-none-manylinux_2_24_x86_64.whl
+    pipx install "dgenerate[bitsandbytes]" \
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm7.2/"
 
 
     # You can install without pipx into your own environment like so
@@ -313,7 +326,5 @@ Install dgenerate
     pip3 install "dgenerate[xllamacpp]==@VERSION" --index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-7.2.4 --extra-index-url https://download.pytorch.org/whl/rocm7.2/ --extra-index-url https://pypi.org/simple
 
 
-    # you can attempt to install the pre-release bitsandbytes multiplatform version like so:
-
-    pip3 install https://github.com/bitsandbytes-foundation/bitsandbytes/releases/download/continuous-release_multi-backend-refactor/bitsandbytes-0.45.3.dev272-py3-none-manylinux_2_24_x86_64.whl
+    pip3 install "dgenerate[bitsandbytes]==@VERSION" --extra-index-url https://download.pytorch.org/whl/rocm7.2/
 

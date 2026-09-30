@@ -1,4 +1,7 @@
 .. _Releases_Page: https://github.com/Teriks/dgenerate/releases
+.. _examples/ltx/ltx2: https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/ltx/ltx2
+.. _examples/ltx/ltx_video/video-extension-config.dgen: https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx/ltx_video/video-extension-config.dgen
+.. _examples/ltx/ltx_video/lora-config.dgen: https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx/ltx_video/lora-config.dgen
 .. _vermeer_canny_edged.png: https://raw.githubusercontent.com/Teriks/dgenerate/version_6.0.0/examples/media/vermeer_canny_edged.png
 .. _Phi-3_Mini_Abliterated_Q4_GGUF_by_failspy: https://huggingface.co/failspy/Phi-3-mini-128k-instruct-abliterated-v3-GGUF
 .. _Stable_Diffusion_Web_UI: https://github.com/AUTOMATIC1111/stable-diffusion-webui
@@ -2653,18 +2656,63 @@ Help Output
             result partially noisy for further processing by another model.
             ---------------------------------------------------------------
 
+.. _network-installer:
+
+Network Installer
+=================
+
+Each release on the `Releases Page <Releases_Page_>`_
+includes a compiled installer. The Windows file is ``dgenerate-network-installer.exe``.
+The Linux and macOS file is ``dgenerate-network-installer``. Running the binary
+with no arguments opens the installer window.
+
+The same binary installs and uninstalls from a terminal. ``--silent`` is required
+for ``--version``, ``--branch``, and ``--extras``. A silent install overwrites an
+existing installation. ``--version`` and ``--branch`` cannot be used together.
+``--uninstall`` removes the installation and does not open a window.
+
+``--version`` is a release tag from that page, including the leading ``v``.
+``--branch`` is a branch name. With neither one, ``--silent`` installs the
+``master`` branch. Omit ``--extras`` and the installer chooses extras for the
+detected GPU, including ``console_ui_vulkan`` when the downloaded source
+defines that extra.
+
+.. code-block::
+
+    # Windows
+    dgenerate-network-installer.exe --silent --version v5.0.0
+
+    # Linux or macOS. Mark the download executable once.
+    chmod +x dgenerate-network-installer
+    ./dgenerate-network-installer --silent --version v5.0.0
+
+    # a development branch
+    dgenerate-network-installer.exe --silent --branch version_6.0.0
+
+    # name the extras instead of accepting the GPU defaults
+    dgenerate-network-installer.exe --silent --extras bitsandbytes xllamacpp console_ui_vulkan
+
+    # remove the installation
+    dgenerate-network-installer.exe --uninstall
+
+On Linux and macOS, use ``./dgenerate-network-installer`` in place of
+``dgenerate-network-installer.exe`` for the branch, extras, and uninstall
+commands above.
+
 Windows Install
 ===============
 
 You can install using the Windows installer provided with each release on the
-`Releases Page <Releases_Page_>`_, or you can manually
-install with pipx, (or pip if you want) as described below.
+`Releases Page <Releases_Page_>`_. Running
+``dgenerate-network-installer.exe`` with no arguments opens the window. The
+command line is described under :ref:`network-installer`. You can also install
+manually with pipx, (or pip if you want) as described below.
 
 
 Manual Install
 --------------
 
-Install Visual Studios build tools, make sure "Desktop development with C++" is selected, unselect anything you do not need.
+Install Visual Studio build tools, make sure "Desktop development with C++" is selected, unselect anything you do not need.
 
 https://aka.ms/vs/17/release/vs_BuildTools.exe
 
@@ -2676,7 +2724,8 @@ Install rust compiler using rustup-init.exe (x64), use the default install optio
 
 https://www.rust-lang.org/tools/install
 
-Install Python:
+Install Python. dgenerate requires Python >=3.11, except 3.14.1, and older than 3.15.
+This installer is 3.12.9, which is inside that range:
 
 https://www.python.org/ftp/python/3.12.9/python-3.12.9-amd64.exe
 
@@ -2747,7 +2796,9 @@ Install dgenerate:
     pipx install "dgenerate[xllamacpp]" ^
     --pip-args "--index-url https://xorbitsai.github.io/xllamacpp/whl/cu128 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple"
 
-    # Older NVIDIA, AMD, or Intel Arc
+    # Older NVIDIA (Maxwell, Pascal, Volta, or a driver before CUDA 12.8).
+    # Windows AMD torch uses https://repo.amd.com/rocm/whl-multi-arch/
+    # with the Vulkan xllamacpp index. Intel Arc uses the XPU index.
 
     pipx install "dgenerate[xllamacpp]" ^
     --pip-args "--index-url https://xorbitsai.github.io/xllamacpp/whl/vulkan --extra-index-url https://download.pytorch.org/whl/cu126/ --extra-index-url https://pypi.org/simple"
@@ -2782,7 +2833,9 @@ Install dgenerate:
 
     pip install "dgenerate[xllamacpp]==6.0.0" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu128 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple
 
-    # Older NVIDIA, AMD, or Intel Arc
+    # Older NVIDIA (Maxwell, Pascal, Volta, or a driver before CUDA 12.8).
+    # Windows AMD torch uses https://repo.amd.com/rocm/whl-multi-arch/
+    # with the Vulkan xllamacpp index. Intel Arc uses the XPU index.
 
     pip install "dgenerate[xllamacpp]==6.0.0" --index-url https://xorbitsai.github.io/xllamacpp/whl/vulkan --extra-index-url https://download.pytorch.org/whl/cu126/ --extra-index-url https://pypi.org/simple
 
@@ -2835,7 +2888,9 @@ a cloned repository like this:
 
     pip install --editable ".[dev,xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu128 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple
 
-    # Older NVIDIA, AMD, or Intel Arc
+    # Older NVIDIA (Maxwell, Pascal, Volta, or a driver before CUDA 12.8).
+    # Windows AMD torch uses https://repo.amd.com/rocm/whl-multi-arch/
+    # with the Vulkan xllamacpp index. Intel Arc uses the XPU index.
 
     pip install --editable ".[dev,xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/vulkan --extra-index-url https://download.pytorch.org/whl/cu126/ --extra-index-url https://pypi.org/simple
 
@@ -2859,8 +2914,10 @@ Linux or WSL Install
 ====================
 
 You can install using the Linux installer provided with each release on the
-`Releases Page <Releases_Page_>`_, or you can manually
-install with pipx, (or pip if you want) as described below.
+`Releases Page <Releases_Page_>`_. Running
+``dgenerate-network-installer`` with no arguments opens the window. The
+command line is described under :ref:`network-installer`. You can also install
+manually with pipx, (or pip if you want) as described below.
 
 First update your system and install build-essential
 
@@ -2871,7 +2928,7 @@ First update your system and install build-essential
     sudo apt update && sudo apt upgrade
     sudo apt install build-essential
 
-Install CUDA Toolkit 12.*: https://developer.nvidia.com/cuda-downloads
+Install CUDA Toolkit 12.6 or newer, or CUDA 13: https://developer.nvidia.com/cuda-downloads
 
 I recommend using the runfile option.
 
@@ -2904,17 +2961,17 @@ When done editing ``~/.bashrc`` do:
     source ~/.bashrc
 
 
-Install Python >=3.11,<3.13 (Debian / Ubuntu) and pipx
-------------------------------------------------------
+Install Python >=3.11, except 3.14.1, and older than 3.15 (Debian / Ubuntu) and pipx
+-------------------------------------------------------------------------------------
 
 .. code-block:: bash
 
     #!/usr/bin/env bash
 
-    sudo apt install python3 python3-pip python3-wheel python3-venv
+    sudo apt install python3 python3-pip python3-wheel python3-venv pipx
 
     # if you want to use the Tk based GUI, install Tk
-    sudo apt install python-tk
+    sudo apt install python3-tk
 
     pipx ensurepath
 
@@ -2970,7 +3027,8 @@ Install dgenerate
     pipx install "dgenerate[xllamacpp]" \
     --pip-args "--index-url https://xorbitsai.github.io/xllamacpp/whl/cu128 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple"
 
-    # Older NVIDIA or Intel
+    # Older NVIDIA (Maxwell, Pascal, Volta, or a driver before CUDA 12.8).
+    # Intel Arc uses the XPU index. AMD on Linux uses the ROCm section.
 
     pipx install "dgenerate[xllamacpp]" \
     --pip-args "--index-url https://xorbitsai.github.io/xllamacpp/whl/vulkan --extra-index-url https://download.pytorch.org/whl/cu126/ --extra-index-url https://pypi.org/simple"
@@ -3000,7 +3058,8 @@ Install dgenerate
 
     pip3 install "dgenerate[xllamacpp]==6.0.0" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu128 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple
 
-    # Older NVIDIA or Intel
+    # Older NVIDIA (Maxwell, Pascal, Volta, or a driver before CUDA 12.8).
+    # Intel Arc uses the XPU index. AMD on Linux uses the ROCm section.
 
     pip3 install "dgenerate[xllamacpp]==6.0.0" --index-url https://xorbitsai.github.io/xllamacpp/whl/vulkan --extra-index-url https://download.pytorch.org/whl/cu126/ --extra-index-url https://pypi.org/simple
 
@@ -3044,7 +3103,8 @@ virtual environment you can do so like this:
 
     pip3 install --editable ".[dev,xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu128 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple
 
-    # Older NVIDIA or Intel
+    # Older NVIDIA (Maxwell, Pascal, Volta, or a driver before CUDA 12.8).
+    # Intel Arc uses the XPU index. AMD on Linux uses the ROCm section.
 
     pip3 install --editable ".[dev,xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/vulkan --extra-index-url https://download.pytorch.org/whl/cu126/ --extra-index-url https://pypi.org/simple
 
@@ -3070,8 +3130,16 @@ Run ``dgenerate`` to generate images:
 Linux with ROCm (AMD Cards)
 ===========================
 
-On Linux you can use the ROCm torch backend with AMD cards. This is only supported on Linux, as
-torch does not distribute this backend for Windows.
+On Linux you can use the ROCm torch backend with AMD cards. pytorch.org publishes
+those wheels for Linux. ROCm 7.2 uses
+``--extra-index-url https://download.pytorch.org/whl/rocm7.2/``. ROCm 7.14 uses
+``--extra-index-url https://download.pytorch.org/whl/rocm7.14/``. The commands
+below use 7.2.
+
+Windows AMD does not use those indexes. Torch comes from
+``--extra-index-url https://repo.amd.com/rocm/whl-multi-arch/``.
+xllamacpp uses ``--index-url https://xorbitsai.github.io/xllamacpp/whl/vulkan``.
+The network installer selects those indexes on its own.
 
 ROCm has been minimally verified to work with dgenerate using a rented
 MI300X AMD GPU instance / space, and has not been tested extensively.
@@ -3080,10 +3148,10 @@ When specifying any ``--device`` value use ``cuda``, ``cuda:1``, etc. as you wou
 
 You need to first install ROCm support, follow: https://rocm.docs.amd.com/projects/install-on-linux/en/latest/install/quick-start.html
 
-Then use: ``--extra-index-url https://download.pytorch.org/whl/rocm7.2/`` when installing via ``pip`` or ``pipx``.
+Then use the ROCm index above when installing via ``pip`` or ``pipx``.
 
-Install Python >=3.11,<3.13 (Debian / Ubuntu) and pipx
-------------------------------------------------------
+Install Python >=3.11, except 3.14.1, and older than 3.15 (Debian / Ubuntu) and pipx
+-------------------------------------------------------------------------------------
 
 .. code-block:: bash
 
@@ -3092,7 +3160,7 @@ Install Python >=3.11,<3.13 (Debian / Ubuntu) and pipx
     sudo apt install python3 python3-pip pipx python3-venv python3-wheel
 
     # if you want to use the Tk based GUI, install Tk
-    sudo apt install python-tk
+    sudo apt install python3-tk
 
     pipx ensurepath
 
@@ -3149,12 +3217,12 @@ Install dgenerate
     --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm7.2/"
 
 
-    # you can attempt to install the pre-release bitsandbytes
-    # multiplatform version for Linux + ROCm, though, I am not sure if it will
-    # function correctly, this will allow use of the --quantizer option
-    # and quantizer URI arguments with bitsandbytes.
+    # bitsandbytes is the bitsandbytes extra. It installs the version dgenerate
+    # pins, which is what --quantizer bnb uses. sdnq is installed with
+    # dgenerate and does not need this extra.
 
-    pipx inject dgenerate https://github.com/bitsandbytes-foundation/bitsandbytes/releases/download/continuous-release_multi-backend-refactor/bitsandbytes-0.45.3.dev272-py3-none-manylinux_2_24_x86_64.whl
+    pipx install "dgenerate[bitsandbytes]" \
+    --pip-args "--extra-index-url https://download.pytorch.org/whl/rocm7.2/"
 
 
     # You can install without pipx into your own environment like so
@@ -3170,9 +3238,7 @@ Install dgenerate
     pip3 install "dgenerate[xllamacpp]==6.0.0" --index-url https://xorbitsai.github.io/xllamacpp/whl/rocm-7.2.4 --extra-index-url https://download.pytorch.org/whl/rocm7.2/ --extra-index-url https://pypi.org/simple
 
 
-    # you can attempt to install the pre-release bitsandbytes multiplatform version like so:
-
-    pip3 install https://github.com/bitsandbytes-foundation/bitsandbytes/releases/download/continuous-release_multi-backend-refactor/bitsandbytes-0.45.3.dev272-py3-none-manylinux_2_24_x86_64.whl
+    pip3 install "dgenerate[bitsandbytes]==6.0.0" --extra-index-url https://download.pytorch.org/whl/rocm7.2/
 
 Linux with opencv-python-headless (libGL.so.1 issues)
 =====================================================
@@ -3194,7 +3260,7 @@ then reinstall ``opencv-python-headless``.
 
 .. code-block:: bash
 
-    source venv\bin\activate
+    source venv/bin/activate
 
     pip uninstall opencv-python-headless opencv-python
 
@@ -3223,12 +3289,16 @@ MacOS Install (Apple Silicon Only)
 MacOS on Apple Silicon (arm64) is experimentally supported.
 
 You can install using the MacOS installer provided with each release on the
-`Releases Page <Releases_Page_>`_, or you can manually
-install with pipx, (or pip if you want) as described below.
+`Releases Page <Releases_Page_>`_. Running
+``dgenerate-network-installer`` with no arguments opens the window. The
+command line is described under :ref:`network-installer`. You can also install
+manually with pipx, (or pip if you want) as described below.
 
 Rendering can be performed in CPU only mode, and with hardware acceleration using ``--device mps`` (Metal Performance Shaders).
 
 The default device on MacOS is ``mps`` unless specified otherwise.
+
+dgenerate requires Python >=3.11, except 3.14.1, and older than 3.15.
 
 You can install on MacOS by first installing python from the universal ``pkg`` installer
 located at: https://www.python.org/downloads/release/python-3136/
@@ -3360,7 +3430,7 @@ of your own creation.
 Google Colab Install
 ====================
 
-The following cell entries will get you started in a Google Collab environment.
+The following cell entries will get you started in a Google Colab environment.
 
 Make sure you select a GPU runtime for your notebook, such as the T4 runtime.
 
@@ -3381,6 +3451,10 @@ Make sure you select a GPU runtime for your notebook, such as the T4 runtime.
 
 .. code-block:: bash
 
+    # Match the index to the notebook GPU.
+    # CUDA 13.2+ uses the URL below. CUDA 13.0 through 13.1 uses
+    # https://download.pytorch.org/whl/cu130
+    # CUDA 12.6 through 12.9 uses https://download.pytorch.org/whl/cu126
     !source /content/venv/bin/activate; pip install dgenerate==6.0.0 --extra-index-url https://download.pytorch.org/whl/cu132
 
 4.) Finally you can run dgenerate, you must prefix all calls to dgenerate with an activation of the virtual environment, as
@@ -3423,9 +3497,10 @@ Note that the name of the ``pip`` executable may be named ``pip3`` on some syste
 
     pip install git+https://github.com/Teriks/dgenerate@BRANCH_NAME --extra-index-url https://download.pytorch.org/whl/rocm7.2/
 
-    # With extras, for example "quant"
+    # With extras. quant is not an extra. These are:
+    # ncnn, xllamacpp, bitsandbytes, console_ui_vulkan, console_ui_opengl
 
-    pip install "dgenerate[quant] @ git+https://github.com/Teriks/dgenerate@BRANCH_NAME" --extra-index-url https://download.pytorch.org/whl/cu132
+    pip install "dgenerate[ncnn,console_ui_vulkan] @ git+https://github.com/Teriks/dgenerate@BRANCH_NAME" --extra-index-url https://download.pytorch.org/whl/cu132
 
 
 This same syntax should work with ``pipx`` as well, as long as you have ``git`` installed.
@@ -4068,13 +4143,60 @@ Repository: ``Lightricks/LTX-2.5-Diffusers``.
 Width and height must be divisible by 32.
 
 ``--model-sequential-offload`` and ``--model-cpu-offload`` work the same way they
-do for image models. The examples under ``examples/ltx/ltx2`` use the published
+do for image models. The examples under `examples/ltx/ltx2 <examples/ltx/ltx2_>`_
+use the published
 repository as-is. ``--ltx-latent-upscale`` runs the two-stage sampler in that
 same generation: a half-resolution pass, the checkpoint latent upsampler, then
 a short refine at ``--output-size``. ``--transformer`` is
 described under `Submodels`_. ``model_index.json`` selects the pipeline: ``LTX2Pipeline``
-is LTX-2.5, and ``LTXPipeline`` is the earlier LTX-Video model. The earlier model
-has no audio. Its transformer accepts a city96 ``.gguf`` file. See ``examples/ltx/ltx_video``.
+is LTX-2.5, and ``LTXPipeline`` is :ref:`ltx-video-legacy`.
+
+.. _ltx-video-legacy:
+
+LTX-Video (legacy)
+------------------
+
+``Lightricks/LTX-Video`` is the earlier 2B checkpoint. ``model_index.json`` selects
+``LTXPipeline``. It writes a picture only. There is no soundtrack, no duration
+head, and no IC-LoRA.
+
+``--inference-steps`` and ``--guidance-scales`` are sent as written. The distilled
+sigma table and the guidance rewrites under `Guidance, steps, and sigmas`_ apply
+to LTX-2.5 only. The published configs use 50 steps, guidance ``3``,
+``--ltx-video-fps 25``, and ``--ltx-video-lengths 4.84``, which is 121 frames,
+at ``768x512``. Omitting ``--ltx-video-lengths`` uses the pipeline default of
+161 frames. dgenerate warns when the clip is shorter than 121 frames or smaller
+than about 704 by 480, because the model follows the prompt at the published size.
+
+A prompt can name what to avoid after one ``;``. The examples use
+``worst quality, inconsistent motion, blurry, jittery, distorted``.
+
+The noise schedule shifts with the number of latent tokens. A size or length
+past what that shift can represent is rejected. Use a smaller ``--output-size``
+or a shorter clip.
+
+A first frame, ``last-frame=``, an opening or closing clip, ``ltx-index``, and
+``strength`` work as described under `Video conditioning`_ and `Condition placement`_.
+``--loras`` loads a diffusers LoRA onto the transformer. ``--transformer`` replaces
+that transformer, including a city96 ``.gguf`` file. The ``Lightricks/LTX-Video``
+repository still supplies the VAE and text encoders. ``--scheduler`` accepts
+``FlowMatchEulerDiscreteScheduler`` and its URI arguments.
+
+These options are rejected: ``--ltx-audio-guidance-scales``,
+``--ltx-audio-guidance-rescales``, ``--sigmas``, ``--ltx-ic-lora``,
+``--ltx-latent-upscale``, ``--ltx-stg-scales``, ``--ltx-modality-scales``,
+``--ltx-video-decoder diffusion``, ``--ltx-prompt-enhancer``,
+``--ltx-image-crfs``, ``--ltx-no-cross-timestep``,
+``--ltx-video-min-seconds``, and ``--ltx-video-max-seconds``.
+
+The Console UI recipes are ``LTX-Video`` and ``LTX-Video (GGUF)``.
+
+* `examples/ltx/ltx_video/text-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx/ltx_video/text-to-video-config.dgen>`_
+* `examples/ltx/ltx_video/image-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx/ltx_video/image-to-video-config.dgen>`_
+* `examples/ltx/ltx_video/video-extension-config.dgen <examples/ltx/ltx_video/video-extension-config.dgen_>`_
+* `examples/ltx/ltx_video/lora-config.dgen <examples/ltx/ltx_video/lora-config.dgen_>`_
+* `examples/ltx/ltx_video/gguf-text-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx/ltx_video/gguf-text-to-video-config.dgen>`_
+* `examples/ltx/ltx_video/gguf-image-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx/ltx_video/gguf-image-to-video-config.dgen>`_
 
 Video conditioning
 ------------------
@@ -4150,8 +4272,9 @@ the second on ``last-frame=``. A leading or trailing ``+`` leaves one side unpro
 Every condition is applied at full strength. The model keeps the conditioning frames
 and generates around them. It does not restyle the whole input video.
 
-See ``examples/ltx/ltx2/video_conditioning``, ``examples/ltx/ltx2/image_conditioning``, and
-``video-extension-config.dgen`` in ``examples/ltx/ltx_video``.
+See `examples/ltx/ltx2/video_conditioning <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/ltx/ltx2/video_conditioning>`_,
+`examples/ltx/ltx2/image_conditioning <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/ltx/ltx2/image_conditioning>`_,
+and `examples/ltx/ltx_video/video-extension-config.dgen <examples/ltx/ltx_video/video-extension-config.dgen_>`_.
 
 IC-LoRA control
 ---------------
@@ -4195,8 +4318,10 @@ frame, put the reference in ``control=``:
   must be divisible by 64.
 * ``--ltx-ic-lora`` needs an LTX-2 checkpoint. The earlier LTX-Video pipeline rejects it.
 
-See the examples in ``examples/ltx/ltx2/ic_lora``. ``canny-anime-lora-config.dgen`` and
-``depth-realism-lora-config.dgen`` add a style LoRA from ``--loras`` to the IC-LoRA.
+See the examples in `examples/ltx/ltx2/ic_lora <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/ltx/ltx2/ic_lora>`_.
+`canny-anime-lora-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx/ltx2/ic_lora/canny-anime-lora-config.dgen>`_
+and `depth-realism-lora-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx/ltx2/ic_lora/depth-realism-lora-config.dgen>`_
+add a style LoRA from ``--loras`` to the IC-LoRA.
 
 In the Console UI, the LTX-2.5 recipes under ``Edit -> Insert Code -> Recipe`` have an IC-LoRA
 field, an IC-LoRA control clip, and a control clip processor. ``Edit -> Insert URI -> Sub Model URI``
@@ -4256,7 +4381,7 @@ This path wins over both of the above.
 ``--sigmas`` is combinatorial with ``--guidance-scales``, ``--inference-steps``,
 ``--guidance-rescales``, ``--ltx-audio-guidance-scales``,
 ``--ltx-audio-guidance-rescales``, ``--ltx-video-lengths``, and ``--ltx-video-fps``. See
-:ref:`specifying-sigmas` and ``examples/ltx/ltx2/sigmas/sigmas-config.dgen``.
+:ref:`specifying-sigmas` and `examples/ltx/ltx2/sigmas/sigmas-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx/ltx2/sigmas/sigmas-config.dgen>`_.
 
 ``--guidance-rescales``
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -4296,7 +4421,7 @@ Omit it and audio copies ``--guidance-rescales`` when that is set, otherwise
 the pipeline default ``0.7`` is left in place.
 
 Diffusers suggests keeping audio guidance higher than video guidance when
-you set them yourself. See ``examples/ltx/ltx2/audio/audio-guidance-config.dgen``.
+you set them yourself. See `examples/ltx/ltx2/audio/audio-guidance-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx/ltx2/audio/audio-guidance-config.dgen>`_.
 
 Chaining
 --------
@@ -4329,11 +4454,12 @@ stack for a guided model, for example 30 steps, ``--guidance-scales 3``,
 ``--ltx-audio-guidance-scales 7``, ``--ltx-stg-scales 1``, ``--ltx-modality-scales 3``,
 and ``--ltx-stg-blocks 28``.
 Lightricks IC-LoRAs are trained on the distilled transformer.
-See ``examples/ltx/ltx2/full_transformer/text-to-video-config.dgen``.
+See `examples/ltx/ltx2/full_transformer/text-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx/ltx2/full_transformer/text-to-video-config.dgen>`_.
 
 ``--loras`` loads diffusers-format adapters onto that transformer and fuses them, including
 ``--lora-fuse-scale`` and each URI ``scale``. IC-LoRAs load with ``--ltx-ic-lora`` instead, see `IC-LoRA control`_.
-See ``examples/ltx/ltx2/lora/cinemagraph-config.dgen`` and ``examples/ltx/ltx_video/lora-config.dgen``.
+See `examples/ltx/ltx2/lora/cinemagraph-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx/ltx2/lora/cinemagraph-config.dgen>`_
+and `examples/ltx/ltx_video/lora-config.dgen <examples/ltx/ltx_video/lora-config.dgen_>`_.
 
 Two-stage generation
 ~~~~~~~~~~~~~~~~~~~~
@@ -4348,14 +4474,14 @@ Stage 2 guidance defaults to 1. ``--ltx-stage-sigmas``, ``--ltx-stage-guidance-s
 and ``--ltx-stage-audio-guidance-scales`` override the refine pass.
 
 The distilled checkpoint needs no stage LoRA. See
-``examples/ltx/ltx2/two_stage/image-to-video-config.dgen``.
+`examples/ltx/ltx2/two_stage/image-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx/ltx2/two_stage/image-to-video-config.dgen>`_.
 
 The full transformer does. Load ``transformer_full``, give stage 1 dynamic shifting
 and ``shift-terminal=0.1``, and put the distilled LoRA on the refine pass only:
 
 ``--ltx-stage-loras "Lightricks/LTX-2.5-Diffusers;weight-name=ltx-2.5-22b-distilled-lora-450-bf16.safetensors"``
 
-See ``examples/ltx/ltx2/two_stage/full-transformer-config.dgen``.
+See `examples/ltx/ltx2/two_stage/full-transformer-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx/ltx2/two_stage/full-transformer-config.dgen>`_.
 
 Guidance
 ~~~~~~~~
@@ -4377,15 +4503,15 @@ Decode, prompts, and duration
 ``--ltx-video-decoder diffusion`` decodes with the checkpoint diffusion decoder
 instead of the convolutional VAE, in the same generation. ``conv`` is the default.
 ``--ltx-decode-timesteps`` and ``--ltx-decode-noise-scales`` are the decode arguments.
-See ``examples/ltx/ltx2/decode/diffusion-decoder-config.dgen``.
+See `examples/ltx/ltx2/decode/diffusion-decoder-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx/ltx2/decode/diffusion-decoder-config.dgen>`_.
 
 ``--ltx-prompt-enhancer`` loads a model such as ``google/gemma-4-E2B-it`` and rewrites
 the prompt before denoising. ``--ltx-system-prompt`` overrides the built-in text or
-image system prompt. See ``examples/ltx/ltx2/basic/prompt-enhancer-config.dgen``.
+image system prompt. See `examples/ltx/ltx2/basic/prompt-enhancer-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx/ltx2/basic/prompt-enhancer-config.dgen>`_.
 
 ``--ltx-image-crfs`` recompresses a conditioning still before the VAE encode. Omit it
 and the pipeline default is used (``18`` on LTX-2.5). ``0`` skips recompression.
-See ``examples/ltx/ltx2/image_conditioning/image-crf-config.dgen``.
+See `examples/ltx/ltx2/image_conditioning/image-crf-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx/ltx2/image_conditioning/image-crf-config.dgen>`_.
 
 ``--ltx-video-min-seconds`` and ``--ltx-video-max-seconds`` clamp the duration head.
 They apply only when ``--ltx-video-lengths`` is omitted. Give the same number of
@@ -4394,8 +4520,8 @@ values to each. The value in each position is used together:
 from 2 to 6 seconds and one from 4 to 8. A single value with the other option
 omitted uses that option's pipeline default (``1`` and ``20``). Each bound pair
 is then tried in turn with the other arguments. See
-``examples/ltx/ltx2/basic/duration-bounds-config.dgen`` and
-``examples/ltx/ltx2/basic/duration-head-config.dgen``.
+`examples/ltx/ltx2/basic/duration-bounds-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx/ltx2/basic/duration-bounds-config.dgen>`_
+and `examples/ltx/ltx2/basic/duration-head-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx/ltx2/basic/duration-head-config.dgen>`_.
 
 Condition placement
 ~~~~~~~~~~~~~~~~~~~
@@ -4472,7 +4598,7 @@ frame 4, loosely. ``close.jpg`` is the last latent frame at full strength.
 ``control=`` is not placed in the clip. With ``--ltx-ic-lora`` it is the
 reference the IC-LoRA reads. ``ltx-index`` does not move that reference.
 
-See ``examples/ltx/ltx2/image_conditioning/indexed-config.dgen``.
+See `examples/ltx/ltx2/image_conditioning/indexed-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx/ltx2/image_conditioning/indexed-config.dgen>`_.
 
 What LTX rejects
 ----------------
@@ -4484,11 +4610,12 @@ clip skip, inpaint crop, HiDiffusion, TeaCache, DeepCache, SADA, RAS,
 mask processors, raw latents and latents processors, ``--denoising-start`` /
 ``--denoising-end``, ``--batch-size`` greater than 1, ``--batch-grid-size``, latent output
 formats, the safety checker, ``--vae-tiling``, and ``--original-config``.
-``--image-seed-strengths`` is not used. Seed processors are limited to two chains, and
+Seed processors are limited to two chains, and
 control processors to one.
 ``--quantizer-map`` may only name ``transformer``, ``text_encoder``, or ``connectors``.
 
-LTX-2.5 examples live under ``examples/ltx/ltx2``, and LTX-Video examples under ``examples/ltx/ltx_video``.
+LTX-2.5 configs are in `examples/ltx/ltx2 <examples/ltx/ltx2_>`_,
+and LTX-Video configs are in `examples/ltx/ltx_video <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/ltx/ltx_video>`_.
 
 Animation Slicing
 =================
@@ -5880,7 +6007,8 @@ An SD3 or Flux transformer can also be a pre-quantized ``.gguf`` file. The repos
 still supplies the VAE and text encoders. Do not set ``quantizer=`` on that URI and do
 not use ``--quantizer gguf``. Diffusers dequantizes the file when it loads. Quantize
 the text encoders with ``bnb`` or ``sdnq`` and ``--quantizer-map`` if needed. See the
-configs under ``examples/sd3/gguf`` and ``examples/flux/gguf``.
+configs under `examples/stablediffusion3/gguf <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/stablediffusion3/gguf>`_
+and `examples/flux/gguf <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/flux/gguf>`_.
 
 ``--model-type ltx`` also accepts ``--transformer``.
 That argument replaces the diffusion transformer only. See :ref:`video-generation`.

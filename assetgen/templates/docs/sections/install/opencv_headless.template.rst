@@ -18,7 +18,7 @@ then reinstall ``opencv-python-headless``.
 
 .. code-block:: bash
 
-    source venv\bin\activate
+    source venv/bin/activate
 
     pip uninstall opencv-python-headless opencv-python
 

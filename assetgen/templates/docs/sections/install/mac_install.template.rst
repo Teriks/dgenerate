@@ -4,12 +4,16 @@ MacOS Install (Apple Silicon Only)
 MacOS on Apple Silicon (arm64) is experimentally supported.
 
 You can install using the MacOS installer provided with each release on the
-`Releases Page <https://github.com/Teriks/dgenerate/releases>`_, or you can manually
-install with pipx, (or pip if you want) as described below.
+`Releases Page <https://github.com/Teriks/dgenerate/releases>`_. Running
+``dgenerate-network-installer`` with no arguments opens the window. The
+command line is described under :ref:`network-installer`. You can also install
+manually with pipx, (or pip if you want) as described below.
 
 Rendering can be performed in CPU only mode, and with hardware acceleration using ``--device mps`` (Metal Performance Shaders).
 
 The default device on MacOS is ``mps`` unless specified otherwise.
+
+dgenerate requires Python >=3.11, except 3.14.1, and older than 3.15.
 
 You can install on MacOS by first installing python from the universal ``pkg`` installer
 located at: https://www.python.org/downloads/release/python-3136/
