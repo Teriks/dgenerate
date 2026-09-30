@@ -151,6 +151,9 @@ def create_parser(prog: str) -> _b_util.DirectiveArgumentParser:
     parser.add_argument('--ctx', type=int, default=32768, help='Chat context size in tokens. Default: %(default)s')
     parser.add_argument('--gpu-layers', type=int, default=-1,
                         help='Layers to put on the GPU, -1 for automatic, 0 for CPU only. Default: %(default)s')
+    parser.add_argument('--edit', metavar='FILE',
+                        help='Revise this existing config instead of writing a new one. '
+                             'The request describes the change.')
     parser.add_argument('--think', action='store_true', help='Let the model reason before answering. Slower.')
     parser.add_argument('--reasoning-effort', choices=_catalog.REASONING_EFFORTS,
                         default=_catalog.DEFAULT_REASONING_EFFORT,
@@ -200,8 +203,23 @@ def main(argv: list[str], prog: str = 'assistant', local_files_only: bool = Fals
         embedder = _models.Embedder(_models.resolve_gguf(args.embed_model, args.offline),
                                     gpu_layers=args.gpu_layers, verbose=args.verbose)
         index = _index.load_index(embedder, log=log)
+        editor = None
+        if args.edit:
+            try:
+                with open(args.edit, encoding='utf-8') as handle:
+                    editor = handle.read()
+            except OSError as e:
+                log(f'error: could not read the config to edit: {e}')
+                return 1
+            if not editor.strip():
+                log('error: the config to edit is empty.')
+                return 2
         files = _prompt.request_files(request, os.getcwd(), run_dir)
         query = _corpus.strip_media_names(request)
+        if editor:
+            mentioned = ' '.join(re.findall(r'--model-type\s+(\S+)', editor))
+            if mentioned:
+                query = f'{query} {mentioned}'.strip()
         hits = index.search(query, embedder.embed_query(query), has_inputs=_corpus.wants_inputs(request))
         del embedder
 
@@ -220,7 +238,7 @@ def main(argv: list[str], prog: str = 'assistant', local_files_only: bool = Fals
 
         messages = [
             {'role': 'system', 'content': _prompt.system_message(version)},
-            {'role': 'user', 'content': _prompt.user_message(request, context, files)},
+            {'role': 'user', 'content': _prompt.user_message(request, context, files, editor=editor)},
         ]
 
         config, report = None, None
