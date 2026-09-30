@@ -59,7 +59,8 @@ An SD3 or Flux transformer can also be a pre-quantized ``.gguf`` file. The repos
 still supplies the VAE and text encoders. Do not set ``quantizer=`` on that URI and do
 not use ``--quantizer gguf``. Diffusers dequantizes the file when it loads. Quantize
 the text encoders with ``bnb`` or ``sdnq`` and ``--quantizer-map`` if needed. See the
-configs under ``examples/sd3/gguf`` and ``examples/flux/gguf``.
+configs under `examples/stablediffusion3/gguf <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/stablediffusion3/gguf>`_
+and `examples/flux/gguf <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/flux/gguf>`_.
 
 ``--model-type ltx`` also accepts ``--transformer``.
 That argument replaces the diffusion transformer only. See :ref:`video-generation`.

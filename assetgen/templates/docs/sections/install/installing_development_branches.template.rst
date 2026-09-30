@@ -17,9 +17,10 @@ Note that the name of the ``pip`` executable may be named ``pip3`` on some syste
 
     pip install git+https://github.com/Teriks/dgenerate@BRANCH_NAME --extra-index-url https://download.pytorch.org/whl/rocm7.2/
 
-    # With extras, for example "quant"
+    # With extras. quant is not an extra. These are:
+    # ncnn, xllamacpp, bitsandbytes, console_ui_vulkan, console_ui_opengl
 
-    pip install "dgenerate[quant] @ git+https://github.com/Teriks/dgenerate@BRANCH_NAME" --extra-index-url https://download.pytorch.org/whl/cu132
+    pip install "dgenerate[ncnn,console_ui_vulkan] @ git+https://github.com/Teriks/dgenerate@BRANCH_NAME" --extra-index-url https://download.pytorch.org/whl/cu132
 
 
 This same syntax should work with ``pipx`` as well, as long as you have ``git`` installed.

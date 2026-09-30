@@ -91,7 +91,7 @@ Getting Started
 Quick Install
 -------------
 
-Download an install wizard for your platform from the `releases page <https://github.com/Teriks/dgenerate/releases>`_ for a hassle-free setup into an isolated Python environment.
+Download an install wizard for your platform from the `releases page <https://github.com/Teriks/dgenerate/releases>`_ for a hassle-free setup into an isolated Python environment. The same binary installs from the command line. See the `network installer <https://dgenerate.readthedocs.io/en/version_6.0.0/manual.html#network-installer>`_ section of the manual.
 
 Manual Install
 --------------
@@ -107,8 +107,8 @@ Manual Install
 System Requirements
 -------------------
 
-* **GPU**: NVIDIA (CUDA 12.1+), AMD (ROCm on Linux), or Apple Silicon
-* **Python**: 3.11 to 3.13
+* **GPU**: NVIDIA with CUDA 12.6 or newer, AMD (ROCm 7.2 or 7.14 on Linux, or AMD's Windows wheel index), or Apple Silicon
+* **Python**: 3.11 or newer, except 3.14.1, and older than 3.15
 * **OS**: Windows, macOS, or Linux
 
 Note: CPU rendering is possible but extremely slow unless the given model is tailored for it.

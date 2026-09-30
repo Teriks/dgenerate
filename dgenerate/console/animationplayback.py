@@ -401,7 +401,7 @@ class PcmPlayer:
             return
         self._offset = max(0, min(int(seconds * self.sample_rate), len(self._samples)))
         self._paused = False
-        self._backend.start(self._samples[self._offset:])
+        self._start_backend(self._samples[self._offset:])
 
     def pause(self):
         if self._backend is not None and not self._paused:
@@ -413,7 +413,27 @@ class PcmPlayer:
         if self._backend is None or not self._paused:
             return
         self._paused = False
-        self._backend.start(self._samples[self._offset:])
+        self._start_backend(self._samples[self._offset:])
+
+    def _start_backend(self, samples: np.ndarray):
+        try:
+            self._backend.start(samples)
+        except Exception:
+            self._drop_backend()
+            return
+        if self._backend is not None and not getattr(self._backend, 'active', True):
+            self._drop_backend()
+
+    def _drop_backend(self):
+        """The device cannot be started. The picture keeps the wall clock."""
+        backend = self._backend
+        self._backend = None
+        self.active = False
+        if backend is not None:
+            try:
+                backend.close()
+            except Exception:
+                pass
 
     def close(self):
         backend = self._backend
@@ -624,6 +644,7 @@ class _MiniaudioPlayer:
             nchannels=channels,
             sample_rate=sample_rate,
         )
+        self._started = False
         self.active = True
 
     def _generator(self):
@@ -648,24 +669,53 @@ class _MiniaudioPlayer:
         self._gain = min(1.0, max(0.0, float(gain)))
 
     def start(self, samples: np.ndarray):
+        # A loop or a seek used to stop the device and start it again. WASAPI
+        # answers that second start with MA_UNAVAILABLE (-22), and the
+        # exception left the preview timer.
         self._samples = np.ascontiguousarray(samples, dtype=np.int16)
-        self._running = False
-        try:
-            self._device.stop()
-        except Exception:
-            pass
         self._cursor = 0
         self._paused_samples = 0
         self._clock.reset()
         self._running = True
+        if self._started:
+            return
         generator = self._generator()
         next(generator)
-        self._device.start(generator)
+        try:
+            self._device.start(generator)
+        except Exception:
+            if not self._reopen(generator):
+                self.active = False
+                self._running = False
+                self._started = False
+                return
+        self._started = True
+
+    def _reopen(self, generator) -> bool:
+        """One new device after a start failure. The old one is left unusable."""
+        try:
+            self._device.close()
+        except Exception:
+            pass
+        try:
+            self._device = self._miniaudio.PlaybackDevice(
+                output_format=self._miniaudio.SampleFormat.SIGNED16,
+                nchannels=self._channels,
+                sample_rate=self._clock._rate,
+            )
+            self._device.start(generator)
+        except Exception:
+            return False
+        return True
 
     def pause(self):
         self._paused_samples = self._clock.heard()
         self._running = False
-        self._device.stop()
+        self._started = False
+        try:
+            self._device.stop()
+        except Exception:
+            pass
 
     def played_samples(self) -> int:
         return self._clock.heard() if self._running else self._paused_samples

@@ -1,7 +1,7 @@
 Google Colab Install
 ====================
 
-The following cell entries will get you started in a Google Collab environment.
+The following cell entries will get you started in a Google Colab environment.
 
 Make sure you select a GPU runtime for your notebook, such as the T4 runtime.
 
@@ -22,6 +22,10 @@ Make sure you select a GPU runtime for your notebook, such as the T4 runtime.
 
 .. code-block:: bash
 
+    # Match the index to the notebook GPU.
+    # CUDA 13.2+ uses the URL below. CUDA 13.0 through 13.1 uses
+    # https://download.pytorch.org/whl/cu130
+    # CUDA 12.6 through 12.9 uses https://download.pytorch.org/whl/cu126
     !source /content/venv/bin/activate; pip install dgenerate==@VERSION --extra-index-url https://download.pytorch.org/whl/cu132
 
 4.) Finally you can run dgenerate, you must prefix all calls to dgenerate with an activation of the virtual environment, as

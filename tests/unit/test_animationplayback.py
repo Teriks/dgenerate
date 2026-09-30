@@ -10,6 +10,8 @@ from dgenerate.console.animationplayback import (
     BAR_HEIGHT,
     CONTROL_GAP,
     AnimationClip,
+    PcmPlayer,
+    _MiniaudioPlayer,
     _SmoothPlaybackClock,
     control_hit,
     control_layout,
@@ -275,6 +277,60 @@ class TestAnimationFiles(unittest.TestCase):
                 self.assertTrue(clip.has_audio)
             finally:
                 clip.close()
+
+
+class TestPreviewAudioRestart(unittest.TestCase):
+
+    def test_loop_keeps_the_running_device(self):
+        player = _MiniaudioPlayer.__new__(_MiniaudioPlayer)
+        player._channels = 1
+        player._cursor = 40
+        player._paused_samples = 3
+        player._running = True
+        player._gain = 1.0
+        player._clock = _SmoothPlaybackClock(8000)
+        player._started = True
+        player.active = True
+        player._samples = np.ones((80, 1), dtype=np.int16)
+
+        class Device:
+            starts = 0
+
+            def start(self, generator):
+                self.starts += 1
+                raise RuntimeError('failed to start audio device')
+
+        player._device = Device()
+        player.start(np.zeros((80, 1), dtype=np.int16))
+        self.assertEqual(player._device.starts, 0)
+        self.assertEqual(player._cursor, 0)
+        self.assertTrue(player.active)
+        self.assertTrue(player._running)
+
+    def test_play_drops_a_backend_that_cannot_start(self):
+        player = PcmPlayer.__new__(PcmPlayer)
+        player._samples = np.zeros((100, 1), dtype=np.int16)
+        player.sample_rate = 8000
+        player._offset = 0
+        player._paused = True
+
+        class Backend:
+            active = False
+
+            def start(self, samples):
+                return None
+
+            def close(self):
+                self.closed = True
+
+        backend = Backend()
+        player._backend = backend
+        player.active = True
+        player.play(0.0)
+        self.assertFalse(player.active)
+        self.assertIsNone(player._backend)
+        self.assertTrue(backend.closed)
+        player.play(0.0)
 
 
 if __name__ == '__main__':

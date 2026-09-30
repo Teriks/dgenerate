@@ -2,14 +2,16 @@ Windows Install
 ===============
 
 You can install using the Windows installer provided with each release on the
-`Releases Page <https://github.com/Teriks/dgenerate/releases>`_, or you can manually
-install with pipx, (or pip if you want) as described below.
+`Releases Page <https://github.com/Teriks/dgenerate/releases>`_. Running
+``dgenerate-network-installer.exe`` with no arguments opens the window. The
+command line is described under :ref:`network-installer`. You can also install
+manually with pipx, (or pip if you want) as described below.
 
 
 Manual Install
 --------------
 
-Install Visual Studios build tools, make sure "Desktop development with C++" is selected, unselect anything you do not need.
+Install Visual Studio build tools, make sure "Desktop development with C++" is selected, unselect anything you do not need.
 
 https://aka.ms/vs/17/release/vs_BuildTools.exe
 
@@ -21,7 +23,8 @@ Install rust compiler using rustup-init.exe (x64), use the default install optio
 
 https://www.rust-lang.org/tools/install
 
-Install Python:
+Install Python. dgenerate requires Python >=3.11, except 3.14.1, and older than 3.15.
+This installer is 3.12.9, which is inside that range:
 
 https://www.python.org/ftp/python/3.12.9/python-3.12.9-amd64.exe
 
@@ -92,7 +95,9 @@ Install dgenerate:
     pipx install "dgenerate[xllamacpp]" ^
     --pip-args "--index-url https://xorbitsai.github.io/xllamacpp/whl/cu128 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple"
 
-    # Older NVIDIA, AMD, or Intel Arc
+    # Older NVIDIA (Maxwell, Pascal, Volta, or a driver before CUDA 12.8).
+    # Windows AMD torch uses https://repo.amd.com/rocm/whl-multi-arch/
+    # with the Vulkan xllamacpp index. Intel Arc uses the XPU index.
 
     pipx install "dgenerate[xllamacpp]" ^
     --pip-args "--index-url https://xorbitsai.github.io/xllamacpp/whl/vulkan --extra-index-url https://download.pytorch.org/whl/cu126/ --extra-index-url https://pypi.org/simple"
@@ -127,7 +132,9 @@ Install dgenerate:
 
     pip install "dgenerate[xllamacpp]==@VERSION" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu128 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple
 
-    # Older NVIDIA, AMD, or Intel Arc
+    # Older NVIDIA (Maxwell, Pascal, Volta, or a driver before CUDA 12.8).
+    # Windows AMD torch uses https://repo.amd.com/rocm/whl-multi-arch/
+    # with the Vulkan xllamacpp index. Intel Arc uses the XPU index.
 
     pip install "dgenerate[xllamacpp]==@VERSION" --index-url https://xorbitsai.github.io/xllamacpp/whl/vulkan --extra-index-url https://download.pytorch.org/whl/cu126/ --extra-index-url https://pypi.org/simple
 
@@ -180,7 +187,9 @@ a cloned repository like this:
 
     pip install --editable ".[dev,xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu128 --extra-index-url https://download.pytorch.org/whl/cu130/ --extra-index-url https://pypi.org/simple
 
-    # Older NVIDIA, AMD, or Intel Arc
+    # Older NVIDIA (Maxwell, Pascal, Volta, or a driver before CUDA 12.8).
+    # Windows AMD torch uses https://repo.amd.com/rocm/whl-multi-arch/
+    # with the Vulkan xllamacpp index. Intel Arc uses the XPU index.
 
     pip install --editable ".[dev,xllamacpp]" --index-url https://xorbitsai.github.io/xllamacpp/whl/vulkan --extra-index-url https://download.pytorch.org/whl/cu126/ --extra-index-url https://pypi.org/simple
 
