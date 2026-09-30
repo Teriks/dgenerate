@@ -596,12 +596,20 @@ def prompt_guide(examples: list[_corpus.Chunk]) -> str:
     return '### reference: prompt guide\nHow to write --prompts for each model type:\n' + '\n'.join(lines)
 
 
-def user_message(request: str, context: str, files: list[RequestFile]) -> str:
+def user_message(request: str, context: str, files: list[RequestFile],
+                 editor: str | None = None) -> str:
     for f in files:
         request = re.sub(rf'(?<![\w./\\-]){re.escape(f.written)}(?![\w.-])',
                          lambda _: f'"{f.config_path}" (input file)', request)
-    return (f'Reference material from the dgenerate documentation and examples:\n\n{context}\n\n'
-            f'Request:\n{request}\n\n{first_draft_recipes(request)}')
+    body = (f'Reference material from the dgenerate documentation and examples:\n\n{context}\n\n')
+    if editor and editor.strip():
+        body += (
+            'Current config in the editor. Apply the request as an edit of this config. '
+            'Return the complete revised config. Keep every line the request does not ask to change.\n\n'
+            f'{editor.strip()}\n\n'
+            f'Request:\n{request}\n')
+        return body
+    return body + f'Request:\n{request}\n\n{first_draft_recipes(request)}'
 
 
 def inputs_used_as_output(config: str, files: list[RequestFile]) -> list[str]:

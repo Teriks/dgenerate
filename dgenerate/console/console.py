@@ -648,7 +648,8 @@ class DgenerateConsole(tk.Tk):
             populate=self._replace_input_text,
             dgenerate_exe=DGENERATE_EXE,
             get_cwd=lambda: self._shell_procmon.cwd(deep=True),
-            get_offline=self._offline_mode_var.get
+            get_offline=self._offline_mode_var.get,
+            get_editor=lambda: self._input_text.text.get('1.0', 'end-1c')
         )
 
     def _input_text_insert_recipe(self):

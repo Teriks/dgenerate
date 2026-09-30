@@ -25,6 +25,7 @@ import pathlib
 import platform
 import queue
 import subprocess
+import tempfile
 import threading
 import tkinter as tk
 import typing
@@ -47,6 +48,7 @@ _SETTINGS_CHAT = 'assistant_chat_model'
 _SETTINGS_EMBED = 'assistant_embed_model'
 _SETTINGS_THINK = 'assistant_think'
 _SETTINGS_EFFORT = 'assistant_reasoning_effort'
+_SETTINGS_EDIT = 'assistant_editor_in_context'
 _EFFORT_LABELS = {'low': 'Low', 'medium': 'Medium', 'xhigh': 'Extra high'}
 
 
@@ -107,6 +109,7 @@ class _AssistantForm(tk.Toplevel):
                  dgenerate_exe: str,
                  get_cwd: typing.Callable[[], str | None],
                  get_offline: typing.Callable[[], bool],
+                 get_editor: typing.Callable[[], str],
                  master=None,
                  position: tuple[int, int] = None,
                  size: tuple[int, int] = None):
@@ -118,6 +121,8 @@ class _AssistantForm(tk.Toplevel):
         self._dgenerate_exe = dgenerate_exe
         self._get_cwd = get_cwd
         self._get_offline = get_offline
+        self._get_editor = get_editor
+        self._edit_file: str | None = None
 
         self._process: subprocess.Popen | None = None
         self._stderr_queue: queue.Queue = queue.Queue()
@@ -209,6 +214,13 @@ class _AssistantForm(tk.Toplevel):
         self._effort_var.trace_add('write', lambda *_: _remember(_SETTINGS_EFFORT, self._selected_effort()))
         self._set_effort_enabled()
 
+        self._edit_var = tk.BooleanVar(value=_saved_bool(_SETTINGS_EDIT))
+        self._edit_check = tk.Checkbutton(
+            options, text='Editor in context (edit mode)', variable=self._edit_var,
+            anchor=tk.W, justify=tk.LEFT)
+        self._edit_check.grid(row=3, column=0, columnspan=2, sticky=tk.W, pady=(8, 0))
+        self._edit_var.trace_add('write', self._sync_edit_mode)
+
         tk.Label(self, text='Progress', anchor=tk.W).grid(row=3, column=0, sticky=tk.EW)
         self._log_text = _scrolledtext.ScrolledText(self)
         self._log_text.disable_word_wrap()
@@ -222,6 +234,7 @@ class _AssistantForm(tk.Toplevel):
         self._generate_button.pack(side=tk.LEFT, padx=5)
         self._cancel_button = tk.Button(buttons, text='Cancel', command=self._cancel, state=tk.DISABLED)
         self._cancel_button.pack(side=tk.LEFT, padx=5)
+        self._sync_edit_mode()
 
     def _fit_intro(self, event):
         if event.widget is self:
@@ -282,16 +295,37 @@ class _AssistantForm(tk.Toplevel):
         self._cancel_button.configure(state=tk.NORMAL if running else tk.DISABLED)
         self._request_text.text.configure(state=tk.DISABLED if running else tk.NORMAL)
 
-    def _command(self) -> list[str]:
+    def _sync_edit_mode(self, *_):
+        editing = bool(self._edit_var.get())
+        _remember(_SETTINGS_EDIT, editing)
+        self._intro.configure(text=(
+            'Describe the change to make to the config in the editor.'
+            if editing else
+            'Describe what the config script should do.'))
+        if self._process is None:
+            self._generate_button.configure(text='Edit' if editing else 'Generate')
+
+    def _command(self, edit_path: str | None = None) -> list[str]:
         # Without --no-stdin, dgenerate runs piped stdin as a config instead of leaving it for the assistant.
         command = [self._dgenerate_exe, '--no-stdin']
         if self._get_offline():
             command.append('--offline-mode')
         command += ['--sub-command', 'assistant', '--model', self._selected_model(),
                     '--embed-model', self._selected_embed_model()]
+        if edit_path:
+            command += ['--edit', edit_path]
         if self._think_var.get():
             command += ['--think', '--reasoning-effort', self._selected_effort()]
         return command
+
+    def _clear_edit_file(self):
+        path = self._edit_file
+        self._edit_file = None
+        if path:
+            try:
+                os.unlink(path)
+            except OSError:
+                pass
 
     def _remember_think(self, *_):
         _remember(_SETTINGS_THINK, bool(self._think_var.get()))
@@ -315,6 +349,20 @@ class _AssistantForm(tk.Toplevel):
             self._request_text.text.focus_set()
             return
 
+        edit_path = None
+        if self._edit_var.get():
+            editor = self._get_editor().replace('\r\n', '\n').strip()
+            if not editor:
+                self._log('Edit mode is on, but the editor is empty.')
+                self._request_text.text.focus_set()
+                return
+            fd, edit_path = tempfile.mkstemp(suffix='.dgen', prefix='dgenerate-edit-')
+            with os.fdopen(fd, 'w', encoding='utf-8', newline='\n') as handle:
+                handle.write(editor)
+                if not editor.endswith('\n'):
+                    handle.write('\n')
+            self._edit_file = edit_path
+
         cwd = self._get_cwd() or os.getcwd()
 
         env = os.environ.copy()
@@ -336,9 +384,10 @@ class _AssistantForm(tk.Toplevel):
         try:
             # The request goes through stdin so no part of it is parsed as an option.
             self._process = subprocess.Popen(
-                self._command(), cwd=cwd, env=env,
+                self._command(edit_path), cwd=cwd, env=env,
                 stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, **kwargs)
         except OSError as e:
+            self._clear_edit_file()
             self._log(f'Could not start dgenerate: {e}')
             return
 
@@ -385,7 +434,9 @@ class _AssistantForm(tk.Toplevel):
         self._drain_stderr()
         return_code = self._process.returncode
         self._process = None
+        self._clear_edit_file()
         self._set_running(False)
+        self._sync_edit_mode()
 
         config = b''.join(self._stdout_chunks).decode('utf-8', errors='replace').replace('\r\n', '\n')
         if return_code == 0 and config.strip():
@@ -408,12 +459,15 @@ class _AssistantForm(tk.Toplevel):
 
     def _cancel(self):
         self._kill()
+        self._clear_edit_file()
         self._set_running(False)
+        self._sync_edit_mode()
         self._log('Cancelled.')
 
     def destroy(self):
         _themetext.unlisten(self._theme_text_boxes)
         self._kill()
+        self._clear_edit_file()
         super().destroy()
 
 
@@ -421,7 +475,8 @@ def request_config(master,
                    populate: typing.Callable[[str], None],
                    dgenerate_exe: str,
                    get_cwd: typing.Callable[[], str | None],
-                   get_offline: typing.Callable[[], bool]):
+                   get_offline: typing.Callable[[], bool],
+                   get_editor: typing.Callable[[], str]):
     """
     Open the assistant dialog, or focus it if it is already open.
 
@@ -430,6 +485,7 @@ def request_config(master,
     :param dgenerate_exe: The dgenerate executable to run the assistant sub-command with.
     :param get_cwd: Returns the directory the config will run from.
     :param get_offline: Returns whether the console is in offline mode.
+    :param get_editor: Returns the config currently in the editor.
     """
     return _util.create_singleton_dialog(
         master=master,
@@ -438,5 +494,6 @@ def request_config(master,
         dialog_kwargs={'populate': populate,
                        'dgenerate_exe': dgenerate_exe,
                        'get_cwd': get_cwd,
-                       'get_offline': get_offline}
+                       'get_offline': get_offline,
+                       'get_editor': get_editor}
     )

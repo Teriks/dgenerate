@@ -132,6 +132,14 @@ class TestAssistantPrompt(unittest.TestCase):
         self.assertGreater(msg.index('Do not copy that sentence'), msg.index('this example'))
         self.assertEqual(msg.count('### write the config from these rules'), 1)
 
+    def test_edit_mode_keeps_the_open_config(self):
+        editor = '#! /usr/bin/env dgenerate --file\nstable-diffusion-v1-5/stable-diffusion-v1-5\n--prompts "a fox"\n'
+        msg = user_message('make the fox red', 'retrieved examples', [], editor=editor)
+        self.assertIn('Current config in the editor', msg)
+        self.assertIn('--prompts "a fox"', msg)
+        self.assertIn('make the fox red', msg)
+        self.assertNotIn('### write the config from these rules', msg)
+
 
 class TestAssistantWithoutXllamacpp(unittest.TestCase):
     def test_missing_xllamacpp_stops_before_loading_a_model(self):
