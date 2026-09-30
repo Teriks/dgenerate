@@ -228,7 +228,112 @@ class UnknownAnimationFormatError(Exception):
     """
 
 
-def create_animation_writer(animation_format: str, out_filename: str, fps: float):
+def _audio_frame_samples(frame) -> numpy.ndarray:
+    """Planar float32 samples shaped ``(channels, samples)``."""
+    data = numpy.asarray(frame.to_ndarray())
+    channels = frame.layout.nb_channels
+    if frame.format.is_planar:
+        if data.ndim == 1:
+            data = data.reshape(1, -1)
+    else:
+        data = data.reshape(-1, channels).T
+    if data.dtype.kind != 'f':
+        if data.dtype == numpy.uint8:
+            data = (data.astype(numpy.float32) - 128.0) / 128.0
+        else:
+            limits = numpy.iinfo(data.dtype)
+            data = data.astype(numpy.float32) / max(abs(int(limits.min)), int(limits.max))
+    else:
+        data = data.astype(numpy.float32, copy=False)
+    return numpy.ascontiguousarray(data)
+
+
+def source_has_audio(path: str) -> bool:
+    """
+    Does this local media file contain an audio stream?
+
+    :param path: filesystem path
+    :return: ``True`` when an audio stream can be opened
+    """
+    if not path or not os.path.isfile(path):
+        return False
+    try:
+        with av.open(path) as container:
+            return any(stream.type == 'audio' for stream in container.streams)
+    except av.error.FFmpegError:
+        return False
+
+
+def read_source_audio(path: str,
+                      fps: float,
+                      frame_start: int = 0,
+                      frame_count: int | None = None):
+    """
+    Decode the first audio stream and keep the samples that belong to the
+    frames being written.
+
+    ``frame_start`` and ``frame_count`` are in video frames at ``fps``. The
+    slice matches a reader that writes every frame in that range once.
+
+    :param path: filesystem path of the source media
+    :param fps: video frame rate used to place the slice
+    :param frame_start: first video frame, inclusive
+    :param frame_count: how many video frames are written. ``None`` reads through
+        the end of the audio.
+    :return: ``(samples, sample_rate)`` with ``samples`` shaped ``(channels, samples)``,
+        or ``None`` when the file has no usable audio
+    """
+    if not path or not os.path.isfile(path) or not fps:
+        return None
+    try:
+        container = av.open(path)
+    except av.error.FFmpegError:
+        return None
+    try:
+        audio_streams = [stream for stream in container.streams if stream.type == 'audio']
+        if not audio_streams:
+            return None
+        stream = audio_streams[0]
+        rate = int(stream.codec_context.sample_rate or stream.rate or 0)
+        if rate <= 0:
+            return None
+        start_sample = max(0, int(round(frame_start / float(fps) * rate)))
+        end_sample = None
+        if frame_count is not None:
+            end_sample = start_sample + max(0, int(round(frame_count / float(fps) * rate)))
+            if end_sample <= start_sample:
+                return None
+        pieces = []
+        seen = 0
+        for frame in container.decode(stream):
+            data = _audio_frame_samples(frame)
+            if data.size == 0:
+                continue
+            pieces.append(data)
+            seen += data.shape[1]
+            if end_sample is not None and seen >= end_sample:
+                break
+        if not pieces:
+            return None
+        channels = min(piece.shape[0] for piece in pieces)
+        audio = numpy.concatenate([piece[:channels] for piece in pieces], axis=1)
+        if start_sample >= audio.shape[1]:
+            return None
+        audio = audio[:, start_sample:end_sample]
+        if audio.shape[1] == 0:
+            return None
+        return numpy.ascontiguousarray(audio, dtype=numpy.float32), rate
+    except av.error.FFmpegError:
+        return None
+    finally:
+        container.close()
+
+
+def create_animation_writer(animation_format: str,
+                            out_filename: str,
+                            fps: float,
+                            audio: numpy.ndarray | None = None,
+                            audio_sample_rate: int | None = None):
     """
     Create an animation writer of a given format.
 
@@ -237,6 +342,8 @@ def create_animation_writer(animation_format: str, out_filename: str, fps: float
     :param animation_format: The animation format, see :py:func:`.supported_animation_writer_formats`
     :param out_filename: the output file name
     :param fps: FPS
+    :param audio: Optional soundtrack for an mp4. Other formats cannot carry one.
+    :param audio_sample_rate: Sample rate of ``audio``
     :return: :py:class:`.AnimationWriter`
     """
     animation_format = animation_format.strip().lower()
@@ -244,8 +351,9 @@ def create_animation_writer(animation_format: str, out_filename: str, fps: float
     if animation_format not in get_supported_animation_writer_formats():
         raise UnknownAnimationFormatError(f'Animation format "{animation_format}" is not a known format.')
 
-    return VideoWriter(out_filename, fps) if animation_format == 'mp4' \
-        else AnimatedImageWriter(out_filename, 1000 / fps)
+    if animation_format == 'mp4':
+        return VideoWriter(out_filename, fps, audio=audio, audio_sample_rate=audio_sample_rate)
+    return AnimatedImageWriter(out_filename, 1000 / fps)
 
 
 class MultiAnimationWriter(AnimationWriter):
@@ -275,6 +383,18 @@ class MultiAnimationWriter(AnimationWriter):
         self.animation_format = animation_format
         self.fps = fps
         self.allow_overwrites = allow_overwrites
+        self._audio = None
+        self._audio_sample_rate = None
+
+    def set_source_audio(self, audio: numpy.ndarray | None, sample_rate: int | None):
+        """
+        Soundtrack copied onto every mp4 this writer opens.
+
+        Must be set before the first :py:meth:`write` of a file. The samples
+        are the source clip for the frames about to be written.
+        """
+        self._audio = audio
+        self._audio_sample_rate = sample_rate
 
     def _gen_filename(self, num_images, image_idx):
         base, ext = os.path.splitext(self.filename)
@@ -309,7 +429,12 @@ class MultiAnimationWriter(AnimationWriter):
 
             for filename in self.filenames:
                 self.writers.append(
-                    create_animation_writer(self.animation_format, filename, self.fps))
+                    create_animation_writer(
+                        self.animation_format,
+                        filename,
+                        self.fps,
+                        audio=self._audio,
+                        audio_sample_rate=self._audio_sample_rate))
 
         elif len(self.writers) != len(img):
             # Sanity check

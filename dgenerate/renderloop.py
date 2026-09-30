@@ -1743,6 +1743,44 @@ class RenderLoop:
             self._written_images.write(pathlib.Path(filename).absolute().as_posix() + '\n')
             _messages.log(f'Wrote Frame: "{filename}"')
 
+    def _attach_animation_source_audio(self, anim_writer, image_seed):
+        """
+        Copy the source soundtrack onto an mp4 built from that clip's frames.
+
+        GIF, WebP, APNG, and individual frames have nowhere to put the track.
+        """
+        paths = []
+        for group in (image_seed.images, image_seed.control_images):
+            if not group:
+                continue
+            for image in group:
+                name = getattr(image, 'filename', None)
+                if name and name not in paths:
+                    paths.append(name)
+        has_audio = any(_mediaoutput.source_has_audio(path) for path in paths)
+        if not has_audio:
+            return
+        if self._c_config.animation_format != 'mp4':
+            _messages.warning(
+                f'Audio is dropped because --animation-format is {self._c_config.animation_format}. '
+                'Use mp4 to keep the soundtrack.')
+            return
+        frame_start = int(getattr(image_seed, 'source_frame_start', 0) or 0)
+        loaded = None
+        for path in paths:
+            loaded = _mediaoutput.read_source_audio(
+                path,
+                fps=image_seed.fps,
+                frame_start=frame_start,
+                frame_count=image_seed.total_frames)
+            if loaded:
+                _messages.log(f'Keeping the audio track from "{path}".')
+                break
+        if not loaded:
+            return
+        audio, sample_rate = loaded
+        anim_writer.set_source_audio(audio, sample_rate)
+
     def _render_animation(self,
                           pipeline_wrapper: _pipelinewrapper.DiffusionPipelineWrapper,
                           set_wrapper_args_per_image_seed:
@@ -1797,6 +1835,9 @@ class RenderLoop:
                             ext=self._c_config.animation_format))
 
                 for image_seed_frame in image_seed_iterator():
+                    if image_seed_frame.frame_index == 0 and not not_writing_animation_file:
+                        self._attach_animation_source_audio(anim_writer, image_seed_frame)
+
                     frame_duration = image_seed_frame.frame_duration
                     fps = image_seed_frame.fps
                     total_frames = image_seed_frame.total_frames

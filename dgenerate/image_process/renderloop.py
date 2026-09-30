@@ -288,6 +288,31 @@ class ImageProcessRenderLoop:
     def _record_save_animation(self, filename):
         self._written_animations.write(pathlib.Path(filename).absolute().as_posix() + '\n')
 
+    def _source_audio_for_animation(self, file, reader, ext):
+        """
+        Soundtrack for an mp4 written from ``file``.
+
+        Other animation formats cannot carry one, so the track is reported
+        as dropped instead of being decoded.
+        """
+        fmt = ext.lstrip('.').lower()
+        if not _mediaoutput.source_has_audio(file):
+            return None, None
+        if fmt != 'mp4':
+            _messages.warning(
+                f'{self.message_header}: Audio is dropped because the output is {fmt}. '
+                'Write an mp4 to keep the soundtrack.')
+            return None, None
+        loaded = _mediaoutput.read_source_audio(
+            file,
+            fps=reader.fps,
+            frame_start=reader.frame_start or 0,
+            frame_count=reader.total_frames)
+        if not loaded:
+            return None, None
+        _messages.log(f'{self.message_header}: Keeping the audio track from "{file}".')
+        return loaded
+
     def _process_reader(self, file, reader: _mediainput.MediaReader, out_filename, generation_step):
         out_directory = os.path.dirname(out_filename)
 
@@ -339,11 +364,16 @@ class ImageProcessRenderLoop:
                 out_anim_name = out_filename
 
             if not self._c_config.no_animation_file and not self.disable_writes:
+                audio, sample_rate = self._source_audio_for_animation(file, reader, ext)
                 anim_writer = _mediaoutput.create_animation_writer(
                     animation_format=ext.lstrip('.'),
                     out_filename=out_anim_name,
-                    fps=reader.fps)
+                    fps=reader.fps,
+                    audio=audio,
+                    audio_sample_rate=sample_rate)
             else:
+                if not self.disable_writes and self._c_config.no_animation_file:
+                    self._source_audio_for_animation(file, reader, 'frames')
                 # mock
                 anim_writer = _mediaoutput.AnimationWriter()
 
