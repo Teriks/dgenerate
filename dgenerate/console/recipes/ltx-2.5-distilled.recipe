@@ -9,6 +9,7 @@ order: 19
 # Leave Video Length empty and the duration head chooses the length.
 # Min/Max Seconds apply only when Video Length is empty.
 # First frame, last frame (last-frame=), and the IC-LoRA control clip are optional.
+# Condition Strength fills image-seed groups that omit strength=. last-frame= stays at 1.
 # The union control IC-LoRA needs an output size divisible by 64.
 
 \setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"
@@ -54,7 +55,6 @@ order: 19
 @string[{"label":"Prompt Enhancer", "arg":"--ltx-prompt-enhancer"}]
 @string[{"label":"System Prompt", "arg":"--ltx-system-prompt", "divider-after":true}]
 @dropdown[{"label":"Animation Format", "arg":"--animation-format", "options":["mp4", "gif", "webp", "apng", "frames"], "default":"mp4", "optional":false}]
-# Fills image-seed groups that omit strength=. last-frame= stays at 1.
 @float[{"label":"Condition Strength", "arg":"--image-seed-strengths", "min":0, "max":1}]
 @seeds[{"label":"Seeds"}]
 @dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]

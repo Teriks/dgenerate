@@ -605,7 +605,10 @@ def user_message(request: str, context: str, files: list[RequestFile],
     if editor and editor.strip():
         body += (
             'Current config in the editor. Apply the request as an edit of this config. '
-            'Return the complete revised config. Keep every line the request does not ask to change.\n\n'
+            'Return the complete revised config. Keep every line the request does not ask to change. '
+            'Do not wrap a line, and do not insert a blank line inside an invocation: a blank line '
+            'ends it, and the next option line is then run with no model path. Leave every {{ }} '
+            'expression on the line it already occupies.\n\n'
             f'{editor.strip()}\n\n'
             f'Request:\n{request}\n')
         return body

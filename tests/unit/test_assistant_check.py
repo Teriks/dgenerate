@@ -477,6 +477,19 @@ class TestAssistantCheck(unittest.TestCase):
         self.assertFalse(report['ok'], report)
         self.assertIn('last_images', _messages(report))
 
+    def test_blank_line_names_the_split_invocation(self):
+        report = check_config(_cfg(
+            'Lightricks/LTX-2.5-Diffusers',
+            '--model-type ltx',
+            '--prompts "a fox"',
+            '',
+            '--guidance-scales 3',
+        ))
+        text = _messages(report)
+        self.assertNotIn('required: model_path', text)
+        self.assertIn('blank line', text)
+        self.assertIn('Do not wrap --prompts', text)
+
 
 if __name__ == '__main__':
     unittest.main()
