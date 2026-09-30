@@ -367,6 +367,27 @@ def _disable_to(module, vae=False):
         f'Disabled .to() on module: {_types.fullname(module)}')
 
 
+def _bind_pipeline_offload_method(pipeline, name, function):
+    """
+    Point ``pipeline.enable_*_cpu_offload`` at dgenerate's implementation.
+
+    Diffusers calls those methods with no arguments after ``load_lora_weights``
+    and, for model CPU offload, at the end of ``__call__``. Leaving the original
+    methods in place replaces dgenerate's hooks, ``.to()`` guard, and
+    bitsandbytes skip.
+    """
+
+    def entry(gpu_id=None, device=None, _function=function, _pipeline=pipeline):
+        target = device
+        if target is None:
+            target = getattr(_pipeline, '_dgenerate_offload_device', None)
+        if gpu_id is not None and device is None and target is not None:
+            target = torch.device(torch.device(target).type, gpu_id)
+        _function(_pipeline, target if target is not None else _torchutil.default_device())
+
+    setattr(pipeline, name, entry)
+
+
 def enable_sequential_cpu_offload(pipeline: diffusers.DiffusionPipeline,
                                   device: torch.device | str = _torchutil.default_device()):
     """
@@ -397,6 +418,7 @@ def enable_sequential_cpu_offload(pipeline: diffusers.DiffusionPipeline,
     
     pipeline.remove_all_hooks()
 
+    pipeline._dgenerate_offload_device = torch_device
     _set_sequential_cpu_offload_flag(pipeline, True)
     for name, model in get_pipeline_modules(pipeline).items():
         quant, _, _ = _util.check_bnb_status(model)
@@ -404,13 +426,16 @@ def enable_sequential_cpu_offload(pipeline: diffusers.DiffusionPipeline,
         if name in pipeline._exclude_from_cpu_offload or quant:
             continue
 
-        elif not is_sequential_cpu_offload_enabled(model):
+        # The flag survives the hook removal Diffusers does before loading a LoRA.
+        # Reinstall the hook when it is missing so that reload still uses this path.
+        elif not is_sequential_cpu_offload_enabled(model) or not hasattr(model, '_hf_hook'):
             _set_sequential_cpu_offload_flag(model, True)
             accelerate.cpu_offload(model, torch_device, offload_buffers=len(model._parameters) > 0)
             _disable_to(
                 model,
                 name == 'vae'
             )
+    _bind_pipeline_offload_method(pipeline, 'enable_sequential_cpu_offload', enable_sequential_cpu_offload)
 
 
 def enable_model_cpu_offload(pipeline: diffusers.DiffusionPipeline,
@@ -494,6 +519,10 @@ def enable_model_cpu_offload(pipeline: diffusers.DiffusionPipeline,
             _, hook = accelerate.cpu_offload_with_hook(model, device)
             _set_cpu_offload_flag(model, True)
             pipeline._all_hooks.append(hook)
+
+    pipeline._dgenerate_offload_device = device
+    pipeline._offload_device = device
+    _bind_pipeline_offload_method(pipeline, 'enable_model_cpu_offload', enable_model_cpu_offload)
 
 
 def get_torch_device(component: diffusers.DiffusionPipeline | torch.nn.Module) -> torch.device:

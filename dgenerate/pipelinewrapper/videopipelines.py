@@ -1240,6 +1240,54 @@ def _complete_ltx_call(wrapper, pipe, held, user_args, kwargs, family):
     return _ltx_pixels_from_output(wrapper, pipe, held, output, diffusion, kwargs.get('generator'))
 
 
+def _enhance_ltx_prompt_once(wrapper, pipe, kwargs):
+    """
+    Rewrite the prompt once, then turn enhancement off for every later pipeline call.
+
+    ``enhance_prompt`` moves Gemma onto the compute device and leaves it there.
+    A second call, which the two-stage refine would otherwise make, also meets
+    the sequential-offload hooks that loading a stage LoRA puts back on every
+    pipeline module. Gemma indexes ``embed_tokens.weight`` directly, and that
+    weight is a meta tensor under those hooks.
+    """
+    if not kwargs.get('enable_prompt_enhancement') or kwargs.get('prompt') is None:
+        return
+    if getattr(pipe, 'prompt_enhancer', None) is None:
+        return
+    system_prompt = kwargs.get('system_prompt')
+    if system_prompt is None:
+        from diffusers.pipelines.ltx2.utils import LTX2_5_T2V_DEFAULT_SYSTEM_PROMPT
+        system_prompt = LTX2_5_T2V_DEFAULT_SYSTEM_PROMPT
+    enhanced = pipe.enhance_prompt(
+        prompt=kwargs['prompt'],
+        system_prompt=system_prompt,
+        generator=kwargs.get('generator'),
+        device=wrapper.device)
+    if isinstance(enhanced, (list, tuple)):
+        enhanced = enhanced[0]
+    kwargs['prompt'] = enhanced
+    kwargs['enable_prompt_enhancement'] = False
+    if wrapper.model_cpu_offload or wrapper.model_sequential_offload:
+        pipe.prompt_enhancer.to('cpu')
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+
+def _detach_prompt_enhancer(pipe):
+    """
+    Drop the prompt enhancer from the pipeline while a stage LoRA is loaded.
+
+    Loading LoRA removes offload hooks and calls ``enable_sequential_cpu_offload``
+    again. That call is dgenerate's method, and it still hooks every component
+    present at that moment.
+    """
+    enhancer = getattr(pipe, 'prompt_enhancer', None)
+    if enhancer is None:
+        return None
+    pipe.prompt_enhancer = None
+    return enhancer
+
+
 def _ltx_two_stage(wrapper, pipe, held, user_args, kwargs, diffusion):
     width = kwargs.get('width')
     height = kwargs.get('height')
@@ -1247,6 +1295,7 @@ def _ltx_two_stage(wrapper, pipe, held, user_args, kwargs, diffusion):
         raise _pipelines.UnsupportedPipelineConfigError(
             '--ltx-latent-upscale needs an --output-size divisible by 64. '
             'That size is the finished clip.')
+    _enhance_ltx_prompt_once(wrapper, pipe, kwargs)
     stage1 = dict(kwargs)
     stage1['width'] = int(width) // 2
     stage1['height'] = int(height) // 2
@@ -1287,6 +1336,7 @@ def _ltx_two_stage(wrapper, pipe, held, user_args, kwargs, diffusion):
     pipe.scheduler = original.__class__.from_config(
         dict(original.config), use_dynamic_shifting=False, shift_terminal=None)
     loaded_stage_lora = False
+    enhancer = _detach_prompt_enhancer(pipe)
     try:
         if user_args.ltx_stage_lora_uris:
             _uris.LoRAUri.load_on_pipeline(
@@ -1303,6 +1353,8 @@ def _ltx_two_stage(wrapper, pipe, held, user_args, kwargs, diffusion):
         pipe.scheduler = original
         if loaded_stage_lora and hasattr(pipe, 'unload_lora_weights'):
             pipe.unload_lora_weights()
+        if enhancer is not None:
+            pipe.prompt_enhancer = enhancer
     return _ltx_pixels_from_output(
         wrapper, pipe, held, second, diffusion, kwargs.get('generator'))
 
