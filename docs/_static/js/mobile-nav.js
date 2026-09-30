@@ -41,7 +41,24 @@
         });
         document.body.appendChild(button);
         label();
+        watchBanner(button);
         return label;
+    }
+
+    function watchBanner(button) {
+        var banner = document.querySelector('.wy-nav-top');
+        if (!banner || typeof IntersectionObserver === 'undefined') {
+            return;
+        }
+        function apply(visible) {
+            button.classList.toggle('banner-visible', visible);
+        }
+        var observer = new IntersectionObserver(function (entries) {
+            apply(entries[0].isIntersecting);
+        });
+        observer.observe(banner);
+        var rect = banner.getBoundingClientRect();
+        apply(rect.bottom > 0 && rect.top < window.innerHeight && rect.width > 0);
     }
 
     function bind() {

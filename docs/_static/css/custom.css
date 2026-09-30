@@ -15,16 +15,20 @@
         justify-content: center;
         position: fixed;
         z-index: 400;
-        right: 1rem;
-        bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
-        width: 3rem;
-        height: 3rem;
+        top: calc(0.45rem + env(safe-area-inset-top, 0px));
+        left: 0.65rem;
+        width: 2.6rem;
+        height: 2.6rem;
         margin: 0;
         padding: 0;
         border: 0;
         border-radius: 999px;
         background: #2980b9;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+    }
+
+    .dgenerate-nav-toggle.banner-visible {
+        display: none;
     }
 
     .dgenerate-nav-toggle span {
