@@ -1404,6 +1404,17 @@ class ImageViewerVulkan(tk.Frame):
         if self._can_present() and self._present_retries < 40:
             self._present_retries += 1
             self._schedule_present_retry()
+    def _schedule_settled_present(self):
+        self.after_idle(self._present_settled)
+        self.after(50, self._present_settled)
+
+    def _present_settled(self):
+        if not self.has_image() or self._resize_after is not None:
+            return
+        self._presented_key = None
+        self._present_retries = 0
+        self.redraw()
+
     def _schedule_present_retry(self):
         if self._retry_after is not None:
             return
@@ -1527,6 +1538,7 @@ class ImageViewerVulkan(tk.Frame):
         try:
             self._stop_animation()
             self._presented_key = None
+            self._present_retries = 0
             clip = _animationplayback.open_animation(image_path) if _animationplayback.is_animation_path(image_path) else None
             if clip is not None:
                 frame = clip.frame()
@@ -1558,6 +1570,11 @@ class ImageViewerVulkan(tk.Frame):
                 self._calculate_base_display_size()
                 self._zoom_factor = 1.0
             self.redraw()
+            # The output pane inserts the "Wrote ..." line after this returns,
+            # and that paint can cover a single present. A playing clip draws
+            # again on its own. A still stays on the previous frame until
+            # something else, such as a sash drag, presents once more.
+            self._schedule_settled_present()
             if self._animation is not None:
                 self._animation.set_gain(0.0 if self._preview_muted else self._preview_volume)
                 self._animation.start()

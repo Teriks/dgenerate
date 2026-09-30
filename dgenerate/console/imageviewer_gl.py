@@ -206,6 +206,11 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
             if pending is not None and self._resize_after is None:
                 self._resize_after = pending
 
+    def _present_settled(self):
+        if not self.has_image() or self._resize_after is not None:
+            return
+        self.redraw()
+
     def _finish_resize(self):
         self._resize_after = None
         self._resize_drawn_at = time.monotonic()
@@ -970,6 +975,10 @@ class ImageViewerGL(pyopengltk.OpenGLFrame):
 
             # Trigger redraw
             self.redraw()
+            # The output pane paints after this returns and can cover one
+            # buffer swap. Present again once that layout has settled.
+            self.after_idle(self._present_settled)
+            self.after(50, self._present_settled)
 
             if self._animation is not None:
                 if self._animation.has_audio and not self._animation.audio_active and self.on_info:

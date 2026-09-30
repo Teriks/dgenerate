@@ -1214,6 +1214,105 @@ class TestVideoModels(unittest.TestCase):
         self.assertNotIn('ltx_stg_scale', calls[2])
         self.assertIn('latents', calls[2])
 
+    def test_two_stage_enhances_once_and_hides_enhancer_from_stage_lora(self):
+        class Scheduler:
+            def __init__(self):
+                self.config = {'use_dynamic_shifting': True, 'shift_terminal': 0.1}
+
+            @classmethod
+            def from_config(cls, config, **overrides):
+                scheduler = cls()
+                scheduler.config = dict(config)
+                scheduler.config.update(overrides)
+                return scheduler
+
+        class Enhancer:
+            def to(self, *args, **kwargs):
+                return self
+
+        enhancer = Enhancer()
+        calls = []
+
+        class Pipe:
+            def __init__(self):
+                self.scheduler = Scheduler()
+                self.vae = object()
+                self.prompt_enhancer = enhancer
+
+            def enhance_prompt(self, prompt, system_prompt=None, **kwargs):
+                calls.append({'enhance': prompt, 'system': system_prompt})
+                return [prompt + ' enhanced']
+
+        def invoke(wrapper, pipeline, kwargs):
+            calls.append(dict(kwargs))
+
+            class Output:
+                pass
+
+            output = Output()
+            if kwargs.get('output_type') == 'latent' and 'latents' not in kwargs:
+                output.frames = torch.zeros(1, 4, 3, 2, 2)
+                output.audio = None
+            else:
+                output.frames = [PIL.Image.new('RGB', (4, 4))]
+                output.audio = None
+            return output
+
+        class UpPipe:
+            def __init__(self, vae, latent_upsampler):
+                pass
+
+            def __call__(self, **kwargs):
+                return (torch.zeros(1, 4, 3, 4, 4),)
+
+        seen = {}
+
+        def load_on_pipeline(pipeline, **kwargs):
+            seen['during_lora'] = pipeline.prompt_enhancer
+
+        class Wrapper:
+            device = 'cpu'
+            model_path = 'org/ltx'
+            model_cpu_offload = False
+            model_sequential_offload = True
+            lora_fuse_scale = None
+            _dtype = None
+            _auth_token = None
+            _local_files_only = True
+
+        pipe = Pipe()
+        wrapper = Wrapper()
+
+        args = _pipelinewrapper.DiffusionArguments()
+        args.ltx_stage_lora_uris = ['org/ltx;weight-name=stage.safetensors']
+        kwargs = {
+            'prompt': 'fox',
+            'enable_prompt_enhancement': True,
+            'width': 768,
+            'height': 512,
+            'guidance_scale': 3,
+        }
+
+        with unittest.mock.patch.object(_videopipelines, '_invoke', side_effect=invoke), \
+                unittest.mock.patch.object(
+                    _videopipelines._uris.LoRAUri, 'load_on_pipeline', side_effect=load_on_pipeline), \
+                unittest.mock.patch(
+                    'diffusers.pipelines.ltx2.latent_upsampler.LTX2LatentUpsamplerModel.from_pretrained',
+                    return_value=type('Upsampler', (), {'to': lambda self, *args, **kwargs: self})()), \
+                unittest.mock.patch(
+                    'diffusers.pipelines.ltx2.pipeline_ltx2_latent_upsample.LTX2LatentUpsamplePipeline',
+                    UpPipe):
+            _videopipelines._ltx_two_stage(wrapper, pipe, None, args, kwargs, False)
+
+        self.assertEqual(calls[0]['enhance'], 'fox')
+        self.assertTrue(calls[0]['system'])
+        self.assertEqual(calls[1]['prompt'], 'fox enhanced')
+        self.assertFalse(calls[1]['enable_prompt_enhancement'])
+        self.assertEqual(calls[2]['prompt'], 'fox enhanced')
+        self.assertFalse(calls[2]['enable_prompt_enhancement'])
+        self.assertIsNone(seen['during_lora'])
+        self.assertIs(pipe.prompt_enhancer, enhancer)
+
 
 if __name__ == '__main__':
     unittest.main()
