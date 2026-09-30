@@ -965,7 +965,7 @@ def check_config(text: str) -> dict:
         except SystemExit:
             errors.append({'line': line, 'message': 'dgenerate exited while parsing the invocation.'})
         except Exception as e:
-            entry = {'line': line, 'message': str(e).strip()}
+            entry = {'line': line, 'message': _explain_parse_error(str(e).strip())}
             if not _MISSING_FILE.search(entry['message']):
                 errors.append(entry)
             elif not any(path in entry['message'] for path in generated):
@@ -979,6 +979,22 @@ def check_config(text: str) -> dict:
         'warnings': warnings,
         'invocations': len(invocations),
     }
+
+
+def _explain_parse_error(message: str) -> str:
+    """
+    Argparse's missing ``model_path`` means this invocation is only options.
+
+    A blank line, or a wrapped line that does not start with ``-``, ended the
+    invocation that holds the model path. The next ``--`` line is then its own
+    command.
+    """
+    if message == 'the following arguments are required: model_path':
+        return ('This line was run on its own, with no model path. A blank line, or a '
+                'wrapped line that does not start with -, ended the invocation above. '
+                'Put this line back with that invocation. Do not wrap --prompts, and '
+                'leave a {{ }} expression on the line it already occupies.')
+    return message
 
 
 def main(argv: list[str] | None = None) -> int:

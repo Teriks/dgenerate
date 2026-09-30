@@ -136,6 +136,7 @@ class TestAssistantPrompt(unittest.TestCase):
         editor = '#! /usr/bin/env dgenerate --file\nstable-diffusion-v1-5/stable-diffusion-v1-5\n--prompts "a fox"\n'
         msg = user_message('make the fox red', 'retrieved examples', [], editor=editor)
         self.assertIn('Current config in the editor', msg)
+        self.assertIn('Do not wrap a line', msg)
         self.assertIn('--prompts "a fox"', msg)
         self.assertIn('make the fox red', msg)
         self.assertNotIn('### write the config from these rules', msg)

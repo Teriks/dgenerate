@@ -243,6 +243,23 @@ def main(argv: list[str], prog: str = 'assistant', local_files_only: bool = Fals
 
         config, report = None, None
         raised_placeholders = set()
+        baseline = set()
+        if editor:
+            base_report = deep_check(editor, run_dir)
+            baseline = {entry['message'] for entry in base_report.get('errors', [])}
+
+        def keep_new(problems: list[str]) -> list[str]:
+            if not baseline:
+                return problems
+            kept = []
+            for problem in problems:
+                text = re.sub(r'^line \d+:\s*', '', problem)
+                if text not in baseline:
+                    kept.append(problem)
+            if problems and not kept:
+                log('Ignoring check errors that were already in the editor.')
+            return kept
+
         for attempt in range(args.max_repairs + 1):
             limit = _models.reply_token_limit(args.ctx, args.max_tokens)
             log('Writing the config' if attempt == 0 else f'Fixing the config (attempt {attempt})')
@@ -256,7 +273,7 @@ def main(argv: list[str], prog: str = 'assistant', local_files_only: bool = Fals
             if args.no_check:
                 break
 
-            problems = _prompt.inputs_used_as_output(config, files) + _prompt.split_prompts(config)
+            problems = keep_new(_prompt.inputs_used_as_output(config, files) + _prompt.split_prompts(config))
             suggested = []
             for option, matches in _prompt.unknown_options(config, index.known_options):
                 hint = f', did you mean {" or ".join(matches)}?' if matches else '.'
@@ -269,7 +286,8 @@ def main(argv: list[str], prog: str = 'assistant', local_files_only: bool = Fals
                 if report.get('ok') is None:
                     log(f'warning: could not run the dgenerate check: {report.get("failure")}')
                     break
-                problems = [_problem(e) for e in report['errors']] + _guessed_files(report['warnings'], files)
+                problems = keep_new(
+                    [_problem(e) for e in report['errors']] + _guessed_files(report['warnings'], files))
                 if not files:
                     problems += _chainable_placeholders(request, config, report['warnings'], raised_placeholders)
                 suggested = [o for p in problems for o in _prompt.options_in(p) if index.argument(o)]
