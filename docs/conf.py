@@ -93,6 +93,10 @@ html_css_files = [
     'css/custom.css',
 ]
 
+html_js_files = [
+    'js/mobile-nav.js',
+]
+
 autodoc_member_order = 'groupwise'
 
 html_theme_options = {'navigation_depth': 4}
