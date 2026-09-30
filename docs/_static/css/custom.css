@@ -2,6 +2,40 @@
     max-width: 1200px; /* command examples can become long */
 }
 
+/* The theme menu button is in the page header. On a phone it scrolls away. */
+.dgenerate-nav-toggle {
+    display: none;
+}
+
+@media screen and (max-width: 768px) {
+    .dgenerate-nav-toggle {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        position: fixed;
+        z-index: 400;
+        right: 1rem;
+        bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+        width: 3rem;
+        height: 3rem;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        border-radius: 999px;
+        background: #2980b9;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+    }
+
+    .dgenerate-nav-toggle span {
+        display: block;
+        width: 1.15rem;
+        height: 2px;
+        margin: 2px 0;
+        background: #fff;
+    }
+}
+
 p {
     max-width: 800px;
 }
