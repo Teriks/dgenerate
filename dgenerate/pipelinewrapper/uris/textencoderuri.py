@@ -102,6 +102,90 @@ def _monolithic_auto_quant_device_map(
 
     return "auto"
 
+
+def _translate_flattened_clip_checkpoint_keys(loaded, model_keys):
+    """Drop a monolithic ``text_model.`` prefix when the module no longer has that child.
+
+    Transformers 5 flattens ``CLIPTextModel``: ``embeddings`` and ``encoder`` sit on the
+    module itself. ComfyUI / single-file clip-l checkpoints still store
+    ``text_model.embeddings.*``. Accelerate refuses any checkpoint key that is not in
+    ``state_dict()``, so those weights are skipped. After bitsandbytes replaces the
+    linears with empty meta modules, ``dispatch_model`` then dies with
+    "Cannot copy out of meta tensor".
+    """
+    prefix = 'text_model.'
+    translated = {}
+    stripped_count = 0
+    for key, value in loaded.items():
+        if key in model_keys:
+            translated[key] = value
+            continue
+
+        stripped = None
+        marker = key.rfind(prefix)
+        if marker != -1:
+            candidate = key[marker + len(prefix):]
+            if candidate in model_keys:
+                stripped = candidate
+
+        if stripped is None:
+            translated[key] = value
+            continue
+
+        if stripped not in translated:
+            translated[stripped] = value
+            stripped_count += 1
+
+    if stripped_count:
+        _messages.debug_log(
+            'Translated '
+            f'{stripped_count} monolithic CLIP checkpoint key(s) '
+            'by dropping the "text_model." prefix.'
+        )
+    return translated
+
+
+@contextlib.contextmanager
+def _flattened_clip_checkpoint_keys(model):
+    model_keys = set(model.state_dict().keys())
+    flattened = (
+            'embeddings.token_embedding.weight' in model_keys and
+            'text_model.embeddings.token_embedding.weight' not in model_keys
+    )
+    if not flattened:
+        yield
+        return
+
+    modeling = accelerate.utils.modeling
+    original = modeling.load_state_dict
+
+    def load_state_dict(checkpoint_file, device_map=None):
+        loaded = original(checkpoint_file, device_map=device_map)
+        return _translate_flattened_clip_checkpoint_keys(loaded, model_keys)
+
+    modeling.load_state_dict = load_state_dict
+    try:
+        yield
+    finally:
+        modeling.load_state_dict = original
+
+
+def _load_monolithic_checkpoint(
+        model,
+        checkpoint,
+        device_map,
+        dtype,
+        no_split_module_classes,
+):
+    with _flattened_clip_checkpoint_keys(model):
+        return accelerate.load_checkpoint_and_dispatch(
+            model,
+            checkpoint=checkpoint,
+            device_map=device_map,
+            dtype=dtype,
+            no_split_module_classes=no_split_module_classes,
+        )
+
 def _load_clip_l_from_single_file(
         model_class: transformers.CLIPTextModel | transformers.CLIPTextModelWithProjection,
         model_path: str,
@@ -138,7 +222,7 @@ def _load_clip_l_from_single_file(
 
         with _suppress_accelerate_warnings():
             # Load state dict and update weights
-            text_encoder = accelerate.load_checkpoint_and_dispatch(
+            text_encoder = _load_monolithic_checkpoint(
                 text_encoder,
                 checkpoint=model_path,
                 device_map=device_map,
@@ -197,7 +281,7 @@ def _load_clip_l_sd3_from_single_file(
 
         with _suppress_accelerate_warnings():
             # Load state dict and update weights
-            text_encoder = accelerate.load_checkpoint_and_dispatch(
+            text_encoder = _load_monolithic_checkpoint(
                 text_encoder,
                 checkpoint=model_path,
                 device_map=device_map,
@@ -255,7 +339,7 @@ def _load_clip_g_sd3_from_single_file(
             )
 
         with _suppress_accelerate_warnings():
-            text_encoder = accelerate.load_checkpoint_and_dispatch(
+            text_encoder = _load_monolithic_checkpoint(
                 text_encoder,
                 checkpoint=model_path,
                 device_map=device_map,
@@ -313,7 +397,7 @@ def _load_t5_xxl_sd3_from_single_file(
             )
 
         with _suppress_accelerate_warnings():
-            text_encoder = accelerate.load_checkpoint_and_dispatch(
+            text_encoder = _load_monolithic_checkpoint(
                 text_encoder,
                 checkpoint=model_path,
                 device_map=device_map,
@@ -370,7 +454,7 @@ def _load_t5_xxl_from_single_file(
             )
 
         with _suppress_accelerate_warnings():
-            text_encoder = accelerate.load_checkpoint_and_dispatch(
+            text_encoder = _load_monolithic_checkpoint(
                 text_encoder,
                 checkpoint=model_path,
                 device_map=device_map,
@@ -424,7 +508,7 @@ def _load_clip_l_sd35_large_from_single_file(
 
         with _suppress_accelerate_warnings():
             # Load state dict and update weights
-            text_encoder = accelerate.load_checkpoint_and_dispatch(
+            text_encoder = _load_monolithic_checkpoint(
                 text_encoder,
                 checkpoint=model_path,
                 device_map=device_map,
@@ -478,7 +562,7 @@ def _load_clip_g_sd35_large_from_single_file(
 
         with _suppress_accelerate_warnings():
             # Load state dict and update weights
-            text_encoder = accelerate.load_checkpoint_and_dispatch(
+            text_encoder = _load_monolithic_checkpoint(
                 text_encoder,
                 checkpoint=model_path,
                 device_map=device_map,

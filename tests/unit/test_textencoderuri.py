@@ -196,6 +196,74 @@ class TestTextEncoderUri(unittest.TestCase):
         self.assertFalse(_call_without_flattened_text_model_alias(seen_as_wrapper))
         self.assertTrue(seen_as_wrapper())
 
+    def test_flattened_clip_checkpoint_drops_text_model_prefix(self):
+        import tempfile
+
+        import torch
+        from safetensors.torch import save_file
+        from transformers import CLIPTextConfig, CLIPTextModel
+
+        config = CLIPTextConfig(
+            vocab_size=100,
+            hidden_size=32,
+            intermediate_size=64,
+            num_hidden_layers=2,
+            num_attention_heads=4,
+            max_position_embeddings=8,
+            eos_token_id=2,
+            bos_token_id=None,
+        )
+        donor = CLIPTextModel(config).eval()
+        with torch.no_grad():
+            for parameter in donor.parameters():
+                parameter.normal_()
+
+        prefixed = {
+            'text_model.' + key: value.detach().cpu().contiguous().clone()
+            for key, value in donor.state_dict().items()
+        }
+        target = CLIPTextModel(config).eval()
+        projection = target.encoder.layers[0].self_attn.q_proj
+        projection.weight = torch.nn.Parameter(
+            torch.empty_like(projection.weight, device='meta'),
+            requires_grad=False,
+        )
+
+        with tempfile.TemporaryDirectory() as directory:
+            checkpoint = f'{directory}/clip_l.safetensors'
+            save_file(prefixed, checkpoint)
+            loaded = _textencoderuri._load_monolithic_checkpoint(
+                target,
+                checkpoint=checkpoint,
+                device_map={'': 'cpu'},
+                dtype=torch.float32,
+                no_split_module_classes=['CLIPEncoderLayer'],
+            )
+
+        weight = loaded.encoder.layers[0].self_attn.q_proj.weight
+        self.assertFalse(weight.is_meta)
+        self.assertTrue(torch.allclose(
+            weight, donor.encoder.layers[0].self_attn.q_proj.weight))
+        self.assertTrue(torch.allclose(
+            loaded.embeddings.token_embedding.weight,
+            donor.embeddings.token_embedding.weight,
+        ))
+
+    def test_flattened_clip_checkpoint_keeps_unprefixed_keys(self):
+        loaded = {'embeddings.token_embedding.weight': 'exact',
+                  'text_model.encoder.layers.0.mlp.fc1.weight': 'prefixed',
+                  'unused.weight': 'unused'}
+        model_keys = {
+            'embeddings.token_embedding.weight',
+            'encoder.layers.0.mlp.fc1.weight',
+        }
+        translated = _textencoderuri._translate_flattened_clip_checkpoint_keys(
+            loaded, model_keys)
+        self.assertEqual(translated['embeddings.token_embedding.weight'], 'exact')
+        self.assertEqual(translated['encoder.layers.0.mlp.fc1.weight'], 'prefixed')
+        self.assertEqual(translated['unused.weight'], 'unused')
+        self.assertNotIn('text_model.encoder.layers.0.mlp.fc1.weight', translated)
+
 
 if __name__ == '__main__':
     unittest.main() 
