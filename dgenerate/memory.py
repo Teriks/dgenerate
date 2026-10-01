@@ -499,15 +499,20 @@ def calculate_chunk_size(file_size):
 
     # If the file size is less than 1% of the total memory, all in one chunk
     if file_size <= total_memory * 0.01:
-        return file_size
-
+        chunk_size = file_size
     # If the file size is between 1% and 10% of the total memory, use 1% of the total memory as the chunk size
     elif file_size <= total_memory * 0.1:
-        return int(total_memory * 0.01)
-
+        chunk_size = int(total_memory * 0.01)
     # If the file size is larger than 10% of the total memory, use 0.1% of the total memory as the chunk size
     else:
-        return int(total_memory * 0.001)
+        chunk_size = int(total_memory * 0.001)
+
+    # 1% of a few hundred gigabytes of free RAM is still multiple gigabytes.
+    # The progress bar does not move until that first chunk finishes.
+    max_chunk_size = 8 * 1024 * 1024
+    if file_size > max_chunk_size:
+        chunk_size = min(chunk_size, max_chunk_size)
+    return chunk_size
 
 
 def gpu_memory_constraints(expressions: collections.abc.Iterable[str],
