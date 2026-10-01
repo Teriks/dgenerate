@@ -264,6 +264,140 @@ class TestTextEncoderUri(unittest.TestCase):
         self.assertEqual(translated['unused.weight'], 'unused')
         self.assertNotIn('text_model.encoder.layers.0.mlp.fc1.weight', translated)
 
+    def test_quantized_t5_keeps_wo_in_fp32(self):
+        import os
+        import tempfile
+
+        import torch
+        from safetensors.torch import save_file
+        from transformers import T5Config, T5EncoderModel
+
+        if not torch.cuda.is_available():
+            self.skipTest('bitsandbytes 4-bit needs CUDA')
+        try:
+            import bitsandbytes as bnb
+            import diffusers
+        except ImportError:
+            self.skipTest('bitsandbytes is not installed')
+
+        config = T5Config(
+            vocab_size=128,
+            d_model=32,
+            d_kv=8,
+            d_ff=64,
+            num_layers=2,
+            num_heads=4,
+            feed_forward_proj='gated-gelu',
+            is_gated_act=True,
+            relative_attention_num_buckets=8,
+        )
+        donor = T5EncoderModel(config).eval()
+        state = {
+            key: value.detach().cpu().contiguous().clone()
+            for key, value in donor.state_dict().items()
+        }
+        target = T5EncoderModel(config).to(dtype=torch.bfloat16)
+        quant_config = diffusers.BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type='nf4',
+            bnb_4bit_compute_dtype=torch.bfloat16,
+        )
+        device_map = _textencoderuri._monolithic_auto_quant_device_map(quant_config, 'cuda')
+        quantizer = diffusers.quantizers.auto.DiffusersAutoQuantizer().from_config(quant_config)
+        quantizer.preprocess_model(
+            target,
+            device_map=device_map,
+            keep_in_fp32_modules=_textencoderuri._keep_in_fp32_module_names(target),
+        )
+
+        with tempfile.TemporaryDirectory() as directory:
+            checkpoint = os.path.join(directory, 't5.safetensors')
+            save_file(state, checkpoint)
+            loaded = _textencoderuri._load_monolithic_checkpoint(
+                target,
+                checkpoint=checkpoint,
+                device_map=device_map,
+                dtype=torch.bfloat16,
+                no_split_module_classes=['T5Block'],
+            )
+        _textencoderuri._cast_kept_fp32_modules(loaded)
+        quantizer.postprocess_model(loaded)
+
+        wo = loaded.encoder.block[0].layer[1].DenseReluDense.wo
+        q = loaded.encoder.block[0].layer[0].SelfAttention.q
+        self.assertNotIsInstance(wo, bnb.nn.Linear4bit)
+        self.assertIsInstance(q, bnb.nn.Linear4bit)
+        self.assertEqual(wo.weight.dtype, torch.float32)
+        # The checkpoint load casts to bf16, then this layer is restored to fp32.
+        reference = donor.encoder.block[0].layer[1].DenseReluDense.wo.weight.detach().bfloat16().float().cpu()
+        self.assertTrue(torch.allclose(
+            wo.weight.detach().float().cpu(),
+            reference,
+            atol=1e-3,
+            rtol=1e-2,
+        ))
+
+    def test_sdnq_t5_quantizes_linears_and_keeps_wo(self):
+        import os
+        import tempfile
+
+        import torch
+        from safetensors.torch import save_file
+        from transformers import T5Config, T5EncoderModel
+
+        try:
+            from sdnq import SDNQConfig
+            import diffusers
+        except ImportError:
+            self.skipTest('sdnq is not installed')
+
+        config = T5Config(
+            vocab_size=128,
+            d_model=64,
+            d_kv=16,
+            d_ff=128,
+            num_layers=1,
+            num_heads=4,
+            feed_forward_proj='gated-gelu',
+            is_gated_act=True,
+            relative_attention_num_buckets=8,
+        )
+        donor = T5EncoderModel(config).eval()
+        state = {
+            key: value.detach().cpu().contiguous().clone()
+            for key, value in donor.state_dict().items()
+        }
+        target = T5EncoderModel(config).to(dtype=torch.bfloat16)
+        quant_config = SDNQConfig(
+            weights_dtype='int8',
+            minimum_allowed_numel=1,
+            minimum_allowed_channel_size=1,
+        )
+        quantizer = _textencoderuri._monolithic_hf_quantizer(quant_config)
+        quantizer.preprocess_model(
+            target,
+            device_map=None,
+            keep_in_fp32_modules=_textencoderuri._keep_in_fp32_module_names(target),
+        )
+
+        with tempfile.TemporaryDirectory() as directory:
+            checkpoint = os.path.join(directory, 't5.safetensors')
+            save_file(state, checkpoint)
+            loaded = _textencoderuri._load_monolithic_checkpoint(
+                target,
+                checkpoint=checkpoint,
+                device_map={'': 'cpu'},
+                dtype=torch.bfloat16,
+                no_split_module_classes=['T5Block'],
+            )
+        loaded = _textencoderuri._finish_monolithic_quantization(loaded, quantizer, torch.bfloat16)
+
+        wo = loaded.encoder.block[0].layer[1].DenseReluDense.wo
+        q = loaded.encoder.block[0].layer[0].SelfAttention.q
+        self.assertIsInstance(wo, torch.nn.Linear)
+        self.assertEqual(wo.weight.dtype, torch.float32)
+        self.assertTrue(hasattr(q, 'sdnq_dequantizer'))
+
 
 if __name__ == '__main__':
     unittest.main() 
