@@ -501,9 +501,6 @@ def patch_transformer(block_class: Type[torch.nn.Module]) -> Type[torch.nn.Modul
                             )
                         else:
                             hidden_states = hidden_states + controlnet_block_samples[index_block // interval_control]
-                # For single_transformer_blocks, we use the same image_rotary_emb as transformer_blocks
-                # The original FLUX implementation doesn't concatenate hidden_states for single_transformer_blocks
-                # Instead, it processes them separately with the same rotary embeddings
                 for index_block, block in enumerate(self.single_transformer_blocks):
                     if torch.is_grad_enabled() and self.gradient_checkpointing:
 
@@ -536,14 +533,12 @@ def patch_transformer(block_class: Type[torch.nn.Module]) -> Type[torch.nn.Modul
                             joint_attention_kwargs=joint_attention_kwargs,
                         )
 
-                    # controlnet residual
+                    # The block returns image hidden states on their own. Add the
+                    # controlnet residual to that tensor, matching FluxTransformer2DModel.
                     if controlnet_single_block_samples is not None:
                         interval_control = len(self.single_transformer_blocks) / len(controlnet_single_block_samples)
                         interval_control = int(np.ceil(interval_control))
-                        hidden_states[:, encoder_hidden_states.shape[1]:, ...] = (
-                                hidden_states[:, encoder_hidden_states.shape[1]:, ...]
-                                + controlnet_single_block_samples[index_block // interval_control]
-                        )
+                        hidden_states = hidden_states + controlnet_single_block_samples[index_block // interval_control]
 
                 hidden_states = self.norm_out(hidden_states, temb)
                 output = self.proj_out(hidden_states)

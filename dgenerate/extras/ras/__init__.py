@@ -58,9 +58,9 @@ def sd3_ras_context(pipeline: StableDiffusion3Pipeline, args: RASArgs, enabled: 
         yield pipeline
         return
 
-    if importlib.util.find_spec('triton') is None:
+    if args.enable_index_fusion and importlib.util.find_spec('triton') is None:
         raise RuntimeError(
-            "RAS requires the 'triton' package to be installed. "
+            "RAS index fusion requires the 'triton' package to be installed. "
             "Please install it using 'pip install triton' or "
             "'pip install triton-windows' for Windows users.")
 
