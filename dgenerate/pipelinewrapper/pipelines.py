@@ -2682,8 +2682,6 @@ def _create_diffusion_pipeline(
 
             vae_param = pipe_params['vae'].annotation
 
-            vae_encoder_name = vae_param.__name__
-
             if _types.is_union(vae_param):
                 try:
                     vae_encoder_name = model_index['vae'][1]
@@ -2700,6 +2698,8 @@ def _create_diffusion_pipeline(
                     raise UnsupportedPipelineConfigError(
                         f'Unsupported VAE encoder type: {vae_encoder_name}'
                     )
+            else:
+                vae_encoder_name = vae_param.__name__
 
             if vae_encoder_name is not None:
                 vae_extract_from_checkpoint = _hfhub.is_single_file_model_load(model_path)
