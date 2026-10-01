@@ -25,6 +25,9 @@ class T5EncoderWithProjection(T5PreTrainedModel):
             nn.Linear(config.project_out_dim, config.project_out_dim, bias=False)
         )
 
+        # Transformers 5 records all_tied_weights_keys in post_init(). Without
+        # it, from_pretrained crashes in mark_tied_weights_as_initialized.
+        self.post_init()
 
     def forward(
             self,

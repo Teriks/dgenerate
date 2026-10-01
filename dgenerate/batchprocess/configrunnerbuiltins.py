@@ -31,9 +31,9 @@ import fake_useragent
 import pyrfc6266
 import requests
 import torch
-import tqdm
 
 import dgenerate.batchprocess.batchprocessor as _batchprocessor
+import dgenerate.filecache as _filecache
 import dgenerate.image as _image
 import dgenerate.memory
 import dgenerate.memory as _memory
@@ -219,6 +219,9 @@ def download(url: str,
     with the argument "overwrite=True" indicating that the file should
     always be downloaded.
 
+    An interrupted download is kept beside the destination with an
+    ``.unfinished`` suffix and continued on the next call.
+
     "overwrite=True" can also be used to overwrite cached
     files in the dgenerate web cache.
 
@@ -257,75 +260,57 @@ def download(url: str,
                         else:
                             del web_cache[cache_key]
 
+        class _UseExisting(Exception):
+            def __init__(self, path):
+                self.path = path
+
+        state = {}
+
+        def resolve_path(response):
+            nonlocal output
+            content_type = response.headers.get('content-type', 'unknown')
+
+            if not mimetype_supported(content_type):
+                raise _batchprocessor.BatchProcessError(
+                    f'Encountered text/* mimetype at "{url}" '
+                    'without specifying the -t/--text argument.')
+
+            if output.endswith('/') or output.endswith('\\'):
+                os.makedirs(output, exist_ok=True)
+                output = os.path.join(
+                    output, pyrfc6266.requests_response_to_filename(response))
+
+            if not overwrite and os.path.exists(output):
+                raise _UseExisting(output)
+
+            _messages.log(f'Downloading: "{url}"\n'
+                          f'Destination: "{output}"',
+                          underline=True)
+            state['output'] = output
+            return output + '.unfinished'
+
         try:
-            with requests.get(
-                _webcache._append_tokens_to_url(url),
-                headers={'User-Agent': fake_useragent.UserAgent().chrome},
-                          stream=True,
-                          timeout=5
-            ) as response:
-                response.raise_for_status()
-
-                content_type = response.headers.get('content-type', 'unknown')
-
-                if not mimetype_supported(content_type):
-                    raise _batchprocessor.BatchProcessError(
-                        f'Encountered text/* mimetype at "{url}" '
-                        'without specifying the -t/--text argument.')
-
-                if output.endswith('/') or output.endswith('\\'):
-                    os.makedirs(output, exist_ok=True)
-                    output = os.path.join(
-                        output, pyrfc6266.requests_response_to_filename(response))
-
-                total_size = int(response.headers.get('content-length', 0))
-
-                if not overwrite and os.path.exists(output):
-                    _messages.log(f'Downloaded file already exists, using: '
-                                  f'{os.path.normpath(output)}',
-                                  underline=True)
-                    _webcache.cache.add(
-                        cache_key,
-                        os.path.abspath(output).encode('utf8'))
-                    return pathlib.Path(output).absolute().as_posix()
-
-                _messages.log(f'Downloading: "{url}"\n'
-                              f'Destination: "{output}"',
+            try:
+                _filecache.download_url_to_file(
+                    _webcache._append_tokens_to_url(url),
+                    headers={'User-Agent': fake_useragent.UserAgent().chrome},
+                    resolve_path=resolve_path)
+            except _UseExisting as existing:
+                _messages.log(f'Downloaded file already exists, using: '
+                              f'{os.path.normpath(existing.path)}',
                               underline=True)
-
-                chunk_size = _memory.calculate_chunk_size(total_size)
-                current_dl = output + '.unfinished'
-
-                with open(current_dl, 'wb') as file:
-                    if chunk_size != total_size:
-                        with tqdm.tqdm(total=total_size if total_size != 0 else None,
-                                       unit='iB',
-                                       unit_scale=True) as progress_bar:
-                            for chunk in response.iter_content(
-                                    chunk_size=chunk_size):
-                                if chunk:
-                                    progress_bar.update(len(chunk))
-                                    file.write(chunk)
-                                    file.flush()
-                            downloaded_size = progress_bar.n
-                    else:
-                        content = response.content
-                        downloaded_size = len(content)
-                        file.write(content)
-                        file.flush()
-
-                if total_size != 0 and downloaded_size != total_size:
-                    raise _batchprocessor.BatchProcessError(
-                        'Download failure, something went wrong '
-                        f'downloading "{url}".', )
-
-                os.replace(current_dl, output)
-
-                file_path = os.path.abspath(output)
-
                 _webcache.cache.add(
                     cache_key,
-                    file_path.encode('utf8'))
+                    os.path.abspath(existing.path).encode('utf8'))
+                return pathlib.Path(existing.path).absolute().as_posix()
+
+            os.replace(state['output'] + '.unfinished', state['output'])
+
+            file_path = os.path.abspath(state['output'])
+
+            _webcache.cache.add(
+                cache_key,
+                file_path.encode('utf8'))
 
         except requests.RequestException as e:
             raise _batchprocessor.BatchProcessError(
