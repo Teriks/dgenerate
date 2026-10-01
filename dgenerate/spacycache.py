@@ -36,10 +36,10 @@ import requests
 import spacy
 import tqdm
 
-import dgenerate.filelock as _filelock
-import dgenerate.memory as _memory
-import dgenerate.types as _types
 import dgenerate.exceptions as _d_exceptions
+import dgenerate.filecache as _filecache
+import dgenerate.filelock as _filelock
+import dgenerate.types as _types
 
 __doc__ = """
 Tools for downloading spaCy models to arbitrary locations, compatible with dgenerate's frozen environment.
@@ -55,22 +55,11 @@ class SpacyModelNotFoundError(_d_exceptions.ModelNotFoundError):
 
 
 def _download_whl_file(model_name, url, output_path):
-    response = requests.get(url, stream=True)
-    response.raise_for_status()
+    def progress_bar(*args, **kwargs):
+        kwargs.setdefault('desc', f'Downloading spaCy model "{model_name}"...')
+        return tqdm.tqdm(*args, **kwargs)
 
-    total_size = int(response.headers.get("content-length", 0))
-    block_size = _memory.calculate_chunk_size(total_size)
-
-    with open(output_path, "wb") as file, tqdm.tqdm(
-            desc=f'Downloading spaCy model "{model_name}"...',
-            total=total_size,
-            unit="B",
-            unit_scale=True,
-            unit_divisor=1024,
-    ) as bar:
-        for chunk in response.iter_content(block_size):
-            file.write(chunk)
-            bar.update(len(chunk))
+    _filecache.download_url_to_file(url, output_path, tqdm_pbar=progress_bar)
 
 
 def get_spacy_cache_directory() -> str:
@@ -131,18 +120,25 @@ def _get_compatibility(local_files_only: bool, attempt: int = 0) -> dict:
                 f'due to offline mode being active.'
             )
 
+        partial = compatibility_file + '.partial'
         try:
-            r = requests.get(_about.__compatibility__)
-            r.raise_for_status()
-
-            comp_table = r.json()['spacy']
-
-            with open(compatibility_file, 'w') as file:
+            _filecache.download_url_to_file(
+                _about.__compatibility__, partial, tqdm_pbar=None)
+            with open(partial, 'r', encoding='utf-8') as file:
+                comp_table = json.load(file)['spacy']
+            with open(compatibility_file, 'w', encoding='utf-8') as file:
                 json.dump(comp_table, file)
-
+            os.remove(partial)
+        except (json.JSONDecodeError, KeyError) as e:
+            try:
+                os.remove(partial)
+            except OSError:
+                pass
+            raise SpacyModelNotFoundError(
+                f'Could not download spaCy "{_about.__compatibility__}", reason: {e}') from e
         except requests.RequestException as e:
             raise SpacyModelNotFoundError(
-                f'Could not download spaCy "{_about.__compatibility__}", reason: {e}')
+                f'Could not download spaCy "{_about.__compatibility__}", reason: {e}') from e
 
         return comp_table[version]
     else:

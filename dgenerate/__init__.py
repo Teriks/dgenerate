@@ -34,6 +34,11 @@ import logging
 os.environ['PYTORCH_CUDA_ALLOC_CONF'] = os.environ.get(
     'PYTORCH_CUDA_ALLOC_CONF', 'garbage_collection_threshold:0.8,max_split_size_mb:512')
 
+# Read by huggingface_hub when its constants module is first imported.
+# A single number is the longest silence allowed between socket reads.
+if not os.environ.get('HF_HUB_DOWNLOAD_TIMEOUT', '').strip():
+    os.environ['HF_HUB_DOWNLOAD_TIMEOUT'] = '60'
+
 __am_dgenerate_app = \
     os.path.splitext(
         os.path.basename(os.path.realpath(sys.argv[0])))[0] in {'dgenerate', 'dgenerate_windowed'}
@@ -99,6 +104,7 @@ try:
     import diffusers
     import transformers
 
+    import dgenerate._patches.hfhub_download_timeout_patch
     import dgenerate._patches.transformers_dynamiccache_patch
     import dgenerate._patches.transformers_clip_text_model_patch
     import dgenerate._patches.tqdm_huggingface_hub_patch

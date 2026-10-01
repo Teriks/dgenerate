@@ -20,13 +20,16 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import datetime
+import hashlib
 import json
 import os
 import pathlib
-import sqlite3
-import typing
-import uuid
 import re
+import sqlite3
+import time
+import typing
+import urllib.parse
+import uuid
 
 import fake_useragent
 import filelock
@@ -40,6 +43,254 @@ import dgenerate.messages as _messages
 __doc__ = """
 On disk file cache implementation and primitives.
 """
+
+# (connect, read) in seconds. A single number would also limit silence between
+# socket reads. Large CDN downloads stall for longer than a few seconds.
+_DOWNLOAD_TIMEOUT = (10, 60)
+_DOWNLOAD_ATTEMPTS = 5
+_RETRYABLE_STATUS = frozenset({408, 429, 500, 502, 503, 504})
+_RETRYABLE_DOWNLOAD_ERRORS = (
+    requests.ConnectionError,
+    requests.Timeout,
+    requests.exceptions.ChunkedEncodingError,
+)
+
+
+def _download_host(url: str) -> str:
+    return urllib.parse.urlparse(url).netloc or 'download'
+
+
+def _download_error_text(exc: BaseException) -> str:
+    text = str(exc).strip().splitlines()
+    message = text[0] if text else exc.__class__.__name__
+    message = re.sub(r'\?[^)\s]*', '', message)
+    if len(message) > 180:
+        message = message[:177] + '...'
+    return message
+
+
+def _format_byte_size(num: int) -> str:
+    value = float(num)
+    for unit in ('B', 'KiB', 'MiB', 'GiB', 'TiB'):
+        if value < 1024 or unit == 'TiB':
+            if unit == 'B':
+                return f'{int(value)} {unit}'
+            return f'{value:.1f} {unit}'
+        value /= 1024
+    return f'{int(num)} B'
+
+
+def _header_int(value) -> int:
+    if value is None or value == '':
+        return 0
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _parse_content_range(header) -> tuple[int | None, int | None]:
+    """Return ``(start, total)`` from a Content-Range header."""
+    if not header:
+        return None, None
+    try:
+        _unit, spec = str(header).split(' ', 1)
+        range_part, total_part = spec.split('/', 1)
+        total = None if total_part.strip() == '*' else int(total_part)
+        if range_part.strip() == '*':
+            return None, total
+        start_text, _end = range_part.split('-', 1)
+        return int(start_text), total
+    except (ValueError, AttributeError):
+        return None, None
+
+
+def _download_chunk_size(total: int) -> int:
+    chunk_size = _memory.calculate_chunk_size(total)
+    if chunk_size <= 0:
+        return 1024 * 1024
+    return chunk_size
+
+
+def download_url_to_file(
+        url: str,
+        path: str | None = None,
+        *,
+        headers: dict | None = None,
+        on_response: typing.Callable[[requests.Response], None] | None = None,
+        resolve_path: typing.Callable[[requests.Response], str] | None = None,
+        tqdm_pbar=tqdm.tqdm,
+        timeout: tuple[float, float] = _DOWNLOAD_TIMEOUT,
+        attempts: int = _DOWNLOAD_ATTEMPTS,
+        resume: bool = True) -> str:
+    """
+    Stream ``url`` to ``path``.
+
+    ``timeout`` is ``(connect_seconds, read_seconds)``. The read timeout is the
+    maximum silence between socket reads, not a limit on the whole transfer.
+
+    An existing partial file is continued with an HTTP Range request. Connection
+    failures and short reads are retried until ``attempts`` is exhausted. The
+    partial file is left on disk so a later call can continue it.
+
+    :param url: File URL.
+    :param path: Destination path. Required when ``resolve_path`` is not given.
+    :param headers: Extra request headers. A Range header is added when resuming.
+    :param on_response: Called once with the response that will be written,
+        before any bytes are written. Raise to reject the response.
+    :param resolve_path: Called with the first response when ``path`` is omitted.
+        Return the destination path.
+    :param tqdm_pbar: tqdm progress bar type. ``None`` disables the bar.
+    :param timeout: ``(connect, read)`` timeouts in seconds.
+    :param attempts: How many times to try the transfer.
+    :param resume: Continue a partial destination file when the server allows it.
+    :return: Destination path.
+    """
+    if path is None and resolve_path is None:
+        raise ValueError('path or resolve_path is required.')
+
+    if path is not None and resume and os.path.isfile(path):
+        downloaded = os.path.getsize(path)
+    else:
+        downloaded = 0
+
+    if downloaded:
+        _messages.log(
+            f'Resuming download from {_format_byte_size(downloaded)} '
+            f'({_download_host(url)}).')
+
+    progress = None
+    headers_accepted = False
+    host = _download_host(url)
+
+    try:
+        attempt = 1
+        while attempt <= attempts:
+            req_headers = dict(headers or {})
+            if downloaded and path is not None:
+                req_headers['Range'] = f'bytes={downloaded}-'
+            try:
+                with requests.get(
+                        url,
+                        headers=req_headers,
+                        stream=True,
+                        timeout=timeout) as response:
+                    if response.status_code == 416:
+                        _start, total = _parse_content_range(
+                            response.headers.get('Content-Range'))
+                        if total is None and downloaded:
+                            try:
+                                head = requests.head(
+                                    url,
+                                    headers=dict(headers or {}),
+                                    timeout=timeout,
+                                    allow_redirects=True)
+                                total = _header_int(head.headers.get('Content-Length'))
+                            except requests.RequestException:
+                                total = None
+                        if downloaded and total is not None and downloaded == total:
+                            return path
+                        if (downloaded and total is not None and downloaded > total
+                                and path and os.path.isfile(path)):
+                            os.remove(path)
+                            downloaded = 0
+                            if attempt >= attempts:
+                                response.raise_for_status()
+                            raise requests.ConnectionError(
+                                f'Partial download from {host} was longer than the remote file.')
+                        response.raise_for_status()
+
+                    if response.status_code in _RETRYABLE_STATUS:
+                        if attempt >= attempts:
+                            response.raise_for_status()
+                        raise requests.ConnectionError(f'HTTP {response.status_code} from {host}')
+
+                    response.raise_for_status()
+
+                    if path is None:
+                        path = resolve_path(response)
+                        if resume and response.status_code == 200 and os.path.isfile(path):
+                            existing = os.path.getsize(path)
+                            if existing:
+                                downloaded = existing
+                                _messages.log(
+                                    f'Resuming download from {_format_byte_size(downloaded)} '
+                                    f'({host}).')
+                                continue
+
+                    if on_response is not None and not headers_accepted:
+                        on_response(response)
+                        headers_accepted = True
+
+                    if response.status_code == 206:
+                        start, ranged_total = _parse_content_range(
+                            response.headers.get('Content-Range'))
+                        if start is not None and start != downloaded:
+                            if start == 0:
+                                downloaded = 0
+                            else:
+                                raise requests.ConnectionError(
+                                    f'Unexpected resume offset {start} from {host}, '
+                                    f'expected {downloaded}.')
+                        total = ranged_total or 0
+                        if not total:
+                            remaining = _header_int(response.headers.get('Content-Length'))
+                            total = downloaded + remaining if remaining else 0
+                    else:
+                        downloaded = 0
+                        total = _header_int(response.headers.get('Content-Length'))
+
+                    content_encoding = response.headers.get('Content-Encoding')
+                    verify_length = (
+                        not content_encoding or content_encoding.lower() == 'identity')
+                    expected = total if verify_length else 0
+                    chunk_size = _download_chunk_size(total)
+
+                    if tqdm_pbar is not None and progress is None:
+                        progress = tqdm_pbar(
+                            total=total if total else None,
+                            initial=downloaded,
+                            unit='iB',
+                            unit_scale=True)
+                    elif progress is not None:
+                        progress.total = total if total else None
+                        progress.n = downloaded
+                        progress.refresh()
+
+                    with open(path, 'ab' if downloaded else 'wb') as handle:
+                        for chunk in response.iter_content(chunk_size=chunk_size):
+                            if not chunk:
+                                continue
+                            handle.write(chunk)
+                            handle.flush()
+                            downloaded += len(chunk)
+                            if progress is not None:
+                                progress.update(len(chunk))
+
+                    if expected and downloaded != expected:
+                        raise requests.ConnectionError(
+                            f'Download from {host} ended early '
+                            f'({_format_byte_size(downloaded)} of '
+                            f'{_format_byte_size(expected)}).')
+                    return path
+            except _RETRYABLE_DOWNLOAD_ERRORS as exc:
+                if path and os.path.isfile(path) and resume:
+                    downloaded = os.path.getsize(path)
+                else:
+                    downloaded = 0
+                if attempt >= attempts:
+                    raise
+                _messages.log(
+                    f'Download from {host} interrupted ({_download_error_text(exc)}). '
+                    + (f'Resuming from {_format_byte_size(downloaded)} '
+                       if downloaded else 'Retrying ')
+                    + f'(attempt {attempt + 1} of {attempts}).')
+                time.sleep(min(2 ** (attempt - 1), 8))
+                attempt += 1
+        raise requests.ConnectionError(f'Download from {host} failed.')
+    finally:
+        if progress is not None:
+            progress.close()
 
 
 class WebFileCacheOfflineModeException(Exception):
@@ -458,6 +709,70 @@ class WebFileCache(FileCache):
                 if not os.listdir(base):
                     os.rmdir(base)
 
+    def _partial_download_path(self, url: str) -> str:
+        digest = hashlib.sha256(url.encode('utf-8')).hexdigest()
+        directory = os.path.join(self.cache_dir, '.partials')
+        os.makedirs(directory, exist_ok=True)
+        return os.path.join(directory, digest)
+
+    def _read_partial_state(self, partial_path: str) -> dict:
+        meta_path = partial_path + '.meta'
+        if not os.path.isfile(meta_path):
+            return {}
+        try:
+            with open(meta_path, 'r', encoding='utf-8') as handle:
+                data = json.load(handle)
+        except (OSError, json.JSONDecodeError):
+            return {}
+        if not isinstance(data, dict):
+            return {}
+        return data
+
+    def _write_partial_state(self, partial_path: str, state: dict):
+        with open(partial_path + '.meta', 'w', encoding='utf-8') as handle:
+            json.dump(state, handle)
+
+    def _clear_old_partials(self):
+        partial_dir = os.path.join(self.cache_dir, '.partials')
+        if not os.path.isdir(partial_dir):
+            return
+        cutoff = time.time() - self.expiry_delta.total_seconds()
+        stale = []
+        for entry in os.scandir(partial_dir):
+            if not entry.is_file():
+                continue
+            try:
+                if entry.stat().st_mtime < cutoff:
+                    stale.append(entry.path)
+            except OSError:
+                pass
+        for stale_path in stale:
+            try:
+                os.remove(stale_path)
+            except OSError:
+                pass
+
+    def _store_downloaded_file(self, key: str, source_path: str,
+                               metadata: dict, ext: str | None) -> CachedFile:
+        with self.kv_store as kv:
+            if key in kv:
+                file_path = json.loads(kv.get(key))['path']
+            else:
+                file_path = self._generate_unique_filename(ext)
+
+        os.replace(source_path, file_path)
+        meta_path = source_path + '.meta'
+        if os.path.isfile(meta_path):
+            try:
+                os.remove(meta_path)
+            except OSError:
+                pass
+
+        with self.kv_store as kv:
+            entry_data = {'path': file_path, 'metadata': metadata}
+            kv[key] = json.dumps(entry_data)
+        return CachedFile(entry_data)
+
     def _clear_old_files(self):
         """
         Clears files that are older than the expiry delta.
@@ -467,6 +782,7 @@ class WebFileCache(FileCache):
                 os.unlink(cached_file.path)
             except FileNotFoundError:
                 pass
+        self._clear_old_partials()
 
     def request_mimetype(self, url, local_files_only: bool = False) -> str:
         """
@@ -495,7 +811,8 @@ class WebFileCache(FileCache):
 
         headers = {'User-Agent': fake_useragent.UserAgent().chrome}
 
-        with requests.get(url, headers=headers, stream=True, timeout=5) as req:
+        with requests.get(url, headers=headers, stream=True,
+                          timeout=_DOWNLOAD_TIMEOUT) as req:
             req.raise_for_status()
             mime_type = req.headers['content-type']
 
@@ -521,6 +838,9 @@ class WebFileCache(FileCache):
         """
         Downloads a file and/or returns a file path from the cache. If the mimetype
         of the file is not supported, it raises an exception.
+
+        Interrupted downloads are kept and continued on the next call. The read
+        timeout limits silence between socket reads, not the full transfer.
 
         :raise requests.RequestException: Can raise any exception
             raised by ``requests.get`` for request related errors.
@@ -559,12 +879,10 @@ class WebFileCache(FileCache):
                 f'file for "{url}" was not found in the local cache.'
             )
 
-        with requests.get(url,
-                          headers={'User-Agent': fake_useragent.UserAgent().chrome},
-                          stream=True,
-                          timeout=5) as response:
-            response.raise_for_status()
+        partial_path = self._partial_download_path(url)
+        state = self._read_partial_state(partial_path)
 
+        def on_response(response):
             mime_type = response.headers.get('content-type', 'unknown')
 
             if not _mimetype_is_supported(mime_type):
@@ -572,38 +890,29 @@ class WebFileCache(FileCache):
                     f'Unknown mimetype "{mime_type}" from URL "{url}". '
                     f'Expected: {mime_acceptable_desc}')
 
-            metadata = {'mime-type': mime_type}
-
             filename = pyrfc6266.requests_response_to_filename(response)
             _, ext = os.path.splitext(filename)
+            state['metadata'] = {'mime-type': mime_type}
+            state['ext'] = ext
+            self._write_partial_state(partial_path, {
+                'metadata': state['metadata'],
+                'ext': ext,
+            })
 
-            total_size = int(response.headers.get('content-length', 0))
+        if tqdm_pbar is not None:
+            _messages.log(f'Downloading: "{url}"', underline=True)
 
-            chunk_size = _memory.calculate_chunk_size(total_size)
+        download_url_to_file(
+            url,
+            partial_path,
+            headers={'User-Agent': fake_useragent.UserAgent().chrome},
+            on_response=on_response,
+            tqdm_pbar=tqdm_pbar)
 
-            if tqdm_pbar is not None:
-                _messages.log(f'Downloading: "{url}"', underline=True)
+        if 'metadata' not in state:
+            saved = self._read_partial_state(partial_path)
+            state['metadata'] = saved.get('metadata') or {'mime-type': 'unknown'}
+            state['ext'] = saved.get('ext')
 
-            if chunk_size != total_size:
-
-                if tqdm_pbar is None:
-                    def file_data_generator():
-                        for chunk in response.iter_content(
-                                chunk_size=chunk_size):
-                            yield chunk
-                else:
-                    def file_data_generator():
-                        with tqdm_pbar(total=total_size if total_size != 0 else None,
-                                       unit='iB',
-                                       unit_scale=True) as progress_bar:
-                            for chunk in response.iter_content(
-                                    chunk_size=chunk_size):
-                                progress_bar.update(len(chunk))
-                                yield chunk
-            else:
-                def file_data_generator():
-                    yield response.content
-
-            # Add the downloaded file to the cache
-            return self.add(url, file_data_generator(),
-                            metadata, ext)
+        return self._store_downloaded_file(
+            url, partial_path, state['metadata'], state.get('ext'))
