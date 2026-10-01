@@ -170,6 +170,32 @@ class TestTextEncoderUri(unittest.TestCase):
             else:
                 self.assertFalse(torch.allclose(skipped, normal, atol=1e-5))
 
+    def test_single_file_clip_load_does_not_see_the_text_model_alias(self):
+        from transformers import CLIPTextConfig, CLIPTextModel
+
+        from dgenerate._patches.transformers_clip_text_model_patch import (
+            _call_without_flattened_text_model_alias,
+        )
+
+        config = CLIPTextConfig(
+            vocab_size=100,
+            hidden_size=32,
+            intermediate_size=64,
+            num_hidden_layers=2,
+            num_attention_heads=4,
+            max_position_embeddings=8,
+            eos_token_id=2,
+            bos_token_id=None,
+        )
+
+        def seen_as_wrapper():
+            model = CLIPTextModel(config)
+            return hasattr(model, 'text_model')
+
+        self.assertTrue(seen_as_wrapper())
+        self.assertFalse(_call_without_flattened_text_model_alias(seen_as_wrapper))
+        self.assertTrue(seen_as_wrapper())
+
 
 if __name__ == '__main__':
     unittest.main() 
