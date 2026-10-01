@@ -186,6 +186,70 @@ def _load_monolithic_checkpoint(
             no_split_module_classes=no_split_module_classes,
         )
 
+
+def _keep_in_fp32_module_names(model) -> list[str]:
+    """Module names transformers refuses to quantize, such as T5 ``wo``."""
+    names = getattr(model, '_keep_in_fp32_modules', None) or []
+    return [name for name in names if name]
+
+
+def _cast_kept_fp32_modules(model) -> None:
+    """Put skipped modules back in float32 after a dtype-cast checkpoint load.
+
+    T5-XXL keeps ``DenseReluDense.wo`` in float32 during 4-bit and 8-bit
+    loads. Quantizing that projection, or leaving it in bf16 next to nf4
+    linears, scrambles the hidden states Flux uses as the prompt.
+    """
+    names = set(_keep_in_fp32_module_names(model))
+    if not names:
+        return
+
+    for module_name, module in model.named_modules():
+        short = module_name.rsplit('.', 1)[-1]
+        if short not in names and module_name not in names:
+            continue
+        for param_name, param in list(module.named_parameters(recurse=False)):
+            if not param.is_floating_point() or param.dtype == torch.float32:
+                continue
+            module._parameters[param_name] = torch.nn.Parameter(
+                param.detach().to(dtype=torch.float32),
+                requires_grad=False,
+            )
+
+
+def _monolithic_hf_quantizer(quantization_config):
+    """Build the quantizer for a full-precision monolithic checkpoint.
+
+    SDNQ defaults ``pre_quantized=True``, which packs the randomly initialized
+    weights before the checkpoint tensor is copied in. These files are full
+    precision, so the pack has to happen after the load.
+    """
+    kwargs = {}
+    if type(quantization_config).__name__ == 'SDNQConfig':
+        kwargs['pre_quantized'] = False
+    return diffusers.quantizers.auto.DiffusersAutoQuantizer().from_config(
+        quantization_config, **kwargs)
+
+
+def _finish_monolithic_quantization(text_encoder, hf_quantizer, dtype):
+    """Quantize a loaded monolithic encoder and restore layers that must stay in fp32.
+
+    Bitsandbytes quantizes while the checkpoint is copied onto the module.
+    SDNQ quantizes afterwards, and only if this step runs. Both honor T5's
+    ``wo`` skip so the prompt hidden states stay intact.
+    """
+    if hf_quantizer.__class__.__name__ == 'SDNQQuantizer' and not getattr(hf_quantizer, 'pre_quantized', False):
+        from sdnq.quantizer import apply_sdnq_to_module
+        text_encoder, quant_config = apply_sdnq_to_module(
+            text_encoder,
+            hf_quantizer.quantization_config,
+            torch_dtype=dtype,
+        )
+        hf_quantizer.quantization_config = quant_config
+    _cast_kept_fp32_modules(text_encoder)
+    hf_quantizer.postprocess_model(text_encoder)
+    return text_encoder
+
 def _load_clip_l_from_single_file(
         model_class: transformers.CLIPTextModel | transformers.CLIPTextModelWithProjection,
         model_path: str,
@@ -214,10 +278,11 @@ def _load_clip_l_from_single_file(
         device_map = _monolithic_auto_quant_device_map(quantization_config, device_map)
 
         if quantization_config:
-            hf_quantizer = diffusers.quantizers.auto.DiffusersAutoQuantizer().from_config(quantization_config)
+            hf_quantizer = _monolithic_hf_quantizer(quantization_config)
             hf_quantizer.preprocess_model(
                 text_encoder,
-                device_map=device_map
+                device_map=device_map,
+                keep_in_fp32_modules=_keep_in_fp32_module_names(text_encoder),
             )
 
         with _suppress_accelerate_warnings():
@@ -231,7 +296,7 @@ def _load_clip_l_from_single_file(
             )
 
         if quantization_config:
-            hf_quantizer.postprocess_model(text_encoder)
+            text_encoder = _finish_monolithic_quantization(text_encoder, hf_quantizer, dtype)
 
         return text_encoder.eval()
 
@@ -273,10 +338,11 @@ def _load_clip_l_sd3_from_single_file(
         device_map = _monolithic_auto_quant_device_map(quantization_config, device_map)
 
         if quantization_config:
-            hf_quantizer = diffusers.quantizers.auto.DiffusersAutoQuantizer().from_config(quantization_config)
+            hf_quantizer = _monolithic_hf_quantizer(quantization_config)
             hf_quantizer.preprocess_model(
                 text_encoder,
-                device_map=device_map
+                device_map=device_map,
+                keep_in_fp32_modules=_keep_in_fp32_module_names(text_encoder),
             )
 
         with _suppress_accelerate_warnings():
@@ -290,7 +356,7 @@ def _load_clip_l_sd3_from_single_file(
             )
 
         if quantization_config:
-            hf_quantizer.postprocess_model(text_encoder)
+            text_encoder = _finish_monolithic_quantization(text_encoder, hf_quantizer, dtype)
 
         return text_encoder.eval()
 
@@ -332,10 +398,11 @@ def _load_clip_g_sd3_from_single_file(
         device_map = _monolithic_auto_quant_device_map(quantization_config, device_map)
 
         if quantization_config:
-            hf_quantizer = diffusers.quantizers.auto.DiffusersAutoQuantizer().from_config(quantization_config)
+            hf_quantizer = _monolithic_hf_quantizer(quantization_config)
             hf_quantizer.preprocess_model(
                 text_encoder,
-                device_map=device_map
+                device_map=device_map,
+                keep_in_fp32_modules=_keep_in_fp32_module_names(text_encoder),
             )
 
         with _suppress_accelerate_warnings():
@@ -348,7 +415,7 @@ def _load_clip_g_sd3_from_single_file(
             )
 
         if quantization_config:
-            hf_quantizer.postprocess_model(text_encoder)
+            text_encoder = _finish_monolithic_quantization(text_encoder, hf_quantizer, dtype)
 
         return text_encoder.eval()
 
@@ -390,10 +457,11 @@ def _load_t5_xxl_sd3_from_single_file(
         device_map = _monolithic_auto_quant_device_map(quantization_config, device_map)
 
         if quantization_config:
-            hf_quantizer = diffusers.quantizers.auto.DiffusersAutoQuantizer().from_config(quantization_config)
+            hf_quantizer = _monolithic_hf_quantizer(quantization_config)
             hf_quantizer.preprocess_model(
                 text_encoder,
-                device_map=device_map
+                device_map=device_map,
+                keep_in_fp32_modules=_keep_in_fp32_module_names(text_encoder),
             )
 
         with _suppress_accelerate_warnings():
@@ -406,7 +474,7 @@ def _load_t5_xxl_sd3_from_single_file(
             )
 
         if quantization_config:
-            hf_quantizer.postprocess_model(text_encoder)
+            text_encoder = _finish_monolithic_quantization(text_encoder, hf_quantizer, dtype)
 
         return text_encoder.eval()
 
@@ -447,10 +515,11 @@ def _load_t5_xxl_from_single_file(
         device_map = _monolithic_auto_quant_device_map(quantization_config, device_map)
 
         if quantization_config:
-            hf_quantizer = diffusers.quantizers.auto.DiffusersAutoQuantizer().from_config(quantization_config)
+            hf_quantizer = _monolithic_hf_quantizer(quantization_config)
             hf_quantizer.preprocess_model(
                 text_encoder,
-                device_map=device_map
+                device_map=device_map,
+                keep_in_fp32_modules=_keep_in_fp32_module_names(text_encoder),
             )
 
         with _suppress_accelerate_warnings():
@@ -463,7 +532,7 @@ def _load_t5_xxl_from_single_file(
             )
 
         if quantization_config:
-            hf_quantizer.postprocess_model(text_encoder)
+            text_encoder = _finish_monolithic_quantization(text_encoder, hf_quantizer, dtype)
 
         return text_encoder.eval()
 
@@ -500,10 +569,11 @@ def _load_clip_l_sd35_large_from_single_file(
         device_map = _monolithic_auto_quant_device_map(quantization_config, device_map)
 
         if quantization_config:
-            hf_quantizer = diffusers.quantizers.auto.DiffusersAutoQuantizer().from_config(quantization_config)
+            hf_quantizer = _monolithic_hf_quantizer(quantization_config)
             hf_quantizer.preprocess_model(
                 text_encoder,
-                device_map=device_map
+                device_map=device_map,
+                keep_in_fp32_modules=_keep_in_fp32_module_names(text_encoder),
             )
 
         with _suppress_accelerate_warnings():
@@ -517,7 +587,7 @@ def _load_clip_l_sd35_large_from_single_file(
             )
 
         if quantization_config:
-            hf_quantizer.postprocess_model(text_encoder)
+            text_encoder = _finish_monolithic_quantization(text_encoder, hf_quantizer, dtype)
 
         return text_encoder.eval()
 
@@ -554,10 +624,11 @@ def _load_clip_g_sd35_large_from_single_file(
         device_map = _monolithic_auto_quant_device_map(quantization_config, device_map)
 
         if quantization_config:
-            hf_quantizer = diffusers.quantizers.auto.DiffusersAutoQuantizer().from_config(quantization_config)
+            hf_quantizer = _monolithic_hf_quantizer(quantization_config)
             hf_quantizer.preprocess_model(
                 text_encoder,
-                device_map=device_map
+                device_map=device_map,
+                keep_in_fp32_modules=_keep_in_fp32_module_names(text_encoder),
             )
 
         with _suppress_accelerate_warnings():
@@ -571,7 +642,7 @@ def _load_clip_g_sd35_large_from_single_file(
             )
 
         if quantization_config:
-            hf_quantizer.postprocess_model(text_encoder)
+            text_encoder = _finish_monolithic_quantization(text_encoder, hf_quantizer, dtype)
 
         return text_encoder.eval()
 
