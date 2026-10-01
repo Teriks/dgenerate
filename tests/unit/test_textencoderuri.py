@@ -264,6 +264,63 @@ class TestTextEncoderUri(unittest.TestCase):
         self.assertEqual(translated['unused.weight'], 'unused')
         self.assertNotIn('text_model.encoder.layers.0.mlp.fc1.weight', translated)
 
+    def test_missing_clip_text_projection_becomes_identity(self):
+        import tempfile
+
+        import torch
+        from safetensors.torch import save_file
+        from transformers import CLIPTextConfig, CLIPTextModelWithProjection
+
+        config = CLIPTextConfig(
+            vocab_size=100,
+            hidden_size=32,
+            intermediate_size=64,
+            num_hidden_layers=1,
+            num_attention_heads=4,
+            max_position_embeddings=8,
+            projection_dim=32,
+            eos_token_id=2,
+            bos_token_id=None,
+        )
+        donor = CLIPTextModelWithProjection(config).eval()
+        state = {
+            key: value.detach().cpu().contiguous().clone()
+            for key, value in donor.state_dict().items()
+            if key != 'text_projection.weight'
+        }
+        target = CLIPTextModelWithProjection(config).eval()
+        projection = target.text_projection
+        projection.weight = torch.nn.Parameter(
+            torch.empty_like(projection.weight, device='meta'),
+            requires_grad=False,
+        )
+
+        with tempfile.TemporaryDirectory() as directory:
+            checkpoint = f'{directory}/clip_l.safetensors'
+            save_file(state, checkpoint)
+            loaded = _textencoderuri._load_monolithic_checkpoint(
+                target,
+                checkpoint=checkpoint,
+                device_map={'': 'cpu'},
+                dtype=torch.float32,
+                no_split_module_classes=['CLIPEncoderLayer'],
+            )
+
+        weight = loaded.text_projection.weight
+        self.assertFalse(weight.is_meta)
+        self.assertTrue(torch.equal(weight, torch.eye(32)))
+
+    def test_openclip_text_projection_is_transposed_onto_the_linear(self):
+        import torch
+
+        bare = torch.arange(6, dtype=torch.float32).reshape(2, 3)
+        loaded = _textencoderuri._supply_missing_clip_text_projection(
+            {'text_projection': bare},
+            {'text_projection.weight'},
+            type('Projection', (), {'weight': torch.empty(3, 2)})(),
+        )
+        self.assertTrue(torch.equal(loaded['text_projection.weight'], bare.T))
+
     def test_quantized_t5_keeps_wo_in_fp32(self):
         import os
         import tempfile
