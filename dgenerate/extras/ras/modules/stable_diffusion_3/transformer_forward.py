@@ -80,6 +80,8 @@ def ras_forward(
     height, width = hidden_states.shape[-2:]
 
     hidden_states = self.pos_embed(hidden_states)  # takes care of adding positional embeddings too.
+    # pos_embed output is non-contiguous due to flatten+transpose in PatchEmbed (BCHW -> BNC).
+    hidden_states = hidden_states.contiguous()
     temb = self.time_text_embed(timestep, pooled_projections)
     encoder_hidden_states = self.context_embedder(encoder_hidden_states)
     if ras_manager.MANAGER.sample_ratio < 1.0 and ras_manager.MANAGER.is_RAS_step:

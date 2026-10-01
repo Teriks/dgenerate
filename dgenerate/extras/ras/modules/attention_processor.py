@@ -265,9 +265,15 @@ class RAS35JointAttnProcessor2_0:
             try:
                 from flash_attn import flash_attn_func
 
-                # Flash attention expects [batch_size, seq_len, heads, head_dim]
-                # The tensors are already in the correct format after the previous transpose operations
-                hidden_states = flash_attn_func(query, key, value, dropout_p=0.0, causal=False)
+                # Query, key, and value are [batch, heads, seq, dim]. Flash attention
+                # wants [batch, seq, heads, dim].
+                hidden_states = flash_attn_func(
+                    query.transpose(1, 2),
+                    key.transpose(1, 2),
+                    value.transpose(1, 2),
+                    dropout_p=0.0,
+                    causal=False,
+                )
                 hidden_states = hidden_states.reshape(batch_size, -1, attn.heads * head_dim)
             except (ImportError, ModuleNotFoundError):
                 # Fallback to PyTorch's scaled_dot_product_attention

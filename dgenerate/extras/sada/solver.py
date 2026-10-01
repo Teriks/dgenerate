@@ -427,6 +427,7 @@ def patch_solver(solver_class):
                 s_tmax: float = float("inf"),
                 s_noise: float = 1.0,
                 generator: Optional[torch.Generator] = None,
+                per_token_timesteps: Optional[torch.Tensor] = None,
                 return_dict: bool = True,
         ) -> Union[FlowMatchEulerDiscreteSchedulerOutput, Tuple]:
             if self.step_index is None:
@@ -434,6 +435,28 @@ def patch_solver(solver_class):
 
             # Upcast to avoid precision issues when computing prev_sample
             sample = sample.to(torch.float32)
+
+            # Per-token sigmas follow FlowMatchEulerDiscreteScheduler. SADA's
+            # scalar skip uses one sigma for the whole latent.
+            if per_token_timesteps is not None:
+                per_token_sigmas = per_token_timesteps / self.config.num_train_timesteps
+                sigmas = self.sigmas[:, None, None]
+                lower_mask = sigmas < per_token_sigmas[None] - 1e-6
+                lower_sigmas = lower_mask * sigmas
+                lower_sigmas, _ = lower_sigmas.max(dim=0)
+                current_sigma = per_token_sigmas[..., None]
+                next_sigma = lower_sigmas[..., None]
+                if getattr(self.config, 'stochastic_sampling', False):
+                    x0 = sample - current_sigma * model_output
+                    noise = randn_tensor(
+                        sample.shape, generator=generator, device=sample.device, dtype=sample.dtype)
+                    prev_sample = (1.0 - next_sigma) * x0 + next_sigma * noise
+                else:
+                    prev_sample = sample + (current_sigma - next_sigma) * model_output
+                self._step_index += 1
+                if not return_dict:
+                    return (prev_sample,)
+                return FlowMatchEulerDiscreteSchedulerOutput(prev_sample=prev_sample)
 
             sigma = self.sigmas[self.step_index]
             sigma_next = self.sigmas[self.step_index + 1]
@@ -449,7 +472,13 @@ def patch_solver(solver_class):
 
             else:
                 f_1 = self._cache_bus.prev_f[-1]
-                prev_sample = sample + (sigma_next - sigma) * model_output
+                if getattr(self.config, 'stochastic_sampling', False):
+                    x0 = sample - sigma * model_output
+                    noise = randn_tensor(
+                        sample.shape, generator=generator, device=sample.device, dtype=sample.dtype)
+                    prev_sample = (1.0 - sigma_next) * x0 + sigma_next * noise
+                else:
+                    prev_sample = sample + (sigma_next - sigma) * model_output
 
 
             if self._cache_bus._tome_info['args']['lagrange_term'] != 0:
