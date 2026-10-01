@@ -3,19 +3,13 @@
 
 
 \set token %HF_TOKEN%
-\set civit_ai_token %CIVIT_AI_TOKEN%
-
-{% if not civit_ai_token.strip() %}
-    \print Set CIVIT_AI_TOKEN environmental variable to run this example!
-    \exit
-{% endif %}
 
 {% if not token.strip() and not '--auth-token' in injected_args %}
     \print Set HF_TOKEN environmental variable or --auth-token to run this example!
     \exit
 {% endif %}
 
-# Loading SD3 checkpoints from CivitAI becomes tricky because you need to provide
+# Loading an SD3 safetensors checkpoint becomes tricky because you need to provide
 # The recommended text encoder models manually for it to be able
 # to load the pipeline correctly when using safetensors checkpoints.
 
@@ -23,13 +17,12 @@
 \set quantizer bnb;bits=4;bits4-quant-type=nf4
 
 
-# Crystal Clear SD3: https://civitai.com/models/614171/crystal-clear-sd3?modelVersionId=686696
+# Transformer and VAE, without text encoders:
+# https://huggingface.co/stabilityai/stable-diffusion-3-medium
 
 # This is the full fp16 safetensors checkpoint
 
-# this is the only style of checkpoint diffusers can load from CivitAI
-
-https://civitai.com/api/download/models/686696?type=Model&format=SafeTensor&size=full&fp=fp16
+https://huggingface.co/stabilityai/stable-diffusion-3-medium/blob/main/sd3_medium.safetensors
 --model-type sd3
 --dtype float16
 --quantizer {{ quantizer }}

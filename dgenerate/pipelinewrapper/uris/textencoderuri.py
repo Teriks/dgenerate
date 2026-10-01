@@ -145,6 +145,42 @@ def _translate_flattened_clip_checkpoint_keys(loaded, model_keys):
     return translated
 
 
+def _supply_missing_clip_text_projection(loaded, model_keys, projection):
+    """Give ``CLIPTextModelWithProjection`` a projection when the file has none.
+
+    ComfyUI ``clip_l.safetensors`` stores the text tower only. Diffusers fills
+    the missing ``text_projection`` with an identity matrix for that file.
+    Bitsandbytes has already replaced the linear with an empty meta module, so
+    leaving the key absent makes ``dispatch_model`` die on ``model.to()``.
+
+    An OpenCLIP matrix stored as ``text_projection`` is transposed onto
+    ``text_projection.weight``, which is what Diffusers does for that layout.
+    """
+    target = 'text_projection.weight'
+    if target not in model_keys or target in loaded:
+        return loaded
+
+    bare = loaded.get('text_projection')
+    if torch.is_tensor(bare) and bare.ndim == 2:
+        loaded = dict(loaded)
+        loaded[target] = bare.transpose(0, 1).contiguous()
+        _messages.debug_log(
+            'Mapped monolithic CLIP "text_projection" onto "text_projection.weight".'
+        )
+        return loaded
+
+    weight = getattr(projection, 'weight', None)
+    if weight is None or weight.ndim != 2 or weight.shape[0] != weight.shape[1]:
+        return loaded
+
+    loaded = dict(loaded)
+    loaded[target] = torch.eye(weight.shape[0])
+    _messages.debug_log(
+        'Monolithic CLIP checkpoint has no text_projection; using an identity projection.'
+    )
+    return loaded
+
+
 @contextlib.contextmanager
 def _flattened_clip_checkpoint_keys(model):
     model_keys = set(model.state_dict().keys())
@@ -152,7 +188,8 @@ def _flattened_clip_checkpoint_keys(model):
             'embeddings.token_embedding.weight' in model_keys and
             'text_model.embeddings.token_embedding.weight' not in model_keys
     )
-    if not flattened:
+    projection = getattr(model, 'text_projection', None)
+    if not flattened and projection is None:
         yield
         return
 
@@ -161,7 +198,11 @@ def _flattened_clip_checkpoint_keys(model):
 
     def load_state_dict(checkpoint_file, device_map=None):
         loaded = original(checkpoint_file, device_map=device_map)
-        return _translate_flattened_clip_checkpoint_keys(loaded, model_keys)
+        if flattened:
+            loaded = _translate_flattened_clip_checkpoint_keys(loaded, model_keys)
+        if projection is not None:
+            loaded = _supply_missing_clip_text_projection(loaded, model_keys, projection)
+        return loaded
 
     modeling.load_state_dict = load_state_dict
     try:
