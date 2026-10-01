@@ -20,16 +20,17 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import inspect
-import types
 
 from transformers.models.clip.modeling_clip import CLIPTextModel
 
-# Transformers 5 flattened CLIPTextModel: final_layer_norm lives on the model,
-# and the nested text_model module is gone. Diffusers clip-skip still calls
-# text_encoder.text_model.final_layer_norm.
+# Transformers 5 flattened CLIPTextModel: embeddings, encoder, and
+# final_layer_norm live on the model, and the nested text_model module is gone.
+# Diffusers still addresses those through text_model.* (clip-skip's
+# final_layer_norm, and single-file keys such as text_model.embeddings...).
+# The alias is the model itself, so those lookups hit the real modules.
 _init_source = inspect.getsource(CLIPTextModel.__init__)
 if 'self.final_layer_norm' in _init_source and 'self.text_model' not in _init_source:
     def text_model(self):
-        return types.SimpleNamespace(final_layer_norm=self.final_layer_norm)
+        return self
 
     CLIPTextModel.text_model = property(text_model)

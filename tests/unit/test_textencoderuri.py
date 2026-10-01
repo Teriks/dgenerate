@@ -146,7 +146,16 @@ class TestTextEncoderUri(unittest.TestCase):
             bos_token_id=None,
         )
         text_encoder = CLIPTextModel(config).eval()
+        self.assertIs(text_encoder.text_model, text_encoder)
+        self.assertIs(text_encoder.text_model.embeddings, text_encoder.embeddings)
         self.assertIs(text_encoder.text_model.final_layer_norm, text_encoder.final_layer_norm)
+        # Single-file checkpoints still use text_model.* key prefixes. Accelerate
+        # walks getattr, so the prefix must land on the real parameter.
+        module = text_encoder
+        dotted = 'text_model.embeddings.token_embedding.weight'
+        for part in dotted.split('.')[:-1]:
+            module = getattr(module, part)
+        self.assertIn(dotted.split('.')[-1], module._parameters)
 
         ids = torch.randint(0, config.vocab_size, (2, 8))
         ids[:, -1] = config.eos_token_id
