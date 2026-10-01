@@ -25,12 +25,43 @@ from transformers.models.clip.modeling_clip import CLIPTextModel
 
 # Transformers 5 flattened CLIPTextModel: embeddings, encoder, and
 # final_layer_norm live on the model, and the nested text_model module is gone.
-# Diffusers still addresses those through text_model.* (clip-skip's
-# final_layer_norm, and single-file keys such as text_model.embeddings...).
-# The alias is the model itself, so those lookups hit the real modules.
+# Diffusers clip-skip still calls text_encoder.text_model.final_layer_norm.
+# The alias is the model itself, so that lookup hits the real norm.
+#
+# Single-file loading keeps "text_model." on checkpoint keys when hasattr
+# text_model is true, then copies a weight only if that name is in
+# state_dict(). The flattened state_dict has no such prefix, so the weights
+# stay meta. Hide the alias for that one call so Diffusers strips the prefix.
 _init_source = inspect.getsource(CLIPTextModel.__init__)
 if 'self.final_layer_norm' in _init_source and 'self.text_model' not in _init_source:
     def text_model(self):
         return self
 
     CLIPTextModel.text_model = property(text_model)
+
+    def _call_without_flattened_text_model_alias(func, /, *args, **kwargs):
+        prop = CLIPTextModel.__dict__.get('text_model')
+        if not isinstance(prop, property):
+            return func(*args, **kwargs)
+        del CLIPTextModel.text_model
+        try:
+            return func(*args, **kwargs)
+        finally:
+            CLIPTextModel.text_model = prop
+
+    def _patch_single_file_clip_loader(module):
+        original = getattr(module, 'create_diffusers_clip_model_from_ldm', None)
+        if original is None or getattr(original, '_dgenerate_hides_clip_text_model_alias', False):
+            return
+
+        def create_diffusers_clip_model_from_ldm(*args, **kwargs):
+            return _call_without_flattened_text_model_alias(original, *args, **kwargs)
+
+        create_diffusers_clip_model_from_ldm._dgenerate_hides_clip_text_model_alias = True
+        module.create_diffusers_clip_model_from_ldm = create_diffusers_clip_model_from_ldm
+
+    import diffusers.loaders.single_file as _single_file
+    import diffusers.loaders.single_file_utils as _single_file_utils
+
+    _patch_single_file_clip_loader(_single_file_utils)
+    _patch_single_file_clip_loader(_single_file)
