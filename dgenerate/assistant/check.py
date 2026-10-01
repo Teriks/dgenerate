@@ -989,7 +989,8 @@ def _explain_parse_error(message: str) -> str:
     invocation that holds the model path. The next ``--`` line is then its own
     command.
     """
-    if message == 'the following arguments are required: model_path':
+    bare = message.removeprefix('dgenerate: error: ').strip()
+    if bare == 'the following arguments are required: model_path':
         return ('This line was run on its own, with no model path. A blank line, or a '
                 'wrapped line that does not start with -, ended the invocation above. '
                 'Put this line back with that invocation. Do not wrap --prompts, and '
