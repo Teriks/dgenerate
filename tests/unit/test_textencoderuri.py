@@ -131,6 +131,36 @@ class TestTextEncoderUri(unittest.TestCase):
         # Just verify that string conversion works and returns a string
         self.assertTrue(isinstance(string_repr, str))
 
+    def test_clip_skip_uses_final_layer_norm_on_flattened_clip(self):
+        import torch
+        from transformers import CLIPTextConfig, CLIPTextModel
+
+        config = CLIPTextConfig(
+            vocab_size=100,
+            hidden_size=32,
+            intermediate_size=64,
+            num_hidden_layers=4,
+            num_attention_heads=4,
+            max_position_embeddings=16,
+            eos_token_id=2,
+            bos_token_id=None,
+        )
+        text_encoder = CLIPTextModel(config).eval()
+        self.assertIs(text_encoder.text_model.final_layer_norm, text_encoder.final_layer_norm)
+
+        ids = torch.randint(0, config.vocab_size, (2, 8))
+        ids[:, -1] = config.eos_token_id
+        normal = text_encoder(ids)[0]
+        hidden = text_encoder(ids, output_hidden_states=True)
+        for skip in (0, 1):
+            layer = hidden[-1][-(skip + 1)]
+            skipped = text_encoder.text_model.final_layer_norm(layer)
+            self.assertEqual(tuple(skipped.shape), tuple(normal.shape))
+            if skip == 0:
+                self.assertTrue(torch.allclose(skipped, normal, atol=1e-5))
+            else:
+                self.assertFalse(torch.allclose(skipped, normal, atol=1e-5))
+
 
 if __name__ == '__main__':
     unittest.main() 
