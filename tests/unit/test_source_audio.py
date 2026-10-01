@@ -7,7 +7,10 @@ import av
 import numpy
 import PIL.Image
 
-import dgenerate.console.console as _console
+try:
+    import dgenerate.console.console as _console
+except ImportError:
+    _console = None
 import dgenerate.image_process.renderloop as _image_process
 import dgenerate.image_process.renderloopconfig as _image_process_config
 import dgenerate.mediaoutput as _mediaoutput
@@ -53,6 +56,7 @@ def _tone(sample_rate, seconds):
 
 
 class TestSourceAudio(unittest.TestCase):
+    @unittest.skipIf(_console is None, 'Tk is not available')
     def test_image_process_file_line_is_previewed(self):
         text = (
             'image-process: Wrote Frame "frame.png"\n'

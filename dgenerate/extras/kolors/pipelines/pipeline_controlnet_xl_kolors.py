@@ -1336,6 +1336,8 @@ class KolorsControlNetPipeline(
                 latents = latents.to(next(iter(self.vae.post_quant_conv.parameters())).dtype)
 
             latents = latents / self.vae.config.scaling_factor
+            if not needs_upcasting and latents.dtype != self.vae.dtype:
+                latents = latents.to(dtype=self.vae.dtype)
             image = self.vae.decode(latents, return_dict=False)[0]
 
             # cast back to fp16 if needed

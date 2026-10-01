@@ -23,7 +23,6 @@
 
 import argparse
 import os
-import shlex
 import subprocess
 import sys
 import unittest
@@ -42,10 +41,6 @@ args, unknown_args = parser.parse_known_args()
 runner = unittest.TextTestRunner()
 
 
-def join_with_globs(args):
-    return ' '.join(arg if '*' in arg else shlex.quote(arg) for arg in args)
-
-
 if runner.run(unittest.defaultTestLoader.discover("tests", pattern='test_*.py')).wasSuccessful():
 
     if not args.examples:
@@ -59,16 +54,19 @@ if runner.run(unittest.defaultTestLoader.discover("tests", pattern='test_*.py'))
         subprocess.run('git clean -f -d -x', shell=True)
         os.chdir('..')
 
-    # Determine if we should append to log file (when resuming from checkpoint)
-    append_mode = '>>' if args.checkpoint and os.path.exists(args.examples_log) else '>'
-    
-    checkpoint_arg = f' --checkpoint {shlex.quote(args.checkpoint)}' if args.checkpoint else ''
-    
-    run_string = f'{sys.executable} examples/run.py {join_with_globs(unknown_args)}{checkpoint_arg} ' \
-                 f'--short-animations --output-configs --output-metadata -v {append_mode} {args.examples_log} 2>&1'
+    # Append when resuming from a checkpoint so the earlier log is kept.
+    append = bool(args.checkpoint and os.path.exists(args.examples_log))
 
-    print('running:', run_string)
+    command = [sys.executable, 'examples/run.py', *unknown_args]
+    if args.checkpoint:
+        command += ['--checkpoint', args.checkpoint]
+    command += ['--short-animations', '--output-configs', '--output-metadata', '-v']
 
-    subprocess.run(run_string, shell=True)
+    print('running:', *command, '>>' if append else '>', args.examples_log)
+
+    # stdout and stderr both go to the log. A shell redirect does not do that
+    # on every shell: bash and PowerShell apply 2>&1 in opposite orders.
+    with open(args.examples_log, 'ab' if append else 'wb') as log:
+        subprocess.run(command, stdout=log, stderr=subprocess.STDOUT)
 else:
     exit(1)

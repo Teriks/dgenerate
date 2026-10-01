@@ -19,4 +19,7 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from dgenerate.console.console import main
+def main(*args, **kwargs):
+    """Open the console. Tk is imported here so other console modules can load without it."""
+    from dgenerate.console.console import main as _main
+    return _main(*args, **kwargs)

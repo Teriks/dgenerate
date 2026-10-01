@@ -1,10 +1,18 @@
 import unittest
 
-import tkinter as tk
+try:
+    import tkinter as tk
 
-from dgenerate.console.imageseedselect import _ImageSeedSelect
+    _root = tk.Tk()
+    _root.withdraw()
+    _root.destroy()
+    from dgenerate.console.imageseedselect import _ImageSeedSelect
+except Exception:
+    tk = None
+    _ImageSeedSelect = None
 
 
+@unittest.skipIf(_ImageSeedSelect is None, 'Tk is not available')
 class TestImageSeedSelect(unittest.TestCase):
     def _dialog(self):
         root = tk.Tk()
