@@ -40,10 +40,6 @@ from diffusers.models import (
     MultiControlNetModel,
     UNet2DConditionModel,
 )
-from diffusers.models.attention_processor import (
-    AttnProcessor2_0,
-    XFormersAttnProcessor,
-)
 from diffusers.pipelines.kolors import ChatGLMModel, ChatGLMTokenizer
 from diffusers.pipelines.pipeline_utils import DiffusionPipeline, StableDiffusionMixin
 from diffusers.pipelines.stable_diffusion_xl.pipeline_output import StableDiffusionXLPipelineOutput
@@ -760,21 +756,12 @@ class KolorsControlNetPipeline(
 
     # Copied from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion_upscale.StableDiffusionUpscalePipeline.upcast_vae
     def upcast_vae(self):
-        dtype = self.vae.dtype
-        self.vae.to(dtype=torch.float32)
-        use_torch_2_0_or_xformers = isinstance(
-            self.vae.decoder.mid_block.attentions[0].processor,
-            (
-                AttnProcessor2_0,
-                XFormersAttnProcessor,
-            ),
+        deprecate(
+            "upcast_vae",
+            "1.0.0",
+            "`upcast_vae` is deprecated. Please use `pipe.vae.to(torch.float32)`. For more details, please refer to: https://github.com/huggingface/diffusers/pull/12619#issue-3606633695.",
         )
-        # if xformers or torch_2_0 is used attention block does not need
-        # to be in float32 which can save lots of memory
-        if use_torch_2_0_or_xformers:
-            self.vae.post_quant_conv.to(dtype)
-            self.vae.decoder.conv_in.to(dtype)
-            self.vae.decoder.mid_block.to(dtype)
+        self.vae.to(dtype=torch.float32)
 
     @property
     def guidance_scale(self):
@@ -1336,8 +1323,6 @@ class KolorsControlNetPipeline(
                 latents = latents.to(next(iter(self.vae.post_quant_conv.parameters())).dtype)
 
             latents = latents / self.vae.config.scaling_factor
-            if not needs_upcasting and latents.dtype != self.vae.dtype:
-                latents = latents.to(dtype=self.vae.dtype)
             image = self.vae.decode(latents, return_dict=False)[0]
 
             # cast back to fp16 if needed
