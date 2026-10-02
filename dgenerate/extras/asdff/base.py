@@ -25,27 +25,6 @@ import dgenerate.pipelinewrapper as _pipelinewrapper
 DetectorType = Callable[[Image.Image], Optional[List[Image.Image]]]
 
 
-# Face crops are often ~150px. These models train around 1024. Below that,
-# the crop is the entire picture, so a person prompt becomes a full body
-# stuffed into the detection box. Qwen's missing-size default is a square
-# 1024, which decodes as static.
-_FLOW_INPAINT_MIN_SIDE = 1024
-
-
-def _scale_pair(image: Image.Image, mask: Image.Image, long_side: int, multiple: int):
-    scale = long_side / max(image.size)
-    width = max(multiple, int(round(image.width * scale / multiple)) * multiple)
-    height = max(multiple, int(round(image.height * scale / multiple)) * multiple)
-    target = (width, height)
-    _messages.debug_log(
-        f'ADetailer enlarging inpaint crop from {image.size} to {target} '
-        f'so the detection is not the whole canvas')
-    return (
-        image.resize(target, _image.best_pil_resampling(image.size, target)),
-        mask.resize(target, Image.Resampling.NEAREST),
-    )
-
-
 def _align_pair(image: Image.Image, mask: Image.Image, multiple: int):
     width, height = image.size
     aligned = (
@@ -340,9 +319,8 @@ class AdPipelineBase:
         pipeline_args = dict(pipeline_args)
         sig = inspect.signature(self.inpaint_pipeline)
         if self._flow_inpaint_multiple() is not None:
-            # The loaded call carries the full image size. Qwen treats a missing
-            # size as a square 1024, which turns a face crop into static. The
-            # crop size is filled in after the crop is prepared.
+            # The loaded call carries the full image size. The crop is what
+            # gets inpainted, so that size is filled in after the crop is prepared.
             pipeline_args.pop('width', None)
             pipeline_args.pop('height', None)
         has_var_keyword = any(
@@ -413,7 +391,7 @@ class AdPipelineBase:
             
             crop_image = crop_image.resize(target_size, resampling)
             crop_mask = crop_mask.resize(target_size, Image.Resampling.NEAREST)
-            crop_image, crop_mask = self._prepare_flow_crop(crop_image, crop_mask, allow_upscale=False)
+            crop_image, crop_mask = self._prepare_flow_crop(crop_image, crop_mask)
             target_size = crop_image.size
             
             # Process at scaled resolution
@@ -457,7 +435,7 @@ class AdPipelineBase:
             return processed_image
         
         # Standard processing at original resolution (no scaling needed or no processing_size specified)
-        crop_image, crop_mask = self._prepare_flow_crop(crop_image, crop_mask, allow_upscale=True)
+        crop_image, crop_mask = self._prepare_flow_crop(crop_image, crop_mask)
         inpaint_args = self._get_inpaint_args(pipeline_args)
         inpaint_args["image"] = crop_image
         inpaint_args["mask_image"] = crop_mask
@@ -497,19 +475,11 @@ class AdPipelineBase:
             return 16
         return None
 
-    def _prepare_flow_crop(self, image: Image.Image, mask: Image.Image, allow_upscale: bool):
-        """
-        Flow inpaint needs a multiple of 16, and a face-sized crop is too small
-        to be the whole canvas. Qwen otherwise substitutes a square 1024 and
-        returns static. Z-Image will draw the entire prompt into that tiny box.
-        """
+    def _prepare_flow_crop(self, image: Image.Image, mask: Image.Image):
+        """Packed flow latents need both crop sides to be a multiple of 16."""
         multiple = self._flow_inpaint_multiple()
         if not multiple:
             return image, mask
-        if allow_upscale:
-            long_side = max(image.size)
-            if long_side < _FLOW_INPAINT_MIN_SIDE:
-                image, mask = _scale_pair(image, mask, _FLOW_INPAINT_MIN_SIDE, multiple)
         return _align_pair(image, mask, multiple)
 
     def _set_flow_crop_size(self, inpaint_args: dict[str, Any], crop: Image.Image):
