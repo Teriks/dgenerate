@@ -5,8 +5,6 @@
 # The repository still supplies the Qwen3 text encoder and VAE.
 
 \setp gpu_memory_gib total_memory(unit='gib')
-\set te_quant
-\set offload
 
 {% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 12 %}
     \set te_quant --quantizer bnb;bits=4 --quantizer-map text_encoder
