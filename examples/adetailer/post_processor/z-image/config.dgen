@@ -26,5 +26,5 @@ Tongyi-MAI/Z-Image-Turbo
                   prompt="a detailed face, sharp eyes";\
                   guidance-scale=0;\
                   inference-steps=8;\
-                  strength=0.4
+                  strength=0.6
 --prompts "photo of a woman standing in a sunlit kitchen, looking at the camera"
