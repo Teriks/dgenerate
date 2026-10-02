@@ -290,7 +290,11 @@ class ControlNetUri:
         with _hfhub.with_hf_errors_as_model_not_found(cache_all):
 
             if model_class is None:
-                if _enums.model_type_is_flux(self.model_type):
+                if _enums.model_type_is_z_image(self.model_type):
+                    model_class = diffusers.ZImageControlNetModel
+                elif _enums.model_type_is_qwen_image(self.model_type):
+                    model_class = diffusers.QwenImageControlNetModel
+                elif _enums.model_type_is_flux(self.model_type):
                     model_class = diffusers.FluxControlNetModel
                 elif _enums.model_type_is_sd3(self.model_type):
                     model_class = diffusers.SD3ControlNetModel

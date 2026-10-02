@@ -1,0 +1,30 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# The seed image is the control image. scale=1 matches the pipeline default.
+# OpenPose turns the reference photo into the rig, as in the other boxer examples.
+
+\setp gpu_memory_gib total_memory(unit='gib')
+
+{% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 24 %}
+    \set optimization --quantizer bnb;bits=4
+{% elif have_cuda() and have_feature('sdnq') and gpu_memory_gib > 24 %}
+    \set optimization --quantizer sdnq;type=int4
+{% else %}
+    \set optimization --model-sequential-offload
+{% endif %}
+
+
+Qwen/Qwen-Image
+--model-type qwen-image {{ optimization }}
+--dtype bfloat16
+--scheduler FlowMatchEulerDiscreteScheduler
+--inference-steps 30
+--guidance-scales 4
+--control-nets "InstantX/Qwen-Image-ControlNet-Union;scale=1"
+--image-seeds "../../media/man-fighting-pose.jpg"
+--control-image-processors "openpose;include-hand=true;include-face=true;output-file=qwen-image-controlnet/boxer-openpose.png"
+--gen-seeds 1
+--output-path qwen-image-controlnet
+--output-size 1024
+--prompts "A boxer throwing a punch in the ring"

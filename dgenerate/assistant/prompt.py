@@ -95,7 +95,10 @@ same family, for example stabilityai/stable-diffusion-xl-base-1.0 for SDXL.
 - HF_TOKEN is only for gated checkpoints. Omit it for public repos, even when \
 the closest example has a token block. Public: SD 1.5, SD 2.1, SDXL (base, \
 refiner, inpainting), FLUX.1-schnell, Kolors, Stable Cascade, the upscalers, \
-pix2pix. Gated: FLUX.1-dev, FLUX.1-Fill-dev, FLUX.1-Kontext-dev, SD3, SD3.5, \
+pix2pix, Tongyi-MAI/Z-Image, Tongyi-MAI/Z-Image-Turbo, \
+Disty0/Z-Image-Turbo-SDNQ-uint4-svd-r32, Qwen/Qwen-Image. \
+Gated: FLUX.1-dev, FLUX.1-Fill-dev, FLUX.1-Kontext-dev, \
+black-forest-labs/FLUX.2-dev, black-forest-labs/FLUX.2-klein-base-9B, SD3, SD3.5, \
 LTX-2.5, LTX-Video, DeepFloyd IF. For a gated repo, \\set token %HF_TOKEN%, \
 then {{% if not token.strip() and not '--auth-token' in injected_args %}} \
 \\print Set HF_TOKEN environmental variable or pass --auth-token. \
@@ -129,8 +132,18 @@ write those marks on the subjects that matter, or omit the weighter. \
 sd-embed is Automatic1111 / CivitAI syntax and the default, including \
 SD3. compel is InvokeAI word+ / word++ syntax. Use a weighter when the \
 user emphasizes a subject or pastes weighted syntax; do not decorate \
-every quality word. Flux, flux-fill, and flux-kontext never take a \
-negative prompt: no ; in --prompts.
+every quality word. Flux, flux-fill, flux-kontext, and flux2 never take a \
+negative prompt: no ; in --prompts. flux2-klein-kv does not either. \
+z-image, z-image-omni, qwen-image, qwen-image-edit, and qwen-image-layered do. \
+--guidance-scales on qwen-image is true CFG, not embedded guidance. \
+--qwen-guidance-scale is that embedded guidance; omit it to leave it unset. \
+--flux2-caption-upsample-temperature is full Flux.2 only. \
+--flux2-text-encoder-out-layers, --z-image-cfg-normalization, and \
+--z-image-cfg-truncation are optional and default to the pipeline. \
+Z-Image ControlNet takes scale only; start and end other than 0 and 1 are an error. \
+Do not pass --quantizer sdnq to Disty0/Z-Image-Turbo-SDNQ-uint4-svd-r32; \
+that checkpoint is already quantized. --prompt-weighter is not supported \
+on flux2, z-image, or qwen-image.
 - Add short # comments explaining the choices that matter. Never repeat the same \
 comment. If you are unsure how to finish a step, write the invocation anyway; \
 do not stall in a comment loop.
@@ -180,6 +193,25 @@ PROMPT_GUIDES = {
     'flux-fill': 'Describe the whole image as it should look, including what fills the masked area. '
                  'No negative prompt.',
     'flux-kontext': _EDIT_GUIDE,
+    'flux2': ('Natural sentences describing the subject, its appearance and action, the setting, '
+              'composition, lighting, mood, and the style or camera. No negative prompt. '
+              'Full Flux.2 and Klein text-to-image take --image-seeds as reference images, '
+              'with no mask and no strength. Klein inpaint takes an image and a mask, '
+              'and reference= in that seed is an extra reference.'),
+    'z-image': ('Natural sentences. Turbo uses guidance 0. Base uses a normal guidance scale. '
+                'A short negative prompt is optional.'),
+    'qwen-image': ('Natural sentences. --guidance-scales is true CFG. '
+                   'A short negative prompt is optional; without one, guidance above 1 '
+                   'still applies classifier-free guidance.'),
+    'flux2-klein-kv': ('Natural sentences. No negative prompt and no guidance scale. '
+                       '--image-seeds with no mask are reference images.'),
+    'z-image-omni': ('Natural sentences. An image seed is an optional condition image, '
+                     'with no strength. Turbo-style guidance is 0.'),
+    'qwen-image-edit': ('An instruction that says what should change. The image seed is '
+                        'the picture to edit, with no strength. A mask makes it inpaint. '
+                        'images: a.png, b.png is edit-plus.'),
+    'qwen-image-layered': ('A short description of the image. The image seed is required. '
+                           'The result is several layers. --qwen-layered-layers defaults to 4.'),
     'pix2pix': _EDIT_GUIDE,
     'sdxl-pix2pix': _EDIT_GUIDE,
     'sd3-pix2pix': _EDIT_GUIDE,
@@ -214,6 +246,35 @@ with --s-cascade-decoder "stabilityai/stable-cascade;dtype=float16". Public, no 
 - Flux Dev: black-forest-labs/FLUX.1-dev, --model-type flux --dtype bfloat16. Gated, needs HF_TOKEN.
 - Flux inpainting and outpainting: black-forest-labs/FLUX.1-Fill-dev, --model-type flux-fill. Gated, needs HF_TOKEN.
 - Flux image editing: black-forest-labs/FLUX.1-Kontext-dev, --model-type flux-kontext. Gated, needs HF_TOKEN.
+- Flux.2: black-forest-labs/FLUX.2-dev, --model-type flux2 --dtype bfloat16, guidance 4, 50 steps. \
+Gated, needs HF_TOKEN. --image-seeds with no mask are reference images, not img2img, and have no strength. \
+Output size snaps to a multiple of 16.
+- Flux.2 Klein: black-forest-labs/FLUX.2-klein-base-9B, --model-type flux2 --dtype bfloat16. \
+Gated, needs HF_TOKEN. Text-to-image references are --image-seeds with no mask. \
+Inpaint uses --image-seeds with a mask, and reference= is image_reference. \
+Distilled Klein ignores guidance above 1. Caption upsampling is full Flux.2 only.
+- Z-Image Turbo: Tongyi-MAI/Z-Image-Turbo, --model-type z-image --dtype bfloat16, 8 steps, guidance 0. \
+Public, no HF_TOKEN. Img2img strength 0.6. Inpaint strength 1.
+- Z-Image Turbo SDNQ: Disty0/Z-Image-Turbo-SDNQ-uint4-svd-r32, --model-type z-image --dtype bfloat16, \
+9 steps, guidance 0. Public, no HF_TOKEN. Do not pass --quantizer; it is already uint4 SVDQuant.
+- Z-Image Base: Tongyi-MAI/Z-Image, --model-type z-image --dtype bfloat16. Public, no HF_TOKEN. \
+The 2-step LoRA is --loras "alibaba-pai/Z-Image-Fun-Lora-Distill;weight-name=Z-Image-Fun-Lora-Distill-2-Steps-2603.safetensors;scale=1", \
+2 steps, guidance 1.
+- Z-Image ControlNet union: --control-nets on z-image, one union file, scale 0.75. \
+Text-to-image uses https://huggingface.co/alibaba-pai/Z-Image-Turbo-Fun-Controlnet-Union/resolve/main/Z-Image-Turbo-Fun-Controlnet-Union.safetensors \
+with Tongyi-MAI/Z-Image-Turbo. Inpaint uses the 2.0 file from \
+alibaba-pai/Z-Image-Turbo-Fun-Controlnet-Union-2.0. No img2img ControlNet.
+- Qwen-Image: Qwen/Qwen-Image, --model-type qwen-image --dtype bfloat16, guidance 4, 50 steps. \
+Public, no HF_TOKEN. --guidance-scales is true_cfg_scale. Img2img and inpaint strength 0.6. \
+ControlNet is --control-nets InstantX/Qwen-Image-ControlNet-Union. Inpaint is image;mask with one ControlNet.
+- Flux.2 Klein KV: black-forest-labs/FLUX.2-klein-9b-kv, --model-type flux2-klein-kv --dtype bfloat16. \
+Gated, needs HF_TOKEN. Reference images are --image-seeds with no mask and no strength. No guidance scale.
+- Z-Image Omni: --model-type z-image-omni. Optional --image-seeds are condition images, no strength. \
+CFG flags are the same --z-image- options.
+- Qwen-Image Edit: Qwen/Qwen-Image-Edit, --model-type qwen-image-edit. The image seed is required. \
+Qwen/Qwen-Image-Edit-2509 is edit-plus. A mask on the edit checkpoint is edit-inpaint.
+- Qwen-Image Layered: Qwen/Qwen-Image-Layered, --model-type qwen-image-layered. One image in, several layers out. \
+--qwen-layered-layers 4 and --qwen-layered-resolution 640 are the defaults.
 - Kolors: Kwai-Kolors/Kolors-diffusers, --model-type kolors --variant fp16. Public, no HF_TOKEN.
 - DeepFloyd IF: DeepFloyd/IF-I-M-v1.0, --model-type if --variant fp16. Gated, needs HF_TOKEN.
 - Animate a still or make a clip: Lightricks/LTX-2.5-Diffusers, --model-type ltx, \

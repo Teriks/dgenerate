@@ -29,7 +29,6 @@
     \set quantizer sdnq;type=int4
     \set optimization --quantizer sdnq;type=int4
 {% else %}
-    \set quantizer
     \set optimization --model-sequential-offload
 {% endif %}
 

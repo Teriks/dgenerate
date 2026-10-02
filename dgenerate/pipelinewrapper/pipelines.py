@@ -48,6 +48,7 @@ import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.enums as _enums
+import dgenerate.pipelinewrapper.sdnqload as _sdnqload
 import dgenerate.pipelinewrapper.schedulers as _schedulers
 import dgenerate.pipelinewrapper.uris as _uris
 import dgenerate.pipelinewrapper.util as _util
@@ -115,6 +116,113 @@ def _set_floyd_safety_checker(pipeline: diffusers.DiffusionPipeline, safety_chec
     if not safety_checker:
         if hasattr(pipeline, 'safety_checker') and pipeline.safety_checker is not None:
             pipeline.safety_checker = _floyd_disabled_safety_checker
+
+
+# Counted by the include_* flags, or not a weight module.
+_PIPELINE_ESTIMATE_SKIP_DIRS = {
+    'scheduler',
+    'tokenizer',
+    'tokenizer_2',
+    'tokenizer_3',
+    'text_encoder',
+    'text_encoder_2',
+    'text_encoder_3',
+    'vae',
+    'unet',
+    'transformer',
+    'prior',
+    'decoder',
+    'safety_checker',
+    'controlnet',
+}
+
+
+def extra_pipeline_weight_directories(model_index: dict | None) -> list[str]:
+    """
+    Repo folders that live on the pipeline object and are not in their own cache.
+
+    Z-Image Omni's SigLIP encoder is the important case. Tokenizers, schedulers,
+    and the transformer, VAE, and text encoders are left out. ControlNet is left
+    out here because a ``--control-nets`` URI has its own cache, unless the
+    pipeline keeps that module itself.
+    """
+    if not model_index:
+        return []
+    extras = []
+    for name, spec in model_index.items():
+        if name.startswith('_') or name in _PIPELINE_ESTIMATE_SKIP_DIRS:
+            continue
+        if not isinstance(spec, (list, tuple)) or len(spec) != 2:
+            continue
+        library, class_name = spec
+        if not library or not isinstance(class_name, str):
+            continue
+        if 'Scheduler' in class_name or 'Tokenizer' in class_name or 'Processor' in class_name \
+                or class_name.endswith('FeatureExtractor'):
+            continue
+        extras.append(name)
+    return extras
+
+
+def _reject_mixed_offload(model_cpu_offload: bool,
+                          sequential_cpu_offload: bool,
+                          model_group_offload: bool,
+                          label: str = ''):
+    chosen = [name for name, enabled in (
+        (f'{label}model_cpu_offload', model_cpu_offload),
+        (f'{label}sequential_cpu_offload', sequential_cpu_offload),
+        (f'{label}model_group_offload', model_group_offload),
+    ) if enabled]
+    if len(chosen) > 1:
+        raise UnsupportedPipelineConfigError(
+            f'{chosen[0]} and {chosen[1]} may not be enabled simultaneously.')
+
+
+def modules_live_on_pipeline(model_cpu_offload: bool,
+                             sequential_cpu_offload: bool,
+                             model_group_offload: bool = False) -> bool:
+    """
+    True when pipeline submodules stay inside the pipeline cache instead of
+    their own caches. That is every CPU offload mode, including group offload.
+    """
+    return bool(model_cpu_offload or sequential_cpu_offload or model_group_offload)
+
+
+def controlnet_is_owned_by_pipeline(model_type: _enums.ModelType,
+                                    model_cpu_offload: bool,
+                                    sequential_cpu_offload: bool,
+                                    model_group_offload: bool = False) -> bool:
+    """
+    True when the ControlNet object should be counted with the pipeline cache.
+
+    CPU offload already skips the ControlNet cache. Z-Image also has to, because
+    ``ZImageControlNetModel.from_transformer`` writes the transformer modules
+    onto that object.
+    """
+    return bool(
+        modules_live_on_pipeline(
+            model_cpu_offload, sequential_cpu_offload, model_group_offload)
+        or _enums.model_type_is_z_image(model_type))
+
+
+def _module_is_quantized(module) -> bool:
+    quantized, _, _ = _util.check_bnb_status(module)
+    if quantized or _sdnqload.module_is_sdnq(module):
+        return True
+    return getattr(module, 'quantization_config', None) is not None
+
+
+def module_skips_group_offload(module) -> bool:
+    """
+    Quantized modules stay where they were loaded.
+
+    Group offload moves ordinary parameters. BitsAndBytes, SDNQ, GGUF, and
+    other quantized weights are not those, including a quantized child of an
+    otherwise ordinary module.
+    """
+    if module is None or not isinstance(module, torch.nn.Module):
+        return True
+    return any(_module_is_quantized(part) for part in module.modules())
 
 
 def estimate_pipeline_cache_footprint(
@@ -525,6 +633,109 @@ def enable_model_cpu_offload(pipeline: diffusers.DiffusionPipeline,
     _bind_pipeline_offload_method(pipeline, 'enable_model_cpu_offload', enable_model_cpu_offload)
 
 
+def _set_group_offload_flag(module: diffusers.DiffusionPipeline | torch.nn.Module, value: bool):
+    module.DGENERATE_GROUP_OFFLOAD = bool(value)
+
+    _messages.debug_log(
+        f'setting DGENERATE_GROUP_OFFLOAD={value} on module "{module.__class__.__name__}"')
+
+
+def is_group_offload_enabled(module: diffusers.DiffusionPipeline | torch.nn.Module):
+    """
+    Test if a pipeline or torch neural net module created by dgenerate has group offload enabled.
+
+    :param module: the module object
+    :return: ``True`` or ``False``
+    """
+    return hasattr(module, 'DGENERATE_GROUP_OFFLOAD') and bool(module.DGENERATE_GROUP_OFFLOAD)
+
+
+def _clear_group_offload_hooks(module: torch.nn.Module):
+    from diffusers.hooks.group_offloading import (
+        _GROUP_OFFLOADING,
+        _LAZY_PREFETCH_GROUP_OFFLOADING,
+        _LAYER_EXECUTION_TRACKER,
+    )
+
+    registry = getattr(module, '_diffusers_hook', None)
+    if registry is None:
+        return
+    for name in (_GROUP_OFFLOADING, _LAZY_PREFETCH_GROUP_OFFLOADING, _LAYER_EXECUTION_TRACKER):
+        if registry.get_hook(name) is not None:
+            registry.remove_hook(name, recurse=True)
+
+
+def enable_group_offload(pipeline: diffusers.DiffusionPipeline,
+                         device: torch.device | str = _torchutil.default_device()):
+    """
+    Enable leaf-level group offload on a torch pipeline.
+
+    This is the middle setting between model CPU offload and sequential offload.
+    CUDA and XPU prefetch the next leaf on a side stream. BitsAndBytes and SDNQ
+    modules are left where they were loaded. Weights stay in CPU RAM, so the
+    pipeline cache size still counts them. Disk offload is not used.
+
+    :param pipeline: the pipeline
+    :param device: the device layers move to for a forward pass
+    """
+    from diffusers.hooks.group_offloading import apply_group_offloading
+
+    torch_device = torch.device(device)
+    if torch_device.type == 'cuda' and not _torchutil.is_cuda_available():
+        fallback_device = _torchutil.default_device()
+        _messages.debug_log(
+            f'enable_group_offload: CUDA requested but not available, using {fallback_device} for execution device')
+        torch_device = torch.device(fallback_device)
+    elif torch_device.type == 'mps' and not _torchutil.is_mps_available():
+        fallback_device = _torchutil.default_device()
+        _messages.debug_log(
+            f'enable_group_offload: MPS requested but not available, using {fallback_device} for execution device')
+        torch_device = torch.device(fallback_device)
+    elif torch_device.type == 'xpu' and not _torchutil.is_xpu_available():
+        fallback_device = _torchutil.default_device()
+        _messages.debug_log(
+            f'enable_group_offload: XPU requested but not available, using {fallback_device} for execution device')
+        torch_device = torch.device(fallback_device)
+
+    pipeline.remove_all_hooks()
+    for _, model in get_pipeline_modules(pipeline).items():
+        _clear_group_offload_hooks(model)
+
+    use_stream = torch_device.type in ('cuda', 'xpu')
+    _set_group_offload_flag(pipeline, True)
+    pipeline._dgenerate_offload_device = torch_device
+    excluded = set(getattr(pipeline, '_exclude_from_cpu_offload', ()) or ())
+
+    # The transformer is hooked before a Z-Image ControlNet. ``from_transformer``
+    # grafts transformer modules onto the ControlNet, and a second group-offload
+    # pass leaves those existing hooks in place.
+    modules = get_pipeline_modules(pipeline)
+    ordered = [(name, model) for name, model in modules.items() if name != 'controlnet']
+    if 'controlnet' in modules:
+        ordered.append(('controlnet', modules['controlnet']))
+
+    for name, model in ordered:
+        if module_skips_group_offload(model):
+            _messages.debug_log(
+                f'Not group offloading pipeline module: {name}, '
+                f'because it is quantized.')
+            continue
+        if name in excluded:
+            model.to(torch_device)
+            continue
+        apply_group_offloading(
+            model,
+            onload_device=torch_device,
+            offload_device=torch.device('cpu'),
+            offload_type='leaf_level',
+            use_stream=use_stream,
+            non_blocking=use_stream,
+        )
+        _set_group_offload_flag(model, True)
+
+    _bind_pipeline_offload_method(pipeline, 'enable_group_offload', enable_group_offload)
+
+
 def get_torch_device(component: diffusers.DiffusionPipeline | torch.nn.Module) -> torch.device:
     """
     Get the device that a pipeline or pipeline component exists on.
@@ -565,6 +776,15 @@ def _pipeline_to(pipeline, device: torch.device | str | None):
         return
 
     device = torch.device(device)
+
+    # Group-offload weights stay in CPU memory for the life of the pipeline.
+    # Moving the shell to the accelerator would drop them from the cache size
+    # without freeing that memory.
+    if is_group_offload_enabled(pipeline):
+        _messages.debug_log(
+            f'pipeline_to() Not moving pipeline "{pipeline.__class__.__name__}" to "{device}" '
+            f'as group offload keeps its weights in CPU memory.')
+        return
 
     pipeline_device = get_torch_device(pipeline)
 
@@ -653,7 +873,8 @@ def _pipeline_to(pipeline, device: torch.device | str | None):
                 f'as it is already on that device.')
             continue
 
-        if is_model_cpu_offload_enabled(value) and device.type != 'cpu':
+        if (is_model_cpu_offload_enabled(value) or is_group_offload_enabled(value)) \
+                and device.type != 'cpu':
             _messages.debug_log(
                 f'pipeline_to() Not moving module "{name} = {value.__class__.__name__}" to "{device}" '
                 f'as it has cpu offload enabled and can only move to cpu.')
@@ -1266,6 +1487,7 @@ def create_diffusion_pipeline(
         extra_modules: dict[str, typing.Any] | None = None,
         model_cpu_offload: bool = False,
         sequential_cpu_offload: bool = False,
+        model_group_offload: bool = False,
         local_files_only: bool = False,
         missing_submodules_ok: bool = False
 ) -> PipelineCreationResult:
@@ -1280,8 +1502,8 @@ def create_diffusion_pipeline(
     :param subfolder: huggingface repo subfolder if applicable
     :param dtype: Optional :py:class:`dgenerate.pipelinewrapper.DataType` enum value
     :param unet_uri: Optional ``--unet`` URI string for specifying a specific UNet
-    :param transformer_uri: Optional ``--transformer`` URI string for specifying a specific Transformer,
-        currently this is only supported for Stable Diffusion 3 and Flux models.
+    :param transformer_uri: Optional ``--transformer`` URI string for specifying a specific Transformer.
+        Supported for Stable Diffusion 3, Flux, Flux.2, Z-Image, Qwen-Image, and LTX.
     :param vae_uri: Optional ``--vae`` URI string for specifying a specific VAE
     :param lora_uris: Optional ``--loras`` URI strings for specifying LoRA weights
     :param lora_fuse_scale: Optional ``--lora-fuse-scale`` global LoRA fuse scale value.
@@ -1309,6 +1531,7 @@ def create_diffusion_pipeline(
         :py:meth:`diffusers.DiffusionPipeline.from_single_file` or :py:meth:`diffusers.DiffusionPipeline.from_pretrained`
     :param model_cpu_offload: This pipeline has model_cpu_offloading enabled?
     :param sequential_cpu_offload: This pipeline has sequential_cpu_offloading enabled?
+    :param model_group_offload: This pipeline has group offload enabled?
     :param local_files_only: Only look in the huggingface cache and do not connect to download models?
     :param missing_submodules_ok: It is okay if Text Encoders or VAE is missing from the checkpoint?
 
@@ -1368,6 +1591,7 @@ class PipelineFactory:
                  extra_modules: dict[str, typing.Any] | None = None,
                  model_cpu_offload: bool = False,
                  sequential_cpu_offload: bool = False,
+                 model_group_offload: bool = False,
                  local_files_only: bool = False):
         self._args = {k: v for k, v in
                       _types.partial_deep_copy_container(locals()).items()
@@ -1503,11 +1727,266 @@ def pipeline_class_supports_ip_adapter(cls: typing.Type[diffusers.DiffusionPipel
     return any('IPAdapterMixin' in x.__name__ for x in cls.__bases__)
 
 
+PACKED_FLOW_SIZE_MULTIPLE = 16
+"""Pixel multiple for Flux.2, Z-Image, and Qwen-Image (``vae_scale_factor * 2``)."""
+
+
+def snap_packed_flow_size(
+        width: int | None,
+        height: int | None,
+        multiple: int = PACKED_FLOW_SIZE_MULTIPLE
+) -> tuple[int | None, int | None]:
+    """
+    Snap a pixel size down to ``multiple``.
+
+    Flux.2 resizes on its own. Z-Image ControlNet raises when a side is not
+    divisible by ``vae_scale_factor * 2``. Snapping first keeps that from raising.
+    A side smaller than ``multiple`` becomes ``multiple``.
+    """
+
+    def snap(value):
+        if value is None:
+            return None
+        value = int(value)
+        snapped = value - (value % multiple)
+        if snapped < multiple:
+            snapped = multiple
+        return snapped
+
+    return snap(width), snap(height)
+
+
+def qwen_image_call_guidance(
+        guidance_scale: float,
+        negative_prompt: str | None
+) -> dict[str, typing.Any]:
+    """
+    Map ``--guidance-scales`` onto Qwen-Image ``true_cfg_scale``.
+
+    ``guidance_scale`` is the distilled embedded guidance and stays unset.
+    True CFG runs only when ``true_cfg_scale > 1`` and a negative prompt is
+    present. A single space is the negative prompt the pipeline docs use
+    when the user did not give one.
+    """
+    kwargs: dict[str, typing.Any] = {'true_cfg_scale': float(guidance_scale)}
+    if negative_prompt:
+        kwargs['negative_prompt'] = negative_prompt
+    elif float(guidance_scale) > 1:
+        kwargs['negative_prompt'] = ' '
+    return kwargs
+
+
+def diffusion_transformer_class(model_type: _enums.ModelType):
+    """
+    Transformer class for a model type that uses one, or ``None``.
+    """
+    if _enums.model_type_is_sd3(model_type):
+        return diffusers.SD3Transformer2DModel
+    if _enums.model_type_is_flux(model_type):
+        return diffusers.FluxTransformer2DModel
+    if _enums.model_type_is_flux2_family(model_type):
+        return diffusers.Flux2Transformer2DModel
+    if _enums.model_type_is_z_image_family(model_type):
+        return diffusers.ZImageTransformer2DModel
+    if _enums.model_type_is_qwen_image_family(model_type):
+        return diffusers.QwenImageTransformer2DModel
+    return None
+
+
+def _flow_image_pipeline_class(
+        model_type: _enums.ModelType,
+        pipeline_type: _enums.PipelineType,
+        model_class_name: str | None,
+        controlnet_uris: _types.OptionalUris,
+        t2i_adapter_uris: _types.OptionalUris,
+        ip_adapter_uris: _types.OptionalUris,
+        unet_uri: _types.OptionalUri,
+        help_mode: bool
+):
+    """
+    Pipeline class for Flux.2, Z-Image, and Qwen-Image, or ``None`` for other types.
+
+    ``model_class_name`` is ``model_index.json`` ``_class_name``. It selects
+    Flux.2 Klein versus full Flux.2. Klein stays ``--model-type flux2``.
+    """
+    if not _enums.model_type_is_flow_image(model_type):
+        return None
+
+    model_type_string = _enums.get_model_type_string(model_type)
+
+    if t2i_adapter_uris:
+        raise UnsupportedPipelineConfigError(
+            f'--model-type {model_type_string} does not support --t2i-adapters.')
+    if ip_adapter_uris:
+        raise UnsupportedPipelineConfigError(
+            f'--model-type {model_type_string} does not support --ip-adapters.')
+    if unet_uri:
+        raise UnsupportedPipelineConfigError(
+            f'--model-type {model_type_string} does not use a UNet. Use --transformer.')
+
+    if _enums.model_type_is_flux2_klein_kv(model_type):
+        if controlnet_uris:
+            raise UnsupportedPipelineConfigError(
+                '--model-type flux2-klein-kv does not support --control-nets.')
+        if pipeline_type != _enums.PipelineType.TXT2IMG and not help_mode:
+            raise UnsupportedPipelineConfigError(
+                '--model-type flux2-klein-kv has no img2img or inpaint pipeline. '
+                '--image-seeds are reference images and take no mask or strength.')
+        return diffusers.Flux2KleinKVPipeline
+
+    if _enums.model_type_is_flux2(model_type):
+        if controlnet_uris:
+            raise UnsupportedPipelineConfigError(
+                '--model-type flux2 does not support --control-nets. '
+                'This Diffusers version has no Flux.2 ControlNet pipeline.')
+        klein = bool(model_class_name and model_class_name.startswith('Flux2Klein')
+                     and not model_class_name.startswith('Flux2KleinKV'))
+        if pipeline_type == _enums.PipelineType.IMG2IMG:
+            raise UnsupportedPipelineConfigError(
+                '--model-type flux2 has no img2img pipeline. '
+                '--image-seeds without a mask are reference images. '
+                'A mask is Flux.2 Klein inpaint.')
+        if pipeline_type == _enums.PipelineType.INPAINT:
+            if model_class_name and not klein and not help_mode:
+                raise UnsupportedPipelineConfigError(
+                    'Full Flux.2 does not support inpainting or --image-seeds. '
+                    'Use a Flux.2 Klein checkpoint for inpaint.')
+            return diffusers.Flux2KleinInpaintPipeline
+        if klein:
+            return diffusers.Flux2KleinPipeline
+        return diffusers.Flux2Pipeline
+
+    if _enums.model_type_is_z_image_omni(model_type):
+        if controlnet_uris:
+            raise UnsupportedPipelineConfigError(
+                '--model-type z-image-omni does not support --control-nets.')
+        if pipeline_type != _enums.PipelineType.TXT2IMG and not help_mode:
+            raise UnsupportedPipelineConfigError(
+                '--model-type z-image-omni has no img2img or inpaint pipeline. '
+                '--image-seeds are condition images and take no mask or strength.')
+        return diffusers.ZImageOmniPipeline
+
+    if _enums.model_type_is_z_image(model_type):
+        if controlnet_uris and len(controlnet_uris) > 1:
+            raise UnsupportedPipelineConfigError(
+                'Z-Image accepts one ControlNet union model in --control-nets.')
+        if controlnet_uris:
+            if pipeline_type == _enums.PipelineType.IMG2IMG and not help_mode:
+                raise UnsupportedPipelineConfigError(
+                    'Z-Image ControlNet supports text-to-image and inpaint, not img2img.')
+            if pipeline_type == _enums.PipelineType.INPAINT:
+                return diffusers.ZImageControlNetInpaintPipeline
+            return diffusers.ZImageControlNetPipeline
+        if pipeline_type == _enums.PipelineType.IMG2IMG:
+            return diffusers.ZImageImg2ImgPipeline
+        if pipeline_type == _enums.PipelineType.INPAINT:
+            return diffusers.ZImageInpaintPipeline
+        return diffusers.ZImagePipeline
+
+    if _enums.model_type_is_qwen_image_layered(model_type):
+        if controlnet_uris:
+            raise UnsupportedPipelineConfigError(
+                '--model-type qwen-image-layered does not support --control-nets.')
+        if pipeline_type != _enums.PipelineType.TXT2IMG and not help_mode:
+            raise UnsupportedPipelineConfigError(
+                '--model-type qwen-image-layered takes one condition image and no mask.')
+        return diffusers.QwenImageLayeredPipeline
+
+    if _enums.model_type_is_qwen_image_edit(model_type):
+        if controlnet_uris:
+            raise UnsupportedPipelineConfigError(
+                '--model-type qwen-image-edit does not support --control-nets.')
+        plus = bool(model_class_name and model_class_name.startswith('QwenImageEditPlus'))
+        named_inpaint = bool(model_class_name and 'Inpaint' in model_class_name)
+        if plus and pipeline_type == _enums.PipelineType.INPAINT and not help_mode:
+            raise UnsupportedPipelineConfigError(
+                'Qwen-Image edit-plus has no inpaint pipeline.')
+        if pipeline_type == _enums.PipelineType.INPAINT or named_inpaint:
+            return diffusers.QwenImageEditInpaintPipeline
+        if plus:
+            return diffusers.QwenImageEditPlusPipeline
+        return diffusers.QwenImageEditPipeline
+
+    if controlnet_uris:
+        if pipeline_type == _enums.PipelineType.IMG2IMG and not help_mode:
+            raise UnsupportedPipelineConfigError(
+                'Qwen-Image ControlNet supports text-to-image and inpaint, not img2img.')
+        if pipeline_type == _enums.PipelineType.INPAINT:
+            return diffusers.QwenImageControlNetInpaintPipeline
+        return diffusers.QwenImageControlNetPipeline
+    if pipeline_type == _enums.PipelineType.IMG2IMG:
+        return diffusers.QwenImageImg2ImgPipeline
+    if pipeline_type == _enums.PipelineType.INPAINT:
+        return diffusers.QwenImageInpaintPipeline
+    return diffusers.QwenImagePipeline
+
+
+_MODEL_INDEX_CHECKS = [
+    (_enums.model_type_is_flux2_klein_kv, ('^Flux2KleinKV', 'Flux.2 Klein KV')),
+    (_enums.model_type_is_flux2, ('^Flux2', 'Flux.2')),
+    (_enums.model_type_is_z_image_omni, ('^ZImageOmni', 'Z-Image Omni')),
+    (_enums.model_type_is_z_image, ('^ZImage', 'Z-Image')),
+    (_enums.model_type_is_qwen_image_layered, ('^QwenImageLayered', 'Qwen-Image layered')),
+    (_enums.model_type_is_qwen_image_edit, ('^QwenImageEdit', 'Qwen-Image edit')),
+    (_enums.model_type_is_qwen_image, ('^QwenImage', 'Qwen-Image')),
+    (_enums.model_type_is_flux, ('^Flux(?!2)', 'Flux')),
+    (_enums.model_type_is_sd3, ('^StableDiffusion3.*', 'Stable Diffusion 3')),
+    (_enums.model_type_is_sdxl, ('^StableDiffusionXL.*', 'Stable Diffusion XL')),
+    (_enums.model_type_is_sd15, ('^StableDiffusion[^X3].*', 'Stable Diffusion')),
+    (_enums.model_type_is_sd2, ('^StableDiffusion[^X3].*', 'Stable Diffusion')),
+    (_enums.model_type_is_s_cascade, ('^StableCascade.*', 'Stable Cascade')),
+    (_enums.model_type_is_kolors, ('^Kolors.*', 'Kolors')),
+    (_enums.model_type_is_floyd, ('^IF.*', 'Deep Floyd')),
+]
+
+_MODEL_INDEX_FALLBACK_CHECKS = [
+    (lambda model_type: model_type == _enums.ModelType.SD, '^LatentConsistency.*')
+]
+
+_REDIRECTED_FLOW_CLASSES = (
+    ('Flux2KleinKV', _enums.model_type_is_flux2, 'flux2-klein-kv'),
+    ('ZImageOmni', _enums.model_type_is_z_image, 'z-image-omni'),
+    ('QwenImageLayered', _enums.model_type_is_qwen_image, 'qwen-image-layered'),
+    ('QwenImageEdit', _enums.model_type_is_qwen_image, 'qwen-image-edit'),
+)
+
+
+def validate_model_index_class(
+        model_type: _enums.ModelType,
+        model_class_name: str,
+        model_path: str = 'model'
+):
+    """
+    Raise :py:class:`UnsupportedPipelineConfigError` when ``_class_name`` does not
+    belong to ``model_type``.
+
+    Flux.2 Klein stays ``flux2``. Klein KV, Omni, edit, and layered match the
+    parent prefix, so those checkpoints are sent to their own ``--model-type``.
+    """
+    for prefix, parent_check, model_type_string in _REDIRECTED_FLOW_CLASSES:
+        if model_class_name.startswith(prefix) and parent_check(model_type):
+            raise UnsupportedPipelineConfigError(
+                f'{model_path} uses {model_class_name}. '
+                f'Use --model-type {model_type_string}.')
+
+    for check_func, (pattern, title) in _MODEL_INDEX_CHECKS:
+        if check_func(model_type) and re.match(pattern, model_class_name) is None:
+            if not any(
+                    check(model_type) and re.match(fallback, model_class_name) is not None
+                    for check, fallback in _MODEL_INDEX_FALLBACK_CHECKS
+            ):
+                raise UnsupportedPipelineConfigError(
+                    f'{model_path} is not a {title} model, '
+                    f'incorrect --model-type value: {_enums.get_model_type_string(model_type)}'
+                )
+
+
 def get_pipeline_class(
         model_type: _enums.ModelType = _enums.ModelType.SD,
         pipeline_type: _enums.PipelineType = _enums.PipelineType.TXT2IMG,
         unet_uri: _types.OptionalUri = None,
         transformer_uri: _types.OptionalUri = None,
+        model_class_name: str | None = None,
         vae_uri: _types.OptionalUri = None,
         lora_uris: _types.OptionalUris = None,
         image_encoder_uri: _types.OptionalUri = None,
@@ -1524,8 +2003,10 @@ def get_pipeline_class(
     :param model_type:  :py:class:`dgenerate.pipelinewrapper.ModelType` enum value
     :param pipeline_type: :py:class:`dgenerate.pipelinewrapper.PipelineType` enum value
     :param unet_uri: Optional ``--unet`` URI string for specifying a specific UNet
-    :param transformer_uri: Optional ``--transformer`` URI string for specifying a specific Transformer,
-        currently this is only supported for Stable Diffusion 3 and Flux models.
+    :param transformer_uri: Optional ``--transformer`` URI string for specifying a specific Transformer.
+        Supported for Stable Diffusion 3, Flux, Flux.2, Z-Image, Qwen-Image, and LTX.
+    :param model_class_name: Optional ``model_index.json`` ``_class_name``. Flux.2 uses it to
+        select Klein versus the full pipeline.
     :param vae_uri: Optional ``--vae`` URI string for specifying a specific VAE
     :param lora_uris: Optional ``--loras`` URI strings for specifying LoRA weights
     :param image_encoder_uri: Optional ``--image-encoder`` URI for use with IP Adapter weights or Stable Cascade
@@ -1617,9 +2098,11 @@ def get_pipeline_class(
     if transformer_uri:
         if not _enums.model_type_is_sd3(model_type) \
                 and not _enums.model_type_is_flux(model_type) \
+                and not _enums.model_type_is_flow_image(model_type) \
                 and not _enums.model_type_is_video(model_type):
             raise UnsupportedPipelineConfigError(
-                '--transformer is only supported for --model-type sd3, flux, and ltx.')
+                '--transformer is only supported for --model-type sd3, flux, flux2, flux2-klein-kv, '
+                'z-image, z-image-omni, qwen-image, qwen-image-edit, qwen-image-layered, and ltx.')
 
     # Incompatible combinations
     if controlnet_uris and t2i_adapter_uris:
@@ -1680,7 +2163,19 @@ def get_pipeline_class(
         )
 
     # Pipeline class selection
-    if _enums.model_type_is_upscaler(model_type):
+    flow_pipeline_class = _flow_image_pipeline_class(
+        model_type=model_type,
+        pipeline_type=pipeline_type,
+        model_class_name=model_class_name,
+        controlnet_uris=controlnet_uris,
+        t2i_adapter_uris=t2i_adapter_uris,
+        ip_adapter_uris=ip_adapter_uris,
+        unet_uri=unet_uri,
+        help_mode=help_mode
+    )
+    if flow_pipeline_class is not None:
+        pipeline_class = flow_pipeline_class
+    elif _enums.model_type_is_upscaler(model_type):
         if controlnet_uris:
             raise UnsupportedPipelineConfigError(
                 'Upscaler models are not compatible with --control-nets.')
@@ -2069,6 +2564,7 @@ def _create_diffusion_pipeline(
         extra_modules: dict[str, typing.Any] | None = None,
         model_cpu_offload: bool = False,
         sequential_cpu_offload: bool = False,
+        model_group_offload: bool = False,
         local_files_only: bool = False,
         missing_submodules_ok: bool = False
 ) -> PipelineCreationResult:
@@ -2077,9 +2573,9 @@ def _create_diffusion_pipeline(
         raise ValueError('model_path must be specified.')
 
     # Offload checks
-    if model_cpu_offload and sequential_cpu_offload:
-        raise UnsupportedPipelineConfigError(
-            'model_cpu_offload and sequential_cpu_offload may not be enabled simultaneously.')
+    _reject_mixed_offload(model_cpu_offload, sequential_cpu_offload, model_group_offload)
+    submodules_on_pipeline = modules_live_on_pipeline(
+        model_cpu_offload, sequential_cpu_offload, model_group_offload)
 
     # Device check
     if not _torchutil.is_valid_device_string(device):
@@ -2150,44 +2646,16 @@ def _create_diffusion_pipeline(
         local_files_only=local_files_only
     )
 
-    if '_class_name' in model_index:
-        model_class_name = model_index['_class_name']
-
-        model_checks = [
-            (_enums.model_type_is_flux, ('^Flux.*', 'Flux')),
-            (_enums.model_type_is_sd3, ('^StableDiffusion3.*', 'Stable Diffusion 3')),
-            (_enums.model_type_is_sdxl, ('^StableDiffusionXL.*', 'Stable Diffusion XL')),
-            (_enums.model_type_is_sd15, ('^StableDiffusion[^X3].*', 'Stable Diffusion')),
-            (_enums.model_type_is_sd2, ('^StableDiffusion[^X3].*', 'Stable Diffusion')),
-            (_enums.model_type_is_s_cascade, ('^StableCascade.*', 'Stable Cascade')),
-            (_enums.model_type_is_kolors, ('^Kolors.*', 'Kolors')),
-            (_enums.model_type_is_floyd, ('^IF.*', 'Deep Floyd')),
-        ]
-
-        # exceptions to the rules above
-        # where left and right evaluate True
-        model_fallback_checks = [
-            (lambda x: x == _enums.ModelType.SD, '^LatentConsistency.*')
-        ]
-
-        for check_func, (pattern, title) in model_checks:
-            if check_func(model_type) and re.match(pattern, model_class_name) is None:
-                # are there any exceptions to this such as legacy configs?
-                if not any(
-                        check(model_type) and
-                        re.match(pattern, model_class_name) is not None
-                        for check, pattern in model_fallback_checks
-                ):
-                    raise UnsupportedPipelineConfigError(
-                        f'{model_path} is not a {title} model, '
-                        f'incorrect --model-type value: {_enums.get_model_type_string(model_type)}'
-                    )
+    model_class_name = model_index.get('_class_name') if isinstance(model_index, dict) else None
+    if model_class_name:
+        validate_model_index_class(model_type, model_class_name, model_path)
 
     pipeline_class = get_pipeline_class(
         model_type=model_type,
         pipeline_type=pipeline_type,
         unet_uri=unet_uri,
         transformer_uri=transformer_uri,
+        model_class_name=model_class_name,
         vae_uri=vae_uri,
         lora_uris=lora_uris,
         image_encoder_uri=image_encoder_uri,
@@ -2274,7 +2742,8 @@ def _create_diffusion_pipeline(
     # that includes them
 
     pipeline_cached_with_submodules = \
-        model_cpu_offload or sequential_cpu_offload or quantizer_uri
+        modules_live_on_pipeline(
+            model_cpu_offload, sequential_cpu_offload, model_group_offload) or quantizer_uri
 
     estimated_memory_usage = estimate_pipeline_cache_footprint(
         model_type=model_type,
@@ -2292,8 +2761,23 @@ def _create_diffusion_pipeline(
         safety_checker=safety_checker and not safety_checker_override,
         auth_token=auth_token,
         extra_args=extra_modules,
-        local_files_only=local_files_only
+        local_files_only=local_files_only,
+        include_directories=extra_pipeline_weight_directories(
+            model_index if isinstance(model_index, dict) else None)
     )
+
+    if controlnet_uris and controlnet_is_owned_by_pipeline(
+            model_type, model_cpu_offload, sequential_cpu_offload, model_group_offload):
+        for controlnet_uri in controlnet_uris:
+            parsed_controlnet = _uris.ControlNetUri.parse(controlnet_uri, model_type=model_type)
+            estimated_memory_usage += _util.estimate_model_memory_use(
+                repo_id=_hfhub.download_non_hf_slug_model(parsed_controlnet.model),
+                revision=parsed_controlnet.revision,
+                variant=parsed_controlnet.variant,
+                subfolder=parsed_controlnet.subfolder,
+                use_auth_token=auth_token,
+                local_files_only=local_files_only
+            )
 
     _messages.debug_log(
         f'Creating Torch Pipeline: "{pipeline_class.__name__}", '
@@ -2322,6 +2806,39 @@ def _create_diffusion_pipeline(
         _uris.SDNQQuantizerUri
     ):
         sdnq_cast_hack = True
+
+    def _reject_repeated_sdnq(component_path, component_subfolder, component_revision, component_quantizer):
+        config = _sdnqload.sdnq_config_for_component(
+            component_path,
+            subfolder=component_subfolder,
+            revision=component_revision,
+            token=auth_token,
+            local_files_only=local_files_only)
+        if config is None:
+            return False
+        error = _sdnqload.sdnq_requantize_error(component_quantizer or quantizer_uri, config)
+        if error:
+            raise UnsupportedPipelineConfigError(error)
+        return True
+
+    if _enums.model_type_is_flow_image(model_type):
+        # The text encoder has to be registered before from_pretrained.
+        # The cast hack follows the transformer, which is the published SDNQ Turbo weight.
+        if _reject_repeated_sdnq(model_path, 'text_encoder', revision, None):
+            pass
+        if _reject_repeated_sdnq(model_path, 'transformer', revision, None):
+            sdnq_cast_hack = True
+        if _reject_repeated_sdnq(model_path, None, revision, None):
+            sdnq_cast_hack = True
+
+    if transformer_uri:
+        parsed_for_sdnq = _uris.TransformerUri.parse(transformer_uri)
+        if _reject_repeated_sdnq(
+                parsed_for_sdnq.model,
+                parsed_for_sdnq.subfolder,
+                parsed_for_sdnq.revision,
+                parsed_for_sdnq.quantizer):
+            sdnq_cast_hack = True
 
     uri_quant_check = []
     manual_quantizer_components = set()
@@ -2484,7 +3001,7 @@ def _create_diffusion_pipeline(
             original_config=original_config,
             use_auth_token=auth_token,
             local_files_only=local_files_only,
-            no_cache=bool(lora_uris) or model_cpu_offload or sequential_cpu_offload,
+            no_cache=bool(lora_uris) or submodules_on_pipeline,
             missing_ok=missing_submodules_ok,
             device_map=get_device_map_for_quantizer(uri.quantizer)
         )
@@ -2495,20 +3012,28 @@ def _create_diffusion_pipeline(
             original_config=original_config,
             use_auth_token=auth_token,
             local_files_only=local_files_only,
-            no_cache=model_cpu_offload or sequential_cpu_offload,
+            no_cache=submodules_on_pipeline,
             missing_ok=missing_submodules_ok
         )
         if sdnq_cast_hack:
-            og_decode = vae_model.decode
-            def sdnq_decode(latents, *args, **kwargs):
-                if getattr(vae_model.config, 'use_post_quant_conv', False):
-                    cur_dtype = vae_model.post_quant_conv.weight.dtype
-                else:
-                    cur_dtype = _enums.get_torch_dtype(dtype)
-                return og_decode(latents.to(
-                    dtype=vae_model.dtype if cur_dtype is None else cur_dtype), *args, **kwargs)
-            vae_model.decode = sdnq_decode
+            _apply_sdnq_decode(vae_model)
         return vae_model
+
+    def _apply_sdnq_decode(vae_model):
+        if vae_model is None or getattr(vae_model, '_dgenerate_sdnq_decode', False):
+            return
+        og_decode = vae_model.decode
+
+        def sdnq_decode(latents, *args, **kwargs):
+            if getattr(vae_model.config, 'use_post_quant_conv', False):
+                cur_dtype = vae_model.post_quant_conv.weight.dtype
+            else:
+                cur_dtype = _enums.get_torch_dtype(dtype)
+            return og_decode(latents.to(
+                dtype=vae_model.dtype if cur_dtype is None else cur_dtype), *args, **kwargs)
+
+        vae_model.decode = sdnq_decode
+        vae_model._dgenerate_sdnq_decode = True
 
     def sdnq_forward(og_forward, model, *args, **kwargs):
         args = list(args)
@@ -2559,8 +3084,7 @@ def _create_diffusion_pipeline(
             local_files_only=local_files_only,
             no_cache=bool(lora_uris) or
                      bool(ip_adapter_uris) or
-                     model_cpu_offload or
-                     sequential_cpu_offload,
+                     submodules_on_pipeline,
             device_map=get_device_map_for_quantizer(uri.quantizer),
             unet_class=unet_class
         )
@@ -2580,16 +3104,19 @@ def _create_diffusion_pipeline(
             original_config=original_config,
             use_auth_token=auth_token,
             local_files_only=local_files_only,
-            no_cache=bool(lora_uris) or model_cpu_offload or sequential_cpu_offload,
+            no_cache=bool(lora_uris) or submodules_on_pipeline,
             device_map=get_device_map_for_quantizer(uri.quantizer),
             transformer_class=transformer_class
         )
-        if sdnq_cast_hack:
-            transformer_model.forward = functools.partial(
-                sdnq_forward,
-                transformer_model.forward,
-                transformer_model
-            )
+        if sdnq_cast_hack or _sdnqload.module_is_sdnq(transformer_model):
+            if not getattr(transformer_model, '_dgenerate_sdnq_forward', False):
+                transformer_model.forward = functools.partial(
+                    sdnq_forward,
+                    transformer_model.forward,
+                    transformer_model
+                )
+                transformer_model._dgenerate_sdnq_forward = True
+            _apply_sdnq_decode(creation_kwargs.get('vae'))
         return transformer_model
 
     def load_default_text_encoder(encoder, encoder_name):
@@ -2786,12 +3313,7 @@ def _create_diffusion_pipeline(
 
     # Load Transformer
 
-    if _enums.model_type_is_sd3(model_type):
-        transformer_class = diffusers.SD3Transformer2DModel
-    elif _enums.model_type_is_flux(model_type):
-        transformer_class = diffusers.FluxTransformer2DModel
-    else:
-        transformer_class = None
+    transformer_class = diffusion_transformer_class(model_type)
 
     if not transformer_override:
         if transformer_uri is not None and not (
@@ -2846,10 +3368,10 @@ def _create_diffusion_pipeline(
         parsed_image_encoder_uri = _uris.ImageEncoderUri.parse(image_encoder_uri)
 
         if _enums.model_type_is_sd3(model_type):
-            # image encoder does not participate in offloading for SD3
-            no_cache_image_encoder = model_cpu_offload
+            # image encoder does not participate in sequential offloading for SD3
+            no_cache_image_encoder = model_cpu_offload or model_group_offload
         else:
-            no_cache_image_encoder = model_cpu_offload or sequential_cpu_offload
+            no_cache_image_encoder = submodules_on_pipeline
 
         loaded_image_encoder = parsed_image_encoder_uri.load(
             dtype_fallback=dtype,
@@ -2885,7 +3407,7 @@ def _create_diffusion_pipeline(
                 use_auth_token=auth_token,
                 dtype_fallback=dtype,
                 local_files_only=local_files_only,
-                no_cache=model_cpu_offload or sequential_cpu_offload
+                no_cache=submodules_on_pipeline
             )
 
             _messages.debug_log(lambda:
@@ -2942,7 +3464,8 @@ def _create_diffusion_pipeline(
                 use_auth_token=auth_token,
                 dtype_fallback=dtype,
                 local_files_only=local_files_only,
-                no_cache=model_cpu_offload or sequential_cpu_offload,
+                no_cache=controlnet_is_owned_by_pipeline(
+                    model_type, model_cpu_offload, sequential_cpu_offload, model_group_offload),
                 device_map=get_device_map_for_quantizer(controlnet_uri_to_load.quantizer)
             )
 
@@ -2983,6 +3506,8 @@ def _create_diffusion_pipeline(
                 creation_kwargs['controlnet'] = diffusers.SD3MultiControlNetModel(controlnets)
             elif _enums.model_type_is_flux(model_type):
                 creation_kwargs['controlnet'] = diffusers.FluxMultiControlNetModel(controlnets)
+            elif _enums.model_type_is_qwen_image(model_type):
+                creation_kwargs['controlnet'] = diffusers.QwenImageMultiControlNetModel(controlnets)
             else:
                 creation_kwargs['controlnet'] = controlnets
         else:
@@ -3124,7 +3649,8 @@ def _create_diffusion_pipeline(
 
     # SD3 image_encoder needs to be excluded to avoid meta tensor errors.
 
-    if _enums.model_type_is_sd3(model_type) and sequential_cpu_offload and 'image_encoder' in creation_kwargs:
+    if _enums.model_type_is_sd3(model_type) and (
+            sequential_cpu_offload or model_group_offload) and 'image_encoder' in creation_kwargs:
         pipeline._exclude_from_cpu_offload.append("image_encoder")
 
     if not device.startswith('cpu'):
@@ -3132,6 +3658,8 @@ def _create_diffusion_pipeline(
             enable_sequential_cpu_offload(pipeline, device)
         elif model_cpu_offload:
             enable_model_cpu_offload(pipeline, device)
+        elif model_group_offload:
+            enable_group_offload(pipeline, device)
 
     _messages.debug_log(f'Finished Creating Torch Pipeline: "{pipeline_class.__name__}"')
 
@@ -3297,7 +3825,8 @@ def _get_quantizable_components(model_type: _enums.ModelType) -> list[str]:
     components = []
 
     # Add UNet or Transformer based on model type
-    if _enums.model_type_is_sd3(model_type) or _enums.model_type_is_flux(model_type):
+    if (_enums.model_type_is_sd3(model_type) or _enums.model_type_is_flux(model_type)
+            or _enums.model_type_is_flow_image(model_type)):
         # For SD3 and Flux, single file checkpoints typically only contain the transformer
         # Text encoders are usually separate standard models that don't need conversion
         components.append('transformer')
@@ -3384,7 +3913,24 @@ def _create_minimal_pipeline_for_component_extraction(
 
                 # Try to determine the encoder class - this is a simplified approach
                 # In practice, we might need to look at model_index or infer from model_type
-                if encoder_param == 'text_encoder':
+                flow_encoder_name = None
+                if (_enums.model_type_is_flow_image(model_type)
+                        and not _hfhub.is_single_file_model_load(model_path)):
+                    try:
+                        flow_index = _util.fetch_model_index_dict(
+                            model_path,
+                            revision=revision,
+                            subfolder=subfolder,
+                            use_auth_token=auth_token)
+                        flow_entry = flow_index.get(encoder_param)
+                        if flow_entry and flow_entry[1]:
+                            flow_encoder_name = flow_entry[1]
+                    except Exception as flow_encoder_error:
+                        _messages.debug_log(
+                            f'Could not read {encoder_param} class from model_index: {flow_encoder_error}')
+                if flow_encoder_name:
+                    encoder_name = flow_encoder_name
+                elif encoder_param == 'text_encoder':
                     encoder_name = 'CLIPTextModel'  # Default for most SD models
                 elif encoder_param == 'text_encoder_2':
                     if _enums.model_type_is_sdxl(model_type):
@@ -3458,12 +4004,9 @@ def _create_minimal_pipeline_for_component_extraction(
                         unet_class=unet_class
                     )
                 elif component == 'transformer':
-                    if _enums.model_type_is_sd3(model_type):
-                        transformer_class = diffusers.SD3Transformer2DModel
-                    elif _enums.model_type_is_flux(model_type):
-                        transformer_class = diffusers.FluxTransformer2DModel
-                    else:
-                        continue  # Skip if no appropriate transformer class
+                    transformer_class = diffusion_transformer_class(model_type)
+                    if transformer_class is None:
+                        continue
 
                     parsed_uri = _uris.TransformerUri.parse(manual_component_uris[component])
 

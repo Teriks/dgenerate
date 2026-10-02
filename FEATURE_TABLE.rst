@@ -17,6 +17,13 @@ Diffusion Model Feature Support Tables
    * ``--model-type flux`` (Flux.1)
    * ``--model-type flux-fill`` (Flux.1 - Infill / Outfill)
    * ``--model-type flux-kontext`` (Flux.1 - Pix2Pix like editing)
+   * ``--model-type flux2`` (Flux.2 and Flux.2 Klein)
+   * ``--model-type flux2-klein-kv`` (Flux.2 Klein KV)
+   * ``--model-type z-image`` (Z-Image)
+   * ``--model-type z-image-omni`` (Z-Image Omni)
+   * ``--model-type qwen-image`` (Qwen-Image)
+   * ``--model-type qwen-image-edit`` (Qwen-Image Edit and Edit-Plus)
+   * ``--model-type qwen-image-layered`` (Qwen-Image Layered)
    * ``--model-type ltx`` (LTX-2.5 and LTX-Video, see `Video Model Feature Support`_)
 
 .. list-table:: Generation modes by ``--model-type``
@@ -107,6 +114,41 @@ Diffusion Model Feature Support Tables
      - ❌
      - ✅
      - ✅
+
+   * - ``flux2``
+     - ✅
+     - ❌
+     - 🚧
+
+   * - ``flux2-klein-kv``
+     - ✅
+     - ❌
+     - ❌
+
+   * - ``z-image``
+     - ✅
+     - ✅
+     - ✅
+
+   * - ``z-image-omni``
+     - ✅
+     - ❌
+     - ❌
+
+   * - ``qwen-image``
+     - ✅
+     - ✅
+     - ✅
+
+   * - ``qwen-image-edit``
+     - ✅
+     - ❌
+     - 🚧
+
+   * - ``qwen-image-layered``
+     - ✅
+     - ❌
+     - ❌
 
 .. list-table:: Guidance by ``--model-type``
    :widths: 40 10 10 10 10
@@ -214,6 +256,48 @@ Diffusion Model Feature Support Tables
      - ❌
      - ❌
 
+   * - ``flux2``
+     - ✅
+     - ❌
+     - ❌
+     - ❌
+
+   * - ``flux2-klein-kv``
+     - ✅
+     - ❌
+     - ❌
+     - ❌
+
+   * - ``z-image``
+     - ✅
+     - ❌
+     - ✅
+     - ❌
+
+   * - ``z-image-omni``
+     - ✅
+     - ❌
+     - ❌
+     - ❌
+
+   * - ``qwen-image``
+     - ✅
+     - ❌
+     - ✅
+     - ❌
+
+   * - ``qwen-image-edit``
+     - ✅
+     - ❌
+     - ❌
+     - ❌
+
+   * - ``qwen-image-layered``
+     - ✅
+     - ❌
+     - ❌
+     - ❌
+
 .. list-table:: Adapters by ``--model-type``
    :widths: 40 10 10
    :header-rows: 1
@@ -285,6 +369,34 @@ Diffusion Model Feature Support Tables
    * - ``flux-kontext``
      - ❌
      - ✅
+
+   * - ``flux2``
+     - ❌
+     - ❌
+
+   * - ``flux2-klein-kv``
+     - ❌
+     - ❌
+
+   * - ``z-image``
+     - ❌
+     - ❌
+
+   * - ``z-image-omni``
+     - ❌
+     - ❌
+
+   * - ``qwen-image``
+     - ❌
+     - ❌
+
+   * - ``qwen-image-edit``
+     - ❌
+     - ❌
+
+   * - ``qwen-image-layered``
+     - ❌
+     - ❌
 
 .. list-table:: Prompt enhancement by ``--model-type``
    :widths: 40 10 10 10
@@ -372,6 +484,41 @@ Diffusion Model Feature Support Tables
 
    * - ``flux-kontext``
      - ✅
+     - ❌
+     - ❌
+
+   * - ``flux2``
+     - ❌
+     - ❌
+     - ❌
+
+   * - ``flux2-klein-kv``
+     - ❌
+     - ❌
+     - ❌
+
+   * - ``z-image``
+     - ❌
+     - ❌
+     - ❌
+
+   * - ``z-image-omni``
+     - ❌
+     - ❌
+     - ❌
+
+   * - ``qwen-image``
+     - ❌
+     - ❌
+     - ❌
+
+   * - ``qwen-image-edit``
+     - ❌
+     - ❌
+     - ❌
+
+   * - ``qwen-image-layered``
+     - ❌
      - ❌
      - ❌
 
@@ -515,6 +662,62 @@ Diffusion Model Feature Support Tables
      - ❌
      - ✅
 
+   * - ``flux2``
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+
+   * - ``flux2-klein-kv``
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+
+   * - ``z-image``
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+
+   * - ``z-image-omni``
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+
+   * - ``qwen-image``
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+
+   * - ``qwen-image-edit``
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+
+   * - ``qwen-image-layered``
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+     - ❌
+
 Video Model Feature Support
 ---------------------------
 
@@ -580,6 +783,26 @@ Video Model Feature Support
 LTX does not support ControlNets, adapters, textual inversions, prompt weighters, inpainting,
 or the acceleration features in the tables above. GGUF transformers are tested with LTX-Video.
 See the video generation section in the manual for LTX-2.5 and the earlier LTX-Video checkpoint.
+
+Flow Image Model Notes
+----------------------
+
+``flux2``, ``flux2-klein-kv``, ``z-image-omni``, ``qwen-image-edit``, and
+``qwen-image-layered`` take an ``--image-seeds`` value with no mask as a
+condition image. That is the text-to-image column above. There is no img2img
+strength.
+
+``flux2`` inpainting is Flux.2 Klein only. Full Flux.2 has no inpaint pipeline.
+
+``qwen-image-edit`` inpainting is the edit pipeline with a mask. Edit-plus has
+no inpaint pipeline.
+
+ControlNet on ``z-image`` and ``qwen-image`` is text-to-image and inpaint.
+``z-image`` accepts one union model. ``qwen-image`` can take more than one.
+
+These model types support LoRA. They do not support textual inversions, IP
+adapters, T2I adapters, prompt weighters, PAG, or the acceleration features
+in the generation features table.
 
 PAG Support Caveats
 -------------------

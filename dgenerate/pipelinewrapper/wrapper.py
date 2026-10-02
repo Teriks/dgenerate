@@ -451,8 +451,10 @@ class DiffusionPipelineWrapper:
                  second_model_extra_modules: dict[str, typing.Any] = None,
                  model_cpu_offload: bool = False,
                  model_sequential_offload: bool = False,
+                 model_group_offload: bool = False,
                  second_model_cpu_offload: bool = False,
                  second_model_sequential_offload: bool = False,
+                 second_model_group_offload: bool = False,
                  prompt_weighter_loader: _promptweighters.PromptWeighterLoader | None = None,
                  latents_processor_loader: _latentsprocessors.LatentsProcessorLoader | None = None,
                  decoded_latents_image_processor_loader: _imageprocessors.ImageProcessorLoader | None = None,
@@ -520,8 +522,10 @@ class DiffusionPipelineWrapper:
         :param second_model_extra_modules: Raw extra diffusers modules for the secondary pipeline (SDXL Refiner, Stable Cascade decoder)
         :param model_cpu_offload: Use model CPU offloading for the main pipeline via the accelerate module?
         :param model_sequential_offload: Use sequential CPU offloading for the main pipeline via the accelerate module?
+        :param model_group_offload: Offload the main pipeline one layer group at a time. Weights stay in CPU memory.
         :param second_model_cpu_offload: Use CPU offloading for the SDXL Refiner or Stable Cascade Decoder  via the accelerate module?
         :param second_model_sequential_offload: Use sequential CPU offloading for the SDXL Refiner or Stable Cascade Decoder via the accelerate module?
+        :param second_model_group_offload: Offload the SDXL Refiner or Stable Cascade Decoder one layer group at a time.
         :param prompt_weighter_loader: Plugin loader for prompt weighter implementations, if you pass ``None`` a default instance will be created.
         :param latents_processor_loader: Plugin loader for latents processor implementations, if you pass ``None`` a default instance will be created.
         :param decoded_latents_image_processor_loader: Plugin loader for image processor implementations that process images decoded from incoming latents, if you pass ``None`` a default instance will be created.
@@ -558,16 +562,11 @@ class DiffusionPipelineWrapper:
                 f'Invalid device argument, {_torchutil.invalid_device_message(device, cap=False)}')
 
         # Offload options should not be enabled simultaneously
-        if model_cpu_offload and model_sequential_offload:
-            raise _pipelines.UnsupportedPipelineConfigError(
-                '"model_cpu_offload" and "model_sequential_offload" may not be enabled simultaneously.'
-            )
-
-        if second_model_cpu_offload and second_model_sequential_offload:
-            raise _pipelines.UnsupportedPipelineConfigError(
-                '"second_model_cpu_offload" and "second_model_sequential_offload" '
-                'may not be enabled simultaneously.'
-            )
+        _pipelines._reject_mixed_offload(
+            model_cpu_offload, model_sequential_offload, model_group_offload)
+        _pipelines._reject_mixed_offload(
+            second_model_cpu_offload, second_model_sequential_offload,
+            second_model_group_offload, label='second_')
 
         # Text encoder check
         if not sdxl_refiner_uri and not s_cascade_decoder_uri:
@@ -638,9 +637,11 @@ class DiffusionPipelineWrapper:
         if transformer_uri:
             if not _enums.model_type_is_sd3(model_type) \
                     and not _enums.model_type_is_flux(model_type) \
+                    and not _enums.model_type_is_flow_image(model_type) \
                     and not _enums.model_type_is_video(model_type):
                 raise _pipelines.UnsupportedPipelineConfigError(
-                    '--transformer is only supported for --model-type sd3, flux, and ltx.')
+                    '--transformer is only supported for --model-type sd3, flux, flux2, flux2-klein-kv, '
+                    'z-image, z-image-omni, qwen-image, qwen-image-edit, qwen-image-layered, and ltx.')
 
         if ltx_ic_lora_uri:
             if not _enums.model_type_is_video(model_type):
@@ -724,6 +725,7 @@ class DiffusionPipelineWrapper:
         self._second_model_original_config = second_model_original_config
 
         self._second_model_cpu_offload = second_model_cpu_offload
+        self._second_model_group_offload = second_model_group_offload
         self._second_model_sequential_offload = second_model_sequential_offload
 
         self._lora_uris = lora_uris
@@ -747,6 +749,7 @@ class DiffusionPipelineWrapper:
         self._model_extra_modules = model_extra_modules
         self._second_model_extra_modules = second_model_extra_modules
         self._model_cpu_offload = model_cpu_offload
+        self._model_group_offload = model_group_offload
         self._model_sequential_offload = model_sequential_offload
 
         self._parsed_sdxl_refiner_uri = None
@@ -789,6 +792,7 @@ class DiffusionPipelineWrapper:
 
         # Initialize inpaint crop info (used internally for crop/paste operations)
         self._inpaint_crop_info = None
+        self._padding_mask_crop = None
 
         if adetailer_detector_uris:
             self._parsed_adetailer_detector_uris = []
@@ -1058,6 +1062,13 @@ class DiffusionPipelineWrapper:
         return self._model_cpu_offload
 
     @property
+    def model_group_offload(self) -> bool:
+        """
+        Current ``--model-group-offload`` value.
+        """
+        return self._model_group_offload
+
+    @property
     def second_model_sequential_offload(self) -> bool:
         """
         Current ``--second-model-sequential-offload`` value.
@@ -1070,6 +1081,13 @@ class DiffusionPipelineWrapper:
         Current ``--second-model-cpu-offload`` value.
         """
         return self._second_model_cpu_offload
+
+    @property
+    def second_model_group_offload(self) -> bool:
+        """
+        Current ``--second-model-group-offload`` value.
+        """
+        return self._second_model_group_offload
 
     @property
     def quantizer_uri(self) -> _types.OptionalUri:
@@ -1374,11 +1392,14 @@ class DiffusionPipelineWrapper:
 
         for img in images:
 
+            align = self._output_align()
             new_size = _image.resize_image_calc(
                 old_size=img.size,
                 new_size=target_size,
                 aspect_correct=user_args.aspect_correct,
-                align=8)
+                align=align)
+            if align == _pipelines.PACKED_FLOW_SIZE_MULTIPLE:
+                new_size = _pipelines.snap_packed_flow_size(*new_size, multiple=align)
 
             if img.size != new_size:
                 img = _image.resize_image(img=img, size=new_size)
@@ -1572,6 +1593,20 @@ class DiffusionPipelineWrapper:
     def _set_pipeline_controlnet_defaults(self, user_args: DiffusionArguments, pipeline_args: dict[str, typing.Any]):
         control_images = user_args.control_images
 
+        if (_enums.model_type_is_qwen_image(self._model_type)
+                and self._pipeline_type == _enums.PipelineType.INPAINT
+                and not control_images
+                and user_args.images):
+            images, _ = self._separate_images_and_tensors(user_args.images)
+            self._validate_images_all_same_size('inpaint images', images)
+            images = self._resize_images_to_user_dimensions(images, user_args)
+            pipeline_args['control_image'] = images[0] if len(images) == 1 else images
+            self._set_pipe_dimensions(None, None, images[0].width, images[0].height, pipeline_args)
+            if user_args.mask_images:
+                masks = self._resize_images_to_user_dimensions(user_args.mask_images, user_args)
+                pipeline_args['control_mask'] = masks[0] if len(masks) == 1 else masks
+            return
+
         if not control_images:
             raise _pipelines.UnsupportedPipelineConfigError(
                 'Must provide control_images argument when using ControlNet models.')
@@ -1628,7 +1663,9 @@ class DiffusionPipelineWrapper:
                 pipeline_args['control_image'] = self._sd3_force_control_to_a16(
                     pipeline_args, control_images, user_args
                 )
-            elif _enums.model_type_is_flux(self._model_type):
+            elif (_enums.model_type_is_flux(self._model_type)
+                  or _enums.model_type_is_z_image(self._model_type)
+                  or _enums.model_type_is_qwen_image(self._model_type)):
                 pipeline_args['control_image'] = control_images
             elif sdxl_cn_union:
                 # controlnet union pipeline does not use "image"
@@ -1649,6 +1686,8 @@ class DiffusionPipelineWrapper:
             self._validate_images_all_same_size("inpaint mask images", mask_images)
             mask_images = self._resize_images_to_user_dimensions(mask_images, user_args)
             pipeline_args['mask_image'] = mask_images
+            if _enums.model_type_is_qwen_image(self._model_type):
+                pipeline_args['control_mask'] = mask_images[0] if len(mask_images) == 1 else mask_images
 
     def _set_pipeline_t2iadapter_defaults(self, user_args: DiffusionArguments, pipeline_args: dict[str, typing.Any]):
         adapter_control_images = list(user_args.control_images)
@@ -1760,18 +1799,34 @@ class DiffusionPipelineWrapper:
         return inputs
 
     # noinspection PyMethodMayBeStatic
+    def _output_align(self) -> int:
+        """
+        Pixel alignment for ``--output-size`` and seed images.
+
+        Flux.2, Z-Image, and Qwen-Image pack 2x2 latent patches, so the
+        pixel size has to be divisible by ``vae_scale_factor * 2`` (16).
+        """
+        if _enums.model_type_is_flow_image(self._model_type):
+            return _pipelines.PACKED_FLOW_SIZE_MULTIPLE
+        return 8
+
     def _aligned_8_user_dimensions(self, user_args: DiffusionArguments):
+        align = self._output_align()
+        if align == _pipelines.PACKED_FLOW_SIZE_MULTIPLE:
+            return _pipelines.snap_packed_flow_size(
+                user_args.width, user_args.height, multiple=align)
+
         if user_args.height is not None:
-            if user_args.height % 8 != 0:
-                user_height = user_args.height - (user_args.height % 8)
+            if user_args.height % align != 0:
+                user_height = user_args.height - (user_args.height % align)
             else:
                 user_height = user_args.height
         else:
             user_height = None
 
         if user_args.width is not None:
-            if user_args.width % 8 != 0:
-                user_width = user_args.width - (user_args.width % 8)
+            if user_args.width % align != 0:
+                user_width = user_args.width - (user_args.width % align)
             else:
                 user_width = user_args.width
         else:
@@ -2007,12 +2062,15 @@ class DiffusionPipelineWrapper:
     def _set_pipeline_txt2img_defaults(self, user_args: DiffusionArguments, pipeline_args: dict[str, typing.Any]):
 
         width, height = self._aligned_8_user_dimensions(user_args)
+        align = self._output_align()
 
         if width != user_args.width:
-            _messages.warning('Forcing alignment of txt2img generation argument "width" to 8.')
+            _messages.warning(
+                f'Forcing alignment of txt2img generation argument "width" to {align}.')
 
         if height != user_args.height:
-            _messages.warning('Forcing alignment of txt2img generation argument "height" to 8.')
+            _messages.warning(
+                f'Forcing alignment of txt2img generation argument "height" to {align}.')
 
         if _enums.model_type_is_sdxl(self._model_type):
             self._inference_height = _types.default(height, _constants.DEFAULT_SDXL_OUTPUT_HEIGHT)
@@ -2037,7 +2095,8 @@ class DiffusionPipelineWrapper:
             if not _image.is_aligned((self._inference_height, self._inference_width), 16):
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'Stable Diffusion 3 requires an output dimension that is aligned by 16.')
-        elif self._model_type == _enums.ModelType.FLUX:
+        elif (_enums.model_type_is_flux(self._model_type)
+              or _enums.model_type_is_flow_image(self._model_type)):
             self._inference_height = _types.default(height, _constants.DEFAULT_FLUX_OUTPUT_HEIGHT)
             self._inference_width = _types.default(width, _constants.DEFAULT_FLUX_OUTPUT_WIDTH)
         else:
@@ -2050,6 +2109,35 @@ class DiffusionPipelineWrapper:
             pipeline_args
         )
 
+    def _delegated_padding_mask_crop(self, user_args: DiffusionArguments) -> int | None:
+        """
+        Klein and Qwen inpaint accept one padding integer as ``padding_mask_crop``.
+
+        Feathering, masked paste, and a two- or four-sided padding stay on
+        dgenerate's crop, because that pipeline argument cannot express them.
+        """
+        if not user_args.inpaint_crop:
+            return None
+        if user_args.inpaint_crop_feather is not None or user_args.inpaint_crop_masked:
+            return None
+        if self._pipeline is None:
+            return None
+        if 'padding_mask_crop' not in inspect.signature(self._pipeline.__call__).parameters:
+            return None
+        padding = user_args.inpaint_crop_padding
+        if padding is None:
+            padding = _constants.DEFAULT_INPAINT_CROP_PADDING
+        if isinstance(padding, int):
+            return padding
+        return None
+
+    def _set_accepted_call_argument(self, pipeline_args, name, value, message):
+        if value is None:
+            return
+        if name not in inspect.signature(self._pipeline.__call__).parameters:
+            raise _pipelines.UnsupportedPipelineConfigError(message)
+        pipeline_args[name] = value
+
     def _prepare_inpaint_crop(self, user_args: DiffusionArguments):
         """
         Handle inpaint crop preparation including validation and tensor decoding.
@@ -2060,6 +2148,13 @@ class DiffusionPipelineWrapper:
         if not user_args.inpaint_crop and (
                 user_args.inpaint_crop_padding is not None or user_args.inpaint_crop_feather is not None or user_args.inpaint_crop_masked):
             user_args.inpaint_crop = True
+
+        delegated = self._delegated_padding_mask_crop(user_args)
+        if delegated is not None:
+            # The pipeline crops and pastes. Doing it here as well would crop twice.
+            self._padding_mask_crop = delegated
+            user_args.inpaint_crop = False
+            return
 
         if not user_args.inpaint_crop:
             return
@@ -2247,7 +2342,7 @@ class DiffusionPipelineWrapper:
                     user_args.images[0].size,
                     self._calc_image_target_size(user_args.images[0], user_args),
                     aspect_correct=user_args.aspect_correct,
-                    align=8
+                    align=self._output_align()
                 )
             else:
                 expected_width, expected_height = self.get_decoded_latents_size(user_args.images[0])
@@ -2356,9 +2451,33 @@ class DiffusionPipelineWrapper:
     def _check_for_invalid_model_specific_opts(self, user_args: DiffusionArguments):
         if not _enums.model_type_is_flux(self.model_type):
             for arg, val in _types.get_public_attributes(user_args).items():
-                if arg.startswith('flux') and val is not None:
+                if arg.startswith('flux') and not arg.startswith('flux2') and val is not None:
                     raise _pipelines.UnsupportedPipelineConfigError(
                         f'{arg} may only be used with Flux models.')
+
+        if not _enums.model_type_is_flux2_family(self.model_type):
+            for arg, val in _types.get_public_attributes(user_args).items():
+                if arg.startswith('flux2') and val is not None:
+                    raise _pipelines.UnsupportedPipelineConfigError(
+                        f'{arg} may only be used with Flux.2.')
+
+        if not _enums.model_type_is_z_image_family(self.model_type):
+            for arg, val in _types.get_public_attributes(user_args).items():
+                if arg.startswith('z_image') and val is not None:
+                    raise _pipelines.UnsupportedPipelineConfigError(
+                        f'{arg} may only be used with Z-Image.')
+
+        if not _enums.model_type_is_qwen_image_family(self.model_type):
+            for arg, val in _types.get_public_attributes(user_args).items():
+                if arg.startswith('qwen_') and val is not None:
+                    raise _pipelines.UnsupportedPipelineConfigError(
+                        f'{arg} may only be used with Qwen-Image.')
+
+        if not _enums.model_type_is_qwen_image_layered(self.model_type):
+            for arg, val in _types.get_public_attributes(user_args).items():
+                if arg.startswith('qwen_layered') and val is not None:
+                    raise _pipelines.UnsupportedPipelineConfigError(
+                        f'{arg} may only be used with Qwen-Image layered.')
 
         if not (_enums.model_type_is_sdxl(self.model_type) or
                 _enums.model_type_is_kolors(self.model_type)):
@@ -2717,6 +2836,163 @@ class DiffusionPipelineWrapper:
                     **pipeline_args
                 )
                 return self._create_pipeline_result(pipeline_output, output_type, user_args, pipeline_args)
+
+    def _call_torch_flow_image(self, pipeline_args, user_args: DiffusionArguments):
+        """
+        Call Flux.2, Z-Image, or Qwen-Image.
+
+        ``--guidance-scales`` is ``guidance_scale`` except on Qwen-Image, where
+        it is ``true_cfg_scale`` and the embedded ``guidance_scale`` stays unset.
+        """
+        self._check_for_invalid_model_specific_opts(user_args)
+
+        if user_args.clip_skip is not None and user_args.clip_skip > 0:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'--model-type {_enums.get_model_type_string(self._model_type)} does not support clip skip.')
+
+        if user_args.prompt_weighter_uri:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'--model-type {_enums.get_model_type_string(self._model_type)} does not support --prompt-weighter. '
+                f'These models encode a chat template, not CLIP tokens.')
+
+        prompt: _prompt.Prompt = _types.default(user_args.prompt, _prompt.Prompt())
+        second_prompt: _prompt.Prompt = _types.default(user_args.second_prompt, _prompt.Prompt())
+        if second_prompt.positive or second_prompt.negative:
+            raise _pipelines.UnsupportedPipelineConfigError(
+                f'--model-type {_enums.get_model_type_string(self._model_type)} has one text encoder. '
+                f'Do not pass --second-prompts.')
+
+        pipeline_args['prompt'] = prompt.positive if prompt.positive else ''
+
+        if _enums.model_type_is_qwen_image_family(self._model_type):
+            guidance_scale = pipeline_args.pop('guidance_scale')
+            pipeline_args.update(_pipelines.qwen_image_call_guidance(
+                guidance_scale, prompt.negative if prompt.negative else None))
+        else:
+            accepts_negative = 'negative_prompt' in inspect.signature(self._pipeline.__call__).parameters
+            if prompt.negative and not accepts_negative:
+                _messages.warning(
+                    f'{_enums.get_model_type_string(self._model_type)} is ignoring the negative prompt. '
+                    f'This pipeline has no negative_prompt argument.')
+            elif accepts_negative:
+                pipeline_args['negative_prompt'] = prompt.negative if prompt.negative else None
+
+        if user_args.max_sequence_length is not None:
+            pipeline_args['max_sequence_length'] = user_args.max_sequence_length
+
+        self._set_accepted_call_argument(
+            pipeline_args, 'caption_upsample_temperature',
+            user_args.flux2_caption_upsample_temperature,
+            '--flux2-caption-upsample-temperature is only supported by full Flux.2.')
+        layers = user_args.flux2_text_encoder_out_layers
+        self._set_accepted_call_argument(
+            pipeline_args, 'text_encoder_out_layers',
+            None if layers is None else tuple(layers),
+            '--flux2-text-encoder-out-layers is only supported by Flux.2.')
+        if user_args.z_image_cfg_normalization:
+            self._set_accepted_call_argument(
+                pipeline_args, 'cfg_normalization', True,
+                '--z-image-cfg-normalization is only supported by Z-Image.')
+        self._set_accepted_call_argument(
+            pipeline_args, 'cfg_truncation',
+            user_args.z_image_cfg_truncation,
+            '--z-image-cfg-truncation is only supported by Z-Image.')
+        if _enums.model_type_is_qwen_image_family(self._model_type) \
+                and user_args.qwen_guidance_scale is not None:
+            pipeline_args['guidance_scale'] = float(user_args.qwen_guidance_scale)
+        self._set_accepted_call_argument(
+            pipeline_args, 'layers', user_args.qwen_layered_layers,
+            '--qwen-layered-layers is only supported by Qwen-Image layered.')
+        if user_args.qwen_layered_resolution is not None \
+                and user_args.qwen_layered_resolution not in (640, 1024):
+            raise _pipelines.UnsupportedPipelineConfigError(
+                '--qwen-layered-resolution must be 640 or 1024.')
+        self._set_accepted_call_argument(
+            pipeline_args, 'resolution', user_args.qwen_layered_resolution,
+            '--qwen-layered-resolution is only supported by Qwen-Image layered.')
+        if user_args.qwen_layered_cfg_normalize:
+            self._set_accepted_call_argument(
+                pipeline_args, 'cfg_normalize', True,
+                '--qwen-layered-cfg-normalize is only supported by Qwen-Image layered.')
+        if user_args.qwen_layered_use_en_prompt:
+            self._set_accepted_call_argument(
+                pipeline_args, 'use_en_prompt', True,
+                '--qwen-layered-use-en-prompt is only supported by Qwen-Image layered.')
+        if self._padding_mask_crop is not None:
+            pipeline_args['padding_mask_crop'] = self._padding_mask_crop
+
+        if user_args.reference_images:
+            references = user_args.reference_images
+            reference_value = references if len(references) > 1 else references[0]
+            if user_args.mask_images is not None:
+                pipeline_args['image_reference'] = reference_value
+            else:
+                pipeline_args['image'] = reference_value
+
+        batch_size = _types.default(user_args.batch_size, 1)
+        if 'latents' in pipeline_args:
+            latents_batch_size = pipeline_args['latents'].shape[0]
+            if latents_batch_size != batch_size:
+                batch_size = latents_batch_size
+                if user_args.batch_size is not None:
+                    _messages.warning(
+                        f'Setting --batch-size to {batch_size} because '
+                        f'raw latents batch size did not match the specified batch size.')
+        if user_args.images:
+            if batch_size % len(user_args.images) != 0:
+                batch_size = len(user_args.images)
+                if user_args.batch_size is not None:
+                    _messages.warning(
+                        f'Setting --batch-size to {batch_size} because '
+                        f'given batch size did not divide evenly with the '
+                        f'provided number of input images.')
+        pipeline_args['num_images_per_prompt'] = batch_size
+
+        self._set_non_universal_pipeline_arg(
+            self._pipeline,
+            pipeline_args, user_args,
+            'sigmas', 'sigmas',
+            '--sigmas',
+            transform=functools.partial(
+                self._sigmas_eval,
+                'primary',
+                self._pipeline,
+                _types.default(
+                    user_args.inference_steps,
+                    _constants.DEFAULT_INFERENCE_STEPS)
+            ))
+
+        if hasattr(self._pipeline, 'controlnet'):
+            pipeline_args['controlnet_conditioning_scale'] = \
+                self._get_controlnet_conditioning_scale()
+            call_parameters = inspect.signature(self._pipeline.__call__).parameters
+            if 'control_guidance_start' in call_parameters:
+                pipeline_args['control_guidance_start'] = self._get_controlnet_guidance_start()
+                pipeline_args['control_guidance_end'] = self._get_controlnet_guidance_end()
+
+        call_signature = inspect.signature(self._pipeline.__call__).parameters
+        if 'strength' in pipeline_args and 'strength' not in call_signature:
+            if user_args.image_seed_strength is not None:
+                _messages.warning(
+                    f'{self._pipeline.__class__.__name__} does not accept image seed strength. '
+                    f'--image-seed-strengths is being ignored.')
+        for name in list(pipeline_args):
+            if name not in call_signature:
+                pipeline_args.pop(name)
+
+        with _denoise_range(
+            self._pipeline,
+            user_args.denoising_start,
+            user_args.denoising_end
+        ):
+            output_type = 'latent' if user_args.output_latents else 'pil'
+            pipeline_output = _pipelines.call_pipeline(
+                pipeline=self._pipeline,
+                device=self._device,
+                output_type=output_type,
+                **pipeline_args
+            )
+            return self._create_pipeline_result(pipeline_output, output_type, user_args, pipeline_args)
 
     def _call_asdff(self,
                     user_args: DiffusionArguments,
@@ -3633,6 +3909,7 @@ class DiffusionPipelineWrapper:
                 device=self._device,
                 sequential_cpu_offload=self._model_sequential_offload,
                 model_cpu_offload=self._model_cpu_offload,
+                model_group_offload=self._model_group_offload,
                 local_files_only=self._local_files_only,
                 extra_modules=self._model_extra_modules
             )
@@ -3663,7 +3940,8 @@ class DiffusionPipelineWrapper:
                 device=self._device,
                 local_files_only=self._local_files_only,
                 model_cpu_offload=self._second_model_cpu_offload,
-                sequential_cpu_offload=self._second_model_sequential_offload)
+                sequential_cpu_offload=self._second_model_sequential_offload,
+                model_group_offload=self._second_model_group_offload)
 
             creation_result = self._recall_secondary_pipeline()
             self._s_cascade_decoder_pipeline = creation_result.pipeline
@@ -3698,7 +3976,8 @@ class DiffusionPipelineWrapper:
                 local_files_only=self._local_files_only,
                 extra_modules=self._model_extra_modules,
                 model_cpu_offload=self._model_cpu_offload,
-                sequential_cpu_offload=self._model_sequential_offload)
+                sequential_cpu_offload=self._model_sequential_offload,
+                model_group_offload=self._model_group_offload)
 
             creation_result = self._recall_main_pipeline()
             self._pipeline = creation_result.pipeline
@@ -3749,7 +4028,8 @@ class DiffusionPipelineWrapper:
                 extra_modules=refiner_extra_modules,
                 local_files_only=self._local_files_only,
                 model_cpu_offload=self._second_model_cpu_offload,
-                sequential_cpu_offload=self._second_model_sequential_offload
+                sequential_cpu_offload=self._second_model_sequential_offload,
+                model_group_offload=self._second_model_group_offload
             )
             self._sdxl_refiner_pipeline = self._recall_secondary_pipeline().pipeline
         else:
@@ -3781,6 +4061,7 @@ class DiffusionPipelineWrapper:
                 device=self._device,
                 sequential_cpu_offload=self._model_sequential_offload,
                 model_cpu_offload=self._model_cpu_offload,
+                model_group_offload=self._model_group_offload,
                 local_files_only=self._local_files_only,
                 extra_modules=self._model_extra_modules,
             )
@@ -3969,7 +4250,7 @@ class DiffusionPipelineWrapper:
                         image,
                         resize_resolution=target_size if target_size != image.size else None,
                         aspect_correct=user_args.aspect_correct,
-                        align=8
+                        align=self._output_align()
                     )
 
                 else:
@@ -4035,8 +4316,13 @@ class DiffusionPipelineWrapper:
                     normalized_latents.append(latent_tensor)
                 final_latents = normalized_latents
         else:
-            # Extract PIL images
+            # Extract PIL images. Layered output is a list of layer lists.
             final_images = getattr(pipeline_output, 'images', None)
+            if final_images and isinstance(final_images[0], (list, tuple)):
+                flat_images = []
+                for group in final_images:
+                    flat_images.extend(group)
+                final_images = flat_images
 
         # Process latents if we have them
         if final_latents is not None:
@@ -4118,6 +4404,7 @@ class DiffusionPipelineWrapper:
 
             # Clean up temporary crop info
             self._inpaint_crop_info = None
+        self._padding_mask_crop = None
 
         # Create and return the result object at the end
         return PipelineWrapperResult(images=final_images, latents=final_latents)
@@ -4308,9 +4595,17 @@ class DiffusionPipelineWrapper:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'RAS does not support model CPU offloading.')
 
+            if self.model_group_offload:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'RAS does not support group offloading.')
+
             if args.ras_index_fusion and self.model_sequential_offload:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'Index fusion is not supported for RAS when sequential offloading is enabled.')
+
+            if args.ras_index_fusion and self.model_group_offload:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'Index fusion is not supported for RAS when group offloading is enabled.')
 
             if args.ras_index_fusion and (
                     self.quantizer_uri or (self._unet_uri and _uris.UNetUri.parse(self._unet_uri).quantizer)
@@ -4447,6 +4742,11 @@ class DiffusionPipelineWrapper:
             if self.model_cpu_offload:
                 raise _pipelines.UnsupportedPipelineConfigError(
                     'TeaCache does not support model CPU offloading.'
+                )
+
+            if self.model_group_offload:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    'TeaCache does not support group offloading.'
                 )
 
     def _auto_freeu_check(self, args: DiffusionArguments):
@@ -4594,9 +4894,10 @@ class DiffusionPipelineWrapper:
             elif _enums.model_type_is_sd3(self.model_type):
                 # SD3
                 latents = (latents / vae.config.scaling_factor) + vae.config.shift_factor
-            elif _enums.model_type_is_flux(self.model_type):
-                # Flux - latents are already in unpacked format [B, C, H, W]
-                # Apply VAE scaling and shift
+            elif _enums.model_type_is_flux(self.model_type) or _enums.model_type_is_z_image(self.model_type):
+                # Flux and Z-Image latents are spatial [B, C, H, W].
+                # Apply VAE scaling and shift. Flux.2 and Qwen-Image decode
+                # through their own batch-norm or latent-std path inside the pipeline.
                 latents = (latents / vae.config.scaling_factor) + vae.config.shift_factor
             else:
                 raise _pipelines.UnsupportedPipelineConfigError(
@@ -4632,6 +4933,7 @@ class DiffusionPipelineWrapper:
 
         # always reset inpaint crop state per call
         self._inpaint_crop_info = None
+        self._padding_mask_crop = None
 
         copy_args = DiffusionArguments()
 
@@ -4694,6 +4996,9 @@ class DiffusionPipelineWrapper:
             elif _enums.model_type_is_flux(self.model_type):
                 result = self._call_torch_flux(pipeline_args=pipeline_args,
                                                user_args=copy_args)
+            elif _enums.model_type_is_flow_image(self.model_type):
+                result = self._call_torch_flow_image(pipeline_args=pipeline_args,
+                                                     user_args=copy_args)
             else:
                 result = self._call_torch(pipeline_args=pipeline_args,
                                           user_args=copy_args)

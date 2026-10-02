@@ -16,6 +16,20 @@ Quantization can be used to effectively cut the VRAM overhead for inference
 in half or even by a fourth at the cost of slightly reduced output quality
 due to precision loss.
 
+A checkpoint that is already SDNQ quantized is loaded as-is. Its transformer
+folder, or the pipeline repo, contains ``quantization_config.json``, or
+``config.json`` has a ``quantization_config`` whose method is ``sdnq``.
+dgenerate imports ``sdnq`` before that load so the quantizer class is
+registered, and it does not pass a second SDNQ config. ``--quantizer sdnq``
+on that repo is an error. ``Disty0/Z-Image-Turbo-SDNQ-uint4-svd-r32`` is one
+of these checkpoints. See `Flux.2, Z-Image, and Qwen-Image <flow-image-models_>`_.
+
+``--model-group-offload`` does not move a quantized module. BitsAndBytes,
+SDNQ, GGUF, and any module that carries a quantization config stay on the
+device where they were loaded. The other modules are still group-offloaded,
+and the pipeline cache counts the whole pipeline because those weights remain
+in CPU memory.
+
 There are a few ways to utilize quantization with dgenerate, the easiest
 way being the ``--quantizer`` and ``--quantizer-map`` arguments.
 

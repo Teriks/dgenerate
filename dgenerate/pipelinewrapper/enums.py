@@ -229,6 +229,27 @@ class ModelType(enum.Enum):
     LTX = 17
     """LTX-2 / LTX-2.5 text, image, and keyframe to video."""
 
+    FLUX2 = 18
+    """Flux.2, including Flux.2 Klein. The checkpoint class selects Klein."""
+
+    Z_IMAGE = 19
+    """Z-Image text to image, img2img, inpaint, and ControlNet union."""
+
+    QWEN_IMAGE = 20
+    """Qwen-Image text to image, img2img, inpaint, and ControlNet."""
+
+    Z_IMAGE_OMNI = 21
+    """Z-Image Omni. Optional images are SigLIP conditions, not img2img."""
+
+    QWEN_IMAGE_EDIT = 22
+    """Qwen-Image edit, edit-plus, and edit-inpaint. The checkpoint class selects which."""
+
+    QWEN_IMAGE_LAYERED = 23
+    """Qwen-Image layered. One image becomes a stack of RGBA layers."""
+
+    FLUX2_KLEIN_KV = 24
+    """Flux.2 Klein with KV-cached reference images. No guidance scale."""
+
 
 def supported_model_type_strings():
     """
@@ -250,6 +271,13 @@ def supported_model_type_strings():
             'flux',
             'flux-fill',
             'flux-kontext',
+            'flux2',
+            'flux2-klein-kv',
+            'z-image',
+            'z-image-omni',
+            'qwen-image',
+            'qwen-image-edit',
+            'qwen-image-layered',
             'ltx']
 
 
@@ -291,6 +319,13 @@ def get_model_type_enum(id_str: ModelType | str) -> ModelType:
                 'flux': ModelType.FLUX,
                 'flux-fill': ModelType.FLUX_FILL,
                 'flux-kontext': ModelType.FLUX_KONTEXT,
+                'flux2': ModelType.FLUX2,
+                'flux2-klein-kv': ModelType.FLUX2_KLEIN_KV,
+                'z-image': ModelType.Z_IMAGE,
+                'z-image-omni': ModelType.Z_IMAGE_OMNI,
+                'qwen-image': ModelType.QWEN_IMAGE,
+                'qwen-image-edit': ModelType.QWEN_IMAGE_EDIT,
+                'qwen-image-layered': ModelType.QWEN_IMAGE_LAYERED,
                 'ltx': ModelType.LTX}[id_str.strip().lower()]
     except KeyError:
         raise ValueError('invalid ModelType string')
@@ -323,6 +358,13 @@ def get_model_type_string(model_type_enum: ModelType) -> str:
             ModelType.FLUX: 'flux',
             ModelType.FLUX_FILL: 'flux-fill',
             ModelType.FLUX_KONTEXT: 'flux-kontext',
+            ModelType.FLUX2: 'flux2',
+            ModelType.FLUX2_KLEIN_KV: 'flux2-klein-kv',
+            ModelType.Z_IMAGE: 'z-image',
+            ModelType.Z_IMAGE_OMNI: 'z-image-omni',
+            ModelType.QWEN_IMAGE: 'qwen-image',
+            ModelType.QWEN_IMAGE_EDIT: 'qwen-image-edit',
+            ModelType.QWEN_IMAGE_LAYERED: 'qwen-image-layered',
             ModelType.LTX: 'ltx'}[model_type]
 
 
@@ -411,14 +453,138 @@ def model_type_is_sd3(model_type: ModelType | str) -> bool:
 
 def model_type_is_flux(model_type: ModelType | str) -> bool:
     """
-    Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent a Flux model?
+    Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent a Flux.1 model?
+
+    Flux.2 is :py:func:`model_type_is_flux2`, not this function.
 
     :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
     :return: bool
     """
-    model_type = get_model_type_string(model_type)
+    model_type = get_model_type_enum(model_type)
 
-    return 'flux' in model_type
+    return model_type in {
+        ModelType.FLUX,
+        ModelType.FLUX_FILL,
+        ModelType.FLUX_KONTEXT
+    }
+
+
+def model_type_is_flux2(model_type: ModelType | str) -> bool:
+    """
+    Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent Flux.2?
+
+    Klein checkpoints stay ``flux2``. The pipeline class name selects Klein.
+
+    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
+    :return: bool
+    """
+    return get_model_type_enum(model_type) == ModelType.FLUX2
+
+
+def model_type_is_flux2_klein_kv(model_type: ModelType | str) -> bool:
+    """
+    Flux.2 Klein KV. Reference images are cached after the first step.
+
+    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
+    :return: bool
+    """
+    return get_model_type_enum(model_type) == ModelType.FLUX2_KLEIN_KV
+
+
+def model_type_is_flux2_family(model_type: ModelType | str) -> bool:
+    """Flux.2 or Flux.2 Klein KV."""
+    model_type = get_model_type_enum(model_type)
+    return model_type in {ModelType.FLUX2, ModelType.FLUX2_KLEIN_KV}
+
+
+def model_type_is_z_image(model_type: ModelType | str) -> bool:
+    """
+    Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent Z-Image?
+
+    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
+    :return: bool
+    """
+    return get_model_type_enum(model_type) == ModelType.Z_IMAGE
+
+
+def model_type_is_z_image_omni(model_type: ModelType | str) -> bool:
+    """Z-Image Omni."""
+    return get_model_type_enum(model_type) == ModelType.Z_IMAGE_OMNI
+
+
+def model_type_is_z_image_family(model_type: ModelType | str) -> bool:
+    """Z-Image or Z-Image Omni."""
+    model_type = get_model_type_enum(model_type)
+    return model_type in {ModelType.Z_IMAGE, ModelType.Z_IMAGE_OMNI}
+
+
+def model_type_is_qwen_image(model_type: ModelType | str) -> bool:
+    """
+    Does a ``--model-type`` string or :py:class:`.ModelType` enum value represent Qwen-Image?
+
+    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
+    :return: bool
+    """
+    return get_model_type_enum(model_type) == ModelType.QWEN_IMAGE
+
+
+def model_type_is_qwen_image_edit(model_type: ModelType | str) -> bool:
+    """Qwen-Image edit, edit-plus, or edit-inpaint."""
+    return get_model_type_enum(model_type) == ModelType.QWEN_IMAGE_EDIT
+
+
+def model_type_is_qwen_image_layered(model_type: ModelType | str) -> bool:
+    """Qwen-Image layered."""
+    return get_model_type_enum(model_type) == ModelType.QWEN_IMAGE_LAYERED
+
+
+def model_type_is_qwen_image_family(model_type: ModelType | str) -> bool:
+    """Qwen-Image, edit, or layered. ``--guidance-scales`` is true CFG for all of them."""
+    model_type = get_model_type_enum(model_type)
+    return model_type in {
+        ModelType.QWEN_IMAGE,
+        ModelType.QWEN_IMAGE_EDIT,
+        ModelType.QWEN_IMAGE_LAYERED,
+    }
+
+
+def model_type_image_is_condition(model_type: ModelType | str) -> bool:
+    """
+    An ``--image-seeds`` value with no mask is a condition image, not img2img.
+
+    There is no strength. Flux.2 references, Klein KV, Z-Image Omni, Qwen edit,
+    and Qwen layered work this way.
+    """
+    model_type = get_model_type_enum(model_type)
+    return model_type in {
+        ModelType.FLUX2,
+        ModelType.FLUX2_KLEIN_KV,
+        ModelType.Z_IMAGE_OMNI,
+        ModelType.QWEN_IMAGE_EDIT,
+        ModelType.QWEN_IMAGE_LAYERED,
+    }
+
+
+def model_type_is_flow_image(model_type: ModelType | str) -> bool:
+    """
+    Flux.2, Z-Image, Qwen-Image, and their edit, layered, Omni, and Klein KV variants.
+
+    These are flow-matching image transformers. Pixel size snaps to
+    ``vae_scale_factor * 2``, which is 16 when the VAE factor is 8.
+
+    :param model_type: ``--model-type`` string or :py:class:`.ModelType` enum value
+    :return: bool
+    """
+    model_type = get_model_type_enum(model_type)
+    return model_type in {
+        ModelType.FLUX2,
+        ModelType.FLUX2_KLEIN_KV,
+        ModelType.Z_IMAGE,
+        ModelType.Z_IMAGE_OMNI,
+        ModelType.QWEN_IMAGE,
+        ModelType.QWEN_IMAGE_EDIT,
+        ModelType.QWEN_IMAGE_LAYERED,
+    }
 
 
 def model_type_is_video(model_type: ModelType | str) -> bool:

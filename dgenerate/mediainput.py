@@ -1113,6 +1113,16 @@ class ImageSeedParseResult:
     Raw latents are loaded as-is without any image processing, resizing, or alignment operations.
     """
 
+    reference_images: _types.Paths | None = None
+    """
+    Extra reference images from the image-seed keyword ``reference``.
+
+    A still is repeated across an animation. A video is zipped with the seed
+    image and the mask, and the shortest animation sets the length. Flux.2
+    Klein inpaint passes the frame's references as ``image_reference``.
+    Flux.2 text-to-image references are the seed images themselves.
+    """
+
     end_image: _types.OptionalPath = None
     """
     Optional last-frame image for video models.
@@ -1281,6 +1291,7 @@ class ImageSeedParseResult:
             and self.control_images is None \
             and self.floyd_image is None \
             and self.end_image is None \
+            and self.reference_images is None \
             and self.adapter_images is None \
             and self.latents is None \
             and self.ltx_condition_index is None \
@@ -1597,7 +1608,8 @@ def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResul
                     'An image seed condition group is empty. Check the " ++ " separators.')
             extra = parse_image_seed_uri(group, align=align)
             if (extra.ltx_extra_conditions or extra.mask_images or extra.control_images
-                    or extra.end_image or extra.adapter_images or extra.floyd_image
+                    or extra.end_image or extra.reference_images or extra.adapter_images
+                    or extra.floyd_image
                     or extra.latents or extra.multi_image_mode
                     or not extra.images or len(extra.images) != 1):
                 raise ImageSeedParseError(
@@ -1616,6 +1628,7 @@ def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResul
                     'latents',
                     'floyd',
                     'last-frame',
+                    'reference',
                     'resize',
                     'align',
                     'aspect',
@@ -1649,7 +1662,7 @@ def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResul
 
     seed_parser = _textprocessing.ConceptUriParser('Image Seed',
                                                    known_args=keyword_args,
-                                                   args_lists=['control', 'mask', 'latents'],
+                                                   args_lists=['control', 'mask', 'latents', 'reference'],
                                                    args_raw=['adapter'])
 
     try:
@@ -1833,6 +1846,19 @@ def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResul
             end_image = end_image[0]
         _ensure_exists(end_image, 'Last frame')
         result.end_image = end_image
+
+    reference_images = parse_result.args.get('reference', None)
+
+    if reference_images is not None:
+        if isinstance(reference_images, list):
+            for reference_path in reference_images:
+                if not reference_path.strip():
+                    raise ImageSeedParseError('Missing reference image definition, stray comma?')
+                _ensure_exists(reference_path, 'Reference image')
+            result.reference_images = reference_images
+        else:
+            _ensure_exists(reference_images, 'Reference image')
+            result.reference_images = [reference_images]
 
     resize = parse_result.args.get('resize', None)
 
@@ -2704,9 +2730,11 @@ class ImageSeed:
                  control_images: _types.Images | None = None,
                  floyd_image: PIL.Image.Image | None = None,
                  adapter_images: list[_types.Images] | None = None,
-                 latents: _types.Tensors | None = None):
+                 latents: _types.Tensors | None = None,
+                 reference_images: _types.Images | None = None):
         self.images = images
         self.mask_images = mask_images
+        self.reference_images = reference_images
 
         if control_images is not None and floyd_image is not None:
             raise ValueError(
@@ -3099,6 +3127,18 @@ def iterate_image_seed(uri: str | ImageSeedParseResult,
             latent_cnt += 1
 
         append_range('latents', latent_cnt)
+
+    if parse_result.reference_images is not None:
+        # Zipped with the seed image and the mask. A still repeats. A video
+        # advances with them, and the shortest animation sets the length.
+        # The pipeline crops a reference larger than 1024, so this slot is
+        # not forced to the generation size or matched to the inpaint image.
+        for reference_path in parse_result.reference_images:
+            reader_specs.append(MediaReaderSpec(
+                path=reference_path,
+                resize_resolution=None,
+                align=None))
+        append_range('reference_images', len(parse_result.reference_images))
 
     if parse_result.frame_start is not None:
         frame_start = parse_result.frame_start

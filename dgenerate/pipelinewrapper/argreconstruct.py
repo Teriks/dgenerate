@@ -197,6 +197,35 @@ def reconstruct_dgenerate_opts(
     if args.max_sequence_length is not None:
         opts.append(('--max-sequence-length', args.max_sequence_length))
 
+    if args.flux2_caption_upsample_temperature is not None:
+        opts.append(('--flux2-caption-upsample-temperature', args.flux2_caption_upsample_temperature))
+
+    if args.flux2_text_encoder_out_layers is not None:
+        opts.append((
+            '--flux2-text-encoder-out-layers',
+            ','.join(str(layer) for layer in args.flux2_text_encoder_out_layers)))
+
+    if args.z_image_cfg_normalization:
+        opts.append(('--z-image-cfg-normalization',))
+
+    if args.z_image_cfg_truncation is not None:
+        opts.append(('--z-image-cfg-truncation', args.z_image_cfg_truncation))
+
+    if args.qwen_guidance_scale is not None:
+        opts.append(('--qwen-guidance-scale', args.qwen_guidance_scale))
+
+    if args.qwen_layered_layers is not None:
+        opts.append(('--qwen-layered-layers', args.qwen_layered_layers))
+
+    if args.qwen_layered_resolution is not None:
+        opts.append(('--qwen-layered-resolution', args.qwen_layered_resolution))
+
+    if args.qwen_layered_cfg_normalize:
+        opts.append(('--qwen-layered-cfg-normalize',))
+
+    if args.qwen_layered_use_en_prompt:
+        opts.append(('--qwen-layered-use-en-prompt',))
+
     if args.clip_skip is not None:
         opts.append(('--clip-skips', args.clip_skip))
 
@@ -297,11 +326,17 @@ def reconstruct_dgenerate_opts(
     if wrapper.model_sequential_offload:
         opts.append(('--model-sequential-offload',))
 
+    if wrapper.model_group_offload:
+        opts.append(('--model-group-offload',))
+
     if wrapper.second_model_cpu_offload:
         opts.append(('--second-model-cpu-offload',))
 
     if wrapper.second_model_sequential_offload:
         opts.append(('--second-model-sequential-offload',))
+
+    if wrapper.second_model_group_offload:
+        opts.append(('--second-model-group-offload',))
 
     if wrapper.sdxl_refiner_uri is not None:
         opts.append(('--sdxl-refiner', wrapper.sdxl_refiner_uri))

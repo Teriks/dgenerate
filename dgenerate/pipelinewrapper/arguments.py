@@ -231,6 +231,16 @@ class DiffusionArguments(_types.SetFromMixin):
     Note: Inpaint crop cannot be used with multiple input images. See :py:attr:`DiffusionArguments.inpaint_crop` for batching details.
     """
 
+    reference_images: _types.OptionalImages = None
+    """
+    Reference images for Flux.2.
+
+    Text-to-image passes these as ``image``. They are not an img2img init and
+    there is no strength. Klein inpaint passes these as ``image_reference``,
+    next to the init image and mask. A video reference is zipped with the
+    init clip; a still is repeated.
+    """
+
     control_images: _types.OptionalImages = None
     """
     ControlNet guidance images to use if ``controlnet_uris`` were given to the 
@@ -303,6 +313,54 @@ class DiffusionArguments(_types.SetFromMixin):
     batch_size: _types.OptionalInteger = None
     """
     Number of images to produce in a single generation step on the same GPU.
+    """
+
+    flux2_caption_upsample_temperature: _types.OptionalFloat = None
+    """
+    Full Flux.2 caption upsampling temperature. Omitted leaves it off.
+    Klein does not accept this argument.
+    """
+
+    flux2_text_encoder_out_layers: _types.OptionalIntegers = None
+    """
+    Flux.2 hidden-state layers to read. Omitted keeps the pipeline default,
+    ``(10, 20, 30)`` for full Flux.2 and ``(9, 18, 27)`` for Klein.
+    """
+
+    z_image_cfg_normalization: _types.OptionalBoolean = None
+    """
+    Enable Z-Image classifier-free guidance normalization. Omitted leaves it off.
+    """
+
+    z_image_cfg_truncation: _types.OptionalFloat = None
+    """
+    Z-Image classifier-free guidance truncation. Omitted keeps ``1``.
+    """
+
+    qwen_guidance_scale: _types.OptionalFloat = None
+    """
+    Qwen-Image distilled guidance embedded in the transformer.
+    Omitted leaves it unset. ``--guidance-scales`` remains true CFG.
+    """
+
+    qwen_layered_layers: _types.OptionalInteger = None
+    """
+    Qwen-Image layered output count. Omitted keeps 4.
+    """
+
+    qwen_layered_resolution: _types.OptionalInteger = None
+    """
+    Qwen-Image layered resolution. Omitted keeps 640.
+    """
+
+    qwen_layered_cfg_normalize: _types.OptionalBoolean = None
+    """
+    Enable Qwen-Image layered CFG normalization. Omitted leaves it off.
+    """
+
+    qwen_layered_use_en_prompt: _types.OptionalBoolean = None
+    """
+    Ask Qwen-Image layered to use an English prompt. Omitted leaves it off.
     """
 
     max_sequence_length: _types.OptionalInteger = None

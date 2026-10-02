@@ -1,0 +1,22 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Already SDNQ uint4 with SVD rank 32. Do not pass --quantizer sdnq.
+
+\setp gpu_memory_gib total_memory(unit='gib')
+
+{% if not have_cuda() or gpu_memory_gib <= 16 %}
+    \set optimization --model-cpu-offload
+{% endif %}
+
+
+Disty0/Z-Image-Turbo-SDNQ-uint4-svd-r32
+--model-type z-image {{ optimization }}
+--dtype bfloat16
+--scheduler FlowMatchEulerDiscreteScheduler
+--inference-steps 9
+--guidance-scales 0
+--gen-seeds 42
+--output-path z-image-turbo-sdnq
+--output-size 1024
+--prompts "Young woman in a red hanfu holding a round folding fan, night market lights behind her, photo"

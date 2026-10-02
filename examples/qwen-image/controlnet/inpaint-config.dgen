@@ -1,0 +1,32 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# One ControlNet. The image and mask are control_image and control_mask.
+# Do not add a separate control= file.
+#
+# horse1-mask.jpg is black on the horse and white on the background.
+# White is repainted, so this changes the field and keeps the horse,
+# as in the other horse inpaint examples.
+
+\setp gpu_memory_gib total_memory(unit='gib')
+
+{% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 24 %}
+    \set optimization --quantizer bnb;bits=4
+{% elif have_cuda() and have_feature('sdnq') and gpu_memory_gib > 24 %}
+    \set optimization --quantizer sdnq;type=int4
+{% else %}
+    \set optimization --model-sequential-offload
+{% endif %}
+
+
+Qwen/Qwen-Image
+--model-type qwen-image {{ optimization }}
+--dtype bfloat16
+--scheduler FlowMatchEulerDiscreteScheduler
+--inference-steps 30
+--guidance-scales 4
+--control-nets "InstantX/Qwen-Image-ControlNet-Union;scale=1"
+--image-seeds "../../media/horse1.jpg;mask=../../media/horse1-mask.jpg"
+--gen-seeds 1
+--output-path qwen-image-controlnet-inpaint
+--prompts "A horse standing on the surface of mars, photo"

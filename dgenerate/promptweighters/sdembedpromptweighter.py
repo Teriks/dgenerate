@@ -138,11 +138,12 @@ class SdEmbedPromptWeighter(_promptweighter.PromptWeighter):
                 f'Prompt weighting not supported for --model-type: '
                 f'{_enums.get_model_type_string(self.model_type)} with current configuration.')
 
-        if not (pipeline.__class__.__name__.startswith('StableDiffusionXL')
-                or pipeline.__class__.__name__.startswith('StableDiffusion')
-                or pipeline.__class__.__name__.startswith('StableDiffusion3')
-                or pipeline.__class__.__name__.startswith('Flux')
-                or pipeline.__class__.__name__.startswith('StableCascade')):
+        pipeline_name = pipeline.__class__.__name__
+        if not (pipeline_name.startswith('StableDiffusionXL')
+                or pipeline_name.startswith('StableDiffusion')
+                or pipeline_name.startswith('StableDiffusion3')
+                or (pipeline_name.startswith('Flux') and not pipeline_name.startswith('Flux2'))
+                or pipeline_name.startswith('StableCascade')):
             raise _exceptions.PromptWeightingUnsupported(
                 f'Prompt weighting not supported for --model-type: {_enums.get_model_type_string(self.model_type)}')
 

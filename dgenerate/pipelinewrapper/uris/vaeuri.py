@@ -110,6 +110,8 @@ class VAEUri:
 
     _encoders = {
         'AutoencoderKL': diffusers.AutoencoderKL,
+        'AutoencoderKLFlux2': diffusers.AutoencoderKLFlux2,
+        'AutoencoderKLQwenImage': diffusers.AutoencoderKLQwenImage,
         'AsymmetricAutoencoderKL': diffusers.AsymmetricAutoencoderKL,
         'AutoencoderTiny': diffusers.AutoencoderTiny,
         'ConsistencyDecoderVAE': diffusers.ConsistencyDecoderVAE

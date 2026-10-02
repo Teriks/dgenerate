@@ -1,0 +1,24 @@
+title: Qwen-Image (ControlNet)
+order: 25
+
+# Text to image uses the seed as the control image.
+# Inpaint is image;mask with this one ControlNet and no separate control= file.
+
+@uri[{"label":"Model Path / HF Slug", "dir":true, "default": "Qwen/Qwen-Image", "optional":false, "file-types":["models"]}]
+--model-type qwen-image
+@dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"], "default":"bfloat16"}]
+@karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "filter": ["FlowMatchEulerDiscreteScheduler"]}]
+@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
+@quantizer[{"divider-after":true}]
+@submodelbuilder[{"label":"Control Net", "arg":"--control-nets", "model": "Control Net", "default": "InstantX/Qwen-Image-ControlNet-Union;scale=1"}]
+@imageseed[{"label":"Control Image", "arg":"--image-seeds", "file-types":["images-in"], "default":"", "float":""}]
+@int[{"label":"Inference Steps", "arg":"--inference-steps", "default":30, "min":1}]
+@float[{"label":"True CFG Scale", "arg":"--guidance-scales", "default":4, "min":0}]
+@seeds[{"label":"Seeds"}]
+@dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
+@imageformat[{}]
+@imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"1024x1024", "divider-after":true}]
+@promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
+@imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
+@device[{}]
+--prompts "add your prompt here"

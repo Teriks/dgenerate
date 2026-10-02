@@ -216,6 +216,51 @@ class RenderLoopConfig(_types.SetFromMixin):
     command line tool.
     """
 
+    flux2_caption_upsample_temperature: _types.OptionalFloat = None
+    """
+    ``--flux2-caption-upsample-temperature``. Full Flux.2 only.
+    """
+
+    flux2_text_encoder_out_layers: _types.OptionalIntegers = None
+    """
+    ``--flux2-text-encoder-out-layers``. Flux.2 and Klein.
+    """
+
+    z_image_cfg_normalization: _types.OptionalBoolean = None
+    """
+    ``--z-image-cfg-normalization``.
+    """
+
+    z_image_cfg_truncation: _types.OptionalFloat = None
+    """
+    ``--z-image-cfg-truncation``.
+    """
+
+    qwen_guidance_scale: _types.OptionalFloat = None
+    """
+    ``--qwen-guidance-scale``. Embedded Qwen-Image guidance.
+    """
+
+    qwen_layered_layers: _types.OptionalInteger = None
+    """
+    ``--qwen-layered-layers``. Layer count for Qwen-Image layered.
+    """
+
+    qwen_layered_resolution: _types.OptionalInteger = None
+    """
+    ``--qwen-layered-resolution``.
+    """
+
+    qwen_layered_cfg_normalize: _types.OptionalBoolean = None
+    """
+    ``--qwen-layered-cfg-normalize``.
+    """
+
+    qwen_layered_use_en_prompt: _types.OptionalBoolean = None
+    """
+    ``--qwen-layered-use-en-prompt``.
+    """
+
     max_sequence_length: _types.OptionalInteger = None
     """
     Max number of prompt tokens sent to the text encoder.
@@ -1608,6 +1653,15 @@ class RenderLoopConfig(_types.SetFromMixin):
     Force sequential model offloading for the main pipeline, this may drastically reduce memory consumption
     and allow large models to run when they would otherwise not fit in your GPUs VRAM. 
     Inference will be much slower. Mutually exclusive with :py:attr:`RenderLoopConfig.model_cpu_offload`
+    and :py:attr:`RenderLoopConfig.model_group_offload`
+    """
+
+    model_group_offload: bool = False
+    """
+    Offload the main pipeline one layer group at a time. Weights stay in CPU memory, so the
+    pipeline cache still counts them. Quantized modules stay where they were loaded.
+    Mutually exclusive with :py:attr:`RenderLoopConfig.model_cpu_offload` and
+    :py:attr:`RenderLoopConfig.model_sequential_offload`
     """
 
     second_model_cpu_offload: _types.OptionalBoolean = None
@@ -1623,7 +1677,16 @@ class RenderLoopConfig(_types.SetFromMixin):
     Force sequential model offloading for the SDXL refiner or Stable Cascade decoder pipeline,
     this may drastically reduce memory consumption and allow large models to run when they 
     would otherwise not fit in your GPUs VRAM. Inference will be much slower. Mutually exclusive
-    with :py:attr:`RenderLoopConfig.second_model_cpu_offload`
+    with :py:attr:`RenderLoopConfig.second_model_cpu_offload` and
+    :py:attr:`RenderLoopConfig.second_model_group_offload`
+    """
+
+    second_model_group_offload: _types.OptionalBoolean = None
+    """
+    Offload the SDXL refiner or Stable Cascade decoder pipeline one layer group at a time.
+    Quantized modules stay where they were loaded. Mutually exclusive with
+    :py:attr:`RenderLoopConfig.second_model_cpu_offload` and
+    :py:attr:`RenderLoopConfig.second_model_sequential_offload`
     """
 
     adetailer_class_filter: _types.OptionalIntegersAndStringsBag = None
@@ -2028,6 +2091,11 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'{a_namer("model_cpu_offload")} is not compatible '
                 f'with {a_namer("tea_cache")} and related arguments.'
             )
+        if tea_cache_enabled and self.model_group_offload:
+            raise RenderLoopConfigError(
+                f'{a_namer("model_group_offload")} is not compatible '
+                f'with {a_namer("tea_cache")} and related arguments.'
+            )
 
         # Check RAS compatibility
         ras_enabled = (self.ras or any(self._non_null_attr_that_start_with('ras_')))
@@ -2041,10 +2109,20 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'{a_namer("model_cpu_offload")} is not compatible '
                 f'with {a_namer("ras")} and related arguments.'
             )
+        if ras_enabled and self.model_group_offload:
+            raise RenderLoopConfigError(
+                f'{a_namer("model_group_offload")} is not compatible '
+                f'with {a_namer("ras")} and related arguments.'
+            )
         if self.ras_index_fusion and self.model_sequential_offload:
             raise RenderLoopConfigError(
                 f'{a_namer("ras_index_fusion")} is not compatible '
                 f'with {a_namer("model_sequential_offload")}.'
+            )
+        if self.ras_index_fusion and self.model_group_offload:
+            raise RenderLoopConfigError(
+                f'{a_namer("ras_index_fusion")} is not compatible '
+                f'with {a_namer("model_group_offload")}.'
             )
 
         if self.ras_index_fusion and (
@@ -2359,6 +2437,15 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'flux-fill without {a_namer("image_seeds")}.'
                 )
 
+            if (_pipelinewrapper.model_type_is_qwen_image_edit(self.model_type)
+                    or _pipelinewrapper.model_type_is_qwen_image_layered(self.model_type)) \
+                    and not args_help:
+                raise RenderLoopConfigError(
+                    f'you cannot use {a_namer("model_type")} '
+                    f'{_pipelinewrapper.get_model_type_string(self.model_type)} '
+                    f'without {a_namer("image_seeds")}.'
+                )
+
             # Check arguments that require image seeds
             if self.adetailer_detector_uris:
                 raise RenderLoopConfigError(
@@ -2552,14 +2639,20 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'{a_namer("device")} {_torchutil.invalid_device_message(self.device, cap=False)}')
 
         # Check model offload options
-        if self.model_cpu_offload and self.model_sequential_offload:
+        main_offload = [name for name in (
+            'model_cpu_offload', 'model_sequential_offload', 'model_group_offload')
+            if getattr(self, name)]
+        if len(main_offload) > 1:
             raise RenderLoopConfigError(
-                f'{a_namer("model_cpu_offload")} and {a_namer("model_sequential_offload")} '
+                f'{a_namer(main_offload[0])} and {a_namer(main_offload[1])} '
                 f'may not be enabled simultaneously.')
 
-        if self.second_model_cpu_offload and self.second_model_sequential_offload:
+        second_offload = [name for name in (
+            'second_model_cpu_offload', 'second_model_sequential_offload',
+            'second_model_group_offload') if getattr(self, name)]
+        if len(second_offload) > 1:
             raise RenderLoopConfigError(
-                f'{a_namer("second_model_cpu_offload")} and {a_namer("second_model_sequential_offload")} '
+                f'{a_namer(second_offload[0])} and {a_namer(second_offload[1])} '
                 f'may not be enabled simultaneously.')
 
         # Check model path is specified
@@ -2599,6 +2692,8 @@ class RenderLoopConfig(_types.SetFromMixin):
         self._check_pix2pix_requirements(a_namer)
         self._check_transformer_compatibility(a_namer)
         self._check_flux_model_requirements(a_namer)
+        self._check_prefixed_flow_options(a_namer)
+        self._check_flow_image_model_requirements(a_namer)
         self._check_sd3_model_requirements(a_namer)
         self._check_sdxl_model_requirements(a_namer)
         self._check_floyd_requirements(a_namer)
@@ -2881,16 +2976,20 @@ class RenderLoopConfig(_types.SetFromMixin):
         if self.transformer_uri:
             if not _pipelinewrapper.model_type_is_sd3(self.model_type) \
                     and not _pipelinewrapper.model_type_is_flux(self.model_type) \
+                    and not _pipelinewrapper.model_type_is_flow_image(self.model_type) \
                     and not _pipelinewrapper.model_type_is_video(self.model_type):
                 raise _pipelinewrapper.UnsupportedPipelineConfigError(
                     f'{a_namer("transformer_uri")} is only supported for '
-                    f'{a_namer("model_type")} sd3, flux, and ltx.')
+                    f'{a_namer("model_type")} sd3, flux, flux2, flux2-klein-kv, z-image, '
+                    f'z-image-omni, qwen-image, qwen-image-edit, qwen-image-layered, and ltx.')
 
     def _check_flux_model_requirements(self, a_namer: typing.Callable[[str], str]):
         """Check Flux model specific requirements."""
         if not _pipelinewrapper.model_type_is_flux(self.model_type):
             invalid_self = []
             for flux_self in self._non_null_attr_that_start_with('flux'):
+                if flux_self.startswith('flux2'):
+                    continue
                 invalid_self.append(f'you cannot specify {a_namer(flux_self)} '
                                     f'for a non Flux model type, see: {a_namer("model_type")}.')
             if invalid_self:
@@ -2906,6 +3005,105 @@ class RenderLoopConfig(_types.SetFromMixin):
                         f'{a_namer("max_sequence_length")} must be greater than or equal '
                         f'to 1 and less than or equal to 512.'
                     )
+
+    def _check_prefixed_flow_options(self, a_namer: typing.Callable[[str], str]):
+        """Reject a Flux.2, Z-Image, or Qwen option on the wrong model type."""
+        groups = (
+            (_pipelinewrapper.model_type_is_flux2, (
+                'flux2_caption_upsample_temperature',
+            ), 'flux2'),
+            (_pipelinewrapper.model_type_is_flux2_family, (
+                'flux2_text_encoder_out_layers',
+            ), 'flux2 or flux2-klein-kv'),
+            (_pipelinewrapper.model_type_is_z_image_family, (
+                'z_image_cfg_normalization',
+                'z_image_cfg_truncation',
+            ), 'z-image or z-image-omni'),
+            (_pipelinewrapper.model_type_is_qwen_image_family, (
+                'qwen_guidance_scale',
+            ), 'qwen-image, qwen-image-edit, or qwen-image-layered'),
+            (_pipelinewrapper.model_type_is_qwen_image_layered, (
+                'qwen_layered_layers',
+                'qwen_layered_resolution',
+                'qwen_layered_cfg_normalize',
+                'qwen_layered_use_en_prompt',
+            ), 'qwen-image-layered'),
+        )
+        for allowed, names, model_type in groups:
+            if allowed(self.model_type):
+                continue
+            for name in names:
+                if getattr(self, name) is not None:
+                    raise RenderLoopConfigError(
+                        f'{a_namer(name)} is only supported for --model-type {model_type}.')
+
+        if self.flux2_caption_upsample_temperature is not None \
+                and self.flux2_caption_upsample_temperature < 0:
+            raise RenderLoopConfigError(
+                f'{a_namer("flux2_caption_upsample_temperature")} must be greater than or equal to 0.')
+        if self.z_image_cfg_truncation is not None and self.z_image_cfg_truncation < 0:
+            raise RenderLoopConfigError(
+                f'{a_namer("z_image_cfg_truncation")} must be greater than or equal to 0.')
+        if self.qwen_guidance_scale is not None and self.qwen_guidance_scale < 0:
+            raise RenderLoopConfigError(
+                f'{a_namer("qwen_guidance_scale")} must be greater than or equal to 0.')
+        if self.qwen_layered_layers is not None and self.qwen_layered_layers < 1:
+            raise RenderLoopConfigError(
+                f'{a_namer("qwen_layered_layers")} must be greater than or equal to 1.')
+        if self.qwen_layered_resolution is not None and self.qwen_layered_resolution not in (640, 1024):
+            raise RenderLoopConfigError(
+                f'{a_namer("qwen_layered_resolution")} must be 640 or 1024.')
+
+    def _check_flow_image_model_requirements(self, a_namer: typing.Callable[[str], str]):
+        """Flux.2, Z-Image, and Qwen-Image do not take Flux.1-only adapters."""
+        if not _pipelinewrapper.model_type_is_flow_image(self.model_type):
+            return
+
+        model_type = _pipelinewrapper.get_model_type_string(self.model_type)
+        rejected = (
+            ('t2i_adapter_uris', self.t2i_adapter_uris),
+            ('ip_adapter_uris', self.ip_adapter_uris),
+            ('unet_uri', self.unet_uri),
+            ('prompt_weighter_uri', self.prompt_weighter_uri),
+            ('clip_skips', self.clip_skips),
+            ('second_prompts', self.second_prompts),
+            ('third_prompts', self.third_prompts),
+            ('pag', self.pag),
+            ('pag_scales', self.pag_scales),
+            ('pag_adaptive_scales', self.pag_adaptive_scales),
+            ('sdxl_refiner_uri', self.sdxl_refiner_uri),
+        )
+        for name, value in rejected:
+            if value:
+                raise RenderLoopConfigError(
+                    f'{a_namer(name)} cannot be used with --model-type {model_type}.')
+
+        if self.controlnet_uris and not (
+                _pipelinewrapper.model_type_is_z_image(self.model_type)
+                or _pipelinewrapper.model_type_is_qwen_image(self.model_type)):
+            raise RenderLoopConfigError(
+                f'{a_namer("controlnet_uris")} cannot be used with --model-type {model_type}. '
+                f'ControlNet is supported for z-image and qwen-image.')
+
+        if _pipelinewrapper.model_type_is_z_image(self.model_type) and self.controlnet_uris:
+            for uri in self.controlnet_uris:
+                try:
+                    parsed = _pipelinewrapper.uris.ControlNetUri.parse(
+                        uri, model_type=_pipelinewrapper.ModelType.Z_IMAGE)
+                except _pipelinewrapper.uris.InvalidControlNetUriError as e:
+                    raise RenderLoopConfigError(
+                        f'{a_namer("controlnet_uris")}: {e}') from e
+                if parsed.start != 0.0 or parsed.end != 1.0:
+                    raise RenderLoopConfigError(
+                        'Z-Image ControlNet only accepts scale. '
+                        f'{a_namer("controlnet_uris")} start and end are not pipeline arguments.')
+
+        if self.max_sequence_length is not None:
+            limit = 1024 if _pipelinewrapper.model_type_is_qwen_image_family(self.model_type) else 512
+            if self.max_sequence_length < 1 or self.max_sequence_length > limit:
+                raise RenderLoopConfigError(
+                    f'{a_namer("max_sequence_length")} must be from 1 to {limit} '
+                    f'for --model-type {model_type}.')
 
     def _check_sd3_model_requirements(self, a_namer: typing.Callable[[str], str]):
         """Check SD3 model specific requirements."""
@@ -3063,7 +3261,12 @@ class RenderLoopConfig(_types.SetFromMixin):
                 is_control_guidance_spec = \
                     (self.controlnet_uris or self.t2i_adapter_uris) and image_seed.is_single_spec
 
-                if image_seed.images and (self.adetailer_detector_uris or image_seed.mask_images):
+                if (_pipelinewrapper.model_type_image_is_condition(self.model_type)
+                        and image_seed.images and not image_seed.mask_images
+                        and not self.adetailer_detector_uris):
+                    # Condition images. There is no img2img class.
+                    pipeline_type = _pipelinewrapper.PipelineType.TXT2IMG
+                elif image_seed.images and (self.adetailer_detector_uris or image_seed.mask_images):
                     pipeline_type = _pipelinewrapper.PipelineType.INPAINT
                 elif image_seed.images and not is_control_guidance_spec:
                     pipeline_type = _pipelinewrapper.PipelineType.IMG2IMG
@@ -3114,6 +3317,28 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'{a_namer("image_seed_strengths")} '
                     f'cannot be used unless an img2img operation exists '
                     f'in at least one {a_namer("image_seeds")} definition.')
+
+        if any(p.reference_images for p in parsed_image_seeds):
+            if not _pipelinewrapper.model_type_is_flux2(self.model_type):
+                raise RenderLoopConfigError(
+                    f'{a_namer("image_seeds")} reference= is only for --model-type flux2.')
+            if any(p.reference_images and not p.mask_images for p in parsed_image_seeds):
+                raise RenderLoopConfigError(
+                    'reference= is the extra image next to a Flux.2 Klein inpaint. '
+                    'Text-to-image references are the seed images themselves.')
+
+        if (_pipelinewrapper.model_type_image_is_condition(self.model_type)
+                and user_provided_image_seed_strengths
+                and any(p.images and not p.mask_images for p in parsed_image_seeds)):
+            raise RenderLoopConfigError(
+                f'{a_namer("image_seed_strengths")} cannot be used with these condition images. '
+                f'There is no img2img strength.')
+
+        if (_pipelinewrapper.model_type_image_is_condition(self.model_type)
+                and image_seed_strengths_default_set
+                and parsed_image_seeds
+                and all(p.images and not p.mask_images for p in parsed_image_seeds)):
+            self.image_seed_strengths = None
 
         # Check flux-fill compatibility
         if not all(p.mask_images is not None for p in parsed_image_seeds):
@@ -3413,7 +3638,15 @@ class RenderLoopConfig(_types.SetFromMixin):
                 )
 
         elif self.controlnet_uris:
-            if not parsed.is_single_spec and parsed.control_images is None:
+            qwen_inpaint_image = (
+                _pipelinewrapper.model_type_is_qwen_image(self.model_type)
+                and parsed.images and parsed.mask_images and parsed.control_images is None)
+            if qwen_inpaint_image:
+                if len(self.controlnet_uris) != 1:
+                    raise RenderLoopConfigError(
+                        'Qwen-Image ControlNet inpaint uses the seed image as the control image. '
+                        f'Pass one {a_namer("controlnet_uris")} model, or add control= for each model.')
+            elif not parsed.is_single_spec and parsed.control_images is None:
                 images_str = ', '.join(parsed.images)
                 raise RenderLoopConfigError(
                     f'You must specify a control image with the control argument '
@@ -3422,14 +3655,14 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'in order to use inpainting. If you want to use the control image alone '
                     f'without a mask, use {a_namer("image_seeds")} "{images_str}".')
 
-            if control_image_paths is None:
+            if control_image_paths is None and not qwen_inpaint_image:
                 raise RenderLoopConfigError(
                     f'You must specify controlnet guidance images in your {a_namer("image_seeds")} '
                     f'specification "{uri}" (for example: "img2img;mask=my-mask.png;control=control1.png, control2.png") '
                     f'when using {a_namer("controlnet_uris")}'
                 )
 
-            if num_control_images != len(self.controlnet_uris):
+            if not qwen_inpaint_image and num_control_images != len(self.controlnet_uris):
                 raise RenderLoopConfigError(
                     f'Your {a_namer("image_seeds")} specification "{uri}" defines {num_control_images} '
                     f'control guidance image sources, and you have specified {len(self.controlnet_uris)} '
@@ -3749,6 +3982,22 @@ class RenderLoopConfig(_types.SetFromMixin):
                 if n.startswith('flux_'):
                     return None
 
+            if not _pipelinewrapper.model_type_is_flux2_family(self.model_type):
+                if n.startswith('flux2_'):
+                    return None
+
+            if not _pipelinewrapper.model_type_is_z_image_family(self.model_type):
+                if n.startswith('z_image_'):
+                    return None
+
+            if not _pipelinewrapper.model_type_is_qwen_image_family(self.model_type):
+                if n.startswith('qwen_'):
+                    return None
+
+            if not _pipelinewrapper.model_type_is_qwen_image_layered(self.model_type):
+                if n.startswith('qwen_layered_'):
+                    return None
+
             if not _pipelinewrapper.model_type_is_video(self.model_type):
                 if n.startswith('ltx_'):
                     return None
@@ -3784,6 +4033,33 @@ class RenderLoopConfig(_types.SetFromMixin):
                 second_model_prompt=ov('second_model_prompt', self.second_model_prompts),
                 second_model_second_prompt=ov('second_model_second_prompt', self.second_model_second_prompts),
                 max_sequence_length=ov('max_sequence_length', [self.max_sequence_length]),
+                flux2_caption_upsample_temperature=ov(
+                    'flux2_caption_upsample_temperature',
+                    [self.flux2_caption_upsample_temperature]),
+                flux2_text_encoder_out_layers=ov(
+                    'flux2_text_encoder_out_layers',
+                    [self.flux2_text_encoder_out_layers]),
+                z_image_cfg_normalization=ov(
+                    'z_image_cfg_normalization',
+                    [self.z_image_cfg_normalization]),
+                z_image_cfg_truncation=ov(
+                    'z_image_cfg_truncation',
+                    [self.z_image_cfg_truncation]),
+                qwen_guidance_scale=ov(
+                    'qwen_guidance_scale',
+                    [self.qwen_guidance_scale]),
+                qwen_layered_layers=ov(
+                    'qwen_layered_layers',
+                    [self.qwen_layered_layers]),
+                qwen_layered_resolution=ov(
+                    'qwen_layered_resolution',
+                    [self.qwen_layered_resolution]),
+                qwen_layered_cfg_normalize=ov(
+                    'qwen_layered_cfg_normalize',
+                    [self.qwen_layered_cfg_normalize]),
+                qwen_layered_use_en_prompt=ov(
+                    'qwen_layered_use_en_prompt',
+                    [self.qwen_layered_use_en_prompt]),
                 seed=ov('seed', self.seeds),
                 clip_skip=ov('clip_skip', self.clip_skips),
                 sdxl_refiner_clip_skip=ov('sdxl_refiner_clip_skip', self.sdxl_refiner_clip_skips),

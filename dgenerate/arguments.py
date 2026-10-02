@@ -143,6 +143,26 @@ def _type_image_processor(uri):
     return uri
 
 
+def _type_qwen_layered_resolution(val):
+    try:
+        val = int(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be an integer.')
+    if val not in (640, 1024):
+        raise argparse.ArgumentTypeError('Must be 640 or 1024.')
+    return val
+
+
+def _type_positive_int(val):
+    try:
+        val = int(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be an integer')
+    if val < 1:
+        raise argparse.ArgumentTypeError('Must be greater than or equal to 1')
+    return val
+
+
 def _max_sequence_length(val):
     try:
         val = int(val)
@@ -525,6 +545,34 @@ def _type_adetailer_mask_dilation(val):
 
     if val < 0:
         raise argparse.ArgumentTypeError('Must be greater than or equal to 0')
+    return val
+
+
+def _type_flux2_text_encoder_out_layers(val):
+    parts = [part.strip() for part in val.split(',') if part.strip()]
+    if not parts:
+        raise argparse.ArgumentTypeError(
+            'Must be a comma-separated list of layer indexes, like 10,20,30.')
+    layers = []
+    for part in parts:
+        try:
+            layer = int(part)
+        except ValueError:
+            raise argparse.ArgumentTypeError(
+                'Must be a comma-separated list of layer indexes, like 10,20,30.')
+        if layer < 0:
+            raise argparse.ArgumentTypeError('Layer indexes must be greater than or equal to 0.')
+        layers.append(layer)
+    return tuple(layers)
+
+
+def _type_non_negative_float(val):
+    try:
+        val = float(val)
+    except ValueError:
+        raise argparse.ArgumentTypeError('Must be a floating point number.')
+    if val < 0:
+        raise argparse.ArgumentTypeError('Must be greater than or equal to 0.')
     return val
 
 
@@ -1665,7 +1713,9 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
     actions.append(
         parser.add_argument(
             '-tf', '--transformer', action='store', default=None, metavar="TRANSFORMER_URI", dest='transformer_uri',
-            help=f"""Specify a Stable Diffusion 3, Flux, or LTX Transformer model using a URI.
+            help=f"""Specify a Stable Diffusion 3, Flux, Flux.2, Flux.2 Klein KV, Z-Image,
+                    Z-Image Omni, Qwen-Image, Qwen-Image edit, Qwen-Image layered, or LTX
+                    Transformer model using a URI.
                     ``--model-type ltx`` accepts one replacement diffusion transformer.
                     
                     Examples: 
@@ -3153,7 +3203,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '-mqo', '--model-sequential-offload', action='store_true', default=False,
             help="""Force sequential model offloading for the main pipeline, this may drastically reduce memory consumption
                     and allow large models to run when they would otherwise not fit in your GPUs VRAM.
-                    Inference will be much slower. Mutually exclusive with --model-cpu-offload"""
+                    Inference will be much slower. Mutually exclusive with --model-cpu-offload and --model-group-offload"""
         )
     )
 
@@ -3162,7 +3212,18 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             '-mco', '--model-cpu-offload', action='store_true', default=False,
             help="""Force model cpu offloading for the main pipeline, this may reduce memory consumption
                     and allow large models to run when they would otherwise not fit in your GPUs VRAM.
-                    Inference will be slower. Mutually exclusive with --model-sequential-offload"""
+                    Inference will be slower. Mutually exclusive with --model-sequential-offload and --model-group-offload"""
+        )
+    )
+
+    actions.append(
+        _model_offload_group.add_argument(
+            '-mgo', '--model-group-offload', action='store_true', default=False,
+            help="""Offload the main pipeline one layer group at a time. This uses less VRAM than
+                    --model-cpu-offload and less time than --model-sequential-offload. Weights stay
+                    in CPU memory, and CUDA or XPU overlaps the next layer copy with the current one.
+                    BitsAndBytes, SDNQ, and other quantized modules are left where they were loaded.
+                    Mutually exclusive with --model-cpu-offload and --model-sequential-offload"""
         )
     )
 
@@ -3176,7 +3237,7 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             help="""Force sequential model offloading for the SDXL Refiner or Stable Cascade Decoder pipeline, 
                     this may drastically reduce memory consumption and allow large models to run when they would 
                     otherwise not fit in your GPUs VRAM. Inference will be much slower. 
-                    Mutually exclusive with --second-model-cpu-offload"""
+                    Mutually exclusive with --second-model-cpu-offload and --second-model-group-offload"""
         )
     )
 
@@ -3188,7 +3249,18 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
             help="""Force model cpu offloading for the SDXL Refiner or Stable Cascade Decoder pipeline,
                     this may reduce memory consumption and allow large models to run when they would 
                     otherwise not fit in your GPUs VRAM. Inference will be slower. Mutually 
-                    exclusive with --second-model-sequential-offload"""
+                    exclusive with --second-model-sequential-offload and --second-model-group-offload"""
+        )
+    )
+
+    actions.append(
+        _model_offload_group2.add_argument(
+            '-mgo2', '--second-model-group-offload',
+            dest='second_model_group_offload',
+            action='store_true', default=None,
+            help="""Offload the SDXL Refiner or Stable Cascade Decoder pipeline one layer group at a time.
+                    Weights stay in CPU memory. Quantized modules are left where they were loaded.
+                    Mutually exclusive with --second-model-cpu-offload and --second-model-sequential-offload"""
         )
     )
 
@@ -3900,6 +3972,89 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
 
     actions.append(
         parser.add_argument(
+            '--flux2-caption-upsample-temperature', action='store', metavar='FLOAT', default=None,
+            type=_type_non_negative_float, dest='flux2_caption_upsample_temperature',
+            help="""Caption upsampling temperature for full Flux.2. Omitting it leaves
+                    upsampling off. Flux.2 Klein does not accept this argument."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--flux2-text-encoder-out-layers', action='store', metavar='LAYERS', default=None,
+            type=_type_flux2_text_encoder_out_layers, dest='flux2_text_encoder_out_layers',
+            help="""Comma-separated Flux.2 text-encoder layer indexes, like 10,20,30.
+                    Omitting it keeps the pipeline default: 10,20,30 for full Flux.2
+                    and 9,18,27 for Klein."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--z-image-cfg-normalization', action='store_true', default=None,
+            dest='z_image_cfg_normalization',
+            help="""Enable Z-Image classifier-free guidance normalization.
+                    Omitting it leaves normalization off."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--z-image-cfg-truncation', action='store', metavar='FLOAT', default=None,
+            type=_type_non_negative_float, dest='z_image_cfg_truncation',
+            help="""Z-Image classifier-free guidance truncation. Omitting it keeps 1,
+                    which applies guidance for the whole schedule."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--qwen-guidance-scale', action='store', metavar='FLOAT', default=None,
+            type=_type_non_negative_float, dest='qwen_guidance_scale',
+            help="""Distilled guidance embedded in the Qwen-Image transformer.
+                    Omitting it leaves that guidance unset. --guidance-scales remains
+                    the true CFG scale."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--qwen-layered-layers', action='store', metavar='INTEGER', default=None,
+            type=_type_positive_int, dest='qwen_layered_layers',
+            help="""How many layers Qwen-Image layered writes. Omitting it keeps 4.
+                    Only for --model-type qwen-image-layered."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--qwen-layered-resolution', action='store', metavar='INTEGER', default=None,
+            type=_type_qwen_layered_resolution, dest='qwen_layered_resolution',
+            help="""Square resolution bucket for Qwen-Image layered: 640 or 1024.
+                    Omitting it keeps 640. Only for --model-type qwen-image-layered."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--qwen-layered-cfg-normalize', action='store_true', default=None,
+            dest='qwen_layered_cfg_normalize',
+            help="""Enable CFG normalization for Qwen-Image layered.
+                    Omitting it leaves normalization off."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
+            '--qwen-layered-use-en-prompt', action='store_true', default=None,
+            dest='qwen_layered_use_en_prompt',
+            help="""Ask Qwen-Image layered to treat the prompt as English.
+                    Omitting it leaves that off."""
+        )
+    )
+
+    actions.append(
+        parser.add_argument(
             '--max-sequence-length', action='store', metavar='INTEGER', default=None, type=_max_sequence_length,
             help="""The maximum amount of prompt tokens sent to the text encoder.
                     For Stable Diffusion 3 and Flux this is the T5 encoder, an integer
@@ -4266,6 +4421,10 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     automatically cropped to the bounds of their masks (plus any padding) before processing, 
                     then the generated result will be pasted back onto the original uncropped image. This 
                     allows inpainting at higher effective resolutions for better quality results.
+                    
+                    Klein inpaint and Qwen inpaint accept one padding integer as padding_mask_crop.
+                    With one integer and no feather or masked paste, that pipeline crops and pastes.
+                    A two-sided or four-sided padding, a feather, or masked paste stays on this crop.
                     
                     Cannot be used with image seed batching (--image-seeds with multiple images/masks in the definition).
                     

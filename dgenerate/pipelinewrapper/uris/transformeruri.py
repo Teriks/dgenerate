@@ -26,6 +26,7 @@ import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.enums as _enums
+import dgenerate.pipelinewrapper.sdnqload as _sdnqload
 import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.types as _types
@@ -264,6 +265,21 @@ class TransformerUri:
         else:
             quant_config = None
 
+        prequantized_sdnq = None
+        if not gguf_file and not _hfhub.is_single_file_model_load(model_path):
+            prequantized_sdnq = _sdnqload.sdnq_config_for_component(
+                model_path,
+                subfolder=self.subfolder,
+                revision=self.revision,
+                token=use_auth_token,
+                local_files_only=local_files_only)
+            requantize_error = _sdnqload.sdnq_requantize_error(self.quantizer, prequantized_sdnq)
+            if requantize_error:
+                raise _exceptions.TransformerUriLoadError(requantize_error)
+            if prequantized_sdnq is not None:
+                # A second SDNQConfig would quantize the checkpoint again.
+                quant_config = None
+
         if _hfhub.is_single_file_model_load(model_path):
             try:
                 original_config = _hfhub.download_non_hf_slug_config(
@@ -319,17 +335,17 @@ class TransformerUri:
 
             self._enforce_cache_size(estimated_memory_use)
 
-            transformer = transformer_class.from_pretrained(
-                model_path,
+            load_kwargs = dict(
                 revision=self.revision,
                 variant=variant,
                 torch_dtype=torch_dtype,
                 subfolder=self.subfolder if self.subfolder else "",
                 token=use_auth_token,
                 local_files_only=local_files_only,
-                quantization_config=quant_config,
-                device_map=device_map
-            )
+                device_map=device_map)
+            if quant_config is not None:
+                load_kwargs['quantization_config'] = quant_config
+            transformer = transformer_class.from_pretrained(model_path, **load_kwargs)
 
         _messages.debug_log('Estimated Torch Transformer Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_use))

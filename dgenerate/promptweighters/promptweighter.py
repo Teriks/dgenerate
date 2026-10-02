@@ -90,6 +90,12 @@ class PromptWeighter(_plugin.Plugin, abc.ABC):
         self.__model_type = model_type
         self.__dtype = dtype
         self.__device = device if device else 'cpu'
+
+        if _enums.model_type_is_flow_image(model_type):
+            raise _exceptions.PromptWeightingUnsupported(
+                f'Prompt weighting is not supported for --model-type '
+                f'{_enums.get_model_type_string(model_type)}. '
+                f'These models encode a chat template, not CLIP or T5 tokens.')
         self.__local_files_only = local_files_only
         self.__size_estimate = 0
 

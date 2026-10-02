@@ -29,7 +29,7 @@ What You Can Do
 Image Generation
 ----------------
 
-* Generate images using a number of popular model architectures such as: SD, SDXL, SD3, Flux, and Kolors
+* Generate images using a number of popular model architectures such as: SD, SDXL, SD3, Flux, Flux.2, Z-Image, Qwen-Image, and Kolors
 * Batch process multiple parameter combinations combinatorially to generate variations
 * Run large models on limited hardware with inference optimizations and quantization
 * Utilize models from HuggingFace and CivitAI for generation
