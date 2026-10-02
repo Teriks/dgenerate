@@ -35,6 +35,25 @@ _lora_uri_parser = _textprocessing.ConceptUriParser(
     'LoRA', ['scale', 'revision', 'subfolder', 'weight-name'])
 
 
+def _collapse_zimage_lora_prefix(state_dict):
+    """
+    Kohya and Musubi write Z-Image LoRAs as ``lora_unet__layers_...``.
+
+    Diffusers strips one ``lora_unet_`` and the leftover underscore becomes
+    ``transformer..layers``. PEFT then looks for a module named ``.layers``.
+    """
+    if not any(key.startswith('transformer..') for key in state_dict):
+        return state_dict
+    return {
+        key.replace('transformer..', 'transformer.', 1): value
+        for key, value in state_dict.items()
+    }
+
+
+def _pipeline_is_z_image(pipeline) -> bool:
+    return pipeline.__class__.__name__.startswith('ZImage')
+
+
 class LoRAUri:
     """
     Representation of a ``--loras`` uri
@@ -203,24 +222,20 @@ class LoRAUri:
                 adapter_names.append(adapter_name)
                 adapter_weights.append(lora_uri.scale)
 
+                load_kwargs = dict(
+                    revision=lora_uri.revision,
+                    subfolder=lora_uri.subfolder,
+                    weight_name=weight_name,
+                    local_files_only=local_files_only,
+                    token=use_auth_token,
+                )
                 try:
-                    pipeline.load_lora_weights(model_path,
-                                               revision=lora_uri.revision,
-                                               subfolder=lora_uri.subfolder,
-                                               weight_name=weight_name,
-                                               local_files_only=local_files_only,
-                                               use_safetensors=True,
-                                               token=use_auth_token,
-                                               adapter_name=adapter_name)
+                    _load_one_lora(
+                        pipeline, model_path, adapter_name,
+                        use_safetensors=True, **load_kwargs)
                 except EnvironmentError:
                     # brute force, try for .bin files
-                    pipeline.load_lora_weights(model_path,
-                                               revision=lora_uri.revision,
-                                               subfolder=lora_uri.subfolder,
-                                               weight_name=weight_name,
-                                               local_files_only=local_files_only,
-                                               token=use_auth_token,
-                                               adapter_name=adapter_name)
+                    _load_one_lora(pipeline, model_path, adapter_name, **load_kwargs)
 
                 if not pipeline.get_list_adapters():
                     raise RuntimeError(f'LoRA model "{lora_uri.model}" contained no usable weights.')
@@ -250,7 +265,7 @@ class LoRAUri:
         """
         try:
             r = _lora_uri_parser.parse(uri)
-            
+
             scale = r.args.get('scale', 1.0)
             try:
                 scale = float(scale)
@@ -265,3 +280,20 @@ class LoRAUri:
                            subfolder=r.args.get('subfolder', None))
         except _textprocessing.ConceptUriParseError as e:
             raise _exceptions.InvalidLoRAUriError(e) from e
+
+
+def _load_one_lora(pipeline, model_path, adapter_name, **kwargs):
+    if not _pipeline_is_z_image(pipeline):
+        pipeline.load_lora_weights(model_path, adapter_name=adapter_name, **kwargs)
+        return
+
+    state_dict, metadata = pipeline.lora_state_dict(
+        model_path, return_lora_metadata=True, **kwargs)
+    state_dict = _collapse_zimage_lora_prefix(state_dict)
+    pipeline.load_lora_into_transformer(
+        state_dict,
+        transformer=pipeline.transformer,
+        adapter_name=adapter_name,
+        metadata=metadata,
+        _pipeline=pipeline,
+    )

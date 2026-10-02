@@ -3167,20 +3167,16 @@ class DiffusionPipelineWrapper:
         return self._create_pipeline_result(pipeline_output, output_type, user_args, pipeline_args)
 
     @staticmethod
-    def _flux_sigmas_calculate_shift(
-            image_seq_len,
-            base_seq_len: int = 256,
-            max_seq_len: int = 4096,
-            base_shift: float = 0.5,
-            max_shift: float = 1.15,
-    ):
-        # mu calculation for use_dynamic_shifting=True with Flux
-        # This code comes from the Flux pipelines
+    def _pipeline_uses_flow_default_sigmas(pipeline) -> bool:
+        """
+        Flux.1, Flux.2, Z-Image, and Qwen-Image, including Fill, Kontext, Klein,
+        Omni, edit, and layered.
 
-        m = (max_shift - base_shift) / (max_seq_len - base_seq_len)
-        b = base_shift - m * base_seq_len
-        mu = image_seq_len * m + b
-        return mu
+        Their ``__call__`` replaces a missing ``sigmas`` argument with an evenly
+        spaced schedule and then applies a resolution-dependent shift. An
+        expression has to start from that schedule.
+        """
+        return pipeline.__class__.__name__.startswith(('Flux', 'ZImage', 'QwenImage'))
 
     @staticmethod
     def _sigmas_eval(model_title: str, pipeline, steps: int, val: str | list):
@@ -3197,31 +3193,30 @@ class DiffusionPipelineWrapper:
         if not isinstance(val, str):
             return val
 
-        try:
-            if pipeline.__class__.__name__.startswith('Flux'):
-                # This code comes from the Flux pipelines
-                mu = DiffusionPipelineWrapper._flux_sigmas_calculate_shift(
-                    pipeline.transformer.config.in_channels // 4,  # latents.shape[1]
-                    pipeline.scheduler.config.get("base_image_seq_len", 256),
-                    pipeline.scheduler.config.get("max_image_seq_len", 4096),
-                    pipeline.scheduler.config.get("base_shift", 0.5),
-                    pipeline.scheduler.config.get("max_shift", 1.15),
-                )
-                pipeline.scheduler.set_timesteps(steps, mu=mu)
-            else:
+        if DiffusionPipelineWrapper._pipeline_uses_flow_default_sigmas(pipeline):
+            # These pipelines pass linspace(1, 1/steps, steps) into
+            # set_timesteps and then apply a resolution-dependent shift.
+            # The expression replaces that linspace. Reading scheduler.sigmas
+            # after set_timesteps would include the shift and the terminal
+            # zero, and the pipeline would shift the result again.
+            # Qwen-Image layered writes linspace(1, 0, steps + 1)[:-1],
+            # which is the same sequence.
+            sigmas = numpy.linspace(1.0, 1.0 / int(steps), int(steps))
+        else:
+            try:
                 pipeline.scheduler.set_timesteps(steps)
-        except Exception as e:
-            raise _pipelines.UnsupportedPipelineConfigError(
-                f'Custom sigmas not supported for the {model_title} model and scheduler combination.'
-            ) from e
+            except Exception as e:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    f'Custom sigmas not supported for the {model_title} model and scheduler combination.'
+                ) from e
 
-        try:
-            sigmas = pipeline.scheduler.sigmas
-        except AttributeError as e:
-            raise _pipelines.UnsupportedPipelineConfigError(
-                f'Selected {model_title} model scheduler '
-                f'{pipeline.scheduler.__class__.__name__} did not produce sigmas.'
-            ) from e
+            try:
+                sigmas = pipeline.scheduler.sigmas
+            except AttributeError as e:
+                raise _pipelines.UnsupportedPipelineConfigError(
+                    f'Selected {model_title} model scheduler '
+                    f'{pipeline.scheduler.__class__.__name__} did not produce sigmas.'
+                ) from e
 
         interpreter = _eval.standard_interpreter(
             symtable=_eval.safe_builtins()

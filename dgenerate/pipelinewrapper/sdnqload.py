@@ -174,26 +174,44 @@ def sdnq_requantize_error(quantizer_uri: str | None, sdnq_config: dict | None) -
     return None
 
 
+def quantization_config_of(module):
+    """
+    Quantization config attached to a loaded module.
+
+    SDNQ assigns ``quantization_config`` onto the module. Diffusers also stores
+    it on ``module.config``, and warns when that field is read as
+    ``module.quantization_config``.
+    """
+    if module is None:
+        return None
+    values = getattr(module, '__dict__', None)
+    if isinstance(values, dict) and 'quantization_config' in values:
+        return values['quantization_config']
+    config = values.get('config') if isinstance(values, dict) else None
+    if config is None:
+        return None
+    config_values = getattr(config, '__dict__', None)
+    if isinstance(config_values, dict) and 'quantization_config' in config_values:
+        return config_values['quantization_config']
+    getter = getattr(config, 'get', None)
+    if getter is None:
+        return None
+    try:
+        return getter('quantization_config', None)
+    except Exception:
+        return None
+
+
 def module_is_sdnq(module) -> bool:
     """Return whether a loaded module carries an SDNQ quantization config."""
-    if module is None:
+    candidate = quantization_config_of(module)
+    if candidate is None:
         return False
-    candidates = [getattr(module, 'quantization_config', None)]
-    config = getattr(module, 'config', None)
-    if config is not None:
-        candidates.append(getattr(config, 'quantization_config', None))
-    for candidate in candidates:
-        if candidate is None:
-            continue
-        if type(candidate).__name__ == 'SDNQConfig':
-            return True
-        if isinstance(candidate, dict):
-            if config_method_is_sdnq(candidate):
-                return True
-            continue
-        method = getattr(candidate, 'quant_method', None)
-        if hasattr(method, 'value'):
-            method = method.value
-        if str(method).lower() == 'sdnq':
-            return True
-    return False
+    if type(candidate).__name__ == 'SDNQConfig':
+        return True
+    if isinstance(candidate, dict):
+        return config_method_is_sdnq(candidate)
+    method = getattr(candidate, 'quant_method', None)
+    if hasattr(method, 'value'):
+        method = method.value
+    return str(method).lower() == 'sdnq'

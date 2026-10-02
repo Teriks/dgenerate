@@ -598,6 +598,11 @@ class DiffusionArguments(_types.SetFromMixin):
     For LTX this replaces the automatic schedule. The step count becomes the length of the
     result. In expression form, ``sigmas`` is the distilled 8-value table when the scheduler
     has no dynamic shifting, or the ``set_timesteps`` schedule otherwise.
+
+    For Flux.1 (including Fill and Kontext), Flux.2, Z-Image, and Qwen-Image,
+    an expression's ``sigmas`` value is the pipeline default schedule: evenly spaced
+    values from 1 down to ``1 / steps``. The model applies its resolution-dependent
+    shift to the expression result.
     """
 
     freeu_params: typing.Optional[tuple[float, float, float, float]] = None

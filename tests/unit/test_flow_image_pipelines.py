@@ -585,6 +585,30 @@ class TestFlowImagePipelines(unittest.TestCase):
 
         ordinary = torch.nn.Linear(4, 4)
         self.assertFalse(_pipelines.module_skips_group_offload(ordinary))
+
+        import warnings
+
+        class _WarnOnDirectConfig:
+            def __init__(self):
+                self.config = {'quantization_config': {'quant_method': 'bitsandbytes'}}
+
+            def __getattr__(self, name):
+                if name == 'quantization_config':
+                    warnings.warn(
+                        "Accessing config attribute `quantization_config` directly",
+                        FutureWarning, stacklevel=2)
+                    return self.config['quantization_config']
+                raise AttributeError(name)
+
+        warned = _WarnOnDirectConfig()
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter('always', FutureWarning)
+            self.assertFalse(_sdnqload.module_is_sdnq(warned))
+            self.assertEqual(
+                _sdnqload.quantization_config_of(warned)['quant_method'], 'bitsandbytes')
+        self.assertFalse(any('quantization_config' in str(item.message) for item in caught))
+        warned.__dict__['quantization_config'] = {'quant_method': 'sdnq'}
+        self.assertTrue(_sdnqload.module_is_sdnq(warned))
         quantized = torch.nn.Linear(4, 4)
         quantized.quantization_config = {'quant_method': 'sdnq'}
         parent = torch.nn.Sequential(quantized)
@@ -659,6 +683,119 @@ class TestFlowImagePipelines(unittest.TestCase):
         self.assertEqual(loaded.weights_dtype, 'uint4')
         self.assertEqual(loaded.svd_rank, 32)
         self.assertTrue(loaded.use_svd)
+
+    def test_zimage_kohya_lora_drops_empty_unet_prefix(self):
+        import torch
+        from diffusers.loaders.lora_conversion_utils import (
+            _convert_non_diffusers_z_image_lora_to_diffusers)
+        from dgenerate.pipelinewrapper.uris.lorauri import _collapse_zimage_lora_prefix
+
+        rank = 2
+        down = torch.zeros(rank, 4)
+        up = torch.zeros(4, rank)
+        alpha = torch.tensor(float(rank))
+        raw = {}
+        for name in (
+            'lora_unet__layers_0_attention_to_q',
+            'lora_unet__context_refiner_0_feed_forward_w1',
+            'lora_unet__noise_refiner_1_attention_to_k',
+        ):
+            raw[name + '.lora_down.weight'] = down
+            raw[name + '.lora_up.weight'] = up
+            raw[name + '.alpha'] = alpha
+
+        converted = _convert_non_diffusers_z_image_lora_to_diffusers(raw)
+        fixed = _collapse_zimage_lora_prefix(converted)
+        self.assertIn('transformer.layers.0.attention.to_q.lora_A.weight', fixed)
+        self.assertIn('transformer.context_refiner.0.feed_forward.w1.lora_A.weight', fixed)
+        self.assertIn('transformer.noise_refiner.1.attention.to_k.lora_A.weight', fixed)
+        self.assertFalse(any('..' in key for key in fixed))
+
+    def test_flow_image_sigma_expressions(self):
+        import numpy as np
+
+        from dgenerate.pipelinewrapper.wrapper import DiffusionPipelineWrapper
+
+        class _RejectingScheduler:
+            def set_timesteps(self, num_inference_steps=None, device=None, sigmas=None, mu=None):
+                raise AssertionError('flow image sigma expressions must not call set_timesteps')
+
+        class _NoSigmasScheduler:
+            def set_timesteps(self, num_inference_steps=None):
+                pass
+
+        def pipe(class_name, scheduler):
+            obj = type(class_name, (), {})()
+            obj.scheduler = scheduler
+            return obj
+
+        steps = 8
+        expected = (np.linspace(1.0, 1.0 / steps, steps) * 0.95).tolist()
+        for name in (
+                'FluxPipeline',
+                'FluxImg2ImgPipeline',
+                'FluxInpaintPipeline',
+                'FluxFillPipeline',
+                'FluxKontextPipeline',
+                'FluxKontextInpaintPipeline',
+                'FluxControlNetPipeline',
+                'Flux2Pipeline',
+                'Flux2KleinPipeline',
+                'Flux2KleinInpaintPipeline',
+                'Flux2KleinKVPipeline',
+                'ZImagePipeline',
+                'ZImageImg2ImgPipeline',
+                'ZImageInpaintPipeline',
+                'ZImageControlNetPipeline',
+                'ZImageControlNetInpaintPipeline',
+                'ZImageOmniPipeline',
+                'QwenImagePipeline',
+                'QwenImageImg2ImgPipeline',
+                'QwenImageInpaintPipeline',
+                'QwenImageEditPipeline',
+                'QwenImageEditPlusPipeline',
+                'QwenImageEditInpaintPipeline',
+                'QwenImageLayeredPipeline',
+                'QwenImageControlNetPipeline',
+                'QwenImageControlNetInpaintPipeline',
+        ):
+            result = DiffusionPipelineWrapper._sigmas_eval(
+                'primary', pipe(name, _RejectingScheduler()), steps, 'sigmas * 0.95')
+            self.assertEqual(len(result), steps, name)
+            np.testing.assert_allclose(result, expected)
+
+        # Qwen-Image layered writes this form. It is the same sequence.
+        np.testing.assert_allclose(
+            np.linspace(1.0, 1.0 / steps, steps),
+            np.linspace(1.0, 0.0, steps + 1)[:-1])
+
+        csv = DiffusionPipelineWrapper._sigmas_eval(
+            'primary', pipe('ZImagePipeline', _RejectingScheduler()), steps, [0.2, 0.1])
+        self.assertEqual(csv, [0.2, 0.1])
+
+        with self.assertRaises(_pipelines.UnsupportedPipelineConfigError):
+            DiffusionPipelineWrapper._sigmas_eval(
+                'primary', pipe('QwenImagePipeline', _NoSigmasScheduler()), steps, 'sigmas * 0.95')
+
+        with self.assertRaises(_pipelines.UnsupportedPipelineConfigError) as bad_expr:
+            DiffusionPipelineWrapper._sigmas_eval(
+                'primary', pipe('Flux2Pipeline', _RejectingScheduler()), steps, 'sigmas +')
+        self.assertIn('Error interpreting sigmas expression', str(bad_expr.exception))
+
+        class _SdScheduler:
+            def __init__(self):
+                self.called = False
+                self.sigmas = None
+
+            def set_timesteps(self, steps=None, sigmas=None):
+                self.called = True
+                self.sigmas = np.array([0.4, 0.2])
+
+        sdxl = type('StableDiffusionXLPipeline', (), {})()
+        sdxl.scheduler = _SdScheduler()
+        scaled = DiffusionPipelineWrapper._sigmas_eval('primary', sdxl, 2, 'sigmas * 2')
+        self.assertTrue(sdxl.scheduler.called)
+        np.testing.assert_allclose(scaled, [0.8, 0.4])
 
 
 if __name__ == '__main__':

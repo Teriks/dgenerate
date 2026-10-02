@@ -209,7 +209,7 @@ def _module_is_quantized(module) -> bool:
     quantized, _, _ = _util.check_bnb_status(module)
     if quantized or _sdnqload.module_is_sdnq(module):
         return True
-    return getattr(module, 'quantization_config', None) is not None
+    return _sdnqload.quantization_config_of(module) is not None
 
 
 def module_skips_group_offload(module) -> bool:
