@@ -652,17 +652,11 @@ class DiffusionPipelineWrapper:
             except _uris.InvalidLoRAUriError as e:
                 raise _pipelines.UnsupportedPipelineConfigError(str(e)) from e
 
-        if adetailer_detector_uris and model_type not in {
-            _enums.ModelType.SD,
-            _enums.ModelType.SDXL,
-            _enums.ModelType.KOLORS,
-            _enums.ModelType.SD3,
-            _enums.ModelType.FLUX,
-            _enums.ModelType.FLUX_FILL
-        }:
+        if adetailer_detector_uris and not _enums.model_type_supports_adetailer(model_type):
             raise _pipelines.UnsupportedPipelineConfigError(
-                f'--adetailer-detectors is only compatible with '
-                f'--model-type sd, sdxl, kolors, sd3, and flux')
+                '--adetailer-detectors is only compatible with '
+                f'--model-type {_enums.ADETAILER_INPAINT_MODEL_TYPES}. '
+                f'{_enums.ADETAILER_NO_INPAINT}')
 
         if quantizer_uri is not None:
             try:
@@ -2924,7 +2918,7 @@ class DiffusionPipelineWrapper:
         if user_args.reference_images:
             references = user_args.reference_images
             reference_value = references if len(references) > 1 else references[0]
-            if user_args.mask_images is not None:
+            if user_args.mask_images is not None or self._parsed_adetailer_detector_uris:
                 pipeline_args['image_reference'] = reference_value
             else:
                 pipeline_args['image'] = reference_value
@@ -2985,6 +2979,16 @@ class DiffusionPipelineWrapper:
             user_args.denoising_start,
             user_args.denoising_end
         ):
+            if self._parsed_adetailer_detector_uris:
+                if 'image' not in pipeline_args:
+                    raise _pipelines.UnsupportedPipelineConfigError(
+                        '--adetailer-detectors requires an image in --image-seeds.')
+                return self._call_asdff(
+                    user_args=user_args,
+                    pipeline_args=pipeline_args,
+                    batch_size=batch_size,
+                    prompt_weighter=None)
+
             output_type = 'latent' if user_args.output_latents else 'pil'
             pipeline_output = _pipelines.call_pipeline(
                 pipeline=self._pipeline,

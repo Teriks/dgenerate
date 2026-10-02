@@ -16,6 +16,19 @@ already aligned. The default sample size is 1024.
 is accepted on ``z-image`` and ``qwen-image`` only. See
 `Specifying ControlNets`_.
 
+Adetailer works where an inpaint pipeline exists: Flux.2 Klein, Z-Image,
+Qwen-Image, and Qwen-Image Edit. ``--adetailer-detectors`` takes an
+``--image-seeds`` image and no mask, and inpaints each detection.
+``--post-processors adetailer`` does the same on the image just generated.
+Full Flux.2, Klein KV, Z-Image Omni, Qwen-Image Layered, and Qwen edit-plus
+have no inpaint pipeline, so adetailer is rejected. Qwen still uses true CFG.
+Flux.2 Klein still has no negative prompt. A detection crop is aligned to a
+multiple of 16 before that inpaint call. Generated images are under
+`examples/adetailer/post_processor <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/adetailer/post_processor>`_.
+An image you already have is under
+`examples/adetailer/arbitrary_image <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/adetailer/arbitrary_image>`_.
+Flux.2 Klein, Z-Image, and Qwen-Image each have both.
+
 ``--model-cpu-offload``, ``--model-sequential-offload``, and
 ``--model-group-offload`` are mutually exclusive. Group offload keeps weights
 in CPU memory, so the pipeline cache still counts them. BitsAndBytes, SDNQ,

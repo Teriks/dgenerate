@@ -111,6 +111,12 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
     when performing inpainting on the input image.
 
     The "guidance-scale" argument specifies the guidance scale for inpainting.
+    On Qwen-Image and Qwen-Image Edit this is true CFG, the same value as
+    --guidance-scales. Flux.2 Klein, Z-Image, Qwen-Image, and Qwen-Image Edit
+    can be used because they have an inpaint pipeline. Full Flux.2, Flux.2
+    Klein KV, Z-Image Omni, Qwen-Image Layered, and Qwen edit-plus do not.
+    Flux.2 Klein has no negative prompt. These models do not support
+    prompt-weighter.
 
     The "pag-scale" argument indicates the perturbed attention guidance scale,
     this enables a PAG inpaint pipeline if supported. If the previously used
@@ -433,13 +439,19 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
                 'script if image generation has occurred previously. It will re-use the last '
                 'image generation pipelines components for inpainting.')
 
-        is_flux = last_pipe.__class__.__name__.startswith('Flux') and \
+        pipe_name = last_pipe.__class__.__name__
+        try:
+            flow_spec = _asdff.adetailer_flow_inpaint_spec(pipe_name)
+        except _pipelinewrapper.UnsupportedPipelineConfigError as e:
+            raise self.argument_error(str(e)) from e
+
+        is_flux = pipe_name.startswith('Flux') and not pipe_name.startswith('Flux2') and \
                   not isinstance(last_pipe, diffusers.FluxFillPipeline)
 
-        is_sdxl = last_pipe.__class__.__name__.startswith('StableDiffusionXL')
-        is_sd3 = last_pipe.__class__.__name__.startswith('StableDiffusion3')
-        is_sd = last_pipe.__class__.__name__.startswith('StableDiffusion') and not is_sd3 and not is_sdxl
-        is_kolors = last_pipe.__class__.__name__.startswith('Kolors')
+        is_sdxl = pipe_name.startswith('StableDiffusionXL')
+        is_sd3 = pipe_name.startswith('StableDiffusion3')
+        is_sd = pipe_name.startswith('StableDiffusion') and not is_sd3 and not is_sdxl
+        is_kolors = pipe_name.startswith('Kolors')
 
         ad_pipe = _asdff.AdPipelineBase(last_pipe)
 
@@ -448,6 +460,11 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
             "guidance_scale": self._guidance_scale,
             "prompt": self._prompt
         }
+
+        if flow_spec is not None and flow_spec.qwen_guidance:
+            pipeline_args.pop('guidance_scale')
+            pipeline_args.update(_pipelinewrapper.qwen_image_call_guidance(
+                self._guidance_scale, self._negative_prompt))
 
         if self._pag_scale is not None or \
                 self._pag_adaptive_scale is not None:
@@ -466,13 +483,26 @@ class AdetailerProcessor(_imageprocessor.ImageProcessor):
         if is_sdxl:
             pipeline_args['target_size'] = image.size
 
-        if not is_flux:
+        if flow_spec is not None and flow_spec.qwen_guidance:
+            # true_cfg_scale and negative_prompt were set above.
+            pass
+        elif flow_spec is not None and not flow_spec.negative_prompt:
+            if self._negative_prompt:
+                dgenerate.messages.log(
+                    'adetailer is ignoring the negative prompt. '
+                    f'{pipe_name} has no negative_prompt argument.')
+        elif not is_flux:
             pipeline_args['negative_prompt'] = self._negative_prompt
         elif self._negative_prompt:
             dgenerate.messages.log(
                 'adetailer is ignoring negative prompt, as Flux does not support negative prompting.')
 
         prompt_weighter = None
+
+        if self._prompt_weighter and flow_spec is not None:
+            raise self.argument_error(
+                f'{pipe_name} does not support adetailer prompt weighters. '
+                f'These models encode a chat template, not CLIP tokens.')
 
         if self._prompt_weighter:
             loader = _promptweighters.PromptWeighterLoader()
