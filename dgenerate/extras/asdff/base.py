@@ -30,6 +30,66 @@ def ordinal(n: int) -> str:
     return str(n) + ("th" if 11 <= n % 100 <= 13 else d.get(n % 10, "th"))
 
 
+class AdetailerInpaintSpec:
+    def __init__(
+            self,
+            pipeline_class,
+            *,
+            qwen_guidance: bool = False,
+            negative_prompt: bool = True,
+            distilled_from_config: bool = False,
+            needs_processor: bool = False):
+        self.pipeline_class = pipeline_class
+        self.qwen_guidance = qwen_guidance
+        self.negative_prompt = negative_prompt
+        self.distilled_from_config = distilled_from_config
+        self.needs_processor = needs_processor
+
+
+def adetailer_flow_inpaint_spec(class_name: str) -> AdetailerInpaintSpec | None:
+    """
+    Inpaint plan for a flow-image pipeline class name.
+
+    ``None`` means this is not a flow-image class. SD, SDXL, Flux.1, and the
+    other older inpaint paths stay with the caller. A flow-image class with
+    no inpaint pipeline raises ``UnsupportedPipelineConfigError``.
+    """
+    if class_name.startswith('Flux2KleinKV'):
+        raise _pipelinewrapper.UnsupportedPipelineConfigError(
+            'Flux.2 Klein KV has no inpaint pipeline, so adetailer cannot be used with it.')
+    if class_name.startswith('Flux2Klein'):
+        return AdetailerInpaintSpec(
+            diffusers.Flux2KleinInpaintPipeline,
+            negative_prompt=False,
+            distilled_from_config=True)
+    if class_name.startswith('Flux2'):
+        raise _pipelinewrapper.UnsupportedPipelineConfigError(
+            'Full Flux.2 has no inpaint pipeline, so adetailer cannot be used with it. '
+            'Use a Flux.2 Klein checkpoint.')
+    if class_name.startswith('ZImageOmni'):
+        raise _pipelinewrapper.UnsupportedPipelineConfigError(
+            'Z-Image Omni has no inpaint pipeline, so adetailer cannot be used with it.')
+    if class_name.startswith('ZImage'):
+        return AdetailerInpaintSpec(diffusers.ZImageInpaintPipeline)
+    if class_name.startswith('QwenImageLayered'):
+        raise _pipelinewrapper.UnsupportedPipelineConfigError(
+            'Qwen-Image Layered has no inpaint pipeline, so adetailer cannot be used with it.')
+    if class_name.startswith('QwenImageEditPlus'):
+        raise _pipelinewrapper.UnsupportedPipelineConfigError(
+            'Qwen-Image edit-plus has no inpaint pipeline, so adetailer cannot be used with it. '
+            'Use --model-type qwen-image-edit.')
+    if class_name.startswith('QwenImageEdit'):
+        return AdetailerInpaintSpec(
+            diffusers.QwenImageEditInpaintPipeline,
+            qwen_guidance=True,
+            needs_processor=True)
+    if class_name.startswith('QwenImage'):
+        return AdetailerInpaintSpec(
+            diffusers.QwenImageInpaintPipeline,
+            qwen_guidance=True)
+    return None
+
+
 class AdPipelineBase:
     def __init__(self, pipe, force_pag=False):
         self.pipe = pipe
@@ -42,13 +102,33 @@ class AdPipelineBase:
         if not self.auto_detect_pipe:
             return self.pipe
 
-        is_xl = self.pipe.__class__.__name__.startswith('StableDiffusionXL')
-        is_flux = self.pipe.__class__.__name__.startswith('Flux')
-        is_sd3 = self.pipe.__class__.__name__.startswith('StableDiffusion3')
-        is_kolors = self.pipe.__class__.__name__.startswith('Kolors')
-        is_pag = "PAG" in self.pipe.__class__.__name__ or self.force_pag
+        class_name = self.pipe.__class__.__name__
+        is_xl = class_name.startswith('StableDiffusionXL')
+        is_flux = class_name.startswith('Flux') and not class_name.startswith('Flux2')
+        is_sd3 = class_name.startswith('StableDiffusion3')
+        is_kolors = class_name.startswith('Kolors')
+        is_pag = "PAG" in class_name or self.force_pag
+        flow_spec = adetailer_flow_inpaint_spec(class_name)
 
-        if is_xl:
+        if flow_spec is not None:
+            modules = dict(
+                scheduler=self.pipe.scheduler,
+                vae=self.pipe.vae,
+                text_encoder=self.pipe.text_encoder,
+                tokenizer=self.pipe.tokenizer,
+                transformer=self.pipe.transformer,
+            )
+            if flow_spec.distilled_from_config:
+                config = getattr(self.pipe, 'config', None)
+                modules['is_distilled'] = bool(getattr(config, 'is_distilled', False))
+            if flow_spec.needs_processor:
+                processor = getattr(self.pipe, 'processor', None)
+                if processor is None:
+                    raise _pipelinewrapper.UnsupportedPipelineConfigError(
+                        'Qwen-Image edit inpaint needs the processor module from the edit pipeline.')
+                modules['processor'] = processor
+            pipe = flow_spec.pipeline_class(**modules)
+        elif is_xl:
             pipe_class = \
                 diffusers.StableDiffusionXLPAGInpaintPipeline if \
                     is_pag else diffusers.StableDiffusionXLInpaintPipeline
@@ -221,6 +301,22 @@ class AdPipelineBase:
     ) -> dict[str, Any]:
         pipeline_args = dict(pipeline_args)
         sig = inspect.signature(self.inpaint_pipeline)
+        if self._flow_inpaint_multiple() is not None:
+            # The loaded call may carry the full image size. The crop is the
+            # image being inpainted, so those dimensions have to go.
+            pipeline_args.pop('width', None)
+            pipeline_args.pop('height', None)
+        has_var_keyword = any(
+            parameter.kind == inspect.Parameter.VAR_KEYWORD
+            for parameter in sig.parameters.values())
+        if not has_var_keyword:
+            if 'negative_prompt' in pipeline_args and 'negative_prompt' not in sig.parameters:
+                _messages.warning(
+                    f'{self.inpaint_pipeline.__class__.__name__} is ignoring the negative prompt. '
+                    f'This inpaint pipeline has no negative_prompt argument.')
+            for name in list(pipeline_args):
+                if name not in sig.parameters:
+                    pipeline_args.pop(name)
         if (
                 "control_image" in sig.parameters
                 and "control_image" not in pipeline_args
@@ -278,6 +374,8 @@ class AdPipelineBase:
             
             crop_image = crop_image.resize(target_size, resampling)
             crop_mask = crop_mask.resize(target_size, resampling)
+            crop_image, crop_mask = self._align_flow_crop(crop_image, crop_mask)
+            target_size = crop_image.size
             
             # Process at scaled resolution
             inpaint_args = self._get_inpaint_args(pipeline_args)
@@ -319,13 +417,19 @@ class AdPipelineBase:
             return processed_image
         
         # Standard processing at original resolution (no scaling needed or no processing_size specified)
+        crop_image, crop_mask = self._align_flow_crop(crop_image, crop_mask)
         inpaint_args = self._get_inpaint_args(pipeline_args)
         inpaint_args["image"] = crop_image
         inpaint_args["mask_image"] = crop_mask
 
         if control_image is not None:
             if self.crop_control_image and init_image.size == control_image.size:
-                inpaint_args["control_image"] = control_image.crop(bbox_padded)
+                control_crop = control_image.crop(bbox_padded)
+                if control_crop.size != crop_image.size:
+                    control_crop = control_crop.resize(
+                        crop_image.size,
+                        _image.best_pil_resampling(control_crop.size, crop_image.size))
+                inpaint_args["control_image"] = control_crop
             else:
                 if init_image.size != control_image.size:
                     _messages.log(
@@ -343,5 +447,36 @@ class AdPipelineBase:
             device=device,
             prompt_weighter=prompt_weighter,
             **inpaint_args)
-        
-        return result[0][0]
+
+        return self._resize_inpaint_result(result[0][0], original_crop_size)
+
+    def _flow_inpaint_multiple(self) -> int | None:
+        name = self.inpaint_pipeline.__class__.__name__
+        if name.startswith(('Flux2', 'ZImage', 'QwenImage')):
+            return 16
+        return None
+
+    def _align_flow_crop(self, image: Image.Image, mask: Image.Image):
+        multiple = self._flow_inpaint_multiple()
+        if not multiple:
+            return image, mask
+        width, height = image.size
+        aligned = (
+            max(multiple, ((width + multiple - 1) // multiple) * multiple),
+            max(multiple, ((height + multiple - 1) // multiple) * multiple),
+        )
+        if aligned == image.size:
+            return image, mask
+        _messages.debug_log(
+            f'ADetailer aligning inpaint crop from {image.size} to {aligned} '
+            f'(multiple of {multiple})')
+        return (
+            image.resize(aligned, _image.best_pil_resampling(image.size, aligned)),
+            mask.resize(aligned, _image.best_pil_resampling(mask.size, aligned)),
+        )
+
+    @staticmethod
+    def _resize_inpaint_result(image: Image.Image, size: tuple[int, int]) -> Image.Image:
+        if image.size == size:
+            return image
+        return image.resize(size, _image.best_pil_resampling(image.size, size))

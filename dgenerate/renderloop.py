@@ -1394,13 +1394,15 @@ class RenderLoop:
         Copy one zipped frame onto the pipeline arguments.
 
         Flux.2 text-to-image has no img2img init. Those frames are references.
+        ``--adetailer-detectors`` is inpaint, so that seed stays the init image.
         ``reference=`` on an inpaint seed stays beside the init image and mask.
         A video in either slot was already zipped by the image-seed reader.
         """
         condition_images = (
             _pipelinewrapper.model_type_image_is_condition(self._c_config.model_type)
             and image_seed.images is not None
-            and image_seed.mask_images is None)
+            and image_seed.mask_images is None
+            and not self._c_config.adetailer_detector_uris)
 
         if condition_images:
             references = list(image_seed.images)

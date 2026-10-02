@@ -18,10 +18,18 @@ Currently adetailer supports these model types:
     * ``--model-type sd3``
     * ``--model-type flux``
     * ``--model-type flux-fill``
+    * ``--model-type flux2`` (Flux.2 Klein only)
+    * ``--model-type z-image``
+    * ``--model-type qwen-image``
+    * ``--model-type qwen-image-edit``
 
 
-In effect, adetailer is supported by most pipelines that support any kind of inpainting, except for
-DeepFloyd related model types.
+In effect, adetailer is supported by pipelines that have an inpaint class.
+DeepFloyd, full Flux.2, Flux.2 Klein KV, Z-Image Omni, Qwen-Image Layered,
+and Qwen edit-plus do not. Qwen guidance in the adetailer processor is true
+CFG, the same value as ``--guidance-scales``. Flux.2 Klein has no negative
+prompt. A detection crop on these flow models is aligned to a multiple of 16
+before the inpaint call.
 
 dgenerate's adetailer implementation can be used to very selectively detail specific detections, the
 implementation includes features that allow using different prompts and settings on different faces / hands in

@@ -1,0 +1,30 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Arbitrary image. The detector builds the mask. Do not put a mask in --image-seeds.
+# Base Z-Image follows guidance. Turbo at guidance 0 would not change the face.
+
+\setp gpu_memory_gib total_memory(unit='gib')
+
+{% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 24 %}
+    \set optimization --quantizer bnb;bits=4
+{% elif have_cuda() and have_feature('sdnq') and gpu_memory_gib > 24 %}
+    \set optimization --quantizer sdnq;type=int4
+{% else %}
+    \set optimization --model-sequential-offload
+{% endif %}
+
+
+Tongyi-MAI/Z-Image
+--model-type z-image {{ optimization }}
+--dtype bfloat16
+--scheduler FlowMatchEulerDiscreteScheduler
+--inference-steps 28
+--guidance-scales 4
+--image-seeds ../../../media/monalisa.png
+--adetailer-detectors Bingsu/adetailer;weight-name=face_yolov8n.pt
+--image-seed-strengths 0.8
+--gen-seeds 1
+--output-path z-image-mona-face-swap
+--output-size 800
+--prompts "woman smiling like a maniac"

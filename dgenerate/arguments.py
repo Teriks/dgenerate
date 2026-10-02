@@ -1258,7 +1258,11 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     the detection areas. This can be used for face detailing, face swapping, hand detailing, 
                     etc. on any arbitrary image provided using an image generation model of your choice.
                     
-                    This option supports: --model-type sd, sdxl, kolors, sd3, flux, and flux-fill
+                    This option supports: --model-type sd, sdxl, kolors, sd3, flux, flux-fill,
+                    flux2, z-image, qwen-image, and qwen-image-edit.
+                    
+                    Full Flux.2, Flux.2 Klein KV, Z-Image Omni, Qwen-Image Layered, and Qwen edit-plus
+                    have no inpaint pipeline, so adetailer is rejected for those checkpoints.
                     
                     NOWRAP!
                     Example: --adetailer-detectors Bingsu/adetailer;weight-name=face_yolov8n.pt

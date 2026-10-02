@@ -5,6 +5,7 @@
 .. _examples/ltx2/gguf: https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/ltx2/gguf
 .. _examples/qwen-image/gguf: https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/qwen-image/gguf
 .. _vermeer_canny_edged.png: https://raw.githubusercontent.com/Teriks/dgenerate/version_6.0.0/examples/media/vermeer_canny_edged.png
+.. _examples/adetailer/post_processor: https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/adetailer/post_processor
 .. _Phi-3_Mini_Abliterated_Q4_GGUF_by_failspy: https://huggingface.co/failspy/Phi-3-mini-128k-instruct-abliterated-v3-GGUF
 .. _Stable_Diffusion_Web_UI: https://github.com/AUTOMATIC1111/stable-diffusion-webui
 .. _CivitAI: https://civitai.com/
@@ -6770,6 +6771,19 @@ already aligned. The default sample size is 1024.
 is accepted on ``z-image`` and ``qwen-image`` only. See
 `Specifying ControlNets`_.
 
+Adetailer works where an inpaint pipeline exists: Flux.2 Klein, Z-Image,
+Qwen-Image, and Qwen-Image Edit. ``--adetailer-detectors`` takes an
+``--image-seeds`` image and no mask, and inpaints each detection.
+``--post-processors adetailer`` does the same on the image just generated.
+Full Flux.2, Klein KV, Z-Image Omni, Qwen-Image Layered, and Qwen edit-plus
+have no inpaint pipeline, so adetailer is rejected. Qwen still uses true CFG.
+Flux.2 Klein still has no negative prompt. A detection crop is aligned to a
+multiple of 16 before that inpaint call. Generated images are under
+`examples/adetailer/post_processor <examples/adetailer/post_processor_>`_.
+An image you already have is under
+`examples/adetailer/arbitrary_image <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/adetailer/arbitrary_image>`_.
+Flux.2 Klein, Z-Image, and Qwen-Image each have both.
+
 ``--model-cpu-offload``, ``--model-sequential-offload``, and
 ``--model-group-offload`` are mutually exclusive. Group offload keeps weights
 in CPU memory, so the pipeline cache still counts them. BitsAndBytes, SDNQ,
@@ -10497,10 +10511,18 @@ Currently adetailer supports these model types:
     * ``--model-type sd3``
     * ``--model-type flux``
     * ``--model-type flux-fill``
+    * ``--model-type flux2`` (Flux.2 Klein only)
+    * ``--model-type z-image``
+    * ``--model-type qwen-image``
+    * ``--model-type qwen-image-edit``
 
 
-In effect, adetailer is supported by most pipelines that support any kind of inpainting, except for
-DeepFloyd related model types.
+In effect, adetailer is supported by pipelines that have an inpaint class.
+DeepFloyd, full Flux.2, Flux.2 Klein KV, Z-Image Omni, Qwen-Image Layered,
+and Qwen edit-plus do not. Qwen guidance in the adetailer processor is true
+CFG, the same value as ``--guidance-scales``. Flux.2 Klein has no negative
+prompt. A detection crop on these flow models is aligned to a multiple of 16
+before the inpaint call.
 
 dgenerate's adetailer implementation can be used to very selectively detail specific detections, the
 implementation includes features that allow using different prompts and settings on different faces / hands in
@@ -10518,7 +10540,7 @@ has taken place prior with a supported ``--model-type`` value involved.
 
 The adetailer image processor has many options and it is recommended to take a look at the output of
 ``dgenerate --image-processor-help adetailer`` and view the examples located at
-`examples/adetailer/post_processor <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/adetailer/post_processor>`_
+`examples/adetailer/post_processor <examples/adetailer/post_processor_>`_
 for usage information.
 
 

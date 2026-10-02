@@ -846,6 +846,111 @@ class TestFlowImagePipelines(unittest.TestCase):
         warning.assert_called_once()
         self.assertIn('of 3', warning.call_args.args[0])
 
+    def test_adetailer_inpaint_where_it_exists(self):
+        import PIL.Image
+
+        from dgenerate.extras.asdff.base import AdPipelineBase, adetailer_flow_inpaint_spec
+
+        klein = adetailer_flow_inpaint_spec('Flux2KleinPipeline')
+        self.assertIs(klein.pipeline_class, diffusers.Flux2KleinInpaintPipeline)
+        self.assertFalse(klein.negative_prompt)
+        self.assertTrue(klein.distilled_from_config)
+        self.assertIs(
+            adetailer_flow_inpaint_spec('ZImageControlNetPipeline').pipeline_class,
+            diffusers.ZImageInpaintPipeline)
+        qwen = adetailer_flow_inpaint_spec('QwenImagePipeline')
+        self.assertIs(qwen.pipeline_class, diffusers.QwenImageInpaintPipeline)
+        self.assertTrue(qwen.qwen_guidance)
+        edit = adetailer_flow_inpaint_spec('QwenImageEditPipeline')
+        self.assertIs(edit.pipeline_class, diffusers.QwenImageEditInpaintPipeline)
+        self.assertTrue(edit.needs_processor)
+        self.assertIsNone(adetailer_flow_inpaint_spec('FluxPipeline'))
+        self.assertTrue(_pipelinewrapper.model_type_supports_adetailer('z-image'))
+        self.assertTrue(_pipelinewrapper.model_type_supports_adetailer('flux2'))
+        self.assertFalse(_pipelinewrapper.model_type_supports_adetailer('z-image-omni'))
+        self.assertFalse(_pipelinewrapper.model_type_supports_adetailer('qwen-image-layered'))
+        self.assertFalse(_pipelinewrapper.model_type_supports_adetailer('flux2-klein-kv'))
+
+        for name, needle in (
+                ('Flux2Pipeline', 'Klein'),
+                ('Flux2KleinKVPipeline', 'Klein KV'),
+                ('ZImageOmniPipeline', 'Omni'),
+                ('QwenImageLayeredPipeline', 'Layered'),
+                ('QwenImageEditPlusPipeline', 'edit-plus'),
+        ):
+            with self.assertRaises(_pipelines.UnsupportedPipelineConfigError) as raised:
+                adetailer_flow_inpaint_spec(name)
+            self.assertIn(needle, str(raised.exception))
+
+        beach = 'examples/media/beach.jpg'
+        detector = ['Bingsu/adetailer;weight-name=face_yolov8n.pt']
+        for model_path, model_type in (
+                ('black-forest-labs/FLUX.2-klein-4B', _pipelinewrapper.ModelType.FLUX2),
+                ('Tongyi-MAI/Z-Image-Turbo', _pipelinewrapper.ModelType.Z_IMAGE),
+                ('Qwen/Qwen-Image', _pipelinewrapper.ModelType.QWEN_IMAGE),
+                ('Qwen/Qwen-Image-Edit', _pipelinewrapper.ModelType.QWEN_IMAGE_EDIT),
+        ):
+            _config(
+                model_path=model_path,
+                model_type=model_type,
+                image_seeds=[beach],
+                image_seed_strengths=[0.4],
+                adetailer_detector_uris=detector,
+                prompts=['a face']).check()
+
+        for model_path, model_type in (
+                ('Tongyi-MAI/Z-Image-Turbo', _pipelinewrapper.ModelType.Z_IMAGE_OMNI),
+                ('Qwen/Qwen-Image-Layered', _pipelinewrapper.ModelType.QWEN_IMAGE_LAYERED),
+                ('black-forest-labs/FLUX.2-klein-9b-kv', _pipelinewrapper.ModelType.FLUX2_KLEIN_KV),
+        ):
+            with self.assertRaises(_renderloopconfig.RenderLoopConfigError) as raised:
+                _config(
+                    model_path=model_path,
+                    model_type=model_type,
+                    image_seeds=[beach],
+                    adetailer_detector_uris=detector,
+                    prompts=['a face']).check()
+            self.assertIn('no inpaint', str(raised.exception))
+
+        class Flux2KleinInpaintPipeline:
+            def __call__(
+                    self, image=None, mask_image=None, prompt=None,
+                    strength=None, guidance_scale=None, height=None, width=None):
+                return None
+
+        pipe = AdPipelineBase(Flux2KleinInpaintPipeline())
+        pipe.auto_detect_pipe = False
+        prepared = pipe._get_inpaint_args({
+            'prompt': 'a face',
+            'negative_prompt': 'blur',
+            'width': 1024,
+            'height': 1024,
+            'strength': 0.4,
+            'guidance_scale': 1.0,
+        })
+        self.assertNotIn('negative_prompt', prepared)
+        self.assertNotIn('width', prepared)
+        self.assertNotIn('height', prepared)
+        self.assertEqual(prepared['strength'], 0.4)
+
+        image = PIL.Image.new('RGB', (30, 20), 'red')
+        mask = PIL.Image.new('L', (30, 20), 255)
+        captured = {}
+
+        def fake_call(pipeline, device, prompt_weighter=None, **kwargs):
+            captured['size'] = kwargs['image'].size
+            captured['mask'] = kwargs['mask_image'].size
+            self.assertNotIn('width', kwargs)
+            return [[kwargs['image']]]
+
+        with patch('dgenerate.extras.asdff.base._pipelinewrapper.call_pipeline', fake_call):
+            result = pipe.process_inpainting(
+                {'prompt': 'a face', 'width': 64, 'height': 64},
+                image, None, mask, (0, 0, 30, 20), 'cpu')
+        self.assertEqual(captured['size'], (32, 32))
+        self.assertEqual(captured['mask'], (32, 32))
+        self.assertEqual(result.size, (30, 20))
+
 
 if __name__ == '__main__':
     unittest.main()

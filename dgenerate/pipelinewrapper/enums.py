@@ -553,7 +553,8 @@ def model_type_image_is_condition(model_type: ModelType | str) -> bool:
     An ``--image-seeds`` value with no mask is a condition image, not img2img.
 
     There is no strength. Flux.2 references, Klein KV, Z-Image Omni, Qwen edit,
-    and Qwen layered work this way.
+    and Qwen layered work this way. ``--adetailer-detectors`` is the exception:
+    that seed is the image being inpainted.
     """
     model_type = get_model_type_enum(model_type)
     return model_type in {
@@ -563,6 +564,39 @@ def model_type_image_is_condition(model_type: ModelType | str) -> bool:
         ModelType.QWEN_IMAGE_EDIT,
         ModelType.QWEN_IMAGE_LAYERED,
     }
+
+
+_ADETAILER_INPAINT_MODEL_TYPES = frozenset({
+    ModelType.SD,
+    ModelType.SDXL,
+    ModelType.KOLORS,
+    ModelType.SD3,
+    ModelType.FLUX,
+    ModelType.FLUX_FILL,
+    ModelType.FLUX2,
+    ModelType.Z_IMAGE,
+    ModelType.QWEN_IMAGE,
+    ModelType.QWEN_IMAGE_EDIT,
+})
+
+ADETAILER_INPAINT_MODEL_TYPES = (
+    'sd, sdxl, kolors, sd3, flux, flux-fill, flux2, z-image, qwen-image, and qwen-image-edit'
+)
+
+ADETAILER_NO_INPAINT = (
+    'Full Flux.2, Flux.2 Klein KV, Z-Image Omni, Qwen-Image Layered, and Qwen edit-plus '
+    'have no inpaint pipeline.'
+)
+
+
+def model_type_supports_adetailer(model_type: ModelType | str) -> bool:
+    """
+    True when adetailer may load an inpaint pipeline for this model type.
+
+    ``flux2`` is included because Klein has an inpaint pipeline. A full Flux.2
+    checkpoint is rejected later, once ``model_index.json`` is known.
+    """
+    return get_model_type_enum(model_type) in _ADETAILER_INPAINT_MODEL_TYPES
 
 
 def model_type_is_flow_image(model_type: ModelType | str) -> bool:

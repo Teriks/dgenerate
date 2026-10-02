@@ -2339,17 +2339,11 @@ class RenderLoopConfig(_types.SetFromMixin):
             raise RenderLoopConfigError(
                 f'May not use {bad_adetailer_args} without {a_namer("adetailer_detector_uris")}.')
 
-        if self.adetailer_detector_uris and self.model_type not in {
-            _pipelinewrapper.ModelType.SD,
-            _pipelinewrapper.ModelType.SDXL,
-            _pipelinewrapper.ModelType.KOLORS,
-            _pipelinewrapper.ModelType.SD3,
-            _pipelinewrapper.ModelType.FLUX,
-            _pipelinewrapper.ModelType.FLUX_FILL
-        }:
+        if self.adetailer_detector_uris and not _pipelinewrapper.model_type_supports_adetailer(self.model_type):
             raise RenderLoopConfigError(
                 f'{a_namer("adetailer_detector_uris")} is only compatible with '
-                f'{a_namer("model_type")} sd, sdxl, kolors, sd3, and flux')
+                f'{a_namer("model_type")} {_pipelinewrapper.ADETAILER_INPAINT_MODEL_TYPES}. '
+                f'{_pipelinewrapper.ADETAILER_NO_INPAINT}')
 
         if self.adetailer_detector_uris and self.is_output_latents():
             raise RenderLoopConfigError(
@@ -3333,6 +3327,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                     'Text-to-image references are the seed images themselves.')
 
         if (_pipelinewrapper.model_type_image_is_condition(self.model_type)
+                and not self.adetailer_detector_uris
                 and user_provided_image_seed_strengths
                 and any(p.images and not p.mask_images for p in parsed_image_seeds)):
             raise RenderLoopConfigError(
@@ -3340,6 +3335,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'There is no img2img strength.')
 
         if (_pipelinewrapper.model_type_image_is_condition(self.model_type)
+                and not self.adetailer_detector_uris
                 and image_seed_strengths_default_set
                 and parsed_image_seeds
                 and all(p.images and not p.mask_images for p in parsed_image_seeds)):
