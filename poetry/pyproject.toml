@@ -22,7 +22,7 @@ DeepCache = "0.1.1"
 patchmatch-cython = "^0.1.5"
 dynamicprompts = "0.31.0"
 spacy = "3.8.16"
-dgenerate-ultralytics-headless = {version = "8.4.160", platform = "not_darwin"}
+ultralytics-opencv-headless = {version = "8.4.160", platform = "not_darwin"}
 langcodes = "^3.5.1"
 pytorch-lightning = "^2.6.6"
 lightning-utilities = "^0.15.3"
