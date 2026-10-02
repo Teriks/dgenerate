@@ -2,7 +2,7 @@
 #! dgenerate 6.0.0
 
 # Arbitrary image. The detector builds the mask. Do not put a mask in --image-seeds.
-# Base Z-Image follows guidance. Turbo at guidance 0 would not change the face.
+# Strength near 1 redraws the crop as a new picture. 0.4 keeps the Mona Lisa face.
 
 \setp gpu_memory_gib total_memory(unit='gib')
 
@@ -23,7 +23,7 @@ Tongyi-MAI/Z-Image
 --guidance-scales 4
 --image-seeds ../../../media/monalisa.png
 --adetailer-detectors Bingsu/adetailer;weight-name=face_yolov8n.pt
---image-seed-strengths 0.8
+--image-seed-strengths 0.4
 --gen-seeds 1
 --output-path z-image-mona-face-swap
 --output-size 800

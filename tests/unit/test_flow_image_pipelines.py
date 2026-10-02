@@ -940,16 +940,42 @@ class TestFlowImagePipelines(unittest.TestCase):
         def fake_call(pipeline, device, prompt_weighter=None, **kwargs):
             captured['size'] = kwargs['image'].size
             captured['mask'] = kwargs['mask_image'].size
-            self.assertNotIn('width', kwargs)
+            captured['width'] = kwargs['width']
+            captured['height'] = kwargs['height']
             return [[kwargs['image']]]
 
         with patch('dgenerate.extras.asdff.base._pipelinewrapper.call_pipeline', fake_call):
             result = pipe.process_inpainting(
                 {'prompt': 'a face', 'width': 64, 'height': 64},
                 image, None, mask, (0, 0, 30, 20), 'cpu')
-        self.assertEqual(captured['size'], (32, 32))
-        self.assertEqual(captured['mask'], (32, 32))
+        self.assertGreaterEqual(max(captured['size']), 1024)
+        self.assertEqual(captured['mask'], captured['size'])
+        self.assertEqual(captured['width'], captured['size'][0])
+        self.assertEqual(captured['height'], captured['size'][1])
+        self.assertEqual(captured['width'] % 16, 0)
+        self.assertEqual(captured['height'] % 16, 0)
         self.assertEqual(result.size, (30, 20))
+
+    def test_qwen_quant_keeps_modulation_full_precision(self):
+        import diffusers
+
+        from dgenerate.pipelinewrapper.quant_skips import apply_architecture_quant_skips
+
+        bnb = diffusers.BitsAndBytesConfig(load_in_4bit=True)
+        apply_architecture_quant_skips(bnb, diffusers.QwenImageTransformer2DModel)
+        skipped = bnb.llm_int8_skip_modules
+        self.assertIn('norm_out', skipped)
+        self.assertIn('proj_out', skipped)
+        self.assertIn('time_text_embed', skipped)
+        self.assertIn('transformer_blocks.0.img_mod.1', skipped)
+        self.assertIn('transformer_blocks.0.txt_mod.1', skipped)
+
+        class Config:
+            modules_to_not_convert = []
+
+        sdnq = Config()
+        apply_architecture_quant_skips(sdnq, 'QwenImageTransformer2DModel')
+        self.assertIn('transformer_blocks.0.txt_mod.1.weight', sdnq.modules_to_not_convert)
 
 
 if __name__ == '__main__':

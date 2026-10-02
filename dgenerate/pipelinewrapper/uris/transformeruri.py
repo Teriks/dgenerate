@@ -284,6 +284,10 @@ class TransformerUri:
                 # A second SDNQConfig would quantize the checkpoint again.
                 quant_config = None
 
+        if quant_config is not None:
+            from dgenerate.pipelinewrapper.quant_skips import apply_architecture_quant_skips
+            apply_architecture_quant_skips(quant_config, transformer_class)
+
         if _hfhub.is_single_file_model_load(model_path):
             try:
                 original_config = _hfhub.download_non_hf_slug_config(
