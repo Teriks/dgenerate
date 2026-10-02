@@ -146,6 +146,11 @@ The syntax that ``sd-embed`` uses is the more wide spread prompt syntax used by 
 Quite notably, the ``sd-embed`` prompt weighter supports Stable Diffusion 3 and Flux, where
 as the ``compel`` prompt weighter currently does not.
 
+Flux.2, Flux.2 Klein KV, Z-Image, Z-Image Omni, Qwen-Image, Qwen-Image Edit, and
+Qwen-Image Layered do not support prompt weighters. Those text encoders read a
+chat template, not CLIP or T5 tokens, so ``--prompt-weighter`` is an error for
+those ``--model-type`` values.
+
 
 .. code-block:: bash
 

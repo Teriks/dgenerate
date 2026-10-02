@@ -7,7 +7,7 @@ order: 7
 @dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"], "default":"float16"}]
 @dropdown[{"label":"Model variant", "arg":"--variant", "options":["fp16", "bf16"], "default":"fp16"}]
 --scheduler LCMScheduler
-@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"], "default":0}]
+@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":0}]
 @quantizer[{"divider-after":true}]
 @checkboxwithtwointargs[{"id": "dc", "label":"Use DeepCache", "int1-label": "DeepCache Interval", "int1-arg":"--deep-cache-intervals", "int1":5, "int1-min":1, "int2-label":"DeepCache Branch ID", "int2":1, "int2-arg": "--deep-cache-branch-ids", "int2-min":0}]
 @conditionalcheckboxes[{"id": "hd", "labels":["Use HiDiffusion", "HiDiffusion No Window Attention", "HiDiffusion No RAUNet"], "args":["--hi-diffusion", "--hi-diffusion-no-win-attn", "--hi-diffusion-no-raunet"]}]

@@ -12,6 +12,8 @@ ControlNet models are supported for these model types:
     * ``--model-type kolors``
     * ``--model-type sd3`` (img2img and inpainting not supported)
     * ``--model-type flux``
+    * ``--model-type z-image`` (one ControlNet union; text-to-image and inpaint)
+    * ``--model-type qwen-image`` (text-to-image and inpaint; more than one ControlNet is allowed)
 
 You can provide a huggingface repository slug / blob link, .pt, .pth, .bin, .ckpt, or .safetensors files.
 

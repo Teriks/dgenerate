@@ -1,0 +1,27 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Edit-plus. images: passes every file in one call. No strength.
+
+\setp gpu_memory_gib total_memory(unit='gib')
+
+{% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 24 %}
+    \set optimization --quantizer bnb;bits=4
+{% elif have_cuda() and have_feature('sdnq') and gpu_memory_gib > 24 %}
+    \set optimization --quantizer sdnq;type=int4
+{% else %}
+    \set optimization --model-sequential-offload
+{% endif %}
+
+
+Qwen/Qwen-Image-Edit-2509
+--model-type qwen-image-edit {{ optimization }}
+--dtype bfloat16
+--scheduler FlowMatchEulerDiscreteScheduler
+--inference-steps 40
+--guidance-scales 4
+--image-seeds "images: ../../media/beach.jpg, ../../media/horse1.jpg"
+--gen-seeds 1
+--output-path qwen-image-edit-plus
+--output-size 1024
+--prompts "Put the horse on the beach"

@@ -2,6 +2,9 @@
 .. _examples/ltx/ltx2: https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/ltx/ltx2
 .. _examples/ltx/ltx_video/video-extension-config.dgen: https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx/ltx_video/video-extension-config.dgen
 .. _examples/ltx/ltx_video/lora-config.dgen: https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/ltx/ltx_video/lora-config.dgen
+.. _examples/flux2: https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/flux2
+.. _examples/z-image: https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/z-image
+.. _examples/qwen-image: https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/qwen-image
 .. _vermeer_canny_edged.png: https://raw.githubusercontent.com/Teriks/dgenerate/version_6.0.0/examples/media/vermeer_canny_edged.png
 .. _Phi-3_Mini_Abliterated_Q4_GGUF_by_failspy: https://huggingface.co/failspy/Phi-3-mini-128k-instruct-abliterated-v3-GGUF
 .. _Stable_Diffusion_Web_UI: https://github.com/AUTOMATIC1111/stable-diffusion-webui
@@ -53,9 +56,10 @@ Help Output
                      [-rer CSV_INT [CSV_INT ...]] [-rme RAS_METRIC [RAS_METRIC ...]]
                      [-rst INTEGER [INTEGER ...]] [-res INTEGER [INTEGER ...]] [-rsn INTEGER [INTEGER ...]]
                      [-rsl INTEGER [INTEGER ...]] [-pag] [-pags FLOAT [FLOAT ...]] [-pagas FLOAT [FLOAT ...]]
-                     [-rpag] [-rpags FLOAT [FLOAT ...]] [-rpagas FLOAT [FLOAT ...]] [-mqo | -mco] [-mqo2 |
-                     -mco2] [--s-cascade-decoder MODEL_URI] [--sdxl-refiner MODEL_URI] [--sdxl-refiner-edit]
-                     [--sdxl-t2i-adapter-factors FLOAT [FLOAT ...]] [--sdxl-aesthetic-scores FLOAT [FLOAT ...]]
+                     [-rpag] [-rpags FLOAT [FLOAT ...]] [-rpagas FLOAT [FLOAT ...]] [-mqo | -mco | -mgo]
+                     [-mqo2 | -mco2 | -mgo2] [--s-cascade-decoder MODEL_URI] [--sdxl-refiner MODEL_URI]
+                     [--sdxl-refiner-edit] [--sdxl-t2i-adapter-factors FLOAT [FLOAT ...]]
+                     [--sdxl-aesthetic-scores FLOAT [FLOAT ...]]
                      [--sdxl-crops-coords-top-left COORD [COORD ...]] [--sdxl-original-sizes SIZE [SIZE ...]]
                      [--sdxl-target-sizes SIZE [SIZE ...]] [--sdxl-negative-aesthetic-scores FLOAT [FLOAT ...]]
                      [--sdxl-negative-original-sizes SIZE [SIZE ...]]
@@ -84,9 +88,14 @@ Help Output
                      [--prompt-upscaler-help [PROMPT_UPSCALER_NAMES ...]] [-p PROMPT [PROMPT ...]]
                      [--second-prompts PROMPT [PROMPT ...]] [--third-prompts PROMPT [PROMPT ...]]
                      [--second-model-prompts PROMPT [PROMPT ...]]
-                     [--second-model-second-prompts PROMPT [PROMPT ...]] [--max-sequence-length INTEGER]
-                     [-cs INTEGER [INTEGER ...]] [-se SEED [SEED ...] | -gse COUNT] [-sei] [-af FORMAT]
-                     [-if FORMAT] [-nf] [-fs FRAME_NUMBER] [-fe FRAME_NUMBER] [-is SEED [SEED ...]]
+                     [--second-model-second-prompts PROMPT [PROMPT ...]]
+                     [--flux2-caption-upsample-temperature FLOAT] [--flux2-text-encoder-out-layers LAYERS]
+                     [--z-image-cfg-normalization] [--z-image-cfg-truncation FLOAT]
+                     [--qwen-guidance-scale FLOAT] [--qwen-layered-layers INTEGER]
+                     [--qwen-layered-resolution INTEGER] [--qwen-layered-cfg-normalize]
+                     [--qwen-layered-use-en-prompt] [--max-sequence-length INTEGER] [-cs INTEGER [INTEGER ...]]
+                     [-se SEED [SEED ...] | -gse COUNT] [-sei] [-af FORMAT] [-if FORMAT] [-nf]
+                     [-fs FRAME_NUMBER] [-fe FRAME_NUMBER] [-is SEED [SEED ...]]
                      [-sip PROCESSOR_URI [PROCESSOR_URI ...]] [-mip PROCESSOR_URI [PROCESSOR_URI ...]]
                      [-cip PROCESSOR_URI [PROCESSOR_URI ...]] [--image-processor-help [PROCESSOR_NAME ...]]
                      [-pp PROCESSOR_URI [PROCESSOR_URI ...]] [-iss FLOAT [FLOAT ...] |
@@ -226,8 +235,9 @@ Help Output
       -mt, --model-type MODEL_TYPE
             Use when loading different model types. Currently supported: sd, pix2pix, sdxl, sdxl-pix2pix,
             kolors, upscaler-x2, upscaler-x4, if, ifs, ifs-img2img, s-cascade, sd3, sd3-pix2pix, flux,
-            flux-fill, flux-kontext, or ltx. (default: sd)
-            ----------------------------------------------
+            flux-fill, flux-kontext, flux2, flux2-klein-kv, z-image, z-image-omni, qwen-image, qwen-image-edit,
+            qwen-image-layered, or ltx. (default: sd)
+            -----------------------------------------
       -rev, --revision BRANCH
             The model revision to use when loading from a Hugging Face repository, (The Git branch / tag,
             default is "main")
@@ -591,7 +601,8 @@ Help Output
             will be used for the SDXL refiner, or Stable Cascade decoder model.
             -------------------------------------------------------------------
       -tf, --transformer TRANSFORMER_URI
-            Specify a Stable Diffusion 3, Flux, or LTX Transformer model using a URI. ``--model-type ltx``
+            Specify a Stable Diffusion 3, Flux, Flux.2, Flux.2 Klein KV, Z-Image, Z-Image Omni, Qwen-Image,
+            Qwen-Image edit, Qwen-Image layered, or LTX Transformer model using a URI. ``--model-type ltx``
             accepts one replacement diffusion transformer.
             
             Examples:
@@ -1648,24 +1659,36 @@ Help Output
       -mqo, --model-sequential-offload
             Force sequential model offloading for the main pipeline, this may drastically reduce memory
             consumption and allow large models to run when they would otherwise not fit in your GPUs VRAM.
-            Inference will be much slower. Mutually exclusive with --model-cpu-offload
-            --------------------------------------------------------------------------
+            Inference will be much slower. Mutually exclusive with --model-cpu-offload and --model-group-offload
+            ----------------------------------------------------------------------------------------------------
       -mco, --model-cpu-offload
             Force model cpu offloading for the main pipeline, this may reduce memory consumption and allow large
             models to run when they would otherwise not fit in your GPUs VRAM. Inference will be slower.
-            Mutually exclusive with --model-sequential-offload
-            --------------------------------------------------
+            Mutually exclusive with --model-sequential-offload and --model-group-offload
+            ----------------------------------------------------------------------------
+      -mgo, --model-group-offload
+            Offload the main pipeline one layer group at a time. This uses less VRAM than --model-cpu-offload
+            and less time than --model-sequential-offload. Weights stay in CPU memory, and CUDA or XPU overlaps
+            the next layer copy with the current one. BitsAndBytes, SDNQ, and other quantized modules are left
+            where they were loaded. Mutually exclusive with --model-cpu-offload and --model-sequential-offload
+            --------------------------------------------------------------------------------------------------
       -mqo2, --second-model-sequential-offload
             Force sequential model offloading for the SDXL Refiner or Stable Cascade Decoder pipeline, this may
             drastically reduce memory consumption and allow large models to run when they would otherwise not
             fit in your GPUs VRAM. Inference will be much slower. Mutually exclusive with
-            --second-model-cpu-offload
-            --------------------------
+            --second-model-cpu-offload and --second-model-group-offload
+            -----------------------------------------------------------
       -mco2, --second-model-cpu-offload
             Force model cpu offloading for the SDXL Refiner or Stable Cascade Decoder pipeline, this may reduce
             memory consumption and allow large models to run when they would otherwise not fit in your GPUs
-            VRAM. Inference will be slower. Mutually exclusive with --second-model-sequential-offload
-            -----------------------------------------------------------------------------------------
+            VRAM. Inference will be slower. Mutually exclusive with --second-model-sequential-offload and
+            --second-model-group-offload
+            ----------------------------
+      -mgo2, --second-model-group-offload
+            Offload the SDXL Refiner or Stable Cascade Decoder pipeline one layer group at a time. Weights stay
+            in CPU memory. Quantized modules are left where they were loaded. Mutually exclusive with
+            --second-model-cpu-offload and --second-model-sequential-offload
+            ----------------------------------------------------------------
       --s-cascade-decoder MODEL_URI
             Specify a Stable Cascade (s-cascade) decoder model path using a URI. This should be a Hugging Face
             repository slug / blob link, path to model file on disk (for example, a .pt, .pth, .bin, .ckpt, or
@@ -2076,6 +2099,39 @@ Help Output
             second text encoder, this argument overrides that with a prompt of your choosing. The negative
             prompt component can be specified with the same syntax as --prompts
             -------------------------------------------------------------------
+      --flux2-caption-upsample-temperature FLOAT
+            Caption upsampling temperature for full Flux.2. Omitting it leaves upsampling off. Flux.2 Klein does
+            not accept this argument.
+            -------------------------
+      --flux2-text-encoder-out-layers LAYERS
+            Comma-separated Flux.2 text-encoder layer indexes, like 10,20,30. Omitting it keeps the pipeline
+            default: 10,20,30 for full Flux.2 and 9,18,27 for Klein.
+            --------------------------------------------------------
+      --z-image-cfg-normalization
+            Enable Z-Image classifier-free guidance normalization. Omitting it leaves normalization off.
+            --------------------------------------------------------------------------------------------
+      --z-image-cfg-truncation FLOAT
+            Z-Image classifier-free guidance truncation. Omitting it keeps 1, which applies guidance for the
+            whole schedule.
+            ---------------
+      --qwen-guidance-scale FLOAT
+            Distilled guidance embedded in the Qwen-Image transformer. Omitting it leaves that guidance unset.
+            --guidance-scales remains the true CFG scale.
+            ---------------------------------------------
+      --qwen-layered-layers INTEGER
+            How many layers Qwen-Image layered writes. Omitting it keeps 4. Only for --model-type
+            qwen-image-layered.
+            -------------------
+      --qwen-layered-resolution INTEGER
+            Square resolution bucket for Qwen-Image layered: 640 or 1024. Omitting it keeps 640. Only for
+            --model-type qwen-image-layered.
+            --------------------------------
+      --qwen-layered-cfg-normalize
+            Enable CFG normalization for Qwen-Image layered. Omitting it leaves normalization off.
+            --------------------------------------------------------------------------------------
+      --qwen-layered-use-en-prompt
+            Ask Qwen-Image layered to treat the prompt as English. Omitting it leaves that off.
+            -----------------------------------------------------------------------------------
       --max-sequence-length INTEGER
             The maximum amount of prompt tokens sent to the text encoder. For Stable Diffusion 3 and Flux this
             is the T5 encoder, an integer between 1 and 512 inclusive (default: 256 for SD3, 512 for Flux). For
@@ -2318,6 +2374,10 @@ Help Output
             cropped to the bounds of their masks (plus any padding) before processing, then the generated result
             will be pasted back onto the original uncropped image. This allows inpainting at higher effective
             resolutions for better quality results.
+            
+            Klein inpaint and Qwen inpaint accept one padding integer as padding_mask_crop. With one integer and
+            no feather or masked paste, that pipeline crops and pastes. A two-sided or four-sided padding, a
+            feather, or masked paste stays on this crop.
             
             Cannot be used with image seed batching (--image-seeds with multiple images/masks in the
             definition).
@@ -4142,8 +4202,8 @@ Repository: ``Lightricks/LTX-2.5-Diffusers``.
 
 Width and height must be divisible by 32.
 
-``--model-sequential-offload`` and ``--model-cpu-offload`` work the same way they
-do for image models. The examples under `examples/ltx/ltx2 <examples/ltx/ltx2_>`_
+``--model-sequential-offload``, ``--model-cpu-offload``, and ``--model-group-offload``
+work the same way they do for image models. The examples under `examples/ltx/ltx2 <examples/ltx/ltx2_>`_
 use the published
 repository as-is. ``--ltx-latent-upscale`` runs the two-stage sampler in that
 same generation: a half-resolution pass, the checkpoint latent upsampler, then
@@ -4616,6 +4676,173 @@ control processors to one.
 
 LTX-2.5 configs are in `examples/ltx/ltx2 <examples/ltx/ltx2_>`_,
 and LTX-Video configs are in `examples/ltx/ltx_video <https://github.com/Teriks/dgenerate/tree/version_6.0.0/examples/ltx/ltx_video>`_.
+
+.. _flow-image-models:
+
+Flux.2, Z-Image, and Qwen-Image
+===============================
+
+``--model-type flux2``, ``z-image``, and ``qwen-image`` are flow-matching
+image models. Each one has a single text encoder. LoRAs load with ``--loras``
+and are fused the same way as Flux.1. Pixel width and height snap down to a
+multiple of 16 before the pipeline call, because latents are packed into 2x2
+patches. 1024 is already aligned. The default sample size is 1024.
+
+``--t2i-adapters``, ``--ip-adapters``, ``--pag``, ``--clip-skips``,
+``--sdxl-refiner``, and ``--prompt-weighter`` are rejected. ``--control-nets``
+is accepted on ``z-image`` and ``qwen-image``.
+
+``--model-cpu-offload``, ``--model-sequential-offload``, and
+``--model-group-offload`` are mutually exclusive. Group offload keeps weights
+in CPU memory, so the pipeline cache still counts them. BitsAndBytes, SDNQ,
+and other quantized modules stay where they were loaded. On a Z-Image
+ControlNet the transformer is offloaded before the ControlNet, because those
+two objects share modules.
+
+Flux.2
+------
+
+``--model-type flux2`` covers both full Flux.2 and Flux.2 Klein. The checkpoint
+``model_index.json`` class name selects which one. Klein is not a separate
+``--model-type``.
+
+* Text to image, full Flux.2: ``black-forest-labs/FLUX.2-dev``. Guidance 4, 50 steps.
+  Gated. ``--image-seeds`` with no mask is a reference image (or a reference video),
+  passed as ``image``. There is no strength. ``--image-seed-strengths`` is an error.
+* Text to image, Klein: ``black-forest-labs/FLUX.2-klein-base-9B``. Guidance 4, 50 steps.
+  Gated. There is no img2img class and no strength. References work the same way.
+* Inpaint, Klein only: the same Klein repo, with ``--image-seeds "image.png;mask.png"``.
+  Strength defaults to 0.8. ``reference=`` in that seed is ``image_reference``.
+  A reference video is zipped with the inpaint clip, one frame at a time.
+
+Full Flux.2 encodes prompts with Mistral. Klein encodes them with Qwen3.
+A distilled Klein checkpoint ignores ``--guidance-scales`` above 1. Neither
+pipeline takes a negative prompt.
+
+Examples: `examples/flux2 <examples/flux2_>`_.
+
+Z-Image
+-------
+
+``--model-type z-image`` is text to image, img2img, and inpaint.
+
+* Turbo: ``Tongyi-MAI/Z-Image-Turbo``. 8 steps, ``--guidance-scales 0``. Public.
+* Base: ``Tongyi-MAI/Z-Image``. Public. The 2-step LoRA is a normal ``--loras``
+  load, not a new model type:
+
+  .. code-block::
+
+      --loras "alibaba-pai/Z-Image-Fun-Lora-Distill;weight-name=Z-Image-Fun-Lora-Distill-2-Steps-2603.safetensors;scale=1.0"
+      --inference-steps 2
+      --guidance-scales 1
+
+* Set ``--image-seed-strengths 0.6`` for img2img. That is the pipeline's own
+  default. If the option is omitted, dgenerate uses 0.8.
+* Set ``--image-seed-strengths 1`` for inpaint. The mask blends the encoded
+  image. It is not concatenated into the transformer.
+
+Classifier-free guidance is on when guidance is greater than 0. A negative
+prompt is optional.
+
+Prequantized SDNQ Turbo is ``Disty0/Z-Image-Turbo-SDNQ-uint4-svd-r32``
+(uint4, SVD rank 32). Do not pass ``--quantizer sdnq`` to it. That quantizes
+again. A full-precision repo with ``--quantizer sdnq`` still quantizes on load.
+``--transformer`` may point at an SDNQ transformer directory; detection uses
+that directory, not only the pipeline repo. The installed ``sdnq`` package
+reads this checkpoint's ``quantization_config.json``.
+
+ControlNet unions are ``--control-nets`` on ``z-image`` only, one model.
+Text to image uses
+``Z-Image-Turbo-Fun-Controlnet-Union.safetensors`` from
+``alibaba-pai/Z-Image-Turbo-Fun-Controlnet-Union``. Inpaint uses
+``Z-Image-Turbo-Fun-Controlnet-Union-2.0.safetensors`` from
+``alibaba-pai/Z-Image-Turbo-Fun-Controlnet-Union-2.0``. The inpaint pipeline
+rejects the 1.0 union. There is no img2img ControlNet class. The pipeline
+rebuilds the ControlNet with ``from_transformer`` against the loaded
+transformer, so both are loaded together. ``scale=0.75`` matches the pipeline
+default.
+
+Examples: `examples/z-image <examples/z-image_>`_.
+
+Qwen-Image
+----------
+
+``--model-type qwen-image`` is text to image, img2img, and inpaint on
+``Qwen/Qwen-Image``. Public.
+
+``--guidance-scales`` maps to ``true_cfg_scale`` only. ``--qwen-guidance-scale``
+is the distilled embedded guidance; omitting it leaves that guidance unset.
+True CFG runs when that scale is above 1.
+If you do not write a negative prompt and guidance is above 1, dgenerate passes
+a single space, which is what the pipeline expects. Img2img and inpaint
+strength default to 0.6. The inpaint mask is packed and concatenated with the
+latents.
+
+Examples: `examples/qwen-image <examples/qwen-image_>`_.
+
+Related model types
+-------------------
+
+These are separate ``--model-type`` values. An image seed with no mask is a
+condition image. There is no strength.
+
+* ``flux2-klein-kv`` is ``black-forest-labs/FLUX.2-klein-9b-kv``. Reference
+  images are ``--image-seeds`` with no mask. The pipeline caches their
+  attention state after the first step. It has no guidance scale. Gated.
+* ``z-image-omni`` is Z-Image with a SigLIP condition image. ``--image-seeds``
+  is optional. The diffusers example uses ``Z-a-o/Z-Image-Turbo``.
+* ``qwen-image-edit`` is an instruction edit. ``Qwen/Qwen-Image-Edit`` is one
+  image. ``Qwen/Qwen-Image-Edit-2509`` is edit-plus, and
+  ``images: a.png, b.png`` passes both images in one call. A mask selects
+  edit-inpaint on the edit checkpoint. Edit-plus has no inpaint.
+* ``qwen-image-layered`` is ``Qwen/Qwen-Image-Layered``. One image becomes a
+  stack of layers, and each layer is written. ``--qwen-layered-layers``
+  defaults to 4. ``--qwen-layered-resolution`` is 640 or 1024, and defaults
+  to 640.
+  ``--qwen-layered-cfg-normalize`` and ``--qwen-layered-use-en-prompt`` are off
+  unless you set them.
+
+Qwen-Image ControlNet stays ``--model-type qwen-image`` with ``--control-nets``.
+Text to image uses the seed image as the control image. Inpaint uses
+``--image-seeds "image.png;mask.png"`` with one ControlNet: that image and mask
+are ``control_image`` and ``control_mask``. ``start`` and ``end`` are passed
+through. The union repo is ``InstantX/Qwen-Image-ControlNet-Union``.
+
+This Diffusers version has no Flux.2 ControlNet class. Modular pipelines are a
+different call shape and stay unsupported.
+
+Examples: `examples/flux2 <examples/flux2_>`_,
+`examples/z-image <examples/z-image_>`_,
+`examples/qwen-image <examples/qwen-image_>`_.
+
+Overrides
+---------
+
+These are one value. Omitting one leaves the pipeline default, and it does not
+multiply the number of images.
+
+* ``--flux2-caption-upsample-temperature`` is full Flux.2 caption upsampling.
+  Klein rejects it.
+* ``--flux2-text-encoder-out-layers 10,20,30`` selects the text-encoder layers.
+  Klein's default is ``9,18,27``.
+* ``--z-image-cfg-normalization`` turns on Z-Image CFG normalization.
+  ``--z-image-cfg-truncation`` replaces the default of ``1``.
+* ``--qwen-guidance-scale`` is the distilled guidance embedded in the Qwen-Image
+  transformer. ``--guidance-scales`` stays the true CFG scale.
+* ``--inpaint-crop`` with one padding integer, and without feathering or masked
+  paste, is passed as ``padding_mask_crop`` on Klein and Qwen inpaint. The
+  pipeline then crops and pastes. A two-sided or four-sided padding, a feather,
+  or masked paste stays on dgenerate's crop.
+* Z-Image ControlNet accepts ``scale=`` only. ``start`` and ``end`` other than
+  ``0`` and ``1`` are an error.
+
+Console recipes
+---------------
+
+The Console UI recipes are ``Flux.2 (Dev)``, ``Flux.2 Klein``, ``Flux.2 Klein KV``,
+``Z-Image (Turbo)``, ``Z-Image Turbo (SDNQ)``, ``Z-Image (Base, 2-step LoRA)``,
+``Z-Image (ControlNet)``, ``Z-Image Omni``, ``Qwen-Image``, ``Qwen-Image Edit``,
+``Qwen-Image Layered``, and ``Qwen-Image (ControlNet)``.
 
 Animation Slicing
 =================
@@ -5948,11 +6175,11 @@ UNet models which have a smaller memory footprint using ``--unet`` and ``--secon
 
 .. _specifying-a-transformer:
 
-Specifying a Transformer (SD3 and Flux)
-=======================================
+Specifying a Transformer (SD3, Flux, and later flow models)
+===========================================================
 
-Stable Diffusion 3 and Flux do not use a UNet architecture, and instead use a
-Transformer model in place of a UNet.
+Stable Diffusion 3, Flux, Flux.2, Z-Image, and Qwen-Image do not use a UNet.
+They use a Transformer in its place. LTX does too; see `Video Generation`_.
 
 A specific transformer model can be specified using the ``--transformer`` argument.
 
@@ -6408,6 +6635,8 @@ ControlNet models are supported for these model types:
     * ``--model-type kolors``
     * ``--model-type sd3`` (img2img and inpainting not supported)
     * ``--model-type flux``
+    * ``--model-type z-image`` (one ControlNet union; text-to-image and inpaint)
+    * ``--model-type qwen-image`` (text-to-image and inpaint; more than one ControlNet is allowed)
 
 You can provide a huggingface repository slug / blob link, .pt, .pth, .bin, .ckpt, or .safetensors files.
 
@@ -7252,7 +7481,6 @@ with additional fine-tuning.
         \set quantizer sdnq;type=int4
         \set optimization --quantizer sdnq;type=int4
     {% else %}
-        \set quantizer
         \set optimization --model-sequential-offload
     {% endif %}
     
@@ -8283,6 +8511,11 @@ The syntax that ``sd-embed`` uses is the more wide spread prompt syntax used by 
 Quite notably, the ``sd-embed`` prompt weighter supports Stable Diffusion 3 and Flux, where
 as the ``compel`` prompt weighter currently does not.
 
+Flux.2, Flux.2 Klein KV, Z-Image, Z-Image Omni, Qwen-Image, Qwen-Image Edit, and
+Qwen-Image Layered do not support prompt weighters. Those text encoders read a
+chat template, not CLIP or T5 tokens, so ``--prompt-weighter`` is an error for
+those ``--model-type`` values.
+
 
 .. code-block:: bash
 
@@ -8502,6 +8735,14 @@ these are the arguments that are available for use:
     width: int
     height: int
     batch-size: int
+    flux2-caption-upsample-temperature: float
+    flux2-text-encoder-out-layers: [int, ...]
+    z-image-cfg-normalization: bool
+    z-image-cfg-truncation: float
+    qwen-guidance-scale: float
+    qwen-layered-layers: int
+    qwen-layered-resolution: int
+    qwen-layered-cfg-normalize: bool
     max-sequence-length: int
     sdxl-refiner-edit: bool
     seed: int
@@ -9827,7 +10068,7 @@ The help output of ``assistant`` is as follows:
 .. code-block:: text
 
     usage: assistant [-h] [-o OUTPUT] [--model MODEL] [--embed-model EMBED_MODEL] [--ctx CTX]
-                     [--gpu-layers GPU_LAYERS] [--think] [--reasoning-effort {low,medium,xhigh}]
+                     [--gpu-layers GPU_LAYERS] [--edit FILE] [--think] [--reasoning-effort {low,medium,xhigh}]
                      [--temperature TEMPERATURE] [--max-tokens MAX_TOKENS] [--no-check]
                      [--max-repairs MAX_REPAIRS] [--show-context] [--offline] [-v]
                      [request ...]
@@ -9862,6 +10103,9 @@ The help output of ``assistant`` is as follows:
       --gpu-layers GPU_LAYERS
             Layers to put on the GPU, -1 for automatic, 0 for CPU only. Default: -1
             -----------------------------------------------------------------------
+      --edit FILE
+            Revise this existing config instead of writing a new one. The request describes the change.
+            -------------------------------------------------------------------------------------------
       --think
             Let the model reason before answering. Slower.
             ----------------------------------------------
@@ -11222,6 +11466,20 @@ Quantization can be used to effectively cut the VRAM overhead for inference
 in half or even by a fourth at the cost of slightly reduced output quality
 due to precision loss.
 
+A checkpoint that is already SDNQ quantized is loaded as-is. Its transformer
+folder, or the pipeline repo, contains ``quantization_config.json``, or
+``config.json`` has a ``quantization_config`` whose method is ``sdnq``.
+dgenerate imports ``sdnq`` before that load so the quantizer class is
+registered, and it does not pass a second SDNQ config. ``--quantizer sdnq``
+on that repo is an error. ``Disty0/Z-Image-Turbo-SDNQ-uint4-svd-r32`` is one
+of these checkpoints. See `Flux.2, Z-Image, and Qwen-Image <flow-image-models_>`_.
+
+``--model-group-offload`` does not move a quantized module. BitsAndBytes,
+SDNQ, GGUF, and any module that carries a quantization config stay on the
+device where they were loaded. The other modules are still group-offloaded,
+and the pipeline cache counts the whole pipeline because those weights remain
+in CPU memory.
+
 There are a few ways to utilize quantization with dgenerate, the easiest
 way being the ``--quantizer`` and ``--quantizer-map`` arguments.
 
@@ -11793,6 +12051,12 @@ The ``\templates_help`` output from the above example is:
         Name: "last_dtype"
             Type: <enum 'DataType'>
             Value: <DataType.AUTO: 0>
+        Name: "last_flux2_caption_upsample_temperature"
+            Type: float | None
+            Value: None
+        Name: "last_flux2_text_encoder_out_layers"
+            Type: collections.abc.Sequence[int] | None
+            Value: []
         Name: "last_frame_end"
             Type: int | None
             Value: None
@@ -11958,6 +12222,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_model_cpu_offload"
             Type: <class 'bool'>
             Value: False
+        Name: "last_model_group_offload"
+            Type: <class 'bool'>
+            Value: False
         Name: "last_model_path"
             Type: str | None
             Value: 'sd2-community/stable-diffusion-2-1'
@@ -12032,6 +12299,21 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_quantizer_uri"
             Type: str | None
+            Value: None
+        Name: "last_qwen_guidance_scale"
+            Type: float | None
+            Value: None
+        Name: "last_qwen_layered_cfg_normalize"
+            Type: bool | None
+            Value: None
+        Name: "last_qwen_layered_layers"
+            Type: int | None
+            Value: None
+        Name: "last_qwen_layered_resolution"
+            Type: int | None
+            Value: None
+        Name: "last_qwen_layered_use_en_prompt"
+            Type: bool | None
             Value: None
         Name: "last_ras"
             Type: <class 'bool'>
@@ -12201,6 +12483,9 @@ The ``\templates_help`` output from the above example is:
         Name: "last_second_model_cpu_offload"
             Type: bool | None
             Value: None
+        Name: "last_second_model_group_offload"
+            Type: bool | None
+            Value: None
         Name: "last_second_model_guidance_scales"
             Type: collections.abc.Sequence[float] | None
             Value: []
@@ -12254,7 +12539,7 @@ The ``\templates_help`` output from the above example is:
             Value: []
         Name: "last_seeds"
             Type: collections.abc.Sequence[int]
-            Value: [69001944654729]
+            Value: [15569497921218]
         Name: "last_seeds_to_images"
             Type: <class 'bool'>
             Value: False
@@ -12309,6 +12594,12 @@ The ``\templates_help`` output from the above example is:
         Name: "last_verbose"
             Type: <class 'bool'>
             Value: False
+        Name: "last_z_image_cfg_normalization"
+            Type: bool | None
+            Value: None
+        Name: "last_z_image_cfg_truncation"
+            Type: float | None
+            Value: None
         Name: "os"
             Type: <class 'module'>
             Value: <module 'os' (frozen)>
@@ -12469,6 +12760,9 @@ The dgenerate specific jinja2 functions/filters are:
         When an "output" path is specified, if the file already exists it will be reused by default (simple
         caching behavior), this can be disabled with the argument "overwrite=True" indicating that the file should
         always be downloaded.
+    
+        An interrupted download is kept beside the destination with an ``.unfinished`` suffix and continued on the
+        next call.
     
         "overwrite=True" can also be used to overwrite cached files in the dgenerate web cache.
     

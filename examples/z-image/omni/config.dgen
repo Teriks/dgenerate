@@ -1,0 +1,24 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Condition image, not img2img. Omit --image-seeds for text only.
+# No mask and no strength.
+
+\setp gpu_memory_gib total_memory(unit='gib')
+
+{% if not have_cuda() or gpu_memory_gib <= 16 %}
+    \set optimization --model-sequential-offload
+{% endif %}
+
+
+Z-a-o/Z-Image-Turbo
+--model-type z-image-omni {{ optimization }}
+--dtype bfloat16
+--scheduler FlowMatchEulerDiscreteScheduler
+--inference-steps 8
+--guidance-scales 0
+--image-seeds "../../media/beach.jpg"
+--gen-seeds 42
+--output-path z-image-omni
+--output-size 1024
+--prompts "The same beach, but the sky is a bright aurora, photo"

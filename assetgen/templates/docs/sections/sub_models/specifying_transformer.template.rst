@@ -1,10 +1,10 @@
 .. _specifying-a-transformer:
 
-Specifying a Transformer (SD3 and Flux)
-=======================================
+Specifying a Transformer (SD3, Flux, and later flow models)
+===========================================================
 
-Stable Diffusion 3 and Flux do not use a UNet architecture, and instead use a
-Transformer model in place of a UNet.
+Stable Diffusion 3, Flux, Flux.2, Z-Image, and Qwen-Image do not use a UNet.
+They use a Transformer in its place. LTX does too; see `Video Generation`_.
 
 A specific transformer model can be specified using the ``--transformer`` argument.
 

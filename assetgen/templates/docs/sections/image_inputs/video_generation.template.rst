@@ -34,8 +34,8 @@ Repository: ``Lightricks/LTX-2.5-Diffusers``.
 
 Width and height must be divisible by 32.
 
-``--model-sequential-offload`` and ``--model-cpu-offload`` work the same way they
-do for image models. The examples under `examples/ltx/ltx2 <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/ltx/ltx2>`_
+``--model-sequential-offload``, ``--model-cpu-offload``, and ``--model-group-offload``
+work the same way they do for image models. The examples under `examples/ltx/ltx2 <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/ltx/ltx2>`_
 use the published
 repository as-is. ``--ltx-latent-upscale`` runs the two-stage sampler in that
 same generation: a half-resolution pass, the checkpoint latent upsampler, then

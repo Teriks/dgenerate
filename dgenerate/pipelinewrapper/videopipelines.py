@@ -532,9 +532,15 @@ def _seed(user_args) -> int:
     return int(user_args.seed)
 
 
+def _offload_requested(wrapper) -> bool:
+    return bool(
+        getattr(wrapper, 'model_cpu_offload', False)
+        or getattr(wrapper, 'model_sequential_offload', False)
+        or getattr(wrapper, 'model_group_offload', False))
+
+
 def _generator(wrapper, user_args) -> torch.Generator:
-    offload = bool(wrapper.model_cpu_offload or wrapper.model_sequential_offload)
-    device = 'cpu' if offload else wrapper.device
+    device = 'cpu' if _offload_requested(wrapper) else wrapper.device
     return torch.Generator(device=device).manual_seed(_seed(user_args))
 
 
@@ -572,11 +578,13 @@ def _set_ltx_vae_slicing(pipe, enabled: bool):
             vae.disable_slicing()
 
 
-def _offload_ltx(pipe, device, model_cpu_offload, sequential_cpu_offload):
+def _offload_ltx(pipe, device, model_cpu_offload, sequential_cpu_offload, model_group_offload=False):
     if sequential_cpu_offload:
         _pipelines.enable_sequential_cpu_offload(pipe, device)
     elif model_cpu_offload:
         _pipelines.enable_model_cpu_offload(pipe, device)
+    elif model_group_offload:
+        _pipelines.enable_group_offload(pipe, device)
 
 
 def _video_transformer_class(model_type, family: str = 'ltx2'):
@@ -817,6 +825,7 @@ def _cache_kwargs(wrapper) -> dict:
         'device': wrapper.device,
         'model_cpu_offload': bool(wrapper.model_cpu_offload),
         'sequential_cpu_offload': bool(wrapper.model_sequential_offload),
+        'model_group_offload': bool(getattr(wrapper, 'model_group_offload', False)),
         'local_files_only': bool(wrapper._local_files_only),
         'auth_token': wrapper._auth_token,
         'quantizer_uri': wrapper.quantizer_uri,
@@ -847,6 +856,7 @@ def _create_cached_video_pipeline(model_path,
                                   device,
                                   model_cpu_offload,
                                   sequential_cpu_offload,
+                                  model_group_offload,
                                   local_files_only,
                                   auth_token,
                                   transformer_uri=None,
@@ -905,7 +915,7 @@ def _create_cached_video_pipeline(model_path,
         _ltx_pipeline_class('ltx-control', family)
 
     pipeline_class = _ltx_pipeline_class('ltx-txt', family)
-    offload = bool(model_cpu_offload or sequential_cpu_offload)
+    offload = bool(model_cpu_offload or sequential_cpu_offload or model_group_offload)
     injected = {}
     if transformer_uri:
         injected['transformer'] = _load_replacement_transformer(
@@ -923,7 +933,7 @@ def _create_cached_video_pipeline(model_path,
         pipe = pipeline_class.from_pretrained(model_path, **load_kwargs)
     _apply_video_loras(
         pipe, model_type, all_lora_uris, lora_fuse_scale, auth_token, local_files_only)
-    _offload_ltx(pipe, device, model_cpu_offload, sequential_cpu_offload)
+    _offload_ltx(pipe, device, model_cpu_offload, sequential_cpu_offload, model_group_offload)
     _enable_vae_tiling(pipe)
     held = _VideoPipeline(pipe, family)
     if ltx_ic_lora_uri:
@@ -1223,8 +1233,7 @@ def _ensure_prompt_enhancer(wrapper, pipe, repo):
     pipe.prompt_enhancer = AutoModelForImageTextToText.from_pretrained(
         repo, torch_dtype=dtype, **load)
     pipe.processor = AutoProcessor.from_pretrained(repo, **load)
-    offload = bool(wrapper.model_cpu_offload or wrapper.model_sequential_offload)
-    device = 'cpu' if offload else wrapper.device
+    device = 'cpu' if _offload_requested(wrapper) else wrapper.device
     pipe.prompt_enhancer.to(device)
     pipe._dgenerate_prompt_enhancer = repo
 
@@ -1267,7 +1276,7 @@ def _enhance_ltx_prompt_once(wrapper, pipe, kwargs):
         enhanced = enhanced[0]
     kwargs['prompt'] = enhanced
     kwargs['enable_prompt_enhancement'] = False
-    if wrapper.model_cpu_offload or wrapper.model_sequential_offload:
+    if _offload_requested(wrapper):
         pipe.prompt_enhancer.to('cpu')
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
@@ -1400,7 +1409,7 @@ def _upsample_ltx_latents(wrapper, pipe, video_latent):
     upsampler.to(device=device, dtype=dtype)
     if torch.is_tensor(video_latent):
         video_latent = video_latent.to(device=device)
-    offload = bool(wrapper.model_cpu_offload or wrapper.model_sequential_offload)
+    offload = _offload_requested(wrapper)
     try:
         upscaled = up_pipe(
             latents=video_latent,
@@ -1461,7 +1470,8 @@ def _decode_ltx_diffusion(wrapper, pipe, held, latents, generator):
             diffusion_decoder=decoder, scheduler=pipe.scheduler, vae=pipe.vae)
         _offload_ltx(
             decode_pipe, wrapper.device,
-            bool(wrapper.model_cpu_offload), bool(wrapper.model_sequential_offload))
+            bool(wrapper.model_cpu_offload), bool(wrapper.model_sequential_offload),
+            bool(getattr(wrapper, 'model_group_offload', False)))
         held.diffusion_decoder_pipe = decode_pipe
     frames = decode_pipe(
         latents=latents,

@@ -37,6 +37,7 @@ import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.constants as _constants
 import dgenerate.pipelinewrapper.enums as _enums
+import dgenerate.pipelinewrapper.sdnqload as _sdnqload
 import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 import dgenerate.textprocessing as _textprocessing
 import dgenerate.torchutil as _torchutil
@@ -787,6 +788,23 @@ class TextEncoderUri:
     def supported_encoder_names() -> list[str]:
         return list(TextEncoderUri._encoders.keys())
 
+    @staticmethod
+    def _resolve_encoder_class(name: str):
+        """
+        Resolve a text encoder class.
+
+        Named encoders stay in ``_encoders``. Z-Image does not name its language
+        model on the pipeline, so a ``transformers.PreTrainedModel`` class from
+        ``model_index.json`` is accepted as well.
+        """
+        known = TextEncoderUri._encoders.get(name)
+        if known is not None:
+            return known
+        candidate = getattr(transformers, name, None)
+        if isinstance(candidate, type) and issubclass(candidate, transformers.PreTrainedModel):
+            return candidate
+        return None
+
     # pipelinewrapper.uris.util.get_uri_accepted_args_schema metadata
 
     NAMES = ['Text Encoder']
@@ -831,9 +849,10 @@ class TextEncoderUri:
             support loading from a single file.
         """
 
-        if encoder not in self._encoders:
+        if TextEncoderUri._resolve_encoder_class(encoder) is None:
             raise _exceptions.InvalidTextEncoderUriError(
-                f'Unknown TextEncoder encoder class {encoder}, must be one of: {_textprocessing.oxford_comma(self._encoders.keys(), "or")}')
+                f'Unknown TextEncoder encoder class {encoder}, must be one of: {_textprocessing.oxford_comma(self._encoders.keys(), "or")}, '
+                f'or a transformers.PreTrainedModel class name from model_index.json.')
 
         mode = mode.lower() if mode is not None else mode
 
@@ -974,7 +993,10 @@ class TextEncoderUri:
         else:
             encoder_library = 'transformers'
 
-        encoder = self._encoders[self.encoder]
+        encoder = self._resolve_encoder_class(self.encoder)
+        if encoder is None:
+            raise _exceptions.TextEncoderUriLoadError(
+                f'Unknown TextEncoder encoder class {self.encoder}.')
 
         # Validate mode and encoder class compatibility
         clip_encoders = (transformers.CLIPTextModel, transformers.CLIPTextModelWithProjection)
@@ -1223,19 +1245,28 @@ class TextEncoderUri:
 
             self._enforce_cache_size(estimated_memory_use)
 
-            quant_config = quant_uri.to_transformers_config(torch_dtype) if quant_uri else None
-
-            text_encoder = encoder.from_pretrained(
+            prequantized = _sdnqload.sdnq_config_for_component(
                 model_path,
+                subfolder=self.subfolder,
+                revision=self.revision,
+                token=use_auth_token,
+                local_files_only=local_files_only)
+            requantize_error = _sdnqload.sdnq_requantize_error(self.quantizer, prequantized)
+            if requantize_error:
+                raise _exceptions.TextEncoderUriLoadError(requantize_error)
+
+            load_kwargs = dict(
                 revision=self.revision,
                 variant=variant,
                 dtype=torch_dtype,
                 subfolder=self.subfolder if self.subfolder else "",
                 token=use_auth_token,
                 local_files_only=local_files_only,
-                quantization_config=quant_config,
-                device_map=device_map
-            )
+                device_map=device_map)
+            if prequantized is None and quant_uri:
+                load_kwargs['quantization_config'] = quant_uri.to_transformers_config(torch_dtype)
+
+            text_encoder = encoder.from_pretrained(model_path, **load_kwargs)
 
         _messages.debug_log('Estimated Torch TextEncoder Memory Use:',
                             _memory.bytes_best_human_unit(estimated_memory_use))

@@ -50,7 +50,8 @@ _SD_EMBED_WEIGHT = re.compile(
     r'\(\([^()\n]+\)\)|\([^()\n]+:\s*\d+(?:\.\d+)?\)|\([^()\n]+\)|\[[^\[\]\n]+\]')
 _COMPEL_WEIGHT = re.compile(
     r'(?<!\w)\w+\+\+?(?!\w)|\([^()\n]+\)\s*(?:\+\+?|\d+(?:\.\d+)?)')
-_FLUX_NO_NEGATIVE = frozenset({'flux', 'flux-fill', 'flux-kontext'})
+_FLUX_NO_NEGATIVE = frozenset({
+    'flux', 'flux-fill', 'flux-kontext', 'flux2', 'flux2-klein-kv'})
 
 _MISSING_FILE = re.compile(r'(does not exist|not found|no such file|could not find)', re.IGNORECASE)
 
@@ -524,7 +525,8 @@ def _missing_weight_marks(config, weighter, names: tuple[str, ...]) -> bool:
 
 
 _IMAGE_MODEL_TYPES = frozenset({
-    'sd', 'sdxl', 'sd3', 'flux', 'flux-fill', 'flux-kontext', 'pix2pix',
+    'sd', 'sdxl', 'sd3', 'flux', 'flux-fill', 'flux-kontext', 'flux2', 'flux2-klein-kv',
+    'z-image', 'z-image-omni', 'qwen-image', 'qwen-image-edit', 'qwen-image-layered', 'pix2pix',
     'sdxl-pix2pix', 'sd3-pix2pix', 'kolors', 'upscaler-x2', 'upscaler-x4',
     'if', 'ifs', 'ifs-img2img',
 })

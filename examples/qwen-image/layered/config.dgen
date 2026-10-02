@@ -1,0 +1,29 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# One image in, one file per layer out. Defaults are 4 layers at 640.
+
+\setp gpu_memory_gib total_memory(unit='gib')
+
+{% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 24 %}
+    \set optimization --quantizer bnb;bits=4
+{% elif have_cuda() and have_feature('sdnq') and gpu_memory_gib > 24 %}
+    \set optimization --quantizer sdnq;type=int4
+{% else %}
+    \set optimization --model-sequential-offload
+{% endif %}
+
+
+Qwen/Qwen-Image-Layered
+--model-type qwen-image-layered {{ optimization }}
+--dtype bfloat16
+--scheduler FlowMatchEulerDiscreteScheduler
+--inference-steps 50
+--guidance-scales 4
+--qwen-layered-layers 4
+--qwen-layered-resolution 640
+--qwen-layered-use-en-prompt
+--image-seeds "../../media/beach.jpg"
+--gen-seeds 1
+--output-path qwen-image-layered
+--prompts "a tropical beach"

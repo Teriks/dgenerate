@@ -1046,6 +1046,7 @@ class RenderLoop:
             s_cascade_decoder_uri=self._c_config.s_cascade_decoder_uri,
             second_model_cpu_offload=bool(self._c_config.second_model_cpu_offload),
             second_model_sequential_offload=bool(self._c_config.second_model_sequential_offload),
+            second_model_group_offload=bool(self._c_config.second_model_group_offload),
             safety_checker=self._c_config.safety_checker,
             auth_token=self._c_config.auth_token,
             local_files_only=self._c_config.offline_mode,
@@ -1053,6 +1054,7 @@ class RenderLoop:
             second_model_extra_modules=self.second_model_extra_modules,
             model_cpu_offload=self._c_config.model_cpu_offload,
             model_sequential_offload=self._c_config.model_sequential_offload,
+            model_group_offload=self._c_config.model_group_offload,
             prompt_weighter_loader=self.prompt_weighter_loader,
             adetailer_detector_uris=self._c_config.adetailer_detector_uris,
             adetailer_crop_control_image=bool(self._c_config.adetailer_crop_control_image),
@@ -1357,22 +1359,7 @@ class RenderLoop:
                 else:
                     def set_extra_args(args: _pipelinewrapper.DiffusionArguments,
                                        ims_obj: _mediainput.ImageSeed):
-                        if ims_obj.images is not None:
-                            args.images = ims_obj.images
-                            if self._c_config.seed_image_processors and \
-                                    any(_torchutil.is_tensor(img) for img in ims_obj.images):
-                                args.decoded_latents_image_processor_uris = \
-                                    self._c_config.seed_image_processors
-                        if ims_obj.latents is not None:
-                            args.latents = ims_obj.latents
-                        if ims_obj.mask_images is not None:
-                            args.mask_images = ims_obj.mask_images
-                        if ims_obj.control_images is not None:
-                            args.control_images = ims_obj.control_images
-                        if ims_obj.adapter_images is not None:
-                            args.ip_adapter_images = ims_obj.adapter_images
-                        if ims_obj.floyd_image is not None:
-                            args.floyd_image = ims_obj.floyd_image
+                        self._assign_image_seed_frames(args, ims_obj)
 
                 yield from self._render_animation(pipeline_wrapper=pipeline_wrapper,
                                                   set_wrapper_args_per_image_seed=set_extra_args,
@@ -1388,27 +1375,10 @@ class RenderLoop:
                 yield from self._pre_generation_step(diffusion_arguments)
 
                 with next(image_seed_iterator()) as image_seed:
-                    if not is_control_guidance_spec and image_seed.images is not None:
-                        diffusion_arguments.images = image_seed.images
-                        if self._c_config.seed_image_processors and \
-                                any(_torchutil.is_tensor(img) for img in image_seed.images):
-                            diffusion_arguments.decoded_latents_image_processor_uris = \
-                                self._c_config.seed_image_processors
-
-                    if image_seed.latents is not None:
-                        diffusion_arguments.latents = image_seed.latents
-
-                    if image_seed.mask_images is not None:
-                        diffusion_arguments.mask_images = image_seed.mask_images
-
-                    if image_seed.control_images is not None:
+                    if is_control_guidance_spec:
                         diffusion_arguments.control_images = image_seed.control_images
-
-                    if image_seed.adapter_images is not None:
-                        diffusion_arguments.ip_adapter_images = image_seed.adapter_images
-
-                    if image_seed.floyd_image is not None:
-                        diffusion_arguments.floyd_image = image_seed.floyd_image
+                    else:
+                        self._assign_image_seed_frames(diffusion_arguments, image_seed)
 
                     with pipeline_wrapper(diffusion_arguments) as generation_result:
                         self._run_postprocess(generation_result)
@@ -1416,6 +1386,47 @@ class RenderLoop:
                             diffusion_arguments,
                             image_seed,
                             generation_result)
+
+    def _assign_image_seed_frames(self,
+                                  args: _pipelinewrapper.DiffusionArguments,
+                                  image_seed: _mediainput.ImageSeed):
+        """
+        Copy one zipped frame onto the pipeline arguments.
+
+        Flux.2 text-to-image has no img2img init. Those frames are references.
+        ``reference=`` on an inpaint seed stays beside the init image and mask.
+        A video in either slot was already zipped by the image-seed reader.
+        """
+        condition_images = (
+            _pipelinewrapper.model_type_image_is_condition(self._c_config.model_type)
+            and image_seed.images is not None
+            and image_seed.mask_images is None)
+
+        if condition_images:
+            references = list(image_seed.images)
+            if image_seed.reference_images:
+                references.extend(image_seed.reference_images)
+            args.reference_images = references
+        else:
+            if image_seed.images is not None:
+                args.images = image_seed.images
+                if self._c_config.seed_image_processors and \
+                        any(_torchutil.is_tensor(img) for img in image_seed.images):
+                    args.decoded_latents_image_processor_uris = \
+                        self._c_config.seed_image_processors
+            if image_seed.reference_images is not None:
+                args.reference_images = image_seed.reference_images
+
+        if image_seed.latents is not None:
+            args.latents = image_seed.latents
+        if image_seed.mask_images is not None:
+            args.mask_images = image_seed.mask_images
+        if image_seed.control_images is not None:
+            args.control_images = image_seed.control_images
+        if image_seed.adapter_images is not None:
+            args.ip_adapter_images = image_seed.adapter_images
+        if image_seed.floyd_image is not None:
+            args.floyd_image = image_seed.floyd_image
 
     def _gen_animation_filename(self,
                                 diffusion_args: _pipelinewrapper.DiffusionArguments,

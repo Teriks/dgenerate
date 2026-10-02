@@ -1,10 +1,10 @@
 title: Upscaling (Stable Diffusion x2)
-order: 19
+order: 31
 
 @uri[{"label":"Model Path / HF Slug", "dir":true, "default": "stabilityai/sd-x2-latent-upscaler", "optional":false, "file-types":["models"]}]
 @file[{"label": "Original Config (yaml)", "arg": "--original-config", "file-types": ["yaml"]}]
 @karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "filter": ["EulerDiscreteScheduler"]}]
-@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload"], "args":["--model-cpu-offload", "--model-sequential-offload"]}]
+@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"]}]
 @quantizer[{"divider-after": true}]
 --model-type upscaler-x2
 --dtype float16
