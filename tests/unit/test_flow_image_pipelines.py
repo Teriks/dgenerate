@@ -948,7 +948,7 @@ class TestFlowImagePipelines(unittest.TestCase):
             result = pipe.process_inpainting(
                 {'prompt': 'a face', 'width': 64, 'height': 64},
                 image, None, mask, (0, 0, 30, 20), 'cpu')
-        self.assertGreaterEqual(max(captured['size']), 1024)
+        self.assertEqual(captured['size'], (32, 32))
         self.assertEqual(captured['mask'], captured['size'])
         self.assertEqual(captured['width'], captured['size'][0])
         self.assertEqual(captured['height'], captured['size'][1])

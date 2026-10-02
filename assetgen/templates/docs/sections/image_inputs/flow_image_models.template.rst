@@ -22,11 +22,9 @@ Qwen-Image, and Qwen-Image Edit. ``--adetailer-detectors`` takes an
 ``--post-processors adetailer`` does the same on the image just generated.
 Full Flux.2, Klein KV, Z-Image Omni, Qwen-Image Layered, and Qwen edit-plus
 have no inpaint pipeline, so adetailer is rejected. Qwen still uses true CFG.
-Flux.2 Klein still has no negative prompt. A detection crop is enlarged so
-its long side is at least 1024, then aligned to a multiple of 16. Leaving
-the size unset makes Qwen substitute a square 1024, which comes back as
-static, and a tiny crop makes Z-Image draw the whole prompt into the face
-box. Generated images are under
+Flux.2 Klein still has no negative prompt. A detection crop is aligned to
+a multiple of 16, which is the size the inpaint call uses. Strength near 1
+redraws that crop. Generated images are under
 `examples/adetailer/post_processor <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/adetailer/post_processor>`_.
 An image you already have is under
 `examples/adetailer/arbitrary_image <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/adetailer/arbitrary_image>`_.
