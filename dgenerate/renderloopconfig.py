@@ -336,6 +336,11 @@ class RenderLoopConfig(_types.SetFromMixin):
     Or: string expressions involving sigmas from the selected scheduler such as ``sigmas * 0.95``,
     sigmas will be represented as a numpy array, numpy is available through the namespace ``np``, 
     this uses ``asteval``.
+
+    For Flux.1 (including Fill and Kontext), Flux.2, Z-Image, and Qwen-Image,
+    an expression's ``sigmas`` value is the pipeline default schedule: evenly spaced
+    values from 1 down to ``1 / steps``. The model applies its resolution-dependent
+    shift to the expression result.
     
     Lists of floats and strings representing expressions can be intermixed.
     

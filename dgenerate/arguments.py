@@ -4543,6 +4543,13 @@ def _create_parser(add_model=True, add_help=True, prints_usage=True):
                     the distilled 8-value table when the scheduler has no dynamic shifting,
                     or the scheduler set_timesteps schedule otherwise. Guidance is used
                     as written; see --guidance-scales.
+                    
+                    For --model-type flux, flux-fill, flux-kontext, flux2,
+                    flux2-klein-kv, z-image, z-image-omni, qwen-image,
+                    qwen-image-edit, and qwen-image-layered, expr: sigmas is the
+                    pipeline default schedule: evenly spaced values from 1 down
+                    to 1/steps. The model applies its resolution-dependent shift to
+                    the expression result.
                     """
         )
     )
