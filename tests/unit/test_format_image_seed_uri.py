@@ -399,6 +399,50 @@ class TestFormatImageSeedURI(unittest.TestCase):
         with self.assertRaises(ValueError):
             format_image_seed_uri(seed_images="a.png", ltx_extra_conditions=[("b.png", None)])
 
+    def test_reference_image(self):
+        result = format_image_seed_uri(seed_images="seed.png", reference_images="style.png")
+        self.assertEqual(result, "seed.png;reference=style.png")
+
+    def test_inpaint_with_reference(self):
+        result = format_image_seed_uri(
+            seed_images="seed.png", mask_images="mask.png", reference_images="style.png")
+        self.assertEqual(result, "seed.png;mask=mask.png;reference=style.png")
+
+    def test_reference_images_as_list(self):
+        result = format_image_seed_uri(
+            seed_images="seed.png", reference_images=["earth.jpg", "mountain.png"])
+        self.assertEqual(result, "seed.png;reference=earth.jpg, mountain.png")
+
+    def test_reference_with_control(self):
+        result = format_image_seed_uri(
+            seed_images="seed.png", control_images="control.png", reference_images="style.png")
+        self.assertEqual(result, "seed.png;control=control.png;reference=style.png")
+
+    def test_reference_with_seed_list(self):
+        result = format_image_seed_uri(
+            seed_images=["seed1.png", "seed2.png"], reference_images="style.png")
+        self.assertEqual(result, "images:seed1.png, seed2.png;reference=style.png")
+
+    def test_reference_empty_is_omitted(self):
+        result = format_image_seed_uri(seed_images="seed.png", reference_images="")
+        self.assertEqual(result, "seed.png")
+        result = format_image_seed_uri(seed_images="seed.png", reference_images=[])
+        self.assertEqual(result, "seed.png")
+
+    def test_reference_without_seed(self):
+        with self.assertRaises(ValueError):
+            format_image_seed_uri(reference_images="style.png")
+
+    def test_reference_with_floyd(self):
+        result = format_image_seed_uri(
+            seed_images="seed.png", floyd_image="floyd.png", reference_images="style.png")
+        self.assertEqual(result, "seed.png;floyd=floyd.png;reference=style.png")
+
+    def test_reference_path_with_separator_is_quoted(self):
+        result = format_image_seed_uri(
+            seed_images="seed.png", reference_images="my ++ file.png")
+        self.assertEqual(result, "seed.png;reference='my ++ file.png'")
+
     def test_ltx_separator_in_filename_is_quoted(self):
         result = format_image_seed_uri(seed_images="my ++ file.png", ltx_index=0)
         self.assertEqual(result, "'my ++ file.png';ltx-index=0")

@@ -16,7 +16,7 @@ Disty0/Z-Image-Turbo-SDNQ-uint4-svd-r32
 --scheduler FlowMatchEulerDiscreteScheduler
 --inference-steps 9
 --guidance-scales 0
---gen-seeds 42
+--gen-seeds 1
 --output-path z-image-turbo-sdnq
 --output-size 1024
 --prompts "Young woman in a red hanfu holding a round folding fan, night market lights behind her, photo"

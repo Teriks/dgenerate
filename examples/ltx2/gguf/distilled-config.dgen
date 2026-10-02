@@ -1,0 +1,29 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# LTX-2.5 distilled transformer as a Comfy GGUF. The repository still supplies
+# the Gemma text encoder and the video and audio VAEs. Key names and transposed
+# tables are remapped on load. Quantized linears stay packed.
+
+# This is the distilled checkpoint. The published scheduler has no dynamic
+# shifting, so it uses the distilled 8-value sigma table. Guidance stays at 1.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+Lightricks/LTX-2.5-Diffusers
+--model-type ltx
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/realrebelai/LTX-2.5_GGUFs/blob/main/LTX-2.5-Distilled-Q4_K_S.gguf
+--guidance-scales 1
+--gen-seeds 1
+--output-size 640x384
+--ltx-video-lengths 2
+--animation-format mp4
+--output-path ltx-gguf-distilled
+--prompts "A woman in a red coat walks along a dirt path through a green field, then stops and looks back at the camera. The camera stays fixed."

@@ -839,7 +839,8 @@ def check_config(text: str) -> dict:
                     'line': line,
                     'message': 'A .gguf file is a transformer or UNet replacement, not the '
                                'model path. Use the Hugging Face repo as the first line and '
-                               '--transformer path/to/file.gguf (see the Flux GGUF examples).',
+                               '--transformer path/to/file.gguf (see the Flux, Flux.2, SD3, '
+                               'Z-Image, Qwen-Image, and LTX GGUF examples).',
                 })
             problem = _model_path_problem(model_path) or \
                 _repo_problem(model_path, repo_problems) or \

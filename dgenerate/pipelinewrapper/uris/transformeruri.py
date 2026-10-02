@@ -26,6 +26,7 @@ import dgenerate.memoize as _d_memoize
 import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.enums as _enums
+import dgenerate.pipelinewrapper.ggufcompat as _ggufcompat
 import dgenerate.pipelinewrapper.sdnqload as _sdnqload
 import dgenerate.pipelinewrapper.util as _pipelinewrapper_util
 import dgenerate.textprocessing as _textprocessing
@@ -257,6 +258,9 @@ class TransformerUri:
                 raise _exceptions.TransformerUriLoadError(
                     'Loading a GGUF transformer requires the gguf package.')
             quant_config = diffusers.GGUFQuantizationConfig(compute_dtype=torch_dtype)
+            # Sequential offload rebuilds parameters on the meta device.
+            # GGUFParameter has to keep its quant type across that rebuild.
+            _ggufcompat.install_gguf_patches()
         elif self.quantizer:
             quant_config = _util.get_quantizer_uri_class(
                 self.quantizer,
@@ -298,6 +302,15 @@ class TransformerUri:
 
             self._enforce_cache_size(estimated_memory_use)
 
+            single_file_source = model_path
+            already_converted = False
+            if gguf_file:
+                checkpoint, config, config_subfolder, already_converted = _ggufcompat.plan_gguf_load(
+                    model_path, config, config_subfolder,
+                    token=use_auth_token, local_files_only=local_files_only)
+                if checkpoint is not None:
+                    single_file_source = checkpoint
+
             single_file_kwargs = dict(
                 token=use_auth_token,
                 revision=self.revision,
@@ -315,7 +328,11 @@ class TransformerUri:
                 from diffusers.loaders.single_file_model import FromOriginalModelMixin
                 from_single_file = FromOriginalModelMixin.from_single_file.__get__(
                     transformer_class, transformer_class)
-            transformer = from_single_file(model_path, **single_file_kwargs)
+            if already_converted:
+                with _ggufcompat.skip_diffusers_reconvert():
+                    transformer = from_single_file(single_file_source, **single_file_kwargs)
+            else:
+                transformer = from_single_file(single_file_source, **single_file_kwargs)
 
         else:
             if original_config:

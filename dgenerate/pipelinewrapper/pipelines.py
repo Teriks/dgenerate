@@ -941,6 +941,46 @@ def _call_args_debug_transformer(key, value):
     return value
 
 
+def _prompt_token_counter(tokenizer):
+    """
+    Return an object that can ``tokenize`` a prompt.
+
+    Flux.2 stores a ``PixtralProcessor`` on ``pipeline.tokenizer``. The
+    processor has no ``model_max_length`` or ``tokenize``; those live on
+    the wrapped tokenizer.
+    """
+    if hasattr(tokenizer, 'tokenize'):
+        return tokenizer
+    inner = getattr(tokenizer, 'tokenizer', None)
+    if inner is not None and hasattr(inner, 'tokenize'):
+        return inner
+    return None
+
+
+def _prompt_max_length(pipeline, tokenizer, tokenizer_attr, kwargs):
+    name = pipeline.__class__.__name__
+    model_max = getattr(tokenizer, 'model_max_length', None)
+    if tokenizer_attr == 'tokenizer_3' and name.startswith('StableDiffusion3') and model_max is not None:
+        return min(kwargs.get('max_sequence_length', 256), model_max)
+    if tokenizer_attr == 'tokenizer_2' and name.startswith('Flux') and model_max is not None:
+        return min(kwargs.get('max_sequence_length', 512), model_max)
+    if model_max is not None:
+        return model_max
+
+    # Processors such as PixtralProcessor omit model_max_length. The
+    # pipeline truncates at max_sequence_length, falling back to its
+    # own tokenizer_max_length (512 for Flux.2).
+    sequence = kwargs.get('max_sequence_length')
+    if sequence is not None:
+        return sequence
+    if tokenizer_attr == 'tokenizer':
+        pipeline_max = getattr(pipeline, 'tokenizer_max_length', None)
+        if pipeline_max is not None:
+            return pipeline_max
+    inner = getattr(tokenizer, 'tokenizer', None)
+    return getattr(inner, 'model_max_length', None)
+
+
 def _warn_prompt_lengths(pipeline, **kwargs):
     prompts = [
         ('Primary positive prompt', kwargs.get('prompt'), 'tokenizer'),
@@ -961,15 +1001,13 @@ def _warn_prompt_lengths(pipeline, **kwargs):
             tokenizer = getattr(pipeline, tokenizer_attr, None)
 
             if tokenizer:
-                if tokenizer_attr == 'tokenizer_3' and pipeline.__class__.__name__.startswith('StableDiffusion3'):
-                    max_length = min(kwargs.get('max_sequence_length', 256), tokenizer.model_max_length)
-                elif tokenizer_attr == 'tokenizer_2' and pipeline.__class__.__name__.startswith('Flux'):
-                    max_length = min(kwargs.get('max_sequence_length', 512), tokenizer.model_max_length)
-                else:
-                    max_length = tokenizer.model_max_length
+                counter = _prompt_token_counter(tokenizer)
+                max_length = _prompt_max_length(pipeline, tokenizer, tokenizer_attr, kwargs)
+                if counter is None or max_length is None:
+                    continue
 
                 for p in prompt:
-                    if len(tokenizer.tokenize(p)) > max_length:
+                    if len(counter.tokenize(p)) > max_length:
                         key = f'{label}{tokenizer_attr}{p}'
                         if key not in warned_prompts:
                             _messages.warning(
@@ -1922,7 +1960,7 @@ def _flow_image_pipeline_class(
 
 
 _MODEL_INDEX_CHECKS = [
-    (_enums.model_type_is_flux2_klein_kv, ('^Flux2KleinKV', 'Flux.2 Klein KV')),
+    (_enums.model_type_is_flux2_klein_kv, ('^Flux2Klein', 'Flux.2 Klein KV')),
     (_enums.model_type_is_flux2, ('^Flux2', 'Flux.2')),
     (_enums.model_type_is_z_image_omni, ('^ZImageOmni', 'Z-Image Omni')),
     (_enums.model_type_is_z_image, ('^ZImage', 'Z-Image')),
@@ -1960,8 +1998,11 @@ def validate_model_index_class(
     Raise :py:class:`UnsupportedPipelineConfigError` when ``_class_name`` does not
     belong to ``model_type``.
 
-    Flux.2 Klein stays ``flux2``. Klein KV, Omni, edit, and layered match the
-    parent prefix, so those checkpoints are sent to their own ``--model-type``.
+    Flux.2 Klein stays ``flux2``. The published Klein KV repo is indexed as
+    ``Flux2KleinPipeline``, the same class name as Klein, and is loaded with
+    ``Flux2KleinKVPipeline`` when ``--model-type`` is ``flux2-klein-kv``.
+    Omni, edit, and layered match their own prefix, so those checkpoints are
+    sent to their own ``--model-type``.
     """
     for prefix, parent_check, model_type_string in _REDIRECTED_FLOW_CLASSES:
         if model_class_name.startswith(prefix) and parent_check(model_type):

@@ -163,4 +163,4 @@ Console recipes
 The Console UI recipes are ``Flux.2 (Dev)``, ``Flux.2 Klein``, ``Flux.2 Klein KV``,
 ``Z-Image (Turbo)``, ``Z-Image Turbo (SDNQ)``, ``Z-Image (Base, 2-step LoRA)``,
 ``Z-Image (ControlNet)``, ``Z-Image Omni``, ``Qwen-Image``, ``Qwen-Image Edit``,
-``Qwen-Image Layered``, and ``Qwen-Image (ControlNet)``.
+and ``Qwen-Image Layered``.

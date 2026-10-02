@@ -1819,6 +1819,7 @@ def _format_ltx_extra_condition(condition) -> str:
 def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | None = None,
                           mask_images: str | collections.abc.Iterable[str] | None = None,
                           control_images: str | collections.abc.Iterable[str] | None = None,
+                          reference_images: str | collections.abc.Iterable[str] | None = None,
                           adapter_images: str | collections.abc.Iterable[str] | None = None,
                           latents: str | collections.abc.Iterable[str] | None = None,
                           floyd_image: str | None = None,
@@ -1851,11 +1852,13 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
                        if LTX condition arguments are used with ``floyd_image``.
                        if too many mask images are provided.
                        if too few mask images are provided.
+                       if ``reference_images`` are specified without ``seed_images``.
                        if no arguments are provided.
 
     :param seed_images: Seed image path(s)
     :param mask_images: Inpaint image path(s)
     :param control_images: Control image path(s)
+    :param reference_images: Extra reference image path(s), written as ``reference=``
     :param adapter_images: Adapter image path(s)
     :param latents: Raw latent tensor path(s) (.pt, .pth, .safetensors files)
     :param floyd_image: Path to a Floyd image
@@ -1905,6 +1908,11 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
     elif isinstance(control_images, str):
         control_images = _quote_ltx_path(control_images)
 
+    if reference_images is not None and not isinstance(reference_images, str):
+        reference_images = ', '.join(_quote_ltx_path(path) for path in reference_images)
+    elif isinstance(reference_images, str):
+        reference_images = _quote_ltx_path(reference_images)
+
     if latents is not None and not isinstance(latents, str):
         latents = ', '.join(_quote_ltx_path(path) for path in latents)
     elif isinstance(latents, str):
@@ -1933,6 +1941,9 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
     # Validate inputs
     if mask_images and not seed_images and not floyd_image:
         raise ValueError('inpaint_image cannot be specified without seed_image.')
+
+    if reference_images and not seed_images:
+        raise ValueError('reference_images cannot be specified without seed_image.')
 
     if adapter_images and floyd_image:
         raise ValueError('adapter_images cannot be specified with floyd_image.')
@@ -1992,7 +2003,8 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
                 'provided (latents are used as-is and do not have animation frames).')
 
     # Special case: adapter images only
-    if adapter_images and not any([seed_images, mask_images, control_images, latents, floyd_image, end_image]):
+    if adapter_images and not any([
+            seed_images, mask_images, control_images, reference_images, latents, floyd_image, end_image]):
         components.append('adapter:' + adapter_images)
         return ";".join(components)
 
@@ -2000,6 +2012,8 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
     if floyd_image and (seed_images or mask_images):
         components.append(seed_images or mask_images)
         add_component_if_valid(floyd_image, "floyd")
+        if reference_images:
+            add_component_if_valid(reference_images, "reference")
         return ";".join(components)
 
     # Handle base image (seed, control, or latents)
@@ -2026,6 +2040,7 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
         not latents and
         not floyd_image and
         not end_image and
+        not reference_images and
         ltx_index is None and
         ltx_strength is None and
         not ltx_extra_conditions and
@@ -2065,6 +2080,8 @@ def format_image_seed_uri(seed_images: str | collections.abc.Iterable[str] | Non
             add_component_if_valid(adapter_images, "adapter")
         if control_images:
             add_component_if_valid(control_images, "control")
+        if reference_images:
+            add_component_if_valid(reference_images, "reference")
         if resize:
             add_component_if_valid(resize, "resize")
         if aspect is False:

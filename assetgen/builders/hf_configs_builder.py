@@ -73,6 +73,28 @@ class HfConfigsBuilder:
             "black-forest-labs/FLUX.1-Fill-dev",
             "black-forest-labs/FLUX.1-Depth-dev",
             #
+            ### Model type: Flux.2
+            # GGUF loading reads the transformer config from these repos.
+            "black-forest-labs/FLUX.2-dev",
+            "black-forest-labs/FLUX.2-klein-4B",
+            "black-forest-labs/FLUX.2-klein-base-9B",
+            "black-forest-labs/FLUX.2-klein-9b-kv",
+            #
+            ### Model type: Z-Image
+            # Base and Turbo share one transformer config. GGUF uses Turbo.
+            "Tongyi-MAI/Z-Image",
+            "Tongyi-MAI/Z-Image-Turbo",
+            #
+            ### Model type: Qwen-Image
+            "Qwen/Qwen-Image",
+            "Qwen/Qwen-Image-Edit",
+            "Qwen/Qwen-Image-Edit-2509",
+            "Qwen/Qwen-Image-Layered",
+            #
+            ### Model type: LTX
+            "Lightricks/LTX-Video",
+            "Lightricks/LTX-2.5-Diffusers",
+            #
             ### Model type: SD3x
             # SD3m
             "stabilityai/stable-diffusion-3-medium-diffusers",
@@ -144,7 +166,12 @@ class HfConfigsBuilder:
                     "**/spiece.model",
                     "*/preprocessor_config.json", # Feature extractor config
                     "*.safetensors.index.json",   # Model weight indices
-                    "*.safetensors.index.fp16.json"  # FP16 model weight indices
+                    "*.safetensors.index.fp16.json",  # FP16 model weight indices
+                    # Diffusers single-file loading requests every json, txt, and
+                    # sentencepiece model. Processor and chat-template files live here.
+                    "**/*.json",
+                    "**/*.txt",
+                    "**/*.model",
                 ]
                 
                 snapshot_download(

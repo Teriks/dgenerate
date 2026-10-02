@@ -1,0 +1,24 @@
+{
+  "_class_name": "Flux2KleinPipeline",
+  "_diffusers_version": "0.37.0.dev0",
+  "scheduler": [
+    "diffusers",
+    "FlowMatchEulerDiscreteScheduler"
+  ],
+  "text_encoder": [
+    "transformers",
+    "Qwen3ForCausalLM"
+  ],
+  "tokenizer": [
+    "transformers",
+    "Qwen2TokenizerFast"
+  ],
+  "transformer": [
+    "diffusers",
+    "Flux2Transformer2DModel"
+  ],
+  "vae": [
+    "diffusers",
+    "AutoencoderKLFlux2"
+  ]
+}

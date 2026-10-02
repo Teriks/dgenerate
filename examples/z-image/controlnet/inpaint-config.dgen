@@ -26,6 +26,6 @@ Tongyi-MAI/Z-Image-Turbo
 --image-seeds "../../media/horse1.jpg;mask=../../media/horse1-mask.jpg;control=../../media/horse1.jpg"
 --mask-image-processors invert
 --control-image-processors "canny;lower=50;upper=100;output-file=z-image-controlnet-inpaint/horse-canny.png"
---gen-seeds 42
+--gen-seeds 1
 --output-path z-image-controlnet-inpaint
 --prompts "a pink horse from a fantasy world, standing and looking towards the viewer"

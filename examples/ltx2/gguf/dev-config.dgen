@@ -1,0 +1,40 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# LTX-2.5 full transformer as a GGUF. The parent repo still supplies the
+# Gemma text encoder and the video and audio VAEs. This file is the dev DiT,
+# the same module as transformer_full, and it is remapped on load the same
+# way as the distilled GGUF.
+
+# The published scheduler is the distilled 8-value table and would ignore
+# --inference-steps. use-dynamic-shifting=true and shift-terminal=0.1 make
+# the step count apply. Video guidance 3, audio guidance 7, STG 1 on block
+# 28, and modality guidance 3.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or --auth-token to run this example!
+    \exit
+{% endif %}
+
+Lightricks/LTX-2.5-Diffusers
+--model-type ltx
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/vantagewithai/LTX-2.5-GGUF/blob/main/dev/ltx-2.5-22b-dev-transformer-Q4_K_S.gguf
+--scheduler FlowMatchEulerDiscreteScheduler;use-dynamic-shifting=true;shift-terminal=0.1
+--inference-steps 30
+--guidance-scales 3
+--ltx-audio-guidance-scales 7
+--ltx-stg-scales 1
+--ltx-modality-scales 3
+--ltx-stg-blocks 28
+--guidance-rescales 0.7
+--ltx-audio-guidance-rescales 0.7
+--gen-seeds 1
+--output-size 640x384
+--ltx-video-lengths 2
+--animation-format mp4
+--output-path ltx-gguf-dev
+--prompts "A woman in a red coat walks along a dirt path through a green field, then stops and looks back at the camera. The camera stays fixed."

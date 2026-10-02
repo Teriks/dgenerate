@@ -49,7 +49,7 @@ Video generation (LTX)
 * Load style or effect LoRAs with ``--loras``, on their own or together with an IC-LoRA
 * Set clip length and frame rate with ``--ltx-video-lengths`` and ``--ltx-video-fps``; LTX-2.5 can predict duration from the prompt when length is omitted
 * LTX-2.5 muxes generated audio into mp4 output; the earlier LTX-Video model accepts a GGUF diffusion transformer
-* Example configs under ``examples/ltx/ltx2`` and ``examples/ltx/ltx_video``, and LTX recipes in the Console UI; see the `video generation manual <https://dgenerate.readthedocs.io/en/@REVISION/manual.html#video-generation>`_
+* Example configs under ``examples/ltx2`` and ``examples/ltx_video``, and LTX recipes in the Console UI; see the `video generation manual <https://dgenerate.readthedocs.io/en/@REVISION/manual.html#video-generation>`_
 
 Image Processing
 ----------------

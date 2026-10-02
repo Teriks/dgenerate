@@ -1,0 +1,36 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Klein KV with a QuantStack GGUF transformer. Hidden width 4096 selects
+# the Klein 9B config, which is the same module as this checkpoint.
+# The parent repo still supplies the text encoder and VAE.
+# Reference images are --image-seeds with no mask. There is no guidance scale.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or pass --auth-token.
+    \exit
+{% endif %}
+
+\setp gpu_memory_gib total_memory(unit='gib')
+\set te_quant
+
+{% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 12 %}
+    \set te_quant --quantizer bnb;bits=4 --quantizer-map text_encoder
+{% elif have_cuda() and have_feature('sdnq') and gpu_memory_gib > 12 %}
+    \set te_quant --quantizer sdnq;type=int4 --quantizer-map text_encoder
+{% endif %}
+
+black-forest-labs/FLUX.2-klein-9b-kv
+--model-type flux2-klein-kv {{ te_quant }}
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/QuantStack/FLUX.2-Klein-9B-KV-GGUF/blob/main/Flux-2-Klein-9B-KV-Q4_K_S.gguf
+--scheduler FlowMatchEulerDiscreteScheduler
+--inference-steps 4
+--image-seeds "../../media/beach.jpg"
+--gen-seeds 1
+--output-path flux2-gguf-klein-kv
+--output-size 1024
+--prompts "The same beach at night, moonlight on the water, photo"

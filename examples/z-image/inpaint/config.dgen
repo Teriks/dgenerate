@@ -19,6 +19,6 @@ Tongyi-MAI/Z-Image-Turbo
 --guidance-scales 0
 --image-seeds "../../media/horse1.jpg;../../media/horse1-mask.jpg"
 --image-seed-strengths 1
---gen-seeds 42
+--gen-seeds 1
 --output-path z-image-inpaint
 --prompts "A horse standing on the surface of mars, photo"

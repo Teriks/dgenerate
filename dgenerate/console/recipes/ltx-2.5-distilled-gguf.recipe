@@ -1,0 +1,68 @@
+title: LTX-2.5 (Distilled) GGUF
+order: 19
+
+# Omitting Scheduler keeps the published
+# 8-value sigma table. Inference Steps is ignored on that path.
+# Latent Upscale runs stage 1 at half of Output Size, then the checkpoint
+# upsampler and a 3-sigma refine. Output Size must be divisible by 64 for that.
+# No stage LoRA: this transformer is already distilled.
+# Leave Video Length empty and the duration head chooses the length.
+# Min/Max Seconds apply only when Video Length is empty.
+# First frame, last frame (last-frame=), and the IC-LoRA control clip are optional.
+# Condition Strength fills image-seed groups that omit strength=. last-frame= stays at 1.
+# The union control IC-LoRA needs an output size divisible by 64.
+
+\setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"
+
+\set auth_token {{ '--auth-token ' + quote(auth_token) if auth_token else '' }}
+
+\setp first_frame "@file[{"label":"First Frame / Opening Clip", "optional":true, "mode":"input", "file-types":["images-in", "videos-in"]}]"
+\setp last_frame "@file[{"label":"Last Frame / Closing Clip", "optional":true, "mode":"input", "file-types":["images-in", "videos-in"]}]"
+\setp control_clip "@file[{"label":"IC-LoRA Control Clip", "optional":true, "mode":"input", "file-types":["images-in", "videos-in"], "divider-after":true}]"
+
+\set image_seeds {{ control_clip if (control_clip and not first_frame and not last_frame) else ((first_frame + ((';last-frame=' + last_frame) if last_frame else '') + ((';control=' + control_clip) if control_clip else '')) if (first_frame or last_frame) else '') }}
+
+\setp first_processor "@imageprocessor[{"label":"First Frame Processor"}]"
+\setp last_processor "@imageprocessor[{"label":"Last Frame Processor"}]"
+
+\set seed_processors {{ (quote(first_processor) + ((' + ' + quote(last_processor)) if last_processor else (' +' if last_frame else ''))) if first_processor else (('+ ' + quote(last_processor)) if last_processor else '') }}
+
+@uri[{"label":"Model Path / HF Slug", "dir":true, "default": "Lightricks/LTX-2.5-Diffusers", "optional":false, "file-types":["models"]}]
+--model-type ltx {{ auth_token }}
+@dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"], "default":"bfloat16"}]
+@karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "filter": ["FlowMatchEulerDiscreteScheduler"]}]
+@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
+@switch[{"label":"VAE Slicing", "arg":"--vae-slicing"}]
+@quantizer[{"divider-after":true}]
+@submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA"}]
+@submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "default":"https://huggingface.co/realrebelai/LTX-2.5_GGUFs/blob/main/LTX-2.5-Distilled-Q4_K_S.gguf"}]
+@submodelbuilder[{"label":"IC-LoRA", "arg":"--ltx-ic-lora", "model": "IC-LoRA"}]
+@imageprocessor[{"arg":"--control-image-processors", "label":"IC-LoRA Control Clip Processor", "divider-after":true}]
+@switch[{"label":"No Aspect Correction?", "arg":"--no-aspect", "divider-after":true}]
+@int[{"label":"Inference Steps", "arg":"--inference-steps", "min":1}]
+@float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":1, "min":0}]
+@float[{"label":"Audio Guidance Scale", "arg":"--ltx-audio-guidance-scales", "default":1, "min":0}]
+@switch[{"label":"Latent Upscale", "arg":"--ltx-latent-upscale"}]
+@string[{"label":"Stage Sigmas", "arg":"--ltx-stage-sigmas"}]
+@float[{"label":"Noise Scale", "arg":"--ltx-noise-scales", "min":0}]
+@float[{"label":"Stage Guidance Scale", "arg":"--ltx-stage-guidance-scales", "min":0}]
+@float[{"label":"Stage Audio Guidance Scale", "arg":"--ltx-stage-audio-guidance-scales", "min":0, "divider-after":true}]
+@float[{"label":"Video Length (seconds)", "arg":"--ltx-video-lengths", "min":0.1}]
+@float[{"label":"Min Seconds", "arg":"--ltx-video-min-seconds", "min":0.1}]
+@float[{"label":"Max Seconds", "arg":"--ltx-video-max-seconds", "min":0.1}]
+@float[{"label":"Video FPS", "arg":"--ltx-video-fps", "default":"24", "min":1}]
+@dropdown[{"label":"Video Decoder", "arg":"--ltx-video-decoder", "options":["conv", "diffusion"], "optional":true}]
+@int[{"label":"Image CRF", "arg":"--ltx-image-crfs", "min":0}]
+@string[{"label":"Prompt Enhancer", "arg":"--ltx-prompt-enhancer"}]
+@string[{"label":"System Prompt", "arg":"--ltx-system-prompt", "divider-after":true}]
+@dropdown[{"label":"Animation Format", "arg":"--animation-format", "options":["mp4", "gif", "webp", "apng", "frames"], "default":"mp4", "optional":false}]
+@float[{"label":"Condition Strength", "arg":"--image-seed-strengths", "min":0, "max":1}]
+@seeds[{"label":"Seeds"}]
+@dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
+@switchradio[{"labels":["Output Dgenerate Image Metadata", "Output Automatic1111 Image Metadata"], "args":["--output-metadata", "--output-auto1111-metadata"]}]
+@switch[{"label":"Output Configs", "arg":"--output-configs"}]
+@imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"640x384", "divider-after":true}]
+@promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
+@imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
+@device[{}]
+--prompts "add your prompt here" {{ '--image-seeds ' + quote(image_seeds) if image_seeds else '' }} {{ '--seed-image-processors ' + seed_processors if seed_processors else '' }}

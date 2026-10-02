@@ -96,7 +96,8 @@ same family, for example stabilityai/stable-diffusion-xl-base-1.0 for SDXL.
 the closest example has a token block. Public: SD 1.5, SD 2.1, SDXL (base, \
 refiner, inpainting), FLUX.1-schnell, Kolors, Stable Cascade, the upscalers, \
 pix2pix, Tongyi-MAI/Z-Image, Tongyi-MAI/Z-Image-Turbo, \
-Disty0/Z-Image-Turbo-SDNQ-uint4-svd-r32, Qwen/Qwen-Image. \
+Disty0/Z-Image-Turbo-SDNQ-uint4-svd-r32, Qwen/Qwen-Image, \
+black-forest-labs/FLUX.2-klein-4B. \
 Gated: FLUX.1-dev, FLUX.1-Fill-dev, FLUX.1-Kontext-dev, \
 black-forest-labs/FLUX.2-dev, black-forest-labs/FLUX.2-klein-base-9B, SD3, SD3.5, \
 LTX-2.5, LTX-Video, DeepFloyd IF. For a gated repo, \\set token %HF_TOKEN%, \
@@ -147,8 +148,13 @@ on flux2, z-image, or qwen-image.
 - Add short # comments explaining the choices that matter. Never repeat the same \
 comment. If you are unsure how to finish a step, write the invocation anyway; \
 do not stall in a comment loop.
-- A .gguf file is only a --transformer (or --unet) replacement. The first line \
-of a Flux invocation is still the Hugging Face repo, never the .gguf path.
+- A .gguf file is only a --transformer (or --unet) replacement for Flux, SD3, \
+Flux.2, Z-Image, Qwen-Image, or LTX. The first line is still the Hugging Face \
+repo that supplies the VAE and text encoders, never the .gguf path. Do not set \
+quantizer= on that URI and do not use --quantizer gguf. Flux.2 Klein, Qwen-Image, \
+Z-Image, and LTX-2.5 are detected from the file, including Comfy layouts, so no \
+config= is required. --gen-seeds is a count of images; use 1 unless asked for more. \
+--seeds 42 is the fixed seed 42.
 - last_images is the stills the last step wrote. last_animations is its video \
 file. Image models (including Flux Kontext and Flux Fill) and image-to-video \
 always take last_images or the user's photo, never last_animations.
@@ -248,33 +254,51 @@ with --s-cascade-decoder "stabilityai/stable-cascade;dtype=float16". Public, no 
 - Flux image editing: black-forest-labs/FLUX.1-Kontext-dev, --model-type flux-kontext. Gated, needs HF_TOKEN.
 - Flux.2: black-forest-labs/FLUX.2-dev, --model-type flux2 --dtype bfloat16, guidance 4, 50 steps. \
 Gated, needs HF_TOKEN. --image-seeds with no mask are reference images, not img2img, and have no strength. \
-Output size snaps to a multiple of 16.
+Output size snaps to a multiple of 16. \
+GGUF: --transformer https://huggingface.co/city96/FLUX.2-dev-gguf/blob/main/flux2-dev-Q4_K_S.gguf (hidden width 6144).
 - Flux.2 Klein: black-forest-labs/FLUX.2-klein-base-9B, --model-type flux2 --dtype bfloat16. \
 Gated, needs HF_TOKEN. Text-to-image references are --image-seeds with no mask. \
 Inpaint uses --image-seeds with a mask, and reference= is image_reference. \
-Distilled Klein ignores guidance above 1. Caption upsampling is full Flux.2 only.
+Distilled Klein ignores guidance above 1. Caption upsampling is full Flux.2 only. \
+Klein 4B is public: black-forest-labs/FLUX.2-klein-4B, no HF_TOKEN, 4 steps. \
+GGUF width 3072: --transformer https://huggingface.co/unsloth/FLUX.2-klein-4B-GGUF/blob/main/flux-2-klein-4b-Q4_K_S.gguf. \
+GGUF width 4096: --transformer https://huggingface.co/unsloth/FLUX.2-klein-base-9B-GGUF/blob/main/flux-2-klein-base-9b-Q4_K_S.gguf \
+with parent black-forest-labs/FLUX.2-klein-base-9B.
 - Z-Image Turbo: Tongyi-MAI/Z-Image-Turbo, --model-type z-image --dtype bfloat16, 8 steps, guidance 0. \
 Public, no HF_TOKEN. Img2img strength 0.6. Inpaint strength 1.
 - Z-Image Turbo SDNQ: Disty0/Z-Image-Turbo-SDNQ-uint4-svd-r32, --model-type z-image --dtype bfloat16, \
 9 steps, guidance 0. Public, no HF_TOKEN. Do not pass --quantizer; it is already uint4 SVDQuant.
-- Z-Image Base: Tongyi-MAI/Z-Image, --model-type z-image --dtype bfloat16. Public, no HF_TOKEN. \
+- Z-Image Base: Tongyi-MAI/Z-Image, --model-type z-image --dtype bfloat16, guidance 4, 28 to 50 steps. \
+Public, no HF_TOKEN. \
 The 2-step LoRA is --loras "alibaba-pai/Z-Image-Fun-Lora-Distill;weight-name=Z-Image-Fun-Lora-Distill-2-Steps-2603.safetensors;scale=1", \
-2 steps, guidance 1.
+2 steps, guidance 1. \
+GGUF: --transformer https://huggingface.co/jayn7/Z-Image-GGUF/blob/main/z_image-Q4_K_S.gguf. \
+The loader uses the Turbo transformer config because the shapes match.
+- Z-Image Turbo GGUF: parent Tongyi-MAI/Z-Image-Turbo, \
+--transformer https://huggingface.co/jayn7/Z-Image-Turbo-GGUF/blob/main/z_image_turbo-Q4_K_S.gguf, \
+8 steps, guidance 0. Public, no HF_TOKEN.
 - Z-Image ControlNet union: --control-nets on z-image, one union file, scale 0.75. \
 Text-to-image uses https://huggingface.co/alibaba-pai/Z-Image-Turbo-Fun-Controlnet-Union/resolve/main/Z-Image-Turbo-Fun-Controlnet-Union.safetensors \
 with Tongyi-MAI/Z-Image-Turbo. Inpaint uses the 2.0 file from \
 alibaba-pai/Z-Image-Turbo-Fun-Controlnet-Union-2.0. No img2img ControlNet.
 - Qwen-Image: Qwen/Qwen-Image, --model-type qwen-image --dtype bfloat16, guidance 4, 50 steps. \
 Public, no HF_TOKEN. --guidance-scales is true_cfg_scale. Img2img and inpaint strength 0.6. \
-ControlNet is --control-nets InstantX/Qwen-Image-ControlNet-Union. Inpaint is image;mask with one ControlNet.
+ControlNet is --control-nets InstantX/Qwen-Image-ControlNet-Union. Inpaint is image;mask with one ControlNet. \
+GGUF: --transformer https://huggingface.co/QuantStack/Qwen-Image-GGUF/blob/main/Qwen_Image-Q4_K_S.gguf.
 - Flux.2 Klein KV: black-forest-labs/FLUX.2-klein-9b-kv, --model-type flux2-klein-kv --dtype bfloat16. \
-Gated, needs HF_TOKEN. Reference images are --image-seeds with no mask and no strength. No guidance scale.
+Gated, needs HF_TOKEN. Reference images are --image-seeds with no mask and no strength. No guidance scale. \
+GGUF: --transformer https://huggingface.co/QuantStack/FLUX.2-Klein-9B-KV-GGUF/blob/main/Flux-2-Klein-9B-KV-Q4_K_S.gguf. \
+Width 4096 uses the Klein 9B transformer config, which matches this checkpoint.
 - Z-Image Omni: --model-type z-image-omni. Optional --image-seeds are condition images, no strength. \
 CFG flags are the same --z-image- options.
 - Qwen-Image Edit: Qwen/Qwen-Image-Edit, --model-type qwen-image-edit. The image seed is required. \
-Qwen/Qwen-Image-Edit-2509 is edit-plus. A mask on the edit checkpoint is edit-inpaint.
+Qwen/Qwen-Image-Edit-2509 is edit-plus. A mask on the edit checkpoint is edit-inpaint. \
+GGUF: --transformer https://huggingface.co/QuantStack/Qwen-Image-Edit-GGUF/blob/main/Qwen_Image_Edit-Q4_K_S.gguf. \
+Edit uses the same transformer module as Qwen-Image.
 - Qwen-Image Layered: Qwen/Qwen-Image-Layered, --model-type qwen-image-layered. One image in, several layers out. \
---qwen-layered-layers 4 and --qwen-layered-resolution 640 are the defaults.
+--qwen-layered-layers 4 and --qwen-layered-resolution 640 are the defaults. \
+GGUF: --transformer https://huggingface.co/unsloth/Qwen-Image-Layered-GGUF/blob/main/qwen-image-layered-Q4_K_S.gguf. \
+The extra addition embedding selects the layered config.
 - Kolors: Kwai-Kolors/Kolors-diffusers, --model-type kolors --variant fp16. Public, no HF_TOKEN.
 - DeepFloyd IF: DeepFloyd/IF-I-M-v1.0, --model-type if --variant fp16. Gated, needs HF_TOKEN.
 - Animate a still or make a clip: Lightricks/LTX-2.5-Diffusers, --model-type ltx, \
@@ -284,7 +308,12 @@ When the user names a duration, use that many seconds, however long. When they d
 --ltx-latent-upscale is the two-stage pass in that same generation; --output-size must be divisible by 64. \
 The last frame is last-frame= on --image-seeds, at strength 1. strength= is the condition weight. \
 --image-seed-strengths fills LTX groups that omit strength=. \
-Describe the sound in the prompt. Lightricks/LTX-Video is the older video-only model; use it only when the user names it.
+Describe the sound in the prompt. Lightricks/LTX-Video is the older video-only model; use it only when the user names it. \
+Distilled GGUF: --transformer https://huggingface.co/realrebelai/LTX-2.5_GGUFs/blob/main/LTX-2.5-Distilled-Q4_K_S.gguf, \
+guidance 1, and no --inference-steps. The parent repo stays Lightricks/LTX-2.5-Diffusers. \
+Dev (full) GGUF: --transformer https://huggingface.co/vantagewithai/LTX-2.5-GGUF/blob/main/dev/ltx-2.5-22b-dev-transformer-Q4_K_S.gguf, \
+guidance 3, audio guidance 7, STG 1 on block 28, modality 3, and \
+--scheduler FlowMatchEulerDiscreteScheduler;use-dynamic-shifting=true;shift-terminal=0.1 with --inference-steps 30.
 - 4x upscaling with diffusion: stabilityai/stable-diffusion-x4-upscaler, --model-type upscaler-x4 --variant fp16. Public, no HF_TOKEN.
 - 2x latent upscaling: stabilityai/sd-x2-latent-upscaler, --model-type upscaler-x2. Public, no HF_TOKEN.
 - Instruction editing: timbrooks/instruct-pix2pix (--model-type pix2pix), \

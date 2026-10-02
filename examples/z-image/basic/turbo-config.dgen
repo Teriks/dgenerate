@@ -17,7 +17,7 @@ Tongyi-MAI/Z-Image-Turbo
 --scheduler FlowMatchEulerDiscreteScheduler
 --inference-steps 8
 --guidance-scales 0
---gen-seeds 42
+--gen-seeds 1
 --output-path z-image-turbo
 --output-size 1024
 --prompts "A red fox sitting in tall grass at sunrise, photo, sharp fur"
