@@ -30,5 +30,5 @@ Qwen/Qwen-Image
                   prompt="a detailed face, sharp eyes";\
                   guidance-scale=4;\
                   inference-steps=20;\
-                  strength=0.8
+                  strength=0.6
 --prompts "photo of a woman standing in a sunlit kitchen, looking at the camera"
