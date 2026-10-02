@@ -6814,12 +6814,14 @@ upsampling. Klein rejects that argument.
 See `examples/flux2/basic/dev-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/flux2/basic/dev-config.dgen>`_.
 
 The Turbo LoRA is a normal ``--loras`` load, 8 steps, guidance 2.5, with an
-explicit sigma list:
+explicit sigma list. ``--sigmas`` takes one CSV string (or ``expr:``), not
+space-separated floats:
 
 .. code-block::
 
     --loras "fal/FLUX.2-dev-Turbo;weight-name=flux.2-turbo-lora.safetensors;scale=1.0"
     --inference-steps 8
+    --sigmas "1.0,0.6509,0.4374,0.2932,0.1893,0.1108,0.0495,0.00031"
     --guidance-scales 2.5
 
 See `examples/flux2/lora/dev-turbo-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/flux2/lora/dev-turbo-config.dgen>`_.
@@ -6844,9 +6846,12 @@ Text to image has no image seed. References, when you use them, are
 ``--image-seeds`` with no mask, the same as full Flux.2.
 
 Inpaint is the same Klein repository with ``--image-seeds "image.png;mask.png"``.
-Strength defaults to 0.8. ``reference=`` in that seed is an extra reference
-image, passed as ``image_reference``. A reference video is zipped with the
-inpaint clip, one frame at a time. Full Flux.2 has no inpaint class.
+White mask pixels are repainted. The init image also stays packed as a
+condition every step, so weak edits are normal at low strength. Use
+``--image-seed-strengths 1`` and guidance nearer 8. ``reference=`` in that
+seed is an extra reference image, passed as ``image_reference``. A reference
+video is zipped with the inpaint clip, one frame at a time. Full Flux.2 has
+no inpaint class.
 
 See `examples/flux2/klein/config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/flux2/klein/config.dgen>`_
 and `examples/flux2/klein/inpaint-config.dgen <https://github.com/Teriks/dgenerate/blob/version_6.0.0/examples/flux2/klein/inpaint-config.dgen>`_.

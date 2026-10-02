@@ -2,7 +2,11 @@
 #! dgenerate 6.0.0
 
 # Klein inpaint. Full Flux.2 has no inpaint class.
-# image_reference is left unset.
+# horse1-mask.jpg is black on the horse and white on the background.
+# White is repainted, so this changes the field and keeps the horse.
+# The init image also stays packed as a condition every step, so use
+# strength 1 and guidance nearer the Diffusers inpaint default (8).
+# image_reference / reference= is left unset.
 
 \set token %HF_TOKEN%
 
@@ -27,9 +31,9 @@ black-forest-labs/FLUX.2-klein-base-9B
 --dtype bfloat16
 --scheduler FlowMatchEulerDiscreteScheduler
 --inference-steps 50
---guidance-scales 4
+--guidance-scales 8
 --image-seeds "../../media/horse1.jpg;../../media/horse1-mask.jpg"
---image-seed-strengths 0.8
+--image-seed-strengths 1
 --gen-seeds 1
 --output-path flux2-klein-inpaint
 --prompts "A horse standing on the surface of mars, photo"
