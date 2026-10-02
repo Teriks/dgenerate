@@ -55,12 +55,18 @@ Flux Example:
     --output-path output \
     --prompts "Photo of a horse standing near the open door of a red barn, high resolution"
 
-An SD3 or Flux transformer can also be a pre-quantized ``.gguf`` file. The repository
-still supplies the VAE and text encoders. Do not set ``quantizer=`` on that URI and do
-not use ``--quantizer gguf``. Diffusers dequantizes the file when it loads. Quantize
-the text encoders with ``bnb`` or ``sdnq`` and ``--quantizer-map`` if needed. See the
-configs under `examples/stablediffusion3/gguf <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/stablediffusion3/gguf>`_
-and `examples/flux/gguf <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/flux/gguf>`_.
+An SD3, Flux, Flux.2, Z-Image, Qwen-Image, or LTX transformer can also be a
+pre-quantized ``.gguf`` file. The repository still supplies the VAE and text
+encoders. Do not set ``quantizer=`` on that URI and do not use ``--quantizer gguf``.
+Flux.2 Klein, Qwen-Image, and LTX 2.5 are recognized from the file, including
+ComfyUI layouts. Quantize the text encoders with ``bnb`` or ``sdnq`` and
+``--quantizer-map`` if needed. See
+`examples/stablediffusion3/gguf <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/stablediffusion3/gguf>`_,
+`examples/flux/gguf <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/flux/gguf>`_,
+`examples/flux2/gguf <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/flux2/gguf>`_,
+`examples/z-image/gguf <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/z-image/gguf>`_,
+`examples/qwen-image/gguf <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/qwen-image/gguf>`_,
+and `examples/ltx2/gguf <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/ltx2/gguf>`_.
 
 ``--model-type ltx`` also accepts ``--transformer``.
 That argument replaces the diffusion transformer only. See :ref:`video-generation`.

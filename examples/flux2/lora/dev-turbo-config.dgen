@@ -1,0 +1,36 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# FLUX.2-dev plus the fal Turbo LoRA. Klein and Klein KV use the same --loras
+# argument on their own checkpoints. The dev repo is gated.
+
+\set token %HF_TOKEN%
+
+{% if not token.strip() and not '--auth-token' in injected_args %}
+    \print Set HF_TOKEN environmental variable or pass --auth-token.
+    \exit
+{% endif %}
+
+\setp gpu_memory_gib total_memory(unit='gib')
+
+{% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 24 %}
+    \set optimization --quantizer bnb;bits=4
+{% elif have_cuda() and have_feature('sdnq') and gpu_memory_gib > 24 %}
+    \set optimization --quantizer sdnq;type=int4
+{% else %}
+    \set optimization --model-sequential-offload
+{% endif %}
+
+
+black-forest-labs/FLUX.2-dev
+--model-type flux2 {{ optimization }}
+--dtype bfloat16
+--scheduler FlowMatchEulerDiscreteScheduler
+--loras "fal/FLUX.2-dev-Turbo;weight-name=flux.2-turbo-lora.safetensors;scale=1.0"
+--inference-steps 8
+--sigmas 1.0 0.6509 0.4374 0.2932 0.1893 0.1108 0.0495 0.00031
+--guidance-scales 2.5
+--gen-seeds 1
+--output-path flux2-dev-turbo
+--output-size 1024
+--prompts "A chrome turbocharger on a studio table, engraved text 'FLUX.2', dramatic side light"

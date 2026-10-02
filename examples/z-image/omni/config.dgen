@@ -18,7 +18,7 @@ Z-a-o/Z-Image-Turbo
 --inference-steps 8
 --guidance-scales 0
 --image-seeds "../../media/beach.jpg"
---gen-seeds 42
+--gen-seeds 1
 --output-path z-image-omni
 --output-size 1024
 --prompts "The same beach, but the sky is a bright aurora, photo"

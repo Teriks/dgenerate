@@ -385,7 +385,8 @@ seeds formats and batch
 -----------------------
 
 ``--gen-seeds 4`` writes four images with four random seeds.
-``--seeds 1 2 3 4`` sets those seeds. ``--image-format jpg`` writes
+Use ``1`` unless the user asked for several images. ``--seeds 42`` is
+the fixed seed 42, not forty-two images. ``--image-format jpg`` writes
 JPEG; ``png`` is the default. ``--output-path`` is a directory name
 for results, never the user's input file.
 
@@ -439,10 +440,37 @@ or image-to-video.
 gguf files
 ----------
 
-A ``.gguf`` file replaces the transformer (Flux, SD3) or UNet, not the
-whole pipeline. The first line is still the Hugging Face repo. Pass the
-GGUF with ``--transformer`` (see ``examples/flux/gguf``). Never put the
-``.gguf`` path on the model line.
+A ``.gguf`` file replaces the diffusion transformer or UNet, not the
+whole pipeline. The first line is still the Hugging Face repo, which
+supplies the VAE and text encoders. Pass the file with
+``--transformer``. Never put the ``.gguf`` path on the model line.
+Do not set ``quantizer=`` on that URI and do not use
+``--quantizer gguf``. Quantize the text encoder separately with
+``bnb`` or ``sdnq`` and ``--quantizer-map text_encoder``.
+``--model-sequential-offload`` works with these GGUF transformers.
+
+Flux, SD3, Flux.2, Z-Image, Qwen-Image, and LTX-2.5 all take a GGUF
+transformer. Flux.2 Klein, Qwen-Image, Z-Image, and LTX-2.5 are
+recognized from the file, including ComfyUI layouts, so
+``--transformer`` needs no ``config=``. Flux.2 hidden width picks the
+config: 3072 is Klein 4B (``black-forest-labs/FLUX.2-klein-4B``,
+public), 4096 is Klein 9B (``black-forest-labs/FLUX.2-klein-base-9B``),
+and 6144 is Flux.2 dev. Z-Image base and Turbo share one transformer
+shape, so a base GGUF still uses the Turbo module config. The parent
+repo is the checkpoint you want: ``Tongyi-MAI/Z-Image`` for base
+(guidance about 4, 28 to 50 steps) and ``Tongyi-MAI/Z-Image-Turbo``
+for Turbo (8 steps, guidance 0).
+
+See ``examples/flux/gguf``, ``examples/stablediffusion3/gguf``,
+``examples/flux2/gguf``, ``examples/z-image/gguf``,
+``examples/qwen-image/gguf``, and ``examples/ltx2/gguf``.
+The distilled LTX-2.5 GGUF keeps guidance at 1 and omits
+``--inference-steps``. The dev GGUF is the full transformer: guidance 3,
+audio guidance 7, and
+``FlowMatchEulerDiscreteScheduler;use-dynamic-shifting=true;shift-terminal=0.1``
+so ``--inference-steps`` applies. Qwen-Image Edit uses the same transformer
+module as Qwen-Image. Qwen-Image Layered is selected by its extra
+``addition_t_embedding``. Klein KV is width 4096, the same module as Klein 9B.
 
 do not loop in comments
 -----------------------

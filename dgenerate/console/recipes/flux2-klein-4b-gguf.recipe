@@ -1,0 +1,25 @@
+title: Flux.2 Klein 4B (GGUF)
+order: 24
+
+# Four steps is the short schedule. Distilled Klein ignores guidance above 1.
+
+@uri[{"label":"Model Path / HF Slug", "dir":true, "default": "black-forest-labs/FLUX.2-klein-4B", "optional":false, "file-types":["models"]}]
+--model-type flux2
+@dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"], "default":"bfloat16"}]
+@karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "filter": ["FlowMatchEulerDiscreteScheduler"]}]
+@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
+@quantizer[{"divider-after":true}]
+@submodelbuilder[{"label":"LoRA", "arg":"--loras", "model": "LoRA"}]
+@submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "default":"https://huggingface.co/unsloth/FLUX.2-klein-4B-GGUF/blob/main/flux-2-klein-4b-Q4_K_S.gguf", "divider-after":true}]
+@imageseed[{"label":"Inpaint Image Seed", "arg":"--image-seeds", "file-types":["images-in"], "float-label":"Image Seed Strength", "float-arg":"--image-seed-strengths", "min":0.01, "max":1, "default":"", "float":"0.8"}]
+@imageprocessor[{"arg":"--mask-image-processors", "label":"Inpaint Mask Processor", "divider-after":true}]
+@int[{"label":"Inference Steps", "arg":"--inference-steps", "default":4, "min":1}]
+@float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":4, "min":0}]
+@seeds[{"label":"Seeds"}]
+@dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
+@imageformat[{}]
+@imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"1024x1024", "divider-after":true}]
+@promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
+@imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
+@device[{}]
+--prompts "add your prompt here"

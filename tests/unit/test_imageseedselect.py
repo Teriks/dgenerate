@@ -54,6 +54,34 @@ class TestImageSeedSelect(unittest.TestCase):
         finally:
             self._close(root, dialog)
 
+    def test_reference_with_inpaint(self):
+        root, dialog, inserted = self._dialog()
+        try:
+            dialog._seeds.entries[0].insert(0, 'seed.png')
+            dialog._masks.add()
+            dialog._masks.entries[0].insert(0, 'mask.png')
+            dialog._references.add()
+            dialog._references.entries[0].insert(0, 'earth.jpg')
+            dialog._references.add()
+            dialog._references.entries[1].insert(0, 'mountain.png')
+            dialog._insert_click()
+            self.assertEqual(
+                inserted,
+                ['seed.png;mask=mask.png;reference=earth.jpg, mountain.png'])
+        finally:
+            self._close(root, dialog)
+
+    def test_reference_requires_seed(self):
+        root, dialog, inserted = self._dialog()
+        try:
+            dialog._seeds.entries[0].delete(0, tk.END)
+            dialog._references.add()
+            dialog._references.entries[0].insert(0, 'earth.jpg')
+            dialog._insert_click()
+            self.assertEqual(inserted, [])
+        finally:
+            self._close(root, dialog)
+
     def test_control_list(self):
         root, dialog, inserted = self._dialog()
         try:

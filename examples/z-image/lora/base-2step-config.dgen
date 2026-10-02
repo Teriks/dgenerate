@@ -15,7 +15,7 @@ Tongyi-MAI/Z-Image
 --loras "alibaba-pai/Z-Image-Fun-Lora-Distill;weight-name=Z-Image-Fun-Lora-Distill-2-Steps-2603.safetensors;scale=1.0"
 --inference-steps 2
 --guidance-scales 1
---gen-seeds 42
+--gen-seeds 1
 --output-path z-image-base-2step
 --output-size 1024
 --prompts "A ceramic fox figurine on a wooden desk, soft window light, photo"

@@ -1,0 +1,84 @@
+{
+  "_class_name": "LTX2VideoDiffusionDecoderModel",
+  "_diffusers_version": "0.40.0.dev0",
+  "decoder_head_dim": 64,
+  "decoder_model_output_type": "x0",
+  "decoder_num_inference_steps": 1,
+  "decoder_stage5_kernel": [
+    11,
+    11,
+    11
+  ],
+  "decoder_stage_channels": [
+    2048,
+    1024,
+    512,
+    512,
+    256
+  ],
+  "decoder_stage_depths": [
+    4,
+    6,
+    4,
+    2,
+    8
+  ],
+  "decoder_stage_kernels": [
+    [
+      3,
+      7,
+      7
+    ],
+    [
+      3,
+      7,
+      7
+    ],
+    [
+      3,
+      5,
+      5
+    ],
+    [
+      3,
+      5,
+      5
+    ]
+  ],
+  "decoder_t_emb_dim": 384,
+  "decoder_timestep_scale_multiplier": 1000.0,
+  "decoder_upsample_channel_reductions": [
+    2,
+    2,
+    1,
+    2
+  ],
+  "decoder_upsample_strides": [
+    [
+      1,
+      2,
+      2
+    ],
+    [
+      2,
+      1,
+      1
+    ],
+    [
+      2,
+      2,
+      2
+    ],
+    [
+      2,
+      2,
+      2
+    ]
+  ],
+  "latent_channels": 128,
+  "out_channels": 3,
+  "patch_size": 4,
+  "scaling_factor": 1.0,
+  "spatial_compression_ratio": 32,
+  "temporal_compression_ratio": 8
+}

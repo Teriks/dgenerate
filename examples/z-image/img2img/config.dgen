@@ -18,7 +18,7 @@ Tongyi-MAI/Z-Image-Turbo
 --guidance-scales 0
 --image-seeds "../../media/beach.jpg"
 --image-seed-strengths 0.6
---gen-seeds 42
+--gen-seeds 1
 --output-path z-image-img2img
 --output-size 1024
 --prompts "A huge wave about to break over a tropical beach, photo"

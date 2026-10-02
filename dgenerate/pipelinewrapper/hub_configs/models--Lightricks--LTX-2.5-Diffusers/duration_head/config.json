@@ -1,0 +1,10 @@
+{
+  "_class_name": "LTX2DurationHead",
+  "_diffusers_version": "0.40.0.dev0",
+  "audio_cross_attention_dim": 2048,
+  "mlp_hidden_dim": 256,
+  "num_pooler_heads": 4,
+  "num_queries": 1,
+  "pooler_hidden_dim": 256,
+  "video_cross_attention_dim": 4096
+}

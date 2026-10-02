@@ -1,0 +1,29 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Qwen-Image with a QuantStack GGUF transformer. The file uses Diffusers
+# tensor names and is detected as Qwen-Image, so --transformer needs no config.
+# A Comfy file prefixed with model.diffusion_model. is stripped on load.
+
+# --guidance-scales is true_cfg_scale. The text encoder is quantized separately.
+
+\setp gpu_memory_gib total_memory(unit='gib')
+
+{% if have_cuda() and have_feature('bitsandbytes') and gpu_memory_gib > 16 %}
+    \set te_quant --quantizer bnb;bits=4 --quantizer-map text_encoder
+{% elif have_cuda() and have_feature('sdnq') and gpu_memory_gib > 16 %}
+    \set te_quant --quantizer sdnq;type=int4 --quantizer-map text_encoder
+{% endif %}
+
+Qwen/Qwen-Image
+--model-type qwen-image {{ te_quant }}
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/QuantStack/Qwen-Image-GGUF/blob/main/Qwen_Image-Q4_K_S.gguf
+--scheduler FlowMatchEulerDiscreteScheduler
+--inference-steps 20
+--guidance-scales 4
+--gen-seeds 1
+--output-path qwen-image-gguf
+--output-size 1024
+--prompts "A cat holding a sign that says hello world"

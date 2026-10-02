@@ -156,6 +156,9 @@ class _ImageSeedSelect(tk.Toplevel):
         self._masks = _FileRows(self, self._open_image, 'Inpaint mask')
         self._controls = _FileRows(self, self._open_image, 'Control image')
 
+        self._section('Reference', 'Extra images beside the seed. Written as reference=.')
+        self._references = _FileRows(self, self._open_image, 'Reference image')
+
         self._section('Latents', 'Tensor files (.pt, .pth, .safetensors), one per seed when seeds are set.')
         self._latents = _FileRows(self, self._open_latents, 'Latents')
 
@@ -268,10 +271,14 @@ class _ImageSeedSelect(tk.Toplevel):
         seeds = self._seeds.paths()
         masks = self._masks.paths()
         controls = self._controls.paths()
+        references = self._references.paths()
         latents = self._latents.paths()
         end_image = _entry.shell_quote_if(self._end_entry.get().strip(), strict=True) or None
 
         if masks and not seeds:
+            self._seeds.mark()
+            return
+        if references and not seeds:
             self._seeds.mark()
             return
         if len(masks) > 1 and len(masks) != len(seeds):
@@ -329,6 +336,7 @@ class _ImageSeedSelect(tk.Toplevel):
                 seed_images=self._paths_argument(seeds),
                 mask_images=self._paths_argument(masks),
                 control_images=self._paths_argument(controls),
+                reference_images=self._paths_argument(references),
                 latents=self._paths_argument(latents),
                 adapter_images=self._paths_argument(adapters),
                 resize=resize_value or None,

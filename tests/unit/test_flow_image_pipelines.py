@@ -2,6 +2,7 @@ import json
 import os
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import diffusers
 
@@ -93,6 +94,11 @@ class TestFlowImagePipelines(unittest.TestCase):
         self.assertIn('flux2-klein-kv', str(klein_kv.exception))
         _pipelines.validate_model_index_class(
             _pipelinewrapper.ModelType.FLUX2_KLEIN_KV, 'Flux2KleinKVPipeline', 'org/kv')
+        _pipelines.validate_model_index_class(
+            _pipelinewrapper.ModelType.FLUX2_KLEIN_KV, 'Flux2KleinPipeline',
+            'black-forest-labs/FLUX.2-klein-9b-kv')
+        _pipelines.validate_model_index_class(
+            _pipelinewrapper.ModelType.FLUX2, 'Flux2KleinPipeline', 'org/klein')
         with self.assertRaises(_pipelines.UnsupportedPipelineConfigError) as edit:
             _pipelines.validate_model_index_class(qwen, 'QwenImageEditPipeline', 'org/edit')
         self.assertIn('qwen-image-edit', str(edit.exception))
@@ -796,6 +802,49 @@ class TestFlowImagePipelines(unittest.TestCase):
         scaled = DiffusionPipelineWrapper._sigmas_eval('primary', sdxl, 2, 'sigmas * 2')
         self.assertTrue(sdxl.scheduler.called)
         np.testing.assert_allclose(scaled, [0.8, 0.4])
+
+    def test_prompt_length_warning_uses_pipeline_limit_for_processors(self):
+        class _Inner:
+            model_max_length = 100000
+
+            def tokenize(self, text):
+                return text.split()
+
+        class _Processor:
+            def __init__(self):
+                self.tokenizer = _Inner()
+
+        class Flux2Pipeline:
+            def __init__(self):
+                self.tokenizer = _Processor()
+                self.tokenizer_max_length = 4
+
+        with patch('dgenerate.pipelinewrapper.pipelines._messages.warning') as warning:
+            _pipelines._warn_prompt_lengths(
+                Flux2Pipeline(), prompt='one two three four five')
+        warning.assert_called_once()
+        self.assertIn('of 4', warning.call_args.args[0])
+
+        with patch('dgenerate.pipelinewrapper.pipelines._messages.warning') as warning:
+            _pipelines._warn_prompt_lengths(Flux2Pipeline(), prompt='one two')
+        warning.assert_not_called()
+
+        class _Clip:
+            model_max_length = 3
+
+            def tokenize(self, text):
+                return text.split()
+
+        class StableDiffusionPipeline:
+            def __init__(self):
+                self.tokenizer = _Clip()
+                self.tokenizer_max_length = 77
+
+        with patch('dgenerate.pipelinewrapper.pipelines._messages.warning') as warning:
+            _pipelines._warn_prompt_lengths(
+                StableDiffusionPipeline(), prompt='one two three four')
+        warning.assert_called_once()
+        self.assertIn('of 3', warning.call_args.args[0])
 
 
 if __name__ == '__main__':

@@ -1,0 +1,53 @@
+{
+  "_class_name": "LTX2Pipeline",
+  "_diffusers_version": "0.40.0.dev0",
+  "_name_or_path": "Lightricks/LTX-2.5-Diffusers",
+  "audio_vae": [
+    "diffusers",
+    "AutoencoderKLLTX2Audio"
+  ],
+  "connectors": [
+    "ltx2",
+    "LTX2TextConnectors"
+  ],
+  "diffusion_decoder": [
+    "diffusers",
+    "LTX2VideoDiffusionDecoderModel"
+  ],
+  "duration_head": [
+    "ltx2",
+    "LTX2DurationHead"
+  ],
+  "processor": [
+    "transformers",
+    "Gemma4Processor"
+  ],
+  "prompt_enhancer": [
+    "transformers",
+    "Gemma4ForConditionalGeneration"
+  ],
+  "scheduler": [
+    "diffusers",
+    "FlowMatchEulerDiscreteScheduler"
+  ],
+  "text_encoder": [
+    "transformers",
+    "Gemma4UnifiedForConditionalGeneration"
+  ],
+  "tokenizer": [
+    "transformers",
+    "GemmaTokenizer"
+  ],
+  "transformer": [
+    "diffusers",
+    "LTX2VideoTransformer3DModel"
+  ],
+  "vae": [
+    "diffusers",
+    "AutoencoderKLLTX2Video"
+  ],
+  "vocoder": [
+    "ltx2",
+    "LTX2VocoderWithBWE"
+  ]
+}

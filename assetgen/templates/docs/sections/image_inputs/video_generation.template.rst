@@ -35,7 +35,7 @@ Repository: ``Lightricks/LTX-2.5-Diffusers``.
 Width and height must be divisible by 32.
 
 ``--model-sequential-offload``, ``--model-cpu-offload``, and ``--model-group-offload``
-work the same way they do for image models. The examples under `examples/ltx/ltx2 <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/ltx/ltx2>`_
+work the same way they do for image models. The examples under `examples/ltx2 <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/ltx2>`_
 use the published
 repository as-is. ``--ltx-latent-upscale`` runs the two-stage sampler in that
 same generation: a half-resolution pass, the checkpoint latent upsampler, then
@@ -83,12 +83,12 @@ These options are rejected: ``--ltx-audio-guidance-scales``,
 
 The Console UI recipes are ``LTX-Video`` and ``LTX-Video (GGUF)``.
 
-* `examples/ltx/ltx_video/text-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx/ltx_video/text-to-video-config.dgen>`_
-* `examples/ltx/ltx_video/image-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx/ltx_video/image-to-video-config.dgen>`_
-* `examples/ltx/ltx_video/video-extension-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx/ltx_video/video-extension-config.dgen>`_
-* `examples/ltx/ltx_video/lora-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx/ltx_video/lora-config.dgen>`_
-* `examples/ltx/ltx_video/gguf-text-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx/ltx_video/gguf-text-to-video-config.dgen>`_
-* `examples/ltx/ltx_video/gguf-image-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx/ltx_video/gguf-image-to-video-config.dgen>`_
+* `examples/ltx_video/text-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx_video/text-to-video-config.dgen>`_
+* `examples/ltx_video/image-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx_video/image-to-video-config.dgen>`_
+* `examples/ltx_video/video-extension-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx_video/video-extension-config.dgen>`_
+* `examples/ltx_video/lora-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx_video/lora-config.dgen>`_
+* `examples/ltx_video/gguf-text-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx_video/gguf-text-to-video-config.dgen>`_
+* `examples/ltx_video/gguf-image-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx_video/gguf-image-to-video-config.dgen>`_
 
 Video conditioning
 ------------------
@@ -164,9 +164,9 @@ the second on ``last-frame=``. A leading or trailing ``+`` leaves one side unpro
 Every condition is applied at full strength. The model keeps the conditioning frames
 and generates around them. It does not restyle the whole input video.
 
-See `examples/ltx/ltx2/video_conditioning <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/ltx/ltx2/video_conditioning>`_,
-`examples/ltx/ltx2/image_conditioning <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/ltx/ltx2/image_conditioning>`_,
-and `examples/ltx/ltx_video/video-extension-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx/ltx_video/video-extension-config.dgen>`_.
+See `examples/ltx2/video_conditioning <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/ltx2/video_conditioning>`_,
+`examples/ltx2/image_conditioning <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/ltx2/image_conditioning>`_,
+and `examples/ltx_video/video-extension-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx_video/video-extension-config.dgen>`_.
 
 IC-LoRA control
 ---------------
@@ -210,9 +210,9 @@ frame, put the reference in ``control=``:
   must be divisible by 64.
 * ``--ltx-ic-lora`` needs an LTX-2 checkpoint. The earlier LTX-Video pipeline rejects it.
 
-See the examples in `examples/ltx/ltx2/ic_lora <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/ltx/ltx2/ic_lora>`_.
-`canny-anime-lora-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx/ltx2/ic_lora/canny-anime-lora-config.dgen>`_
-and `depth-realism-lora-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx/ltx2/ic_lora/depth-realism-lora-config.dgen>`_
+See the examples in `examples/ltx2/ic_lora <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/ltx2/ic_lora>`_.
+`canny-anime-lora-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/ic_lora/canny-anime-lora-config.dgen>`_
+and `depth-realism-lora-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/ic_lora/depth-realism-lora-config.dgen>`_
 add a style LoRA from ``--loras`` to the IC-LoRA.
 
 In the Console UI, the LTX-2.5 recipes under ``Edit -> Insert Code -> Recipe`` have an IC-LoRA
@@ -273,7 +273,7 @@ This path wins over both of the above.
 ``--sigmas`` is combinatorial with ``--guidance-scales``, ``--inference-steps``,
 ``--guidance-rescales``, ``--ltx-audio-guidance-scales``,
 ``--ltx-audio-guidance-rescales``, ``--ltx-video-lengths``, and ``--ltx-video-fps``. See
-:ref:`specifying-sigmas` and `examples/ltx/ltx2/sigmas/sigmas-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx/ltx2/sigmas/sigmas-config.dgen>`_.
+:ref:`specifying-sigmas` and `examples/ltx2/sigmas/sigmas-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/sigmas/sigmas-config.dgen>`_.
 
 ``--guidance-rescales``
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -313,7 +313,7 @@ Omit it and audio copies ``--guidance-rescales`` when that is set, otherwise
 the pipeline default ``0.7`` is left in place.
 
 Diffusers suggests keeping audio guidance higher than video guidance when
-you set them yourself. See `examples/ltx/ltx2/audio/audio-guidance-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx/ltx2/audio/audio-guidance-config.dgen>`_.
+you set them yourself. See `examples/ltx2/audio/audio-guidance-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/audio/audio-guidance-config.dgen>`_.
 
 Chaining
 --------
@@ -346,12 +346,12 @@ stack for a guided model, for example 30 steps, ``--guidance-scales 3``,
 ``--ltx-audio-guidance-scales 7``, ``--ltx-stg-scales 1``, ``--ltx-modality-scales 3``,
 and ``--ltx-stg-blocks 28``.
 Lightricks IC-LoRAs are trained on the distilled transformer.
-See `examples/ltx/ltx2/full_transformer/text-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx/ltx2/full_transformer/text-to-video-config.dgen>`_.
+See `examples/ltx2/full_transformer/text-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/full_transformer/text-to-video-config.dgen>`_.
 
 ``--loras`` loads diffusers-format adapters onto that transformer and fuses them, including
 ``--lora-fuse-scale`` and each URI ``scale``. IC-LoRAs load with ``--ltx-ic-lora`` instead, see `IC-LoRA control`_.
-See `examples/ltx/ltx2/lora/cinemagraph-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx/ltx2/lora/cinemagraph-config.dgen>`_
-and `examples/ltx/ltx_video/lora-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx/ltx_video/lora-config.dgen>`_.
+See `examples/ltx2/lora/cinemagraph-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/lora/cinemagraph-config.dgen>`_
+and `examples/ltx_video/lora-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx_video/lora-config.dgen>`_.
 
 Two-stage generation
 ~~~~~~~~~~~~~~~~~~~~
@@ -366,14 +366,14 @@ Stage 2 guidance defaults to 1. ``--ltx-stage-sigmas``, ``--ltx-stage-guidance-s
 and ``--ltx-stage-audio-guidance-scales`` override the refine pass.
 
 The distilled checkpoint needs no stage LoRA. See
-`examples/ltx/ltx2/two_stage/image-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx/ltx2/two_stage/image-to-video-config.dgen>`_.
+`examples/ltx2/two_stage/image-to-video-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/two_stage/image-to-video-config.dgen>`_.
 
 The full transformer does. Load ``transformer_full``, give stage 1 dynamic shifting
 and ``shift-terminal=0.1``, and put the distilled LoRA on the refine pass only:
 
 ``--ltx-stage-loras "Lightricks/LTX-2.5-Diffusers;weight-name=ltx-2.5-22b-distilled-lora-450-bf16.safetensors"``
 
-See `examples/ltx/ltx2/two_stage/full-transformer-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx/ltx2/two_stage/full-transformer-config.dgen>`_.
+See `examples/ltx2/two_stage/full-transformer-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/two_stage/full-transformer-config.dgen>`_.
 
 Guidance
 ~~~~~~~~
@@ -395,15 +395,15 @@ Decode, prompts, and duration
 ``--ltx-video-decoder diffusion`` decodes with the checkpoint diffusion decoder
 instead of the convolutional VAE, in the same generation. ``conv`` is the default.
 ``--ltx-decode-timesteps`` and ``--ltx-decode-noise-scales`` are the decode arguments.
-See `examples/ltx/ltx2/decode/diffusion-decoder-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx/ltx2/decode/diffusion-decoder-config.dgen>`_.
+See `examples/ltx2/decode/diffusion-decoder-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/decode/diffusion-decoder-config.dgen>`_.
 
 ``--ltx-prompt-enhancer`` loads a model such as ``google/gemma-4-E2B-it`` and rewrites
 the prompt before denoising. ``--ltx-system-prompt`` overrides the built-in text or
-image system prompt. See `examples/ltx/ltx2/basic/prompt-enhancer-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx/ltx2/basic/prompt-enhancer-config.dgen>`_.
+image system prompt. See `examples/ltx2/basic/prompt-enhancer-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/basic/prompt-enhancer-config.dgen>`_.
 
 ``--ltx-image-crfs`` recompresses a conditioning still before the VAE encode. Omit it
 and the pipeline default is used (``18`` on LTX-2.5). ``0`` skips recompression.
-See `examples/ltx/ltx2/image_conditioning/image-crf-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx/ltx2/image_conditioning/image-crf-config.dgen>`_.
+See `examples/ltx2/image_conditioning/image-crf-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/image_conditioning/image-crf-config.dgen>`_.
 
 ``--ltx-video-min-seconds`` and ``--ltx-video-max-seconds`` clamp the duration head.
 They apply only when ``--ltx-video-lengths`` is omitted. Give the same number of
@@ -412,8 +412,8 @@ values to each. The value in each position is used together:
 from 2 to 6 seconds and one from 4 to 8. A single value with the other option
 omitted uses that option's pipeline default (``1`` and ``20``). Each bound pair
 is then tried in turn with the other arguments. See
-`examples/ltx/ltx2/basic/duration-bounds-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx/ltx2/basic/duration-bounds-config.dgen>`_
-and `examples/ltx/ltx2/basic/duration-head-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx/ltx2/basic/duration-head-config.dgen>`_.
+`examples/ltx2/basic/duration-bounds-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/basic/duration-bounds-config.dgen>`_
+and `examples/ltx2/basic/duration-head-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/basic/duration-head-config.dgen>`_.
 
 Condition placement
 ~~~~~~~~~~~~~~~~~~~
@@ -490,7 +490,7 @@ frame 4, loosely. ``close.jpg`` is the last latent frame at full strength.
 ``control=`` is not placed in the clip. With ``--ltx-ic-lora`` it is the
 reference the IC-LoRA reads. ``ltx-index`` does not move that reference.
 
-See `examples/ltx/ltx2/image_conditioning/indexed-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx/ltx2/image_conditioning/indexed-config.dgen>`_.
+See `examples/ltx2/image_conditioning/indexed-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/ltx2/image_conditioning/indexed-config.dgen>`_.
 
 What LTX rejects
 ----------------
@@ -506,5 +506,6 @@ Seed processors are limited to two chains, and
 control processors to one.
 ``--quantizer-map`` may only name ``transformer``, ``text_encoder``, or ``connectors``.
 
-LTX-2.5 configs are in `examples/ltx/ltx2 <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/ltx/ltx2>`_,
-and LTX-Video configs are in `examples/ltx/ltx_video <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/ltx/ltx_video>`_.
+LTX-2.5 configs are in `examples/ltx2 <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/ltx2>`_,
+including a distilled Comfy GGUF under `examples/ltx2/gguf <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/ltx2/gguf>`_.
+LTX-Video configs are in `examples/ltx_video <https://github.com/Teriks/dgenerate/tree/@REVISION/examples/ltx_video>`_.

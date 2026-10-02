@@ -1,0 +1,24 @@
+{
+  "_class_name": "Flux2Pipeline",
+  "_diffusers_version": "0.36.0.dev0",
+  "scheduler": [
+    "diffusers",
+    "FlowMatchEulerDiscreteScheduler"
+  ],
+  "text_encoder": [
+    "transformers",
+    "Mistral3ForConditionalGeneration"
+  ],
+  "tokenizer": [
+    "transformers",
+    "PixtralProcessor"
+  ],
+  "transformer": [
+    "diffusers",
+    "Flux2Transformer2DModel"
+  ],
+  "vae": [
+    "diffusers",
+    "AutoencoderKLFlux2"
+  ]
+}
