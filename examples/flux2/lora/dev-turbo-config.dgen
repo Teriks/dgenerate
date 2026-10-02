@@ -28,7 +28,7 @@ black-forest-labs/FLUX.2-dev
 --scheduler FlowMatchEulerDiscreteScheduler
 --loras "fal/FLUX.2-dev-Turbo;weight-name=flux.2-turbo-lora.safetensors;scale=1.0"
 --inference-steps 8
---sigmas 1.0 0.6509 0.4374 0.2932 0.1893 0.1108 0.0495 0.00031
+--sigmas "1.0,0.6509,0.4374,0.2932,0.1893,0.1108,0.0495,0.00031"
 --guidance-scales 2.5
 --gen-seeds 1
 --output-path flux2-dev-turbo
