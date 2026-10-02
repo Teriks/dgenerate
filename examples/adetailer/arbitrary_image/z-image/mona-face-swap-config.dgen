@@ -23,7 +23,7 @@ Tongyi-MAI/Z-Image
 --guidance-scales 4
 --image-seeds ../../../media/monalisa.png
 --adetailer-detectors Bingsu/adetailer;weight-name=face_yolov8n.pt
---image-seed-strengths 0.4
+--image-seed-strengths 0.6
 --gen-seeds 1
 --output-path z-image-mona-face-swap
 --output-size 800
