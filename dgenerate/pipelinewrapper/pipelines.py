@@ -2873,7 +2873,9 @@ def _create_diffusion_pipeline(
         if not quantizer_uri:
             return False
         if quantizer_map is None:
-            return True
+            # Match the create_diffusion_pipeline docstring: ControlNet stays
+            # full precision unless the user puts it in --quantizer-map.
+            return module_name != 'controlnet'
         return module_name in quantizer_map
 
     # Helper function to determine device_map - always use the selected device currently

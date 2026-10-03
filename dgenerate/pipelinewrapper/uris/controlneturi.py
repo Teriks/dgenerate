@@ -360,6 +360,8 @@ class ControlNetUri:
                 self.quantizer,
                 _exceptions.InvalidControlNetUriError
             ).parse(self.quantizer).to_config(torch_dtype)
+            from dgenerate.pipelinewrapper.quant_skips import apply_architecture_quant_skips
+            apply_architecture_quant_skips(quant_config, model_class)
         else:
             quant_config = None
 
