@@ -70,10 +70,33 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
     can force alignment using the "resize" image processor if desired.
     
     The "patch-size" argument specifies the patch size for the PatchMatch algorithm.
-    Larger patch sizes can provide better coherence but may be slower.
+    It must be an odd positive integer. Larger patch sizes can provide better coherence
+    but may be slower.
     
     The "seed" argument allows you to specify a random number generator seed for 
     reproducible results.
+    
+    The "em-loops" argument controls outer match→paint→rematch loops. On pyramids,
+    this is applied at coarse levels only (finest stays 1). Default is 1.
+    
+    The "edge-weighted" argument enables structure-aware matching using color plus
+    boosted gradient channels. Hole-touching gradients are suppressed so zeroed holes
+    do not create fake edges. Default is False (color-only matching).
+    
+    The "reverse-search" argument enables a completeness pass after each EM loop that
+    tries assigning underused near-hole sources to better queries. Default is False.
+    
+    The "poisson-blend" argument softens seams by blending the PatchMatch fill with a
+    harmonic membrane near the hole rim. Default is True. Ignored when "mask-feather"
+    is greater than 0 (feather supplies the blend band).
+    
+    The "hole-refine" argument runs extra full-resolution PatchMatch iterations after
+    the main solve (0 disables). Only hole pixels are painted; the user mask is not
+    modified. Default is 0.
+    
+    The "mask-feather" argument sets a soft compose width in pixels from the hole
+    boundary. Uses a distance ramp toward a harmonic rim pull and does not change
+    the mask used for matching. Default is 0.0.
     
     The "pre-resize" argument determines if the processing occurs before or after dgenerate 
     resizes the image. This defaults to False, meaning the image is processed after 
@@ -112,6 +135,12 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
                  image_processors: str | None = None,
                  patch_size: int = 5,
                  seed: int | None = None,
+                 em_loops: int = 1,
+                 edge_weighted: bool = False,
+                 reverse_search: bool = False,
+                 poisson_blend: bool = True,
+                 hole_refine: int = 0,
+                 mask_feather: float = 0.0,
                  pre_resize: bool = False,
                  **kwargs):
         """
@@ -119,8 +148,14 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
         :param mask_processors: Pre-process ``mask`` with an arbitrary image processor chain.
         :param image: Path to subject image file or URL when incoming image is the mask.
         :param image_processors: Pre-process ``image`` with an arbitrary image processor chain.
-        :param patch_size: Patch size for PatchMatch algorithm. Default is 5.
+        :param patch_size: Odd positive patch size for PatchMatch algorithm. Default is 5.
         :param seed: Random number generator seed for reproducible results. If None, uses random seed.
+        :param em_loops: Outer match→paint→rematch loops (coarse pyramid levels). Default is 1.
+        :param edge_weighted: Use color + boosted gradient channels for matching. Default is ``False``.
+        :param reverse_search: Enable source→query completeness pass. Default is ``False``.
+        :param poisson_blend: Soften seams with harmonic blending near the hole rim. Default is ``True``.
+        :param hole_refine: Extra full-resolution PatchMatch iterations after the main solve. Default is 0.
+        :param mask_feather: Soft compose width in pixels from the hole boundary. Default is 0.0.
         :param pre_resize: process the image before it is resized, or after? default is ``False`` (after).
         :param kwargs: forwarded to base class
         """
@@ -154,12 +189,30 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
         if patch_size <= 0:
             raise self.argument_error('Argument "patch-size" must be a positive integer.')
 
+        if patch_size % 2 == 0:
+            raise self.argument_error('Argument "patch-size" must be an odd integer.')
+
+        if em_loops < 1:
+            raise self.argument_error('Argument "em-loops" must be a positive integer.')
+
+        if hole_refine < 0:
+            raise self.argument_error('Argument "hole-refine" must be a non-negative integer.')
+
+        if mask_feather < 0:
+            raise self.argument_error('Argument "mask-feather" must be a non-negative number.')
+
         self._mask_path = mask
         self._mask_processors = mask_processors
         self._image_path = image
         self._image_processors = image_processors
         self._patch_size = patch_size
         self._seed = seed
+        self._em_loops = em_loops
+        self._edge_weighted = edge_weighted
+        self._reverse_search = reverse_search
+        self._poisson_blend = poisson_blend
+        self._hole_refine = hole_refine
+        self._mask_feather = mask_feather
         self._pre_resize = pre_resize
 
     def _load_mask(self, target_size: _types.Size = None) -> np.ndarray:
@@ -346,7 +399,13 @@ class PatchMatchProcessor(_imageprocessor.ImageProcessor):
                 image_array,
                 mask_array,
                 patch_size=self._patch_size,
-                seed=self._seed
+                seed=self._seed,
+                em_loops=self._em_loops,
+                edge_weighted=self._edge_weighted,
+                reverse_search=self._reverse_search,
+                poisson_blend=self._poisson_blend,
+                hole_refine=self._hole_refine,
+                mask_feather=self._mask_feather,
             )
 
             # Ensure result array has the same shape as input (fallback for edge cases)

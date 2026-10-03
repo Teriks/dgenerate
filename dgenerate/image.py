@@ -609,6 +609,24 @@ def to_rgb(img: PIL.Image.Image):
     return c
 
 
+def to_rgba(img: PIL.Image.Image):
+    """
+    Convert a :py:class:`PIL.Image.Image` to RGBA format while preserving its filename attribute.
+
+    Opaque RGB inputs get a fully opaque alpha channel. Used by Qwen-Image
+    layered, whose VAE expects four channels.
+
+    :param img: the image
+    :return: a converted copy of the image, or ``img`` when already RGBA
+    """
+    if img.mode == 'RGBA':
+        return img
+    c = img.convert('RGBA')
+    if hasattr(img, 'filename'):
+        c.filename = img.filename
+    return c
+
+
 def get_filename(img: PIL.Image.Image):
     """
     Get the :py:attr:`PIL.Image.Image.filename` attribute or "NO_FILENAME" if it does not exist.

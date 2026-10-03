@@ -20,7 +20,7 @@ accelerate = "1.15.0"
 sdnq = "0.2.6"
 gguf = "0.19.0"
 DeepCache = "0.1.1"
-patchmatch-cython = "^0.1.5"
+patchmatch-cython = "^0.2.1"
 dynamicprompts = "0.31.0"
 spacy = "3.8.16"
 ultralytics-opencv-headless = {version = "8.4.160", platform = "not_darwin"}
