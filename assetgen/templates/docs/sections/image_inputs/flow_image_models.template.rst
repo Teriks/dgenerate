@@ -222,7 +222,10 @@ More than one ControlNet is allowed. Text to image uses the seed image as
 the control image with ``InstantX/Qwen-Image-ControlNet-Union``. Inpaint
 uses ``--image-seeds "image.png;mask.png"`` with one inpainting ControlNet
 (``InstantX/Qwen-Image-ControlNet-Inpainting``): that image and mask are
-``control_image`` and ``control_mask``. Union ControlNets have
+``control_image`` and ``control_mask``. White mask pixels are repainted;
+black are kept. Prefer a small white region — wiping most of the frame
+often yields a black fill. The shipped example inverts ``horse1-mask.jpg``
+so the horse is painted. Union ControlNets have
 ``extra_condition_channels=0`` and cannot be used with a mask; the
 inpainting ControlNet has ``extra_condition_channels=4``. ``start`` and
 ``end`` are passed through. ``scale=1`` matches the pipeline default.

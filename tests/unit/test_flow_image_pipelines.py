@@ -485,6 +485,23 @@ class TestFlowImagePipelines(unittest.TestCase):
         self.assertIn('extra_condition_channels=4', str(raised.exception))
         self.assertIn('ControlNet-Union', str(raised.exception))
 
+    def test_qwen_edit_plus_allows_mismatched_image_sizes(self):
+        import dgenerate.mediainput as _mediainput
+
+        uri = ('images: examples/media/beach.jpg, '
+               'examples/media/horse1.jpg')
+        with self.assertRaises(_mediainput.ImageSeedSizeMismatchError):
+            with next(_mediainput.iterate_image_seed(
+                    uri, resize_resolution=(1024, 1024),
+                    check_dimensions_match=True)) as seed:
+                pass
+
+        with next(_mediainput.iterate_image_seed(
+                uri, resize_resolution=(1024, 1024),
+                check_dimensions_match=False)) as seed:
+            self.assertEqual(len(seed.images), 2)
+            self.assertNotEqual(seed.images[0].size, seed.images[1].size)
+
     def test_flow_option_argument_reconstruction(self):
         import shlex
 
