@@ -52,12 +52,91 @@ def _with_seed(seed: int | None):
 def _attn_implementation_for_config(config) -> str | None:
     """
     Phi-3 128k (and similar) set ``sliding_window``. Without flash-attn
-    window support, the default path mis-shapes RoPE (e.g. batch dim vs
-    sequence) and crashes in ``apply_rotary_pos_emb``. Eager is correct.
+    window support, prefer eager attention.
     """
     if getattr(config, 'sliding_window', None) is not None:
         return 'eager'
     return None
+
+
+def _legacy_rope_scaling_to_parameters(config_dict: dict) -> dict | None:
+    """
+    Convert checkpoint ``rope_scaling`` (``su`` / ``yarn`` / ``longrope``)
+    into transformers 5 ``rope_parameters`` so native Phi-3 can load without
+    ``trust_remote_code``. Remote ``modeling_phi3`` mis-shapes RoPE under
+    current ``generate()`` and crashes with batch/seq size mismatches.
+    """
+    rope_scaling = config_dict.get('rope_scaling')
+    if not isinstance(rope_scaling, dict):
+        return None
+    if config_dict.get('rope_parameters'):
+        return None
+
+    rope_type = rope_scaling.get('type') or rope_scaling.get('rope_type') or 'default'
+    if rope_type in ('su', 'yarn'):
+        rope_type = 'longrope'
+
+    original_max = (
+        rope_scaling.get('original_max_position_embeddings')
+        or config_dict.get('original_max_position_embeddings')
+        or 4096
+    )
+    max_pos = config_dict.get('max_position_embeddings') or original_max
+    params = {
+        'rope_type': rope_type,
+        'original_max_position_embeddings': int(original_max),
+        'factor': float(max_pos) / float(original_max),
+    }
+    if 'short_factor' in rope_scaling:
+        params['short_factor'] = rope_scaling['short_factor']
+    if 'long_factor' in rope_scaling:
+        params['long_factor'] = rope_scaling['long_factor']
+    if 'rope_theta' in config_dict:
+        params['rope_theta'] = config_dict['rope_theta']
+    return params
+
+
+def _try_native_causal_lm_config(model_name: str, local_files_only: bool):
+    """
+    Build a native transformers config when the hub JSON points at outdated
+    remote code (``auto_map``) that breaks on modern generate/RoPE.
+    Returns ``None`` to keep ``trust_remote_code``.
+    """
+    try:
+        config_dict, _ = transformers.PretrainedConfig.get_config_dict(
+            model_name, local_files_only=local_files_only)
+    except Exception:
+        return None
+
+    if config_dict.get('model_type') != 'phi3':
+        return None
+
+    config_dict = dict(config_dict)
+    config_dict.pop('auto_map', None)
+    rope_parameters = _legacy_rope_scaling_to_parameters(config_dict)
+    if rope_parameters is not None:
+        config_dict['rope_parameters'] = rope_parameters
+        config_dict.pop('rope_scaling', None)
+
+    # Drop hub-only / legacy keys that native Phi3Config rejects.
+    for drop_key in (
+            '_name_or_path',
+            '_commit_hash',
+            'transformers_version',
+            'torch_dtype',
+            'auto_map',
+            'rope_scaling',
+            'rope_theta',
+    ):
+        config_dict.pop(drop_key, None)
+
+    try:
+        return transformers.Phi3Config(**config_dict)
+    except Exception as e:
+        _messages.debug_log(
+            f'magicprompt: could not build native Phi3Config for '
+            f'"{model_name}": {e}')
+        return None
 
 
 class _TextGenerationPipeline:
@@ -91,10 +170,16 @@ class _TextGenerationPipeline:
 
             inputs = inputs.to(model_device)
 
+            # Prefer max_new_tokens so total length is prompt + generation,
+            # not a hard cap that can equal the already-truncated prompt.
+            prompt_len = int(inputs['input_ids'].shape[-1])
+            max_new_tokens = max(1, int(max_length) - prompt_len)
+
             with torch.no_grad():
                 outputs = self.model.generate(
                     **inputs,
-                    max_length=max_length, **kwargs)
+                    max_new_tokens=max_new_tokens,
+                    **kwargs)
 
             if model_device.type != 'cpu':
                 inputs.to('cpu')
@@ -120,7 +205,8 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
 
     The "dtype" argument specifies the torch dtype (compute dtype) to load
     the model with, this defaults to: float32, and may be one of: float32,
-    float16, or bfloat16.
+    float16, or bfloat16. With bitsandbytes 8-bit quantization, float32 is
+    coerced to float16 (8-bit MatMul always runs in float16).
 
     The "seed" argument can be used to specify a seed for prompt generation.
 
@@ -316,6 +402,13 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
             if isinstance(quantization_config, transformers.BitsAndBytesConfig):
                 if quantization_config.load_in_4bit and quantization_config.bnb_4bit_compute_dtype is None:
                     quantization_config.bnb_4bit_compute_dtype = torch_dtype
+                # 8-bit MatMul always runs in float16; float32 inputs spam
+                # "MatMul8bitLt: inputs will be cast..." on every layer.
+                if quantization_config.load_in_8bit and torch_dtype == torch.float32:
+                    _messages.debug_log(
+                        'magicprompt: using float16 with bitsandbytes 8-bit '
+                        '(float32 inputs would be cast every MatMul).')
+                    torch_dtype = torch.float16
 
             return self._load_pipeline(model, dtype=torch_dtype, quantization_config=quantization_config)
 
@@ -350,17 +443,28 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
                        dtype: torch.dtype,
                        quantization_config: typing.Optional[typing.Any] = None) -> _TextGenerationPipeline:
 
-        try:
-            config = transformers.AutoConfig.from_pretrained(
-                model_name,
-                trust_remote_code=True,
-                local_files_only=self.local_files_only
-            )
-        except Exception as e:
-            raise self.argument_error(f'Could not load config for "{model_name}": {e}')
+        native_config = _try_native_causal_lm_config(
+            model_name, self.local_files_only)
+        trust_remote_code = native_config is None
+
+        if native_config is not None:
+            config = native_config
+            _messages.debug_log(
+                f'magicprompt: loading "{model_name}" with native '
+                f'{type(config).__name__} (skipping outdated remote modeling).')
+        else:
+            try:
+                config = transformers.AutoConfig.from_pretrained(
+                    model_name,
+                    trust_remote_code=True,
+                    local_files_only=self.local_files_only
+                )
+            except Exception as e:
+                raise self.argument_error(
+                    f'Could not load config for "{model_name}": {e}')
 
         load_kwargs: dict[str, typing.Any] = dict(
-            trust_remote_code=True,
+            trust_remote_code=trust_remote_code,
             dtype=dtype,
             quantization_config=quantization_config,
             device_map=self.device if quantization_config else None,
