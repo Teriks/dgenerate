@@ -22,8 +22,8 @@ Qwen/Qwen-Image-Edit
 --scheduler FlowMatchEulerDiscreteScheduler
 --inference-steps 50
 --guidance-scales 4
---image-seeds "../../media/beach.jpg"
+--image-seeds https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/yarn-art-pikachu.png
 --gen-seeds 1
 --output-path qwen-image-edit-gguf
 --output-size 1024
---prompts "Add a red sailboat on the water"
+--prompts "Make Pikachu hold a sign that says 'Qwen Edit is awesome', yarn art style, detailed, vibrant colors"

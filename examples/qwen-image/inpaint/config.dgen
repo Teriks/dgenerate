@@ -1,7 +1,9 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 6.0.0
 
-# Inpaint strength default is 0.6. The mask is packed with the latents.
+# Matches the Diffusers QwenImageInpaintPipeline docstring:
+# CompVis latent-diffusion dog/bench image + face mask, yellow-cat prompt.
+# White mask pixels are repainted. Strength 0.85 as in that example.
 
 \setp gpu_memory_gib total_memory(unit='gib')
 
@@ -14,14 +16,18 @@
 {% endif %}
 
 
+\set image https://raw.githubusercontent.com/CompVis/latent-diffusion/main/data/inpainting_examples/overture-creations-5sI6fQgYIuo.png
+\set mask https://raw.githubusercontent.com/CompVis/latent-diffusion/main/data/inpainting_examples/overture-creations-5sI6fQgYIuo_mask.png
+
 Qwen/Qwen-Image
 --model-type qwen-image {{ optimization }}
 --dtype bfloat16
 --scheduler FlowMatchEulerDiscreteScheduler
 --inference-steps 50
 --guidance-scales 4
---image-seeds "../../media/horse1.jpg;../../media/horse1-mask.jpg"
---image-seed-strengths 0.6
+--image-seeds "{{ image }};mask={{ mask }}"
+--image-seed-strengths 0.85
 --gen-seeds 1
 --output-path qwen-image-inpaint
---prompts "A horse standing on the surface of mars, photo"
+--output-size 1024
+--prompts "Face of a yellow cat, high resolution, sitting on a park bench"

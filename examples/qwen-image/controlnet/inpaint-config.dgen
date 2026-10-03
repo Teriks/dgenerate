@@ -1,20 +1,13 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 6.0.0
 
-# One inpainting ControlNet. The image and mask are control_image and
-# control_mask. Do not add a separate control= file.
+# Matches InstantX / Diffusers QwenImageControlNetInpaintPipeline docs.
+# Use InstantX/Qwen-Image-ControlNet-Inpainting (extra_condition_channels=4).
+# InstantX/Qwen-Image-ControlNet-Union is structural-only and will fail with
+# a channel mismatch if used with a mask.
 #
-# Use InstantX/Qwen-Image-ControlNet-Inpainting here (extra_condition_channels=4).
-# InstantX/Qwen-Image-ControlNet-Union is for structural control only and will
-# fail with a channel mismatch if used with a mask.
-#
-# horse1-mask.jpg is black on the horse and white on the background.
-# White is repainted. Leaving that mask as-is paints ~96% of the frame
-# (the field). Invert it so the horse is painted instead, same pattern as
-# InstantX's demo masks (~small white region) and
-# examples/z-image/controlnet/inpaint-config.dgen.
-# For field replacement with this mask, use examples/qwen-image/inpaint
-# (strength-based) instead.
+# Official assets already use a small white region (~10% of the frame).
+# White is repainted. InstantX recommends a descriptive whole-image prompt.
 
 \setp gpu_memory_gib total_memory(unit='gib')
 
@@ -27,6 +20,9 @@
 {% endif %}
 
 
+\set image https://huggingface.co/InstantX/Qwen-Image-ControlNet-Inpainting/resolve/main/assets/images/image1.png
+\set mask https://huggingface.co/InstantX/Qwen-Image-ControlNet-Inpainting/resolve/main/assets/masks/mask1.png
+
 Qwen/Qwen-Image
 --model-type qwen-image {{ optimization }}
 --dtype bfloat16
@@ -34,9 +30,8 @@ Qwen/Qwen-Image
 --inference-steps 30
 --guidance-scales 4
 --control-nets "InstantX/Qwen-Image-ControlNet-Inpainting;scale=1"
---image-seeds "../../media/horse1.jpg;mask=../../media/horse1-mask.jpg"
---mask-image-processors invert
---gen-seeds 1
+--image-seeds "{{ image }};mask={{ mask }}"
+--gen-seeds 42
 --output-path qwen-image-controlnet-inpaint
---output-size 1024
---prompts "a horse standing on mars"
+--output-size 1328
+--prompts "A green taxi driving on the road in the city, photo"
