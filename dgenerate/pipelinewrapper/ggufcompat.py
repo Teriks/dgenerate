@@ -127,9 +127,12 @@ def detect_gguf_layout(shapes: dict[str, tuple[int, ...]]) -> GGUFLayout | None:
             'time_text_embed.addition_t_embedding.weight',
             _COMFY_PREFIX + 'time_text_embed.addition_t_embedding.weight')
         if layered:
+            # Always adapt: Diffusers only dequantizes GGUFLinear, so the
+            # addition_t Embedding keeps packed BF16/quant bytes and returns
+            # width 6144 instead of inner_dim 3072 at runtime.
             return GGUFLayout(
                 'qwen-image-layered', 'Qwen/Qwen-Image-Layered',
-                comfy=comfy, adapt=comfy)
+                comfy=comfy, adapt=True)
         return GGUFLayout(
             'qwen-image', 'Qwen/Qwen-Image', comfy=comfy, adapt=comfy)
 
@@ -340,6 +343,87 @@ def adapt_qwen_checkpoint(checkpoint: dict) -> dict:
     return _strip_comfy_prefix(checkpoint)
 
 
+_QWEN_LAYERED_ADDITION_T = 'time_text_embed.addition_t_embedding.weight'
+
+
+def _gguf_float_tensor(param):
+    """
+    Decode a GGUFParameter to a plain floating tensor.
+
+    F16 is stored as a normal tensor by Diffusers' loader; BF16 is wrapped as
+    ``GGUFParameter`` whose storage width is bytes (2x). ``dequantize_gguf_tensor``
+    has no F16/BF16 codec, so reinterpret the packed storage with ``quant_shape``.
+    """
+    import gguf
+    from diffusers.quantizers.gguf import utils as gguf_utils
+
+    dtype_map = {
+        gguf.GGMLQuantizationType.F32: torch.float32,
+        gguf.GGMLQuantizationType.F16: torch.float16,
+        gguf.GGMLQuantizationType.BF16: torch.bfloat16,
+    }
+    dtype = dtype_map.get(param.quant_type)
+    if dtype is not None:
+        quant_shape = _shape(param.quant_shape)
+        return (
+            param.as_tensor().contiguous().view(torch.uint8)
+            .view(dtype).reshape(quant_shape)
+        )
+    if param.quant_type in gguf_utils.UNQUANTIZED_TYPES:
+        return _slicable_tensor(param)
+    return gguf_utils.dequantize_gguf_tensor(param)
+
+
+def _materialize_embedding_weight(param, target_shape: tuple[int, ...]):
+    """
+    Turn a GGUF Embedding weight into a plain float table Diffusers can index.
+
+    ``nn.Embedding`` does not go through ``GGUFLinear``, so a BF16/quant
+    ``GGUFParameter`` keeps its packed byte width (e.g. 6144 for BF16
+    ``(2, 3072)``). Some files also store the table transposed.
+    """
+    if _is_gguf_parameter(param):
+        tensor = _gguf_float_tensor(param)
+    else:
+        tensor = param
+    if not isinstance(tensor, torch.Tensor):
+        return param
+    tensor = tensor.detach().contiguous()
+    current = _shape(tensor.shape)
+    target_shape = _shape(target_shape)
+    if current == target_shape:
+        return tensor
+    if current == tuple(reversed(target_shape)):
+        return tensor.transpose(0, 1).contiguous()
+    return tensor
+
+
+def adapt_qwen_layered_checkpoint(checkpoint: dict) -> dict:
+    """Strip Comfy prefixes and materialize ``addition_t_embedding`` for indexing."""
+    checkpoint = adapt_qwen_checkpoint(checkpoint)
+    weight = checkpoint.get(_QWEN_LAYERED_ADDITION_T)
+    if weight is None:
+        return checkpoint
+    # nn.Embedding(2, inner_dim); Qwen-Image-Layered inner_dim is 3072.
+    target = (2, 3072)
+    quant_shape = getattr(weight, 'quant_shape', None)
+    if quant_shape is not None:
+        quant_shape = _shape(quant_shape)
+        if quant_shape == (3072, 2) or quant_shape == (2, 3072):
+            target = (2, 3072)
+        elif len(quant_shape) == 2 and quant_shape[0] == 2:
+            target = quant_shape
+    elif isinstance(weight, torch.Tensor):
+        shape = _shape(weight.shape)
+        if shape == (3072, 2) or shape == (2, 3072):
+            target = (2, 3072)
+        elif len(shape) == 2 and shape[0] == 2:
+            target = shape
+    checkpoint[_QWEN_LAYERED_ADDITION_T] = _materialize_embedding_weight(
+        weight, target)
+    return checkpoint
+
+
 def install_gguf_patches() -> None:
     """
     Let a Comfy quantized linear whose packed shape is transposed load
@@ -479,6 +563,8 @@ def plan_gguf_load(path: str, config: str | None, subfolder: str | None,
         return checkpoint, config, subfolder, True
     if layout.kind == 'qwen-image':
         return adapt_qwen_checkpoint(checkpoint), config, subfolder, False
+    if layout.kind == 'qwen-image-layered':
+        return adapt_qwen_layered_checkpoint(checkpoint), config, subfolder, False
     if layout.kind == 'wan-animate-14B':
         return adapt_wan_animate_checkpoint(checkpoint), config, subfolder, False
     return None, config, subfolder, False

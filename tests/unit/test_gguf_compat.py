@@ -51,7 +51,8 @@ class TestGGUFCompat(unittest.TestCase):
         })
         self.assertEqual(layered.kind, 'qwen-image-layered')
         self.assertEqual(layered.config_repo, 'Qwen/Qwen-Image-Layered')
-        self.assertFalse(layered.adapt)
+        # Always adapt so addition_t_embedding is materialized for nn.Embedding.
+        self.assertTrue(layered.adapt)
 
         comfy_qwen = _ggufcompat.detect_gguf_layout({
             'model.diffusion_model.img_in.weight': (64, 3072),
@@ -194,6 +195,34 @@ class TestGGUFCompat(unittest.TestCase):
         embedding = torch.arange(4, dtype=torch.float32)
         expanded = _ggufcompat._align_tensor(embedding, (1, 4))
         self.assertEqual(tuple(expanded.shape), (1, 4))
+
+    def test_qwen_layered_materializes_addition_t_embedding(self):
+        import gguf
+        from diffusers.quantizers.gguf.utils import GGUFParameter
+
+        # BF16 storage is uint8 with last dim 2x the logical width. nn.Embedding
+        # would otherwise return width 6144 instead of 3072.
+        logical = torch.arange(2 * 3072, dtype=torch.bfloat16).reshape(2, 3072)
+        packed = logical.contiguous().view(torch.uint8)
+        param = GGUFParameter(packed, quant_type=gguf.GGMLQuantizationType.BF16)
+        self.assertEqual(tuple(param.shape), (2, 6144))
+        self.assertEqual(tuple(param.quant_shape), (2, 3072))
+
+        adapted = _ggufcompat.adapt_qwen_layered_checkpoint({
+            'model.diffusion_model.time_text_embed.addition_t_embedding.weight': param,
+            'img_in.weight': torch.zeros(64, 3072),
+        })
+        weight = adapted['time_text_embed.addition_t_embedding.weight']
+        self.assertEqual(tuple(weight.shape), (2, 3072))
+        self.assertFalse(hasattr(weight, 'quant_type'))
+        self.assertTrue(torch.equal(weight.cpu().bfloat16(), logical))
+
+        transposed = _ggufcompat.adapt_qwen_layered_checkpoint({
+            'time_text_embed.addition_t_embedding.weight': logical.transpose(0, 1).contiguous(),
+        })
+        self.assertEqual(
+            tuple(transposed['time_text_embed.addition_t_embedding.weight'].shape),
+            (2, 3072))
 
     def test_gguf_parameter_keeps_quant_type_when_rebuilt_for_offload(self):
         import gguf
