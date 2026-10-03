@@ -311,10 +311,16 @@ class _SmoothPlaybackClock:
             self._last_submit = now
             self._cursor += frames
             estimated = max(0, self._cursor - self._latency)
-            current = self._heard_unlocked(now)
-            if estimated > current:
-                # A correction stays under one 24fps frame, so it cannot skip one.
-                current = min(estimated, current + int(self._rate * 0.020))
+            if not self._latency_locked:
+                # Still filling the device queue. A few microseconds between
+                # those submits must not advance the playhead (int(dt * rate)
+                # is often 1 at 48kHz).
+                current = 0
+            else:
+                current = self._heard_unlocked(now)
+                if estimated > current:
+                    # A correction stays under one 24fps frame, so it cannot skip one.
+                    current = min(estimated, current + int(self._rate * 0.020))
             self._sync_heard = current
             self._sync_time = now
 
