@@ -23,7 +23,7 @@ Tongyi-MAI/Z-Image-Turbo
 --guidance-scales 0
 --image-seeds "{{ image }};mask={{ mask }}"
 --image-seed-strengths 1
---gen-seeds 42
+--gen-seeds 1
 --output-path z-image-inpaint
 --output-size 1024
 --prompts "Face of a yellow cat, high resolution, sitting on a park bench"

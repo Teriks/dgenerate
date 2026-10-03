@@ -20,7 +20,7 @@ Tongyi-MAI/Z-Image-Turbo
 --guidance-scales 0
 --control-nets "https://huggingface.co/alibaba-pai/Z-Image-Turbo-Fun-Controlnet-Union/resolve/main/Z-Image-Turbo-Fun-Controlnet-Union.safetensors;scale=0.75"
 --image-seeds https://huggingface.co/alibaba-pai/Z-Image-Turbo-Fun-Controlnet-Union/resolve/main/asset/pose.jpg
---gen-seeds 43
+--gen-seeds 1
 --output-path z-image-controlnet
 --output-size 992x1728
 --prompts "A young woman standing on a sunny coastline, white dress fluttering in the sea breeze. She has long vivid purple hair dancing in the wind with a delicate black bow, soft blue sky behind her. Sweet youthful face, gentle shy expression, gazing at the horizon, hands folded in front. Vast glittering ocean behind her, warm golden sunlight on the water."

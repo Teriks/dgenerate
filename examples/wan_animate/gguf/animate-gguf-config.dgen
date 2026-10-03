@@ -17,7 +17,7 @@ Wan-AI/Wan2.2-Animate-14B-Diffusers
 --inference-steps 20
 --guidance-scales 1
 --video-fps 30
---gen-seeds 42
+--gen-seeds 1
 --output-size 832x480
 --animation-format mp4
 --output-path wan-animate-gguf

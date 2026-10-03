@@ -14,7 +14,7 @@ Wan-AI/Wan2.1-T2V-14B-Diffusers
 --inference-steps 30
 --guidance-scales 5
 --video-fps 16
---gen-seeds 42
+--gen-seeds 1
 --output-size 832x480
 --video-lengths 5
 --animation-format mp4

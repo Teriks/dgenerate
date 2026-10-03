@@ -16,7 +16,7 @@ Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers
 --inference-steps 30
 --guidance-scales 5
 --video-fps 16
---gen-seeds 42
+--gen-seeds 1
 --output-size 1280x720
 --video-lengths 5
 --animation-format mp4

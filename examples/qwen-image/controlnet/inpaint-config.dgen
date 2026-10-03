@@ -31,7 +31,7 @@ Qwen/Qwen-Image
 --guidance-scales 4
 --control-nets "InstantX/Qwen-Image-ControlNet-Inpainting;scale=1"
 --image-seeds "{{ image }};mask={{ mask }}"
---gen-seeds 42
+--gen-seeds 1
 --output-path qwen-image-controlnet-inpaint
 --output-size 1328
 --prompts "A green taxi driving on the road in the city, photo"

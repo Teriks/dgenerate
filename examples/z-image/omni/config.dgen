@@ -19,7 +19,7 @@ Z-a-o/Z-Image-Turbo
 --inference-steps 8
 --guidance-scales 0
 --image-seeds https://raw.githubusercontent.com/CompVis/stable-diffusion/main/assets/stable-samples/img2img/sketch-mountains-input.jpg
---gen-seeds 42
+--gen-seeds 1
 --output-path z-image-omni
 --output-size 1024
 --prompts "A creative poster for the project Z-IMAGE-TURBO. A vintage steam locomotive becomes a giant zipper pull, unzipping thick winter snow to reveal a vibrant spring landscape underneath, detailed illustration"

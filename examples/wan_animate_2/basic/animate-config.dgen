@@ -19,7 +19,7 @@ Wan-AI/Wan2.2-Animate-2-14B-Diffusers
 --wan-prev-segment-frames 1
 --max-sequence-length 512
 --video-fps 24
---gen-seeds 42
+--gen-seeds 1
 --output-size 640x800
 --animation-format mp4
 --output-path wan-animate-2

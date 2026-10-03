@@ -19,7 +19,7 @@ Tongyi-MAI/Z-Image-Turbo
 --guidance-scales 0
 --image-seeds https://raw.githubusercontent.com/CompVis/stable-diffusion/main/assets/stable-samples/img2img/sketch-mountains-input.jpg
 --image-seed-strengths 0.6
---gen-seeds 42
+--gen-seeds 1
 --output-path z-image-img2img
 --output-size 1024
 --prompts "A fantasy landscape with mountains and a river, detailed, vibrant colors"
