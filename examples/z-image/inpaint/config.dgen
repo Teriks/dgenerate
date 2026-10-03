@@ -1,8 +1,9 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 6.0.0
 
-# Inpaint. The pipeline strength default is 1. The mask blends the image.
-# It is not concatenated into the transformer.
+# Hosted stand-in for the Diffusers ZImageInpaintPipeline docstring
+# (that example builds a center mask in numpy). CompVis latent-diffusion
+# dog/bench + face mask: white = inpaint. Strength 1.0, 8 steps.
 
 \setp gpu_memory_gib total_memory(unit='gib')
 
@@ -11,14 +12,18 @@
 {% endif %}
 
 
+\set image https://raw.githubusercontent.com/CompVis/latent-diffusion/main/data/inpainting_examples/overture-creations-5sI6fQgYIuo.png
+\set mask https://raw.githubusercontent.com/CompVis/latent-diffusion/main/data/inpainting_examples/overture-creations-5sI6fQgYIuo_mask.png
+
 Tongyi-MAI/Z-Image-Turbo
 --model-type z-image {{ optimization }}
 --dtype bfloat16
 --scheduler FlowMatchEulerDiscreteScheduler
 --inference-steps 8
 --guidance-scales 0
---image-seeds "../../media/horse1.jpg;../../media/horse1-mask.jpg"
+--image-seeds "{{ image }};mask={{ mask }}"
 --image-seed-strengths 1
---gen-seeds 1
+--gen-seeds 42
 --output-path z-image-inpaint
---prompts "A horse standing on the surface of mars, photo"
+--output-size 1024
+--prompts "Face of a yellow cat, high resolution, sitting on a park bench"
