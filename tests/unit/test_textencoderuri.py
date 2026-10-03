@@ -196,6 +196,55 @@ class TestTextEncoderUri(unittest.TestCase):
         self.assertFalse(_call_without_flattened_text_model_alias(seen_as_wrapper))
         self.assertTrue(seen_as_wrapper())
 
+    def test_flattened_clip_lora_loads_kohya_text_model_prefix(self):
+        # Transformers 5 flattens CLIPTextModel; Kohya LoRA keys still use
+        # text_model.*. Without stripping, PEFT rank discovery stays empty and
+        # diffusers raises IndexError in get_peft_kwargs.
+        import torch
+        from transformers import CLIPTextConfig, CLIPTextModel
+        import diffusers.loaders.lora_base as lora_base
+        import diffusers.loaders.lora_pipeline as lora_pipeline
+
+        self.assertTrue(
+            getattr(lora_base._load_lora_into_text_encoder,
+                    '_dgenerate_strips_flattened_clip_prefix', False))
+        self.assertIs(
+            lora_base._load_lora_into_text_encoder,
+            lora_pipeline._load_lora_into_text_encoder)
+
+        config = CLIPTextConfig(
+            vocab_size=100,
+            hidden_size=32,
+            intermediate_size=64,
+            num_hidden_layers=2,
+            num_attention_heads=4,
+            max_position_embeddings=8,
+            eos_token_id=2,
+            bos_token_id=None,
+        )
+        text_encoder = CLIPTextModel(config).eval()
+        self.assertNotIn('text_model', text_encoder._modules)
+        self.assertTrue(hasattr(text_encoder, 'text_model'))
+
+        rank = 2
+        state_dict = {}
+        with torch.no_grad():
+            for name, module in text_encoder.named_modules():
+                if name.endswith(('.q_proj', '.k_proj', '.v_proj', '.out_proj', '.fc1', '.fc2')):
+                    state_dict[f'text_encoder.text_model.{name}.lora_A.weight'] = (
+                        torch.randn(rank, module.weight.shape[1]))
+                    state_dict[f'text_encoder.text_model.{name}.lora_B.weight'] = (
+                        torch.randn(module.weight.shape[0], rank))
+
+        lora_base._load_lora_into_text_encoder(
+            state_dict,
+            None,
+            text_encoder,
+            prefix='text_encoder',
+            adapter_name='0',
+        )
+        self.assertIn('0', getattr(text_encoder, 'peft_config', {}))
+
     def test_flattened_clip_checkpoint_drops_text_model_prefix(self):
         import tempfile
 
