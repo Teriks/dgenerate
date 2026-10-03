@@ -49,6 +49,17 @@ def _with_seed(seed: int | None):
             torch.random.set_rng_state(orig_state)
 
 
+def _attn_implementation_for_config(config) -> str | None:
+    """
+    Phi-3 128k (and similar) set ``sliding_window``. Without flash-attn
+    window support, the default path mis-shapes RoPE (e.g. batch dim vs
+    sequence) and crashes in ``apply_rotary_pos_emb``. Eager is correct.
+    """
+    if getattr(config, 'sliding_window', None) is not None:
+        return 'eager'
+    return None
+
+
 class _TextGenerationPipeline:
     def __init__(self, model, tokenizer, quantized: bool):
         self.model = model
@@ -340,14 +351,33 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
                        quantization_config: typing.Optional[typing.Any] = None) -> _TextGenerationPipeline:
 
         try:
-            model = transformers.AutoModelForCausalLM.from_pretrained(
+            config = transformers.AutoConfig.from_pretrained(
                 model_name,
                 trust_remote_code=True,
-                dtype=dtype,
-                quantization_config=quantization_config,
-                device_map=self.device if quantization_config else None,
                 local_files_only=self.local_files_only
             )
+        except Exception as e:
+            raise self.argument_error(f'Could not load config for "{model_name}": {e}')
+
+        load_kwargs: dict[str, typing.Any] = dict(
+            trust_remote_code=True,
+            dtype=dtype,
+            quantization_config=quantization_config,
+            device_map=self.device if quantization_config else None,
+            local_files_only=self.local_files_only,
+            config=config,
+        )
+        attn_implementation = _attn_implementation_for_config(config)
+        if attn_implementation is not None:
+            load_kwargs['attn_implementation'] = attn_implementation
+            _messages.debug_log(
+                f'magicprompt: using attn_implementation="{attn_implementation}" '
+                f'for "{model_name}" (sliding_window='
+                f'{getattr(config, "sliding_window", None)}).')
+
+        try:
+            model = transformers.AutoModelForCausalLM.from_pretrained(
+                model_name, **load_kwargs)
         except Exception as e:
             raise self.argument_error(f'Could not load model "{model_name}": {e}')
 

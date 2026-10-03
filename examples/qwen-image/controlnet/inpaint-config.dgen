@@ -10,8 +10,8 @@
 #
 # horse1-mask.jpg is black on the horse and white on the background.
 # White is repainted. Leaving that mask as-is paints ~96% of the frame
-# (the field), which this ControlNet tends to leave black. Invert it so
-# the horse is painted instead, same pattern as
+# (the field). Invert it so the horse is painted instead, same pattern as
+# InstantX's demo masks (~small white region) and
 # examples/z-image/controlnet/inpaint-config.dgen.
 # For field replacement with this mask, use examples/qwen-image/inpaint
 # (strength-based) instead.
@@ -38,4 +38,5 @@ Qwen/Qwen-Image
 --mask-image-processors invert
 --gen-seeds 1
 --output-path qwen-image-controlnet-inpaint
---prompts "A pink fantasy horse standing in a green field, photo"
+--output-size 1024
+--prompts "A pink fantasy horse standing in a green grassy field under a blue sky, photo"

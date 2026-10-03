@@ -5,6 +5,10 @@ SDNQ already records these per architecture. Bitsandbytes does not read that
 record, so it quantizes them and the sample collapses to noise. Qwen has a
 second modulation linear next to the one SDNQ skips. That one produces the
 text-stream scale and shift. Quantizing it does the same thing.
+
+Qwen ControlNet reuses the same block stack. When it is quantized (only via
+``--quantizer-map controlnet`` or a ControlNet URI quantizer), it needs the
+same skips. By default ControlNet is left full precision.
 """
 
 
@@ -14,6 +18,10 @@ def _bnb_module_name(key: str) -> str:
     if key.endswith('.weight'):
         key = key[:-len('.weight')]
     return key
+
+
+_QWEN_TEXT_MODULATION = 'transformer_blocks.0.txt_mod.1.weight'
+_QWEN_CONTROLNET_DROP = frozenset({'proj_out', 'norm_out'})
 
 
 def architecture_skip_keys(class_name: str) -> list[str]:
@@ -28,12 +36,22 @@ def architecture_skip_keys(class_name: str) -> list[str]:
     except ImportError:
         module_skip_keys_dict = {}
 
+    if class_name == 'QwenImageControlNetModel':
+        # Same sensitive layers as the transformer; ControlNet has no head.
+        entry = module_skip_keys_dict.get('QwenImageTransformer2DModel')
+        keys = [
+            key for key in (list(entry[0]) if entry else [])
+            if _bnb_module_name(key) not in _QWEN_CONTROLNET_DROP
+        ]
+        if _QWEN_TEXT_MODULATION not in keys:
+            keys.append(_QWEN_TEXT_MODULATION)
+        return keys
+
     entry = module_skip_keys_dict.get(class_name)
     keys = list(entry[0]) if entry else []
     if class_name == 'QwenImageTransformer2DModel':
-        text_modulation = 'transformer_blocks.0.txt_mod.1.weight'
-        if text_modulation not in keys:
-            keys.append(text_modulation)
+        if _QWEN_TEXT_MODULATION not in keys:
+            keys.append(_QWEN_TEXT_MODULATION)
     return keys
 
 
@@ -63,16 +81,17 @@ def apply_architecture_quant_skips(quant_config, model_class: type | str | None)
         return quant_config
 
     if hasattr(quant_config, 'modules_to_not_convert'):
-        extra = 'transformer_blocks.0.txt_mod.1.weight'
-        if class_name != 'QwenImageTransformer2DModel' or extra not in keys:
+        if (class_name not in (
+                'QwenImageTransformer2DModel', 'QwenImageControlNetModel')
+                or _QWEN_TEXT_MODULATION not in keys):
             return quant_config
         current = quant_config.modules_to_not_convert
         if current is None:
             current = []
         else:
             current = list(current)
-        if extra not in current:
-            current.append(extra)
+        if _QWEN_TEXT_MODULATION not in current:
+            current.append(_QWEN_TEXT_MODULATION)
         quant_config.modules_to_not_convert = current
 
     return quant_config

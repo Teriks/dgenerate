@@ -1020,6 +1020,22 @@ class TestFlowImagePipelines(unittest.TestCase):
         apply_architecture_quant_skips(sdnq, 'QwenImageTransformer2DModel')
         self.assertIn('transformer_blocks.0.txt_mod.1.weight', sdnq.modules_to_not_convert)
 
+        # ControlNet reuses the block stack; skips apply when it is quantized.
+        cn = diffusers.BitsAndBytesConfig(load_in_4bit=True)
+        apply_architecture_quant_skips(cn, diffusers.QwenImageControlNetModel)
+        cn_skipped = cn.llm_int8_skip_modules
+        self.assertIn('time_text_embed', cn_skipped)
+        self.assertIn('transformer_blocks.0.img_mod.1', cn_skipped)
+        self.assertIn('transformer_blocks.0.txt_mod.1', cn_skipped)
+        self.assertNotIn('norm_out', cn_skipped)
+        self.assertNotIn('proj_out', cn_skipped)
+
+        cn_sdnq = Config()
+        apply_architecture_quant_skips(cn_sdnq, 'QwenImageControlNetModel')
+        self.assertIn(
+            'transformer_blocks.0.txt_mod.1.weight',
+            cn_sdnq.modules_to_not_convert)
+
 
 if __name__ == '__main__':
     unittest.main()
