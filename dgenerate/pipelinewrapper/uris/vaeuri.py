@@ -112,6 +112,9 @@ class VAEUri:
         'AutoencoderKL': diffusers.AutoencoderKL,
         'AutoencoderKLFlux2': diffusers.AutoencoderKLFlux2,
         'AutoencoderKLQwenImage': diffusers.AutoencoderKLQwenImage,
+        'AutoencoderKLWan': diffusers.AutoencoderKLWan,
+        'AutoencoderKLLTXVideo': diffusers.AutoencoderKLLTXVideo,
+        'AutoencoderKLLTX2Video': diffusers.AutoencoderKLLTX2Video,
         'AsymmetricAutoencoderKL': diffusers.AsymmetricAutoencoderKL,
         'AutoencoderTiny': diffusers.AutoencoderTiny,
         'ConsistencyDecoderVAE': diffusers.ConsistencyDecoderVAE

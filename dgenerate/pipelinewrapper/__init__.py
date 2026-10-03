@@ -69,6 +69,7 @@ from .enums import (
     model_type_is_flow_image,
     model_type_is_kolors,
     model_type_is_video,
+    model_type_is_wan_family,
     model_type_is_sd2,
     model_type_is_sd15
 )

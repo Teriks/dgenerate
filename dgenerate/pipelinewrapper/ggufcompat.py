@@ -13,7 +13,7 @@
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """
-Detect Flux.2, Qwen-Image, Z-Image, and LTX 2.5 GGUF checkpoints and
+Detect Flux.2, Qwen-Image, Z-Image, LTX 2.5, and Wan GGUF checkpoints and
 adapt ComfyUI layouts so Diffusers can load them without a manual config.
 """
 
@@ -133,7 +133,75 @@ def detect_gguf_layout(shapes: dict[str, tuple[int, ...]]) -> GGUFLayout | None:
         return GGUFLayout(
             'qwen-image', 'Qwen/Qwen-Image', comfy=comfy, adapt=comfy)
 
+    wan = _detect_wan_layout(shapes, comfy)
+    if wan is not None:
+        return wan
+
     return None
+
+
+def _detect_wan_layout(shapes: dict, comfy: bool) -> GGUFLayout | None:
+    if not _has(shapes, 'head.modulation', 'patch_embedding.weight',
+                _COMFY_PREFIX + 'head.modulation',
+                _COMFY_PREFIX + 'patch_embedding.weight'):
+        return None
+    if _has(shapes, 'vace_blocks.0.after_proj.bias',
+            _COMFY_PREFIX + 'vace_blocks.0.after_proj.bias'):
+        patch = _lookup_shape(
+            shapes, 'patch_embedding.weight',
+            _COMFY_PREFIX + 'patch_embedding.weight')
+        if patch is not None and patch[0] == 1536:
+            return GGUFLayout(
+                'wan-vace-1.3B', 'Wan-AI/Wan2.1-VACE-1.3B-diffusers',
+                comfy=comfy, adapt=False)
+        return GGUFLayout(
+            'wan-vace-14B', 'Wan-AI/Wan2.1-VACE-14B-diffusers',
+            comfy=comfy, adapt=False)
+    if _has(shapes, 'motion_encoder.dec.direction.weight',
+            _COMFY_PREFIX + 'motion_encoder.dec.direction.weight'):
+        return GGUFLayout(
+            'wan-animate-14B', 'Wan-AI/Wan2.2-Animate-14B-Diffusers',
+            comfy=comfy, adapt=True)
+    # Official / Comfy Animate-2 wraps each block as blocks.N.block.X.
+    # Plain Wan transformers use blocks.N.self_attn / blocks.N.cross_attn
+    # without that extra ``.block.`` level — do not key off self_attn alone.
+    if _has_wan_animate_2_nested_block(shapes):
+        return GGUFLayout(
+            'wan-animate-2-14B', 'Wan-AI/Wan2.2-Animate-2-14B-Diffusers',
+            comfy=comfy, adapt=False)
+    patch = _lookup_shape(
+        shapes, 'patch_embedding.weight',
+        _COMFY_PREFIX + 'patch_embedding.weight')
+    if patch is None:
+        return None
+    width = patch[0]
+    channels = patch[1] if len(patch) > 1 else None
+    if width == 1536:
+        return GGUFLayout(
+            'wan-t2v-1.3B', 'Wan-AI/Wan2.1-T2V-1.3B-Diffusers',
+            comfy=comfy, adapt=False)
+    if width == 3072:
+        return GGUFLayout(
+            'wan-ti2v-5B', 'Wan-AI/Wan2.2-TI2V-5B-Diffusers',
+            comfy=comfy, adapt=False)
+    if width == 5120 and channels == 36:
+        return GGUFLayout(
+            'wan-i2v-14B', 'Wan-AI/Wan2.1-I2V-14B-480P-Diffusers',
+            comfy=comfy, adapt=False)
+    if width == 5120:
+        return GGUFLayout(
+            'wan-t2v-14B', 'Wan-AI/Wan2.1-T2V-14B-Diffusers',
+            comfy=comfy, adapt=False)
+    return None
+
+
+def _has_wan_animate_2_nested_block(shapes: dict) -> bool:
+    """True when keys use the Animate-2 ``blocks.N.block.*`` nesting."""
+    for name in shapes:
+        key = name[len(_COMFY_PREFIX):] if name.startswith(_COMFY_PREFIX) else name
+        if key.startswith('blocks.') and '.block.' in key:
+            return True
+    return False
 
 
 def read_gguf_shapes(path: str) -> dict[str, tuple[int, ...]]:
@@ -225,6 +293,46 @@ def adapt_ltx25_checkpoint(checkpoint: dict, config_repo: str, subfolder: str,
             f'LTX 2.5 GGUF is missing {len(missing)} Diffusers tensors, '
             f'for example {missing[:4]}.')
     return aligned
+
+
+def _is_gguf_parameter(value) -> bool:
+    return getattr(value, 'quant_type', None) is not None
+
+
+def _slicable_tensor(value):
+    """
+    Plain tensor that convert_wan_transformer_to_diffusers can slice.
+
+    A packed GGUFParameter keeps ``quant_type`` through ``__torch_function__``,
+    so ``linear1_kv`` splits and motion-encoder bias indexes become garbage.
+    """
+    if not _is_gguf_parameter(value):
+        return value
+    from diffusers.quantizers.gguf import utils as gguf_utils
+    if value.quant_type in gguf_utils.UNQUANTIZED_TYPES:
+        tensor = value.as_tensor()
+        shape = getattr(value, 'quant_shape', None)
+        if shape is not None and tuple(tensor.shape) != tuple(shape):
+            try:
+                return tensor.view(tuple(shape))
+            except RuntimeError:
+                return tensor
+        return tensor
+    return gguf_utils.dequantize_gguf_tensor(value)
+
+
+def _wan_animate_hostile_key(key: str) -> bool:
+    return '.linear1_kv.' in key or (
+        'motion_encoder.enc.net_app.convs.' in key and '.bias' in key)
+
+
+def adapt_wan_animate_checkpoint(checkpoint: dict) -> dict:
+    """Dequantize Wan-Animate tensors that Diffusers splits or indexes."""
+    checkpoint = _strip_comfy_prefix(checkpoint)
+    return {
+        key: _slicable_tensor(value) if _wan_animate_hostile_key(key) else value
+        for key, value in checkpoint.items()
+    }
 
 
 def adapt_qwen_checkpoint(checkpoint: dict) -> dict:
@@ -371,4 +479,6 @@ def plan_gguf_load(path: str, config: str | None, subfolder: str | None,
         return checkpoint, config, subfolder, True
     if layout.kind == 'qwen-image':
         return adapt_qwen_checkpoint(checkpoint), config, subfolder, False
+    if layout.kind == 'wan-animate-14B':
+        return adapt_wan_animate_checkpoint(checkpoint), config, subfolder, False
     return None, config, subfolder, False

@@ -1,0 +1,32 @@
+{
+  "_class_name": "WanAnimatePipeline",
+  "_diffusers_version": "0.36.0.dev0",
+  "image_encoder": [
+    "transformers",
+    "CLIPVisionModel"
+  ],
+  "image_processor": [
+    "transformers",
+    "CLIPImageProcessor"
+  ],
+  "scheduler": [
+    "diffusers",
+    "UniPCMultistepScheduler"
+  ],
+  "text_encoder": [
+    "transformers",
+    "UMT5EncoderModel"
+  ],
+  "tokenizer": [
+    "transformers",
+    "T5TokenizerFast"
+  ],
+  "transformer": [
+    "diffusers",
+    "WanAnimateTransformer3DModel"
+  ],
+  "vae": [
+    "diffusers",
+    "AutoencoderKLWan"
+  ]
+}

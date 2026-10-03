@@ -455,6 +455,19 @@ class TestFormatImageSeedURI(unittest.TestCase):
             result,
             "a.png;ltx-index=0 ++ 'my ++ file.png';ltx-index=4")
 
+    def test_wan_animate_keywords(self):
+        result = format_image_seed_uri(
+            seed_images="char.png",
+            wan_pose_video="pose.mp4",
+            wan_face_video="face.mp4")
+        self.assertEqual(result, "char.png;wan-pose=pose.mp4;wan-face=face.mp4")
+
+        result = format_image_seed_uri(
+            seed_images="char.png",
+            wan_driving_video="drive.mp4",
+            wan_background_video="bg.mp4")
+        self.assertEqual(result, "char.png;wan-background=bg.mp4;wan-driving=drive.mp4")
+
 
 if __name__ == '__main__':
     unittest.main()

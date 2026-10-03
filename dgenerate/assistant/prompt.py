@@ -221,10 +221,15 @@ PROMPT_GUIDES = {
     'pix2pix': _EDIT_GUIDE,
     'sdxl-pix2pix': _EDIT_GUIDE,
     'sd3-pix2pix': _EDIT_GUIDE,
+    'wan': ('One paragraph of three to six plain sentences in the order things happen: the main action '
+            'first, then specific movements and gestures, how the people and objects look, the setting, '
+            'the camera angle and movement, and the lighting. Describe only what fits in the '
+            'clip\'s length. --video-lengths is that length in seconds.'),
+    'wan-animate': ('A short description of the character and the motion being transferred.'),
     'ltx': ('One paragraph of three to six plain sentences in the order things happen: the main action '
             'first, then specific movements and gestures, how the people and objects look, the setting, '
             'the camera angle and movement, and the lighting and color. Describe only what fits in the '
-            'clip\'s length. --ltx-video-lengths is that length in seconds. '
+            'clip\'s length. --video-lengths is that length in seconds. '
             'LTX-2.5 (Lightricks/LTX-2.5-Diffusers) also makes audio, so end with a sentence '
             'about what is heard, like the rain, footsteps, or music, and put spoken words in single quotes. '
             'A negative prompt is optional, like "worst quality, inconsistent motion, blurry, jittery, '
@@ -283,7 +288,8 @@ with Tongyi-MAI/Z-Image-Turbo. Inpaint uses the 2.0 file from \
 alibaba-pai/Z-Image-Turbo-Fun-Controlnet-Union-2.0. No img2img ControlNet.
 - Qwen-Image: Qwen/Qwen-Image, --model-type qwen-image --dtype bfloat16, guidance 4, 50 steps. \
 Public, no HF_TOKEN. --guidance-scales is true_cfg_scale. Img2img and inpaint strength 0.6. \
-ControlNet is --control-nets InstantX/Qwen-Image-ControlNet-Union. Inpaint is image;mask with one ControlNet. \
+ControlNet text-to-image is --control-nets InstantX/Qwen-Image-ControlNet-Union. \
+Inpaint is image;mask with InstantX/Qwen-Image-ControlNet-Inpainting (not Union). \
 GGUF: --transformer https://huggingface.co/QuantStack/Qwen-Image-GGUF/blob/main/Qwen_Image-Q4_K_S.gguf.
 - Flux.2 Klein KV: black-forest-labs/FLUX.2-klein-9b-kv, --model-type flux2-klein-kv --dtype bfloat16. \
 Gated, needs HF_TOKEN. Reference images are --image-seeds with no mask and no strength. No guidance scale. \
@@ -303,7 +309,8 @@ The extra addition embedding selects the layered config.
 - DeepFloyd IF: DeepFloyd/IF-I-M-v1.0, --model-type if --variant fp16. Gated, needs HF_TOKEN.
 - Animate a still or make a clip: Lightricks/LTX-2.5-Diffusers, --model-type ltx, \
 --guidance-scales 1, --model-sequential-offload, --animation-format mp4. Gated, needs HF_TOKEN. \
-LTX-only options use the --ltx- prefix. --ltx-video-lengths is seconds and --ltx-video-fps is the frame rate. \
+Clip length and frame rate are --video-lengths (seconds) and --video-fps. \
+LTX-only options use the --ltx- prefix. \
 When the user names a duration, use that many seconds, however long. When they do not, use 4. \
 --ltx-latent-upscale is the two-stage pass in that same generation; --output-size must be divisible by 64. \
 The last frame is last-frame= on --image-seeds, at strength 1. strength= is the condition weight. \
@@ -314,6 +321,15 @@ guidance 1, and no --inference-steps. The parent repo stays Lightricks/LTX-2.5-D
 Dev (full) GGUF: --transformer https://huggingface.co/vantagewithai/LTX-2.5-GGUF/blob/main/dev/ltx-2.5-22b-dev-transformer-Q4_K_S.gguf, \
 guidance 3, audio guidance 7, STG 1 on block 28, modality 3, and \
 --scheduler FlowMatchEulerDiscreteScheduler;use-dynamic-shifting=true;shift-terminal=0.1 with --inference-steps 30.
+- Wan video: Wan-AI/Wan2.1-T2V-1.3B-Diffusers, --model-type wan, --animation-format mp4. \
+--video-lengths is seconds, --video-fps defaults to 16. last-frame= is first-last-frame on an I2V repo. \
+A video seed path is video-to-video. control=, mask=, and reference= are VACE. \
+Wan-Animate is --model-type wan-animate with a character still plus wan-pose= and wan-face=, or wan-driving= with \
+--wan-animate-preprocess (openpose + yolo face crop) or --wan-pose-image-processors and --wan-face-image-processors. \
+--video-lengths is rejected for animate. \
+Wan-Animate-2 is --model-type wan-animate-2 with a character still plus wan-driving=. \
+Wan-AI/Wan2.2-Animate-2-14B-Diffusers uses 40 steps. The distilled repo uses 10. \
+--video-fps defaults to 24. --video-lengths is rejected.
 - 4x upscaling with diffusion: stabilityai/stable-diffusion-x4-upscaler, --model-type upscaler-x4 --variant fp16. Public, no HF_TOKEN.
 - 2x latent upscaling: stabilityai/sd-x2-latent-upscaler, --model-type upscaler-x2. Public, no HF_TOKEN.
 - Instruction editing: timbrooks/instruct-pix2pix (--model-type pix2pix), \
@@ -442,12 +458,13 @@ def first_draft_recipes(request: str) -> str:
         'That \\print is exactly: \\print Set CIVIT_AI_TOKEN environmental variable.',
         'Neither token \\print contains the word "example".',
     ]
-    if re.search(r'\b(animat\w*|video|ltx|clip)\b', request, re.IGNORECASE):
+    if re.search(r'\b(animat\w*|video|ltx|wan|clip)\b', request, re.IGNORECASE):
         lines += [
-            'Animate with Lightricks/LTX-2.5-Diffusers, not Lightricks/LTX-Video, unless the user names LTX-Video.',
+            'Animate with Lightricks/LTX-2.5-Diffusers, not Lightricks/LTX-Video, unless the user names LTX-Video or Wan.',
+            'Wan uses --model-type wan or wan-animate and Wan-AI repos. --video-lengths and --video-fps are shared.',
             '--guidance-scales 1, --model-sequential-offload, --animation-format mp4.',
-            'LTX-only options use the --ltx- prefix, including --ltx-video-lengths, --ltx-video-fps, '
-            '--ltx-audio-guidance-scales, and --ltx-ic-lora. --ltx-video-lengths is seconds. '
+            'LTX-only options use the --ltx- prefix, including '
+            '--ltx-audio-guidance-scales, and --ltx-ic-lora. --video-lengths is seconds. '
             'If the user names a duration, use that many seconds. '
             'If they do not, use 4. Do not turn a frame count such as 97 into the length unless they asked for 97 seconds. '
             'For a sharper clip, --ltx-latent-upscale in the same generation; --output-size must be divisible by 64.',

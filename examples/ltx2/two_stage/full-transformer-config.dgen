@@ -30,8 +30,8 @@ Lightricks/LTX-2.5-Diffusers
 --ltx-stage-loras "Lightricks/LTX-2.5-Diffusers;weight-name=ltx-2.5-22b-distilled-lora-450-bf16.safetensors"
 --gen-seeds 1
 --output-size 768x512
---ltx-video-lengths 5
---ltx-video-fps 24
+--video-lengths 5
+--video-fps 24
 --animation-format mp4
 --output-path ltx-two-stage-full
 --prompts "A woman in a red coat walks along a dirt path through a green field, then stops and looks back at the camera. Boots on gravel. The camera stays fixed."

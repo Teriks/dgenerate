@@ -763,8 +763,14 @@ class TextEncoderUri:
         'CLIPTextModel': transformers.models.clip.CLIPTextModel,
         'CLIPTextModelWithProjection': transformers.models.clip.CLIPTextModelWithProjection,
         'T5EncoderModel': transformers.models.t5.T5EncoderModel,
+        'UMT5EncoderModel': transformers.UMT5EncoderModel,
         'DistillT5EncoderModel': _models.DistillT5EncoderModel,
-        'ChatGLMModel': diffusers.pipelines.kolors.ChatGLMModel
+        'ChatGLMModel': diffusers.pipelines.kolors.ChatGLMModel,
+        'Gemma4UnifiedForConditionalGeneration': transformers.Gemma4UnifiedForConditionalGeneration,
+        'Mistral3ForConditionalGeneration': transformers.Mistral3ForConditionalGeneration,
+        'Qwen2_5_VLForConditionalGeneration': transformers.Qwen2_5_VLForConditionalGeneration,
+        'Qwen3ForCausalLM': transformers.Qwen3ForCausalLM,
+        'Qwen3Model': transformers.Qwen3Model,
     }
 
     _clip_modes = (

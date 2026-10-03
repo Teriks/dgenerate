@@ -1,0 +1,24 @@
+{
+  "_class_name": "WanPipeline",
+  "_diffusers_version": "0.33.0.dev0",
+  "scheduler": [
+    "diffusers",
+    "UniPCMultistepScheduler"
+  ],
+  "text_encoder": [
+    "transformers",
+    "UMT5EncoderModel"
+  ],
+  "tokenizer": [
+    "transformers",
+    "T5TokenizerFast"
+  ],
+  "transformer": [
+    "diffusers",
+    "WanTransformer3DModel"
+  ],
+  "vae": [
+    "diffusers",
+    "AutoencoderKLWan"
+  ]
+}

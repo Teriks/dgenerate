@@ -351,7 +351,14 @@ class MagicPromptUpscaler(_llmupscalermixin.LLMPromptUpscalerMixin, _promptupsca
         except Exception as e:
             raise self.argument_error(f'Could not load model "{model_name}": {e}')
 
-        tokenizer = transformers.AutoTokenizer.from_pretrained(model_name)
+        try:
+            tokenizer = transformers.AutoTokenizer.from_pretrained(
+                model_name,
+                trust_remote_code=True,
+                local_files_only=self.local_files_only
+            )
+        except Exception as e:
+            raise self.argument_error(f'Could not load tokenizer for "{model_name}": {e}')
         tokenizer.pad_token_id = model.config.eos_token_id
 
         return _TextGenerationPipeline(

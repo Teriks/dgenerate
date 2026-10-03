@@ -1,0 +1,25 @@
+{
+  "_class_name": "WanAnimate2Transformer3DModel",
+  "_diffusers_version": "0.40.0.dev0",
+  "cross_attn_norm": true,
+  "dim": 5120,
+  "eps": 1e-06,
+  "ffn_dim": 13824,
+  "freq_dim": 256,
+  "in_dim": 36,
+  "num_heads": 40,
+  "num_layers": 40,
+  "out_dim": 16,
+  "patch_size": [
+    1,
+    2,
+    2
+  ],
+  "refer_offset_h": 0,
+  "refer_offset_t": 1,
+  "refer_offset_w": -1,
+  "refer_stride": 1,
+  "text_dim": 4096,
+  "text_len": 512,
+  "use_img_emb": true
+}

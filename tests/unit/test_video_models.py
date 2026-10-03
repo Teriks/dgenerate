@@ -10,6 +10,7 @@ import numpy
 import PIL.Image
 import torch
 
+import dgenerate.arguments as _arguments
 import dgenerate.mediainput as _mediainput
 import dgenerate.mediaoutput as _mediaoutput
 import dgenerate.pipelinewrapper as _pipelinewrapper
@@ -39,7 +40,7 @@ class TestVideoModels(unittest.TestCase):
     def test_ltx_check_defaults(self):
         config = _config(model_path='org/ltx', model_type=_pipelinewrapper.ModelType.LTX)
         config.check()
-        self.assertEqual(config.ltx_video_fps, [24.0])
+        self.assertEqual(config.video_fps, [24.0])
         self.assertEqual(
             config.inference_steps,
             [_pipelinewrapper.constants.DEFAULT_INFERENCE_STEPS])
@@ -71,7 +72,7 @@ class TestVideoModels(unittest.TestCase):
         with self.assertRaises(ValueError):
             _pipelinewrapper.get_model_type_enum('minimax-h3')
         with self.assertRaises(ValueError):
-            _pipelinewrapper.get_model_type_enum('wan-animate')
+            _pipelinewrapper.get_model_type_enum('hunyuan-video')
         self.assertFalse(_pipelinewrapper.model_type_is_video(_pipelinewrapper.ModelType.FLUX))
 
     def test_ltx_scheduler_uri(self):
@@ -125,8 +126,8 @@ class TestVideoModels(unittest.TestCase):
         args.inference_steps = 50
         args.guidance_scale = 6
         args.ltx_audio_guidance_scale = 7
-        args.ltx_video_fps = 24
-        args.ltx_video_length = 2
+        args.video_fps = 24
+        args.video_length = 2
         args.width = 640
         args.height = 384
         args.scheduler_uri = (
@@ -221,7 +222,7 @@ class TestVideoModels(unittest.TestCase):
                 {'ltx_stg_scales': [1.0]},
                 {'ltx_latent_upscale': True},
                 {'ltx_use_cross_timestep': False},
-                {'ltx_video_fps': [24.0]},
+                {'video_fps': [24.0]},
         ):
             blocked = _config(
                 model_path='org/sd',
@@ -266,28 +267,78 @@ class TestVideoModels(unittest.TestCase):
         with self.assertRaises(_renderloopconfig.RenderLoopConfigError):
             config.check()
 
+        config = _config(
+            model_path='org/ltx',
+            model_type=_pipelinewrapper.ModelType.LTX,
+            image_seeds=['examples/media/earth.jpg;last-frame=examples/media/beach.jpg'],
+            last_frame_image_processors=['flip'])
+        config.check()
+
+        config = _config(
+            model_path='org/ltx',
+            model_type=_pipelinewrapper.ModelType.LTX,
+            image_seeds=['examples/media/earth.jpg;last-frame=examples/media/beach.jpg'],
+            last_frame_image_processors=['flip', '+', 'mirror'])
+        with self.assertRaises(_renderloopconfig.RenderLoopConfigError):
+            config.check()
+
+        config = _config(
+            model_path='org/ltx',
+            model_type=_pipelinewrapper.ModelType.LTX,
+            image_seeds=['examples/media/earth.jpg'],
+            last_frame_image_processors=['flip'])
+        with self.assertRaises(_renderloopconfig.RenderLoopConfigError) as raised:
+            config.check()
+        self.assertIn('last-frame=', str(raised.exception))
+
     def test_render_loop_video_processor_slots(self):
         import dgenerate.renderloop as _renderloop
 
         loop = _renderloop.RenderLoop.__new__(_renderloop.RenderLoop)
-        start, end, control = object(), object(), object()
+        loop._c_config = unittest.mock.Mock(
+            last_frame_image_processors=None,
+            reference_image_processors=None,
+            wan_pose_image_processors=None,
+            wan_face_image_processors=None,
+            wan_driving_image_processors=None,
+            wan_background_image_processors=None)
+        start, end, control, last_frame, pose = object(), object(), object(), object(), object()
 
-        def slots(seed, control_chain=None):
+        def slots(seed, control_chain=None, mask_chain=None, extra=None):
+            extra = extra or {}
             with unittest.mock.patch.object(
                     _renderloop.RenderLoop, '_load_seed_image_processors', return_value=seed), \
                     unittest.mock.patch.object(
                         _renderloop.RenderLoop, '_load_control_image_processors',
-                        return_value=control_chain):
+                        return_value=control_chain), \
+                    unittest.mock.patch.object(
+                        _renderloop.RenderLoop, '_load_mask_image_processors',
+                        return_value=mask_chain), \
+                    unittest.mock.patch.object(
+                        _renderloop.RenderLoop, '_load_config_processors',
+                        side_effect=lambda name: extra.get(name)):
                 return loop._video_image_processors()
 
-        self.assertEqual(slots(start), {'start': start, 'end': start, 'control': None})
-        self.assertEqual(slots([start, end], control),
-                         {'start': start, 'end': end, 'control': control})
-        self.assertEqual(slots([None, end]), {'start': None, 'end': end, 'control': None})
+        empty = {
+            'control': None, 'mask': None, 'reference': None,
+            'wan_pose': None, 'wan_face': None,
+            'wan_background': None, 'wan_driving': None}
+        self.assertEqual(slots(start), {
+            'start': start, 'end': start, **empty})
+        self.assertEqual(slots([start, end], control), {
+            'start': start, 'end': end, **empty, 'control': control})
+        self.assertEqual(slots([None, end]), {
+            'start': None, 'end': end, **empty})
+        self.assertEqual(slots(start, extra={'last_frame_image_processors': last_frame}), {
+            'start': start, 'end': last_frame, **empty})
+        self.assertEqual(slots(start, extra={'wan_pose_image_processors': pose}), {
+            'start': start, 'end': start, **empty, 'wan_pose': pose})
         with self.assertRaises(_renderloop.RenderLoopConfigError):
             slots([start, end, start])
         with self.assertRaises(_renderloop.RenderLoopConfigError):
             slots(None, [control, control])
+        with self.assertRaises(_renderloop.RenderLoopConfigError):
+            slots(start, extra={'wan_pose_image_processors': [pose, pose]})
 
     def test_legacy_ltx_rejects_control_mode(self):
         with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError):
@@ -384,7 +435,7 @@ class TestVideoModels(unittest.TestCase):
 
         args = _pipelinewrapper.DiffusionArguments()
         args.prompt = _prompt.Prompt('fox')
-        args.ltx_video_fps = 24
+        args.video_fps = 24
         args.reference_video_frames = [PIL.Image.new('RGB', (8, 8)) for _ in range(20)]
         args.images = [PIL.Image.new('RGB', (8, 8))]
 
@@ -452,7 +503,7 @@ class TestVideoModels(unittest.TestCase):
             model_path='org/ltx',
             model_type=_pipelinewrapper.ModelType.LTX,
             prompts=[_prompt.Prompt(), _prompt.Prompt()],
-            ltx_video_lengths=[5.0, 2.0])
+            video_lengths=[5.0, 2.0])
         self.assertEqual(config.calculate_generation_steps(), 4)
 
         audio = _config(
@@ -467,9 +518,9 @@ class TestVideoModels(unittest.TestCase):
         config = _config(
             model_path='org/ltx',
             model_type=_pipelinewrapper.ModelType.LTX,
-            ltx_video_fps=[12.0])
+            video_fps=[12.0])
         config.check()
-        self.assertEqual(config.ltx_video_fps, [12.0])
+        self.assertEqual(config.video_fps, [12.0])
 
     def test_canvas_alignment(self):
         aligned = _config(
@@ -554,12 +605,41 @@ class TestVideoModels(unittest.TestCase):
             quantizer_uri='bnb;bits=4')
         quantized.check()
 
-        rejected = _config(
+        with_vae = _config(
             model_path='org/ltx',
             model_type=_pipelinewrapper.ModelType.LTX,
-            vae_uri='org/vae')
+            vae_uri='AutoencoderKLLTX2Video;model=org/vae')
+        with_vae.check()
+
+        with_text_encoders = _config(
+            model_path='org/ltx',
+            model_type=_pipelinewrapper.ModelType.LTX,
+            text_encoder_uris=[
+                'Gemma4UnifiedForConditionalGeneration;model=org/te'])
+        with_text_encoders.check()
+
+        with_text_encoder_default = _config(
+            model_path='org/ltx',
+            model_type=_pipelinewrapper.ModelType.LTX,
+            text_encoder_uris=['+'])
+        with_text_encoder_default.check()
+
+        rejected_second_text_encoders = _config(
+            model_path='org/ltx',
+            model_type=_pipelinewrapper.ModelType.LTX,
+            second_model_text_encoder_uris=[
+                'Gemma4UnifiedForConditionalGeneration;model=org/te'])
         with self.assertRaises(_renderloopconfig.RenderLoopConfigError):
-            rejected.check()
+            rejected_second_text_encoders.check()
+
+        wan_vae_quant_map = _config(
+            model_path='org/wan',
+            model_type=_pipelinewrapper.ModelType.WAN,
+            quantizer_uri='bnb;bits=4',
+            quantizer_map=['vae'])
+        with self.assertRaises(_renderloopconfig.RenderLoopConfigError) as wan_vae_raised:
+            wan_vae_quant_map.check()
+        self.assertIn('vae', str(wan_vae_raised.exception))
 
         mapped = _config(
             model_path='org/ltx',
@@ -609,17 +689,17 @@ class TestVideoModels(unittest.TestCase):
 
         still_length = _config(
             model_path='org/sd',
-            ltx_video_lengths=[2.0])
+            video_lengths=[2.0])
         with self.assertRaises(_renderloopconfig.RenderLoopConfigError) as raised:
             still_length.check()
-        self.assertIn('ltx', str(raised.exception).lower())
+        self.assertIn('video', str(raised.exception).lower())
 
         still_fps = _config(
             model_path='org/sd',
-            ltx_video_fps=[24.0])
+            video_fps=[24.0])
         with self.assertRaises(_renderloopconfig.RenderLoopConfigError) as raised:
             still_fps.check()
-        self.assertIn('ltx', str(raised.exception).lower())
+        self.assertIn('video', str(raised.exception).lower())
 
         sequence = _config(
             model_path='org/ltx',
@@ -641,7 +721,7 @@ class TestVideoModels(unittest.TestCase):
             vae_tiling=True)
         with self.assertRaises(_renderloopconfig.RenderLoopConfigError) as raised:
             tiled.check()
-        self.assertIn('always tiles', str(raised.exception))
+        self.assertIn('always tile', str(raised.exception))
 
     def test_ltx_rejects_inapplicable_arguments(self):
         cases = {
@@ -726,6 +806,102 @@ class TestVideoModels(unittest.TestCase):
         self.assertEqual(
             _videopipelines.extra_weight_directories_from_index(classic),
             [])
+
+    def test_video_text_encoder_slots(self):
+        index = {
+            'text_encoder_2': ['transformers', 'CLIPTextModel'],
+            'text_encoder': ['transformers', 'UMT5EncoderModel'],
+            'vae': ['diffusers', 'AutoencoderKLWan'],
+            '_class_name': 'WanPipeline',
+        }
+        self.assertEqual(
+            _videopipelines._text_encoder_slots(index),
+            ['text_encoder', 'text_encoder_2'])
+        self.assertEqual(
+            _videopipelines._inject_video_text_encoders(
+                index, ['+'], 'float16', None, True, 'cpu', False),
+            {})
+        self.assertEqual(
+            _videopipelines._inject_video_text_encoders(
+                index, ['null'], 'float16', None, True, 'cpu', False),
+            {'text_encoder': None})
+        with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError):
+            _videopipelines._inject_video_text_encoders(
+                index, ['a', 'b', 'c'], 'float16', None, True, 'cpu', False)
+        with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError):
+            _videopipelines._inject_video_text_encoders(
+                {'_class_name': 'X'}, ['+'], 'float16', None, True, 'cpu', False)
+
+    def test_wan_vae_dtype_skips_quantized(self):
+        from dgenerate.pipelinewrapper.videopipelines import wan as _wan
+
+        class _QuantVae:
+            is_quantized = True
+
+            def to(self, *args, **kwargs):
+                raise AssertionError('quantized VAE must not be cast')
+
+        pipe = unittest.mock.Mock()
+        pipe.vae = _QuantVae()
+        _wan._set_wan_vae_dtype(pipe)
+        self.assertTrue(_wan._vae_is_quantized(pipe.vae))
+
+    def test_wan_animate_2_null_text_encoder_not_reloaded(self):
+        from dgenerate.pipelinewrapper.videopipelines import wan as _wan
+
+        class _Spec:
+            def __init__(self):
+                self.default_creation_method = 'from_pretrained'
+                self.pretrained_model_name_or_path = 'org/wan'
+
+        class _FakePipe:
+            def __init__(self, blocks=None, pretrained_model_name_or_path=None):
+                self._component_specs = {
+                    'text_encoder': _Spec(),
+                    'vae': _Spec(),
+                    'transformer': _Spec(),
+                }
+                self.text_encoder = None
+                self.vae = None
+                self.transformer = None
+                self._updated = []
+                self._loaded_names = None
+
+            def update_components(self, **kwargs):
+                self._updated.append(dict(kwargs))
+                for name, value in kwargs.items():
+                    setattr(self, name, value)
+
+            def load_components(self, names=None, **kwargs):
+                self._loaded_names = list(names) if names is not None else None
+                for name in names or ():
+                    setattr(self, name, f'loaded-{name}')
+
+        class _FakePipelineClass:
+            __name__ = 'WanAnimate2ModularPipeline'
+
+            def __new__(cls, blocks=None, pretrained_model_name_or_path=None):
+                return _FakePipe(blocks, pretrained_model_name_or_path)
+
+        class _FakeBlocks:
+            pass
+
+        transformer = object()
+        with unittest.mock.patch(
+                'diffusers.WanAnimate2Blocks', _FakeBlocks), \
+                unittest.mock.patch(
+                    'diffusers.WanAnimate2DistilledBlocks', _FakeBlocks):
+            pipe = _wan.load_wan_animate_2_pipeline(
+                _FakePipelineClass,
+                'org/wan',
+                {'local_files_only': True},
+                {'transformer': transformer, 'text_encoder': None},
+                _pipelinewrapper.DataType.BFLOAT16)
+
+        self.assertIs(pipe.transformer, transformer)
+        self.assertIsNone(pipe.text_encoder)
+        self.assertEqual(pipe._loaded_names, ['vae'])
+        self.assertIn({'text_encoder': None}, pipe._updated)
 
     def test_ltx_family_from_index(self):
         self.assertEqual(
@@ -1170,8 +1346,8 @@ class TestVideoModels(unittest.TestCase):
         args.inference_steps = 8
         args.guidance_scale = 1
         args.ltx_audio_guidance_scale = 1
-        args.ltx_video_fps = 24
-        args.ltx_video_length = 5
+        args.video_fps = 24
+        args.video_length = 5
         args.width = 768
         args.height = 512
         args.ltx_latent_upscale = True
@@ -1312,6 +1488,502 @@ class TestVideoModels(unittest.TestCase):
         self.assertFalse(calls[2]['enable_prompt_enhancement'])
         self.assertIsNone(seen['during_lora'])
         self.assertIs(pipe.prompt_enhancer, enhancer)
+
+    def test_diffusion_decoder_does_not_fall_back_to_flex(self):
+        import diffusers.models.autoencoders.ltx2_diffusion_decoder as decoder_module
+
+        class MissingKernels:
+            def __init__(self):
+                raise ImportError(
+                    'Install it with `pip install kernels`, or use the default '
+                    '`LTX2VideoVaeNeighborhoodAttnProcessor` (FlexAttention) instead.')
+
+        decoder = unittest.mock.Mock()
+        wrapper = unittest.mock.Mock(
+            model_path='org/ltx',
+            _dtype=_pipelinewrapper.DataType.BFLOAT16,
+            _auth_token=None,
+            _local_files_only=True,
+            device='cpu',
+            model_cpu_offload=False,
+            model_sequential_offload=False,
+            model_group_offload=False)
+        held = unittest.mock.Mock(spec=[])
+
+        with unittest.mock.patch(
+                'diffusers.LTX2VideoDiffusionDecoderModel.from_pretrained',
+                return_value=decoder), \
+                unittest.mock.patch.object(
+                    decoder_module, 'LTX2VideoVaeNeighborhoodNattenProcessor', MissingKernels):
+            with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError) as raised:
+                _videopipelines._decode_ltx_diffusion(wrapper, None, held, None, None)
+
+        self.assertIn('kernels', str(raised.exception))
+        self.assertIn('does not fit in GPU memory', str(raised.exception))
+        decoder.set_attn_processor.assert_not_called()
+
+
+class TestWanModels(unittest.TestCase):
+    def test_wan_check_defaults(self):
+        config = _config(model_path='org/wan', model_type=_pipelinewrapper.ModelType.WAN)
+        config.check()
+        self.assertEqual(config.video_fps, [16.0])
+
+        animate = _config(
+            model_path='org/wan-animate',
+            model_type=_pipelinewrapper.ModelType.WAN_ANIMATE,
+            image_seeds=['examples/media/earth.jpg;wan-pose=examples/media/rickroll-roll.gif;wan-face=examples/media/rickroll-roll.gif'])
+        animate.check()
+        self.assertEqual(animate.video_fps, [30.0])
+
+    def test_wan_rejects_video_lengths_for_animate(self):
+        config = _config(
+            model_path='org/wan-animate',
+            model_type=_pipelinewrapper.ModelType.WAN_ANIMATE,
+            image_seeds=['examples/media/earth.jpg'],
+            video_lengths=[2.0])
+        with self.assertRaises(_renderloopconfig.RenderLoopConfigError) as raised:
+            config.check()
+        self.assertIn('video_lengths', str(raised.exception))
+
+    def test_wan_scheduler_uri(self):
+        rejected = _config(
+            model_path='org/wan',
+            model_type=_pipelinewrapper.ModelType.WAN,
+            scheduler_uri='EulerDiscreteScheduler')
+        with self.assertRaises(_renderloopconfig.RenderLoopConfigError) as raised:
+            rejected.check()
+        self.assertIn('FlowMatchEulerDiscreteScheduler', str(raised.exception))
+
+        allowed = _config(
+            model_path='org/wan',
+            model_type=_pipelinewrapper.ModelType.WAN,
+            scheduler_uri='FlowMatchEulerDiscreteScheduler;shift=5.0')
+        allowed.check()
+
+        animate_rejected = _config(
+            model_path='org/wan-animate',
+            model_type=_pipelinewrapper.ModelType.WAN_ANIMATE,
+            image_seeds=['examples/media/earth.jpg;wan-pose=examples/media/rickroll-roll.gif;wan-face=examples/media/rickroll-roll.gif'],
+            scheduler_uri='FlowMatchEulerDiscreteScheduler')
+        with self.assertRaises(_renderloopconfig.RenderLoopConfigError) as raised:
+            animate_rejected.check()
+        self.assertIn('UniPCMultistepScheduler', str(raised.exception))
+
+    def test_wan_animate_requires_pose_or_driving(self):
+        missing = _config(
+            model_path='org/wan-animate',
+            model_type=_pipelinewrapper.ModelType.WAN_ANIMATE,
+            image_seeds=['examples/media/earth.jpg'])
+        with self.assertRaises(_renderloopconfig.RenderLoopConfigError) as raised:
+            missing.check()
+        self.assertIn('wan-pose=', str(raised.exception))
+
+        driving = _config(
+            model_path='org/wan-animate',
+            model_type=_pipelinewrapper.ModelType.WAN_ANIMATE,
+            image_seeds=['examples/media/earth.jpg;wan-driving=examples/media/rickroll-roll.gif'])
+        with self.assertRaises(_renderloopconfig.RenderLoopConfigError) as raised:
+            driving.check()
+        self.assertIn('wan-animate-preprocess', str(raised.exception))
+
+        preprocess = _config(
+            model_path='org/wan-animate',
+            model_type=_pipelinewrapper.ModelType.WAN_ANIMATE,
+            image_seeds=['examples/media/earth.jpg;wan-driving=examples/media/rickroll-roll.gif'],
+            wan_animate_preprocess=True)
+        preprocess.check()
+
+        custom = _config(
+            model_path='org/wan-animate',
+            model_type=_pipelinewrapper.ModelType.WAN_ANIMATE,
+            image_seeds=['examples/media/earth.jpg;wan-driving=examples/media/rickroll-roll.gif'],
+            wan_pose_image_processors=['openpose'],
+            wan_face_image_processors=['yolo;model=Bingsu/adetailer;weight-name=face_yolov8n.pt'])
+        custom.check()
+
+    def test_image_processor_cli_names(self):
+        parsed = _arguments.parse_args([
+            'org/wan-animate',
+            '--model-type', 'wan-animate',
+            '--dtype', 'bfloat16',
+            '--image-seeds',
+            'examples/media/earth.jpg;wan-driving=examples/media/rickroll-roll.gif',
+            '--wan-pose-image-processors', 'openpose',
+            '--wan-face-image-processors', 'openpose',
+            '--wan-driving-image-processors', 'flip',
+            '--prompts', 'a dancer',
+        ], throw=True, log_error=False)
+        self.assertEqual(parsed.wan_pose_image_processors, ['openpose'])
+        self.assertEqual(parsed.wan_face_image_processors, ['openpose'])
+        self.assertEqual(parsed.wan_driving_image_processors, ['flip'])
+
+        parsed = _arguments.parse_args([
+            'org/ltx',
+            '--model-type', 'ltx',
+            '--dtype', 'bfloat16',
+            '--image-seeds',
+            'examples/media/earth.jpg;last-frame=examples/media/beach.jpg',
+            '--last-frame-image-processors', 'flip',
+            '--prompts', 'a fox',
+        ], throw=True, log_error=False)
+        self.assertEqual(parsed.last_frame_image_processors, ['flip'])
+
+        parsed = _arguments.parse_args([
+            'org/wan',
+            '--model-type', 'wan',
+            '--dtype', 'bfloat16',
+            '--image-seeds',
+            'examples/media/earth.jpg;control=examples/media/rickroll-roll.gif;'
+            'reference=examples/media/mountain.png',
+            '--reference-image-processors', 'grayscale',
+            '--prompts', 'a dancer',
+        ], throw=True, log_error=False)
+        self.assertEqual(parsed.reference_image_processors, ['grayscale'])
+
+    def test_wan_rejects_ltx_options(self):
+        config = _config(
+            model_path='org/wan',
+            model_type=_pipelinewrapper.ModelType.WAN,
+            ltx_audio_guidance_scales=[7.0])
+        with self.assertRaises(_renderloopconfig.RenderLoopConfigError) as raised:
+            config.check()
+        self.assertIn('ltx', str(raised.exception).lower())
+
+    def test_ltx_rejects_wan_options(self):
+        config = _config(
+            model_path='org/ltx',
+            model_type=_pipelinewrapper.ModelType.LTX,
+            wan_boundary_ratios=[0.9])
+        with self.assertRaises(_renderloopconfig.RenderLoopConfigError) as raised:
+            config.check()
+        self.assertIn('wan', str(raised.exception).lower())
+
+    def test_wan_family_from_index(self):
+        self.assertEqual(
+            _videopipelines.wan_family_from_index({'_class_name': 'WanPipeline'}),
+            'wan-t2v')
+        self.assertEqual(
+            _videopipelines.wan_family_from_index({'_class_name': 'WanImageToVideoPipeline'}),
+            'wan-i2v')
+        self.assertEqual(
+            _videopipelines.wan_family_from_index({'_class_name': 'WanVACEPipeline'}),
+            'wan-vace')
+        with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError):
+            _videopipelines.wan_family_from_index({'_class_name': 'WanAnimatePipeline'})
+        self.assertEqual(
+            _videopipelines.wan_animate_family_from_index(
+                {'_class_name': 'WanAnimatePipeline'}),
+            'wan-animate')
+        with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError):
+            _videopipelines.wan_animate_family_from_index({'_class_name': 'WanPipeline'})
+        with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError) as raised:
+            _videopipelines.wan_family_from_index({'_class_name': 'WanAnimate2ModularPipeline'})
+        self.assertIn('wan-animate-2', str(raised.exception))
+        self.assertEqual(
+            _videopipelines.wan_animate_2_family_from_index({
+                '_class_name': 'WanAnimate2Pipeline',
+                'scheduler': ['diffusers', 'DPMSolverMultistepScheduler'],
+            }),
+            'wan-animate-2')
+        self.assertEqual(
+            _videopipelines.wan_animate_2_family_from_index({
+                '_class_name': 'WanAnimate2Pipeline',
+                'scheduler': ['diffusers', 'FlowMatchEulerDiscreteScheduler'],
+            }),
+            'wan-animate-2-distilled')
+
+    def test_wan_num_frames(self):
+        self.assertEqual(_videopipelines.wan_num_frames(5, 16, 4), 81)
+        self.assertEqual(_videopipelines.wan_num_frames(1, 16, 4), 17)
+        self.assertEqual((_videopipelines.wan_num_frames(2, 16, 4) - 1) % 4, 0)
+
+    def test_classify_wan_seed(self):
+        self.assertEqual(
+            _videopipelines.classify_video_seed(_pipelinewrapper.ModelType.WAN, None),
+            'wan-txt')
+        parsed = _mediainput.parse_image_seed_uri('examples/media/earth.jpg')
+        self.assertEqual(
+            _videopipelines.classify_video_seed(_pipelinewrapper.ModelType.WAN, parsed),
+            'wan-image')
+        parsed = _mediainput.parse_image_seed_uri(
+            'examples/media/earth.jpg;last-frame=examples/media/beach.jpg')
+        self.assertEqual(
+            _videopipelines.classify_video_seed(_pipelinewrapper.ModelType.WAN, parsed),
+            'wan-flf')
+        parsed = _mediainput.parse_image_seed_uri(
+            'examples/media/earth.jpg;control=examples/media/rickroll-roll.gif')
+        self.assertEqual(
+            _videopipelines.classify_video_seed(_pipelinewrapper.ModelType.WAN, parsed),
+            'wan-vace')
+        parsed = _mediainput.parse_image_seed_uri('examples/media/rickroll-roll.gif')
+        self.assertEqual(
+            _videopipelines.classify_video_seed(_pipelinewrapper.ModelType.WAN, parsed),
+            'wan-image')
+
+    def test_classify_wan_animate_seed(self):
+        parsed = _mediainput.parse_image_seed_uri(
+            'examples/media/earth.jpg;wan-pose=examples/media/rickroll-roll.gif;'
+            'wan-face=examples/media/rickroll-roll.gif')
+        self.assertEqual(
+            _videopipelines.classify_video_seed(
+                _pipelinewrapper.ModelType.WAN_ANIMATE, parsed),
+            'wan-animate')
+        parsed = _mediainput.parse_image_seed_uri(
+            'examples/media/earth.jpg;wan-driving=examples/media/rickroll-roll.gif')
+        self.assertEqual(
+            _videopipelines.classify_video_seed(
+                _pipelinewrapper.ModelType.WAN_ANIMATE, parsed),
+            'wan-animate')
+        with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError):
+            _videopipelines.classify_video_seed(
+                _pipelinewrapper.ModelType.WAN_ANIMATE,
+                _mediainput.parse_image_seed_uri('examples/media/earth.jpg'))
+        with self.assertRaises(_pipelinewrapper.UnsupportedPipelineConfigError):
+            _videopipelines.classify_video_seed(
+                _pipelinewrapper.ModelType.WAN,
+                _mediainput.parse_image_seed_uri(
+                    'examples/media/earth.jpg;wan-pose=examples/media/rickroll-roll.gif'))
+
+    def test_wan_animate_2_requires_driving(self):
+        missing = _config(
+            model_path='org/wan-animate-2',
+            model_type=_pipelinewrapper.ModelType.WAN_ANIMATE_2,
+            image_seeds=['examples/media/earth.jpg'])
+        with self.assertRaises(_renderloopconfig.RenderLoopConfigError) as raised:
+            missing.check()
+        self.assertIn('wan-driving=', str(raised.exception))
+
+        driving = _config(
+            model_path='org/wan-animate-2',
+            model_type=_pipelinewrapper.ModelType.WAN_ANIMATE_2,
+            image_seeds=['examples/media/earth.jpg;wan-driving=examples/media/rickroll-roll.gif'])
+        driving.check()
+        self.assertEqual(driving.video_fps, [24.0])
+
+        pose = _config(
+            model_path='org/wan-animate-2',
+            model_type=_pipelinewrapper.ModelType.WAN_ANIMATE_2,
+            image_seeds=[
+                'examples/media/earth.jpg;wan-driving=examples/media/rickroll-roll.gif;'
+                'wan-pose=examples/media/rickroll-roll.gif'])
+        with self.assertRaises(_renderloopconfig.RenderLoopConfigError) as raised:
+            pose.check()
+        self.assertIn('wan-pose=', str(raised.exception))
+
+    def test_classify_wan_animate_2_seed(self):
+        parsed = _mediainput.parse_image_seed_uri(
+            'examples/media/earth.jpg;wan-driving=examples/media/rickroll-roll.gif')
+        self.assertEqual(
+            _videopipelines.classify_video_seed(
+                _pipelinewrapper.ModelType.WAN_ANIMATE_2, parsed),
+            'wan-animate-2')
+
+    def test_wan_animate_2_args_reconstruct(self):
+        import shlex
+
+        import dgenerate.arguments as _arguments
+        import dgenerate.pipelinewrapper.argreconstruct as _argreconstruct
+
+        seed = (
+            'examples/media/earth.jpg;wan-driving=examples/media/rickroll-roll.gif;'
+            'frame-start=0;frame-end=2')
+        argv = [
+            'Wan-AI/Wan2.2-Animate-2-14B-Diffusers',
+            '--model-type', 'wan-animate-2',
+            '--dtype', 'bfloat16',
+            '--model-sequential-offload',
+            '--inference-steps', '40',
+            '--video-fps', '24',
+            '--vae',
+            'AutoencoderKLWan;model=Wan-AI/Wan2.2-Animate-2-14B-Diffusers;subfolder=vae;dtype=float32',
+            '--wan-segment-frame-lengths', '81',
+            '--wan-prev-segment-frames', '1',
+            '--max-sequence-length', '512',
+            '--wan-driving-image-processors', 'flip',
+            '--output-size', '640x800',
+            '--animation-format', 'mp4',
+            '--seeds', '1234',
+            '--image-seeds', seed,
+            '--prompts', 'A person dances in place.',
+        ]
+        config = _arguments.parse_args(argv, throw=True, log_error=False)
+        generated = next(config.iterate_diffusion_args())
+        wrapper = _pipelinewrapper.DiffusionPipelineWrapper(
+            model_path=config.model_path,
+            model_type=config.model_type,
+            dtype=config.dtype,
+            device='cpu',
+            model_sequential_offload=config.model_sequential_offload,
+            vae_uri=config.vae_uri)
+        command = _argreconstruct.gen_dgenerate_command(
+            wrapper,
+            generated,
+            extra_opts=[
+                ('--animation-format', config.animation_format),
+                ('--image-seeds', config.image_seeds[0]),
+                ('--wan-driving-image-processors', config.wan_driving_image_processors),
+            ],
+            omit_device=True)
+        again = _arguments.parse_args(
+            shlex.split(command)[1:], throw=True, log_error=False)
+        again_args = next(again.iterate_diffusion_args())
+        self.assertEqual(again.model_path, config.model_path)
+        self.assertEqual(again.model_type, config.model_type)
+        self.assertEqual(again.dtype, config.dtype)
+        self.assertTrue(again.model_sequential_offload)
+        self.assertEqual(again.video_fps, config.video_fps)
+        self.assertEqual(again.inference_steps, config.inference_steps)
+        self.assertEqual(again.vae_uri, config.vae_uri)
+        self.assertEqual(again.wan_segment_frame_lengths, [81])
+        self.assertEqual(again.wan_prev_segment_frames, [1])
+        self.assertEqual(again.max_sequence_length, 512)
+        self.assertEqual(again.image_seeds, config.image_seeds)
+        self.assertEqual(again.wan_driving_image_processors, ['flip'])
+        self.assertEqual(again.animation_format, 'mp4')
+        self.assertEqual(again.seeds, [1234])
+        self.assertEqual(again_args.width, 640)
+        self.assertEqual(again_args.height, 800)
+        self.assertEqual(again_args.wan_segment_frame_length, 81)
+        self.assertEqual(again_args.video_fps, 24.0)
+        self.assertIn('--model-type wan-animate-2', command)
+        self.assertIn('wan-driving=', command)
+
+    def test_call_wan_animate_2_kwargs(self):
+        captured = {}
+
+        class Pipe:
+            image_encoder = object()
+
+            def __call__(self, **kwargs):
+                captured.update(kwargs)
+                return [PIL.Image.new('RGB', (4, 4))]
+
+        class Held:
+            pipeline = Pipe()
+            family = 'wan-animate-2-distilled'
+
+        args = _pipelinewrapper.DiffusionArguments()
+        args.prompt = _prompt.Prompt('a dancer')
+        args.inference_steps = 30
+        args.video_fps = 24
+        args.width = 640
+        args.height = 800
+        args.images = [PIL.Image.new('RGB', (8, 8))]
+        args.wan_driving_video_frames = [PIL.Image.new('RGB', (8, 8))]
+        args.wan_driving_video_fps = 16
+
+        class Wrapper:
+            device = 'cpu'
+            model_type = _pipelinewrapper.ModelType.WAN_ANIMATE_2
+            model_cpu_offload = False
+            model_sequential_offload = False
+            model_group_offload = False
+
+        pipe = Pipe()
+        with unittest.mock.patch.object(
+                _videopipelines, '_video_pipeline',
+                return_value=(pipe, Held())):
+            frames, audio, rate, fps = _videopipelines.wan._call_wan_animate_2(
+                Wrapper(), args)
+
+        self.assertEqual(captured['num_inference_steps'], 10)
+        self.assertEqual(captured['output'], 'videos')
+        self.assertEqual(captured['output_type'], 'pil')
+        self.assertEqual(captured['driving_video_fps'], 16)
+        self.assertEqual(captured['width'], 640)
+        self.assertEqual(fps, 24)
+        self.assertEqual(len(frames), 1)
+        self.assertIsNone(audio)
+        self.assertIsNone(rate)
+
+    def test_call_wan_kwargs(self):
+        class Scheduler:
+            def __init__(self):
+                self.config = {}
+
+        class Pipe:
+            def __init__(self):
+                self.scheduler = Scheduler()
+                self.vae_scale_factor_temporal = 4
+                self.vae_scale_factor_spatial = 8
+                self.config = {}
+
+            def register_to_config(self, **kwargs):
+                self.config.update(kwargs)
+
+        pipe = Pipe()
+        captured = {}
+
+        def invoke(wrapper, pipeline, kwargs):
+            captured['kwargs'] = kwargs
+
+            class Output:
+                frames = [PIL.Image.new('RGB', (4, 4))]
+
+            return Output()
+
+        args = _pipelinewrapper.DiffusionArguments()
+        args.prompt = _prompt.Prompt('a fox runs')
+        args.inference_steps = 30
+        args.guidance_scale = 5
+        args.video_fps = 16
+        args.video_length = 2
+        args.width = 832
+        args.height = 480
+        args.wan_low_noise_guidance_scale = 3.5
+        args.wan_boundary_ratio = 0.9
+
+        class Held:
+            pipeline = pipe
+            family = 'wan-t2v'
+
+        class Wrapper:
+            device = 'cpu'
+            model_type = _pipelinewrapper.ModelType.WAN
+            model_cpu_offload = False
+            model_sequential_offload = False
+            model_path = 'org/wan'
+            _revision = None
+            _variant = None
+            _subfolder = None
+            _dtype = None
+            _local_files_only = False
+            _auth_token = None
+            quantizer_uri = None
+            quantizer_map = None
+            transformer_uri = None
+            lora_uris = None
+            lora_fuse_scale = None
+
+        with unittest.mock.patch.object(
+                _videopipelines, '_create_cached_video_pipeline',
+                return_value=Held()), \
+                unittest.mock.patch.object(
+                    _videopipelines, 'pipeline_for_mode',
+                    side_effect=lambda pipeline, mode, family: captured.__setitem__('mode', mode) or pipeline), \
+                unittest.mock.patch.object(
+                    _videopipelines._schedulers, 'load_scheduler'), \
+                unittest.mock.patch.object(
+                    _videopipelines, '_invoke', side_effect=invoke):
+            frames, audio, rate, fps = _videopipelines._call_wan(Wrapper(), args)
+
+        self.assertEqual(captured['mode'], 'wan-txt')
+        self.assertEqual(captured['kwargs']['num_frames'], 33)
+        self.assertEqual(captured['kwargs']['guidance_scale_2'], 3.5)
+        self.assertEqual(pipe.config['boundary_ratio'], 0.9)
+        self.assertEqual(fps, 16)
+        self.assertEqual(len(frames), 1)
+        self.assertIsNone(audio)
+
+    def test_length_product_uses_shared_video_fields(self):
+        config = _config(
+            model_path='org/wan',
+            model_type=_pipelinewrapper.ModelType.WAN,
+            prompts=[_prompt.Prompt(), _prompt.Prompt()],
+            video_lengths=[5.0, 2.0],
+            video_fps=[16.0, 24.0])
+        self.assertEqual(config.calculate_generation_steps(), 8)
 
 
 if __name__ == '__main__':

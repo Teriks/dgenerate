@@ -19,94 +19,41 @@
 # ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""
-Video generation for model types that return a whole clip from one pipeline call.
+"""LTX-Video and LTX-2 / 2.5 video generation."""
 
-These models are not run once per input frame. One combination of prompt, seed,
-guidance, steps, ``--ltx-video-lengths`` and ``--ltx-video-fps`` produces one clip.
-Conditioning still comes from ``--image-seeds``, and the meaning of each slot
-depends on ``--model-type``.
-"""
+from __future__ import annotations
 
 import collections.abc
-import gc
-import importlib
 import inspect
 import os
 import warnings
 
-import PIL.Image
 import numpy
 import torch
 
 import dgenerate.eval as _eval
-import dgenerate.exceptions as _d_exceptions
 import dgenerate.hfhub as _hfhub
-import dgenerate.mediainput as _mediainput
-import dgenerate.memoize as _d_memoize
-import dgenerate.memory as _memory
 import dgenerate.messages as _messages
 import dgenerate.pipelinewrapper.constants as _constants
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.pipelines as _pipelines
-import dgenerate.pipelinewrapper.schedulers as _schedulers
 import dgenerate.pipelinewrapper.uris as _uris
-import dgenerate.pipelinewrapper.util as _util
 import dgenerate.types as _types
-from dgenerate.memoize import memoize as _memoize
+
+
+class _Shared:
+    """Look up helpers on the package so tests can patch ``_invoke`` there."""
+
+    def __getattr__(self, name):
+        from dgenerate.pipelinewrapper import videopipelines
+        return getattr(videopipelines, name)
+
+
+_vp = _Shared()
 
 _LTX_DEFAULT_FPS = 24.0
 
 LTX_SCHEDULER_NAMES = frozenset({'FlowMatchEulerDiscreteScheduler'})
-
-_LTX_FALLBACK_EXTRA_DIRS = ('audio_vae', 'vocoder')
-
-_LTX_CORE_INDEX_NAMES = frozenset({
-    'transformer',
-    'unet',
-    'vae',
-    'text_encoder',
-    'text_encoder_2',
-    'text_encoder_3',
-    'scheduler',
-    'tokenizer',
-    'tokenizer_2',
-    'tokenizer_3',
-    'feature_extractor',
-    'safety_checker',
-})
-
-
-def extra_weight_directories_from_index(index: dict | None) -> list[str]:
-    """
-    Repo folders that belong on the LTX pipeline cache estimate besides
-    transformer, VAE, and text encoders.
-
-    :param index: ``model_index.json`` dict, or ``None``
-    :return: folder names such as ``audio_vae`` and ``vocoder``
-    """
-    if not index:
-        return list(_LTX_FALLBACK_EXTRA_DIRS)
-    extras = []
-    for name, spec in index.items():
-        if name.startswith('_') or name in _LTX_CORE_INDEX_NAMES:
-            continue
-        if isinstance(spec, (list, tuple)) and len(spec) == 2:
-            extras.append(name)
-    return extras
-
-
-def apply_video_arg_rewrites(source, dest) -> None:
-    """
-    Copy LTX rewrite fields from the pipeline call args onto the original args.
-
-    :param source: :py:class:`dgenerate.pipelinewrapper.DiffusionArguments` after generate
-    :param dest: the original arguments object passed into the wrapper
-    """
-    dest.guidance_scale = source.guidance_scale
-    dest.inference_steps = source.inference_steps
-    dest.ltx_audio_guidance_scale = source.ltx_audio_guidance_scale
-    dest.ltx_audio_guidance_rescale = source.ltx_audio_guidance_rescale
 
 
 def audio_sample_rate_from_pipeline(pipe, audio) -> int | None:
@@ -128,16 +75,6 @@ def audio_sample_rate_from_pipeline(pipe, audio) -> int | None:
             'The soundtrack will not be muxed.')
         return None
     return int(rate)
-
-
-class _VideoPipeline:
-    """A video pipeline kept in the shared diffusion pipeline cache."""
-
-    def __init__(self, pipeline, family: str):
-        self.pipeline = pipeline
-        self.family = family
-        self.reference_downscale_factor = None
-
 
 def ltx_family_from_index(index: dict | None) -> str:
     """
@@ -172,253 +109,6 @@ def ltx_num_frames(seconds: float, fps: float) -> int:
     return 8 * k + 1
 
 
-def classify_video_seed(model_type: _enums.ModelType | str,
-                        parsed: _mediainput.ImageSeedParseResult | None,
-                        ic_lora: bool = False) -> str:
-    """
-    Decide which video conditioning mode an image seed selects.
-
-    :param model_type: video ``--model-type``
-    :param parsed: parsed ``--image-seeds`` value, or ``None`` when there is no image seed
-    :param ic_lora: ``--ltx-ic-lora`` was given, which makes a plain seed path the control clip
-    :raise UnsupportedPipelineConfigError: if the seed does not fit the model
-    :return: a mode name used by the loader
-    """
-    model_type = _enums.get_model_type_enum(model_type)
-    _reject_still_extras(parsed, _enums.get_model_type_string(model_type))
-
-    if model_type == _enums.ModelType.LTX:
-        return _classify_ltx(parsed, ic_lora)
-
-    raise _pipelines.UnsupportedPipelineConfigError(
-        f'{_enums.get_model_type_string(model_type)} is not a video model type.')
-
-
-def video_seed_slots(parsed: _mediainput.ImageSeedParseResult | None,
-                     ic_lora: bool = False) -> tuple[str | None, str | None, str | None]:
-    """
-    Split an image seed into its opening, end, and control paths.
-
-    With ``--ltx-ic-lora``, a plain seed path is the control clip, the same way a
-    plain path is the control image when ``--control-nets`` is given.
-
-    :param parsed: parsed ``--image-seeds`` value, or ``None``
-    :param ic_lora: ``--ltx-ic-lora`` was given
-    :return: ``(opening, end, control)``, each a path or ``None``
-    """
-    if parsed is None:
-        return None, None, None
-    opening = parsed.images[0] if parsed.images else None
-    control = parsed.control_images[0] if parsed.control_images else None
-    if ic_lora and parsed.is_single_spec and not parsed.multi_image_mode:
-        opening, control = None, opening
-    return opening, parsed.end_image, control
-
-
-def load_rgb_frames(path: str,
-                    local_files_only: bool = False,
-                    resize_resolution: _types.OptionalSize = None,
-                    aspect_correct: bool = True,
-                    align: int = 1,
-                    frame_start: int = 0,
-                    frame_end: _types.OptionalInteger = None,
-                    max_frames: _types.OptionalInteger = None) -> tuple[list[PIL.Image.Image], float | None]:
-    """
-    Open a local path or URL as a list of RGB frames.
-
-    A still image gives one frame. Videos and animated images are sliced by
-    ``frame_start`` and ``frame_end`` (inclusive), then cut to ``max_frames``.
-
-    :param path: file path or URL
-    :param local_files_only: refuse to download
-    :param resize_resolution: optional resize
-    :param aspect_correct: preserve aspect ratio when resizing
-    :param align: pixel alignment, ``1`` disables it
-    :param frame_start: first frame index to keep
-    :param frame_end: last frame index to keep, ``None`` for the end of the file
-    :param max_frames: stop after this many frames, ``None`` for no limit
-    :raise UnsupportedPipelineConfigError: if the slice selects no frames
-    :return: ``(frames, fps)``. ``fps`` is ``None`` for a still image.
-    """
-    mime_type, stream = _mediainput.fetch_media_data_stream(
-        path, local_files_only=local_files_only)
-    try:
-        if _mediainput.mimetype_is_static_image(mime_type):
-            return [_mediainput.create_image(
-                stream,
-                file_source=path,
-                resize_resolution=resize_resolution,
-                aspect_correct=aspect_correct,
-                align=align)], None
-
-        if not (_mediainput.mimetype_is_video(mime_type) or
-                _mediainput.mimetype_is_animated_image(mime_type)):
-            raise _mediainput.UnknownMimetypeError(
-                f'Expected an image, animated image, or video for "{path}", '
-                f'got mimetype "{mime_type}".')
-
-        frames = []
-        try:
-            with _mediainput.create_animation_reader(
-                    mime_type,
-                    file_source=path,
-                    file=stream,
-                    resize_resolution=resize_resolution,
-                    aspect_correct=aspect_correct,
-                    align=align) as reader:
-                fps = float(reader.fps)
-                for index, frame in enumerate(reader):
-                    if frame_end is not None and index > frame_end:
-                        frame.close()
-                        break
-                    if index < frame_start:
-                        frame.close()
-                        continue
-                    frames.append(_to_rgb_image(frame))
-                    if max_frames is not None and len(frames) >= max_frames:
-                        break
-        except Exception:
-            for frame in frames:
-                frame.close()
-            raise
-
-        if not frames:
-            raise _pipelines.UnsupportedPipelineConfigError(
-                f'No frames were read from "{path}" between frame {frame_start} '
-                f'and frame {"end" if frame_end is None else frame_end}.')
-        return frames, fps
-    finally:
-        stream.close()
-
-
-def frames_from_output(value) -> list[PIL.Image.Image]:
-    """
-    Normalize a pipeline video output to a list of RGB images.
-
-    Accepts a list of images, a batch of those lists, or an array/tensor in
-    frame-major channels-last or channels-first layout. A batch uses the first clip.
-
-    :param value: pipeline video output
-    :return: RGB frames
-    """
-    if value is None:
-        raise _pipelines.UnsupportedPipelineConfigError(
-            'The video pipeline did not return frames.')
-
-    if torch.is_tensor(value):
-        value = value.detach().cpu().numpy()
-
-    if isinstance(value, numpy.ndarray):
-        return _frames_from_array(value)
-
-    if isinstance(value, list):
-        if not value:
-            raise _pipelines.UnsupportedPipelineConfigError(
-                'The video pipeline returned an empty frame list.')
-        head = value[0]
-        if isinstance(head, PIL.Image.Image):
-            return [_to_rgb_image(frame) for frame in value]
-        if isinstance(head, list):
-            return frames_from_output(head)
-        if torch.is_tensor(head) or isinstance(head, numpy.ndarray):
-            array = head.detach().cpu().numpy() if torch.is_tensor(head) else numpy.asarray(head)
-            if array.ndim >= 4:
-                return frames_from_output(head)
-            return [_array_frame_to_image(frame) for frame in value]
-        raise _pipelines.UnsupportedPipelineConfigError(
-            f'Cannot read video frames from a list of {type(head).__name__}.')
-
-    raise _pipelines.UnsupportedPipelineConfigError(
-        f'Cannot read video frames from {type(value).__name__}.')
-
-
-def audio_to_numpy(audio) -> numpy.ndarray | None:
-    """
-    Normalize pipeline audio to a float32 array of shape ``(channels, samples)``.
-
-    At most two channels are kept. ``None`` and empty audio return ``None``.
-
-    :param audio: tensor or array, or ``None``
-    :return: planar audio, or ``None``
-    """
-    if audio is None:
-        return None
-
-    if torch.is_tensor(audio):
-        audio = audio.detach().float().cpu().numpy()
-
-    audio = numpy.asarray(audio, dtype=numpy.float32)
-    if audio.size == 0:
-        return None
-    if audio.ndim == 3:
-        audio = audio[0]
-    if audio.ndim == 1:
-        audio = audio.reshape(1, -1)
-    if audio.ndim != 2:
-        raise _pipelines.UnsupportedPipelineConfigError(
-            f'Cannot mux audio of shape {audio.shape}.')
-
-    if audio.shape[0] > 2 and audio.shape[1] <= 2:
-        audio = numpy.transpose(audio, (1, 0))
-    if audio.shape[0] > 2:
-        audio = audio[:2]
-    return numpy.ascontiguousarray(audio, dtype=numpy.float32)
-
-
-def generate(wrapper, user_args) -> tuple[list[PIL.Image.Image], numpy.ndarray | None, int | None, float]:
-    """
-    Run the video pipeline selected by ``wrapper.model_type``.
-
-    :param wrapper: :py:class:`dgenerate.pipelinewrapper.DiffusionPipelineWrapper`
-    :param user_args: :py:class:`dgenerate.pipelinewrapper.DiffusionArguments`
-    :return: ``(frames, audio, sample_rate, fps)``. ``audio`` and ``sample_rate`` may be ``None``.
-    """
-    model_type = wrapper.model_type
-    try:
-        if model_type == _enums.ModelType.LTX:
-            return _call_ltx(wrapper, user_args)
-    except _d_exceptions.TORCH_CUDA_OOM_EXCEPTIONS as e:
-        _d_exceptions.raise_if_not_cuda_oom(e)
-        _memory.torch_gc()
-        raise _d_exceptions.OutOfMemoryError(e) from e
-
-    raise _pipelines.UnsupportedPipelineConfigError(
-        f'{_enums.get_model_type_string(model_type)} is not a video model type.')
-
-
-def _reject_still_extras(parsed, model_name: str):
-    if parsed is None:
-        return
-    if parsed.mask_images:
-        raise _pipelines.UnsupportedPipelineConfigError(
-            f'{model_name} does not accept inpaint masks in --image-seeds.')
-    if parsed.latents:
-        raise _pipelines.UnsupportedPipelineConfigError(
-            f'{model_name} does not accept latents in --image-seeds.')
-    if parsed.adapter_images:
-        raise _pipelines.UnsupportedPipelineConfigError(
-            f'{model_name} does not accept IP adapter images.')
-    if parsed.floyd_image:
-        raise _pipelines.UnsupportedPipelineConfigError(
-            f'{model_name} does not accept a floyd image.')
-
-
-def _image_count(parsed) -> int:
-    if parsed is None or not parsed.images:
-        return 0
-    return len(parsed.images)
-
-
-def _control_count(parsed) -> int:
-    if parsed is None or not parsed.control_images:
-        return 0
-    return len(parsed.control_images)
-
-
-def _has_end(parsed) -> bool:
-    return bool(parsed is not None and parsed.end_image)
-
-
 def _custom_ltx_condition(parsed) -> bool:
     if parsed is None:
         return False
@@ -430,14 +120,14 @@ def _custom_ltx_condition(parsed) -> bool:
 
 
 def _classify_ltx(parsed, ic_lora: bool = False) -> str:
-    if _control_count(parsed) > 1:
+    if _vp._control_count(parsed) > 1:
         raise _pipelines.UnsupportedPipelineConfigError(
             'LTX accepts one control= clip, used as the IC-LoRA reference video.')
-    if parsed is not None and (parsed.multi_image_mode or _image_count(parsed) > 1):
+    if parsed is not None and (parsed.multi_image_mode or _vp._image_count(parsed) > 1):
         raise _pipelines.UnsupportedPipelineConfigError(
             'LTX accepts one conditioning image. Use a single path for the first frame, '
             'or last-frame= for the last frame.')
-    _, _, control = video_seed_slots(parsed, ic_lora)
+    _, _, control = _vp.video_seed_slots(parsed, ic_lora)
     if control is not None and not ic_lora:
         raise _pipelines.UnsupportedPipelineConfigError(
             'The image seed control= clip is the IC-LoRA reference video. '
@@ -448,309 +138,11 @@ def _classify_ltx(parsed, ic_lora: bool = False) -> str:
                 '--ltx-ic-lora needs a control clip. Use --image-seeds "control.mp4", '
                 'or "first.png;control=control.mp4" to add a first frame.')
         return 'ltx-control'
-    if _has_end(parsed) or _custom_ltx_condition(parsed):
+    if _vp._has_end(parsed) or _custom_ltx_condition(parsed):
         return 'ltx-condition'
-    if _image_count(parsed) == 1:
+    if _vp._image_count(parsed) == 1:
         return 'ltx-image'
     return 'ltx-txt'
-
-
-def _to_rgb_image(image: PIL.Image.Image) -> PIL.Image.Image:
-    if image.mode == 'RGB':
-        return image
-    converted = image.convert('RGB')
-    if converted is not image:
-        image.close()
-    return converted
-
-
-def _array_frame_to_image(frame) -> PIL.Image.Image:
-    if torch.is_tensor(frame):
-        frame = frame.detach().cpu().numpy()
-    frame = numpy.asarray(frame)
-    if frame.ndim == 3 and frame.shape[0] in (1, 3, 4) and frame.shape[-1] not in (1, 3, 4):
-        frame = numpy.transpose(frame, (1, 2, 0))
-    if frame.dtype != numpy.uint8:
-        frame = frame.astype(numpy.float32)
-        finite = frame[numpy.isfinite(frame)]
-        if finite.size and float(finite.max()) <= 1.0:
-            frame = frame * 255.0
-        frame = numpy.clip(frame, 0, 255).astype(numpy.uint8)
-    if frame.ndim == 2:
-        return PIL.Image.fromarray(frame, mode='L').convert('RGB')
-    if frame.shape[-1] == 1:
-        return PIL.Image.fromarray(frame.squeeze(-1), mode='L').convert('RGB')
-    if frame.shape[-1] == 4:
-        return PIL.Image.fromarray(frame, mode='RGBA').convert('RGB')
-    return PIL.Image.fromarray(frame[..., :3], mode='RGB')
-
-
-def _frames_from_array(array: numpy.ndarray) -> list[PIL.Image.Image]:
-    array = numpy.asarray(array)
-    if array.ndim == 5:
-        array = array[0]
-    if array.ndim == 3:
-        return [_array_frame_to_image(array)]
-    if array.ndim != 4:
-        raise _pipelines.UnsupportedPipelineConfigError(
-            f'Cannot read video frames from an array of shape {array.shape}.')
-
-    if array.shape[-1] in (1, 3, 4):
-        frames = (array[index] for index in range(array.shape[0]))
-    elif array.shape[1] in (1, 3, 4):
-        frames = (numpy.transpose(array[index], (1, 2, 0)) for index in range(array.shape[0]))
-    else:
-        raise _pipelines.UnsupportedPipelineConfigError(
-            f'Cannot read video frames from an array of shape {array.shape}.')
-    return [_array_frame_to_image(frame) for frame in frames]
-
-
-def _prompt_text(user_args) -> tuple[str, str | None]:
-    prompt = user_args.prompt
-    if prompt is None or not getattr(prompt, 'positive', None):
-        raise _pipelines.UnsupportedPipelineConfigError('Video models require a prompt.')
-    negative = prompt.negative if prompt.negative else None
-    return prompt.positive, negative
-
-
-def _size(user_args) -> tuple[int | None, int | None]:
-    if user_args.width is None or user_args.height is None:
-        return None, None
-    return int(user_args.width), int(user_args.height)
-
-
-def _require_multiple_of_32(width: int, height: int, model_name: str):
-    if width % 32 or height % 32:
-        raise _pipelines.UnsupportedPipelineConfigError(
-            f'{model_name} requires --output-size dimensions divisible by 32. '
-            f'Got {width}x{height}.')
-
-
-def _seed(user_args) -> int:
-    if user_args.seed is None:
-        return _constants.DEFAULT_SEED
-    return int(user_args.seed)
-
-
-def _offload_requested(wrapper) -> bool:
-    return bool(
-        getattr(wrapper, 'model_cpu_offload', False)
-        or getattr(wrapper, 'model_sequential_offload', False)
-        or getattr(wrapper, 'model_group_offload', False))
-
-
-def _generator(wrapper, user_args) -> torch.Generator:
-    device = 'cpu' if _offload_requested(wrapper) else wrapper.device
-    return torch.Generator(device=device).manual_seed(_seed(user_args))
-
-
-def _pretrained_kwargs(revision, variant, subfolder, local_files_only, auth_token, dtype, include_dtype):
-    kwargs = {'local_files_only': local_files_only}
-    if revision:
-        kwargs['revision'] = revision
-    if variant:
-        kwargs['variant'] = variant
-    if subfolder:
-        kwargs['subfolder'] = subfolder
-    if auth_token:
-        kwargs['token'] = auth_token
-    if include_dtype:
-        torch_dtype = _enums.get_torch_dtype(dtype)
-        if torch_dtype is not None:
-            kwargs['torch_dtype'] = torch_dtype
-    return kwargs
-
-
-def _enable_vae_tiling(pipe):
-    vae = getattr(pipe, 'vae', None)
-    if vae is not None and hasattr(vae, 'enable_tiling'):
-        vae.enable_tiling()
-
-
-def _set_ltx_vae_slicing(pipe, enabled: bool):
-    for name in ('vae', 'audio_vae'):
-        vae = getattr(pipe, name, None)
-        if vae is None:
-            continue
-        if enabled and hasattr(vae, 'enable_slicing'):
-            vae.enable_slicing()
-        elif not enabled and hasattr(vae, 'disable_slicing'):
-            vae.disable_slicing()
-
-
-def _offload_ltx(pipe, device, model_cpu_offload, sequential_cpu_offload, model_group_offload=False):
-    if sequential_cpu_offload:
-        _pipelines.enable_sequential_cpu_offload(pipe, device)
-    elif model_cpu_offload:
-        _pipelines.enable_model_cpu_offload(pipe, device)
-    elif model_group_offload:
-        _pipelines.enable_group_offload(pipe, device)
-
-
-def _video_transformer_class(model_type, family: str = 'ltx2'):
-    model_type = _enums.get_model_type_enum(model_type)
-    if model_type == _enums.ModelType.LTX:
-        if family == 'ltx':
-            from diffusers import LTXVideoTransformer3DModel
-            return LTXVideoTransformer3DModel
-        from diffusers import LTX2VideoTransformer3DModel
-        return LTX2VideoTransformer3DModel
-    raise _pipelines.UnsupportedPipelineConfigError(
-        f'{_enums.get_model_type_string(model_type)} does not take --transformer.')
-
-
-def _load_replacement_transformer(model_type, transformer_uri, dtype, variant,
-                                  auth_token, local_files_only, quantizer_uri=None,
-                                  quantizer_map=None, device=None, offload=False,
-                                  component_name='transformer', config_repo=None,
-                                  family: str = 'ltx2'):
-    if not isinstance(dtype, _enums.DataType):
-        dtype = _enums.DataType.AUTO
-    parsed = _uris.TransformerUri.parse(transformer_uri)
-    if (not _hfhub.is_gguf_model(parsed.model)
-            and quantizer_uri and not parsed.quantizer
-            and _quantize_component(component_name, quantizer_uri, quantizer_map)):
-        parsed.quantizer = quantizer_uri
-    _messages.debug_log(f'Loading replacement video transformer "{transformer_uri}".')
-    return parsed.load(
-        variant_fallback=variant,
-        dtype_fallback=dtype,
-        use_auth_token=auth_token,
-        local_files_only=local_files_only,
-        device_map=_quantized_device_map(
-            device, offload, parsed.quantizer) if parsed.quantizer else None,
-        config=config_repo,
-        config_subfolder=component_name,
-        transformer_class=_video_transformer_class(model_type, family))
-
-
-def _apply_video_loras(pipe, model_type, lora_uris, fuse_scale, auth_token, local_files_only):
-    if not lora_uris:
-        return
-    del model_type
-    _uris.LoRAUri.load_on_pipeline(
-        pipeline=pipe,
-        uris=lora_uris,
-        fuse_scale=1.0 if fuse_scale is None else fuse_scale,
-        use_auth_token=auth_token,
-        local_files_only=local_files_only,
-        fuse=True)
-
-
-_DEFAULT_QUANT_NAMES = {
-    'transformer',
-    'text_encoder',
-    'text_encoder_2',
-    'text_encoder_3',
-    'connectors',
-}
-
-# Loaded as None so from_pretrained does not pull the unused Gemma
-# prompt enhancer (about 9.5 GiB) onto the GPU.
-_LTX_SKIP_OPTIONAL_MODULES = {
-    'prompt_enhancer': None,
-}
-
-
-def _quantize_component(name: str, quantizer_uri, quantizer_map) -> bool:
-    if not quantizer_uri:
-        return False
-    if quantizer_map is None:
-        return name in _DEFAULT_QUANT_NAMES
-    return name in quantizer_map
-
-
-def _quantizer_config(quantizer_uri, dtype, transformers_module: bool):
-    parsed = _uris.get_quantizer_uri_class(quantizer_uri).parse(quantizer_uri)
-    torch_dtype = _enums.get_torch_dtype(dtype) if isinstance(dtype, _enums.DataType) else None
-    if transformers_module and hasattr(parsed, 'to_transformers_config'):
-        return parsed.to_transformers_config(torch_dtype)
-    return parsed.to_config(torch_dtype)
-
-
-def _resolve_index_class(library: str, class_name: str):
-    import diffusers.pipelines as pipelines
-
-    if hasattr(pipelines, library):
-        module = importlib.import_module(f'diffusers.pipelines.{library}')
-    else:
-        module = importlib.import_module(library)
-    return getattr(module, class_name)
-
-
-def _load_quantized_module(component_class, model_path, subfolder, revision, variant,
-                           dtype, quantizer_uri, auth_token, local_files_only, device_map,
-                           offload=False):
-    module_name = getattr(component_class, '__module__', '')
-    transformers_module = module_name.startswith('transformers')
-    config = _quantizer_config(quantizer_uri, dtype, transformers_module)
-    torch_dtype = _enums.get_torch_dtype(dtype) if isinstance(dtype, _enums.DataType) else None
-    _messages.debug_log(
-        f'Quantizing {component_class.__name__} from "{model_path}" '
-        f'subfolder "{subfolder}" with "{quantizer_uri}".')
-    load_kwargs = {
-        'subfolder': subfolder or '',
-        'revision': revision,
-        'variant': variant,
-        'token': auth_token,
-        'local_files_only': local_files_only,
-        'quantization_config': config,
-        'device_map': device_map,
-        'low_cpu_mem_usage': True,
-    }
-    if torch_dtype is not None:
-        if transformers_module:
-            load_kwargs['dtype'] = torch_dtype
-        else:
-            load_kwargs['torch_dtype'] = torch_dtype
-    with _hfhub.with_hf_errors_as_model_not_found():
-        module = component_class.from_pretrained(model_path, **load_kwargs)
-    if offload:
-        module.to('cpu')
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-        gc.collect()
-    return module
-
-
-def _quantized_device_map(device, offload: bool, quantizer_uri=None):
-    # bitsandbytes rejects a CPU or disk device_map, so it has to be
-    # created on the GPU. SDNQ weights can be quantized on the CPU and
-    # streamed later, which is what keeps a 16GB card from filling up.
-    del offload
-    if not quantizer_uri or not str(quantizer_uri).split(';', 1)[0] == 'bnb':
-        return None
-    if device is None or str(device) == 'cpu':
-        return None
-    return {'': str(device)}
-
-
-def _quantized_classic_modules(model_path, revision, variant, subfolder, dtype,
-                               quantizer_uri, quantizer_map, auth_token,
-                               local_files_only, device, offload, skip_names=()):
-    if not quantizer_uri:
-        return {}
-    index = _util.fetch_model_index_dict(
-        model_path,
-        subfolder=subfolder,
-        revision=revision,
-        use_auth_token=auth_token,
-        local_files_only=local_files_only)
-    device_map = _quantized_device_map(device, offload, quantizer_uri)
-    modules = {}
-    for name, spec in index.items():
-        if name.startswith('_') or name in skip_names:
-            continue
-        if not isinstance(spec, (list, tuple)) or len(spec) != 2:
-            continue
-        if not _quantize_component(name, quantizer_uri, quantizer_map):
-            continue
-        component_class = _resolve_index_class(spec[0], spec[1])
-        folder = f'{subfolder}/{name}' if subfolder else name
-        modules[name] = _load_quantized_module(
-            component_class, model_path, folder, revision, variant, dtype,
-            quantizer_uri, auth_token, local_files_only, device_map, offload=offload)
-    return modules
 
 
 def _ltx_pipeline_class(mode: str, family: str = 'ltx2'):
@@ -780,194 +172,6 @@ def _ltx_pipeline_class(mode: str, family: str = 'ltx2'):
     return classes[mode]
 
 
-def pipeline_for_mode(pipe, mode: str, family: str = 'ltx2'):
-    """
-    Return an LTX pipeline of the requested class that shares ``pipe.components``.
-
-    ``from_pipe`` is not used: it calls ``.to(dtype=...)``, which raises on
-    quantized modules (SDNQ / bitsandbytes).
-
-    :param pipe: cached :py:class:`diffusers.LTX2Pipeline`
-    :param mode: ``ltx-txt``, ``ltx-image``, ``ltx-condition``, or ``ltx-control``
-    :return: pipeline of the class for ``mode``
-    """
-    cls = _ltx_pipeline_class(mode, family)
-    if type(pipe) is cls:
-        return pipe
-    accepted = set(inspect.signature(cls.__init__).parameters)
-    accepted.discard('self')
-    kwargs = {name: value for name, value in pipe.components.items() if name in accepted}
-    return cls(**kwargs)
-
-
-def _ltx_extra_weight_directories(model_path, revision, subfolder, auth_token, local_files_only):
-    try:
-        index = _util.fetch_model_index_dict(
-            model_path,
-            subfolder=subfolder,
-            revision=revision,
-            use_auth_token=auth_token,
-            local_files_only=local_files_only)
-    except Exception:
-        return list(_LTX_FALLBACK_EXTRA_DIRS)
-    return extra_weight_directories_from_index(index)
-
-
-def _cache_kwargs(wrapper) -> dict:
-    quantizer_map = wrapper.quantizer_map
-    return {
-        'model_path': wrapper.model_path,
-        'model_type': wrapper.model_type,
-        'revision': wrapper._revision,
-        'variant': wrapper._variant,
-        'subfolder': wrapper._subfolder,
-        'dtype': wrapper._dtype,
-        'device': wrapper.device,
-        'model_cpu_offload': bool(wrapper.model_cpu_offload),
-        'sequential_cpu_offload': bool(wrapper.model_sequential_offload),
-        'model_group_offload': bool(getattr(wrapper, 'model_group_offload', False)),
-        'local_files_only': bool(wrapper._local_files_only),
-        'auth_token': wrapper._auth_token,
-        'quantizer_uri': wrapper.quantizer_uri,
-        'quantizer_map': tuple(quantizer_map) if quantizer_map else None,
-    }
-
-
-def _video_on_hit(key, hit):
-    _d_memoize.simple_cache_hit_debug('Torch Video Pipeline', key, hit.pipeline)
-
-
-def _video_on_create(key, new):
-    _d_memoize.simple_cache_miss_debug('Torch Video Pipeline', key, new.pipeline)
-
-
-@_memoize(_pipelines._pipeline_cache,
-          exceptions={'local_files_only'},
-          hasher=_d_memoize.args_cache_key,
-          extra_identities=[lambda held: held.pipeline],
-          on_hit=_video_on_hit,
-          on_create=_video_on_create)
-def _create_cached_video_pipeline(model_path,
-                                  model_type,
-                                  revision,
-                                  variant,
-                                  subfolder,
-                                  dtype,
-                                  device,
-                                  model_cpu_offload,
-                                  sequential_cpu_offload,
-                                  model_group_offload,
-                                  local_files_only,
-                                  auth_token,
-                                  transformer_uri=None,
-                                  lora_uris=None,
-                                  lora_fuse_scale=None,
-                                  quantizer_uri=None,
-                                  quantizer_map=None,
-                                  ltx_ic_lora_uri=None,
-                                  ic_lora_downscale=None):
-    all_lora_uris = list(lora_uris or ()) + ([ltx_ic_lora_uri] if ltx_ic_lora_uri else [])
-    index = _util.fetch_model_index_dict(
-        model_path,
-        subfolder=subfolder,
-        revision=revision,
-        use_auth_token=auth_token,
-        local_files_only=local_files_only)
-    extra_dirs = extra_weight_directories_from_index(index)
-    family = ltx_family_from_index(index)
-    if dtype is _enums.DataType.AUTO:
-        detected_dtype = _util.auto_dtype(
-            model_path,
-            revision=revision,
-            subfolder=subfolder,
-            use_auth_token=auth_token,
-            local_files_only=local_files_only,
-            model_index=index)
-        if detected_dtype is not None:
-            _messages.debug_log(f'--dtype auto selected: {_enums.get_data_type_string(detected_dtype)}')
-            dtype = detected_dtype
-    estimate = _pipelines.estimate_pipeline_cache_footprint(
-        model_path=model_path,
-        model_type=model_type,
-        revision=revision or 'main',
-        variant=variant,
-        subfolder=subfolder,
-        include_unet_or_transformer=not transformer_uri,
-        include_vae=True,
-        include_text_encoders=True,
-        lora_uris=all_lora_uris,
-        include_directories=extra_dirs,
-        auth_token=auth_token,
-        local_files_only=local_files_only)
-    _pipelines._enforce_pipeline_cache_size(estimate)
-
-    load_kwargs = _pretrained_kwargs(
-        revision, variant, subfolder, local_files_only, auth_token, dtype,
-        include_dtype=True)
-    if family == 'ltx2':
-        load_kwargs.update(_LTX_SKIP_OPTIONAL_MODULES)
-
-    if model_type != _enums.ModelType.LTX:
-        raise _pipelines.UnsupportedPipelineConfigError(
-            f'{_enums.get_model_type_string(model_type)} is not a video model type.')
-
-    if ltx_ic_lora_uri:
-        _ltx_pipeline_class('ltx-control', family)
-
-    pipeline_class = _ltx_pipeline_class('ltx-txt', family)
-    offload = bool(model_cpu_offload or sequential_cpu_offload or model_group_offload)
-    injected = {}
-    if transformer_uri:
-        injected['transformer'] = _load_replacement_transformer(
-            model_type, transformer_uri, dtype, variant, auth_token, local_files_only,
-            quantizer_uri=quantizer_uri, quantizer_map=quantizer_map, device=device,
-            offload=offload, config_repo=model_path, family=family)
-        load_kwargs['transformer'] = injected['transformer']
-    injected.update(_quantized_classic_modules(
-        model_path, revision, variant, subfolder, dtype, quantizer_uri, quantizer_map,
-        auth_token, local_files_only, device, offload,
-        skip_names=frozenset(load_kwargs)))
-    load_kwargs.update(injected)
-    _messages.debug_log(f'Loading {pipeline_class.__name__} from "{model_path}".')
-    with _hfhub.with_hf_errors_as_model_not_found():
-        pipe = pipeline_class.from_pretrained(model_path, **load_kwargs)
-    _apply_video_loras(
-        pipe, model_type, all_lora_uris, lora_fuse_scale, auth_token, local_files_only)
-    _offload_ltx(pipe, device, model_cpu_offload, sequential_cpu_offload, model_group_offload)
-    _enable_vae_tiling(pipe)
-    held = _VideoPipeline(pipe, family)
-    if ltx_ic_lora_uri:
-        held.reference_downscale_factor = _ic_lora_downscale_factor(
-            ltx_ic_lora_uri, ic_lora_downscale, auth_token, local_files_only)
-
-    return held, _d_memoize.CachedObjectMetadata(size=estimate)
-
-
-def _video_pipeline(wrapper, mode: str, scheduler_uri=None):
-    kwargs = _cache_kwargs(wrapper)
-    kwargs['transformer_uri'] = wrapper.transformer_uri
-    kwargs['lora_uris'] = tuple(wrapper.lora_uris) if wrapper.lora_uris else None
-    kwargs['lora_fuse_scale'] = wrapper.lora_fuse_scale
-    ic_lora = _parsed_ic_lora(wrapper)
-    if ic_lora is not None:
-        kwargs['ltx_ic_lora_uri'] = ic_lora.lora_uri()
-        kwargs['ic_lora_downscale'] = ic_lora.downscale
-    held = _create_cached_video_pipeline(**kwargs)
-    # Same as still pipelines: scheduler is not a cache key.
-    # Overlay the URI on the cached object, then wrap for mode.
-    _schedulers.load_scheduler(held.pipeline, scheduler_uri)
-    return pipeline_for_mode(held.pipeline, mode, held.family), held
-
-
-def _parsed_ic_lora(wrapper) -> _uris.ICLoRAUri | None:
-    uri = getattr(wrapper, 'ltx_ic_lora_uri', None)
-    return _uris.ICLoRAUri.parse(uri) if uri else None
-
-
-def _invoke(wrapper, pipe, kwargs):
-    return _pipelines.call_pipeline(pipe, device=wrapper.device, **kwargs)
-
-
 def _call_ltx(wrapper, user_args):
     if user_args.reference_video_frames:
         if not getattr(wrapper, 'ltx_ic_lora_uri', None):
@@ -983,18 +187,18 @@ def _call_ltx(wrapper, user_args):
     else:
         mode = 'ltx-txt'
 
-    pipe, held = _video_pipeline(wrapper, mode, user_args.scheduler_uri)
+    pipe, held = _vp._video_pipeline(wrapper, mode, user_args.scheduler_uri)
     family = held.family
-    positive, negative = _prompt_text(user_args)
-    width, height = _size(user_args)
+    positive, negative = _vp._prompt_text(user_args)
+    width, height = _vp._size(user_args)
     if width is not None:
-        _require_multiple_of_32(width, height, 'LTX')
+        _vp._require_multiple_of_32(width, height, 'LTX')
 
-    fps = float(user_args.ltx_video_fps or _LTX_DEFAULT_FPS)
+    fps = float(user_args.video_fps or _LTX_DEFAULT_FPS)
     kwargs = {
         'prompt': positive,
         'frame_rate': fps,
-        'generator': _generator(wrapper, user_args),
+        'generator': _vp._generator(wrapper, user_args),
         'output_type': 'pil'
     }
     if negative:
@@ -1003,11 +207,11 @@ def _call_ltx(wrapper, user_args):
         kwargs['width'] = width
         kwargs['height'] = height
 
-    if user_args.ltx_video_length is not None:
-        num_frames = ltx_num_frames(user_args.ltx_video_length, fps)
+    if user_args.video_length is not None:
+        num_frames = ltx_num_frames(user_args.video_length, fps)
         kwargs['num_frames'] = num_frames
         _messages.debug_log(
-            f'LTX clip length {user_args.ltx_video_length} seconds at {fps} fps '
+            f'LTX clip length {user_args.video_length} seconds at {fps} fps '
             f'-> {num_frames} frames.')
     elif mode == 'ltx-control':
         num_frames = len(_trim_ltx_clip(
@@ -1108,7 +312,7 @@ def _call_ltx(wrapper, user_args):
     if user_args.max_sequence_length is not None:
         kwargs['max_sequence_length'] = int(user_args.max_sequence_length)
 
-    _set_ltx_vae_slicing(pipe, bool(user_args.vae_slicing))
+    _vp._set_ltx_vae_slicing(pipe, bool(user_args.vae_slicing))
 
     if mode == 'ltx-image':
         kwargs['image'] = user_args.images[0]
@@ -1204,7 +408,7 @@ def _apply_ltx2_options(wrapper, pipe, user_args, kwargs):
     if user_args.ltx_image_crf is not None:
         require('image_crf', '--ltx-image-crfs')
         kwargs['image_crf'] = int(user_args.ltx_image_crf)
-    if user_args.ltx_video_length is None:
+    if user_args.video_length is None:
         if user_args.ltx_video_min_seconds is not None:
             require('min_seconds', '--ltx-video-min-seconds')
             kwargs['min_seconds'] = float(user_args.ltx_video_min_seconds)
@@ -1233,7 +437,7 @@ def _ensure_prompt_enhancer(wrapper, pipe, repo):
     pipe.prompt_enhancer = AutoModelForImageTextToText.from_pretrained(
         repo, torch_dtype=dtype, **load)
     pipe.processor = AutoProcessor.from_pretrained(repo, **load)
-    device = 'cpu' if _offload_requested(wrapper) else wrapper.device
+    device = 'cpu' if _vp._offload_requested(wrapper) else wrapper.device
     pipe.prompt_enhancer.to(device)
     pipe._dgenerate_prompt_enhancer = repo
 
@@ -1245,7 +449,7 @@ def _complete_ltx_call(wrapper, pipe, held, user_args, kwargs, family):
     if diffusion:
         kwargs = dict(kwargs)
         kwargs['output_type'] = 'latent'
-    output = _invoke(wrapper, pipe, kwargs)
+    output = _vp._invoke(wrapper, pipe, kwargs)
     return _ltx_pixels_from_output(wrapper, pipe, held, output, diffusion, kwargs.get('generator'))
 
 
@@ -1276,7 +480,7 @@ def _enhance_ltx_prompt_once(wrapper, pipe, kwargs):
         enhanced = enhanced[0]
     kwargs['prompt'] = enhanced
     kwargs['enable_prompt_enhancement'] = False
-    if _offload_requested(wrapper):
+    if _vp._offload_requested(wrapper):
         pipe.prompt_enhancer.to('cpu')
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
@@ -1312,7 +516,7 @@ def _ltx_two_stage(wrapper, pipe, held, user_args, kwargs, diffusion):
     _messages.log(
         f'LTX stage 1 at {stage1["width"]}x{stage1["height"]}, '
         f'then a latent upscale to {width}x{height}.')
-    first = _invoke(wrapper, pipe, stage1)
+    first = _vp._invoke(wrapper, pipe, stage1)
     video_latent = _video_latent_tensor(first.frames)
     audio_latent = getattr(first, 'audio', None)
 
@@ -1357,7 +561,7 @@ def _ltx_two_stage(wrapper, pipe, held, user_args, kwargs, diffusion):
                 fuse=False)
             loaded_stage_lora = True
         _messages.log('LTX stage 2 refine.')
-        second = _invoke(wrapper, pipe, stage2)
+        second = _vp._invoke(wrapper, pipe, stage2)
     finally:
         pipe.scheduler = original
         if loaded_stage_lora and hasattr(pipe, 'unload_lora_weights'):
@@ -1409,7 +613,7 @@ def _upsample_ltx_latents(wrapper, pipe, video_latent):
     upsampler.to(device=device, dtype=dtype)
     if torch.is_tensor(video_latent):
         video_latent = video_latent.to(device=device)
-    offload = _offload_requested(wrapper)
+    offload = _vp._offload_requested(wrapper)
     try:
         upscaled = up_pipe(
             latents=video_latent,
@@ -1431,8 +635,8 @@ def _ltx_pixels_from_output(wrapper, pipe, held, output, diffusion, generator):
         frames = _decode_ltx_diffusion(wrapper, pipe, held, video, generator)
         audio = _waveform_from_audio_latents(pipe, audio_raw)
     else:
-        frames = frames_from_output(video)
-        audio = audio_to_numpy(audio_raw)
+        frames = _vp.frames_from_output(video)
+        audio = _vp.audio_to_numpy(audio_raw)
     return frames, audio, audio_sample_rate_from_pipeline(pipe, audio)
 
 
@@ -1440,10 +644,31 @@ def _waveform_from_audio_latents(pipe, audio_latents):
     if audio_latents is None:
         return None
     if not torch.is_tensor(audio_latents):
-        return audio_to_numpy(audio_latents)
+        return _vp.audio_to_numpy(audio_latents)
     mel = pipe.audio_vae.decode(
         audio_latents.to(dtype=pipe.audio_vae.dtype), return_dict=False)[0]
-    return audio_to_numpy(pipe.vocoder(mel))
+    return _vp.audio_to_numpy(pipe.vocoder(mel))
+
+
+def _ltx_diffusion_natten_processor():
+    """
+    NATTEN processor for the LTX diffusion decoder.
+
+    The FlexAttention processor builds a dense neighborhood mask. At a real
+    video grid that mask is larger than the GPU, so this does not fall back to it.
+    """
+    try:
+        from diffusers.models.autoencoders.ltx2_diffusion_decoder import (
+            LTX2VideoVaeNeighborhoodNattenProcessor)
+        return LTX2VideoVaeNeighborhoodNattenProcessor()
+    except Exception as error:
+        raise _pipelines.UnsupportedPipelineConfigError(
+            'The LTX diffusion decoder needs NATTEN. Its FlexAttention path builds a '
+            'neighborhood mask that does not fit in GPU memory at video resolution. '
+            'The kernels package is a dgenerate dependency; reinstall dgenerate or '
+            'run `pip install kernels`, and leave DIFFUSERS_DISABLE_REMOTE_CODE unset. '
+            f'{error}'
+        ) from error
 
 
 def _decode_ltx_diffusion(wrapper, pipe, held, latents, generator):
@@ -1458,17 +683,10 @@ def _decode_ltx_diffusion(wrapper, pipe, held, latents, generator):
             torch_dtype=dtype,
             token=wrapper._auth_token,
             local_files_only=bool(wrapper._local_files_only))
-        try:
-            from diffusers.models.autoencoders.ltx2_diffusion_decoder import (
-                LTX2VideoVaeNeighborhoodNattenProcessor)
-            decoder.set_attn_processor(LTX2VideoVaeNeighborhoodNattenProcessor())
-        except Exception as error:
-            _messages.warning(
-                'The LTX diffusion decoder is using its default attention. '
-                f'{error}')
+        decoder.set_attn_processor(_ltx_diffusion_natten_processor())
         decode_pipe = LTX2VideoDiffusionDecodePipeline(
             diffusion_decoder=decoder, scheduler=pipe.scheduler, vae=pipe.vae)
-        _offload_ltx(
+        _vp._offload_ltx(
             decode_pipe, wrapper.device,
             bool(wrapper.model_cpu_offload), bool(wrapper.model_sequential_offload),
             bool(getattr(wrapper, 'model_group_offload', False)))
@@ -1479,7 +697,7 @@ def _decode_ltx_diffusion(wrapper, pipe, held, latents, generator):
         generator=generator,
         output_type='pil',
         return_dict=False)[0]
-    return frames_from_output(frames)
+    return _vp.frames_from_output(frames)
 
 
 def _ltx_temporal_compression(pipe) -> int:
@@ -1492,7 +710,7 @@ def _trim_ltx_clip(frames: list, limit: int | None, temporal: int) -> list:
     if count < 1:
         raise _pipelines.UnsupportedPipelineConfigError(
             'The LTX output is too short to hold the conditioning clips. '
-            'Use a longer --ltx-video-lengths.')
+            'Use a longer --video-lengths.')
     return frames[:count]
 
 
@@ -1519,7 +737,7 @@ def _ltx_conditions(pipe, family: str, user_args, num_frames: int | None) -> lis
         elif end_video is not None:
             raise _pipelines.UnsupportedPipelineConfigError(
                 'An LTX end clip needs a fixed output length. This checkpoint picks its '
-                'length from the prompt, so set --ltx-video-lengths.')
+                'length from the prompt, so set --video-lengths.')
 
     end_clip = None
     end_count = 0
@@ -1629,7 +847,7 @@ def _ltx_reference_kwargs(wrapper, pipe, held, user_args, num_frames: int,
     from diffusers.pipelines.ltx2.pipeline_ltx2_ic_lora import LTX2ReferenceCondition
 
     factor = held.reference_downscale_factor or 1
-    ic_lora = _parsed_ic_lora(wrapper)
+    ic_lora = _vp._parsed_ic_lora(wrapper)
     attention = ic_lora.attention if ic_lora is not None else 1.0
 
     if factor > 1:
@@ -1881,6 +1099,3 @@ def _ltx_is_distilled(pipe) -> bool:
     if hasattr(config, 'get'):
         return config.get('use_dynamic_shifting', True) is False
     return getattr(config, 'use_dynamic_shifting', True) is False
-
-
-__all__ = _types.module_all()

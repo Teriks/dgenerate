@@ -1,0 +1,24 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Wan-Animate transformer as a GGUF (simplified). linear1_kv and
+# motion-encoder conv biases are dequantized before Diffusers splits
+# them. --wan-animate-preprocess derives pose and face from wan-driving=
+# with the same internal openpose + yolo crop path as the non-GGUF
+# animate example.
+
+Wan-AI/Wan2.2-Animate-14B-Diffusers
+--model-type wan-animate
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/QuantStack/Wan2.2-Animate-14B-GGUF/blob/main/Wan2.2-Animate-14B-Q4_K_S.gguf
+--wan-animate-preprocess
+--inference-steps 20
+--guidance-scales 1
+--video-fps 30
+--gen-seeds 1
+--output-size 832x480
+--animation-format mp4
+--output-path wan-animate-gguf
+--image-seeds "../../media/man-fighting-pose.jpg;wan-driving=../../media/rickroll-roll.gif;frame-end=24"
+--prompts "A boxer dances in place. The camera stays fixed."

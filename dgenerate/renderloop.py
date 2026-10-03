@@ -580,6 +580,34 @@ class RenderLoop:
             render_loop_opts.append(('--control-image-processors',
                                      self._c_config.control_image_processors))
 
+        if self._c_config.last_frame_image_processors:
+            render_loop_opts.append(('--last-frame-image-processors',
+                                     self._c_config.last_frame_image_processors))
+
+        if self._c_config.reference_image_processors:
+            render_loop_opts.append(('--reference-image-processors',
+                                     self._c_config.reference_image_processors))
+
+        if self._c_config.adapter_image_processors:
+            render_loop_opts.append(('--adapter-image-processors',
+                                     self._c_config.adapter_image_processors))
+
+        if self._c_config.wan_pose_image_processors:
+            render_loop_opts.append(('--wan-pose-image-processors',
+                                     self._c_config.wan_pose_image_processors))
+
+        if self._c_config.wan_face_image_processors:
+            render_loop_opts.append(('--wan-face-image-processors',
+                                     self._c_config.wan_face_image_processors))
+
+        if self._c_config.wan_driving_image_processors:
+            render_loop_opts.append(('--wan-driving-image-processors',
+                                     self._c_config.wan_driving_image_processors))
+
+        if self._c_config.wan_background_image_processors:
+            render_loop_opts.append(('--wan-background-image-processors',
+                                     self._c_config.wan_background_image_processors))
+
         if self._c_config.post_processors:
             render_loop_opts.append(('--post-processors',
                                      self._c_config.post_processors))
@@ -1029,6 +1057,7 @@ class RenderLoop:
             unet_uri=self._c_config.unet_uri,
             second_model_unet_uri=self._c_config.second_model_unet_uri,
             transformer_uri=self._c_config.transformer_uri,
+            wan_second_transformer_uri=self._c_config.wan_second_transformer_uri,
             vae_uri=self._c_config.vae_uri,
             lora_uris=self._c_config.lora_uris,
             lora_fuse_scale=self._c_config.lora_fuse_scale,
@@ -1213,6 +1242,27 @@ class RenderLoop:
 
         return r
 
+    def _load_config_processors(self, name: str):
+        processors = getattr(self._c_config, name, None)
+        if not processors:
+            return None
+
+        r = self._load_image_processors(processors)
+
+        _messages.debug_log(f'Loaded {name}:', r)
+
+        return r
+
+    @staticmethod
+    def _cpu_processors(*processors):
+        for processor in processors:
+            if processor is None:
+                continue
+            items = processor if isinstance(processor, list) else [processor]
+            for item in items:
+                if item is not None and hasattr(item, 'to'):
+                    item.to('cpu')
+
     def _render_with_image_seeds(self):
         # unintuitive, but these should be long-lived and then
         # garbage collected, if they are not specified by the user
@@ -1220,33 +1270,22 @@ class RenderLoop:
         seed_image_processor = self._load_seed_image_processors()
         mask_image_processor = self._load_mask_image_processors()
         control_image_processor = self._load_control_image_processors()
+        reference_image_processor = self._load_config_processors('reference_image_processors')
+        adapter_image_processor = self._load_config_processors('adapter_image_processors')
         try:
             yield from self._render_with_image_seeds_unmanaged(
                 seed_image_processor,
                 mask_image_processor,
-                control_image_processor)
+                control_image_processor,
+                reference_image_processor,
+                adapter_image_processor)
         finally:
-            if seed_image_processor is not None:
-                if isinstance(seed_image_processor, list):
-                    for p in seed_image_processor:
-                        if p is not None:
-                            p.to('cpu')
-                else:
-                    seed_image_processor.to('cpu')
-            if mask_image_processor is not None:
-                if isinstance(mask_image_processor, list):
-                    for p in mask_image_processor:
-                        if p is not None:
-                            p.to('cpu')
-                else:
-                    mask_image_processor.to('cpu')
-            if control_image_processor is not None:
-                if isinstance(control_image_processor, list):
-                    for p in control_image_processor:
-                        if p is not None:
-                            p.to('cpu')
-                else:
-                    control_image_processor.to('cpu')
+            self._cpu_processors(
+                seed_image_processor,
+                mask_image_processor,
+                control_image_processor,
+                reference_image_processor,
+                adapter_image_processor)
 
     def _get_media_reader_path_opener(self):
         """
@@ -1272,7 +1311,9 @@ class RenderLoop:
             self,
             seed_image_processor: _mediainput.ImageProcessorSpec,
             mask_image_processor: _mediainput.ImageProcessorSpec,
-            control_image_processor: _mediainput.ImageProcessorSpec):
+            control_image_processor: _mediainput.ImageProcessorSpec,
+            reference_image_processor: _mediainput.ImageProcessorSpec = None,
+            adapter_image_processor: _mediainput.ImageProcessorSpec = None):
 
         pipeline_wrapper = self._create_pipeline_wrapper()
 
@@ -1346,6 +1387,8 @@ class RenderLoop:
                         seed_image_processor=seed_image_processor,
                         mask_image_processor=mask_image_processor,
                         control_image_processor=control_image_processor,
+                        reference_image_processor=reference_image_processor,
+                        adapter_image_processor=adapter_image_processor,
                         path_opener=self._get_media_reader_path_opener(),
                         check_dimensions_match=
                         not _pipelinewrapper.model_type_is_s_cascade(self._c_config.model_type))
@@ -1501,7 +1544,8 @@ class RenderLoop:
 
         One ``--seed-image-processors`` chain runs on both the opening media and ``last-frame=``.
         With two chains separated by ``+``, the first runs on the opening media and
-        the second on ``last-frame=``. ``--control-image-processors`` runs on ``control=``.
+        the second on ``last-frame=``. ``--last-frame-image-processors`` overrides the
+        second seed chain. Other image-seed keywords use their dedicated flags.
         """
         seed = self._load_seed_image_processors()
         if isinstance(seed, list):
@@ -1513,12 +1557,36 @@ class RenderLoop:
         else:
             start = end = seed
 
-        control = self._load_control_image_processors()
-        if isinstance(control, list):
-            raise RenderLoopConfigError(
-                'Video models accept one control image processor chain.')
+        last_frame = self._single_video_processor(
+            self._load_config_processors('last_frame_image_processors'),
+            'last-frame')
+        if last_frame is not None:
+            end = last_frame
 
-        return {'start': start, 'end': end, 'control': control}
+        return {
+            'start': start,
+            'end': end,
+            'control': self._single_video_processor(
+                self._load_control_image_processors(), 'control'),
+            'mask': self._single_video_processor(
+                self._load_mask_image_processors(), 'mask'),
+            'reference': self._load_config_processors('reference_image_processors'),
+            'wan_pose': self._single_video_processor(
+                self._load_config_processors('wan_pose_image_processors'), 'wan-pose'),
+            'wan_face': self._single_video_processor(
+                self._load_config_processors('wan_face_image_processors'), 'wan-face'),
+            'wan_background': self._single_video_processor(
+                self._load_config_processors('wan_background_image_processors'), 'wan-background'),
+            'wan_driving': self._single_video_processor(
+                self._load_config_processors('wan_driving_image_processors'), 'wan-driving'),
+        }
+
+    @staticmethod
+    def _single_video_processor(processor, slot: str):
+        if isinstance(processor, list):
+            raise RenderLoopConfigError(
+                f'Video models accept one {slot} image processor chain.')
+        return processor
 
     def _assign_video_conditioning(self,
                                    diffusion_arguments: _pipelinewrapper.DiffusionArguments,
@@ -1527,17 +1595,25 @@ class RenderLoop:
                                    owned_images: list):
         if parsed is None:
             return
+        model_type = self._c_config.model_type
+        wan = _pipelinewrapper.model_type_is_wan_family(model_type)
         max_frames = None
-        if diffusion_arguments.ltx_video_length is not None:
-            max_frames = _videopipelines.ltx_num_frames(
-                diffusion_arguments.ltx_video_length,
-                diffusion_arguments.ltx_video_fps or 24.0)
+        if diffusion_arguments.video_length is not None:
+            if wan:
+                max_frames = _videopipelines.wan_num_frames(
+                    diffusion_arguments.video_length,
+                    diffusion_arguments.video_fps or 16.0)
+            else:
+                max_frames = _videopipelines.ltx_num_frames(
+                    diffusion_arguments.video_length,
+                    diffusion_arguments.video_fps or 24.0)
+        output_fps = diffusion_arguments.video_fps
         opening, end, control = _videopipelines.video_seed_slots(
             parsed, bool(self._c_config.ltx_ic_lora_uri))
         if opening:
             frames = self._load_video_media(
                 opening, parsed, processors['start'], owned_images,
-                max_frames, diffusion_arguments.ltx_video_fps)
+                max_frames, output_fps)
             if len(frames) == 1:
                 diffusion_arguments.images = frames
             else:
@@ -1545,32 +1621,89 @@ class RenderLoop:
         if end:
             frames = self._load_video_media(
                 end, parsed, processors['end'], owned_images,
-                max_frames, diffusion_arguments.ltx_video_fps)
+                max_frames, output_fps)
             if len(frames) == 1:
                 diffusion_arguments.end_images = frames
             else:
                 diffusion_arguments.end_video_frames = frames
         if control:
-            diffusion_arguments.reference_video_frames = self._load_video_media(
-                control, parsed, processors['control'], owned_images,
-                max_frames, diffusion_arguments.ltx_video_fps)
-        diffusion_arguments.ltx_condition_index = parsed.ltx_condition_index
-        diffusion_arguments.ltx_condition_strength = parsed.ltx_condition_strength
-        extras = []
-        for extra in parsed.ltx_extra_conditions or []:
             frames = self._load_video_media(
-                extra.images[0], extra, processors['start'], owned_images,
-                max_frames, diffusion_arguments.ltx_video_fps)
-            payload = frames[0] if len(frames) == 1 else frames
-            extras.append((
-                payload,
-                int(extra.ltx_condition_index),
-                extra.ltx_condition_strength))
-        if extras:
-            diffusion_arguments.ltx_extra_conditions = extras
+                control, parsed, processors['control'], owned_images,
+                max_frames, output_fps)
+            if wan:
+                diffusion_arguments.vace_video_frames = frames
+            else:
+                diffusion_arguments.reference_video_frames = frames
+        if parsed.mask_images:
+            frames = self._load_video_media(
+                parsed.mask_images[0], parsed, processors['mask'], owned_images,
+                max_frames, output_fps)
+            diffusion_arguments.mask_video_frames = frames
+            diffusion_arguments.vace_mask_frames = frames
+        if parsed.reference_images:
+            refs = []
+            reference_processor = processors.get('reference')
+            if not isinstance(reference_processor, list):
+                reference_processors = (
+                    [reference_processor] * len(parsed.reference_images)
+                    if reference_processor is not None else
+                    [None] * len(parsed.reference_images))
+            else:
+                reference_processors = reference_processor
+            for idx, path in enumerate(parsed.reference_images):
+                processor = reference_processors[idx] if idx < len(reference_processors) else None
+                refs.extend(self._load_video_media(
+                    path, parsed, processor, owned_images,
+                    max_frames, output_fps))
+            diffusion_arguments.vace_reference_images = refs
+        if parsed.wan_pose_video:
+            diffusion_arguments.wan_pose_video_frames = self._load_video_media(
+                parsed.wan_pose_video, parsed, processors.get('wan_pose'), owned_images,
+                None, output_fps)
+        if parsed.wan_face_video:
+            diffusion_arguments.wan_face_video_frames = self._load_video_media(
+                parsed.wan_face_video, parsed, processors.get('wan_face'), owned_images,
+                None, output_fps)
+        if parsed.wan_background_video:
+            diffusion_arguments.wan_background_video_frames = self._load_video_media(
+                parsed.wan_background_video, parsed, processors.get('wan_background'), owned_images,
+                None, output_fps)
+        if parsed.wan_driving_video:
+            driving_fps = []
+            driving_frames = self._load_video_media(
+                parsed.wan_driving_video, parsed, processors.get('wan_driving'), owned_images,
+                None, output_fps, fps_out=driving_fps)
+            diffusion_arguments.wan_driving_video_path = parsed.wan_driving_video
+            diffusion_arguments.wan_driving_video_frames = driving_frames
+            if driving_fps and driving_fps[0] is not None:
+                diffusion_arguments.wan_driving_video_fps = float(driving_fps[0])
+            if (not parsed.wan_pose_video and processors.get('wan_pose')
+                    and not self._c_config.wan_animate_preprocess):
+                diffusion_arguments.wan_pose_video_frames = self._process_copied_frames(
+                    driving_frames, processors['wan_pose'], owned_images)
+            if (not parsed.wan_face_video and processors.get('wan_face')
+                    and not self._c_config.wan_animate_preprocess):
+                diffusion_arguments.wan_face_video_frames = self._process_copied_frames(
+                    driving_frames, processors['wan_face'], owned_images)
+        if model_type == _pipelinewrapper.ModelType.LTX:
+            diffusion_arguments.ltx_condition_index = parsed.ltx_condition_index
+            diffusion_arguments.ltx_condition_strength = parsed.ltx_condition_strength
+            extras = []
+            for extra in parsed.ltx_extra_conditions or []:
+                frames = self._load_video_media(
+                    extra.images[0], extra, processors['start'], owned_images,
+                    max_frames, output_fps)
+                payload = frames[0] if len(frames) == 1 else frames
+                extras.append((
+                    payload,
+                    int(extra.ltx_condition_index),
+                    extra.ltx_condition_strength))
+            if extras:
+                diffusion_arguments.ltx_extra_conditions = extras
 
     def _load_video_media(self, path, parsed, processor, owned_images: list,
-                          max_frames: int | None, output_fps: float | None) -> list[PIL.Image.Image]:
+                          max_frames: int | None, output_fps: float | None,
+                          fps_out: list | None = None) -> list[PIL.Image.Image]:
         resize, aspect, align = self._video_resize(parsed)
         frame_start = _types.default(parsed.frame_start, self._c_config.frame_start)
         frame_end = _types.default(parsed.frame_end, self._c_config.frame_end)
@@ -1590,6 +1723,8 @@ class RenderLoop:
             self._close_owned_images(frames)
             raise
         owned_images.extend(frames)
+        if fps_out is not None:
+            fps_out.append(source_fps)
         if source_fps is not None and len(frames) > 1:
             output_fps = float(output_fps or 24.0)
             _messages.log(
@@ -1598,8 +1733,17 @@ class RenderLoop:
                 _messages.warning(
                     f'"{path}" plays at {source_fps:g} fps but the output is {output_fps:g} fps. '
                     f'Frames are used as-is, so motion speed will change. '
-                    f'Set --ltx-video-fps {source_fps:g} to match.')
+                    f'Set --video-fps '
+                    f'{source_fps:g} to match.')
         return frames
+
+    def _process_copied_frames(self, frames, processor, owned_images: list) -> list[PIL.Image.Image]:
+        out = []
+        for frame in frames:
+            processed = self._apply_video_processor(processor, frame.copy())
+            out.append(processed)
+        owned_images.extend(out)
+        return out
 
     @staticmethod
     def _apply_video_processor(processor, image: PIL.Image.Image) -> PIL.Image.Image:

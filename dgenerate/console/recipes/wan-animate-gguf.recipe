@@ -1,0 +1,44 @@
+title: Wan-Animate (GGUF)
+order: 30
+
+# Wan-Animate with a GGUF transformer. The seed is the character still.
+# wan-pose= and wan-face= are required, or wan-driving= with --wan-animate-preprocess.
+
+\setp auth_token "@string[{"label": "Hugging Face Auth Token", "default":"$HF_TOKEN", "optional":false}]"
+
+\set auth_token {{ '--auth-token ' + quote(auth_token) if auth_token else '' }}
+
+\setp character "@file[{"label":"Character Image", "optional":false, "mode":"input", "file-types":["images-in"]}]"
+\setp pose_clip "@file[{"label":"Pose Clip", "optional":true, "mode":"input", "file-types":["videos-in"]}]"
+\setp face_clip "@file[{"label":"Face Clip", "optional":true, "mode":"input", "file-types":["videos-in"]}]"
+\setp driving_clip "@file[{"label":"Driving Clip", "optional":true, "mode":"input", "file-types":["videos-in"]}]"
+\setp background_clip "@file[{"label":"Background Clip (replace)", "optional":true, "mode":"input", "file-types":["videos-in"]}]"
+\setp mask_clip "@file[{"label":"Mask Clip (replace)", "optional":true, "mode":"input", "file-types":["videos-in"], "divider-after":true}]"
+
+\set image_seeds {{ character + ((';wan-pose=' + pose_clip) if pose_clip else '') + ((';wan-face=' + face_clip) if face_clip else '') + ((';wan-driving=' + driving_clip) if driving_clip else '') + ((';wan-background=' + background_clip) if background_clip else '') + ((';mask=' + mask_clip) if mask_clip else '') }}
+
+@uri[{"label":"Model Path / HF Slug", "dir":true, "default": "Wan-AI/Wan2.2-Animate-14B-Diffusers", "optional":false, "file-types":["models"]}]
+--model-type wan-animate {{ auth_token }}
+@dropdown[{"label":"Model dtype", "arg":"--dtype", "options":["float16", "bfloat16", "float32"], "default":"bfloat16"}]
+@karrasscheduler[{"label":"Scheduler", "arg":"--scheduler", "filter": ["UniPCMultistepScheduler"]}]
+@switchradio[{"labels":["Model CPU Offload", "Model Sequential Offload", "Model Group Offload"], "args":["--model-cpu-offload", "--model-sequential-offload", "--model-group-offload"], "default":1}]
+@switch[{"label":"VAE Slicing", "arg":"--vae-slicing"}]
+@quantizer[{"divider-after":true}]
+@submodelbuilder[{"label":"Transformer", "arg":"--transformer", "model": "Transformer", "default":"https://huggingface.co/QuantStack/Wan2.2-Animate-14B-GGUF/blob/main/Wan2.2-Animate-14B-Q4_K_S.gguf", "divider-after":true}]
+@dropdown[{"label":"Animate Mode", "arg":"--wan-animate-mode", "options":["animate", "replace"], "default":"animate"}]
+@switch[{"label":"Preprocess wan-driving=", "arg":"--wan-animate-preprocess"}]
+@int[{"label":"Segment Frame Length", "arg":"--wan-segment-frame-lengths", "default":77, "min":1}]
+@int[{"label":"Previous Segment Frames", "arg":"--wan-prev-segment-frames", "default":1, "min":1, "divider-after":true}]
+@int[{"label":"Inference Steps", "arg":"--inference-steps", "default":20, "min":1}]
+@float[{"label":"Guidance Scale", "arg":"--guidance-scales", "default":1, "min":0}]
+@float[{"label":"Video FPS", "arg":"--video-fps", "default":"30", "min":1, "divider-after":true}]
+@dropdown[{"label":"Animation Format", "arg":"--animation-format", "options":["mp4", "gif", "webp", "apng", "frames"], "default":"mp4", "optional":false}]
+@seeds[{"label":"Seeds"}]
+@dir[{"label":"Output Directory", "arg":"--output-path", "default":"output"}]
+@switchradio[{"labels":["Output Dgenerate Image Metadata", "Output Automatic1111 Image Metadata"], "args":["--output-metadata", "--output-auto1111-metadata"]}]
+@switch[{"label":"Output Configs", "arg":"--output-configs"}]
+@imagesize[{"label":"Output Size (WxH)", "arg":"--output-size", "default":"832x480", "divider-after":true}]
+@promptupscaler[{"label":"Prompt Upscaler", "arg":"--prompt-upscaler"}]
+@imageprocessor[{"arg":"--post-processors", "label":"Post Processor"}]
+@device[{}]
+--prompts "add your prompt here" --image-seeds {{ quote(image_seeds) }}

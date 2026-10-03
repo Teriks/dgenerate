@@ -1,0 +1,23 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Wan-Animate with pose/face derived from wan-driving= via dedicated
+# processors (no --wan-animate-preprocess). Prefer that flag for the
+# default openpose + yolo face crop path; use this when you want custom
+# processor URIs.
+
+Wan-AI/Wan2.2-Animate-14B-Diffusers
+--model-type wan-animate
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 20
+--guidance-scales 1
+--video-fps 30
+--gen-seeds 1
+--output-size 832x480
+--animation-format mp4
+--output-path wan-animate-explicit
+--wan-pose-image-processors "openpose;include-hand=true"
+--wan-face-image-processors "yolo;model=Bingsu/adetailer;weight-name=face_yolov8n.pt;crops=True;crop-square=True;crop-scale=1.4;crop-size=512"
+--image-seeds "../../media/man-fighting-pose.jpg;wan-driving=../../media/rickroll-roll.gif;frame-end=24"
+--prompts "A boxer dances in place. The camera stays fixed."

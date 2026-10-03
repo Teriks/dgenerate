@@ -219,11 +219,13 @@ See `examples/qwen-image/gguf <https://github.com/Teriks/dgenerate/tree/@REVISIO
 
 ControlNet stays ``--model-type qwen-image`` with ``--control-nets``.
 More than one ControlNet is allowed. Text to image uses the seed image as
-the control image. Inpaint uses ``--image-seeds "image.png;mask.png"`` with
-one ControlNet: that image and mask are ``control_image`` and ``control_mask``.
-``start`` and ``end`` are passed through. The union repository is
-``InstantX/Qwen-Image-ControlNet-Union``. ``scale=1`` matches the pipeline
-default.
+the control image with ``InstantX/Qwen-Image-ControlNet-Union``. Inpaint
+uses ``--image-seeds "image.png;mask.png"`` with one inpainting ControlNet
+(``InstantX/Qwen-Image-ControlNet-Inpainting``): that image and mask are
+``control_image`` and ``control_mask``. Union ControlNets have
+``extra_condition_channels=0`` and cannot be used with a mask; the
+inpainting ControlNet has ``extra_condition_channels=4``. ``start`` and
+``end`` are passed through. ``scale=1`` matches the pipeline default.
 
 See `examples/qwen-image/controlnet/config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image/controlnet/config.dgen>`_
 and `examples/qwen-image/controlnet/inpaint-config.dgen <https://github.com/Teriks/dgenerate/blob/@REVISION/examples/qwen-image/controlnet/inpaint-config.dgen>`_.

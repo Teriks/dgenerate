@@ -1,0 +1,19 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Wan 2.1 text to video. --video-lengths is seconds, snapped to
+# temporal*k+1 frames at --video-fps (16 by default).
+
+Wan-AI/Wan2.1-T2V-1.3B-Diffusers
+--model-type wan
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 30
+--guidance-scales 5
+--video-fps 16
+--gen-seeds 1
+--output-size 832x480
+--video-lengths 3
+--animation-format mp4
+--output-path wan-text
+--prompts "A woman in a red coat walks along a dirt path through a green field, then stops and looks back at the camera. The camera stays fixed."

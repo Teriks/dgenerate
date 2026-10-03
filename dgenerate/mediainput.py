@@ -1227,6 +1227,35 @@ class ImageSeedParseResult:
     ``ltx-index=-1`` with ``strength`` when the last frame needs another weight.
     """
 
+    wan_pose_video: _types.OptionalPath = None
+    """
+    Pose skeleton clip from the image-seed keyword ``wan-pose``.
+
+    Only ``--model-type wan-animate`` accepts the keyword.
+    """
+
+    wan_face_video: _types.OptionalPath = None
+    """
+    Cropped face clip from the image-seed keyword ``wan-face``.
+
+    Only ``--model-type wan-animate`` accepts the keyword.
+    """
+
+    wan_background_video: _types.OptionalPath = None
+    """
+    Background clip from the image-seed keyword ``wan-background``.
+
+    Only ``--model-type wan-animate`` replace mode accepts the keyword.
+    """
+
+    wan_driving_video: _types.OptionalPath = None
+    """
+    Driving clip from the image-seed keyword ``wan-driving``.
+
+    Used with ``--wan-animate-preprocess`` or ``--wan-pose-image-processors``
+    and ``--wan-face-image-processors`` to derive ``wan-pose=`` and ``wan-face=``.
+    """
+
     ltx_extra_conditions: list | None = None
     """
     Further LTX conditions from a `` ++ `` split of one ``--image-seeds`` value.
@@ -1272,7 +1301,7 @@ class ImageSeedParseResult:
         For instance could it be a img2img definition / sequence of img2img images using
         the ``images: ...`` syntax, or a sequence of controlnet guidance images?
 
-        This requires that ``mask_images``, ``control_images``, ``floyd_image``, ``end_image``, ``adapter_images``, and ``latents`` are all undefined.
+        This requires that ``mask_images``, ``control_images``, ``floyd_image``, ``end_image``, ``adapter_images``, ``latents``, and the Wan-Animate clips are all undefined.
 
         Possible parses which trigger this condition are:
 
@@ -1294,6 +1323,10 @@ class ImageSeedParseResult:
             and self.reference_images is None \
             and self.adapter_images is None \
             and self.latents is None \
+            and self.wan_pose_video is None \
+            and self.wan_face_video is None \
+            and self.wan_background_video is None \
+            and self.wan_driving_video is None \
             and self.ltx_condition_index is None \
             and self.ltx_condition_strength is None \
             and not self.ltx_extra_conditions
@@ -1610,6 +1643,8 @@ def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResul
             if (extra.ltx_extra_conditions or extra.mask_images or extra.control_images
                     or extra.end_image or extra.reference_images or extra.adapter_images
                     or extra.floyd_image
+                    or extra.wan_pose_video or extra.wan_face_video
+                    or extra.wan_background_video or extra.wan_driving_video
                     or extra.latents or extra.multi_image_mode
                     or not extra.images or len(extra.images) != 1):
                 raise ImageSeedParseError(
@@ -1629,6 +1664,10 @@ def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResul
                     'floyd',
                     'last-frame',
                     'reference',
+                    'wan-pose',
+                    'wan-face',
+                    'wan-background',
+                    'wan-driving',
                     'resize',
                     'align',
                     'aspect',
@@ -1646,11 +1685,8 @@ def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResul
 
     if not non_legacy:
         for i in parts:
-            for kwarg in keyword_args:
-                if re.match(f'{kwarg}\\s*=', i) is not None:
-                    non_legacy = True
-                    break
-            if non_legacy:
+            if re.match(r'[\w-]+\s*=', i.strip()) is not None:
+                non_legacy = True
                 break
 
     if not non_legacy:
@@ -1690,11 +1726,30 @@ def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResul
                     result.adapter_images[-1].append(_parse_ip_adapter_uri(image))
 
     images = parse_result.concept.strip()
+    leading = re.match(r'([\w-]+)\s*=\s*(.*)$', images)
+    if leading and leading.group(1) in keyword_args:
+        name, raw = leading.group(1), leading.group(2)
+        if name in parse_result.args:
+            raise ImageSeedParseError(
+                f'Image seed "{name}" argument already defined.')
+        if name in ('control', 'mask', 'latents', 'reference'):
+            vals = _textprocessing.tokenized_split(
+                raw, ',', remove_quotes=True, strict=True, escapes_in_quoted=True)
+            if not vals or (len(vals) == 1 and not vals[0]):
+                raise ImageSeedParseError(
+                    f'Missing assignment value for image seed "{name}" argument.')
+            parse_result.args[name] = vals if len(vals) > 1 else vals[0]
+        else:
+            parse_result.args[name] = raw
+        images = ''
 
     adapters_parsed = False
     result.multi_image_mode = images.startswith('images:')
 
-    if images.startswith('adapter:'):
+    if not images:
+        result.images = None
+
+    elif images.startswith('adapter:'):
         adapters_parsed = True
         parse_adapters(images.removeprefix('adapter:').strip())
         result.images = None
@@ -1935,6 +1990,23 @@ def parse_image_seed_uri(uri: str, align: int | None = 8) -> ImageSeedParseResul
             raise ImageSeedArgumentError(
                 'Image seed ltx-index must be an integer latent-frame index.')
         result.ltx_condition_index = ltx_condition_index
+
+    def _single_media_arg(name, title):
+        value = parse_result.args.get(name, None)
+        if value is None:
+            return None
+        if isinstance(value, (list, tuple)):
+            if len(value) != 1:
+                raise ImageSeedArgumentError(
+                    f'The image seed "{name}" argument accepts one file.')
+            value = value[0]
+        _ensure_exists(value, title)
+        return value
+
+    result.wan_pose_video = _single_media_arg('wan-pose', 'Wan pose clip')
+    result.wan_face_video = _single_media_arg('wan-face', 'Wan face clip')
+    result.wan_background_video = _single_media_arg('wan-background', 'Wan background clip')
+    result.wan_driving_video = _single_media_arg('wan-driving', 'Wan driving clip')
 
     result.ltx_condition_strength = _parse_image_seed_strength(parse_result.args)
 
@@ -2857,6 +2929,8 @@ def iterate_image_seed(uri: str | ImageSeedParseResult,
                        seed_image_processor: ImageProcessorSpec = None,
                        mask_image_processor: ImageProcessorSpec = None,
                        control_image_processor: ImageProcessorSpec = None,
+                       reference_image_processor: ImageProcessorSpec = None,
+                       adapter_image_processor: ImageProcessorSpec = None,
                        check_dimensions_match: bool = True,
                        path_opener: MediaPathOpenerFunc = fetch_media_data_stream) -> \
         collections.abc.Iterator[ImageSeed]:
@@ -2961,6 +3035,14 @@ def iterate_image_seed(uri: str | ImageSeedParseResult,
         first image / video in the specification. Images in a guidance specification with no corresponding
         processor value will have their processor set to ``None``, specifying extra processors
         as compared to control guidance image sources will cause :py:exc:`ValueError` to be raised.
+
+    :param reference_image_processor: optional :py:class:`dgenerate.imageprocessors.ImageProcessor` or list of them.
+        A list is used to specify processors for individual ``reference=`` images. Extra processors
+        compared to reference image sources will cause :py:exc:`ValueError` to be raised.
+
+    :param adapter_image_processor: optional :py:class:`dgenerate.imageprocessors.ImageProcessor` or list of them.
+        A list is used to specify processors for individual IP adapter image groups.
+        Extra processors compared to adapter groups will cause :py:exc:`ValueError` to be raised.
 
     :param check_dimensions_match: Check the dimensions of input images, mask images,
         and control images to confirm that they match? For pipelines like stable cascade,
@@ -3089,12 +3171,26 @@ def iterate_image_seed(uri: str | ImageSeedParseResult,
         raise ImageSeedError('IP adapter images not supported with floyd stage image.')
 
     if parse_result.adapter_images is not None:
+        if not isinstance(adapter_image_processor, list):
+            adapter_image_processor = [adapter_image_processor]
+
+        adapter_groups = parse_result.adapter_images
+
+        _validate_image_processor_count(
+            processors=adapter_image_processor,
+            images=adapter_groups,
+            error_title='adapter')
+
         adapter_image_cnt = 0
-        for adapter_images in parse_result.adapter_images:
+        for group_idx, adapter_images in enumerate(adapter_groups):
+            group_processor = (
+                adapter_image_processor[group_idx]
+                if group_idx < len(adapter_image_processor) else None)
             for image in adapter_images:
                 reader_specs.append(
                     MediaReaderSpec(
                         path=image.path.strip(),
+                        image_processor=group_processor,
                         resize_resolution=image.resize,
                         aspect_correct=image.aspect,
                         align=image.align
@@ -3133,12 +3229,24 @@ def iterate_image_seed(uri: str | ImageSeedParseResult,
         # advances with them, and the shortest animation sets the length.
         # The pipeline crops a reference larger than 1024, so this slot is
         # not forced to the generation size or matched to the inpaint image.
-        for reference_path in parse_result.reference_images:
+        if not isinstance(reference_image_processor, list):
+            reference_image_processor = [reference_image_processor]
+
+        reference_paths = parse_result.reference_images
+
+        _validate_image_processor_count(
+            processors=reference_image_processor,
+            images=reference_paths,
+            error_title='reference')
+
+        for idx, reference_path in enumerate(reference_paths):
             reader_specs.append(MediaReaderSpec(
                 path=reference_path,
+                image_processor=reference_image_processor[idx]
+                if idx < len(reference_image_processor) else None,
                 resize_resolution=None,
                 align=None))
-        append_range('reference_images', len(parse_result.reference_images))
+        append_range('reference_images', len(reference_paths))
 
     if parse_result.frame_start is not None:
         frame_start = parse_result.frame_start

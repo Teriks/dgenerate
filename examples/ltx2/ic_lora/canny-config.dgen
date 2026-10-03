@@ -28,10 +28,10 @@ Lightricks/LTX-2.5-Diffusers
 --model-sequential-offload
 --ltx-ic-lora "Lightricks/LTX-2.3-22b-IC-LoRA-Union-Control;weight-name=ltx-2.3-22b-ic-lora-union-control-ref0.5.safetensors"
 --guidance-scales 1
---ltx-video-fps 25
+--video-fps 25
 --gen-seeds 1
 --output-size 512x512
---ltx-video-lengths 4
+--video-lengths 4
 --animation-format mp4
 --output-path ltx-ic-lora-canny
 --image-seeds ../../media/rickroll-roll.gif

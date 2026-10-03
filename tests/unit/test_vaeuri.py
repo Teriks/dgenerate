@@ -1,4 +1,7 @@
+import tempfile
 import unittest
+
+import diffusers
 
 import dgenerate.pipelinewrapper.enums as _enums
 import dgenerate.pipelinewrapper.uris.vaeuri as _vaeuri
@@ -50,6 +53,10 @@ class TestVAEUri(unittest.TestCase):
         uri = "ConsistencyDecoderVAE;model=path/to/model"
         result = _vaeuri.VAEUri.parse(uri)
         self.assertEqual(result.encoder, "ConsistencyDecoderVAE")
+
+        for encoder in _vaeuri.VAEUri.supported_encoder_names():
+            result = _vaeuri.VAEUri.parse(f"{encoder};model=path/to/model")
+            self.assertEqual(result.encoder, encoder)
         
         # Invalid encoder
         with self.assertRaises(InvalidVaeUriError):
@@ -75,6 +82,113 @@ class TestVAEUri(unittest.TestCase):
         # Test that model is required
         with self.assertRaises(InvalidVaeUriError):
             _vaeuri.VAEUri.parse("AutoencoderKL")
+
+    def _roundtrip_load(self, encoder_name, model):
+        with tempfile.TemporaryDirectory() as directory:
+            model.save_pretrained(directory)
+            loaded = _vaeuri.VAEUri.parse(
+                f'{encoder_name};model={directory};dtype=float32'
+            ).load(local_files_only=True, no_cache=True)
+            self.assertEqual(type(loaded).__name__, encoder_name)
+
+    def test_load_autoencoder_kl_wan(self):
+        config = {
+            'base_dim': 8,
+            'z_dim': 4,
+            'dim_mult': [1, 1],
+            'num_res_blocks': 1,
+            'temperal_downsample': [False],
+            'dropout': 0.0,
+            'attn_scales': [],
+            'latents_mean': [0.0] * 4,
+            'latents_std': [1.0] * 4,
+        }
+        self._roundtrip_load(
+            'AutoencoderKLWan',
+            diffusers.AutoencoderKLWan.from_config(config))
+
+    def test_load_autoencoder_kl_ltx_video(self):
+        config = {
+            'in_channels': 3,
+            'out_channels': 3,
+            'latent_channels': 4,
+            'block_out_channels': [8, 8],
+            'layers_per_block': [1, 1, 1],
+            'patch_size': 4,
+            'patch_size_t': 1,
+            'spatio_temporal_scaling': [False, False],
+            'encoder_causal': True,
+            'decoder_causal': False,
+            'resnet_norm_eps': 1e-6,
+            'scaling_factor': 1.0,
+        }
+        self._roundtrip_load(
+            'AutoencoderKLLTXVideo',
+            diffusers.AutoencoderKLLTXVideo.from_config(config))
+
+    def test_load_autoencoder_kl_ltx2_video(self):
+        config = {
+            'in_channels': 3,
+            'out_channels': 3,
+            'latent_channels': 4,
+            'block_out_channels': [8, 8],
+            'decoder_block_out_channels': [8, 8],
+            'layers_per_block': [1, 1, 1],
+            'decoder_layers_per_block': [1, 1, 1],
+            'down_block_types': ['LTX2VideoDownBlock3D', 'LTX2VideoDownBlock3D'],
+            'downsample_type': ['spatial', 'spatial'],
+            'spatio_temporal_scaling': [False, False],
+            'decoder_spatio_temporal_scaling': [False, False],
+            'decoder_inject_noise': [False, False, False],
+            'upsample_type': ['spatial', 'spatial'],
+            'upsample_factor': [1, 1],
+            'upsample_residual': [False, False],
+            'patch_size': 4,
+            'patch_size_t': 1,
+            'encoder_causal': True,
+            'decoder_causal': False,
+            'resnet_norm_eps': 1e-6,
+            'scaling_factor': 1.0,
+            'spatial_compression_ratio': 4,
+            'temporal_compression_ratio': 1,
+            'timestep_conditioning': False,
+            'decoder_spatial_padding_mode': 'zeros',
+            'encoder_spatial_padding_mode': 'zeros',
+        }
+        self._roundtrip_load(
+            'AutoencoderKLLTX2Video',
+            diffusers.AutoencoderKLLTX2Video.from_config(config))
+
+    def test_load_autoencoder_kl_flux2(self):
+        config = {
+            'in_channels': 3,
+            'out_channels': 3,
+            'down_block_types': ['DownEncoderBlock2D', 'DownEncoderBlock2D'],
+            'up_block_types': ['UpDecoderBlock2D', 'UpDecoderBlock2D'],
+            'block_out_channels': [8, 8],
+            'layers_per_block': 1,
+            'latent_channels': 4,
+            'norm_num_groups': 4,
+            'sample_size': 32,
+        }
+        self._roundtrip_load(
+            'AutoencoderKLFlux2',
+            diffusers.AutoencoderKLFlux2.from_config(config))
+
+    def test_load_autoencoder_kl_qwen_image(self):
+        config = {
+            'base_dim': 8,
+            'z_dim': 4,
+            'dim_mult': [1, 1],
+            'num_res_blocks': 1,
+            'temperal_downsample': [False],
+            'dropout': 0.0,
+            'latents_mean': [0.0] * 4,
+            'latents_std': [1.0] * 4,
+        }
+        self._roundtrip_load(
+            'AutoencoderKLQwenImage',
+            diffusers.AutoencoderKLQwenImage.from_config(config))
 
 
 if __name__ == '__main__':

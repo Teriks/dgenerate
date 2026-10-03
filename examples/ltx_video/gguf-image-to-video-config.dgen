@@ -17,10 +17,10 @@ Lightricks/LTX-Video
 --transformer https://huggingface.co/city96/LTX-Video-gguf/blob/main/ltx-video-2b-v0.9-Q3_K_S.gguf
 --inference-steps 50
 --guidance-scales 3
---ltx-video-fps 25
+--video-fps 25
 --gen-seeds 1
 --output-size 768x512
---ltx-video-lengths 4.84
+--video-lengths 4.84
 --animation-format mp4
 --output-path ltx-video-gguf-image
 --image-seeds https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/astronaut.jpg

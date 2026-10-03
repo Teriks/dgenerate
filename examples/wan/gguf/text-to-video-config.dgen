@@ -1,0 +1,20 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Wan transformer as a GGUF. The repository still supplies the VAE
+# and text encoder. The file is recognized from patch_embedding.
+
+Wan-AI/Wan2.1-T2V-14B-Diffusers
+--model-type wan
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/city96/Wan2.1-T2V-14B-gguf/blob/main/wan2.1-t2v-14b-Q4_K_S.gguf
+--inference-steps 30
+--guidance-scales 5
+--video-fps 16
+--gen-seeds 1
+--output-size 832x480
+--video-lengths 3
+--animation-format mp4
+--output-path wan-gguf
+--prompts "A woman in a red coat walks along a dirt path through a green field, then stops and looks back at the camera. The camera stays fixed."

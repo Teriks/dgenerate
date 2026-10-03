@@ -1,6 +1,7 @@
 import json
 import os
 import tempfile
+import types
 import unittest
 from unittest.mock import patch
 
@@ -456,8 +457,33 @@ class TestFlowImagePipelines(unittest.TestCase):
         _config(
             model_path='Qwen/Qwen-Image',
             model_type=_pipelinewrapper.ModelType.QWEN_IMAGE,
-            controlnet_uris=['InstantX/Qwen-Image-ControlNet-Union'],
+            controlnet_uris=['InstantX/Qwen-Image-ControlNet-Inpainting'],
             image_seeds=[f'{beach};mask=examples/media/horse1-mask.jpg']).check()
+
+    def test_qwen_image_controlnet_condition_channels(self):
+        inpaint = _pipelinewrapper.PipelineType.INPAINT
+        txt2img = _pipelinewrapper.PipelineType.TXT2IMG
+        union = types.SimpleNamespace(
+            config=types.SimpleNamespace(extra_condition_channels=0))
+        inpaint_cn = types.SimpleNamespace(
+            config=types.SimpleNamespace(extra_condition_channels=4))
+
+        _pipelines._validate_qwen_image_controlnet_condition_channels(
+            union, txt2img, 'InstantX/Qwen-Image-ControlNet-Union')
+        _pipelines._validate_qwen_image_controlnet_condition_channels(
+            inpaint_cn, inpaint, 'InstantX/Qwen-Image-ControlNet-Inpainting')
+
+        with self.assertRaises(_pipelines.UnsupportedPipelineConfigError) as raised:
+            _pipelines._validate_qwen_image_controlnet_condition_channels(
+                union, inpaint, 'InstantX/Qwen-Image-ControlNet-Union')
+        self.assertIn('ControlNet-Inpainting', str(raised.exception))
+        self.assertIn('extra_condition_channels=0', str(raised.exception))
+
+        with self.assertRaises(_pipelines.UnsupportedPipelineConfigError) as raised:
+            _pipelines._validate_qwen_image_controlnet_condition_channels(
+                inpaint_cn, txt2img, 'InstantX/Qwen-Image-ControlNet-Inpainting')
+        self.assertIn('extra_condition_channels=4', str(raised.exception))
+        self.assertIn('ControlNet-Union', str(raised.exception))
 
     def test_flow_option_argument_reconstruction(self):
         import shlex

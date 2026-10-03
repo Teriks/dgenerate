@@ -259,7 +259,7 @@ class TestAssistantCheck(unittest.TestCase):
             'Lightricks/LTX-2.5-Diffusers',
             '--model-type ltx --dtype bfloat16',
             '--image-seeds {{ quote(first(last_animations)) }}',
-            '--ltx-video-lengths 2',
+            '--video-lengths 2',
             '--prompts "the dog wags its tail"',
         ))
         self.assertFalse(report['ok'], report)
@@ -273,7 +273,7 @@ class TestAssistantCheck(unittest.TestCase):
             'Lightricks/LTX-2.5-Diffusers',
             '--model-type ltx --dtype bfloat16',
             '--image-seeds {{ quote(first(last_images)) }}',
-            '--ltx-video-lengths 2',
+            '--video-lengths 2',
             '--prompts "the dog wags its tail"',
         ))
         self.assertTrue(report['ok'], report['errors'])
@@ -489,6 +489,35 @@ class TestAssistantCheck(unittest.TestCase):
         self.assertNotIn('required: model_path', text)
         self.assertIn('blank line', text)
         self.assertIn('Do not wrap --prompts', text)
+
+    def test_wan_animate_needs_pose_or_driving(self):
+        report = check_config(_cfg(
+            'Wan-AI/Wan2.2-Animate-14B-Diffusers',
+            '--model-type wan-animate --dtype bfloat16',
+            '--image-seeds examples/media/earth.jpg',
+            '--prompts "a dancer"',
+        ))
+        self.assertFalse(report['ok'], report)
+        self.assertIn('wan-pose=', _messages(report))
+
+    def test_wan_option_on_ltx(self):
+        report = check_config(_cfg(
+            'Lightricks/LTX-2.5-Diffusers',
+            '--model-type ltx --dtype bfloat16',
+            '--wan-boundary-ratios 0.9',
+            '--prompts "a fox"',
+        ))
+        self.assertFalse(report['ok'], report)
+        self.assertIn('wan', _messages(report).lower())
+
+    def test_wan_text_to_video_ok(self):
+        report = check_config(_cfg(
+            'Wan-AI/Wan2.1-T2V-1.3B-Diffusers',
+            '--model-type wan --dtype bfloat16',
+            '--video-lengths 2',
+            '--prompts "a fox runs"',
+        ))
+        self.assertTrue(report['ok'], report['errors'])
 
 
 if __name__ == '__main__':

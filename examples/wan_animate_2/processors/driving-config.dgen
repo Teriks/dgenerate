@@ -1,0 +1,20 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# --wan-driving-image-processors runs on the wan-driving= clip before
+# Wan-Animate-2 reads it. frame-start= and frame-end= trim that clip.
+# The output length follows the trimmed clip.
+
+Wan-AI/Wan2.2-Animate-2-14B-Diffusers
+--model-type wan-animate-2
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 40
+--video-fps 24
+--gen-seeds 1
+--output-size 640x800
+--animation-format mp4
+--output-path wan-animate-2-driving
+--wan-driving-image-processors flip
+--image-seeds "../../media/man-fighting-pose.jpg;wan-driving=../../media/rickroll-roll.gif;frame-start=0;frame-end=24"
+--prompts "A boxer dances in place. The camera stays fixed."

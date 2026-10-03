@@ -25,6 +25,8 @@ Diffusion Model Feature Support Tables
    * ``--model-type qwen-image-edit`` (Qwen-Image Edit and Edit-Plus)
    * ``--model-type qwen-image-layered`` (Qwen-Image Layered)
    * ``--model-type ltx`` (LTX-2.5 and LTX-Video, see `Video Model Feature Support`_)
+   * ``--model-type wan`` (Wan 2.1 / 2.2 T2V, I2V, FLF2V, V2V, VACE)
+   * ``--model-type wan-animate`` (Wan-Animate)
 
 .. list-table:: Generation modes by ``--model-type``
    :widths: 40 10 10 10
@@ -783,6 +785,74 @@ Video Model Feature Support
 LTX does not support ControlNets, adapters, textual inversions, prompt weighters, inpainting,
 or the acceleration features in the tables above. GGUF transformers are tested with LTX-Video.
 See the video generation section in the manual for LTX-2.5 and the earlier LTX-Video checkpoint.
+
+``--model-type wan``, ``--model-type wan-animate``, and ``--model-type wan-animate-2``
+also generate a whole clip in one pipeline call. Clip length and frame rate are the
+shared ``--video-lengths`` and ``--video-fps`` options.
+
+.. list-table:: Features by Wan mode
+   :widths: 40 10 10 12
+   :header-rows: 1
+
+   * - Feature
+     - wan
+     - wan-animate
+     - wan-animate-2
+
+   * - Text to video
+     - ✅
+     - ❌
+     - ❌
+
+   * - Image to video
+     - ✅
+     - ❌
+     - ❌
+
+   * - First / last frame (``last-frame=``)
+     - ✅
+     - ❌
+     - ❌
+
+   * - Video to video
+     - ✅
+     - ❌
+     - ❌
+
+   * - VACE (``control=`` / ``mask=`` / ``reference=``)
+     - ✅
+     - ❌
+     - ❌
+
+   * - Character animation (``wan-pose=`` / ``wan-face=``)
+     - ❌
+     - ✅
+     - ❌
+
+   * - ``wan-driving=`` as the motion clip
+     - ❌
+     - ❌
+     - ✅
+
+   * - ``wan-driving=`` preprocess (openpose + yolo)
+     - ❌
+     - ✅
+     - ❌
+
+   * - MoE second transformer
+     - ✅
+     - ❌
+     - ❌
+
+   * - LoRA
+     - ✅
+     - ✅
+     - ✅
+
+   * - Quantization / GGUF
+     - ✅
+     - ✅
+     - ✅
 
 Flow Image Model Notes
 ----------------------

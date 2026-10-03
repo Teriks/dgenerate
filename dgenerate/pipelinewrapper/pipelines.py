@@ -459,7 +459,16 @@ def _disable_to(module, vae=False):
     module._DGENERATE_ORIGINAL_TO_DISABLED = module.to
 
     def dummy(*args, **kwargs):
-        if vae and module.config.force_upcast and \
+        # Wan and some other VAEs use FrozenDict configs without force_upcast.
+        force_upcast = False
+        if vae:
+            config = getattr(module, 'config', None)
+            if config is not None:
+                force_upcast = bool(getattr(config, 'force_upcast', False))
+                if not force_upcast and hasattr(config, 'get'):
+                    force_upcast = bool(config.get('force_upcast', False))
+
+        if vae and force_upcast and \
                 (len(args) == 1 and isinstance(args[0], torch.dtype)) or \
                 (len(kwargs) == 1 and 'dtype' in kwargs):
 
@@ -1829,6 +1838,41 @@ def diffusion_transformer_class(model_type: _enums.ModelType):
     if _enums.model_type_is_qwen_image_family(model_type):
         return diffusers.QwenImageTransformer2DModel
     return None
+
+
+def _validate_qwen_image_controlnet_condition_channels(
+        controlnet,
+        pipeline_type: _enums.PipelineType,
+        controlnet_uri: str):
+    """
+    Qwen-Image ControlNet inpaint packs VAE latents plus a downsampled mask
+    (``extra_condition_channels=4`` after packing). Structural / union
+    ControlNets expect packed latents only (``extra_condition_channels=0``).
+    """
+    if not hasattr(controlnet, 'config'):
+        return
+
+    extra = getattr(controlnet.config, 'extra_condition_channels', 0) or 0
+
+    if pipeline_type == _enums.PipelineType.INPAINT:
+        if extra == 0:
+            raise UnsupportedPipelineConfigError(
+                f'Qwen-Image ControlNet inpaint requires a ControlNet with '
+                f'extra_condition_channels > 0 (for example '
+                f'InstantX/Qwen-Image-ControlNet-Inpainting). '
+                f'"{controlnet_uri}" has extra_condition_channels=0 and is for '
+                f'text-to-image / structural control only '
+                f'(for example InstantX/Qwen-Image-ControlNet-Union).'
+            )
+    elif extra != 0:
+        raise UnsupportedPipelineConfigError(
+            f'Qwen-Image ControlNet text-to-image requires a ControlNet with '
+            f'extra_condition_channels=0 (for example '
+            f'InstantX/Qwen-Image-ControlNet-Union). '
+            f'"{controlnet_uri}" has extra_condition_channels={extra}; use '
+            f'InstantX/Qwen-Image-ControlNet-Inpainting with '
+            f'--image-seeds "image.png;mask=mask.png" for inpaint.'
+        )
 
 
 def _flow_image_pipeline_class(
@@ -3517,6 +3561,10 @@ def _create_diffusion_pipeline(
                     new_net.forward,
                     new_net
                 )
+
+            if _enums.model_type_is_qwen_image(model_type):
+                _validate_qwen_image_controlnet_condition_channels(
+                    new_net, pipeline_type, controlnet_uri)
 
             _messages.debug_log(lambda:
                                 f'Added Torch ControlNet: "{controlnet_uri}" '

@@ -95,6 +95,21 @@ class HfConfigsBuilder:
             "Lightricks/LTX-Video",
             "Lightricks/LTX-2.5-Diffusers",
             #
+            ### Model type: Wan
+            "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+            "Wan-AI/Wan2.1-T2V-14B-Diffusers",
+            "Wan-AI/Wan2.1-I2V-14B-480P-Diffusers",
+            "Wan-AI/Wan2.1-I2V-14B-720P-Diffusers",
+            "Wan-AI/Wan2.1-FLF2V-14B-720P-diffusers",
+            "Wan-AI/Wan2.1-VACE-1.3B-diffusers",
+            "Wan-AI/Wan2.1-VACE-14B-diffusers",
+            "Wan-AI/Wan2.2-T2V-A14B-Diffusers",
+            "Wan-AI/Wan2.2-I2V-A14B-Diffusers",
+            "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+            "Wan-AI/Wan2.2-Animate-14B-Diffusers",
+            "Wan-AI/Wan2.2-Animate-2-14B-Diffusers",
+            "Wan-AI/Wan2.2-Animate-2-14B-Distilled-Diffusers",
+            #
             ### Model type: SD3x
             # SD3m
             "stabilityai/stable-diffusion-3-medium-diffusers",

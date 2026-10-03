@@ -1,0 +1,22 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Wan VACE transformer as a GGUF. control= is the control clip.
+# The repository still supplies the VAE and text encoder.
+
+Wan-AI/Wan2.1-VACE-14B-diffusers
+--model-type wan
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/QuantStack/Wan2.1_14B_VACE-GGUF/blob/main/Wan2.1_14B_VACE-Q4_K_S.gguf
+--inference-steps 30
+--guidance-scales 5
+--video-fps 16
+--gen-seeds 1
+--output-size 832x480
+--video-lengths 3
+--animation-format mp4
+--output-path wan-vace-gguf
+--control-image-processors canny
+--image-seeds "control=../../media/rickroll-roll.gif;reference=../../media/man-fighting-pose.jpg;frame-end=24"
+--prompts "A boxer dances energetically in place. The camera stays fixed."

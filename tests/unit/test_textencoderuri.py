@@ -455,6 +455,162 @@ class TestTextEncoderUri(unittest.TestCase):
         self.assertEqual(wo.weight.dtype, torch.float32)
         self.assertTrue(hasattr(q, 'sdnq_dequantizer'))
 
+    def _roundtrip_load(self, encoder_name, model):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as directory:
+            model.save_pretrained(directory)
+            loaded = _textencoderuri.TextEncoderUri.parse(
+                f'{encoder_name};model={directory};dtype=float32'
+            ).load(local_files_only=True, no_cache=True)
+            self.assertEqual(type(loaded).__name__, encoder_name)
+
+    def test_load_umt5_encoder_model(self):
+        import transformers
+        from transformers import UMT5Config
+
+        model = transformers.UMT5EncoderModel(UMT5Config(
+            d_model=32,
+            d_kv=8,
+            d_ff=64,
+            num_layers=1,
+            num_decoder_layers=1,
+            num_heads=4,
+            vocab_size=100,
+            is_encoder_decoder=False,
+        ))
+        self._roundtrip_load('UMT5EncoderModel', model)
+
+    def test_load_qwen3_model(self):
+        import transformers
+        from transformers import Qwen3Config
+
+        model = transformers.Qwen3Model(Qwen3Config(
+            hidden_size=32,
+            intermediate_size=64,
+            num_hidden_layers=1,
+            num_attention_heads=4,
+            num_key_value_heads=2,
+            vocab_size=100,
+            max_position_embeddings=64,
+        ))
+        self._roundtrip_load('Qwen3Model', model)
+
+    def test_load_qwen3_for_causal_lm(self):
+        import transformers
+        from transformers import Qwen3Config
+
+        model = transformers.Qwen3ForCausalLM(Qwen3Config(
+            hidden_size=32,
+            intermediate_size=64,
+            num_hidden_layers=1,
+            num_attention_heads=4,
+            num_key_value_heads=2,
+            vocab_size=100,
+            max_position_embeddings=64,
+        ))
+        self._roundtrip_load('Qwen3ForCausalLM', model)
+
+    def test_load_qwen2_5_vl_for_conditional_generation(self):
+        import transformers
+
+        config = transformers.Qwen2_5_VLConfig(
+            vision_config={
+                'depth': 1,
+                'hidden_size': 32,
+                'intermediate_size': 64,
+                'num_heads': 4,
+                'out_hidden_size': 32,
+                'patch_size': 14,
+                'spatial_merge_size': 2,
+                'temporal_patch_size': 2,
+                'in_channels': 3,
+            },
+            text_config={
+                'hidden_size': 32,
+                'intermediate_size': 64,
+                'num_hidden_layers': 1,
+                'num_attention_heads': 4,
+                'num_key_value_heads': 2,
+                'vocab_size': 128,
+                'max_position_embeddings': 64,
+                'bos_token_id': 0,
+                'eos_token_id': 1,
+            },
+            image_token_id=2,
+            video_token_id=3,
+            vision_start_token_id=4,
+            vision_end_token_id=5,
+            bos_token_id=0,
+            eos_token_id=1,
+        )
+        model = transformers.Qwen2_5_VLForConditionalGeneration(config)
+        self._roundtrip_load('Qwen2_5_VLForConditionalGeneration', model)
+
+    def test_load_mistral3_for_conditional_generation(self):
+        import transformers
+
+        try:
+            config = transformers.Mistral3Config.from_pretrained(
+                'black-forest-labs/FLUX.2-dev',
+                subfolder='text_encoder',
+                local_files_only=True,
+            )
+        except Exception as exc:
+            self.skipTest(f'Mistral3 config unavailable offline: {exc}')
+        text = config.text_config
+        for attr, value in (
+            ('hidden_size', 32),
+            ('intermediate_size', 64),
+            ('num_hidden_layers', 1),
+            ('num_attention_heads', 4),
+            ('num_key_value_heads', 2),
+            ('vocab_size', 128),
+            ('head_dim', 8),
+        ):
+            if hasattr(text, attr):
+                setattr(text, attr, value)
+        vision = config.vision_config
+        if vision is not None:
+            for attr, value in (
+                ('hidden_size', 32),
+                ('intermediate_size', 64),
+                ('num_hidden_layers', 1),
+                ('num_attention_heads', 4),
+                ('num_channels', 3),
+            ):
+                if hasattr(vision, attr):
+                    setattr(vision, attr, value)
+        try:
+            model = transformers.Mistral3ForConditionalGeneration(config)
+        except Exception as exc:
+            self.skipTest(f'cannot build tiny Mistral3: {exc}')
+        self._roundtrip_load('Mistral3ForConditionalGeneration', model)
+
+    def test_load_gemma4_unified_for_conditional_generation(self):
+        import tempfile
+        import unittest.mock as mock
+
+        import torch
+        import transformers
+
+        sentinel = torch.nn.Linear(1, 1)
+
+        with mock.patch.object(
+                transformers.Gemma4UnifiedForConditionalGeneration,
+                'from_pretrained',
+                return_value=sentinel) as from_pretrained:
+            with tempfile.TemporaryDirectory() as directory:
+                loaded = _textencoderuri.TextEncoderUri.parse(
+                    f'Gemma4UnifiedForConditionalGeneration;model={directory};dtype=float32'
+                ).load(local_files_only=True, no_cache=True)
+
+        self.assertIs(loaded, sentinel)
+        self.assertTrue(from_pretrained.called)
+        kwargs = from_pretrained.call_args.kwargs
+        self.assertIn('dtype', kwargs)
+        self.assertTrue(kwargs.get('local_files_only'))
+
 
 if __name__ == '__main__':
     unittest.main() 

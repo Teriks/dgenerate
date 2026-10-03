@@ -1,0 +1,21 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Wan image-to-video transformer as a GGUF. The repository still
+# supplies the VAE, text encoder, and image encoder.
+
+Wan-AI/Wan2.1-I2V-14B-480P-Diffusers
+--model-type wan
+--dtype bfloat16
+--model-sequential-offload
+--transformer https://huggingface.co/city96/Wan2.1-I2V-14B-480P-gguf/blob/main/wan2.1-i2v-14b-480p-Q4_K_S.gguf
+--inference-steps 30
+--guidance-scales 5
+--video-fps 16
+--gen-seeds 1
+--output-size 832x480
+--video-lengths 3
+--animation-format mp4
+--output-path wan-i2v-gguf
+--image-seeds ../../media/earth.jpg
+--prompts "The camera pulls back from the Earth. Clouds drift. The lighting stays the same."

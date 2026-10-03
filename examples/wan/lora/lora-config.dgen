@@ -1,0 +1,22 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Wan text to video with a Diffusers LoRA from --loras.
+# benjamin-paine/steamboat-willie-1.3b is the LoRA from the
+# Diffusers Wan docs. Trigger words: steamboat willie style,
+# golden era animation.
+
+Wan-AI/Wan2.1-T2V-1.3B-Diffusers
+--model-type wan
+--dtype bfloat16
+--model-sequential-offload
+--loras "benjamin-paine/steamboat-willie-1.3b;scale=1.0"
+--inference-steps 30
+--guidance-scales 5
+--video-fps 16
+--gen-seeds 1
+--output-size 832x480
+--video-lengths 3
+--animation-format mp4
+--output-path wan-lora
+--prompts "steamboat willie style, golden era animation, a woman in a red coat walks along a dirt path through a green field, then stops and looks back at the camera. The camera stays fixed."

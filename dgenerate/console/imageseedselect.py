@@ -186,6 +186,15 @@ class _ImageSeedSelect(tk.Toplevel):
         tk.Button(end_row, text='File', command=lambda: self._open_image(self._end_entry)).grid(
             row=0, column=2, padx=(4, 0))
 
+        self._section(
+            'Wan',
+            'wan-pose= and wan-face= are Wan-Animate. wan-driving= is the source clip for --wan-animate-preprocess. '
+            'wan-background= is replace mode. reference= above is VACE.')
+        self._pose_entry = self._wan_file('Pose clip')
+        self._face_entry = self._wan_file('Face clip')
+        self._driving_entry = self._wan_file('Driving clip')
+        self._background_entry = self._wan_file('Background clip')
+
         self._ltx_index = self._labeled_spin('Latent frame index', -100000, 100000)
         self._ltx_strength = self._labeled_float('Strength')
         self._extras = _ExtraRows(self)
@@ -224,6 +233,18 @@ class _ImageSeedSelect(tk.Toplevel):
         spin.create_spin_buttons(row).grid(row=0, column=2, padx=(4, 0))
         self._track(spin)
         return spin
+
+    def _wan_file(self, label):
+        row = tk.Frame(self._inner)
+        row.grid(row=self._row, column=0, sticky=tk.EW, pady=2)
+        self._row += 1
+        row.grid_columnconfigure(1, weight=1)
+        tk.Label(row, text=label).grid(row=0, column=0, sticky=tk.W, padx=(0, 8))
+        entry = self._track(_t_entry.TextEntry(row))
+        entry.grid(row=0, column=1, sticky=tk.EW)
+        tk.Button(row, text='File', command=lambda e=entry: self._open_image(e)).grid(
+            row=0, column=2, padx=(4, 0))
+        return entry
 
     def _place(self, widget):
         widget.grid(row=self._row, column=0, sticky=tk.EW, pady=(0, 4))
@@ -306,6 +327,11 @@ class _ImageSeedSelect(tk.Toplevel):
         ltx_strength_value = self._ltx_strength.get().strip()
         ltx_index = int(ltx_index_value) if ltx_index_value else None
         ltx_strength = float(ltx_strength_value) if ltx_strength_value else None
+        pose = _entry.shell_quote_if(self._pose_entry.get().strip(), strict=True) or None
+        face = _entry.shell_quote_if(self._face_entry.get().strip(), strict=True) or None
+        driving = _entry.shell_quote_if(self._driving_entry.get().strip(), strict=True) or None
+        background = _entry.shell_quote_if(self._background_entry.get().strip(), strict=True) or None
+        wan_extras = pose or face or driving or background
 
         try:
             adapters = self._adapters.values()
@@ -314,13 +340,13 @@ class _ImageSeedSelect(tk.Toplevel):
             _entry.invalid_colors(error.widget)
             return
 
-        latents_only = latents and not (seeds or controls or adapters or end_image)
+        latents_only = latents and not (seeds or controls or adapters or end_image or wan_extras)
         if latents_only and (resize_value or aspect_value is False or
                              frame_start is not None or frame_end is not None or
                              ltx_index is not None or ltx_strength is not None or extras):
             _entry.invalid_colors(self._resize_entry)
             return
-        if (ltx_index is not None or ltx_strength is not None or extras) and not seeds:
+        if (ltx_index is not None or ltx_strength is not None or extras or wan_extras) and not seeds:
             self._seeds.mark()
             return
         if (frame_start is not None or frame_end is not None or aspect_value is False or resize_value) and not (
@@ -344,6 +370,10 @@ class _ImageSeedSelect(tk.Toplevel):
                 frame_start=frame_start,
                 frame_end=frame_end,
                 end_image=end_image,
+                wan_pose_video=pose,
+                wan_face_video=face,
+                wan_background_video=background,
+                wan_driving_video=driving,
                 ltx_index=ltx_index,
                 ltx_strength=ltx_strength,
                 ltx_extra_conditions=extras or None

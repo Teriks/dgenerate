@@ -1,0 +1,20 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# Distilled Wan-Animate-2. The checkpoint samples in 10 steps.
+# wan-driving= is the motion clip. --video-lengths is rejected.
+
+Wan-AI/Wan2.2-Animate-2-14B-Distilled-Diffusers
+--model-type wan-animate-2
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 10
+--wan-segment-frame-lengths 81
+--wan-prev-segment-frames 1
+--video-fps 24
+--gen-seeds 1
+--output-size 640x800
+--animation-format mp4
+--output-path wan-animate-2-distilled
+--image-seeds "../../media/man-fighting-pose.jpg;wan-driving=../../media/rickroll-roll.gif;frame-end=24"
+--prompts "A boxer dances in place. The camera stays fixed."

@@ -1,0 +1,19 @@
+#! /usr/bin/env dgenerate --file
+#! dgenerate 6.0.0
+
+# One --image-seeds still is the first frame (image-to-video).
+
+Wan-AI/Wan2.1-I2V-14B-480P-Diffusers
+--model-type wan
+--dtype bfloat16
+--model-sequential-offload
+--inference-steps 30
+--guidance-scales 5
+--video-fps 16
+--gen-seeds 1
+--output-size 832x480
+--video-lengths 3
+--animation-format mp4
+--output-path wan-image
+--image-seeds ../../media/earth.jpg
+--prompts "The camera pulls back from the Earth. Clouds drift. The lighting stays the same."

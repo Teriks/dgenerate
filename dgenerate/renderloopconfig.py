@@ -52,17 +52,58 @@ def _iterate_diffusion_args(**kwargs) -> collections.abc.Iterator[_pipelinewrapp
         _pipelinewrapper.DiffusionArguments)
 
 
-def _ltx_arguments_in_use(config) -> list[str]:
+def _prefixed_arguments_in_use(config, prefix: str) -> list[str]:
     """
-    ``ltx_`` config fields whose value is not the class default.
+    Config fields with ``prefix`` whose value is not the class default.
 
     A default of ``False`` still counts as unused. ``--ltx-no-cross-timestep``
     stores ``False`` over a default of ``None``, and that is in use.
     """
+    names = {}
+    for cls in reversed(config.__class__.__mro__):
+        names.update(vars(cls))
     return [
-        name for name, default in vars(config.__class__).items()
-        if name.startswith('ltx_') and getattr(config, name) != default
+        name for name, default in names.items()
+        if name.startswith(prefix) and getattr(config, name, default) != default
     ]
+
+
+def _ltx_arguments_in_use(config) -> list[str]:
+    return _prefixed_arguments_in_use(config, 'ltx_')
+
+
+def _wan_arguments_in_use(config) -> list[str]:
+    return _prefixed_arguments_in_use(config, 'wan_')
+
+
+_WAN_ANIMATE_1_ONLY_FIELDS = frozenset({
+    'wan_animate_mode',
+    'wan_motion_encode_batch_sizes',
+    'wan_animate_preprocess',
+    'wan_pose_image_processors',
+    'wan_face_image_processors',
+    'wan_background_image_processors',
+})
+
+_WAN_ANIMATE_SHARED_FIELDS = frozenset({
+    'wan_segment_frame_lengths',
+    'wan_prev_segment_frames',
+    'wan_driving_image_processors',
+})
+
+_WAN_ANIMATE_ONLY_FIELDS = _WAN_ANIMATE_1_ONLY_FIELDS | _WAN_ANIMATE_SHARED_FIELDS
+
+_WAN_NOT_ANIMATE_2_FIELDS = _WAN_ANIMATE_1_ONLY_FIELDS | frozenset({
+    'wan_low_noise_guidance_scales',
+    'wan_boundary_ratios',
+    'wan_expand_timesteps',
+    'wan_second_transformer_uri',
+})
+
+_WAN_PLAIN_ONLY_FIELDS = frozenset({
+    'wan_timesteps',
+    'wan_conditioning_scales',
+})
 
 
 def gen_seeds(n: int) -> list[int]:
@@ -363,21 +404,23 @@ class RenderLoopConfig(_types.SetFromMixin):
     dgenerate command line tool.
     """
 
-    ltx_video_lengths: _types.OptionalFloats = None
+    video_lengths: _types.OptionalFloats = None
     """
-    Clip lengths in seconds for ``--model-type ltx``. Each value is a factor in the
-    generation step product. ``None`` lets LTX-2.5 choose the length from its
-    duration head.
+    Clip lengths in seconds for video model types. Each value is a factor in the
+    generation step product. ``None`` lets the model choose: LTX-2.5 uses its
+    duration head, Wan uses its pipeline default. Rejected for Wan
+    video-to-video and Wan-Animate.
 
-    This corresponds to the ``--ltx-video-lengths`` argument of the dgenerate command line tool.
+    This corresponds to the ``--video-lengths`` argument of the dgenerate command line tool.
     """
 
-    ltx_video_fps: _types.OptionalFloats = None
+    video_fps: _types.OptionalFloats = None
     """
-    Frame rates for ``--model-type ltx``. Each value is a factor in the generation
-    step product. When omitted this defaults to ``[24]``.
+    Frame rates for video model types. Each value is a factor in the generation
+    step product. When omitted this defaults to ``[24]`` for LTX, ``[16]`` for
+    Wan, and ``[30]`` for Wan-Animate.
 
-    This corresponds to the ``--ltx-video-fps`` argument of the dgenerate command line tool.
+    This corresponds to the ``--video-fps`` argument of the dgenerate command line tool.
     """
 
     ltx_audio_guidance_scales: _types.OptionalFloats = None
@@ -502,6 +545,65 @@ class RenderLoopConfig(_types.SetFromMixin):
     ltx_system_prompt: _types.OptionalString = None
     """
     System prompt used by the LTX prompt enhancer.
+    """
+
+    wan_low_noise_guidance_scales: _types.OptionalFloats = None
+    """
+    Low-noise expert CFG scales for Wan 2.2 MoE. ``None`` copies
+    ``--guidance-scales``. ``--wan-low-noise-guidance-scales``.
+    """
+
+    wan_boundary_ratios: _types.OptionalFloats = None
+    """
+    MoE expert switch points for Wan 2.2. ``None`` keeps the checkpoint value.
+    ``--wan-boundary-ratios``.
+    """
+
+    wan_expand_timesteps: _types.OptionalBoolean = None
+    """
+    Per-token timestep expansion. ``None`` keeps the checkpoint value.
+    ``--wan-expand-timesteps``.
+    """
+
+    wan_timesteps: typing.Optional[collections.abc.Sequence[collections.abc.Sequence[int]]] = None
+    """
+    Explicit timestep schedules for Wan video-to-video. ``--wan-timesteps``.
+    """
+
+    wan_conditioning_scales: typing.Optional[
+        collections.abc.Sequence[float | collections.abc.Sequence[float]]] = None
+    """
+    VACE conditioning scales, one scalar or per-layer list per generation
+    step. ``--wan-conditioning-scales``.
+    """
+
+    wan_animate_mode: _types.OptionalName = None
+    """
+    Wan-Animate mode, ``animate`` or ``replace``. ``--wan-animate-mode``.
+    """
+
+    wan_segment_frame_lengths: _types.OptionalIntegers = None
+    """
+    Wan-Animate segment lengths. Each value must be ``4N+1``.
+    ``--wan-segment-frame-lengths``.
+    """
+
+    wan_prev_segment_frames: _types.OptionalIntegers = None
+    """
+    Previous-segment overlap frames for Wan-Animate.
+    ``--wan-prev-segment-frames``.
+    """
+
+    wan_motion_encode_batch_sizes: _types.OptionalIntegers = None
+    """
+    Motion-encoder batch sizes for Wan-Animate.
+    ``--wan-motion-encode-batch-size``.
+    """
+
+    wan_animate_preprocess: bool = False
+    """
+    Derive ``wan-pose=`` and ``wan-face=`` from ``wan-driving=``.
+    ``--wan-animate-preprocess``.
     """
 
     clip_skips: _types.OptionalIntegers = None
@@ -728,10 +830,14 @@ class RenderLoopConfig(_types.SetFromMixin):
 
     transformer_uri: _types.OptionalUri = None
     """
-    Optional user specified Transformer URI, this corresponds to the ``--transformer`` argument of the 
+    Optional replacement transformer URI, ``--transformer`` argument of the
     dgenerate command line tool.
-    
-    This is currently only supported for Stable Diffusion 3 and Flux models.
+    """
+
+    wan_second_transformer_uri: _types.OptionalUri = None
+    """
+    Optional second Wan MoE transformer URI, ``--wan-second-transformer``.
+    The low-noise expert that takes over below ``--wan-boundary-ratios``.
     """
 
     vae_uri: _types.OptionalUri = None
@@ -1632,6 +1738,41 @@ class RenderLoopConfig(_types.SetFromMixin):
     Corresponds to the ``--control-image-processors`` argument of the dgenerate command line tool verbatim,
     including the grouping syntax using the "+" symbol, the plus symbol should be used as its own list element,
     IE: it is a token.
+    """
+
+    last_frame_image_processors: _types.OptionalUris = None
+    """
+    Corresponds to the ``--last-frame-image-processors`` argument of the dgenerate command line tool.
+    """
+
+    reference_image_processors: _types.OptionalUris = None
+    """
+    Corresponds to the ``--reference-image-processors`` argument of the dgenerate command line tool.
+    """
+
+    adapter_image_processors: _types.OptionalUris = None
+    """
+    Corresponds to the ``--adapter-image-processors`` argument of the dgenerate command line tool.
+    """
+
+    wan_pose_image_processors: _types.OptionalUris = None
+    """
+    Corresponds to the ``--wan-pose-image-processors`` argument of the dgenerate command line tool.
+    """
+
+    wan_face_image_processors: _types.OptionalUris = None
+    """
+    Corresponds to the ``--wan-face-image-processors`` argument of the dgenerate command line tool.
+    """
+
+    wan_driving_image_processors: _types.OptionalUris = None
+    """
+    Corresponds to the ``--wan-driving-image-processors`` argument of the dgenerate command line tool.
+    """
+
+    wan_background_image_processors: _types.OptionalUris = None
+    """
+    Corresponds to the ``--wan-background-image-processors`` argument of the dgenerate command line tool.
     """
 
     post_processors: _types.OptionalUris = None
@@ -2700,11 +2841,58 @@ class RenderLoopConfig(_types.SetFromMixin):
     def _check_video_model_requirements(self, a_namer: typing.Callable[[str], str]):
         """Check video model types and set their length, fps, and step defaults."""
         if not _pipelinewrapper.model_type_is_video(self.model_type):
+            if self.video_lengths:
+                raise RenderLoopConfigError(
+                    f'{a_namer("video_lengths")} is only supported for video model types.')
+            if self.video_fps:
+                raise RenderLoopConfigError(
+                    f'{a_namer("video_fps")} is only supported for video model types.')
             for name in _ltx_arguments_in_use(self):
                 raise RenderLoopConfigError(
                     f'{a_namer(name)} is only supported for the ltx video model type.')
+            for name in _wan_arguments_in_use(self):
+                raise RenderLoopConfigError(
+                    f'{a_namer(name)} is only supported for the wan, wan-animate, and '
+                    f'wan-animate-2 video model types.')
             return
 
+        if self.model_type == _pipelinewrapper.ModelType.LTX:
+            for name in _wan_arguments_in_use(self):
+                raise RenderLoopConfigError(
+                    f'{a_namer(name)} is only supported for the wan, wan-animate, and '
+                    f'wan-animate-2 video model types.')
+            self._check_ltx_requirements(a_namer)
+        elif self.model_type == _pipelinewrapper.ModelType.WAN:
+            for name in _ltx_arguments_in_use(self):
+                raise RenderLoopConfigError(
+                    f'{a_namer(name)} is only supported for the ltx video model type.')
+            for name in _wan_arguments_in_use(self):
+                if name in _WAN_ANIMATE_ONLY_FIELDS:
+                    raise RenderLoopConfigError(
+                        f'{a_namer(name)} is only supported for --model-type wan-animate.')
+            self._check_wan_requirements(a_namer)
+        elif self.model_type == _pipelinewrapper.ModelType.WAN_ANIMATE:
+            for name in _ltx_arguments_in_use(self):
+                raise RenderLoopConfigError(
+                    f'{a_namer(name)} is only supported for the ltx video model type.')
+            for name in _wan_arguments_in_use(self):
+                if name in _WAN_PLAIN_ONLY_FIELDS:
+                    raise RenderLoopConfigError(
+                        f'{a_namer(name)} is only supported for --model-type wan.')
+            self._check_wan_animate_requirements(a_namer)
+        elif self.model_type == _pipelinewrapper.ModelType.WAN_ANIMATE_2:
+            for name in _ltx_arguments_in_use(self):
+                raise RenderLoopConfigError(
+                    f'{a_namer(name)} is only supported for the ltx video model type.')
+            for name in _wan_arguments_in_use(self):
+                if name in _WAN_PLAIN_ONLY_FIELDS or name in _WAN_NOT_ANIMATE_2_FIELDS:
+                    raise RenderLoopConfigError(
+                        f'{a_namer(name)} cannot be used with --model-type wan-animate-2.')
+            self._check_wan_animate_2_requirements(a_namer)
+
+        self._check_video_shared_requirements(a_namer)
+
+    def _check_ltx_requirements(self, a_namer: typing.Callable[[str], str]):
         if self.ltx_ic_lora_uri:
             try:
                 _pipelinewrapper.uris.ICLoRAUri.parse(self.ltx_ic_lora_uri)
@@ -2714,9 +2902,6 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise RenderLoopConfigError(
                     f'{a_namer("ltx_ic_lora_uri")} needs a control clip in {a_namer("image_seeds")}, '
                     f'for example {a_namer("image_seeds")} "control.mp4".')
-
-        if self.ltx_video_fps is None:
-            self.ltx_video_fps = [24.0]
 
         if self.model_type == _pipelinewrapper.ModelType.LTX:
             if self.sigmas:
@@ -2775,10 +2960,10 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'{a_namer("ltx_system_prompt")} needs {a_namer("ltx_prompt_enhancer")}.')
 
         if self.ltx_video_min_seconds or self.ltx_video_max_seconds:
-            if self.ltx_video_lengths:
+            if self.video_lengths:
                 raise RenderLoopConfigError(
                     f'{a_namer("ltx_video_min_seconds")} and {a_namer("ltx_video_max_seconds")} '
-                    f'apply when {a_namer("ltx_video_lengths")} is omitted and the duration head '
+                    f'apply when {a_namer("video_lengths")} is omitted and the duration head '
                     f'chooses the length.')
             lows = list(self.ltx_video_min_seconds or [1.0])
             highs = list(self.ltx_video_max_seconds or [20.0])
@@ -2798,6 +2983,101 @@ class RenderLoopConfig(_types.SetFromMixin):
                     raise RenderLoopConfigError(
                         f'{a_namer("ltx_image_crfs")} must be greater than or equal to 0.')
 
+        if self.mask_image_processors:
+            raise RenderLoopConfigError(
+                f'{a_namer("mask_image_processors")} cannot be used with --model-type ltx.')
+
+    def _check_wan_requirements(self, a_namer: typing.Callable[[str], str]):
+        self._check_wan_common(a_namer, max_sequence=512)
+
+    def _check_wan_animate_requirements(self, a_namer: typing.Callable[[str], str]):
+        if self.wan_animate_mode not in (None, 'animate', 'replace'):
+            raise RenderLoopConfigError(
+                f'{a_namer("wan_animate_mode")} must be "animate" or "replace". '
+                f'Got {self.wan_animate_mode!r}.')
+        if self.wan_segment_frame_lengths:
+            for value in self.wan_segment_frame_lengths:
+                if (int(value) - 1) % 4:
+                    raise RenderLoopConfigError(
+                        f'{a_namer("wan_segment_frame_lengths")} must be 4N+1. Got {value}.')
+        if self.video_lengths:
+            raise RenderLoopConfigError(
+                f'{a_namer("video_lengths")} cannot be used with --model-type wan-animate. '
+                f'The output length follows the pose clip.')
+        if not self.image_seeds:
+            raise RenderLoopConfigError(
+                f'--model-type wan-animate needs a character image in {a_namer("image_seeds")}.')
+        joined = ' '.join(str(seed) for seed in self.image_seeds)
+        has_pose_face = 'wan-pose=' in joined and 'wan-face=' in joined
+        has_driving = 'wan-driving=' in joined
+        has_custom_derive = bool(self.wan_pose_image_processors and self.wan_face_image_processors)
+        if not (has_pose_face or has_driving):
+            raise RenderLoopConfigError(
+                f'--model-type wan-animate needs wan-pose= and wan-face= clips in '
+                f'{a_namer("image_seeds")}, or wan-driving= with --wan-animate-preprocess '
+                f'or {a_namer("wan_pose_image_processors")} and {a_namer("wan_face_image_processors")}.')
+        if has_driving and not has_pose_face and not self.wan_animate_preprocess and not has_custom_derive:
+            raise RenderLoopConfigError(
+                'wan-driving= needs --wan-animate-preprocess, or both '
+                f'{a_namer("wan_pose_image_processors")} and {a_namer("wan_face_image_processors")}, '
+                'unless wan-pose= and wan-face= are also set.')
+        self._check_wan_common(a_namer, max_sequence=512)
+
+    def _check_wan_animate_2_requirements(self, a_namer: typing.Callable[[str], str]):
+        if self.wan_segment_frame_lengths:
+            for value in self.wan_segment_frame_lengths:
+                if (int(value) - 1) % 4:
+                    raise RenderLoopConfigError(
+                        f'{a_namer("wan_segment_frame_lengths")} must be 4N+1. Got {value}.')
+        if self.video_lengths:
+            raise RenderLoopConfigError(
+                f'{a_namer("video_lengths")} cannot be used with --model-type wan-animate-2. '
+                f'The output length follows the driving clip.')
+        if not self.image_seeds:
+            raise RenderLoopConfigError(
+                f'--model-type wan-animate-2 needs a character image and wan-driving= '
+                f'in {a_namer("image_seeds")}.')
+        joined = ' '.join(str(seed) for seed in self.image_seeds)
+        if 'wan-driving=' not in joined:
+            raise RenderLoopConfigError(
+                f'--model-type wan-animate-2 needs wan-driving= in {a_namer("image_seeds")}. '
+                f'The driving clip is the motion source.')
+        if 'wan-pose=' in joined or 'wan-face=' in joined or 'wan-background=' in joined:
+            raise RenderLoopConfigError(
+                'wan-pose=, wan-face=, and wan-background= are for --model-type wan-animate. '
+                '--model-type wan-animate-2 reads the motion from wan-driving=.')
+        self._check_wan_common(a_namer, max_sequence=512)
+
+    def _check_wan_common(self, a_namer: typing.Callable[[str], str], max_sequence: int):
+        if self.max_sequence_length is not None:
+            if self.max_sequence_length < 1 or self.max_sequence_length > max_sequence:
+                raise RenderLoopConfigError(
+                    f'{a_namer("max_sequence_length")} must be greater than or equal '
+                    f'to 1 and less than or equal to {max_sequence} for '
+                    f'{_pipelinewrapper.get_model_type_string(self.model_type)}.')
+        if self.wan_second_transformer_uri:
+            try:
+                _pipelinewrapper.uris.TransformerUri.parse(self.wan_second_transformer_uri)
+            except _pipelinewrapper.uris.InvalidTransformerUriError as e:
+                raise RenderLoopConfigError(
+                    f'{a_namer("wan_second_transformer_uri")}: {e}') from e
+        if self.wan_boundary_ratios:
+            for value in self.wan_boundary_ratios:
+                if float(value) < 0 or float(value) > 1:
+                    raise RenderLoopConfigError(
+                        f'{a_namer("wan_boundary_ratios")} must be between 0 and 1. Got {value}.')
+
+    def _check_video_shared_requirements(self, a_namer: typing.Callable[[str], str]):
+        if self.video_fps is None:
+            if self.model_type == _pipelinewrapper.ModelType.LTX:
+                self.video_fps = [24.0]
+            elif self.model_type == _pipelinewrapper.ModelType.WAN:
+                self.video_fps = [16.0]
+            elif self.model_type == _pipelinewrapper.ModelType.WAN_ANIMATE:
+                self.video_fps = [30.0]
+            elif self.model_type == _pipelinewrapper.ModelType.WAN_ANIMATE_2:
+                self.video_fps = [24.0]
+
         if self.batch_size is not None and self.batch_size > 1:
             raise RenderLoopConfigError(
                 f'{a_namer("batch_size")} is not supported for video model types. '
@@ -2808,14 +3088,25 @@ class RenderLoopConfig(_types.SetFromMixin):
                 f'Video model types write a clip, not latents. Change {a_namer("image_format")}.')
 
         if self.quantizer_map:
-            video_quant_names = {
-                'transformer', 'text_encoder', 'connectors'
-            }
+            if _pipelinewrapper.model_type_is_wan_family(self.model_type):
+                # Wan VAE stays float32; quantizing it fights the default cast
+                # and breaks AutoencoderKLWan.
+                video_quant_names = {
+                    'transformer', 'transformer_2', 'text_encoder',
+                    'text_encoder_2', 'image_encoder',
+                }
+                allowed = ('transformer, transformer_2, text_encoder, '
+                           'text_encoder_2, or image_encoder')
+            else:
+                video_quant_names = {
+                    'transformer', 'text_encoder', 'connectors'
+                }
+                allowed = 'transformer, text_encoder, or connectors'
             unknown = [name for name in self.quantizer_map if name not in video_quant_names]
             if unknown:
                 raise RenderLoopConfigError(
                     f'{a_namer("quantizer_map")} value {unknown[0]!r} cannot be used with '
-                    f'video model types. Use transformer, text_encoder, or connectors.')
+                    f'video model types. Use {allowed}.')
 
         if self.model_type != _pipelinewrapper.ModelType.LTX and self.sigmas:
             raise RenderLoopConfigError(
@@ -2827,11 +3118,10 @@ class RenderLoopConfig(_types.SetFromMixin):
             ('ip_adapter_uris', self.ip_adapter_uris),
             ('textual_inversion_uris', self.textual_inversion_uris),
             ('unet_uri', self.unet_uri),
-            ('vae_uri', self.vae_uri),
-            ('text_encoder_uris', self.text_encoder_uris),
             ('image_encoder_uri', self.image_encoder_uri),
             ('sdxl_refiner_uri', self.sdxl_refiner_uri),
             ('s_cascade_decoder_uri', self.s_cascade_decoder_uri),
+            ('second_model_text_encoder_uris', self.second_model_text_encoder_uris),
             ('adetailer_detector_uris', self.adetailer_detector_uris),
             ('prompt_weighter_uri', self.prompt_weighter_uri),
             ('second_prompts', self.second_prompts),
@@ -2851,7 +3141,6 @@ class RenderLoopConfig(_types.SetFromMixin):
             ('inpaint_crop_paddings', self.inpaint_crop_paddings),
             ('inpaint_crop_masked', self.inpaint_crop_masked),
             ('inpaint_crop_feathers', self.inpaint_crop_feathers),
-            ('mask_image_processors', self.mask_image_processors),
             ('latents', self.latents),
             ('latents_processors', self.latents_processors),
             ('latents_post_processors', self.latents_post_processors),
@@ -2871,13 +3160,31 @@ class RenderLoopConfig(_types.SetFromMixin):
         if self.vae_tiling:
             raise RenderLoopConfigError(
                 f'{a_namer("vae_tiling")} cannot be used with video model types. '
-                f'LTX always tiles the video VAE; that flag is ignored.')
+                f'Video models always tile the video VAE; that flag is ignored.')
 
         schedulers = self.scheduler_uri
         if isinstance(schedulers, str) or schedulers is None:
             schedulers = [schedulers]
         import dgenerate.pipelinewrapper.videopipelines as _videopipelines
-        allowed = _videopipelines.LTX_SCHEDULER_NAMES
+        if self.model_type == _pipelinewrapper.ModelType.WAN_ANIMATE:
+            allowed = _videopipelines.WAN_ANIMATE_SCHEDULER_NAMES
+            family = 'Wan-Animate'
+            extra = ''
+        elif self.model_type == _pipelinewrapper.ModelType.WAN_ANIMATE_2:
+            allowed = _videopipelines.WAN_ANIMATE_2_SCHEDULER_NAMES
+            family = 'Wan-Animate-2'
+            extra = ''
+        elif self.model_type == _pipelinewrapper.ModelType.WAN:
+            allowed = _videopipelines.WAN_SCHEDULER_NAMES
+            family = 'Wan'
+            extra = (
+                ' including URI arguments such as shift and use-dynamic-shifting '
+                '(3.0 for 480p, 5.0 for 720p).'
+            )
+        else:
+            allowed = _videopipelines.LTX_SCHEDULER_NAMES
+            family = 'LTX'
+            extra = ' including URI arguments such as shift and use-dynamic-shifting.'
         for item in schedulers:
             if not item or _pipelinewrapper.scheduler_is_help(str(item)):
                 continue
@@ -2886,8 +3193,7 @@ class RenderLoopConfig(_types.SetFromMixin):
                 continue
             raise RenderLoopConfigError(
                 f'{a_namer("scheduler_uri")} value {token!r} cannot be used with video model types. '
-                f'LTX accepts {_textprocessing.oxford_comma(sorted(allowed), "or")}, '
-                f'including URI arguments such as shift and use-dynamic-shifting. '
+                f'{family} accepts {_textprocessing.oxford_comma(sorted(allowed), "or")},{extra} '
                 f'Omitting --scheduler keeps the checkpoint scheduler.')
 
         if self.seed_image_processors and \
@@ -2895,6 +3201,18 @@ class RenderLoopConfig(_types.SetFromMixin):
             raise RenderLoopConfigError(
                 f'Video models accept at most two {a_namer("seed_image_processors")} chains, '
                 f'one for the opening image seed media and one for last-frame=.')
+
+        for name in (
+                'last_frame_image_processors',
+                'wan_pose_image_processors',
+                'wan_face_image_processors',
+                'wan_driving_image_processors',
+                'wan_background_image_processors',
+        ):
+            value = getattr(self, name)
+            if value and value.count(IMAGE_PROCESSOR_SEP) > 0:
+                raise RenderLoopConfigError(
+                    f'{a_namer(name)} accepts one processor chain.')
 
     def _check_floyd_requirements(self, a_namer: typing.Callable[[str], str]):
         """Check Floyd model specific requirements."""
@@ -2980,7 +3298,8 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise _pipelinewrapper.UnsupportedPipelineConfigError(
                     f'{a_namer("transformer_uri")} is only supported for '
                     f'{a_namer("model_type")} sd3, flux, flux2, flux2-klein-kv, z-image, '
-                    f'z-image-omni, qwen-image, qwen-image-edit, qwen-image-layered, and ltx.')
+                    f'z-image-omni, qwen-image, qwen-image-edit, qwen-image-layered, '
+                    f'ltx, wan, and wan-animate.')
 
     def _check_flux_model_requirements(self, a_namer: typing.Callable[[str], str]):
         """Check Flux model specific requirements."""
@@ -3318,10 +3637,12 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'in at least one {a_namer("image_seeds")} definition.')
 
         if any(p.reference_images for p in parsed_image_seeds):
-            if not _pipelinewrapper.model_type_is_flux2(self.model_type):
+            flux2 = _pipelinewrapper.model_type_is_flux2(self.model_type)
+            wan = self.model_type == _pipelinewrapper.ModelType.WAN
+            if not flux2 and not wan:
                 raise RenderLoopConfigError(
-                    f'{a_namer("image_seeds")} reference= is only for --model-type flux2.')
-            if any(p.reference_images and not p.mask_images for p in parsed_image_seeds):
+                    f'{a_namer("image_seeds")} reference= is only for --model-type flux2 or wan.')
+            if flux2 and any(p.reference_images and not p.mask_images for p in parsed_image_seeds):
                 raise RenderLoopConfigError(
                     'reference= is the extra image next to a Flux.2 Klein inpaint. '
                     'Text-to-image references are the seed images themselves.')
@@ -3462,10 +3783,14 @@ class RenderLoopConfig(_types.SetFromMixin):
         """Check model-specific requirements for image seeds."""
         if parsed.end_image is not None and not _pipelinewrapper.model_type_is_video(self.model_type):
             raise RenderLoopConfigError(
-                'The image seed argument "last-frame" is only supported for --model-type ltx.')
+                'The image seed argument "last-frame" is only supported for video model types.')
 
-        if not _pipelinewrapper.model_type_is_video(self.model_type) and (
-                parsed.ltx_condition_index is not None or parsed.ltx_extra_conditions):
+        if self.last_frame_image_processors and not _pipelinewrapper.model_type_is_video(self.model_type):
+            raise RenderLoopConfigError(
+                f'{a_namer("last_frame_image_processors")} is only supported for video model types.')
+
+        if (parsed.ltx_condition_index is not None or parsed.ltx_extra_conditions) and (
+                self.model_type != _pipelinewrapper.ModelType.LTX):
             raise RenderLoopConfigError(
                 'Image seed ltx-index and " ++ " conditions are only supported '
                 'for --model-type ltx.')
@@ -3489,10 +3814,34 @@ class RenderLoopConfig(_types.SetFromMixin):
                 raise RenderLoopConfigError(str(e)) from e
             _, _, control = _videopipelines.video_seed_slots(parsed, ic_lora)
             if self.control_image_processors and control is None:
+                if self.model_type == _pipelinewrapper.ModelType.LTX:
+                    raise RenderLoopConfigError(
+                        f'{a_namer("control_image_processors")} runs on the IC-LoRA control clip, '
+                        f'and {a_namer("image_seeds")} "{uri}" has none. '
+                        f'Load an IC-LoRA with {a_namer("ltx_ic_lora_uri")}.')
                 raise RenderLoopConfigError(
-                    f'{a_namer("control_image_processors")} runs on the IC-LoRA control clip, '
-                    f'and {a_namer("image_seeds")} "{uri}" has none. '
-                    f'Load an IC-LoRA with {a_namer("ltx_ic_lora_uri")}.')
+                    f'{a_namer("control_image_processors")} runs on the image seed control= clip, '
+                    f'and {a_namer("image_seeds")} "{uri}" has none.')
+            if self.last_frame_image_processors and parsed.end_image is None:
+                raise RenderLoopConfigError(
+                    f'{a_namer("last_frame_image_processors")} runs on the image seed last-frame= clip, '
+                    f'and {a_namer("image_seeds")} "{uri}" has none.')
+            if self.wan_driving_image_processors and parsed.wan_driving_video is None:
+                raise RenderLoopConfigError(
+                    f'{a_namer("wan_driving_image_processors")} runs on the image seed wan-driving= clip, '
+                    f'and {a_namer("image_seeds")} "{uri}" has none.')
+            if self.wan_pose_image_processors and parsed.wan_pose_video is None and parsed.wan_driving_video is None:
+                raise RenderLoopConfigError(
+                    f'{a_namer("wan_pose_image_processors")} runs on wan-pose= or wan-driving=, '
+                    f'and {a_namer("image_seeds")} "{uri}" has neither.')
+            if self.wan_face_image_processors and parsed.wan_face_video is None and parsed.wan_driving_video is None:
+                raise RenderLoopConfigError(
+                    f'{a_namer("wan_face_image_processors")} runs on wan-face= or wan-driving=, '
+                    f'and {a_namer("image_seeds")} "{uri}" has neither.')
+            if self.wan_background_image_processors and parsed.wan_background_video is None:
+                raise RenderLoopConfigError(
+                    f'{a_namer("wan_background_image_processors")} runs on the image seed wan-background= clip, '
+                    f'and {a_namer("image_seeds")} "{uri}" has none.')
 
         if _pipelinewrapper.model_type_is_s_cascade(self.model_type):
             if not parsed.is_single_spec:
@@ -3614,6 +3963,30 @@ class RenderLoopConfig(_types.SetFromMixin):
                     f'inpaint mask image sources, and you have specified {mask_processor_chain_count} '
                     f'{a_namer("mask_image_processors")} actions / action chains. The amount of processors '
                     f'must not exceed the amount of inpaint mask images.'
+                )
+
+        if self.reference_image_processors:
+            num_reference_images = len(parsed.reference_images) if parsed.reference_images is not None else 0
+            reference_processor_chain_count = \
+                (sum(1 for p in self.reference_image_processors if p == IMAGE_PROCESSOR_SEP) + 1)
+            if reference_processor_chain_count > num_reference_images:
+                raise RenderLoopConfigError(
+                    f'Your {a_namer("image_seeds")} specification "{uri}" defines {num_reference_images} '
+                    f'reference image sources, and you have specified {reference_processor_chain_count} '
+                    f'{a_namer("reference_image_processors")} actions / action chains. The amount of processors '
+                    f'must not exceed the amount of reference images.'
+                )
+
+        if self.adapter_image_processors:
+            num_adapter_groups = len(parsed.adapter_images) if parsed.adapter_images is not None else 0
+            adapter_processor_chain_count = \
+                (sum(1 for p in self.adapter_image_processors if p == IMAGE_PROCESSOR_SEP) + 1)
+            if adapter_processor_chain_count > num_adapter_groups:
+                raise RenderLoopConfigError(
+                    f'Your {a_namer("image_seeds")} specification "{uri}" defines {num_adapter_groups} '
+                    f'IP adapter image groups, and you have specified {adapter_processor_chain_count} '
+                    f'{a_namer("adapter_image_processors")} actions / action chains. The amount of processors '
+                    f'must not exceed the amount of adapter groups.'
                 )
 
     def _check_adapter_compatibility(self,
@@ -3849,8 +4222,8 @@ class RenderLoopConfig(_types.SetFromMixin):
             self.sdxl_refiner_deep_cache_branch_ids,
             self.sigmas,
             self.sdxl_refiner_sigmas,
-            self.ltx_video_lengths,
-            self.ltx_video_fps,
+            self.video_lengths,
+            self.video_fps,
             self.ltx_audio_guidance_scales,
             self.ltx_audio_guidance_rescales,
             self.ltx_stg_scales,
@@ -3865,6 +4238,13 @@ class RenderLoopConfig(_types.SetFromMixin):
             self.ltx_decode_timesteps,
             self.ltx_decode_noise_scales,
             self.ltx_image_crfs,
+            self.wan_low_noise_guidance_scales,
+            self.wan_boundary_ratios,
+            self.wan_timesteps,
+            self.wan_conditioning_scales,
+            self.wan_segment_frame_lengths,
+            self.wan_prev_segment_frames,
+            self.wan_motion_encode_batch_sizes,
             self.sada_max_downsamples,
             self.sada_sxs,
             self.sada_sys,
@@ -3999,8 +4379,12 @@ class RenderLoopConfig(_types.SetFromMixin):
                 if n.startswith('qwen_layered_'):
                     return None
 
-            if not _pipelinewrapper.model_type_is_video(self.model_type):
+            if self.model_type != _pipelinewrapper.ModelType.LTX:
                 if n.startswith('ltx_'):
+                    return None
+
+            if not _pipelinewrapper.model_type_is_wan_family(self.model_type):
+                if n.startswith('wan_'):
                     return None
 
             if not self.adetailer_detector_uris:
@@ -4110,8 +4494,8 @@ class RenderLoopConfig(_types.SetFromMixin):
                 guidance_rescale=ov('guidance_rescale', self.guidance_rescales),
                 sigmas=ov('sigmas', self.sigmas),
                 inference_steps=ov('inference_steps', self.inference_steps),
-                ltx_video_length=ov('ltx_video_length', self.ltx_video_lengths),
-                ltx_video_fps=ov('ltx_video_fps', self.ltx_video_fps),
+                video_length=ov('video_length', self.video_lengths),
+                video_fps=ov('video_fps', self.video_fps),
                 ltx_audio_guidance_scale=ov('ltx_audio_guidance_scale', self.ltx_audio_guidance_scales),
                 ltx_audio_guidance_rescale=ov('ltx_audio_guidance_rescale', self.ltx_audio_guidance_rescales),
                 ltx_stg_scale=ov('ltx_stg_scale', self.ltx_stg_scales),
@@ -4133,6 +4517,22 @@ class RenderLoopConfig(_types.SetFromMixin):
                 ltx_image_crf=ov('ltx_image_crf', self.ltx_image_crfs),
                 ltx_prompt_enhancer=ov('ltx_prompt_enhancer', [self.ltx_prompt_enhancer]),
                 ltx_system_prompt=ov('ltx_system_prompt', [self.ltx_system_prompt]),
+                wan_low_noise_guidance_scale=ov(
+                    'wan_low_noise_guidance_scale', self.wan_low_noise_guidance_scales),
+                wan_boundary_ratio=ov('wan_boundary_ratio', self.wan_boundary_ratios),
+                wan_expand_timesteps=ov('wan_expand_timesteps', [self.wan_expand_timesteps]),
+                wan_timesteps=ov('wan_timesteps', self.wan_timesteps),
+                wan_conditioning_scale=ov(
+                    'wan_conditioning_scale', self.wan_conditioning_scales),
+                wan_animate_mode=ov('wan_animate_mode', [self.wan_animate_mode]),
+                wan_segment_frame_length=ov(
+                    'wan_segment_frame_length', self.wan_segment_frame_lengths),
+                wan_prev_segment_frames=ov(
+                    'wan_prev_segment_frames', self.wan_prev_segment_frames),
+                wan_motion_encode_batch_size=ov(
+                    'wan_motion_encode_batch_size', self.wan_motion_encode_batch_sizes),
+                wan_animate_preprocess=ov(
+                    'wan_animate_preprocess', [self.wan_animate_preprocess]),
                 sdxl_high_noise_fraction=ov('sdxl_high_noise_fraction', self.sdxl_high_noise_fractions),
                 second_model_inference_steps=ov('second_model_inference_steps', self.second_model_inference_steps),
                 second_model_guidance_scale=ov('second_model_guidance_scale', self.second_model_guidance_scales),

@@ -411,10 +411,10 @@ prompt is an instruction. LTX-2.5
 and audio. Animate a still with that repo, ``--guidance-scales 1``,
 ``--model-sequential-offload``, ``--animation-format mp4``, and
 ``--image-seeds {{ quote(first(last_images)) }}``.
-Every LTX-only option is prefixed ``--ltx-``. ``--ltx-video-lengths`` is
-seconds and ``--ltx-video-fps`` is the frame rate. Use the duration the
+Clip length and frame rate are ``--video-lengths`` (seconds) and
+``--video-fps``. Every other LTX-only option is prefixed ``--ltx-``. Use the duration the
 user asked for, including a long one. When they did not name a duration,
-use 4, or omit ``--ltx-video-lengths`` so the duration head chooses it.
+use 4, or omit ``--video-lengths`` so the duration head chooses it.
 ``--ltx-video-min-seconds`` and ``--ltx-video-max-seconds`` clamp that
 head. ``2 4`` with ``6 8`` is two clips, 2 to 6 and 4 to 8. Other
 ``--ltx-`` value lists are tried in turn. Describe sound in the prompt.
@@ -426,7 +426,7 @@ The distilled checkpoint needs no stage LoRA. The full transformer uses
 ``--ltx-stg-blocks 28``, video guidance 3, and ``--ltx-audio-guidance-scales 7``.
 Its refine LoRA is ``--ltx-stage-loras``, not a second config.
 ``--ltx-prompt-enhancer google/gemma-4-E2B-it`` rewrites the prompt.
-``--ltx-video-decoder diffusion`` uses the diffusion decoder.
+``--ltx-video-decoder diffusion`` uses the diffusion decoder. NATTEN comes from the kernels package, which is installed with dgenerate.
 ``--ltx-image-crfs`` recompresses a conditioning still.
 ``--ltx-ic-lora`` is the IC-LoRA. The last frame is ``last-frame=``, not ``end=``.
 ``ltx-index`` is the latent frame and ``strength`` is from 0 to 1.
@@ -434,6 +434,19 @@ Its refine LoRA is ``--ltx-stage-loras``, not a second config.
 Extra conditions in one clip are separated by `` ++ ``.
 Use ``Lightricks/LTX-Video`` only when the user names that
 older video-only model.
+Wan 2.1 / 2.2 is ``--model-type wan`` with a ``Wan-AI`` repo.
+``--video-lengths`` is seconds and ``--video-fps`` defaults to 16.
+``last-frame=`` is first-last-frame. A video seed is video-to-video.
+``control=``, ``mask=``, and ``reference=`` are VACE.
+The Wan VAE defaults to ``float32``; override with ``--vae`` and
+``AutoencoderKLWan`` plus ``dtype=``.
+Wan-Animate is ``--model-type wan-animate`` with a character still plus
+``wan-pose=`` and ``wan-face=``, or ``wan-driving=`` with ``--wan-animate-preprocess``
+(openpose and yolo ``crops=True`` face crop) or ``--wan-pose-image-processors`` and
+``--wan-face-image-processors``. ``--video-lengths`` is rejected for animate.
+Wan-Animate-2 is ``--model-type wan-animate-2`` with a character still plus
+``wan-driving=``. The base repo samples in 40 steps and the distilled repo in 10.
+``--video-fps`` defaults to 24. ``--video-lengths`` is rejected.
 Do not put ``last_animations`` on ``--image-seeds`` for Kontext, Fill,
 or image-to-video.
 
@@ -449,7 +462,7 @@ Do not set ``quantizer=`` on that URI and do not use
 ``bnb`` or ``sdnq`` and ``--quantizer-map text_encoder``.
 ``--model-sequential-offload`` works with these GGUF transformers.
 
-Flux, SD3, Flux.2, Z-Image, Qwen-Image, and LTX-2.5 all take a GGUF
+Flux, SD3, Flux.2, Z-Image, Qwen-Image, LTX-2.5, and Wan all take a GGUF
 transformer. Flux.2 Klein, Qwen-Image, Z-Image, and LTX-2.5 are
 recognized from the file, including ComfyUI layouts, so
 ``--transformer`` needs no ``config=``. Flux.2 hidden width picks the
@@ -463,7 +476,8 @@ for Turbo (8 steps, guidance 0).
 
 See ``examples/flux/gguf``, ``examples/stablediffusion3/gguf``,
 ``examples/flux2/gguf``, ``examples/z-image/gguf``,
-``examples/qwen-image/gguf``, and ``examples/ltx2/gguf``.
+``examples/qwen-image/gguf``, ``examples/ltx2/gguf``,
+and ``examples/wan/gguf``.
 The distilled LTX-2.5 GGUF keeps guidance at 1 and omits
 ``--inference-steps``. The dev GGUF is the full transformer: guidance 3,
 audio guidance 7, and
