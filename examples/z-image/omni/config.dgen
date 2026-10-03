@@ -1,8 +1,9 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 6.0.0
 
-# Condition image, not img2img. Omit --image-seeds for text only.
-# No mask and no strength.
+# ZImageOmniPipeline: an image seed is an optional condition image
+# (not img2img). No mask and no strength. Prompt matches the Diffusers
+# docstring creative-poster demo (English).
 
 \setp gpu_memory_gib total_memory(unit='gib')
 
@@ -17,8 +18,8 @@ Z-a-o/Z-Image-Turbo
 --scheduler FlowMatchEulerDiscreteScheduler
 --inference-steps 8
 --guidance-scales 0
---image-seeds "../../media/beach.jpg"
---gen-seeds 1
+--image-seeds https://raw.githubusercontent.com/CompVis/stable-diffusion/main/assets/stable-samples/img2img/sketch-mountains-input.jpg
+--gen-seeds 42
 --output-path z-image-omni
 --output-size 1024
---prompts "The same beach, but the sky is a bright aurora, photo"
+--prompts "A creative poster for the project Z-IMAGE-TURBO. A vintage steam locomotive becomes a giant zipper pull, unzipping thick winter snow to reveal a vibrant spring landscape underneath, detailed illustration"

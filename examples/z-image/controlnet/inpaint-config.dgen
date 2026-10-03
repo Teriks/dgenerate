@@ -1,13 +1,11 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 6.0.0
 
-# Inpaint ControlNet needs the 2.0 union. The 1.0 file is rejected.
-# This pipeline does not take image seed strength.
-#
-# horse1-mask.jpg is black on the horse and white on the background.
-# White is repainted, so invert it and paint the horse, as in
-# examples/inpaint_autocrop/hi-res-auto-cropped-config.dgen.
-# Canny of that same photo guides the painted horse.
+# Matches Diffusers ZImageControlNetInpaintPipeline docs.
+# Inpaint ControlNet needs Union 2.x (1.0 is rejected). Prefer 2.1 as in
+# the Diffusers example. Official assets already use a modest white mask
+# region; white is repainted. Use 25 steps: 2.x ControlNet loses Turbo's
+# 8-step acceleration. This pipeline does not take image seed strength.
 
 \setp gpu_memory_gib total_memory(unit='gib')
 
@@ -16,16 +14,19 @@
 {% endif %}
 
 
+\set image https://huggingface.co/alibaba-pai/Z-Image-Turbo-Fun-Controlnet-Union-2.0/resolve/main/asset/inpaint.jpg
+\set mask https://huggingface.co/alibaba-pai/Z-Image-Turbo-Fun-Controlnet-Union-2.0/resolve/main/asset/mask.jpg
+\set control https://huggingface.co/alibaba-pai/Z-Image-Turbo-Fun-Controlnet-Union-2.0/resolve/main/asset/pose.jpg
+
 Tongyi-MAI/Z-Image-Turbo
 --model-type z-image {{ optimization }}
 --dtype bfloat16
 --scheduler FlowMatchEulerDiscreteScheduler
---inference-steps 8
+--inference-steps 25
 --guidance-scales 0
---control-nets "https://huggingface.co/alibaba-pai/Z-Image-Turbo-Fun-Controlnet-Union-2.0/resolve/main/Z-Image-Turbo-Fun-Controlnet-Union-2.0.safetensors;scale=0.75"
---image-seeds "../../media/horse1.jpg;mask=../../media/horse1-mask.jpg;control=../../media/horse1.jpg"
---mask-image-processors invert
---control-image-processors "canny;lower=50;upper=100;output-file=z-image-controlnet-inpaint/horse-canny.png"
---gen-seeds 1
+--control-nets "https://huggingface.co/alibaba-pai/Z-Image-Turbo-Fun-Controlnet-Union-2.0/resolve/main/Z-Image-Turbo-Fun-Controlnet-Union-2.1.safetensors;scale=0.75"
+--image-seeds "{{ image }};mask={{ mask }};control={{ control }}"
+--gen-seeds 43
 --output-path z-image-controlnet-inpaint
---prompts "a pink horse from a fantasy world, standing and looking towards the viewer"
+--output-size 992x1728
+--prompts "A young woman on a sunny coastline, full-body vertical composition, body angled slightly right, left hand relaxed at her side, right arm bent with hand on her waist, fingers clearly visible. She wears a light white sleeveless dress, semi-sheer soft fabric fluttering in the sea breeze. Long vivid purple hair to her waist, blown by the wind, with a delicate black bow. Fair skin, gentle shy expression, eyes toward the distant horizon. Vast ocean and clear blue sky, warm golden sunlight on glittering water."

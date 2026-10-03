@@ -1,7 +1,8 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 6.0.0
 
-# Img2img. The pipeline strength default is 0.6.
+# Matches Diffusers ZImageImg2ImgPipeline docs: CompVis sketch-mountains,
+# strength 0.6, 8 steps, guidance 0.
 
 \setp gpu_memory_gib total_memory(unit='gib')
 
@@ -16,9 +17,9 @@ Tongyi-MAI/Z-Image-Turbo
 --scheduler FlowMatchEulerDiscreteScheduler
 --inference-steps 8
 --guidance-scales 0
---image-seeds "../../media/beach.jpg"
+--image-seeds https://raw.githubusercontent.com/CompVis/stable-diffusion/main/assets/stable-samples/img2img/sketch-mountains-input.jpg
 --image-seed-strengths 0.6
---gen-seeds 1
+--gen-seeds 42
 --output-path z-image-img2img
 --output-size 1024
---prompts "A huge wave about to break over a tropical beach, photo"
+--prompts "A fantasy landscape with mountains and a river, detailed, vibrant colors"

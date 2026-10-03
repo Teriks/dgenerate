@@ -1,11 +1,9 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 6.0.0
 
-# One ControlNet union. The pipeline rebuilds it against the loaded transformer.
+# Matches Diffusers ZImageControlNetPipeline docs: Alibaba-PAI Union 1.0,
+# precomputed pose.jpg, scale 0.75, 992x1728, seed 43.
 # A plain --image-seeds path is the control image in text-to-image mode.
-# scale=0.75 is the pipeline default.
-#
-# OpenPose turns the reference photo into the rig, as in the other boxer examples.
 
 \setp gpu_memory_gib total_memory(unit='gib')
 
@@ -21,9 +19,8 @@ Tongyi-MAI/Z-Image-Turbo
 --inference-steps 8
 --guidance-scales 0
 --control-nets "https://huggingface.co/alibaba-pai/Z-Image-Turbo-Fun-Controlnet-Union/resolve/main/Z-Image-Turbo-Fun-Controlnet-Union.safetensors;scale=0.75"
---image-seeds "../../media/man-fighting-pose.jpg"
---control-image-processors "openpose;include-hand=true;include-face=true;output-file=z-image-controlnet/boxer-openpose.png"
---gen-seeds 1
+--image-seeds https://huggingface.co/alibaba-pai/Z-Image-Turbo-Fun-Controlnet-Union/resolve/main/asset/pose.jpg
+--gen-seeds 43
 --output-path z-image-controlnet
---output-size 1024
---prompts "A boxer throwing a punch in the ring"
+--output-size 992x1728
+--prompts "A young woman standing on a sunny coastline, white dress fluttering in the sea breeze. She has long vivid purple hair dancing in the wind with a delicate black bow, soft blue sky behind her. Sweet youthful face, gentle shy expression, gazing at the horizon, hands folded in front. Vast glittering ocean behind her, warm golden sunlight on the water."

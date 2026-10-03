@@ -1,6 +1,10 @@
 #! /usr/bin/env dgenerate --file
 #! dgenerate 6.0.0
 
+# Matches the Diffusers FluxInpaintPipeline docstring: CompVis
+# latent-diffusion dog/bench image + face mask, yellow-cat prompt.
+# White mask pixels are repainted (~13% of the frame). FLUX.1-schnell
+# is gated; set HF_TOKEN or pass --auth-token.
 
 \set token %HF_TOKEN%
 
@@ -20,12 +24,17 @@
 {% endif %}
 
 
+\set image https://raw.githubusercontent.com/CompVis/latent-diffusion/main/data/inpainting_examples/overture-creations-5sI6fQgYIuo.png
+\set mask https://raw.githubusercontent.com/CompVis/latent-diffusion/main/data/inpainting_examples/overture-creations-5sI6fQgYIuo_mask.png
+
 black-forest-labs/FLUX.1-schnell
 --model-type flux {{ optimization }}
 --dtype bfloat16
 --inference-steps 4
 --guidance-scales 0
---image-seeds "../../media/horse1.jpg;../../media/horse1-mask.jpg"
---image-seed-strengths 0.9
---seeds 39877139643371
---prompts "Horse standing on the surface of mars, real, photo, high resolution"
+--image-seeds "{{ image }};mask={{ mask }}"
+--image-seed-strengths 0.6
+--gen-seeds 0
+--output-path flux-inpaint
+--output-size 1024
+--prompts "Face of a yellow cat, high resolution, sitting on a park bench"
