@@ -39,4 +39,4 @@ Qwen/Qwen-Image
 --gen-seeds 1
 --output-path qwen-image-controlnet-inpaint
 --output-size 1024
---prompts "A pink fantasy horse standing in a green grassy field under a blue sky, photo"
+--prompts "a horse standing on mars"
