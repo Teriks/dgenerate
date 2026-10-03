@@ -2,6 +2,7 @@ import os
 import tempfile
 import time
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 import PIL.Image
@@ -123,6 +124,9 @@ class TestAnimationTimeline(unittest.TestCase):
         class _Ended:
             active = True
             finished = True
+            paused = False
+            running = True
+            gain = 1.0
             position = 0.5
 
             def play(self, _seconds):
@@ -131,12 +135,190 @@ class TestAnimationTimeline(unittest.TestCase):
             def pause(self):
                 return None
 
+            def set_gain(self, gain):
+                self.gain = gain
+
         clip._audio = _Ended()
         try:
             clip.start()
             clip._wall_origin = time.perf_counter() - 2.5
             self.assertEqual(clip.time(), 0.0)
             self.assertTrue(clip.playing)
+        finally:
+            clip._audio = None
+            clip.close()
+
+    def test_clip_duration_covers_a_longer_soundtrack(self):
+        frames = [np.zeros((2, 2, 3), np.uint8)]
+        # 48000 samples at 48kHz is 1.0s; video times only reach ~0.53s.
+        audio = np.zeros((48000, 2), dtype=np.int16)
+
+        class _SilentPcm:
+            def __init__(self, _samples, _rate):
+                self.active = False
+
+            def close(self):
+                return None
+
+        with patch('dgenerate.console.animationplayback.PcmPlayer', _SilentPcm):
+            clip = AnimationClip(
+                'clip', frames, np.array([0.0, 0.5]), 0.5 + 1.0 / 30.0, audio, 48000)
+            try:
+                self.assertAlmostEqual(clip.duration, 1.0, places=5)
+                self.assertTrue(clip.has_audio)
+            finally:
+                clip.close()
+
+    def test_miniaudio_start_stops_before_a_second_start(self):
+        class _Device:
+            def __init__(self):
+                self.stopped = 0
+                self.starts = 0
+
+            def stop(self):
+                self.stopped += 1
+
+            def start(self, _generator):
+                self.starts += 1
+
+            def close(self):
+                return None
+
+        player = _MiniaudioPlayer.__new__(_MiniaudioPlayer)
+        player._miniaudio = None
+        player._samples = np.zeros((8, 1), dtype=np.int16)
+        player._channels = 1
+        player._cursor = 0
+        player._paused_samples = 0
+        player._running = False
+        player._gain = 1.0
+        player._clock = _SmoothPlaybackClock(8000)
+        player._device = _Device()
+        player._started = True
+        player.active = True
+        player.start(np.zeros((8, 1), dtype=np.int16))
+        self.assertEqual(player._device.stopped, 1)
+        self.assertEqual(player._device.starts, 1)
+        self.assertTrue(player._started)
+
+    def test_mute_ducks_gain_without_stopping_the_device(self):
+        frames = [np.zeros((2, 2, 3), np.uint8)]
+        clip = AnimationClip('clip', frames, np.array([0.0]), 4.0, None, None)
+
+        class _Transport:
+            active = True
+            finished = False
+            paused = False
+            running = True
+            gain = 1.0
+            position = 0.25
+            played_at = None
+            pause_calls = 0
+
+            def play(self, seconds):
+                self.paused = False
+                self.running = True
+                self.played_at = seconds
+                self.position = seconds
+
+            def pause(self):
+                self.pause_calls += 1
+                self.paused = True
+                self.running = False
+
+            def set_gain(self, gain):
+                self.gain = gain
+
+        audio = _Transport()
+        clip._audio = audio
+        try:
+            clip.start()
+            audio.position = 0.25
+            clip.set_gain(0.0)
+            self.assertEqual(audio.pause_calls, 0)
+            self.assertTrue(audio.running)
+            self.assertEqual(audio.gain, 0.0)
+            audio.position = 0.40
+            self.assertAlmostEqual(clip.time(), 0.40, places=3)
+            clip.set_gain(0.8)
+            self.assertIsNone(audio.played_at)
+            self.assertEqual(audio.gain, 0.8)
+        finally:
+            clip._audio = None
+            clip.close()
+
+    def test_unmute_starts_audio_when_playback_began_muted(self):
+        frames = [np.zeros((2, 2, 3), np.uint8)]
+        clip = AnimationClip('clip', frames, np.array([0.0]), 4.0, None, None)
+
+        class _Transport:
+            active = True
+            finished = False
+            paused = False
+            running = False
+            gain = 0.0
+            position = 0.0
+            played_at = None
+
+            def play(self, seconds):
+                self.paused = False
+                self.running = True
+                self.played_at = seconds
+                self.position = seconds
+
+            def pause(self):
+                self.paused = True
+                self.running = False
+
+            def set_gain(self, gain):
+                self.gain = gain
+
+        audio = _Transport()
+        clip._audio = audio
+        try:
+            clip.set_gain(0.0)
+            clip.start()
+            self.assertIsNone(audio.played_at)
+            clip._wall_origin = time.perf_counter() - 0.3
+            clip.set_gain(1.0)
+            self.assertAlmostEqual(audio.played_at, 0.3, delta=0.05)
+            self.assertTrue(audio.running)
+        finally:
+            clip._audio = None
+            clip.close()
+
+    def test_muted_load_advances_on_the_wall_clock(self):
+        frames = [np.zeros((2, 2, 3), np.uint8) for _ in range(3)]
+        times = np.array([0.0, 0.05, 0.10])
+        clip = AnimationClip('clip', frames, times, 0.15, None, None)
+
+        class _Transport:
+            active = True
+            finished = False
+            paused = False
+            running = False
+            gain = 0.0
+            position = 0.0
+
+            def play(self, _seconds):
+                self.running = True
+
+            def pause(self):
+                self.running = False
+
+            def set_gain(self, gain):
+                self.gain = gain
+
+        clip._audio = _Transport()
+        try:
+            clip.set_gain(0.0)
+            clip.start()
+            self.assertTrue(clip.playing)
+            self.assertFalse(clip._audio.running)
+            clip._wall_origin = time.perf_counter() - 0.08
+            self.assertGreaterEqual(clip.time(), 0.07)
+            frame = clip.frame()
+            self.assertIs(frame, frames[1])
         finally:
             clip._audio = None
             clip.close()

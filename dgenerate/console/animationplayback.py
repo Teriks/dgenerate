@@ -388,6 +388,21 @@ class PcmPlayer:
                 self.active = True
 
     @property
+    def gain(self) -> float:
+        return self._gain
+
+    @property
+    def paused(self) -> bool:
+        return self._paused
+
+    @property
+    def running(self) -> bool:
+        """True when the backend is actively consuming samples."""
+        if not self.active or self._paused or self._backend is None:
+            return False
+        return bool(getattr(self._backend, 'running', True))
+
+    @property
     def position(self) -> float:
         if self._backend is None:
             return self._offset / self.sample_rate if self.sample_rate else 0.0
@@ -470,6 +485,10 @@ class _WaveOutPlayer:
         level = int(self._gain * 0xFFFF)
         packed = (level & 0xFFFF) | ((level & 0xFFFF) << 16)
         self._winmm.waveOutSetVolume(self._handle, ctypes.c_uint(packed))
+
+    @property
+    def running(self) -> bool:
+        return bool(self.active and self._headers)
 
     def _open(self):
         winmm = self._winmm
@@ -614,13 +633,21 @@ class _SoundDevicePlayer:
     def set_gain(self, gain: float):
         self._gain = min(1.0, max(0.0, float(gain)))
 
+    @property
+    def running(self) -> bool:
+        return bool(self._stream.active)
+
     def start(self, samples: np.ndarray):
         self._samples = np.ascontiguousarray(samples, dtype=np.int16)
         self._offset = 0
         self._paused_samples = 0
         self._clock.reset()
-        if not self._stream.active:
-            self._stream.start()
+        # A seek or loop must drop queued output. Restarting the stream with
+        # a new offset while the device still holds the previous ending leaves
+        # the picture at the new time and the speaker on the old one.
+        if self._stream.active:
+            self._stream.stop()
+        self._stream.start()
 
     def pause(self):
         self._paused_samples = self._clock.heard()
@@ -674,17 +701,26 @@ class _MiniaudioPlayer:
     def set_gain(self, gain: float):
         self._gain = min(1.0, max(0.0, float(gain)))
 
+    @property
+    def running(self) -> bool:
+        return bool(self._started and self._running)
+
     def start(self, samples: np.ndarray):
-        # A loop or a seek used to stop the device and start it again. WASAPI
-        # answers that second start with MA_UNAVAILABLE (-22), and the
-        # exception left the preview timer.
+        # A loop or seek must flush the device. Leaving the previous ending in
+        # the hardware queue plays it over the new picture start. Stopping and
+        # starting again can return MA_UNAVAILABLE on WASAPI; _reopen handles
+        # that with one new device.
         self._samples = np.ascontiguousarray(samples, dtype=np.int16)
         self._cursor = 0
         self._paused_samples = 0
         self._clock.reset()
         self._running = True
         if self._started:
-            return
+            try:
+                self._device.stop()
+            except Exception:
+                pass
+            self._started = False
         generator = self._generator()
         next(generator)
         try:
@@ -746,6 +782,12 @@ class AnimationClip:
         self._audio = None
         self.audio_error = None
         if audio is not None and sample_rate:
+            # Keep the picture on the last frame until the soundtrack ends.
+            # Looping at the video duration while audio still has a tail
+            # (common with AAC) seeks mid-tail and sounds early on loop.
+            audio_seconds = len(audio) / float(sample_rate)
+            if audio_seconds > self.duration:
+                self.duration = audio_seconds
             try:
                 self._audio = PcmPlayer(audio, sample_rate)
             except Exception as error:
@@ -769,9 +811,29 @@ class AnimationClip:
             self._thread = threading.Thread(target=self._decode_loop, daemon=True)
             self._thread.start()
 
+    def _audio_should_run(self) -> bool:
+        """Start the device only when gain is audible.
+
+        Mute ducks the stream with gain 0 and leaves the device running so the
+        picture clock keeps moving. Stopping the device on the UI thread freezes
+        the preview. A clip that begins muted starts the device on unmute.
+        """
+        audio = self._audio
+        return audio is not None and audio.active and audio.gain > 0.0
+
     def set_gain(self, gain: float):
-        if self._audio is not None:
-            self._audio.set_gain(gain)
+        if self._audio is None:
+            return
+        gain = min(1.0, max(0.0, float(gain)))
+        was_audible = self._audio.gain > 0.0
+        self._audio.set_gain(gain)
+        audible = gain > 0.0
+        if not self.playing or not self._audio.active:
+            return
+        # Mute/unmute while the device is already running is gain only. play()
+        # and pause() stop the backend and stall the UI paint path.
+        if not was_audible and audible and not self._audio.running:
+            self._audio.play(self._clock())
 
     def start(self):
         """Play from the start."""
@@ -783,7 +845,7 @@ class AnimationClip:
             self._wanted = 0.0
         if not already:
             self._hold_timer()
-        if self._audio is not None and self._audio.active:
+        if self._audio_should_run():
             self._audio.play(0.0)
 
     def pause(self):
@@ -803,7 +865,7 @@ class AnimationClip:
             self.playing = True
             self._wall_origin = time.perf_counter() - self._paused_at
             self._hold_timer()
-            if self._audio is not None and self._audio.active:
+            if self._audio_should_run():
                 self._audio.play(self._paused_at)
 
     def _hold_timer(self):
@@ -834,16 +896,21 @@ class AnimationClip:
             self._thread.start()
         if self._audio is None or not self._audio.active:
             return
-        if self.playing:
-            self._audio.play(seconds)
-        else:
+        if not self.playing:
             self._audio.pause()
+            return
+        # Keep a muted stream on the new playhead so unmute stays aligned.
+        if self._audio.running or self._audio_should_run():
+            self._audio.play(seconds)
 
     def _clock(self) -> float:
         audio = self._audio
-        # Once the soundtrack has been heard, keep going on the wall clock.
-        # Otherwise a short audio track freezes the picture before it can loop.
-        if audio is not None and audio.active and self.playing and not audio.finished:
+        # Follow the soundtrack only while the device is consuming samples.
+        # A muted load never calls play(), so position stays 0; using that as
+        # the clock leaves the picture on the first frame. Wall clock covers
+        # muted starts, short finished tracks, and missing audio.
+        if (audio is not None and audio.active and self.playing
+                and audio.running and not audio.finished):
             return audio.position
         if self._wall_origin is None:
             return self._paused_at
